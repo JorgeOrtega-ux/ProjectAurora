@@ -384,20 +384,29 @@ html {
     outline: none;
     transition: background-color 0.2s ease;
     text-decoration: none;
+    /* [MODIFICADO] Flexbox para centrar el spinner */
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .form-button:hover {
     background-color: #333;
 }
 
-/* === ESTILOS NUEVOS: MENSAJES DE ERROR E INPUTS ROJOS === */
+.form-button:disabled {
+    background-color: #555;
+    cursor: not-allowed;
+}
+
+/* === MENSAJES DE ERROR E INPUTS === */
 
 .form-error-message {
-    display: none; /* Oculto por defecto */
+    display: none; 
     width: 100%;
-    border: 1px solid #d32f2f; /* Borde rojo */
-    background-color: transparent; /* Fondo transparente */
-    color: #d32f2f; /* Texto rojo */
+    border: 1px solid #d32f2f; 
+    background-color: transparent; 
+    color: #d32f2f; 
     padding: 10px;
     margin-top: 15px;
     border-radius: 8px;
@@ -410,22 +419,19 @@ html {
     display: block;
 }
 
-/* Input con borde rojo al tener error */
 .floating-input.input-error {
     border-color: #d32f2f;
 }
 
-/* Label rojo cuando el input tiene error */
 .floating-input.input-error ~ .floating-label {
     color: #d32f2f;
 }
 
-/* Mantener el borde rojo incluso si se hace focus */
 .floating-input.input-error:focus {
     border-color: #d32f2f;
 }
 
-/* === FIN ESTILOS NUEVOS === */
+/* === FIN ESTILOS ERROR === */
 
 input#register-password,
 input#login-password {
@@ -509,6 +515,16 @@ input#login-password {
     height: 22px;
     border: 2px solid rgba(0, 0, 0, 0.1);
     border-top: 2px solid #000000;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+/* [NUEVO] Spinner blanco especial para botones negros */
+.btn-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid rgba(255, 255, 255, 0.3); /* Track transparente */
+    border-top: 2px solid #ffffff; /* Top blanco */
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }

@@ -28,7 +28,7 @@ export function initAuthManager() {
         }
 
         // =================================================
-        // NUEVO: LÓGICA RECUPERACIÓN (Forgot Password)
+        // LÓGICA RECUPERACIÓN (Forgot Password)
         // =================================================
         
         // Paso 1: Enviar Email
@@ -234,7 +234,7 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
     await sendAuthRequest(payload, btnId, errorId, nextStep, nextUrl);
 }
 
-// --- LÓGICA NUEVA DE RECUPERACIÓN ---
+// --- LÓGICA DE RECUPERACIÓN (FORGOT PASSWORD) ---
 async function handleRecoveryStep(stepName) {
     let payload = { action: '' };
     let btnId, errorId, inputIds = [];
@@ -291,11 +291,16 @@ async function handleRecoveryStep(stepName) {
         inputIds = ['rec-pass'];
     }
 
-    // UI Loading
+    // UI Loading con SPINNER
     const btn = document.getElementById(btnId);
     const errorDiv = document.getElementById(errorId);
-    const originalText = btn ? btn.innerText : '';
-    if(btn) { btn.innerText = 'Procesando...'; btn.disabled = true; }
+    let originalContent = '';
+    
+    if(btn) { 
+        originalContent = btn.innerHTML;
+        btn.innerHTML = '<div class="btn-spinner"></div>'; // [MODIFICADO]
+        btn.disabled = true; 
+    }
     
     inputIds.forEach(id => document.getElementById(id).classList.remove('input-error'));
     if(errorDiv) { errorDiv.innerText = ''; errorDiv.classList.remove('active'); }
@@ -324,22 +329,32 @@ async function handleRecoveryStep(stepName) {
                     const display = document.getElementById('rec-display-email');
                     if(display) display.innerText = payload.email;
                 }
+                
+                // Restaurar botón (aunque esté oculto, por buena práctica)
+                if(btn) { btn.innerHTML = originalContent; btn.disabled = false; }
             }
         } else {
+            // Hubo error lógico
             if(errorDiv) { errorDiv.innerText = res.message; errorDiv.classList.add('active'); }
+            if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } // [MODIFICADO]
         }
     } catch (e) {
         if(errorDiv) { errorDiv.innerText = "Error de conexión"; errorDiv.classList.add('active'); }
-    } finally {
-        if(btn) { btn.innerText = originalText; btn.disabled = false; }
+        if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } // [MODIFICADO]
     }
 }
 
 async function sendAuthRequest(payload, btnId, errorId, nextStep, nextUrl) {
     const btn = document.getElementById(btnId);
     const errorDiv = document.getElementById(errorId);
-    const originalText = btn ? btn.innerText : '';
-    if(btn) { btn.innerText = 'Procesando...'; btn.disabled = true; }
+    let originalContent = '';
+
+    // UI Loading con SPINNER
+    if(btn) { 
+        originalContent = btn.innerHTML;
+        btn.innerHTML = '<div class="btn-spinner"></div>'; // [MODIFICADO]
+        btn.disabled = true; 
+    }
     
     try {
         const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
@@ -352,14 +367,16 @@ async function sendAuthRequest(payload, btnId, errorId, nextStep, nextUrl) {
                 window.location.href = API_BASE_PATH;
             } else {
                 switchRegisterStep(nextStep, nextUrl);
+                // Restaurar botón después de cambiar de paso
+                if(btn) { btn.innerHTML = originalContent; btn.disabled = false; }
             }
         } else {
             if(errorDiv) { errorDiv.innerText = result.message; errorDiv.classList.add('active'); }
+            if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } // [MODIFICADO]
         }
     } catch (error) {
         if(errorDiv) { errorDiv.innerText = "Error de conexión"; errorDiv.classList.add('active'); }
-    } finally {
-        if(btn) { btn.innerText = originalText; btn.disabled = false; }
+        if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } // [MODIFICADO]
     }
 }
 
@@ -379,8 +396,10 @@ async function handleLogin() {
     }
 
     const btn = document.getElementById('btn-login-submit');
-    const originalText = btn.innerText;
-    btn.innerText = 'Iniciando...';
+    const originalContent = btn.innerHTML; // Guardar texto original
+
+    // [MODIFICADO] Spinner en Login
+    btn.innerHTML = '<div class="btn-spinner"></div>';
     btn.disabled = true;
 
     try {
@@ -404,14 +423,18 @@ async function handleLogin() {
             }
             emailInput.classList.add('input-error');
             passInput.classList.add('input-error');
+            
+            // Restaurar botón en error
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
         }
     } catch (e) {
         if(errorDiv) {
             errorDiv.innerText = "Error de conexión";
             errorDiv.classList.add('active');
         }
-    } finally {
-        btn.innerText = originalText;
+        // Restaurar botón en error catch
+        btn.innerHTML = originalContent;
         btn.disabled = false;
     }
 }
