@@ -592,7 +592,9 @@ input#register-password {
 
 /* Se quitó el bloque '@keyframes' */
 
-
+.menu-link.active {
+    background-color: #f5f5fa;
+}
 
 
 

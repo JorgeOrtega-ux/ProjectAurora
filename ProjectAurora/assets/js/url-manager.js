@@ -51,6 +51,7 @@ async function showSection(sectionName, pushState = true) {
     const container = document.getElementById('section-container');
     const loaderParent = document.querySelector('.general-content'); 
     let loader; 
+    updateActiveMenu(sectionName);
 
     if (!container || !loaderParent) {
         console.error('Loader parent or Section Container not found!');
@@ -89,4 +90,18 @@ async function showSection(sectionName, pushState = true) {
             loader.remove(); 
         }
     }
+
+    function updateActiveMenu(sectionName) {
+    // Quitar 'active' de todos los links
+    document.querySelectorAll('.menu-link').forEach(link => {
+        link.classList.remove('active');
+    });
+
+    // Buscar el link que corresponde a la sección actual y activarlo
+    // Nota: Si sectionName es 'login' o 'register', no habrá link, lo cual está bien.
+    const activeLink = document.querySelector(`.menu-link[data-nav="${sectionName}"]`);
+    if (activeLink) {
+        activeLink.classList.add('active');
+    }
+}
 }

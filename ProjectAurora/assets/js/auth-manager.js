@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 4. Redirigir a logout.php (Pequeño delay para asegurar que el render se vea)
             setTimeout(() => {
-                window.location.href = 'logout.php';
+                window.location.href = API_BASE_PATH + 'config/logout.php';
             }, 50);
         }
     });

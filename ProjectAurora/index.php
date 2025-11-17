@@ -47,7 +47,7 @@ if (isset($_SESSION['user_id'])) {
                 if ($showNavigation):
                 ?>
                     <div class="general-content-top">
-                        <?php include 'includes/layouts/header.php'; ?>              
+                        <?php include 'includes/layouts/header.php'; ?>
                     </div>
 
                 <?php endif; ?>
@@ -56,15 +56,22 @@ if (isset($_SESSION['user_id'])) {
                     <div class="module-content module-surface disabled" data-module="moduleSurface">
                         <div class="menu-content">
                             <div class="menu-list">
-                                <div class="menu-link active">
+                                <div class="menu-link <?php echo ($CURRENT_SECTION === 'main') ? 'active' : ''; ?>"
+                                    data-nav="main"
+                                    onclick="navigateTo('main')">
+
                                     <div class="menu-link-icon">
                                         <span class="material-symbols-rounded">home</span>
                                     </div>
                                     <div class="menu-link-text">
-                                        <span>Pagina principal</span>
+                                        <span>Página principal</span>
                                     </div>
                                 </div>
-                                <div class="menu-link">
+
+                                <div class="menu-link <?php echo ($CURRENT_SECTION === 'explorer') ? 'active' : ''; ?>"
+                                    data-nav="explorer"
+                                    onclick="navigateTo('explorer')">
+
                                     <div class="menu-link-icon">
                                         <span class="material-symbols-rounded">explore</span>
                                     </div>

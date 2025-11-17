@@ -37,7 +37,7 @@ if (strpos($requestUri, 'api/') === 0) {
 }
 
 // Secciones permitidas
-$allowedSections = ['main', 'login', 'register'];
+$allowedSections = ['main', 'login', 'register', 'explorer'];
 
 // Determina la sección actual
 $CURRENT_SECTION = $DEFAULT_SECTION; 
