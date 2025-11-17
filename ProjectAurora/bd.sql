@@ -47,14 +47,19 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabla de CÓDIGOS DE VERIFICACIÓN (Temporal)
-CREATE TABLE IF NOT EXISTS verification_codes (
+-- ==========================================
+-- TABLA DE CÓDIGOS DE VERIFICACIÓN (Actualizada)
+-- ==========================================
+CREATE TABLE verification_codes (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    email VARCHAR(255) NOT NULL,
-    code VARCHAR(12) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    identifier VARCHAR(255) NOT NULL, -- El correo o teléfono
+    code_type VARCHAR(50) NOT NULL,   -- Ej: 'registration', 'login', 'recovery'
+    code VARCHAR(20) NOT NULL,
+    payload JSON NULL,                -- AQUÍ guardamos username y password_hash
     expires_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
     -- Índices para búsqueda rápida
-    INDEX (email),
+    INDEX (identifier),
     INDEX (code)
 );

@@ -6,14 +6,12 @@ export function initAuthManager() {
         // --- PASO 1 -> 2 ---
         if (e.target.closest('#btn-register-step1')) {
             e.preventDefault();
-            // Al éxito: Cambiar URL a 'register/additional-data' y mostrar Div 2
             await handleRegisterStep('step1', 'register_step_1', 2, 'register/additional-data');
         }
 
         // --- PASO 2 -> 3 ---
         if (e.target.closest('#btn-register-step2')) {
             e.preventDefault();
-            // Al éxito: Cambiar URL a 'register/verification-account' y mostrar Div 3
             await handleRegisterStep('step2', 'register_step_2', 3, 'register/verification-account');
         }
 
@@ -23,39 +21,87 @@ export function initAuthManager() {
             await handleRegisterStep('step3', 'register_final', 'main', null);
         }
 
-        // --- BOTONES VOLVER ---
+        // --- BOTÓN VOLVER (Paso 2) ---
         if (e.target.closest('#btn-back-step1')) {
             e.preventDefault();
             switchRegisterStep(1, 'register');
         }
-        if (e.target.closest('#btn-back-step2')) {
-            e.preventDefault();
-            switchRegisterStep(2, 'register/additional-data');
+
+        // --- TOGGLE PASSWORD (OJO/VISIBILIDAD) ---
+        // Excluimos el botón mágico para que no intente cambiar type="text/password"
+        if (e.target.closest('.password-toggle-btn') && !e.target.closest('.username-magic-btn')) {
+            const btn = e.target.closest('.password-toggle-btn');
+            const input = btn.previousElementSibling; 
+            if (input && input.tagName === 'INPUT') {
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    btn.querySelector('span').innerText = 'visibility_off';
+                } else {
+                    input.type = 'password';
+                    btn.querySelector('span').innerText = 'visibility';
+                }
+            }
         }
 
-        // ... (Código Login y Logout sin cambios) ...
+        // --- GENERADOR DE USUARIO MÁGICO ---
+        if (e.target.closest('.username-magic-btn')) {
+            e.preventDefault();
+            const input = document.getElementById('reg-username');
+            if (input) {
+                input.value = generateMagicUsername();
+                input.focus();
+                input.classList.remove('input-error'); // Limpiar error visual si había
+            }
+        }
+
         // --- LOGIN ---
         if (e.target.closest('#btn-login-submit')) {
             e.preventDefault();
             await handleLogin();
         }
+        
         // --- LOGOUT ---
-         const logoutBtn = e.target.closest('.menu-link-logout');
+        const logoutBtn = e.target.closest('.menu-link-logout');
         if (logoutBtn) {
             e.preventDefault(); 
             if (logoutBtn.dataset.processing === "true") return;
             logoutBtn.dataset.processing = "true";
+            
             const iconContainer = document.createElement('div');
             iconContainer.className = 'menu-link-icon'; 
             const spinner = document.createElement('div');
             spinner.className = 'small-spinner';
             iconContainer.appendChild(spinner);
             logoutBtn.appendChild(iconContainer);
+            
             setTimeout(() => {
                 window.location.href = API_BASE_PATH + 'config/logout.php';
             }, 50);
         }
     });
+}
+
+// Genera formato: user20251117_133529wl
+function generateMagicUsername() {
+    const now = new Date();
+    const pad = (num) => num.toString().padStart(2, '0');
+    
+    const year = now.getFullYear();
+    const month = pad(now.getMonth() + 1);
+    const day = pad(now.getDate());
+    const hours = pad(now.getHours());
+    const minutes = pad(now.getMinutes());
+    const seconds = pad(now.getSeconds());
+    
+    const timePart = `${year}${month}${day}_${hours}${minutes}${seconds}`;
+    
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let randomPart = '';
+    for (let i = 0; i < 2; i++) {
+        randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    
+    return `user${timePart}${randomPart}`;
 }
 
 function switchRegisterStep(stepNumber, urlPath) {
@@ -66,7 +112,6 @@ function switchRegisterStep(stepNumber, urlPath) {
     const target = document.getElementById(`step-container-${stepNumber}`);
     if (target) {
         target.style.display = 'block';
-        // IMPORTANTE: Actualizar URL sin recargar
         if (urlPath) {
             const newUrl = API_BASE_PATH + urlPath;
             history.pushState({ section: urlPath }, '', newUrl);
@@ -74,23 +119,65 @@ function switchRegisterStep(stepNumber, urlPath) {
     }
 }
 
+// --- VALIDACIONES ESTRICTAS (JS) ---
+
+function isValidEmailDomain(email) {
+    // Regex Estricta:
+    // ^ ... $   -> Inicio y fin de cadena (Evita basura antes o después)
+    // @( ... )  -> Solo estos dominios
+    // \.[a-z]+  -> Extensión
+    // $         -> IMPORTANTE: Obliga a que termine ahí.
+    const regex = /^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i;
+    return regex.test(email);
+}
+
+function isValidUsername(username) {
+    // Regex: Min 8, Max 32, Solo letras, números y guión bajo
+    const regex = /^[a-zA-Z0-9_]{8,32}$/;
+    return regex.test(username);
+}
+
 async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
-    // ... (Lógica de recolección de datos idéntica a la anterior) ...
     let payload = { action: apiAction };
     let btnId, errorId, inputIds = [];
+    let errorMessage = '';
 
+    // --- VALIDACIÓN PASO 1 ---
     if (stepName === 'step1') {
         const emailIn = document.getElementById('reg-email');
         const passIn = document.getElementById('reg-password');
         if (!emailIn || !passIn) return;
-        payload.email = emailIn.value;
-        payload.password = passIn.value;
+        
+        const emailVal = emailIn.value.trim();
+        const passVal = passIn.value;
+
+        if (!isValidEmailDomain(emailVal)) {
+            errorMessage = "Correo inválido. Solo se permite: Gmail, Outlook, iCloud, Yahoo.";
+            emailIn.classList.add('input-error');
+        } else if (passVal.length < 8) {
+            errorMessage = "La contraseña debe tener al menos 8 caracteres.";
+            passIn.classList.add('input-error');
+        }
+
+        payload.email = emailVal;
+        payload.password = passVal;
         btnId = 'btn-register-step1'; errorId = 'register-error-1'; inputIds = ['reg-email', 'reg-password'];
+    
+    // --- VALIDACIÓN PASO 2 ---
     } else if (stepName === 'step2') {
         const userIn = document.getElementById('reg-username');
         if (!userIn) return;
-        payload.username = userIn.value;
+
+        const userVal = userIn.value.trim();
+        if (!isValidUsername(userVal)) {
+            errorMessage = "Usuario inválido: 8-32 caracteres. Solo letras, números y '_'.";
+            userIn.classList.add('input-error');
+        }
+
+        payload.username = userVal;
         btnId = 'btn-register-step2'; errorId = 'register-error-2'; inputIds = ['reg-username'];
+    
+    // --- PASO 3 ---
     } else if (stepName === 'step3') {
         const codeIn = document.getElementById('reg-code');
         if (!codeIn) return;
@@ -98,16 +185,26 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
         btnId = 'btn-register-step3'; errorId = 'register-error-3'; inputIds = ['reg-code'];
     }
 
-    // Validar vacíos
+    // Limpieza UI
+    inputIds.forEach(id => document.getElementById(id).classList.remove('input-error'));
+    const errorDiv = document.getElementById(errorId);
+    if(errorDiv) { errorDiv.innerText = ''; errorDiv.classList.remove('active'); }
+
+    // Check vacíos
     let hasEmpty = false;
     inputIds.forEach(id => {
         const el = document.getElementById(id);
-        el.classList.remove('input-error');
         if(!el.value.trim()) { el.classList.add('input-error'); hasEmpty = true; }
     });
+
     if (hasEmpty) {
-        const err = document.getElementById(errorId);
-        if(err) { err.innerText = "Campos requeridos."; err.classList.add('active'); }
+        if(errorDiv) { errorDiv.innerText = "Todos los campos son requeridos."; errorDiv.classList.add('active'); }
+        return;
+    }
+
+    // Check errores de lógica (regex)
+    if (errorMessage) {
+        if(errorDiv) { errorDiv.innerText = errorMessage; errorDiv.classList.add('active'); }
         return;
     }
 
@@ -119,8 +216,7 @@ async function sendAuthRequest(payload, btnId, errorId, nextStep, nextUrl) {
     const errorDiv = document.getElementById(errorId);
     const originalText = btn ? btn.innerText : '';
     if(btn) { btn.innerText = 'Procesando...'; btn.disabled = true; }
-    if(errorDiv) { errorDiv.innerText = ''; errorDiv.classList.remove('active'); }
-
+    
     try {
         const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
@@ -131,7 +227,6 @@ async function sendAuthRequest(payload, btnId, errorId, nextStep, nextUrl) {
             if (nextStep === 'main') {
                 window.location.href = API_BASE_PATH;
             } else {
-                // Cambio visual + URL
                 switchRegisterStep(nextStep, nextUrl);
             }
         } else {
@@ -144,9 +239,7 @@ async function sendAuthRequest(payload, btnId, errorId, nextStep, nextUrl) {
     }
 }
 
-// Incluir handleLogin() igual que antes...
 async function handleLogin() {
-    // ... (Copia tu función handleLogin original aquí) ...
     const emailInput = document.getElementById('login-email');
     const passInput = document.getElementById('login-password');
     const errorDiv = document.getElementById('login-error');

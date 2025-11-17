@@ -2,9 +2,7 @@
 // --- CONFIGURACIÓN DE LOGS ---
 $logDir = __DIR__ . '/../logs';
 $logFile = $logDir . '/php_error.log';
-
 if (!file_exists($logDir)) { mkdir($logDir, 0777, true); }
-
 error_reporting(E_ALL);
 ini_set('ignore_repeated_errors', TRUE);
 ini_set('display_errors', FALSE); 
@@ -25,6 +23,7 @@ require_once '../config/database.php';
 $data = json_decode(file_get_contents('php://input'), true);
 $action = $data['action'] ?? '';
 
+// --- FUNCIONES AUXILIARES ---
 function generate_uuid() {
     return sprintf( '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
         mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ),
@@ -36,107 +35,125 @@ function get_random_color() {
     return str_pad(dechex(mt_rand(0, 0xFFFFFF)), 6, '0', STR_PAD_LEFT);
 }
 function generate_verification_code() {
-    // 12 caracteres alfanuméricos en mayúsculas
-    return strtoupper(substr(bin2hex(random_bytes(6)), 0, 12));
+    // Código alfanumérico de 10 caracteres (ajustable)
+    return strtoupper(substr(bin2hex(random_bytes(5)), 0, 10));
+}
+function is_allowed_domain($email) {
+    return preg_match('/@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i', $email);
 }
 
 $response = ['success' => false, 'message' => 'Acción no válida'];
 
 try {
     // ==================================================================
-    // REGISTRO - ETAPA 1: Validar Email y Contraseña
+    // REGISTRO - ETAPA 1: Validación Inicial (Solo en Memoria/Sesión)
     // ==================================================================
     if ($action === 'register_step_1') {
         $email = filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL);
         $password = $data['password'] ?? '';
 
-        if (empty($email) || empty($password)) {
-            throw new Exception('Por favor completa todos los campos.');
-        }
+        if (empty($email) || empty($password)) throw new Exception('Completa todos los campos.');
+        if (strlen($email) < 4) throw new Exception('Correo muy corto.');
+        if (!is_allowed_domain($email)) throw new Exception('Dominio no permitido (Use Gmail, Outlook, etc).');
+        if (strlen($password) < 8) throw new Exception('Contraseña muy corta (mínimo 8).');
 
-        // Verificar si el correo existe en BD usuarios
+        // Verificar duplicados
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
-        if ($stmt->rowCount() > 0) {
-            throw new Exception('El correo ya está registrado.');
-        }
+        if ($stmt->rowCount() > 0) throw new Exception('El correo ya está registrado.');
 
-        // Guardar en sesión temporalmente
+        // Guardamos en sesión solo para transportar al paso 2
         if (!isset($_SESSION['temp_register'])) $_SESSION['temp_register'] = [];
         $_SESSION['temp_register']['email'] = $email;
-        $_SESSION['temp_register']['password'] = $password;
+        $_SESSION['temp_register']['password'] = $password; // Aún en texto plano en sesión (temporal)
 
         $response = ['success' => true, 'message' => 'Paso 1 OK'];
-        logger("Registro Paso 1 (Email): $email");
+
 
     // ==================================================================
-    // REGISTRO - ETAPA 2: Validar Username y Enviar Código
+    // REGISTRO - ETAPA 2: Generar Payload y Guardar en BD
     // ==================================================================
     } elseif ($action === 'register_step_2') {
         $username = trim($data['username'] ?? '');
         $email = $_SESSION['temp_register']['email'] ?? '';
+        $rawPassword = $_SESSION['temp_register']['password'] ?? '';
 
-        if (empty($email)) throw new Exception('La sesión ha expirado. Vuelve al inicio.');
-        if (empty($username)) throw new Exception('El nombre de usuario es requerido.');
-        if (strlen($username) < 3) throw new Exception('El usuario debe tener al menos 3 caracteres.');
-
-        // Verificar unicidad de username
+        if (empty($email) || empty($rawPassword)) throw new Exception('Sesión expirada. Recarga la página.');
+        
+        // Validar Username
+        if (!preg_match('/^[a-zA-Z0-9_]{8,32}$/', $username)) {
+            throw new Exception('Usuario inválido (8-32 carácteres alfanuméricos).');
+        }
+        
+        // Verificar duplicado Username
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
         $stmt->execute([$username]);
-        if ($stmt->rowCount() > 0) {
-            throw new Exception('El nombre de usuario ya está ocupado.');
-        }
+        if ($stmt->rowCount() > 0) throw new Exception('El usuario ya existe.');
 
-        $_SESSION['temp_register']['username'] = $username;
-
-        // Generar Código
-        $code = generate_verification_code();
+        // --- AQUÍ LA MAGIA: PREPARAR PAYLOAD ---
+        $passwordHash = password_hash($rawPassword, PASSWORD_BCRYPT);
         
-        // Eliminar códigos previos para este email
-        $del = $pdo->prepare("DELETE FROM verification_codes WHERE email = ?");
+        $payload = json_encode([
+            'username' => $username,
+            'password_hash' => $passwordHash
+        ]);
+
+        $code = generate_verification_code();
+
+        // Limpiar códigos anteriores para este email y tipo
+        $del = $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'registration'");
         $del->execute([$email]);
 
-        // Guardar nuevo código con expiración (ej: 15 mins)
-        $ins = $pdo->prepare("INSERT INTO verification_codes (email, code, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
-        if (!$ins->execute([$email, $code])) {
-            throw new Exception("Error al generar código de verificación.");
+        // Insertar en la nueva estructura de tabla
+        $sql = "INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, 'registration', ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))";
+        $stmt = $pdo->prepare($sql);
+        
+        if (!$stmt->execute([$email, $code, $payload])) {
+            throw new Exception("Error al guardar código de verificación.");
         }
 
-        // --- MOCKUP ENVÍO DE CORREO ---
-        // En producción, aquí usarías mail() o PHPMailer
-        logger("CODIGO DE VERIFICACION para $email: $code"); 
+        // (Opcional) Limpiamos el password plano de la sesión por seguridad
+        unset($_SESSION['temp_register']['password']);
+        // Guardamos username en sesión solo para mostrarlo en la UI si es necesario, pero la verdad está en la BD
+        $_SESSION['temp_register']['username'] = $username; 
+
+        logger("Code generado para $email: $code | Payload: $payload");
 
         $response = ['success' => true, 'message' => 'Código enviado'];
 
+
     // ==================================================================
-    // REGISTRO - ETAPA 3: Verificar Código y Crear Cuenta
+    // REGISTRO - ETAPA 3: Verificar Payload y Crear Usuario
     // ==================================================================
     } elseif ($action === 'register_final') {
         $inputCode = strtoupper(trim($data['code'] ?? ''));
         $email = $_SESSION['temp_register']['email'] ?? '';
-        $password = $_SESSION['temp_register']['password'] ?? '';
-        $username = $_SESSION['temp_register']['username'] ?? '';
 
-        if (empty($email) || empty($password) || empty($username)) {
-            throw new Exception('Datos de sesión incompletos. Reinicia el registro.');
-        }
+        if (empty($email)) throw new Exception('Sesión perdida.');
 
-        // Validar código
-        $stmt = $pdo->prepare("SELECT id FROM verification_codes WHERE email = ? AND code = ? AND expires_at > NOW()");
+        // Buscar el código en la BD y EXTRAER EL PAYLOAD
+        $sql = "SELECT id, payload FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'registration' AND expires_at > NOW()";
+        $stmt = $pdo->prepare($sql);
         $stmt->execute([$email, $inputCode]);
-        
-        if ($stmt->rowCount() === 0) {
-            throw new Exception('Código inválido o ha expirado.');
+        $row = $stmt->fetch();
+
+        if (!$row) {
+            throw new Exception('Código inválido o expirado.');
         }
 
-        // --- CREACIÓN REAL DEL USUARIO ---
+        // Decodificar el payload JSON de la BD
+        $payloadData = json_decode($row['payload'], true);
+        if (!$payloadData || !isset($payloadData['username']) || !isset($payloadData['password_hash'])) {
+            throw new Exception('Error de integridad en los datos de registro.');
+        }
+
+        $finalUsername = $payloadData['username'];
+        $finalPassHash = $payloadData['password_hash'];
         $uuid = generate_uuid();
-        $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-        
+
         // Generar Avatar
-        $nameParam = $username;
         $selectedColor = get_random_color();
-        $apiUrl = "https://ui-avatars.com/api/?name={$nameParam}&size=256&background={$selectedColor}&color=ffffff&bold=true&length=1";
+        $apiUrl = "https://ui-avatars.com/api/?name={$finalUsername}&size=256&background={$selectedColor}&color=ffffff&bold=true&length=1";
         
         $uploadDirRel = '/assets/uploads/avatars/'; 
         $uploadDirAbs = __DIR__ . '/..' . $uploadDirRel;
@@ -147,15 +164,12 @@ try {
         $dbPath = 'assets/uploads/avatars/' . $fileName; 
 
         $imageContent = @file_get_contents($apiUrl);
-        if ($imageContent !== false) {
-            file_put_contents($destPath, $imageContent);
-        } else {
-            $dbPath = null; 
-        }
+        if ($imageContent !== false) file_put_contents($destPath, $imageContent);
+        else $dbPath = null;
 
-        // Insertar en BD
+        // Insertar Usuario Final
         $insert = $pdo->prepare("INSERT INTO users (uuid, email, username, password, avatar, role) VALUES (?, ?, ?, ?, ?, 'user')");
-        if ($insert->execute([$uuid, $email, $username, $hashedPassword, $dbPath])) {
+        if ($insert->execute([$uuid, $email, $finalUsername, $finalPassHash, $dbPath])) {
             
             // Auto Login
             $_SESSION['user_id'] = $pdo->lastInsertId();
@@ -164,14 +178,16 @@ try {
             $_SESSION['user_role'] = 'user';
             $_SESSION['user_avatar'] = $dbPath;
 
-            // Limpieza
-            $pdo->prepare("DELETE FROM verification_codes WHERE email = ?")->execute([$email]);
+            // Borrar el código usado
+            $pdo->prepare("DELETE FROM verification_codes WHERE id = ?")->execute([$row['id']]);
+            
+            // Limpiar sesión de registro completamente
             unset($_SESSION['temp_register']);
 
             $response = ['success' => true, 'message' => 'Bienvenido a Project Aurora'];
-            logger("Usuario registrado exitosamente: $username ($email)");
+            logger("Usuario creado: $finalUsername ($email)");
         } else {
-            throw new Exception('Error crítico al guardar usuario en BD.');
+            throw new Exception('Error crítico al crear usuario.');
         }
 
     // ==================================================================
@@ -191,21 +207,19 @@ try {
             $_SESSION['user_email'] = $user['email'];
             $_SESSION['user_avatar'] = $user['avatar'];
             $_SESSION['user_role'] = $user['role'];
-            
-            $response = ['success' => true, 'message' => 'Bienvenido'];
-            logger("Login exitoso: $email");
+            $response = ['success' => true, 'message' => 'Login correcto'];
         } else {
             throw new Exception('Credenciales incorrectas.');
         }
 
     } elseif ($action === 'logout') {
         session_destroy();
-        $response = ['success' => true, 'message' => 'Sesión cerrada'];
+        $response = ['success' => true, 'message' => 'Bye'];
     }
 
 } catch (Exception $e) {
     $response['message'] = $e->getMessage();
-    logger("Error Auth: " . $e->getMessage());
+    logger("Error: " . $e->getMessage());
 }
 
 echo json_encode($response);
