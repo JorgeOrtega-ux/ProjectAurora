@@ -1,4 +1,6 @@
 <?php
+// api/auth_handler.php
+
 // --- CONFIGURACIÓN DE LOGS ---
 $logDir = __DIR__ . '/../logs';
 $logFile = $logDir . '/php_error.log';
@@ -18,7 +20,29 @@ function logger($message) {
 
 session_start();
 header('Content-Type: application/json'); 
+
+// [IMPORTANTE] Sincronización de Zona Horaria PHP
+date_default_timezone_set('America/Matamoros');
+
+// [IMPORTANTE] Requerir conexión y utilidades de seguridad
 require_once '../config/database.php';
+require_once '../config/utilities.php'; // Nuevo archivo
+
+// Sincronizar zona horaria de la sesión MySQL con PHP para que NOW() coincida
+try {
+    $now = new DateTime();
+    $mins = $now->getOffset() / 60;
+    $sgn = ($mins < 0 ? -1 : 1);
+    $mins = abs($mins);
+    $hrs = floor($mins / 60);
+    $mins -= $hrs * 60;
+    $offset = sprintf('%+d:%02d', $hrs*$sgn, $mins);
+    
+    $pdo->exec("SET time_zone='$offset';");
+} catch (Exception $e) {
+    // Si falla la sincro horaria, lo logueamos pero no detenemos la ejecución crítica
+    logger("Warning: No se pudo sincronizar time_zone SQL: " . $e->getMessage());
+}
 
 $data = json_decode(file_get_contents('php://input'), true);
 $action = $data['action'] ?? '';
@@ -35,7 +59,6 @@ function get_random_color() {
     return str_pad(dechex(mt_rand(0, 0xFFFFFF)), 6, '0', STR_PAD_LEFT);
 }
 function generate_verification_code() {
-    // Código alfanumérico de 10 caracteres (ajustable)
     return strtoupper(substr(bin2hex(random_bytes(5)), 0, 10));
 }
 function is_allowed_domain($email) {
@@ -46,7 +69,7 @@ $response = ['success' => false, 'message' => 'Acción no válida'];
 
 try {
     // ==================================================================
-    // REGISTRO - ETAPA 1: Validación Inicial (Solo en Memoria/Sesión)
+    // REGISTRO - ETAPA 1 (Sin cambios mayores en seguridad, bajo riesgo)
     // ==================================================================
     if ($action === 'register_step_1') {
         $email = filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL);
@@ -62,16 +85,15 @@ try {
         $stmt->execute([$email]);
         if ($stmt->rowCount() > 0) throw new Exception('El correo ya está registrado.');
 
-        // Guardamos en sesión solo para transportar al paso 2
         if (!isset($_SESSION['temp_register'])) $_SESSION['temp_register'] = [];
         $_SESSION['temp_register']['email'] = $email;
-        $_SESSION['temp_register']['password'] = $password; // Aún en texto plano en sesión (temporal)
+        $_SESSION['temp_register']['password'] = $password; 
 
         $response = ['success' => true, 'message' => 'Paso 1 OK'];
 
 
     // ==================================================================
-    // REGISTRO - ETAPA 2: Generar Payload y Guardar en BD
+    // REGISTRO - ETAPA 2
     // ==================================================================
     } elseif ($action === 'register_step_2') {
         $username = trim($data['username'] ?? '');
@@ -80,17 +102,14 @@ try {
 
         if (empty($email) || empty($rawPassword)) throw new Exception('Sesión expirada. Recarga la página.');
         
-        // Validar Username
         if (!preg_match('/^[a-zA-Z0-9_]{8,32}$/', $username)) {
             throw new Exception('Usuario inválido (8-32 carácteres alfanuméricos).');
         }
         
-        // Verificar duplicado Username
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
         $stmt->execute([$username]);
         if ($stmt->rowCount() > 0) throw new Exception('El usuario ya existe.');
 
-        // --- AQUÍ LA MAGIA: PREPARAR PAYLOAD ---
         $passwordHash = password_hash($rawPassword, PASSWORD_BCRYPT);
         
         $payload = json_encode([
@@ -100,11 +119,9 @@ try {
 
         $code = generate_verification_code();
 
-        // Limpiar códigos anteriores para este email y tipo
         $del = $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'registration'");
         $del->execute([$email]);
 
-        // Insertar en la nueva estructura de tabla
         $sql = "INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, 'registration', ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))";
         $stmt = $pdo->prepare($sql);
         
@@ -112,18 +129,16 @@ try {
             throw new Exception("Error al guardar código de verificación.");
         }
 
-        // (Opcional) Limpiamos el password plano de la sesión por seguridad
         unset($_SESSION['temp_register']['password']);
-        // Guardamos username en sesión solo para mostrarlo en la UI si es necesario, pero la verdad está en la BD
         $_SESSION['temp_register']['username'] = $username; 
 
-        logger("Code generado para $email: $code | Payload: $payload");
+        logger("Code registro generado para $email: $code");
 
         $response = ['success' => true, 'message' => 'Código enviado'];
 
 
     // ==================================================================
-    // REGISTRO - ETAPA 3: Verificar Payload y Crear Usuario
+    // REGISTRO - ETAPA 3
     // ==================================================================
     } elseif ($action === 'register_final') {
         $inputCode = strtoupper(trim($data['code'] ?? ''));
@@ -131,7 +146,6 @@ try {
 
         if (empty($email)) throw new Exception('Sesión perdida.');
 
-        // Buscar el código en la BD y EXTRAER EL PAYLOAD
         $sql = "SELECT id, payload FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'registration' AND expires_at > NOW()";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$email, $inputCode]);
@@ -141,12 +155,8 @@ try {
             throw new Exception('Código inválido o expirado.');
         }
 
-        // Decodificar el payload JSON de la BD
         $payloadData = json_decode($row['payload'], true);
-        if (!$payloadData || !isset($payloadData['username']) || !isset($payloadData['password_hash'])) {
-            throw new Exception('Error de integridad en los datos de registro.');
-        }
-
+        
         $finalUsername = $payloadData['username'];
         $finalPassHash = $payloadData['password_hash'];
         $uuid = generate_uuid();
@@ -167,21 +177,16 @@ try {
         if ($imageContent !== false) file_put_contents($destPath, $imageContent);
         else $dbPath = null;
 
-        // Insertar Usuario Final
         $insert = $pdo->prepare("INSERT INTO users (uuid, email, username, password, avatar, role) VALUES (?, ?, ?, ?, ?, 'user')");
         if ($insert->execute([$uuid, $email, $finalUsername, $finalPassHash, $dbPath])) {
             
-            // Auto Login
             $_SESSION['user_id'] = $pdo->lastInsertId();
             $_SESSION['user_uuid'] = $uuid;
             $_SESSION['user_email'] = $email;
             $_SESSION['user_role'] = 'user';
             $_SESSION['user_avatar'] = $dbPath;
 
-            // Borrar el código usado
             $pdo->prepare("DELETE FROM verification_codes WHERE id = ?")->execute([$row['id']]);
-            
-            // Limpiar sesión de registro completamente
             unset($_SESSION['temp_register']);
 
             $response = ['success' => true, 'message' => 'Bienvenido a Project Aurora'];
@@ -191,17 +196,26 @@ try {
         }
 
     // ==================================================================
-    // LOGIN
+    // LOGIN (CON PROTECCIÓN BRUTE FORCE)
     // ==================================================================
     } elseif ($action === 'login') {
         $email = filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL);
         $password = $data['password'] ?? '';
+
+        // [SEGURIDAD] 1. Verificar si está bloqueado antes de nada
+        if (checkLockStatus($pdo, $email)) {
+            // Mensaje genérico para no dar pistas, o específico si prefieres UX sobre ocultación
+            throw new Exception("Has excedido el número de intentos. Por favor espera " . LOCKOUT_TIME_MINUTES . " minutos.");
+        }
 
         $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
         $stmt->execute([$email]);
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
+            // [SEGURIDAD] 2. Login Exitoso -> Limpiar historial de fallos
+            clearFailedAttempts($pdo, $email);
+
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_uuid'] = $user['uuid'];
             $_SESSION['user_email'] = $user['email'];
@@ -209,41 +223,45 @@ try {
             $_SESSION['user_role'] = $user['role'];
             $response = ['success' => true, 'message' => 'Login correcto'];
         } else {
+            // [SEGURIDAD] 3. Login Fallido -> Registrar fallo
+            logFailedAttempt($pdo, $email, 'login_fail');
+
             throw new Exception('Credenciales incorrectas.');
         }
 
     // ==================================================================
-    // NUEVO: RECUPERACIÓN DE CONTRASEÑA (3 PASOS)
+    // RECUPERACIÓN DE CONTRASEÑA (CON PROTECCIÓN)
     // ==================================================================
 
-    // --- PASO 1: Verificar email y Enviar código ---
+    // --- PASO 1: Enviar código ---
     } elseif ($action === 'recovery_step_1') {
         $email = filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL);
         
-        // Verificar si existe el usuario
+        // [SEGURIDAD] Chequeo preventivo de bloqueo
+        if (checkLockStatus($pdo, $email)) {
+            throw new Exception("Demasiadas solicitudes recientes. Espera unos minutos.");
+        }
+
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
         
-        // Por seguridad, a veces no se dice si existe o no, pero para UX diremos si no existe.
         if ($stmt->rowCount() === 0) {
+            // [SEGURIDAD] Si no existe, registramos como fallo para evitar enumeración masiva rápida
+            logFailedAttempt($pdo, $email, 'recovery_fail');
             throw new Exception('Este correo no está registrado.');
         }
 
-        // Generar código
         $code = generate_verification_code();
 
-        // Limpiar códigos previos de recuperación
         $del = $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'recovery'");
         $del->execute([$email]);
 
-        // Insertar nuevo código (No payload necesario aquí, solo validar propiedad)
         $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, expires_at) VALUES (?, 'recovery', ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
         $stmt->execute([$email, $code]);
 
-        // Guardar en sesión para flujo
         if (!isset($_SESSION['temp_recovery'])) $_SESSION['temp_recovery'] = [];
         $_SESSION['temp_recovery']['email'] = $email;
-        $_SESSION['temp_recovery']['step'] = 2; // Mover al paso 2 visualmente
+        $_SESSION['temp_recovery']['step'] = 2;
 
         logger("Code RECUPERACION para $email: $code");
         $response = ['success' => true, 'message' => 'Código enviado'];
@@ -255,14 +273,24 @@ try {
 
         if (empty($email)) throw new Exception('Sesión expirada.');
 
+        // [SEGURIDAD] Verificar bloqueo antes de validar código
+        if (checkLockStatus($pdo, $email)) {
+            throw new Exception("Demasiados intentos fallidos. Espera " . LOCKOUT_TIME_MINUTES . " minutos.");
+        }
+
         $stmt = $pdo->prepare("SELECT id FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'recovery' AND expires_at > NOW()");
         $stmt->execute([$email, $inputCode]);
         
         if ($stmt->rowCount() > 0) {
-            $_SESSION['temp_recovery']['verified'] = true; // Marca segura
-            $_SESSION['temp_recovery']['step'] = 3; // Mover al paso 3 visualmente
+            // [SEGURIDAD] Éxito -> Limpiar fallos
+            clearFailedAttempts($pdo, $email);
+
+            $_SESSION['temp_recovery']['verified'] = true; 
+            $_SESSION['temp_recovery']['step'] = 3; 
             $response = ['success' => true, 'message' => 'Código correcto'];
         } else {
+            // [SEGURIDAD] Fallo -> Registrar
+            logFailedAttempt($pdo, $email, 'recovery_fail');
             throw new Exception('Código incorrecto o expirado.');
         }
 
@@ -277,15 +305,14 @@ try {
 
         $newHash = password_hash($newPass, PASSWORD_BCRYPT);
 
-        // Actualizar Usuario
         $upd = $pdo->prepare("UPDATE users SET password = ? WHERE email = ?");
         if ($upd->execute([$newHash, $email])) {
             
-            // Limpiar códigos usados
             $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'recovery'")->execute([$email]);
-            
-            // Limpiar sesión temporal
             unset($_SESSION['temp_recovery']);
+            
+            // [SEGURIDAD] Limpieza final por si acaso
+            clearFailedAttempts($pdo, $email);
 
             $response = ['success' => true, 'message' => 'Contraseña actualizada correctamente.'];
         } else {
@@ -299,7 +326,10 @@ try {
 
 } catch (Exception $e) {
     $response['message'] = $e->getMessage();
-    logger("Error: " . $e->getMessage());
+    // No saturar log con errores de bloqueo
+    if (strpos($e->getMessage(), 'espera') === false) {
+        logger("Error: " . $e->getMessage());
+    }
 }
 
 echo json_encode($response);

@@ -83,3 +83,10 @@
 [2025-11-17 21:02:50] [CUSTOM] Error: Este correo no está registrado.
 [2025-11-17 21:03:00] [CUSTOM] Code RECUPERACION para 1en1212a@gmail.com: BF41E83178
 [2025-11-17 21:03:17] [CUSTOM] Error: Código incorrecto o expirado.
+[2025-11-17 14:17:22] [CUSTOM] Error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'project_aurora_db.security_logs' doesn't exist
+[2025-11-17 14:17:38] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 14:17:39] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 14:17:49] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 14:17:50] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 14:17:51] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 14:18:34] [CUSTOM] Error: Demasiadas solicitudes recientes. Espera unos minutos.

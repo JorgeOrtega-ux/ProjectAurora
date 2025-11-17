@@ -63,3 +63,17 @@ CREATE TABLE verification_codes (
     INDEX (identifier),
     INDEX (code)
 );
+
+-- ==========================================
+-- 5. TABLA DE SEGURIDAD (RATE LIMITING)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS security_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_identifier VARCHAR(255) NOT NULL, -- Email o Username
+    action_type ENUM('login_fail', 'recovery_fail', 'suspicious_activity') NOT NULL,
+    ip_address VARCHAR(45) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Índices vitales para velocidad en la verificación
+    INDEX idx_security_check (user_identifier, ip_address, created_at)
+);

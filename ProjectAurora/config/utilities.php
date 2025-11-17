@@ -1,0 +1,65 @@
+<?php
+// config/utilities.php
+
+// 1. CONFIGURACIÓN DE ZONA HORARIA Y LÍMITES
+date_default_timezone_set('America/Matamoros');
+
+// Configuración de seguridad
+define('MAX_LOGIN_ATTEMPTS', 5);      // Intentos permitidos antes del bloqueo
+define('LOCKOUT_TIME_MINUTES', 5);    // Tiempo de espera en minutos
+
+/**
+ * Obtiene la IP real del cliente (incluso si está detrás de un proxy)
+ */
+function get_client_ip() {
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) return $_SERVER['HTTP_CLIENT_IP'];
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) return $_SERVER['HTTP_X_FORWARDED_FOR'];
+    return $_SERVER['REMOTE_ADDR'];
+}
+
+/**
+ * Verifica si el usuario o la IP están bloqueados actualmente.
+ * Retorna TRUE si está bloqueado, FALSE si puede intentar.
+ */
+function checkLockStatus($pdo, $identifier) {
+    $ip = get_client_ip();
+    $limit = MAX_LOGIN_ATTEMPTS;
+    $minutes = LOCKOUT_TIME_MINUTES;
+
+    // Buscamos intentos fallidos recientes por Email O por IP
+    // Usamos NOW() de SQL para asegurar consistencia con la hora de la BD
+    $sql = "SELECT COUNT(*) as total 
+            FROM security_logs 
+            WHERE (user_identifier = ? OR ip_address = ?) 
+            AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
+            
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$identifier, $ip]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return ($result['total'] >= $limit);
+}
+
+/**
+ * Registra un intento fallido en la base de datos.
+ */
+function logFailedAttempt($pdo, $identifier, $actionType) {
+    $ip = get_client_ip();
+    
+    $sql = "INSERT INTO security_logs (user_identifier, action_type, ip_address, created_at) 
+            VALUES (?, ?, ?, NOW())";
+            
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$identifier, $actionType, $ip]);
+}
+
+/**
+ * Limpia el historial de fallos tras un inicio de sesión exitoso.
+ */
+function clearFailedAttempts($pdo, $identifier) {
+    // Borramos logs de este usuario para liberar el bloqueo inmediatamente al acertar
+    $sql = "DELETE FROM security_logs WHERE user_identifier = ?";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$identifier]);
+}
+?>
