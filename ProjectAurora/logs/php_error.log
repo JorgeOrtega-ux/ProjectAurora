@@ -61,3 +61,12 @@
 [2025-11-17 20:17:10] [CUSTOM] Registro Paso 1 (Email): 1ena@gmail.com
 [2025-11-17 20:17:12] [CUSTOM] CODIGO DE VERIFICACION para 1ena@gmail.com: F8A0B9A2ACF4
 [2025-11-17 20:17:25] [CUSTOM] Usuario registrado exitosamente: 111111111111 (1ena@gmail.com)
+[2025-11-17 20:20:44] [CUSTOM] Error Auth: El correo ya está registrado.
+[2025-11-17 20:20:50] [CUSTOM] Registro Paso 1 (Email): 1en12a@gmail.com
+[2025-11-17 20:20:53] [CUSTOM] CODIGO DE VERIFICACION para 1en12a@gmail.com: 1AFF7B1250CE
+[2025-11-17 20:21:05] [CUSTOM] Error Auth: Código inválido o ha expirado.
+[2025-11-17 20:21:05] [CUSTOM] Error Auth: Código inválido o ha expirado.
+[2025-11-17 20:25:53] [CUSTOM] Registro Paso 1 (Email): 1en12a@gmail.com
+[2025-11-17 20:25:56] [CUSTOM] CODIGO DE VERIFICACION para 1en12a@gmail.com: EEEBB1BC1374
+[2025-11-17 20:29:27] [CUSTOM] Registro Paso 1 (Email): 11311@gmail.com
+[2025-11-17 20:29:29] [CUSTOM] CODIGO DE VERIFICACION para 11311@gmail.com: 4CEE9EEC8CD6

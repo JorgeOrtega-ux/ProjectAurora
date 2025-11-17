@@ -1,48 +1,56 @@
-// assets/js/auth-manager.js
-
 const API_BASE_PATH = window.BASE_PATH || '/ProjectAurora/';
 
 export function initAuthManager() {
     document.body.addEventListener('click', async (e) => {
         
-        // --- REGISTRO PASO 1 (Email/Pass) ---
+        // --- PASO 1 -> 2 ---
         if (e.target.closest('#btn-register-step1')) {
             e.preventDefault();
-            await handleRegisterStep('step1', 'register_step_1', 'register/additional-data');
+            // Al éxito: Cambiar URL a 'register/additional-data' y mostrar Div 2
+            await handleRegisterStep('step1', 'register_step_1', 2, 'register/additional-data');
         }
 
-        // --- REGISTRO PASO 2 (Username) ---
+        // --- PASO 2 -> 3 ---
         if (e.target.closest('#btn-register-step2')) {
             e.preventDefault();
-            await handleRegisterStep('step2', 'register_step_2', 'register/verification-account');
+            // Al éxito: Cambiar URL a 'register/verification-account' y mostrar Div 3
+            await handleRegisterStep('step2', 'register_step_2', 3, 'register/verification-account');
         }
 
-        // --- REGISTRO PASO 3 (Verificación Final) ---
+        // --- PASO 3 -> FINAL ---
         if (e.target.closest('#btn-register-step3')) {
             e.preventDefault();
-            await handleRegisterStep('step3', 'register_final', 'main');
+            await handleRegisterStep('step3', 'register_final', 'main', null);
         }
 
+        // --- BOTONES VOLVER ---
+        if (e.target.closest('#btn-back-step1')) {
+            e.preventDefault();
+            switchRegisterStep(1, 'register');
+        }
+        if (e.target.closest('#btn-back-step2')) {
+            e.preventDefault();
+            switchRegisterStep(2, 'register/additional-data');
+        }
+
+        // ... (Código Login y Logout sin cambios) ...
         // --- LOGIN ---
         if (e.target.closest('#btn-login-submit')) {
             e.preventDefault();
             await handleLogin();
         }
-
         // --- LOGOUT ---
-        const logoutBtn = e.target.closest('.menu-link-logout');
+         const logoutBtn = e.target.closest('.menu-link-logout');
         if (logoutBtn) {
             e.preventDefault(); 
             if (logoutBtn.dataset.processing === "true") return;
             logoutBtn.dataset.processing = "true";
-
             const iconContainer = document.createElement('div');
             iconContainer.className = 'menu-link-icon'; 
             const spinner = document.createElement('div');
             spinner.className = 'small-spinner';
             iconContainer.appendChild(spinner);
             logoutBtn.appendChild(iconContainer);
-
             setTimeout(() => {
                 window.location.href = API_BASE_PATH + 'config/logout.php';
             }, 50);
@@ -50,145 +58,99 @@ export function initAuthManager() {
     });
 }
 
-// --- MANEJADOR DE PASOS DE REGISTRO ---
-async function handleRegisterStep(stepName, apiAction, nextRoute) {
+function switchRegisterStep(stepNumber, urlPath) {
+    document.getElementById('step-container-1').style.display = 'none';
+    document.getElementById('step-container-2').style.display = 'none';
+    document.getElementById('step-container-3').style.display = 'none';
+    
+    const target = document.getElementById(`step-container-${stepNumber}`);
+    if (target) {
+        target.style.display = 'block';
+        // IMPORTANTE: Actualizar URL sin recargar
+        if (urlPath) {
+            const newUrl = API_BASE_PATH + urlPath;
+            history.pushState({ section: urlPath }, '', newUrl);
+        }
+    }
+}
+
+async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
+    // ... (Lógica de recolección de datos idéntica a la anterior) ...
     let payload = { action: apiAction };
     let btnId, errorId, inputIds = [];
 
-    // Recolectar datos según el paso
     if (stepName === 'step1') {
         const emailIn = document.getElementById('reg-email');
         const passIn = document.getElementById('reg-password');
         if (!emailIn || !passIn) return;
-        
         payload.email = emailIn.value;
         payload.password = passIn.value;
-        btnId = 'btn-register-step1';
-        errorId = 'register-error';
-        inputIds = ['reg-email', 'reg-password'];
-    } 
-    else if (stepName === 'step2') {
+        btnId = 'btn-register-step1'; errorId = 'register-error-1'; inputIds = ['reg-email', 'reg-password'];
+    } else if (stepName === 'step2') {
         const userIn = document.getElementById('reg-username');
         if (!userIn) return;
-
         payload.username = userIn.value;
-        btnId = 'btn-register-step2';
-        errorId = 'register-error-2';
-        inputIds = ['reg-username'];
-    } 
-    else if (stepName === 'step3') {
+        btnId = 'btn-register-step2'; errorId = 'register-error-2'; inputIds = ['reg-username'];
+    } else if (stepName === 'step3') {
         const codeIn = document.getElementById('reg-code');
         if (!codeIn) return;
-
         payload.code = codeIn.value;
-        btnId = 'btn-register-step3';
-        errorId = 'register-error-3';
-        inputIds = ['reg-code'];
+        btnId = 'btn-register-step3'; errorId = 'register-error-3'; inputIds = ['reg-code'];
     }
 
-    // Validar campos vacíos visualmente
+    // Validar vacíos
     let hasEmpty = false;
     inputIds.forEach(id => {
         const el = document.getElementById(id);
         el.classList.remove('input-error');
-        if(!el.value.trim()) {
-            el.classList.add('input-error');
-            hasEmpty = true;
-        }
+        if(!el.value.trim()) { el.classList.add('input-error'); hasEmpty = true; }
     });
-
     if (hasEmpty) {
-        const errDiv = document.getElementById(errorId);
-        if(errDiv) {
-            errDiv.innerText = "Por favor completa los campos requeridos.";
-            errDiv.classList.add('active');
-        }
+        const err = document.getElementById(errorId);
+        if(err) { err.innerText = "Campos requeridos."; err.classList.add('active'); }
         return;
     }
 
-    await sendAuthRequest(payload, btnId, errorId, nextRoute);
+    await sendAuthRequest(payload, btnId, errorId, nextStep, nextUrl);
 }
 
-// Función genérica para enviar petición y navegar
-async function sendAuthRequest(payload, btnId, errorId, nextPath) {
+async function sendAuthRequest(payload, btnId, errorId, nextStep, nextUrl) {
     const btn = document.getElementById(btnId);
     const errorDiv = document.getElementById(errorId);
-    const originalText = btn.innerText;
-
-    // UI Loading
-    btn.innerText = 'Procesando...';
-    btn.disabled = true;
-    if(errorDiv) {
-        errorDiv.innerText = '';
-        errorDiv.classList.remove('active');
-    }
+    const originalText = btn ? btn.innerText : '';
+    if(btn) { btn.innerText = 'Procesando...'; btn.disabled = true; }
+    if(errorDiv) { errorDiv.innerText = ''; errorDiv.classList.remove('active'); }
 
     try {
         const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
         });
-
-        const text = await response.text();
-        let result;
-        try {
-            result = JSON.parse(text);
-        } catch (e) {
-            console.error("Respuesta inválida:", text);
-            throw new Error('Error del servidor: Respuesta no válida.');
-        }
+        const result = await response.json();
 
         if (result.success) {
-            // Navegación
-            if (nextPath === 'main') {
+            if (nextStep === 'main') {
                 window.location.href = API_BASE_PATH;
             } else {
-                // Forzar cambio de URL y recarga del módulo (SPA)
-                // Asumimos que url-manager maneja popstate, así que empujamos estado y disparamos evento
-                const fullPath = API_BASE_PATH + nextPath;
-                window.history.pushState({ section: nextPath }, '', fullPath);
-                
-                // Disparar evento manual para que url-manager detecte el cambio si usa popstate
-                // OJO: popstate solo salta con back/forward. Para ir adelante manualmente llamamos a navigateTo si es posible,
-                // pero como no exportamos 'navigateTo' globalmente, forzamos un reload o usamos un truco:
-                
-                // Truco para disparar el router sin modificar url-manager:
-                // Simulamos clic en un enlace oculto o recargamos si es necesario. 
-                // Dado que el script es módulo, lo más fácil es reload si no tenemos acceso a navigateTo,
-                // PERO lo ideal es que 'url-manager' exponga navigateTo a window. 
-                // SI NO: location.href recarga la página, lo cual es seguro.
-                
-                window.location.href = fullPath; 
+                // Cambio visual + URL
+                switchRegisterStep(nextStep, nextUrl);
             }
         } else {
-            if(errorDiv) {
-                errorDiv.innerText = result.message;
-                errorDiv.classList.add('active');
-            } else {
-                alert(result.message);
-            }
+            if(errorDiv) { errorDiv.innerText = result.message; errorDiv.classList.add('active'); }
         }
-
     } catch (error) {
-        if(errorDiv) {
-            errorDiv.innerText = error.message || 'Error desconocido';
-            errorDiv.classList.add('active');
-        }
+        if(errorDiv) { errorDiv.innerText = "Error de conexión"; errorDiv.classList.add('active'); }
     } finally {
-        if(btn) {
-            btn.innerText = originalText;
-            btn.disabled = false;
-        }
+        if(btn) { btn.innerText = originalText; btn.disabled = false; }
     }
 }
 
+// Incluir handleLogin() igual que antes...
 async function handleLogin() {
+    // ... (Copia tu función handleLogin original aquí) ...
     const emailInput = document.getElementById('login-email');
     const passInput = document.getElementById('login-password');
     const errorDiv = document.getElementById('login-error');
 
-    // Limpiar
     if(errorDiv) errorDiv.classList.remove('active');
     emailInput.classList.remove('input-error');
     passInput.classList.remove('input-error');

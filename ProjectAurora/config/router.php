@@ -1,97 +1,72 @@
 <?php
-// --- INICIO DE SESIÓN OBLIGATORIO ---
-session_start();
+if (session_status() === PHP_SESSION_NONE) session_start();
 
-// Define la sección por defecto
 $DEFAULT_SECTION = 'main';
-
-// Obtiene la URI de la solicitud
 $requestUri = $_SERVER['REQUEST_URI'];
+$basePath = '/ProjectAurora/'; // Asegúrate que coincida con tu carpeta
 
-// Define el path base de tu proyecto
-$basePath = '/ProjectAurora/';
-
-// Remueve el path base de la URI
-if (strpos($requestUri, $basePath) === 0) {
-    $requestUri = substr($requestUri, strlen($basePath));
-}
-
-// Remueve query strings
+if (strpos($requestUri, $basePath) === 0) $requestUri = substr($requestUri, strlen($basePath));
 $requestUri = strtok($requestUri, '?');
-// Limpia slashes al final
 $requestUri = rtrim($requestUri, '/');
 
 // --- API ROUTING ---
 if (strpos($requestUri, 'api/') === 0) {
     $apiFilePath = __DIR__ . '/../' . $requestUri;
-    if (file_exists($apiFilePath)) {
-        require_once $apiFilePath;
-        exit; 
-    } else {
-        header('Content-Type: application/json');
-        http_response_code(404);
-        echo json_encode(['success' => false, 'message' => 'API endpoint not found']);
-        exit;
-    }
+    if (file_exists($apiFilePath)) { require_once $apiFilePath; exit; }
+    else { http_response_code(404); echo json_encode(['error'=>'API not found']); exit; }
 }
 
-// --- SECCIONES PERMITIDAS (RUTAS) ---
+// --- LISTA BLANCA DE URLS ---
 $allowedSections = [
-    'main', 
-    'login', 
-    'register', 
-    'register/additional-data', 
-    'register/verification-account', 
-    'explorer'
-];
-
-// Determina la sección actual (URL)
-$CURRENT_SECTION = $DEFAULT_SECTION; 
-
-if (empty($requestUri)) {
-    $CURRENT_SECTION = 'main';
-} elseif (in_array($requestUri, $allowedSections)) {
-    $CURRENT_SECTION = $requestUri;
-} else {
-    $CURRENT_SECTION = '404';
-}
-
-if ($CURRENT_SECTION === 'main' && $requestUri !== 'main' && !empty($requestUri) && $requestUri !== '404') {
-     $CURRENT_SECTION = 'main';
-}
-
-// --- LÓGICA DE MAPEO DE ARCHIVOS ---
-// Convierte 'register/additional-data' en 'register-additional-data' para buscar el archivo .php
-$SECTION_FILE_NAME = str_replace('/', '-', $CURRENT_SECTION);
-
-
-// --- LÓGICA DE PROTECCIÓN (EL GUARDIA) ---
-
-$isLoggedIn = isset($_SESSION['user_id']);
-
-// Secciones públicas donde NO se requiere login
-$publicSections = [
-    'login', 
-    'register', 
+    'main', 'login', 'register', 'explorer',
+    // Habilitamos las URLs para que el router las reconozca
     'register/additional-data', 
     'register/verification-account'
 ];
 
-// CASO 1: Usuario NO logueado intenta entrar a una zona privada
-if (!$isLoggedIn && !in_array($CURRENT_SECTION, $publicSections)) {
-    header("Location: " . $basePath . "login");
-    exit;
+$CURRENT_SECTION = empty($requestUri) ? 'main' : $requestUri;
+if (!in_array($CURRENT_SECTION, $allowedSections)) $CURRENT_SECTION = '404';
+if ($CURRENT_SECTION === 'main' && $requestUri !== 'main' && !empty($requestUri)) $CURRENT_SECTION = 'main';
+
+// --- MAPEO INTELIGENTE DE ARCHIVOS ---
+// Si la URL empieza por "register/", forzamos que cargue SIEMPRE "register.php"
+if (strpos($CURRENT_SECTION, 'register/') === 0 || $CURRENT_SECTION === 'register') {
+    $SECTION_FILE_NAME = 'register'; 
+} else {
+    $SECTION_FILE_NAME = str_replace('/', '-', $CURRENT_SECTION);
 }
 
-// CASO 2: Usuario YA logueado intenta entrar a zonas de auth
+// ==========================================
+// EL GUARDIA (Seguridad de Pasos)
+// ==========================================
+$isLoggedIn = isset($_SESSION['user_id']);
+$publicSections = ['login', 'register', 'register/additional-data', 'register/verification-account'];
+
+if (!$isLoggedIn && !in_array($CURRENT_SECTION, $publicSections) && $CURRENT_SECTION !== '404') {
+    header("Location: " . $basePath . "login"); exit;
+}
 if ($isLoggedIn && in_array($CURRENT_SECTION, $publicSections)) {
-    header("Location: " . $basePath); 
-    exit;
+    header("Location: " . $basePath); exit;
 }
 
-// --- FIN LÓGICA PROTECCIÓN ---
+// Definir REQUISITOS para entrar a cada URL
+$requirements = [
+    'register/additional-data'      => ['key' => 'temp_register', 'sub' => 'email'],
+    'register/verification-account' => ['key' => 'temp_register', 'sub' => 'username']
+];
 
-// Mostrar navegación solo si no estamos en login/register/404
-$showNavigation = !in_array($CURRENT_SECTION, array_merge($publicSections, ['404']));
+// Verificar requisitos
+if (array_key_exists($CURRENT_SECTION, $requirements)) {
+    $req = $requirements[$CURRENT_SECTION];
+    $hasData = isset($_SESSION[$req['key']][$req['sub']]) && !empty($_SESSION[$req['key']][$req['sub']]);
 
+    if (!$hasData) {
+        // ¡BLOQUEO! Mostramos la pantalla de error
+        $SECTION_FILE_NAME = 'error-missing-data';
+        $missingDataMessage = "No has completado el paso anterior para acceder a <strong>$CURRENT_SECTION</strong>.";
+        $redirectTarget = 'register';
+    }
+}
+
+$showNavigation = !($SECTION_FILE_NAME === 'error-missing-data' || $CURRENT_SECTION === '404') && !in_array($CURRENT_SECTION, $publicSections);
 ?>
