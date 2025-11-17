@@ -89,6 +89,12 @@ export function initAuthManager() {
             e.preventDefault();
             await handleLogin();
         }
+
+        // [NUEVO] --- LOGIN 2FA VERIFY ---
+        if (e.target.closest('#btn-login-2fa-submit')) {
+            e.preventDefault();
+            await handleLogin2FA();
+        }
         
         // --- LOGOUT ---
         const logoutBtn = e.target.closest('.menu-link-logout');
@@ -392,6 +398,7 @@ async function sendAuthRequest(payload, btnId, errorId, nextStep, nextUrl) {
     }
 }
 
+// --- LÓGICA DE LOGIN (ACTUALIZADA) ---
 async function handleLogin() {
     const emailInput = document.getElementById('login-email');
     const passInput = document.getElementById('login-password');
@@ -430,7 +437,13 @@ async function handleLogin() {
 
         const res = await response.json();
         if (res.success) {
-            window.location.href = API_BASE_PATH;
+            if (res.require_2fa) {
+                // Si el backend dice que necesitamos 2FA, redirigimos a la URL especial
+                navigateTo('login/verification-additional');
+            } else {
+                // Login normal exitoso
+                window.location.href = API_BASE_PATH;
+            }
         } else {
             if(errorDiv) {
                 errorDiv.innerText = res.message;
@@ -439,6 +452,60 @@ async function handleLogin() {
             emailInput.classList.add('input-error');
             passInput.classList.add('input-error');
             
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+        }
+    } catch (e) {
+        if(errorDiv) {
+            errorDiv.innerText = "Error de conexión";
+            errorDiv.classList.add('active');
+        }
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+    }
+}
+
+// [NUEVO] --- LÓGICA LOGIN 2FA ---
+async function handleLogin2FA() {
+    const codeInput = document.getElementById('login-2fa-code');
+    const errorDiv = document.getElementById('login-2fa-error');
+    
+    if (!codeInput) return;
+    
+    if (!codeInput.value.trim()) {
+        codeInput.classList.add('input-error');
+        return;
+    }
+    
+    const btn = document.getElementById('btn-login-2fa-submit');
+    const originalContent = btn.innerHTML;
+
+    btn.innerHTML = '<div class="btn-spinner"></div>';
+    btn.disabled = true;
+    if(errorDiv) errorDiv.classList.remove('active');
+
+    try {
+        const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken()
+            },
+            body: JSON.stringify({ 
+                action: 'login_2fa_verify', 
+                code: codeInput.value.trim()
+            })
+        });
+
+        const res = await response.json();
+        if (res.success) {
+            window.location.href = API_BASE_PATH;
+        } else {
+            if(errorDiv) {
+                errorDiv.innerText = res.message;
+                errorDiv.classList.add('active');
+            }
+            codeInput.classList.add('input-error');
             btn.innerHTML = originalContent;
             btn.disabled = false;
         }

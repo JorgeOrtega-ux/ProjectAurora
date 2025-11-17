@@ -1,14 +1,23 @@
-
 const allowedSections = [
     'main', 'login', 'register', 'explorer',
     'register/additional-data',
     'register/verification-account',
     'forgot-password',
-    // [NUEVO] Permitir la página de status
-    'status-page'
+    'status-page',
+    // [NUEVO]
+    'login/verification-additional'
 ];
-// [NUEVO] status-page se considera zona de auth (sin header/navegación normal)
-const authZone = ['login', 'register', 'register/additional-data', 'register/verification-account', 'forgot-password', 'status-page'];
+// [NUEVO] Agregamos login/verification-additional a authZone
+const authZone = [
+    'login', 
+    'register', 
+    'register/additional-data', 
+    'register/verification-account', 
+    'forgot-password', 
+    'status-page', 
+    'login/verification-additional'
+];
+
 const basePath = window.BASE_PATH || '/ProjectAurora/';
 
 export function initUrlManager() {
@@ -55,9 +64,11 @@ async function showSection(sectionName, pushState = true) {
     const container = document.getElementById('section-container');
     if (!container) { window.location.reload(); return; }
 
+    // Reemplazo estándar de '/' por '-' para coincidir con nombres de archivo
     let fileToFetch = sectionName.replace('/', '-'); 
     let queryParams = `?t=${Date.now()}`;
 
+    // Casos especiales de Register (se mantienen igual)
     if (sectionName === 'register/additional-data') {
         fileToFetch = 'register';
         queryParams += '&step=2';
@@ -68,7 +79,8 @@ async function showSection(sectionName, pushState = true) {
         fileToFetch = 'register';
         queryParams += '&step=1';
     }
-    // Nota: status-page carga status-page.php automáticamente por la lógica de reemplazo '/' -> '-'
+    
+    // [NOTA] login/verification-additional cargará login-verification-additional.php automáticamente
 
     try {
         const resp = await fetch(`${basePath}includes/sections/${fileToFetch}.php${queryParams}`);

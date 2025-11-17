@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS users (
     account_status ENUM('active', 'suspended', 'deleted') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
+ALTER TABLE users ADD COLUMN is_2fa_enabled TINYINT(1) DEFAULT 0;
 -- ==========================================
 -- TABLA DE CÓDIGOS DE VERIFICACIÓN
 -- ==========================================
