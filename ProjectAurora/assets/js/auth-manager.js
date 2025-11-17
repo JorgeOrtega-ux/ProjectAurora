@@ -111,6 +111,12 @@ export function initAuthManager() {
     });
 }
 
+// [NUEVO] Helper para obtener el token
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
 // Genera formato: user20251117_133529wl
 function generateMagicUsername() {
     const now = new Date();
@@ -298,7 +304,7 @@ async function handleRecoveryStep(stepName) {
     
     if(btn) { 
         originalContent = btn.innerHTML;
-        btn.innerHTML = '<div class="btn-spinner"></div>'; // [MODIFICADO]
+        btn.innerHTML = '<div class="btn-spinner"></div>'; 
         btn.disabled = true; 
     }
     
@@ -306,17 +312,21 @@ async function handleRecoveryStep(stepName) {
     if(errorDiv) { errorDiv.innerText = ''; errorDiv.classList.remove('active'); }
 
     try {
+        // [MODIFICADO] Header CSRF
         const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            method: 'POST', 
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken()
+            }, 
+            body: JSON.stringify(payload)
         });
         const res = await response.json();
 
         if (res.success) {
             if (stepName === 'step3') {
-                // FIN: Ir a Login
                 window.location.href = API_BASE_PATH + 'login';
             } else {
-                // AVANZAR UI
                 document.getElementById('rec-step-container-1').style.display = 'none';
                 document.getElementById('rec-step-container-2').style.display = 'none';
                 document.getElementById('rec-step-container-3').style.display = 'none';
@@ -324,23 +334,20 @@ async function handleRecoveryStep(stepName) {
                 const next = document.getElementById(nextContainerId);
                 if(next) next.style.display = 'block';
                 
-                // Actualizar email en texto del paso 2
                 if(stepName === 'step1') {
                     const display = document.getElementById('rec-display-email');
                     if(display) display.innerText = payload.email;
                 }
                 
-                // Restaurar botón (aunque esté oculto, por buena práctica)
                 if(btn) { btn.innerHTML = originalContent; btn.disabled = false; }
             }
         } else {
-            // Hubo error lógico
             if(errorDiv) { errorDiv.innerText = res.message; errorDiv.classList.add('active'); }
-            if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } // [MODIFICADO]
+            if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
         }
     } catch (e) {
         if(errorDiv) { errorDiv.innerText = "Error de conexión"; errorDiv.classList.add('active'); }
-        if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } // [MODIFICADO]
+        if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
     }
 }
 
@@ -352,13 +359,19 @@ async function sendAuthRequest(payload, btnId, errorId, nextStep, nextUrl) {
     // UI Loading con SPINNER
     if(btn) { 
         originalContent = btn.innerHTML;
-        btn.innerHTML = '<div class="btn-spinner"></div>'; // [MODIFICADO]
+        btn.innerHTML = '<div class="btn-spinner"></div>'; 
         btn.disabled = true; 
     }
     
     try {
+        // [MODIFICADO] Header CSRF
         const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            method: 'POST', 
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken()
+            }, 
+            body: JSON.stringify(payload)
         });
         const result = await response.json();
 
@@ -367,16 +380,15 @@ async function sendAuthRequest(payload, btnId, errorId, nextStep, nextUrl) {
                 window.location.href = API_BASE_PATH;
             } else {
                 switchRegisterStep(nextStep, nextUrl);
-                // Restaurar botón después de cambiar de paso
                 if(btn) { btn.innerHTML = originalContent; btn.disabled = false; }
             }
         } else {
             if(errorDiv) { errorDiv.innerText = result.message; errorDiv.classList.add('active'); }
-            if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } // [MODIFICADO]
+            if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
         }
     } catch (error) {
         if(errorDiv) { errorDiv.innerText = "Error de conexión"; errorDiv.classList.add('active'); }
-        if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } // [MODIFICADO]
+        if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
     }
 }
 
@@ -396,16 +408,19 @@ async function handleLogin() {
     }
 
     const btn = document.getElementById('btn-login-submit');
-    const originalContent = btn.innerHTML; // Guardar texto original
+    const originalContent = btn.innerHTML; 
 
-    // [MODIFICADO] Spinner en Login
     btn.innerHTML = '<div class="btn-spinner"></div>';
     btn.disabled = true;
 
     try {
+        // [MODIFICADO] Header CSRF
         const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken()
+            },
             body: JSON.stringify({ 
                 action: 'login', 
                 email: emailInput.value, 
@@ -424,7 +439,6 @@ async function handleLogin() {
             emailInput.classList.add('input-error');
             passInput.classList.add('input-error');
             
-            // Restaurar botón en error
             btn.innerHTML = originalContent;
             btn.disabled = false;
         }
@@ -433,7 +447,6 @@ async function handleLogin() {
             errorDiv.innerText = "Error de conexión";
             errorDiv.classList.add('active');
         }
-        // Restaurar botón en error catch
         btn.innerHTML = originalContent;
         btn.disabled = false;
     }

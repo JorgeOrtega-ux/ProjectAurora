@@ -1,6 +1,7 @@
 <?php
 require_once 'config/router.php';
 require_once 'config/database.php';
+require_once 'config/utilities.php'; // [NUEVO] Requerido para generar el token
 
 if (isset($_SESSION['user_id'])) {
     try {
@@ -22,6 +23,8 @@ if (isset($_SESSION['user_id'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <meta name="csrf-token" content="<?php echo generate_csrf_token(); ?>">
 
     <script>
         window.BASE_PATH = '<?php echo $basePath; ?>';

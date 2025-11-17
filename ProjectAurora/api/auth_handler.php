@@ -28,6 +28,17 @@ date_default_timezone_set('America/Matamoros');
 require_once '../config/database.php';
 require_once '../config/utilities.php'; 
 
+// ==================================================================
+// [NUEVO] VALIDACIÓN CSRF OBLIGATORIA
+// ==================================================================
+$csrfToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+if (!verify_csrf_token($csrfToken)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Error de seguridad (CSRF). Recarga la página e intenta de nuevo.']);
+    exit;
+}
+// ==================================================================
+
 // Sincronizar zona horaria de la sesión MySQL con PHP para que NOW() coincida
 try {
     $now = new DateTime();
@@ -193,13 +204,12 @@ try {
         }
 
     // ==================================================================
-    // LOGIN (CON PROTECCIÓN BRUTE FORCE INDEPENDIENTE)
+    // LOGIN
     // ==================================================================
     } elseif ($action === 'login') {
         $email = filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL);
         $password = $data['password'] ?? '';
 
-        // [MODIFICADO] Verificar bloqueo solo de 'login_fail'
         if (checkLockStatus($pdo, $email, 'login_fail')) {
             throw new Exception("Has excedido el número de intentos de inicio de sesión. Por favor espera " . LOCKOUT_TIME_MINUTES . " minutos.");
         }
@@ -209,7 +219,6 @@ try {
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
-            // [SEGURIDAD] Login Exitoso -> Limpiar historial
             clearFailedAttempts($pdo, $email);
 
             $_SESSION['user_id'] = $user['id'];
@@ -219,20 +228,16 @@ try {
             $_SESSION['user_role'] = $user['role'];
             $response = ['success' => true, 'message' => 'Login correcto'];
         } else {
-            // [SEGURIDAD] Fallo Login -> Registrar solo como login_fail
             logFailedAttempt($pdo, $email, 'login_fail');
             throw new Exception('Credenciales incorrectas.');
         }
 
     // ==================================================================
-    // RECUPERACIÓN DE CONTRASEÑA (CON PROTECCIÓN INDEPENDIENTE)
+    // RECUPERACIÓN DE CONTRASEÑA
     // ==================================================================
-
-    // --- PASO 1: Enviar código ---
     } elseif ($action === 'recovery_step_1') {
         $email = filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL);
         
-        // [MODIFICADO] Chequeo preventivo: solo bloquear si falló muchas veces la recuperación
         if (checkLockStatus($pdo, $email, 'recovery_fail')) {
             throw new Exception("Demasiadas solicitudes de recuperación fallidas. Espera unos minutos.");
         }
@@ -241,7 +246,6 @@ try {
         $stmt->execute([$email]);
         
         if ($stmt->rowCount() === 0) {
-            // [SEGURIDAD] Registrar fallo de recuperación
             logFailedAttempt($pdo, $email, 'recovery_fail');
             throw new Exception('Este correo no está registrado.');
         }
@@ -261,14 +265,12 @@ try {
         logger("Code RECUPERACION para $email: $code");
         $response = ['success' => true, 'message' => 'Código enviado'];
 
-    // --- PASO 2: Verificar Código ---
     } elseif ($action === 'recovery_step_2') {
         $email = $_SESSION['temp_recovery']['email'] ?? '';
         $inputCode = strtoupper(trim($data['code'] ?? ''));
 
         if (empty($email)) throw new Exception('Sesión expirada.');
 
-        // [MODIFICADO] Verificar bloqueo solo de recovery_fail
         if (checkLockStatus($pdo, $email, 'recovery_fail')) {
             throw new Exception("Demasiados intentos de código fallidos. Espera " . LOCKOUT_TIME_MINUTES . " minutos.");
         }
@@ -277,19 +279,16 @@ try {
         $stmt->execute([$email, $inputCode]);
         
         if ($stmt->rowCount() > 0) {
-            // [SEGURIDAD] Éxito -> Limpiar fallos
             clearFailedAttempts($pdo, $email);
 
             $_SESSION['temp_recovery']['verified'] = true; 
             $_SESSION['temp_recovery']['step'] = 3; 
             $response = ['success' => true, 'message' => 'Código correcto'];
         } else {
-            // [SEGURIDAD] Fallo recuperación
             logFailedAttempt($pdo, $email, 'recovery_fail');
             throw new Exception('Código incorrecto o expirado.');
         }
 
-    // --- PASO 3: Cambiar Contraseña ---
     } elseif ($action === 'recovery_final') {
         $email = $_SESSION['temp_recovery']['email'] ?? '';
         $verified = $_SESSION['temp_recovery']['verified'] ?? false;
@@ -306,7 +305,6 @@ try {
             $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'recovery'")->execute([$email]);
             unset($_SESSION['temp_recovery']);
             
-            // Limpieza final
             clearFailedAttempts($pdo, $email);
 
             $response = ['success' => true, 'message' => 'Contraseña actualizada correctamente.'];

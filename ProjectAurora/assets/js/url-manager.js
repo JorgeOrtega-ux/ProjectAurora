@@ -26,6 +26,9 @@ export function initUrlManager() {
             if (section !== getSectionFromUrl()) navigateTo(section);
         }
     });
+    
+    // Opcional: Asegurar que el menú esté correcto al cargar (por si el HTML viniera desincronizado)
+    updateActiveMenu(getSectionFromUrl());
 }
 
 window.navigateTo = function(sectionName) {
@@ -73,11 +76,31 @@ async function showSection(sectionName, pushState = true) {
         if (!resp.ok) throw new Error('Error de carga');
         container.innerHTML = await resp.text();
 
+        // [CORRECCIÓN] Actualizamos el menú visualmente aquí
+        updateActiveMenu(sectionName);
+
         if (pushState) {
             const newUrl = (sectionName === 'main') ? basePath : `${basePath}${sectionName}`;
             history.pushState({ section: sectionName }, '', newUrl);
         }
     } catch (error) {
         console.error(error);
+    }
+}
+
+// --- [NUEVA FUNCIÓN] ---
+// Se encarga de mover la clase 'active' al link correcto
+function updateActiveMenu(sectionName) {
+    // 1. Buscar todos los links del menú y quitarles la clase active
+    const allLinks = document.querySelectorAll('.menu-link[data-nav]');
+    allLinks.forEach(link => {
+        link.classList.remove('active');
+    });
+
+    // 2. Buscar el link que coincida con la sección actual y ponerle active
+    //    Nota: Si sectionName es 'main', busca [data-nav="main"]
+    const activeLink = document.querySelector(`.menu-link[data-nav="${sectionName}"]`);
+    if (activeLink) {
+        activeLink.classList.add('active');
     }
 }
