@@ -115,3 +115,59 @@ html {
     background-color: transparent;
     padding: 0;
 }
+
+/* Loader Spinner Wrapper */
+.loader-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.8); /* Fondo blanco semitransparente */
+    display: flex; /* Usamos flex para centrar el spinner */
+    justify-content: center;
+    align-items: center;
+    z-index: 1000; /* Asegura que esté por encima del contenido */
+    display: none; /* Oculto por defecto */
+    border-radius: 12px; /* Hereda el borde del .general-content */
+}
+
+/* El Spinner */
+.loader-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3; /* Gris claro */
+    border-top: 4px solid #3498db; /* Azul */
+    border-radius: 50%;
+    animation: spin 1s linear infinite; /* Animación de rotación */
+}
+
+/* Animación de rotación para el spinner */
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Estilos de las secciones de contenido */
+.section-content {
+    width: 100%;
+    height: 100%;
+    padding: 16px; /* Añade algo de padding interno */
+}
+
+.section-content.overflow-y {
+    overflow-y: auto;
+}
+
+/* Clases para mostrar/ocultar secciones */
+.section-content.active {
+    display: block; /* O 'flex', 'grid', etc., según tu layout interno */
+}
+
+.section-content.disabled {
+    display: none;
+}
