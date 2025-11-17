@@ -19,22 +19,30 @@ function get_client_ip() {
 
 /**
  * Verifica si el usuario o la IP están bloqueados actualmente.
- * Retorna TRUE si está bloqueado, FALSE si puede intentar.
+ * MODIFICADO: Ahora acepta un parámetro opcional $specificAction.
+ * Si se envía (ej: 'login_fail'), solo cuenta fallos de ese tipo.
  */
-function checkLockStatus($pdo, $identifier) {
+function checkLockStatus($pdo, $identifier, $specificAction = null) {
     $ip = get_client_ip();
     $limit = MAX_LOGIN_ATTEMPTS;
     $minutes = LOCKOUT_TIME_MINUTES;
 
-    // Buscamos intentos fallidos recientes por Email O por IP
-    // Usamos NOW() de SQL para asegurar consistencia con la hora de la BD
+    // Consulta base: Contar fallos recientes por usuario O IP
     $sql = "SELECT COUNT(*) as total 
             FROM security_logs 
             WHERE (user_identifier = ? OR ip_address = ?) 
             AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
+    
+    $params = [$identifier, $ip];
+
+    // [NUEVO] Si nos pasaron un tipo de acción, filtramos por ella
+    if ($specificAction !== null) {
+        $sql .= " AND action_type = ?";
+        $params[] = $specificAction;
+    }
             
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$identifier, $ip]);
+    $stmt->execute($params);
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
     return ($result['total'] >= $limit);

@@ -26,7 +26,7 @@ date_default_timezone_set('America/Matamoros');
 
 // [IMPORTANTE] Requerir conexión y utilidades de seguridad
 require_once '../config/database.php';
-require_once '../config/utilities.php'; // Nuevo archivo
+require_once '../config/utilities.php'; 
 
 // Sincronizar zona horaria de la sesión MySQL con PHP para que NOW() coincida
 try {
@@ -40,7 +40,6 @@ try {
     
     $pdo->exec("SET time_zone='$offset';");
 } catch (Exception $e) {
-    // Si falla la sincro horaria, lo logueamos pero no detenemos la ejecución crítica
     logger("Warning: No se pudo sincronizar time_zone SQL: " . $e->getMessage());
 }
 
@@ -69,7 +68,7 @@ $response = ['success' => false, 'message' => 'Acción no válida'];
 
 try {
     // ==================================================================
-    // REGISTRO - ETAPA 1 (Sin cambios mayores en seguridad, bajo riesgo)
+    // REGISTRO - ETAPA 1
     // ==================================================================
     if ($action === 'register_step_1') {
         $email = filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL);
@@ -90,7 +89,6 @@ try {
         $_SESSION['temp_register']['password'] = $password; 
 
         $response = ['success' => true, 'message' => 'Paso 1 OK'];
-
 
     // ==================================================================
     // REGISTRO - ETAPA 2
@@ -135,7 +133,6 @@ try {
         logger("Code registro generado para $email: $code");
 
         $response = ['success' => true, 'message' => 'Código enviado'];
-
 
     // ==================================================================
     // REGISTRO - ETAPA 3
@@ -196,16 +193,15 @@ try {
         }
 
     // ==================================================================
-    // LOGIN (CON PROTECCIÓN BRUTE FORCE)
+    // LOGIN (CON PROTECCIÓN BRUTE FORCE INDEPENDIENTE)
     // ==================================================================
     } elseif ($action === 'login') {
         $email = filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL);
         $password = $data['password'] ?? '';
 
-        // [SEGURIDAD] 1. Verificar si está bloqueado antes de nada
-        if (checkLockStatus($pdo, $email)) {
-            // Mensaje genérico para no dar pistas, o específico si prefieres UX sobre ocultación
-            throw new Exception("Has excedido el número de intentos. Por favor espera " . LOCKOUT_TIME_MINUTES . " minutos.");
+        // [MODIFICADO] Verificar bloqueo solo de 'login_fail'
+        if (checkLockStatus($pdo, $email, 'login_fail')) {
+            throw new Exception("Has excedido el número de intentos de inicio de sesión. Por favor espera " . LOCKOUT_TIME_MINUTES . " minutos.");
         }
 
         $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
@@ -213,7 +209,7 @@ try {
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
-            // [SEGURIDAD] 2. Login Exitoso -> Limpiar historial de fallos
+            // [SEGURIDAD] Login Exitoso -> Limpiar historial
             clearFailedAttempts($pdo, $email);
 
             $_SESSION['user_id'] = $user['id'];
@@ -223,30 +219,29 @@ try {
             $_SESSION['user_role'] = $user['role'];
             $response = ['success' => true, 'message' => 'Login correcto'];
         } else {
-            // [SEGURIDAD] 3. Login Fallido -> Registrar fallo
+            // [SEGURIDAD] Fallo Login -> Registrar solo como login_fail
             logFailedAttempt($pdo, $email, 'login_fail');
-
             throw new Exception('Credenciales incorrectas.');
         }
 
     // ==================================================================
-    // RECUPERACIÓN DE CONTRASEÑA (CON PROTECCIÓN)
+    // RECUPERACIÓN DE CONTRASEÑA (CON PROTECCIÓN INDEPENDIENTE)
     // ==================================================================
 
     // --- PASO 1: Enviar código ---
     } elseif ($action === 'recovery_step_1') {
         $email = filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL);
         
-        // [SEGURIDAD] Chequeo preventivo de bloqueo
-        if (checkLockStatus($pdo, $email)) {
-            throw new Exception("Demasiadas solicitudes recientes. Espera unos minutos.");
+        // [MODIFICADO] Chequeo preventivo: solo bloquear si falló muchas veces la recuperación
+        if (checkLockStatus($pdo, $email, 'recovery_fail')) {
+            throw new Exception("Demasiadas solicitudes de recuperación fallidas. Espera unos minutos.");
         }
 
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
         
         if ($stmt->rowCount() === 0) {
-            // [SEGURIDAD] Si no existe, registramos como fallo para evitar enumeración masiva rápida
+            // [SEGURIDAD] Registrar fallo de recuperación
             logFailedAttempt($pdo, $email, 'recovery_fail');
             throw new Exception('Este correo no está registrado.');
         }
@@ -273,9 +268,9 @@ try {
 
         if (empty($email)) throw new Exception('Sesión expirada.');
 
-        // [SEGURIDAD] Verificar bloqueo antes de validar código
-        if (checkLockStatus($pdo, $email)) {
-            throw new Exception("Demasiados intentos fallidos. Espera " . LOCKOUT_TIME_MINUTES . " minutos.");
+        // [MODIFICADO] Verificar bloqueo solo de recovery_fail
+        if (checkLockStatus($pdo, $email, 'recovery_fail')) {
+            throw new Exception("Demasiados intentos de código fallidos. Espera " . LOCKOUT_TIME_MINUTES . " minutos.");
         }
 
         $stmt = $pdo->prepare("SELECT id FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'recovery' AND expires_at > NOW()");
@@ -289,7 +284,7 @@ try {
             $_SESSION['temp_recovery']['step'] = 3; 
             $response = ['success' => true, 'message' => 'Código correcto'];
         } else {
-            // [SEGURIDAD] Fallo -> Registrar
+            // [SEGURIDAD] Fallo recuperación
             logFailedAttempt($pdo, $email, 'recovery_fail');
             throw new Exception('Código incorrecto o expirado.');
         }
@@ -311,7 +306,7 @@ try {
             $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'recovery'")->execute([$email]);
             unset($_SESSION['temp_recovery']);
             
-            // [SEGURIDAD] Limpieza final por si acaso
+            // Limpieza final
             clearFailedAttempts($pdo, $email);
 
             $response = ['success' => true, 'message' => 'Contraseña actualizada correctamente.'];
@@ -326,7 +321,6 @@ try {
 
 } catch (Exception $e) {
     $response['message'] = $e->getMessage();
-    // No saturar log con errores de bloqueo
     if (strpos($e->getMessage(), 'espera') === false) {
         logger("Error: " . $e->getMessage());
     }
