@@ -18,17 +18,19 @@ require_once 'router.php';
         <div class="main-content">
             <div class="general-content">
                 
-                <div class="loader-wrapper">
-                    <div class="loader-spinner"></div>
-                </div>
+                <?php
+                // --- MODIFICACIÓN ---
+                // El loader-wrapper ha sido eliminado de aquí
+                // --- FIN DE LA MODIFICACIÓN ---
+                ?>
 
                 <?php
-                // --- MODIFICACIÓN: Usa la variable $showNavigation del router ---
-                // Determina si el header debe estar oculto INICIALMENTE
-                $headerStyle = (!$showNavigation) ? 'style="display: none;"' : '';
+                // --- Lógica MPA Híbrida ---
+                // Solo muestra el header si $showNavigation (del router) es 'true'
+                if ($showNavigation):
                 ?>
                 
-                <div class="general-content-top" id="main-header" <?php echo $headerStyle; ?>>
+                <div class="general-content-top">
                     <div class="header">
                         <div class="header-left">
                             <div class="header-item">
@@ -52,18 +54,22 @@ require_once 'router.php';
                     </div>
                 </div>
 
+                <?php
+                endif; // Fin del 'if ($showNavigation)'
+                ?>
+
                 <div class="general-content-bottom">
                     <div class="general-content-scrolleable" id="section-container">
                         
                         <?php
                             // Carga SÓLO la sección inicial determinada por el router
                             // Nos aseguramos de que el archivo exista antes de incluirlo
-                            $sectionFile = "includes/sections/{$CURRENT_SECTION}.php"; // <-- RUTA CORREGIDA
+                            $sectionFile = "includes/sections/{$CURRENT_SECTION}.php";
                             if (file_exists($sectionFile)) {
                                 include $sectionFile;
                             } else {
                                 // Si no existe, carga 'main' como fallback
-                                include "includes/sections/main.php"; // <-- RUTA CORREGIDA
+                                include "includes/sections/main.php";
                             }
                         ?>
 
