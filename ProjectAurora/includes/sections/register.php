@@ -33,7 +33,7 @@
                 </button>
             </div>
 
-            <button class="form-button">Continuar</button>
+            <button class="form-button" id="btn-register-submit">Continuar</button>
 
             <div class="form-footer-link">
                 ¿Ya tienes una cuenta? <a href="#" onclick="event.preventDefault(); navigateTo('login')">Iniciar sesión</a>

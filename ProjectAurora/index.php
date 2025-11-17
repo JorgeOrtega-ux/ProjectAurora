@@ -20,7 +20,6 @@ require_once 'config/router.php';
 
                 <?php
                 // --- Lógica MPA Híbrida ---
-                // Solo muestra el header si $showNavigation (del router) es 'true'
                 if ($showNavigation):
                 ?>
 
@@ -29,18 +28,14 @@ require_once 'config/router.php';
                             <div class="header-left">
                                 <div class="header-item">
                                     <div class="header-button">
-                                        <span class="material-symbols-rounded">
-                                            menu
-                                        </span>
+                                        <span class="material-symbols-rounded">menu</span>
                                     </div>
                                 </div>
                             </div>
                             <div class="header-right">
                                 <div class="header-item">
-
                                     <div class="header-button profile-button"></div>
                                 </div>
-
                             </div>
                             <div class="popover-module popover-profile">
                                 <div class="menu-content">
@@ -61,7 +56,7 @@ require_once 'config/router.php';
                                                 <span>Ayuda y comentarios</span>
                                             </div>
                                         </div>
-                                        <div class="menu-link">
+                                        <div class="menu-link menu-link-logout">
                                             <div class="menu-link-icon">
                                                 <span class="material-symbols-rounded">logout</span>
                                             </div>
@@ -75,32 +70,26 @@ require_once 'config/router.php';
                         </div>
                     </div>
 
-                <?php
-                endif; // Fin del 'if ($showNavigation)'
-                ?>
+                <?php endif; ?>
 
                 <div class="general-content-bottom">
                     <div class="general-content-scrolleable" id="section-container">
-
                         <?php
-                        // Carga SÓLO la sección inicial determinada por el router
-                        // Nos aseguramos de que el archivo exista antes de incluirlo
                         $sectionFile = "includes/sections/{$CURRENT_SECTION}.php";
                         if (file_exists($sectionFile)) {
                             include $sectionFile;
                         } else {
-                            // Si no existe, carga 'main' como fallback
                             include "includes/sections/main.php";
                         }
                         ?>
-
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="assets/js/url-manager.js"></script>
+    <script src="<?php echo $basePath; ?>assets/js/url-manager.js"></script>
+    <script src="<?php echo $basePath; ?>assets/js/auth-manager.js"></script>
 </body>
 
 </html>
