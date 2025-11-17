@@ -1,0 +1,38 @@
+[2025-11-17 18:12:08] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:12:11] [CUSTOM] Usuario registrado: 12@gmail.com
+[2025-11-17 18:12:51] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:18] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:18] [CUSTOM] Error: El correo ya está registrado.
+[2025-11-17 18:14:22] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:22] [CUSTOM] Usuario registrado: 1211@gmail.com
+[2025-11-17 18:14:26] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:28] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:28] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:46] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:46] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:14:49] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:49] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:14:51] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:52] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:14:54] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:54] [CUSTOM] Login exitoso: 12@gmail.com
+[2025-11-17 18:17:28] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:17:28] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:17:31] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:17:31] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:17:33] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:17:33] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:17:35] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:17:36] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:17:37] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:17:37] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:17:40] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:17:40] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:17:43] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:17:43] [CUSTOM] Login exitoso: 12@gmail.com
+[2025-11-17 18:31:12] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:31:16] [CUSTOM] Usuario registrado: 122@gmail.com con avatar: assets/uploads/avatars/cf100eed-d538-468f-905b-32a7760c5127.png
+[2025-11-17 18:43:51] [CUSTOM] Login exitoso: 12@gmail.com
+[2025-11-17 18:51:22] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:51:27] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:51:29] [CUSTOM] Login exitoso: 12@gmail.com
