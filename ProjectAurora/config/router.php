@@ -26,7 +26,7 @@ $allowedSections = [
     'register/verification-account',
     'forgot-password',
     'status-page',
-    // [NUEVO] URL para el segundo paso del login
+    // Agregamos la URL solicitada
     'login/verification-additional'
 ];
 
@@ -35,7 +35,7 @@ if (!in_array($CURRENT_SECTION, $allowedSections)) $CURRENT_SECTION = '404';
 if ($CURRENT_SECTION === 'main' && $requestUri !== 'main' && !empty($requestUri)) $CURRENT_SECTION = 'main';
 
 // ==========================================
-// VERIFICACIÓN DE ESTADO Y AUTODESTRUCCIÓN
+// VERIFICACIÓN DE ESTADO
 // ==========================================
 $isLoggedIn = isset($_SESSION['user_id']);
 
@@ -58,20 +58,19 @@ if ($isLoggedIn) {
     } catch (Exception $e) {}
 }
 
-// --- MAPEO INTELIGENTE DE ARCHIVOS ---
-if (strpos($CURRENT_SECTION, 'register/') === 0 || $CURRENT_SECTION === 'register') {
+// --- MAPEO DE ARCHIVOS ---
+// Aquí está la magia: Si la URL es 'login/verification-additional', cargamos 'login.php'
+if ($CURRENT_SECTION === 'login/verification-additional') {
+    $SECTION_FILE_NAME = 'login';
+} elseif (strpos($CURRENT_SECTION, 'register/') === 0 || $CURRENT_SECTION === 'register') {
     $SECTION_FILE_NAME = 'register'; 
 } else {
-    // Esto convertirá 'login/verification-additional' en 'login-verification-additional.php'
     $SECTION_FILE_NAME = str_replace('/', '-', $CURRENT_SECTION);
 }
 
 // ==========================================
-// EL GUARDIA (Seguridad de Pasos)
+// SEGURIDAD DE ACCESO
 // ==========================================
-$isLoggedIn = isset($_SESSION['user_id']);
-
-// [MODIFICADO] Agregamos la nueva ruta a las secciones públicas
 $publicSections = [
     'login', 
     'register', 
@@ -79,7 +78,7 @@ $publicSections = [
     'register/verification-account', 
     'forgot-password', 
     'status-page',
-    'login/verification-additional' // <-- IMPORTANTE
+    'login/verification-additional' // Es pública (no requiere sesión de usuario completa)
 ];
 
 if (!$isLoggedIn && !in_array($CURRENT_SECTION, $publicSections) && $CURRENT_SECTION !== '404') {
@@ -89,26 +88,23 @@ if ($isLoggedIn && in_array($CURRENT_SECTION, $publicSections)) {
     header("Location: " . $basePath); exit;
 }
 
-// Definir REQUISITOS para entrar a cada URL
+// Requisitos previos (para evitar acceso directo sin datos)
 $requirements = [
     'register/additional-data'      => ['key' => 'temp_register', 'sub' => 'email'],
     'register/verification-account' => ['key' => 'temp_register', 'sub' => 'username'],
-    // [NUEVO] Requisito: Debe haber un ID de usuario temporal esperando 2FA
     'login/verification-additional' => ['key' => 'temp_login_2fa', 'sub' => 'user_id']
 ];
 
-// Verificar requisitos
 if (array_key_exists($CURRENT_SECTION, $requirements)) {
     $req = $requirements[$CURRENT_SECTION];
     $hasData = isset($_SESSION[$req['key']][$req['sub']]) && !empty($_SESSION[$req['key']][$req['sub']]);
 
     if (!$hasData) {
-        // Si intentan entrar directo sin pasar por login, los mandamos al login
+        // Si intentan entrar a la url de 2FA sin haber hecho login previo, mandar al login
         if ($CURRENT_SECTION === 'login/verification-additional') {
-             header("Location: " . $basePath . "login"); 
-             exit;
+            header("Location: " . $basePath . "login");
+            exit;
         }
-        
         $SECTION_FILE_NAME = 'error-missing-data';
         $missingDataMessage = "No has completado el paso anterior para acceder a <strong>$CURRENT_SECTION</strong>.";
     }

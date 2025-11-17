@@ -58,9 +58,19 @@ function generate_uuid() {
         mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff )
     );
 }
+
 function get_random_color() {
-    return str_pad(dechex(mt_rand(0, 0xFFFFFF)), 6, '0', STR_PAD_LEFT);
+    // Lista de colores permitidos (sin el # para la API de UI Avatars)
+    $colors = [
+        'C84F4F', // Rojo esmeralda-like
+        '4F7AC8', // Azul esmeralda-like
+        '8C4FC8', // Morado esmeralda-like
+        'C87A4F', // Naranja esmeralda-like
+        '4FC8C8'  // Cian esmeralda-like
+    ];
+    return $colors[array_rand($colors)];
 }
+
 function generate_verification_code() {
     return strtoupper(substr(bin2hex(random_bytes(5)), 0, 10));
 }
@@ -68,13 +78,20 @@ function is_allowed_domain($email) {
     return preg_match('/@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i', $email);
 }
 
-// Función para establecer sesión final
 function set_user_session($user) {
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['user_uuid'] = $user['uuid'];
     $_SESSION['user_email'] = $user['email'];
     $_SESSION['user_avatar'] = $user['avatar'];
     $_SESSION['user_role'] = $user['role'];
+}
+
+function mask_email($email) {
+    $parts = explode('@', $email);
+    if(count($parts) == 2){
+        return substr($parts[0], 0, 3) . '***@' . $parts[1];
+    }
+    return $email;
 }
 
 $response = ['success' => false, 'message' => 'Acción no válida'];
@@ -84,7 +101,6 @@ try {
     // REGISTRO - ETAPA 1
     // ==================================================================
     if ($action === 'register_step_1') {
-        // ... (Código existente de registro step 1 igual) ...
         $email = filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL);
         $password = $data['password'] ?? '';
 
@@ -107,7 +123,6 @@ try {
     // REGISTRO - ETAPA 2
     // ==================================================================
     } elseif ($action === 'register_step_2') {
-        // ... (Código existente de registro step 2 igual) ...
         $username = trim($data['username'] ?? '');
         $email = $_SESSION['temp_register']['email'] ?? '';
         $rawPassword = $_SESSION['temp_register']['password'] ?? '';
@@ -140,7 +155,6 @@ try {
     // REGISTRO - ETAPA 3
     // ==================================================================
     } elseif ($action === 'register_final') {
-        // ... (Código existente de registro final igual) ...
         $inputCode = strtoupper(trim($data['code'] ?? ''));
         $email = $_SESSION['temp_register']['email'] ?? '';
 
@@ -159,7 +173,6 @@ try {
         $uuid = generate_uuid();
         $selectedColor = get_random_color();
         
-        // Avatar logic (simplificado para espacio)
         $apiUrl = "https://ui-avatars.com/api/?name={$finalUsername}&size=256&background={$selectedColor}&color=ffffff&bold=true&length=1";
         $fileName = $uuid . '.png';
         $destPath = __DIR__ . '/../assets/uploads/avatars/' . $fileName;
@@ -172,7 +185,6 @@ try {
         if ($insert->execute([$uuid, $email, $finalUsername, $finalPassHash, $dbPath])) {
             $newUserId = $pdo->lastInsertId();
             
-            // Construir array de usuario para la función helper
             $newUser = [
                 'id' => $newUserId,
                 'uuid' => $uuid,
@@ -191,7 +203,7 @@ try {
         }
 
     // ==================================================================
-    // LOGIN (MODIFICADO PARA 2FA)
+    // LOGIN (CON SOPORTE 2FA INTEGRADO)
     // ==================================================================
     } elseif ($action === 'login') {
         $email = filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL);
@@ -207,37 +219,35 @@ try {
 
         if ($user && password_verify($password, $user['password'])) {
             
-            // Chequeo de estado
             if (isset($user['account_status']) && $user['account_status'] !== 'active') {
                 throw new Exception('Tu cuenta no está activa o ha sido suspendida.');
             }
 
-            // [NUEVO] LÓGICA 2FA
+            // LÓGICA 2FA
             if (isset($user['is_2fa_enabled']) && $user['is_2fa_enabled'] == 1) {
                 
-                // 1. Generar Code
                 $code = generate_verification_code();
                 
-                // 2. Guardar code en BD
-                // Borramos codes anteriores de 2fa para este user
                 $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'login_2fa'")->execute([$email]);
                 
                 $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, expires_at) VALUES (?, 'login_2fa', ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE))");
                 $stmt->execute([$email, $code]);
                 
-                // 3. Guardar sesión temporal (NO la sesión completa de usuario)
                 if (!isset($_SESSION['temp_login_2fa'])) $_SESSION['temp_login_2fa'] = [];
                 $_SESSION['temp_login_2fa']['user_id'] = $user['id'];
                 $_SESSION['temp_login_2fa']['email'] = $user['email'];
                 
-                // 4. Logger (En producción esto se envía por email)
                 logger("Code 2FA Login para $email: $code");
                 
-                // 5. Retornar instrucción al frontend para redirigir
-                $response = ['success' => true, 'require_2fa' => true, 'message' => 'Verificación requerida'];
+                // [NUEVO] Enviamos el email enmascarado al frontend
+                $response = [
+                    'success' => true, 
+                    'require_2fa' => true, 
+                    'message' => 'Verificación requerida',
+                    'masked_email' => mask_email($email)
+                ];
                 
             } else {
-                // LOGIN ESTÁNDAR (Sin 2FA)
                 clearFailedAttempts($pdo, $email);
                 set_user_session($user);
                 $response = ['success' => true, 'message' => 'Login correcto'];
@@ -249,7 +259,7 @@ try {
         }
 
     // ==================================================================
-    // [NUEVO] LOGIN 2FA VERIFICATION
+    // LOGIN 2FA VERIFICATION
     // ==================================================================
     } elseif ($action === 'login_2fa_verify') {
         $inputCode = strtoupper(trim($data['code'] ?? ''));
@@ -269,24 +279,16 @@ try {
         $stmt->execute([$email, $inputCode]);
         
         if ($stmt->rowCount() > 0) {
-            // Código Correcto
-            // Borramos el código usado
             $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'login_2fa'")->execute([$email]);
             
-            // Obtenemos datos frescos del usuario
             $stmtUser = $pdo->prepare("SELECT * FROM users WHERE id = ?");
             $stmtUser->execute([$userId]);
             $user = $stmtUser->fetch();
             
             if (!$user) throw new Exception("Usuario no encontrado.");
 
-            // Limpiamos bloqueos
             clearFailedAttempts($pdo, $email);
-            
-            // Establecemos sesión real
             set_user_session($user);
-            
-            // Limpiamos sesión temporal
             unset($_SESSION['temp_login_2fa']);
             
             $response = ['success' => true, 'message' => 'Autenticación completada'];
@@ -296,16 +298,14 @@ try {
         }
 
     // ==================================================================
-    // RECUPERACIÓN Y LOGOUT (SIN CAMBIOS)
+    // RECUPERACIÓN Y LOGOUT
     // ==================================================================
     } elseif ($action === 'recovery_step_1') {
-        // ... (Código recovery 1 igual) ...
         $email = filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL);
-        // ...
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
         if ($stmt->rowCount() === 0) throw new Exception('Este correo no está registrado.');
-        // ...
+        
         $code = generate_verification_code();
         $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'recovery'")->execute([$email]);
         $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, expires_at) VALUES (?, 'recovery', ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
@@ -319,10 +319,9 @@ try {
         $response = ['success' => true, 'message' => 'Código enviado'];
 
     } elseif ($action === 'recovery_step_2') {
-        // ... (Código recovery 2 igual) ...
         $email = $_SESSION['temp_recovery']['email'] ?? '';
         $inputCode = strtoupper(trim($data['code'] ?? ''));
-        // ...
+        
         $stmt = $pdo->prepare("SELECT id FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'recovery' AND expires_at > NOW()");
         $stmt->execute([$email, $inputCode]);
         
@@ -335,7 +334,6 @@ try {
         }
 
     } elseif ($action === 'recovery_final') {
-        // ... (Código recovery final igual) ...
         $email = $_SESSION['temp_recovery']['email'] ?? '';
         $verified = $_SESSION['temp_recovery']['verified'] ?? false;
         $newPass = $data['password'] ?? '';

@@ -84,16 +84,32 @@ export function initAuthManager() {
             }
         }
 
-        // --- LOGIN ---
+        // --- LOGIN (STEP 1) ---
         if (e.target.closest('#btn-login-submit')) {
             e.preventDefault();
             await handleLogin();
         }
 
-        // [NUEVO] --- LOGIN 2FA VERIFY ---
+        // --- LOGIN (STEP 2 - 2FA SUBMIT) ---
         if (e.target.closest('#btn-login-2fa-submit')) {
             e.preventDefault();
             await handleLogin2FA();
+        }
+
+        // [NUEVO] --- LOGIN (STEP 2 - BOTÓN ATRÁS) ---
+        if (e.target.closest('#btn-login-2fa-back')) {
+            e.preventDefault();
+            // Restaurar vista al paso 1
+            document.getElementById('login-step-1').style.display = 'block';
+            document.getElementById('login-step-2').style.display = 'none';
+            
+            // Restaurar URL a /login
+            const loginUrl = API_BASE_PATH + 'login';
+            history.pushState({ section: 'login' }, '', loginUrl);
+            
+            // Limpiar errores previos del paso 2
+            const err = document.getElementById('login-2fa-error');
+            if(err) { err.innerText = ''; err.classList.remove('active'); }
         }
         
         // --- LOGOUT ---
@@ -117,7 +133,7 @@ export function initAuthManager() {
     });
 }
 
-// [NUEVO] Helper para obtener el token
+// [NUEVO] Helper para obtener el token CSRF
 function getCsrfToken() {
     const meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.getAttribute('content') : '';
@@ -318,7 +334,7 @@ async function handleRecoveryStep(stepName) {
     if(errorDiv) { errorDiv.innerText = ''; errorDiv.classList.remove('active'); }
 
     try {
-        // [MODIFICADO] Header CSRF
+        // Header CSRF
         const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
             method: 'POST', 
             headers: { 
@@ -370,7 +386,7 @@ async function sendAuthRequest(payload, btnId, errorId, nextStep, nextUrl) {
     }
     
     try {
-        // [MODIFICADO] Header CSRF
+        // Header CSRF
         const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
             method: 'POST', 
             headers: { 
@@ -398,7 +414,7 @@ async function sendAuthRequest(payload, btnId, errorId, nextStep, nextUrl) {
     }
 }
 
-// --- LÓGICA DE LOGIN (ACTUALIZADA) ---
+// --- LÓGICA DE LOGIN (ACTUALIZADA CON HISTORY API) ---
 async function handleLogin() {
     const emailInput = document.getElementById('login-email');
     const passInput = document.getElementById('login-password');
@@ -421,7 +437,6 @@ async function handleLogin() {
     btn.disabled = true;
 
     try {
-        // [MODIFICADO] Header CSRF
         const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
             method: 'POST',
             headers: { 
@@ -436,10 +451,33 @@ async function handleLogin() {
         });
 
         const res = await response.json();
+        
         if (res.success) {
             if (res.require_2fa) {
-                // Si el backend dice que necesitamos 2FA, redirigimos a la URL especial
-                navigateTo('login/verification-additional');
+                // [NUEVO] 1. Cambiar URL visualmente (History API) a la URL de verificación
+                const nextUrl = API_BASE_PATH + 'login/verification-additional';
+                history.pushState({ section: 'login/verification-additional' }, '', nextUrl);
+
+                // [NUEVO] 2. Cambiar UI dentro del mismo archivo (login.php maneja ambos)
+                document.getElementById('login-step-1').style.display = 'none';
+                document.getElementById('login-step-2').style.display = 'block';
+                
+                // Inyectar email enmascarado si viene del backend
+                const displayEmail = document.getElementById('login-2fa-email-display');
+                if(displayEmail && res.masked_email) {
+                    displayEmail.innerText = res.masked_email;
+                }
+
+                // Restaurar botón
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+                
+                // Enfocar campo de código automáticamente
+                setTimeout(() => {
+                    const codeField = document.getElementById('login-2fa-code');
+                    if(codeField) codeField.focus();
+                }, 100);
+
             } else {
                 // Login normal exitoso
                 window.location.href = API_BASE_PATH;
@@ -465,7 +503,7 @@ async function handleLogin() {
     }
 }
 
-// [NUEVO] --- LÓGICA LOGIN 2FA ---
+// [NUEVO] --- LÓGICA LOGIN 2FA VERIFY ---
 async function handleLogin2FA() {
     const codeInput = document.getElementById('login-2fa-code');
     const errorDiv = document.getElementById('login-2fa-error');

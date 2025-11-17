@@ -3,19 +3,16 @@ const allowedSections = [
     'register/additional-data',
     'register/verification-account',
     'forgot-password',
-    'status-page',
-    // [NUEVO]
-    'login/verification-additional'
+    'status-page'
 ];
-// [NUEVO] Agregamos login/verification-additional a authZone
+
 const authZone = [
     'login', 
     'register', 
     'register/additional-data', 
     'register/verification-account', 
     'forgot-password', 
-    'status-page', 
-    'login/verification-additional'
+    'status-page'
 ];
 
 const basePath = window.BASE_PATH || '/ProjectAurora/';
@@ -64,11 +61,9 @@ async function showSection(sectionName, pushState = true) {
     const container = document.getElementById('section-container');
     if (!container) { window.location.reload(); return; }
 
-    // Reemplazo estándar de '/' por '-' para coincidir con nombres de archivo
     let fileToFetch = sectionName.replace('/', '-'); 
     let queryParams = `?t=${Date.now()}`;
 
-    // Casos especiales de Register (se mantienen igual)
     if (sectionName === 'register/additional-data') {
         fileToFetch = 'register';
         queryParams += '&step=2';
@@ -80,8 +75,6 @@ async function showSection(sectionName, pushState = true) {
         queryParams += '&step=1';
     }
     
-    // [NOTA] login/verification-additional cargará login-verification-additional.php automáticamente
-
     try {
         const resp = await fetch(`${basePath}includes/sections/${fileToFetch}.php${queryParams}`);
         if (!resp.ok) throw new Error('Error de carga');
