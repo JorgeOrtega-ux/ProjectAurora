@@ -1,6 +1,5 @@
 <?php
 // --- INICIO DE SESIÓN OBLIGATORIO ---
-// Iniciamos la sesión aquí para poder leer $_SESSION en todo el sitio
 session_start();
 
 // Define la sección por defecto
@@ -22,7 +21,7 @@ $requestUri = strtok($requestUri, '?');
 // Limpia slashes al final
 $requestUri = rtrim($requestUri, '/');
 
-// --- API ROUTING (Del paso anterior) ---
+// --- API ROUTING ---
 if (strpos($requestUri, 'api/') === 0) {
     $apiFilePath = __DIR__ . '/../' . $requestUri;
     if (file_exists($apiFilePath)) {
@@ -36,10 +35,17 @@ if (strpos($requestUri, 'api/') === 0) {
     }
 }
 
-// Secciones permitidas
-$allowedSections = ['main', 'login', 'register', 'explorer'];
+// --- SECCIONES PERMITIDAS (RUTAS) ---
+$allowedSections = [
+    'main', 
+    'login', 
+    'register', 
+    'register/additional-data', 
+    'register/verification-account', 
+    'explorer'
+];
 
-// Determina la sección actual
+// Determina la sección actual (URL)
 $CURRENT_SECTION = $DEFAULT_SECTION; 
 
 if (empty($requestUri)) {
@@ -54,27 +60,38 @@ if ($CURRENT_SECTION === 'main' && $requestUri !== 'main' && !empty($requestUri)
      $CURRENT_SECTION = 'main';
 }
 
+// --- LÓGICA DE MAPEO DE ARCHIVOS ---
+// Convierte 'register/additional-data' en 'register-additional-data' para buscar el archivo .php
+$SECTION_FILE_NAME = str_replace('/', '-', $CURRENT_SECTION);
+
+
 // --- LÓGICA DE PROTECCIÓN (EL GUARDIA) ---
 
 $isLoggedIn = isset($_SESSION['user_id']);
-$publicSections = ['login', 'register'];
 
-// CASO 1: Usuario NO logueado intenta entrar a una zona privada (como 'main')
+// Secciones públicas donde NO se requiere login
+$publicSections = [
+    'login', 
+    'register', 
+    'register/additional-data', 
+    'register/verification-account'
+];
+
+// CASO 1: Usuario NO logueado intenta entrar a una zona privada
 if (!$isLoggedIn && !in_array($CURRENT_SECTION, $publicSections)) {
-    // Lo forzamos a ir al login
     header("Location: " . $basePath . "login");
     exit;
 }
 
-// CASO 2: Usuario YA logueado intenta entrar a 'login' o 'register'
+// CASO 2: Usuario YA logueado intenta entrar a zonas de auth
 if ($isLoggedIn && in_array($CURRENT_SECTION, $publicSections)) {
-    // Lo mandamos directo al main (ya estás dentro, no necesitas loguearte)
     header("Location: " . $basePath); 
     exit;
 }
 
 // --- FIN LÓGICA PROTECCIÓN ---
 
-$showNavigation = !in_array($CURRENT_SECTION, ['login', 'register', '404']);
+// Mostrar navegación solo si no estamos en login/register/404
+$showNavigation = !in_array($CURRENT_SECTION, array_merge($publicSections, ['404']));
 
 ?>

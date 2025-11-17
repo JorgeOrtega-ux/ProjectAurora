@@ -23,7 +23,6 @@ if (isset($_SESSION['user_id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Definimos la variable JS global para el path (los módulos pueden acceder a esto) -->
     <script>
         window.BASE_PATH = '<?php echo $basePath; ?>';
     </script>
@@ -45,13 +44,12 @@ if (isset($_SESSION['user_id'])) {
                 <?php endif; ?>
 
                 <div class="general-content-bottom">
-                    <!-- Menú Lateral -->
                     <?php include 'includes/modules/module-surface.php'; ?>
 
-                    <!-- Contenedor de Secciones -->
                     <div class="general-content-scrolleable" id="section-container">
                         <?php
-                        $sectionFile = "includes/sections/{$CURRENT_SECTION}.php";
+                        // Usamos la variable procesada en router.php
+                        $sectionFile = "includes/sections/{$SECTION_FILE_NAME}.php";
                         if (file_exists($sectionFile)) {
                             include $sectionFile;
                         } else {
@@ -64,11 +62,6 @@ if (isset($_SESSION['user_id'])) {
         </div>
     </div>
 
-    <!-- 
-      ¡TADA! Solo un script. 
-      'type="module"' es la magia que permite usar 'import' y 'export'.
-    -->
     <script type="module" src="<?php echo $basePath; ?>assets/js/app-init.js"></script>
 </body>
-
 </html>

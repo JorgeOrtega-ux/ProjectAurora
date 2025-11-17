@@ -4,36 +4,37 @@
 
         <div class="form-container">
             
-            <h1>Registro</h1>
-            <p>Crea tu cuenta para continuar.</p>
+            <h1>Registro (1/3)</h1>
+            <p>Comencemos con tus credenciales.</p>
 
             <div class="floating-label-group">
                 <input 
                     type="email" 
-                    id="register-email" 
+                    id="reg-email" 
                     class="floating-input" 
                     required 
                     placeholder=" "
+                    value="<?php echo isset($_SESSION['temp_register']['email']) ? htmlspecialchars($_SESSION['temp_register']['email']) : ''; ?>"
                 >
-                <label for="register-email" class="floating-label">Correo Electrónico</label>
+                <label for="reg-email" class="floating-label">Correo Electrónico</label>
             </div>
 
             <div class="floating-label-group">
                 <input 
                     type="password" 
-                    id="register-password" 
+                    id="reg-password" 
                     class="floating-input" 
                     required 
                     placeholder=" "
                 >
-                <label for="register-password" class="floating-label">Contraseña</label>
+                <label for="reg-password" class="floating-label">Contraseña</label>
                 
                 <button type="button" class="password-toggle-btn">
                     <span class="material-symbols-rounded">visibility</span>
                 </button>
             </div>
 
-            <button class="form-button" id="btn-register-submit">Continuar</button>
+            <button class="form-button" id="btn-register-step1">Siguiente</button>
 
             <div id="register-error" class="form-error-message"></div>
 
