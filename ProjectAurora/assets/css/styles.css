@@ -496,7 +496,7 @@ input#login-password {
 
 .error-404-badge {
     display: inline-block;
-    padding: 6px 12px;
+    padding: 6px 16px;
     font-size: 14px;
     font-weight: 500;
     color: #000000;
