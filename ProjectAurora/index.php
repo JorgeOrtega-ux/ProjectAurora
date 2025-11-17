@@ -17,33 +17,64 @@ require_once 'config/router.php';
     <div class="page-wrapper">
         <div class="main-content">
             <div class="general-content">
-                
+
                 <?php
                 // --- Lógica MPA Híbrida ---
                 // Solo muestra el header si $showNavigation (del router) es 'true'
                 if ($showNavigation):
                 ?>
-                
-                <div class="general-content-top">
-                    <div class="header">
-                        <div class="header-left">
-                            <div class="header-item">
-                                <div class="header-button">
-                                    <span class="material-symbols-rounded">
-                                        menu
-                                    </span>
-                                D</div>
+
+                    <div class="general-content-top">
+                        <div class="header">
+                            <div class="header-left">
+                                <div class="header-item">
+                                    <div class="header-button">
+                                        <span class="material-symbols-rounded">
+                                            menu
+                                        </span>
+                                        D
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="header-right">
-                            <div class="header-item">
-                                
-                                <div class="header-button profile-button">
+                            <div class="header-right">
+                                <div class="header-item">
+
+                                    <div class="header-button profile-button"></div>
+                                </div>
+
+                            </div>
+                            <div class="popover-module popover-profile">
+                                <div class="menu-content">
+                                    <div class="menu-list">
+                                        <div class="menu-link">
+                                            <div class="menu-link-icon">
+                                                <span class="material-symbols-rounded">settings</span>
+                                            </div>
+                                            <div class="menu-link-text">
+                                                <span>Configuración</span>
+                                            </div>
+                                        </div>
+                                        <div class="menu-link">
+                                            <div class="menu-link-icon">
+                                                <span class="material-symbols-rounded">help</span>
+                                            </div>
+                                            <div class="menu-link-text">
+                                                <span>Ayuda y comentarios</span>
+                                            </div>
+                                        </div>
+                                        <div class="menu-link">
+                                            <div class="menu-link-icon">
+                                                <span class="material-symbols-rounded">logout</span>
+                                            </div>
+                                            <div class="menu-link-text">
+                                                <span>Cerrar sesión</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
                 <?php
                 endif; // Fin del 'if ($showNavigation)'
@@ -51,17 +82,17 @@ require_once 'config/router.php';
 
                 <div class="general-content-bottom">
                     <div class="general-content-scrolleable" id="section-container">
-                        
+
                         <?php
-                            // Carga SÓLO la sección inicial determinada por el router
-                            // Nos aseguramos de que el archivo exista antes de incluirlo
-                            $sectionFile = "includes/sections/{$CURRENT_SECTION}.php";
-                            if (file_exists($sectionFile)) {
-                                include $sectionFile;
-                            } else {
-                                // Si no existe, carga 'main' como fallback
-                                include "includes/sections/main.php";
-                            }
+                        // Carga SÓLO la sección inicial determinada por el router
+                        // Nos aseguramos de que el archivo exista antes de incluirlo
+                        $sectionFile = "includes/sections/{$CURRENT_SECTION}.php";
+                        if (file_exists($sectionFile)) {
+                            include $sectionFile;
+                        } else {
+                            // Si no existe, carga 'main' como fallback
+                            include "includes/sections/main.php";
+                        }
                         ?>
 
                     </div>
