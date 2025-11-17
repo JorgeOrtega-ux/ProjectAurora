@@ -1,7 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap');
+
 * {
     padding: 0;
     margin: 0;
     box-sizing: border-box;
+    font-family: "Roboto Condensed", sans-serif;
 }
 
 body,
@@ -123,23 +126,31 @@ html {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(255, 255, 255, 0.8); /* Fondo blanco semitransparente */
-    display: flex; /* Usamos flex para centrar el spinner */
+    background-color: rgba(255, 255, 255, 0.8);
+    /* Fondo blanco semitransparente */
+    display: flex;
+    /* Usamos flex para centrar el spinner */
     justify-content: center;
     align-items: center;
-    z-index: 1000; /* Asegura que esté por encima del contenido */
-    display: none; /* Oculto por defecto */
-    border-radius: 12px; /* Hereda el borde del .general-content */
+    z-index: 1000;
+    /* Asegura que esté por encima del contenido */
+    display: none;
+    /* Oculto por defecto */
+    border-radius: 12px;
+    /* Hereda el borde del .general-content */
 }
 
 /* El Spinner */
 .loader-spinner {
     width: 40px;
     height: 40px;
-    border: 4px solid #f3f3f3; /* Gris claro */
-    border-top: 4px solid #3498db; /* Azul */
+    border: 4px solid #f3f3f3;
+    /* Gris claro */
+    border-top: 4px solid #3498db;
+    /* Azul */
     border-radius: 50%;
-    animation: spin 1s linear infinite; /* Animación de rotación */
+    animation: spin 1s linear infinite;
+    /* Animación de rotación */
 }
 
 /* Animación de rotación para el spinner */
@@ -147,6 +158,7 @@ html {
     0% {
         transform: rotate(0deg);
     }
+
     100% {
         transform: rotate(360deg);
     }
@@ -156,7 +168,8 @@ html {
 .section-content {
     width: 100%;
     height: 100%;
-    padding: 16px; /* Añade algo de padding interno */
+    padding: 16px;
+    /* Añade algo de padding interno */
 }
 
 .section-content.overflow-y {
@@ -165,9 +178,201 @@ html {
 
 /* Clases para mostrar/ocultar secciones */
 .section-content.active {
-    display: block; /* O 'flex', 'grid', etc., según tu layout interno */
+    display: block;
+    /* O 'flex', 'grid', etc., según tu layout interno */
 }
 
 .section-content.disabled {
     display: none;
+}
+
+/* --- ESTILOS DEL FORMULARIO DE REGISTRO --- */
+
+/* NUEVO: Wrapper para centrar vertical y horizontalmente */
+.section-center-wrapper {
+    width: 100%;
+    min-height: 100%;
+    /* Asegura que ocupe al menos toda la altura de la vista */
+    display: flex;
+    justify-content: center;
+    /* Centrado horizontal */
+    align-items: center;
+    /* Centrado vertical */
+    padding: 20px;
+    /* Espacio para que no pegue a los bordes en pantallas pequeñas */
+}
+
+/* Contenedor del formulario */
+.form-container {
+    max-width: 400px;
+    width: 100%;
+    /* Para responsiveness */
+    margin: 0;
+    /* Ya no necesita margen 'auto' */
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-container h1 {
+    text-align: center;
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+}
+
+.form-container p {
+    text-align: center;
+    font-size: 16px;
+    color: #666;
+    margin-top: -10px;
+}
+
+/* Grupo que contiene el input y el label */
+.floating-label-group {
+    position: relative;
+}
+
+/* El input */
+.floating-input {
+    height: 55px;
+    /* 55px de alto */
+    width: 100%;
+    padding: 14px 12px 0 12px;
+    font-size: 16px;
+    color: #333;
+    border: 1px solid #00000030;
+    border-radius: 8px;
+    outline: none;
+    box-sizing: border-box;
+    background-color: transparent;
+    /* <-- CORRECCIÓN: transparente */
+}
+
+/* El label */
+.floating-label {
+    position: absolute;
+    top: 27.5px;
+    /* (55px / 2) para centrado perfecto */
+    left: 12px;
+    font-size: 16px;
+    color: #888;
+    pointer-events: none;
+    transform: translateY(-50%);
+    transition: all 0.2s ease-out;
+}
+
+/* --- La Magia: Animación del Label --- */
+
+.floating-input:focus~.floating-label,
+.floating-input:not(:placeholder-shown)~.floating-label {
+    top: 10px;
+    transform: translateY(0);
+    font-size: 12px;
+    color: #000;
+    /* Color de marca (negro) */
+}
+
+/* Cambia el color del borde en focus */
+.floating-input:focus {
+    border-color: #000;
+    /* Color de marca (negro) */
+    background-color: #fff;
+    /* <-- CORRECCIÓN: blanco en focus */
+}
+
+/* Botón del formulario */
+.form-button {
+    height: 55px;
+    /* 55px de alto */
+    width: 100%;
+    border: none;
+    border-radius: 8px;
+    background-color: #000;
+    /* Color de marca (negro) */
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 0.2s ease;
+}
+
+.form-button:hover {
+    background-color: #333;
+    /* Hover para el botón negro */
+}
+
+/* --- ADICIONES AL FORMULARIO DE REGISTRO --- */
+
+/* Ajuste para el input de contraseña (para que el texto no quede debajo del icono) */
+input#register-password {
+    padding-right: 50px;
+    /* Añade espacio a la derecha */
+}
+
+/* Botón de mostrar/ocultar contraseña */
+.password-toggle-btn {
+    position: absolute;
+    top: 27.5px;
+    /* Centrado vertical (55px / 2) */
+    right: 10px;
+    /* Pegado a la derecha */
+    transform: translateY(-50%);
+    /* Alineación vertical perfecta */
+
+    /* -- CORRECCIÓN: Estilos para forma redonda -- */
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    padding: 0;
+    transition: background-color 0.2s ease;
+    /* -- FIN CORRECCIÓN -- */
+
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    /* Color gris sutil */
+    outline: none;
+}
+
+.password-toggle-btn:hover {
+    color: #000;
+    /* Color de marca al pasar el mouse */
+    background-color: #f5f5fa;
+    /* <-- CORRECCIÓN: Fondo en hover */
+}
+
+/* Icono de Google (asegura el tamaño) */
+.password-toggle-btn .material-symbols-rounded {
+    font-size: 24px;
+}
+
+/* Estilos para el link "Iniciar Sesión" */
+.form-footer-link {
+    text-align: center;
+    margin-top: 15px;
+    /* Espacio después del botón */
+    font-size: 14px;
+    color: #666;
+    /* Color para el texto "¿Ya tienes...?" */
+}
+
+.form-footer-link a {
+    color: #000;
+    /* Color de marca (negro) */
+    font-weight: 600;
+    /* Más notorio */
+    text-decoration: none;
+    /* Sin subrayado por defecto */
+}
+
+.form-footer-link a:hover {
+    text-decoration: underline;
+    /* Subrayado al pasar el mouse */
 }
