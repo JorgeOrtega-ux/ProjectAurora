@@ -18,4 +18,3 @@ try {
     // En producción no muestres el error real
     die(json_encode(['success' => false, 'message' => 'Error de conexión a base de datos']));
 }
-?>

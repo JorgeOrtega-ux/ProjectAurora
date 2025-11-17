@@ -15,28 +15,37 @@ document.addEventListener('DOMContentLoaded', () => {
             await handleAuth('login');
         }
 
-        // --- MANEJAR LOGOUT ---
-        // Buscamos la clase o ID del botón de cerrar sesión en el menú
+        // --- MANEJAR LOGOUT (NUEVO) ---
+        // Detectamos el clic en tu botón div existente
         if (e.target.closest('.menu-link-logout')) {
-            // No prevenimos default inmediatamente si es un link, pero aquí actuamos como botón
-            await handleLogout();
+            e.preventDefault(); // Prevenir comportamiento default por si acaso
+            // Redirigimos al navegador al script de PHP que destruye la sesión
+            window.location.href = 'logout.php';
         }
     });
 });
+
+// Definimos el path base para evitar problemas de rutas relativas
+const API_BASE_PATH = '/ProjectAurora/';
 
 async function handleAuth(action) {
     const emailId = action === 'register' ? 'register-email' : 'login-email';
     const passId = action === 'register' ? 'register-password' : 'login-password';
 
-    const email = document.getElementById(emailId).value;
-    const password = document.getElementById(passId).value;
+    // Verificación de existencia de elementos
+    const emailInput = document.getElementById(emailId);
+    const passInput = document.getElementById(passId);
+
+    if (!emailInput || !passInput) return;
+
+    const email = emailInput.value;
+    const password = passInput.value;
 
     if (!email || !password) {
         alert('Por favor completa todos los campos');
         return;
     }
 
-    // Mostrar estado de carga (opcional: cambiar texto del botón)
     const btnId = action === 'register' ? 'btn-register-submit' : 'btn-login-submit';
     const btn = document.getElementById(btnId);
     const originalText = btn.innerText;
@@ -44,21 +53,26 @@ async function handleAuth(action) {
     btn.disabled = true;
 
     try {
-        const response = await fetch('api/auth_handler.php', {
+        const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action, email, password })
         });
 
-        const result = await response.json();
+        const text = await response.text();
+        let result;
+        try {
+            result = JSON.parse(text);
+        } catch (e) {
+            console.error('Respuesta no válida:', text);
+            throw new Error('Error del servidor.');
+        }
 
         if (result.success) {
-            // Redirigir a Main
-            // Usamos la función global navigateTo de url-manager.js
             if (typeof navigateTo === 'function') {
                 navigateTo('main');
             } else {
-                window.location.reload();
+                window.location.href = API_BASE_PATH;
             }
         } else {
             alert(result.message);
@@ -66,32 +80,11 @@ async function handleAuth(action) {
 
     } catch (error) {
         console.error('Error:', error);
-        alert('Ocurrió un error inesperado');
+        alert(error.message || 'Ocurrió un error inesperado');
     } finally {
-        btn.innerText = originalText;
-        btn.disabled = false;
-    }
-}
-
-async function handleLogout() {
-    try {
-        const response = await fetch('api/auth_handler.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'logout' })
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            // Redirigir al login
-            if (typeof navigateTo === 'function') {
-                navigateTo('login');
-            } else {
-                window.location.href = 'login';
-            }
+        if(btn) {
+            btn.innerText = originalText;
+            btn.disabled = false;
         }
-    } catch (error) {
-        console.error('Error logout:', error);
     }
 }
