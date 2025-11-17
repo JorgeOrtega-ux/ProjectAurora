@@ -1,5 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap');
 
+/* =========================================
+   1. BASE Y RESET
+   ========================================= */
 * {
     padding: 0;
     margin: 0;
@@ -13,6 +16,9 @@ html {
     height: 100%;
 }
 
+/* =========================================
+   2. LAYOUT PRINCIPAL
+   ========================================= */
 .page-wrapper {
     width: 100%;
     height: 100%;
@@ -59,6 +65,31 @@ html {
     overflow: auto;
 }
 
+.section-content {
+    width: 100%;
+    height: 100%;
+    padding: 16px;
+}
+
+.section-content.overflow-y {
+    overflow-y: auto;
+}
+
+.active {
+    display: block;
+}
+
+.section-content.active {
+    display: block;
+}
+
+.disabled {
+    display: none;
+}
+
+/* =========================================
+   3. HEADER Y BOTONES SUPERIORES
+   ========================================= */
 .header {
     position: relative;
     display: flex;
@@ -72,7 +103,8 @@ html {
     border-top-right-radius: 12px;
 }
 
-.header-left {
+.header-left,
+.header-right {
     display: flex;
     flex: 0 0 auto;
 }
@@ -80,8 +112,6 @@ html {
 .header-right {
     position: relative;
     z-index: 1;
-    display: flex;
-    flex: 0 0 auto;
 }
 
 .header-item {
@@ -111,298 +141,16 @@ html {
     background-color: #f5f5fa;
 }
 
+/* =========================================
+   4. PERFIL DE USUARIO Y ROLES
+   ========================================= */
 .header-button.profile-button {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background-color: transparent;
-    padding: 0;
-}
-
-/* Loader Spinner Wrapper */
-.loader-wrapper {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    /* Fondo blanco semitransparente */
-    display: flex;
-    /* Usamos flex para centrar el spinner */
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    /* Asegura que esté por encima del contenido */
-    display: none;
-    /* Oculto por defecto */
-    border-radius: 12px;
-    /* Hereda el borde del .general-content */
-}
-
-/* El Spinner */
-.loader-spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f3f3f3;
-    /* Gris claro */
-    border-top: 4px solid #3498db;
-    /* Azul */
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    /* Animación de rotación */
-}
-
-/* Animación de rotación para el spinner */
-@keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
-/* Estilos de las secciones de contenido */
-.section-content {
-    width: 100%;
-    height: 100%;
-    padding: 16px;
-    /* Añade algo de padding interno */
-}
-
-.section-content.overflow-y {
-    overflow-y: auto;
-}
-
-/* Clases para mostrar/ocultar secciones */
-.section-content.active {
-    display: block;
-    /* O 'flex', 'grid', etc., según tu layout interno */
-}
-
-.section-content.disabled {
-    display: none;
-}
-
-/* --- ESTILOS DEL FORMULARIO DE REGISTRO --- */
-
-/* NUEVO: Wrapper para centrar vertical y horizontalmente */
-.section-center-wrapper {
-    width: 100%;
-    min-height: 100%;
-    /* Asegura que ocupe al menos toda la altura de la vista */
-    display: flex;
-    justify-content: center;
-    /* Centrado horizontal */
-    align-items: center;
-    /* Centrado vertical */
-    padding: 20px;
-    /* Espacio para que no pegue a los bordes en pantallas pequeñas */
-}
-
-/* Contenedor del formulario */
-.form-container {
-    max-width: 400px;
-    width: 100%;
-    /* Para responsiveness */
-    margin: 0;
-    /* Ya no necesita margen 'auto' */
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.form-container h1 {
-    text-align: center;
-    font-size: 24px;
-    font-weight: 600;
-    color: #333;
-}
-
-.form-container p {
-    text-align: center;
-    font-size: 16px;
-    color: #666;
-    margin-top: -10px;
-}
-
-/* Grupo que contiene el input y el label */
-.floating-label-group {
     position: relative;
-}
-
-/* El input */
-.floating-input {
-    height: 55px;
-    /* 55px de alto */
-    width: 100%;
-    padding: 14px 12px 0 12px;
-    font-size: 16px;
-    color: #333;
-    border: 1px solid #00000030;
-    border-radius: 8px;
-    outline: none;
-    box-sizing: border-box;
-    background-color: transparent;
-    /* <-- CORRECCIÓN: transparente */
-}
-
-/* El label */
-.floating-label {
-    position: absolute;
-    top: 27.5px;
-    /* (55px / 2) para centrado perfecto */
-    left: 12px;
-    font-size: 16px;
-    color: #888;
-    pointer-events: none;
-    transform: translateY(-50%);
-    transition: all 0.2s ease-out;
-}
-
-/* --- La Magia: Animación del Label --- */
-
-.floating-input:focus~.floating-label,
-.floating-input:not(:placeholder-shown)~.floating-label {
-    top: 10px;
-    transform: translateY(0);
-    font-size: 12px;
-    color: #000;
-    /* Color de marca (negro) */
-}
-
-/* Cambia el color del borde en focus */
-.floating-input:focus {
-    border-color: #000;
-    /* Color de marca (negro) */
-    background-color: #fff;
-    /* <-- CORRECCIÓN: blanco en focus */
-}
-
-/* Botón del formulario */
-.form-button {
-    height: 55px;
-    /* 55px de alto */
-    width: 100%;
-    border: none;
-    border-radius: 8px;
-    background-color: #000;
-    /* Color de marca (negro) */
-    color: white;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    outline: none;
-    transition: background-color 0.2s ease;
-}
-
-.form-button:hover {
-    background-color: #333;
-    /* Hover para el botón negro */
-}
-
-/* --- ADICIONES AL FORMULARIO DE REGISTRO --- */
-
-/* Ajuste para el input de contraseña (para que el texto no quede debajo del icono) */
-input#register-password {
-    padding-right: 50px;
-    /* Añade espacio a la derecha */
-}
-
-/* Botón de mostrar/ocultar contraseña */
-.password-toggle-btn {
-    position: absolute;
-    top: 27.5px;
-    /* Centrado vertical (55px / 2) */
-    right: 10px;
-    /* Pegado a la derecha */
-    transform: translateY(-50%);
-    /* Alineación vertical perfecta */
-
-    /* -- CORRECCIÓN: Estilos para forma redonda -- */
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    padding: 0;
-    transition: background-color 0.2s ease;
-    /* -- FIN CORRECCIÓN -- */
-
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #888;
-    /* Color gris sutil */
-    outline: none;
-}
-
-.password-toggle-btn:hover {
-    color: #000;
-    /* Color de marca al pasar el mouse */
-    background-color: #f5f5fa;
-    /* <-- CORRECCIÓN: Fondo en hover */
-}
-
-/* Icono de Google (asegura el tamaño) */
-.password-toggle-btn .material-symbols-rounded {
-    font-size: 24px;
-}
-
-/* Estilos para el link "Iniciar Sesión" */
-.form-footer-link {
-    text-align: center;
-    margin-top: 15px;
-    /* Espacio después del botón */
-    font-size: 14px;
-    color: #666;
-    /* Color para el texto "¿Ya tienes...?" */
-}
-
-.form-footer-link a {
-    color: #000;
-    /* Color de marca (negro) */
-    font-weight: 600;
-    /* Más notorio */
-    text-decoration: none;
-    /* Sin subrayado por defecto */
-}
-
-.form-footer-link a:hover {
-    text-decoration: underline;
-    /* Subrayado al pasar el mouse */
-}
-
-
-
-/* Estilo para la imagen de perfil dentro del botón */
-.profile-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover; /* Mantiene la proporción y rellena el círculo */
-    border-radius: 50%; /* Asegura que la imagen sea redonda */
-    display: block;
-}
-
-/* Ajuste para asegurar que el botón no tenga padding extra que achique la imagen */
-.header-button.profile-button {
-    padding: 0;
-    overflow: hidden; /* Corta lo que sobresalga del borde redondeado */
-}
-/* --- BOTÓN DE PERFIL Y ROLES (Estilo ProjectGenesis) --- */
-
-/* 1. Configuración base del botón (El contenedor) */
-.header-button.profile-button {
-    position: relative; /* Necesario para posicionar el ::before */
     padding: 0;
     border: none;
     background-color: transparent;
-    overflow: visible; /* IMPORTANTE: Permitir que el borde salga del contenedor */
-    /* Aseguramos que sea redondo y del tamaño correcto */
-    width: 40px; 
+    overflow: visible;
+    width: 40px;
     height: 40px;
     border-radius: 50%;
     display: flex;
@@ -410,7 +158,6 @@ input#register-password {
     align-items: center;
 }
 
-/* 2. La Imagen (z-index 1 para estar debajo del brillo del borde pero visible) */
 .profile-img {
     width: 100%;
     height: 100%;
@@ -421,74 +168,69 @@ input#register-password {
     border-radius: 50%;
 }
 
-/* 3. El Pseudo-elemento para el Borde (z-index 2) */
 .header-button.profile-button::before {
     content: '';
     position: absolute;
     border-radius: 50%;
-    /* Expandimos el borde hacia afuera (ajusta -4px si lo quieres más/menos lejos) */
     top: -4px;
     left: -4px;
     right: -4px;
     bottom: -4px;
-    
-    /* Configuración base del borde */
     border: 2px solid transparent; 
     transition: border-color 0.2s ease;
-    pointer-events: none; /* Para que no interfiera con el click */
+    pointer-events: none;
     z-index: 2;
 }
 
-/* --- COLORES DE LOS ROLES --- */
-
-/* Usuario (Gris) */
 .header-button.profile-button[data-role="user"]::before {
     border-color: #cccccc;
 }
 
-/* Moderador (Azul) */
 .header-button.profile-button[data-role="moderator"]::before {
     border-color: #0000FF;
 }
 
-/* Administrador (Rojo) */
 .header-button.profile-button[data-role="administrator"]::before {
     border-color: #FF0000;
 }
 
-/* --- ROL FOUNDER (Tu código específico) --- */
 .header-button.profile-button[data-role="founder"]::before {
-    border: none; /* Quitamos el borde sólido */
-    
-    /* Mismas posiciones */
+    border: none;
     top: -4px;
     left: -4px;
     right: -4px;
     bottom: -4px;
-    
-    /* Tu gradiente exacto */
     background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
-    
-    /* Tu máscara exacta */
     mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
     -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
 }
 
-/* --- SPINNER PEQUEÑO PARA EL LOGOUT --- */
-.small-spinner {
-    width: 22px;
-    height: 22px;
-    border: 2px solid rgba(0, 0, 0, 0.1); /* Borde gris suave */
-    border-top: 2px solid #000000; /* Borde superior negro (color de marca) */
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite; /* Usa tu animación existente */
+/* =========================================
+   5. NAVEGACIÓN Y MENÚS (POPOVERS/SIDEBAR)
+   ========================================= */
+.module-content.module-surface {
+    position: absolute;
+    height: 100%;
+    padding: 8px;
+    top: 0;
+    left: 0;
+    z-index: 998;
 }
+
+.module-surface .menu-content {
+    width: 280px;
+    height: 100%;
+    background-color: #ffffff;
+    padding: 8px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px #00000020;
+}
+
 .popover-module {
     position: absolute;
     top: calc(100% + 5px);
     z-index: 10;
 }
-
 
 .popover-module.popover-profile {
     left: auto;
@@ -525,6 +267,12 @@ input#register-password {
     border-radius: 8px;
     cursor: pointer;
     text-decoration: none;
+    color: inherit;
+}
+
+.menu-link:hover,
+.menu-link.active {
+    background-color: #f5f5fa;
 }
 
 .menu-link-icon {
@@ -546,13 +294,196 @@ input#register-password {
     align-self: center;
 }
 
-.menu-link:hover {
+/* =========================================
+   6. FORMULARIOS (LOGIN / REGISTER)
+   ========================================= */
+.section-center-wrapper {
+    width: 100%;
+    min-height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.form-container {
+    max-width: 400px;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-container h1 {
+    text-align: center;
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+}
+
+.form-container p {
+    text-align: center;
+    font-size: 16px;
+    color: #666;
+    margin-top: -10px;
+}
+
+.floating-label-group {
+    position: relative;
+}
+
+.floating-input {
+    height: 55px;
+    width: 100%;
+    padding: 14px 12px 0 12px;
+    font-size: 16px;
+    color: #333;
+    border: 1px solid #00000030;
+    border-radius: 8px;
+    outline: none;
+    box-sizing: border-box;
+    background-color: transparent;
+}
+
+.floating-label {
+    position: absolute;
+    top: 27.5px;
+    left: 12px;
+    font-size: 16px;
+    color: #888;
+    pointer-events: none;
+    transform: translateY(-50%);
+    transition: all 0.2s ease-out;
+}
+
+.floating-input:focus ~ .floating-label,
+.floating-input:not(:placeholder-shown) ~ .floating-label {
+    top: 10px;
+    transform: translateY(0);
+    font-size: 12px;
+    color: #000;
+}
+
+.floating-input:focus {
+    border-color: #000;
+    background-color: #fff;
+}
+
+.form-button {
+    height: 55px;
+    width: 100%;
+    border: none;
+    border-radius: 8px;
+    background-color: #000;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 0.2s ease;
+    text-decoration: none;
+}
+
+.form-button:hover {
+    background-color: #333;
+}
+
+input#register-password,
+input#login-password {
+    padding-right: 50px;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    top: 27.5px;
+    right: 10px;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    padding: 0;
+    transition: background-color 0.2s ease;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    outline: none;
+}
+
+.password-toggle-btn:hover {
+    color: #000;
     background-color: #f5f5fa;
 }
 
-/* --- INICIO CÓDIGO NUEVO --- */
-/* --- ESTILOS PÁGINA 404 --- */
+.password-toggle-btn .material-symbols-rounded {
+    font-size: 24px;
+}
 
+.form-footer-link {
+    text-align: center;
+    margin-top: 15px;
+    font-size: 14px;
+    color: #666;
+}
+
+.form-footer-link a {
+    color: #000;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.form-footer-link a:hover {
+    text-decoration: underline;
+}
+
+/* =========================================
+   7. LOADERS Y ANIMACIONES
+   ========================================= */
+.loader-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    display: none;
+    border-radius: 12px;
+}
+
+.loader-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f5f5fa;
+    border-top: 4px solid #000000;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.small-spinner {
+    width: 22px;
+    height: 22px;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-top: 2px solid #000000;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* =========================================
+   8. PÁGINA 404
+   ========================================= */
 .error-404-container {
     display: flex;
     flex-direction: column;
@@ -561,7 +492,6 @@ input#register-password {
     max-width: 500px;
     width: 100%;
     padding: 20px;
-    /* Se quitó la línea de 'animation' */
 }
 
 .error-404-badge {
@@ -569,16 +499,16 @@ input#register-password {
     padding: 6px 12px;
     font-size: 14px;
     font-weight: 500;
-    color: #6a6a6a;
-    background-color: #f0f0f5;
-    border-radius: 8px;
+    color: #000000;
+    background-color: #f5f5fa;
+    border-radius: 50px;
     margin-bottom: 24px;
 }
 
 .error-404-title {
     font-size: 36px;
     font-weight: 600;
-    color: #222;
+    color: #000000;
     margin-bottom: 12px;
     line-height: 1.2;
 }
@@ -589,36 +519,33 @@ input#register-password {
     line-height: 1.6;
 }
 
-/* Se quitó el bloque '@keyframes' */
 
-.menu-link.active {
-    background-color: #f5f5fa;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.overflow-y {
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-color: #00000080 transparent;
+    scrollbar-width: thin;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
 }
 
-
-
-.module-content.module-surface {
-    position: absolute;
-    height: 100%;
-    padding: 8px;
-    top: 0;
-    left: 0;
-    z-index: 998;
-}
-
-.module-surface .menu-content {
-    width: 280px;
-    height: 100%;
-    background-color: #ffffff;
-    padding: 8px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px #00000020;
-}
-
-.active {
-    display: flex;
-}
-
-.disabled {
-    display: none;
+.body-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.0178571429em;
 }
