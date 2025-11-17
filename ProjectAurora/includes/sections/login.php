@@ -35,6 +35,8 @@
 
             <button class="form-button" id="btn-login-submit">Continuar</button>
 
+            <div id="login-error" class="form-error-message"></div>
+
             <div class="form-footer-link">
                 ¿No tienes una cuenta? <a href="#" onclick="event.preventDefault(); navigateTo('register')">Regístrate</a>
             </div>

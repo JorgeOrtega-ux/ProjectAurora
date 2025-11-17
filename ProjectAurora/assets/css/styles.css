@@ -390,6 +390,43 @@ html {
     background-color: #333;
 }
 
+/* === ESTILOS NUEVOS: MENSAJES DE ERROR E INPUTS ROJOS === */
+
+.form-error-message {
+    display: none; /* Oculto por defecto */
+    width: 100%;
+    border: 1px solid #d32f2f; /* Borde rojo */
+    background-color: transparent; /* Fondo transparente */
+    color: #d32f2f; /* Texto rojo */
+    padding: 10px;
+    margin-top: 15px;
+    border-radius: 8px;
+    font-size: 14px;
+    text-align: center;
+    font-weight: 500;
+}
+
+.form-error-message.active {
+    display: block;
+}
+
+/* Input con borde rojo al tener error */
+.floating-input.input-error {
+    border-color: #d32f2f;
+}
+
+/* Label rojo cuando el input tiene error */
+.floating-input.input-error ~ .floating-label {
+    color: #d32f2f;
+}
+
+/* Mantener el borde rojo incluso si se hace focus */
+.floating-input.input-error:focus {
+    border-color: #d32f2f;
+}
+
+/* === FIN ESTILOS NUEVOS === */
+
 input#register-password,
 input#login-password {
     padding-right: 50px;
@@ -518,22 +555,6 @@ input#login-password {
     color: #666;
     line-height: 1.6;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 .overflow-y {
     overflow-x: hidden;
