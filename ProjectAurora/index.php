@@ -1,7 +1,7 @@
 <?php
 require_once 'config/router.php';
 require_once 'config/database.php';
-require_once 'config/utilities.php'; // [NUEVO] Requerido para generar el token
+require_once 'config/utilities.php';
 
 if (isset($_SESSION['user_id'])) {
     try {
@@ -49,9 +49,8 @@ if (isset($_SESSION['user_id'])) {
                 <div class="general-content-bottom">
                     <?php include 'includes/modules/module-surface.php'; ?>
 
-                    <div class="general-content-scrolleable" id="section-container">
+                    <div class="general-content-scrolleable" data-container="main-section">
                         <?php
-                        // Usamos la variable procesada en router.php
                         $sectionFile = "includes/sections/{$SECTION_FILE_NAME}.php";
                         if (file_exists($sectionFile)) {
                             include $sectionFile;

@@ -58,7 +58,8 @@ function getSectionFromUrl() {
 }
 
 async function showSection(sectionName, pushState = true) {
-    const container = document.getElementById('section-container');
+    // CAMBIO: Selección por data-container en vez de ID
+    const container = document.querySelector('[data-container="main-section"]');
     if (!container) { window.location.reload(); return; }
 
     let fileToFetch = sectionName.replace('/', '-'); 
