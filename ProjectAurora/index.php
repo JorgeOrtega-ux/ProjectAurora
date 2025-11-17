@@ -19,17 +19,14 @@
                             <div class="header-item">
                                 <div class="header-button">
                                     <span class="material-symbols-rounded">
-menu
-</span>
+                                        menu
+                                    </span>
                                 </div>
                             </div>
                         </div>
                         <div class="header-right">
                             <div class="header-item">
-                                <div class="header-button">
-                                    <span class="material-symbols-rounded">
-settings
-</span>
+                                <div class="header-button profile-button">
                                 </div>
                             </div>
                         </div>
