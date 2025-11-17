@@ -22,7 +22,13 @@ require_once 'router.php';
                     <div class="loader-spinner"></div>
                 </div>
 
-                <div class="general-content-top">
+                <?php
+                // --- MODIFICACIÓN: Usa la variable $showNavigation del router ---
+                // Determina si el header debe estar oculto INICIALMENTE
+                $headerStyle = (!$showNavigation) ? 'style="display: none;"' : '';
+                ?>
+                
+                <div class="general-content-top" id="main-header" <?php echo $headerStyle; ?>>
                     <div class="header">
                         <div class="header-left">
                             <div class="header-item">
@@ -45,6 +51,7 @@ require_once 'router.php';
                         </div>
                     </div>
                 </div>
+
                 <div class="general-content-bottom">
                     <div class="general-content-scrolleable" id="section-container">
                         

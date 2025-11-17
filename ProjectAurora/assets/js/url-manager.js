@@ -57,11 +57,23 @@ window.navigateTo = (sectionName) => {
 async function showSection(sectionName, pushState = true) {
     const loader = document.querySelector('.loader-wrapper');
     const container = document.getElementById('section-container');
+    const header = document.getElementById('main-header'); // <-- MODIFICADO: Seleccionamos el header
 
     if (!loader || !container) {
         console.error('Loader or Section Container not found!');
         return;
     }
+
+    // --- INICIO DE LA MODIFICACIÓN ---
+    // Gestiona la visibilidad del header dinámicamente
+    if (header) { // 'header' puede no existir si se cargó /login de inicio
+        if (sectionName === 'login' || sectionName === 'register') {
+            header.style.display = 'none';
+        } else {
+            header.style.display = 'block'; // 'block' es seguro, 'flex' también si lo prefieres
+        }
+    }
+    // --- FIN DE LA MODIFICACIÓN ---
 
     // 1. Mostrar el loader
     loader.style.display = 'flex';

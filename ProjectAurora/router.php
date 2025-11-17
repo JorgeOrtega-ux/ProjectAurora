@@ -48,4 +48,11 @@ if ($CURRENT_SECTION === 'main' && $requestUri !== 'main' && !empty($requestUri)
      $CURRENT_SECTION = 'main';
 }
 
+
+// --- MODIFICACIÓN AÑADIDA ---
+// Define la variable de navegación 
+// Será 'true' para 'main' y 'false' para 'login' o 'register'
+$showNavigation = ($CURRENT_SECTION !== 'login' && $CURRENT_SECTION !== 'register');
+
+
 ?>
