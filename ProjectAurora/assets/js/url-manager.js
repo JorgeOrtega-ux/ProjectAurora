@@ -68,8 +68,7 @@ function getSectionFromUrl() {
 async function showSection(sectionName, pushState = true) {
     const container = document.getElementById('section-container');
     // Loader sobre el padre para no borrarlo al reemplazar contenido
-    const loaderParent = document.querySelector('.general-content'); 
-
+const loaderParent = document.querySelector('.general-content-bottom');
     if (!container || !loaderParent) return;
 
     // 1. Actualizar menú visualmente (rápido)
