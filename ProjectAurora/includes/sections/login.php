@@ -33,6 +33,12 @@
                 </button>
             </div>
 
+            <div style="text-align: right; margin-top: -10px; margin-bottom: 10px;">
+                <a href="#" onclick="event.preventDefault(); navigateTo('forgot-password')" style="color:#666; text-decoration:none; font-size:14px; font-weight:500;">
+                    ¿Olvidaste tu contraseña?
+                </a>
+            </div>
+
             <button class="form-button" id="btn-login-submit">Continuar</button>
 
             <div id="login-error" class="form-error-message"></div>

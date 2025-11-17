@@ -21,7 +21,9 @@ $allowedSections = [
     'main', 'login', 'register', 'explorer',
     // Habilitamos las URLs para que el router las reconozca
     'register/additional-data', 
-    'register/verification-account'
+    'register/verification-account',
+    // NUEVO: Ruta de recuperación
+    'forgot-password'
 ];
 
 $CURRENT_SECTION = empty($requestUri) ? 'main' : $requestUri;
@@ -40,7 +42,8 @@ if (strpos($CURRENT_SECTION, 'register/') === 0 || $CURRENT_SECTION === 'registe
 // EL GUARDIA (Seguridad de Pasos)
 // ==========================================
 $isLoggedIn = isset($_SESSION['user_id']);
-$publicSections = ['login', 'register', 'register/additional-data', 'register/verification-account'];
+// NUEVO: Añadido 'forgot-password' para que sea accesible sin login
+$publicSections = ['login', 'register', 'register/additional-data', 'register/verification-account', 'forgot-password'];
 
 if (!$isLoggedIn && !in_array($CURRENT_SECTION, $publicSections) && $CURRENT_SECTION !== '404') {
     header("Location: " . $basePath . "login"); exit;

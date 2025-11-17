@@ -212,6 +212,86 @@ try {
             throw new Exception('Credenciales incorrectas.');
         }
 
+    // ==================================================================
+    // NUEVO: RECUPERACIÓN DE CONTRASEÑA (3 PASOS)
+    // ==================================================================
+
+    // --- PASO 1: Verificar email y Enviar código ---
+    } elseif ($action === 'recovery_step_1') {
+        $email = filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL);
+        
+        // Verificar si existe el usuario
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        
+        // Por seguridad, a veces no se dice si existe o no, pero para UX diremos si no existe.
+        if ($stmt->rowCount() === 0) {
+            throw new Exception('Este correo no está registrado.');
+        }
+
+        // Generar código
+        $code = generate_verification_code();
+
+        // Limpiar códigos previos de recuperación
+        $del = $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'recovery'");
+        $del->execute([$email]);
+
+        // Insertar nuevo código (No payload necesario aquí, solo validar propiedad)
+        $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, expires_at) VALUES (?, 'recovery', ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
+        $stmt->execute([$email, $code]);
+
+        // Guardar en sesión para flujo
+        if (!isset($_SESSION['temp_recovery'])) $_SESSION['temp_recovery'] = [];
+        $_SESSION['temp_recovery']['email'] = $email;
+        $_SESSION['temp_recovery']['step'] = 2; // Mover al paso 2 visualmente
+
+        logger("Code RECUPERACION para $email: $code");
+        $response = ['success' => true, 'message' => 'Código enviado'];
+
+    // --- PASO 2: Verificar Código ---
+    } elseif ($action === 'recovery_step_2') {
+        $email = $_SESSION['temp_recovery']['email'] ?? '';
+        $inputCode = strtoupper(trim($data['code'] ?? ''));
+
+        if (empty($email)) throw new Exception('Sesión expirada.');
+
+        $stmt = $pdo->prepare("SELECT id FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'recovery' AND expires_at > NOW()");
+        $stmt->execute([$email, $inputCode]);
+        
+        if ($stmt->rowCount() > 0) {
+            $_SESSION['temp_recovery']['verified'] = true; // Marca segura
+            $_SESSION['temp_recovery']['step'] = 3; // Mover al paso 3 visualmente
+            $response = ['success' => true, 'message' => 'Código correcto'];
+        } else {
+            throw new Exception('Código incorrecto o expirado.');
+        }
+
+    // --- PASO 3: Cambiar Contraseña ---
+    } elseif ($action === 'recovery_final') {
+        $email = $_SESSION['temp_recovery']['email'] ?? '';
+        $verified = $_SESSION['temp_recovery']['verified'] ?? false;
+        $newPass = $data['password'] ?? '';
+
+        if (empty($email) || !$verified) throw new Exception('Acceso no autorizado al paso final.');
+        if (strlen($newPass) < 8) throw new Exception('La contraseña debe tener mín. 8 caracteres.');
+
+        $newHash = password_hash($newPass, PASSWORD_BCRYPT);
+
+        // Actualizar Usuario
+        $upd = $pdo->prepare("UPDATE users SET password = ? WHERE email = ?");
+        if ($upd->execute([$newHash, $email])) {
+            
+            // Limpiar códigos usados
+            $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'recovery'")->execute([$email]);
+            
+            // Limpiar sesión temporal
+            unset($_SESSION['temp_recovery']);
+
+            $response = ['success' => true, 'message' => 'Contraseña actualizada correctamente.'];
+        } else {
+            throw new Exception('Error al actualizar base de datos.');
+        }
+
     } elseif ($action === 'logout') {
         session_destroy();
         $response = ['success' => true, 'message' => 'Bye'];

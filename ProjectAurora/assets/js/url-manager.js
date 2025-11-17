@@ -2,9 +2,11 @@ const allowedSections = [
     'main', 'login', 'register', 'explorer',
     // Agregamos las nuevas rutas a la lista blanca de JS
     'register/additional-data',
-    'register/verification-account'
+    'register/verification-account',
+    // NUEVO
+    'forgot-password'
 ];
-const authZone = ['login', 'register', 'register/additional-data', 'register/verification-account'];
+const authZone = ['login', 'register', 'register/additional-data', 'register/verification-account', 'forgot-password'];
 const basePath = window.BASE_PATH || '/ProjectAurora/';
 
 export function initUrlManager() {

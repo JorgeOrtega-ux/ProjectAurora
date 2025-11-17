@@ -3,32 +3,62 @@ const API_BASE_PATH = window.BASE_PATH || '/ProjectAurora/';
 export function initAuthManager() {
     document.body.addEventListener('click', async (e) => {
         
-        // --- PASO 1 -> 2 ---
+        // --- PASO 1 -> 2 (REGISTRO) ---
         if (e.target.closest('#btn-register-step1')) {
             e.preventDefault();
             await handleRegisterStep('step1', 'register_step_1', 2, 'register/additional-data');
         }
 
-        // --- PASO 2 -> 3 ---
+        // --- PASO 2 -> 3 (REGISTRO) ---
         if (e.target.closest('#btn-register-step2')) {
             e.preventDefault();
             await handleRegisterStep('step2', 'register_step_2', 3, 'register/verification-account');
         }
 
-        // --- PASO 3 -> FINAL ---
+        // --- PASO 3 -> FINAL (REGISTRO) ---
         if (e.target.closest('#btn-register-step3')) {
             e.preventDefault();
             await handleRegisterStep('step3', 'register_final', 'main', null);
         }
 
-        // --- BOTÓN VOLVER (Paso 2) ---
+        // --- BOTÓN VOLVER (Paso 2 Registro) ---
         if (e.target.closest('#btn-back-step1')) {
             e.preventDefault();
             switchRegisterStep(1, 'register');
         }
 
+        // =================================================
+        // NUEVO: LÓGICA RECUPERACIÓN (Forgot Password)
+        // =================================================
+        
+        // Paso 1: Enviar Email
+        if (e.target.closest('#btn-rec-step1')) {
+            e.preventDefault();
+            await handleRecoveryStep('step1');
+        }
+        
+        // Paso 2: Verificar Código
+        if (e.target.closest('#btn-rec-step2')) {
+            e.preventDefault();
+            await handleRecoveryStep('step2');
+        }
+        
+        // Paso 3: Cambiar Contraseña
+        if (e.target.closest('#btn-rec-step3')) {
+            e.preventDefault();
+            await handleRecoveryStep('step3');
+        }
+
+        // Botón "Reenviar / Cambiar correo" (Reinicia UI Recovery)
+        if (e.target.closest('#btn-rec-resend')) {
+            e.preventDefault();
+            document.getElementById('rec-step-container-1').style.display = 'block';
+            document.getElementById('rec-step-container-2').style.display = 'none';
+            document.getElementById('rec-step-container-3').style.display = 'none';
+        }
+        // =================================================
+
         // --- TOGGLE PASSWORD (OJO/VISIBILIDAD) ---
-        // Excluimos el botón mágico para que no intente cambiar type="text/password"
         if (e.target.closest('.password-toggle-btn') && !e.target.closest('.username-magic-btn')) {
             const btn = e.target.closest('.password-toggle-btn');
             const input = btn.previousElementSibling; 
@@ -50,7 +80,7 @@ export function initAuthManager() {
             if (input) {
                 input.value = generateMagicUsername();
                 input.focus();
-                input.classList.remove('input-error'); // Limpiar error visual si había
+                input.classList.remove('input-error'); 
             }
         }
 
@@ -122,17 +152,11 @@ function switchRegisterStep(stepNumber, urlPath) {
 // --- VALIDACIONES ESTRICTAS (JS) ---
 
 function isValidEmailDomain(email) {
-    // Regex Estricta:
-    // ^ ... $   -> Inicio y fin de cadena (Evita basura antes o después)
-    // @( ... )  -> Solo estos dominios
-    // \.[a-z]+  -> Extensión
-    // $         -> IMPORTANTE: Obliga a que termine ahí.
     const regex = /^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i;
     return regex.test(email);
 }
 
 function isValidUsername(username) {
-    // Regex: Min 8, Max 32, Solo letras, números y guión bajo
     const regex = /^[a-zA-Z0-9_]{8,32}$/;
     return regex.test(username);
 }
@@ -202,13 +226,113 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
         return;
     }
 
-    // Check errores de lógica (regex)
     if (errorMessage) {
         if(errorDiv) { errorDiv.innerText = errorMessage; errorDiv.classList.add('active'); }
         return;
     }
 
     await sendAuthRequest(payload, btnId, errorId, nextStep, nextUrl);
+}
+
+// --- LÓGICA NUEVA DE RECUPERACIÓN ---
+async function handleRecoveryStep(stepName) {
+    let payload = { action: '' };
+    let btnId, errorId, inputIds = [];
+    let nextContainerId = '';
+
+    // Step 1: Enviar Email
+    if (stepName === 'step1') {
+        const emailIn = document.getElementById('rec-email');
+        if(!emailIn) return;
+        if(!emailIn.value.trim()) { 
+            emailIn.classList.add('input-error'); 
+            return; 
+        }
+        
+        payload = { action: 'recovery_step_1', email: emailIn.value.trim() };
+        btnId = 'btn-rec-step1'; 
+        errorId = 'rec-error-1'; 
+        inputIds = ['rec-email'];
+        nextContainerId = 'rec-step-container-2';
+
+    // Step 2: Enviar Código
+    } else if (stepName === 'step2') {
+        const codeIn = document.getElementById('rec-code');
+        if(!codeIn) return;
+        if(!codeIn.value.trim()) { 
+            codeIn.classList.add('input-error'); 
+            return; 
+        }
+        
+        payload = { action: 'recovery_step_2', code: codeIn.value.trim() };
+        btnId = 'btn-rec-step2'; 
+        errorId = 'rec-error-2'; 
+        inputIds = ['rec-code'];
+        nextContainerId = 'rec-step-container-3';
+
+    // Step 3: Nueva Contraseña
+    } else if (stepName === 'step3') {
+        const passIn = document.getElementById('rec-pass');
+        if(!passIn) return;
+        
+        if(passIn.value.length < 8) { 
+            passIn.classList.add('input-error'); 
+            const err = document.getElementById('rec-error-3');
+            if(err) {
+                err.innerText = 'Mínimo 8 caracteres';
+                err.classList.add('active');
+            }
+            return; 
+        }
+
+        payload = { action: 'recovery_final', password: passIn.value };
+        btnId = 'btn-rec-step3'; 
+        errorId = 'rec-error-3'; 
+        inputIds = ['rec-pass'];
+    }
+
+    // UI Loading
+    const btn = document.getElementById(btnId);
+    const errorDiv = document.getElementById(errorId);
+    const originalText = btn ? btn.innerText : '';
+    if(btn) { btn.innerText = 'Procesando...'; btn.disabled = true; }
+    
+    inputIds.forEach(id => document.getElementById(id).classList.remove('input-error'));
+    if(errorDiv) { errorDiv.innerText = ''; errorDiv.classList.remove('active'); }
+
+    try {
+        const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+        });
+        const res = await response.json();
+
+        if (res.success) {
+            if (stepName === 'step3') {
+                // FIN: Ir a Login
+                window.location.href = API_BASE_PATH + 'login';
+            } else {
+                // AVANZAR UI
+                document.getElementById('rec-step-container-1').style.display = 'none';
+                document.getElementById('rec-step-container-2').style.display = 'none';
+                document.getElementById('rec-step-container-3').style.display = 'none';
+                
+                const next = document.getElementById(nextContainerId);
+                if(next) next.style.display = 'block';
+                
+                // Actualizar email en texto del paso 2
+                if(stepName === 'step1') {
+                    const display = document.getElementById('rec-display-email');
+                    if(display) display.innerText = payload.email;
+                }
+            }
+        } else {
+            if(errorDiv) { errorDiv.innerText = res.message; errorDiv.classList.add('active'); }
+        }
+    } catch (e) {
+        if(errorDiv) { errorDiv.innerText = "Error de conexión"; errorDiv.classList.add('active'); }
+    } finally {
+        if(btn) { btn.innerText = originalText; btn.disabled = false; }
+    }
 }
 
 async function sendAuthRequest(payload, btnId, errorId, nextStep, nextUrl) {

@@ -78,3 +78,8 @@
 [2025-11-17 20:38:19] [CUSTOM] Registro Paso 1 (Email): 1en12a@gmail.com1TTTTTTTTT
 [2025-11-17 20:44:07] [CUSTOM] Registro Paso 1 (Email): 1en12a@gmail.com
 [2025-11-17 20:51:48] [CUSTOM] Code generado para 1en1212a@gmail.com: E31A549F25 | Payload: {"username":"user20251117_135147ix","password_hash":"$2y$10$doyLXJo0Yw1bk4F\/sRvJuuRSiqHcFwOLS7Q8Dbk.RVRxrqCxHmBC2"}
+[2025-11-17 20:52:24] [CUSTOM] Usuario creado: user20251117_135147ix (1en1212a@gmail.com)
+[2025-11-17 20:52:58] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 21:02:50] [CUSTOM] Error: Este correo no está registrado.
+[2025-11-17 21:03:00] [CUSTOM] Code RECUPERACION para 1en1212a@gmail.com: BF41E83178
+[2025-11-17 21:03:17] [CUSTOM] Error: Código incorrecto o expirado.
