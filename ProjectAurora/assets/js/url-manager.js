@@ -13,22 +13,24 @@ export function initUrlManager() {
     // 1. Manejar botones de Atrás/Adelante del navegador
     window.addEventListener('popstate', handleUrlChange);
 
-    // 2. Manejar clics en el Menú Lateral (Delegación de eventos)
-    // Busca elementos con la clase .menu-link que tengan el atributo data-nav
-    const menuList = document.querySelector('.menu-list');
-    if (menuList) {
-        menuList.addEventListener('click', (e) => {
-            const link = e.target.closest('.menu-link[data-nav]');
-            if (link) {
-                e.preventDefault();
-                const section = link.dataset.nav;
-                navigateTo(section);
-            }
-        });
-    }
+    // 2. CORREGIDO: Manejar clics en navegación (Delegación de eventos en el body)
+    // Antes fallaba porque querySelector('.menu-list') tomaba el menú del perfil (header) 
+    // y no el menú lateral. Al usar body, capturamos cualquier click en cualquier menú.
+    document.body.addEventListener('click', (e) => {
+        const link = e.target.closest('.menu-link[data-nav]');
+        
+        if (link) {
+            e.preventDefault();
+            const section = link.dataset.nav;
+            
+            // Opcional: Si quieres que el menú se cierre al hacer click en móvil
+            // podrías disparar un evento click en el botón de menú o manipular las clases aquí.
+            
+            navigateTo(section);
+        }
+    });
 
     // 3. Manejar enlaces de texto de "Regístrate" o "Iniciar sesión" en los formularios
-    // (Estos suelen ser <a href="#" onclick="..."> en el HTML antiguo)
     document.body.addEventListener('click', (e) => {
         const link = e.target.closest('.form-footer-link a');
         if (link) {
@@ -68,9 +70,11 @@ function navigateTo(sectionName) {
 
 function getSectionFromUrl() {
     let path = window.location.pathname;
+    // Normalizar path eliminando el basePath
     if (path.startsWith(basePath)) {
         path = path.substring(basePath.length);
     }
+    // Limpiar slashes finales y query strings
     path = path.replace(/\/$/, '').split('?')[0];
     
     if (path === '') return 'main';
@@ -79,6 +83,8 @@ function getSectionFromUrl() {
 }
 
 function handleUrlChange() {
+    // Al usar botones de navegador, lo más seguro es recargar 
+    // para sincronizar estado PHP/JS, o podrías llamar a showSection(..., false).
     window.location.reload();
 }
 
@@ -87,6 +93,7 @@ async function showSection(sectionName, pushState = true) {
     const loaderParent = document.querySelector('.general-content'); 
     let loader; 
     
+    // Actualizamos visualmente el menú activo antes de cargar
     updateActiveMenu(sectionName);
 
     if (!container || !loaderParent) return;
@@ -114,6 +121,7 @@ async function showSection(sectionName, pushState = true) {
 
     } catch (error) {
         console.error(error);
+        // Si falla (ej. sesión expirada 401), redirigir al home fuerza el router PHP
         if(sectionName !== 'login') window.location.href = basePath; 
     } finally {
         if (loader) loader.remove(); 
@@ -124,6 +132,8 @@ function updateActiveMenu(sectionName) {
     document.querySelectorAll('.menu-link').forEach(link => {
         link.classList.remove('active');
     });
+    
+    // Buscamos el link específico que tenga data-nav igual a la sección
     const activeLink = document.querySelector(`.menu-link[data-nav="${sectionName}"]`);
     if (activeLink) {
         activeLink.classList.add('active');

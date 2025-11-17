@@ -37,7 +37,7 @@ export function initAuthManager() {
             logoutBtn.appendChild(iconContainer);
 
             setTimeout(() => {
-                window.location.href = API_BASE_PATH + 'logout.php';
+                window.location.href = API_BASE_PATH + 'config/logout.php';
             }, 50);
         }
     });
