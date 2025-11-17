@@ -1,8 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
-    
+
     // Listener global para manejar eventos en elementos dinámicos
     document.body.addEventListener('click', async (e) => {
-        
+
         // --- MANEJAR REGISTRO ---
         if (e.target.closest('#btn-register-submit')) {
             e.preventDefault();
@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function handleAuth(action) {
     const emailId = action === 'register' ? 'register-email' : 'login-email';
     const passId = action === 'register' ? 'register-password' : 'login-password';
-    
+
     const email = document.getElementById(emailId).value;
     const password = document.getElementById(passId).value;
 
@@ -44,7 +44,7 @@ async function handleAuth(action) {
     btn.disabled = true;
 
     try {
-        const response = await fetch('includes/auth_handler.php', {
+        const response = await fetch('api/auth_handler.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action, email, password })
@@ -56,7 +56,7 @@ async function handleAuth(action) {
             // Redirigir a Main
             // Usamos la función global navigateTo de url-manager.js
             if (typeof navigateTo === 'function') {
-                navigateTo('main'); 
+                navigateTo('main');
             } else {
                 window.location.reload();
             }
@@ -75,14 +75,14 @@ async function handleAuth(action) {
 
 async function handleLogout() {
     try {
-        const response = await fetch('includes/auth_handler.php', {
+        const response = await fetch('api/auth_handler.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'logout' })
         });
 
         const result = await response.json();
-        
+
         if (result.success) {
             // Redirigir al login
             if (typeof navigateTo === 'function') {

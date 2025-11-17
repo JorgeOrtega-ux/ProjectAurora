@@ -1,4 +1,26 @@
 <?php
+// --- INICIO CONFIGURACIÓN DE LOGS ---
+// Definir ruta de logs (sube un nivel desde 'api' y entra a 'logs')
+$logFile = __DIR__ . '/../logs/php_error.log';
+
+// Asegurar que se reporten todos los errores
+error_reporting(E_ALL);
+ini_set('ignore_repeated_errors', TRUE);
+ini_set('display_errors', FALSE); // IMPORTANTE: No mostrar errores en el HTML (response)
+ini_set('log_errors', TRUE);
+ini_set('error_log', $logFile);
+
+// Función para loguear mensajes personalizados (útil para depurar)
+function logger($message) {
+    global $logFile;
+    $date = date('Y-m-d H:i:s');
+    file_put_contents($logFile, "[$date] [CUSTOM] $message" . PHP_EOL, FILE_APPEND);
+}
+
+// Probar que el log funciona
+logger("Se recibió una petición en auth_handler.php");
+// --- FIN CONFIGURACIÓN DE LOGS ---
+
 session_start();
 header('Content-Type: application/json');
 
