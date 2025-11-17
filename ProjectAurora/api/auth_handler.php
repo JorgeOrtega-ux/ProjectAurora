@@ -18,7 +18,17 @@ function logger($message) {
 }
 // --- FIN CONFIGURACIÓN ---
 
-session_start();
+// [SEGURIDAD] Configuración de Cookies de Sesión (Igual que en router.php)
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.cookie_httponly', 1);
+    $isHttps = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+    ini_set('session.cookie_secure', $isHttps ? 1 : 0);
+    ini_set('session.use_strict_mode', 1);
+    ini_set('session.cookie_samesite', 'Lax');
+    
+    session_start();
+}
+
 header('Content-Type: application/json'); 
 
 date_default_timezone_set('America/Matamoros');
@@ -51,12 +61,20 @@ $data = json_decode(file_get_contents('php://input'), true);
 $action = $data['action'] ?? '';
 
 // --- FUNCIONES AUXILIARES ---
+
+/**
+ * Genera un UUID v4 criptográficamente seguro usando random_bytes().
+ */
 function generate_uuid() {
-    return sprintf( '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-        mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ),
-        mt_rand( 0, 0x0fff ) | 0x4000, mt_rand( 0, 0x3fff ) | 0x8000,
-        mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff )
-    );
+    $data = random_bytes(16);
+    assert(strlen($data) == 16);
+
+    // Set version to 0100 (UUID v4)
+    $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
+    // Set bits 6-7 to 10
+    $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
+
+    return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
 }
 
 function get_random_color() {
@@ -72,8 +90,10 @@ function get_random_color() {
 }
 
 function generate_verification_code() {
+    // random_bytes es seguro criptográficamente
     return strtoupper(substr(bin2hex(random_bytes(5)), 0, 10));
 }
+
 function is_allowed_domain($email) {
     return preg_match('/@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i', $email);
 }
@@ -170,6 +190,8 @@ try {
         $payloadData = json_decode($row['payload'], true);
         $finalUsername = $payloadData['username'];
         $finalPassHash = $payloadData['password_hash'];
+        
+        // UUID Seguro
         $uuid = generate_uuid();
         $selectedColor = get_random_color();
         
@@ -192,6 +214,9 @@ try {
                 'avatar' => $dbPath,
                 'role' => 'user'
             ];
+            
+            // Regenerar ID tras registro y autologin
+            session_regenerate_id(true);
             set_user_session($newUser);
 
             $pdo->prepare("DELETE FROM verification_codes WHERE id = ?")->execute([$row['id']]);
@@ -239,7 +264,6 @@ try {
                 
                 logger("Code 2FA Login para $email: $code");
                 
-                // [NUEVO] Enviamos el email enmascarado al frontend
                 $response = [
                     'success' => true, 
                     'require_2fa' => true, 
@@ -249,6 +273,10 @@ try {
                 
             } else {
                 clearFailedAttempts($pdo, $email);
+                
+                // [SEGURIDAD] Prevención fijación de sesión
+                session_regenerate_id(true);
+                
                 set_user_session($user);
                 $response = ['success' => true, 'message' => 'Login correcto'];
             }
@@ -288,6 +316,10 @@ try {
             if (!$user) throw new Exception("Usuario no encontrado.");
 
             clearFailedAttempts($pdo, $email);
+            
+            // [SEGURIDAD] Prevención fijación de sesión
+            session_regenerate_id(true);
+            
             set_user_session($user);
             unset($_SESSION['temp_login_2fa']);
             

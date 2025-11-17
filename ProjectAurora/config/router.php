@@ -1,6 +1,25 @@
 <?php
 // config/router.php
-if (session_status() === PHP_SESSION_NONE) session_start();
+
+// [SEGURIDAD] Configuración de Cookies de Sesión
+// Se aplica antes de iniciar la sesión
+if (session_status() === PHP_SESSION_NONE) {
+    // 1. HttpOnly: Impide que JavaScript acceda a la cookie (Mitiga robo por XSS)
+    ini_set('session.cookie_httponly', 1);
+    
+    // 2. Secure: Solo envía la cookie si la conexión es HTTPS
+    // Detectamos si estamos en HTTPS para no romper el entorno local (localhost)
+    $isHttps = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+    ini_set('session.cookie_secure', $isHttps ? 1 : 0);
+
+    // 3. Strict Mode: El servidor no acepta IDs de sesión no generados por él
+    ini_set('session.use_strict_mode', 1);
+
+    // 4. SameSite: Protección adicional contra CSRF (Lax es un buen balance)
+    ini_set('session.cookie_samesite', 'Lax');
+
+    session_start();
+}
 
 require_once __DIR__ . '/database.php';
 
