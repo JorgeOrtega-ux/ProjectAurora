@@ -185,6 +185,7 @@ try {
         if ($imageContent !== false) file_put_contents($destPath, $imageContent);
         else $dbPath = null;
 
+        // NOTA: Se inserta con account_status por defecto (definido en BD como 'active')
         $insert = $pdo->prepare("INSERT INTO users (uuid, email, username, password, avatar, role) VALUES (?, ?, ?, ?, ?, 'user')");
         if ($insert->execute([$uuid, $email, $finalUsername, $finalPassHash, $dbPath])) {
             
@@ -219,6 +220,19 @@ try {
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
+            
+            // [NUEVO] VERIFICACIÓN DE ESTADO DE CUENTA AL HACER LOGIN
+            if (isset($user['account_status']) && $user['account_status'] !== 'active') {
+                // Si no es activa, impedimos el login y mostramos mensaje acorde
+                if ($user['account_status'] === 'deleted') {
+                    throw new Exception('Esta cuenta ha sido eliminada permanentemente.');
+                } elseif ($user['account_status'] === 'suspended') {
+                    throw new Exception('Tu cuenta está suspendida temporalmente.');
+                } else {
+                    throw new Exception('Tu cuenta no está activa.');
+                }
+            }
+
             clearFailedAttempts($pdo, $email);
 
             $_SESSION['user_id'] = $user['id'];

@@ -10,5 +10,5 @@ if (!isset($_SESSION['user_id'])) {
 }
 ?>
 <div class="section-content overflow-y active" data-section="explorer">
-    <h1>Explorar Comunidades</h1>
+    <h1>2</h1>
 </div>

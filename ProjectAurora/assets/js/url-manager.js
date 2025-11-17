@@ -1,12 +1,14 @@
+
 const allowedSections = [
     'main', 'login', 'register', 'explorer',
-    // Agregamos las nuevas rutas a la lista blanca de JS
     'register/additional-data',
     'register/verification-account',
-    // NUEVO
-    'forgot-password'
+    'forgot-password',
+    // [NUEVO] Permitir la página de status
+    'status-page'
 ];
-const authZone = ['login', 'register', 'register/additional-data', 'register/verification-account', 'forgot-password'];
+// [NUEVO] status-page se considera zona de auth (sin header/navegación normal)
+const authZone = ['login', 'register', 'register/additional-data', 'register/verification-account', 'forgot-password', 'status-page'];
 const basePath = window.BASE_PATH || '/ProjectAurora/';
 
 export function initUrlManager() {
@@ -27,7 +29,6 @@ export function initUrlManager() {
         }
     });
     
-    // Opcional: Asegurar que el menú esté correcto al cargar (por si el HTML viniera desincronizado)
     updateActiveMenu(getSectionFromUrl());
 }
 
@@ -54,8 +55,6 @@ async function showSection(sectionName, pushState = true) {
     const container = document.getElementById('section-container');
     if (!container) { window.location.reload(); return; }
 
-    // --- LOGICA DE FETCH INTELIGENTE ---
-    // Si piden algo de register, siempre llamamos a 'register.php' pero con parámetro step
     let fileToFetch = sectionName.replace('/', '-'); 
     let queryParams = `?t=${Date.now()}`;
 
@@ -69,14 +68,13 @@ async function showSection(sectionName, pushState = true) {
         fileToFetch = 'register';
         queryParams += '&step=1';
     }
-    // -----------------------------------
+    // Nota: status-page carga status-page.php automáticamente por la lógica de reemplazo '/' -> '-'
 
     try {
         const resp = await fetch(`${basePath}includes/sections/${fileToFetch}.php${queryParams}`);
         if (!resp.ok) throw new Error('Error de carga');
         container.innerHTML = await resp.text();
 
-        // [CORRECCIÓN] Actualizamos el menú visualmente aquí
         updateActiveMenu(sectionName);
 
         if (pushState) {
@@ -88,17 +86,12 @@ async function showSection(sectionName, pushState = true) {
     }
 }
 
-// --- [NUEVA FUNCIÓN] ---
-// Se encarga de mover la clase 'active' al link correcto
 function updateActiveMenu(sectionName) {
-    // 1. Buscar todos los links del menú y quitarles la clase active
     const allLinks = document.querySelectorAll('.menu-link[data-nav]');
     allLinks.forEach(link => {
         link.classList.remove('active');
     });
 
-    // 2. Buscar el link que coincida con la sección actual y ponerle active
-    //    Nota: Si sectionName es 'main', busca [data-nav="main"]
     const activeLink = document.querySelector(`.menu-link[data-nav="${sectionName}"]`);
     if (activeLink) {
         activeLink.classList.add('active');

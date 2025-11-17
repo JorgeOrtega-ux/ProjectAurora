@@ -10,5 +10,5 @@ if (!isset($_SESSION['user_id'])) {
 }
 ?>
 <div class="section-content overflow-y active" data-section="main">
-    <h1>Página Principal (Main)</h1>
+    <h1>1</h1>
 </div>

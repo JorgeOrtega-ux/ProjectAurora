@@ -27,6 +27,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- Eliminar tablas si existen (útil si decides no borrar la BD completa arriba)
 DROP TABLE IF EXISTS verification_codes;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS security_logs;
 
 -- Reactivar revisión de llaves foráneas
 SET FOREIGN_KEY_CHECKS = 1;
@@ -44,11 +45,12 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     avatar VARCHAR(255) NULL,
     role VARCHAR(20) DEFAULT 'user',
+    account_status ENUM('active', 'suspended', 'deleted') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ==========================================
--- TABLA DE CÓDIGOS DE VERIFICACIÓN (Actualizada)
+-- TABLA DE CÓDIGOS DE VERIFICACIÓN
 -- ==========================================
 CREATE TABLE verification_codes (
     id INT AUTO_INCREMENT PRIMARY KEY,
