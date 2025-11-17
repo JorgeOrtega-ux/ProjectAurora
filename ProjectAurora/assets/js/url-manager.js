@@ -1,119 +1,107 @@
 // assets/js/url-manager.js
 
-// Configuración
 const allowedSections = ['main', 'login', 'register', 'explorer']; 
 const authZone = ['login', 'register'];
-// Usamos la variable global definida en el <head> del index.php
 const basePath = window.BASE_PATH || '/ProjectAurora/'; 
 
-/**
- * Inicializa la gestión de URLs y navegación.
- */
 export function initUrlManager() {
-    // 1. Manejar botones de Atrás/Adelante del navegador
-    window.addEventListener('popstate', handleUrlChange);
-
-    // 2. CORREGIDO: Manejar clics en navegación (Delegación de eventos en el body)
-    // Antes fallaba porque querySelector('.menu-list') tomaba el menú del perfil (header) 
-    // y no el menú lateral. Al usar body, capturamos cualquier click en cualquier menú.
-    document.body.addEventListener('click', (e) => {
-        const link = e.target.closest('.menu-link[data-nav]');
-        
-        if (link) {
-            e.preventDefault();
-            const section = link.dataset.nav;
-            
-            // Opcional: Si quieres que el menú se cierre al hacer click en móvil
-            // podrías disparar un evento click en el botón de menú o manipular las clases aquí.
-            
-            navigateTo(section);
+    // 1. Botones Atrás/Adelante: Actualización parcial si es posible
+    window.addEventListener('popstate', (event) => {
+        if (event.state && event.state.section) {
+            showSection(event.state.section, false);
+        } else {
+            // Si no hay estado (carga inicial), no hacemos nada o recargamos por seguridad
+             window.location.reload(); 
         }
     });
 
-    // 3. Manejar enlaces de texto de "Regístrate" o "Iniciar sesión" en los formularios
+    // 2. Clics en el menú: Interceptamos para SPA
+    document.body.addEventListener('click', (e) => {
+        const link = e.target.closest('.menu-link[data-nav]');
+        if (link) {
+            e.preventDefault();
+            const section = link.dataset.nav;
+            const currentSection = getSectionFromUrl();
+            
+            if (section !== currentSection) {
+                navigateTo(section);
+            }
+        }
+    });
+
+    // 3. Links internos de formularios
     document.body.addEventListener('click', (e) => {
         const link = e.target.closest('.form-footer-link a');
         if (link) {
             e.preventDefault();
             const text = link.innerText.toLowerCase();
-            
-            if (text.includes('regístrate')) {
-                navigateTo('register');
-            } else if (text.includes('iniciar sesión')) {
-                navigateTo('login');
-            }
+            if (text.includes('regístrate')) navigateTo('register');
+            else if (text.includes('iniciar sesión')) navigateTo('login');
         }
     });
 }
 
-/* --- Funciones Internas (No expuestas globalmente) --- */
+/* --- Lógica de Navegación --- */
 
 function navigateTo(sectionName) {
     const currentSectionName = getSectionFromUrl();
-
-    if (currentSectionName === sectionName) {
-        return; // Ya estamos aquí
-    }
-
     const isCurrentAuth = authZone.includes(currentSectionName);
     const isTargetAuth = authZone.includes(sectionName);
 
-    // Si cambiamos de zona (Auth <-> App), recargamos para que PHP maneje la sesión
+    // Si cambiamos de zona (Login <-> App), recarga completa obligatoria
     if ((isCurrentAuth && !isTargetAuth) || (!isCurrentAuth && isTargetAuth)) {
-        const newUrl = (sectionName === 'main') ? basePath : `${basePath}${sectionName}`;
-        window.location.href = newUrl;
+        window.location.href = (sectionName === 'main') ? basePath : `${basePath}${sectionName}`;
     } else {
-        // Navegación fluida (SPA)
+        // Si estamos dentro de la App, actualización parcial
         showSection(sectionName, true); 
     }
 }
 
 function getSectionFromUrl() {
     let path = window.location.pathname;
-    // Normalizar path eliminando el basePath
-    if (path.startsWith(basePath)) {
-        path = path.substring(basePath.length);
-    }
-    // Limpiar slashes finales y query strings
+    if (path.startsWith(basePath)) path = path.substring(basePath.length);
     path = path.replace(/\/$/, '').split('?')[0];
-    
-    if (path === '') return 'main';
-    if (allowedSections.includes(path)) return path;
-    return 'main'; 
-}
-
-function handleUrlChange() {
-    // Al usar botones de navegador, lo más seguro es recargar 
-    // para sincronizar estado PHP/JS, o podrías llamar a showSection(..., false).
-    window.location.reload();
+    if (path === '' || !allowedSections.includes(path)) return 'main';
+    return path; 
 }
 
 async function showSection(sectionName, pushState = true) {
     const container = document.getElementById('section-container');
+    // Loader sobre el padre para no borrarlo al reemplazar contenido
     const loaderParent = document.querySelector('.general-content'); 
-    let loader; 
-    
-    // Actualizamos visualmente el menú activo antes de cargar
-    updateActiveMenu(sectionName);
 
     if (!container || !loaderParent) return;
 
-    try {
-        // Spinner
-        const loaderHTML = `<div class="loader-wrapper" id="dynamic-loader" style="display: flex;"><div class="loader-spinner"></div></div>`;
-        loaderParent.insertAdjacentHTML('afterbegin', loaderHTML);
-        loader = document.getElementById('dynamic-loader'); 
+    // 1. Actualizar menú visualmente (rápido)
+    document.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
+    const activeLink = document.querySelector(`.menu-link[data-nav="${sectionName}"]`);
+    if (activeLink) activeLink.classList.add('active');
 
-        // Petición AJAX (Importante: credentials: 'include' para enviar cookies PHP)
-        const response = await fetch(`includes/sections/${sectionName}.php`, {
-            credentials: 'include' 
+    // 2. Mostrar Spinner
+    let loader = document.getElementById('dynamic-loader');
+    if (!loader) {
+        // Lo insertamos con display flex para centrar
+        loaderParent.insertAdjacentHTML('afterbegin', 
+            `<div class="loader-wrapper" id="dynamic-loader" style="display: flex;"><div class="loader-spinner"></div></div>`
+        );
+        loader = document.getElementById('dynamic-loader');
+    }
+
+    try {
+        // 3. Fetch del contenido (sin caché)
+        const response = await fetch(`${basePath}includes/sections/${sectionName}.php?t=${Date.now()}`, {
+            credentials: 'include'
         });
-        
+
         if (!response.ok) throw new Error('Error de carga');
 
         const htmlContent = await response.text();
+
+        // 4. REEMPLAZO EXACTO (Sin transiciones)
+        // Esto elimina lo viejo y pone lo nuevo en un solo frame de renderizado.
         container.innerHTML = htmlContent;
 
+        // 5. Actualizar URL
         if (pushState) {
             const newUrl = (sectionName === 'main') ? basePath : `${basePath}${sectionName}`;
             history.pushState({ section: sectionName }, '', newUrl);
@@ -121,21 +109,10 @@ async function showSection(sectionName, pushState = true) {
 
     } catch (error) {
         console.error(error);
-        // Si falla (ej. sesión expirada 401), redirigir al home fuerza el router PHP
-        if(sectionName !== 'login') window.location.href = basePath; 
+        // Si falla, redirigir es lo más seguro
+        window.location.href = basePath; 
     } finally {
-        if (loader) loader.remove(); 
-    }
-}
-
-function updateActiveMenu(sectionName) {
-    document.querySelectorAll('.menu-link').forEach(link => {
-        link.classList.remove('active');
-    });
-    
-    // Buscamos el link específico que tenga data-nav igual a la sección
-    const activeLink = document.querySelector(`.menu-link[data-nav="${sectionName}"]`);
-    if (activeLink) {
-        activeLink.classList.add('active');
+        // 6. Quitar Spinner
+        if (loader) loader.remove();
     }
 }
