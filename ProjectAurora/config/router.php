@@ -31,28 +31,25 @@ if (empty($requestUri)) {
 } elseif (in_array($requestUri, $allowedSections)) {
     $CURRENT_SECTION = $requestUri;
 } else {
-    // Si la URL no es 'main', 'login', o 'register',
-    // puedes redirigir a 'main' o mostrar un 404.
-    // Por ahora, la dejamos como 'main'.
-    $CURRENT_SECTION = 'main';
-    
-    // Si quisieras que /ProjectAurora/ y /ProjectAurora/main fueran lo mismo,
-    // pero cualquier otra cosa fuera un 404 (o 'main'),
-    // la lógica de arriba ya lo maneja.
+    // --- MODIFICACIÓN 1 ---
+    // Si la URL no está en las permitidas, es '404'
+    $CURRENT_SECTION = '404';
 }
 
 // Para que la URL /ProjectAurora/ se trate como la sección 'main'
 if ($CURRENT_SECTION === 'main' && $requestUri !== 'main' && !empty($requestUri)) {
      // Si la URL es algo como /ProjectAurora/otracosa, la forzamos a 'main'.
-     // Si quieres un 404, cambia esto.
+     // (Nota: Con la modificación de arriba, esto solo se ejecutaría si '404' falla,
+     // pero lo dejamos para consistencia con tu archivo original.)
      $CURRENT_SECTION = 'main';
 }
 
 
 // --- INICIO DE LA MODIFICACIÓN ---
 // Define la variable de navegación 
-// Será 'true' para 'main' y 'false' para 'login' o 'register'
-$showNavigation = ($CURRENT_SECTION !== 'login' && $CURRENT_SECTION !== 'register');
+// --- MODIFICACIÓN 2 ---
+// Será 'true' para 'main' y 'false' para 'login', 'register' y '404'
+$showNavigation = !in_array($CURRENT_SECTION, ['login', 'register', '404']);
 // --- FIN DE LA MODIFICACIÓN ---
 
 

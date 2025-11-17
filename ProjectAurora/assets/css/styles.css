@@ -448,3 +448,44 @@ input#register-password {
 .menu-link:hover {
     background-color: #f5f5fa;
 }
+
+/* --- INICIO CÓDIGO NUEVO --- */
+/* --- ESTILOS PÁGINA 404 --- */
+
+.error-404-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    max-width: 500px;
+    width: 100%;
+    padding: 20px;
+    /* Se quitó la línea de 'animation' */
+}
+
+.error-404-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6a6a6a;
+    background-color: #f0f0f5;
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+.error-404-title {
+    font-size: 36px;
+    font-weight: 600;
+    color: #222;
+    margin-bottom: 12px;
+    line-height: 1.2;
+}
+
+.error-404-text {
+    font-size: 17px;
+    color: #666;
+    line-height: 1.6;
+}
+
+/* Se quitó el bloque '@keyframes' */
