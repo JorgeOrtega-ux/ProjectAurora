@@ -232,7 +232,8 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
         const passIn = qs('[data-input="reg-password"]');
         if (!emailIn || !passIn) return;
         
-        const emailVal = emailIn.value.trim();
+        // [CORRECCIÓN APLICADA]
+        const emailVal = emailIn.value.trim().toLowerCase();
         const passVal = passIn.value;
 
         if (!isValidEmailDomain(emailVal)) {
@@ -316,7 +317,8 @@ async function handleRecoveryStep(stepName) {
             return; 
         }
         
-        payload = { action: 'recovery_step_1', email: emailIn.value.trim() };
+        // [CORRECCIÓN APLICADA]
+        payload = { action: 'recovery_step_1', email: emailIn.value.trim().toLowerCase() };
         btnSelector = '[data-action="rec-step1"]'; 
         errorSelector = '[data-error="rec-1"]'; 
         inputSelectors = ['[data-input="rec-email"]'];
@@ -480,7 +482,8 @@ async function handleLogin() {
             },
             body: JSON.stringify({ 
                 action: 'login', 
-                email: emailInput.value, 
+                // [CORRECCIÓN APLICADA]
+                email: emailInput.value.toLowerCase(), 
                 password: passInput.value 
             })
         });

@@ -115,7 +115,9 @@ async function showSection(sectionName, pushState = true) {
         updateActiveMenu(sectionName);
 
         if (pushState) {
-            const newUrl = (sectionName === 'main') ? basePath : `${baseFPath}${sectionName}`;
+            // [CORRECCIÓN APLICADA AQUÍ]
+            // Se cambió 'baseFPath' por 'basePath'
+            const newUrl = (sectionName === 'main') ? basePath : `${basePath}${sectionName}`;
             history.pushState({ section: sectionName }, '', newUrl);
         }
     } catch (error) {

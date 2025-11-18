@@ -121,7 +121,8 @@ try {
     // REGISTRO - ETAPA 1
     // ==================================================================
     if ($action === 'register_step_1') {
-        $email = filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL);
+        // [CORRECCIÓN APLICADA]
+        $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
 
         if (empty($email) || empty($password)) throw new Exception('Completa todos los campos.');
@@ -231,7 +232,8 @@ try {
     // LOGIN (CON SOPORTE 2FA INTEGRADO)
     // ==================================================================
     } elseif ($action === 'login') {
-        $email = filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL);
+        // [CORRECCIÓN APLICADA]
+        $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
 
         if (checkLockStatus($pdo, $email, 'login_fail')) {
@@ -333,7 +335,8 @@ try {
     // RECUPERACIÓN Y LOGOUT
     // ==================================================================
     } elseif ($action === 'recovery_step_1') {
-        $email = filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL);
+        // [CORRECCIÓN APLICADA]
+        $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
         if ($stmt->rowCount() === 0) throw new Exception('Este correo no está registrado.');
