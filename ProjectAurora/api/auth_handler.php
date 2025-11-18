@@ -334,24 +334,55 @@ try {
     // ==================================================================
     // RECUPERACIÓN Y LOGOUT
     // ==================================================================
+
+    // [INICIO DE MODIFICACIÓN IMPORTANTE]
     } elseif ($action === 'recovery_step_1') {
-        // [CORRECCIÓN APLICADA]
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-        $stmt->execute([$email]);
-        if ($stmt->rowCount() === 0) throw new Exception('Este correo no está registrado.');
         
-        $code = generate_verification_code();
-        $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'recovery'")->execute([$email]);
-        $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, expires_at) VALUES (?, 'recovery', ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
-        $stmt->execute([$email, $code]);
-        
+        // Preparamos la sesión en CUALQUIER CASO para mostrar el email en el siguiente paso
         if (!isset($_SESSION['temp_recovery'])) $_SESSION['temp_recovery'] = [];
-        $_SESSION['temp_recovery']['email'] = $email;
+        $_SESSION['temp_recovery']['email'] = $email; // Guardamos el correo (incluso si no existe)
         $_SESSION['temp_recovery']['step'] = 2;
-        
-        logger("Code Recup: $code");
-        $response = ['success' => true, 'message' => 'Código enviado'];
+
+        // [NUEVA VALIDACIÓN]
+        // Verificamos si el correo es válido ANTES de consultar la BD.
+        // Si no es válido (vacío o dominio no permitido),
+        // simplemente saltamos toda la lógica de BD/código.
+        // PERO AÚN ASÍ devolvemos 'success' al final.
+        if (!empty($email) && is_allowed_domain($email)) {
+            
+            // El correo TIENE UN FORMATO VÁLIDO, ahora buscamos si existe
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+            $stmt->execute([$email]);
+            
+            // SOLO si el usuario existe, generamos y guardamos el código
+            if ($stmt->rowCount() > 0) {
+                $code = generate_verification_code();
+                
+                // Borrar códigos de recuperación anteriores para este email
+                $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'recovery'")->execute([$email]);
+                
+                // Insertar el nuevo código
+                $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, expires_at) VALUES (?, 'recovery', ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
+                $stmt->execute([$email, $code]);
+                
+                // Log (y aquí iría el envío de email real)
+                logger("Code Recup (para $email): $code");
+            } else {
+                // El correo no existe, pero el formato era válido.
+                logger("Intento de recuperación para correo no existente (formato válido): $email");
+            }
+
+        } else {
+            // El correo tenía formato inválido (o estaba vacío)
+            if (!empty($email)) {
+                logger("Intento de recuperación con formato de correo inválido: $email");
+            }
+        }
+
+        // SIEMPRE devolvemos éxito para evitar enumeración
+        $response = ['success' => true, 'message' => 'Solicitud procesada'];
+    // [FIN DE MODIFICACIÓN IMPORTANTE]
 
     } elseif ($action === 'recovery_step_2') {
         $email = $_SESSION['temp_recovery']['email'] ?? '';

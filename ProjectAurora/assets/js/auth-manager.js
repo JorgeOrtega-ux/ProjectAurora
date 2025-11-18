@@ -355,13 +355,32 @@ async function handleRecoveryStep(stepName) {
     if (stepName === 'step1') {
         const emailIn = qs('[data-input="rec-email"]');
         if(!emailIn) return;
-        if(!emailIn.value.trim()) { 
+
+        // [INICIO DE MODIFICACIÓN IMPORTANTE]
+        const emailVal = emailIn.value.trim().toLowerCase();
+        const errorDiv = qs('[data-error="rec-1"]');
+        
+        // Limpiar error previo
+        if(errorDiv) { errorDiv.innerText = ''; errorDiv.classList.remove('active'); }
+        emailIn.classList.remove('input-error');
+
+        // 1. Validar vacío
+        if(!emailVal) { 
             emailIn.classList.add('input-error'); 
+            if(errorDiv) { errorDiv.innerText = "El correo es requerido."; errorDiv.classList.add('active'); }
             return; 
         }
+
+        // 2. Validar formato de dominio (igual que en registro)
+        if (!isValidEmailDomain(emailVal)) {
+            emailIn.classList.add('input-error');
+            if(errorDiv) { errorDiv.innerText = "Correo inválido. Solo se permite: Gmail, Outlook, iCloud, Yahoo."; errorDiv.classList.add('active'); }
+            return;
+        }
         
-        // [CORRECCIÓN APLICADA]
-        payload = { action: 'recovery_step_1', email: emailIn.value.trim().toLowerCase() };
+        payload = { action: 'recovery_step_1', email: emailVal };
+        // [FIN DE MODIFICACIÓN IMPORTANTE]
+        
         btnSelector = '[data-action="rec-step1"]'; 
         errorSelector = '[data-error="rec-1"]'; 
         inputSelectors = ['[data-input="rec-email"]'];
@@ -408,7 +427,8 @@ async function handleRecoveryStep(stepName) {
 
     // UI Loading
     const btn = qs(btnSelector);
-    const errorDiv = qs(errorSelector);
+    // [MODIFICACIÓN] Mover la declaración de errorDiv más arriba
+    // const errorDiv = qs(errorSelector);
     let originalContent = '';
     
     if(btn) { 
@@ -417,8 +437,13 @@ async function handleRecoveryStep(stepName) {
         btn.disabled = true; 
     }
     
+    // [MODIFICACIÓN] No limpiar el error en step 1 aquí, ya se hizo arriba
+    if (stepName !== 'step1') {
+        const errorDiv = qs(errorSelector);
+        if(errorDiv) { errorDiv.innerText = ''; errorDiv.classList.remove('active'); }
+    }
     inputSelectors.forEach(sel => qs(sel).classList.remove('input-error'));
-    if(errorDiv) { errorDiv.innerText = ''; errorDiv.classList.remove('active'); }
+    
 
     try {
         const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
@@ -443,20 +468,26 @@ async function handleRecoveryStep(stepName) {
                 if(stepName === 'step1') {
                     const display = qs('[data-display="rec-email"]');
                     if(display) display.innerText = payload.email;
-                    // ALERTA DE ÉXITO (MANTENIDA)
-                    if (window.alertManager) window.alertManager.showAlert('Código de recuperación enviado.', 'success');
+                    
+                    // ALERTA DE ÉXITO (MANTENIDA de la versión anterior)
+                    if (window.alertManager) {
+                        window.alertManager.showAlert('Solicitud procesada. Revisa tu correo.', 'info');
+                    }
                 }
                 
                 if(btn) { btn.innerHTML = originalContent; btn.disabled = false; }
             }
         } else {
+            // [MODIFICACIÓN] Solo mostrar error si el servidor falla (no en step 1)
+            // En step 1, el servidor SIEMPRE devuelve success, por lo que este
+            // 'else' solo se ejecutaría por un error real (ej. CSRF) o en step 2/3.
+            const errorDiv = qs(errorSelector);
             if(errorDiv) { errorDiv.innerText = res.message; errorDiv.classList.add('active'); }
-            // ALERTA DE ERROR ELIMINADA
             if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
         }
     } catch (e) {
+        const errorDiv = qs(errorSelector);
         if(errorDiv) { errorDiv.innerText = "Error de conexión"; errorDiv.classList.add('active'); }
-        // ALERTA DE ERROR ELIMINADA
         if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
     }
 }

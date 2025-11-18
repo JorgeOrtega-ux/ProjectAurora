@@ -28,7 +28,10 @@ if (isset($_SESSION['temp_recovery']['step'])) {
 
             <div data-step="rec-2" class="auth-step-container <?php echo ($initialStep === 2) ? 'active' : ''; ?>">
                 <h1>Verificación</h1>
-                <p style="font-size:14px;">Enviamos un código a <strong data-display="rec-email"><?php echo $_SESSION['temp_recovery']['email'] ?? 'tu correo'; ?></strong>.</p>
+                <p style="font-size:14px;">
+                    Si la cuenta <strong data-display="rec-email"><?php echo htmlspecialchars($_SESSION['temp_recovery']['email'] ?? 'tu correo'); ?></strong> existe, 
+                    hemos enviado un código de verificación.
+                </p>
                 
                 <div class="floating-label-group">
                     <input type="text" data-input="rec-code" class="floating-input" required placeholder=" " maxlength="12" style="letter-spacing: 2px; text-transform: uppercase; font-weight:bold;">
@@ -42,7 +45,6 @@ if (isset($_SESSION['temp_recovery']['step'])) {
                     <a href="#" data-action="rec-resend">Reenviar código / Cambiar correo</a>
                 </div>
             </div>
-
             <div data-step="rec-3" class="auth-step-container <?php echo ($initialStep === 3) ? 'active' : ''; ?>">
                 <h1>Nueva Contraseña</h1>
                 <p>Crea una nueva contraseña segura.</p>
