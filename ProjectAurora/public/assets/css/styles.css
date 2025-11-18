@@ -1,0 +1,673 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap');
+
+/* =========================================
+   1. BASE Y RESET
+   ========================================= */
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: "Roboto Condensed", sans-serif;
+}
+
+body,
+html {
+    width: 100%;
+    height: 100%;
+}
+
+/* =========================================
+   2. LAYOUT PRINCIPAL
+   ========================================= */
+.page-wrapper {
+    width: 100%;
+    height: 100%;
+}
+
+.main-content {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    width: 100%;
+    height: 100%;
+    padding: 12px;
+    background-color: #f5f5fa;
+}
+
+.general-content {
+    position: relative;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    background-color: #ffffff;
+    box-shadow: 0 4px 12px #00000020;
+    border-radius: 12px;
+}
+
+.general-content-top {
+    width: 100%;
+    height: auto;
+    border-bottom: 1px solid #00000020;
+    z-index: 999;
+    position: relative;
+}
+
+.general-content-bottom {
+    position: relative;
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.general-content-scrolleable {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+}
+
+.section-content {
+    width: 100%;
+    height: 100%;
+    padding: 16px;
+}
+
+.section-content.overflow-y {
+    overflow-y: auto;
+}
+
+.active {
+    display: block;
+}
+
+.section-content.active {
+    display: block;
+}
+
+.disabled {
+    display: none;
+}
+
+/* =========================================
+   3. HEADER Y BOTONES SUPERIORES
+   ========================================= */
+.header {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    height: auto;
+    padding: 8px;
+    gap: 8px;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.header-left,
+.header-right {
+    display: flex;
+    flex: 0 0 auto;
+}
+
+.header-right {
+    position: relative;
+    z-index: 1;
+}
+
+.header-item {
+    display: flex;
+    flex-direction: row;
+    width: auto;
+    height: 100%;
+    gap: 8px;
+}
+
+.header-button {
+    display: flex;
+    flex: 0 0 auto;
+    justify-content: center;
+    align-items: center;
+    width: 40px;
+    height: 40px;
+    background-color: transparent;
+    border-radius: 8px;
+    border: 1px solid #00000020;
+    cursor: pointer;
+    outline: none;
+    user-select: none;
+}
+
+.header-button:hover {
+    background-color: #f5f5fa;
+}
+
+/* =========================================
+   4. PERFIL DE USUARIO Y ROLES
+   ========================================= */
+.header-button.profile-button {
+    position: relative;
+    padding: 0;
+    border: none;
+    background-color: transparent;
+    overflow: visible;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.profile-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    position: relative;
+    z-index: 1;
+    border-radius: 50%;
+}
+
+.header-button.profile-button::before {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border: 2px solid transparent; 
+    transition: border-color 0.2s ease;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.header-button.profile-button[data-role="user"]::before {
+    border-color: #cccccc;
+}
+
+.header-button.profile-button[data-role="moderator"]::before {
+    border-color: #0000FF;
+}
+
+.header-button.profile-button[data-role="administrator"]::before {
+    border-color: #FF0000;
+}
+
+.header-button.profile-button[data-role="founder"]::before {
+    border: none;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+}
+
+/* =========================================
+   5. NAVEGACIÓN Y MENÚS (POPOVERS/SIDEBAR)
+   ========================================= */
+.module-content.module-surface {
+    position: absolute;
+    height: 100%;
+    padding: 8px;
+    top: 0;
+    left: 0;
+    z-index: 998;
+}
+
+.module-surface .menu-content {
+    width: 280px;
+    height: 100%;
+    background-color: #ffffff;
+    padding: 8px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px #00000020;
+}
+
+.popover-module {
+    position: absolute;
+    top: calc(100% + 5px);
+    z-index: 10;
+}
+
+.popover-module.popover-profile {
+    left: auto;
+    right: 5px;
+    width: 325px;
+}
+
+.popover-module .menu-content {
+    width: 100%;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px #00000020;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+}
+
+.menu-list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: auto;
+    gap: 4px;
+    user-select: none;
+}
+
+.menu-link {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: row;
+    width: 100%;
+    height: 40px;
+    position: relative;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+}
+
+.menu-link:hover,
+.menu-link.active {
+    background-color: #f5f5fa;
+}
+
+.menu-link-icon {
+    display: flex;
+    flex: 0 0 auto;
+    justify-content: center;
+    align-items: center;
+    width: 45px;
+    height: 100%;
+}
+
+.menu-link-text {
+    display: block;
+    flex: 1 1 auto;
+    text-align: start;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    align-self: center;
+}
+
+/* =========================================
+   6. FORMULARIOS (LOGIN / REGISTER)
+   ========================================= */
+.section-center-wrapper {
+    width: 100%;
+    min-height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.form-container {
+    max-width: 400px;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* --- NUEVAS CLASES PARA PASOS DE AUTH (FIX GAP/FLEX) --- */
+.auth-step-container {
+    display: none; /* Oculto por defecto */
+    flex-direction: column;
+    gap: 12px; /* Espaciado uniforme entre inputs */
+    width: 100%;
+    /* ANIMACIÓN ELIMINADA AQUÍ */
+}
+
+.auth-step-container.active {
+    display: flex; /* Se muestra activando Flexbox */
+}
+
+/* Wrapper para enlaces (ej: Forgot Password) dentro del flujo flex */
+.auth-link-wrapper {
+    text-align: right;
+}
+
+/* Wrapper para enlace de volver (arriba a la izquierda) */
+.auth-back-link {
+    margin-bottom: 10px;
+}
+
+.form-container h1 {
+    text-align: center;
+    font-size: 24px;
+    font-weight: 600;
+    color: #000000;
+}
+
+.form-container p {
+    text-align: center;
+    font-size: 16px;
+    color: #666;
+    margin-top: -10px;
+}
+
+.floating-label-group {
+    position: relative;
+}
+
+.floating-input {
+    height: 55px;
+    width: 100%;
+    padding: 14px 12px 0 12px;
+    font-size: 16px;
+    color: #333;
+    border: 1px solid #00000020;
+    border-radius: 8px;
+    outline: none;
+    box-sizing: border-box;
+    background-color: transparent;
+}
+
+.floating-label {
+    position: absolute;
+    top: 27.5px;
+    left: 12px;
+    font-size: 16px;
+    color: #888;
+    pointer-events: none;
+    transform: translateY(-50%);
+    transition: all 0.2s ease-out;
+}
+
+.floating-input:focus ~ .floating-label,
+.floating-input:not(:placeholder-shown) ~ .floating-label {
+    top: 10px;
+    transform: translateY(0);
+    font-size: 12px;
+    color: #000;
+}
+
+.floating-input:focus {
+    border-color: #000;
+    background-color: #fff;
+}
+
+.form-button {
+    height: 55px;
+    width: 100%;
+    border: none;
+    border-radius: 8px;
+    background-color: #000;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    transition: background-color 0.2s ease;
+    text-decoration: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.form-button:disabled {
+    background-color: #555;
+    cursor: not-allowed;
+}
+
+/* === MENSAJES DE ERROR E INPUTS === */
+
+.form-error-message {
+    display: none; 
+    width: 100%;
+    border: 1px solid #d32f2f; 
+    background-color: transparent; 
+    color: #d32f2f; 
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    text-align: center;
+    font-weight: 500;
+}
+
+.form-error-message.active {
+    display: block;
+}
+
+.floating-input.input-error {
+    border-color: #d32f2f;
+}
+
+.floating-input.input-error ~ .floating-label {
+    color: #d32f2f;
+}
+
+.floating-input.input-error:focus {
+    border-color: #d32f2f;
+}
+
+input[data-input="reg-password"],
+input[data-input="login-password"] {
+    padding-right: 50px;
+}
+
+.floating-input-btn {
+    position: absolute;
+    top: 27.5px;
+    right: 10px;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    padding: 0;
+    transition: background-color 0.2s ease;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    outline: none;
+}
+
+.floating-input-btn:hover {
+    color: #000;
+    background-color: #f5f5fa;
+}
+
+.floating-input-btn .material-symbols-rounded {
+    font-size: 24px;
+}
+
+.form-footer-link {
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+}
+
+.form-footer-link a {
+    color: #000;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.form-footer-link a:hover {
+    text-decoration: underline;
+}
+
+/* =========================================
+   7. LOADERS Y ANIMACIONES
+   ========================================= */
+.loader-wrapper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    display: none;
+    border-radius: 12px;
+}
+
+.loader-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f5f5fa;
+    border-top: 4px solid #000000;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.small-spinner {
+    width: 22px;
+    height: 22px;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-top: 2px solid #000000;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.btn-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid rgba(255, 255, 255, 0.3); 
+    border-top: 2px solid #ffffff; 
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* =========================================
+   8. PÁGINA 404
+   ========================================= */
+.error-404-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    max-width: 500px;
+    width: 100%;
+    padding: 20px;
+}
+
+.error-404-badge {
+    display: inline-block;
+    padding: 6px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #000000;
+    background-color: #f5f5fa;
+    border-radius: 50px;
+    margin-bottom: 24px;
+}
+
+.error-404-title {
+    font-size: 36px;
+    font-weight: 600;
+    color: #000000;
+    margin-bottom: 12px;
+    line-height: 1.2;
+}
+
+.error-404-text {
+    font-size: 17px;
+    color: #666;
+    line-height: 1.6;
+}
+
+.overflow-y {
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-color: #00000080 transparent;
+    scrollbar-width: thin;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.body-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.0178571429em;
+}
+
+
+
+
+@media (max-width: 468px) {
+    .module-content.module-surface {
+        width: 100%;
+        padding: 0;
+    }
+    .module-surface .menu-content {
+        width: 100%;
+        box-shadow: unset;
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+    }
+}
+
+
+/* =========================================
+   9. SISTEMA DE ALERTAS (MODIFICADO)
+   ========================================= */
+
+#alert-container {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 2000; /* Por encima de todo */
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Espacio entre alertas */
+    max-width: calc(100% - 40px); /* Asegurar que no se desborde en móviles */
+}
+
+.alert-box {
+    max-width: 350px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background-color: #333; /* Default (GRIS OSCURO) */
+    
+    /* Animación */
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    cursor: pointer;
+    user-select: none;
+}
+
+.alert-box.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* --- REGLAS DE COLOR ELIMINADAS --- */
+/* Ya no existen .alert-box.alert-success, .alert-box.alert-error, .alert-box.alert-info */
+
+
+@media (max-width: 468px) {
+    #alert-container {
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        max-width: calc(100% - 20px);
+        align-items: center; /* Centrar en móviles */
+    }
+    .alert-box {
+        width: 100%;
+    }
+}
