@@ -13,7 +13,7 @@ if ($isStep2 && isset($_SESSION['temp_login_2fa']['email'])) {
     <div class="section-center-wrapper">
         <div class="form-container">
             
-            <div data-step="login-1" style="display: <?php echo $isStep2 ? 'none' : 'block'; ?>;">
+            <div data-step="login-1" class="auth-step-container <?php echo $isStep2 ? '' : 'active'; ?>">
                 <h1>Iniciar Sesión</h1>
                 <p>Bienvenido de nuevo.</p>
 
@@ -43,7 +43,7 @@ if ($isStep2 && isset($_SESSION['temp_login_2fa']['email'])) {
                     </button>
                 </div>
 
-                <div style="text-align: right; margin-top: -10px; margin-bottom: 10px;">
+                <div class="auth-link-wrapper">
                     <a href="#" onclick="event.preventDefault(); navigateTo('forgot-password')" style="color:#666; text-decoration:none; font-size:14px; font-weight:500;">
                         ¿Olvidaste tu contraseña?
                     </a>
@@ -58,8 +58,8 @@ if ($isStep2 && isset($_SESSION['temp_login_2fa']['email'])) {
                 </div>
             </div>
 
-            <div data-step="login-2" style="display: <?php echo $isStep2 ? 'block' : 'none'; ?>;">
-                <div style="margin-bottom: 10px;">
+            <div data-step="login-2" class="auth-step-container <?php echo $isStep2 ? 'active' : ''; ?>">
+                <div class="auth-back-link">
                     <a href="#" data-action="login-2fa-back" style="color:#666; text-decoration:none; display:flex; align-items:center; gap:5px; font-size:14px;">
                         <span class="material-symbols-rounded" style="font-size:18px;">arrow_back</span> Cancelar
                     </a>

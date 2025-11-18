@@ -10,13 +10,13 @@ if (isset($_SESSION['temp_recovery']['step'])) {
     <div class="section-center-wrapper">
         <div class="form-container">
             
-            <div style="margin-bottom: 10px;">
+            <div class="auth-back-link">
                 <a href="#" onclick="event.preventDefault(); navigateTo('login')" style="color:#666; text-decoration:none; display:flex; align-items:center; gap:5px; font-size:14px;">
                     <span class="material-symbols-rounded" style="font-size:18px;">arrow_back</span> Volver al Login
                 </a>
             </div>
 
-            <div data-step="rec-1" style="display: <?php echo ($initialStep === 1) ? 'block' : 'none'; ?>;">
+            <div data-step="rec-1" class="auth-step-container <?php echo ($initialStep === 1) ? 'active' : ''; ?>">
                 <h1>Recuperar Cuenta (1/3)</h1>
                 <p>Ingresa tu correo para buscar tu cuenta.</p>
                 
@@ -29,7 +29,7 @@ if (isset($_SESSION['temp_recovery']['step'])) {
                 <div data-error="rec-1" class="form-error-message"></div>
             </div>
 
-            <div data-step="rec-2" style="display: <?php echo ($initialStep === 2) ? 'block' : 'none'; ?>;">
+            <div data-step="rec-2" class="auth-step-container <?php echo ($initialStep === 2) ? 'active' : ''; ?>">
                 <h1>Verificación (2/3)</h1>
                 <p style="font-size:14px;">Enviamos un código a <strong data-display="rec-email"><?php echo $_SESSION['temp_recovery']['email'] ?? 'tu correo'; ?></strong>.</p>
                 
@@ -46,7 +46,7 @@ if (isset($_SESSION['temp_recovery']['step'])) {
                 </div>
             </div>
 
-            <div data-step="rec-3" style="display: <?php echo ($initialStep === 3) ? 'block' : 'none'; ?>;">
+            <div data-step="rec-3" class="auth-step-container <?php echo ($initialStep === 3) ? 'active' : ''; ?>">
                 <h1>Nueva Contraseña (3/3)</h1>
                 <p>Crea una nueva contraseña segura.</p>
                 

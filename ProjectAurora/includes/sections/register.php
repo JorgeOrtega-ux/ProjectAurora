@@ -14,7 +14,7 @@ if (isset($CURRENT_SECTION)) {
     <div class="section-center-wrapper">
         <div class="form-container">
             
-            <div data-step="register-1" style="display: <?php echo ($initialStep === 1) ? 'block' : 'none'; ?>;">
+            <div data-step="register-1" class="auth-step-container <?php echo ($initialStep === 1) ? 'active' : ''; ?>">
                 <h1>Registro (1/3)</h1>
                 <p>Comencemos con tus credenciales.</p>
                 
@@ -48,8 +48,8 @@ if (isset($CURRENT_SECTION)) {
                 <div class="form-footer-link">¿Ya tienes una cuenta? <a href="#" onclick="event.preventDefault(); navigateTo('login')">Iniciar sesión</a></div>
             </div>
 
-            <div data-step="register-2" style="display: <?php echo ($initialStep === 2) ? 'block' : 'none'; ?>;">
-                <div style="margin-bottom: 10px;">
+            <div data-step="register-2" class="auth-step-container <?php echo ($initialStep === 2) ? 'active' : ''; ?>">
+                <div class="auth-back-link">
                     <a href="#" data-action="register-back-step1" style="color:#666; text-decoration:none; display:flex; align-items:center; gap:5px; font-size:14px;">
                         <span class="material-symbols-rounded" style="font-size:18px;">arrow_back</span> Volver
                     </a>
@@ -80,7 +80,7 @@ if (isset($CURRENT_SECTION)) {
                 <div data-error="register-2" class="form-error-message"></div>
             </div>
 
-            <div data-step="register-3" style="display: <?php echo ($initialStep === 3) ? 'block' : 'none'; ?>;">
+            <div data-step="register-3" class="auth-step-container <?php echo ($initialStep === 3) ? 'active' : ''; ?>">
                 <h1>Verificación (3/3)</h1>
                 <p style="font-size:14px;">Hemos enviado un código a <strong data-display="email-verify"><?php echo $_SESSION['temp_register']['email'] ?? 'tu correo'; ?></strong>.</p>
                 

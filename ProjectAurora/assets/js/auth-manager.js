@@ -1,5 +1,26 @@
 const API_BASE_PATH = window.BASE_PATH || '/ProjectAurora/';
 
+// Helper para selectores (simplifica el código)
+function qs(selector) {
+    return document.querySelector(selector);
+}
+
+// Helper para cambiar visibilidad usando clases
+function toggleStepVisibility(hideSelector, showSelector) {
+    const toHide = qs(hideSelector);
+    const toShow = qs(showSelector);
+
+    if (toHide) {
+        toHide.classList.remove('active');
+        // Limpiar errores al cambiar de paso
+        const err = toHide.querySelector('.form-error-message');
+        if (err) { err.innerText = ''; err.classList.remove('active'); }
+    }
+    if (toShow) {
+        toShow.classList.add('active');
+    }
+}
+
 export function initAuthManager() {
     document.body.addEventListener('click', async (e) => {
         
@@ -52,9 +73,14 @@ export function initAuthManager() {
         // Botón "Reenviar / Cambiar correo"
         if (e.target.closest('[data-action="rec-resend"]')) {
             e.preventDefault();
-            document.querySelector('[data-step="rec-1"]').style.display = 'block';
-            document.querySelector('[data-step="rec-2"]').style.display = 'none';
-            document.querySelector('[data-step="rec-3"]').style.display = 'none';
+            // Ocultar pasos 2 y 3, mostrar 1
+            const step1 = qs('[data-step="rec-1"]');
+            const step2 = qs('[data-step="rec-2"]');
+            const step3 = qs('[data-step="rec-3"]');
+            
+            if(step2) step2.classList.remove('active');
+            if(step3) step3.classList.remove('active');
+            if(step1) step1.classList.add('active');
         }
         // =================================================
 
@@ -99,17 +125,13 @@ export function initAuthManager() {
         // --- LOGIN (STEP 2 - BOTÓN ATRÁS) ---
         if (e.target.closest('[data-action="login-2fa-back"]')) {
             e.preventDefault();
-            // Restaurar vista al paso 1
-            document.querySelector('[data-step="login-1"]').style.display = 'block';
-            document.querySelector('[data-step="login-2"]').style.display = 'none';
+            
+            // Restaurar vista al paso 1 usando clases
+            toggleStepVisibility('[data-step="login-2"]', '[data-step="login-1"]');
             
             // Restaurar URL a /login
             const loginUrl = API_BASE_PATH + 'login';
             history.pushState({ section: 'login' }, '', loginUrl);
-            
-            // Limpiar errores previos del paso 2
-            const err = document.querySelector('[data-error="login-2fa"]');
-            if(err) { err.innerText = ''; err.classList.remove('active'); }
         }
         
         // --- LOGOUT ---
@@ -139,11 +161,6 @@ function getCsrfToken() {
     return meta ? meta.getAttribute('content') : '';
 }
 
-// Helper para selectores (simplifica el código)
-function qs(selector) {
-    return document.querySelector(selector);
-}
-
 function generateMagicUsername() {
     const now = new Date();
     const pad = (num) => num.toString().padStart(2, '0');
@@ -167,13 +184,15 @@ function generateMagicUsername() {
 }
 
 function switchRegisterStep(stepNumber, urlPath) {
-    qs('[data-step="register-1"]').style.display = 'none';
-    qs('[data-step="register-2"]').style.display = 'none';
-    qs('[data-step="register-3"]').style.display = 'none';
+    // Remover active de todos
+    qs('[data-step="register-1"]').classList.remove('active');
+    qs('[data-step="register-2"]').classList.remove('active');
+    qs('[data-step="register-3"]').classList.remove('active');
     
+    // Activar el target
     const target = qs(`[data-step="register-${stepNumber}"]`);
     if (target) {
-        target.style.display = 'block';
+        target.classList.add('active');
         if (urlPath) {
             const newUrl = API_BASE_PATH + urlPath;
             history.pushState({ section: urlPath }, '', newUrl);
@@ -276,7 +295,8 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
 async function handleRecoveryStep(stepName) {
     let payload = { action: '' };
     let btnSelector, errorSelector, inputSelectors = [];
-    let nextStepDataAttr = '';
+    let currentStepSelector = '';
+    let nextStepSelector = '';
 
     // Step 1: Enviar Email
     if (stepName === 'step1') {
@@ -291,7 +311,8 @@ async function handleRecoveryStep(stepName) {
         btnSelector = '[data-action="rec-step1"]'; 
         errorSelector = '[data-error="rec-1"]'; 
         inputSelectors = ['[data-input="rec-email"]'];
-        nextStepDataAttr = 'rec-2';
+        currentStepSelector = '[data-step="rec-1"]';
+        nextStepSelector = '[data-step="rec-2"]';
 
     // Step 2: Enviar Código
     } else if (stepName === 'step2') {
@@ -306,7 +327,8 @@ async function handleRecoveryStep(stepName) {
         btnSelector = '[data-action="rec-step2"]'; 
         errorSelector = '[data-error="rec-2"]'; 
         inputSelectors = ['[data-input="rec-code"]'];
-        nextStepDataAttr = 'rec-3';
+        currentStepSelector = '[data-step="rec-2"]';
+        nextStepSelector = '[data-step="rec-3"]';
 
     // Step 3: Nueva Contraseña
     } else if (stepName === 'step3') {
@@ -358,12 +380,8 @@ async function handleRecoveryStep(stepName) {
             if (stepName === 'step3') {
                 window.location.href = API_BASE_PATH + 'login';
             } else {
-                qs('[data-step="rec-1"]').style.display = 'none';
-                qs('[data-step="rec-2"]').style.display = 'none';
-                qs('[data-step="rec-3"]').style.display = 'none';
-                
-                const next = qs(`[data-step="${nextStepDataAttr}"]`);
-                if(next) next.style.display = 'block';
+                // Cambio de visibilidad con clases
+                toggleStepVisibility(currentStepSelector, nextStepSelector);
                 
                 if(stepName === 'step1') {
                     const display = qs('[data-display="rec-email"]');
@@ -466,9 +484,8 @@ async function handleLogin() {
                 const nextUrl = API_BASE_PATH + 'login/verification-additional';
                 history.pushState({ section: 'login/verification-additional' }, '', nextUrl);
 
-                // Cambio UI
-                qs('[data-step="login-1"]').style.display = 'none';
-                qs('[data-step="login-2"]').style.display = 'block';
+                // Cambio UI con clases
+                toggleStepVisibility('[data-step="login-1"]', '[data-step="login-2"]');
                 
                 const displayEmail = qs('[data-display="login-2fa-email"]');
                 if(displayEmail && res.masked_email) {
