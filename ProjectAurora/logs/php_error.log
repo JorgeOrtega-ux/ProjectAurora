@@ -1,0 +1,140 @@
+[2025-11-17 18:12:08] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:12:11] [CUSTOM] Usuario registrado: 12@gmail.com
+[2025-11-17 18:12:51] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:18] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:18] [CUSTOM] Error: El correo ya está registrado.
+[2025-11-17 18:14:22] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:22] [CUSTOM] Usuario registrado: 1211@gmail.com
+[2025-11-17 18:14:26] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:28] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:28] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:46] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:46] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:14:49] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:49] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:14:51] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:52] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:14:54] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:14:54] [CUSTOM] Login exitoso: 12@gmail.com
+[2025-11-17 18:17:28] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:17:28] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:17:31] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:17:31] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:17:33] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:17:33] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:17:35] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:17:36] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:17:37] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:17:37] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:17:40] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:17:40] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:17:43] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:17:43] [CUSTOM] Login exitoso: 12@gmail.com
+[2025-11-17 18:31:12] [CUSTOM] Auth handler invocado correctamente.
+[2025-11-17 18:31:16] [CUSTOM] Usuario registrado: 122@gmail.com con avatar: assets/uploads/avatars/cf100eed-d538-468f-905b-32a7760c5127.png
+[2025-11-17 18:43:51] [CUSTOM] Login exitoso: 12@gmail.com
+[2025-11-17 18:51:22] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:51:27] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:51:29] [CUSTOM] Login exitoso: 12@gmail.com
+[2025-11-17 19:13:34] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 19:13:36] [CUSTOM] Login exitoso: 12@gmail.com
+[2025-11-17 19:36:34] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 19:36:37] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 19:36:40] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 19:36:43] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 19:36:45] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 19:36:49] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 19:36:51] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 19:36:54] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 19:36:56] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 19:36:58] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 19:37:02] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 19:37:04] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 19:37:07] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 19:37:09] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 19:37:11] [CUSTOM] Login exitoso: 12@gmail.com
+[2025-11-17 20:04:14] [CUSTOM] Usuario registrado: 1212@1
+[2025-11-17 20:14:45] [CUSTOM] Registro Paso 1 (Email): 111111a@gmail.com
+[2025-11-17 20:14:48] [CUSTOM] Error Auth: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'username' in 'where clause'
+[2025-11-17 20:15:44] [CUSTOM] Registro Paso 1 (Email): 11a@gmail.com
+[2025-11-17 20:15:46] [CUSTOM] Error Auth: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'username' in 'where clause'
+[2025-11-17 20:17:10] [CUSTOM] Registro Paso 1 (Email): 1ena@gmail.com
+[2025-11-17 20:17:12] [CUSTOM] CODIGO DE VERIFICACION para 1ena@gmail.com: F8A0B9A2ACF4
+[2025-11-17 20:17:25] [CUSTOM] Usuario registrado exitosamente: 111111111111 (1ena@gmail.com)
+[2025-11-17 20:20:44] [CUSTOM] Error Auth: El correo ya está registrado.
+[2025-11-17 20:20:50] [CUSTOM] Registro Paso 1 (Email): 1en12a@gmail.com
+[2025-11-17 20:20:53] [CUSTOM] CODIGO DE VERIFICACION para 1en12a@gmail.com: 1AFF7B1250CE
+[2025-11-17 20:21:05] [CUSTOM] Error Auth: Código inválido o ha expirado.
+[2025-11-17 20:21:05] [CUSTOM] Error Auth: Código inválido o ha expirado.
+[2025-11-17 20:25:53] [CUSTOM] Registro Paso 1 (Email): 1en12a@gmail.com
+[2025-11-17 20:25:56] [CUSTOM] CODIGO DE VERIFICACION para 1en12a@gmail.com: EEEBB1BC1374
+[2025-11-17 20:29:27] [CUSTOM] Registro Paso 1 (Email): 11311@gmail.com
+[2025-11-17 20:29:29] [CUSTOM] CODIGO DE VERIFICACION para 11311@gmail.com: 4CEE9EEC8CD6
+[2025-11-17 20:34:11] [CUSTOM] Registro Paso 1 (Email): 11311@gmail.com
+[2025-11-17 20:34:25] [CUSTOM] CODIGO DE VERIFICACION para 11311@gmail.com: B84474D97F29
+[2025-11-17 20:34:50] [CUSTOM] Registro Paso 1 (Email): 11311@gmail.com
+[2025-11-17 20:38:05] [CUSTOM] Registro Paso 1 (Email): 1en12a@gmail.com1
+[2025-11-17 20:38:10] [CUSTOM] CODIGO DE VERIFICACION para 1en12a@gmail.com1: 9FBA5420630E
+[2025-11-17 20:38:19] [CUSTOM] Registro Paso 1 (Email): 1en12a@gmail.com1TTTTTTTTT
+[2025-11-17 20:44:07] [CUSTOM] Registro Paso 1 (Email): 1en12a@gmail.com
+[2025-11-17 20:51:48] [CUSTOM] Code generado para 1en1212a@gmail.com: E31A549F25 | Payload: {"username":"user20251117_135147ix","password_hash":"$2y$10$doyLXJo0Yw1bk4F\/sRvJuuRSiqHcFwOLS7Q8Dbk.RVRxrqCxHmBC2"}
+[2025-11-17 20:52:24] [CUSTOM] Usuario creado: user20251117_135147ix (1en1212a@gmail.com)
+[2025-11-17 20:52:58] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 21:02:50] [CUSTOM] Error: Este correo no está registrado.
+[2025-11-17 21:03:00] [CUSTOM] Code RECUPERACION para 1en1212a@gmail.com: BF41E83178
+[2025-11-17 21:03:17] [CUSTOM] Error: Código incorrecto o expirado.
+[2025-11-17 14:17:22] [CUSTOM] Error: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'project_aurora_db.security_logs' doesn't exist
+[2025-11-17 14:17:38] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 14:17:39] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 14:17:49] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 14:17:50] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 14:17:51] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 14:18:34] [CUSTOM] Error: Demasiadas solicitudes recientes. Espera unos minutos.
+[2025-11-17 14:25:27] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 14:25:29] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 14:25:29] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 14:25:29] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 14:25:30] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 14:25:42] [CUSTOM] Error: Este correo no está registrado.
+[2025-11-17 14:25:48] [CUSTOM] Error: Este correo no está registrado.
+[2025-11-17 14:26:18] [CUSTOM] Code RECUPERACION para 1en1212a@gmail.com: F0F29300BD
+[2025-11-17 14:26:22] [CUSTOM] Error: Código incorrecto o expirado.
+[2025-11-17 14:26:22] [CUSTOM] Error: Código incorrecto o expirado.
+[2025-11-17 14:26:23] [CUSTOM] Error: Código incorrecto o expirado.
+[2025-11-17 14:26:23] [CUSTOM] Error: Demasiados intentos de código fallidos. Espera 5 minutos.
+[2025-11-17 14:26:23] [CUSTOM] Error: Demasiados intentos de código fallidos. Espera 5 minutos.
+[2025-11-17 14:26:23] [CUSTOM] Error: Demasiados intentos de código fallidos. Espera 5 minutos.
+[2025-11-17 14:26:23] [CUSTOM] Error: Demasiados intentos de código fallidos. Espera 5 minutos.
+[2025-11-17 14:26:24] [CUSTOM] Error: Demasiados intentos de código fallidos. Espera 5 minutos.
+[2025-11-17 15:39:38] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 15:40:11] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 15:40:11] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 15:42:07] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 15:42:09] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 15:42:44] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 15:43:49] [CUSTOM] Code registro generado para 1111111a@gmail.com: 1C39AD138D
+[2025-11-17 15:44:06] [CUSTOM] Usuario creado: user20251117_1543496j (1111111a@gmail.com)
+[2025-11-17 15:45:40] [CUSTOM] Code registro generado para aguilar.131103jimena@gmail.com: 91724A299E
+[2025-11-17 15:45:51] [CUSTOM] Usuario creado: user20251117_154540sj (aguilar.131103jimena@gmail.com)
+[2025-11-17 15:57:57] [CUSTOM] Code registro generado para 1en12a@gmail.com: 4979B8B37C
+[2025-11-17 15:58:07] [CUSTOM] Usuario creado: user20251117_155756sw (1en12a@gmail.com)
+[2025-11-17 16:08:52] [CUSTOM] Code registro: 44013C5D56
+[2025-11-17 16:09:20] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 16:09:21] [CUSTOM] Code 2FA Login para 11311@gmail.com: 1F7C438177
+[2025-11-17 16:09:34] [CUSTOM] Error: Código incorrecto o expirado.
+[2025-11-17 16:12:47] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 16:12:52] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 16:13:05] [CUSTOM] Code 2FA Login para 11311@gmail.com: 6A70F672E6
+[2025-11-17 16:18:35] [CUSTOM] Code registro: 6EF534184D
+[2025-11-17 16:23:22] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 16:23:32] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 16:23:46] [CUSTOM] Code 2FA Login para 11311@gmail.com: 48D141F0B7
+[2025-11-17 16:28:31] [CUSTOM] Code 2FA Login para 11311@gmail.com: E765E3EB62
+[2025-11-17 16:59:54] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 17:44:39] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 17:44:54] [CUSTOM] Code registro: CE2520E88B
+[2025-11-17 17:53:26] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:29:20] [CUSTOM] Code registro: 882371F130
+[2025-11-17 18:30:02] [CUSTOM] Error: Sesión expirada.
+[2025-11-17 18:31:18] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-17 18:31:35] [CUSTOM] Error: Credenciales incorrectas.
