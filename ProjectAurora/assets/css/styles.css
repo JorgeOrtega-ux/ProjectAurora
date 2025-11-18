@@ -615,3 +615,59 @@ input[data-input="login-password"] {
         border-top-right-radius: 0;
     }
 }
+
+
+/* =========================================
+   9. SISTEMA DE ALERTAS (MODIFICADO)
+   ========================================= */
+
+#alert-container {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 2000; /* Por encima de todo */
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Espacio entre alertas */
+    max-width: calc(100% - 40px); /* Asegurar que no se desborde en móviles */
+}
+
+.alert-box {
+    max-width: 350px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background-color: #333; /* Default (GRIS OSCURO) */
+    
+    /* Animación */
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    cursor: pointer;
+    user-select: none;
+}
+
+.alert-box.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* --- REGLAS DE COLOR ELIMINADAS --- */
+/* Ya no existen .alert-box.alert-success, .alert-box.alert-error, .alert-box.alert-info */
+
+
+@media (max-width: 468px) {
+    #alert-container {
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        max-width: calc(100% - 20px);
+        align-items: center; /* Centrar en móviles */
+    }
+    .alert-box {
+        width: 100%;
+    }
+}

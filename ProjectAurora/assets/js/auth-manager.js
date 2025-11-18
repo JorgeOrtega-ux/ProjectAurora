@@ -1,3 +1,5 @@
+// assets/js/auth-manager.js
+
 const API_BASE_PATH = window.BASE_PATH || '/ProjectAurora/';
 
 // Helper para selectores (simplifica el código)
@@ -173,6 +175,13 @@ export function initAuthManager() {
                 const res = await response.json();
 
                 if (res.success) {
+                    
+                    // --- ALERTA DE CIERRE DE SESIÓN AÑADIDA ---
+                    if (window.alertManager) {
+                        window.alertManager.showAlert('Cerrando sesión...', 'info');
+                    }
+                    // --- FIN DE LA ALERTA ---
+
                     // Éxito: el servidor cerró la sesión, ahora redirigimos al cliente
                     // No necesitamos restaurar el botón, la página va a cambiar.
                     window.location.href = API_BASE_PATH + 'login';
@@ -322,11 +331,13 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
 
     if (hasEmpty) {
         if(errorDiv) { errorDiv.innerText = "Todos los campos son requeridos."; errorDiv.classList.add('active'); }
+        // ALERTA DE ERROR ELIMINADA
         return;
     }
 
     if (errorMessage) {
         if(errorDiv) { errorDiv.innerText = errorMessage; errorDiv.classList.add('active'); }
+        // ALERTA DE ERROR ELIMINADA
         return;
     }
 
@@ -385,6 +396,7 @@ async function handleRecoveryStep(stepName) {
                 err.innerText = 'Mínimo 8 caracteres';
                 err.classList.add('active');
             }
+            // ALERTA DE ERROR ELIMINADA
             return; 
         }
 
@@ -421,6 +433,8 @@ async function handleRecoveryStep(stepName) {
 
         if (res.success) {
             if (stepName === 'step3') {
+                // ALERTA DE ÉXITO (MANTENIDA)
+                if (window.alertManager) window.alertManager.showAlert('Contraseña actualizada con éxito.', 'success');
                 window.location.href = API_BASE_PATH + 'login';
             } else {
                 // Cambio de visibilidad con clases
@@ -429,16 +443,20 @@ async function handleRecoveryStep(stepName) {
                 if(stepName === 'step1') {
                     const display = qs('[data-display="rec-email"]');
                     if(display) display.innerText = payload.email;
+                    // ALERTA DE ÉXITO (MANTENIDA)
+                    if (window.alertManager) window.alertManager.showAlert('Código de recuperación enviado.', 'success');
                 }
                 
                 if(btn) { btn.innerHTML = originalContent; btn.disabled = false; }
             }
         } else {
             if(errorDiv) { errorDiv.innerText = res.message; errorDiv.classList.add('active'); }
+            // ALERTA DE ERROR ELIMINADA
             if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
         }
     } catch (e) {
         if(errorDiv) { errorDiv.innerText = "Error de conexión"; errorDiv.classList.add('active'); }
+        // ALERTA DE ERROR ELIMINADA
         if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
     }
 }
@@ -470,15 +488,21 @@ async function sendAuthRequest(payload, btnSelector, errorSelector, nextStep, ne
             if (nextStep === 'main') {
                 window.location.href = API_BASE_PATH;
             } else {
+                // ALERTA DE ÉXITO (MANTENIDA)
+                if (payload.action === 'register_step_2' && window.alertManager) {
+                    window.alertManager.showAlert('Código de verificación enviado.', 'success');
+                }
                 switchRegisterStep(nextStep, nextUrl);
                 if(btn) { btn.innerHTML = originalContent; btn.disabled = false; }
             }
         } else {
             if(errorDiv) { errorDiv.innerText = result.message; errorDiv.classList.add('active'); }
+            // ALERTA DE ERROR ELIMINADA
             if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
         }
     } catch (error) {
         if(errorDiv) { errorDiv.innerText = "Error de conexión"; errorDiv.classList.add('active'); }
+        // ALERTA DE ERROR ELIMINADA
         if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
     }
 }
@@ -535,6 +559,9 @@ async function handleLogin() {
                 if(displayEmail && res.masked_email) {
                     displayEmail.innerText = res.masked_email;
                 }
+                
+                // ALERTA DE INFO (MANTENIDA)
+                if (window.alertManager) window.alertManager.showAlert('Código de seguridad 2FA enviado.', 'info');
 
                 btn.innerHTML = originalContent;
                 btn.disabled = false;
@@ -545,6 +572,8 @@ async function handleLogin() {
                 }, 100);
 
             } else {
+                // ALERTA DE INFO (MANTENIDA)
+                if (window.alertManager) window.alertManager.showAlert('Inicio de sesión exitoso.', 'info');
                 window.location.href = API_BASE_PATH;
             }
         } else {
@@ -552,6 +581,8 @@ async function handleLogin() {
                 errorDiv.innerText = res.message;
                 errorDiv.classList.add('active');
             }
+            // ALERTA DE ERROR ELIMINADA
+
             emailInput.classList.add('input-error');
             passInput.classList.add('input-error');
             
@@ -563,6 +594,7 @@ async function handleLogin() {
             errorDiv.innerText = "Error de conexión";
             errorDiv.classList.add('active');
         }
+        // ALERTA DE ERROR ELIMINADA
         btn.innerHTML = originalContent;
         btn.disabled = false;
     }
@@ -602,12 +634,15 @@ async function handleLogin2FA() {
 
         const res = await response.json();
         if (res.success) {
+            // ALERTA DE ÉXITO (MANTENIDA)
+            if (window.alertManager) window.alertManager.showAlert('Acceso verificado. ¡Bienvenido!', 'success');
             window.location.href = API_BASE_PATH;
         } else {
             if(errorDiv) {
                 errorDiv.innerText = res.message;
                 errorDiv.classList.add('active');
             }
+            // ALERTA DE ERROR ELIMINADA
             codeInput.classList.add('input-error');
             btn.innerHTML = originalContent;
             btn.disabled = false;
@@ -617,6 +652,7 @@ async function handleLogin2FA() {
             errorDiv.innerText = "Error de conexión";
             errorDiv.classList.add('active');
         }
+        // ALERTA DE ERROR ELIMINADA
         btn.innerHTML = originalContent;
         btn.disabled = false;
     }
