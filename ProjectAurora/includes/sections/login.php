@@ -46,7 +46,7 @@ if ($isStep2 && isset($_SESSION['temp_login_2fa']['email'])) {
                     >
                     <label class="floating-label">Contraseña</label>
                     
-                    <button type="button" class="password-toggle-btn">
+                    <button type="button" class="floating-input-btn">
                         <span class="material-symbols-rounded">visibility</span>
                     </button>
                 </div>

@@ -40,7 +40,7 @@ if (isset($CURRENT_SECTION)) {
                         minlength="8"
                     >
                     <label class="floating-label">Contraseña (Mín. 8 caracteres)</label>
-                    <button type="button" class="password-toggle-btn"><span class="material-symbols-rounded">visibility</span></button>
+                    <button type="button" class="floating-input-btn"><span class="material-symbols-rounded">visibility</span></button>
                 </div>
 
                 <button class="form-button" data-action="register-step1">Siguiente</button>
@@ -71,7 +71,7 @@ if (isset($CURRENT_SECTION)) {
                     >
                     <label class="floating-label">Usuario (8-32 letras, núm, _)</label>
                     
-                    <button type="button" class="password-toggle-btn username-magic-btn" title="Generar usuario aleatorio">
+                    <button type="button" class="floating-input-btn username-magic-btn" title="Generar usuario aleatorio">
                         <span class="material-symbols-rounded">auto_fix_high</span>
                     </button>
                 </div>

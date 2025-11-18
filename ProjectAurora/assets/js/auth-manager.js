@@ -85,9 +85,18 @@ export function initAuthManager() {
         // =================================================
 
         // --- TOGGLE PASSWORD (OJO/VISIBILIDAD) ---
-        if (e.target.closest('.password-toggle-btn') && !e.target.closest('.username-magic-btn')) {
-            const btn = e.target.closest('.password-toggle-btn');
-            const input = btn.previousElementSibling; 
+        if (e.target.closest('.floating-input-btn') && !e.target.closest('.username-magic-btn')) {
+            const btn = e.target.closest('.floating-input-btn');
+            
+            // === INICIO DE LA CORRECCIÓN ===
+            // En lugar de buscar el hermano anterior, buscamos el contenedor padre
+            // y luego el input dentro de ese contenedor.
+            const parent = btn.closest('.floating-label-group');
+            if (!parent) return; // Si no hay padre, no hacemos nada
+
+            const input = parent.querySelector('input');
+            // === FIN DE LA CORRECCIÓN ===
+
             if (input && input.tagName === 'INPUT') {
                 if (input.type === 'password') {
                     input.type = 'text';

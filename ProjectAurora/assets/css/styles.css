@@ -454,13 +454,13 @@ input[data-input="login-password"] {
     padding-right: 50px;
 }
 
-.password-toggle-btn {
+.floating-input-btn {
     position: absolute;
     top: 27.5px;
     right: 10px;
     transform: translateY(-50%);
-    width: 42px;
-    height: 42px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     padding: 0;
     transition: background-color 0.2s ease;
@@ -474,12 +474,12 @@ input[data-input="login-password"] {
     outline: none;
 }
 
-.password-toggle-btn:hover {
+.floating-input-btn:hover {
     color: #000;
     background-color: #f5f5fa;
 }
 
-.password-toggle-btn .material-symbols-rounded {
+.floating-input-btn .material-symbols-rounded {
     font-size: 24px;
 }
 
