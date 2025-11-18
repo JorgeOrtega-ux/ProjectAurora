@@ -20,6 +20,12 @@ function logger($message) {
 
 // [SEGURIDAD] Configuración de Cookies de Sesión (Igual que en router.php)
 if (session_status() === PHP_SESSION_NONE) {
+    // --- NUEVO: Persistencia de Sesión (30 días) ---
+    $lifetime = 60 * 60 * 24 * 30; 
+    ini_set('session.cookie_lifetime', $lifetime);
+    ini_set('session.gc_maxlifetime', $lifetime);
+    // -----------------------------------------------
+
     ini_set('session.cookie_httponly', 1);
     $isHttps = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
     ini_set('session.cookie_secure', $isHttps ? 1 : 0);

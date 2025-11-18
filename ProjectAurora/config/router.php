@@ -4,6 +4,12 @@
 // [SEGURIDAD] Configuración de Cookies de Sesión
 // Se aplica antes de iniciar la sesión
 if (session_status() === PHP_SESSION_NONE) {
+    // --- NUEVO: Persistencia de Sesión (30 días) ---
+    $lifetime = 60 * 60 * 24 * 30; 
+    ini_set('session.cookie_lifetime', $lifetime);
+    ini_set('session.gc_maxlifetime', $lifetime);
+    // -----------------------------------------------
+
     // 1. HttpOnly: Impide que JavaScript acceda a la cookie (Mitiga robo por XSS)
     ini_set('session.cookie_httponly', 1);
     

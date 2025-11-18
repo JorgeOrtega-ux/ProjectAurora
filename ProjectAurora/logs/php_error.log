@@ -18,3 +18,5 @@
 [2025-11-17 21:12:16] [CUSTOM] Error: Credenciales incorrectas.
 [2025-11-17 21:12:29] [CUSTOM] Error: Credenciales incorrectas.
 [2025-11-17 21:12:36] [CUSTOM] Error: Credenciales incorrectas.
+[2025-11-18 10:55:33] [CUSTOM] Code registro: 4E6FF76C67
+[18-Nov-2025 10:56:23 America/Matamoros] PHP Warning:  file_put_contents(E:\xampp\htdocs\ProjectAurora\api/../assets/uploads/avatars/d8be0ab0-a963-4fd9-95b1-32019ca4e5e5.png): Failed to open stream: No such file or directory in E:\xampp\htdocs\ProjectAurora\api\auth_handler.php on line 210
