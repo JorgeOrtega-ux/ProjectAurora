@@ -1,6 +1,14 @@
 <?php
+// [CORRECCIÓN] Validar si la variable existe. 
+// Si se carga vía AJAX (fetch), $CURRENT_SECTION no estará definida por el router.
+if (!isset($CURRENT_SECTION)) {
+    $CURRENT_SECTION = 'login';
+}
+
 $isStep2 = ($CURRENT_SECTION === 'login/verification-additional');
 $maskedEmailDisplay = 'tu correo';
+
+// Solo intentamos acceder a la sesión si existe y es el paso 2
 if ($isStep2 && isset($_SESSION['temp_login_2fa']['email'])) {
     $rawEmail = $_SESSION['temp_login_2fa']['email'];
     $parts = explode('@', $rawEmail);
