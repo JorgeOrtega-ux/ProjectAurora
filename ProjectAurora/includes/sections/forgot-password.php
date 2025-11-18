@@ -11,10 +11,7 @@ if (isset($_SESSION['temp_recovery']['step'])) {
         <div class="form-container">
             
             <div class="auth-back-link">
-                <a href="#" onclick="event.preventDefault(); navigateTo('login')" style="color:#666; text-decoration:none; display:flex; align-items:center; gap:5px; font-size:14px;">
-                    <span class="material-symbols-rounded" style="font-size:18px;">arrow_back</span> Volver al Login
-                </a>
-            </div>
+                </div>
 
             <div data-step="rec-1" class="auth-step-container <?php echo ($initialStep === 1) ? 'active' : ''; ?>">
                 <h1>Recuperar Cuenta (1/3)</h1>
