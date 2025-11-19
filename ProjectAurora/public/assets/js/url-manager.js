@@ -4,7 +4,12 @@ const allowedSections = [
     'register/verification-account',
     'forgot-password',
     'status-page',
-    'login/verification-additional' // [CORRECCIÓN] Añadido el 2FA de login que faltaba
+    'login/verification-additional',
+    // [NUEVO]
+    'settings',
+    'settings/your-profile',
+    'settings/login-security',
+    'settings/accessibility'
 ];
 
 const authZone = [
@@ -36,10 +41,16 @@ export function initUrlManager() {
         }
     });
     
-    updateActiveMenu(getSectionFromUrl());
+    // Inicializar menú correcto al cargar
+    const current = getSectionFromUrl();
+    updateSidebarState(current);
+    updateActiveMenu(current);
 }
 
 window.navigateTo = function(sectionName) {
+    // [NUEVO] Redirección frontend de settings base
+    if (sectionName === 'settings') sectionName = 'settings/your-profile';
+
     const current = getSectionFromUrl();
     const isCurAuth = authZone.some(z => current.startsWith(z) || z === current);
     const isTarAuth = authZone.some(z => sectionName.startsWith(z) || z === sectionName);
@@ -59,13 +70,8 @@ function getSectionFromUrl() {
 }
 
 async function showSection(sectionName, pushState = true) {
-    // CAMBIO: Selección por data-container en vez de ID
     const container = document.querySelector('[data-container="main-section"]');
     if (!container) { window.location.reload(); return; }
-
-    
-    // --- [INICIA MODIFICACIÓN] ---
-    // Nueva lógica para mapear sectionName a la ruta de carpeta correcta
     
     let fileToFetch;
     let queryParams = `?t=${Date.now()}`;
@@ -74,22 +80,12 @@ async function showSection(sectionName, pushState = true) {
     const systemSections = ['status-page', '404', 'error-missing-data'];
 
     if (sectionName.startsWith('login')) {
-        // Todas las URLs de login (ej. 'login' y 'login/verification-additional')
-        // cargan el mismo archivo 'auth/login.php'
         fileToFetch = 'auth/login';
-    
     } else if (sectionName.startsWith('register')) {
-        // Todas las URLs de registro cargan 'auth/register.php'
         fileToFetch = 'auth/register';
-        
-        // Pero pasamos el 'step' por query params para que JS sepa qué mostrar
-        if (sectionName === 'register/additional-data') {
-            queryParams += '&step=2';
-        } else if (sectionName === 'register/verification-account') {
-            queryParams += '&step=3';
-        } else {
-            queryParams += '&step=1';
-        }
+        if (sectionName === 'register/additional-data') queryParams += '&step=2';
+        else if (sectionName === 'register/verification-account') queryParams += '&step=3';
+        else queryParams += '&step=1';
     
     } else if (sectionName === 'forgot-password') {
         fileToFetch = 'auth/forgot-password';
@@ -99,29 +95,48 @@ async function showSection(sectionName, pushState = true) {
     
     } else if (systemSections.includes(sectionName)) {
         fileToFetch = `system/${sectionName}`;
+
+    // [NUEVO] Manejo de Settings
+    } else if (sectionName.startsWith('settings/')) {
+        // Se asume que el archivo php está en includes/sections/settings/nombre.php
+        // sectionName ya viene como 'settings/your-profile'
+        fileToFetch = sectionName; 
     
     } else {
-        // Fallback por si acaso
         fileToFetch = 'system/404';
     }
-    // --- [TERMINA MODIFICACIÓN] ---
     
     try {
-        // Usamos la variable 'fileToFetch' que ahora incluye la carpeta
         const resp = await fetch(`${basePath}includes/sections/${fileToFetch}.php${queryParams}`);
         if (!resp.ok) throw new Error('Error de carga');
         container.innerHTML = await resp.text();
 
+        // [NUEVO] Actualizar visualización del Sidebar
+        updateSidebarState(sectionName);
         updateActiveMenu(sectionName);
 
         if (pushState) {
-            // [CORRECCIÓN APLICADA AQUÍ]
-            // Se cambió 'baseFPath' por 'basePath'
             const newUrl = (sectionName === 'main') ? basePath : `${basePath}${sectionName}`;
             history.pushState({ section: sectionName }, '', newUrl);
         }
     } catch (error) {
         console.error(error);
+    }
+}
+
+// [NUEVO] Función para alternar entre grupos de menús
+function updateSidebarState(sectionName) {
+    const appMenu = document.getElementById('sidebar-menu-app');
+    const settingsMenu = document.getElementById('sidebar-menu-settings');
+
+    if (!appMenu || !settingsMenu) return;
+
+    if (sectionName.startsWith('settings/')) {
+        appMenu.style.display = 'none';
+        settingsMenu.style.display = 'flex';
+    } else {
+        appMenu.style.display = 'flex';
+        settingsMenu.style.display = 'none';
     }
 }
 

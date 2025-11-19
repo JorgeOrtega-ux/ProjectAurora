@@ -9,7 +9,6 @@
     <div class="header-right">
         <div class="header-item">
             <?php
-            // Obtener rol actualizado (gracias al código de arriba)
             $userRole = $_SESSION['user_role'] ?? 'user';
             ?>
             <div class="header-button profile-button"
@@ -31,7 +30,8 @@
     <div class="popover-module popover-profile body-title disabled" data-module="moduleOptions">
         <div class="menu-content">
             <div class="menu-list">
-                <div class="menu-link">
+                
+                <div class="menu-link" onclick="event.preventDefault(); navigateTo('settings/your-profile'); document.querySelector('[data-module=\'moduleOptions\']').classList.add('disabled'); document.querySelector('[data-module=\'moduleOptions\']').classList.remove('active');">
                     <div class="menu-link-icon">
                         <span class="material-symbols-rounded">settings</span>
                     </div>
@@ -39,6 +39,7 @@
                         <span>Configuración</span>
                     </div>
                 </div>
+                
                 <div class="menu-link">
                     <div class="menu-link-icon">
                         <span class="material-symbols-rounded">help</span>
