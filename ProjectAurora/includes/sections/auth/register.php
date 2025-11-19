@@ -96,6 +96,10 @@ if (isset($CURRENT_SECTION)) {
 
                 <button class="form-button" data-action="register-step3">Verificar y Crear Cuenta</button>
                 <div data-error="register-3" class="form-error-message"></div>
+                
+                <div class="form-footer-link">
+                    <a href="#" data-action="resend-register" class="disabled-link">Reenviar código de verificación (60)</a>
+                </div>
             </div>
 
         </div>

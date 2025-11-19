@@ -1,6 +1,5 @@
 <?php
 // [CORRECCIÓN] Validar si la variable existe. 
-// Si se carga vía AJAX (fetch), $CURRENT_SECTION no estará definida por el router.
 if (!isset($CURRENT_SECTION)) {
     $CURRENT_SECTION = 'login';
 }
@@ -93,6 +92,10 @@ if ($isStep2 && isset($_SESSION['temp_login_2fa']['email'])) {
                 <button class="form-button" data-action="login-2fa-submit">Verificar Acceso</button>
 
                 <div data-error="login-2fa" class="form-error-message"></div>
+                
+                <div class="form-footer-link">
+                    <a href="#" data-action="resend-login" class="disabled-link">Reenviar código de verificación (60)</a>
+                </div>
             </div>
 
         </div>

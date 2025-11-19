@@ -322,7 +322,6 @@ html {
     flex-direction: column;
     gap: 12px; /* Espaciado uniforme entre inputs */
     width: 100%;
-    /* ANIMACIÓN ELIMINADA AQUÍ */
 }
 
 .auth-step-container.active {
@@ -618,18 +617,18 @@ input[data-input="login-password"] {
 
 
 /* =========================================
-   9. SISTEMA DE ALERTAS (MODIFICADO)
+   9. SISTEMA DE ALERTAS
    ========================================= */
 
 #alert-container {
     position: fixed;
     bottom: 20px;
     left: 20px;
-    z-index: 2000; /* Por encima de todo */
+    z-index: 2000; 
     display: flex;
     flex-direction: column;
-    gap: 10px; /* Espacio entre alertas */
-    max-width: calc(100% - 40px); /* Asegurar que no se desborde en móviles */
+    gap: 10px; 
+    max-width: calc(100% - 40px); 
 }
 
 .alert-box {
@@ -640,9 +639,8 @@ input[data-input="login-password"] {
     font-size: 14px;
     font-weight: 500;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    background-color: #333; /* Default (GRIS OSCURO) */
+    background-color: #333; 
     
-    /* Animación */
     opacity: 0;
     transform: translateX(-20px);
     transition: opacity 0.5s ease, transform 0.5s ease;
@@ -655,19 +653,24 @@ input[data-input="login-password"] {
     transform: translateX(0);
 }
 
-/* --- REGLAS DE COLOR ELIMINADAS --- */
-/* Ya no existen .alert-box.alert-success, .alert-box.alert-error, .alert-box.alert-info */
-
-
 @media (max-width: 468px) {
     #alert-container {
         left: 10px;
         right: 10px;
         bottom: 10px;
         max-width: calc(100% - 20px);
-        align-items: center; /* Centrar en móviles */
+        align-items: center; 
     }
     .alert-box {
         width: 100%;
     }
+}
+
+/* [NUEVO] Clase para enlaces desactivados (timer resend) */
+a.disabled-link {
+    opacity: 0.5;
+    pointer-events: none;
+    cursor: default;
+    color: #999 !important;
+    text-decoration: none;
 }

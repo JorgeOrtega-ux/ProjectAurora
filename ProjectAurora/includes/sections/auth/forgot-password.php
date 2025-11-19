@@ -42,7 +42,7 @@ if (isset($_SESSION['temp_recovery']['step'])) {
                 <div data-error="rec-2" class="form-error-message"></div>
                 
                 <div class="form-footer-link">
-                    <a href="#" data-action="rec-resend">Reenviar código / Cambiar correo</a>
+                    <a href="#" data-action="resend-recovery" class="disabled-link">Reenviar código de verificación (60)</a>
                 </div>
             </div>
             <div data-step="rec-3" class="auth-step-container <?php echo ($initialStep === 3) ? 'active' : ''; ?>">

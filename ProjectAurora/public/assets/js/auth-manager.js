@@ -2,7 +2,7 @@
 
 const API_BASE_PATH = window.BASE_PATH || '/ProjectAurora/';
 
-// Helper para selectores (simplifica el código)
+// Helper para selectores
 function qs(selector) {
     return document.querySelector(selector);
 }
@@ -23,6 +23,93 @@ function toggleStepVisibility(hideSelector, showSelector) {
     }
 }
 
+// Helper para obtener el token CSRF
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
+/* =============================================================
+   SISTEMA DE REENVÍO DE CÓDIGO (TIMER)
+   ============================================================= */
+let resendTimerInterval = null;
+
+/**
+ * Inicia el contador visual en el enlace.
+ * @param {string} linkSelector 
+ * @param {number} startSeconds Tiempo inicial (por defecto 60)
+ */
+function initResendTimer(linkSelector, startSeconds = 60) {
+    const link = qs(linkSelector);
+    if (!link) return;
+
+    if (resendTimerInterval) clearInterval(resendTimerInterval);
+    
+    let seconds = startSeconds;
+    
+    // Actualizar UI inmediatamente
+    link.classList.add('disabled-link');
+    link.innerText = `Reenviar código de verificación (${seconds})`;
+
+    resendTimerInterval = setInterval(() => {
+        seconds--;
+        if (seconds > 0) {
+            link.innerText = `Reenviar código de verificación (${seconds})`;
+        } else {
+            clearInterval(resendTimerInterval);
+            link.innerText = "Reenviar código de verificación";
+            link.classList.remove('disabled-link');
+        }
+    }, 1000);
+}
+
+async function handleResendCode(type, linkSelector) {
+    const link = qs(linkSelector);
+    // Bloquear si ya está disabled (aunque el usuario lo quite en el DOM, esto ayuda)
+    if (!link || link.classList.contains('disabled-link')) return;
+
+    // Bloquear visualmente MIENTRAS se hace la petición (estado de carga)
+    link.classList.add('disabled-link');
+
+    try {
+        const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getCsrfToken()
+            },
+            body: JSON.stringify({ 
+                action: 'resend_code',
+                type: type // 'register', 'login', 'recovery'
+            })
+        });
+
+        const res = await response.json();
+        
+        if (res.success) {
+            // Éxito: El servidor envió código nuevo, iniciamos contador completo
+            if (window.alertManager) window.alertManager.showAlert(res.message, 'success');
+            initResendTimer(linkSelector, 60);
+        } else {
+            // Error: Mostrar alerta
+            if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
+            
+            // [CORRECCIÓN DE BUG]
+            // Si el servidor devolvió 'remaining_time', usamos ese tiempo para el timer.
+            if (res.remaining_time) {
+                initResendTimer(linkSelector, res.remaining_time);
+            } else {
+                // Si fue otro error (ej. sesión expirada), quitamos el disabled para que intente de nuevo o recargue
+                link.classList.remove('disabled-link');
+            }
+        }
+    } catch (error) {
+        console.error(error);
+        // En caso de error de red, reactivar el link
+        if (link) link.classList.remove('disabled-link');
+    }
+}
+
 export function initAuthManager() {
     document.body.addEventListener('click', async (e) => {
         
@@ -35,13 +122,23 @@ export function initAuthManager() {
         // --- PASO 2 -> 3 (REGISTRO) ---
         if (e.target.closest('[data-action="register-step2"]')) {
             e.preventDefault();
-            await handleRegisterStep('step2', 'register_step_2', 3, 'register/verification-account');
+            const success = await handleRegisterStep('step2', 'register_step_2', 3, 'register/verification-account');
+            if (success) {
+                // Iniciar Timer Registro
+                initResendTimer('[data-action="resend-register"]');
+            }
         }
 
         // --- PASO 3 -> FINAL (REGISTRO) ---
         if (e.target.closest('[data-action="register-step3"]')) {
             e.preventDefault();
             await handleRegisterStep('step3', 'register_final', 'main', null);
+        }
+        
+        // [NUEVO] REENVIAR CÓDIGO REGISTRO
+        if (e.target.closest('[data-action="resend-register"]')) {
+            e.preventDefault();
+            await handleResendCode('register', '[data-action="resend-register"]');
         }
 
         // --- BOTÓN VOLVER (Paso 2 Registro) ---
@@ -57,7 +154,10 @@ export function initAuthManager() {
         // Paso 1: Enviar Email
         if (e.target.closest('[data-action="rec-step1"]')) {
             e.preventDefault();
-            await handleRecoveryStep('step1');
+            const success = await handleRecoveryStep('step1');
+            if (success) {
+                initResendTimer('[data-action="resend-recovery"]');
+            }
         }
         
         // Paso 2: Verificar Código
@@ -72,32 +172,18 @@ export function initAuthManager() {
             await handleRecoveryStep('step3');
         }
 
-        // Botón "Reenviar / Cambiar correo"
-        if (e.target.closest('[data-action="rec-resend"]')) {
+        // [MODIFICADO] Botón Reenviar (Recuperación)
+        if (e.target.closest('[data-action="resend-recovery"]')) {
             e.preventDefault();
-            // Ocultar pasos 2 y 3, mostrar 1
-            const step1 = qs('[data-step="rec-1"]');
-            const step2 = qs('[data-step="rec-2"]');
-            const step3 = qs('[data-step="rec-3"]');
-            
-            if(step2) step2.classList.remove('active');
-            if(step3) step3.classList.remove('active');
-            if(step1) step1.classList.add('active');
+            await handleResendCode('recovery', '[data-action="resend-recovery"]');
         }
-        // =================================================
 
         // --- TOGGLE PASSWORD (OJO/VISIBILIDAD) ---
         if (e.target.closest('.floating-input-btn') && !e.target.closest('.username-magic-btn')) {
             const btn = e.target.closest('.floating-input-btn');
-            
-            // === INICIO DE LA CORRECCIÓN ===
-            // En lugar de buscar el hermano anterior, buscamos el contenedor padre
-            // y luego el input dentro de ese contenedor.
             const parent = btn.closest('.floating-label-group');
-            if (!parent) return; // Si no hay padre, no hacemos nada
-
+            if (!parent) return; 
             const input = parent.querySelector('input');
-            // === FIN DE LA CORRECCIÓN ===
 
             if (input && input.tagName === 'INPUT') {
                 if (input.type === 'password') {
@@ -126,6 +212,12 @@ export function initAuthManager() {
             e.preventDefault();
             await handleLogin();
         }
+        
+        // [NUEVO] REENVIAR CÓDIGO LOGIN 2FA
+        if (e.target.closest('[data-action="resend-login"]')) {
+            e.preventDefault();
+            await handleResendCode('login', '[data-action="resend-login"]');
+        }
 
         // --- LOGIN (STEP 2 - 2FA SUBMIT) ---
         if (e.target.closest('[data-action="login-2fa-submit"]')) {
@@ -136,11 +228,7 @@ export function initAuthManager() {
         // --- LOGIN (STEP 2 - BOTÓN ATRÁS) ---
         if (e.target.closest('[data-action="login-2fa-back"]')) {
             e.preventDefault();
-            
-            // Restaurar vista al paso 1 usando clases
             toggleStepVisibility('[data-step="login-2"]', '[data-step="login-1"]');
-            
-            // Restaurar URL a /login
             const loginUrl = API_BASE_PATH + 'login';
             history.pushState({ section: 'login' }, '', loginUrl);
         }
@@ -156,12 +244,10 @@ export function initAuthManager() {
             let originalIconHTML = '';
 
             if (iconContainer) {
-                originalIconHTML = iconContainer.innerHTML; // Guardar el <span...</span>
-                iconContainer.innerHTML = '<div class="small-spinner"></div>'; // Poner spinner
+                originalIconHTML = iconContainer.innerHTML;
+                iconContainer.innerHTML = '<div class="small-spinner"></div>';
             }
             
-            // [INICIA MODIFICACIÓN CSRF]
-            // Usamos un fetch POST asíncrono.
             try {
                 const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
                     method: 'POST',
@@ -169,24 +255,20 @@ export function initAuthManager() {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': getCsrfToken()
                     },
-                    body: JSON.stringify({ action: 'logout' })
+                    body: JSON.stringify({ 
+                        action: 'logout',
+                        csrf_token: getCsrfToken()
+                    })
                 });
 
                 const res = await response.json();
 
                 if (res.success) {
-                    
-                    // --- ALERTA DE CIERRE DE SESIÓN AÑADIDA ---
                     if (window.alertManager) {
                         window.alertManager.showAlert('Cerrando sesión...', 'info');
                     }
-                    // --- FIN DE LA ALERTA ---
-
-                    // Éxito: el servidor cerró la sesión, ahora redirigimos al cliente
-                    // No necesitamos restaurar el botón, la página va a cambiar.
                     window.location.href = API_BASE_PATH + 'login';
                 } else {
-                    // Error (ej. token CSRF inválido), restaurar botón
                     if (iconContainer) {
                         iconContainer.innerHTML = originalIconHTML;
                     }
@@ -194,52 +276,43 @@ export function initAuthManager() {
                 }
 
             } catch (error) {
-                // Error de red, restaurar botón
                 if (iconContainer) {
                     iconContainer.innerHTML = originalIconHTML;
                 }
                 logoutBtn.dataset.processing = "false";
             }
-            // [TERMINA MODIFICACIÓN CSRF]
         }
     });
-}
-
-// Helper para obtener el token CSRF
-function getCsrfToken() {
-    const meta = document.querySelector('meta[name="csrf-token"]');
-    return meta ? meta.getAttribute('content') : '';
+    
+    // [NUEVO] Inicializar timers si recargamos la página en un paso de verificación activo
+    if (qs('[data-step="register-3"].active')) initResendTimer('[data-action="resend-register"]');
+    if (qs('[data-step="rec-2"].active')) initResendTimer('[data-action="resend-recovery"]');
+    if (qs('[data-step="login-2"].active')) initResendTimer('[data-action="resend-login"]');
 }
 
 function generateMagicUsername() {
     const now = new Date();
     const pad = (num) => num.toString().padStart(2, '0');
-    
     const year = now.getFullYear();
     const month = pad(now.getMonth() + 1);
     const day = pad(now.getDate());
     const hours = pad(now.getHours());
     const minutes = pad(now.getMinutes());
     const seconds = pad(now.getSeconds());
-    
     const timePart = `${year}${month}${day}_${hours}${minutes}${seconds}`;
-    
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     let randomPart = '';
     for (let i = 0; i < 2; i++) {
         randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    
     return `user${timePart}${randomPart}`;
 }
 
 function switchRegisterStep(stepNumber, urlPath) {
-    // Remover active de todos
     qs('[data-step="register-1"]').classList.remove('active');
     qs('[data-step="register-2"]').classList.remove('active');
     qs('[data-step="register-3"]').classList.remove('active');
     
-    // Activar el target
     const target = qs(`[data-step="register-${stepNumber}"]`);
     if (target) {
         target.classList.add('active');
@@ -250,13 +323,11 @@ function switchRegisterStep(stepNumber, urlPath) {
     }
 }
 
-// --- VALIDACIONES ESTRICTAS (JS) ---
-
+// --- VALIDACIONES ---
 function isValidEmailDomain(email) {
     const regex = /^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i;
     return regex.test(email);
 }
-
 function isValidUsername(username) {
     const regex = /^[a-zA-Z0-9_]{8,32}$/;
     return regex.test(username);
@@ -267,13 +338,11 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
     let btnSelector, errorSelector, inputSelectors = [];
     let errorMessage = '';
 
-    // --- VALIDACIÓN PASO 1 ---
     if (stepName === 'step1') {
         const emailIn = qs('[data-input="reg-email"]');
         const passIn = qs('[data-input="reg-password"]');
-        if (!emailIn || !passIn) return;
+        if (!emailIn || !passIn) return false;
         
-        // [CORRECCIÓN APLICADA]
         const emailVal = emailIn.value.trim().toLowerCase();
         const passVal = passIn.value;
 
@@ -287,14 +356,17 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
 
         payload.email = emailVal;
         payload.password = passVal;
+        
+        const emailDisplay = qs('[data-display="email-verify"]');
+        if (emailDisplay) emailDisplay.innerText = emailVal;
+
         btnSelector = '[data-action="register-step1"]'; 
         errorSelector = '[data-error="register-1"]'; 
         inputSelectors = ['[data-input="reg-email"]', '[data-input="reg-password"]'];
     
-    // --- VALIDACIÓN PASO 2 ---
     } else if (stepName === 'step2') {
         const userIn = qs('[data-input="reg-username"]');
-        if (!userIn) return;
+        if (!userIn) return false;
 
         const userVal = userIn.value.trim();
         if (!isValidUsername(userVal)) {
@@ -307,22 +379,19 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
         errorSelector = '[data-error="register-2"]'; 
         inputSelectors = ['[data-input="reg-username"]'];
     
-    // --- PASO 3 ---
     } else if (stepName === 'step3') {
         const codeIn = qs('[data-input="reg-code"]');
-        if (!codeIn) return;
+        if (!codeIn) return false;
         payload.code = codeIn.value;
         btnSelector = '[data-action="register-step3"]'; 
         errorSelector = '[data-error="register-3"]'; 
         inputSelectors = ['[data-input="reg-code"]'];
     }
 
-    // Limpieza UI
     inputSelectors.forEach(sel => qs(sel).classList.remove('input-error'));
     const errorDiv = qs(errorSelector);
     if(errorDiv) { errorDiv.innerText = ''; errorDiv.classList.remove('active'); }
 
-    // Check vacíos
     let hasEmpty = false;
     inputSelectors.forEach(sel => {
         const el = qs(sel);
@@ -331,55 +400,46 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
 
     if (hasEmpty) {
         if(errorDiv) { errorDiv.innerText = "Todos los campos son requeridos."; errorDiv.classList.add('active'); }
-        // ALERTA DE ERROR ELIMINADA
-        return;
+        return false;
     }
 
     if (errorMessage) {
         if(errorDiv) { errorDiv.innerText = errorMessage; errorDiv.classList.add('active'); }
-        // ALERTA DE ERROR ELIMINADA
-        return;
+        return false;
     }
 
-    await sendAuthRequest(payload, btnSelector, errorSelector, nextStep, nextUrl);
+    return await sendAuthRequest(payload, btnSelector, errorSelector, nextStep, nextUrl);
 }
 
-// --- LÓGICA DE RECUPERACIÓN (FORGOT PASSWORD) ---
 async function handleRecoveryStep(stepName) {
     let payload = { action: '' };
     let btnSelector, errorSelector, inputSelectors = [];
     let currentStepSelector = '';
     let nextStepSelector = '';
 
-    // Step 1: Enviar Email
     if (stepName === 'step1') {
         const emailIn = qs('[data-input="rec-email"]');
-        if(!emailIn) return;
+        if(!emailIn) return false;
 
-        // [INICIO DE MODIFICACIÓN IMPORTANTE]
         const emailVal = emailIn.value.trim().toLowerCase();
         const errorDiv = qs('[data-error="rec-1"]');
         
-        // Limpiar error previo
         if(errorDiv) { errorDiv.innerText = ''; errorDiv.classList.remove('active'); }
         emailIn.classList.remove('input-error');
 
-        // 1. Validar vacío
         if(!emailVal) { 
             emailIn.classList.add('input-error'); 
             if(errorDiv) { errorDiv.innerText = "El correo es requerido."; errorDiv.classList.add('active'); }
-            return; 
+            return false; 
         }
 
-        // 2. Validar formato de dominio (igual que en registro)
         if (!isValidEmailDomain(emailVal)) {
             emailIn.classList.add('input-error');
             if(errorDiv) { errorDiv.innerText = "Correo inválido. Solo se permite: Gmail, Outlook, iCloud, Yahoo."; errorDiv.classList.add('active'); }
-            return;
+            return false;
         }
         
         payload = { action: 'recovery_step_1', email: emailVal };
-        // [FIN DE MODIFICACIÓN IMPORTANTE]
         
         btnSelector = '[data-action="rec-step1"]'; 
         errorSelector = '[data-error="rec-1"]'; 
@@ -387,13 +447,12 @@ async function handleRecoveryStep(stepName) {
         currentStepSelector = '[data-step="rec-1"]';
         nextStepSelector = '[data-step="rec-2"]';
 
-    // Step 2: Enviar Código
     } else if (stepName === 'step2') {
         const codeIn = qs('[data-input="rec-code"]');
-        if(!codeIn) return;
+        if(!codeIn) return false;
         if(!codeIn.value.trim()) { 
             codeIn.classList.add('input-error'); 
-            return; 
+            return false; 
         }
         
         payload = { action: 'recovery_step_2', code: codeIn.value.trim() };
@@ -403,10 +462,9 @@ async function handleRecoveryStep(stepName) {
         currentStepSelector = '[data-step="rec-2"]';
         nextStepSelector = '[data-step="rec-3"]';
 
-    // Step 3: Nueva Contraseña
     } else if (stepName === 'step3') {
         const passIn = qs('[data-input="rec-pass"]');
-        if(!passIn) return;
+        if(!passIn) return false;
         
         if(passIn.value.length < 8) { 
             passIn.classList.add('input-error'); 
@@ -415,8 +473,7 @@ async function handleRecoveryStep(stepName) {
                 err.innerText = 'Mínimo 8 caracteres';
                 err.classList.add('active');
             }
-            // ALERTA DE ERROR ELIMINADA
-            return; 
+            return false; 
         }
 
         payload = { action: 'recovery_final', password: passIn.value };
@@ -425,10 +482,7 @@ async function handleRecoveryStep(stepName) {
         inputSelectors = ['[data-input="rec-pass"]'];
     }
 
-    // UI Loading
     const btn = qs(btnSelector);
-    // [MODIFICACIÓN] Mover la declaración de errorDiv más arriba
-    // const errorDiv = qs(errorSelector);
     let originalContent = '';
     
     if(btn) { 
@@ -437,14 +491,12 @@ async function handleRecoveryStep(stepName) {
         btn.disabled = true; 
     }
     
-    // [MODIFICACIÓN] No limpiar el error en step 1 aquí, ya se hizo arriba
     if (stepName !== 'step1') {
         const errorDiv = qs(errorSelector);
         if(errorDiv) { errorDiv.innerText = ''; errorDiv.classList.remove('active'); }
     }
     inputSelectors.forEach(sel => qs(sel).classList.remove('input-error'));
     
-
     try {
         const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
             method: 'POST', 
@@ -458,37 +510,31 @@ async function handleRecoveryStep(stepName) {
 
         if (res.success) {
             if (stepName === 'step3') {
-                // ALERTA DE ÉXITO (MANTENIDA)
                 if (window.alertManager) window.alertManager.showAlert('Contraseña actualizada con éxito.', 'success');
                 window.location.href = API_BASE_PATH + 'login';
             } else {
-                // Cambio de visibilidad con clases
                 toggleStepVisibility(currentStepSelector, nextStepSelector);
                 
                 if(stepName === 'step1') {
                     const display = qs('[data-display="rec-email"]');
                     if(display) display.innerText = payload.email;
-                    
-                    // ALERTA DE ÉXITO (MANTENIDA de la versión anterior)
-                    if (window.alertManager) {
-                        window.alertManager.showAlert('Solicitud procesada. Revisa tu correo.', 'info');
-                    }
+                    if (window.alertManager) window.alertManager.showAlert('Solicitud procesada. Revisa tu correo.', 'info');
                 }
                 
                 if(btn) { btn.innerHTML = originalContent; btn.disabled = false; }
             }
+            return true; // Éxito
         } else {
-            // [MODIFICACIÓN] Solo mostrar error si el servidor falla (no en step 1)
-            // En step 1, el servidor SIEMPRE devuelve success, por lo que este
-            // 'else' solo se ejecutaría por un error real (ej. CSRF) o en step 2/3.
             const errorDiv = qs(errorSelector);
             if(errorDiv) { errorDiv.innerText = res.message; errorDiv.classList.add('active'); }
             if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
+            return false;
         }
     } catch (e) {
         const errorDiv = qs(errorSelector);
         if(errorDiv) { errorDiv.innerText = "Error de conexión"; errorDiv.classList.add('active'); }
         if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
+        return false;
     }
 }
 
@@ -497,7 +543,6 @@ async function sendAuthRequest(payload, btnSelector, errorSelector, nextStep, ne
     const errorDiv = qs(errorSelector);
     let originalContent = '';
 
-    // UI Loading
     if(btn) { 
         originalContent = btn.innerHTML;
         btn.innerHTML = '<div class="btn-spinner"></div>'; 
@@ -519,26 +564,25 @@ async function sendAuthRequest(payload, btnSelector, errorSelector, nextStep, ne
             if (nextStep === 'main') {
                 window.location.href = API_BASE_PATH;
             } else {
-                // ALERTA DE ÉXITO (MANTENIDA)
                 if (payload.action === 'register_step_2' && window.alertManager) {
                     window.alertManager.showAlert('Código de verificación enviado.', 'success');
                 }
                 switchRegisterStep(nextStep, nextUrl);
                 if(btn) { btn.innerHTML = originalContent; btn.disabled = false; }
             }
+            return true;
         } else {
             if(errorDiv) { errorDiv.innerText = result.message; errorDiv.classList.add('active'); }
-            // ALERTA DE ERROR ELIMINADA
             if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
+            return false;
         }
     } catch (error) {
         if(errorDiv) { errorDiv.innerText = "Error de conexión"; errorDiv.classList.add('active'); }
-        // ALERTA DE ERROR ELIMINADA
         if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
+        return false;
     }
 }
 
-// --- LÓGICA DE LOGIN ---
 async function handleLogin() {
     const emailInput = qs('[data-input="login-email"]');
     const passInput = qs('[data-input="login-password"]');
@@ -569,7 +613,6 @@ async function handleLogin() {
             },
             body: JSON.stringify({ 
                 action: 'login', 
-                // [CORRECCIÓN APLICADA]
                 email: emailInput.value.toLowerCase(), 
                 password: passInput.value 
             })
@@ -579,11 +622,9 @@ async function handleLogin() {
         
         if (res.success) {
             if (res.require_2fa) {
-                // History API
                 const nextUrl = API_BASE_PATH + 'login/verification-additional';
                 history.pushState({ section: 'login/verification-additional' }, '', nextUrl);
 
-                // Cambio UI con clases
                 toggleStepVisibility('[data-step="login-1"]', '[data-step="login-2"]');
                 
                 const displayEmail = qs('[data-display="login-2fa-email"]');
@@ -591,8 +632,10 @@ async function handleLogin() {
                     displayEmail.innerText = res.masked_email;
                 }
                 
-                // ALERTA DE INFO (MANTENIDA)
                 if (window.alertManager) window.alertManager.showAlert('Código de seguridad 2FA enviado.', 'info');
+                
+                // INICIAR TIMER LOGIN
+                initResendTimer('[data-action="resend-login"]');
 
                 btn.innerHTML = originalContent;
                 btn.disabled = false;
@@ -603,7 +646,6 @@ async function handleLogin() {
                 }, 100);
 
             } else {
-                // ALERTA DE INFO (MANTENIDA)
                 if (window.alertManager) window.alertManager.showAlert('Inicio de sesión exitoso.', 'info');
                 window.location.href = API_BASE_PATH;
             }
@@ -612,11 +654,8 @@ async function handleLogin() {
                 errorDiv.innerText = res.message;
                 errorDiv.classList.add('active');
             }
-            // ALERTA DE ERROR ELIMINADA
-
             emailInput.classList.add('input-error');
             passInput.classList.add('input-error');
-            
             btn.innerHTML = originalContent;
             btn.disabled = false;
         }
@@ -625,19 +664,16 @@ async function handleLogin() {
             errorDiv.innerText = "Error de conexión";
             errorDiv.classList.add('active');
         }
-        // ALERTA DE ERROR ELIMINADA
         btn.innerHTML = originalContent;
         btn.disabled = false;
     }
 }
 
-// --- LÓGICA LOGIN 2FA VERIFY ---
 async function handleLogin2FA() {
     const codeInput = qs('[data-input="login-2fa-code"]');
     const errorDiv = qs('[data-error="login-2fa"]');
     
     if (!codeInput) return;
-    
     if (!codeInput.value.trim()) {
         codeInput.classList.add('input-error');
         return;
@@ -665,7 +701,6 @@ async function handleLogin2FA() {
 
         const res = await response.json();
         if (res.success) {
-            // ALERTA DE ÉXITO (MANTENIDA)
             if (window.alertManager) window.alertManager.showAlert('Acceso verificado. ¡Bienvenido!', 'success');
             window.location.href = API_BASE_PATH;
         } else {
@@ -673,7 +708,6 @@ async function handleLogin2FA() {
                 errorDiv.innerText = res.message;
                 errorDiv.classList.add('active');
             }
-            // ALERTA DE ERROR ELIMINADA
             codeInput.classList.add('input-error');
             btn.innerHTML = originalContent;
             btn.disabled = false;
@@ -683,7 +717,6 @@ async function handleLogin2FA() {
             errorDiv.innerText = "Error de conexión";
             errorDiv.classList.add('active');
         }
-        // ALERTA DE ERROR ELIMINADA
         btn.innerHTML = originalContent;
         btn.disabled = false;
     }
