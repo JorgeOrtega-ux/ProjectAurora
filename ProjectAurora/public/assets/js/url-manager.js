@@ -72,7 +72,21 @@ function getSectionFromUrl() {
     let path = window.location.pathname;
     if (path.startsWith(basePath)) path = path.substring(basePath.length);
     path = path.replace(/\/$/, '').split('?')[0];
-    return (path === '' || !allowedSections.includes(path)) ? 'main' : path;
+    
+    // ANTES: Si estaba vacío o NO estaba en la lista, devolvía 'main'
+    // return (path === '' || !allowedSections.includes(path)) ? 'main' : path;
+
+    // AHORA:
+    // 1. Si el path está vacío (root), es 'main'.
+    if (path === '') return 'main';
+    
+    // 2. Si el path NO está en allowedSections, devolvemos '404' (o null).
+    // Al devolver '404', la función updateActiveMenu buscará un link data-nav="404",
+    // no lo encontrará y NO marcará nada como activo.
+    if (!allowedSections.includes(path)) return '404';
+
+    // 3. Si es válido, devolvemos el path.
+    return path;
 }
 
 async function showSection(sectionName, pushState = true) {
