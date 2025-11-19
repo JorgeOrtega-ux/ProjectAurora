@@ -184,7 +184,9 @@ try {
         unset($_SESSION['temp_register']['password']);
         $_SESSION['temp_register']['username'] = $username;
 
-        logger("Code registro: $code");
+        // [CAMBIO] Código oculto en logs
+        logger("Code registro generado para el usuario. (Oculto por seguridad)");
+        
         $response = ['success' => true, 'message' => 'Código enviado'];
 
         // ==================================================================
@@ -279,7 +281,8 @@ try {
                 $_SESSION['temp_login_2fa']['user_id'] = $user['id'];
                 $_SESSION['temp_login_2fa']['email'] = $user['email'];
 
-                logger("Code 2FA Login para $email: $code");
+                // [CAMBIO] Código oculto en logs
+                logger("Code 2FA Login para $email generado. (Oculto por seguridad)");
 
                 $response = [
                     'success' => true,
@@ -358,10 +361,6 @@ try {
         $_SESSION['temp_recovery']['step'] = 2;
 
         // [NUEVA VALIDACIÓN]
-        // Verificamos si el correo es válido ANTES de consultar la BD.
-        // Si no es válido (vacío o dominio no permitido),
-        // simplemente saltamos toda la lógica de BD/código.
-        // PERO AÚN ASÍ devolvemos 'success' al final.
         if (!empty($email) && is_allowed_domain($email)) {
 
             // El correo TIENE UN FORMATO VÁLIDO, ahora buscamos si existe
@@ -379,8 +378,8 @@ try {
                 $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, expires_at) VALUES (?, 'recovery', ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
                 $stmt->execute([$email, $code]);
 
-                // Log (y aquí iría el envío de email real)
-                logger("Code Recup (para $email): $code");
+                // [CAMBIO] Código oculto en logs
+                logger("Code Recup generado para $email. (Oculto por seguridad)");
             } else {
                 // El correo no existe, pero el formato era válido.
                 logger("Intento de recuperación para correo no existente (formato válido): $email");
