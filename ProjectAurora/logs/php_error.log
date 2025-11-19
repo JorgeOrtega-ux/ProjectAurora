@@ -35,3 +35,21 @@
 [2025-11-19 00:11:58] [CUSTOM] Error: Dominio no permitido.
 [2025-11-19 00:12:25] [CUSTOM] Error: Dominio no permitido.
 [2025-11-19 00:12:33] [CUSTOM] Code registro: 26AF81426C
+[2025-11-19 00:15:41] [CUSTOM] Reenvio Code (register) para aguilar.131103tjimena@outlook.mx: 19A151898A
+[2025-11-19 00:18:24] [CUSTOM] Reenvio Code (register) para aguilar.131103tjimena@outlook.mx: 59A986C598
+[2025-11-19 00:19:50] [CUSTOM] Code registro: F9D1E382E0
+[2025-11-19 00:19:52] [CUSTOM] Error: Sesión expirada.
+[2025-11-19 00:19:54] [CUSTOM] Error: Sesión expirada.
+[2025-11-19 00:19:55] [CUSTOM] Error: Sesión expirada.
+[2025-11-19 00:20:18] [CUSTOM] Code registro: 9A843405A0
+[2025-11-19 00:20:37] [CUSTOM] Error: Código inválido o expirado.
+[2025-11-19 00:20:38] [CUSTOM] Error: Código inválido o expirado.
+[2025-11-19 00:20:38] [CUSTOM] Error: Código inválido o expirado.
+[2025-11-19 00:20:38] [CUSTOM] Error: Código inválido o expirado.
+[2025-11-19 00:20:38] [CUSTOM] Error: Código inválido o expirado.
+[2025-11-19 00:20:38] [CUSTOM] Error: Código inválido o expirado.
+[2025-11-19 00:20:39] [CUSTOM] Error: Código inválido o expirado.
+[2025-11-19 00:20:39] [CUSTOM] Error: Código inválido o expirado.
+[2025-11-19 00:21:08] [CUSTOM] Code registro: EA0D587ED0
+[2025-11-19 00:21:17] [CUSTOM] Code registro: 02E3173DD4
+[2025-11-19 00:22:04] [CUSTOM] Error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry 'user20251119_002116hn' for key 'username'

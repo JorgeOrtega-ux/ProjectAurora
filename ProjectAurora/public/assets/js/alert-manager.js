@@ -2,85 +2,109 @@
 
 /**
  * Clase para gestionar la creación y destrucción de alertas
- * en la esquina de la pantalla.
+ * en la esquina de la pantalla de forma dinámica.
  */
 export class AlertManager {
 
     /**
-     * @param {string} containerId ID del contenedor que se creará en el body.
-     * @param {number} animationDuration Duración (ms) de la animación CSS de salida.
+     * @param {string} containerId ID del contenedor.
+     * @param {number} animationDuration Duración (ms) de la animación CSS.
      */
     constructor(containerId = 'alert-container', animationDuration = 500) {
         this.containerId = containerId;
         this.animationDuration = animationDuration;
         this.alertContainer = null;
 
-        // Iniciar al crear la instancia
-        this.initContainer();
+        // ELIMINADO: this.initContainer(); 
+        // Ya no creamos el contenedor al instanciar la clase.
     }
 
     /**
-     * Crea el <div> contenedor y lo añade al <body>.
+     * Método interno para obtener el contenedor.
+     * Si no existe en el DOM, lo crea en ese momento.
      */
-    initContainer() {
-        // Evitar duplicados si se llama de nuevo
-        if (document.getElementById(this.containerId)) return;
-
-        this.alertContainer = document.createElement('div');
-        this.alertContainer.id = this.containerId;
-        document.body.appendChild(this.alertContainer);
+    getContainer() {
+        let container = document.getElementById(this.containerId);
+        
+        if (!container) {
+            container = document.createElement('div');
+            container.id = this.containerId;
+            document.body.appendChild(container);
+        }
+        
+        this.alertContainer = container;
+        return container;
     }
 
     /**
      * Muestra una nueva alerta.
-     * @param {string} message El texto a mostrar.
-     * @param {string} type Tipo de alerta ('info', 'success', 'error').
-     * @param {number} duration Duración (ms) antes de desaparecer.
      */
     showAlert(message, type = 'info', duration = 4000) {
-        if (!this.alertContainer) {
-            console.error('AlertManager: El contenedor no está inicializado.');
-            return;
-        }
+        // 1. Obtener (o crear) el contenedor dinámicamente
+        const container = this.getContainer();
 
-        // 1. Creación
+        // Definir icono según el tipo
+        const iconMap = {
+            'success': 'check_circle',
+            'error': 'error',
+            'info': 'info',
+            'warning': 'warning'
+        };
+        const iconName = iconMap[type] || 'info';
+
+        // 2. Creación del elemento alerta
         const alertBox = document.createElement('div');
         alertBox.className = `alert-box alert-${type}`;
-        alertBox.textContent = message;
+        
+        // Inyectamos HTML con el icono y el mensaje
+        alertBox.innerHTML = `
+            <span class="material-symbols-rounded">${iconName}</span>
+            <span>${message}</span>
+        `;
 
-        // 2. Añadir al DOM
-        this.alertContainer.appendChild(alertBox);
+        // 3. Añadir al contenedor
+        container.appendChild(alertBox);
 
-        // 3. Animación de Entrada (usamos un pequeño timeout para que la transición CSS se aplique)
+        // 4. Animación de Entrada
         setTimeout(() => {
             alertBox.classList.add('show');
-        }, 10); // Un pequeño delay es suficiente
+        }, 10);
 
-        // 4. Duración
+        // 5. Timer de duración
         const hideTimer = setTimeout(() => {
             this.hideAlert(alertBox);
         }, duration);
 
-        // 5. Permitir cierre manual al hacer clic
+        // 6. Cierre manual al hacer clic
         alertBox.addEventListener('click', () => {
-            clearTimeout(hideTimer); // Cancelar el timer si se cierra manualmente
+            clearTimeout(hideTimer);
             this.hideAlert(alertBox);
         });
     }
 
     /**
-     * Oculta y elimina una alerta específica.
-     * @param {HTMLElement} alertBox El elemento de la alerta a ocultar.
+     * Oculta y elimina una alerta, y si es la última, elimina el contenedor.
      */
     hideAlert(alertBox) {
-        // 6. Animación de Salida
+        // Animación de Salida
         alertBox.classList.remove('show');
 
-        // 7. Destrucción (esperar a que termine la animación de salida)
         setTimeout(() => {
+            // 1. Eliminar la alerta del DOM
             if (alertBox.parentNode) {
                 alertBox.parentNode.removeChild(alertBox);
             }
-        }, this.animationDuration); // Debe coincidir con la transition en CSS
+
+            // 2. VERIFICACIÓN DINÁMICA:
+            // Si el contenedor ya no tiene hijos (alertas), lo eliminamos del body.
+            const container = document.getElementById(this.containerId);
+            if (container && container.children.length === 0) {
+                if (container.parentNode) {
+                    container.parentNode.removeChild(container);
+                }
+                this.alertContainer = null; // Limpiamos la referencia
+            }
+
+        }, this.animationDuration);
     }
 }

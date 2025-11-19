@@ -631,6 +631,8 @@ input[data-input="login-password"] {
     max-width: calc(100% - 40px); 
 }
 
+/* public/assets/css/styles.css */
+
 .alert-box {
     max-width: 350px;
     padding: 15px 20px;
@@ -639,13 +641,25 @@ input[data-input="login-password"] {
     font-size: 14px;
     font-weight: 500;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    background-color: #333; 
+    background-color: #333;
     
+    /* --- CAMBIOS PARA EL ICONO --- */
+    display: flex;              /* Alinea icono y texto */
+    align-items: center;        /* Centrado vertical */
+    gap: 12px;                  /* Espacio entre icono y texto */
+    /* ----------------------------- */
+
     opacity: 0;
     transform: translateX(-20px);
     transition: opacity 0.5s ease, transform 0.5s ease;
     cursor: pointer;
     user-select: none;
+}
+
+/* Añadimos estilo para que el icono no se aplaste si hay mucho texto */
+.alert-box .material-symbols-rounded {
+    font-size: 20px; /* Tamaño del icono */
+    flex-shrink: 0;  /* Evita que se encoja */
 }
 
 .alert-box.show {
