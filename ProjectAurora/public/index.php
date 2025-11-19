@@ -2,27 +2,6 @@
 require_once __DIR__ . '/../config/router.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/utilities.php';
-
-if (isset($_SESSION['user_id'])) {
-    try {
-        $stmt = $pdo->prepare("SELECT role, avatar FROM users WHERE id = ?");
-        $stmt->execute([$_SESSION['user_id']]);
-        $freshUser = $stmt->fetch();
-
-        if ($freshUser) {
-            // Usuario encontrado: Actualizamos datos
-            $_SESSION['user_role'] = $freshUser['role'] ?? 'user';
-            $_SESSION['user_avatar'] = $freshUser['avatar'];
-        } else {
-            // [NUEVO] Usuario NO encontrado (ej. BD reseteada): Forzar cierre de sesión
-            session_destroy();
-            header("Location: " . $basePath . "login");
-            exit;
-        }
-    } catch (Exception $e) {
-        // Error de BD: No hacemos nada para no bloquear, pero podrías loguearlo
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="es">

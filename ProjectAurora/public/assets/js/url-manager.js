@@ -5,11 +5,17 @@ const allowedSections = [
     'forgot-password',
     'status-page',
     'login/verification-additional',
-    // [NUEVO]
+    // Settings
     'settings',
     'settings/your-profile',
     'settings/login-security',
-    'settings/accessibility'
+    'settings/accessibility',
+    // Admin
+    'admin',
+    'admin/dashboard',
+    'admin/users',
+    'admin/backups',
+    'admin/server'
 ];
 
 const authZone = [
@@ -48,8 +54,8 @@ export function initUrlManager() {
 }
 
 window.navigateTo = function(sectionName) {
-    // [NUEVO] Redirección frontend de settings base
     if (sectionName === 'settings') sectionName = 'settings/your-profile';
+    if (sectionName === 'admin') sectionName = 'admin/dashboard';
 
     const current = getSectionFromUrl();
     const isCurAuth = authZone.some(z => current.startsWith(z) || z === current);
@@ -96,11 +102,11 @@ async function showSection(sectionName, pushState = true) {
     } else if (systemSections.includes(sectionName)) {
         fileToFetch = `system/${sectionName}`;
 
-    // [NUEVO] Manejo de Settings
     } else if (sectionName.startsWith('settings/')) {
-        // Se asume que el archivo php está en includes/sections/settings/nombre.php
-        // sectionName ya viene como 'settings/your-profile'
         fileToFetch = sectionName; 
+
+    } else if (sectionName.startsWith('admin/')) {
+        fileToFetch = sectionName;
     
     } else {
         fileToFetch = 'system/404';
@@ -111,7 +117,6 @@ async function showSection(sectionName, pushState = true) {
         if (!resp.ok) throw new Error('Error de carga');
         container.innerHTML = await resp.text();
 
-        // [NUEVO] Actualizar visualización del Sidebar
         updateSidebarState(sectionName);
         updateActiveMenu(sectionName);
 
@@ -124,19 +129,30 @@ async function showSection(sectionName, pushState = true) {
     }
 }
 
-// [NUEVO] Función para alternar entre grupos de menús
 function updateSidebarState(sectionName) {
     const appMenu = document.getElementById('sidebar-menu-app');
     const settingsMenu = document.getElementById('sidebar-menu-settings');
+    const adminMenu = document.getElementById('sidebar-menu-admin'); // Será null si no tengo permisos
 
-    if (!appMenu || !settingsMenu) return;
+    // 1. Ocultamos todo preventivamente
+    if (appMenu) appMenu.style.display = 'none';
+    if (settingsMenu) settingsMenu.style.display = 'none';
+    if (adminMenu) adminMenu.style.display = 'none';
 
-    if (sectionName.startsWith('settings/')) {
-        appMenu.style.display = 'none';
+    // 2. Decidimos qué mostrar con red de seguridad
+    if (sectionName.startsWith('settings/') && settingsMenu) {
+        // Si es sección settings Y existe el menú settings
         settingsMenu.style.display = 'flex';
+
+    } else if (sectionName.startsWith('admin/') && adminMenu) {
+        // Si es sección admin Y (importante) EXISTE el menú admin (soy admin real)
+        adminMenu.style.display = 'flex';
+
     } else {
-        appMenu.style.display = 'flex';
-        settingsMenu.style.display = 'none';
+        // FALLBACK:
+        // Si no es ninguna de las anteriores, O SI INTENTÉ ENTRAR A ADMIN Y NO EXISTE EL MENÚ
+        // mostramos el menú principal (App). Así parece una página normal.
+        if (appMenu) appMenu.style.display = 'flex';
     }
 }
 
@@ -146,6 +162,7 @@ function updateActiveMenu(sectionName) {
         link.classList.remove('active');
     });
 
+    // Intentamos activar el link exacto
     const activeLink = document.querySelector(`.menu-link[data-nav="${sectionName}"]`);
     if (activeLink) {
         activeLink.classList.add('active');
