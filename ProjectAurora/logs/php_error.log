@@ -53,3 +53,28 @@
 [2025-11-19 00:21:08] [CUSTOM] Code registro: EA0D587ED0
 [2025-11-19 00:21:17] [CUSTOM] Code registro: 02E3173DD4
 [2025-11-19 00:22:04] [CUSTOM] Error: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry 'user20251119_002116hn' for key 'username'
+[2025-11-19 00:24:35] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:24:46] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:24:56] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:24:57] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:24:57] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:24:57] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:24:58] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:24:58] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:24:58] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:24:58] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:24:58] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:25:08] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:25:09] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:25:09] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:25:09] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:25:09] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:25:10] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:25:10] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:25:10] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:25:10] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:25:10] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:25:11] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-19 00:26:20] [CUSTOM] Code registro: BFC844E882
+[2025-11-19 00:26:21] [CUSTOM] Code registro: 92CAE57DC2
+[2025-11-19 00:26:55] [CUSTOM] [DB ERROR] SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry 'user20251119_0026215g' for key 'username'

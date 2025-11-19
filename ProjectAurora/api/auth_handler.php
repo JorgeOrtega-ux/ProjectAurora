@@ -95,7 +95,7 @@ function is_allowed_domain($email)
     // 1. Opcional: Si quieres seguir restringiendo SOLO a estos proveedores grandes:
     // Si decides permitir cualquier correo (recomendado), borra esta línea if.
     if (!preg_match('/@(gmail|outlook|icloud|yahoo)/i', $email)) {
-        return false; 
+        return false;
     }
 
     // 2. Extraer el dominio (ej: gmail.asdasd)
@@ -150,9 +150,9 @@ try {
 
         $response = ['success' => true, 'message' => 'Paso 1 OK'];
 
-    // ==================================================================
-    // REGISTRO - ETAPA 2
-    // ==================================================================
+        // ==================================================================
+        // REGISTRO - ETAPA 2
+        // ==================================================================
     } elseif ($action === 'register_step_2') {
         $username = trim($data['username'] ?? '');
         $email = $_SESSION['temp_register']['email'] ?? '';
@@ -182,9 +182,9 @@ try {
         logger("Code registro: $code");
         $response = ['success' => true, 'message' => 'Código enviado'];
 
-    // ==================================================================
-    // REGISTRO - ETAPA 3
-    // ==================================================================
+        // ==================================================================
+        // REGISTRO - ETAPA 3
+        // ==================================================================
     } elseif ($action === 'register_final') {
         $inputCode = strtoupper(trim($data['code'] ?? ''));
         $email = $_SESSION['temp_register']['email'] ?? '';
@@ -236,9 +236,9 @@ try {
             throw new Exception('Error crítico.');
         }
 
-    // ==================================================================
-    // LOGIN
-    // ==================================================================
+        // ==================================================================
+        // LOGIN
+        // ==================================================================
     } elseif ($action === 'login') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
@@ -286,9 +286,9 @@ try {
             throw new Exception('Credenciales incorrectas.');
         }
 
-    // ==================================================================
-    // LOGIN 2FA VERIFICATION
-    // ==================================================================
+        // ==================================================================
+        // LOGIN 2FA VERIFICATION
+        // ==================================================================
     } elseif ($action === 'login_2fa_verify') {
         $inputCode = strtoupper(trim($data['code'] ?? ''));
 
@@ -326,14 +326,14 @@ try {
             throw new Exception("Código incorrecto o expirado.");
         }
 
-    // ==================================================================
-    // RECUPERACIÓN
-    // ==================================================================
+        // ==================================================================
+        // RECUPERACIÓN
+        // ==================================================================
     } elseif ($action === 'recovery_step_1') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
 
         if (!isset($_SESSION['temp_recovery'])) $_SESSION['temp_recovery'] = [];
-        $_SESSION['temp_recovery']['email'] = $email; 
+        $_SESSION['temp_recovery']['email'] = $email;
         $_SESSION['temp_recovery']['step'] = 2;
 
         if (!empty($email) && is_allowed_domain($email)) {
@@ -354,7 +354,6 @@ try {
             if (!empty($email)) logger("Intento de recuperación con formato inválido: $email");
         }
         $response = ['success' => true, 'message' => 'Solicitud procesada'];
-
     } elseif ($action === 'recovery_step_2') {
         $email = $_SESSION['temp_recovery']['email'] ?? '';
         $inputCode = strtoupper(trim($data['code'] ?? ''));
@@ -369,7 +368,6 @@ try {
         } else {
             throw new Exception('Código incorrecto.');
         }
-
     } elseif ($action === 'recovery_final') {
         $email = $_SESSION['temp_recovery']['email'] ?? '';
         $verified = $_SESSION['temp_recovery']['verified'] ?? false;
@@ -388,11 +386,11 @@ try {
             throw new Exception('Error BD.');
         }
 
-    // ==================================================================
-    // [NUEVO] REENVIO DE CÓDIGOS (CON VALIDACIÓN DB TIME)
-    // ==================================================================
+        // ==================================================================
+        // [NUEVO] REENVIO DE CÓDIGOS (CON VALIDACIÓN DB TIME)
+        // ==================================================================
     } elseif ($action === 'resend_code') {
-        
+
         $type = $data['type'] ?? ''; // 'register', 'login', 'recovery'
         $email = '';
         $codeType = '';
@@ -430,7 +428,7 @@ try {
                 // Usamos echo y exit directamente para enviar el dato extra 'remaining_time'
                 // sin depender del catch global que a veces oculta campos.
                 echo json_encode([
-                    'success' => false, 
+                    'success' => false,
                     'message' => "Por favor espera $wait segundos antes de solicitar otro código.",
                     'remaining_time' => $wait // <--- ESTE CAMPO ES CLAVE PARA CORREGIR EL BUG
                 ]);
@@ -440,9 +438,9 @@ try {
 
         // 3. Generar nuevo código
         $newCode = generate_verification_code();
-        
+
         // Preservar payload si es registro (contiene username y pass hash)
-        $payload = $lastCodeRow['payload'] ?? null; 
+        $payload = $lastCodeRow['payload'] ?? null;
 
         // Borrar el anterior
         $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = ?")->execute([$email, $codeType]);
@@ -454,9 +452,9 @@ try {
         logger("Reenvio Code ($type) para $email: $newCode");
         $response = ['success' => true, 'message' => 'Nuevo código enviado.'];
 
-    // ==================================================================
-    // LOGOUT
-    // ==================================================================
+        // ==================================================================
+        // LOGOUT
+        // ==================================================================
     } elseif ($action === 'logout') {
         $_SESSION = [];
         if (ini_get("session.use_cookies")) {
@@ -474,13 +472,38 @@ try {
         session_destroy();
         $response = ['success' => true, 'message' => 'Sesión cerrada correctamente'];
     }
+    // ... (código anterior) ...
+
 } catch (Exception $e) {
-    $response['message'] = $e->getMessage();
-    if (strpos($e->getMessage(), 'espera') === false) {
-        logger("Error: " . $e->getMessage());
+    $realErrorMessage = $e->getMessage();
+
+    // 1. LOGGING INTERNO
+    // Guardamos el error técnico completo en el log para que tú (el desarrollador)
+    // puedas depurar, pero ocultándolo al usuario.
+    if (strpos($realErrorMessage, 'espera') === false) {
+        // Agregamos prefijo SQL si detectamos que es de base de datos
+        $prefix = (strpos($realErrorMessage, 'SQLSTATE') !== false) ? '[DB ERROR] ' : '[LOGIC] ';
+        logger($prefix . $realErrorMessage);
+    }
+
+    // 2. RESPUESTA AL USUARIO (Sanitización)
+    // Verificamos si el error contiene cadenas de SQL crudas
+    if (strpos($realErrorMessage, 'SQLSTATE') !== false) {
+
+        // Caso específico: Error de duplicidad (Condición de carrera)
+        // Esto ocurre si dos usuarios se registran al mismo tiempo exacto
+        if (strpos($realErrorMessage, 'Duplicate entry') !== false) {
+            $response['message'] = 'El nombre de usuario o correo ya está registrado.';
+        } else {
+            // Para cualquier otro error de BD, mostramos un mensaje genérico
+            $response['message'] = 'Ocurrió un error interno en el servidor. Por favor intenta más tarde.';
+        }
+    } else {
+        // Si NO es un error SQL, asumimos que es una excepción lógica lanzada 
+        // por ti manualmente (ej: "Contraseña muy corta"), así que mostramos el mensaje.
+        $response['message'] = $realErrorMessage;
     }
 }
 
 echo json_encode($response);
 exit;
-?>
