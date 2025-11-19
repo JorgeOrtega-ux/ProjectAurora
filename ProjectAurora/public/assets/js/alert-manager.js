@@ -1,4 +1,4 @@
-// assets/js/alert-manager.js
+// assets/js/alert-manager.js [CORREGIDO]
 
 /**
  * Clase para gestionar la creación y destrucción de alertas
@@ -10,7 +10,7 @@ export class AlertManager {
      * @param {number} animationDuration Duración (ms) de la animación CSS.
      */
     constructor(animationDuration = 500) {
-        // Configuración de selectores elegida (Opción 1)
+        // Configuración de selectores elegida
         this.containerClass = 'ui-notification-dock';
         this.containerDataAttr = 'alerts';
         
@@ -64,11 +64,16 @@ export class AlertManager {
         const alertBox = document.createElement('div');
         alertBox.className = `alert-box alert-${type}`;
         
-        // Inyectamos HTML con el icono y el mensaje
-        alertBox.innerHTML = `
-            <span class="material-symbols-rounded">${iconName}</span>
-            <span>${message}</span>
-        `;
+        // [MODIFICADO] Usamos DOM nodes en lugar de innerHTML para seguridad (XSS)
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'material-symbols-rounded';
+        iconSpan.textContent = iconName;
+
+        const textSpan = document.createElement('span');
+        textSpan.textContent = message; // <-- Uso seguro de textContent
+
+        alertBox.appendChild(iconSpan);
+        alertBox.appendChild(textSpan);
 
         // 3. Añadir al contenedor
         container.appendChild(alertBox);

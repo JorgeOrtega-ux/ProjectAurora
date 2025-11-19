@@ -1,5 +1,5 @@
 <?php
-// api/auth_handler.php
+// api/auth_handler.php [CORREGIDO]
 
 // --- CONFIGURACIÓN DE LOGS ---
 $logDir = __DIR__ . '/../logs';
@@ -87,26 +87,16 @@ function get_random_color()
 
 function generate_verification_code()
 {
-    // ANTES: return strtoupper(substr(bin2hex(random_bytes(5)), 0, 10));
-    
-    // AHORA: 6 bytes * 2 = 12 caracteres exactos
+    // 6 bytes * 2 = 12 caracteres exactos
     return strtoupper(bin2hex(random_bytes(6)));
 }
 
 function is_allowed_domain($email)
 {
-    // 1. Opcional: Si quieres seguir restringiendo SOLO a estos proveedores grandes:
-    // Si decides permitir cualquier correo (recomendado), borra esta línea if.
     if (!preg_match('/@(gmail|outlook|icloud|yahoo)/i', $email)) {
         return false;
     }
-
-    // 2. Extraer el dominio (ej: gmail.asdasd)
     $domain = substr(strrchr($email, "@"), 1);
-
-    // 3. VERIFICACIÓN DNS: Esto es lo que soluciona tu problema.
-    // checkdnsrr busca registros MX en internet para ese dominio.
-    // Si es 'gmail.asdasd', devolverá falso. Si es 'outlook.mx', devolverá verdadero.
     return checkdnsrr($domain, 'MX');
 }
 
@@ -182,7 +172,9 @@ try {
         unset($_SESSION['temp_register']['password']);
         $_SESSION['temp_register']['username'] = $username;
 
-        logger("Code registro: $code");
+        // [CORRECCIÓN SEGURIDAD] No loguear el código real
+        logger("Code registro generado para el usuario (Oculto por seguridad).");
+        
         $response = ['success' => true, 'message' => 'Código enviado'];
 
         // ==================================================================
@@ -270,7 +262,8 @@ try {
                 $_SESSION['temp_login_2fa']['user_id'] = $user['id'];
                 $_SESSION['temp_login_2fa']['email'] = $user['email'];
 
-                logger("Code 2FA Login para $email: $code");
+                // [CORRECCIÓN SEGURIDAD] No loguear el código real
+                logger("Code 2FA Login generado para $email (Oculto por seguridad).");
 
                 $response = [
                     'success' => true,
@@ -349,7 +342,8 @@ try {
                 $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, expires_at) VALUES (?, 'recovery', ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
                 $stmt->execute([$email, $code]);
 
-                logger("Code Recup (para $email): $code");
+                // [CORRECCIÓN SEGURIDAD] No loguear el código real
+                logger("Code Recup generado para $email (Oculto por seguridad).");
             } else {
                 logger("Intento de recuperación para correo no existente: $email");
             }
@@ -390,7 +384,7 @@ try {
         }
 
         // ==================================================================
-        // [NUEVO] REENVIO DE CÓDIGOS (CON VALIDACIÓN DB TIME)
+        // REENVIO DE CÓDIGOS (CON VALIDACIÓN DB TIME)
         // ==================================================================
     } elseif ($action === 'resend_code') {
 
@@ -415,7 +409,6 @@ try {
         if (empty($email)) throw new Exception("Sesión perdida. Recarga la página.");
 
         // 2. Verificar tiempo en BD (Protección lado Servidor)
-        // Obtenemos la fecha de creación del último código de ese tipo para ese email
         $stmt = $pdo->prepare("SELECT created_at, payload FROM verification_codes WHERE identifier = ? AND code_type = ? ORDER BY id DESC LIMIT 1");
         $stmt->execute([$email, $codeType]);
         $lastCodeRow = $stmt->fetch();
@@ -425,15 +418,12 @@ try {
             $currentTime = time();
             $diff = $currentTime - $createdAt;
 
-            // Si han pasado menos de 60 segundos, devolvemos JSON con remaining_time
             if ($diff < 60) {
                 $wait = 60 - $diff;
-                // Usamos echo y exit directamente para enviar el dato extra 'remaining_time'
-                // sin depender del catch global que a veces oculta campos.
                 echo json_encode([
                     'success' => false,
                     'message' => "Por favor espera $wait segundos antes de solicitar otro código.",
-                    'remaining_time' => $wait // <--- ESTE CAMPO ES CLAVE PARA CORREGIR EL BUG
+                    'remaining_time' => $wait
                 ]);
                 exit;
             }
@@ -452,7 +442,9 @@ try {
         $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
         $stmt->execute([$email, $codeType, $newCode, $payload]);
 
-        logger("Reenvio Code ($type) para $email: $newCode");
+        // [CORRECCIÓN SEGURIDAD] No loguear el código real
+        logger("Reenvio Code ($type) generado para $email (Oculto por seguridad).");
+        
         $response = ['success' => true, 'message' => 'Nuevo código enviado.'];
 
         // ==================================================================
@@ -475,35 +467,24 @@ try {
         session_destroy();
         $response = ['success' => true, 'message' => 'Sesión cerrada correctamente'];
     }
-    // ... (código anterior) ...
 
 } catch (Exception $e) {
     $realErrorMessage = $e->getMessage();
 
     // 1. LOGGING INTERNO
-    // Guardamos el error técnico completo en el log para que tú (el desarrollador)
-    // puedas depurar, pero ocultándolo al usuario.
     if (strpos($realErrorMessage, 'espera') === false) {
-        // Agregamos prefijo SQL si detectamos que es de base de datos
         $prefix = (strpos($realErrorMessage, 'SQLSTATE') !== false) ? '[DB ERROR] ' : '[LOGIC] ';
         logger($prefix . $realErrorMessage);
     }
 
     // 2. RESPUESTA AL USUARIO (Sanitización)
-    // Verificamos si el error contiene cadenas de SQL crudas
     if (strpos($realErrorMessage, 'SQLSTATE') !== false) {
-
-        // Caso específico: Error de duplicidad (Condición de carrera)
-        // Esto ocurre si dos usuarios se registran al mismo tiempo exacto
         if (strpos($realErrorMessage, 'Duplicate entry') !== false) {
             $response['message'] = 'El nombre de usuario o correo ya está registrado.';
         } else {
-            // Para cualquier otro error de BD, mostramos un mensaje genérico
             $response['message'] = 'Ocurrió un error interno en el servidor. Por favor intenta más tarde.';
         }
     } else {
-        // Si NO es un error SQL, asumimos que es una excepción lógica lanzada 
-        // por ti manualmente (ej: "Contraseña muy corta"), así que mostramos el mensaje.
         $response['message'] = $realErrorMessage;
     }
 }

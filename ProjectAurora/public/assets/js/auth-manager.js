@@ -1,4 +1,4 @@
-// assets/js/auth-manager.js
+// assets/js/auth-manager.js [CORREGIDO]
 
 const API_BASE_PATH = window.BASE_PATH || '/ProjectAurora/';
 
@@ -16,7 +16,7 @@ function toggleStepVisibility(hideSelector, showSelector) {
         toHide.classList.remove('active');
         // Limpiar errores al cambiar de paso
         const err = toHide.querySelector('.form-error-message');
-        if (err) { err.innerText = ''; err.classList.remove('active'); }
+        if (err) { err.textContent = ''; err.classList.remove('active'); }
     }
     if (toShow) {
         toShow.classList.add('active');
@@ -49,15 +49,15 @@ function initResendTimer(linkSelector, startSeconds = 60) {
     
     // Actualizar UI inmediatamente
     link.classList.add('disabled-link');
-    link.innerText = `Reenviar código de verificación (${seconds})`;
+    link.textContent = `Reenviar código de verificación (${seconds})`;
 
     resendTimerInterval = setInterval(() => {
         seconds--;
         if (seconds > 0) {
-            link.innerText = `Reenviar código de verificación (${seconds})`;
+            link.textContent = `Reenviar código de verificación (${seconds})`;
         } else {
             clearInterval(resendTimerInterval);
-            link.innerText = "Reenviar código de verificación";
+            link.textContent = "Reenviar código de verificación";
             link.classList.remove('disabled-link');
         }
     }, 1000);
@@ -94,8 +94,6 @@ async function handleResendCode(type, linkSelector) {
             // Error: Mostrar alerta
             if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
             
-            // [CORRECCIÓN DE BUG]
-            // Si el servidor devolvió 'remaining_time', usamos ese tiempo para el timer.
             if (res.remaining_time) {
                 initResendTimer(linkSelector, res.remaining_time);
             } else {
@@ -111,23 +109,14 @@ async function handleResendCode(type, linkSelector) {
 }
 
 export function initAuthManager() {
-    // --- [NUEVO] Lógica de formateo XXXX-XXXX-XXXX ---
-    // Usamos delegación de eventos para inputs cargados dinámicamente
+    // --- Lógica de formateo XXXX-XXXX-XXXX ---
     document.body.addEventListener('input', (e) => {
-        // Detectar si es uno de los campos de código
         if (e.target.matches('[data-input="reg-code"], [data-input="login-2fa-code"], [data-input="rec-code"]')) {
             const input = e.target;
-            
-            // 1. Guardar posición del cursor (opcional, mejora UX al borrar)
-            // const start = input.selectionStart;
-
-            // 2. Limpiar todo lo que no sea alfanumérico y hacer mayúsculas
             let rawValue = input.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
             
-            // 3. Limitar a 12 caracteres reales
             if (rawValue.length > 12) rawValue = rawValue.slice(0, 12);
 
-            // 4. Añadir guiones cada 4 caracteres
             const parts = [];
             if (rawValue.length > 0) parts.push(rawValue.slice(0, 4));
             if (rawValue.length > 4) parts.push(rawValue.slice(4, 8));
@@ -136,7 +125,6 @@ export function initAuthManager() {
             input.value = parts.join('-');
         }
     });
-    // ------------------------------------------------
 
     document.body.addEventListener('click', async (e) => {
         
@@ -162,7 +150,7 @@ export function initAuthManager() {
             await handleRegisterStep('step3', 'register_final', 'main', null);
         }
         
-        // [NUEVO] REENVIAR CÓDIGO REGISTRO
+        // REENVIAR CÓDIGO REGISTRO
         if (e.target.closest('[data-action="resend-register"]')) {
             e.preventDefault();
             await handleResendCode('register', '[data-action="resend-register"]');
@@ -199,7 +187,7 @@ export function initAuthManager() {
             await handleRecoveryStep('step3');
         }
 
-        // [MODIFICADO] Botón Reenviar (Recuperación)
+        // Botón Reenviar (Recuperación)
         if (e.target.closest('[data-action="resend-recovery"]')) {
             e.preventDefault();
             await handleResendCode('recovery', '[data-action="resend-recovery"]');
@@ -215,10 +203,10 @@ export function initAuthManager() {
             if (input && input.tagName === 'INPUT') {
                 if (input.type === 'password') {
                     input.type = 'text';
-                    btn.querySelector('span').innerText = 'visibility_off';
+                    btn.querySelector('span').textContent = 'visibility_off';
                 } else {
                     input.type = 'password';
-                    btn.querySelector('span').innerText = 'visibility';
+                    btn.querySelector('span').textContent = 'visibility';
                 }
             }
         }
@@ -240,7 +228,7 @@ export function initAuthManager() {
             await handleLogin();
         }
         
-        // [NUEVO] REENVIAR CÓDIGO LOGIN 2FA
+        // REENVIAR CÓDIGO LOGIN 2FA
         if (e.target.closest('[data-action="resend-login"]')) {
             e.preventDefault();
             await handleResendCode('login', '[data-action="resend-login"]');
@@ -272,7 +260,7 @@ export function initAuthManager() {
 
             if (iconContainer) {
                 originalIconHTML = iconContainer.innerHTML;
-                iconContainer.innerHTML = '<div class="small-spinner"></div>';
+                iconContainer.innerHTML = '<div class="small-spinner"></div>'; // OK: HTML estático
             }
             
             try {
@@ -311,7 +299,7 @@ export function initAuthManager() {
         }
     });
     
-    // [NUEVO] Inicializar timers si recargamos la página en un paso de verificación activo
+    // Inicializar timers si recargamos la página en un paso de verificación activo
     if (qs('[data-step="register-3"].active')) initResendTimer('[data-action="resend-register"]');
     if (qs('[data-step="rec-2"].active')) initResendTimer('[data-action="resend-recovery"]');
     if (qs('[data-step="login-2"].active')) initResendTimer('[data-action="resend-login"]');
@@ -385,7 +373,7 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
         payload.password = passVal;
         
         const emailDisplay = qs('[data-display="email-verify"]');
-        if (emailDisplay) emailDisplay.innerText = emailVal;
+        if (emailDisplay) emailDisplay.textContent = emailVal;
 
         btnSelector = '[data-action="register-step1"]'; 
         errorSelector = '[data-error="register-1"]'; 
@@ -410,7 +398,6 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
         const codeIn = qs('[data-input="reg-code"]');
         if (!codeIn) return false;
         
-        // [MODIFICADO] Eliminamos los guiones antes de enviar
         payload.code = codeIn.value.replace(/-/g, '');
         
         btnSelector = '[data-action="register-step3"]'; 
@@ -420,7 +407,7 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
 
     inputSelectors.forEach(sel => qs(sel).classList.remove('input-error'));
     const errorDiv = qs(errorSelector);
-    if(errorDiv) { errorDiv.innerText = ''; errorDiv.classList.remove('active'); }
+    if(errorDiv) { errorDiv.textContent = ''; errorDiv.classList.remove('active'); }
 
     let hasEmpty = false;
     inputSelectors.forEach(sel => {
@@ -429,12 +416,12 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
     });
 
     if (hasEmpty) {
-        if(errorDiv) { errorDiv.innerText = "Todos los campos son requeridos."; errorDiv.classList.add('active'); }
+        if(errorDiv) { errorDiv.textContent = "Todos los campos son requeridos."; errorDiv.classList.add('active'); }
         return false;
     }
 
     if (errorMessage) {
-        if(errorDiv) { errorDiv.innerText = errorMessage; errorDiv.classList.add('active'); }
+        if(errorDiv) { errorDiv.textContent = errorMessage; errorDiv.classList.add('active'); }
         return false;
     }
 
@@ -454,18 +441,18 @@ async function handleRecoveryStep(stepName) {
         const emailVal = emailIn.value.trim().toLowerCase();
         const errorDiv = qs('[data-error="rec-1"]');
         
-        if(errorDiv) { errorDiv.innerText = ''; errorDiv.classList.remove('active'); }
+        if(errorDiv) { errorDiv.textContent = ''; errorDiv.classList.remove('active'); }
         emailIn.classList.remove('input-error');
 
         if(!emailVal) { 
             emailIn.classList.add('input-error'); 
-            if(errorDiv) { errorDiv.innerText = "El correo es requerido."; errorDiv.classList.add('active'); }
+            if(errorDiv) { errorDiv.textContent = "El correo es requerido."; errorDiv.classList.add('active'); }
             return false; 
         }
 
         if (!isValidEmailDomain(emailVal)) {
             emailIn.classList.add('input-error');
-            if(errorDiv) { errorDiv.innerText = "Correo inválido. Solo se permite: Gmail, Outlook, iCloud, Yahoo."; errorDiv.classList.add('active'); }
+            if(errorDiv) { errorDiv.textContent = "Correo inválido. Solo se permite: Gmail, Outlook, iCloud, Yahoo."; errorDiv.classList.add('active'); }
             return false;
         }
         
@@ -487,7 +474,6 @@ async function handleRecoveryStep(stepName) {
             return false; 
         }
         
-        // [MODIFICADO] Eliminamos guiones antes de enviar
         payload = { action: 'recovery_step_2', code: rawCode.replace(/-/g, '') };
         
         btnSelector = '[data-action="rec-step2"]'; 
@@ -504,7 +490,7 @@ async function handleRecoveryStep(stepName) {
             passIn.classList.add('input-error'); 
             const err = qs('[data-error="rec-3"]');
             if(err) {
-                err.innerText = 'Mínimo 8 caracteres';
+                err.textContent = 'Mínimo 8 caracteres';
                 err.classList.add('active');
             }
             return false; 
@@ -521,13 +507,13 @@ async function handleRecoveryStep(stepName) {
     
     if(btn) { 
         originalContent = btn.innerHTML;
-        btn.innerHTML = '<div class="btn-spinner"></div>'; 
+        btn.innerHTML = '<div class="btn-spinner"></div>'; // OK: HTML estático
         btn.disabled = true; 
     }
     
     if (stepName !== 'step1') {
         const errorDiv = qs(errorSelector);
-        if(errorDiv) { errorDiv.innerText = ''; errorDiv.classList.remove('active'); }
+        if(errorDiv) { errorDiv.textContent = ''; errorDiv.classList.remove('active'); }
     }
     inputSelectors.forEach(sel => qs(sel).classList.remove('input-error'));
     
@@ -551,7 +537,7 @@ async function handleRecoveryStep(stepName) {
                 
                 if(stepName === 'step1') {
                     const display = qs('[data-display="rec-email"]');
-                    if(display) display.innerText = payload.email;
+                    if(display) display.textContent = payload.email;
                     if (window.alertManager) window.alertManager.showAlert('Solicitud procesada. Revisa tu correo.', 'info');
                 }
                 
@@ -560,13 +546,13 @@ async function handleRecoveryStep(stepName) {
             return true; // Éxito
         } else {
             const errorDiv = qs(errorSelector);
-            if(errorDiv) { errorDiv.innerText = res.message; errorDiv.classList.add('active'); }
+            if(errorDiv) { errorDiv.textContent = res.message; errorDiv.classList.add('active'); }
             if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
             return false;
         }
     } catch (e) {
         const errorDiv = qs(errorSelector);
-        if(errorDiv) { errorDiv.innerText = "Error de conexión"; errorDiv.classList.add('active'); }
+        if(errorDiv) { errorDiv.textContent = "Error de conexión"; errorDiv.classList.add('active'); }
         if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
         return false;
     }
@@ -579,7 +565,7 @@ async function sendAuthRequest(payload, btnSelector, errorSelector, nextStep, ne
 
     if(btn) { 
         originalContent = btn.innerHTML;
-        btn.innerHTML = '<div class="btn-spinner"></div>'; 
+        btn.innerHTML = '<div class="btn-spinner"></div>'; // OK: HTML estático
         btn.disabled = true; 
     }
     
@@ -606,12 +592,12 @@ async function sendAuthRequest(payload, btnSelector, errorSelector, nextStep, ne
             }
             return true;
         } else {
-            if(errorDiv) { errorDiv.innerText = result.message; errorDiv.classList.add('active'); }
+            if(errorDiv) { errorDiv.textContent = result.message; errorDiv.classList.add('active'); }
             if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
             return false;
         }
     } catch (error) {
-        if(errorDiv) { errorDiv.innerText = "Error de conexión"; errorDiv.classList.add('active'); }
+        if(errorDiv) { errorDiv.textContent = "Error de conexión"; errorDiv.classList.add('active'); }
         if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
         return false;
     }
@@ -635,7 +621,7 @@ async function handleLogin() {
     const btn = qs('[data-action="login-submit"]');
     const originalContent = btn.innerHTML; 
 
-    btn.innerHTML = '<div class="btn-spinner"></div>';
+    btn.innerHTML = '<div class="btn-spinner"></div>'; // OK: HTML estático
     btn.disabled = true;
 
     try {
@@ -663,7 +649,7 @@ async function handleLogin() {
                 
                 const displayEmail = qs('[data-display="login-2fa-email"]');
                 if(displayEmail && res.masked_email) {
-                    displayEmail.innerText = res.masked_email;
+                    displayEmail.textContent = res.masked_email;
                 }
                 
                 if (window.alertManager) window.alertManager.showAlert('Código de seguridad 2FA enviado.', 'info');
@@ -685,7 +671,7 @@ async function handleLogin() {
             }
         } else {
             if(errorDiv) {
-                errorDiv.innerText = res.message;
+                errorDiv.textContent = res.message;
                 errorDiv.classList.add('active');
             }
             emailInput.classList.add('input-error');
@@ -695,7 +681,7 @@ async function handleLogin() {
         }
     } catch (e) {
         if(errorDiv) {
-            errorDiv.innerText = "Error de conexión";
+            errorDiv.textContent = "Error de conexión";
             errorDiv.classList.add('active');
         }
         btn.innerHTML = originalContent;
@@ -716,11 +702,11 @@ async function handleLogin2FA() {
     const btn = qs('[data-action="login-2fa-submit"]');
     const originalContent = btn.innerHTML;
 
-    btn.innerHTML = '<div class="btn-spinner"></div>';
+    btn.innerHTML = '<div class="btn-spinner"></div>'; // OK: HTML estático
     btn.disabled = true;
     if(errorDiv) errorDiv.classList.remove('active');
 
-    // [MODIFICADO] Limpiar guiones antes de enviar
+    // Limpiar guiones antes de enviar
     const cleanCode = codeInput.value.trim().replace(/-/g, '');
 
     try {
@@ -742,7 +728,7 @@ async function handleLogin2FA() {
             window.location.href = API_BASE_PATH;
         } else {
             if(errorDiv) {
-                errorDiv.innerText = res.message;
+                errorDiv.textContent = res.message;
                 errorDiv.classList.add('active');
             }
             codeInput.classList.add('input-error');
@@ -751,7 +737,7 @@ async function handleLogin2FA() {
         }
     } catch (e) {
         if(errorDiv) {
-            errorDiv.innerText = "Error de conexión";
+            errorDiv.textContent = "Error de conexión";
             errorDiv.classList.add('active');
         }
         btn.innerHTML = originalContent;
