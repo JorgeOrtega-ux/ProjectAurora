@@ -599,9 +599,6 @@ input[data-input="login-password"] {
     letter-spacing: 0.0178571429em;
 }
 
-
-
-
 @media (max-width: 468px) {
     .module-content.module-surface {
         width: 100%;
@@ -615,12 +612,12 @@ input[data-input="login-password"] {
     }
 }
 
-
 /* =========================================
    9. SISTEMA DE ALERTAS
    ========================================= */
 
-#alert-container {
+/* MODIFICACIÓN APLICADA AQUÍ: Selector elegido */
+.ui-notification-dock[data-container="alerts"] {
     position: fixed;
     bottom: 20px;
     left: 20px;
@@ -630,8 +627,6 @@ input[data-input="login-password"] {
     gap: 10px; 
     max-width: calc(100% - 40px); 
 }
-
-/* public/assets/css/styles.css */
 
 .alert-box {
     max-width: 350px;
@@ -643,11 +638,9 @@ input[data-input="login-password"] {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     background-color: #333;
     
-    /* --- CAMBIOS PARA EL ICONO --- */
-    display: flex;              /* Alinea icono y texto */
-    align-items: center;        /* Centrado vertical */
-    gap: 12px;                  /* Espacio entre icono y texto */
-    /* ----------------------------- */
+    display: flex;              
+    align-items: center;        
+    gap: 12px;                  
 
     opacity: 0;
     transform: translateX(-20px);
@@ -656,10 +649,9 @@ input[data-input="login-password"] {
     user-select: none;
 }
 
-/* Añadimos estilo para que el icono no se aplaste si hay mucho texto */
 .alert-box .material-symbols-rounded {
-    font-size: 20px; /* Tamaño del icono */
-    flex-shrink: 0;  /* Evita que se encoja */
+    font-size: 20px; 
+    flex-shrink: 0;  
 }
 
 .alert-box.show {
@@ -668,7 +660,8 @@ input[data-input="login-password"] {
 }
 
 @media (max-width: 468px) {
-    #alert-container {
+    /* MODIFICACIÓN APLICADA AQUÍ TAMBIÉN */
+    .ui-notification-dock[data-container="alerts"] {
         left: 10px;
         right: 10px;
         bottom: 10px;

@@ -7,28 +7,36 @@
 export class AlertManager {
 
     /**
-     * @param {string} containerId ID del contenedor.
      * @param {number} animationDuration Duración (ms) de la animación CSS.
      */
-    constructor(containerId = 'alert-container', animationDuration = 500) {
-        this.containerId = containerId;
+    constructor(animationDuration = 500) {
+        // Configuración de selectores elegida (Opción 1)
+        this.containerClass = 'ui-notification-dock';
+        this.containerDataAttr = 'alerts';
+        
         this.animationDuration = animationDuration;
         this.alertContainer = null;
+    }
 
-        // ELIMINADO: this.initContainer(); 
-        // Ya no creamos el contenedor al instanciar la clase.
+    /**
+     * Helper para generar el selector CSS completo.
+     * Retorna: .ui-notification-dock[data-container="alerts"]
+     */
+    getSelector() {
+        return `.${this.containerClass}[data-container="${this.containerDataAttr}"]`;
     }
 
     /**
      * Método interno para obtener el contenedor.
-     * Si no existe en el DOM, lo crea en ese momento.
+     * Si no existe en el DOM, lo crea usando la clase y el data-attribute.
      */
     getContainer() {
-        let container = document.getElementById(this.containerId);
+        let container = document.querySelector(this.getSelector());
         
         if (!container) {
             container = document.createElement('div');
-            container.id = this.containerId;
+            container.classList.add(this.containerClass);
+            container.dataset.container = this.containerDataAttr;
             document.body.appendChild(container);
         }
         
@@ -96,8 +104,9 @@ export class AlertManager {
             }
 
             // 2. VERIFICACIÓN DINÁMICA:
-            // Si el contenedor ya no tiene hijos (alertas), lo eliminamos del body.
-            const container = document.getElementById(this.containerId);
+            // Buscamos el contenedor usando el selector de clase + data
+            const container = document.querySelector(this.getSelector());
+            
             if (container && container.children.length === 0) {
                 if (container.parentNode) {
                     container.parentNode.removeChild(container);

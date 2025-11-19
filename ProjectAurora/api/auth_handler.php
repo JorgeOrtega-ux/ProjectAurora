@@ -87,7 +87,10 @@ function get_random_color()
 
 function generate_verification_code()
 {
-    return strtoupper(substr(bin2hex(random_bytes(5)), 0, 10));
+    // ANTES: return strtoupper(substr(bin2hex(random_bytes(5)), 0, 10));
+    
+    // AHORA: 6 bytes * 2 = 12 caracteres exactos
+    return strtoupper(bin2hex(random_bytes(6)));
 }
 
 function is_allowed_domain($email)
