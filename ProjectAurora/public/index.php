@@ -10,10 +10,17 @@ if (isset($_SESSION['user_id'])) {
         $freshUser = $stmt->fetch();
 
         if ($freshUser) {
+            // Usuario encontrado: Actualizamos datos
             $_SESSION['user_role'] = $freshUser['role'] ?? 'user';
             $_SESSION['user_avatar'] = $freshUser['avatar'];
+        } else {
+            // [NUEVO] Usuario NO encontrado (ej. BD reseteada): Forzar cierre de sesión
+            session_destroy();
+            header("Location: " . $basePath . "login");
+            exit;
         }
     } catch (Exception $e) {
+        // Error de BD: No hacemos nada para no bloquear, pero podrías loguearlo
     }
 }
 ?>

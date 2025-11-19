@@ -9,6 +9,7 @@
     <div class="header-right">
         <div class="header-item">
             <?php
+            // Obtenemos el rol, si no existe asumimos 'user'
             $userRole = $_SESSION['user_role'] ?? 'user';
             ?>
             <div class="header-button profile-button"
@@ -31,6 +32,16 @@
         <div class="menu-content">
             <div class="menu-list">
                 
+                <?php if (in_array($userRole, ['founder', 'administrator', 'admin'])): ?>
+                <div class="menu-link">
+                    <div class="menu-link-icon">
+                        <span class="material-symbols-rounded">admin_panel_settings</span>
+                    </div>
+                    <div class="menu-link-text">
+                        <span>Panel de administración</span>
+                    </div>
+                </div>
+                <?php endif; ?>
                 <div class="menu-link" onclick="event.preventDefault(); navigateTo('settings/your-profile'); document.querySelector('[data-module=\'moduleOptions\']').classList.add('disabled'); document.querySelector('[data-module=\'moduleOptions\']').classList.remove('active');">
                     <div class="menu-link-icon">
                         <span class="material-symbols-rounded">settings</span>
