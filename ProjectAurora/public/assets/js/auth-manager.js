@@ -111,6 +111,33 @@ async function handleResendCode(type, linkSelector) {
 }
 
 export function initAuthManager() {
+    // --- [NUEVO] Lógica de formateo XXXX-XXXX-XXXX ---
+    // Usamos delegación de eventos para inputs cargados dinámicamente
+    document.body.addEventListener('input', (e) => {
+        // Detectar si es uno de los campos de código
+        if (e.target.matches('[data-input="reg-code"], [data-input="login-2fa-code"], [data-input="rec-code"]')) {
+            const input = e.target;
+            
+            // 1. Guardar posición del cursor (opcional, mejora UX al borrar)
+            // const start = input.selectionStart;
+
+            // 2. Limpiar todo lo que no sea alfanumérico y hacer mayúsculas
+            let rawValue = input.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+            
+            // 3. Limitar a 12 caracteres reales
+            if (rawValue.length > 12) rawValue = rawValue.slice(0, 12);
+
+            // 4. Añadir guiones cada 4 caracteres
+            const parts = [];
+            if (rawValue.length > 0) parts.push(rawValue.slice(0, 4));
+            if (rawValue.length > 4) parts.push(rawValue.slice(4, 8));
+            if (rawValue.length > 8) parts.push(rawValue.slice(8, 12));
+
+            input.value = parts.join('-');
+        }
+    });
+    // ------------------------------------------------
+
     document.body.addEventListener('click', async (e) => {
         
         // --- PASO 1 -> 2 (REGISTRO) ---
@@ -325,22 +352,7 @@ function switchRegisterStep(stepNumber, urlPath) {
 
 // --- VALIDACIONES ---
 function isValidEmailDomain(email) {
-    // Esta regex valida:
-    // 1. Texto antes del @
-    // 2. (Opcional) Restricción de proveedores (gmail, outlook, etc)
-    // 3. Un punto
-    // 4. Una extensión de 2 o más letras (cubre .com, .mx, .travel, etc.)
-    
-    // Si quieres mantener la restricción de proveedores:
     const regex = /^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i;
-    
-    // SI DECIDES ABRIRLO A CUALQUIER PROVEEDOR (Recomendado):
-    // const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    // Tu regex actual en el archivo ya permite .mx gracias a la parte (\.[a-z]{2,})?
-    // El problema de "gmail.asdasd" NO se debe arreglar aquí en JS, 
-    // se debe arreglar en el PHP con el checkdnsrr que te puse arriba.
-    
     return regex.test(email);
 }
 function isValidUsername(username) {
@@ -397,7 +409,10 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
     } else if (stepName === 'step3') {
         const codeIn = qs('[data-input="reg-code"]');
         if (!codeIn) return false;
-        payload.code = codeIn.value;
+        
+        // [MODIFICADO] Eliminamos los guiones antes de enviar
+        payload.code = codeIn.value.replace(/-/g, '');
+        
         btnSelector = '[data-action="register-step3"]'; 
         errorSelector = '[data-error="register-3"]'; 
         inputSelectors = ['[data-input="reg-code"]'];
@@ -465,12 +480,16 @@ async function handleRecoveryStep(stepName) {
     } else if (stepName === 'step2') {
         const codeIn = qs('[data-input="rec-code"]');
         if(!codeIn) return false;
-        if(!codeIn.value.trim()) { 
+        
+        const rawCode = codeIn.value.trim();
+        if(!rawCode) { 
             codeIn.classList.add('input-error'); 
             return false; 
         }
         
-        payload = { action: 'recovery_step_2', code: codeIn.value.trim() };
+        // [MODIFICADO] Eliminamos guiones antes de enviar
+        payload = { action: 'recovery_step_2', code: rawCode.replace(/-/g, '') };
+        
         btnSelector = '[data-action="rec-step2"]'; 
         errorSelector = '[data-error="rec-2"]'; 
         inputSelectors = ['[data-input="rec-code"]'];
@@ -701,6 +720,9 @@ async function handleLogin2FA() {
     btn.disabled = true;
     if(errorDiv) errorDiv.classList.remove('active');
 
+    // [MODIFICADO] Limpiar guiones antes de enviar
+    const cleanCode = codeInput.value.trim().replace(/-/g, '');
+
     try {
         const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
             method: 'POST',
@@ -710,7 +732,7 @@ async function handleLogin2FA() {
             },
             body: JSON.stringify({ 
                 action: 'login_2fa_verify', 
-                code: codeInput.value.trim()
+                code: cleanCode
             })
         });
 

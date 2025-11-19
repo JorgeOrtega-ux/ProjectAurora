@@ -34,7 +34,7 @@ if (isset($_SESSION['temp_recovery']['step'])) {
                 </p>
                 
                 <div class="floating-label-group">
-                    <input type="text" data-input="rec-code" class="floating-input" required placeholder=" " maxlength="12" style="letter-spacing: 2px; text-transform: uppercase; font-weight:bold;">
+                    <input type="text" data-input="rec-code" class="floating-input" required placeholder=" " maxlength="14" style="letter-spacing: 2px; text-transform: uppercase;">
                     <label class="floating-label">Código de Recuperación</label>
                 </div>
 

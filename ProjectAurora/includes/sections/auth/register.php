@@ -88,8 +88,8 @@ if (isset($CURRENT_SECTION)) {
                         class="floating-input" 
                         required 
                         placeholder=" " 
-                        maxlength="12" 
-                        style="letter-spacing: 2px; text-transform: uppercase; font-weight:bold;"
+                        maxlength="14" 
+                        style="letter-spacing: 2px; text-transform: uppercase;"
                     >
                     <label class="floating-label">Código</label>
                 </div>

@@ -83,8 +83,8 @@ if ($isStep2 && isset($_SESSION['temp_login_2fa']['email'])) {
                         class="floating-input" 
                         required 
                         placeholder=" "
-                        maxlength="12"
-                        style="letter-spacing: 2px; text-transform: uppercase; font-weight:bold;"
+                        maxlength="14" 
+                        style="letter-spacing: 2px; text-transform: uppercase;"
                     >
                     <label class="floating-label">Código de Seguridad</label>
                 </div>
