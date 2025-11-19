@@ -1,4 +1,4 @@
-// assets/js/auth-manager.js [CORREGIDO]
+// assets/js/auth-manager.js
 
 const API_BASE_PATH = window.BASE_PATH || '/ProjectAurora/';
 
@@ -34,11 +34,6 @@ function getCsrfToken() {
    ============================================================= */
 let resendTimerInterval = null;
 
-/**
- * Inicia el contador visual en el enlace.
- * @param {string} linkSelector 
- * @param {number} startSeconds Tiempo inicial (por defecto 60)
- */
 function initResendTimer(linkSelector, startSeconds = 60) {
     const link = qs(linkSelector);
     if (!link) return;
@@ -47,7 +42,6 @@ function initResendTimer(linkSelector, startSeconds = 60) {
     
     let seconds = startSeconds;
     
-    // Actualizar UI inmediatamente
     link.classList.add('disabled-link');
     link.textContent = `Reenviar código de verificación (${seconds})`;
 
@@ -65,10 +59,8 @@ function initResendTimer(linkSelector, startSeconds = 60) {
 
 async function handleResendCode(type, linkSelector) {
     const link = qs(linkSelector);
-    // Bloquear si ya está disabled (aunque el usuario lo quite en el DOM, esto ayuda)
     if (!link || link.classList.contains('disabled-link')) return;
 
-    // Bloquear visualmente MIENTRAS se hace la petición (estado de carga)
     link.classList.add('disabled-link');
 
     try {
@@ -80,36 +72,31 @@ async function handleResendCode(type, linkSelector) {
             },
             body: JSON.stringify({ 
                 action: 'resend_code',
-                type: type // 'register', 'login', 'recovery'
+                type: type
             })
         });
 
         const res = await response.json();
         
         if (res.success) {
-            // Éxito: El servidor envió código nuevo, iniciamos contador completo
             if (window.alertManager) window.alertManager.showAlert(res.message, 'success');
             initResendTimer(linkSelector, 60);
         } else {
-            // Error: Mostrar alerta
             if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
             
             if (res.remaining_time) {
                 initResendTimer(linkSelector, res.remaining_time);
             } else {
-                // Si fue otro error (ej. sesión expirada), quitamos el disabled para que intente de nuevo o recargue
                 link.classList.remove('disabled-link');
             }
         }
     } catch (error) {
         console.error(error);
-        // En caso de error de red, reactivar el link
         if (link) link.classList.remove('disabled-link');
     }
 }
 
 export function initAuthManager() {
-    // --- Lógica de formateo XXXX-XXXX-XXXX ---
     document.body.addEventListener('input', (e) => {
         if (e.target.matches('[data-input="reg-code"], [data-input="login-2fa-code"], [data-input="rec-code"]')) {
             const input = e.target;
@@ -128,72 +115,49 @@ export function initAuthManager() {
 
     document.body.addEventListener('click', async (e) => {
         
-        // --- PASO 1 -> 2 (REGISTRO) ---
+        // --- REGISTRO ---
         if (e.target.closest('[data-action="register-step1"]')) {
             e.preventDefault();
             await handleRegisterStep('step1', 'register_step_1', 2, 'register/additional-data');
         }
-
-        // --- PASO 2 -> 3 (REGISTRO) ---
         if (e.target.closest('[data-action="register-step2"]')) {
             e.preventDefault();
             const success = await handleRegisterStep('step2', 'register_step_2', 3, 'register/verification-account');
-            if (success) {
-                // Iniciar Timer Registro
-                initResendTimer('[data-action="resend-register"]');
-            }
+            if (success) initResendTimer('[data-action="resend-register"]');
         }
-
-        // --- PASO 3 -> FINAL (REGISTRO) ---
         if (e.target.closest('[data-action="register-step3"]')) {
             e.preventDefault();
             await handleRegisterStep('step3', 'register_final', 'main', null);
         }
-        
-        // REENVIAR CÓDIGO REGISTRO
         if (e.target.closest('[data-action="resend-register"]')) {
             e.preventDefault();
             await handleResendCode('register', '[data-action="resend-register"]');
         }
-
-        // --- BOTÓN VOLVER (Paso 2 Registro) ---
         if (e.target.closest('[data-action="register-back-step1"]')) {
             e.preventDefault();
             switchRegisterStep(1, 'register');
         }
 
-        // =================================================
-        // LÓGICA RECUPERACIÓN (Forgot Password)
-        // =================================================
-        
-        // Paso 1: Enviar Email
+        // --- RECUPERACIÓN ---
         if (e.target.closest('[data-action="rec-step1"]')) {
             e.preventDefault();
             const success = await handleRecoveryStep('step1');
-            if (success) {
-                initResendTimer('[data-action="resend-recovery"]');
-            }
+            if (success) initResendTimer('[data-action="resend-recovery"]');
         }
-        
-        // Paso 2: Verificar Código
         if (e.target.closest('[data-action="rec-step2"]')) {
             e.preventDefault();
             await handleRecoveryStep('step2');
         }
-        
-        // Paso 3: Cambiar Contraseña
         if (e.target.closest('[data-action="rec-step3"]')) {
             e.preventDefault();
             await handleRecoveryStep('step3');
         }
-
-        // Botón Reenviar (Recuperación)
         if (e.target.closest('[data-action="resend-recovery"]')) {
             e.preventDefault();
             await handleResendCode('recovery', '[data-action="resend-recovery"]');
         }
 
-        // --- TOGGLE PASSWORD (OJO/VISIBILIDAD) ---
+        // --- UTILIDADES ---
         if (e.target.closest('.floating-input-btn') && !e.target.closest('.username-magic-btn')) {
             const btn = e.target.closest('.floating-input-btn');
             const parent = btn.closest('.floating-label-group');
@@ -210,8 +174,6 @@ export function initAuthManager() {
                 }
             }
         }
-
-        // --- GENERADOR DE USUARIO MÁGICO ---
         if (e.target.closest('.username-magic-btn')) {
             e.preventDefault();
             const input = document.querySelector('[data-input="reg-username"]');
@@ -222,25 +184,19 @@ export function initAuthManager() {
             }
         }
 
-        // --- LOGIN (STEP 1) ---
+        // --- LOGIN ---
         if (e.target.closest('[data-action="login-submit"]')) {
             e.preventDefault();
             await handleLogin();
         }
-        
-        // REENVIAR CÓDIGO LOGIN 2FA
         if (e.target.closest('[data-action="resend-login"]')) {
             e.preventDefault();
             await handleResendCode('login', '[data-action="resend-login"]');
         }
-
-        // --- LOGIN (STEP 2 - 2FA SUBMIT) ---
         if (e.target.closest('[data-action="login-2fa-submit"]')) {
             e.preventDefault();
             await handleLogin2FA();
         }
-
-        // --- LOGIN (STEP 2 - BOTÓN ATRÁS) ---
         if (e.target.closest('[data-action="login-2fa-back"]')) {
             e.preventDefault();
             toggleStepVisibility('[data-step="login-2"]', '[data-step="login-1"]');
@@ -260,7 +216,7 @@ export function initAuthManager() {
 
             if (iconContainer) {
                 originalIconHTML = iconContainer.innerHTML;
-                iconContainer.innerHTML = '<div class="small-spinner"></div>'; // OK: HTML estático
+                iconContainer.innerHTML = '<div class="small-spinner"></div>'; 
             }
             
             try {
@@ -279,27 +235,20 @@ export function initAuthManager() {
                 const res = await response.json();
 
                 if (res.success) {
-                    if (window.alertManager) {
-                        window.alertManager.showAlert('Cerrando sesión...', 'info');
-                    }
+                    if (window.alertManager) window.alertManager.showAlert('Cerrando sesión...', 'info');
                     window.location.href = API_BASE_PATH + 'login';
                 } else {
-                    if (iconContainer) {
-                        iconContainer.innerHTML = originalIconHTML;
-                    }
+                    if (iconContainer) iconContainer.innerHTML = originalIconHTML;
                     logoutBtn.dataset.processing = "false";
                 }
 
             } catch (error) {
-                if (iconContainer) {
-                    iconContainer.innerHTML = originalIconHTML;
-                }
+                if (iconContainer) iconContainer.innerHTML = originalIconHTML;
                 logoutBtn.dataset.processing = "false";
             }
         }
     });
     
-    // Inicializar timers si recargamos la página en un paso de verificación activo
     if (qs('[data-step="register-3"].active')) initResendTimer('[data-action="resend-register"]');
     if (qs('[data-step="rec-2"].active')) initResendTimer('[data-action="resend-recovery"]');
     if (qs('[data-step="login-2"].active')) initResendTimer('[data-action="resend-login"]');
@@ -317,9 +266,7 @@ function generateMagicUsername() {
     const timePart = `${year}${month}${day}_${hours}${minutes}${seconds}`;
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     let randomPart = '';
-    for (let i = 0; i < 2; i++) {
-        randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
+    for (let i = 0; i < 2; i++) randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
     return `user${timePart}${randomPart}`;
 }
 
@@ -338,7 +285,6 @@ function switchRegisterStep(stepNumber, urlPath) {
     }
 }
 
-// --- VALIDACIONES ---
 function isValidEmailDomain(email) {
     const regex = /^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i;
     return regex.test(email);
@@ -397,9 +343,7 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
     } else if (stepName === 'step3') {
         const codeIn = qs('[data-input="reg-code"]');
         if (!codeIn) return false;
-        
         payload.code = codeIn.value.replace(/-/g, '');
-        
         btnSelector = '[data-action="register-step3"]'; 
         errorSelector = '[data-error="register-3"]'; 
         inputSelectors = ['[data-input="reg-code"]'];
@@ -489,10 +433,7 @@ async function handleRecoveryStep(stepName) {
         if(passIn.value.length < 8) { 
             passIn.classList.add('input-error'); 
             const err = qs('[data-error="rec-3"]');
-            if(err) {
-                err.textContent = 'Mínimo 8 caracteres';
-                err.classList.add('active');
-            }
+            if(err) { err.textContent = 'Mínimo 8 caracteres'; err.classList.add('active'); }
             return false; 
         }
 
@@ -507,7 +448,7 @@ async function handleRecoveryStep(stepName) {
     
     if(btn) { 
         originalContent = btn.innerHTML;
-        btn.innerHTML = '<div class="btn-spinner"></div>'; // OK: HTML estático
+        btn.innerHTML = '<div class="btn-spinner"></div>'; 
         btn.disabled = true; 
     }
     
@@ -538,12 +479,13 @@ async function handleRecoveryStep(stepName) {
                 if(stepName === 'step1') {
                     const display = qs('[data-display="rec-email"]');
                     if(display) display.textContent = payload.email;
-                    if (window.alertManager) window.alertManager.showAlert('Solicitud procesada. Revisa tu correo.', 'info');
+                    // MODIFICADO: Mensaje más directo
+                    if (window.alertManager) window.alertManager.showAlert('Código enviado. Revisa tu correo.', 'success');
                 }
                 
                 if(btn) { btn.innerHTML = originalContent; btn.disabled = false; }
             }
-            return true; // Éxito
+            return true; 
         } else {
             const errorDiv = qs(errorSelector);
             if(errorDiv) { errorDiv.textContent = res.message; errorDiv.classList.add('active'); }
@@ -565,7 +507,7 @@ async function sendAuthRequest(payload, btnSelector, errorSelector, nextStep, ne
 
     if(btn) { 
         originalContent = btn.innerHTML;
-        btn.innerHTML = '<div class="btn-spinner"></div>'; // OK: HTML estático
+        btn.innerHTML = '<div class="btn-spinner"></div>'; 
         btn.disabled = true; 
     }
     
@@ -621,7 +563,7 @@ async function handleLogin() {
     const btn = qs('[data-action="login-submit"]');
     const originalContent = btn.innerHTML; 
 
-    btn.innerHTML = '<div class="btn-spinner"></div>'; // OK: HTML estático
+    btn.innerHTML = '<div class="btn-spinner"></div>'; 
     btn.disabled = true;
 
     try {
@@ -653,8 +595,6 @@ async function handleLogin() {
                 }
                 
                 if (window.alertManager) window.alertManager.showAlert('Código de seguridad 2FA enviado.', 'info');
-                
-                // INICIAR TIMER LOGIN
                 initResendTimer('[data-action="resend-login"]');
 
                 btn.innerHTML = originalContent;
@@ -702,11 +642,10 @@ async function handleLogin2FA() {
     const btn = qs('[data-action="login-2fa-submit"]');
     const originalContent = btn.innerHTML;
 
-    btn.innerHTML = '<div class="btn-spinner"></div>'; // OK: HTML estático
+    btn.innerHTML = '<div class="btn-spinner"></div>'; 
     btn.disabled = true;
     if(errorDiv) errorDiv.classList.remove('active');
 
-    // Limpiar guiones antes de enviar
     const cleanCode = codeInput.value.trim().replace(/-/g, '');
 
     try {

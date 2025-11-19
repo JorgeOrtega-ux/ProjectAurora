@@ -1,5 +1,5 @@
 <?php
-// api/auth_handler.php [CORREGIDO]
+// api/auth_handler.php
 
 // --- CONFIGURACIÓN DE LOGS ---
 $logDir = __DIR__ . '/../logs';
@@ -87,7 +87,6 @@ function get_random_color()
 
 function generate_verification_code()
 {
-    // 6 bytes * 2 = 12 caracteres exactos
     return strtoupper(bin2hex(random_bytes(6)));
 }
 
@@ -172,7 +171,6 @@ try {
         unset($_SESSION['temp_register']['password']);
         $_SESSION['temp_register']['username'] = $username;
 
-        // [CORRECCIÓN SEGURIDAD] No loguear el código real
         logger("Code registro generado para el usuario (Oculto por seguridad).");
         
         $response = ['success' => true, 'message' => 'Código enviado'];
@@ -262,7 +260,6 @@ try {
                 $_SESSION['temp_login_2fa']['user_id'] = $user['id'];
                 $_SESSION['temp_login_2fa']['email'] = $user['email'];
 
-                // [CORRECCIÓN SEGURIDAD] No loguear el código real
                 logger("Code 2FA Login generado para $email (Oculto por seguridad).");
 
                 $response = [
@@ -323,34 +320,49 @@ try {
         }
 
         // ==================================================================
-        // RECUPERACIÓN
+        // RECUPERACIÓN (MODIFICADO: ERROR EXPLÍCITO)
         // ==================================================================
     } elseif ($action === 'recovery_step_1') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
 
-        if (!isset($_SESSION['temp_recovery'])) $_SESSION['temp_recovery'] = [];
-        $_SESSION['temp_recovery']['email'] = $email;
-        $_SESSION['temp_recovery']['step'] = 2;
-
-        if (!empty($email) && is_allowed_domain($email)) {
-            $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-            $stmt->execute([$email]);
-
-            if ($stmt->rowCount() > 0) {
-                $code = generate_verification_code();
-                $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'recovery'")->execute([$email]);
-                $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, expires_at) VALUES (?, 'recovery', ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
-                $stmt->execute([$email, $code]);
-
-                // [CORRECCIÓN SEGURIDAD] No loguear el código real
-                logger("Code Recup generado para $email (Oculto por seguridad).");
-            } else {
-                logger("Intento de recuperación para correo no existente: $email");
-            }
-        } else {
-            if (!empty($email)) logger("Intento de recuperación con formato inválido: $email");
+        // 1. Validación básica de formato
+        if (empty($email) || !is_allowed_domain($email)) {
+             // Mensaje genérico para formato inválido
+             throw new Exception('Correo con formato inválido o dominio no permitido.');
         }
-        $response = ['success' => true, 'message' => 'Solicitud procesada'];
+
+        // 2. Protección Rate Limiting (para mitigar enumeración masiva)
+        // Si una IP intenta verificar muchos correos inexistentes, la bloqueamos temporalmente
+        if (checkLockStatus($pdo, $email, 'recovery_fail')) {
+            throw new Exception("Demasiados intentos. Por favor espera " . LOCKOUT_TIME_MINUTES . " minutos.");
+        }
+
+        // 3. Verificar existencia REAL en base de datos
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+
+        if ($stmt->rowCount() > 0) {
+            // EL USUARIO EXISTE: Iniciamos sesión de recuperación y enviamos código
+            if (!isset($_SESSION['temp_recovery'])) $_SESSION['temp_recovery'] = [];
+            $_SESSION['temp_recovery']['email'] = $email;
+            $_SESSION['temp_recovery']['step'] = 2;
+
+            $code = generate_verification_code();
+            $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'recovery'")->execute([$email]);
+            $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, expires_at) VALUES (?, 'recovery', ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
+            $stmt->execute([$email, $code]);
+
+            logger("Code Recup generado para $email (Oculto por seguridad).");
+            
+            // Éxito explícito
+            $response = ['success' => true, 'message' => 'Código enviado correctamente.'];
+
+        } else {
+            // EL USUARIO NO EXISTE: Error explícito y registro de fallo
+            logFailedAttempt($pdo, $email, 'recovery_fail');
+            throw new Exception('Este correo no se encuentra registrado en nuestra base de datos.');
+        }
+
     } elseif ($action === 'recovery_step_2') {
         $email = $_SESSION['temp_recovery']['email'] ?? '';
         $inputCode = strtoupper(trim($data['code'] ?? ''));
@@ -384,15 +396,14 @@ try {
         }
 
         // ==================================================================
-        // REENVIO DE CÓDIGOS (CON VALIDACIÓN DB TIME)
+        // REENVIO DE CÓDIGOS
         // ==================================================================
     } elseif ($action === 'resend_code') {
 
-        $type = $data['type'] ?? ''; // 'register', 'login', 'recovery'
+        $type = $data['type'] ?? ''; 
         $email = '';
         $codeType = '';
 
-        // 1. Determinar contexto y recuperar email de sesión (seguro)
         if ($type === 'register') {
             $email = $_SESSION['temp_register']['email'] ?? '';
             $codeType = 'registration';
@@ -408,7 +419,6 @@ try {
 
         if (empty($email)) throw new Exception("Sesión perdida. Recarga la página.");
 
-        // 2. Verificar tiempo en BD (Protección lado Servidor)
         $stmt = $pdo->prepare("SELECT created_at, payload FROM verification_codes WHERE identifier = ? AND code_type = ? ORDER BY id DESC LIMIT 1");
         $stmt->execute([$email, $codeType]);
         $lastCodeRow = $stmt->fetch();
@@ -429,20 +439,13 @@ try {
             }
         }
 
-        // 3. Generar nuevo código
         $newCode = generate_verification_code();
-
-        // Preservar payload si es registro (contiene username y pass hash)
         $payload = $lastCodeRow['payload'] ?? null;
 
-        // Borrar el anterior
         $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = ?")->execute([$email, $codeType]);
-
-        // Insertar nuevo
         $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
         $stmt->execute([$email, $codeType, $newCode, $payload]);
 
-        // [CORRECCIÓN SEGURIDAD] No loguear el código real
         logger("Reenvio Code ($type) generado para $email (Oculto por seguridad).");
         
         $response = ['success' => true, 'message' => 'Nuevo código enviado.'];
@@ -471,13 +474,11 @@ try {
 } catch (Exception $e) {
     $realErrorMessage = $e->getMessage();
 
-    // 1. LOGGING INTERNO
     if (strpos($realErrorMessage, 'espera') === false) {
         $prefix = (strpos($realErrorMessage, 'SQLSTATE') !== false) ? '[DB ERROR] ' : '[LOGIC] ';
         logger($prefix . $realErrorMessage);
     }
 
-    // 2. RESPUESTA AL USUARIO (Sanitización)
     if (strpos($realErrorMessage, 'SQLSTATE') !== false) {
         if (strpos($realErrorMessage, 'Duplicate entry') !== false) {
             $response['message'] = 'El nombre de usuario o correo ya está registrado.';
@@ -491,3 +492,4 @@ try {
 
 echo json_encode($response);
 exit;
+?>

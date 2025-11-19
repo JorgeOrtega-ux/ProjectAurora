@@ -29,8 +29,7 @@ if (isset($_SESSION['temp_recovery']['step'])) {
             <div data-step="rec-2" class="auth-step-container <?php echo ($initialStep === 2) ? 'active' : ''; ?>">
                 <h1>Verificación</h1>
                 <p style="font-size:14px;">
-                    Si la cuenta <strong data-display="rec-email"><?php echo htmlspecialchars($_SESSION['temp_recovery']['email'] ?? 'tu correo'); ?></strong> existe, 
-                    hemos enviado un código de verificación.
+                    Hemos enviado un código de verificación a <strong data-display="rec-email"><?php echo htmlspecialchars($_SESSION['temp_recovery']['email'] ?? 'tu correo'); ?></strong>.
                 </p>
                 
                 <div class="floating-label-group">
