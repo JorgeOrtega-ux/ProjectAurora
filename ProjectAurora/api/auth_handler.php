@@ -92,7 +92,19 @@ function generate_verification_code()
 
 function is_allowed_domain($email)
 {
-    return preg_match('/@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i', $email);
+    // 1. Opcional: Si quieres seguir restringiendo SOLO a estos proveedores grandes:
+    // Si decides permitir cualquier correo (recomendado), borra esta línea if.
+    if (!preg_match('/@(gmail|outlook|icloud|yahoo)/i', $email)) {
+        return false; 
+    }
+
+    // 2. Extraer el dominio (ej: gmail.asdasd)
+    $domain = substr(strrchr($email, "@"), 1);
+
+    // 3. VERIFICACIÓN DNS: Esto es lo que soluciona tu problema.
+    // checkdnsrr busca registros MX en internet para ese dominio.
+    // Si es 'gmail.asdasd', devolverá falso. Si es 'outlook.mx', devolverá verdadero.
+    return checkdnsrr($domain, 'MX');
 }
 
 function set_user_session($user)

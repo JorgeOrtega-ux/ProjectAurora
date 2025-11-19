@@ -325,7 +325,22 @@ function switchRegisterStep(stepNumber, urlPath) {
 
 // --- VALIDACIONES ---
 function isValidEmailDomain(email) {
+    // Esta regex valida:
+    // 1. Texto antes del @
+    // 2. (Opcional) Restricción de proveedores (gmail, outlook, etc)
+    // 3. Un punto
+    // 4. Una extensión de 2 o más letras (cubre .com, .mx, .travel, etc.)
+    
+    // Si quieres mantener la restricción de proveedores:
     const regex = /^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i;
+    
+    // SI DECIDES ABRIRLO A CUALQUIER PROVEEDOR (Recomendado):
+    // const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    // Tu regex actual en el archivo ya permite .mx gracias a la parte (\.[a-z]{2,})?
+    // El problema de "gmail.asdasd" NO se debe arreglar aquí en JS, 
+    // se debe arreglar en el PHP con el checkdnsrr que te puse arriba.
+    
     return regex.test(email);
 }
 function isValidUsername(username) {
