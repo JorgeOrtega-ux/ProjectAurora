@@ -1,16 +1,13 @@
 <?php
 // api/social_handler.php
 
-// --- CONFIGURACIÓN BÁSICA ---
 $logDir = __DIR__ . '/../logs';
 $logFile = $logDir . '/social_error.log';
 if (!file_exists($logDir)) { mkdir($logDir, 0777, true); }
 ini_set('log_errors', TRUE);
 ini_set('error_log', $logFile);
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+if (session_status() === PHP_SESSION_NONE) session_start();
 
 header('Content-Type: application/json');
 date_default_timezone_set('America/Matamoros');
@@ -18,7 +15,6 @@ date_default_timezone_set('America/Matamoros');
 require_once '../config/database.php';
 require_once '../config/utilities.php';
 
-// VALIDACIÓN CSRF
 $data = json_decode(file_get_contents('php://input'), true);
 $action = $data['action'] ?? '';
 $csrfToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $data['csrf_token'] ?? '';
@@ -29,7 +25,6 @@ if (!verify_csrf_token($csrfToken)) {
     exit;
 }
 
-// VALIDAR SESIÓN
 if (!isset($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'message' => 'Sesión expirada.']);
     exit;
@@ -39,69 +34,67 @@ $currentUserId = $_SESSION['user_id'];
 $response = ['success' => false, 'message' => 'Acción no válida'];
 
 try {
+    // Obtener datos del usuario actual para las notificaciones
+    $uSt = $pdo->prepare("SELECT username, avatar FROM users WHERE id = ?");
+    $uSt->execute([$currentUserId]);
+    $currentUserData = $uSt->fetch();
+    $myUsername = $currentUserData['username'];
+    $myAvatar = $currentUserData['avatar'];
 
-    // ==================================================================
-    // ENVIAR SOLICITUD DE AMISTAD
-    // ==================================================================
+    // --- ENVIAR SOLICITUD ---
     if ($action === 'send_request') {
         $targetId = (int)($data['target_id'] ?? 0);
-
         if ($targetId === 0 || $targetId === $currentUserId) throw new Exception("Usuario inválido.");
 
-        // Verificar si ya existe relación
         $sql = "SELECT id FROM friendships 
                 WHERE (sender_id = ? AND receiver_id = ?) 
                 OR (sender_id = ? AND receiver_id = ?)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$currentUserId, $targetId, $targetId, $currentUserId]);
         
-        if ($stmt->rowCount() > 0) {
-            throw new Exception("Ya existe una solicitud o amistad.");
-        }
+        if ($stmt->rowCount() > 0) throw new Exception("Ya existe una solicitud o amistad.");
 
-        // Insertar solicitud
         $stmt = $pdo->prepare("INSERT INTO friendships (sender_id, receiver_id, status) VALUES (?, ?, 'pending')");
         $stmt->execute([$currentUserId, $targetId]);
 
-        // Notificación
-        $myUsername = $_SESSION['user_username'] ?? 'Alguien';
-        if (!isset($_SESSION['user_username'])) {
-            $uSt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
-            $uSt->execute([$currentUserId]);
-            $myUsername = $uSt->fetchColumn();
-        }
-
+        // Crear Notificación BD
         $msg = "<strong>$myUsername</strong> quiere ser tu amigo.";
-        $notifSql = "INSERT INTO notifications (user_id, type, message, related_id) VALUES (?, 'friend_request', ?, ?)";
-        $pdo->prepare($notifSql)->execute([$targetId, $msg, $currentUserId]);
+        $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_id) VALUES (?, 'friend_request', ?, ?)")
+            ->execute([$targetId, $msg, $currentUserId]);
+
+        // [SOCKET] Notificar al destino en vivo
+        send_live_notification($targetId, 'friend_request', [
+            'message' => "<strong>$myUsername</strong> te ha enviado una solicitud.",
+            'sender_id' => $currentUserId,
+            'sender_username' => $myUsername,
+            'sender_avatar' => $myAvatar
+        ]);
 
         $response = ['success' => true, 'message' => 'Solicitud enviada.'];
 
-    // ==================================================================
-    // CANCELAR SOLICITUD (EL SENDER SE ARREPIENTE) [NUEVO]
-    // ==================================================================
+    // --- CANCELAR SOLICITUD ---
     } elseif ($action === 'cancel_request') {
         $targetId = (int)($data['target_id'] ?? 0);
 
-        // Borrar la amistad pendiente donde YO soy el sender
         $sql = "DELETE FROM friendships WHERE sender_id = ? AND receiver_id = ? AND status = 'pending'";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$currentUserId, $targetId]);
 
         if ($stmt->rowCount() > 0) {
-            // Borrar también la notificación que le envié al otro usuario
-            // Buscamos notificaciones de tipo friend_request donde el receptor es targetId y el related es currentUserId
-            $delNotif = "DELETE FROM notifications WHERE user_id = ? AND related_id = ? AND type = 'friend_request'";
-            $pdo->prepare($delNotif)->execute([$targetId, $currentUserId]);
+            $pdo->prepare("DELETE FROM notifications WHERE user_id = ? AND related_id = ? AND type = 'friend_request'")
+                ->execute([$targetId, $currentUserId]);
+
+            // [SOCKET] Actualizar UI del destino (quitar botón de aceptar si lo está viendo)
+            send_live_notification($targetId, 'request_cancelled', [
+                'sender_id' => $currentUserId
+            ]);
 
             $response = ['success' => true, 'message' => 'Solicitud cancelada.'];
         } else {
-            throw new Exception("No se encontró la solicitud o ya fue aceptada.");
+            throw new Exception("No se pudo cancelar.");
         }
 
-    // ==================================================================
-    // ACEPTAR SOLICITUD
-    // ==================================================================
+    // --- ACEPTAR SOLICITUD ---
     } elseif ($action === 'accept_request') {
         $senderId = (int)($data['sender_id'] ?? 0);
         $notifId = (int)($data['notification_id'] ?? 0);
@@ -116,26 +109,23 @@ try {
                 $pdo->prepare("DELETE FROM notifications WHERE id = ? AND user_id = ?")->execute([$notifId, $currentUserId]);
             }
 
-            // Notificar de vuelta
-            $myUsername = $_SESSION['user_username'] ?? 'Usuario'; 
-             if ($myUsername === 'Usuario') {
-                $uSt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
-                $uSt->execute([$currentUserId]);
-                $myUsername = $uSt->fetchColumn();
-            }
-
-            $msg = "<strong>$myUsername</strong> aceptó tu solicitud de amistad.";
+            $msg = "<strong>$myUsername</strong> aceptó tu solicitud.";
             $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_id) VALUES (?, 'friend_accepted', ?, ?)")
                 ->execute([$senderId, $msg, $currentUserId]);
 
+            // [SOCKET] Avisar al que envió la solicitud original
+            send_live_notification($senderId, 'friend_accepted', [
+                'message' => "<strong>$myUsername</strong> aceptó tu solicitud.",
+                'accepter_id' => $currentUserId, // Quien aceptó (yo)
+                'accepter_username' => $myUsername
+            ]);
+
             $response = ['success' => true, 'message' => 'Solicitud aceptada.'];
         } else {
-            throw new Exception("No se pudo aceptar la solicitud.");
+            throw new Exception("Error al aceptar.");
         }
 
-    // ==================================================================
-    // RECHAZAR SOLICITUD (DESDE EL RECEPTOR)
-    // ==================================================================
+    // --- RECHAZAR SOLICITUD ---
     } elseif ($action === 'decline_request') {
         $senderId = (int)($data['sender_id'] ?? 0);
         $notifId = (int)($data['notification_id'] ?? 0);
@@ -147,26 +137,25 @@ try {
         if ($notifId > 0) {
             $pdo->prepare("DELETE FROM notifications WHERE id = ? AND user_id = ?")->execute([$notifId, $currentUserId]);
         }
+        
+        // Opcional: Avisar socket silent update para refrescar UI del sender
+        send_live_notification($senderId, 'request_declined', ['sender_id' => $currentUserId]);
 
         $response = ['success' => true, 'message' => 'Solicitud rechazada.'];
 
-    // ==================================================================
-    // ELIMINAR AMIGO
-    // ==================================================================
+    // --- ELIMINAR AMIGO ---
     } elseif ($action === 'remove_friend') {
         $friendId = (int)($data['target_id'] ?? 0);
-
-        $sql = "DELETE FROM friendships 
-                WHERE (sender_id = ? AND receiver_id = ?) 
-                OR (sender_id = ? AND receiver_id = ?)";
+        $sql = "DELETE FROM friendships WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$currentUserId, $friendId, $friendId, $currentUserId]);
 
+        // [SOCKET] Actualizar UI del ex-amigo
+        send_live_notification($friendId, 'friend_removed', ['sender_id' => $currentUserId]);
+
         $response = ['success' => true, 'message' => 'Amigo eliminado.'];
 
-    // ==================================================================
-    // NOTIFICACIONES
-    // ==================================================================
+    // --- OBTENER NOTIFICACIONES ---
     } elseif ($action === 'get_notifications') {
         $sql = "SELECT n.*, u.avatar as sender_avatar 
                 FROM notifications n 
