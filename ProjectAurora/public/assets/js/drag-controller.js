@@ -11,7 +11,8 @@ export function initDragController() {
         },
         { 
             moduleId: 'moduleNotifications', 
-            contentSelector: '.notifications-container' 
+            // [MODIFICADO] Ahora usamos .menu-content aquí también
+            contentSelector: '.menu-content' 
         }
     ];
 

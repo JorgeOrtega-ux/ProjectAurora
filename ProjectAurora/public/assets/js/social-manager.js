@@ -283,8 +283,10 @@ export class SocialManager {
     }
 
     renderNotifications(notifs) {
-        const container = document.querySelector('.notifications-bottom');
+        // [MODIFICADO] Buscamos el nuevo contenedor modular
+        const container = document.querySelector('.menu-content-bottom'); 
         if (!container) return;
+        
         if (notifs.length === 0) { this.renderEmptyState(container); return; }
         
         let html = '';

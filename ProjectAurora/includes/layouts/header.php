@@ -44,20 +44,20 @@
     </div>
 
     <div class="popover-module popover-notifications disabled" data-module="moduleNotifications">
-        <div class="notifications-container">
+        <div class="menu-content">
             
             <div class="pill-container">
                 <div class="drag-handle"></div>
             </div>
             
-            <div class="notifications-top">
-                <span class="notifications-title">Notificaciones</span>
+            <div class="menu-content-top">
+                <span class="menu-title">Notificaciones</span>
                 <div class="notifications-action" title="Marcar todo como leído">
                     <span>Marcar todas como leídas</span>
                 </div>
             </div>
 
-            <div class="notifications-bottom">
+            <div class="menu-content-bottom">
                 <div class="notifications-empty">
                     <span class="material-symbols-rounded empty-icon">notifications_off</span>
                     <p>No hay nada nuevo por el momento</p>

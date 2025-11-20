@@ -44,11 +44,9 @@ try {
     if ($action === 'send_request') {
         
         // [SEGURIDAD] Rate Limiting: Max 10 solicitudes por minuto
-        // Esto previene scripts de spam masivo.
         if (checkActionRateLimit($pdo, $currentUserId, 'friend_request_limit', 10, 1)) {
             throw new Exception("Estás enviando solicitudes muy rápido. Por favor espera un momento.");
         }
-        // Registramos el intento para que cuente en el límite
         logSecurityAction($pdo, $currentUserId, 'friend_request_limit');
 
         $targetId = (int)($data['target_id'] ?? 0);
@@ -65,7 +63,7 @@ try {
         $stmt = $pdo->prepare("INSERT INTO friendships (sender_id, receiver_id, status) VALUES (?, ?, 'pending')");
         $stmt->execute([$currentUserId, $targetId]);
 
-        // Notificación (por defecto is_read = 0)
+        // Notificación
         $msg = "<strong>$myUsername</strong> quiere ser tu amigo.";
         $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_id) VALUES (?, 'friend_request', ?, ?)")
             ->execute([$targetId, $msg, $currentUserId]);
@@ -110,8 +108,7 @@ try {
         $stmt->execute([$senderId, $currentUserId]);
 
         if ($stmt->rowCount() > 0) {
-            // 1. Eliminar notificación de solicitud pendiente (al aceptarla ya no es pendiente)
-            // Esto cumple con "si aceptas cuenta como visto" -> Se borra de la lista de pendientes.
+            // 1. Eliminar notificación de solicitud pendiente
             $pdo->prepare("DELETE FROM notifications WHERE user_id = ? AND related_id = ? AND type = 'friend_request'")
                 ->execute([$currentUserId, $senderId]);
 
@@ -139,7 +136,7 @@ try {
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$senderId, $currentUserId]);
 
-        // Eliminar notificación (al rechazar cuenta como visto -> se borra)
+        // Eliminar notificación
         $pdo->prepare("DELETE FROM notifications WHERE user_id = ? AND related_id = ? AND type = 'friend_request'")
             ->execute([$currentUserId, $senderId]);
         
@@ -164,9 +161,10 @@ try {
 
         $response = ['success' => true, 'message' => 'Amigo eliminado.'];
 
-    // --- OBTENER NOTIFICACIONES (MODIFICADO: RETORNA CONTEO NO LEÍDOS) ---
+    // --- OBTENER NOTIFICACIONES (MODIFICADO) ---
     } elseif ($action === 'get_notifications') {
-        $sql = "SELECT n.*, u.avatar as sender_avatar 
+        // [CORRECCIÓN]: Agregamos u.role as sender_role para obtener el rol del remitente
+        $sql = "SELECT n.*, u.avatar as sender_avatar, u.role as sender_role
                 FROM notifications n 
                 LEFT JOIN users u ON n.related_id = u.id
                 WHERE n.user_id = ? 
@@ -175,7 +173,7 @@ try {
         $stmt->execute([$currentUserId]);
         $notifs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Contar las no leídas (is_read = 0)
+        // Contar las no leídas
         $sqlCount = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0";
         $stmtCount = $pdo->prepare($sqlCount);
         $stmtCount->execute([$currentUserId]);
@@ -187,9 +185,8 @@ try {
             'unread_count' => (int)$unreadCount
         ];
 
-    // --- MARCAR TODAS LEÍDAS (MODIFICADO: UPDATE EN VEZ DE DELETE) ---
+    // --- MARCAR TODAS LEÍDAS ---
     } elseif ($action === 'mark_read_all') {
-        // Actualizamos a visto en lugar de borrar
         $pdo->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ?")->execute([$currentUserId]);
         $response = ['success' => true, 'message' => 'Marcadas como leídas.'];
     }

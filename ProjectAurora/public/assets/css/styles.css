@@ -353,16 +353,51 @@ html {
     width: 325px;
 }
 
+/* ESTRUCTURA MODULAR UNIFICADA */
 .popover-module .menu-content {
     width: 100%;
     background-color: #fff;
     border-radius: 12px;
     box-shadow: 0 4px 12px #00000020;
-    padding: 8px;
     display: flex;
     flex-direction: column;
+    overflow: hidden; /* Importante para los bordes redondeados */
+    /* padding: 8px; <--- REMOVIDO: Controlaremos padding por secciones */
 }
 
+/* Si el menu-content tiene listas directamente (como profile) */
+.popover-module .menu-content > .menu-list {
+    padding: 8px;
+}
+
+/* ESTRUCTURA INTERNA MODULAR (Top / Bottom) */
+.menu-content-top {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid #00000020;
+    background-color: #ffffff;
+}
+
+.menu-content-bottom {
+    flex: 1 1 auto;
+    position: relative;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column; /* Por defecto columna */
+    background-color: #ffffff;
+}
+
+/* Títulos en cabeceras modulares */
+.menu-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #000;
+}
+
+/* ESTILOS DE LISTAS DE MENÚ */
 .menu-list {
     display: flex;
     flex-direction: column;
@@ -912,33 +947,7 @@ a.disabled-link {
     max-height: calc(100vh - 80px);
 }
 
-.notifications-container {
-    width: 100%;
-    height: 100%;
-    background-color: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px #00000020;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-.notifications-top {
-    flex: 0 0 auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px;
-    border-bottom: 1px solid #00000020;
-    background-color: #ffffff;
-}
-
-.notifications-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: #000;
-}
-
+/* ACCIONES DE CABECERA MODULAR */
 .notifications-action {
     display: flex;
     align-items: center;
@@ -958,18 +967,7 @@ a.disabled-link {
     color: #000;
 }
 
-.notifications-bottom {
-    flex: 1 1 auto;
-    position: relative;
-    overflow-y: auto;
-    display: flex;
-    justify-content: center;
-    /* Si esta vacío */
-    align-items: center;
-    /* Si esta vacío */
-    background-color: #ffffff;
-}
-
+/* ESTADOS VACÍOS */
 .notifications-empty {
     display: flex;
     flex-direction: column;
@@ -979,6 +977,7 @@ a.disabled-link {
     color: #999;
     text-align: center;
     padding: 20px;
+    flex: 1; /* Para centrar verticalmente */
 }
 
 .notifications-empty .empty-icon {
@@ -1004,7 +1003,7 @@ a.disabled-link {
     gap: 10px;
 }
 
-.notifications-bottom:has(.notif-list-wrapper) {
+.menu-content-bottom:has(.notif-list-wrapper) {
     justify-content: flex-start;
     align-items: stretch;
 }
@@ -1456,7 +1455,7 @@ a.disabled-link {
 
     /* 2. La tarjeta blanca del menú (Contenido) */
     .popover-module.popover-profile .menu-content,
-    .popover-module.popover-notifications .notifications-container {
+    .popover-module.popover-notifications .menu-content {
         width: 100%;
         max-height: 85vh;
         height: auto; /* Importante para sobreescribir height fijo de escritorio */

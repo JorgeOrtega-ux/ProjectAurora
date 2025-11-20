@@ -40,7 +40,8 @@ export function initMainController() {
 
         if (allowCloseOnClickOutside) {
             // Buscamos si el clic fue dentro del contenido de cualquiera de los módulos
-            const clickedInsideContent = e.target.closest('.menu-content') || e.target.closest('.notifications-container');
+            // [MODIFICADO] Ahora solo necesitamos buscar .menu-content
+            const clickedInsideContent = e.target.closest('.menu-content');
             const clickedInsideTrigger = e.target.closest('[data-action^="toggleModule"]'); 
 
             if (!clickedInsideContent && !clickedInsideTrigger) {
@@ -106,8 +107,8 @@ function toggleModule(moduleId) {
 }
 
 function getContentElement(module) {
-    // Retorna el hijo que contiene el contenido (puede ser menu-content o notifications-container)
-    return module.querySelector('.menu-content') || module.querySelector('.notifications-container');
+    // [MODIFICADO] Ahora solo buscamos .menu-content
+    return module.querySelector('.menu-content');
 }
 
 function animateOpen(module) {
