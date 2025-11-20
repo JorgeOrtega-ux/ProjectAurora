@@ -1,5 +1,7 @@
+// public/assets/js/url-manager.js
+
 const allowedSections = [
-    'main', 'login', 'register', 'explorer',
+    'main', 'login', 'register', 'explorer', 'search',
     'register/additional-data',
     'register/verification-account',
     'forgot-password',
@@ -24,7 +26,8 @@ const authZone = [
     'register/additional-data', 
     'register/verification-account', 
     'forgot-password', 
-    'status-page'
+    'status-page',
+    'login/verification-additional'
 ];
 
 const basePath = window.BASE_PATH || '/ProjectAurora/';
@@ -34,26 +37,31 @@ export function initUrlManager() {
         if (event.state && event.state.section) {
             showSection(event.state.section, false);
         } else {
-            window.location.reload();
+            // Si es un reload manual o inicial, no hacemos fetch, dejamos que router.php cargue
+            // Opcional: Podrías forzar reload si la navegación se desincroniza
         }
     });
 
     document.body.addEventListener('click', (e) => {
-        const link = e.target.closest('.menu-link[data-nav]');
-        if (link) {
+        const link = e.target.closest('.menu-link[data-nav], a[onclick*="navigateTo"]');
+        // Nota: el selector a[onclick...] es para capturar enlaces legacy si los hubiera, 
+        // pero tu sidebar usa .menu-link[data-nav]
+        
+        if (link && link.dataset.nav) {
             e.preventDefault();
             const section = link.dataset.nav;
             if (section !== getSectionFromUrl()) navigateTo(section);
         }
     });
     
-    // Inicializar menú correcto al cargar
+    // Inicializar estado visual del sidebar al cargar
     const current = getSectionFromUrl();
     updateSidebarState(current);
     updateActiveMenu(current);
 }
 
 window.navigateTo = function(sectionName) {
+    // Normalizaciones rápidas
     if (sectionName === 'settings') sectionName = 'settings/your-profile';
     if (sectionName === 'admin') sectionName = 'admin/dashboard';
 
@@ -61,9 +69,12 @@ window.navigateTo = function(sectionName) {
     const isCurAuth = authZone.some(z => current.startsWith(z) || z === current);
     const isTarAuth = authZone.some(z => sectionName.startsWith(z) || z === sectionName);
 
+    // Si cambiamos entre Zona Auth (Login) y Zona App (Main), recargamos la página completa
+    // para que el router.php maneje sesiones y redirecciones de seguridad.
     if ((isCurAuth && !isTarAuth) || (!isCurAuth && isTarAuth)) {
         window.location.href = (sectionName === 'main') ? basePath : `${basePath}${sectionName}`;
     } else {
+        // Navegación interna fluida (AJAX)
         showSection(sectionName, true);
     }
 };
@@ -73,23 +84,13 @@ function getSectionFromUrl() {
     if (path.startsWith(basePath)) path = path.substring(basePath.length);
     path = path.replace(/\/$/, '').split('?')[0];
     
-    // ANTES: Si estaba vacío o NO estaba en la lista, devolvía 'main'
-    // return (path === '' || !allowedSections.includes(path)) ? 'main' : path;
-
-    // AHORA:
-    // 1. Si el path está vacío (root), es 'main'.
     if (path === '') return 'main';
-    
-    // 2. Si el path NO está en allowedSections, devolvemos '404' (o null).
-    // Al devolver '404', la función updateActiveMenu buscará un link data-nav="404",
-    // no lo encontrará y NO marcará nada como activo.
-    if (!allowedSections.includes(path)) return '404';
-
-    // 3. Si es válido, devolvemos el path.
-    return path;
+    // Si path está en allowedSections o empieza con admin/ settings/
+    if (allowedSections.includes(path) || path.startsWith('admin/') || path.startsWith('settings/')) {
+        return path;
+    }
+    return '404';
 }
-
-// public/assets/js/url-manager.js
 
 async function showSection(sectionName, pushState = true) {
     const container = document.querySelector('[data-container="main-section"]');
@@ -97,86 +98,89 @@ async function showSection(sectionName, pushState = true) {
     
     // 1. Separar la sección de la búsqueda (?q=...)
     const [baseSection, query] = sectionName.split('?');
-    let cleanSection = baseSection;
     
-    // 2. Traducir nombres de URL a nombres clave para el loader.php
-    // Esto debe coincidir con las claves del array $fileMap en loader.php
-    let loaderKey = cleanSection;
-    
-    if (cleanSection === 'search') loaderKey = 'search';
-    if (cleanSection === 'main') loaderKey = 'main';
-    if (cleanSection === 'explorer') loaderKey = 'explorer';
-    if (cleanSection === 'settings/your-profile') loaderKey = 'settings-your-profile';
-    // ... puedes añadir más mapeos si es necesario
+    // 2. Definir la clave para loader.php
+    // [CORRECCIÓN]: Usamos baseSection directamente (ej: 'settings/login-security')
+    // Ya no hacemos reemplazos manuales raros, loader.php ahora entiende las rutas.
+    let loaderKey = baseSection;
 
-    // 3. Construir la URL hacia el LOADER
-    let fetchUrl = `${basePath}loader.php?section=${loaderKey}&t=${Date.now()}`;
+    // 3. Construir URL
+    let fetchUrl = `${basePath}public/loader.php?section=${loaderKey}&t=${Date.now()}`;
     
     if (query) {
-        fetchUrl += `&${query}`; // Añadimos ?q=algo
+        fetchUrl += `&${query}`; // Añadimos ?q=algo si existe
     }
+
+    // Feedback visual de carga inmediato
+    // container.style.opacity = '0.5'; 
 
     try {
         const resp = await fetch(fetchUrl);
-        if (!resp.ok) throw new Error('Error de carga');
+        
+        if (!resp.ok) {
+            throw new Error(`Error ${resp.status}: ${resp.statusText}`);
+        }
         
         const html = await resp.text();
         
-        // Detectar si nos devolvió el login por error (sesión expirada)
+        // Detectar si nos devolvió una página completa de login por error (sesión expirada)
         if (html.includes('<!DOCTYPE html>')) {
-            window.location.reload(); // Recargar para que el router maneje el login
+            window.location.reload(); 
             return;
         }
 
         container.innerHTML = html;
+        // container.style.opacity = '1';
 
-        updateSidebarState(cleanSection);
-        updateActiveMenu(cleanSection);
+        updateSidebarState(baseSection);
+        updateActiveMenu(baseSection);
 
         if (pushState) {
-            const newUrl = (cleanSection === 'main') ? basePath : `${basePath}${sectionName}`;
+            const newUrl = (baseSection === 'main') ? basePath : `${basePath}${sectionName}`;
             history.pushState({ section: sectionName }, '', newUrl);
         }
+
+        // Reinicializar tooltips o scripts específicos si es necesario
+        if (window.initTooltipManager) window.initTooltipManager();
+
     } catch (error) {
         console.error(error);
-        container.innerHTML = '<div style="padding:20px; text-align:center">Error cargando la sección.</div>';
+        container.innerHTML = `
+            <div style="padding:40px; text-align:center; color:#666;">
+                <span class="material-symbols-rounded" style="font-size:48px; margin-bottom:10px;">wifi_off</span><br>
+                No se pudo cargar la sección.<br>
+                <small>${error.message}</small>
+            </div>`;
+        // container.style.opacity = '1';
     }
 }
 
 function updateSidebarState(sectionName) {
     const appMenu = document.getElementById('sidebar-menu-app');
     const settingsMenu = document.getElementById('sidebar-menu-settings');
-    const adminMenu = document.getElementById('sidebar-menu-admin'); // Será null si no tengo permisos
+    const adminMenu = document.getElementById('sidebar-menu-admin'); 
 
-    // 1. Ocultamos todo preventivamente
+    // Ocultar todos
     if (appMenu) appMenu.style.display = 'none';
     if (settingsMenu) settingsMenu.style.display = 'none';
     if (adminMenu) adminMenu.style.display = 'none';
 
-    // 2. Decidimos qué mostrar con red de seguridad
+    // Mostrar el pertinente
     if (sectionName.startsWith('settings/') && settingsMenu) {
-        // Si es sección settings Y existe el menú settings
         settingsMenu.style.display = 'flex';
-
     } else if (sectionName.startsWith('admin/') && adminMenu) {
-        // Si es sección admin Y (importante) EXISTE el menú admin (soy admin real)
         adminMenu.style.display = 'flex';
-
     } else {
-        // FALLBACK:
-        // Si no es ninguna de las anteriores, O SI INTENTÉ ENTRAR A ADMIN Y NO EXISTE EL MENÚ
-        // mostramos el menú principal (App). Así parece una página normal.
+        // Por defecto App
         if (appMenu) appMenu.style.display = 'flex';
     }
 }
 
 function updateActiveMenu(sectionName) {
     const allLinks = document.querySelectorAll('.menu-link[data-nav]');
-    allLinks.forEach(link => {
-        link.classList.remove('active');
-    });
+    allLinks.forEach(link => link.classList.remove('active'));
 
-    // Intentamos activar el link exacto
+    // Activar el exacto
     const activeLink = document.querySelector(`.menu-link[data-nav="${sectionName}"]`);
     if (activeLink) {
         activeLink.classList.add('active');
