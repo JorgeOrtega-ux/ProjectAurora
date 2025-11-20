@@ -1461,8 +1461,7 @@ a.disabled-link {
         justify-content: flex-end;
         align-items: center;
         
-        background-color: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(2px);
+        background-color: #00000080;
         
         /* Reset de estilos desktop */
         border-radius: 0;
@@ -1486,9 +1485,6 @@ a.disabled-link {
         border-bottom-left-radius: 0;
         border-bottom-right-radius: 0;
         
-        padding: 0 8px 20px 8px;
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
-        
         /* Optimización para animación suave */
         will-change: transform; 
         transform: translateY(0);
@@ -1510,9 +1506,5 @@ a.disabled-link {
         background-color: #e0e0e0;
         border-radius: 10px;
         cursor: grab;
-    }
-    
-    .popover-module.popover-profile .menu-list {
-        padding-bottom: 10px;
     }
 }

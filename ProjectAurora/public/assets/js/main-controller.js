@@ -3,21 +3,16 @@
 // Variable de estado global para controlar animaciones
 let isAnimating = false;
 
-/**
- * Inicializa el control de módulos UI.
- */
 export function initMainController() {
     const allowCloseOnEsc = true;
     const allowCloseOnClickOutside = true;
 
-    // --- 1. EVENT LISTENER DE CLICS (Navegación y Módulos) ---
+    // --- 1. EVENT LISTENER DE CLICS ---
     document.body.addEventListener('click', async (e) => {
-        // Si hay una animación en curso, ignoramos clics para evitar conflictos
         if (isAnimating) return;
 
         const trigger = e.target.closest('[data-action]');
         
-        // A. Manejo de Botones de Acción (Toggles)
         if (trigger) {
             const action = trigger.dataset.action;
             let targetModuleId = null;
@@ -29,11 +24,10 @@ export function initMainController() {
             if (targetModuleId) {
                 e.preventDefault();
                 toggleModule(targetModuleId);
-                return; // Salimos para no procesar click outside
+                return; 
             }
         }
 
-        // B. Manejo de "Cargar Más" (Tu lógica existente)
         const loadMoreBtn = e.target.closest('.btn-load-more');
         if (loadMoreBtn) {
             e.preventDefault();
@@ -41,14 +35,11 @@ export function initMainController() {
             return;
         }
 
-        // C. Manejo de Clic Fuera (Cerrar módulos)
         if (allowCloseOnClickOutside) {
-            // Verificamos si el clic fue dentro de un contenido seguro
             const clickedInsideContent = e.target.closest('.menu-content');
             const clickedInsideNotifs = e.target.closest('.notifications-container');
-            const clickedInsideTrigger = e.target.closest('[data-action^="toggleModule"]'); // Evitar cerrar si clicamos el mismo botón
+            const clickedInsideTrigger = e.target.closest('[data-action^="toggleModule"]'); 
 
-            // Si NO fue dentro de contenido ni notificaciones ni el botón trigger, cerramos.
             if (!clickedInsideContent && !clickedInsideNotifs && !clickedInsideTrigger) {
                 closeAllModules();
             }
@@ -82,15 +73,11 @@ export function initMainController() {
     }
 }
 
-/**
- * Función para abrir/cerrar módulos con soporte de animación móvil.
- */
 function toggleModule(moduleId) {
     const module = document.querySelector(`[data-module="${moduleId}"]`);
     if (!module) return;
 
     const isMobile = window.innerWidth <= 468;
-    // Solo aplicamos animación especial al menú de opciones en móvil
     const isOptions = moduleId === 'moduleOptions';
 
     if (module.classList.contains('active')) {
@@ -103,8 +90,7 @@ function toggleModule(moduleId) {
         }
     } else {
         // ABRIR
-        // Primero cerramos cualquier otro módulo abierto
-        closeAllModules(moduleId);
+        closeAllModules(moduleId); // Cierra otros
         
         module.classList.remove('disabled');
         module.classList.add('active');
@@ -115,9 +101,6 @@ function toggleModule(moduleId) {
     }
 }
 
-/**
- * Anima la apertura del menú en móvil.
- */
 function animateOpen(module) {
     const content = module.querySelector('.menu-content');
     if (!content) return;
@@ -133,9 +116,6 @@ function animateOpen(module) {
     }, { once: true });
 }
 
-/**
- * Anima el cierre del menú en móvil.
- */
 function closeWithAnimation(module) {
     const content = module.querySelector('.menu-content');
     if (!content) {
@@ -145,18 +125,14 @@ function closeWithAnimation(module) {
     }
 
     isAnimating = true;
-    // Clases definidas en tu CSS nuevo
     module.classList.add('animate-fade-out');
     content.classList.add('animate-out');
 
     module.addEventListener('animationend', (e) => {
-        // Aseguramos que capturamos el final de la animación correcta
         if (e.target === module) {
             module.classList.remove('active', 'animate-fade-out');
             module.classList.add('disabled');
             content.classList.remove('animate-out');
-            
-            // Limpiamos estilos inline (importante si se usó drag)
             content.removeAttribute('style'); 
             isAnimating = false;
         }
@@ -164,36 +140,40 @@ function closeWithAnimation(module) {
 }
 
 /**
- * Cierra todos los módulos activos.
- * Se exporta para usarlo en drag-controller.js
+ * [MODIFICADO] Ahora acepta `animate` (default true).
+ * Si pasas false, cierra de golpe (útil cuando ya arrastraste el menú).
  */
-export function closeAllModules(exceptModuleId = null) {
+export function closeAllModules(exceptModuleId = null, animate = true) {
     const modules = document.querySelectorAll('[data-module]');
     const isMobile = window.innerWidth <= 468;
 
     modules.forEach(mod => {
         if (mod.dataset.module !== exceptModuleId && mod.classList.contains('active')) {
-            // Si es el menú de opciones en móvil, usar animación de salida
-            if (mod.dataset.module === 'moduleOptions' && isMobile) {
+            
+            // Solo animamos si es móvil, es el menú de opciones Y si `animate` es true
+            if (mod.dataset.module === 'moduleOptions' && isMobile && animate) {
                 closeWithAnimation(mod);
             } else {
+                // Cierre directo (sin CSS keyframes)
                 mod.classList.remove('active');
                 mod.classList.add('disabled');
+
+                // Limpieza de seguridad por si quedaron estilos inline del drag
+                mod.classList.remove('animate-fade-in', 'animate-fade-out');
+                const content = mod.querySelector('.menu-content');
+                if(content) {
+                    content.classList.remove('animate-in', 'animate-out');
+                    content.removeAttribute('style'); 
+                }
             }
         }
     });
 }
 
-/**
- * Retorna si hay una animación en curso.
- */
 export function isAppAnimating() {
     return isAnimating;
 }
 
-/**
- * Lógica para cargar más resultados (Tu código original refactorizado)
- */
 async function handleLoadMore(loadMoreBtn) {
     const query = loadMoreBtn.dataset.query;
     const offset = parseInt(loadMoreBtn.dataset.offset);
@@ -216,7 +196,7 @@ async function handleLoadMore(loadMoreBtn) {
             resultsList.insertAdjacentHTML('beforeend', html);
             
             if (hasMoreFlag) {
-                loadMoreBtn.dataset.offset = offset + 2; // Ajusta esto según tu paginación
+                loadMoreBtn.dataset.offset = offset + 2;
                 loadMoreBtn.textContent = originalText;
                 loadMoreBtn.disabled = false;
             } else {
