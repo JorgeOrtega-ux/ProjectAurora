@@ -4,11 +4,11 @@
  * Inicializa el control de módulos UI (Menú lateral, Popover de perfil, Notificaciones).
  */
 export function initMainController() {
-    
+
     // Configuración interna
-    const allowMultipleModules = false; 
+    const allowMultipleModules = false;
     const allowCloseOnEsc = true;
-    const allowCloseOnClickOutside = true; 
+    const allowCloseOnClickOutside = true;
 
     // Listener principal de clics UI
     document.body.addEventListener('click', (e) => {
@@ -21,12 +21,12 @@ export function initMainController() {
 
             if (action === 'toggleModuleSurface') targetModuleId = 'moduleSurface';
             if (action === 'toggleModuleOptions') targetModuleId = 'moduleOptions';
-            
+
             // [NUEVO] Acción para notificaciones
             if (action === 'toggleModuleNotifications') targetModuleId = 'moduleNotifications';
 
             if (targetModuleId) {
-                e.preventDefault(); 
+                e.preventDefault();
                 if (!allowMultipleModules) {
                     closeAllModules(targetModuleId);
                 }
@@ -37,7 +37,7 @@ export function initMainController() {
             if (allowCloseOnClickOutside) {
                 // Verificamos si el clic fue dentro de CUALQUIER módulo
                 const clickedInsideModule = e.target.closest('[data-module]');
-                
+
                 // Si no fue dentro de un módulo, cerramos todo
                 if (!clickedInsideModule) {
                     closeAllModules();
@@ -49,9 +49,24 @@ export function initMainController() {
     // Listener para tecla ESC
     document.addEventListener('keydown', (e) => {
         if (allowCloseOnEsc && e.key === 'Escape') {
-            closeAllModules(); 
+            closeAllModules();
         }
     });
+    const searchInput = document.querySelector('.search-input');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const query = searchInput.value.trim();
+                if (query.length > 0) {
+                    // Codificamos la URL para evitar errores con espacios o caracteres especiales
+                    navigateTo(`search?q=${encodeURIComponent(query)}`);
+                    // Opcional: Cerrar teclado en móvil
+                    searchInput.blur();
+                }
+            }
+        });
+    }
 }
 
 /* --- Helpers Internos --- */

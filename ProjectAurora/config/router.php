@@ -79,6 +79,7 @@ $allowedSections = [
     'forgot-password',
     'status-page',
     'login/verification-additional',
+    'search', // <--- AGREGADO PARA LA BÚSQUEDA
     // Settings
     'settings',
     'settings/your-profile',
@@ -121,7 +122,7 @@ if (strpos($CURRENT_SECTION, 'admin/') === 0) {
 }
 
 // ==========================================
-// DEFINICIÓN DE ARRAYS DE SECCIONES (AQUÍ ESTABA EL ERROR)
+// DEFINICIÓN DE ARRAYS DE SECCIONES
 // ==========================================
 $appSections = ['main', 'explorer'];
 $systemSections = ['status-page', '404', 'error-missing-data'];
@@ -133,6 +134,11 @@ $systemSections = ['status-page', '404', 'error-missing-data'];
 // Casos especiales de Autenticación
 if ($CURRENT_SECTION === 'login/verification-additional') {
     $SECTION_FILE_NAME = 'auth/login';
+
+} elseif ($CURRENT_SECTION === 'search') {
+    // <--- NUEVO MAPEO PARA BÚSQUEDA
+    $SECTION_FILE_NAME = 'app/search-results';
+
 } elseif (strpos($CURRENT_SECTION, 'register/') === 0 || $CURRENT_SECTION === 'register') {
     $SECTION_FILE_NAME = 'auth/register'; 
 } elseif ($CURRENT_SECTION === 'forgot-password') {

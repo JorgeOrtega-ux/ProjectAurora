@@ -89,57 +89,57 @@ function getSectionFromUrl() {
     return path;
 }
 
+// public/assets/js/url-manager.js
+
 async function showSection(sectionName, pushState = true) {
     const container = document.querySelector('[data-container="main-section"]');
     if (!container) { window.location.reload(); return; }
     
-    let fileToFetch;
-    let queryParams = `?t=${Date.now()}`;
+    // 1. Separar la sección de la búsqueda (?q=...)
+    const [baseSection, query] = sectionName.split('?');
+    let cleanSection = baseSection;
     
-    const appSections = ['main', 'explorer'];
-    const systemSections = ['status-page', '404', 'error-missing-data'];
+    // 2. Traducir nombres de URL a nombres clave para el loader.php
+    // Esto debe coincidir con las claves del array $fileMap en loader.php
+    let loaderKey = cleanSection;
+    
+    if (cleanSection === 'search') loaderKey = 'search';
+    if (cleanSection === 'main') loaderKey = 'main';
+    if (cleanSection === 'explorer') loaderKey = 'explorer';
+    if (cleanSection === 'settings/your-profile') loaderKey = 'settings-your-profile';
+    // ... puedes añadir más mapeos si es necesario
 
-    if (sectionName.startsWith('login')) {
-        fileToFetch = 'auth/login';
-    } else if (sectionName.startsWith('register')) {
-        fileToFetch = 'auth/register';
-        if (sectionName === 'register/additional-data') queryParams += '&step=2';
-        else if (sectionName === 'register/verification-account') queryParams += '&step=3';
-        else queryParams += '&step=1';
+    // 3. Construir la URL hacia el LOADER
+    let fetchUrl = `${basePath}loader.php?section=${loaderKey}&t=${Date.now()}`;
     
-    } else if (sectionName === 'forgot-password') {
-        fileToFetch = 'auth/forgot-password';
-    
-    } else if (appSections.includes(sectionName)) {
-        fileToFetch = `app/${sectionName}`;
-    
-    } else if (systemSections.includes(sectionName)) {
-        fileToFetch = `system/${sectionName}`;
-
-    } else if (sectionName.startsWith('settings/')) {
-        fileToFetch = sectionName; 
-
-    } else if (sectionName.startsWith('admin/')) {
-        fileToFetch = sectionName;
-    
-    } else {
-        fileToFetch = 'system/404';
+    if (query) {
+        fetchUrl += `&${query}`; // Añadimos ?q=algo
     }
-    
-    try {
-        const resp = await fetch(`${basePath}includes/sections/${fileToFetch}.php${queryParams}`);
-        if (!resp.ok) throw new Error('Error de carga');
-        container.innerHTML = await resp.text();
 
-        updateSidebarState(sectionName);
-        updateActiveMenu(sectionName);
+    try {
+        const resp = await fetch(fetchUrl);
+        if (!resp.ok) throw new Error('Error de carga');
+        
+        const html = await resp.text();
+        
+        // Detectar si nos devolvió el login por error (sesión expirada)
+        if (html.includes('<!DOCTYPE html>')) {
+            window.location.reload(); // Recargar para que el router maneje el login
+            return;
+        }
+
+        container.innerHTML = html;
+
+        updateSidebarState(cleanSection);
+        updateActiveMenu(cleanSection);
 
         if (pushState) {
-            const newUrl = (sectionName === 'main') ? basePath : `${basePath}${sectionName}`;
+            const newUrl = (cleanSection === 'main') ? basePath : `${basePath}${sectionName}`;
             history.pushState({ section: sectionName }, '', newUrl);
         }
     } catch (error) {
         console.error(error);
+        container.innerHTML = '<div style="padding:20px; text-align:center">Error cargando la sección.</div>';
     }
 }
 
