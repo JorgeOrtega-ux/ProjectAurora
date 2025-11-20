@@ -110,12 +110,18 @@ html {
     flex: 0 0 auto;
 }
 
+/* [CORREGIDO] HEADER CENTER ABSOLUTO PARA CENTRADO PERFECTO */
 .header-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
-    flex: 1 1 auto; 
     justify-content: center;
     align-items: center;
     padding: 0 16px;
+    height: 100%;
+    width: auto;
+    z-index: 0;
 }
 
 /* ESTILOS DEL INPUT DE BÚSQUEDA */
@@ -123,7 +129,8 @@ html {
     display: flex;
     align-items: center;
     width: 100%;
-    max-width: 500px; 
+    width: 500px; /* Ancho fijo preferido */
+    max-width: 100%; 
     height: 40px;
     background-color: #ffffff;
     border-radius: 8px;
@@ -162,6 +169,7 @@ html {
     font-weight: 400;
 }
 
+/* [CORREGIDO] MEDIA QUERY PARA MÓVILES */
 @media (max-width: 725px) {
     .header {
         gap: 0;
@@ -174,16 +182,21 @@ html {
         order: 2; 
     }
     
+    /* Restauramos flujo normal en móviles */
     .header-center {
+        position: relative; 
+        left: auto;
+        transform: none;
         order: 3; 
         flex: 0 0 100%; 
         width: 100%;
         margin-top: 8px; 
         padding: 0; 
+        height: auto;
     }
 
     .search-container {
-        max-width: 100%; 
+        width: 100%; 
     }
 }
 
@@ -213,30 +226,30 @@ html {
     cursor: pointer;
     outline: none;
     user-select: none;
-    position: relative; /* Necesario para el badge absoluto */
+    position: relative; 
 }
 
 .header-button:hover {
     background-color: #f5f5fa;
 }
 
-/* [NUEVO] BADGE DE NOTIFICACIONES (CONTADOR ROJO) */
+/* BADGE DE NOTIFICACIONES */
 .notification-badge {
     position: absolute;
     top: -6px;
     right: -6px;
-    background-color: #d32f2f; /* Rojo Material Design */
+    background-color: #d32f2f; 
     color: #ffffff;
     font-size: 10px;
     font-weight: 700;
     min-width: 18px;
     height: 18px;
-    border-radius: 9px; /* Redondo */
+    border-radius: 9px; 
     display: flex;
     justify-content: center;
     align-items: center;
     padding: 0 4px;
-    border: 2px solid #ffffff; /* Borde blanco para separar del icono */
+    border: 2px solid #ffffff; 
     box-shadow: 0 1px 2px rgba(0,0,0,0.2);
     z-index: 10;
     pointer-events: none;
@@ -408,7 +421,6 @@ html {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 20px;
 }
 
 .form-container {
@@ -884,7 +896,7 @@ a.disabled-link {
 }
 
 /* =========================================
-   11. NOTIFICACIONES (MODIFICADO ESTILO TARJETA)
+   11. NOTIFICACIONES Y BÚSQUEDA (MODIFICADO)
    ========================================= */
 
 .popover-module.popover-notifications {
@@ -982,12 +994,10 @@ a.disabled-link {
     justify-content: flex-start;
     align-items: stretch;
     min-height: 100%;
-    /* [MODIFICADO] PADDING y GAP para tarjetas separadas */
     padding: 12px; 
     gap: 10px;     
 }
 
-/* Reset del justify-content/align-items del contenedor padre cuando tiene contenido */
 .notifications-bottom:has(.notif-list-wrapper) {
     justify-content: flex-start;
     align-items: stretch;
@@ -996,17 +1006,15 @@ a.disabled-link {
 .notification-item {
     display: flex;
     padding: 12px 16px;
-    /* [MODIFICADO] Borde completo y radio en vez de borde inferior */
-    border: 1px solid #eee; /* Borde sutil en lugar de border-bottom */
-    border-radius: 12px;    /* Radio de 12px solicitado */
+    border: 1px solid #eee;
+    border-radius: 12px;
     gap: 12px;
     transition: background-color 0.2s, box-shadow 0.2s;
-    position: relative; /* Para el punto azul */
+    position: relative;
     align-items: flex-start;
-    background-color: #fff; /* Aseguramos fondo blanco para la tarjeta */
+    background-color: #fff;
 }
 
-/* Efecto hover más estilo "tarjeta" */
 .notification-item:hover { 
     border-color: #ddd;
     box-shadow: 0 2px 8px rgba(0,0,0,0.03);
@@ -1035,11 +1043,10 @@ a.disabled-link {
 .notif-btn.decline { background-color: #f0f0f0; color: #333; }
 .notif-btn:hover { opacity: 0.8; }
 
-/* PUNTO AZUL DE NO LEÍDO */
 .unread-dot {
     width: 10px;
     height: 10px;
-    background-color: #1a73e8; /* Azul Google/Material */
+    background-color: #1a73e8;
     border-radius: 50%;
     margin-left: auto; 
     margin-top: 6px;
@@ -1048,18 +1055,19 @@ a.disabled-link {
 }
 
 /* =========================================
-   PÁGINA DE BÚSQUEDA
+   PÁGINA DE BÚSQUEDA (TARJETAS USUARIO)
    ========================================= */
+/* [CORREGIDO] Contenedor de resultados transparente y de ancho fijo 500px */
 .search-results-card {
-    background-color: #ffffff;
-    border-radius: 16px;
+    background-color: transparent; 
     width: 100%;
-    max-width: 700px;
-    min-height: 300px;
+    max-width: 500px;
+    min-height: auto;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    padding: 24px;
+    padding: 0; 
+    gap: 16px; 
 }
 
 .search-empty-state {
@@ -1070,6 +1078,7 @@ a.disabled-link {
     justify-content: center;
     color: #999;
     text-align: center;
+    padding: 40px 0; 
 }
 .search-empty-state span {
     font-size: 48px;
@@ -1183,3 +1192,46 @@ ease;
     color: #d32f2f !important;
 }
 .btn-remove-friend:hover { background-color: #ffcdd2 !important; }
+
+/* =========================================
+   12. TOOLBARS & FILTERS (NUEVO)
+   ========================================= */
+/* [NUEVO] Toolbar de 55px altura, 500px ancho */
+.content-toolbar {
+    width: 100%;
+    max-width: 500px; 
+    height: 55px;     
+    background-color: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e0e0e0; 
+    padding: 0 8px;  
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px; 
+}
+
+.toolbar-action-btn {
+    background: transparent;
+    border: 1px solid #00000020;
+    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #333;
+    outline: none;
+}
+
+.toolbar-action-btn:hover {
+    background-color: #f5f5fa;
+    color: #000;
+    border-color: #00000040;
+}
+
+.toolbar-action-btn .material-symbols-rounded {
+    font-size: 22px;
+}
