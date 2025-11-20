@@ -2,24 +2,44 @@
 import { closeAllModules, isAppAnimating } from './main-controller.js';
 
 export function initDragController() {
-    const moduleSelector = '[data-module="moduleOptions"]';
-    const menuContentSelector = '.menu-content';
-    const dragZoneSelector = '.pill-container'; // Zona de agarre
+    // Definimos los módulos que tendrán capacidad de arrastre
+    // Formato: { moduleId: '...', contentSelector: '...' }
+    const draggableModules = [
+        { 
+            moduleId: 'moduleOptions', 
+            contentSelector: '.menu-content' 
+        },
+        { 
+            moduleId: 'moduleNotifications', 
+            contentSelector: '.notifications-container' 
+        }
+    ];
+
+    draggableModules.forEach(config => {
+        enableDragForModule(config.moduleId, config.contentSelector);
+    });
+}
+
+function enableDragForModule(moduleId, contentSelector) {
+    const moduleSelector = `[data-module="${moduleId}"]`;
+    const dragZoneSelector = '.pill-container'; 
 
     const module = document.querySelector(moduleSelector);
     if (!module) return;
 
-    const menuContent = module.querySelector(menuContentSelector);
+    const contentElement = module.querySelector(contentSelector);
     const dragZone = module.querySelector(dragZoneSelector);
 
-    if (!menuContent || !dragZone) return;
+    if (!contentElement || !dragZone) return;
 
     let initialY, startY, currentY, isDragging = false, animationFrameId;
 
+    // Event Listeners para la zona de la píldora
     dragZone.addEventListener('mousedown', startDrag);
     dragZone.addEventListener('touchstart', startDrag, { passive: false });
 
     function startDrag(e) {
+        // Solo activar en móvil y si no hay animación en curso
         if (window.innerWidth > 468 || isAppAnimating()) return;
         
         isDragging = true;
@@ -30,7 +50,8 @@ export function initDragController() {
             initialY = e.pageY;
         }
 
-        const currentTransform = window.getComputedStyle(menuContent).transform;
+        // Obtener la transformación actual
+        const currentTransform = window.getComputedStyle(contentElement).transform;
         
         if (currentTransform === 'none') {
             startY = 0;
@@ -43,7 +64,8 @@ export function initDragController() {
             }
         }
 
-        menuContent.style.transition = 'none';
+        // Desactivar transición para movimiento fluido
+        contentElement.style.transition = 'none';
 
         document.addEventListener('mousemove', drag);
         document.addEventListener('touchmove', drag, { passive: false });
@@ -64,6 +86,7 @@ export function initDragController() {
         const movedY = currentY - initialY;
         let newTransformY = startY + movedY;
 
+        // Resistencia elástica si intenta subir más allá del tope (negativo)
         if (newTransformY < 0) {
             newTransformY = newTransformY / 4;
         }
@@ -71,7 +94,7 @@ export function initDragController() {
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
         animationFrameId = requestAnimationFrame(() => {
-            menuContent.style.transform = `translateY(${newTransformY}px)`;
+            contentElement.style.transform = `translateY(${newTransformY}px)`;
         });
     }
 
@@ -85,34 +108,35 @@ export function initDragController() {
         document.removeEventListener('mouseup', endDrag);
         document.removeEventListener('touchend', endDrag);
 
-        const menuHeight = menuContent.offsetHeight;
-        const dragThreshold = menuHeight * 0.25;
+        const height = contentElement.offsetHeight;
+        const dragThreshold = height * 0.25; // Si arrastra más del 25% de la altura, cierra
         
-        const finalTransform = window.getComputedStyle(menuContent).transform;
+        const finalTransform = window.getComputedStyle(contentElement).transform;
         let finalY = 0;
         try {
             const matrix = new DOMMatrix(finalTransform);
             finalY = matrix.m42;
         } catch (err) {}
 
-        menuContent.style.transition = 'transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)';
+        // Reactivar transición para el snap back o cierre
+        contentElement.style.transition = 'transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)';
 
         if (finalY > dragThreshold) {
             // 1. Deslizamos hasta abajo visualmente
-            menuContent.style.transform = 'translateY(100%)';
+            contentElement.style.transform = 'translateY(100%)';
             
-            menuContent.addEventListener('transitionend', () => {
-                // 2. [CLAVE] Llamamos con 'false' para saltar la animación CSS que causa el POP
+            contentElement.addEventListener('transitionend', () => {
+                // 2. [CLAVE] Llamamos a closeAllModules con 'false' para evitar doble animación
                 closeAllModules(null, false); 
             }, { once: true });
 
         } else {
-            // Restaurar
-            menuContent.style.transform = 'translateY(0)';
+            // Restaurar a posición original
+            contentElement.style.transform = 'translateY(0)';
             
-            menuContent.addEventListener('transitionend', () => {
-                menuContent.style.transform = ''; 
-                menuContent.style.transition = '';
+            contentElement.addEventListener('transitionend', () => {
+                contentElement.style.transform = ''; 
+                contentElement.style.transition = '';
             }, { once: true });
         }
     }

@@ -1371,39 +1371,14 @@ a.disabled-link {
     cursor: wait;
 }
 
-
-@media (max-width: 468px) {
-    .popover-module.popover-profile {
-        right: 0;
-        top: 0;
-
-        align-items: flex-end;
-        justify-content: flex-end;
-        width: 100%;
-        height: 100%;
-        background: #00000020;
-        position: fixed;
-    }
-
-    .popover-module.popover-profile .menu-content {
-        width: 100%;
-        height: max-content;
-        background-color: #fff;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px #00000020;
-        padding: 8px;
-        display: flex;
-        flex-direction: column;
-        border-bottom-left-radius: 0;
-        border-bottom-right-radius: 0;
-    }
-}
-
-
-
 /* =========================================
    AGREGAR AL FINAL DE styles.css
    ========================================= */
+
+/* Ocultar la píldora de arrastre en escritorio */
+.pill-container {
+    display: none;
+}
 
 /* Animaciones de Entrada/Salida */
 @keyframes slideIn {
@@ -1442,10 +1417,12 @@ a.disabled-link {
     animation: fadeOut 0.2s ease-out forwards;
 }
 
-/* Estilos específicos para el Menú Arrastrable en Móvil */
+/* Estilos específicos para Menús Arrastrables en Móvil */
 @media (max-width: 468px) {
-    /* Convierte el popover en un overlay de pantalla completa */
-    .popover-module.popover-profile {
+    
+    /* 1. Convertir popovers en overlays de pantalla completa */
+    .popover-module.popover-profile,
+    .popover-module.popover-notifications {
         position: fixed;
         top: 0;
         left: 0;
@@ -1461,23 +1438,28 @@ a.disabled-link {
         justify-content: flex-end;
         align-items: center;
         
-        background-color: #00000080;
+        background-color: #00000080; /* Fondo oscuro semi-transparente */
         
         /* Reset de estilos desktop */
         border-radius: 0;
         box-shadow: none;
         padding: 0;
+        max-height: none; /* Resetear altura desktop */
+        max-width: none;
     }
 
     /* Estado desactivado */
-    .popover-module.popover-profile.disabled {
+    .popover-module.popover-profile.disabled,
+    .popover-module.popover-notifications.disabled {
         display: none;
     }
 
-    /* La tarjeta blanca del menú */
-    .popover-module.popover-profile .menu-content {
+    /* 2. La tarjeta blanca del menú (Contenido) */
+    .popover-module.popover-profile .menu-content,
+    .popover-module.popover-notifications .notifications-container {
         width: 100%;
         max-height: 85vh;
+        height: auto; /* Importante para sobreescribir height fijo de escritorio */
         background-color: #fff;
         
         border-top-left-radius: 20px;
@@ -1488,9 +1470,14 @@ a.disabled-link {
         /* Optimización para animación suave */
         will-change: transform; 
         transform: translateY(0);
+        
+        /* Reset de sombras desktop */
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
     }
 
-    /* Contenedor de la píldora de arrastre */
+    /* 3. Contenedor de la píldora de arrastre (Visible solo en móvil) */
     .pill-container {
         display: flex;
         justify-content: center;
@@ -1498,6 +1485,7 @@ a.disabled-link {
         padding: 12px 0;
         flex-shrink: 0;
         touch-action: none; /* Importante para que el navegador no intervenga */
+        cursor: grab;
     }
 
     .drag-handle {
@@ -1505,6 +1493,5 @@ a.disabled-link {
         height: 4px;
         background-color: #e0e0e0;
         border-radius: 10px;
-        cursor: grab;
     }
 }

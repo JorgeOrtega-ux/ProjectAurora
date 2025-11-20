@@ -3,6 +3,9 @@
 // Variable de estado global para controlar animaciones
 let isAnimating = false;
 
+// Lista de módulos que tienen animación especial en móvil
+const allowedMobileMods = ['moduleOptions', 'moduleNotifications'];
+
 export function initMainController() {
     const allowCloseOnEsc = true;
     const allowCloseOnClickOutside = true;
@@ -36,11 +39,11 @@ export function initMainController() {
         }
 
         if (allowCloseOnClickOutside) {
-            const clickedInsideContent = e.target.closest('.menu-content');
-            const clickedInsideNotifs = e.target.closest('.notifications-container');
+            // Buscamos si el clic fue dentro del contenido de cualquiera de los módulos
+            const clickedInsideContent = e.target.closest('.menu-content') || e.target.closest('.notifications-container');
             const clickedInsideTrigger = e.target.closest('[data-action^="toggleModule"]'); 
 
-            if (!clickedInsideContent && !clickedInsideNotifs && !clickedInsideTrigger) {
+            if (!clickedInsideContent && !clickedInsideTrigger) {
                 closeAllModules();
             }
         }
@@ -78,11 +81,12 @@ function toggleModule(moduleId) {
     if (!module) return;
 
     const isMobile = window.innerWidth <= 468;
-    const isOptions = moduleId === 'moduleOptions';
+    // Verificamos si el módulo actual soporta animación móvil
+    const supportsMobileAnim = allowedMobileMods.includes(moduleId);
 
     if (module.classList.contains('active')) {
         // CERRAR
-        if (isMobile && isOptions) {
+        if (isMobile && supportsMobileAnim) {
             closeWithAnimation(module);
         } else {
             module.classList.remove('active');
@@ -95,14 +99,19 @@ function toggleModule(moduleId) {
         module.classList.remove('disabled');
         module.classList.add('active');
 
-        if (isMobile && isOptions) {
+        if (isMobile && supportsMobileAnim) {
             animateOpen(module);
         }
     }
 }
 
+function getContentElement(module) {
+    // Retorna el hijo que contiene el contenido (puede ser menu-content o notifications-container)
+    return module.querySelector('.menu-content') || module.querySelector('.notifications-container');
+}
+
 function animateOpen(module) {
-    const content = module.querySelector('.menu-content');
+    const content = getContentElement(module);
     if (!content) return;
 
     isAnimating = true;
@@ -117,7 +126,7 @@ function animateOpen(module) {
 }
 
 function closeWithAnimation(module) {
-    const content = module.querySelector('.menu-content');
+    const content = getContentElement(module);
     if (!content) {
         module.classList.remove('active');
         module.classList.add('disabled');
@@ -140,18 +149,20 @@ function closeWithAnimation(module) {
 }
 
 /**
- * [MODIFICADO] Ahora acepta `animate` (default true).
- * Si pasas false, cierra de golpe (útil cuando ya arrastraste el menú).
+ * [MODIFICADO] Soporta animaciones para Profile y Notificaciones
  */
 export function closeAllModules(exceptModuleId = null, animate = true) {
     const modules = document.querySelectorAll('[data-module]');
     const isMobile = window.innerWidth <= 468;
 
     modules.forEach(mod => {
-        if (mod.dataset.module !== exceptModuleId && mod.classList.contains('active')) {
+        const modId = mod.dataset.module;
+        if (modId !== exceptModuleId && mod.classList.contains('active')) {
             
-            // Solo animamos si es móvil, es el menú de opciones Y si `animate` es true
-            if (mod.dataset.module === 'moduleOptions' && isMobile && animate) {
+            const supportsMobileAnim = allowedMobileMods.includes(modId);
+
+            // Solo animamos si es móvil, es un módulo soportado Y si `animate` es true
+            if (supportsMobileAnim && isMobile && animate) {
                 closeWithAnimation(mod);
             } else {
                 // Cierre directo (sin CSS keyframes)
@@ -160,7 +171,8 @@ export function closeAllModules(exceptModuleId = null, animate = true) {
 
                 // Limpieza de seguridad por si quedaron estilos inline del drag
                 mod.classList.remove('animate-fade-in', 'animate-fade-out');
-                const content = mod.querySelector('.menu-content');
+                
+                const content = getContentElement(mod);
                 if(content) {
                     content.classList.remove('animate-in', 'animate-out');
                     content.removeAttribute('style'); 

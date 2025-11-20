@@ -46,6 +46,10 @@
     <div class="popover-module popover-notifications disabled" data-module="moduleNotifications">
         <div class="notifications-container">
             
+            <div class="pill-container">
+                <div class="drag-handle"></div>
+            </div>
+            
             <div class="notifications-top">
                 <span class="notifications-title">Notificaciones</span>
                 <div class="notifications-action" title="Marcar todo como leído">
@@ -67,8 +71,9 @@
         
         <div class="menu-content">
             <div class="pill-container">
-            <div class="drag-handle"></div>
-        </div>
+                <div class="drag-handle"></div>
+            </div>
+            
             <div class="menu-list">
                 
                 <?php if (in_array($userRole, ['founder', 'administrator', 'admin'])): ?>
