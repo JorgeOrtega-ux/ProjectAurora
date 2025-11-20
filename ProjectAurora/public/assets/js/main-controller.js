@@ -52,6 +52,7 @@ export function initMainController() {
             closeAllModules();
         }
     });
+    
     const searchInput = document.querySelector('.search-input');
     if (searchInput) {
         searchInput.addEventListener('keydown', (e) => {
@@ -67,6 +68,64 @@ export function initMainController() {
             }
         });
     }
+
+    // --- NUEVO: LOGICA DE "CARGAR MÁS RESULTADOS" ---
+    document.body.addEventListener('click', async (e) => {
+        const loadMoreBtn = e.target.closest('.btn-load-more');
+        
+        if (loadMoreBtn) {
+            e.preventDefault();
+            
+            // 1. Obtener datos
+            const query = loadMoreBtn.dataset.query;
+            const offset = parseInt(loadMoreBtn.dataset.offset);
+            const originalText = loadMoreBtn.textContent;
+            
+            // 2. Estado de carga
+            loadMoreBtn.textContent = 'Cargando...';
+            loadMoreBtn.disabled = true;
+            
+            try {
+                // 3. Petición AJAX
+                const url = `${window.BASE_PATH}public/loader.php?section=search&q=${encodeURIComponent(query)}&offset=${offset}&ajax_partial=1`;
+                
+                const response = await fetch(url);
+                const html = await response.text();
+                
+                // 4. Insertar resultados
+                const resultsList = document.getElementById('search-results-list');
+                if (resultsList) {
+                    // Creamos un elemento temporal para buscar el flag de "hay más"
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = html;
+                    
+                    const hasMoreFlag = tempDiv.querySelector('#ajax-has-more-flag');
+                    
+                    // Insertamos las tarjetas
+                    resultsList.insertAdjacentHTML('beforeend', html);
+                    
+                    // 5. Actualizar botón
+                    if (hasMoreFlag) {
+                        // Aumentamos el offset (según tu PHP el límite es 2)
+                        loadMoreBtn.dataset.offset = offset + 2; 
+                        loadMoreBtn.textContent = originalText;
+                        loadMoreBtn.disabled = false;
+                    } else {
+                        // Si no hay más, ocultamos el contenedor del botón
+                        loadMoreBtn.parentElement.style.display = 'none';
+                    }
+                }
+                
+            } catch (error) {
+                console.error(error);
+                loadMoreBtn.textContent = 'Error al cargar';
+                setTimeout(() => {
+                    loadMoreBtn.textContent = originalText;
+                    loadMoreBtn.disabled = false;
+                }, 2000);
+            }
+        }
+    });
 }
 
 /* --- Helpers Internos --- */

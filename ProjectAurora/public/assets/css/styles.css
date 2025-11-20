@@ -1272,3 +1272,27 @@ a.disabled-link {
 .toolbar-action-btn .material-symbols-rounded {
     font-size: 22px;
 }
+
+/* =========================================
+   13. NUEVO: BOTÓN CARGAR MÁS (FIX)
+   ========================================= */
+.btn-load-more {
+    background-color: transparent;
+    color: #000000;
+    border: 1px solid #00000020;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.btn-load-more:hover {
+    background-color: #f5f5fa;
+}
+
+.btn-load-more:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}

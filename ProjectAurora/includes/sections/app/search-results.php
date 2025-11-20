@@ -58,7 +58,6 @@ if ($q !== '') {
 }
 
 // --- HELPER: FUNCIÓN PARA RENDERIZAR UNA TARJETA ---
-// Usamos esto para no duplicar el código HTML en las dos secciones
 $renderUserCard = function($user) use ($currentUserId) {
     $avatarPath = !empty($user['avatar']) ? '/ProjectAurora/' . $user['avatar'] : null;
     $uid = $user['id'];
@@ -107,14 +106,13 @@ $renderUserCard = function($user) use ($currentUserId) {
 // 1. SALIDA AJAX (CARGA PARCIAL)
 // =========================================================
 if ($isAjaxPartial) {
-    // Si es una petición AJAX, solo imprimimos las tarjetas nuevas y salimos.
     foreach ($results as $user) {
         $renderUserCard($user);
     }
     if ($hasMore) {
         echo '<div id="ajax-has-more-flag" style="display:none;"></div>';
     }
-    exit; // <--- IMPORTANTE: Detenemos el script aquí para no cargar el resto de la página
+    exit; 
 }
 
 // =========================================================
@@ -145,7 +143,6 @@ if ($isAjaxPartial) {
                 
                 <div class="results-list" id="search-results-list">
                     <?php 
-                    // Renderizamos los primeros resultados
                     foreach ($results as $user) {
                         $renderUserCard($user);
                     } 
@@ -154,7 +151,7 @@ if ($isAjaxPartial) {
 
                 <?php if ($hasMore): ?>
                     <div class="load-more-container" style="text-align: center; padding: 20px;">
-                        <button class="btn-add-friend btn-load-more" 
+                        <button class="btn-load-more" 
                                 data-query="<?php echo htmlspecialchars($q); ?>" 
                                 data-offset="<?php echo $limit; ?>">
                             Mostrar más resultados
