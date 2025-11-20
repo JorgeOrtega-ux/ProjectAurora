@@ -874,3 +874,103 @@ a.disabled-link {
     border-radius: 0 2px 0 0;
     transform: translateY(-50%) rotate(45deg);
 }
+
+/* =========================================
+   11. NOTIFICACIONES (NUEVO)
+   ========================================= */
+
+/* Contenedor principal del popover de notificaciones */
+.popover-module.popover-notifications {
+    right: 5px; /* Alineado a la derecha como el perfil */
+    left: auto;
+    width: 425px;
+    height: 525px;
+    max-width: calc(100vw - 20px); /* Seguridad para móviles */
+    max-height: calc(100vh - 80px);
+}
+
+/* Caja interna con estilo de tarjeta */
+.notifications-container {
+    width: 100%;
+    height: 100%;
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px #00000020;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* --- TOP: Cabecera --- */
+.notifications-top {
+    flex: 0 0 auto; /* Altura fija basada en contenido */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid #00000020;
+    background-color: #ffffff;
+}
+
+.notifications-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #000;
+}
+
+.notifications-action {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+    user-select: none;
+}
+
+.notifications-action:hover {
+    background-color: #f5f5fa;
+    color: #000;
+}
+
+.notifications-action .material-symbols-rounded {
+    font-size: 16px;
+}
+
+/* --- BOTTOM: Cuerpo --- */
+.notifications-bottom {
+    flex: 1 1 auto; /* Ocupa el resto del espacio */
+    position: relative;
+    overflow-y: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #ffffff;
+}
+
+/* Estado vacío */
+.notifications-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: #999;
+    text-align: center;
+    padding: 20px;
+}
+
+.notifications-empty .empty-icon {
+    font-size: 48px;
+    color: #ddd;
+}
+
+.notifications-empty p {
+    font-size: 15px;
+    font-weight: 500;
+    margin: 0;
+}

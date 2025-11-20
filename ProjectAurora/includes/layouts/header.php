@@ -18,6 +18,13 @@
 
     <div class="header-right">
         <div class="header-item">
+            
+            <div class="header-button"
+                 data-action="toggleModuleNotifications"
+                 data-tooltip="Notificaciones">
+                <span class="material-symbols-rounded">notifications</span>
+            </div>
+
             <?php
             $userRole = $_SESSION['user_role'] ?? 'user';
             ?>
@@ -33,6 +40,26 @@
                 }
                 ?>
             </div>
+        </div>
+    </div>
+
+    <div class="popover-module popover-notifications disabled" data-module="moduleNotifications">
+        <div class="notifications-container">
+            
+            <div class="notifications-top">
+                <span class="notifications-title">Notificaciones</span>
+                <div class="notifications-action" title="Marcar todo como leído">
+                    <span>Marcar todas como leídas</span>
+                </div>
+            </div>
+
+            <div class="notifications-bottom">
+                <div class="notifications-empty">
+                    <span class="material-symbols-rounded empty-icon">notifications_off</span>
+                    <p>No hay nada nuevo por el momento</p>
+                </div>
+            </div>
+
         </div>
     </div>
 

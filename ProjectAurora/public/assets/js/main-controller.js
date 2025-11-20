@@ -1,7 +1,7 @@
 // assets/js/main-controller.js
 
 /**
- * Inicializa el control de módulos UI (Menú lateral, Popover de perfil).
+ * Inicializa el control de módulos UI (Menú lateral, Popover de perfil, Notificaciones).
  */
 export function initMainController() {
     
@@ -21,6 +21,9 @@ export function initMainController() {
 
             if (action === 'toggleModuleSurface') targetModuleId = 'moduleSurface';
             if (action === 'toggleModuleOptions') targetModuleId = 'moduleOptions';
+            
+            // [NUEVO] Acción para notificaciones
+            if (action === 'toggleModuleNotifications') targetModuleId = 'moduleNotifications';
 
             if (targetModuleId) {
                 e.preventDefault(); 
@@ -32,7 +35,9 @@ export function initMainController() {
         } else {
             // Clic fuera de los botones
             if (allowCloseOnClickOutside) {
+                // Verificamos si el clic fue dentro de CUALQUIER módulo
                 const clickedInsideModule = e.target.closest('[data-module]');
+                
                 // Si no fue dentro de un módulo, cerramos todo
                 if (!clickedInsideModule) {
                     closeAllModules();
