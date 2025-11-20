@@ -1118,3 +1118,59 @@ a.disabled-link {
         justify-content: flex-end;
     }
 }
+
+/* ESTILOS DE NOTIFICACIONES SOCIALES */
+.notif-list-wrapper {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+.notification-item {
+    display: flex;
+    padding: 12px 16px;
+    border-bottom: 1px solid #f0f0f0;
+    gap: 12px;
+    transition: background-color 0.2s;
+}
+.notification-item:hover { background-color: #f9f9f9; }
+
+.notif-left { flex-shrink: 0; }
+.notif-img-container {
+    width: 40px; height: 40px; border-radius: 50%;
+    background-color: #eee; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+}
+.notif-avatar { width: 100%; height: 100%; object-fit: cover; }
+.notif-default-icon { font-size: 24px; color: #999; }
+
+.notif-content { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.notif-text { font-size: 14px; color: #333; line-height: 1.4; margin: 0; }
+.notif-text strong { font-weight: 600; }
+.notif-time { font-size: 11px; color: #999; }
+
+.notif-actions { display: flex; gap: 8px; margin-top: 4px; }
+.notif-btn {
+    padding: 6px 12px; border-radius: 6px; font-size: 12px;
+    font-weight: 600; cursor: pointer; border: none; transition: opacity 0.2s;
+}
+.notif-btn.accept { background-color: #000; color: #fff; }
+.notif-btn.decline { background-color: #f0f0f0; color: #333; }
+.notif-btn:hover { opacity: 0.8; }
+
+/* Botón Eliminar Amigo */
+.btn-remove-friend {
+    background-color: #ffebee !important;
+    color: #d32f2f !important;
+}
+.btn-remove-friend:hover { background-color: #ffcdd2 !important; }
+
+/* Botón Cancelar Solicitud (NUEVO) - Un gris o color neutral */
+.btn-cancel-request {
+    background-color: #f5f5f5 !important;
+    color: #666 !important;
+    border: 1px solid #e0e0e0 !important;
+}
+.btn-cancel-request:hover {
+    background-color: #e0e0e0 !important;
+    color: #333 !important;
+}

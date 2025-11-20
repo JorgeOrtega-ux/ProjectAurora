@@ -6,16 +6,22 @@ require_once __DIR__ . '/../../../config/database.php';
 
 $q = isset($_GET['q']) ? trim($_GET['q']) : '';
 $results = [];
+$currentUserId = $_SESSION['user_id'];
 
 if ($q !== '') {
-    $sql = "SELECT id, username, avatar, role 
-            FROM users 
-            WHERE username LIKE ? 
-            AND id != ? 
-            AND account_status = 'active'
+    $sql = "SELECT u.id, u.username, u.avatar, 
+                   f.status as friend_status, f.sender_id
+            FROM users u
+            LEFT JOIN friendships f 
+            ON (f.sender_id = ? AND f.receiver_id = u.id) 
+            OR (f.sender_id = u.id AND f.receiver_id = ?)
+            WHERE u.username LIKE ? 
+            AND u.id != ? 
+            AND u.account_status = 'active'
             LIMIT 20";
+            
     $stmt = $pdo->prepare($sql);
-    $stmt->execute(['%' . $q . '%', $_SESSION['user_id']]);
+    $stmt->execute([$currentUserId, $currentUserId, '%' . $q . '%', $currentUserId]);
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 ?>
@@ -39,6 +45,29 @@ if ($q !== '') {
                     <?php foreach ($results as $user): ?>
                         <?php 
                             $avatarPath = !empty($user['avatar']) ? '/ProjectAurora/' . $user['avatar'] : null; 
+                            
+                            // Lógica del botón
+                            $btnClass = "btn-add-friend";
+                            $btnText = "Agregar a amigos";
+                            $isDisabled = "";
+
+                            if ($user['friend_status'] === 'accepted') {
+                                // Ya son amigos -> Botón de Eliminar
+                                $btnText = "Eliminar amigo";
+                                $btnClass .= " btn-remove-friend"; 
+
+                            } elseif ($user['friend_status'] === 'pending') {
+                                if ($user['sender_id'] == $currentUserId) {
+                                    // Yo la envié -> Botón Cancelar (Habilitado)
+                                    $btnText = "Cancelar solicitud";
+                                    $btnClass .= " btn-cancel-request"; 
+                                } else {
+                                    // Me la enviaron -> Botón Informativo (Deshabilitado)
+                                    $btnText = "Solicitud recibida";
+                                    $btnClass .= " disabled";
+                                    $isDisabled = "disabled";
+                                }
+                            }
                         ?>
                         <div class="user-card-item">
                             
@@ -52,14 +81,15 @@ if ($q !== '') {
                                 </div>
                                 <div class="user-details">
                                     <span class="user-name"><?php echo htmlspecialchars($user['username']); ?></span>
-                                    <span class="user-meta-text">0 comunidades en común</span>
-                                    <span class="user-meta-text">166 amigos en común</span>
+                                    <span class="user-meta-text">Comunidad Aurora</span>
                                 </div>
                             </div>
 
                             <div class="user-action-group">
-                                <button class="btn-add-friend">
-                                    Agregar a amigos
+                                <button class="<?php echo $btnClass; ?>" 
+                                        data-uid="<?php echo $user['id']; ?>"
+                                        <?php echo $isDisabled; ?>>
+                                    <?php echo $btnText; ?>
                                 </button>
                             </div>
 

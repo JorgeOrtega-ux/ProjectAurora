@@ -4,7 +4,8 @@ import { initUrlManager } from './url-manager.js';
 import { initAuthManager } from './auth-manager.js';
 import { initMainController } from './main-controller.js';
 import { AlertManager } from './alert-manager.js';
-import { initTooltipManager } from './tooltip-manager.js'; // <--- 1. IMPORTAR
+import { initTooltipManager } from './tooltip-manager.js'; 
+import { SocialManager } from './social-manager.js'; // <--- IMPORTAR
 
 document.addEventListener('DOMContentLoaded', () => {
     try {
@@ -14,13 +15,12 @@ document.addEventListener('DOMContentLoaded', () => {
         initAuthManager();
         initMainController();
         
-        // --- INICIALIZACIÓN DE TOOLTIPS ---
-        initTooltipManager(); // <--- 2. INICIALIZAR
-        // ----------------------------------
+        initTooltipManager(); 
 
-        // --- INICIALIZACIÓN DEL SISTEMA DE ALERTAS ---
         window.alertManager = new AlertManager();
-        console.log('Project Aurora: Alert Manager inicializado.');
+        // --- INICIAR SOCIAL MANAGER ---
+        window.socialManager = new SocialManager(); 
+        // ------------------------------
 
         console.log('Project Aurora: Módulos cargados correctamente.');
     } catch (error) {
