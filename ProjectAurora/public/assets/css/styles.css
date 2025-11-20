@@ -1401,26 +1401,118 @@ a.disabled-link {
 
 
 
-.pill-container {
-    display: none;
-    justify-content: center;
-    width: 100%;
-    padding: 8px 0;
-    padding-top: 0;
+/* =========================================
+   AGREGAR AL FINAL DE styles.css
+   ========================================= */
+
+/* Animaciones de Entrada/Salida */
+@keyframes slideIn {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
 }
 
+@keyframes slideOut {
+    from { transform: translateY(0); }
+    to { transform: translateY(100%); }
+}
 
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+.animate-in {
+    animation: slideIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.animate-out {
+    animation: slideOut 0.2s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.2s ease-out forwards;
+}
+
+.animate-fade-out {
+    animation: fadeOut 0.2s ease-out forwards;
+}
+
+/* Estilos específicos para el Menú Arrastrable en Móvil */
 @media (max-width: 468px) {
+    /* Convierte el popover en un overlay de pantalla completa */
+    .popover-module.popover-profile {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 9999;
+        
+        /* Flexbox para alinear la tarjeta al fondo */
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: center;
+        
+        background-color: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(2px);
+        
+        /* Reset de estilos desktop */
+        border-radius: 0;
+        box-shadow: none;
+        padding: 0;
+    }
+
+    /* Estado desactivado */
+    .popover-module.popover-profile.disabled {
+        display: none;
+    }
+
+    /* La tarjeta blanca del menú */
+    .popover-module.popover-profile .menu-content {
+        width: 100%;
+        max-height: 85vh;
+        background-color: #fff;
+        
+        border-top-left-radius: 20px;
+        border-top-right-radius: 20px;
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+        
+        padding: 0 8px 20px 8px;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+        
+        /* Optimización para animación suave */
+        will-change: transform; 
+        transform: translateY(0);
+    }
+
+    /* Contenedor de la píldora de arrastre */
     .pill-container {
         display: flex;
+        justify-content: center;
+        width: 100%;
+        padding: 12px 0;
+        flex-shrink: 0;
+        touch-action: none; /* Importante para que el navegador no intervenga */
     }
-}
-.drag-handle {
-    position: relative;
-    display: flex;
-    width: 52px;
-    height: 4px;
-    background-color: #f5f5fa;
-    border-radius: 50px;
-    cursor: ns-resize;
+
+    .drag-handle {
+        width: 40px;
+        height: 4px;
+        background-color: #e0e0e0;
+        border-radius: 10px;
+        cursor: grab;
+    }
+    
+    .popover-module.popover-profile .menu-list {
+        padding-bottom: 10px;
+    }
 }
