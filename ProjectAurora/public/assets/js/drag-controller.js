@@ -74,7 +74,7 @@ function enableDragForModule(moduleId, contentSelector) {
         document.addEventListener('touchend', endDrag);
     }
 
-    function drag(e) {
+   function drag(e) {
         if (!isDragging) return;
         if (e.cancelable) e.preventDefault(); 
 
@@ -87,9 +87,10 @@ function enableDragForModule(moduleId, contentSelector) {
         const movedY = currentY - initialY;
         let newTransformY = startY + movedY;
 
-        // Resistencia elástica si intenta subir más allá del tope (negativo)
+        // [CORRECCIÓN] Bloquear completamente el arrastre hacia arriba
+        // Si el cálculo da negativo (hacia arriba), forzamos a 0.
         if (newTransformY < 0) {
-            newTransformY = newTransformY / 4;
+            newTransformY = 0; 
         }
 
         if (animationFrameId) cancelAnimationFrame(animationFrameId);

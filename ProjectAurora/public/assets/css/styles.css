@@ -1476,6 +1476,10 @@ a.disabled-link {
         flex-direction: column;
     }
 
+     .popover-module.popover-notifications .menu-content {
+        height: 55%;
+     }
+
     /* 3. Contenedor de la píldora de arrastre (Visible solo en móvil) */
     .pill-container {
         display: flex;
