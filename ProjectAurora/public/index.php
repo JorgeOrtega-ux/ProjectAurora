@@ -3,8 +3,16 @@ require_once __DIR__ . '/../config/router.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/utilities.php';
 
-// [NUEVO] Obtener ID de usuario seguro para JS
-$jsUserId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 'null';
+// [SEGURIDAD] Generar token WS solo si hay sesión activa
+$jsUserId = 'null';
+$wsToken = 'null';
+
+if (isset($_SESSION['user_id'])) {
+    $jsUserId = $_SESSION['user_id'];
+    // Generamos el token que el JS usará para "loguearse" en el socket
+    $token = generate_ws_auth_token($pdo, $jsUserId);
+    $wsToken = "'$token'";
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -15,8 +23,9 @@ $jsUserId = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 'null';
 
     <script>
         window.BASE_PATH = '<?php echo $basePath; ?>';
-        // [NUEVO] ID para WebSocket
         window.USER_ID = <?php echo $jsUserId; ?>; 
+        // [SEGURIDAD] Token para el WebSocket
+        window.WS_TOKEN = <?php echo $wsToken; ?>;
     </script>
 
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/styles.css">

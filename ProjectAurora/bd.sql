@@ -77,3 +77,16 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- ==========================================
+-- TABLA DE SEGURIDAD WEBSOCKET (NUEVA)
+-- ==========================================
+CREATE TABLE IF NOT EXISTS ws_auth_tokens (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    token VARCHAR(64) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX (token),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

@@ -17,13 +17,18 @@ export class SocialManager {
 
     // --- WEBSOCKET CONNECT ---
     initWebSocket() {
-        if (!window.USER_ID) return; 
+        // [SEGURIDAD] Ahora requerimos el Token, no solo el ID
+        if (!window.USER_ID || !window.WS_TOKEN) return; 
 
         this.socket = new WebSocket(WS_URL);
 
         this.socket.onopen = () => {
-            console.log('[WS] Conectado.');
-            this.socket.send(JSON.stringify({ type: 'auth', user_id: window.USER_ID }));
+            console.log('[WS] Conectado. Autenticando...');
+            // [SEGURIDAD] Enviamos el token para validación
+            this.socket.send(JSON.stringify({ 
+                type: 'auth', 
+                token: window.WS_TOKEN 
+            }));
         };
 
         this.socket.onmessage = (event) => {
@@ -36,6 +41,7 @@ export class SocialManager {
         };
 
         this.socket.onclose = () => {
+            // Reintentar conexión (backoff simple)
             setTimeout(() => this.initWebSocket(), 5000);
         };
     }
@@ -45,10 +51,21 @@ export class SocialManager {
         const { type, payload } = data;
         const alertMgr = window.alertManager;
 
+        // [DEBUG] Confirmación de conexión segura
+        if (type === 'connected') {
+            console.log('[WS] Autenticación exitosa.');
+            return;
+        }
+        
+        if (type === 'error') {
+            console.error('[WS] Error:', payload?.msg);
+            return;
+        }
+
         // 1. SOLICITUD RECIBIDA
         if (type === 'friend_request') {
             if (alertMgr) alertMgr.showAlert(payload.message, 'info');
-            this.loadNotifications(); // Actualiza badge y lista
+            this.loadNotifications(); 
 
             const actionContainer = document.getElementById(`actions-${payload.sender_id}`);
             if (actionContainer) {
@@ -62,7 +79,7 @@ export class SocialManager {
         // 2. SOLICITUD ACEPTADA
         if (type === 'friend_accepted') {
             if (alertMgr) alertMgr.showAlert(payload.message, 'success');
-            this.loadNotifications(); // Actualiza badge y lista
+            this.loadNotifications(); 
 
             const actionContainer = document.getElementById(`actions-${payload.accepter_id}`);
             if (actionContainer) {
@@ -75,7 +92,6 @@ export class SocialManager {
         // 3. SOLICITUD CANCELADA
         if (type === 'request_cancelled') {
             this.loadNotifications(); 
-            
             const actionContainer = document.getElementById(`actions-${payload.sender_id}`);
             if (actionContainer) {
                 actionContainer.innerHTML = `
@@ -106,7 +122,7 @@ export class SocialManager {
         }
     }
 
-    // --- LISTENERS ---
+    // --- LISTENERS (Sin cambios lógicos, solo copiados para mantener integridad) ---
     initListeners() {
         document.body.addEventListener('click', async (e) => {
             const target = e.target;
@@ -233,20 +249,16 @@ export class SocialManager {
             const res = await this.fetchApi({ action: 'get_notifications' });
             if (res.success) { 
                 this.renderNotifications(res.notifications);
-                // [NUEVO] Actualizar Badge
                 this.updateBadge(res.unread_count); 
             }
         } catch (e) { }
     }
 
-    // [NUEVO] Función para controlar el Badge
     updateBadge(count) {
         const btn = document.querySelector('[data-action="toggleModuleNotifications"]');
         if (!btn) return;
 
         let badge = btn.querySelector('.notification-badge');
-        
-        // Si no existe, lo creamos
         if (!badge) {
             badge = document.createElement('div');
             badge.className = 'notification-badge';
@@ -262,13 +274,11 @@ export class SocialManager {
     }
 
     async markAllRead() {
-        // Optimizamos la UI primero
         const dots = document.querySelectorAll('.unread-dot');
         dots.forEach(d => d.remove());
         this.updateBadge(0);
 
         await this.fetchApi({ action: 'mark_read_all' });
-        // Recargamos para asegurarnos que la BD y UI estén sincro (opcional, pero bueno)
         this.loadNotifications();
     }
 
@@ -292,9 +302,6 @@ export class SocialManager {
                 `;
             }
 
-            // [NUEVO] Lógica del punto azul
-            // Si es is_read 0 y NO es friend_request (porque esas se borran al aceptar), mostramos punto
-            // Pero SQL inserta friend_request como no leida, asi que también lleva punto hasta que acciones.
             const unreadDot = (parseInt(n.is_read) === 0) ? '<div class="unread-dot"></div>' : '';
 
             html += `

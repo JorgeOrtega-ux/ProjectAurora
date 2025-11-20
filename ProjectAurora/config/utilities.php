@@ -63,7 +63,24 @@ function verify_csrf_token($token) {
     return hash_equals($_SESSION['csrf_token'], $token);
 }
 
-// [NUEVO] Función puente PHP -> Python Socket
+// [NUEVO] Generar Token Seguro para WebSocket
+function generate_ws_auth_token($pdo, $userId) {
+    // 1. Limpiar tokens viejos de este usuario
+    $stmt = $pdo->prepare("DELETE FROM ws_auth_tokens WHERE user_id = ?");
+    $stmt->execute([$userId]);
+
+    // 2. Generar nuevo token
+    $token = bin2hex(random_bytes(32)); // 64 caracteres
+    
+    // 3. Guardar con expiración corta (ej: 60 segundos es suficiente para conectar)
+    // Nota: Si el usuario recarga la página, se genera uno nuevo.
+    $stmt = $pdo->prepare("INSERT INTO ws_auth_tokens (user_id, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 2 MINUTE))");
+    $stmt->execute([$userId, $token]);
+
+    return $token;
+}
+
+// Función puente PHP -> Python Socket
 function send_live_notification($targetUserId, $type, $data = []) {
     $host = '127.0.0.1';
     $port = 8081; // Puerto interno del script Python
