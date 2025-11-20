@@ -1,7 +1,9 @@
 <div class="header">
     <div class="header-left">
         <div class="header-item">
-            <div class="header-button" data-action="toggleModuleSurface">
+            <div class="header-button" 
+                 data-action="toggleModuleSurface" 
+                 data-tooltip="Menú Principal">
                 <span class="material-symbols-rounded">menu</span>
             </div>
         </div>
@@ -13,9 +15,8 @@
             ?>
             <div class="header-button profile-button"
                 data-action="toggleModuleOptions"
-                data-role="<?php echo htmlspecialchars($userRole); ?>">
-
-                <?php
+                data-role="<?php echo htmlspecialchars($userRole); ?>"
+                data-tooltip="Tu Cuenta"> <?php
                 if (isset($_SESSION['user_avatar']) && !empty($_SESSION['user_avatar'])) {
                     $avatarUrl = $basePath . $_SESSION['user_avatar'];
                     echo '<img src="' . htmlspecialchars($avatarUrl) . '" alt="Perfil" class="profile-img">';

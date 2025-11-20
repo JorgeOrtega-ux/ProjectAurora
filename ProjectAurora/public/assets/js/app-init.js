@@ -3,7 +3,8 @@
 import { initUrlManager } from './url-manager.js';
 import { initAuthManager } from './auth-manager.js';
 import { initMainController } from './main-controller.js';
-import { AlertManager } from './alert-manager.js'; // <-- AÑADIDO
+import { AlertManager } from './alert-manager.js';
+import { initTooltipManager } from './tooltip-manager.js'; // <--- 1. IMPORTAR
 
 document.addEventListener('DOMContentLoaded', () => {
     try {
@@ -13,12 +14,13 @@ document.addEventListener('DOMContentLoaded', () => {
         initAuthManager();
         initMainController();
         
+        // --- INICIALIZACIÓN DE TOOLTIPS ---
+        initTooltipManager(); // <--- 2. INICIALIZAR
+        // ----------------------------------
+
         // --- INICIALIZACIÓN DEL SISTEMA DE ALERTAS ---
-        // Lo adjuntamos a 'window' para acceso global fácil desde otros scripts
-        // (como lo describiste en tu prompt)
         window.alertManager = new AlertManager();
         console.log('Project Aurora: Alert Manager inicializado.');
-        // --- FIN DE LA INICIALIZACIÓN ---
 
         console.log('Project Aurora: Módulos cargados correctamente.');
     } catch (error) {
