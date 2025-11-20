@@ -56,6 +56,7 @@ try {
         $stmt = $pdo->prepare("INSERT INTO friendships (sender_id, receiver_id, status) VALUES (?, ?, 'pending')");
         $stmt->execute([$currentUserId, $targetId]);
 
+        // Notificación (por defecto is_read = 0)
         $msg = "<strong>$myUsername</strong> quiere ser tu amigo.";
         $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_id) VALUES (?, 'friend_request', ?, ?)")
             ->execute([$targetId, $msg, $currentUserId]);
@@ -78,7 +79,6 @@ try {
         $stmt->execute([$currentUserId, $targetId]);
 
         if ($stmt->rowCount() > 0) {
-            // Borrar la notificación que le envié al otro usuario
             $pdo->prepare("DELETE FROM notifications WHERE user_id = ? AND related_id = ? AND type = 'friend_request'")
                 ->execute([$targetId, $currentUserId]);
 
@@ -94,8 +94,6 @@ try {
     // --- ACEPTAR SOLICITUD ---
     } elseif ($action === 'accept_request') {
         $senderId = (int)($data['sender_id'] ?? 0);
-        // Ya no dependemos estrictamente de notifId para la lógica, pero lo limpiamos si viene
-        $notifId = (int)($data['notification_id'] ?? 0);
 
         $sql = "UPDATE friendships SET status = 'accepted' 
                 WHERE sender_id = ? AND receiver_id = ? AND status = 'pending'";
@@ -103,11 +101,12 @@ try {
         $stmt->execute([$senderId, $currentUserId]);
 
         if ($stmt->rowCount() > 0) {
-            // 1. Borrar la notificación de solicitud pendiente (limpieza general por sender)
+            // 1. Eliminar notificación de solicitud pendiente (al aceptarla ya no es pendiente)
+            // Esto cumple con "si aceptas cuenta como visto" -> Se borra de la lista de pendientes.
             $pdo->prepare("DELETE FROM notifications WHERE user_id = ? AND related_id = ? AND type = 'friend_request'")
                 ->execute([$currentUserId, $senderId]);
 
-            // 2. Crear notificación de aceptación
+            // 2. Notificar al remitente
             $msg = "<strong>$myUsername</strong> aceptó tu solicitud.";
             $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_id) VALUES (?, 'friend_accepted', ?, ?)")
                 ->execute([$senderId, $msg, $currentUserId]);
@@ -123,7 +122,7 @@ try {
             throw new Exception("Error al aceptar.");
         }
 
-    // --- RECHAZAR SOLICITUD (CORREGIDO) ---
+    // --- RECHAZAR SOLICITUD ---
     } elseif ($action === 'decline_request') {
         $senderId = (int)($data['sender_id'] ?? 0);
 
@@ -131,8 +130,7 @@ try {
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$senderId, $currentUserId]);
 
-        // [FIX] Borrar CUALQUIER notificación de solicitud de este usuario hacia mí
-        // Esto cubre el caso de rechazar desde Search Page donde no tenemos el ID de notificación exacto
+        // Eliminar notificación (al rechazar cuenta como visto -> se borra)
         $pdo->prepare("DELETE FROM notifications WHERE user_id = ? AND related_id = ? AND type = 'friend_request'")
             ->execute([$currentUserId, $senderId]);
         
@@ -140,7 +138,7 @@ try {
 
         $response = ['success' => true, 'message' => 'Solicitud rechazada.'];
 
-    // --- ELIMINAR AMIGO (CORREGIDO) ---
+    // --- ELIMINAR AMIGO ---
     } elseif ($action === 'remove_friend') {
         $friendId = (int)($data['target_id'] ?? 0);
         
@@ -148,8 +146,6 @@ try {
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$currentUserId, $friendId, $friendId, $currentUserId]);
 
-        // [FIX] Limpieza de notificaciones antiguas relacionadas con esta amistad
-        // Borramos "Solicitud de amistad" y "Solicitud aceptada" entre ambos para que no quede basura
         $pdo->prepare("DELETE FROM notifications 
                        WHERE user_id = ? AND related_id = ? 
                        AND type IN ('friend_request', 'friend_accepted')")
@@ -159,7 +155,7 @@ try {
 
         $response = ['success' => true, 'message' => 'Amigo eliminado.'];
 
-    // --- OBTENER NOTIFICACIONES ---
+    // --- OBTENER NOTIFICACIONES (MODIFICADO: RETORNA CONTEO NO LEÍDOS) ---
     } elseif ($action === 'get_notifications') {
         $sql = "SELECT n.*, u.avatar as sender_avatar 
                 FROM notifications n 
@@ -169,11 +165,24 @@ try {
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$currentUserId]);
         $notifs = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $response = ['success' => true, 'notifications' => $notifs];
 
+        // Contar las no leídas (is_read = 0)
+        $sqlCount = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0";
+        $stmtCount = $pdo->prepare($sqlCount);
+        $stmtCount->execute([$currentUserId]);
+        $unreadCount = $stmtCount->fetchColumn();
+
+        $response = [
+            'success' => true, 
+            'notifications' => $notifs,
+            'unread_count' => (int)$unreadCount
+        ];
+
+    // --- MARCAR TODAS LEÍDAS (MODIFICADO: UPDATE EN VEZ DE DELETE) ---
     } elseif ($action === 'mark_read_all') {
-        $pdo->prepare("DELETE FROM notifications WHERE user_id = ?")->execute([$currentUserId]);
-        $response = ['success' => true, 'message' => 'Limpiado.'];
+        // Actualizamos a visto en lugar de borrar
+        $pdo->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ?")->execute([$currentUserId]);
+        $response = ['success' => true, 'message' => 'Marcadas como leídas.'];
     }
 
 } catch (Exception $e) {

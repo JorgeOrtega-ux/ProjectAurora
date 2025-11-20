@@ -101,8 +101,6 @@ html {
     gap: 8px;
     border-top-left-radius: 12px;
     border-top-right-radius: 12px;
-    
-    /* [CRUCIAL] Permite que los elementos bajen de línea si es necesario */
     flex-wrap: wrap; 
 }
 
@@ -112,10 +110,9 @@ html {
     flex: 0 0 auto;
 }
 
-/* [NUEVO] HEADER CENTER (SEARCH) */
 .header-center {
     display: flex;
-    flex: 1 1 auto; /* Ocupa el espacio disponible en Desktop */
+    flex: 1 1 auto; 
     justify-content: center;
     align-items: center;
     padding: 0 16px;
@@ -126,7 +123,7 @@ html {
     display: flex;
     align-items: center;
     width: 100%;
-    max-width: 500px; /* Límite de ancho en pantallas grandes */
+    max-width: 500px; 
     height: 40px;
     background-color: #ffffff;
     border-radius: 8px;
@@ -165,34 +162,30 @@ html {
     font-weight: 400;
 }
 
-/* --- [LOGICA RESPONSIVA] --- */
-/* A partir de 725px hacia abajo, cambiamos el orden */
 @media (max-width: 725px) {
     .header {
         gap: 0;
     }
     .header-left {
-        order: 1; /* Se queda arriba a la izquierda */
+        order: 1; 
     }
     
     .header-right {
-        order: 2; /* Se queda arriba a la derecha */
+        order: 2; 
     }
     
     .header-center {
-        order: 3; /* Baja a la siguiente línea */
-        flex: 0 0 100%; /* Fuerza ancho completo */
+        order: 3; 
+        flex: 0 0 100%; 
         width: 100%;
-        margin-top: 8px; /* Separación con los botones de arriba */
-        padding: 0; /* Quitamos padding lateral extra para que se alinee bien */
+        margin-top: 8px; 
+        padding: 0; 
     }
 
     .search-container {
-        max-width: 100%; /* En móvil ocupa todo el ancho disponible */
+        max-width: 100%; 
     }
 }
-
-/* FIN SEARCH INPUT */
 
 .header-right {
     position: relative;
@@ -220,10 +213,37 @@ html {
     cursor: pointer;
     outline: none;
     user-select: none;
+    position: relative; /* Necesario para el badge absoluto */
 }
 
 .header-button:hover {
     background-color: #f5f5fa;
+}
+
+/* [NUEVO] BADGE DE NOTIFICACIONES (CONTADOR ROJO) */
+.notification-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background-color: #d32f2f; /* Rojo Material Design */
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px; /* Redondo */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 4px;
+    border: 2px solid #ffffff; /* Borde blanco para separar del icono */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    z-index: 10;
+    pointer-events: none;
+}
+
+.notification-badge.hidden {
+    display: none;
 }
 
 /* =========================================
@@ -401,24 +421,21 @@ html {
     gap: 20px;
 }
 
-/* --- NUEVAS CLASES PARA PASOS DE AUTH (FIX GAP/FLEX) --- */
 .auth-step-container {
-    display: none; /* Oculto por defecto */
+    display: none; 
     flex-direction: column;
-    gap: 12px; /* Espaciado uniforme entre inputs */
+    gap: 12px; 
     width: 100%;
 }
 
 .auth-step-container.active {
-    display: flex; /* Se muestra activando Flexbox */
+    display: flex; 
 }
 
-/* Wrapper para enlaces (ej: Forgot Password) dentro del flujo flex */
 .auth-link-wrapper {
     text-align: right;
 }
 
-/* Wrapper para enlace de volver (arriba a la izquierda) */
 .auth-back-link {
     margin-bottom: 10px;
 }
@@ -500,8 +517,6 @@ html {
     background-color: #555;
     cursor: not-allowed;
 }
-
-/* === MENSAJES DE ERROR E INPUTS === */
 
 .form-error-message {
     display: none; 
@@ -700,8 +715,6 @@ input[data-input="login-password"] {
 /* =========================================
    9. SISTEMA DE ALERTAS
    ========================================= */
-
-/* MODIFICACIÓN APLICADA AQUÍ: Selector elegido */
 .ui-notification-dock[data-container="alerts"] {
     position: fixed;
     bottom: 20px;
@@ -745,7 +758,6 @@ input[data-input="login-password"] {
 }
 
 @media (max-width: 468px) {
-    /* MODIFICACIÓN APLICADA AQUÍ TAMBIÉN */
     .ui-notification-dock[data-container="alerts"] {
         left: 10px;
         right: 10px;
@@ -758,7 +770,6 @@ input[data-input="login-password"] {
     }
 }
 
-/* [NUEVO] Clase para enlaces desactivados (timer resend) */
 a.disabled-link {
     opacity: 0.5;
     pointer-events: none;
@@ -767,10 +778,8 @@ a.disabled-link {
     text-decoration: none;
 }
 
-/* ... (El resto de tu CSS existente arriba) ... */
-
 /* =========================================
-   10. TOOLTIPS (Tu Código Original)
+   10. TOOLTIPS
    ========================================= */
 .tooltip {
     position: fixed;
@@ -830,7 +839,6 @@ a.disabled-link {
     content: "";
 }
 
-/* Ajustes de las flechas */
 .tooltip[data-popper-placement^="bottom"]::before {
     top: -5px;
     left: 50%;
@@ -876,20 +884,18 @@ a.disabled-link {
 }
 
 /* =========================================
-   11. NOTIFICACIONES (NUEVO)
+   11. NOTIFICACIONES (MODIFICADO ESTILO TARJETA)
    ========================================= */
 
-/* Contenedor principal del popover de notificaciones */
 .popover-module.popover-notifications {
-    right: 5px; /* Alineado a la derecha como el perfil */
+    right: 5px; 
     left: auto;
     width: 425px;
     height: 525px;
-    max-width: calc(100vw - 20px); /* Seguridad para móviles */
+    max-width: calc(100vw - 20px); 
     max-height: calc(100vh - 80px);
 }
 
-/* Caja interna con estilo de tarjeta */
 .notifications-container {
     width: 100%;
     height: 100%;
@@ -901,9 +907,8 @@ a.disabled-link {
     overflow: hidden;
 }
 
-/* --- TOP: Cabecera --- */
 .notifications-top {
-    flex: 0 0 auto; /* Altura fija basada en contenido */
+    flex: 0 0 auto; 
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -937,22 +942,16 @@ a.disabled-link {
     color: #000;
 }
 
-.notifications-action .material-symbols-rounded {
-    font-size: 16px;
-}
-
-/* --- BOTTOM: Cuerpo --- */
 .notifications-bottom {
-    flex: 1 1 auto; /* Ocupa el resto del espacio */
+    flex: 1 1 auto; 
     position: relative;
     overflow-y: auto;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    justify-content: center; /* Si esta vacío */
+    align-items: center; /* Si esta vacío */
     background-color: #ffffff;
 }
 
-/* Estado vacío */
 .notifications-empty {
     display: flex;
     flex-direction: column;
@@ -975,27 +974,96 @@ a.disabled-link {
     margin: 0;
 }
 
-/* =========================================
-   PÁGINA DE BÚSQUEDA (DISEÑO TARJETAS)
-   ========================================= */
+/* ESTILOS DE NOTIFICACIONES SOCIALES */
+.notif-list-wrapper {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    min-height: 100%;
+    /* [MODIFICADO] PADDING y GAP para tarjetas separadas */
+    padding: 12px; 
+    gap: 10px;     
+}
 
-/* Contenedor Principal (El fondo blanco grande) */
+/* Reset del justify-content/align-items del contenedor padre cuando tiene contenido */
+.notifications-bottom:has(.notif-list-wrapper) {
+    justify-content: flex-start;
+    align-items: stretch;
+}
+
+.notification-item {
+    display: flex;
+    padding: 12px 16px;
+    /* [MODIFICADO] Borde completo y radio en vez de borde inferior */
+    border: 1px solid #eee; /* Borde sutil en lugar de border-bottom */
+    border-radius: 12px;    /* Radio de 12px solicitado */
+    gap: 12px;
+    transition: background-color 0.2s, box-shadow 0.2s;
+    position: relative; /* Para el punto azul */
+    align-items: flex-start;
+    background-color: #fff; /* Aseguramos fondo blanco para la tarjeta */
+}
+
+/* Efecto hover más estilo "tarjeta" */
+.notification-item:hover { 
+    border-color: #ddd;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+.notif-left { flex-shrink: 0; }
+.notif-img-container {
+    width: 40px; height: 40px; border-radius: 50%;
+    background-color: #eee; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+}
+.notif-avatar { width: 100%; height: 100%; object-fit: cover; }
+.notif-default-icon { font-size: 24px; color: #999; }
+
+.notif-content { display: flex; flex-direction: column; gap: 4px; width: 100%; padding-right: 10px; }
+.notif-text { font-size: 14px; color: #333; line-height: 1.4; margin: 0; }
+.notif-text strong { font-weight: 600; }
+.notif-time { font-size: 11px; color: #999; }
+
+.notif-actions { display: flex; gap: 8px; margin-top: 4px; }
+.notif-btn {
+    padding: 6px 12px; border-radius: 6px; font-size: 12px;
+    font-weight: 600; cursor: pointer; border: none; transition: opacity 0.2s;
+}
+.notif-btn.accept { background-color: #000; color: #fff; }
+.notif-btn.decline { background-color: #f0f0f0; color: #333; }
+.notif-btn:hover { opacity: 0.8; }
+
+/* PUNTO AZUL DE NO LEÍDO */
+.unread-dot {
+    width: 10px;
+    height: 10px;
+    background-color: #1a73e8; /* Azul Google/Material */
+    border-radius: 50%;
+    margin-left: auto; 
+    margin-top: 6px;
+    flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* =========================================
+   PÁGINA DE BÚSQUEDA
+   ========================================= */
 .search-results-card {
     background-color: #ffffff;
     border-radius: 16px;
     border: 1px solid #e0e0e0;
     width: 100%;
-    max-width: 700px; /* Un poco más ancho para que quepan bien las tarjetas */
+    max-width: 700px;
     min-height: 300px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.02);
     display: flex;
     flex-direction: column;
-    /* Importante: justify-content flex-start alinea al top */
     justify-content: flex-start; 
-    padding: 24px; /* Espacio interno del contenedor grande */
+    padding: 24px;
 }
 
-/* Estado vacío (Centrado dentro del contenedor) */
 .search-empty-state {
     flex: 1;
     display: flex;
@@ -1011,22 +1079,20 @@ a.disabled-link {
     color: #ddd;
 }
 
-/* Lista de resultados */
 .results-list {
     display: flex;
     flex-direction: column;
     width: 100%;
-    gap: 16px; /* Espacio entre cada tarjeta de usuario */
+    gap: 16px; 
 }
 
-/* TARJETA INDIVIDUAL DE USUARIO */
 .user-card-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 16px 20px;
-    border: 1px solid #e0e0e0; /* Borde individual */
-    border-radius: 12px;       /* Bordes redondeados individuales */
+    border: 1px solid #e0e0e0; 
+    border-radius: 12px;     
     background-color: #fff;
     transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
@@ -1036,14 +1102,12 @@ a.disabled-link {
     box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
-/* Grupo Izquierdo: Avatar + Texto */
 .user-info-group {
     display: flex;
     align-items: center;
     gap: 16px;
 }
 
-/* Avatar */
 .user-avatar-container {
     width: 56px;
     height: 56px;
@@ -1068,7 +1132,6 @@ a.disabled-link {
     color: #bbb;
 }
 
-/* Textos */
 .user-details {
     display: flex;
     flex-direction: column;
@@ -1087,7 +1150,6 @@ a.disabled-link {
     line-height: 1.3;
 }
 
-/* Botón Agregar */
 .btn-add-friend {
     background-color: #eaf3ff;
     color: #1a73e8;
@@ -1098,14 +1160,13 @@ a.disabled-link {
     font-weight: 600;
     cursor: pointer;
     transition: background-color 0.2s ease;
-    white-space: nowrap; /* Evita que el texto del botón se rompa */
+    white-space: nowrap; 
 }
 
 .btn-add-friend:hover {
     background-color: #dbe9ff;
 }
 
-/* Responsive: En móviles muy pequeños, apilar botón abajo */
 @media (max-width: 500px) {
     .user-card-item {
         flex-direction: column;
@@ -1119,52 +1180,12 @@ a.disabled-link {
     }
 }
 
-/* ESTILOS DE NOTIFICACIONES SOCIALES */
-.notif-list-wrapper {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-}
-.notification-item {
-    display: flex;
-    padding: 12px 16px;
-    border-bottom: 1px solid #f0f0f0;
-    gap: 12px;
-    transition: background-color 0.2s;
-}
-.notification-item:hover { background-color: #f9f9f9; }
-
-.notif-left { flex-shrink: 0; }
-.notif-img-container {
-    width: 40px; height: 40px; border-radius: 50%;
-    background-color: #eee; overflow: hidden;
-    display: flex; align-items: center; justify-content: center;
-}
-.notif-avatar { width: 100%; height: 100%; object-fit: cover; }
-.notif-default-icon { font-size: 24px; color: #999; }
-
-.notif-content { display: flex; flex-direction: column; gap: 4px; width: 100%; }
-.notif-text { font-size: 14px; color: #333; line-height: 1.4; margin: 0; }
-.notif-text strong { font-weight: 600; }
-.notif-time { font-size: 11px; color: #999; }
-
-.notif-actions { display: flex; gap: 8px; margin-top: 4px; }
-.notif-btn {
-    padding: 6px 12px; border-radius: 6px; font-size: 12px;
-    font-weight: 600; cursor: pointer; border: none; transition: opacity 0.2s;
-}
-.notif-btn.accept { background-color: #000; color: #fff; }
-.notif-btn.decline { background-color: #f0f0f0; color: #333; }
-.notif-btn:hover { opacity: 0.8; }
-
-/* Botón Eliminar Amigo */
 .btn-remove-friend {
     background-color: #ffebee !important;
     color: #d32f2f !important;
 }
 .btn-remove-friend:hover { background-color: #ffcdd2 !important; }
 
-/* Botón Cancelar Solicitud (NUEVO) - Un gris o color neutral */
 .btn-cancel-request {
     background-color: #f5f5f5 !important;
     color: #666 !important;

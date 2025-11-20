@@ -9,9 +9,21 @@ $results = [];
 $currentUserId = $_SESSION['user_id'];
 
 if ($q !== '') {
-    // Misma consulta SQL
+    // --- CONSULTA SQL MEJORADA ---
+    // Hemos añadido una subconsulta (SELECT COUNT...) para calcular los amigos en común.
+    // Esta lógica cruza tus amigos (fA) con los amigos del usuario encontrado (fB).
+    
     $sql = "SELECT u.id, u.username, u.avatar, 
-                   f.status as friend_status, f.sender_id
+                   f.status as friend_status, f.sender_id,
+                   (
+                       SELECT COUNT(*) 
+                       FROM friendships fA 
+                       JOIN friendships fB 
+                       ON (CASE WHEN fA.sender_id = ? THEN fA.receiver_id ELSE fA.sender_id END) = 
+                          (CASE WHEN fB.sender_id = u.id THEN fB.receiver_id ELSE fB.sender_id END)
+                       WHERE (fA.sender_id = ? OR fA.receiver_id = ?) AND fA.status = 'accepted'
+                       AND (fB.sender_id = u.id OR fB.receiver_id = u.id) AND fB.status = 'accepted'
+                   ) as mutual_friends
             FROM users u
             LEFT JOIN friendships f 
             ON (f.sender_id = ? AND f.receiver_id = u.id) 
@@ -22,7 +34,14 @@ if ($q !== '') {
             LIMIT 20";
             
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$currentUserId, $currentUserId, '%' . $q . '%', $currentUserId]);
+    
+    // Pasamos los parámetros en el orden exacto en que aparecen los '?' en la consulta
+    $stmt->execute([
+        $currentUserId, $currentUserId, $currentUserId, // Para la subconsulta de amigos en común
+        $currentUserId, $currentUserId,                 // Para el LEFT JOIN de estado de amistad
+        '%' . $q . '%', $currentUserId                  // Para el WHERE (búsqueda y excluir mi usuario)
+    ]);
+    
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 ?>
@@ -47,27 +66,23 @@ if ($q !== '') {
                         <?php 
                             $avatarPath = !empty($user['avatar']) ? '/ProjectAurora/' . $user['avatar'] : null; 
                             $uid = $user['id'];
+                            $mutualCount = $user['mutual_friends']; // Dato calculado por SQL
                             
-                            // LÓGICA DE BOTONES CORREGIDA
+                            // LÓGICA DE BOTONES
                             $actionsHtml = '';
 
                             if ($user['friend_status'] === 'accepted') {
-                                // YA SON AMIGOS
                                 $actionsHtml = '<button class="btn-add-friend btn-remove-friend" data-uid="'.$uid.'">Eliminar amigo</button>';
-
                             } elseif ($user['friend_status'] === 'pending') {
                                 if ($user['sender_id'] == $currentUserId) {
-                                    // YO LA ENVIÉ -> CANCELAR
                                     $actionsHtml = '<button class="btn-add-friend btn-cancel-request" data-uid="'.$uid.'">Cancelar solicitud</button>';
                                 } else {
-                                    // ME LA ENVIARON -> ACEPTAR / RECHAZAR
                                     $actionsHtml = '
                                         <button class="btn-accept-request" data-uid="'.$uid.'">Aceptar</button>
                                         <button class="btn-decline-request" data-uid="'.$uid.'">Rechazar</button>
                                     ';
                                 }
                             } else {
-                                // NO SON AMIGOS -> AGREGAR
                                 $actionsHtml = '<button class="btn-add-friend" data-uid="'.$uid.'">Agregar a amigos</button>';
                             }
                         ?>
@@ -80,11 +95,16 @@ if ($q !== '') {
                                         <span class="material-symbols-rounded default-avatar">person</span>
                                     <?php endif; ?>
                                 </div>
+                                
                                 <div class="user-details">
                                     <span class="user-name"><?php echo htmlspecialchars($user['username']); ?></span>
                                     <span class="user-meta-text">Comunidad Aurora</span>
+                                    
+                                    <span class="user-meta-text" style="font-size: 12px; color: #888; margin-top: 2px;">
+                                        <?php echo $mutualCount; ?> amigos en común
+                                    </span>
                                 </div>
-                            </div>
+                                </div>
 
                             <div class="user-action-group" id="actions-<?php echo $uid; ?>">
                                 <?php echo $actionsHtml; ?>
