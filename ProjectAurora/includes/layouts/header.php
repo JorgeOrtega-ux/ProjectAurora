@@ -8,6 +8,14 @@
             </div>
         </div>
     </div>
+
+    <div class="header-center">
+        <div class="search-container">
+            <span class="material-symbols-rounded search-icon">search</span>
+            <input type="text" class="search-input" placeholder="Buscar en Aurora..." spellcheck="false">
+        </div>
+    </div>
+
     <div class="header-right">
         <div class="header-item">
             <?php
