@@ -13,10 +13,8 @@ $currentUserId = $_SESSION['user_id'];
 
 if ($q !== '') {
     // --- CONSULTA SQL MEJORADA ---
-    // Hemos añadido una subconsulta (SELECT COUNT...) para calcular los amigos en común.
-    // Esta lógica cruza tus amigos (fA) con los amigos del usuario encontrado (fB).
-
-    $sql = "SELECT u.id, u.username, u.avatar, 
+    // [MODIFICADO] Se agregó 'u.role' a la selección para poder pintar los bordes
+    $sql = "SELECT u.id, u.username, u.avatar, u.role, 
                    f.status as friend_status, f.sender_id,
                    (
                        SELECT COUNT(*) 
@@ -38,7 +36,7 @@ if ($q !== '') {
 
     $stmt = $pdo->prepare($sql);
 
-    // Pasamos los parámetros en el orden exacto en que aparecen los '?' en la consulta
+    // Pasamos los parámetros en el orden exacto
     $stmt->execute([
         $currentUserId,
         $currentUserId,
@@ -80,7 +78,8 @@ if ($q !== '') {
                         <?php
                         $avatarPath = !empty($user['avatar']) ? '/ProjectAurora/' . $user['avatar'] : null;
                         $uid = $user['id'];
-                        $mutualCount = $user['mutual_friends']; // Dato calculado por SQL
+                        $role = $user['role'] ?? 'user'; // [NUEVO] Obtener rol
+                        $mutualCount = $user['mutual_friends'];
 
                         // LÓGICA DE BOTONES
                         $actionsHtml = '';
@@ -102,7 +101,7 @@ if ($q !== '') {
                         ?>
                         <div class="user-card-item">
                             <div class="user-info-group">
-                                <div class="user-avatar-container">
+                                <div class="user-avatar-container" data-role="<?php echo htmlspecialchars($role); ?>">
                                     <?php if ($avatarPath): ?>
                                         <img src="<?php echo htmlspecialchars($avatarPath); ?>" alt="Avatar">
                                     <?php else: ?>

@@ -110,7 +110,6 @@ html {
     flex: 0 0 auto;
 }
 
-/* [CORREGIDO] HEADER CENTER ABSOLUTO PARA CENTRADO PERFECTO */
 .header-center {
     position: absolute;
     left: 50%;
@@ -124,12 +123,11 @@ html {
     z-index: 0;
 }
 
-/* ESTILOS DEL INPUT DE BÚSQUEDA */
 .search-container {
     display: flex;
     align-items: center;
     width: 100%;
-    width: 500px; /* Ancho fijo preferido */
+    width: 500px; 
     max-width: 100%; 
     height: 40px;
     background-color: #ffffff;
@@ -169,7 +167,6 @@ html {
     font-weight: 400;
 }
 
-/* [CORREGIDO] MEDIA QUERY PARA MÓVILES */
 @media (max-width: 725px) {
     .header {
         gap: 0;
@@ -182,7 +179,6 @@ html {
         order: 2; 
     }
     
-    /* Restauramos flujo normal en móviles */
     .header-center {
         position: relative; 
         left: auto;
@@ -1057,7 +1053,6 @@ a.disabled-link {
 /* =========================================
    PÁGINA DE BÚSQUEDA (TARJETAS USUARIO)
    ========================================= */
-/* [CORREGIDO] Contenedor de resultados transparente y de ancho fijo 500px */
 .search-results-card {
     background-color: transparent; 
     width: 100%;
@@ -1114,23 +1109,26 @@ a.disabled-link {
     gap: 16px;
 }
 
+/* [MODIFICADO] CONTENEDOR DEL AVATAR CON ANILLOS DE ROL */
 .user-avatar-container {
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    overflow: hidden;
+    /* overflow: hidden; <-- ELIMINADO PARA PERMITIR EL ANILLO EXTERIOR */
+    overflow: visible; 
     background-color: #f5f5f5;
     flex-shrink: 0;
     display: flex;
     justify-content: center;
     align-items: center;
-    border: 1px solid #eee;
+    position: relative; /* Necesario para el pseudo-elemento */
 }
 
 .user-avatar-container img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    border-radius: 50%; /* Ahora aplicamos el radio a la imagen directamente */
 }
 
 .user-avatar-container .default-avatar {
@@ -1138,6 +1136,47 @@ a.disabled-link {
     color: #bbb;
 }
 
+/* PSEUDO-ELEMENTO PARA EL ANILLO DE ROL */
+.user-avatar-container::before {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border: 2px solid transparent; 
+    transition: border-color 0.2s ease;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* COLORES POR ROL */
+.user-avatar-container[data-role="user"]::before {
+    border-color: #cccccc;
+}
+
+.user-avatar-container[data-role="moderator"]::before {
+    border-color: #0000FF;
+}
+
+.user-avatar-container[data-role="administrator"]::before,
+.user-avatar-container[data-role="admin"]::before {
+    border-color: #FF0000;
+}
+
+.user-avatar-container[data-role="founder"]::before {
+    border: none;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+}
+
+/* INFO USUARIO */
 .user-details {
     display: flex;
     flex-direction: column;
@@ -1165,8 +1204,7 @@ a.disabled-link {
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
-    transition: background-color 0.2s 
-ease;
+    transition: background-color 0.2s ease;
     white-space: nowrap;
 }
 
@@ -1196,7 +1234,6 @@ ease;
 /* =========================================
    12. TOOLBARS & FILTERS (NUEVO)
    ========================================= */
-/* [NUEVO] Toolbar de 55px altura, 500px ancho */
 .content-toolbar {
     width: 100%;
     max-width: 500px; 
