@@ -34,7 +34,6 @@ $currentUserId = $_SESSION['user_id'];
 $response = ['success' => false, 'message' => 'Acción no válida'];
 
 try {
-    // Obtener datos del usuario actual para las notificaciones
     $uSt = $pdo->prepare("SELECT username, avatar FROM users WHERE id = ?");
     $uSt->execute([$currentUserId]);
     $currentUserData = $uSt->fetch();
@@ -57,12 +56,10 @@ try {
         $stmt = $pdo->prepare("INSERT INTO friendships (sender_id, receiver_id, status) VALUES (?, ?, 'pending')");
         $stmt->execute([$currentUserId, $targetId]);
 
-        // Crear Notificación BD
         $msg = "<strong>$myUsername</strong> quiere ser tu amigo.";
         $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_id) VALUES (?, 'friend_request', ?, ?)")
             ->execute([$targetId, $msg, $currentUserId]);
 
-        // [SOCKET] Notificar al destino en vivo
         send_live_notification($targetId, 'friend_request', [
             'message' => "<strong>$myUsername</strong> te ha enviado una solicitud.",
             'sender_id' => $currentUserId,
@@ -81,10 +78,10 @@ try {
         $stmt->execute([$currentUserId, $targetId]);
 
         if ($stmt->rowCount() > 0) {
+            // Borrar la notificación que le envié al otro usuario
             $pdo->prepare("DELETE FROM notifications WHERE user_id = ? AND related_id = ? AND type = 'friend_request'")
                 ->execute([$targetId, $currentUserId]);
 
-            // [SOCKET] Actualizar UI del destino (quitar botón de aceptar si lo está viendo)
             send_live_notification($targetId, 'request_cancelled', [
                 'sender_id' => $currentUserId
             ]);
@@ -97,6 +94,7 @@ try {
     // --- ACEPTAR SOLICITUD ---
     } elseif ($action === 'accept_request') {
         $senderId = (int)($data['sender_id'] ?? 0);
+        // Ya no dependemos estrictamente de notifId para la lógica, pero lo limpiamos si viene
         $notifId = (int)($data['notification_id'] ?? 0);
 
         $sql = "UPDATE friendships SET status = 'accepted' 
@@ -105,18 +103,18 @@ try {
         $stmt->execute([$senderId, $currentUserId]);
 
         if ($stmt->rowCount() > 0) {
-            if ($notifId > 0) {
-                $pdo->prepare("DELETE FROM notifications WHERE id = ? AND user_id = ?")->execute([$notifId, $currentUserId]);
-            }
+            // 1. Borrar la notificación de solicitud pendiente (limpieza general por sender)
+            $pdo->prepare("DELETE FROM notifications WHERE user_id = ? AND related_id = ? AND type = 'friend_request'")
+                ->execute([$currentUserId, $senderId]);
 
+            // 2. Crear notificación de aceptación
             $msg = "<strong>$myUsername</strong> aceptó tu solicitud.";
             $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_id) VALUES (?, 'friend_accepted', ?, ?)")
                 ->execute([$senderId, $msg, $currentUserId]);
 
-            // [SOCKET] Avisar al que envió la solicitud original
             send_live_notification($senderId, 'friend_accepted', [
                 'message' => "<strong>$myUsername</strong> aceptó tu solicitud.",
-                'accepter_id' => $currentUserId, // Quien aceptó (yo)
+                'accepter_id' => $currentUserId,
                 'accepter_username' => $myUsername
             ]);
 
@@ -125,32 +123,38 @@ try {
             throw new Exception("Error al aceptar.");
         }
 
-    // --- RECHAZAR SOLICITUD ---
+    // --- RECHAZAR SOLICITUD (CORREGIDO) ---
     } elseif ($action === 'decline_request') {
         $senderId = (int)($data['sender_id'] ?? 0);
-        $notifId = (int)($data['notification_id'] ?? 0);
 
         $sql = "DELETE FROM friendships WHERE sender_id = ? AND receiver_id = ? AND status = 'pending'";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$senderId, $currentUserId]);
 
-        if ($notifId > 0) {
-            $pdo->prepare("DELETE FROM notifications WHERE id = ? AND user_id = ?")->execute([$notifId, $currentUserId]);
-        }
+        // [FIX] Borrar CUALQUIER notificación de solicitud de este usuario hacia mí
+        // Esto cubre el caso de rechazar desde Search Page donde no tenemos el ID de notificación exacto
+        $pdo->prepare("DELETE FROM notifications WHERE user_id = ? AND related_id = ? AND type = 'friend_request'")
+            ->execute([$currentUserId, $senderId]);
         
-        // Opcional: Avisar socket silent update para refrescar UI del sender
         send_live_notification($senderId, 'request_declined', ['sender_id' => $currentUserId]);
 
         $response = ['success' => true, 'message' => 'Solicitud rechazada.'];
 
-    // --- ELIMINAR AMIGO ---
+    // --- ELIMINAR AMIGO (CORREGIDO) ---
     } elseif ($action === 'remove_friend') {
         $friendId = (int)($data['target_id'] ?? 0);
+        
         $sql = "DELETE FROM friendships WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$currentUserId, $friendId, $friendId, $currentUserId]);
 
-        // [SOCKET] Actualizar UI del ex-amigo
+        // [FIX] Limpieza de notificaciones antiguas relacionadas con esta amistad
+        // Borramos "Solicitud de amistad" y "Solicitud aceptada" entre ambos para que no quede basura
+        $pdo->prepare("DELETE FROM notifications 
+                       WHERE user_id = ? AND related_id = ? 
+                       AND type IN ('friend_request', 'friend_accepted')")
+            ->execute([$currentUserId, $friendId]);
+
         send_live_notification($friendId, 'friend_removed', ['sender_id' => $currentUserId]);
 
         $response = ['success' => true, 'message' => 'Amigo eliminado.'];
