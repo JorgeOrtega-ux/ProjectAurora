@@ -64,7 +64,11 @@
     </div>
 
     <div class="popover-module popover-profile body-title disabled" data-module="moduleOptions">
+        
         <div class="menu-content">
+            <div class="pill-container">
+            <div class="drag-handle"></div>
+        </div>
             <div class="menu-list">
                 
                 <?php if (in_array($userRole, ['founder', 'administrator', 'admin'])): ?>

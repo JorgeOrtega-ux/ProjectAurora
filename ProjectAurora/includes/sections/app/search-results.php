@@ -1,69 +1,36 @@
 <?php
+// includes/sections/app/search-results.php
+
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
     exit;
 }
 
+// 1. Incluimos configuraciones y el nuevo Fetcher
 require_once __DIR__ . '/../../../config/database.php';
+require_once __DIR__ . '/../../logic/search_fetcher.php'; // <--- IMPORTANTE: Ajusta la ruta si cambiaste la carpeta
 
-// Parámetros
+// 2. Capturar Parámetros
 $q = isset($_GET['q']) ? trim($_GET['q']) : '';
 $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
 $isAjaxPartial = isset($_GET['ajax_partial']) && $_GET['ajax_partial'] === '1';
-
-// Configuración
-$limit = 2; 
-$queryLimit = $limit + 1; 
 $currentUserId = $_SESSION['user_id'];
-$results = [];
-$hasMore = false;
+$limit = 5; // Puedes cambiar esto fácilmente ahora
 
-if ($q !== '') {
-    // Consulta SQL
-    $sql = "SELECT u.id, u.username, u.avatar, u.role, 
-                   f.status as friend_status, f.sender_id,
-                   (
-                       SELECT COUNT(*) 
-                       FROM friendships fA 
-                       JOIN friendships fB 
-                       ON (CASE WHEN fA.sender_id = ? THEN fA.receiver_id ELSE fA.sender_id END) = 
-                          (CASE WHEN fB.sender_id = u.id THEN fB.receiver_id ELSE fB.sender_id END)
-                       WHERE (fA.sender_id = ? OR fA.receiver_id = ?) AND fA.status = 'accepted'
-                       AND (fB.sender_id = u.id OR fB.receiver_id = u.id) AND fB.status = 'accepted'
-                   ) as mutual_friends
-            FROM users u
-            LEFT JOIN friendships f 
-            ON (f.sender_id = ? AND f.receiver_id = u.id) 
-            OR (f.sender_id = u.id AND f.receiver_id = ?)
-            WHERE u.username LIKE ? 
-            AND u.id != ? 
-            AND u.account_status = 'active'
-            LIMIT $queryLimit OFFSET $offset";
+// 3. OBTENER DATOS USANDO EL FETCHER (Lógica separada)
+$searchData = SearchFetcher::searchUsers($pdo, $currentUserId, $q, $offset, $limit);
+$results = $searchData['results'];
+$hasMore = $searchData['hasMore'];
 
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([
-        $currentUserId, $currentUserId, $currentUserId, 
-        $currentUserId, $currentUserId, 
-        '%' . $q . '%', 
-        $currentUserId
-    ]);
-
-    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    if (count($results) > $limit) {
-        $hasMore = true;
-        array_pop($results); 
-    }
-}
-
-// --- HELPER: FUNCIÓN PARA RENDERIZAR UNA TARJETA ---
-$renderUserCard = function($user) use ($currentUserId) {
+// --- HELPER DE RENDERIZADO (Esto es visual, se queda aquí) ---
+$renderUserCard = function ($user) use ($currentUserId) {
     $avatarPath = !empty($user['avatar']) ? '/ProjectAurora/' . $user['avatar'] : null;
     $uid = $user['id'];
     $role = $user['role'] ?? 'user';
     $mutualCount = $user['mutual_friends'];
 
+    // Lógica visual de botones
     $actionsHtml = '';
     if ($user['friend_status'] === 'accepted') {
         $actionsHtml = '<button class="btn-add-friend btn-remove-friend" data-uid="' . $uid . '">Eliminar amigo</button>';
@@ -77,7 +44,7 @@ $renderUserCard = function($user) use ($currentUserId) {
     } else {
         $actionsHtml = '<button class="btn-add-friend" data-uid="' . $uid . '">Agregar a amigos</button>';
     }
-    ?>
+?>
     <div class="user-card-item">
         <div class="user-info-group">
             <div class="user-avatar-container" data-role="<?php echo htmlspecialchars($role); ?>">
@@ -99,12 +66,14 @@ $renderUserCard = function($user) use ($currentUserId) {
             <?php echo $actionsHtml; ?>
         </div>
     </div>
-    <?php
+<?php
 };
 
 // =========================================================
-// 1. SALIDA AJAX (CARGA PARCIAL)
+// 4. SALIDA (Renderizado)
 // =========================================================
+
+// Caso A: Carga parcial AJAX (Load More)
 if ($isAjaxPartial) {
     foreach ($results as $user) {
         $renderUserCard($user);
@@ -112,12 +81,10 @@ if ($isAjaxPartial) {
     if ($hasMore) {
         echo '<div id="ajax-has-more-flag" style="display:none;"></div>';
     }
-    exit; 
+    exit;
 }
 
-// =========================================================
-// 2. SALIDA PÁGINA COMPLETA (ESTRUCTURA NORMAL)
-// =========================================================
+// Caso B: Carga de página completa
 ?>
 <div class="section-content overflow-y active" data-section="search">
     <div class="section-center-wrapper" style="justify-content: flex-start; align-items: center; flex-direction: column;">
@@ -140,20 +107,20 @@ if ($isAjaxPartial) {
                     <p>No encontramos a nadie llamado "<strong><?php echo htmlspecialchars($q); ?></strong>".</p>
                 </div>
             <?php else: ?>
-                
+
                 <div class="results-list" id="search-results-list">
-                    <?php 
+                    <?php
                     foreach ($results as $user) {
                         $renderUserCard($user);
-                    } 
+                    }
                     ?>
                 </div>
 
                 <?php if ($hasMore): ?>
                     <div class="load-more-container" style="text-align: center; padding: 20px;">
-                        <button class="btn-load-more" 
-                                data-query="<?php echo htmlspecialchars($q); ?>" 
-                                data-offset="<?php echo $limit; ?>">
+                        <button class="btn-load-more"
+                            data-query="<?php echo htmlspecialchars($q); ?>"
+                            data-offset="<?php echo $limit; ?>">
                             Mostrar más resultados
                         </button>
                     </div>
