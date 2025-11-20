@@ -47,7 +47,8 @@ CREATE TABLE verification_codes (
 CREATE TABLE IF NOT EXISTS security_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_identifier VARCHAR(255) NOT NULL,
-    action_type ENUM('login_fail', 'recovery_fail', 'suspicious_activity') NOT NULL,
+    -- [MODIFICADO] Cambiado de ENUM a VARCHAR para permitir más tipos de acciones (ej: rate limiting)
+    action_type VARCHAR(50) NOT NULL,
     ip_address VARCHAR(45) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_security_check (user_identifier, ip_address, created_at)
@@ -75,18 +76,5 @@ CREATE TABLE IF NOT EXISTS notifications (
     related_id INT NULL, -- ID del usuario que generó la acción (sender)
     is_read TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
--- ==========================================
--- TABLA DE SEGURIDAD WEBSOCKET (NUEVA)
--- ==========================================
-CREATE TABLE IF NOT EXISTS ws_auth_tokens (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    token VARCHAR(64) NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX (token),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

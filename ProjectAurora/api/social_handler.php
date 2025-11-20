@@ -42,6 +42,15 @@ try {
 
     // --- ENVIAR SOLICITUD ---
     if ($action === 'send_request') {
+        
+        // [SEGURIDAD] Rate Limiting: Max 10 solicitudes por minuto
+        // Esto previene scripts de spam masivo.
+        if (checkActionRateLimit($pdo, $currentUserId, 'friend_request_limit', 10, 1)) {
+            throw new Exception("Estás enviando solicitudes muy rápido. Por favor espera un momento.");
+        }
+        // Registramos el intento para que cuente en el límite
+        logSecurityAction($pdo, $currentUserId, 'friend_request_limit');
+
         $targetId = (int)($data['target_id'] ?? 0);
         if ($targetId === 0 || $targetId === $currentUserId) throw new Exception("Usuario inválido.");
 

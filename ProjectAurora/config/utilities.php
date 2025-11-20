@@ -49,6 +49,49 @@ function clearFailedAttempts($pdo, $identifier) {
     $stmt->execute([$identifier]);
 }
 
+// --- NUEVAS FUNCIONES DE SEGURIDAD ---
+
+// 1. Rate Limiting (Protección anti-spam)
+function checkActionRateLimit($pdo, $identifier, $actionType, $limit, $minutes) {
+    $sql = "SELECT COUNT(*) as total 
+            FROM security_logs 
+            WHERE user_identifier = ? 
+            AND action_type = ? 
+            AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
+    
+    $stmt = $pdo->prepare($sql);
+    // Convertimos a string para asegurar compatibilidad
+    $stmt->execute([(string)$identifier, $actionType]);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return ($result['total'] >= $limit);
+}
+
+// 2. Registrar acción de seguridad
+function logSecurityAction($pdo, $identifier, $actionType) {
+    $ip = get_client_ip();
+    $sql = "INSERT INTO security_logs (user_identifier, action_type, ip_address, created_at) 
+            VALUES (?, ?, ?, NOW())";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([(string)$identifier, $actionType, $ip]);
+}
+
+// 3. GENERAR TOKEN PARA WEBSOCKET (Aquí estaba el error, esta función faltaba)
+function generate_ws_auth_token($pdo, $userId) {
+    // Limpiar tokens viejos
+    $stmt = $pdo->prepare("DELETE FROM ws_auth_tokens WHERE user_id = ?");
+    $stmt->execute([$userId]);
+
+    // Crear nuevo token
+    $token = bin2hex(random_bytes(32)); 
+    
+    // Guardar en BD (expira en 2 minutos)
+    $stmt = $pdo->prepare("INSERT INTO ws_auth_tokens (user_id, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 2 MINUTE))");
+    $stmt->execute([$userId, $token]);
+
+    return $token;
+}
+
 function generate_csrf_token() {
     if (session_status() === PHP_SESSION_NONE) session_start();
     if (empty($_SESSION['csrf_token'])) {
@@ -63,35 +106,18 @@ function verify_csrf_token($token) {
     return hash_equals($_SESSION['csrf_token'], $token);
 }
 
-// [NUEVO] Generar Token Seguro para WebSocket
-function generate_ws_auth_token($pdo, $userId) {
-    // 1. Limpiar tokens viejos de este usuario
-    $stmt = $pdo->prepare("DELETE FROM ws_auth_tokens WHERE user_id = ?");
-    $stmt->execute([$userId]);
-
-    // 2. Generar nuevo token
-    $token = bin2hex(random_bytes(32)); // 64 caracteres
-    
-    // 3. Guardar con expiración corta (ej: 60 segundos es suficiente para conectar)
-    // Nota: Si el usuario recarga la página, se genera uno nuevo.
-    $stmt = $pdo->prepare("INSERT INTO ws_auth_tokens (user_id, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 2 MINUTE))");
-    $stmt->execute([$userId, $token]);
-
-    return $token;
-}
-
 // Función puente PHP -> Python Socket
 function send_live_notification($targetUserId, $type, $data = []) {
     $host = '127.0.0.1';
-    $port = 8081; // Puerto interno del script Python
+    $port = 8081; 
 
     $payload = json_encode([
         'target_id' => $targetUserId,
-        'type' => $type, // ej: 'friend_request', 'ui_update'
+        'type' => $type, 
         'payload' => $data
     ]);
 
-    $fp = @fsockopen($host, $port, $errno, $errstr, 1); // Timeout de 1s
+    $fp = @fsockopen($host, $port, $errno, $errstr, 1); 
     if ($fp) {
         fwrite($fp, $payload);
         fclose($fp);
