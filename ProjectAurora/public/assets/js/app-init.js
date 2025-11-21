@@ -2,6 +2,7 @@
 
 // [CORE]
 import { initUrlManager } from './core/url-manager.js';
+import { initI18n, translateDocument } from './core/i18n-manager.js'; // <--- NUEVO
 
 // [MODULES]
 import { initAuthManager } from './modules/auth-manager.js';
@@ -18,8 +19,10 @@ import { initDragController } from './ui/drag-controller.js';
 // [SERVICES]
 import { SocketService } from './services/socket-service.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => { // Async para esperar i18n
     try {
+        // 1. Inicializar i18n PRIMERO
+        await initI18n();
 
         // Inicializar Core y Auth
         initUrlManager();
@@ -41,13 +44,13 @@ document.addEventListener('DOMContentLoaded', () => {
         initDragController();
 
         // Inicializar Gestor de Configuración
-        // Nota: Como la sección de configuración se carga dinámicamente vía AJAX (UrlManager),
-        // initSettingsManager debe ser capaz de ejecutarse cuando el contenido cambie.
-        // UrlManager.js debería llamar a window.initSettingsManager() si existe después de cargar contenido.
-        window.initSettingsManager = initSettingsManager;
+        window.initSettingsManager = () => {
+            initSettingsManager();
+            translateDocument(); // Traducir cuando se carga settings dinámicamente
+        };
 
-        // Ejecutarlo por primera vez por si cargamos directo en settings (F5 en página de ajustes)
-        initSettingsManager();
+        // Ejecutarlo por primera vez
+        window.initSettingsManager();
 
     } catch (error) {
         console.error('Error crítico al inicializar la aplicación:', error);

@@ -1,6 +1,5 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
-// Doble seguridad por si se llama directo por fetch sin pasar por router
 $role = $_SESSION['user_role'] ?? 'user';
 if (!in_array($role, ['founder', 'administrator', 'admin'])) {
     include __DIR__ . '/../system/404.php';
@@ -8,6 +7,6 @@ if (!in_array($role, ['founder', 'administrator', 'admin'])) {
 }
 ?>
 <div class="section-content active" data-section="admin/dashboard">
-    <h1>Dashboard Administrativo</h1>
-    <p>Bienvenido al panel de control.</p>
+    <h1 data-i18n="admin.dashboard_title"></h1>
+    <p data-i18n="admin.dashboard_desc"></p>
 </div>

@@ -1,5 +1,4 @@
 <?php
-// [CORRECCIÓN] Validar si la variable existe. 
 if (!isset($CURRENT_SECTION)) {
     $CURRENT_SECTION = 'login';
 }
@@ -7,7 +6,6 @@ if (!isset($CURRENT_SECTION)) {
 $isStep2 = ($CURRENT_SECTION === 'login/verification-additional');
 $maskedEmailDisplay = 'tu correo';
 
-// Solo intentamos acceder a la sesión si existe y es el paso 2
 if ($isStep2 && isset($_SESSION['temp_login_2fa']['email'])) {
     $rawEmail = $_SESSION['temp_login_2fa']['email'];
     $parts = explode('@', $rawEmail);
@@ -21,8 +19,8 @@ if ($isStep2 && isset($_SESSION['temp_login_2fa']['email'])) {
         <div class="form-container">
             
             <div data-step="login-1" class="auth-step-container <?php echo $isStep2 ? '' : 'active'; ?>">
-                <h1>Iniciar Sesión</h1>
-                <p>Bienvenido de nuevo.</p>
+                <h1 data-i18n="auth.login.title"></h1>
+                <p data-i18n="auth.login.subtitle"></p>
 
                 <div class="floating-label-group">
                     <input 
@@ -32,7 +30,7 @@ if ($isStep2 && isset($_SESSION['temp_login_2fa']['email'])) {
                         required 
                         placeholder=" "
                     >
-                    <label class="floating-label">Correo Electrónico</label>
+                    <label class="floating-label" data-i18n="auth.login.email_label"></label>
                 </div>
 
                 <div class="floating-label-group">
@@ -43,7 +41,7 @@ if ($isStep2 && isset($_SESSION['temp_login_2fa']['email'])) {
                         required 
                         placeholder=" "
                     >
-                    <label class="floating-label">Contraseña</label>
+                    <label class="floating-label" data-i18n="auth.login.password_label"></label>
                     
                     <button type="button" class="floating-input-btn">
                         <span class="material-symbols-rounded">visibility</span>
@@ -51,30 +49,30 @@ if ($isStep2 && isset($_SESSION['temp_login_2fa']['email'])) {
                 </div>
 
                 <div class="auth-link-wrapper">
-                    <a href="#" onclick="event.preventDefault(); navigateTo('forgot-password')" style="color:#666; text-decoration:none; font-size:14px; font-weight:500;">
-                        ¿Olvidaste tu contraseña?
+                    <a href="#" onclick="event.preventDefault(); navigateTo('forgot-password')" style="color:#666; text-decoration:none; font-size:14px; font-weight:500;" data-i18n="auth.login.forgot_password">
+                        
                     </a>
                 </div>
 
-                <button class="form-button" data-action="login-submit">Continuar</button>
+                <button class="form-button" data-action="login-submit" data-i18n="global.continue"></button>
 
                 <div data-error="login-error" class="form-error-message"></div>
 
                 <div class="form-footer-link">
-                    ¿No tienes una cuenta? <a href="#" onclick="event.preventDefault(); navigateTo('register')">Regístrate</a>
+                    <span data-i18n="auth.login.no_account">¿No tienes una cuenta?</span> <a href="#" onclick="event.preventDefault(); navigateTo('register')" data-i18n="auth.login.register_link">Regístrate</a>
                 </div>
             </div>
 
             <div data-step="login-2" class="auth-step-container <?php echo $isStep2 ? 'active' : ''; ?>">
                 <div class="auth-back-link">
                     <a href="#" data-action="login-2fa-back" style="color:#666; text-decoration:none; display:flex; align-items:center; gap:5px; font-size:14px;">
-                        <span class="material-symbols-rounded" style="font-size:18px;">arrow_back</span> Cancelar
+                        <span class="material-symbols-rounded" style="font-size:18px;">arrow_back</span> <span data-i18n="global.cancel"></span>
                     </a>
                 </div>
 
-                <h1>Verificación de Seguridad</h1>
-                <p>Tu cuenta tiene activada la verificación en dos pasos.</p>
-                <p style="font-size:14px; margin-top:10px;">Ingresa el código enviado a <strong data-display="login-2fa-email"><?php echo htmlspecialchars($maskedEmailDisplay); ?></strong></p>
+                <h1 data-i18n="auth.2fa.title"></h1>
+                <p data-i18n="auth.2fa.subtitle"></p>
+                <p style="font-size:14px; margin-top:10px;"><span data-i18n="auth.2fa.instruction"></span> <strong data-display="login-2fa-email"><?php echo htmlspecialchars($maskedEmailDisplay); ?></strong></p>
 
                 <div class="floating-label-group">
                     <input 
@@ -86,15 +84,15 @@ if ($isStep2 && isset($_SESSION['temp_login_2fa']['email'])) {
                         maxlength="14" 
                         style="letter-spacing: 2px; text-transform: uppercase;"
                     >
-                    <label class="floating-label">Código de Seguridad</label>
+                    <label class="floating-label" data-i18n="auth.2fa.label"></label>
                 </div>
 
-                <button class="form-button" data-action="login-2fa-submit">Verificar Acceso</button>
+                <button class="form-button" data-action="login-2fa-submit" data-i18n="auth.2fa.verify_btn"></button>
 
                 <div data-error="login-2fa" class="form-error-message"></div>
                 
                 <div class="form-footer-link">
-                    <a href="#" data-action="resend-login" class="disabled-link">Reenviar código de verificación (60)</a>
+                    <a href="#" data-action="resend-login" class="disabled-link" data-i18n="auth.register.resend_code"></a> (60)
                 </div>
             </div>
 

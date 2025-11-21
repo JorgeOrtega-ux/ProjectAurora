@@ -3,7 +3,7 @@
         <div class="header-item">
             <div class="header-button" 
                  data-action="toggleModuleSurface" 
-                 data-tooltip="Menú Principal">
+                 data-i18n-tooltip="header.menu_tooltip">
                 <span class="material-symbols-rounded">menu</span>
             </div>
         </div>
@@ -12,7 +12,7 @@
     <div class="header-center">
         <div class="search-container">
             <span class="material-symbols-rounded search-icon">search</span>
-            <input type="text" class="search-input" placeholder="Buscar en Aurora..." spellcheck="false">
+            <input type="text" class="search-input" data-i18n-placeholder="header.search_placeholder" spellcheck="false">
         </div>
     </div>
 
@@ -21,7 +21,7 @@
             
             <div class="header-button"
                  data-action="toggleModuleNotifications"
-                 data-tooltip="Notificaciones">
+                 data-i18n-tooltip="header.notifications_tooltip">
                 <span class="material-symbols-rounded">notifications</span>
             </div>
 
@@ -31,7 +31,7 @@
             <div class="header-button profile-button"
                 data-action="toggleModuleOptions"
                 data-role="<?php echo htmlspecialchars($userRole); ?>"
-                data-tooltip="Tu Cuenta"> <?php
+                data-i18n-tooltip="header.profile_tooltip"> <?php
                 if (isset($_SESSION['user_avatar']) && !empty($_SESSION['user_avatar'])) {
                     $avatarUrl = $basePath . $_SESSION['user_avatar'];
                     echo '<img src="' . htmlspecialchars($avatarUrl) . '" alt="Perfil" class="profile-img">';
@@ -51,16 +51,16 @@
             </div>
             
             <div class="menu-content-top">
-                <span class="menu-title">Notificaciones</span>
-                <div class="notifications-action" title="Marcar todo como leído">
-                    <span>Marcar todas como leídas</span>
+                <span class="menu-title" data-i18n="header.notifications_title">Notificaciones</span>
+                <div class="notifications-action" data-i18n-title="header.mark_read">
+                    <span data-i18n="header.mark_read"></span>
                 </div>
             </div>
 
             <div class="menu-content-bottom">
                 <div class="notifications-empty">
                     <span class="material-symbols-rounded empty-icon">notifications_off</span>
-                    <p>No hay nada nuevo por el momento</p>
+                    <p data-i18n="header.no_notifications"></p>
                 </div>
             </div>
 
@@ -82,7 +82,7 @@
                         <span class="material-symbols-rounded">admin_panel_settings</span>
                     </div>
                     <div class="menu-link-text">
-                        <span>Panel de administración</span>
+                        <span data-i18n="nav.admin_panel"></span>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -92,7 +92,7 @@
                         <span class="material-symbols-rounded">settings</span>
                     </div>
                     <div class="menu-link-text">
-                        <span>Configuración</span>
+                        <span data-i18n="nav.settings"></span>
                     </div>
                 </div>
                 
@@ -101,7 +101,7 @@
                         <span class="material-symbols-rounded">help</span>
                     </div>
                     <div class="menu-link-text">
-                        <span>Ayuda y comentarios</span>
+                        <span data-i18n="nav.help"></span>
                     </div>
                 </div>
                 <div class="menu-link menu-link-logout">
@@ -109,7 +109,7 @@
                         <span class="material-symbols-rounded">logout</span>
                     </div>
                     <div class="menu-link-text">
-                        <span>Cerrar sesión</span>
+                        <span data-i18n="nav.logout"></span>
                     </div>
                 </div>
             </div>

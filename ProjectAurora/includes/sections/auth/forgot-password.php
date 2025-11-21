@@ -8,20 +8,20 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             
             <div class="auth-back-link">
                 <a href="#" onclick="event.preventDefault(); navigateTo('login')" style="color:#666; text-decoration:none; display:flex; align-items:center; gap:5px; font-size:14px;">
-                    <span class="material-symbols-rounded" style="font-size:18px;">arrow_back</span> Volver
+                    <span class="material-symbols-rounded" style="font-size:18px;">arrow_back</span> <span data-i18n="global.back"></span>
                 </a>
             </div>
 
             <div data-step="rec-1" class="auth-step-container active">
-                <h1>Recuperar Cuenta</h1>
-                <p>Ingresa tu correo y te enviaremos un enlace mágico.</p>
+                <h1 data-i18n="auth.recovery.title"></h1>
+                <p data-i18n="auth.recovery.subtitle"></p>
                 
                 <div class="floating-label-group">
                     <input type="email" data-input="rec-email" class="floating-input" required placeholder=" ">
-                    <label class="floating-label">Correo Electrónico</label>
+                    <label class="floating-label" data-i18n="auth.login.email_label"></label>
                 </div>
 
-                <button class="form-button" data-action="rec-step1">Enviar Enlace</button>
+                <button class="form-button" data-action="rec-step1" data-i18n="auth.recovery.send_btn"></button>
                 <div data-error="rec-1" class="form-error-message"></div>
             </div>
 
@@ -29,10 +29,9 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 <div style="text-align:center; padding:20px 0;">
                     <span class="material-symbols-rounded" style="font-size:64px; color:#4caf50;">mark_email_read</span>
                 </div>
-                <h1>¡Enlace Enviado!</h1>
-                <p>Revisa tu correo <strong data-display="rec-email"></strong> (y la carpeta de spam).</p>
-                <p style="font-size:14px; color:#888; margin-top:10px;">
-                    Haz clic en el enlace del correo para crear tu nueva contraseña.
+                <h1 data-i18n="auth.recovery.success_title"></h1>
+                <p><span data-i18n="auth.recovery.check_email"></span> <strong data-display="rec-email"></strong> <span data-i18n="auth.recovery.spam_hint">(y la carpeta de spam).</span></p>
+                <p style="font-size:14px; color:#888; margin-top:10px;" data-i18n="auth.recovery.click_hint">
                 </p>
             </div>
 

@@ -7,6 +7,6 @@ if (!in_array($role, ['founder', 'administrator', 'admin'])) {
 }
 ?>
 <div class="section-content active" data-section="admin/users">
-    <h1>Gestión de Usuarios</h1>
-    <p>Administra los usuarios registrados en la plataforma.</p>
-    </div>
+    <h1 data-i18n="admin.users_title"></h1>
+    <p data-i18n="admin.users_desc"></p>
+</div>

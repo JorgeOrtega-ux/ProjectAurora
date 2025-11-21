@@ -15,8 +15,8 @@ if (isset($CURRENT_SECTION)) {
         <div class="form-container">
             
             <div data-step="register-1" class="auth-step-container <?php echo ($initialStep === 1) ? 'active' : ''; ?>">
-                <h1>Registro</h1>
-                <p>Comencemos con tus credenciales.</p>
+                <h1 data-i18n="auth.register.title"></h1>
+                <p data-i18n="auth.register.subtitle_1"></p>
                 
                 <div class="floating-label-group">
                     <input 
@@ -27,7 +27,7 @@ if (isset($CURRENT_SECTION)) {
                         placeholder=" " 
                         value="<?php echo $_SESSION['temp_register']['email'] ?? ''; ?>"
                     >
-                    <label class="floating-label">Correo Electrónico</label>
+                    <label class="floating-label" data-i18n="auth.login.email_label"></label>
                 </div>
 
                 <div class="floating-label-group">
@@ -39,20 +39,20 @@ if (isset($CURRENT_SECTION)) {
                         placeholder=" "
                         minlength="8"
                     >
-                    <label class="floating-label">Contraseña (Mín. 8 caracteres)</label>
+                    <label class="floating-label" data-i18n="auth.register.password_hint"></label>
                     <button type="button" class="floating-input-btn"><span class="material-symbols-rounded">visibility</span></button>
                 </div>
 
-                <button class="form-button" data-action="register-step1">Siguiente</button>
+                <button class="form-button" data-action="register-step1" data-i18n="auth.register.next"></button>
                 <div data-error="register-1" class="form-error-message"></div>
-                <div class="form-footer-link">¿Ya tienes una cuenta? <a href="#" onclick="event.preventDefault(); navigateTo('login')">Iniciar sesión</a></div>
+                <div class="form-footer-link"><span data-i18n="auth.register.have_account"></span> <a href="#" onclick="event.preventDefault(); navigateTo('login')" data-i18n="auth.register.login_link">Iniciar sesión</a></div>
             </div>
 
             <div data-step="register-2" class="auth-step-container <?php echo ($initialStep === 2) ? 'active' : ''; ?>">
                 <div class="auth-back-link">
                     </div>
-                <h1>Crea tu identidad</h1>
-                <p>Elige un nombre de usuario único.</p>
+                <h1 data-i18n="auth.register.subtitle_2"></h1>
+                <p data-i18n="auth.register.username_hint"></p>
                 
                 <div class="floating-label-group">
                     <input 
@@ -66,20 +66,20 @@ if (isset($CURRENT_SECTION)) {
                         pattern="[a-zA-Z0-9_]+"
                         style="padding-right: 50px;" 
                     >
-                    <label class="floating-label">Usuario (8-32 letras, núm, _)</label>
+                    <label class="floating-label" data-i18n="auth.register.username_label"></label>
                     
                     <button type="button" class="floating-input-btn username-magic-btn" title="Generar usuario aleatorio">
                         <span class="material-symbols-rounded">auto_fix_high</span>
                     </button>
                 </div>
 
-                <button class="form-button" data-action="register-step2">Continuar</button>
+                <button class="form-button" data-action="register-step2" data-i18n="global.continue"></button>
                 <div data-error="register-2" class="form-error-message"></div>
             </div>
 
             <div data-step="register-3" class="auth-step-container <?php echo ($initialStep === 3) ? 'active' : ''; ?>">
-                <h1>Verificación</h1>
-                <p style="font-size:14px;">Hemos enviado un código a <strong data-display="email-verify"><?php echo $_SESSION['temp_register']['email'] ?? 'tu correo'; ?></strong>.</p>
+                <h1 data-i18n="auth.register.subtitle_3"></h1>
+                <p style="font-size:14px;"><span data-i18n="auth.register.code_sent"></span> <strong data-display="email-verify"><?php echo $_SESSION['temp_register']['email'] ?? 'tu correo'; ?></strong>.</p>
                 
                 <div class="floating-label-group">
                     <input 
@@ -91,14 +91,14 @@ if (isset($CURRENT_SECTION)) {
                         maxlength="14" 
                         style="letter-spacing: 2px; text-transform: uppercase;"
                     >
-                    <label class="floating-label">Código</label>
+                    <label class="floating-label" data-i18n="auth.register.code_label"></label>
                 </div>
 
-                <button class="form-button" data-action="register-step3">Verificar y Crear Cuenta</button>
+                <button class="form-button" data-action="register-step3" data-i18n="auth.register.verify_btn"></button>
                 <div data-error="register-3" class="form-error-message"></div>
                 
                 <div class="form-footer-link">
-                    <a href="#" data-action="resend-register" class="disabled-link">Reenviar código de verificación (60)</a>
+                    <a href="#" data-action="resend-register" class="disabled-link" data-i18n="auth.register.resend_code"></a>
                 </div>
             </div>
 

@@ -2,15 +2,11 @@
 // includes/modules/module-surface.php
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-// Si el router bloqueó el acceso, CURRENT_SECTION será '404'.
-// Si es '404', no empieza ni con 'settings/' ni con 'admin/', 
-// por lo que $isSettings y $isAdminSection serán falsos.
 $CURRENT_SECTION = $CURRENT_SECTION ?? 'main';
 
 $isSettings = (strpos($CURRENT_SECTION, 'settings/') === 0);
 $isAdminSection = (strpos($CURRENT_SECTION, 'admin/') === 0);
 
-// Validar permisos reales para decidir si IMPRIMIMOS el código HTML del menú admin
 $userRole = $_SESSION['user_role'] ?? 'user';
 $canSeeAdmin = in_array($userRole, ['founder', 'administrator', 'admin']);
 ?>
@@ -25,7 +21,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator', 'admin']);
                     <span class="material-symbols-rounded">home</span>
                 </div>
                 <div class="menu-link-text">
-                    <span>Página principal</span>
+                    <span data-i18n="nav.home"></span>
                 </div>
             </div>
 
@@ -35,7 +31,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator', 'admin']);
                     <span class="material-symbols-rounded">explore</span>
                 </div>
                 <div class="menu-link-text">
-                    <span>Explorar comunidades</span>
+                    <span data-i18n="nav.explore"></span>
                 </div>
             </div>
 
@@ -48,7 +44,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator', 'admin']);
                     <span class="material-symbols-rounded">arrow_back</span>
                 </div>
                 <div class="menu-link-text">
-                    <span>Volver a inicio</span>
+                    <span data-i18n="global.back_home"></span>
                 </div>
             </div>
 
@@ -58,7 +54,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator', 'admin']);
                     <span class="material-symbols-rounded">person</span>
                 </div>
                 <div class="menu-link-text">
-                    <span>Tu perfil</span>
+                    <span data-i18n="nav.profile"></span>
                 </div>
             </div>
 
@@ -68,7 +64,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator', 'admin']);
                     <span class="material-symbols-rounded">lock</span>
                 </div>
                 <div class="menu-link-text">
-                    <span>Inicio de sesión y seguridad</span>
+                    <span data-i18n="nav.security"></span>
                 </div>
             </div>
 
@@ -78,7 +74,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator', 'admin']);
                     <span class="material-symbols-rounded">accessibility_new</span>
                 </div>
                 <div class="menu-link-text">
-                    <span>Accesibilidad</span>
+                    <span data-i18n="nav.accessibility"></span>
                 </div>
             </div>
 
@@ -92,7 +88,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator', 'admin']);
                     <span class="material-symbols-rounded">arrow_back</span>
                 </div>
                 <div class="menu-link-text">
-                    <span>Volver a inicio</span>
+                    <span data-i18n="global.back_home"></span>
                 </div>
             </div>
 
@@ -102,7 +98,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator', 'admin']);
                     <span class="material-symbols-rounded">dashboard</span>
                 </div>
                 <div class="menu-link-text">
-                    <span>Dashboard</span>
+                    <span data-i18n="nav.admin_dashboard"></span>
                 </div>
             </div>
 
@@ -112,7 +108,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator', 'admin']);
                     <span class="material-symbols-rounded">group</span>
                 </div>
                 <div class="menu-link-text">
-                    <span>Gestionar usuarios</span>
+                    <span data-i18n="nav.admin_users"></span>
                 </div>
             </div>
 
@@ -122,7 +118,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator', 'admin']);
                     <span class="material-symbols-rounded">backup</span>
                 </div>
                 <div class="menu-link-text">
-                    <span>Copias de seguridad</span>
+                    <span data-i18n="nav.admin_backups"></span>
                 </div>
             </div>
 
@@ -132,7 +128,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator', 'admin']);
                     <span class="material-symbols-rounded">dns</span>
                 </div>
                 <div class="menu-link-text">
-                    <span>Configuración del servidor</span>
+                    <span data-i18n="nav.admin_server"></span>
                 </div>
             </div>
 

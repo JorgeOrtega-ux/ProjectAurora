@@ -7,6 +7,6 @@ if (!in_array($role, ['founder', 'administrator', 'admin'])) {
 }
 ?>
 <div class="section-content active" data-section="admin/backups">
-    <h1>Copias de Seguridad</h1>
-    <p>Gestiona y restaura copias de la base de datos.</p>
+    <h1 data-i18n="admin.backups_title"></h1>
+    <p data-i18n="admin.backups_desc"></p>
 </div>

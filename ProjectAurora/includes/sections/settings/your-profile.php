@@ -23,16 +23,6 @@ $currentUsage = $prefs['usage_intent'] ?? 'personal';
 $currentLang = $prefs['language'] ?? 'en-us';
 $openLinksInNewTab = isset($prefs['open_links_in_new_tab']) ? (int)$prefs['open_links_in_new_tab'] : 1;
 
-// --- [CORRECCIÓN 1] Mapas para mostrar el texto E ICONOS dinámicos ---
-$usageTexts = [
-    'personal' => 'Uso personal',
-    'student' => 'Estudiante',
-    'teacher' => 'Docente',
-    'small_business' => 'Empresa pequeña',
-    'large_business' => 'Empresa grande'
-];
-
-// Nuevo mapa para los iconos
 $usageIcons = [
     'personal' => 'person',
     'student' => 'school',
@@ -40,21 +30,18 @@ $usageIcons = [
     'small_business' => 'storefront',
     'large_business' => 'domain'
 ];
-
-$usageDisplayText = $usageTexts[$currentUsage] ?? 'Uso personal';
-// Seleccionamos el icono guardado o 'person' por defecto
 $usageDisplayIcon = $usageIcons[$currentUsage] ?? 'person'; 
 
-$langTexts = [
-    'es-latam' => 'Español (Latinoamérica)',
-    'es-mx' => 'Español (México)',
-    'en-us' => 'English (United States)',
-    'en-gb' => 'English (United Kingdom)'
-];
+// NOTA: Aquí dejamos las claves de traducción para que el JS las reemplace, 
+// pero necesitamos un mapa para el renderizado inicial PHP.
+// Para simplificar y ser consistente con i18n JS, podemos imprimir un span con data-i18n
+// dentro del selector custom.
 
-$langDisplayText = $langTexts[$currentLang] ?? 'English (United States)';
+$langDisplayText = 'English (United States)';
+if($currentLang == 'es-latam') $langDisplayText = 'Español (Latinoamérica)';
+if($currentLang == 'es-mx') $langDisplayText = 'Español (México)';
+if($currentLang == 'en-gb') $langDisplayText = 'English (United Kingdom)';
 
-// URL del avatar
 $avatarUrl = null;
 if ($userAvatar && !empty($userAvatar)) {
     $avatarUrl = $basePath . $userAvatar . '?t=' . time();
@@ -71,8 +58,8 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
     <div class="component-wrapper">
 
         <div class="component-header-card">
-            <h1 class="component-page-title">Tu Perfil</h1>
-            <p class="component-page-description">Aquí podrás editar tu información de perfil y personalizar tu avatar.</p>
+            <h1 class="component-page-title" data-i18n="settings.profile.title"></h1>
+            <p class="component-page-description" data-i18n="settings.profile.description"></p>
         </div>
 
         <div class="component-card component-card--edit-mode" data-component="avatar-section">
@@ -94,27 +81,25 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                 </div>
 
                 <div class="component-card__text">
-                    <h2 class="component-card__title">Foto de perfil</h2>
-                    <p class="component-card__description">Esto ayudará a tus compañeros a reconocerte.</p>
-                    <p class="component-card__meta">Máximo 2MB. Formatos: PNG, JPG, WEBP.</p>
+                    <h2 class="component-card__title" data-i18n="settings.profile.avatar_title"></h2>
+                    <p class="component-card__description" data-i18n="settings.profile.avatar_desc"></p>
+                    <p class="component-card__meta" data-i18n="settings.profile.avatar_meta"></p>
                 </div>
             </div>
 
             <div class="component-card__actions">
                 <div data-state="avatar-actions-default" class="<?php echo !$hasCustomAvatar ? 'active' : 'disabled'; ?>">
-                    <button type="button" class="component-button" data-action="avatar-upload-trigger">
-                        Subir foto
-                    </button>
+                    <button type="button" class="component-button" data-action="avatar-upload-trigger" data-i18n="settings.profile.upload_btn"></button>
                 </div>
 
                 <div data-state="avatar-actions-custom" class="<?php echo $hasCustomAvatar ? 'active' : 'disabled'; ?>">
-                    <button type="button" class="component-button" data-action="avatar-remove-trigger">Eliminar</button>
-                    <button type="button" class="component-button" data-action="avatar-change-trigger">Cambiar foto</button>
+                    <button type="button" class="component-button" data-action="avatar-remove-trigger" data-i18n="global.delete"></button>
+                    <button type="button" class="component-button" data-action="avatar-change-trigger" data-i18n="settings.profile.change_btn"></button>
                 </div>
 
                 <div data-state="avatar-actions-preview" class="disabled">
-                    <button type="button" class="component-button" data-action="avatar-cancel-trigger">Cancelar</button>
-                    <button type="button" class="component-button" data-action="avatar-save-trigger-btn">Guardar</button>
+                    <button type="button" class="component-button" data-action="avatar-cancel-trigger" data-i18n="global.cancel"></button>
+                    <button type="button" class="component-button" data-action="avatar-save-trigger-btn" data-i18n="global.save"></button>
                 </div>
             </div>
         </div>
@@ -122,7 +107,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
         <div class="component-card component-card--edit-mode" data-component="username-section">
             <div class="component-card__content">
                 <div class="component-card__text" style="width: 100%;">
-                    <h2 class="component-card__title">Nombre de usuario</h2>
+                    <h2 class="component-card__title" data-i18n="settings.profile.username_title"></h2>
                     <div data-state="username-view-state" class="active">
                         <p class="component-card__description" data-element="username-display-text">
                             <?php echo htmlspecialchars($currentUsername); ?>
@@ -134,17 +119,17 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                                 value="<?php echo htmlspecialchars($currentUsername); ?>"
                                 required minlength="8" maxlength="32">
                             <div data-state="username-actions-edit" class="disabled">
-                                <button type="button" class="component-button" data-action="username-cancel-trigger">Cancelar</button>
-                                <button type="button" class="component-button primary" data-action="username-save-trigger-btn">Guardar</button>
+                                <button type="button" class="component-button" data-action="username-cancel-trigger" data-i18n="global.cancel"></button>
+                                <button type="button" class="component-button primary" data-action="username-save-trigger-btn" data-i18n="global.save"></button>
                             </div>
                         </div>
-                        <p class="component-card__meta">8-32 caracteres. Letras, números y guión bajo.</p>
+                        <p class="component-card__meta" data-i18n="settings.profile.username_meta"></p>
                     </div>
                 </div>
             </div>
             <div class="component-card__actions">
                 <div data-state="username-actions-view" class="active">
-                    <button type="button" class="component-button" data-action="username-edit-trigger">Editar</button>
+                    <button type="button" class="component-button" data-action="username-edit-trigger" data-i18n="global.edit"></button>
                 </div>
             </div>
         </div>
@@ -152,7 +137,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
         <div class="component-card component-card--edit-mode" data-component="email-section">
             <div class="component-card__content">
                 <div class="component-card__text" style="width: 100%;">
-                    <h2 class="component-card__title">Correo Electrónico</h2>
+                    <h2 class="component-card__title" data-i18n="settings.profile.email_title"></h2>
                     <div data-state="email-view-state" class="active">
                         <p class="component-card__description" data-element="email-display-text">
                             <?php echo htmlspecialchars($currentEmail); ?>
@@ -164,17 +149,17 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                                 value="<?php echo htmlspecialchars($currentEmail); ?>"
                                 required>
                             <div data-state="email-actions-edit" class="disabled">
-                                <button type="button" class="component-button" data-action="email-cancel-trigger">Cancelar</button>
-                                <button type="button" class="component-button primary" data-action="email-save-trigger-btn">Guardar</button>
+                                <button type="button" class="component-button" data-action="email-cancel-trigger" data-i18n="global.cancel"></button>
+                                <button type="button" class="component-button primary" data-action="email-save-trigger-btn" data-i18n="global.save"></button>
                             </div>
                         </div>
-                        <p class="component-card__meta">Debe ser un dominio válido (Gmail, Outlook, iCloud, Yahoo).</p>
+                        <p class="component-card__meta" data-i18n="settings.profile.email_meta"></p>
                     </div>
                 </div>
             </div>
             <div class="component-card__actions">
                 <div data-state="email-actions-view" class="active">
-                    <button type="button" class="component-button" data-action="email-edit-trigger">Editar</button>
+                    <button type="button" class="component-button" data-action="email-edit-trigger" data-i18n="global.edit"></button>
                 </div>
             </div>
         </div>
@@ -182,8 +167,8 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
         <div class="component-card component-card--column">
             <div class="component-card__content">
                 <div class="component-card__text">
-                    <h2 class="component-card__title" data-i18n="settings.profile.usageTitle">¿Para qué usarás ProjectAurora?</h2>
-                    <p class="component-card__description" data-i18n="settings.profile.usageDesc">Esto nos ayudará a personalizar tu experiencia.</p>
+                    <h2 class="component-card__title" data-i18n="settings.profile.usage_title"></h2>
+                    <p class="component-card__description" data-i18n="settings.profile.usage_desc"></p>
                 </div>
             </div>
             <div class="component-card__actions">
@@ -193,7 +178,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                             <span class="material-symbols-rounded"><?php echo htmlspecialchars($usageDisplayIcon); ?></span>
                         </div>
                         <div class="trigger-select-text">
-                            <span><?php echo htmlspecialchars($usageDisplayText); ?></span>
+                            <span data-i18n="settings.usage_options.<?php echo $currentUsage; ?>"></span>
                         </div>
                         <div class="trigger-select-arrow">
                             <span class="material-symbols-rounded">arrow_drop_down</span>
@@ -204,13 +189,12 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                         <div class="menu-content">
                             <div class="menu-list">
                                 <?php
-                                // Usamos el mismo array $usageIcons para mantener consistencia
                                 $usageOptions = [
-                                    ['val' => 'personal', 'icon' => $usageIcons['personal'], 'label' => 'Uso personal'],
-                                    ['val' => 'student', 'icon' => $usageIcons['student'], 'label' => 'Estudiante'],
-                                    ['val' => 'teacher', 'icon' => $usageIcons['teacher'], 'label' => 'Docente'],
-                                    ['val' => 'small_business', 'icon' => $usageIcons['small_business'], 'label' => 'Empresa pequeña'],
-                                    ['val' => 'large_business', 'icon' => $usageIcons['large_business'], 'label' => 'Empresa grande'],
+                                    ['val' => 'personal', 'icon' => $usageIcons['personal'], 'i18n' => 'settings.usage_options.personal'],
+                                    ['val' => 'student', 'icon' => $usageIcons['student'], 'i18n' => 'settings.usage_options.student'],
+                                    ['val' => 'teacher', 'icon' => $usageIcons['teacher'], 'i18n' => 'settings.usage_options.teacher'],
+                                    ['val' => 'small_business', 'icon' => $usageIcons['small_business'], 'i18n' => 'settings.usage_options.small_business'],
+                                    ['val' => 'large_business', 'icon' => $usageIcons['large_business'], 'i18n' => 'settings.usage_options.large_business'],
                                 ];
                                 foreach ($usageOptions as $opt): 
                                     $isActive = ($currentUsage === $opt['val']) ? 'active' : '';
@@ -218,7 +202,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                                 ?>
                                 <div class="menu-link <?php echo $isActive; ?>" data-value="<?php echo $opt['val']; ?>">
                                     <div class="menu-link-icon"><span class="material-symbols-rounded"><?php echo $opt['icon']; ?></span></div>
-                                    <div class="menu-link-text"><span><?php echo $opt['label']; ?></span></div>
+                                    <div class="menu-link-text"><span data-i18n="<?php echo $opt['i18n']; ?>"></span></div>
                                     <div class="menu-link-icon"><?php echo $check; ?></div>
                                 </div>
                                 <?php endforeach; ?>
@@ -232,8 +216,8 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
         <div class="component-card component-card--column">
             <div class="component-card__content">
                 <div class="component-card__text">
-                    <h2 class="component-card__title" data-i18n="settings.profile.langTitle">Idioma</h2>
-                    <p class="component-card__description" data-i18n="settings.profile.langDesc">Selecciona tu idioma preferido.</p>
+                    <h2 class="component-card__title" data-i18n="settings.profile.lang_title"></h2>
+                    <p class="component-card__description" data-i18n="settings.profile.lang_desc"></p>
                 </div>
             </div>
             <div class="component-card__actions">
@@ -247,7 +231,6 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                         <div class="menu-content">
                             <div class="menu-list">
                                 <?php 
-                                // [CORRECCIÓN 4] Todos los iconos unificados a 'translate'
                                 $langOptions = [
                                     ['val' => 'es-latam', 'icon' => 'translate', 'label' => 'Español (Latinoamérica)'],
                                     ['val' => 'es-mx', 'icon' => 'translate', 'label' => 'Español (México)'],
@@ -274,8 +257,8 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
         <div class="component-card component-card--edit-mode">
             <div class="component-card__content">
                 <div class="component-card__text">
-                    <h2 class="component-card__title" data-i18n="settings.profile.newTabTitle">Abrir los enlaces en una pestaña nueva</h2>
-                    <p class="component-card__description" data-i18n="settings.profile.newTabDesc">En el navegador web, los enlaces siempre se abrirán en una pestaña nueva.</p>
+                    <h2 class="component-card__title" data-i18n="settings.profile.new_tab_title"></h2>
+                    <p class="component-card__description" data-i18n="settings.profile.new_tab_desc"></p>
                 </div>
             </div>
             <div class="component-card__actions actions-right">
