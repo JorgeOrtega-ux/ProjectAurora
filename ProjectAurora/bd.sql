@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 CREATE TABLE IF NOT EXISTS user_audit_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    change_type ENUM('username', 'email', 'avatar') NOT NULL,
+    change_type ENUM('username', 'email', 'avatar', 'password') NOT NULL,
     old_value TEXT NULL,
     new_value TEXT NULL,
     changed_by_ip VARCHAR(45) NOT NULL,

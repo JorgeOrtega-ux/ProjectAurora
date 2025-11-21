@@ -20,12 +20,11 @@ import { SocketService } from './services/socket-service.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     try {
-        console.log('Project Aurora: Iniciando módulos...');
 
         // Inicializar Core y Auth
         initUrlManager();
         initAuthManager();
-        
+
         // Inicializar UI Base
         initMainController();
         initTooltipManager();
@@ -40,17 +39,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Inicializar Controladores UI avanzados
         initDragController();
-        
+
         // Inicializar Gestor de Configuración
         // Nota: Como la sección de configuración se carga dinámicamente vía AJAX (UrlManager),
         // initSettingsManager debe ser capaz de ejecutarse cuando el contenido cambie.
         // UrlManager.js debería llamar a window.initSettingsManager() si existe después de cargar contenido.
-        window.initSettingsManager = initSettingsManager; 
-        
-        // Ejecutarlo por primera vez por si cargamos directo en settings (F5 en página de ajustes)
-        initSettingsManager(); 
+        window.initSettingsManager = initSettingsManager;
 
-        console.log('Project Aurora: Módulos cargados correctamente.');
+        // Ejecutarlo por primera vez por si cargamos directo en settings (F5 en página de ajustes)
+        initSettingsManager();
+
     } catch (error) {
         console.error('Error crítico al inicializar la aplicación:', error);
     }

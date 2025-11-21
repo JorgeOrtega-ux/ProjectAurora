@@ -47,8 +47,10 @@ def verify_token_in_db(token):
 
 async def handle_browser_client(websocket):
     """Maneja la conexión con el navegador (Cliente JS)"""
+    # Variable para guardar el ID de esta conexión específica
+    conn_id = "unknown" 
+    
     try:
-        # 1. Esperar mensaje de autenticación
         async for message in websocket:
             try:
                 data = json.loads(message)
@@ -57,37 +59,40 @@ async def handle_browser_client(websocket):
             
             if data.get('type') == 'auth':
                 token = data.get('token')
+                # 1. Capturamos el ID que envía el JS (o asignamos uno temporal si no viene)
+                conn_id = data.get('request_id', 'no-id')
                 
                 if not token:
+                    # Logueamos con el ID
+                    print(f"[WS][{conn_id}] Error: Token requerido")
                     await websocket.send(json.dumps({"type": "error", "msg": "Token requerido"}))
                     return
 
-                # [SEGURIDAD] Verificar token en DB
                 user_id = verify_token_in_db(token)
 
                 if user_id:
                     connected_clients[user_id] = websocket
-                    print(f"[WS] Usuario AUTENTICADO y conectado: ID {user_id}")
-                    await websocket.send(json.dumps({"type": "connected", "msg": "Conectado de forma segura"}))
+                    # 2. Logueamos el éxito usando el ID
+                    print(f"[WS][{conn_id}] Usuario AUTENTICADO: ID {user_id}")
                     
-                    # Mantener conexión viva esperando cierre
+                    await websocket.send(json.dumps({"type": "connected", "msg": "Conectado de forma segura"}))
                     await websocket.wait_closed()
                 else:
-                    print(f"[WS] Intento de conexión fallido (Token inválido)")
-                    await websocket.send(json.dumps({"type": "error", "msg": "Token inválido o expirado"}))
+                    print(f"[WS][{conn_id}] Fallo de auth (Token inválido)")
+                    await websocket.send(json.dumps({"type": "error", "msg": "Token inválido"}))
                     await websocket.close()
                     return
             
     except websockets.exceptions.ConnectionClosed:
         pass
     except Exception as e:
-        print(f"[WS] Error en conexión: {e}")
+        print(f"[WS][{conn_id}] Error crítico: {e}")
     finally:
-        # Limpiar desconexión (Buscamos si este socket estaba registrado)
+        # Limpieza
         for uid, ws in list(connected_clients.items()):
             if ws == websocket:
                 del connected_clients[uid]
-                print(f"[WS] Usuario desconectado: ID {uid}")
+                print(f"[WS][{conn_id}] Usuario {uid} desconectado.")
 
 async def handle_php_notification(reader, writer):
     """Escucha notificaciones internas desde PHP (Puerto 8081)"""

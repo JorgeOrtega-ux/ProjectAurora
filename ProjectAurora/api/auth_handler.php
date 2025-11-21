@@ -353,7 +353,7 @@ try {
         }
 
     // ==================================================================
-    // RECUPERACIÓN - FINAL (Verificar Hash)
+    // RECUPERACIÓN - FINAL (Verificar Hash y Loggear)
     // ==================================================================
     } elseif ($action === 'recovery_final') {
         $token = trim($data['token'] ?? '');
@@ -378,11 +378,26 @@ try {
 
         $email = $row['identifier'];
 
+        // [NUEVO] Obtener hash antiguo para el log ANTES de actualizar
+        $stmtUser = $pdo->prepare("SELECT id, password FROM users WHERE email = ?");
+        $stmtUser->execute([$email]);
+        $userData = $stmtUser->fetch();
+        $oldHash = $userData['password'] ?? 'UNKNOWN';
+        $userIdForLog = $userData['id'] ?? null;
+
         // 2. Actualizar Password
         $newHash = password_hash($newPass, PASSWORD_BCRYPT);
         $upd = $pdo->prepare("UPDATE users SET password = ? WHERE email = ?");
         if ($upd->execute([$newHash, $email])) {
-            // 3. Borrar el token usado (usando el hash)
+            
+            // [NUEVO] Insertar en user_audit_logs con los HASHES reales
+            if ($userIdForLog) {
+                $ip = get_client_ip();
+                $stmtLog = $pdo->prepare("INSERT INTO user_audit_logs (user_id, change_type, old_value, new_value, changed_by_ip, changed_at) VALUES (?, 'password', ?, ?, ?, NOW())");
+                $stmtLog->execute([$userIdForLog, $oldHash, $newHash, $ip]);
+            }
+
+            // 3. Borrar el token usado
             $pdo->prepare("DELETE FROM verification_codes WHERE code = ?")->execute([$tokenHash]);
             
             clearFailedAttempts($pdo, $email);
