@@ -86,9 +86,12 @@
 }
 
 /* Acciones dentro del grupo de edición */
-/* [CORREGIDO] APLICAMOS FLEXBOX A AMBOS IDs */
-#username-actions-edit.active,
-#email-actions-edit.active {
+/* [MODIFICADO] Usamos data-state */
+[data-state="username-actions-edit"].active,
+[data-state="email-actions-edit"].active,
+[data-state="avatar-actions-default"].active,
+[data-state="avatar-actions-custom"].active,
+[data-state="avatar-actions-preview"].active {
     display: flex !important;
     gap: 8px;
 }
@@ -220,6 +223,7 @@
 }
 
 /* Clases de Estado */
+/* [MODIFICADO] Reemplazamos #id.active por [data-state="..."].active en la sección de actions */
 .active {
     display: block !important;
 }
@@ -336,9 +340,9 @@
         min-width: 100%;
     }
 
-    /* [CORREGIDO] Agregamos el ID de email aquí también */
-    #username-actions-edit.active,
-    #email-actions-edit.active {
+    /* [MODIFICADO] Usamos data-state */
+    [data-state="username-actions-edit"].active,
+    [data-state="email-actions-edit"].active {
         width: 100%;
         justify-content: flex-end;
     }

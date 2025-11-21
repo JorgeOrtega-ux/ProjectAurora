@@ -1,4 +1,4 @@
-// public/assets/js/settings-manager.js
+// public/assets/js/modules/settings-manager.js
 
 const API_SETTINGS = (window.BASE_PATH || '/ProjectAurora/') + 'api/settings_handler.php';
 
@@ -9,41 +9,56 @@ function getCsrfToken() {
     return input ? input.value : '';
 }
 
-export function initSettingsManager() {
-    // Solo inicializar si estamos en la sección de perfil
-    if (!document.getElementById('settings/your-profile') && !document.getElementById('avatar-section')) return;
+// Helper para seleccionar por data-attributes en lugar de ID
+function qs(selector) {
+    return document.querySelector(selector);
+}
 
-    console.log('Settings Manager: Inicializando...');
+export function initSettingsManager() {
+    // Inicializar solo si estamos en la sección correcta.
+    // Ahora verificamos usando el data-section o el data-component del avatar
+    if (!qs('[data-section="settings/your-profile"]') && !qs('[data-component="avatar-section"]')) return;
+
+    console.log('Settings Manager: Inicializando (Modo Data Attributes)...');
 
     initAvatarLogic();
     initUsernameLogic();
-    initEmailLogic(); // [NUEVO] Inicializamos la lógica del correo
+    initEmailLogic();
 }
 
 // ========================================================
 // LÓGICA DE AVATAR
 // ========================================================
 function initAvatarLogic() {
+    // Mapeo usando data-attributes
     const elements = {
-        fileInput: document.getElementById('avatar-upload-input'),
-        previewImg: document.getElementById('avatar-preview-image'),
-        uploadBtn: document.getElementById('avatar-upload-trigger'),
-        changeBtn: document.getElementById('avatar-change-trigger'),
-        removeBtn: document.getElementById('avatar-remove-trigger'),
-        cancelBtn: document.getElementById('avatar-cancel-trigger'),
-        saveBtn: document.getElementById('avatar-save-trigger-btn'),
-        actionsDefault: document.getElementById('avatar-actions-default'),
-        actionsCustom: document.getElementById('avatar-actions-custom'),
-        actionsPreview: document.getElementById('avatar-actions-preview')
+        fileInput: qs('[data-element="avatar-upload-input"]'),
+        previewImg: qs('[data-element="avatar-preview-image"]'),
+        overlayTrigger: qs('[data-action="trigger-avatar-upload"]'), // Nuevo trigger overlay
+        uploadBtn: qs('[data-action="avatar-upload-trigger"]'),
+        changeBtn: qs('[data-action="avatar-change-trigger"]'),
+        removeBtn: qs('[data-action="avatar-remove-trigger"]'),
+        cancelBtn: qs('[data-action="avatar-cancel-trigger"]'),
+        saveBtn: qs('[data-action="avatar-save-trigger-btn"]'),
+        actionsDefault: qs('[data-state="avatar-actions-default"]'),
+        actionsCustom: qs('[data-state="avatar-actions-custom"]'),
+        actionsPreview: qs('[data-state="avatar-actions-preview"]')
     };
 
     if (!elements.fileInput) return;
 
     let originalImageSrc = elements.previewImg.src;
     
-    const triggerUpload = (e) => { e.preventDefault(); elements.fileInput.click(); };
+    // Función para abrir el selector de archivos
+    const triggerUpload = (e) => { 
+        if(e) e.preventDefault(); 
+        elements.fileInput.click(); 
+    };
+
+    // Asignar listeners
     if (elements.uploadBtn) elements.uploadBtn.addEventListener('click', triggerUpload);
     if (elements.changeBtn) elements.changeBtn.addEventListener('click', triggerUpload);
+    if (elements.overlayTrigger) elements.overlayTrigger.addEventListener('click', triggerUpload);
 
     elements.fileInput.addEventListener('change', function(e) {
         const file = this.files[0];
@@ -65,20 +80,20 @@ function initAvatarLogic() {
         reader.readAsDataURL(file);
     });
 
-   elements.cancelBtn.addEventListener('click', () => {
-    elements.previewImg.src = originalImageSrc;
-    elements.fileInput.value = '';
-    
-    const isDefault = originalImageSrc.includes('data:image') || 
-                      originalImageSrc === '' || 
-                      originalImageSrc.endsWith('/') ||
-                      originalImageSrc.includes('/default/') ||          
-                      originalImageSrc.includes('avatars_default') ||    
-                      originalImageSrc.includes('ui-avatars.com');       
+    elements.cancelBtn.addEventListener('click', () => {
+        elements.previewImg.src = originalImageSrc;
+        elements.fileInput.value = '';
+        
+        const isDefault = originalImageSrc.includes('data:image') || 
+                          originalImageSrc === '' || 
+                          originalImageSrc.endsWith('/') ||
+                          originalImageSrc.includes('/default/') ||          
+                          originalImageSrc.includes('avatars_default') ||    
+                          originalImageSrc.includes('ui-avatars.com');       
 
-    const mode = isDefault ? 'default' : 'custom';
-    toggleAvatarActions(mode);
-});
+        const mode = isDefault ? 'default' : 'custom';
+        toggleAvatarActions(mode);
+    });
 
     elements.saveBtn.addEventListener('click', async () => {
         const file = elements.fileInput.files[0];
@@ -129,9 +144,9 @@ function initAvatarLogic() {
     });
 
     function toggleAvatarActions(mode) {
-        elements.actionsDefault.className = (mode === 'default') ? 'active' : 'disabled';
-        elements.actionsCustom.className = (mode === 'custom') ? 'active' : 'disabled';
-        elements.actionsPreview.className = (mode === 'preview') ? 'active' : 'disabled';
+        if(elements.actionsDefault) elements.actionsDefault.className = (mode === 'default') ? 'active' : 'disabled';
+        if(elements.actionsCustom) elements.actionsCustom.className = (mode === 'custom') ? 'active' : 'disabled';
+        if(elements.actionsPreview) elements.actionsPreview.className = (mode === 'preview') ? 'active' : 'disabled';
     }
 }
 
@@ -140,15 +155,15 @@ function initAvatarLogic() {
 // ========================================================
 function initUsernameLogic() {
     const els = {
-        viewState: document.getElementById('username-view-state'),
-        editState: document.getElementById('username-edit-state'),
-        actionsView: document.getElementById('username-actions-view'),
-        actionsEdit: document.getElementById('username-actions-edit'),
-        display: document.getElementById('username-display-text'),
-        input: document.getElementById('username-input'),
-        editBtn: document.getElementById('username-edit-trigger'),
-        cancelBtn: document.getElementById('username-cancel-trigger'),
-        saveBtn: document.getElementById('username-save-trigger-btn')
+        viewState: qs('[data-state="username-view-state"]'),
+        editState: qs('[data-state="username-edit-state"]'),
+        actionsView: qs('[data-state="username-actions-view"]'),
+        actionsEdit: qs('[data-state="username-actions-edit"]'),
+        display: qs('[data-element="username-display-text"]'),
+        input: qs('[data-element="username-input"]'),
+        editBtn: qs('[data-action="username-edit-trigger"]'),
+        cancelBtn: qs('[data-action="username-cancel-trigger"]'),
+        saveBtn: qs('[data-action="username-save-trigger-btn"]')
     };
 
     if (!els.input) return;
@@ -211,19 +226,19 @@ function initUsernameLogic() {
 }
 
 // ========================================================
-// [NUEVO] LÓGICA DE CORREO ELECTRÓNICO
+// LÓGICA DE CORREO ELECTRÓNICO
 // ========================================================
 function initEmailLogic() {
     const els = {
-        viewState: document.getElementById('email-view-state'),
-        editState: document.getElementById('email-edit-state'),
-        actionsView: document.getElementById('email-actions-view'),
-        actionsEdit: document.getElementById('email-actions-edit'),
-        display: document.getElementById('email-display-text'),
-        input: document.getElementById('email-input'),
-        editBtn: document.getElementById('email-edit-trigger'),
-        cancelBtn: document.getElementById('email-cancel-trigger'),
-        saveBtn: document.getElementById('email-save-trigger-btn')
+        viewState: qs('[data-state="email-view-state"]'),
+        editState: qs('[data-state="email-edit-state"]'),
+        actionsView: qs('[data-state="email-actions-view"]'),
+        actionsEdit: qs('[data-state="email-actions-edit"]'),
+        display: qs('[data-element="email-display-text"]'),
+        input: qs('[data-element="email-input"]'),
+        editBtn: qs('[data-action="email-edit-trigger"]'),
+        cancelBtn: qs('[data-action="email-cancel-trigger"]'),
+        saveBtn: qs('[data-action="email-save-trigger-btn"]')
     };
 
     if (!els.input) return;
@@ -247,7 +262,6 @@ function initEmailLogic() {
             return;
         }
 
-        // Validación simple de dominio (mismas reglas que registro)
         const regex = /^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i;
         if (!regex.test(newVal)) {
             if (window.alertManager) window.alertManager.showAlert('Dominio no permitido (Solo Gmail, Outlook, iCloud, Yahoo).', 'warning');
@@ -305,6 +319,7 @@ function toggleMode(els, isEditing) {
 }
 
 function updateHeaderAvatar(src) {
+    // Este selector se puede mantener genérico por clase, o cambiar a data si modificas header.php
     const headerImg = document.querySelector('.header-button.profile-button .profile-img');
     if (headerImg) headerImg.src = src;
 }

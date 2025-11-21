@@ -1,5 +1,5 @@
 // public/assets/js/drag-controller.js
-import { closeAllModules, isAppAnimating } from './main-controller.js';
+import { closeAllModules, isAppAnimating } from '../ui/main-controller.js';
 
 export function initDragController() {
     // Definimos los módulos que tendrán capacidad de arrastre
