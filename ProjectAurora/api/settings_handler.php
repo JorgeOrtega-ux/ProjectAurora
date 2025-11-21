@@ -35,6 +35,8 @@ if (!isset($_SESSION['user_id'])) {
 $userId = $_SESSION['user_id'];
 $response = ['success' => false, 'message' => 'Acción no válida'];
 
+// --- FUNCIONES AUXILIARES ---
+
 function generate_uuid_v4() {
     $data = random_bytes(16);
     $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
@@ -47,13 +49,54 @@ function get_random_hex_color() {
     return $colors[array_rand($colors)];
 }
 
+/**
+ * Verifica si el usuario puede realizar el cambio basándose en el tiempo del último cambio.
+ */
+function check_cooldown($pdo, $userId, $type, $daysLimit) {
+    $stmt = $pdo->prepare("SELECT changed_at FROM user_audit_logs 
+                           WHERE user_id = ? AND change_type = ? 
+                           ORDER BY changed_at DESC LIMIT 1");
+    $stmt->execute([$userId, $type]);
+    $lastChange = $stmt->fetchColumn();
+
+    if ($lastChange) {
+        $lastDate = new DateTime($lastChange);
+        $now = new DateTime();
+        $diff = $now->diff($lastDate);
+        $daysPassed = $diff->days;
+
+        if ($daysPassed < $daysLimit) {
+            $remaining = $daysLimit - $daysPassed;
+            // Si falta menos de 1 día (y el límite es 1 día), mostramos horas
+            if ($daysLimit === 1 && $daysPassed < 1) {
+                $hoursRemaining = 24 - $diff->h;
+                throw new Exception("Debes esperar $hoursRemaining horas para volver a cambiar tu $type.");
+            }
+            $unit = ($remaining === 1) ? 'día' : 'días';
+            throw new Exception("Debes esperar $remaining $unit para volver a cambiar tu $type.");
+        }
+    }
+}
+
+/**
+ * Registra el cambio en la tabla de auditoría.
+ */
+function audit_log($pdo, $userId, $type, $oldValue, $newValue) {
+    $ip = get_client_ip();
+    $stmt = $pdo->prepare("INSERT INTO user_audit_logs (user_id, change_type, old_value, new_value, changed_by_ip, changed_at) VALUES (?, ?, ?, ?, ?, NOW())");
+    $stmt->execute([$userId, $type, $oldValue, $newValue, $ip]);
+}
+
 try {
     
     // ==================================================================
-    // ACTUALIZAR AVATAR
+    // ACTUALIZAR AVATAR (Con Cooldown)
     // ==================================================================
     if ($action === 'update_avatar') {
         
+        // 1. Verificar Cooldown (1 día)
+        check_cooldown($pdo, $userId, 'avatar', 1);
+
         if (!isset($_FILES['avatar']) || $_FILES['avatar']['error'] !== UPLOAD_ERR_OK) {
             throw new Exception('No se recibió ningún archivo o hubo un error en la subida.');
         }
@@ -80,34 +123,47 @@ try {
             throw new Exception('Error al guardar la imagen en el servidor.');
         }
 
+        // Obtener valor antiguo
         $stmt = $pdo->prepare("SELECT avatar FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $oldAvatar = $stmt->fetchColumn();
+
         if ($oldAvatar && file_exists(__DIR__ . '/../public/' . $oldAvatar)) {
-            @unlink(__DIR__ . '/../public/' . $oldAvatar);
+            if (strpos($oldAvatar, 'custom/') !== false) {
+                @unlink(__DIR__ . '/../public/' . $oldAvatar);
+            }
         }
 
         $stmt = $pdo->prepare("UPDATE users SET avatar = ? WHERE id = ?");
         if ($stmt->execute([$dbPath, $userId])) {
             $_SESSION['user_avatar'] = $dbPath;
+            
+            // Auditoría
+            audit_log($pdo, $userId, 'avatar', $oldAvatar, $dbPath);
+
             $response = ['success' => true, 'message' => 'Foto de perfil actualizada.', 'avatar_url' => '/ProjectAurora/' . $dbPath];
         } else {
             throw new Exception('Error DB.');
         }
 
     // ==================================================================
-    // ELIMINAR AVATAR
+    // ELIMINAR AVATAR (Sin Cooldown)
     // ==================================================================
     } elseif ($action === 'remove_avatar') {
+        
+        // NO verificamos cooldown aquí para permitir corregir errores.
+
         $stmt = $pdo->prepare("SELECT username, avatar FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $user = $stmt->fetch();
         if (!$user) throw new Exception('Usuario no encontrado.');
 
+        $oldAvatar = $user['avatar'];
         $username = $user['username'];
+        
+        // Generar default
         $color = get_random_hex_color();
         $uuid = generate_uuid_v4();
-        
         $apiUrl = "https://ui-avatars.com/api/?name={$username}&size=256&background={$color}&color=ffffff&bold=true&length=1";
         $newFileName = $uuid . '.png';
         $uploadDir = __DIR__ . '/../public/assets/uploads/avatars/default/';
@@ -118,25 +174,40 @@ try {
         $imageContent = @file_get_contents($apiUrl);
         if ($imageContent !== false) file_put_contents($destPath, $imageContent);
 
-        if ($user['avatar'] && file_exists(__DIR__ . '/../public/' . $user['avatar'])) {
-            @unlink(__DIR__ . '/../public/' . $user['avatar']);
+        if ($oldAvatar && file_exists(__DIR__ . '/../public/' . $oldAvatar)) {
+             if (strpos($oldAvatar, 'custom/') !== false) {
+                @unlink(__DIR__ . '/../public/' . $oldAvatar);
+            }
         }
 
         $stmt = $pdo->prepare("UPDATE users SET avatar = ? WHERE id = ?");
         if ($stmt->execute([$dbPath, $userId])) {
             $_SESSION['user_avatar'] = $dbPath;
+
+            // Auditoría (Esto reiniciará el contador para la próxima subida)
+            audit_log($pdo, $userId, 'avatar', $oldAvatar, $dbPath);
+
             $response = ['success' => true, 'message' => 'Avatar restablecido.', 'avatar_url' => '/ProjectAurora/' . $dbPath];
         } else {
             throw new Exception('Error DB.');
         }
 
     // ==================================================================
-    // ACTUALIZAR USERNAME
+    // ACTUALIZAR USERNAME (Con Cooldown 12 días)
     // ==================================================================
     } elseif ($action === 'update_username') {
+        
+        check_cooldown($pdo, $userId, 'username', 12);
+
         $newUsername = trim($data['username'] ?? '');
         if (strlen($newUsername) < 8 || strlen($newUsername) > 32) throw new Exception('El usuario debe tener entre 8 y 32 caracteres.');
         if (!preg_match('/^[a-zA-Z0-9_]+$/', $newUsername)) throw new Exception('Solo se permiten letras, números y guiones bajos.');
+
+        $stmtGet = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+        $stmtGet->execute([$userId]);
+        $oldUsername = $stmtGet->fetchColumn();
+
+        if ($oldUsername === $newUsername) throw new Exception('El nombre de usuario es igual al actual.');
 
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? AND id != ?");
         $stmt->execute([$newUsername, $userId]);
@@ -144,18 +215,30 @@ try {
 
         $stmt = $pdo->prepare("UPDATE users SET username = ? WHERE id = ?");
         if ($stmt->execute([$newUsername, $userId])) {
+            
+            audit_log($pdo, $userId, 'username', $oldUsername, $newUsername);
+
             $response = ['success' => true, 'message' => 'Nombre de usuario actualizado.', 'new_username' => $newUsername];
         } else {
             throw new Exception('Error al actualizar la base de datos.');
         }
 
     // ==================================================================
-    // ACTUALIZAR EMAIL
+    // ACTUALIZAR EMAIL (Con Cooldown 12 días)
     // ==================================================================
     } elseif ($action === 'update_email') {
+        
+        check_cooldown($pdo, $userId, 'email', 12);
+
         $newEmail = strtolower(trim($data['email'] ?? ''));
         if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) throw new Exception('Formato de correo inválido.');
         if (!preg_match('/^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i', $newEmail)) throw new Exception('Dominio no permitido.');
+
+        $stmtGet = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+        $stmtGet->execute([$userId]);
+        $oldEmail = $stmtGet->fetchColumn();
+
+        if ($oldEmail === $newEmail) throw new Exception('El correo es igual al actual.');
 
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
         $stmt->execute([$newEmail, $userId]);
@@ -163,16 +246,18 @@ try {
 
         $stmt = $pdo->prepare("UPDATE users SET email = ? WHERE id = ?");
         if ($stmt->execute([$newEmail, $userId])) {
+
+            audit_log($pdo, $userId, 'email', $oldEmail, $newEmail);
+
             $response = ['success' => true, 'message' => 'Correo electrónico actualizado.', 'new_email' => $newEmail];
         } else {
             throw new Exception('Error al actualizar el correo.');
         }
 
     // ==================================================================
-    // ACTUALIZAR USO (PREFERENCIAS)
+    // PREFERENCIAS (Rate Limit Técnico)
     // ==================================================================
     } elseif ($action === 'update_usage') {
-        // [SEGURIDAD] RATE LIMIT: 10 intentos por minuto
         if (checkActionRateLimit($pdo, $userId, 'pref_update_limit', 10, 1)) {
             throw new Exception("No se pudo completar la solicitud. Por favor, inténtalo más tarde.");
         }
@@ -193,11 +278,7 @@ try {
             throw new Exception("Error actualizando preferencia.");
         }
 
-    // ==================================================================
-    // ACTUALIZAR IDIOMA (PREFERENCIAS)
-    // ==================================================================
     } elseif ($action === 'update_language') {
-        // [SEGURIDAD] RATE LIMIT
         if (checkActionRateLimit($pdo, $userId, 'pref_update_limit', 10, 1)) {
             throw new Exception("No se pudo completar la solicitud. Por favor, inténtalo más tarde.");
         }
@@ -218,11 +299,7 @@ try {
             throw new Exception("Error actualizando idioma.");
         }
 
-    // ==================================================================
-    // ACTUALIZAR PREFERENCIAS BOOLEANAS (TOGGLES)
-    // ==================================================================
     } elseif ($action === 'update_boolean_preference') {
-        // [SEGURIDAD] RATE LIMIT
         if (checkActionRateLimit($pdo, $userId, 'pref_update_limit', 10, 1)) {
             throw new Exception("No se pudo completar la solicitud. Por favor, inténtalo más tarde.");
         }
@@ -231,7 +308,6 @@ try {
         $field = $data['field'] ?? '';
         $value = isset($data['value']) && $data['value'] ? 1 : 0;
 
-        // Whitelist de campos permitidos
         $allowedFields = ['open_links_in_new_tab']; 
 
         if (!in_array($field, $allowedFields)) {

@@ -9,6 +9,6 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 ?>
-<div class="section-content overflow-y active" data-section="main">
+<div class="section-content active" data-section="main">
     <h1>1</h1>
 </div>

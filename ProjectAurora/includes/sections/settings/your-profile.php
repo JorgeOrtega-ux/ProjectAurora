@@ -55,7 +55,7 @@ if (empty($userAvatar) || strpos($userAvatar, '/default/') !== false) {
 $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
 ?>
 
-<div class="section-content overflow-y active" data-section="settings/your-profile">
+<div class="section-content active" data-section="settings/your-profile">
     <div class="component-wrapper">
 
         <div class="component-header-card">

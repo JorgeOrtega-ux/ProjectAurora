@@ -10,7 +10,7 @@ if (isset($CURRENT_SECTION)) {
 }
 ?>
 
-<div class="section-content overflow-y active" data-section="register">
+<div class="section-content active" data-section="register">
     <div class="section-center-wrapper">
         <div class="form-container">
             

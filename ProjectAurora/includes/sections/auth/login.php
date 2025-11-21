@@ -16,7 +16,7 @@ if ($isStep2 && isset($_SESSION['temp_login_2fa']['email'])) {
     }
 }
 ?>
-<div class="section-content overflow-y active" data-section="login">
+<div class="section-content active" data-section="login">
     <div class="section-center-wrapper">
         <div class="form-container">
             

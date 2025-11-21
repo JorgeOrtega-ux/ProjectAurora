@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS ws_auth_tokens (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- [ACTUALIZADO] PREFERENCIAS DE USUARIO
+-- PREFERENCIAS DE USUARIO
 CREATE TABLE IF NOT EXISTS user_preferences (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL UNIQUE,
@@ -97,4 +97,18 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     open_links_in_new_tab TINYINT(1) DEFAULT 1, -- 1 = True, 0 = False
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- [NUEVO] AUDITORÍA DE CAMBIOS DE PERFIL
+CREATE TABLE IF NOT EXISTS user_audit_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    change_type ENUM('username', 'email', 'avatar') NOT NULL,
+    old_value TEXT NULL,
+    new_value TEXT NULL,
+    changed_by_ip VARCHAR(45) NOT NULL,
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    -- Índice compuesto para buscar rápidamente el último cambio de un tipo específico
+    INDEX idx_audit_check (user_id, change_type, changed_at)
 );

@@ -46,7 +46,7 @@ if (isset($_SESSION['user_id'])) {
                 <div class="general-content-bottom">
                     <?php include __DIR__ . '/../includes/modules/module-surface.php'; ?>
 
-                    <div class="general-content-scrolleable" data-container="main-section">
+                    <div class="general-content-scrolleable overflow-y" data-container="main-section">
                         <?php
                         $sectionFile = __DIR__ . "/../includes/sections/{$SECTION_FILE_NAME}.php";
                         if (file_exists($sectionFile)) {

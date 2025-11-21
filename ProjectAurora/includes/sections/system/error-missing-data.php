@@ -1,4 +1,4 @@
-<div class="section-content overflow-y active" data-section="error-missing-data">
+<div class="section-content active" data-section="error-missing-data">
     
     <div class="section-center-wrapper">
 

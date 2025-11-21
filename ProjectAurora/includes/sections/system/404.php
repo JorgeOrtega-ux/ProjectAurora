@@ -4,7 +4,7 @@ if (!isset($basePath)) {
     $basePath = '/ProjectAurora/';
 }
 ?>
-<div class="section-content overflow-y active" data-section="404">
+<div class="section-content active" data-section="404">
 
     <div class="section-center-wrapper">
 

@@ -18,7 +18,7 @@ if ($status === 'deleted') {
 }
 ?>
 
-<div class="section-content overflow-y active" data-section="status-page">
+<div class="section-content active" data-section="status-page">
     <div class="section-center-wrapper">
         
         <div class="form-container" style="text-align: center; padding-top: 0;">

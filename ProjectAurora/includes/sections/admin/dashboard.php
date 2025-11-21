@@ -7,7 +7,7 @@ if (!in_array($role, ['founder', 'administrator', 'admin'])) {
     exit;
 }
 ?>
-<div class="section-content overflow-y active" data-section="admin/dashboard">
+<div class="section-content active" data-section="admin/dashboard">
     <h1>Dashboard Administrativo</h1>
     <p>Bienvenido al panel de control.</p>
 </div>

@@ -86,7 +86,7 @@ if ($isAjaxPartial) {
 
 // Caso B: Carga de página completa
 ?>
-<div class="section-content overflow-y active" data-section="search">
+<div class="section-content active" data-section="search">
     <div class="section-center-wrapper" style="justify-content: flex-start; align-items: center; flex-direction: column;">
 
         <div class="content-toolbar">

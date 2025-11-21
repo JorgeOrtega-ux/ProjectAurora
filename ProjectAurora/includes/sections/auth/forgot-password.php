@@ -6,7 +6,7 @@ if (isset($_SESSION['temp_recovery']['step'])) {
 }
 ?>
 
-<div class="section-content overflow-y active" data-section="forgot-password">
+<div class="section-content active" data-section="forgot-password">
     <div class="section-center-wrapper">
         <div class="form-container">
             
