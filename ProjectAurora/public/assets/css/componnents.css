@@ -150,7 +150,7 @@
 }
 
 /* ===========================================================
-   Avatar Styles [MODIFICADO]
+   Avatar Styles
    =========================================================== */
 .component-card__avatar {
     width: 72px;
@@ -161,8 +161,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    /* [IMPORTANTE] No usamos border del CSS normal, usamos el ::before para el rol */
-    /* overflow: hidden; <--- ESTO SE QUITA para permitir que el anillo sobresalga */
     overflow: visible; 
     flex-shrink: 0;
 }
@@ -172,7 +170,6 @@
     content: '';
     position: absolute;
     border-radius: 50%;
-    /* Hacemos que el anillo sea ligeramente más grande que el avatar */
     top: -4px;
     left: -4px;
     right: -4px;
@@ -206,14 +203,12 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    /* Aseguramos que la imagen sea redonda */
     border-radius: 50%; 
 }
 
-/* [SOLUCIÓN] La capa negra de overlay DEBE tener border-radius 50% */
 .component-card__avatar-overlay {
     position: absolute;
-    inset: 0; /* Cubre todo el contenedor */
+    inset: 0; 
     background-color: rgba(0, 0, 0, 0.4);
     display: flex;
     align-items: center;
@@ -223,8 +218,6 @@
     transition: opacity 0.2s;
     cursor: pointer;
     z-index: 3;
-    
-    /* Recorta el fondo negro en forma de círculo */
     border-radius: 50%; 
 }
 
@@ -242,6 +235,21 @@
     gap: 8px;
     width: 100%;
 }
+
+/* ===========================================================
+   FIX PARA DISEÑO DE PERFIL (USERNAME/EMAIL EDIT STATE)
+   =========================================================== */
+/* Como ahora .active global es display: flex (row), forzamos
+   a estos contenedores específicos a comportarse como columna
+   para que el texto meta quede debajo del input.
+*/
+[data-state="username-edit-state"].active,
+[data-state="email-edit-state"].active {
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+}
+/* =========================================================== */
 
 .disabled {
     display: none;

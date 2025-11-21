@@ -74,12 +74,13 @@ html {
     overflow-y: auto;
 }
 
+/* --- CAMBIO REALIZADO AQUÍ --- */
 .active {
-    display: flex;
+    display: flex; /* Cambiado a flex por tu requerimiento */
 }
 
 .section-content.active {
-    display: block;
+    display: block; /* Mantenemos las secciones principales como bloque para el scroll correcto */
 }
 
 .disabled {
@@ -352,7 +353,6 @@ html {
     width: 325px;
 }
 
-/* ESTRUCTURA MODULAR UNIFICADA */
 .popover-module .menu-content {
     width: 100%;
     background-color: #fff;
@@ -360,16 +360,13 @@ html {
     box-shadow: 0 4px 12px #00000020;
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Importante para los bordes redondeados */
-    /* padding: 8px; <--- REMOVIDO: Controlaremos padding por secciones */
+    overflow: hidden; 
 }
 
-/* Si el menu-content tiene listas directamente (como profile) */
 .popover-module .menu-content > .menu-list {
     padding: 8px;
 }
 
-/* ESTRUCTURA INTERNA MODULAR (Top / Bottom) */
 .menu-content-top {
     flex: 0 0 auto;
     display: flex;
@@ -385,18 +382,16 @@ html {
     position: relative;
     overflow-y: auto;
     display: flex;
-    flex-direction: column; /* Por defecto columna */
+    flex-direction: column; 
     background-color: #ffffff;
 }
 
-/* Títulos en cabeceras modulares */
 .menu-title {
     font-size: 18px;
     font-weight: 600;
     color: #000;
 }
 
-/* ESTILOS DE LISTAS DE MENÚ */
 .menu-list {
     display: flex;
     flex-direction: column;
@@ -444,7 +439,7 @@ html {
 }
 
 /* =========================================
-   6. FORMULARIOS (LOGIN / REGISTER)
+   6. FORMULARIOS
    ========================================= */
 .section-center-wrapper {
     width: 100%;
@@ -685,13 +680,8 @@ input[data-input="login-password"] {
 }
 
 @keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* =========================================
@@ -934,7 +924,7 @@ a.disabled-link {
 }
 
 /* =========================================
-   11. NOTIFICACIONES Y BÚSQUEDA (MODIFICADO)
+   11. NOTIFICACIONES Y BÚSQUEDA
    ========================================= */
 
 .popover-module.popover-notifications {
@@ -946,7 +936,6 @@ a.disabled-link {
     max-height: calc(100vh - 80px);
 }
 
-/* ACCIONES DE CABECERA MODULAR */
 .notifications-action {
     display: flex;
     align-items: center;
@@ -966,7 +955,6 @@ a.disabled-link {
     color: #000;
 }
 
-/* ESTADOS VACÍOS */
 .notifications-empty {
     display: flex;
     flex-direction: column;
@@ -976,7 +964,7 @@ a.disabled-link {
     color: #999;
     text-align: center;
     padding: 20px;
-    flex: 1; /* Para centrar verticalmente */
+    flex: 1; 
 }
 
 .notifications-empty .empty-icon {
@@ -990,7 +978,6 @@ a.disabled-link {
     margin: 0;
 }
 
-/* ESTILOS DE NOTIFICACIONES SOCIALES */
 .notif-list-wrapper {
     width: 100%;
     display: flex;
@@ -1175,12 +1162,10 @@ a.disabled-link {
     gap: 16px;
 }
 
-/* [MODIFICADO] CONTENEDOR DEL AVATAR CON ANILLOS DE ROL */
 .user-avatar-container {
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    /* overflow: hidden; <-- ELIMINADO PARA PERMITIR EL ANILLO EXTERIOR */
     overflow: visible;
     background-color: #f5f5f5;
     flex-shrink: 0;
@@ -1188,7 +1173,6 @@ a.disabled-link {
     justify-content: center;
     align-items: center;
     position: relative;
-    /* Necesario para el pseudo-elemento */
 }
 
 .user-avatar-container img {
@@ -1196,7 +1180,6 @@ a.disabled-link {
     height: 100%;
     object-fit: cover;
     border-radius: 50%;
-    /* Ahora aplicamos el radio a la imagen directamente */
 }
 
 .user-avatar-container .default-avatar {
@@ -1204,7 +1187,6 @@ a.disabled-link {
     color: #bbb;
 }
 
-/* PSEUDO-ELEMENTO PARA EL ANILLO DE ROL */
 .user-avatar-container::before {
     content: '';
     position: absolute;
@@ -1219,7 +1201,6 @@ a.disabled-link {
     z-index: 2;
 }
 
-/* COLORES POR ROL */
 .user-avatar-container[data-role="user"]::before {
     border-color: #cccccc;
 }
@@ -1244,7 +1225,6 @@ a.disabled-link {
     -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
 }
 
-/* INFO USUARIO */
 .user-details {
     display: flex;
     flex-direction: column;
@@ -1304,7 +1284,7 @@ a.disabled-link {
 }
 
 /* =========================================
-   12. TOOLBARS & FILTERS (NUEVO)
+   12. TOOLBARS & FILTERS
    ========================================= */
 .content-toolbar {
     width: 100%;
@@ -1346,7 +1326,7 @@ a.disabled-link {
 }
 
 /* =========================================
-   13. NUEVO: BOTÓN CARGAR MÁS (FIX)
+   13. BOTÓN CARGAR MÁS
    ========================================= */
 .btn-load-more {
     background-color: transparent;
@@ -1370,15 +1350,12 @@ a.disabled-link {
 }
 
 /* =========================================
-   AGREGAR AL FINAL DE styles.css
+   ANIMACIONES Y MOVIL
    ========================================= */
-
-/* Ocultar la píldora de arrastre en escritorio */
 .pill-container {
     display: none;
 }
 
-/* Animaciones de Entrada/Salida */
 @keyframes slideIn {
     from { transform: translateY(100%); }
     to { transform: translateY(0); }
@@ -1415,10 +1392,8 @@ a.disabled-link {
     animation: fadeOut 0.2s ease-out forwards;
 }
 
-/* Estilos específicos para Menús Arrastrables en Móvil */
 @media (max-width: 468px) {
     
-    /* 1. Convertir popovers en overlays de pantalla completa */
     .popover-module.popover-profile,
     .popover-module.popover-notifications {
         position: fixed;
@@ -1430,34 +1405,30 @@ a.disabled-link {
         height: 100%;
         z-index: 9999;
         
-        /* Flexbox para alinear la tarjeta al fondo */
         display: flex;
         flex-direction: column;
         justify-content: flex-end;
         align-items: center;
         
-        background-color: #00000080; /* Fondo oscuro semi-transparente */
+        background-color: #00000080; 
         
-        /* Reset de estilos desktop */
         border-radius: 0;
         box-shadow: none;
         padding: 0;
-        max-height: none; /* Resetear altura desktop */
+        max-height: none; 
         max-width: none;
     }
 
-    /* Estado desactivado */
     .popover-module.popover-profile.disabled,
     .popover-module.popover-notifications.disabled {
         display: none;
     }
 
-    /* 2. La tarjeta blanca del menú (Contenido) */
     .popover-module.popover-profile .menu-content,
     .popover-module.popover-notifications .menu-content {
         width: 100%;
         max-height: 85vh;
-        height: auto; /* Importante para sobreescribir height fijo de escritorio */
+        height: auto; 
         background-color: #fff;
         
         border-top-left-radius: 20px;
@@ -1465,11 +1436,9 @@ a.disabled-link {
         border-bottom-left-radius: 0;
         border-bottom-right-radius: 0;
         
-        /* Optimización para animación suave */
         will-change: transform; 
         transform: translateY(0);
         
-        /* Reset de sombras desktop */
         box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
         display: flex;
         flex-direction: column;
@@ -1479,14 +1448,13 @@ a.disabled-link {
         height: 55%;
      }
 
-    /* 3. Contenedor de la píldora de arrastre (Visible solo en móvil) */
     .pill-container {
         display: flex;
         justify-content: center;
         width: 100%;
         padding: 12px 0;
         flex-shrink: 0;
-        touch-action: none; /* Importante para que el navegador no intervenga */
+        touch-action: none; 
         cursor: grab;
     }
 
