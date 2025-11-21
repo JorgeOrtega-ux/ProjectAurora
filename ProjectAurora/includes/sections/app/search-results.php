@@ -7,12 +7,21 @@ if (!isset($_SESSION['user_id'])) {
 
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../logic/search_fetcher.php'; 
+// Aseguramos que trans() esté disponible si se carga directo vía AJAX parcial, 
+// aunque loader.php ya lo incluye, no está de más si se require directo.
+require_once __DIR__ . '/../../logic/i18n_server.php';
 
 $q = isset($_GET['q']) ? trim($_GET['q']) : '';
 $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
 $isAjaxPartial = isset($_GET['ajax_partial']) && $_GET['ajax_partial'] === '1';
 $currentUserId = $_SESSION['user_id'];
 $limit = 5; 
+
+// Si es carga parcial AJAX, intentamos cargar el idioma de sesión
+if ($isAjaxPartial) {
+    $lang = $_SESSION['user_lang'] ?? 'es-latam';
+    I18n::load($lang);
+}
 
 $searchData = SearchFetcher::searchUsers($pdo, $currentUserId, $q, $offset, $limit);
 $results = $searchData['results'];
@@ -26,16 +35,16 @@ $renderUserCard = function ($user) use ($currentUserId) {
 
     $actionsHtml = '';
     if ($user['friend_status'] === 'accepted') {
-        $actionsHtml = '<button class="btn-add-friend btn-remove-friend" data-uid="' . $uid . '" data-i18n="search.actions.remove">Eliminar amigo</button>';
+        $actionsHtml = '<button class="btn-add-friend btn-remove-friend" data-uid="' . $uid . '" data-i18n="search.actions.remove">' . trans('search.actions.remove') . '</button>';
     } elseif ($user['friend_status'] === 'pending') {
         if ($user['sender_id'] == $currentUserId) {
-            $actionsHtml = '<button class="btn-add-friend btn-cancel-request" data-uid="' . $uid . '" data-i18n="search.actions.cancel">Cancelar solicitud</button>';
+            $actionsHtml = '<button class="btn-add-friend btn-cancel-request" data-uid="' . $uid . '" data-i18n="search.actions.cancel">' . trans('search.actions.cancel') . '</button>';
         } else {
-            $actionsHtml = '<button class="btn-accept-request" data-uid="' . $uid . '" data-i18n="search.actions.accept">Aceptar</button>
-                            <button class="btn-decline-request" data-uid="' . $uid . '" data-i18n="search.actions.decline">Rechazar</button>';
+            $actionsHtml = '<button class="btn-accept-request" data-uid="' . $uid . '" data-i18n="search.actions.accept">' . trans('search.actions.accept') . '</button>
+                            <button class="btn-decline-request" data-uid="' . $uid . '" data-i18n="search.actions.decline">' . trans('search.actions.decline') . '</button>';
         }
     } else {
-        $actionsHtml = '<button class="btn-add-friend" data-uid="' . $uid . '" data-i18n="search.actions.add">Agregar a amigos</button>';
+        $actionsHtml = '<button class="btn-add-friend" data-uid="' . $uid . '" data-i18n="search.actions.add">' . trans('search.actions.add') . '</button>';
     }
 ?>
     <div class="user-card-item">
@@ -51,7 +60,7 @@ $renderUserCard = function ($user) use ($currentUserId) {
                 <span class="user-name"><?php echo htmlspecialchars($user['username']); ?></span>
                 <span class="user-meta-text">Comunidad Aurora</span>
                 <span class="user-meta-text" style="font-size: 12px; color: #888; margin-top: 2px;">
-                    <?php echo $mutualCount; ?> <span data-i18n="search.mutual_friends"></span>
+                    <?php echo $mutualCount; ?> <span data-i18n="search.mutual_friends"><?php echo trans('search.mutual_friends'); ?></span>
                 </span>
             </div>
         </div>
@@ -69,8 +78,7 @@ if ($isAjaxPartial) {
     if ($hasMore) {
         echo '<div id="ajax-has-more-flag" style="display:none;"></div>';
     }
-    // Importante: si se carga vía AJAX, necesitamos traducir los nuevos elementos en el cliente.
-    // Se asume que el observador o la función de carga llamará a translateDocument()
+    // JS seguirá traduciendo por si acaso, pero el HTML ya va hidratado.
     echo '<script>if(window.translateDocument) window.translateDocument(document.getElementById("search-results-list"));</script>';
     exit;
 }
@@ -79,7 +87,9 @@ if ($isAjaxPartial) {
     <div class="section-center-wrapper" style="justify-content: flex-start; align-items: center; flex-direction: column;">
 
         <div class="content-toolbar">
-            <button class="toolbar-action-btn" data-i18n-tooltip="search.filter_tooltip">
+            <button class="toolbar-action-btn" 
+                    data-i18n-tooltip="search.filter_tooltip" 
+                    data-tooltip="<?php echo trans('search.filter_tooltip'); ?>">
                 <span class="material-symbols-rounded">filter_list</span>
             </button>
         </div>
@@ -88,12 +98,12 @@ if ($isAjaxPartial) {
             <?php if (empty($q)): ?>
                 <div class="search-empty-state">
                     <span class="material-symbols-rounded">search</span>
-                    <p data-i18n="search.empty_state"></p>
+                    <p data-i18n="search.empty_state"><?php echo trans('search.empty_state'); ?></p>
                 </div>
             <?php elseif (count($results) === 0 && $offset === 0): ?>
                 <div class="search-empty-state">
                     <span class="material-symbols-rounded">person_off</span>
-                    <p><span data-i18n="search.no_results"></span> "<strong><?php echo htmlspecialchars($q); ?></strong>".</p>
+                    <p><span data-i18n="search.no_results"><?php echo trans('search.no_results'); ?></span> "<strong><?php echo htmlspecialchars($q); ?></strong>".</p>
                 </div>
             <?php else: ?>
 
@@ -111,6 +121,7 @@ if ($isAjaxPartial) {
                             data-query="<?php echo htmlspecialchars($q); ?>"
                             data-offset="<?php echo $limit; ?>"
                             data-i18n="search.load_more">
+                            <?php echo trans('search.load_more'); ?>
                         </button>
                     </div>
                 <?php endif; ?>

@@ -15,14 +15,22 @@ class I18n {
         // Ruta relativa desde includes/logic/ hacia public/assets/translations/
         $filePath = __DIR__ . '/../../public/assets/translations/' . $lang . '.json';
         
-        // Fallback a es-latam si el archivo no existe
+        // [CORRECCIÓN] Eliminamos el fallback a es-latam.
+        // Si el archivo no existe, $translations se queda vacío y la función get()
+        // devolverá la 'clave' tal cual, que es el comportamiento que esperas.
+        
+        /* BLOQUE ELIMINADO:
         if (!file_exists($filePath)) {
             $filePath = __DIR__ . '/../../public/assets/translations/es-latam.json';
         }
+        */
 
         if (file_exists($filePath)) {
             $json = file_get_contents($filePath);
             self::$translations = json_decode($json, true) ?? [];
+        } else {
+            // Si no existe el archivo, dejamos el array vacío.
+            self::$translations = [];
         }
         
         self::$loaded = true;
@@ -36,7 +44,7 @@ class I18n {
             if (isset($current[$k])) {
                 $current = $current[$k];
             } else {
-                return $key; // Devolver la clave si no se encuentra
+                return $key; // Si no encuentra la traducción, devuelve la CLAVE
             }
         }
 
@@ -52,7 +60,7 @@ class I18n {
     }
 }
 
-// Helper function global para usar en las vistas más fácilmente
+// Helper function global
 if (!function_exists('trans')) {
     function trans($key, $vars = []) {
         return I18n::get($key, $vars);

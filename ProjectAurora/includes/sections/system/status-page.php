@@ -25,15 +25,17 @@ if ($status === 'deleted') {
             </div>
 
             <h1 style="margin-bottom: 15px; color: <?php echo $color; ?>; font-size: 28px;" data-i18n="<?php echo $titleKey; ?>">
+                <?php echo trans($titleKey); ?>
             </h1>
             
             <p style="color: #555; line-height: 1.6; font-size: 16px; margin-bottom: 40px;" data-i18n="<?php echo $msgKey; ?>">
+                <?php echo trans($msgKey); ?>
             </p>
             
             <div>
                 <a href="<?php echo isset($basePath) ? $basePath : '/ProjectAurora/'; ?>login" style="color: #888; text-decoration: none; font-size: 14px; font-weight: 500;">
                     <span class="material-symbols-rounded" style="font-size: 16px; vertical-align: text-bottom;">arrow_back</span> 
-                    <span data-i18n="global.back_home">Volver al inicio</span>
+                    <span data-i18n="global.back_home"><?php echo trans('global.back_home'); ?></span>
                 </a>
             </div>
 

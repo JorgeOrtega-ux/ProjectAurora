@@ -7,6 +7,6 @@ if (!in_array($role, ['founder', 'administrator', 'admin'])) {
 }
 ?>
 <div class="section-content active" data-section="admin/users">
-    <h1 data-i18n="admin.users_title"></h1>
-    <p data-i18n="admin.users_desc"></p>
+    <h1 data-i18n="admin.users_title"><?php echo trans('admin.users_title'); ?></h1>
+    <p data-i18n="admin.users_desc"><?php echo trans('admin.users_desc'); ?></p>
 </div>
