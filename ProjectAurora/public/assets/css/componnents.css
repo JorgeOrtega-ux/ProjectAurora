@@ -165,7 +165,7 @@
     flex-shrink: 0;
 }
 
-/* Anillo de Rol (Pseudo-elemento) */
+/* Anillo de Rol */
 .component-card__avatar::before {
     content: '';
     position: absolute;
@@ -237,19 +237,15 @@
 }
 
 /* ===========================================================
-   FIX PARA DISEÑO DE PERFIL (USERNAME/EMAIL EDIT STATE)
+   FIX PARA DISEÑO DE PERFIL
    =========================================================== */
-/* Como ahora .active global es display: flex (row), forzamos
-   a estos contenedores específicos a comportarse como columna
-   para que el texto meta quede debajo del input.
-*/
 [data-state="username-edit-state"].active,
 [data-state="email-edit-state"].active {
+    display: flex; 
     flex-direction: column;
     align-items: flex-start;
     width: 100%;
 }
-/* =========================================================== */
 
 .disabled {
     display: none;
@@ -305,6 +301,9 @@
     flex-shrink: 0;
     margin-left: 8px;
 }
+.trigger-selector:hover {
+    background-color: #f5f5fa;
+}
 
 /* Toggles */
 .component-toggle-switch {
@@ -321,8 +320,6 @@
 }
 .component-toggle-switch input:checked+.component-toggle-slider {
     background-color: #000;
-}.trigger-selector:hover {
-    background-color: #f5f5fa;
 }
 .component-toggle-switch .component-toggle-slider {
     position: absolute;
@@ -348,6 +345,29 @@
     background-color: white;
     transition: .3s;
     border-radius: 50%;
+}
+
+/* ===========================================================
+   [NUEVO] ESTILO DE ERROR FUERA DE LA TARJETA
+   =========================================================== */
+.component-card__error {
+    width: 100%;
+    padding: 12px 16px;
+    /* Margen negativo para compensar el gap del flex parent y pegar el error a la tarjeta de arriba */
+    margin-top: -10px; 
+    background-color: #ffebee;
+    color: #d32f2f;
+    border-radius: 12px; 
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid #ffcdd2;
+    animation: fadeInError 0.3s ease-out;
+    /* Por defecto lo mostramos si está en el DOM, pero la animación ayuda en la entrada */
+}
+
+@keyframes fadeInError {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 @media (max-width: 600px) {

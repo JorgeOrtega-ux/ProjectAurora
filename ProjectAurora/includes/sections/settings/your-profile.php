@@ -14,15 +14,16 @@ $currentEmail = $currentUser['email'] ?? 'correo@ejemplo.com';
 $userAvatar = $currentUser['avatar'] ?? null;
 $userRole = $currentUser['role'] ?? 'user';
 
-// 2. Obtener preferencias (con valores por defecto si no existen)
-$stmtPrefs = $pdo->prepare("SELECT usage_intent, language FROM user_preferences WHERE user_id = ?");
+// 2. Obtener preferencias
+$stmtPrefs = $pdo->prepare("SELECT usage_intent, language, open_links_in_new_tab FROM user_preferences WHERE user_id = ?");
 $stmtPrefs->execute([$userId]);
 $prefs = $stmtPrefs->fetch(PDO::FETCH_ASSOC);
 
 $currentUsage = $prefs['usage_intent'] ?? 'personal';
 $currentLang = $prefs['language'] ?? 'en-us';
+$openLinksInNewTab = isset($prefs['open_links_in_new_tab']) ? (int)$prefs['open_links_in_new_tab'] : 1;
 
-// Mapas para mostrar el texto en el "Trigger" (botón cerrado)
+// Mapas para mostrar el texto
 $usageTexts = [
     'personal' => 'Uso personal',
     'student' => 'Estudiante',
@@ -265,7 +266,11 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
             </div>
             <div class="component-card__actions actions-right">
                 <label class="component-toggle-switch">
-                    <input type="checkbox" data-element="toggle-new-tab" data-preference-type="boolean" data-field-name="open_links_in_new_tab" checked="">
+                    <input type="checkbox" 
+                           data-element="toggle-new-tab" 
+                           data-preference-type="boolean" 
+                           data-field-name="open_links_in_new_tab" 
+                           <?php echo ($openLinksInNewTab == 1) ? 'checked' : ''; ?>>
                     <span class="component-toggle-slider"></span>
                 </label>
             </div>

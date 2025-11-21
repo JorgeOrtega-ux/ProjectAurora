@@ -169,7 +169,7 @@ try {
         }
 
     // ==================================================================
-    // [NUEVO] ACTUALIZAR USO (PREFERENCIAS)
+    // ACTUALIZAR USO (PREFERENCIAS)
     // ==================================================================
     } elseif ($action === 'update_usage') {
         $usage = $data['usage'] ?? 'personal';
@@ -177,7 +177,6 @@ try {
         
         if (!in_array($usage, $allowed)) throw new Exception("Valor de uso no válido.");
 
-        // Insert or Update (ON DUPLICATE KEY UPDATE)
         $sql = "INSERT INTO user_preferences (user_id, usage_intent) VALUES (?, ?) 
                 ON DUPLICATE KEY UPDATE usage_intent = VALUES(usage_intent)";
         $stmt = $pdo->prepare($sql);
@@ -189,7 +188,7 @@ try {
         }
 
     // ==================================================================
-    // [NUEVO] ACTUALIZAR IDIOMA (PREFERENCIAS)
+    // ACTUALIZAR IDIOMA (PREFERENCIAS)
     // ==================================================================
     } elseif ($action === 'update_language') {
         $lang = $data['language'] ?? 'en-us';
@@ -205,6 +204,32 @@ try {
             $response = ['success' => true, 'message' => 'Idioma actualizado.'];
         } else {
             throw new Exception("Error actualizando idioma.");
+        }
+
+    // ==================================================================
+    // [NUEVO] ACTUALIZAR PREFERENCIAS BOOLEANAS (TOGGLES)
+    // ==================================================================
+    } elseif ($action === 'update_boolean_preference') {
+        $field = $data['field'] ?? '';
+        $value = isset($data['value']) && $data['value'] ? 1 : 0;
+
+        // Whitelist de campos permitidos para evitar inyección de SQL en nombres de columna
+        $allowedFields = ['open_links_in_new_tab']; 
+
+        if (!in_array($field, $allowedFields)) {
+            throw new Exception("Campo de preferencia no válido.");
+        }
+
+        // Interpolación segura porque validamos $field contra una whitelist estricta
+        $sql = "INSERT INTO user_preferences (user_id, $field) VALUES (?, ?) 
+                ON DUPLICATE KEY UPDATE $field = VALUES($field)";
+        
+        $stmt = $pdo->prepare($sql);
+
+        if ($stmt->execute([$userId, $value])) {
+            $response = ['success' => true, 'message' => 'Preferencia actualizada.'];
+        } else {
+            throw new Exception("Error actualizando preferencia.");
         }
     }
 

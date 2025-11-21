@@ -23,14 +23,95 @@ export function initSettingsManager() {
     initAvatarLogic();
     initUsernameLogic();
     initEmailLogic();
-    initPreferencesLogic(); // <--- NUEVO: Lógica de selectores
+    initPreferencesLogic(); 
+    initBooleanPreferencesLogic();
 }
 
 // ========================================================
-// LÓGICA DE PREFERENCIAS (USO E IDIOMA)
+// [MODIFICADO] HELPER PARA ERRORES FUERA DE LA TARJETA
+// ========================================================
+function updateCardError(cardElement, message = '', show = true) {
+    if (!cardElement) return;
+
+    // 1. Buscar si el SIGUIENTE elemento es ya un div de error
+    // (Al estar fuera, es un "hermano" del cardElement, no un hijo)
+    let nextElement = cardElement.nextElementSibling;
+    let errorDiv = null;
+
+    if (nextElement && nextElement.classList.contains('component-card__error')) {
+        errorDiv = nextElement;
+    }
+
+    // 2. Si no existe y queremos mostrarlo, lo creamos e insertamos DESPUÉS
+    if (!errorDiv && show) {
+        errorDiv = document.createElement('div');
+        errorDiv.className = 'component-card__error';
+        // Insertar el error justo después de la tarjeta en el DOM
+        cardElement.after(errorDiv);
+    }
+
+    // 3. Actualizar estado
+    if (show && errorDiv) {
+        errorDiv.textContent = message;
+        // Un pequeño timeout asegura que la animación CSS se ejecute si acabamos de crearlo
+        requestAnimationFrame(() => {
+            errorDiv.classList.add('active');
+        });
+    } else if (!show && errorDiv) {
+        // Si ocultamos, ELIMINAMOS el elemento para que no ocupe espacio en el gap del flex
+        errorDiv.remove();
+    }
+}
+
+// ========================================================
+// LÓGICA DE PREFERENCIAS BOOLEANAS (TOGGLES)
+// ========================================================
+function initBooleanPreferencesLogic() {
+    const profileSection = qs('[data-section="settings/your-profile"]');
+    if (!profileSection) return;
+
+    profileSection.addEventListener('change', async (e) => {
+        const target = e.target;
+        if (target.matches('input[type="checkbox"][data-preference-type="boolean"]')) {
+            const fieldName = target.dataset.fieldName;
+            const isChecked = target.checked;
+
+            if (!fieldName) return;
+
+            const payload = {
+                action: 'update_boolean_preference',
+                field: fieldName,
+                value: isChecked, 
+                csrf_token: getCsrfToken()
+            };
+
+            try {
+                const res = await fetch(API_SETTINGS, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    if (window.alertManager) window.alertManager.showAlert('Preferencia actualizada.', 'success');
+                } else {
+                    target.checked = !isChecked;
+                    if (window.alertManager) window.alertManager.showAlert(data.message, 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                target.checked = !isChecked; 
+                if (window.alertManager) window.alertManager.showAlert('Error de conexión', 'error');
+            }
+        }
+    });
+}
+
+// ========================================================
+// LÓGICA DE PREFERENCIAS (SELECTORES MENU)
 // ========================================================
 function initPreferencesLogic() {
-    // Listener delegado para los clics en opciones de los menús
     const profileSection = qs('[data-section="settings/your-profile"]');
     if (!profileSection) return;
 
@@ -41,12 +122,11 @@ function initPreferencesLogic() {
         const module = option.closest('.popover-module');
         if (!module) return;
 
-        const prefType = module.dataset.preferenceType; // 'usage' o 'language'
+        const prefType = module.dataset.preferenceType; 
         const value = option.dataset.value;
 
         if (!prefType || !value) return;
 
-        // Preparamos payload según tipo
         let payload = { action: '', csrf_token: getCsrfToken() };
         
         if (prefType === 'usage') {
@@ -57,7 +137,6 @@ function initPreferencesLogic() {
             payload.language = value;
         }
 
-        // Enviamos a API
         try {
             const res = await fetch(API_SETTINGS, {
                 method: 'POST',
@@ -68,8 +147,6 @@ function initPreferencesLogic() {
             
             if (data.success) {
                 if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
-                // Nota: La UI visual del dropdown (check y texto) ya se actualiza en main-controller.js 
-                // mediante handleDropdownSelection, así que no necesitamos hacerlo aquí manualmente.
             } else {
                 if (window.alertManager) window.alertManager.showAlert(data.message, 'error');
             }
@@ -84,6 +161,7 @@ function initPreferencesLogic() {
 // LÓGICA DE AVATAR
 // ========================================================
 function initAvatarLogic() {
+    const card = qs('[data-component="avatar-section"]');
     const elements = {
         fileInput: qs('[data-element="avatar-upload-input"]'),
         previewImg: qs('[data-element="avatar-preview-image"]'),
@@ -104,6 +182,7 @@ function initAvatarLogic() {
     
     const triggerUpload = (e) => { 
         if(e) e.preventDefault(); 
+        updateCardError(card, '', false);
         elements.fileInput.click(); 
     };
 
@@ -114,14 +193,18 @@ function initAvatarLogic() {
     elements.fileInput.addEventListener('change', function(e) {
         const file = this.files[0];
         if (!file) return;
+        
         if (file.size > 2097152) {
-            if (window.alertManager) window.alertManager.showAlert('El archivo pesa más de 2MB.', 'warning');
+            updateCardError(card, 'El archivo es demasiado grande (Máx. 2MB).');
             this.value = ''; return;
         }
         if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
-            if (window.alertManager) window.alertManager.showAlert('Formato no válido.', 'error');
+            updateCardError(card, 'Formato no válido. Usa JPG, PNG o WEBP.');
             this.value = ''; return;
         }
+        
+        updateCardError(card, '', false);
+
         const reader = new FileReader();
         reader.onload = function(evt) {
             elements.previewImg.src = evt.target.result;
@@ -132,6 +215,7 @@ function initAvatarLogic() {
     });
 
     elements.cancelBtn.addEventListener('click', () => {
+        updateCardError(card, '', false);
         elements.previewImg.src = originalImageSrc;
         elements.fileInput.value = '';
         
@@ -149,7 +233,9 @@ function initAvatarLogic() {
     elements.saveBtn.addEventListener('click', async () => {
         const file = elements.fileInput.files[0];
         if (!file) return;
+        
         setLoading(elements.saveBtn, true);
+        updateCardError(card, '', false);
 
         const formData = new FormData();
         formData.append('action', 'update_avatar');
@@ -167,15 +253,20 @@ function initAvatarLogic() {
                 updateHeaderAvatar(newSrc);
                 toggleAvatarActions('custom');
             } else {
-                if (window.alertManager) window.alertManager.showAlert(data.message, 'error');
+                updateCardError(card, data.message);
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+            console.error(e); 
+            updateCardError(card, 'Error de conexión.');
+        }
         setLoading(elements.saveBtn, false, 'Guardar');
     });
 
     elements.removeBtn.addEventListener('click', async () => {
         if (!confirm('¿Restablecer avatar por defecto?')) return;
         setLoading(elements.removeBtn, true);
+        updateCardError(card, '', false);
+
         try {
             const formData = new FormData();
             formData.append('action', 'remove_avatar');
@@ -189,8 +280,13 @@ function initAvatarLogic() {
                 originalImageSrc = newSrc;
                 updateHeaderAvatar(newSrc);
                 toggleAvatarActions('default'); 
+            } else {
+                updateCardError(card, data.message);
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+            console.error(e); 
+            updateCardError(card, 'Error de conexión.');
+        }
         setLoading(elements.removeBtn, false, 'Eliminar');
     });
 
@@ -205,6 +301,7 @@ function initAvatarLogic() {
 // LÓGICA DE NOMBRE DE USUARIO
 // ========================================================
 function initUsernameLogic() {
+    const card = qs('[data-component="username-section"]');
     const els = {
         viewState: qs('[data-state="username-view-state"]'),
         editState: qs('[data-state="username-edit-state"]'),
@@ -223,23 +320,27 @@ function initUsernameLogic() {
 
     els.editBtn.addEventListener('click', () => {
         toggleMode(els, true);
+        updateCardError(card, '', false);
         els.input.focus();
     });
 
     els.cancelBtn.addEventListener('click', () => {
         els.input.value = originalUsername;
+        updateCardError(card, '', false);
         toggleMode(els, false);
     });
 
     els.saveBtn.addEventListener('click', async () => {
         const newVal = els.input.value.trim();
+        updateCardError(card, '', false);
+
         if (newVal === originalUsername) {
             toggleMode(els, false);
             return;
         }
 
         if (newVal.length < 8 || newVal.length > 32) {
-            if (window.alertManager) window.alertManager.showAlert('Debe tener entre 8 y 32 caracteres.', 'warning');
+            updateCardError(card, 'El nombre de usuario debe tener entre 8 y 32 caracteres.');
             return;
         }
 
@@ -266,11 +367,11 @@ function initUsernameLogic() {
                 els.input.value = data.new_username;
                 toggleMode(els, false);
             } else {
-                if (window.alertManager) window.alertManager.showAlert(data.message || 'Error al actualizar.', 'error');
+                updateCardError(card, data.message || 'Error al actualizar.');
             }
         } catch (error) {
             console.error(error);
-            if (window.alertManager) window.alertManager.showAlert('Error de conexión.', 'error');
+            updateCardError(card, 'Error de conexión con el servidor.');
         }
         setLoading(els.saveBtn, false, 'Guardar');
     });
@@ -280,6 +381,7 @@ function initUsernameLogic() {
 // LÓGICA DE CORREO ELECTRÓNICO
 // ========================================================
 function initEmailLogic() {
+    const card = qs('[data-component="email-section"]');
     const els = {
         viewState: qs('[data-state="email-view-state"]'),
         editState: qs('[data-state="email-edit-state"]'),
@@ -298,16 +400,20 @@ function initEmailLogic() {
 
     els.editBtn.addEventListener('click', () => {
         toggleMode(els, true);
+        updateCardError(card, '', false);
         els.input.focus();
     });
 
     els.cancelBtn.addEventListener('click', () => {
         els.input.value = originalEmail;
+        updateCardError(card, '', false);
         toggleMode(els, false);
     });
 
     els.saveBtn.addEventListener('click', async () => {
         const newVal = els.input.value.trim().toLowerCase();
+        updateCardError(card, '', false);
+
         if (newVal === originalEmail) {
             toggleMode(els, false);
             return;
@@ -315,7 +421,7 @@ function initEmailLogic() {
 
         const regex = /^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i;
         if (!regex.test(newVal)) {
-            if (window.alertManager) window.alertManager.showAlert('Dominio no permitido (Solo Gmail, Outlook, iCloud, Yahoo).', 'warning');
+            updateCardError(card, 'Dominio no permitido (Solo Gmail, Outlook, iCloud, Yahoo).');
             return;
         }
 
@@ -342,11 +448,11 @@ function initEmailLogic() {
                 els.input.value = data.new_email;
                 toggleMode(els, false);
             } else {
-                if (window.alertManager) window.alertManager.showAlert(data.message || 'Error al actualizar.', 'error');
+                updateCardError(card, data.message || 'Error al actualizar.');
             }
         } catch (error) {
             console.error(error);
-            if (window.alertManager) window.alertManager.showAlert('Error de conexión.', 'error');
+            updateCardError(card, 'Error de conexión con el servidor.');
         }
         setLoading(els.saveBtn, false, 'Guardar');
     });

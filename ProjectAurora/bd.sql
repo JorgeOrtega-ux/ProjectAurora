@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- [CORRECCIÓN] TOKENS DE AUTENTICACIÓN WS (Faltaba esta tabla)
+-- TOKENS DE AUTENTICACIÓN WS
 CREATE TABLE IF NOT EXISTS ws_auth_tokens (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -88,12 +88,13 @@ CREATE TABLE IF NOT EXISTS ws_auth_tokens (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- [NUEVO] PREFERENCIAS DE USUARIO
+-- [ACTUALIZADO] PREFERENCIAS DE USUARIO
 CREATE TABLE IF NOT EXISTS user_preferences (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL UNIQUE,
-    usage_intent VARCHAR(50) DEFAULT 'personal', -- personal, student, teacher, etc.
-    language VARCHAR(10) DEFAULT 'en-us', -- es-mx, es-latam, en-us, en-gb
+    usage_intent VARCHAR(50) DEFAULT 'personal',
+    language VARCHAR(10) DEFAULT 'en-us',
+    open_links_in_new_tab TINYINT(1) DEFAULT 1, -- 1 = True, 0 = False
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
