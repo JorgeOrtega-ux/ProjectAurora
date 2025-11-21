@@ -294,6 +294,10 @@ try {
         $stmt = $pdo->prepare($sql);
 
         if ($stmt->execute([$userId, $lang])) {
+            // Actualizamos sesión inmediatamente para que el próximo request de página
+            // ya tenga el idioma correcto sin depender del JS.
+            $_SESSION['user_lang'] = $lang;
+
             $response = ['success' => true, 'message' => 'Idioma actualizado.'];
         } else {
             throw new Exception("Error actualizando idioma.");

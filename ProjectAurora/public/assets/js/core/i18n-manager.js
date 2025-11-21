@@ -31,6 +31,33 @@ export async function initI18n() {
 }
 
 /**
+ * Cambia el idioma dinámicamente sin recargar la página
+ * @param {string} newLang Código del nuevo idioma (ej: 'en-us')
+ */
+export async function changeLanguage(newLang) {
+    currentLang = newLang;
+    window.USER_LANG = newLang; // Actualizar variable global
+
+    try {
+        const response = await fetch(`${BASE_PATH}assets/translations/${newLang}.json`);
+        if (!response.ok) throw new Error('Translation file not found');
+        
+        translations = await response.json();
+        
+        // Volver a traducir toda la interfaz visible
+        translateDocument();
+        
+        console.log(`Idioma cambiado a: ${newLang}`);
+        
+    } catch (error) {
+        console.error('Error changing language:', error);
+    }
+}
+
+// Exponer cambio de idioma globalmente por si acaso
+window.changeLanguage = changeLanguage;
+
+/**
  * Traduce una clave dada. Soporta anidación (auth.login.title)
  * y reemplazo de variables {name}.
  */
@@ -60,11 +87,11 @@ export function t(key, vars = {}) {
  * Busca y traduce elementos en el DOM
  */
 export function translateDocument(container = document) {
-    // 1. Texto simple (textContent)
+    // 1. Texto simple (textContent/innerHTML)
     const elements = container.querySelectorAll('[data-i18n]');
     elements.forEach(el => {
         const key = el.getAttribute('data-i18n');
-        el.innerHTML = t(key); // Usamos innerHTML para permitir <strong> etc.
+        el.innerHTML = t(key); // Usamos innerHTML para permitir etiquetas como <strong>
     });
 
     // 2. Placeholders

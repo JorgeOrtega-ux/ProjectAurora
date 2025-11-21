@@ -1,5 +1,7 @@
 // public/assets/js/modules/settings-manager.js
 
+import { changeLanguage } from '../core/i18n-manager.js'; // <--- IMPORTACIÓN AÑADIDA
+
 const API_SETTINGS = (window.BASE_PATH || '/ProjectAurora/') + 'api/settings_handler.php';
 
 function getCsrfToken() {
@@ -116,7 +118,7 @@ function initPreferencesLogic() {
         const option = e.target.closest('.menu-link[data-value]');
         if (!option) return;
 
-        // [NUEVO] Si la opción ya está activa (seleccionada), no hacemos nada.
+        // Si la opción ya está activa (seleccionada), no hacemos nada.
         if (option.classList.contains('active')) {
             return;
         }
@@ -154,6 +156,13 @@ function initPreferencesLogic() {
             
             if (data.success) {
                 if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
+                
+                // --- CAMBIO DE IDIOMA EN TIEMPO REAL ---
+                if (prefType === 'language') {
+                    await changeLanguage(value);
+                }
+                // ---------------------------------------
+
             } else {
                 updateCardError(card, data.message);
             }
@@ -305,7 +314,7 @@ function initAvatarLogic() {
 }
 
 // ========================================================
-// LÓGICA DE NOMBRE DE USUARIO (FIX CURSOR)
+// LÓGICA DE NOMBRE DE USUARIO
 // ========================================================
 function initUsernameLogic() {
     const card = qs('[data-component="username-section"]');
@@ -328,13 +337,10 @@ function initUsernameLogic() {
     els.editBtn.addEventListener('click', () => {
         toggleMode(els, true);
         updateCardError(card, '', false);
-        
-        // --- FIX CURSOR INICIO ---
         const val = els.input.value;
         els.input.value = '';
         els.input.value = val;
         els.input.focus();
-        // --- FIX CURSOR FIN ---
     });
 
     els.cancelBtn.addEventListener('click', () => {
@@ -391,7 +397,7 @@ function initUsernameLogic() {
 }
 
 // ========================================================
-// LÓGICA DE CORREO ELECTRÓNICO (FIX CURSOR)
+// LÓGICA DE CORREO ELECTRÓNICO
 // ========================================================
 function initEmailLogic() {
     const card = qs('[data-component="email-section"]');
@@ -414,13 +420,10 @@ function initEmailLogic() {
     els.editBtn.addEventListener('click', () => {
         toggleMode(els, true);
         updateCardError(card, '', false);
-        
-        // --- FIX CURSOR INICIO ---
         const val = els.input.value;
         els.input.value = '';
         els.input.value = val;
         els.input.focus();
-        // --- FIX CURSOR FIN ---
     });
 
     els.cancelBtn.addEventListener('click', () => {
