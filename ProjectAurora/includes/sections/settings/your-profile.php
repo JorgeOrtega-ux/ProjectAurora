@@ -32,11 +32,6 @@ $usageIcons = [
 ];
 $usageDisplayIcon = $usageIcons[$currentUsage] ?? 'person'; 
 
-// NOTA: Aquí dejamos las claves de traducción para que el JS las reemplace, 
-// pero necesitamos un mapa para el renderizado inicial PHP.
-// Para simplificar y ser consistente con i18n JS, podemos imprimir un span con data-i18n
-// dentro del selector custom.
-
 $langDisplayText = 'English (United States)';
 if($currentLang == 'es-latam') $langDisplayText = 'Español (Latinoamérica)';
 if($currentLang == 'es-mx') $langDisplayText = 'Español (México)';
@@ -58,8 +53,8 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
     <div class="component-wrapper">
 
         <div class="component-header-card">
-            <h1 class="component-page-title" data-i18n="settings.profile.title"></h1>
-            <p class="component-page-description" data-i18n="settings.profile.description"></p>
+            <h1 class="component-page-title" data-i18n="settings.profile.title"><?php echo trans('settings.profile.title'); ?></h1>
+            <p class="component-page-description" data-i18n="settings.profile.description"><?php echo trans('settings.profile.description'); ?></p>
         </div>
 
         <div class="component-card component-card--edit-mode" data-component="avatar-section">
@@ -81,25 +76,25 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                 </div>
 
                 <div class="component-card__text">
-                    <h2 class="component-card__title" data-i18n="settings.profile.avatar_title"></h2>
-                    <p class="component-card__description" data-i18n="settings.profile.avatar_desc"></p>
-                    <p class="component-card__meta" data-i18n="settings.profile.avatar_meta"></p>
+                    <h2 class="component-card__title" data-i18n="settings.profile.avatar_title"><?php echo trans('settings.profile.avatar_title'); ?></h2>
+                    <p class="component-card__description" data-i18n="settings.profile.avatar_desc"><?php echo trans('settings.profile.avatar_desc'); ?></p>
+                    <p class="component-card__meta" data-i18n="settings.profile.avatar_meta"><?php echo trans('settings.profile.avatar_meta'); ?></p>
                 </div>
             </div>
 
             <div class="component-card__actions">
                 <div data-state="avatar-actions-default" class="<?php echo !$hasCustomAvatar ? 'active' : 'disabled'; ?>">
-                    <button type="button" class="component-button" data-action="avatar-upload-trigger" data-i18n="settings.profile.upload_btn"></button>
+                    <button type="button" class="component-button" data-action="avatar-upload-trigger" data-i18n="settings.profile.upload_btn"><?php echo trans('settings.profile.upload_btn'); ?></button>
                 </div>
 
                 <div data-state="avatar-actions-custom" class="<?php echo $hasCustomAvatar ? 'active' : 'disabled'; ?>">
-                    <button type="button" class="component-button" data-action="avatar-remove-trigger" data-i18n="global.delete"></button>
-                    <button type="button" class="component-button" data-action="avatar-change-trigger" data-i18n="settings.profile.change_btn"></button>
+                    <button type="button" class="component-button" data-action="avatar-remove-trigger" data-i18n="global.delete"><?php echo trans('global.delete'); ?></button>
+                    <button type="button" class="component-button" data-action="avatar-change-trigger" data-i18n="settings.profile.change_btn"><?php echo trans('settings.profile.change_btn'); ?></button>
                 </div>
 
                 <div data-state="avatar-actions-preview" class="disabled">
-                    <button type="button" class="component-button" data-action="avatar-cancel-trigger" data-i18n="global.cancel"></button>
-                    <button type="button" class="component-button" data-action="avatar-save-trigger-btn" data-i18n="global.save"></button>
+                    <button type="button" class="component-button" data-action="avatar-cancel-trigger" data-i18n="global.cancel"><?php echo trans('global.cancel'); ?></button>
+                    <button type="button" class="component-button" data-action="avatar-save-trigger-btn" data-i18n="global.save"><?php echo trans('global.save'); ?></button>
                 </div>
             </div>
         </div>
@@ -107,7 +102,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
         <div class="component-card component-card--edit-mode" data-component="username-section">
             <div class="component-card__content">
                 <div class="component-card__text" style="width: 100%;">
-                    <h2 class="component-card__title" data-i18n="settings.profile.username_title"></h2>
+                    <h2 class="component-card__title" data-i18n="settings.profile.username_title"><?php echo trans('settings.profile.username_title'); ?></h2>
                     <div data-state="username-view-state" class="active">
                         <p class="component-card__description" data-element="username-display-text">
                             <?php echo htmlspecialchars($currentUsername); ?>
@@ -119,17 +114,17 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                                 value="<?php echo htmlspecialchars($currentUsername); ?>"
                                 required minlength="8" maxlength="32">
                             <div data-state="username-actions-edit" class="disabled">
-                                <button type="button" class="component-button" data-action="username-cancel-trigger" data-i18n="global.cancel"></button>
-                                <button type="button" class="component-button primary" data-action="username-save-trigger-btn" data-i18n="global.save"></button>
+                                <button type="button" class="component-button" data-action="username-cancel-trigger" data-i18n="global.cancel"><?php echo trans('global.cancel'); ?></button>
+                                <button type="button" class="component-button primary" data-action="username-save-trigger-btn" data-i18n="global.save"><?php echo trans('global.save'); ?></button>
                             </div>
                         </div>
-                        <p class="component-card__meta" data-i18n="settings.profile.username_meta"></p>
+                        <p class="component-card__meta" data-i18n="settings.profile.username_meta"><?php echo trans('settings.profile.username_meta'); ?></p>
                     </div>
                 </div>
             </div>
             <div class="component-card__actions">
                 <div data-state="username-actions-view" class="active">
-                    <button type="button" class="component-button" data-action="username-edit-trigger" data-i18n="global.edit"></button>
+                    <button type="button" class="component-button" data-action="username-edit-trigger" data-i18n="global.edit"><?php echo trans('global.edit'); ?></button>
                 </div>
             </div>
         </div>
@@ -137,7 +132,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
         <div class="component-card component-card--edit-mode" data-component="email-section">
             <div class="component-card__content">
                 <div class="component-card__text" style="width: 100%;">
-                    <h2 class="component-card__title" data-i18n="settings.profile.email_title"></h2>
+                    <h2 class="component-card__title" data-i18n="settings.profile.email_title"><?php echo trans('settings.profile.email_title'); ?></h2>
                     <div data-state="email-view-state" class="active">
                         <p class="component-card__description" data-element="email-display-text">
                             <?php echo htmlspecialchars($currentEmail); ?>
@@ -149,17 +144,17 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                                 value="<?php echo htmlspecialchars($currentEmail); ?>"
                                 required>
                             <div data-state="email-actions-edit" class="disabled">
-                                <button type="button" class="component-button" data-action="email-cancel-trigger" data-i18n="global.cancel"></button>
-                                <button type="button" class="component-button primary" data-action="email-save-trigger-btn" data-i18n="global.save"></button>
+                                <button type="button" class="component-button" data-action="email-cancel-trigger" data-i18n="global.cancel"><?php echo trans('global.cancel'); ?></button>
+                                <button type="button" class="component-button primary" data-action="email-save-trigger-btn" data-i18n="global.save"><?php echo trans('global.save'); ?></button>
                             </div>
                         </div>
-                        <p class="component-card__meta" data-i18n="settings.profile.email_meta"></p>
+                        <p class="component-card__meta" data-i18n="settings.profile.email_meta"><?php echo trans('settings.profile.email_meta'); ?></p>
                     </div>
                 </div>
             </div>
             <div class="component-card__actions">
                 <div data-state="email-actions-view" class="active">
-                    <button type="button" class="component-button" data-action="email-edit-trigger" data-i18n="global.edit"></button>
+                    <button type="button" class="component-button" data-action="email-edit-trigger" data-i18n="global.edit"><?php echo trans('global.edit'); ?></button>
                 </div>
             </div>
         </div>
@@ -167,8 +162,8 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
         <div class="component-card component-card--column">
             <div class="component-card__content">
                 <div class="component-card__text">
-                    <h2 class="component-card__title" data-i18n="settings.profile.usage_title"></h2>
-                    <p class="component-card__description" data-i18n="settings.profile.usage_desc"></p>
+                    <h2 class="component-card__title" data-i18n="settings.profile.usage_title"><?php echo trans('settings.profile.usage_title'); ?></h2>
+                    <p class="component-card__description" data-i18n="settings.profile.usage_desc"><?php echo trans('settings.profile.usage_desc'); ?></p>
                 </div>
             </div>
             <div class="component-card__actions">
@@ -178,7 +173,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                             <span class="material-symbols-rounded"><?php echo htmlspecialchars($usageDisplayIcon); ?></span>
                         </div>
                         <div class="trigger-select-text">
-                            <span data-i18n="settings.usage_options.<?php echo $currentUsage; ?>"></span>
+                            <span data-i18n="settings.usage_options.<?php echo $currentUsage; ?>"><?php echo trans("settings.usage_options.{$currentUsage}"); ?></span>
                         </div>
                         <div class="trigger-select-arrow">
                             <span class="material-symbols-rounded">arrow_drop_down</span>
@@ -202,7 +197,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                                 ?>
                                 <div class="menu-link <?php echo $isActive; ?>" data-value="<?php echo $opt['val']; ?>">
                                     <div class="menu-link-icon"><span class="material-symbols-rounded"><?php echo $opt['icon']; ?></span></div>
-                                    <div class="menu-link-text"><span data-i18n="<?php echo $opt['i18n']; ?>"></span></div>
+                                    <div class="menu-link-text"><span data-i18n="<?php echo $opt['i18n']; ?>"><?php echo trans($opt['i18n']); ?></span></div>
                                     <div class="menu-link-icon"><?php echo $check; ?></div>
                                 </div>
                                 <?php endforeach; ?>
@@ -216,8 +211,8 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
         <div class="component-card component-card--column">
             <div class="component-card__content">
                 <div class="component-card__text">
-                    <h2 class="component-card__title" data-i18n="settings.profile.lang_title"></h2>
-                    <p class="component-card__description" data-i18n="settings.profile.lang_desc"></p>
+                    <h2 class="component-card__title" data-i18n="settings.profile.lang_title"><?php echo trans('settings.profile.lang_title'); ?></h2>
+                    <p class="component-card__description" data-i18n="settings.profile.lang_desc"><?php echo trans('settings.profile.lang_desc'); ?></p>
                 </div>
             </div>
             <div class="component-card__actions">
@@ -257,8 +252,8 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
         <div class="component-card component-card--edit-mode">
             <div class="component-card__content">
                 <div class="component-card__text">
-                    <h2 class="component-card__title" data-i18n="settings.profile.new_tab_title"></h2>
-                    <p class="component-card__description" data-i18n="settings.profile.new_tab_desc"></p>
+                    <h2 class="component-card__title" data-i18n="settings.profile.new_tab_title"><?php echo trans('settings.profile.new_tab_title'); ?></h2>
+                    <p class="component-card__description" data-i18n="settings.profile.new_tab_desc"><?php echo trans('settings.profile.new_tab_desc'); ?></p>
                 </div>
             </div>
             <div class="component-card__actions actions-right">

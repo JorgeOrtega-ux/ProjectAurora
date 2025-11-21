@@ -19,17 +19,25 @@ require_once __DIR__ . '/database.php';
 $basePath = '/ProjectAurora/'; 
 
 // =======================================================================
-// 1. ACTUALIZAR SESIÓN (REFRESH ROLE) - AL INICIO
+// 1. ACTUALIZAR SESIÓN (REFRESH ROLE & LANG) - AL INICIO
 // =======================================================================
 if (isset($_SESSION['user_id'])) {
     try {
-        $stmt = $pdo->prepare("SELECT role, avatar, account_status FROM users WHERE id = ?");
+        // [MODIFICADO] Obtenemos también el idioma de las preferencias
+        $stmt = $pdo->prepare("
+            SELECT u.role, u.avatar, u.account_status, p.language 
+            FROM users u 
+            LEFT JOIN user_preferences p ON u.id = p.user_id 
+            WHERE u.id = ?
+        ");
         $stmt->execute([$_SESSION['user_id']]);
         $freshUser = $stmt->fetch();
 
         if ($freshUser) {
             $_SESSION['user_role'] = $freshUser['role'] ?? 'user';
             $_SESSION['user_avatar'] = $freshUser['avatar'];
+            // [NUEVO] Guardar idioma en sesión para SSR
+            $_SESSION['user_lang'] = $freshUser['language'] ?? 'es-latam';
             
             if ($freshUser['account_status'] !== 'active') {
                 $_SESSION = [];
@@ -49,6 +57,7 @@ if (isset($_SESSION['user_id'])) {
             exit;
         }
     } catch (Exception $e) {
+        // Fallback silencioso
     }
 }
 
@@ -72,7 +81,7 @@ $allowedSections = [
     'register/additional-data', 
     'register/verification-account',
     'forgot-password',
-    'reset-password', // <--- AGREGADO
+    'reset-password',
     'status-page',
     'login/verification-additional',
     'search', 
@@ -138,7 +147,7 @@ if ($CURRENT_SECTION === 'login/verification-additional') {
     $SECTION_FILE_NAME = 'auth/register'; 
 } elseif ($CURRENT_SECTION === 'forgot-password') {
     $SECTION_FILE_NAME = 'auth/forgot-password';
-} elseif ($CURRENT_SECTION === 'reset-password') { // <--- NUEVO MAPEO
+} elseif ($CURRENT_SECTION === 'reset-password') {
     $SECTION_FILE_NAME = 'auth/reset-password';
 } elseif ($CURRENT_SECTION === 'login') {
     $SECTION_FILE_NAME = 'auth/login';
@@ -172,7 +181,7 @@ $publicSections = [
     'register/additional-data', 
     'register/verification-account', 
     'forgot-password', 
-    'reset-password', // <--- AGREGADO
+    'reset-password',
     'status-page',
     'login/verification-additional'
 ];

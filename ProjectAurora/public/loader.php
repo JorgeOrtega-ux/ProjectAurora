@@ -4,15 +4,21 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/utilities.php'; 
+require_once __DIR__ . '/../includes/logic/i18n_server.php'; // [NUEVO]
 
-// 1. Seguridad básica
+// 1. Cargar idioma y traducciones para este fragmento
+// Preferencia de sesión > Navegador > 'es-latam'
+$lang = $_SESSION['user_lang'] ?? detect_browser_language() ?? 'es-latam';
+I18n::load($lang);
+
+// 2. Seguridad básica
 $publicSections = [
     'login', 
     'register', 
     'register/additional-data', 
     'register/verification-account', 
     'forgot-password', 
-    'reset-password', // <--- AGREGADO
+    'reset-password', 
     'status-page',
     'login/verification-additional'
 ];
@@ -26,7 +32,7 @@ if (!isset($_SESSION['user_id']) && !in_array($section, $publicSections)) {
     exit('<div style="padding:20px; text-align:center">Sesión expirada. Recarga la página.</div>');
 }
 
-// 2. Mapa COMPLETO de rutas
+// 3. Mapa COMPLETO de rutas
 $fileMap = [
     // App
     'main'      => 'app/main',
@@ -40,7 +46,7 @@ $fileMap = [
     'register/additional-data'      => 'auth/register',
     'register/verification-account' => 'auth/register',
     'forgot-password'               => 'auth/forgot-password',
-    'reset-password'                => 'auth/reset-password', // <--- AGREGADO
+    'reset-password'                => 'auth/reset-password',
 
     // Settings
     'settings'                  => 'settings/your-profile',
@@ -60,7 +66,7 @@ $fileMap = [
     '404'         => 'system/404'
 ];
 
-// 3. Verificar existencia en el mapa
+// 4. Verificar existencia en el mapa
 if (array_key_exists($section, $fileMap)) {
     $realFile = __DIR__ . '/../includes/sections/' . $fileMap[$section] . '.php';
 } else {
@@ -68,11 +74,11 @@ if (array_key_exists($section, $fileMap)) {
     $section = '404'; 
 }
 
-// 4. SIMULAR ROUTER
+// 5. SIMULAR ROUTER
 $CURRENT_SECTION = $section;
 $basePath = '/ProjectAurora/'; 
 
-// 5. Cargar el archivo
+// 6. Cargar el archivo
 if ($realFile && file_exists($realFile)) {
     include $realFile;
 } else {

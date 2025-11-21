@@ -25,24 +25,24 @@ if (!empty($token) && isset($pdo)) {
             
             <?php if ($tokenIsValid): ?>
                 <div class="auth-step-container active">
-                    <h1 data-i18n="auth.recovery.new_pass_title"></h1>
-                    <p data-i18n="auth.recovery.new_pass_subtitle"></p>
+                    <h1 data-i18n="auth.recovery.new_pass_title"><?php echo trans('auth.recovery.new_pass_title'); ?></h1>
+                    <p data-i18n="auth.recovery.new_pass_subtitle"><?php echo trans('auth.recovery.new_pass_subtitle'); ?></p>
                     
                     <input type="hidden" data-input="reset-token" value="<?php echo htmlspecialchars($token); ?>">
 
                     <div class="floating-label-group">
                         <input type="password" data-input="reset-pass" class="floating-input" required placeholder=" " minlength="8">
-                        <label class="floating-label" data-i18n="auth.recovery.new_pass_label"></label>
+                        <label class="floating-label" data-i18n="auth.recovery.new_pass_label"><?php echo trans('auth.recovery.new_pass_label'); ?></label>
                         <button type="button" class="floating-input-btn"><span class="material-symbols-rounded">visibility</span></button>
                     </div>
 
                     <div class="floating-label-group">
                         <input type="password" data-input="reset-pass-confirm" class="floating-input" required placeholder=" " minlength="8">
-                        <label class="floating-label" data-i18n="auth.recovery.repeat_pass_label"></label>
+                        <label class="floating-label" data-i18n="auth.recovery.repeat_pass_label"><?php echo trans('auth.recovery.repeat_pass_label'); ?></label>
                         <button type="button" class="floating-input-btn"><span class="material-symbols-rounded">visibility</span></button>
                     </div>
 
-                    <button class="form-button" data-action="reset-final-submit" data-i18n="auth.recovery.change_btn"></button>
+                    <button class="form-button" data-action="reset-final-submit" data-i18n="auth.recovery.change_btn"><?php echo trans('auth.recovery.change_btn'); ?></button>
                     <div data-error="reset-error" class="form-error-message"></div>
                 </div>
 
@@ -58,18 +58,20 @@ if (!empty($token) && isset($pdo)) {
                     text-align: left; 
                     background-color: #fff;
                 ">
-                    <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #d32f2f;" data-i18n="auth.recovery.invalid_link_title">Error: Enlace no válido</h3>
+                    <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #d32f2f;" data-i18n="auth.recovery.invalid_link_title">
+                        <?php echo trans('auth.recovery.invalid_link_title'); ?>
+                    </h3>
                     <p style="margin: 0; font-size: 14px; color: #666; line-height: 1.5;">
-                        <span data-i18n="auth.recovery.invalid_link_desc"></span>
+                        <span data-i18n="auth.recovery.invalid_link_desc"><?php echo trans('auth.recovery.invalid_link_desc'); ?></span>
                         <br><br>
-                        Por favor, <a href="#" onclick="event.preventDefault(); navigateTo('forgot-password')" style="color: #000; font-weight: 600; text-decoration: underline;" data-i18n="auth.recovery.request_new">solicita uno nuevo aquí</a>.
+                        Por favor, <a href="#" onclick="event.preventDefault(); navigateTo('forgot-password')" style="color: #000; font-weight: 600; text-decoration: underline;" data-i18n="auth.recovery.request_new"><?php echo trans('auth.recovery.request_new'); ?></a>.
                     </p>
                 </div>
 
                 <div style="margin-top: 25px; text-align: center;">
                     <a href="#" onclick="event.preventDefault(); navigateTo('login')" style="color:#666; text-decoration:none; font-size:14px; font-weight:500;">
                         <span class="material-symbols-rounded" style="font-size:16px; vertical-align: text-bottom;">arrow_back</span> 
-                        <span data-i18n="global.back_home"></span>
+                        <span data-i18n="global.back_home"><?php echo trans('global.back_home'); ?></span>
                     </a>
                 </div>
             <?php endif; ?>

@@ -3,7 +3,8 @@
         <div class="header-item">
             <div class="header-button" 
                  data-action="toggleModuleSurface" 
-                 data-i18n-tooltip="header.menu_tooltip">
+                 data-i18n-tooltip="header.menu_tooltip"
+                 data-tooltip="<?php echo trans('header.menu_tooltip'); ?>">
                 <span class="material-symbols-rounded">menu</span>
             </div>
         </div>
@@ -12,7 +13,10 @@
     <div class="header-center">
         <div class="search-container">
             <span class="material-symbols-rounded search-icon">search</span>
-            <input type="text" class="search-input" data-i18n-placeholder="header.search_placeholder" spellcheck="false">
+            <input type="text" class="search-input" 
+                   data-i18n-placeholder="header.search_placeholder" 
+                   placeholder="<?php echo trans('header.search_placeholder'); ?>"
+                   spellcheck="false">
         </div>
     </div>
 
@@ -21,7 +25,8 @@
             
             <div class="header-button"
                  data-action="toggleModuleNotifications"
-                 data-i18n-tooltip="header.notifications_tooltip">
+                 data-i18n-tooltip="header.notifications_tooltip"
+                 data-tooltip="<?php echo trans('header.notifications_tooltip'); ?>">
                 <span class="material-symbols-rounded">notifications</span>
             </div>
 
@@ -31,7 +36,9 @@
             <div class="header-button profile-button"
                 data-action="toggleModuleOptions"
                 data-role="<?php echo htmlspecialchars($userRole); ?>"
-                data-i18n-tooltip="header.profile_tooltip"> <?php
+                data-i18n-tooltip="header.profile_tooltip"
+                data-tooltip="<?php echo trans('header.profile_tooltip'); ?>"> 
+                <?php
                 if (isset($_SESSION['user_avatar']) && !empty($_SESSION['user_avatar'])) {
                     $avatarUrl = $basePath . $_SESSION['user_avatar'];
                     echo '<img src="' . htmlspecialchars($avatarUrl) . '" alt="Perfil" class="profile-img">';
@@ -51,16 +58,16 @@
             </div>
             
             <div class="menu-content-top">
-                <span class="menu-title" data-i18n="header.notifications_title">Notificaciones</span>
-                <div class="notifications-action" data-i18n-title="header.mark_read">
-                    <span data-i18n="header.mark_read"></span>
+                <span class="menu-title" data-i18n="header.notifications_title"><?php echo trans('header.notifications_title'); ?></span>
+                <div class="notifications-action" data-i18n-title="header.mark_read" title="<?php echo trans('header.mark_read'); ?>">
+                    <span data-i18n="header.mark_read"><?php echo trans('header.mark_read'); ?></span>
                 </div>
             </div>
 
             <div class="menu-content-bottom">
                 <div class="notifications-empty">
                     <span class="material-symbols-rounded empty-icon">notifications_off</span>
-                    <p data-i18n="header.no_notifications"></p>
+                    <p data-i18n="header.no_notifications"><?php echo trans('header.no_notifications'); ?></p>
                 </div>
             </div>
 
@@ -82,7 +89,7 @@
                         <span class="material-symbols-rounded">admin_panel_settings</span>
                     </div>
                     <div class="menu-link-text">
-                        <span data-i18n="nav.admin_panel"></span>
+                        <span data-i18n="nav.admin_panel"><?php echo trans('nav.admin_panel'); ?></span>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -92,7 +99,7 @@
                         <span class="material-symbols-rounded">settings</span>
                     </div>
                     <div class="menu-link-text">
-                        <span data-i18n="nav.settings"></span>
+                        <span data-i18n="nav.settings"><?php echo trans('nav.settings'); ?></span>
                     </div>
                 </div>
                 
@@ -101,7 +108,7 @@
                         <span class="material-symbols-rounded">help</span>
                     </div>
                     <div class="menu-link-text">
-                        <span data-i18n="nav.help"></span>
+                        <span data-i18n="nav.help"><?php echo trans('nav.help'); ?></span>
                     </div>
                 </div>
                 <div class="menu-link menu-link-logout">
@@ -109,7 +116,7 @@
                         <span class="material-symbols-rounded">logout</span>
                     </div>
                     <div class="menu-link-text">
-                        <span data-i18n="nav.logout"></span>
+                        <span data-i18n="nav.logout"><?php echo trans('nav.logout'); ?></span>
                     </div>
                 </div>
             </div>

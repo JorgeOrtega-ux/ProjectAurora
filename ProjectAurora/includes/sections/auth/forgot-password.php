@@ -8,20 +8,21 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             
             <div class="auth-back-link">
                 <a href="#" onclick="event.preventDefault(); navigateTo('login')" style="color:#666; text-decoration:none; display:flex; align-items:center; gap:5px; font-size:14px;">
-                    <span class="material-symbols-rounded" style="font-size:18px;">arrow_back</span> <span data-i18n="global.back"></span>
+                    <span class="material-symbols-rounded" style="font-size:18px;">arrow_back</span> 
+                    <span data-i18n="global.back"><?php echo trans('global.back'); ?></span>
                 </a>
             </div>
 
             <div data-step="rec-1" class="auth-step-container active">
-                <h1 data-i18n="auth.recovery.title"></h1>
-                <p data-i18n="auth.recovery.subtitle"></p>
+                <h1 data-i18n="auth.recovery.title"><?php echo trans('auth.recovery.title'); ?></h1>
+                <p data-i18n="auth.recovery.subtitle"><?php echo trans('auth.recovery.subtitle'); ?></p>
                 
                 <div class="floating-label-group">
                     <input type="email" data-input="rec-email" class="floating-input" required placeholder=" ">
-                    <label class="floating-label" data-i18n="auth.login.email_label"></label>
+                    <label class="floating-label" data-i18n="auth.login.email_label"><?php echo trans('auth.login.email_label'); ?></label>
                 </div>
 
-                <button class="form-button" data-action="rec-step1" data-i18n="auth.recovery.send_btn"></button>
+                <button class="form-button" data-action="rec-step1" data-i18n="auth.recovery.send_btn"><?php echo trans('auth.recovery.send_btn'); ?></button>
                 <div data-error="rec-1" class="form-error-message"></div>
             </div>
 
@@ -29,9 +30,14 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 <div style="text-align:center; padding:20px 0;">
                     <span class="material-symbols-rounded" style="font-size:64px; color:#4caf50;">mark_email_read</span>
                 </div>
-                <h1 data-i18n="auth.recovery.success_title"></h1>
-                <p><span data-i18n="auth.recovery.check_email"></span> <strong data-display="rec-email"></strong> <span data-i18n="auth.recovery.spam_hint">(y la carpeta de spam).</span></p>
+                <h1 data-i18n="auth.recovery.success_title"><?php echo trans('auth.recovery.success_title'); ?></h1>
+                <p>
+                    <span data-i18n="auth.recovery.check_email"><?php echo trans('auth.recovery.check_email'); ?></span> 
+                    <strong data-display="rec-email"></strong> 
+                    <span data-i18n="auth.recovery.spam_hint"><?php echo trans('auth.recovery.spam_hint'); ?></span>
+                </p>
                 <p style="font-size:14px; color:#888; margin-top:10px;" data-i18n="auth.recovery.click_hint">
+                    <?php echo trans('auth.recovery.click_hint'); ?>
                 </p>
             </div>
 
