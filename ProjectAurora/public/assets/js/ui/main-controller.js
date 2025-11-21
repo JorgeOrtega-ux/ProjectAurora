@@ -3,8 +3,12 @@
 // Variable de estado global para controlar animaciones
 let isAnimating = false;
 
+// [CONFIGURACIÓN] Define si el menú lateral (Surface) se cierra al hacer clic en un enlace
+// RECOMENDACIÓN: Dejarlo en true, pero filtrar por tamaño de pantalla abajo.
+let SHOULD_CLOSE_SURFACE_ON_CLICK = true; 
+
 // Lista de módulos que tienen animación especial en móvil
-const allowedMobileMods = ['moduleOptions', 'moduleNotifications'];
+const allowedMobileMods = ['moduleOptions', 'moduleNotifications', 'moduleSurface'];
 
 export function initMainController() {
     const allowCloseOnEsc = true;
@@ -31,15 +35,28 @@ export function initMainController() {
             }
         }
 
-        // B) LÓGICA DE SELECCIÓN EN DROPDOWNS (NUEVO: Para Selects de Perfil)
-        // Esto permite que al hacer click en una opción, se cierre el menú y se actualice la UI
+        // B) LÓGICA DE SELECCIÓN EN DROPDOWNS (Para Selects de Perfil)
         const dropdownOption = target.closest('.popover-module .menu-link[data-value]');
         if (dropdownOption) {
             handleDropdownSelection(dropdownOption);
             return;
         }
 
-        // C) LÓGICA DE APERTURA DE MÓDULOS (MENÚS)
+        // C) [MEJORADO] LÓGICA PARA CERRAR SURFACE AL NAVEGAR (SOLO MÓVIL)
+        // Detectamos si el clic fue en un enlace dentro del menú lateral (moduleSurface)
+        const surfaceLink = target.closest('[data-module="moduleSurface"] .menu-link[data-nav]');
+        if (surfaceLink) {
+            // Definimos qué es "móvil" o "tablet" (768px es el estándar habitual)
+            const isSmallScreen = window.innerWidth <= 768;
+
+            if (SHOULD_CLOSE_SURFACE_ON_CLICK && isSmallScreen) {
+                // Solo cerramos automáticamente si la pantalla es pequeña
+                closeAllModules();
+            }
+            // Si es pantalla grande, el menú se queda abierto para navegación rápida.
+        }
+
+        // D) LÓGICA DE APERTURA DE MÓDULOS (MENÚS)
         const trigger = target.closest('[data-action]');
         if (trigger) {
             const action = trigger.dataset.action;
@@ -50,7 +67,7 @@ export function initMainController() {
             if (action === 'toggleModuleOptions') targetModuleId = 'moduleOptions';
             if (action === 'toggleModuleNotifications') targetModuleId = 'moduleNotifications';
             
-            // [CORRECCIÓN]: Agregamos los nuevos triggers de configuración
+            // Triggers de configuración
             if (action === 'toggleModuleUsageSelect') targetModuleId = 'moduleUsageSelect';
             if (action === 'toggleModuleLanguageSelect') targetModuleId = 'moduleLanguageSelect';
 
@@ -104,13 +121,12 @@ export function initMainController() {
         });
     }
 
-    // --- 4. [NUEVO] LÓGICA DE SOMBRA EN SCROLL ---
+    // --- 4. LÓGICA DE SOMBRA EN SCROLL ---
     const scrollContainer = document.querySelector('.general-content-scrolleable');
     const topHeader = document.querySelector('.general-content-top');
 
     if (scrollContainer && topHeader) {
         scrollContainer.addEventListener('scroll', () => {
-            // Si el scroll vertical es mayor a 0, agregamos la clase shadow
             if (scrollContainer.scrollTop > 0) {
                 topHeader.classList.add('shadow');
             } else {
@@ -120,7 +136,7 @@ export function initMainController() {
     }
 }
 
-// [NUEVO] Función para actualizar visualmente los selects personalizados
+// Función para actualizar visualmente los selects personalizados
 function handleDropdownSelection(optionElement) {
     const module = optionElement.closest('.popover-module');
     if (!module) return;
@@ -130,31 +146,29 @@ function handleDropdownSelection(optionElement) {
     allLinks.forEach(link => {
         link.classList.remove('active');
         
-        // [ACTUALIZADO] Buscamos todos los iconos y modificamos el ÚLTIMO (el de la derecha)
         const icons = link.querySelectorAll('.menu-link-icon');
         if (icons.length > 1) {
-            const checkContainer = icons[icons.length - 1]; // El último es el del check
+            const checkContainer = icons[icons.length - 1]; 
             checkContainer.innerHTML = '';
         }
     });
 
     optionElement.classList.add('active');
     
-    // [ACTUALIZADO] Añadir check al elemento activo
+    // Añadir check al elemento activo
     const activeIcons = optionElement.querySelectorAll('.menu-link-icon');
     if (activeIcons.length > 1) {
         const activeCheckContainer = activeIcons[activeIcons.length - 1];
         activeCheckContainer.innerHTML = '<span class="material-symbols-rounded">check</span>';
     }
 
-    // 2. Actualizar el texto e icono del Trigger (el botón que abre el menú)
+    // 2. Actualizar el texto e icono del Trigger
     const wrapper = module.closest('.trigger-select-wrapper');
     if (wrapper) {
         const triggerText = wrapper.querySelector('.trigger-selector .trigger-select-text span');
         const triggerIcon = wrapper.querySelector('.trigger-selector .trigger-select-icon span');
         
         const selectedText = optionElement.querySelector('.menu-link-text span')?.textContent;
-        // [IMPORTANTE] El icono del link es el PRIMERO
         const selectedIcon = optionElement.querySelector('.menu-link-icon span')?.textContent;
 
         if (triggerText && selectedText) triggerText.textContent = selectedText;
