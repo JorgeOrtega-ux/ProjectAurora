@@ -18,8 +18,6 @@ export function initSettingsManager() {
     // Inicializar solo si estamos en la sección correcta.
     if (!qs('[data-section="settings/your-profile"]') && !qs('[data-component="avatar-section"]')) return;
 
-    console.log('Settings Manager: Inicializando...');
-
     initAvatarLogic();
     initUsernameLogic();
     initEmailLogic();

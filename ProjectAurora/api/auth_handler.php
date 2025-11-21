@@ -353,13 +353,18 @@ try {
         }
 
     // ==================================================================
-    // RECUPERACIÓN - FINAL (Verificar Hash y Loggear)
+    // RECUPERACIÓN - FINAL (Verificar Hash y Loggear) - MODIFICADO
     // ==================================================================
     } elseif ($action === 'recovery_final') {
         $token = trim($data['token'] ?? '');
         $newPass = $data['password'] ?? '';
+        $confirmPass = $data['password_confirm'] ?? ''; // <-- NUEVO PARAMETRO
 
         if (empty($token) || empty($newPass)) throw new Exception('Datos incompletos.');
+        
+        // VALIDACIÓN SERVER-SIDE EXTRA
+        if ($newPass !== $confirmPass) throw new Exception('Las contraseñas no coinciden.');
+        
         if (strlen($newPass) < 8) throw new Exception('La contraseña debe tener al menos 8 caracteres.');
 
         // Hashear token recibido para buscar
@@ -378,7 +383,7 @@ try {
 
         $email = $row['identifier'];
 
-        // [NUEVO] Obtener hash antiguo para el log ANTES de actualizar
+        // Obtener hash antiguo para el log ANTES de actualizar
         $stmtUser = $pdo->prepare("SELECT id, password FROM users WHERE email = ?");
         $stmtUser->execute([$email]);
         $userData = $stmtUser->fetch();
@@ -390,14 +395,14 @@ try {
         $upd = $pdo->prepare("UPDATE users SET password = ? WHERE email = ?");
         if ($upd->execute([$newHash, $email])) {
             
-            // [NUEVO] Insertar en user_audit_logs con los HASHES reales
+            // 3. Insertar en user_audit_logs
             if ($userIdForLog) {
                 $ip = get_client_ip();
                 $stmtLog = $pdo->prepare("INSERT INTO user_audit_logs (user_id, change_type, old_value, new_value, changed_by_ip, changed_at) VALUES (?, 'password', ?, ?, ?, NOW())");
                 $stmtLog->execute([$userIdForLog, $oldHash, $newHash, $ip]);
             }
 
-            // 3. Borrar el token usado
+            // 4. Borrar el token usado
             $pdo->prepare("DELETE FROM verification_codes WHERE code = ?")->execute([$tokenHash]);
             
             clearFailedAttempts($pdo, $email);

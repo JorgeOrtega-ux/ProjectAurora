@@ -138,15 +138,13 @@ export function initAuthManager() {
             switchRegisterStep(1, 'register');
         }
 
-        // --- RECUPERACIÓN DE CUENTA (MODIFICADO PARA URL) ---
-        // Paso 1: Solicitar el enlace al correo
+        // --- RECUPERACIÓN DE CUENTA ---
         if (e.target.closest('[data-action="rec-step1"]')) {
             e.preventDefault();
             await handleRecoveryLinkRequest();
         }
-        // (Los pasos 2 y 3 manuales se han eliminado porque ahora es por URL)
 
-        // --- NUEVO: RESTABLECER CONTRASEÑA (PÁGINA RESET-PASSWORD) ---
+        // --- RESTABLECER CONTRASEÑA (PÁGINA RESET-PASSWORD) ---
         if (e.target.closest('[data-action="reset-final-submit"]')) {
             e.preventDefault();
             await handleResetPasswordFinal();
@@ -204,16 +202,13 @@ export function initAuthManager() {
         if (logoutBtn) {
             e.preventDefault(); 
             
-            // Evitar doble clic
             if (logoutBtn.dataset.processing === "true") return;
             logoutBtn.dataset.processing = "true";
             
-            // 1. CREAR DINÁMICAMENTE EL CONTENEDOR DEL SPINNER
             const spinnerContainer = document.createElement('div');
             spinnerContainer.className = 'menu-link-icon'; 
             spinnerContainer.innerHTML = '<div class="small-spinner"></div>';
             
-            // 2. INSERTARLO AL FINAL DEL BOTÓN (Aparecerá a la derecha)
             logoutBtn.appendChild(spinnerContainer);
             
             try {
@@ -250,7 +245,6 @@ export function initAuthManager() {
     });
     
     if (qs('[data-step="register-3"].active')) initResendTimer('[data-action="resend-register"]');
-    // if (qs('[data-step="rec-2"].active')) initResendTimer('[data-action="resend-recovery"]'); // YA NO SE USA
     if (qs('[data-step="login-2"].active')) initResendTimer('[data-action="resend-login"]');
 }
 
@@ -409,7 +403,6 @@ async function handleRecoveryLinkRequest() {
         const res = await response.json();
 
         if (res.success) {
-            // Mostrar pantalla de éxito y ocultar la de input
             const display = qs('[data-display="rec-email"]');
             if(display) display.textContent = emailVal;
             
@@ -425,24 +418,37 @@ async function handleRecoveryLinkRequest() {
     btn.disabled = false;
 }
 
-// --- NUEVA FUNCIÓN: CONFIRMAR CAMBIO DE CONTRASEÑA (RESET-PASSWORD PAGE) ---
+// --- CONFIRMAR CAMBIO DE CONTRASEÑA (MODIFICADO) ---
 async function handleResetPasswordFinal() {
     const passIn = qs('[data-input="reset-pass"]');
+    const passConfirmIn = qs('[data-input="reset-pass-confirm"]'); // Campo de confirmación
     const tokenIn = qs('[data-input="reset-token"]');
     const errorDiv = qs('[data-error="reset-error"]');
     const btn = qs('[data-action="reset-final-submit"]');
 
-    if (!passIn || !tokenIn) return;
+    if (!passIn || !tokenIn || !passConfirmIn) return;
 
     const passVal = passIn.value;
+    const passConfirmVal = passConfirmIn.value;
     const tokenVal = tokenIn.value;
 
+    // Limpieza UI
     if(errorDiv) { errorDiv.textContent = ''; errorDiv.classList.remove('active'); }
     passIn.classList.remove('input-error');
+    passConfirmIn.classList.remove('input-error');
 
+    // Validación 1: Longitud
     if (passVal.length < 8) {
         passIn.classList.add('input-error');
         if(errorDiv) { errorDiv.textContent = "Mínimo 8 caracteres."; errorDiv.classList.add('active'); }
+        return;
+    }
+
+    // Validación 2: Coincidencia (Client-side)
+    if (passVal !== passConfirmVal) {
+        passIn.classList.add('input-error');
+        passConfirmIn.classList.add('input-error');
+        if(errorDiv) { errorDiv.textContent = "Las contraseñas no coinciden."; errorDiv.classList.add('active'); }
         return;
     }
 
@@ -454,17 +460,18 @@ async function handleResetPasswordFinal() {
         const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }, 
+            // ENVIAMOS AMBAS CONTRASEÑAS AL SERVIDOR
             body: JSON.stringify({ 
                 action: 'recovery_final', 
                 token: tokenVal,
-                password: passVal 
+                password: passVal,
+                password_confirm: passConfirmVal 
             })
         });
         const res = await response.json();
 
         if (res.success) {
             if (window.alertManager) window.alertManager.showAlert('Contraseña actualizada con éxito.', 'success');
-            // Redirigir al login
             window.location.href = API_BASE_PATH + 'login';
         } else {
             if(errorDiv) { errorDiv.textContent = res.message; errorDiv.classList.add('active'); }

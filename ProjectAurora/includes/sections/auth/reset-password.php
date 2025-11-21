@@ -44,6 +44,12 @@ if (!empty($token) && isset($pdo)) {
                         <button type="button" class="floating-input-btn"><span class="material-symbols-rounded">visibility</span></button>
                     </div>
 
+                    <div class="floating-label-group">
+                        <input type="password" data-input="reset-pass-confirm" class="floating-input" required placeholder=" " minlength="8">
+                        <label class="floating-label">Repetir Contraseña</label>
+                        <button type="button" class="floating-input-btn"><span class="material-symbols-rounded">visibility</span></button>
+                    </div>
+
                     <button class="form-button" data-action="reset-final-submit">Cambiar Contraseña</button>
                     <div data-error="reset-error" class="form-error-message"></div>
                 </div>
