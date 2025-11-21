@@ -67,13 +67,21 @@ function initAvatarLogic() {
     });
 
     // Cancel
-    elements.cancelBtn.addEventListener('click', () => {
-        elements.previewImg.src = originalImageSrc;
-        elements.fileInput.value = '';
-        // Determinar estado previo (si la src original estaba vacía o era default, vamos a default)
-        const mode = (originalImageSrc.includes('data:image') || originalImageSrc === '' || originalImageSrc.endsWith('/')) ? 'default' : 'custom';
-        toggleAvatarActions(mode === 'custom' ? 'custom' : 'default'); // Simplificación segura
-    });
+   elements.cancelBtn.addEventListener('click', () => {
+    elements.previewImg.src = originalImageSrc;
+    elements.fileInput.value = '';
+    
+    // [CORRECCIÓN] Detectar si la URL contiene palabras clave de tus avatares por defecto
+    const isDefault = originalImageSrc.includes('data:image') || 
+                      originalImageSrc === '' || 
+                      originalImageSrc.endsWith('/') ||
+                      originalImageSrc.includes('/default/') ||          // Para ProjectAurora
+                      originalImageSrc.includes('avatars_default') ||    // Para ProjectGenesis
+                      originalImageSrc.includes('ui-avatars.com');       // Para avatares generados
+
+    const mode = isDefault ? 'default' : 'custom';
+    toggleAvatarActions(mode);
+});
 
     // Save
     elements.saveBtn.addEventListener('click', async () => {

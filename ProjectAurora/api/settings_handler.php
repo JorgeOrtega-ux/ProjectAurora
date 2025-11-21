@@ -72,13 +72,14 @@ try {
         $mimeType = $finfo->file($file['tmp_name']);
         if (!in_array($mimeType, $allowedTypes)) throw new Exception('Formato no permitido.');
 
-        $uploadDir = __DIR__ . '/../public/assets/uploads/avatars/';
+        // [MODIFICADO] Guardar en subcarpeta 'custom'
+        $uploadDir = __DIR__ . '/../public/assets/uploads/avatars/custom/';
         if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
 
         $extension = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'png';
         $newFileName = generate_uuid_v4() . '.' . $extension;
         $destination = $uploadDir . $newFileName;
-        $dbPath = 'assets/uploads/avatars/' . $newFileName;
+        $dbPath = 'assets/uploads/avatars/custom/' . $newFileName; // Ruta DB incluye 'custom'
 
         if (!move_uploaded_file($file['tmp_name'], $destination)) {
             throw new Exception('Error al guardar la imagen en el servidor.');
@@ -101,7 +102,7 @@ try {
         }
 
     // ==================================================================
-    // ELIMINAR AVATAR
+    // ELIMINAR AVATAR (RESTAURAR POR DEFECTO)
     // ==================================================================
     } elseif ($action === 'remove_avatar') {
         $stmt = $pdo->prepare("SELECT username, avatar FROM users WHERE id = ?");
@@ -116,14 +117,18 @@ try {
         
         $apiUrl = "https://ui-avatars.com/api/?name={$username}&size=256&background={$color}&color=ffffff&bold=true&length=1";
         $newFileName = $uuid . '.png';
-        $uploadDir = __DIR__ . '/../public/assets/uploads/avatars/';
-        $destPath = $uploadDir . $newFileName;
-        $dbPath = 'assets/uploads/avatars/' . $newFileName;
-
+        
+        // [MODIFICADO] Guardar en subcarpeta 'default'
+        $uploadDir = __DIR__ . '/../public/assets/uploads/avatars/default/';
         if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
+        
+        $destPath = $uploadDir . $newFileName;
+        $dbPath = 'assets/uploads/avatars/default/' . $newFileName;
+
         $imageContent = @file_get_contents($apiUrl);
         if ($imageContent !== false) file_put_contents($destPath, $imageContent);
 
+        // Borrar avatar anterior
         if ($user['avatar'] && file_exists(__DIR__ . '/../public/' . $user['avatar'])) {
             @unlink(__DIR__ . '/../public/' . $user['avatar']);
         }
@@ -137,7 +142,7 @@ try {
         }
 
     // ==================================================================
-    // [NUEVO] ACTUALIZAR NOMBRE DE USUARIO
+    // ACTUALIZAR NOMBRE DE USUARIO
     // ==================================================================
     } elseif ($action === 'update_username') {
         

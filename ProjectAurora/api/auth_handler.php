@@ -92,11 +92,13 @@ function generate_verification_code()
 
 function is_allowed_domain($email)
 {
-    if (!preg_match('/@(gmail|outlook|icloud|yahoo)/i', $email)) {
+    if (!preg_match('/@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i', $email)) {
         return false;
     }
-    $domain = substr(strrchr($email, "@"), 1);
-    return checkdnsrr($domain, 'MX');
+    // Opcional: checkdnsrr
+    // $domain = substr(strrchr($email, "@"), 1);
+    // return checkdnsrr($domain, 'MX');
+    return true; 
 }
 
 function set_user_session($user)
@@ -198,13 +200,20 @@ try {
         $uuid = generate_uuid();
         $selectedColor = get_random_color();
 
+        // --- [MODIFICADO] Guardar en carpeta 'default' ---
         $apiUrl = "https://ui-avatars.com/api/?name={$finalUsername}&size=256&background={$selectedColor}&color=ffffff&bold=true&length=1";
         $fileName = $uuid . '.png';
-        $destPath = __DIR__ . '/../public/assets/uploads/avatars/' . $fileName;
-        $dbPath = 'assets/uploads/avatars/' . $fileName;
+        
+        $uploadDir = __DIR__ . '/../public/assets/uploads/avatars/default/';
+        if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
+        
+        $destPath = $uploadDir . $fileName;
+        $dbPath = 'assets/uploads/avatars/default/' . $fileName;
+
         $imageContent = @file_get_contents($apiUrl);
         if ($imageContent !== false) file_put_contents($destPath, $imageContent);
         else $dbPath = null;
+        // ------------------------------------------------
 
         $insert = $pdo->prepare("INSERT INTO users (uuid, email, username, password, avatar, role) VALUES (?, ?, ?, ?, ?, 'user')");
         if ($insert->execute([$uuid, $email, $finalUsername, $finalPassHash, $dbPath])) {
@@ -320,29 +329,23 @@ try {
         }
 
         // ==================================================================
-        // RECUPERACIÓN (MODIFICADO: ERROR EXPLÍCITO)
+        // RECUPERACIÓN
         // ==================================================================
     } elseif ($action === 'recovery_step_1') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
 
-        // 1. Validación básica de formato
         if (empty($email) || !is_allowed_domain($email)) {
-             // Mensaje genérico para formato inválido
              throw new Exception('Correo con formato inválido o dominio no permitido.');
         }
 
-        // 2. Protección Rate Limiting (para mitigar enumeración masiva)
-        // Si una IP intenta verificar muchos correos inexistentes, la bloqueamos temporalmente
         if (checkLockStatus($pdo, $email, 'recovery_fail')) {
             throw new Exception("Demasiados intentos. Por favor espera " . LOCKOUT_TIME_MINUTES . " minutos.");
         }
 
-        // 3. Verificar existencia REAL en base de datos
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
 
         if ($stmt->rowCount() > 0) {
-            // EL USUARIO EXISTE: Iniciamos sesión de recuperación y enviamos código
             if (!isset($_SESSION['temp_recovery'])) $_SESSION['temp_recovery'] = [];
             $_SESSION['temp_recovery']['email'] = $email;
             $_SESSION['temp_recovery']['step'] = 2;
@@ -354,11 +357,9 @@ try {
 
             logger("Code Recup generado para $email (Oculto por seguridad).");
             
-            // Éxito explícito
             $response = ['success' => true, 'message' => 'Código enviado correctamente.'];
 
         } else {
-            // EL USUARIO NO EXISTE: Error explícito y registro de fallo
             logFailedAttempt($pdo, $email, 'recovery_fail');
             throw new Exception('Este correo no se encuentra registrado en nuestra base de datos.');
         }

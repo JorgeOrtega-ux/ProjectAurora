@@ -5,13 +5,14 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 $basePath = $basePath ?? '/ProjectAurora/';
 $userId = $_SESSION['user_id'];
 
-// 1. Obtener datos frescos del usuario (Username y Avatar)
-$stmt = $pdo->prepare("SELECT username, avatar FROM users WHERE id = ?");
+// 1. Obtener datos frescos del usuario (Username, Avatar y [NUEVO] ROL)
+$stmt = $pdo->prepare("SELECT username, avatar, role FROM users WHERE id = ?");
 $stmt->execute([$userId]);
 $currentUser = $stmt->fetch();
 
 $currentUsername = $currentUser['username'] ?? 'Usuario';
 $userAvatar = $currentUser['avatar'] ?? null;
+$userRole = $currentUser['role'] ?? 'user'; // <-- Obtenemos el rol
 
 // Construir URL del avatar
 $avatarUrl = null;
@@ -19,7 +20,21 @@ if ($userAvatar && !empty($userAvatar)) {
     $avatarUrl = $basePath . $userAvatar . '?t=' . time();
 }
 
-$hasAvatar = ($avatarUrl !== null);
+// [CORRECCIÓN] Lógica para distinguir entre avatar por defecto y personalizado
+// Si la ruta en la BD contiene '/default/', es un avatar generado.
+// Si no (y no es null), es uno subido por el usuario.
+$isDefaultAvatar = false;
+if (empty($userAvatar)) {
+    $isDefaultAvatar = true;
+} else {
+    // Buscamos la palabra clave 'default' en la ruta de la BD
+    if (strpos($userAvatar, '/default/') !== false) {
+        $isDefaultAvatar = true;
+    }
+}
+
+// La variable clave para la UI:
+$hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
 ?>
 
 <div class="section-content overflow-y active" data-section="settings/your-profile">
@@ -35,7 +50,7 @@ $hasAvatar = ($avatarUrl !== null);
             <input type="file" class="visually-hidden" id="avatar-upload-input" name="avatar" accept="image/png, image/jpeg, image/gif, image/webp">
 
             <div class="component-card__content">
-                <div class="component-card__avatar" id="avatar-preview-container">
+                <div class="component-card__avatar" id="avatar-preview-container" data-role="<?php echo htmlspecialchars($userRole); ?>">
                     <?php if ($avatarUrl): ?>
                         <img src="<?php echo htmlspecialchars($avatarUrl); ?>" alt="Avatar" class="component-card__avatar-image" id="avatar-preview-image">
                     <?php else: ?>
@@ -56,15 +71,17 @@ $hasAvatar = ($avatarUrl !== null);
             </div>
 
             <div class="component-card__actions">
-                <div id="avatar-actions-default" class="<?php echo !$hasAvatar ? 'active' : 'disabled'; ?>">
+                <div id="avatar-actions-default" class="<?php echo !$hasCustomAvatar ? 'active' : 'disabled'; ?>">
                     <button type="button" class="component-button" id="avatar-upload-trigger">
                         <span class="material-symbols-rounded" style="font-size: 18px;">upload</span> Subir foto
                     </button>
                 </div>
-                <div id="avatar-actions-custom" class="<?php echo $hasAvatar ? 'active' : 'disabled'; ?>">
+                
+                <div id="avatar-actions-custom" class="<?php echo $hasCustomAvatar ? 'active' : 'disabled'; ?>">
                     <button type="button" class="component-button" id="avatar-remove-trigger">Eliminar</button>
                     <button type="button" class="component-button" id="avatar-change-trigger">Cambiar foto</button>
                 </div>
+                
                 <div id="avatar-actions-preview" class="disabled">
                     <button type="button" class="component-button" id="avatar-cancel-trigger">Cancelar</button>
                     <button type="button" class="component-button" id="avatar-save-trigger-btn">Guardar</button>
@@ -167,13 +184,40 @@ $hasAvatar = ($avatarUrl !== null);
         width: 72px; height: 72px; border-radius: 50%;
         background-color: #f5f5f5; position: relative;
         display: flex; align-items: center; justify-content: center;
-        overflow: hidden; border: 1px solid #00000020; flex-shrink: 0;
+         border: 1px solid #00000020; flex-shrink: 0;
     }
-    .component-card__avatar-image { width: 100%; height: 100%; object-fit: cover; }
+
+    /* [NUEVO] ESTILOS PARA LOS BORDES DE ROL */
+    .component-card__avatar::before {
+        content: '';
+        position: absolute;
+        border-radius: 50%;
+        /* Usamos inset negativo para que el borde quede por fuera o justo en el borde */
+        top: -4px; left: -4px; right: -4px; bottom: -4px;
+        border: 2px solid transparent;
+        z-index: 2;
+        pointer-events: none;
+        transition: border-color 0.2s ease;
+    }
+
+    .component-card__avatar[data-role="user"]::before { border-color: #cccccc; }
+    .component-card__avatar[data-role="moderator"]::before { border-color: #0000FF; }
+    .component-card__avatar[data-role="administrator"]::before { border-color: #FF0000; }
+    
+    .component-card__avatar[data-role="founder"]::before {
+        border: none;
+        background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
+        mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+        -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+    }
+
+    .component-card__avatar-image { width: 100%;        border-radius: 50px; height: 100%; object-fit: cover; }
     .component-card__avatar-overlay {
         position: absolute; inset: 0; background-color: rgba(0,0,0,0.4);
+
         display: flex; align-items: center; justify-content: center;
         color: #fff; opacity: 0; transition: opacity 0.2s; cursor: pointer;
+        z-index: 3; /* Encima del borde */
     }
     .component-card__avatar:hover .component-card__avatar-overlay { opacity: 1; }
 
