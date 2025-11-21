@@ -3,22 +3,21 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/utilities.php'; // Útil para funciones globales si se necesitan
+require_once __DIR__ . '/../config/utilities.php'; 
 
-// 1. Seguridad básica: Si NO hay sesión y NO es una página pública, bloquear.
-// Definimos qué secciones son públicas para el loader
+// 1. Seguridad básica
 $publicSections = [
     'login', 
     'register', 
     'register/additional-data', 
     'register/verification-account', 
     'forgot-password', 
+    'reset-password', // <--- AGREGADO
     'status-page',
     'login/verification-additional'
 ];
 
 $section = $_GET['section'] ?? 'main';
-// Limpieza básica
 $section = str_replace(['..', '.php'], '', $section);
 
 // Verificar sesión para rutas privadas
@@ -27,7 +26,7 @@ if (!isset($_SESSION['user_id']) && !in_array($section, $publicSections)) {
     exit('<div style="padding:20px; text-align:center">Sesión expirada. Recarga la página.</div>');
 }
 
-// 2. Mapa COMPLETO de rutas (Clave URL => Ruta de Archivo relativa a includes/sections/)
+// 2. Mapa COMPLETO de rutas
 $fileMap = [
     // App
     'main'      => 'app/main',
@@ -41,8 +40,9 @@ $fileMap = [
     'register/additional-data'      => 'auth/register',
     'register/verification-account' => 'auth/register',
     'forgot-password'               => 'auth/forgot-password',
+    'reset-password'                => 'auth/reset-password', // <--- AGREGADO
 
-    // Settings (Aquí estaba tu error, faltaban claves)
+    // Settings
     'settings'                  => 'settings/your-profile',
     'settings/your-profile'     => 'settings/your-profile',
     'settings/login-security'   => 'settings/login-security',
@@ -65,15 +65,11 @@ if (array_key_exists($section, $fileMap)) {
     $realFile = __DIR__ . '/../includes/sections/' . $fileMap[$section] . '.php';
 } else {
     $realFile = __DIR__ . '/../includes/sections/system/404.php';
-    $section = '404'; // Forzar sección 404 para la UI
+    $section = '404'; 
 }
 
 // 4. SIMULAR ROUTER
-// Esto es crucial: tus archivos (header.php, sidebar, register.php) usan $CURRENT_SECTION
-// para saber qué botón marcar como "active".
 $CURRENT_SECTION = $section;
-
-// Variable base path por si se necesita dentro de los includes
 $basePath = '/ProjectAurora/'; 
 
 // 5. Cargar el archivo

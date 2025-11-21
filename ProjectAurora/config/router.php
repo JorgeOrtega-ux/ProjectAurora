@@ -23,17 +23,14 @@ $basePath = '/ProjectAurora/';
 // =======================================================================
 if (isset($_SESSION['user_id'])) {
     try {
-        // Obtenemos rol, avatar y status frescos de la BD
         $stmt = $pdo->prepare("SELECT role, avatar, account_status FROM users WHERE id = ?");
         $stmt->execute([$_SESSION['user_id']]);
         $freshUser = $stmt->fetch();
 
         if ($freshUser) {
-            // Actualizamos la sesión en vivo
             $_SESSION['user_role'] = $freshUser['role'] ?? 'user';
             $_SESSION['user_avatar'] = $freshUser['avatar'];
             
-            // Verificamos status para bloquear al instante si está suspendido
             if ($freshUser['account_status'] !== 'active') {
                 $_SESSION = [];
                 if (ini_get("session.use_cookies")) {
@@ -46,14 +43,12 @@ if (isset($_SESSION['user_id'])) {
             }
 
         } else {
-            // El usuario fue borrado de la BD mientras navegaba
             $_SESSION = [];
             session_destroy();
             header("Location: " . $basePath . "login");
             exit;
         }
     } catch (Exception $e) {
-        // Si falla la BD, continuamos (o podrías loguear el error)
     }
 }
 
@@ -77,9 +72,10 @@ $allowedSections = [
     'register/additional-data', 
     'register/verification-account',
     'forgot-password',
+    'reset-password', // <--- AGREGADO
     'status-page',
     'login/verification-additional',
-    'search', // <--- AGREGADO PARA LA BÚSQUEDA
+    'search', 
     // Settings
     'settings',
     'settings/your-profile',
@@ -136,13 +132,14 @@ if ($CURRENT_SECTION === 'login/verification-additional') {
     $SECTION_FILE_NAME = 'auth/login';
 
 } elseif ($CURRENT_SECTION === 'search') {
-    // <--- NUEVO MAPEO PARA BÚSQUEDA
     $SECTION_FILE_NAME = 'app/search-results';
 
 } elseif (strpos($CURRENT_SECTION, 'register/') === 0 || $CURRENT_SECTION === 'register') {
     $SECTION_FILE_NAME = 'auth/register'; 
 } elseif ($CURRENT_SECTION === 'forgot-password') {
     $SECTION_FILE_NAME = 'auth/forgot-password';
+} elseif ($CURRENT_SECTION === 'reset-password') { // <--- NUEVO MAPEO
+    $SECTION_FILE_NAME = 'auth/reset-password';
 } elseif ($CURRENT_SECTION === 'login') {
     $SECTION_FILE_NAME = 'auth/login';
 
@@ -175,6 +172,7 @@ $publicSections = [
     'register/additional-data', 
     'register/verification-account', 
     'forgot-password', 
+    'reset-password', // <--- AGREGADO
     'status-page',
     'login/verification-additional'
 ];
@@ -211,12 +209,8 @@ if (array_key_exists($CURRENT_SECTION, $requirements)) {
 // LÓGICA DE NAVEGACIÓN (SHOWHEADER)
 // ==========================================
 if ($isLoggedIn) {
-    // Si está logueado: Mostramos el header SIEMPRE, 
-    // EXCEPTO si hay un error de datos críticos.
     $showNavigation = ($SECTION_FILE_NAME !== 'system/error-missing-data');
 } else {
-    // Si NO está logueado:
-    // Ocultamos header en 404, errores y páginas públicas.
     $showNavigation = !($SECTION_FILE_NAME === 'system/error-missing-data' || $CURRENT_SECTION === '404') && !in_array($CURRENT_SECTION, $publicSections);
 }
 ?>

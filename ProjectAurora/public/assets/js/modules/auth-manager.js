@@ -138,23 +138,18 @@ export function initAuthManager() {
             switchRegisterStep(1, 'register');
         }
 
-        // --- RECUPERACIÓN ---
+        // --- RECUPERACIÓN DE CUENTA (MODIFICADO PARA URL) ---
+        // Paso 1: Solicitar el enlace al correo
         if (e.target.closest('[data-action="rec-step1"]')) {
             e.preventDefault();
-            const success = await handleRecoveryStep('step1');
-            if (success) initResendTimer('[data-action="resend-recovery"]');
+            await handleRecoveryLinkRequest();
         }
-        if (e.target.closest('[data-action="rec-step2"]')) {
+        // (Los pasos 2 y 3 manuales se han eliminado porque ahora es por URL)
+
+        // --- NUEVO: RESTABLECER CONTRASEÑA (PÁGINA RESET-PASSWORD) ---
+        if (e.target.closest('[data-action="reset-final-submit"]')) {
             e.preventDefault();
-            await handleRecoveryStep('step2');
-        }
-        if (e.target.closest('[data-action="rec-step3"]')) {
-            e.preventDefault();
-            await handleRecoveryStep('step3');
-        }
-        if (e.target.closest('[data-action="resend-recovery"]')) {
-            e.preventDefault();
-            await handleResendCode('recovery', '[data-action="resend-recovery"]');
+            await handleResetPasswordFinal();
         }
 
         // --- UTILIDADES ---
@@ -215,7 +210,7 @@ export function initAuthManager() {
             
             // 1. CREAR DINÁMICAMENTE EL CONTENEDOR DEL SPINNER
             const spinnerContainer = document.createElement('div');
-            spinnerContainer.className = 'menu-link-icon'; // Reusamos tu clase de estilo
+            spinnerContainer.className = 'menu-link-icon'; 
             spinnerContainer.innerHTML = '<div class="small-spinner"></div>';
             
             // 2. INSERTARLO AL FINAL DEL BOTÓN (Aparecerá a la derecha)
@@ -239,16 +234,13 @@ export function initAuthManager() {
                 if (res.success) {
                     if (window.alertManager) window.alertManager.showAlert('Cerrando sesión...', 'info');
                     window.location.href = API_BASE_PATH + 'login';
-                    // No necesitamos eliminar el spinner porque la página se recargará/redirigirá
                 } else {
-                    // Error lógico: eliminamos el spinner creado y liberamos el botón
                     spinnerContainer.remove();
                     logoutBtn.dataset.processing = "false";
                     if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
                 }
 
             } catch (error) {
-                // Error de red: eliminamos el spinner creado y liberamos el botón
                 console.error(error);
                 spinnerContainer.remove();
                 logoutBtn.dataset.processing = "false";
@@ -258,7 +250,7 @@ export function initAuthManager() {
     });
     
     if (qs('[data-step="register-3"].active')) initResendTimer('[data-action="resend-register"]');
-    if (qs('[data-step="rec-2"].active')) initResendTimer('[data-action="resend-recovery"]');
+    // if (qs('[data-step="rec-2"].active')) initResendTimer('[data-action="resend-recovery"]'); // YA NO SE USA
     if (qs('[data-step="login-2"].active')) initResendTimer('[data-action="resend-login"]');
 }
 
@@ -380,131 +372,109 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
     return await sendAuthRequest(payload, btnSelector, errorSelector, nextStep, nextUrl);
 }
 
-async function handleRecoveryStep(stepName) {
-    let payload = { action: '' };
-    let btnSelector, errorSelector, inputSelectors = [];
-    let currentStepSelector = '';
-    let nextStepSelector = '';
+// --- NUEVA FUNCIÓN: SOLICITAR ENLACE DE RECUPERACIÓN ---
+async function handleRecoveryLinkRequest() {
+    const emailIn = qs('[data-input="rec-email"]');
+    if(!emailIn) return;
 
-    if (stepName === 'step1') {
-        const emailIn = qs('[data-input="rec-email"]');
-        if(!emailIn) return false;
+    const emailVal = emailIn.value.trim().toLowerCase();
+    const errorDiv = qs('[data-error="rec-1"]');
+    const btn = qs('[data-action="rec-step1"]');
+    
+    if(errorDiv) { errorDiv.textContent = ''; errorDiv.classList.remove('active'); }
+    emailIn.classList.remove('input-error');
 
-        const emailVal = emailIn.value.trim().toLowerCase();
-        const errorDiv = qs('[data-error="rec-1"]');
-        
-        if(errorDiv) { errorDiv.textContent = ''; errorDiv.classList.remove('active'); }
-        emailIn.classList.remove('input-error');
-
-        if(!emailVal) { 
-            emailIn.classList.add('input-error'); 
-            if(errorDiv) { errorDiv.textContent = "El correo es requerido."; errorDiv.classList.add('active'); }
-            return false; 
-        }
-
-        if (!isValidEmailDomain(emailVal)) {
-            emailIn.classList.add('input-error');
-            if(errorDiv) { errorDiv.textContent = "Correo inválido. Solo se permite: Gmail, Outlook, iCloud, Yahoo."; errorDiv.classList.add('active'); }
-            return false;
-        }
-        
-        payload = { action: 'recovery_step_1', email: emailVal };
-        
-        btnSelector = '[data-action="rec-step1"]'; 
-        errorSelector = '[data-error="rec-1"]'; 
-        inputSelectors = ['[data-input="rec-email"]'];
-        currentStepSelector = '[data-step="rec-1"]';
-        nextStepSelector = '[data-step="rec-2"]';
-
-    } else if (stepName === 'step2') {
-        const codeIn = qs('[data-input="rec-code"]');
-        if(!codeIn) return false;
-        
-        const rawCode = codeIn.value.trim();
-        if(!rawCode) { 
-            codeIn.classList.add('input-error'); 
-            return false; 
-        }
-        
-        payload = { action: 'recovery_step_2', code: rawCode.replace(/-/g, '') };
-        
-        btnSelector = '[data-action="rec-step2"]'; 
-        errorSelector = '[data-error="rec-2"]'; 
-        inputSelectors = ['[data-input="rec-code"]'];
-        currentStepSelector = '[data-step="rec-2"]';
-        nextStepSelector = '[data-step="rec-3"]';
-
-    } else if (stepName === 'step3') {
-        const passIn = qs('[data-input="rec-pass"]');
-        if(!passIn) return false;
-        
-        if(passIn.value.length < 8) { 
-            passIn.classList.add('input-error'); 
-            const err = qs('[data-error="rec-3"]');
-            if(err) { err.textContent = 'Mínimo 8 caracteres'; err.classList.add('active'); }
-            return false; 
-        }
-
-        payload = { action: 'recovery_final', password: passIn.value };
-        btnSelector = '[data-action="rec-step3"]'; 
-        errorSelector = '[data-error="rec-3"]'; 
-        inputSelectors = ['[data-input="rec-pass"]'];
+    if(!emailVal) { 
+        emailIn.classList.add('input-error'); 
+        if(errorDiv) { errorDiv.textContent = "El correo es requerido."; errorDiv.classList.add('active'); }
+        return; 
     }
 
-    const btn = qs(btnSelector);
-    let originalContent = '';
-    
-    if(btn) { 
-        originalContent = btn.innerHTML;
-        btn.innerHTML = '<div class="btn-spinner"></div>'; 
-        btn.disabled = true; 
+    if (!isValidEmailDomain(emailVal)) {
+        emailIn.classList.add('input-error');
+        if(errorDiv) { errorDiv.textContent = "Dominio inválido."; errorDiv.classList.add('active'); }
+        return;
     }
-    
-    if (stepName !== 'step1') {
-        const errorDiv = qs(errorSelector);
-        if(errorDiv) { errorDiv.textContent = ''; errorDiv.classList.remove('active'); }
-    }
-    inputSelectors.forEach(sel => qs(sel).classList.remove('input-error'));
-    
+
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<div class="btn-spinner"></div>';
+    btn.disabled = true;
+
     try {
         const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
             method: 'POST', 
-            headers: { 
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': getCsrfToken()
-            }, 
-            body: JSON.stringify(payload)
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }, 
+            body: JSON.stringify({ action: 'recovery_step_1', email: emailVal })
         });
         const res = await response.json();
 
         if (res.success) {
-            if (stepName === 'step3') {
-                if (window.alertManager) window.alertManager.showAlert('Contraseña actualizada con éxito.', 'success');
-                window.location.href = API_BASE_PATH + 'login';
-            } else {
-                toggleStepVisibility(currentStepSelector, nextStepSelector);
-                
-                if(stepName === 'step1') {
-                    const display = qs('[data-display="rec-email"]');
-                    if(display) display.textContent = payload.email;
-                    // MODIFICADO: Mensaje más directo
-                    if (window.alertManager) window.alertManager.showAlert('Código enviado. Revisa tu correo.', 'success');
-                }
-                
-                if(btn) { btn.innerHTML = originalContent; btn.disabled = false; }
-            }
-            return true; 
+            // Mostrar pantalla de éxito y ocultar la de input
+            const display = qs('[data-display="rec-email"]');
+            if(display) display.textContent = emailVal;
+            
+            if (window.alertManager) window.alertManager.showAlert('Enlace enviado. Revisa tu correo.', 'success');
+            toggleStepVisibility('[data-step="rec-1"]', '[data-step="rec-success"]');
         } else {
-            const errorDiv = qs(errorSelector);
             if(errorDiv) { errorDiv.textContent = res.message; errorDiv.classList.add('active'); }
-            if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
-            return false;
         }
     } catch (e) {
-        const errorDiv = qs(errorSelector);
         if(errorDiv) { errorDiv.textContent = "Error de conexión"; errorDiv.classList.add('active'); }
-        if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
-        return false;
+    }
+    btn.innerHTML = originalContent;
+    btn.disabled = false;
+}
+
+// --- NUEVA FUNCIÓN: CONFIRMAR CAMBIO DE CONTRASEÑA (RESET-PASSWORD PAGE) ---
+async function handleResetPasswordFinal() {
+    const passIn = qs('[data-input="reset-pass"]');
+    const tokenIn = qs('[data-input="reset-token"]');
+    const errorDiv = qs('[data-error="reset-error"]');
+    const btn = qs('[data-action="reset-final-submit"]');
+
+    if (!passIn || !tokenIn) return;
+
+    const passVal = passIn.value;
+    const tokenVal = tokenIn.value;
+
+    if(errorDiv) { errorDiv.textContent = ''; errorDiv.classList.remove('active'); }
+    passIn.classList.remove('input-error');
+
+    if (passVal.length < 8) {
+        passIn.classList.add('input-error');
+        if(errorDiv) { errorDiv.textContent = "Mínimo 8 caracteres."; errorDiv.classList.add('active'); }
+        return;
+    }
+
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<div class="btn-spinner"></div>';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }, 
+            body: JSON.stringify({ 
+                action: 'recovery_final', 
+                token: tokenVal,
+                password: passVal 
+            })
+        });
+        const res = await response.json();
+
+        if (res.success) {
+            if (window.alertManager) window.alertManager.showAlert('Contraseña actualizada con éxito.', 'success');
+            // Redirigir al login
+            window.location.href = API_BASE_PATH + 'login';
+        } else {
+            if(errorDiv) { errorDiv.textContent = res.message; errorDiv.classList.add('active'); }
+            btn.innerHTML = originalContent; 
+            btn.disabled = false;
+        }
+    } catch (e) {
+        if(errorDiv) { errorDiv.textContent = "Error de conexión"; errorDiv.classList.add('active'); }
+        btn.innerHTML = originalContent; 
+        btn.disabled = false;
     }
 }
 

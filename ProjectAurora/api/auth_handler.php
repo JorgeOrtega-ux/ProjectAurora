@@ -103,9 +103,8 @@ function mask_email($email) {
 $response = ['success' => false, 'message' => 'Acción no válida'];
 
 try {
-    // ==================================================================
-    // REGISTRO - ETAPA 1
-    // ==================================================================
+    // ... (REGISTRO STEP 1 Y 2 SIN CAMBIOS) ...
+
     if ($action === 'register_step_1') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
@@ -125,9 +124,6 @@ try {
 
         $response = ['success' => true, 'message' => 'Paso 1 OK'];
 
-    // ==================================================================
-    // REGISTRO - ETAPA 2
-    // ==================================================================
     } elseif ($action === 'register_step_2') {
         $username = trim($data['username'] ?? '');
         $email = $_SESSION['temp_register']['email'] ?? '';
@@ -155,9 +151,6 @@ try {
         logger("Code registro generado para el usuario (Oculto por seguridad).");
         $response = ['success' => true, 'message' => 'Código enviado'];
 
-    // ==================================================================
-    // REGISTRO - ETAPA 3 (FINAL)
-    // ==================================================================
     } elseif ($action === 'register_final') {
         $inputCode = strtoupper(trim($data['code'] ?? ''));
         $email = $_SESSION['temp_register']['email'] ?? '';
@@ -177,7 +170,6 @@ try {
         $uuid = generate_uuid();
         $selectedColor = get_random_color();
 
-        // Crear Avatar Default
         $apiUrl = "https://ui-avatars.com/api/?name={$finalUsername}&size=256&background={$selectedColor}&color=ffffff&bold=true&length=1";
         $fileName = $uuid . '.png';
         $uploadDir = __DIR__ . '/../public/assets/uploads/avatars/default/';
@@ -188,20 +180,14 @@ try {
         if ($imageContent !== false) file_put_contents($destPath, $imageContent);
         else $dbPath = null;
 
-        // Insertar Usuario
         $insert = $pdo->prepare("INSERT INTO users (uuid, email, username, password, avatar, role) VALUES (?, ?, ?, ?, ?, 'user')");
         if ($insert->execute([$uuid, $email, $finalUsername, $finalPassHash, $dbPath])) {
             $newUserId = $pdo->lastInsertId();
 
-            // --- [NUEVO] CREAR PREFERENCIAS ---
-            // Detectamos idioma y asignamos
             $detectedLang = detect_browser_language();
-            
-            // Insertamos preferencias por defecto (personal + idioma detectado)
             $prefsSql = "INSERT INTO user_preferences (user_id, usage_intent, language) VALUES (?, 'personal', ?)";
             $prefsStmt = $pdo->prepare($prefsSql);
             $prefsStmt->execute([$newUserId, $detectedLang]);
-            // ----------------------------------
 
             $newUser = [
                 'id' => $newUserId,
@@ -222,10 +208,7 @@ try {
             throw new Exception('Error crítico.');
         }
 
-    // ... (RESTO DEL CÓDIGO: LOGIN, RECOVERY, LOGOUT IGUAL QUE ANTES) ...
-    
     } elseif ($action === 'login') {
-        // (Sin cambios en login)
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
 
@@ -271,7 +254,6 @@ try {
         }
 
     } elseif ($action === 'login_2fa_verify') {
-        // (Sin cambios)
         $inputCode = strtoupper(trim($data['code'] ?? ''));
         if (empty($_SESSION['temp_login_2fa']['user_id'])) throw new Exception("Sesión expirada. Vuelve a iniciar login.");
         
@@ -298,8 +280,10 @@ try {
             throw new Exception("Código incorrecto o expirado.");
         }
 
+    // ==================================================================
+    // RECUPERACIÓN - PASO 1 (GENERAR LINK) - MODIFICADO
+    // ==================================================================
     } elseif ($action === 'recovery_step_1') {
-        // (Sin cambios)
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         if (empty($email) || !is_allowed_domain($email)) throw new Exception('Correo con formato inválido o dominio no permitido.');
         if (checkLockStatus($pdo, $email, 'recovery_fail')) throw new Exception("Demasiados intentos. Por favor espera " . LOCKOUT_TIME_MINUTES . " minutos.");
@@ -307,93 +291,70 @@ try {
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
         if ($stmt->rowCount() > 0) {
-            if (!isset($_SESSION['temp_recovery'])) $_SESSION['temp_recovery'] = [];
-            $_SESSION['temp_recovery']['email'] = $email;
-            $_SESSION['temp_recovery']['step'] = 2;
-            $code = generate_verification_code();
+            
+            // 1. Generar Token Largo (64 chars)
+            $token = bin2hex(random_bytes(32)); 
+            
+            // 2. Limpiar tokens previos
             $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'recovery'")->execute([$email]);
-            $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, expires_at) VALUES (?, 'recovery', ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
-            $stmt->execute([$email, $code]);
-            logger("Code Recup generado para $email (Oculto por seguridad).");
-            $response = ['success' => true, 'message' => 'Código enviado correctamente.'];
+            
+            // 3. Insertar nuevo token (Expira en 30 mins para links)
+            $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, expires_at) VALUES (?, 'recovery', ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE))");
+            $stmt->execute([$email, $token]);
+            
+            // 4. Generar Link
+            // NOTA: Asume que ProjectAurora está en la raíz o carpeta configurada.
+            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
+            $host = $_SERVER['HTTP_HOST']; // localhost
+            $base = '/ProjectAurora/'; // Ajusta si cambia la carpeta
+            
+            $link = $protocol . $host . $base . 'reset-password?token=' . $token;
+
+            logger("LINK Recuperación generado para $email: $link");
+            
+            $response = ['success' => true, 'message' => 'Se ha enviado un enlace de recuperación a tu correo.'];
         } else {
             logFailedAttempt($pdo, $email, 'recovery_fail');
+            // Por seguridad, respondemos lo mismo aunque no exista, o lanzamos error genérico
             throw new Exception('Este correo no se encuentra registrado en nuestra base de datos.');
         }
 
-    } elseif ($action === 'recovery_step_2') {
-        // (Sin cambios)
-        $email = $_SESSION['temp_recovery']['email'] ?? '';
-        $inputCode = strtoupper(trim($data['code'] ?? ''));
-        $stmt = $pdo->prepare("SELECT id FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'recovery' AND expires_at > NOW()");
-        $stmt->execute([$email, $inputCode]);
-        if ($stmt->rowCount() > 0) {
-            $_SESSION['temp_recovery']['verified'] = true;
-            $_SESSION['temp_recovery']['step'] = 3;
-            $response = ['success' => true, 'message' => 'Código correcto'];
-        } else {
-            throw new Exception('Código incorrecto.');
+    // ==================================================================
+    // RECUPERACIÓN - FINAL (VALIDAR TOKEN Y CAMBIAR PASS) - MODIFICADO
+    // ==================================================================
+    } elseif ($action === 'recovery_final') {
+        // Ya no depende de $_SESSION['temp_recovery']
+        $token = trim($data['token'] ?? '');
+        $newPass = $data['password'] ?? '';
+
+        if (empty($token) || empty($newPass)) throw new Exception('Datos incompletos.');
+        if (strlen($newPass) < 8) throw new Exception('La contraseña debe tener al menos 8 caracteres.');
+
+        // 1. Buscar token en BD
+        $sql = "SELECT identifier FROM verification_codes 
+                WHERE code = ? AND code_type = 'recovery' AND expires_at > NOW()";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$token]);
+        $row = $stmt->fetch();
+
+        if (!$row) {
+            throw new Exception('El enlace es inválido o ha expirado.');
         }
 
-    } elseif ($action === 'recovery_final') {
-        // (Sin cambios)
-        $email = $_SESSION['temp_recovery']['email'] ?? '';
-        $verified = $_SESSION['temp_recovery']['verified'] ?? false;
-        $newPass = $data['password'] ?? '';
-        if (empty($email) || !$verified) throw new Exception('No autorizado.');
+        $email = $row['identifier'];
+
+        // 2. Actualizar Password
         $newHash = password_hash($newPass, PASSWORD_BCRYPT);
         $upd = $pdo->prepare("UPDATE users SET password = ? WHERE email = ?");
         if ($upd->execute([$newHash, $email])) {
-            $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'recovery'")->execute([$email]);
-            unset($_SESSION['temp_recovery']);
+            // 3. Borrar el token usado
+            $pdo->prepare("DELETE FROM verification_codes WHERE code = ?")->execute([$token]);
+            
             clearFailedAttempts($pdo, $email);
-            $response = ['success' => true, 'message' => 'Contraseña actualizada.'];
+            $response = ['success' => true, 'message' => 'Contraseña actualizada. Inicia sesión.'];
         } else {
-            throw new Exception('Error BD.');
+            throw new Exception('Error actualizando base de datos.');
         }
-
-    } elseif ($action === 'resend_code') {
-        // (Sin cambios)
-        $type = $data['type'] ?? ''; 
-        $email = '';
-        $codeType = '';
-        if ($type === 'register') {
-            $email = $_SESSION['temp_register']['email'] ?? '';
-            $codeType = 'registration';
-        } elseif ($type === 'login') {
-            $email = $_SESSION['temp_login_2fa']['email'] ?? '';
-            $codeType = 'login_2fa';
-        } elseif ($type === 'recovery') {
-            $email = $_SESSION['temp_recovery']['email'] ?? '';
-            $codeType = 'recovery';
-        } else {
-            throw new Exception("Tipo de reenvío no válido.");
-        }
-
-        if (empty($email)) throw new Exception("Sesión perdida. Recarga la página.");
-
-        $stmt = $pdo->prepare("SELECT created_at, payload FROM verification_codes WHERE identifier = ? AND code_type = ? ORDER BY id DESC LIMIT 1");
-        $stmt->execute([$email, $codeType]);
-        $lastCodeRow = $stmt->fetch();
-
-        if ($lastCodeRow) {
-            $createdAt = strtotime($lastCodeRow['created_at']);
-            $currentTime = time();
-            $diff = $currentTime - $createdAt;
-            if ($diff < 60) {
-                $wait = 60 - $diff;
-                echo json_encode(['success' => false, 'message' => "Por favor espera $wait segundos.", 'remaining_time' => $wait]);
-                exit;
-            }
-        }
-
-        $newCode = generate_verification_code();
-        $payload = $lastCodeRow['payload'] ?? null;
-        $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = ?")->execute([$email, $codeType]);
-        $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
-        $stmt->execute([$email, $codeType, $newCode, $payload]);
-        logger("Reenvio Code ($type) generado para $email (Oculto por seguridad).");
-        $response = ['success' => true, 'message' => 'Nuevo código enviado.'];
 
     } elseif ($action === 'logout') {
         $_SESSION = [];
