@@ -64,7 +64,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
             <div class="component-card__actions">
                 <div data-state="avatar-actions-default" class="<?php echo !$hasCustomAvatar ? 'active' : 'disabled'; ?>">
                     <button type="button" class="component-button" data-action="avatar-upload-trigger">
-                        <span class="material-symbols-rounded" style="font-size: 18px;">upload</span> Subir foto
+                        Subir foto
                     </button>
                 </div>
 
@@ -184,9 +184,19 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                                     <div class="menu-link-text"><span>Estudiante</span></div>
                                     <div class="menu-link-check-icon"></div>
                                 </div>
-                                <div class="menu-link" data-value="developer">
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">code</span></div>
-                                    <div class="menu-link-text"><span>Desarrollador</span></div>
+                                <div class="menu-link" data-value="teacher">
+                                    <div class="menu-link-icon"><span class="material-symbols-rounded">history_edu</span></div>
+                                    <div class="menu-link-text"><span>Docente</span></div>
+                                    <div class="menu-link-check-icon"></div>
+                                </div>
+                                <div class="menu-link" data-value="small_business">
+                                    <div class="menu-link-icon"><span class="material-symbols-rounded">storefront</span></div>
+                                    <div class="menu-link-text"><span>Empresa pequeña</span></div>
+                                    <div class="menu-link-check-icon"></div>
+                                </div>
+                                <div class="menu-link" data-value="large_business">
+                                    <div class="menu-link-icon"><span class="material-symbols-rounded">domain</span></div>
+                                    <div class="menu-link-text"><span>Empresa grande</span></div>
                                     <div class="menu-link-check-icon"></div>
                                 </div>
                             </div>
@@ -218,9 +228,19 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                                     <div class="menu-link-text"><span>Español (Latinoamérica)</span></div>
                                     <div class="menu-link-check-icon"><span class="material-symbols-rounded">check</span></div>
                                 </div>
+                                <div class="menu-link" data-value="es-mx">
+                                    <div class="menu-link-icon"><span class="material-symbols-rounded">language</span></div>
+                                    <div class="menu-link-text"><span>Español (México)</span></div>
+                                    <div class="menu-link-check-icon"></div>
+                                </div>
                                 <div class="menu-link" data-value="en-us">
                                     <div class="menu-link-icon"><span class="material-symbols-rounded">translate</span></div>
-                                    <div class="menu-link-text"><span>English (US)</span></div>
+                                    <div class="menu-link-text"><span>English (United States)</span></div>
+                                    <div class="menu-link-check-icon"></div>
+                                </div>
+                                <div class="menu-link" data-value="en-gb">
+                                    <div class="menu-link-icon"><span class="material-symbols-rounded">translate</span></div>
+                                    <div class="menu-link-text"><span>English (United Kingdom)</span></div>
                                     <div class="menu-link-check-icon"></div>
                                 </div>
                             </div>
