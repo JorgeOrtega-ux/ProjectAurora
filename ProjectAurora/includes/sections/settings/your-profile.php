@@ -218,7 +218,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
             <div class="component-card__actions">
                 <div class="trigger-select-wrapper">
                     <div class="trigger-selector" data-action="toggleModuleLanguageSelect">
-                        <div class="trigger-select-icon"><span class="material-symbols-rounded">translate</span></div>
+                        <div class="trigger-select-icon"><span class="material-symbols-rounded">language</span></div>
                         <div class="trigger-select-text"><span><?php echo htmlspecialchars($langDisplayText); ?></span></div>
                         <div class="trigger-select-arrow"><span class="material-symbols-rounded">arrow_drop_down</span></div>
                     </div>
@@ -226,11 +226,12 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                         <div class="menu-content">
                             <div class="menu-list">
                                 <?php 
+                                // Icono 'language' en todas las opciones
                                 $langOptions = [
-                                    ['val' => 'es-latam', 'icon' => 'translate', 'label' => 'Español (Latinoamérica)'],
-                                    ['val' => 'es-mx', 'icon' => 'translate', 'label' => 'Español (México)'],
-                                    ['val' => 'en-us', 'icon' => 'translate', 'label' => 'English (United States)'],
-                                    ['val' => 'en-gb', 'icon' => 'translate', 'label' => 'English (United Kingdom)'],
+                                    ['val' => 'es-latam', 'icon' => 'language', 'label' => 'Español (Latinoamérica)'],
+                                    ['val' => 'es-mx', 'icon' => 'language', 'label' => 'Español (México)'],
+                                    ['val' => 'en-us', 'icon' => 'language', 'label' => 'English (United States)'],
+                                    ['val' => 'en-gb', 'icon' => 'language', 'label' => 'English (United Kingdom)'],
                                 ];
                                 foreach ($langOptions as $opt): 
                                     $isActive = ($currentLang === $opt['val']) ? 'active' : '';
