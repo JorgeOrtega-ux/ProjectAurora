@@ -137,6 +137,19 @@
             "delete_desc": "Si eliminas tu cuenta, ya no podrás acceder a ninguno de tus diseños ni iniciar sesión. Cuenta creada el",
             "delete_btn": "Eliminar cuenta"
         },
+        "accessibility": {
+            "title": "Accesibilidad",
+            "description": "Personaliza la apariencia y el comportamiento de la interfaz.",
+            "theme_title": "Tema",
+            "theme_desc": "Elige cómo quieres que se vea la interfaz.",
+            "theme_options": {
+                "system": "Sincronizar con el sistema",
+                "light": "Claro",
+                "dark": "Oscuro"
+            },
+            "msg_time_title": "Aumenta el tiempo de permanencia de un mensaje en la pantalla.",
+            "msg_time_desc": "Los mensajes permanecerán más tiempo en pantalla antes de desaparecer."
+        },
         "usage_options": {
             "personal": "Uso personal",
             "student": "Estudiante",

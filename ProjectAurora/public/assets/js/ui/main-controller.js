@@ -4,7 +4,6 @@
 let isAnimating = false;
 
 // [CONFIGURACIÓN] Define si el menú lateral (Surface) se cierra al hacer clic en un enlace
-// RECOMENDACIÓN: Dejarlo en true, pero filtrar por tamaño de pantalla abajo.
 let SHOULD_CLOSE_SURFACE_ON_CLICK = true; 
 
 // Lista de módulos que tienen animación especial en móvil
@@ -35,25 +34,20 @@ export function initMainController() {
             }
         }
 
-        // B) LÓGICA DE SELECCIÓN EN DROPDOWNS (Para Selects de Perfil)
+        // B) LÓGICA DE SELECCIÓN EN DROPDOWNS (Para Selects de Perfil y Accesibilidad)
         const dropdownOption = target.closest('.popover-module .menu-link[data-value]');
         if (dropdownOption) {
             handleDropdownSelection(dropdownOption);
             return;
         }
 
-        // C) [MEJORADO] LÓGICA PARA CERRAR SURFACE AL NAVEGAR (SOLO MÓVIL)
-        // Detectamos si el clic fue en un enlace dentro del menú lateral (moduleSurface)
+        // C) LÓGICA PARA CERRAR SURFACE AL NAVEGAR (SOLO MÓVIL)
         const surfaceLink = target.closest('[data-module="moduleSurface"] .menu-link[data-nav]');
         if (surfaceLink) {
-            // Definimos qué es "móvil" o "tablet" (768px es el estándar habitual)
             const isSmallScreen = window.innerWidth <= 768;
-
             if (SHOULD_CLOSE_SURFACE_ON_CLICK && isSmallScreen) {
-                // Solo cerramos automáticamente si la pantalla es pequeña
                 closeAllModules();
             }
-            // Si es pantalla grande, el menú se queda abierto para navegación rápida.
         }
 
         // D) LÓGICA DE APERTURA DE MÓDULOS (MENÚS)
@@ -70,6 +64,9 @@ export function initMainController() {
             // Triggers de configuración
             if (action === 'toggleModuleUsageSelect') targetModuleId = 'moduleUsageSelect';
             if (action === 'toggleModuleLanguageSelect') targetModuleId = 'moduleLanguageSelect';
+            
+            // [MODIFICADO] Nuevo trigger para el selector de Tema
+            if (action === 'toggleModuleThemeSelect') targetModuleId = 'moduleThemeSelect';
 
             if (targetModuleId) {
                 e.preventDefault();
