@@ -60,7 +60,7 @@
 }
 
 .component-card__title {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
     margin: 0;
 }
@@ -86,7 +86,9 @@
 }
 
 /* Acciones dentro del grupo de edición */
-#username-actions-edit.active {
+/* [CORREGIDO] APLICAMOS FLEXBOX A AMBOS IDs */
+#username-actions-edit.active,
+#email-actions-edit.active {
     display: flex !important;
     gap: 8px;
 }
@@ -334,7 +336,9 @@
         min-width: 100%;
     }
 
-    #username-actions-edit.active {
+    /* [CORREGIDO] Agregamos el ID de email aquí también */
+    #username-actions-edit.active,
+    #email-actions-edit.active {
         width: 100%;
         justify-content: flex-end;
     }
