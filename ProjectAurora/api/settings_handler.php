@@ -1,7 +1,6 @@
 <?php
 // api/settings_handler.php
 
-// --- CONFIGURACIÓN DE LOGS ---
 $logDir = __DIR__ . '/../logs';
 $logFile = $logDir . '/settings_error.log';
 if (!file_exists($logDir)) { mkdir($logDir, 0777, true); }
@@ -16,10 +15,8 @@ date_default_timezone_set('America/Matamoros');
 require_once '../config/database.php';
 require_once '../config/utilities.php';
 
-// VALIDACIÓN CSRF
 $data = json_decode(file_get_contents('php://input'), true);
-// Nota: Cuando se suben archivos (FormData), los datos vienen en $_POST y $_FILES.
-// Cuando es JSON raw, vienen en $data.
+// Soporte para FormData o JSON
 $action = $_POST['action'] ?? $data['action'] ?? '';
 $csrfToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_POST['csrf_token'] ?? $data['csrf_token'] ?? '';
 
@@ -38,7 +35,6 @@ if (!isset($_SESSION['user_id'])) {
 $userId = $_SESSION['user_id'];
 $response = ['success' => false, 'message' => 'Acción no válida'];
 
-// --- FUNCIONES AUXILIARES ---
 function generate_uuid_v4() {
     $data = random_bytes(16);
     $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
@@ -63,7 +59,7 @@ try {
         }
 
         $file = $_FILES['avatar'];
-        $maxSize = 2 * 1024 * 1024; // 2 MB
+        $maxSize = 2 * 1024 * 1024; 
         $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
         if ($file['size'] > $maxSize) throw new Exception('La imagen supera el límite de 2MB.');
@@ -72,7 +68,6 @@ try {
         $mimeType = $finfo->file($file['tmp_name']);
         if (!in_array($mimeType, $allowedTypes)) throw new Exception('Formato no permitido.');
 
-        // Guardar en subcarpeta 'custom'
         $uploadDir = __DIR__ . '/../public/assets/uploads/avatars/custom/';
         if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
 
@@ -85,7 +80,6 @@ try {
             throw new Exception('Error al guardar la imagen en el servidor.');
         }
 
-        // Borrar anterior
         $stmt = $pdo->prepare("SELECT avatar FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $oldAvatar = $stmt->fetchColumn();
@@ -102,13 +96,12 @@ try {
         }
 
     // ==================================================================
-    // ELIMINAR AVATAR (RESTAURAR POR DEFECTO)
+    // ELIMINAR AVATAR
     // ==================================================================
     } elseif ($action === 'remove_avatar') {
         $stmt = $pdo->prepare("SELECT username, avatar FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $user = $stmt->fetch();
-        
         if (!$user) throw new Exception('Usuario no encontrado.');
 
         $username = $user['username'];
@@ -117,10 +110,8 @@ try {
         
         $apiUrl = "https://ui-avatars.com/api/?name={$username}&size=256&background={$color}&color=ffffff&bold=true&length=1";
         $newFileName = $uuid . '.png';
-        
         $uploadDir = __DIR__ . '/../public/assets/uploads/avatars/default/';
         if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
-        
         $destPath = $uploadDir . $newFileName;
         $dbPath = 'assets/uploads/avatars/default/' . $newFileName;
 
@@ -140,72 +131,81 @@ try {
         }
 
     // ==================================================================
-    // ACTUALIZAR NOMBRE DE USUARIO
+    // ACTUALIZAR USERNAME
     // ==================================================================
     } elseif ($action === 'update_username') {
-        
         $newUsername = trim($data['username'] ?? '');
-
-        if (strlen($newUsername) < 8 || strlen($newUsername) > 32) {
-            throw new Exception('El usuario debe tener entre 8 y 32 caracteres.');
-        }
-        if (!preg_match('/^[a-zA-Z0-9_]+$/', $newUsername)) {
-            throw new Exception('Solo se permiten letras, números y guiones bajos (_).');
-        }
+        if (strlen($newUsername) < 8 || strlen($newUsername) > 32) throw new Exception('El usuario debe tener entre 8 y 32 caracteres.');
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $newUsername)) throw new Exception('Solo se permiten letras, números y guiones bajos.');
 
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? AND id != ?");
         $stmt->execute([$newUsername, $userId]);
-        if ($stmt->rowCount() > 0) {
-            throw new Exception('Este nombre de usuario ya está en uso.');
-        }
+        if ($stmt->rowCount() > 0) throw new Exception('Este nombre de usuario ya está en uso.');
 
         $stmt = $pdo->prepare("UPDATE users SET username = ? WHERE id = ?");
         if ($stmt->execute([$newUsername, $userId])) {
-            $response = [
-                'success' => true, 
-                'message' => 'Nombre de usuario actualizado.',
-                'new_username' => $newUsername
-            ];
+            $response = ['success' => true, 'message' => 'Nombre de usuario actualizado.', 'new_username' => $newUsername];
         } else {
             throw new Exception('Error al actualizar la base de datos.');
         }
 
     // ==================================================================
-    // [NUEVO] ACTUALIZAR EMAIL
+    // ACTUALIZAR EMAIL
     // ==================================================================
     } elseif ($action === 'update_email') {
-        
         $newEmail = strtolower(trim($data['email'] ?? ''));
+        if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) throw new Exception('Formato de correo inválido.');
+        if (!preg_match('/^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i', $newEmail)) throw new Exception('Dominio no permitido.');
 
-        // 1. Validar formato y dominio (Mismo regex que en frontend y registro)
-        if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {
-            throw new Exception('Formato de correo inválido.');
-        }
-        if (!preg_match('/^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i', $newEmail)) {
-            throw new Exception('Dominio no permitido. Solo Gmail, Outlook, iCloud, Yahoo.');
-        }
-
-        // 2. Verificar si ya está en uso por otro usuario
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
         $stmt->execute([$newEmail, $userId]);
-        if ($stmt->rowCount() > 0) {
-            throw new Exception('Este correo electrónico ya está registrado.');
-        }
+        if ($stmt->rowCount() > 0) throw new Exception('Este correo electrónico ya está registrado.');
 
-        // 3. Actualizar
         $stmt = $pdo->prepare("UPDATE users SET email = ? WHERE id = ?");
         if ($stmt->execute([$newEmail, $userId])) {
-            $response = [
-                'success' => true, 
-                'message' => 'Correo electrónico actualizado.',
-                'new_email' => $newEmail
-            ];
-            // Opcional: Actualizar sesión si usas $_SESSION['user_email']
-            $_SESSION['user_email'] = $newEmail;
+            $response = ['success' => true, 'message' => 'Correo electrónico actualizado.', 'new_email' => $newEmail];
         } else {
             throw new Exception('Error al actualizar el correo.');
         }
 
+    // ==================================================================
+    // [NUEVO] ACTUALIZAR USO (PREFERENCIAS)
+    // ==================================================================
+    } elseif ($action === 'update_usage') {
+        $usage = $data['usage'] ?? 'personal';
+        $allowed = ['personal', 'student', 'teacher', 'small_business', 'large_business'];
+        
+        if (!in_array($usage, $allowed)) throw new Exception("Valor de uso no válido.");
+
+        // Insert or Update (ON DUPLICATE KEY UPDATE)
+        $sql = "INSERT INTO user_preferences (user_id, usage_intent) VALUES (?, ?) 
+                ON DUPLICATE KEY UPDATE usage_intent = VALUES(usage_intent)";
+        $stmt = $pdo->prepare($sql);
+        
+        if ($stmt->execute([$userId, $usage])) {
+            $response = ['success' => true, 'message' => 'Preferencia de uso actualizada.'];
+        } else {
+            throw new Exception("Error actualizando preferencia.");
+        }
+
+    // ==================================================================
+    // [NUEVO] ACTUALIZAR IDIOMA (PREFERENCIAS)
+    // ==================================================================
+    } elseif ($action === 'update_language') {
+        $lang = $data['language'] ?? 'en-us';
+        $allowed = ['es-latam', 'es-mx', 'en-us', 'en-gb'];
+
+        if (!in_array($lang, $allowed)) throw new Exception("Idioma no soportado.");
+
+        $sql = "INSERT INTO user_preferences (user_id, language) VALUES (?, ?) 
+                ON DUPLICATE KEY UPDATE language = VALUES(language)";
+        $stmt = $pdo->prepare($sql);
+
+        if ($stmt->execute([$userId, $lang])) {
+            $response = ['success' => true, 'message' => 'Idioma actualizado.'];
+        } else {
+            throw new Exception("Error actualizando idioma.");
+        }
     }
 
 } catch (Exception $e) {

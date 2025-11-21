@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- CÓDIGOS DE VERIFICACIÓN
-CREATE TABLE verification_codes (
+CREATE TABLE IF NOT EXISTS verification_codes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     identifier VARCHAR(255) NOT NULL, 
     code_type VARCHAR(50) NOT NULL,   
@@ -47,14 +47,13 @@ CREATE TABLE verification_codes (
 CREATE TABLE IF NOT EXISTS security_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_identifier VARCHAR(255) NOT NULL,
-    -- [MODIFICADO] Cambiado de ENUM a VARCHAR para permitir más tipos de acciones (ej: rate limiting)
     action_type VARCHAR(50) NOT NULL,
     ip_address VARCHAR(45) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_security_check (user_identifier, ip_address, created_at)
 );
 
--- AMISTADES (Nueva)
+-- AMISTADES
 CREATE TABLE IF NOT EXISTS friendships (
     id INT AUTO_INCREMENT PRIMARY KEY,
     sender_id INT NOT NULL,
@@ -67,14 +66,34 @@ CREATE TABLE IF NOT EXISTS friendships (
     UNIQUE KEY unique_friendship (sender_id, receiver_id)
 );
 
--- NOTIFICACIONES (Nueva)
+-- NOTIFICACIONES
 CREATE TABLE IF NOT EXISTS notifications (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL, -- El dueño de la notificación
-    type VARCHAR(50) NOT NULL, -- 'friend_request', 'friend_accepted'
+    user_id INT NOT NULL, 
+    type VARCHAR(50) NOT NULL, 
     message TEXT NOT NULL,
-    related_id INT NULL, -- ID del usuario que generó la acción (sender)
+    related_id INT NULL, 
     is_read TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- [CORRECCIÓN] TOKENS DE AUTENTICACIÓN WS (Faltaba esta tabla)
+CREATE TABLE IF NOT EXISTS ws_auth_tokens (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    token VARCHAR(255) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- [NUEVO] PREFERENCIAS DE USUARIO
+CREATE TABLE IF NOT EXISTS user_preferences (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL UNIQUE,
+    usage_intent VARCHAR(50) DEFAULT 'personal', -- personal, student, teacher, etc.
+    language VARCHAR(10) DEFAULT 'en-us', -- es-mx, es-latam, en-us, en-gb
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

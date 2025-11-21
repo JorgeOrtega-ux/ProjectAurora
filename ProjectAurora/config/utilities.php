@@ -51,7 +51,6 @@ function clearFailedAttempts($pdo, $identifier) {
 
 // --- NUEVAS FUNCIONES DE SEGURIDAD ---
 
-// 1. Rate Limiting (Protección anti-spam)
 function checkActionRateLimit($pdo, $identifier, $actionType, $limit, $minutes) {
     $sql = "SELECT COUNT(*) as total 
             FROM security_logs 
@@ -60,14 +59,12 @@ function checkActionRateLimit($pdo, $identifier, $actionType, $limit, $minutes) 
             AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
     
     $stmt = $pdo->prepare($sql);
-    // Convertimos a string para asegurar compatibilidad
     $stmt->execute([(string)$identifier, $actionType]);
     $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
     return ($result['total'] >= $limit);
 }
 
-// 2. Registrar acción de seguridad
 function logSecurityAction($pdo, $identifier, $actionType) {
     $ip = get_client_ip();
     $sql = "INSERT INTO security_logs (user_identifier, action_type, ip_address, created_at) 
@@ -76,16 +73,12 @@ function logSecurityAction($pdo, $identifier, $actionType) {
     $stmt->execute([(string)$identifier, $actionType, $ip]);
 }
 
-// 3. GENERAR TOKEN PARA WEBSOCKET (Aquí estaba el error, esta función faltaba)
 function generate_ws_auth_token($pdo, $userId) {
-    // Limpiar tokens viejos
     $stmt = $pdo->prepare("DELETE FROM ws_auth_tokens WHERE user_id = ?");
     $stmt->execute([$userId]);
 
-    // Crear nuevo token
     $token = bin2hex(random_bytes(32)); 
     
-    // Guardar en BD (expira en 2 minutos)
     $stmt = $pdo->prepare("INSERT INTO ws_auth_tokens (user_id, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 2 MINUTE))");
     $stmt->execute([$userId, $token]);
 
@@ -106,7 +99,6 @@ function verify_csrf_token($token) {
     return hash_equals($_SESSION['csrf_token'], $token);
 }
 
-// Función puente PHP -> Python Socket
 function send_live_notification($targetUserId, $type, $data = []) {
     $host = '127.0.0.1';
     $port = 8081; 
@@ -124,5 +116,50 @@ function send_live_notification($targetUserId, $type, $data = []) {
         return true;
     }
     return false; 
+}
+
+/**
+ * Detecta el idioma del navegador y asigna el más cercano disponible.
+ * Idiomas soportados en ProjectAurora: es-latam, es-mx, en-us, en-gb
+ */
+function detect_browser_language() {
+    // Idiomas disponibles en el sistema
+    $availableLanguages = ['es-latam', 'es-mx', 'en-us', 'en-gb'];
+    
+    // Fallbacks genéricos si no hay coincidencia exacta
+    // Si viene cualquier español (es-AR, es-ES, es-CO) -> es-latam
+    // Si viene cualquier inglés (en-AU, en-CA) -> en-us
+    $familyFallbacks = [
+        'es' => 'es-latam',
+        'en' => 'en-us'
+    ];
+    
+    // Por defecto
+    $default = 'en-us';
+
+    if (!isset($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
+        return $default;
+    }
+
+    // Parsear header: es-MX,es;q=0.9,en-US;q=0.8,en;q=0.7
+    $langs = explode(',', $_SERVER['HTTP_ACCEPT_LANGUAGE']);
+    
+    foreach ($langs as $lang) {
+        $lang = trim(explode(';', $lang)[0]); // Quitamos el q=0.9
+        $lang = strtolower($lang); // Convertir a minúsculas (es-mx)
+
+        // 1. Coincidencia Exacta
+        if (in_array($lang, $availableLanguages)) {
+            return $lang;
+        }
+
+        // 2. Coincidencia por Familia (los dos primeros caracteres)
+        $langPrefix = substr($lang, 0, 2);
+        if (array_key_exists($langPrefix, $familyFallbacks)) {
+            return $familyFallbacks[$langPrefix];
+        }
+    }
+
+    return $default;
 }
 ?>

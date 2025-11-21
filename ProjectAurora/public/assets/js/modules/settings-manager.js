@@ -16,25 +16,78 @@ function qs(selector) {
 
 export function initSettingsManager() {
     // Inicializar solo si estamos en la sección correcta.
-    // Ahora verificamos usando el data-section o el data-component del avatar
     if (!qs('[data-section="settings/your-profile"]') && !qs('[data-component="avatar-section"]')) return;
 
-    console.log('Settings Manager: Inicializando (Modo Data Attributes)...');
+    console.log('Settings Manager: Inicializando...');
 
     initAvatarLogic();
     initUsernameLogic();
     initEmailLogic();
+    initPreferencesLogic(); // <--- NUEVO: Lógica de selectores
+}
+
+// ========================================================
+// LÓGICA DE PREFERENCIAS (USO E IDIOMA)
+// ========================================================
+function initPreferencesLogic() {
+    // Listener delegado para los clics en opciones de los menús
+    const profileSection = qs('[data-section="settings/your-profile"]');
+    if (!profileSection) return;
+
+    profileSection.addEventListener('click', async (e) => {
+        const option = e.target.closest('.menu-link[data-value]');
+        if (!option) return;
+
+        const module = option.closest('.popover-module');
+        if (!module) return;
+
+        const prefType = module.dataset.preferenceType; // 'usage' o 'language'
+        const value = option.dataset.value;
+
+        if (!prefType || !value) return;
+
+        // Preparamos payload según tipo
+        let payload = { action: '', csrf_token: getCsrfToken() };
+        
+        if (prefType === 'usage') {
+            payload.action = 'update_usage';
+            payload.usage = value;
+        } else if (prefType === 'language') {
+            payload.action = 'update_language';
+            payload.language = value;
+        }
+
+        // Enviamos a API
+        try {
+            const res = await fetch(API_SETTINGS, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
+                // Nota: La UI visual del dropdown (check y texto) ya se actualiza en main-controller.js 
+                // mediante handleDropdownSelection, así que no necesitamos hacerlo aquí manualmente.
+            } else {
+                if (window.alertManager) window.alertManager.showAlert(data.message, 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            if (window.alertManager) window.alertManager.showAlert('Error de conexión', 'error');
+        }
+    });
 }
 
 // ========================================================
 // LÓGICA DE AVATAR
 // ========================================================
 function initAvatarLogic() {
-    // Mapeo usando data-attributes
     const elements = {
         fileInput: qs('[data-element="avatar-upload-input"]'),
         previewImg: qs('[data-element="avatar-preview-image"]'),
-        overlayTrigger: qs('[data-action="trigger-avatar-upload"]'), // Nuevo trigger overlay
+        overlayTrigger: qs('[data-action="trigger-avatar-upload"]'), 
         uploadBtn: qs('[data-action="avatar-upload-trigger"]'),
         changeBtn: qs('[data-action="avatar-change-trigger"]'),
         removeBtn: qs('[data-action="avatar-remove-trigger"]'),
@@ -49,13 +102,11 @@ function initAvatarLogic() {
 
     let originalImageSrc = elements.previewImg.src;
     
-    // Función para abrir el selector de archivos
     const triggerUpload = (e) => { 
         if(e) e.preventDefault(); 
         elements.fileInput.click(); 
     };
 
-    // Asignar listeners
     if (elements.uploadBtn) elements.uploadBtn.addEventListener('click', triggerUpload);
     if (elements.changeBtn) elements.changeBtn.addEventListener('click', triggerUpload);
     if (elements.overlayTrigger) elements.overlayTrigger.addEventListener('click', triggerUpload);
@@ -319,7 +370,6 @@ function toggleMode(els, isEditing) {
 }
 
 function updateHeaderAvatar(src) {
-    // Este selector se puede mantener genérico por clase, o cambiar a data si modificas header.php
     const headerImg = document.querySelector('.header-button.profile-button .profile-img');
     if (headerImg) headerImg.src = src;
 }

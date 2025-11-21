@@ -4,7 +4,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 $basePath = $basePath ?? '/ProjectAurora/';
 $userId = $_SESSION['user_id'];
 
-// Obtenemos datos del usuario
+// 1. Obtener datos del usuario
 $stmt = $pdo->prepare("SELECT username, email, avatar, role FROM users WHERE id = ?");
 $stmt->execute([$userId]);
 $currentUser = $stmt->fetch();
@@ -14,13 +14,39 @@ $currentEmail = $currentUser['email'] ?? 'correo@ejemplo.com';
 $userAvatar = $currentUser['avatar'] ?? null;
 $userRole = $currentUser['role'] ?? 'user';
 
+// 2. Obtener preferencias (con valores por defecto si no existen)
+$stmtPrefs = $pdo->prepare("SELECT usage_intent, language FROM user_preferences WHERE user_id = ?");
+$stmtPrefs->execute([$userId]);
+$prefs = $stmtPrefs->fetch(PDO::FETCH_ASSOC);
+
+$currentUsage = $prefs['usage_intent'] ?? 'personal';
+$currentLang = $prefs['language'] ?? 'en-us';
+
+// Mapas para mostrar el texto en el "Trigger" (botón cerrado)
+$usageTexts = [
+    'personal' => 'Uso personal',
+    'student' => 'Estudiante',
+    'teacher' => 'Docente',
+    'small_business' => 'Empresa pequeña',
+    'large_business' => 'Empresa grande'
+];
+
+$langTexts = [
+    'es-latam' => 'Español (Latinoamérica)',
+    'es-mx' => 'Español (México)',
+    'en-us' => 'English (United States)',
+    'en-gb' => 'English (United Kingdom)'
+];
+
+$usageDisplayText = $usageTexts[$currentUsage] ?? 'Uso personal';
+$langDisplayText = $langTexts[$currentLang] ?? 'English (United States)';
+
 // URL del avatar
 $avatarUrl = null;
 if ($userAvatar && !empty($userAvatar)) {
     $avatarUrl = $basePath . $userAvatar . '?t=' . time();
 }
 
-// Detectar si es avatar default
 $isDefaultAvatar = false;
 if (empty($userAvatar) || strpos($userAvatar, '/default/') !== false) {
     $isDefaultAvatar = true;
@@ -81,23 +107,19 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
         </div>
 
         <div class="component-card component-card--edit-mode" data-component="username-section">
-
             <div class="component-card__content">
                 <div class="component-card__text" style="width: 100%;">
                     <h2 class="component-card__title">Nombre de usuario</h2>
-
                     <div data-state="username-view-state" class="active">
                         <p class="component-card__description" data-element="username-display-text">
                             <?php echo htmlspecialchars($currentUsername); ?>
                         </p>
                     </div>
-
                     <div data-state="username-edit-state" class="disabled">
                         <div class="input-with-actions">
                             <input type="text" class="component-text-input" data-element="username-input"
                                 value="<?php echo htmlspecialchars($currentUsername); ?>"
                                 required minlength="8" maxlength="32">
-
                             <div data-state="username-actions-edit" class="disabled">
                                 <button type="button" class="component-button" data-action="username-cancel-trigger">Cancelar</button>
                                 <button type="button" class="component-button primary" data-action="username-save-trigger-btn">Guardar</button>
@@ -107,7 +129,6 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                     </div>
                 </div>
             </div>
-
             <div class="component-card__actions">
                 <div data-state="username-actions-view" class="active">
                     <button type="button" class="component-button" data-action="username-edit-trigger">Editar</button>
@@ -116,23 +137,19 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
         </div>
 
         <div class="component-card component-card--edit-mode" data-component="email-section">
-
             <div class="component-card__content">
                 <div class="component-card__text" style="width: 100%;">
                     <h2 class="component-card__title">Correo Electrónico</h2>
-
                     <div data-state="email-view-state" class="active">
                         <p class="component-card__description" data-element="email-display-text">
                             <?php echo htmlspecialchars($currentEmail); ?>
                         </p>
                     </div>
-
                     <div data-state="email-edit-state" class="disabled">
                         <div class="input-with-actions">
                             <input type="email" class="component-text-input" data-element="email-input"
                                 value="<?php echo htmlspecialchars($currentEmail); ?>"
                                 required>
-
                             <div data-state="email-actions-edit" class="disabled">
                                 <button type="button" class="component-button" data-action="email-cancel-trigger">Cancelar</button>
                                 <button type="button" class="component-button primary" data-action="email-save-trigger-btn">Guardar</button>
@@ -142,7 +159,6 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                     </div>
                 </div>
             </div>
-
             <div class="component-card__actions">
                 <div data-state="email-actions-view" class="active">
                     <button type="button" class="component-button" data-action="email-edit-trigger">Editar</button>
@@ -164,7 +180,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                             <span class="material-symbols-rounded">person</span>
                         </div>
                         <div class="trigger-select-text">
-                            <span>Uso personal</span>
+                            <span><?php echo htmlspecialchars($usageDisplayText); ?></span>
                         </div>
                         <div class="trigger-select-arrow">
                             <span class="material-symbols-rounded">arrow_drop_down</span>
@@ -174,31 +190,24 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                     <div class="popover-module popover-module--anchor-width body-title disabled" data-module="moduleUsageSelect" data-preference-type="usage">
                         <div class="menu-content">
                             <div class="menu-list">
-                                <div class="menu-link active" data-value="personal">
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">person</span></div>
-                                    <div class="menu-link-text"><span>Uso personal</span></div>
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div>
+                                <?php
+                                $usageOptions = [
+                                    ['val' => 'personal', 'icon' => 'person', 'label' => 'Uso personal'],
+                                    ['val' => 'student', 'icon' => 'school', 'label' => 'Estudiante'],
+                                    ['val' => 'teacher', 'icon' => 'history_edu', 'label' => 'Docente'],
+                                    ['val' => 'small_business', 'icon' => 'storefront', 'label' => 'Empresa pequeña'],
+                                    ['val' => 'large_business', 'icon' => 'domain', 'label' => 'Empresa grande'],
+                                ];
+                                foreach ($usageOptions as $opt): 
+                                    $isActive = ($currentUsage === $opt['val']) ? 'active' : '';
+                                    $check = ($isActive) ? '<span class="material-symbols-rounded">check</span>' : '';
+                                ?>
+                                <div class="menu-link <?php echo $isActive; ?>" data-value="<?php echo $opt['val']; ?>">
+                                    <div class="menu-link-icon"><span class="material-symbols-rounded"><?php echo $opt['icon']; ?></span></div>
+                                    <div class="menu-link-text"><span><?php echo $opt['label']; ?></span></div>
+                                    <div class="menu-link-icon"><?php echo $check; ?></div>
                                 </div>
-                                <div class="menu-link" data-value="student">
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">school</span></div>
-                                    <div class="menu-link-text"><span>Estudiante</span></div>
-                                    <div class="menu-link-icon"></div>
-                                </div>
-                                <div class="menu-link" data-value="teacher">
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">history_edu</span></div>
-                                    <div class="menu-link-text"><span>Docente</span></div>
-                                    <div class="menu-link-icon"></div>
-                                </div>
-                                <div class="menu-link" data-value="small_business">
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">storefront</span></div>
-                                    <div class="menu-link-text"><span>Empresa pequeña</span></div>
-                                    <div class="menu-link-icon"></div>
-                                </div>
-                                <div class="menu-link" data-value="large_business">
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">domain</span></div>
-                                    <div class="menu-link-text"><span>Empresa grande</span></div>
-                                    <div class="menu-link-icon"></div>
-                                </div>
+                                <?php endforeach; ?>
                             </div>
                         </div>
                     </div>
@@ -217,32 +226,29 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                 <div class="trigger-select-wrapper">
                     <div class="trigger-selector" data-action="toggleModuleLanguageSelect">
                         <div class="trigger-select-icon"><span class="material-symbols-rounded">language</span></div>
-                        <div class="trigger-select-text"><span>Español (Latinoamérica)</span></div>
+                        <div class="trigger-select-text"><span><?php echo htmlspecialchars($langDisplayText); ?></span></div>
                         <div class="trigger-select-arrow"><span class="material-symbols-rounded">arrow_drop_down</span></div>
                     </div>
                     <div class="popover-module popover-module--anchor-width body-title disabled" data-module="moduleLanguageSelect" data-preference-type="language">
                         <div class="menu-content">
                             <div class="menu-list">
-                                <div class="menu-link active" data-value="es-latam">
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">language</span></div>
-                                    <div class="menu-link-text"><span>Español (Latinoamérica)</span></div>
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div>
+                                <?php 
+                                $langOptions = [
+                                    ['val' => 'es-latam', 'icon' => 'language', 'label' => 'Español (Latinoamérica)'],
+                                    ['val' => 'es-mx', 'icon' => 'language', 'label' => 'Español (México)'],
+                                    ['val' => 'en-us', 'icon' => 'translate', 'label' => 'English (United States)'],
+                                    ['val' => 'en-gb', 'icon' => 'translate', 'label' => 'English (United Kingdom)'],
+                                ];
+                                foreach ($langOptions as $opt): 
+                                    $isActive = ($currentLang === $opt['val']) ? 'active' : '';
+                                    $check = ($isActive) ? '<span class="material-symbols-rounded">check</span>' : '';
+                                ?>
+                                <div class="menu-link <?php echo $isActive; ?>" data-value="<?php echo $opt['val']; ?>">
+                                    <div class="menu-link-icon"><span class="material-symbols-rounded"><?php echo $opt['icon']; ?></span></div>
+                                    <div class="menu-link-text"><span><?php echo $opt['label']; ?></span></div>
+                                    <div class="menu-link-icon"><?php echo $check; ?></div>
                                 </div>
-                                <div class="menu-link" data-value="es-mx">
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">language</span></div>
-                                    <div class="menu-link-text"><span>Español (México)</span></div>
-                                    <div class="menu-link-icon"></div>
-                                </div>
-                                <div class="menu-link" data-value="en-us">
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">translate</span></div>
-                                    <div class="menu-link-text"><span>English (United States)</span></div>
-                                    <div class="menu-link-icon"></div>
-                                </div>
-                                <div class="menu-link" data-value="en-gb">
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">translate</span></div>
-                                    <div class="menu-link-text"><span>English (United Kingdom)</span></div>
-                                    <div class="menu-link-icon"></div>
-                                </div>
+                                <?php endforeach; ?>
                             </div>
                         </div>
                     </div>
