@@ -23,7 +23,7 @@ $basePathForAvatar = '/ProjectAurora/';
 ?>
 
 <div class="section-content overflow-y active" data-section="admin/users">
-    <div class="section-center-wrapper" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 40px; gap: 30px; height: auto; min-height: 100%;">
+    <div class="section-center-wrapper">
         
         <div class="content-toolbar">
             <div class="toolbar-group">

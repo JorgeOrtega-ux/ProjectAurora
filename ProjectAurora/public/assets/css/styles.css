@@ -449,9 +449,10 @@ html {
    ========================================= */
 .section-center-wrapper {
     width: 100%;
+    flex-direction: column;
     min-height: 100%;
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
 }
 
@@ -1560,21 +1561,15 @@ a.disabled-link {
     border: 1px solid #00000020;
     border-radius: 8px;
     cursor: pointer;
-    transition: all 0.2s ease;
 }
 
 .list-item-row:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    border-color: #00000060;
+    border-color: #000000;
 }
 
 /* ESTADO SELECCIONADO */
 .list-item-row.selected {
-    border: 1px solid #000000 !important;
-    background-color: #fafafa;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    transform: scale(1.005);
+    border: 1px solid #000000;
 }
 
 /* COLUMNAS */
@@ -1686,5 +1681,4 @@ a.disabled-link {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 0 8px;
 }
