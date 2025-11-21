@@ -87,14 +87,17 @@
     width: 100%;
 }
 
-/* Acciones dentro del grupo de edición */
-[data-state="username-actions-edit"].active,
-[data-state="email-actions-edit"].active,
-[data-state="avatar-actions-default"].active,
-[data-state="avatar-actions-custom"].active,
-[data-state="avatar-actions-preview"].active {
+/* ==========================================================================
+   CORRECCIÓN DE ESCALABILIDAD Y ANCHO
+   ==========================================================================
+   En lugar de listar cada ID de estado, usamos un selector genérico.
+   Cualquier div con 'data-state' dentro de las acciones tendrá width: 100%.
+*/
+.component-card__actions [data-state].active {
     display: flex !important;
+    width: 100%; /* [FIX] Forzar ancho completo disponible */
     gap: 8px;
+    align-items: center;
 }
 
 /* Input Flexible */
@@ -347,7 +350,6 @@
 .component-card__error {
     width: 100%;
     padding: 12px 16px;
-    /* Margen negativo para compensar el gap del flex parent y pegar el error a la tarjeta de arriba */
     margin-top: -10px; 
     background-color: #ffebee;
     color: #d32f2f;
@@ -355,13 +357,7 @@
     font-size: 13px;
     font-weight: 500;
     border: 1px solid #ffcdd2;
-    animation: fadeInError 0.3s ease-out;
-    /* Por defecto lo mostramos si está en el DOM, pero la animación ayuda en la entrada */
-}
-
-@keyframes fadeInError {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+    /* Animación eliminada a petición */
 }
 
 @media (max-width: 600px) {
@@ -373,7 +369,6 @@
     .component-card__actions {
         width: 100%;
         display: flex;
-        margin-top: 8px;
     }
 
     .component-card__actions.actions-right {
@@ -390,8 +385,9 @@
 
     [data-state="username-actions-edit"].active,
     [data-state="email-actions-edit"].active {
-        width: 100%;
+           width: 100%;
         justify-content: flex-end;
+        gap: 8px;
     }
 
     .component-button {
@@ -399,14 +395,8 @@
     }
 }
 
+/* Regla antigua eliminada/simplificada por la regla genérica de arriba */
 
-
-
-
-[data-state="avatar-actions-default"],
-[data-state="username-actions-view"],
-[data-state="email-actions-view"] {
-    width: 100%;
+.component-card__actions {
+    margin-top: 8px;
 }
-
-
