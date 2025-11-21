@@ -103,6 +103,21 @@ export function initMainController() {
             }
         });
     }
+
+    // --- 4. [NUEVO] LÓGICA DE SOMBRA EN SCROLL ---
+    const scrollContainer = document.querySelector('.general-content-scrolleable');
+    const topHeader = document.querySelector('.general-content-top');
+
+    if (scrollContainer && topHeader) {
+        scrollContainer.addEventListener('scroll', () => {
+            // Si el scroll vertical es mayor a 0, agregamos la clase shadow
+            if (scrollContainer.scrollTop > 0) {
+                topHeader.classList.add('shadow');
+            } else {
+                topHeader.classList.remove('shadow');
+            }
+        });
+    }
 }
 
 // [NUEVO] Función para actualizar visualmente los selects personalizados

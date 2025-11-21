@@ -50,6 +50,13 @@ html {
     border-bottom: 1px solid #00000020;
     z-index: 999;
     position: relative;
+    /* [MODIFICADO] Transición suave para la sombra */
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.general-content-top.shadow {
+    box-shadow: 0 4px 6px -4px rgba(0, 0, 0, 0.2);
+    border: transparent;
 }
 
 .general-content-bottom {
@@ -74,13 +81,12 @@ html {
     overflow-y: auto;
 }
 
-/* --- CAMBIO REALIZADO AQUÍ --- */
 .active {
-    display: flex; /* Cambiado a flex por tu requerimiento */
+    display: flex; 
 }
 
 .section-content.active {
-    display: block; /* Mantenemos las secciones principales como bloque para el scroll correcto */
+    display: block; 
 }
 
 .disabled {
