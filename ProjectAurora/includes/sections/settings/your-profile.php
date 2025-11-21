@@ -23,7 +23,7 @@ $currentUsage = $prefs['usage_intent'] ?? 'personal';
 $currentLang = $prefs['language'] ?? 'en-us';
 $openLinksInNewTab = isset($prefs['open_links_in_new_tab']) ? (int)$prefs['open_links_in_new_tab'] : 1;
 
-// Mapas para mostrar el texto
+// --- [CORRECCIÓN 1] Mapas para mostrar el texto E ICONOS dinámicos ---
 $usageTexts = [
     'personal' => 'Uso personal',
     'student' => 'Estudiante',
@@ -32,6 +32,19 @@ $usageTexts = [
     'large_business' => 'Empresa grande'
 ];
 
+// Nuevo mapa para los iconos
+$usageIcons = [
+    'personal' => 'person',
+    'student' => 'school',
+    'teacher' => 'history_edu',
+    'small_business' => 'storefront',
+    'large_business' => 'domain'
+];
+
+$usageDisplayText = $usageTexts[$currentUsage] ?? 'Uso personal';
+// Seleccionamos el icono guardado o 'person' por defecto
+$usageDisplayIcon = $usageIcons[$currentUsage] ?? 'person'; 
+
 $langTexts = [
     'es-latam' => 'Español (Latinoamérica)',
     'es-mx' => 'Español (México)',
@@ -39,7 +52,6 @@ $langTexts = [
     'en-gb' => 'English (United Kingdom)'
 ];
 
-$usageDisplayText = $usageTexts[$currentUsage] ?? 'Uso personal';
 $langDisplayText = $langTexts[$currentLang] ?? 'English (United States)';
 
 // URL del avatar
@@ -178,7 +190,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                 <div class="trigger-select-wrapper">
                     <div class="trigger-selector" data-action="toggleModuleUsageSelect">
                         <div class="trigger-select-icon">
-                            <span class="material-symbols-rounded">person</span>
+                            <span class="material-symbols-rounded"><?php echo htmlspecialchars($usageDisplayIcon); ?></span>
                         </div>
                         <div class="trigger-select-text">
                             <span><?php echo htmlspecialchars($usageDisplayText); ?></span>
@@ -192,12 +204,13 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                         <div class="menu-content">
                             <div class="menu-list">
                                 <?php
+                                // Usamos el mismo array $usageIcons para mantener consistencia
                                 $usageOptions = [
-                                    ['val' => 'personal', 'icon' => 'person', 'label' => 'Uso personal'],
-                                    ['val' => 'student', 'icon' => 'school', 'label' => 'Estudiante'],
-                                    ['val' => 'teacher', 'icon' => 'history_edu', 'label' => 'Docente'],
-                                    ['val' => 'small_business', 'icon' => 'storefront', 'label' => 'Empresa pequeña'],
-                                    ['val' => 'large_business', 'icon' => 'domain', 'label' => 'Empresa grande'],
+                                    ['val' => 'personal', 'icon' => $usageIcons['personal'], 'label' => 'Uso personal'],
+                                    ['val' => 'student', 'icon' => $usageIcons['student'], 'label' => 'Estudiante'],
+                                    ['val' => 'teacher', 'icon' => $usageIcons['teacher'], 'label' => 'Docente'],
+                                    ['val' => 'small_business', 'icon' => $usageIcons['small_business'], 'label' => 'Empresa pequeña'],
+                                    ['val' => 'large_business', 'icon' => $usageIcons['large_business'], 'label' => 'Empresa grande'],
                                 ];
                                 foreach ($usageOptions as $opt): 
                                     $isActive = ($currentUsage === $opt['val']) ? 'active' : '';
@@ -226,7 +239,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
             <div class="component-card__actions">
                 <div class="trigger-select-wrapper">
                     <div class="trigger-selector" data-action="toggleModuleLanguageSelect">
-                        <div class="trigger-select-icon"><span class="material-symbols-rounded">language</span></div>
+                        <div class="trigger-select-icon"><span class="material-symbols-rounded">translate</span></div>
                         <div class="trigger-select-text"><span><?php echo htmlspecialchars($langDisplayText); ?></span></div>
                         <div class="trigger-select-arrow"><span class="material-symbols-rounded">arrow_drop_down</span></div>
                     </div>
@@ -234,9 +247,10 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                         <div class="menu-content">
                             <div class="menu-list">
                                 <?php 
+                                // [CORRECCIÓN 4] Todos los iconos unificados a 'translate'
                                 $langOptions = [
-                                    ['val' => 'es-latam', 'icon' => 'language', 'label' => 'Español (Latinoamérica)'],
-                                    ['val' => 'es-mx', 'icon' => 'language', 'label' => 'Español (México)'],
+                                    ['val' => 'es-latam', 'icon' => 'translate', 'label' => 'Español (Latinoamérica)'],
+                                    ['val' => 'es-mx', 'icon' => 'translate', 'label' => 'Español (México)'],
                                     ['val' => 'en-us', 'icon' => 'translate', 'label' => 'English (United States)'],
                                     ['val' => 'en-gb', 'icon' => 'translate', 'label' => 'English (United Kingdom)'],
                                 ];

@@ -305,7 +305,7 @@ function initAvatarLogic() {
 }
 
 // ========================================================
-// LÓGICA DE NOMBRE DE USUARIO
+// LÓGICA DE NOMBRE DE USUARIO (FIX CURSOR)
 // ========================================================
 function initUsernameLogic() {
     const card = qs('[data-component="username-section"]');
@@ -328,7 +328,13 @@ function initUsernameLogic() {
     els.editBtn.addEventListener('click', () => {
         toggleMode(els, true);
         updateCardError(card, '', false);
+        
+        // --- FIX CURSOR INICIO ---
+        const val = els.input.value;
+        els.input.value = '';
+        els.input.value = val;
         els.input.focus();
+        // --- FIX CURSOR FIN ---
     });
 
     els.cancelBtn.addEventListener('click', () => {
@@ -385,7 +391,7 @@ function initUsernameLogic() {
 }
 
 // ========================================================
-// LÓGICA DE CORREO ELECTRÓNICO
+// LÓGICA DE CORREO ELECTRÓNICO (FIX CURSOR)
 // ========================================================
 function initEmailLogic() {
     const card = qs('[data-component="email-section"]');
@@ -408,7 +414,13 @@ function initEmailLogic() {
     els.editBtn.addEventListener('click', () => {
         toggleMode(els, true);
         updateCardError(card, '', false);
+        
+        // --- FIX CURSOR INICIO ---
+        const val = els.input.value;
+        els.input.value = '';
+        els.input.value = val;
         els.input.focus();
+        // --- FIX CURSOR FIN ---
     });
 
     els.cancelBtn.addEventListener('click', () => {
