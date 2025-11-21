@@ -237,7 +237,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                     <p class="component-card__description" data-i18n="settings.profile.newTabDesc">En el navegador web, los enlaces siempre se abrirán en una pestaña nueva.</p>
                 </div>
             </div>
-            <div class="component-card__actions">
+            <div class="component-card__actions actions-right">
                 <label class="component-toggle-switch">
                     <input type="checkbox" data-element="toggle-new-tab" data-preference-type="boolean" data-field-name="open_links_in_new_tab" checked="">
                     <span class="component-toggle-slider"></span>

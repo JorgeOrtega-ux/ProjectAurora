@@ -330,6 +330,11 @@
         margin-top: 8px;
     }
 
+    /* --- NUEVO: Alineación a la derecha para toggle en móvil --- */
+    .component-card__actions.actions-right {
+        justify-content: flex-end;
+    }
+
     /* En móvil, hacemos que los botones bajen si no caben, o mantenemos la fila si prefieres */
     .input-with-actions {
         flex-wrap: wrap;
