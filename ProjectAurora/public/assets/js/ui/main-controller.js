@@ -7,7 +7,7 @@ let isAnimating = false;
 let SHOULD_CLOSE_SURFACE_ON_CLICK = true; 
 
 // Lista de módulos que tienen animación especial en móvil
-const allowedMobileMods = ['moduleOptions', 'moduleNotifications', 'moduleSurface'];
+const allowedMobileMods = ['moduleOptions', 'moduleNotifications'];
 
 export function initMainController() {
     const allowCloseOnEsc = true;

@@ -323,7 +323,10 @@
     font-weight: 500;
     border: 1px solid #ffcdd2;
 }
-
+.general-content:has(.module-surface.active) .general-content-top.shadow {
+    box-shadow: none !important;
+    border-bottom: 1px solid #00000020 !important; /* Restauramos el borde original */
+}
 /* =========================================
    RESPONSIVE (MOVIL - < 600px)
    ========================================= */
