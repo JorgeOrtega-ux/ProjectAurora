@@ -29,6 +29,7 @@ if (isset($_SESSION['user_id'])) {
     </script>
 
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/styles.css">
+     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/componnents.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
     <title>Project Aurora</title>
 </head>
