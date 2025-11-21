@@ -72,14 +72,14 @@ try {
         $mimeType = $finfo->file($file['tmp_name']);
         if (!in_array($mimeType, $allowedTypes)) throw new Exception('Formato no permitido.');
 
-        // [MODIFICADO] Guardar en subcarpeta 'custom'
+        // Guardar en subcarpeta 'custom'
         $uploadDir = __DIR__ . '/../public/assets/uploads/avatars/custom/';
         if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
 
         $extension = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'png';
         $newFileName = generate_uuid_v4() . '.' . $extension;
         $destination = $uploadDir . $newFileName;
-        $dbPath = 'assets/uploads/avatars/custom/' . $newFileName; // Ruta DB incluye 'custom'
+        $dbPath = 'assets/uploads/avatars/custom/' . $newFileName; 
 
         if (!move_uploaded_file($file['tmp_name'], $destination)) {
             throw new Exception('Error al guardar la imagen en el servidor.');
@@ -118,7 +118,6 @@ try {
         $apiUrl = "https://ui-avatars.com/api/?name={$username}&size=256&background={$color}&color=ffffff&bold=true&length=1";
         $newFileName = $uuid . '.png';
         
-        // [MODIFICADO] Guardar en subcarpeta 'default'
         $uploadDir = __DIR__ . '/../public/assets/uploads/avatars/default/';
         if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
         
@@ -128,7 +127,6 @@ try {
         $imageContent = @file_get_contents($apiUrl);
         if ($imageContent !== false) file_put_contents($destPath, $imageContent);
 
-        // Borrar avatar anterior
         if ($user['avatar'] && file_exists(__DIR__ . '/../public/' . $user['avatar'])) {
             @unlink(__DIR__ . '/../public/' . $user['avatar']);
         }
@@ -148,7 +146,6 @@ try {
         
         $newUsername = trim($data['username'] ?? '');
 
-        // 1. Validaciones
         if (strlen($newUsername) < 8 || strlen($newUsername) > 32) {
             throw new Exception('El usuario debe tener entre 8 y 32 caracteres.');
         }
@@ -156,14 +153,12 @@ try {
             throw new Exception('Solo se permiten letras, números y guiones bajos (_).');
         }
 
-        // 2. Verificar si ya existe (excluyendo al usuario actual)
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? AND id != ?");
         $stmt->execute([$newUsername, $userId]);
         if ($stmt->rowCount() > 0) {
             throw new Exception('Este nombre de usuario ya está en uso.');
         }
 
-        // 3. Actualizar
         $stmt = $pdo->prepare("UPDATE users SET username = ? WHERE id = ?");
         if ($stmt->execute([$newUsername, $userId])) {
             $response = [
@@ -174,6 +169,43 @@ try {
         } else {
             throw new Exception('Error al actualizar la base de datos.');
         }
+
+    // ==================================================================
+    // [NUEVO] ACTUALIZAR EMAIL
+    // ==================================================================
+    } elseif ($action === 'update_email') {
+        
+        $newEmail = strtolower(trim($data['email'] ?? ''));
+
+        // 1. Validar formato y dominio (Mismo regex que en frontend y registro)
+        if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {
+            throw new Exception('Formato de correo inválido.');
+        }
+        if (!preg_match('/^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i', $newEmail)) {
+            throw new Exception('Dominio no permitido. Solo Gmail, Outlook, iCloud, Yahoo.');
+        }
+
+        // 2. Verificar si ya está en uso por otro usuario
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
+        $stmt->execute([$newEmail, $userId]);
+        if ($stmt->rowCount() > 0) {
+            throw new Exception('Este correo electrónico ya está registrado.');
+        }
+
+        // 3. Actualizar
+        $stmt = $pdo->prepare("UPDATE users SET email = ? WHERE id = ?");
+        if ($stmt->execute([$newEmail, $userId])) {
+            $response = [
+                'success' => true, 
+                'message' => 'Correo electrónico actualizado.',
+                'new_email' => $newEmail
+            ];
+            // Opcional: Actualizar sesión si usas $_SESSION['user_email']
+            $_SESSION['user_email'] = $newEmail;
+        } else {
+            throw new Exception('Error al actualizar el correo.');
+        }
+
     }
 
 } catch (Exception $e) {

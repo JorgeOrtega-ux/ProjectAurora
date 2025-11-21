@@ -17,10 +17,11 @@ export function initSettingsManager() {
 
     initAvatarLogic();
     initUsernameLogic();
+    initEmailLogic(); // [NUEVO] Inicializamos la lógica del correo
 }
 
 // ========================================================
-// LÓGICA DE AVATAR (Ya existente, optimizada)
+// LÓGICA DE AVATAR
 // ========================================================
 function initAvatarLogic() {
     const elements = {
@@ -40,12 +41,10 @@ function initAvatarLogic() {
 
     let originalImageSrc = elements.previewImg.src;
     
-    // Trigger file input
     const triggerUpload = (e) => { e.preventDefault(); elements.fileInput.click(); };
     if (elements.uploadBtn) elements.uploadBtn.addEventListener('click', triggerUpload);
     if (elements.changeBtn) elements.changeBtn.addEventListener('click', triggerUpload);
 
-    // Change input
     elements.fileInput.addEventListener('change', function(e) {
         const file = this.files[0];
         if (!file) return;
@@ -66,24 +65,21 @@ function initAvatarLogic() {
         reader.readAsDataURL(file);
     });
 
-    // Cancel
    elements.cancelBtn.addEventListener('click', () => {
     elements.previewImg.src = originalImageSrc;
     elements.fileInput.value = '';
     
-    // [CORRECCIÓN] Detectar si la URL contiene palabras clave de tus avatares por defecto
     const isDefault = originalImageSrc.includes('data:image') || 
                       originalImageSrc === '' || 
                       originalImageSrc.endsWith('/') ||
-                      originalImageSrc.includes('/default/') ||          // Para ProjectAurora
-                      originalImageSrc.includes('avatars_default') ||    // Para ProjectGenesis
-                      originalImageSrc.includes('ui-avatars.com');       // Para avatares generados
+                      originalImageSrc.includes('/default/') ||          
+                      originalImageSrc.includes('avatars_default') ||    
+                      originalImageSrc.includes('ui-avatars.com');       
 
     const mode = isDefault ? 'default' : 'custom';
     toggleAvatarActions(mode);
 });
 
-    // Save
     elements.saveBtn.addEventListener('click', async () => {
         const file = elements.fileInput.files[0];
         if (!file) return;
@@ -111,7 +107,6 @@ function initAvatarLogic() {
         setLoading(elements.saveBtn, false, 'Guardar');
     });
 
-    // Remove
     elements.removeBtn.addEventListener('click', async () => {
         if (!confirm('¿Restablecer avatar por defecto?')) return;
         setLoading(elements.removeBtn, true);
@@ -127,7 +122,7 @@ function initAvatarLogic() {
                 elements.previewImg.src = newSrc;
                 originalImageSrc = newSrc;
                 updateHeaderAvatar(newSrc);
-                toggleAvatarActions('default'); // Asumimos que vuelve a estado default visualmente
+                toggleAvatarActions('default'); 
             }
         } catch (e) { console.error(e); }
         setLoading(elements.removeBtn, false, 'Eliminar');
@@ -141,7 +136,7 @@ function initAvatarLogic() {
 }
 
 // ========================================================
-// LÓGICA DE NOMBRE DE USUARIO (NUEVA)
+// LÓGICA DE NOMBRE DE USUARIO
 // ========================================================
 function initUsernameLogic() {
     const els = {
@@ -149,10 +144,8 @@ function initUsernameLogic() {
         editState: document.getElementById('username-edit-state'),
         actionsView: document.getElementById('username-actions-view'),
         actionsEdit: document.getElementById('username-actions-edit'),
-        
         display: document.getElementById('username-display-text'),
         input: document.getElementById('username-input'),
-        
         editBtn: document.getElementById('username-edit-trigger'),
         cancelBtn: document.getElementById('username-cancel-trigger'),
         saveBtn: document.getElementById('username-save-trigger-btn')
@@ -162,23 +155,20 @@ function initUsernameLogic() {
 
     let originalUsername = els.input.value;
 
-    // Switch to Edit Mode
     els.editBtn.addEventListener('click', () => {
-        toggleUsernameMode(true);
+        toggleMode(els, true);
         els.input.focus();
     });
 
-    // Cancel Edit
     els.cancelBtn.addEventListener('click', () => {
         els.input.value = originalUsername;
-        toggleUsernameMode(false);
+        toggleMode(els, false);
     });
 
-    // Save Username
     els.saveBtn.addEventListener('click', async () => {
         const newVal = els.input.value.trim();
         if (newVal === originalUsername) {
-            toggleUsernameMode(false);
+            toggleMode(els, false);
             return;
         }
 
@@ -208,7 +198,7 @@ function initUsernameLogic() {
                 originalUsername = data.new_username;
                 els.display.textContent = data.new_username;
                 els.input.value = data.new_username;
-                toggleUsernameMode(false);
+                toggleMode(els, false);
             } else {
                 if (window.alertManager) window.alertManager.showAlert(data.message || 'Error al actualizar.', 'error');
             }
@@ -218,25 +208,102 @@ function initUsernameLogic() {
         }
         setLoading(els.saveBtn, false, 'Guardar');
     });
+}
 
-    function toggleUsernameMode(isEditing) {
-        if (isEditing) {
-            els.viewState.classList.remove('active'); els.viewState.classList.add('disabled');
-            els.actionsView.classList.remove('active'); els.actionsView.classList.add('disabled');
-            
-            els.editState.classList.remove('disabled'); els.editState.classList.add('active');
-            els.actionsEdit.classList.remove('disabled'); els.actionsEdit.classList.add('active');
-        } else {
-            els.editState.classList.remove('active'); els.editState.classList.add('disabled');
-            els.actionsEdit.classList.remove('active'); els.actionsEdit.classList.add('disabled');
+// ========================================================
+// [NUEVO] LÓGICA DE CORREO ELECTRÓNICO
+// ========================================================
+function initEmailLogic() {
+    const els = {
+        viewState: document.getElementById('email-view-state'),
+        editState: document.getElementById('email-edit-state'),
+        actionsView: document.getElementById('email-actions-view'),
+        actionsEdit: document.getElementById('email-actions-edit'),
+        display: document.getElementById('email-display-text'),
+        input: document.getElementById('email-input'),
+        editBtn: document.getElementById('email-edit-trigger'),
+        cancelBtn: document.getElementById('email-cancel-trigger'),
+        saveBtn: document.getElementById('email-save-trigger-btn')
+    };
 
-            els.viewState.classList.remove('disabled'); els.viewState.classList.add('active');
-            els.actionsView.classList.remove('disabled'); els.actionsView.classList.add('active');
+    if (!els.input) return;
+
+    let originalEmail = els.input.value;
+
+    els.editBtn.addEventListener('click', () => {
+        toggleMode(els, true);
+        els.input.focus();
+    });
+
+    els.cancelBtn.addEventListener('click', () => {
+        els.input.value = originalEmail;
+        toggleMode(els, false);
+    });
+
+    els.saveBtn.addEventListener('click', async () => {
+        const newVal = els.input.value.trim().toLowerCase();
+        if (newVal === originalEmail) {
+            toggleMode(els, false);
+            return;
         }
+
+        // Validación simple de dominio (mismas reglas que registro)
+        const regex = /^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i;
+        if (!regex.test(newVal)) {
+            if (window.alertManager) window.alertManager.showAlert('Dominio no permitido (Solo Gmail, Outlook, iCloud, Yahoo).', 'warning');
+            return;
+        }
+
+        setLoading(els.saveBtn, true);
+
+        try {
+            const res = await fetch(API_SETTINGS, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': getCsrfToken()
+                },
+                body: JSON.stringify({ 
+                    action: 'update_email', 
+                    email: newVal 
+                })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
+                originalEmail = data.new_email;
+                els.display.textContent = data.new_email;
+                els.input.value = data.new_email;
+                toggleMode(els, false);
+            } else {
+                if (window.alertManager) window.alertManager.showAlert(data.message || 'Error al actualizar.', 'error');
+            }
+        } catch (error) {
+            console.error(error);
+            if (window.alertManager) window.alertManager.showAlert('Error de conexión.', 'error');
+        }
+        setLoading(els.saveBtn, false, 'Guardar');
+    });
+}
+
+// Helper genérico para alternar modo edición/vista
+function toggleMode(els, isEditing) {
+    if (isEditing) {
+        els.viewState.classList.remove('active'); els.viewState.classList.add('disabled');
+        els.actionsView.classList.remove('active'); els.actionsView.classList.add('disabled');
+        
+        els.editState.classList.remove('disabled'); els.editState.classList.add('active');
+        els.actionsEdit.classList.remove('disabled'); els.actionsEdit.classList.add('active');
+    } else {
+        els.editState.classList.remove('active'); els.editState.classList.add('disabled');
+        els.actionsEdit.classList.remove('active'); els.actionsEdit.classList.add('disabled');
+
+        els.viewState.classList.remove('disabled'); els.viewState.classList.add('active');
+        els.actionsView.classList.remove('disabled'); els.actionsView.classList.add('active');
     }
 }
 
-// Helper global
 function updateHeaderAvatar(src) {
     const headerImg = document.querySelector('.header-button.profile-button .profile-img');
     if (headerImg) headerImg.src = src;
