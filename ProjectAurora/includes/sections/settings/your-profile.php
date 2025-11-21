@@ -4,7 +4,6 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 $basePath = $basePath ?? '/ProjectAurora/';
 $userId = $_SESSION['user_id'];
 
-// 1. Obtener datos del usuario
 $stmt = $pdo->prepare("SELECT username, email, avatar, role FROM users WHERE id = ?");
 $stmt->execute([$userId]);
 $currentUser = $stmt->fetch();
@@ -14,7 +13,6 @@ $currentEmail = $currentUser['email'] ?? 'correo@ejemplo.com';
 $userAvatar = $currentUser['avatar'] ?? null;
 $userRole = $currentUser['role'] ?? 'user';
 
-// 2. Obtener preferencias
 $stmtPrefs = $pdo->prepare("SELECT usage_intent, language, open_links_in_new_tab FROM user_preferences WHERE user_id = ?");
 $stmtPrefs->execute([$userId]);
 $prefs = $stmtPrefs->fetch(PDO::FETCH_ASSOC);
@@ -82,7 +80,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                 </div>
             </div>
 
-            <div class="component-card__actions">
+            <div class="component-card__actions actions-right">
                 <div data-state="avatar-actions-default" class="<?php echo !$hasCustomAvatar ? 'active' : 'disabled'; ?>">
                     <button type="button" class="component-button" data-action="avatar-upload-trigger" data-i18n="settings.profile.upload_btn"><?php echo trans('settings.profile.upload_btn'); ?></button>
                 </div>
@@ -122,7 +120,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                     </div>
                 </div>
             </div>
-            <div class="component-card__actions">
+            <div class="component-card__actions actions-right">
                 <div data-state="username-actions-view" class="active">
                     <button type="button" class="component-button" data-action="username-edit-trigger" data-i18n="global.edit"><?php echo trans('global.edit'); ?></button>
                 </div>
@@ -152,7 +150,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                     </div>
                 </div>
             </div>
-            <div class="component-card__actions">
+            <div class="component-card__actions actions-right">
                 <div data-state="email-actions-view" class="active">
                     <button type="button" class="component-button" data-action="email-edit-trigger" data-i18n="global.edit"><?php echo trans('global.edit'); ?></button>
                 </div>
@@ -226,7 +224,6 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                         <div class="menu-content">
                             <div class="menu-list">
                                 <?php 
-                                // Icono 'language' en todas las opciones
                                 $langOptions = [
                                     ['val' => 'es-latam', 'icon' => 'language', 'label' => 'Español (Latinoamérica)'],
                                     ['val' => 'es-mx', 'icon' => 'language', 'label' => 'Español (México)'],
@@ -250,7 +247,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
             </div>
         </div>
 
-        <div class="component-card component-card--edit-mode">
+        <div class="component-card component-card--edit-mode" data-component="toggle-new-tab-card">
             <div class="component-card__content">
                 <div class="component-card__text">
                     <h2 class="component-card__title" data-i18n="settings.profile.new_tab_title"><?php echo trans('settings.profile.new_tab_title'); ?></h2>

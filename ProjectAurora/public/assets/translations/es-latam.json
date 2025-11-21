@@ -121,6 +121,22 @@
             "new_tab_title": "Abrir los enlaces en una pestaña nueva",
             "new_tab_desc": "En el navegador web, los enlaces siempre se abrirán en una pestaña nueva."
         },
+        "security": {
+            "title": "Inicio de sesión y seguridad",
+            "description": "Gestiona tu contraseña y la seguridad de tu cuenta.",
+            "password_title": "Contraseña",
+            "password_desc": "Nunca has actualizado tu contraseña.",
+            "password_btn": "Actualizar",
+            "2fa_title": "Verificación de dos pasos (2FA)",
+            "2fa_desc": "Añade una capa extra de seguridad a tu cuenta.",
+            "2fa_btn": "Habilitar",
+            "sessions_title": "Sesiones de dispositivos",
+            "sessions_desc": "Revisa y administra los dispositivos donde has iniciado sesión.",
+            "sessions_btn": "Administrar dispositivos",
+            "delete_title": "Eliminar tu cuenta",
+            "delete_desc": "Si eliminas tu cuenta, ya no podrás acceder a ninguno de tus diseños ni iniciar sesión. Cuenta creada el",
+            "delete_btn": "Eliminar cuenta"
+        },
         "usage_options": {
             "personal": "Uso personal",
             "student": "Estudiante",
