@@ -14,8 +14,29 @@ export function initMainController() {
     document.body.addEventListener('click', async (e) => {
         if (isAnimating) return;
 
-        const trigger = e.target.closest('[data-action]');
-        
+        const target = e.target;
+
+        // A) LÓGICA DE SELECCIÓN EN LISTA DE USUARIOS (NUEVO)
+        const userRow = target.closest('.list-item-row');
+        if (userRow) {
+            // Evitamos que el click en botones de acción dispare la selección
+            // si en el futuro agregas botones dentro de la fila.
+            if (!target.closest('button') && !target.closest('a')) {
+                const container = userRow.closest('.list-body');
+                if (container) {
+                    // 1. Deseleccionar todos los demás
+                    container.querySelectorAll('.list-item-row.selected').forEach(row => {
+                        row.classList.remove('selected');
+                    });
+                }
+                // 2. Seleccionar el actual
+                userRow.classList.add('selected');
+                return; // Opcional: detenemos propagación si es necesario
+            }
+        }
+
+        // B) LÓGICA DE MÓDULOS (MENÚS)
+        const trigger = target.closest('[data-action]');
         if (trigger) {
             const action = trigger.dataset.action;
             let targetModuleId = null;
@@ -31,7 +52,7 @@ export function initMainController() {
             }
         }
 
-        const loadMoreBtn = e.target.closest('.btn-load-more');
+        const loadMoreBtn = target.closest('.btn-load-more');
         if (loadMoreBtn) {
             e.preventDefault();
             await handleLoadMore(loadMoreBtn);
@@ -39,10 +60,8 @@ export function initMainController() {
         }
 
         if (allowCloseOnClickOutside) {
-            // Buscamos si el clic fue dentro del contenido de cualquiera de los módulos
-            // [MODIFICADO] Ahora solo necesitamos buscar .menu-content
-            const clickedInsideContent = e.target.closest('.menu-content');
-            const clickedInsideTrigger = e.target.closest('[data-action^="toggleModule"]'); 
+            const clickedInsideContent = target.closest('.menu-content');
+            const clickedInsideTrigger = target.closest('[data-action^="toggleModule"]'); 
 
             if (!clickedInsideContent && !clickedInsideTrigger) {
                 closeAllModules();
@@ -82,11 +101,9 @@ function toggleModule(moduleId) {
     if (!module) return;
 
     const isMobile = window.innerWidth <= 468;
-    // Verificamos si el módulo actual soporta animación móvil
     const supportsMobileAnim = allowedMobileMods.includes(moduleId);
 
     if (module.classList.contains('active')) {
-        // CERRAR
         if (isMobile && supportsMobileAnim) {
             closeWithAnimation(module);
         } else {
@@ -94,9 +111,7 @@ function toggleModule(moduleId) {
             module.classList.add('disabled');
         }
     } else {
-        // ABRIR
-        closeAllModules(moduleId); // Cierra otros
-        
+        closeAllModules(moduleId); 
         module.classList.remove('disabled');
         module.classList.add('active');
 
@@ -107,7 +122,6 @@ function toggleModule(moduleId) {
 }
 
 function getContentElement(module) {
-    // [MODIFICADO] Ahora solo buscamos .menu-content
     return module.querySelector('.menu-content');
 }
 
@@ -149,9 +163,6 @@ function closeWithAnimation(module) {
     }, { once: true });
 }
 
-/**
- * [MODIFICADO] Soporta animaciones para Profile y Notificaciones
- */
 export function closeAllModules(exceptModuleId = null, animate = true) {
     const modules = document.querySelectorAll('[data-module]');
     const isMobile = window.innerWidth <= 468;
@@ -159,20 +170,14 @@ export function closeAllModules(exceptModuleId = null, animate = true) {
     modules.forEach(mod => {
         const modId = mod.dataset.module;
         if (modId !== exceptModuleId && mod.classList.contains('active')) {
-            
             const supportsMobileAnim = allowedMobileMods.includes(modId);
 
-            // Solo animamos si es móvil, es un módulo soportado Y si `animate` es true
             if (supportsMobileAnim && isMobile && animate) {
                 closeWithAnimation(mod);
             } else {
-                // Cierre directo (sin CSS keyframes)
                 mod.classList.remove('active');
                 mod.classList.add('disabled');
-
-                // Limpieza de seguridad por si quedaron estilos inline del drag
                 mod.classList.remove('animate-fade-in', 'animate-fade-out');
-                
                 const content = getContentElement(mod);
                 if(content) {
                     content.classList.remove('animate-in', 'animate-out');

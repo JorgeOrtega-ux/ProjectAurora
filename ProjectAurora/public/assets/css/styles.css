@@ -1498,3 +1498,193 @@ a.disabled-link {
         border-radius: 10px;
     }
 }
+
+
+
+/* =========================================
+   14. DISEÑO LISTA DE USUARIOS (Sin Acciones, Con Fecha)
+   ========================================= */
+
+/* Contenedor principal */
+.custom-list-container {
+    width: 100%;
+    max-width: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-size: 14px;
+}
+
+/* Cuerpo de la lista */
+.list-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+
+/* GRILLA - MODIFICADA PARA FECHA */
+.list-header-row, 
+.list-item-row {
+    display: grid;
+    /* Usuario | Email | Rol | Estado | Fecha */
+    grid-template-columns: 1.5fr 2fr 120px 120px 150px; 
+    align-items: center;
+    padding: 0 24px;
+    gap: 16px;
+}
+
+/* HEADER */
+.list-header-row {
+    height: 50px;
+    border: 1px solid #00000020;
+    border-radius: 8px;
+    background-color: #fff;
+    color: #666;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.list-header-row .col-role,
+.list-header-row .col-status,
+.list-header-row .col-date {
+    justify-content: center; /* Centrar títulos */
+}
+
+/* FILAS (ITEMS) */
+.list-item-row {
+    height: 65px;
+    background-color: #ffffff;
+    border: 1px solid #00000020;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.list-item-row:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border-color: #00000060;
+}
+
+/* ESTADO SELECCIONADO */
+.list-item-row.selected {
+    border: 1px solid #000000 !important;
+    background-color: #fafafa;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transform: scale(1.005);
+}
+
+/* COLUMNAS */
+.col-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    overflow: hidden;
+}
+.username-text {
+    font-weight: 600;
+    color: #000;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.item-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #C87A4F; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.item-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.col-email {
+    color: #555;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Nueva Columna Fecha */
+.col-date {
+    display: flex;
+    justify-content: center;
+    color: #666;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums; /* Alinea mejor los números */
+}
+
+.col-role, .col-status {
+    display: flex;
+    justify-content: center;
+}
+
+/* Badges */
+.list-badge {
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    background-color: #E3F2FD;
+    color: #1976D2;
+}
+.badge-founder { background-color: #E3F2FD; color: #1976D2; }
+.badge-admin { background-color: #FFEBEE; color: #C62828; }
+.badge-user { background-color: #F5F5F5; color: #616161; }
+
+/* Status Pill */
+.status-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 13px;
+}
+.status-pill .material-symbols-rounded { font-size: 18px; }
+.text-success { color: #2E7D32; }
+.text-danger { color: #C62828; }
+.text-muted { color: #757575; }
+
+/* Responsive */
+@media (max-width: 800px) {
+    .custom-list-container {
+        overflow-x: auto;
+        padding-bottom: 10px;
+    }
+    .list-header-row, 
+    .list-item-row {
+        min-width: 700px;
+    }
+}
+
+/* Toolbar */
+.content-toolbar {
+    width: 100%;
+    max-width: 500px;
+    height: 55px;
+    background-color: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e0e0e0;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 8px;
+}
