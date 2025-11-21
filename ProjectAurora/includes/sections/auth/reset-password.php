@@ -7,12 +7,15 @@ $token = isset($_GET['token']) ? trim($_GET['token']) : '';
 $tokenIsValid = false;
 
 // 2. Validar el token en la Base de Datos (Server Side Render)
-// Nota: $pdo está disponible porque este archivo se carga desde loader.php o index.php que ya incluyen database.php
+// Nota: $pdo está disponible porque este archivo se carga desde loader.php o index.php
 if (!empty($token) && isset($pdo)) {
     try {
-        // Buscamos si el código existe, es de tipo 'recovery' y si la fecha de expiración es mayor a AHORA
+        // [SEGURIDAD] Hasheamos el token recibido por GET para compararlo con la BD
+        $tokenHash = hash('sha256', $token);
+
+        // Buscamos usando el hash
         $stmt = $pdo->prepare("SELECT id FROM verification_codes WHERE code = ? AND code_type = 'recovery' AND expires_at > NOW()");
-        $stmt->execute([$token]);
+        $stmt->execute([$tokenHash]);
         
         if ($stmt->fetch()) {
             $tokenIsValid = true;
@@ -56,7 +59,6 @@ if (!empty($token) && isset($pdo)) {
                     padding: 20px; 
                     text-align: left; 
                     background-color: #fff;
-                    /* Quitamos margin-bottom extra ya que no hay botón debajo */
                 ">
                     <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #d32f2f;">Error: Enlace no válido</h3>
                     <p style="margin: 0; font-size: 14px; color: #666; line-height: 1.5;">

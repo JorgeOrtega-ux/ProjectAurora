@@ -31,11 +31,12 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- CÓDIGOS DE VERIFICACIÓN
+-- [MODIFICADO] 'code' aumentado a VARCHAR(64) para soportar SHA-256
 CREATE TABLE IF NOT EXISTS verification_codes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     identifier VARCHAR(255) NOT NULL, 
     code_type VARCHAR(50) NOT NULL,   
-    code VARCHAR(20) NOT NULL,
+    code VARCHAR(64) NOT NULL,        
     payload JSON NULL,                
     expires_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -94,12 +95,12 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     user_id INT NOT NULL UNIQUE,
     usage_intent VARCHAR(50) DEFAULT 'personal',
     language VARCHAR(10) DEFAULT 'en-us',
-    open_links_in_new_tab TINYINT(1) DEFAULT 1, -- 1 = True, 0 = False
+    open_links_in_new_tab TINYINT(1) DEFAULT 1, 
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- [NUEVO] AUDITORÍA DE CAMBIOS DE PERFIL
+-- AUDITORÍA DE CAMBIOS DE PERFIL
 CREATE TABLE IF NOT EXISTS user_audit_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -109,6 +110,5 @@ CREATE TABLE IF NOT EXISTS user_audit_logs (
     changed_by_ip VARCHAR(45) NOT NULL,
     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    -- Índice compuesto para buscar rápidamente el último cambio de un tipo específico
     INDEX idx_audit_check (user_id, change_type, changed_at)
 );

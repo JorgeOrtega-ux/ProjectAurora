@@ -39,3 +39,8 @@
 [2025-11-21 12:40:22] [CUSTOM] [LOGIC] Este correo no se encuentra registrado en nuestra base de datos.
 [2025-11-21 12:40:27] [CUSTOM] LINK Recuperación generado para 12@gmail.com: http://192.168.1.158/ProjectAurora/reset-password?token=e9212db12c6d278c9dbb839b8b98ac07edf8e86da9f55227f6e2a55dbf01fe97
 [2025-11-21 12:41:02] [CUSTOM] [LOGIC] Credenciales incorrectas.
+[2025-11-21 13:03:42] [CUSTOM] [PRUEBA - ELIMINAR EN PROD] Registro para 12@gmail.com | Code: 4F33E3D5577C | Hash: b48904c2d6f7feea05a0a315da352585ab38eefc2edaf140c97bfbd73f3fea38
+[2025-11-21 13:03:59] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-21 13:04:17] [CUSTOM] [PRUEBA - ELIMINAR EN PROD] Recuperación para 12@gmail.com | Link: http://192.168.1.158/ProjectAurora/reset-password?token=dc9879a5fbbe2e4469bda2b577f6dca09cd1919ea07bf75a68526942b617729e | Hash guardado: 619ff19637d6dd5bf4a79d8d22523fb0b6b6d51be29276fe1501240eda2cfbda
+[2025-11-21 13:05:21] [CUSTOM] [LOGIC] Credenciales incorrectas.
+[2025-11-21 13:05:26] [CUSTOM] [LOGIC] Credenciales incorrectas.

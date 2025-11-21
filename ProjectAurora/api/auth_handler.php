@@ -103,8 +103,9 @@ function mask_email($email) {
 $response = ['success' => false, 'message' => 'Acción no válida'];
 
 try {
-    // ... (REGISTRO STEP 1 Y 2 SIN CAMBIOS) ...
-
+    // ==================================================================
+    // REGISTRO - PASO 1
+    // ==================================================================
     if ($action === 'register_step_1') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
@@ -124,6 +125,9 @@ try {
 
         $response = ['success' => true, 'message' => 'Paso 1 OK'];
 
+    // ==================================================================
+    // REGISTRO - PASO 2 (Generar Code + Hash)
+    // ==================================================================
     } elseif ($action === 'register_step_2') {
         $username = trim($data['username'] ?? '');
         $email = $_SESSION['temp_register']['email'] ?? '';
@@ -138,28 +142,40 @@ try {
 
         $passwordHash = password_hash($rawPassword, PASSWORD_BCRYPT);
         $payload = json_encode(['username' => $username, 'password_hash' => $passwordHash]);
+        
+        // 1. Generar Código
         $code = generate_verification_code();
+        // 2. Hashear Código para DB
+        $codeHash = hash('sha256', $code);
 
         $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'registration'")->execute([$email]);
         $sql = "INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, 'registration', ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$email, $code, $payload]);
+        $stmt->execute([$email, $codeHash, $payload]); // Guardamos el HASH
 
         unset($_SESSION['temp_register']['password']);
         $_SESSION['temp_register']['username'] = $username;
 
-        logger("Code registro generado para el usuario (Oculto por seguridad).");
+        // LOG DE PRUEBA
+        logger("[PRUEBA - ELIMINAR EN PROD] Registro para $email | Code: $code | Hash: $codeHash");
+        
         $response = ['success' => true, 'message' => 'Código enviado'];
 
+    // ==================================================================
+    // REGISTRO - FINAL (Verificar Code con Hash)
+    // ==================================================================
     } elseif ($action === 'register_final') {
         $inputCode = strtoupper(trim($data['code'] ?? ''));
         $email = $_SESSION['temp_register']['email'] ?? '';
 
         if (empty($email)) throw new Exception('Sesión perdida.');
 
+        // Hasheamos el input para comparar
+        $inputHash = hash('sha256', $inputCode);
+
         $sql = "SELECT id, payload FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'registration' AND expires_at > NOW()";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$email, $inputCode]);
+        $stmt->execute([$email, $inputHash]); // Comparamos con HASH
         $row = $stmt->fetch();
 
         if (!$row) throw new Exception('Código inválido o expirado.');
@@ -208,6 +224,9 @@ try {
             throw new Exception('Error crítico.');
         }
 
+    // ==================================================================
+    // LOGIN (Generar Code 2FA + Hash)
+    // ==================================================================
     } elseif ($action === 'login') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
@@ -226,16 +245,22 @@ try {
             }
 
             if (isset($user['is_2fa_enabled']) && $user['is_2fa_enabled'] == 1) {
+                // 1. Generar Código
                 $code = generate_verification_code();
+                // 2. Hashear
+                $codeHash = hash('sha256', $code);
+
                 $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'login_2fa'")->execute([$email]);
                 $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, expires_at) VALUES (?, 'login_2fa', ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE))");
-                $stmt->execute([$email, $code]);
+                $stmt->execute([$email, $codeHash]); // Guardar Hash
 
                 if (!isset($_SESSION['temp_login_2fa'])) $_SESSION['temp_login_2fa'] = [];
                 $_SESSION['temp_login_2fa']['user_id'] = $user['id'];
                 $_SESSION['temp_login_2fa']['email'] = $user['email'];
 
-                logger("Code 2FA Login generado para $email (Oculto por seguridad).");
+                // LOG DE PRUEBA
+                logger("[PRUEBA - ELIMINAR EN PROD] Login 2FA para $email | Code: $code | Hash: $codeHash");
+                
                 $response = [
                     'success' => true,
                     'require_2fa' => true,
@@ -253,6 +278,9 @@ try {
             throw new Exception('Credenciales incorrectas.');
         }
 
+    // ==================================================================
+    // LOGIN 2FA (Verificar con Hash)
+    // ==================================================================
     } elseif ($action === 'login_2fa_verify') {
         $inputCode = strtoupper(trim($data['code'] ?? ''));
         if (empty($_SESSION['temp_login_2fa']['user_id'])) throw new Exception("Sesión expirada. Vuelve a iniciar login.");
@@ -262,8 +290,11 @@ try {
 
         if (checkLockStatus($pdo, $email, 'login_2fa_fail')) throw new Exception("Muchos intentos fallidos. Espera unos minutos.");
 
+        // Hashear input
+        $inputHash = hash('sha256', $inputCode);
+
         $stmt = $pdo->prepare("SELECT id FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'login_2fa' AND expires_at > NOW()");
-        $stmt->execute([$email, $inputCode]);
+        $stmt->execute([$email, $inputHash]); // Buscar con Hash
 
         if ($stmt->rowCount() > 0) {
             $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'login_2fa'")->execute([$email]);
@@ -281,7 +312,7 @@ try {
         }
 
     // ==================================================================
-    // RECUPERACIÓN - PASO 1 (GENERAR LINK) - MODIFICADO
+    // RECUPERACIÓN - PASO 1 (Generar Token + Hash)
     // ==================================================================
     } elseif ($action === 'recovery_step_1') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
@@ -292,49 +323,53 @@ try {
         $stmt->execute([$email]);
         if ($stmt->rowCount() > 0) {
             
-            // 1. Generar Token Largo (64 chars)
+            // 1. Generar Token Largo (64 chars) - Este va al usuario
             $token = bin2hex(random_bytes(32)); 
             
-            // 2. Limpiar tokens previos
+            // 2. Hashear Token - Este va a la BD
+            $tokenHash = hash('sha256', $token);
+            
+            // 3. Limpiar tokens previos
             $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'recovery'")->execute([$email]);
             
-            // 3. Insertar nuevo token (Expira en 30 mins para links)
+            // 4. Insertar nuevo token (HASHED)
             $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, expires_at) VALUES (?, 'recovery', ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE))");
-            $stmt->execute([$email, $token]);
+            $stmt->execute([$email, $tokenHash]);
             
-            // 4. Generar Link
-            // NOTA: Asume que ProjectAurora está en la raíz o carpeta configurada.
+            // 5. Generar Link (Con token PLANO)
             $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
-            $host = $_SERVER['HTTP_HOST']; // localhost
-            $base = '/ProjectAurora/'; // Ajusta si cambia la carpeta
+            $host = $_SERVER['HTTP_HOST']; 
+            $base = '/ProjectAurora/'; 
             
             $link = $protocol . $host . $base . 'reset-password?token=' . $token;
 
-            logger("LINK Recuperación generado para $email: $link");
+            // LOG DE PRUEBA
+            logger("[PRUEBA - ELIMINAR EN PROD] Recuperación para $email | Link: $link | Hash guardado: $tokenHash");
             
             $response = ['success' => true, 'message' => 'Se ha enviado un enlace de recuperación a tu correo.'];
         } else {
             logFailedAttempt($pdo, $email, 'recovery_fail');
-            // Por seguridad, respondemos lo mismo aunque no exista, o lanzamos error genérico
             throw new Exception('Este correo no se encuentra registrado en nuestra base de datos.');
         }
 
     // ==================================================================
-    // RECUPERACIÓN - FINAL (VALIDAR TOKEN Y CAMBIAR PASS) - MODIFICADO
+    // RECUPERACIÓN - FINAL (Verificar Hash)
     // ==================================================================
     } elseif ($action === 'recovery_final') {
-        // Ya no depende de $_SESSION['temp_recovery']
         $token = trim($data['token'] ?? '');
         $newPass = $data['password'] ?? '';
 
         if (empty($token) || empty($newPass)) throw new Exception('Datos incompletos.');
         if (strlen($newPass) < 8) throw new Exception('La contraseña debe tener al menos 8 caracteres.');
 
-        // 1. Buscar token en BD
+        // Hashear token recibido para buscar
+        $tokenHash = hash('sha256', $token);
+
+        // 1. Buscar token en BD usando el HASH
         $sql = "SELECT identifier FROM verification_codes 
                 WHERE code = ? AND code_type = 'recovery' AND expires_at > NOW()";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$token]);
+        $stmt->execute([$tokenHash]);
         $row = $stmt->fetch();
 
         if (!$row) {
@@ -347,8 +382,8 @@ try {
         $newHash = password_hash($newPass, PASSWORD_BCRYPT);
         $upd = $pdo->prepare("UPDATE users SET password = ? WHERE email = ?");
         if ($upd->execute([$newHash, $email])) {
-            // 3. Borrar el token usado
-            $pdo->prepare("DELETE FROM verification_codes WHERE code = ?")->execute([$token]);
+            // 3. Borrar el token usado (usando el hash)
+            $pdo->prepare("DELETE FROM verification_codes WHERE code = ?")->execute([$tokenHash]);
             
             clearFailedAttempts($pdo, $email);
             $response = ['success' => true, 'message' => 'Contraseña actualizada. Inicia sesión.'];
