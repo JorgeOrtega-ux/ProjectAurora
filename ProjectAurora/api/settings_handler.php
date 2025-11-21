@@ -255,7 +255,7 @@ try {
         }
 
     // ==================================================================
-    // PREFERENCIAS (Rate Limit Técnico)
+    // PREFERENCIAS (Rate Limit Técnico) - MENSAJE UNIFICADO
     // ==================================================================
     } elseif ($action === 'update_usage') {
         if (checkActionRateLimit($pdo, $userId, 'pref_update_limit', 10, 1)) {
@@ -273,7 +273,8 @@ try {
         $stmt = $pdo->prepare($sql);
         
         if ($stmt->execute([$userId, $usage])) {
-            $response = ['success' => true, 'message' => 'Preferencia de uso actualizada.'];
+            // [CAMBIO] Mensaje genérico
+            $response = ['success' => true, 'message' => 'Preferencia actualizada.'];
         } else {
             throw new Exception("Error actualizando preferencia.");
         }
@@ -294,11 +295,10 @@ try {
         $stmt = $pdo->prepare($sql);
 
         if ($stmt->execute([$userId, $lang])) {
-            // Actualizamos sesión inmediatamente para que el próximo request de página
-            // ya tenga el idioma correcto sin depender del JS.
             $_SESSION['user_lang'] = $lang;
 
-            $response = ['success' => true, 'message' => 'Idioma actualizado.'];
+            // [CAMBIO] Mensaje genérico
+            $response = ['success' => true, 'message' => 'Preferencia actualizada.'];
         } else {
             throw new Exception("Error actualizando idioma.");
         }
@@ -324,6 +324,7 @@ try {
         $stmt = $pdo->prepare($sql);
 
         if ($stmt->execute([$userId, $value])) {
+            // [CAMBIO] Mensaje genérico (ya lo tenía, pero aseguramos consistencia)
             $response = ['success' => true, 'message' => 'Preferencia actualizada.'];
         } else {
             throw new Exception("Error actualizando preferencia.");

@@ -40,20 +40,26 @@ export async function changeLanguage(newLang) {
 
     try {
         const response = await fetch(`${BASE_PATH}assets/translations/${newLang}.json`);
-        if (!response.ok) throw new Error('Translation file not found');
+        
+        if (!response.ok) {
+            // Si el archivo no existe, lanzamos error para ir al catch
+            throw new Error(`Translation file not found for ${newLang}`);
+        }
         
         translations = await response.json();
-        
-        // Volver a traducir toda la interfaz visible
-        translateDocument();
-        
         console.log(`Idioma cambiado a: ${newLang}`);
-        
+
     } catch (error) {
-        console.error('Error changing language:', error);
+        console.warn(`[i18n] No se encontró traducción para "${newLang}". Se mostrarán las claves.`);
+        // CLAVE DE LA SOLUCIÓN:
+        // Si falla, vaciamos las traducciones para que la función t() devuelva las keys
+        translations = {}; 
+    } finally {
+        // ESTO ES LO IMPORTANTE:
+        // Ejecutamos la traducción SIEMPRE, haya habido éxito o error.
+        translateDocument();
     }
 }
-
 // Exponer cambio de idioma globalmente por si acaso
 window.changeLanguage = changeLanguage;
 
