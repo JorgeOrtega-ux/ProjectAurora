@@ -1,0 +1,412 @@
+/* public/assets/css/componnents.css */
+
+/* Layout Global */
+.component-wrapper {
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Tarjetas */
+.component-header-card,
+.component-card {
+    border: 1px solid #00000020;
+    border-radius: 12px;
+    padding: 24px;
+    background-color: #ffffff;
+}
+
+.component-header-card {
+    text-align: center;
+}
+
+.component-page-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.component-page-description {
+    font-size: 15px;
+    color: #666;
+    margin: 0;
+}
+
+/* Layout tarjeta */
+.component-card--edit-mode {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.component-card__content {
+    flex: 1;
+    width: 100%;
+    min-width: 250px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.component-card__text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+}
+
+.component-card__title {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.component-card__description {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+}
+
+.component-card__meta {
+    font-size: 12px;
+    color: #999;
+    margin-top: 4px;
+}
+
+/* --- NUEVO: Contenedor para Input + Botones --- */
+.input-with-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+/* Acciones dentro del grupo de edición */
+[data-state="username-actions-edit"].active,
+[data-state="email-actions-edit"].active,
+[data-state="avatar-actions-default"].active,
+[data-state="avatar-actions-custom"].active,
+[data-state="avatar-actions-preview"].active {
+    display: flex !important;
+    gap: 8px;
+}
+
+/* Input Flexible */
+.component-text-input {
+    flex: 1;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid #00000020;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    background: transparent;
+    color: #000;
+    box-sizing: border-box;
+}
+
+.component-text-input:focus {
+    border-color: #000;
+}
+
+/* Botones */
+.component-button {
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid #00000020;
+    color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.component-button:hover {
+    background-color: #f5f5fa;
+}
+
+/* Botón primario (Guardar) */
+.component-button.primary {
+    background-color: #000;
+    color: #fff;
+    border: none;
+}
+
+.component-button.primary:hover {
+    background-color: #333;
+}
+
+/* ===========================================================
+   Avatar Styles
+   =========================================================== */
+.component-card__avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background-color: #f5f5f5;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible; 
+    flex-shrink: 0;
+}
+
+/* Anillo de Rol */
+.component-card__avatar::before {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border: 2px solid transparent;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Colores del Anillo */
+.component-card__avatar[data-role="user"]::before {
+    border-color: #cccccc;
+}
+
+.component-card__avatar[data-role="moderator"]::before {
+    border-color: #0000FF;
+}
+
+.component-card__avatar[data-role="administrator"]::before {
+    border-color: #FF0000;
+}
+
+.component-card__avatar[data-role="founder"]::before {
+    border: none;
+    background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+}
+
+.component-card__avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%; 
+}
+
+.component-card__avatar-overlay {
+    position: absolute;
+    inset: 0; 
+    background-color: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    opacity: 0;
+    transition: opacity 0.2s;
+    cursor: pointer;
+    z-index: 3;
+    border-radius: 50%; 
+}
+
+.component-card__avatar:hover .component-card__avatar-overlay {
+    opacity: 1;
+}
+
+/* Clases de Estado */
+.active {
+    display: flex;
+}
+
+/* ===========================================================
+   FIX PARA DISEÑO DE PERFIL
+   =========================================================== */
+[data-state="username-edit-state"].active,
+[data-state="email-edit-state"].active {
+    display: flex; 
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+}
+
+.disabled {
+    display: none;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
+/* Selects personalizados (Triggers) */
+.trigger-select-wrapper {
+    position: relative;
+    width: 265px;
+    height: 40px;
+}
+.trigger-selector {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    border: 1px solid #00000020;
+    border-radius: 8px;
+    background-color: #ffffff;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    padding: 0 8px 0 12px;
+    user-select: none;
+}
+.trigger-select-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-right: 12px;
+}
+.trigger-select-text {
+    flex-grow: 1;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.trigger-select-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+.trigger-selector:hover {
+    background-color: #f5f5fa;
+}
+
+/* Toggles */
+.component-toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 24px;
+}
+.component-toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+.component-toggle-switch input:checked+.component-toggle-slider {
+    background-color: #000;
+}
+.component-toggle-switch .component-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .3s;
+    border-radius: 34px;
+}
+.component-toggle-switch input:checked+.component-toggle-slider:before {
+    transform: translateX(16px);
+}
+.component-toggle-switch .component-toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+
+/* ===========================================================
+   [NUEVO] ESTILO DE ERROR FUERA DE LA TARJETA
+   =========================================================== */
+.component-card__error {
+    width: 100%;
+    padding: 12px 16px;
+    /* Margen negativo para compensar el gap del flex parent y pegar el error a la tarjeta de arriba */
+    margin-top: -10px; 
+    background-color: #ffebee;
+    color: #d32f2f;
+    border-radius: 12px; 
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid #ffcdd2;
+    animation: fadeInError 0.3s ease-out;
+    /* Por defecto lo mostramos si está en el DOM, pero la animación ayuda en la entrada */
+}
+
+@keyframes fadeInError {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 600px) {
+    .component-card--edit-mode {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .component-card__actions {
+        width: 100%;
+        display: flex;
+        margin-top: 8px;
+    }
+
+    .component-card__actions.actions-right {
+        justify-content: flex-end;
+    }
+
+    .input-with-actions {
+        flex-wrap: wrap;
+    }
+
+    .component-text-input {
+        min-width: 100%;
+    }
+
+    [data-state="username-actions-edit"].active,
+    [data-state="email-actions-edit"].active {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .component-button {
+        width: 100%;
+    }
+}
+
+
+
+
+
+[data-state="avatar-actions-default"],
+[data-state="username-actions-view"],
+[data-state="email-actions-view"] {
+    width: 100%;
+}
+
+
