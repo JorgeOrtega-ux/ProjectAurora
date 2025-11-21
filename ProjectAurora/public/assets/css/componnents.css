@@ -234,17 +234,17 @@
 
 /* Clases de Estado */
 .active {
-    display: block !important;
+    display: block;
 }
 
 .component-card__actions .active {
-    display: flex !important;
+    display: flex;
     gap: 8px;
     width: 100%;
 }
 
 .disabled {
-    display: none !important;
+    display: none;
 }
 
 .visually-hidden {
@@ -313,6 +313,8 @@
 }
 .component-toggle-switch input:checked+.component-toggle-slider {
     background-color: #000;
+}.trigger-selector:hover {
+    background-color: #f5f5fa;
 }
 .component-toggle-switch .component-toggle-slider {
     position: absolute;

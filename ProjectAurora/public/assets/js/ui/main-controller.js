@@ -114,14 +114,22 @@ function handleDropdownSelection(optionElement) {
     const allLinks = module.querySelectorAll('.menu-link');
     allLinks.forEach(link => {
         link.classList.remove('active');
-        const checkIcon = link.querySelector('.menu-link-check-icon');
-        if (checkIcon) checkIcon.innerHTML = '';
+        
+        // [ACTUALIZADO] Buscamos todos los iconos y modificamos el ÚLTIMO (el de la derecha)
+        const icons = link.querySelectorAll('.menu-link-icon');
+        if (icons.length > 1) {
+            const checkContainer = icons[icons.length - 1]; // El último es el del check
+            checkContainer.innerHTML = '';
+        }
     });
 
     optionElement.classList.add('active');
-    const activeCheck = optionElement.querySelector('.menu-link-check-icon');
-    if (activeCheck) {
-        activeCheck.innerHTML = '<span class="material-symbols-rounded">check</span>';
+    
+    // [ACTUALIZADO] Añadir check al elemento activo
+    const activeIcons = optionElement.querySelectorAll('.menu-link-icon');
+    if (activeIcons.length > 1) {
+        const activeCheckContainer = activeIcons[activeIcons.length - 1];
+        activeCheckContainer.innerHTML = '<span class="material-symbols-rounded">check</span>';
     }
 
     // 2. Actualizar el texto e icono del Trigger (el botón que abre el menú)
@@ -131,6 +139,7 @@ function handleDropdownSelection(optionElement) {
         const triggerIcon = wrapper.querySelector('.trigger-selector .trigger-select-icon span');
         
         const selectedText = optionElement.querySelector('.menu-link-text span')?.textContent;
+        // [IMPORTANTE] El icono del link es el PRIMERO
         const selectedIcon = optionElement.querySelector('.menu-link-icon span')?.textContent;
 
         if (triggerText && selectedText) triggerText.textContent = selectedText;

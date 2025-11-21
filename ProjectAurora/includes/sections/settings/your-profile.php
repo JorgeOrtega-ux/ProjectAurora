@@ -177,27 +177,27 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                                 <div class="menu-link active" data-value="personal">
                                     <div class="menu-link-icon"><span class="material-symbols-rounded">person</span></div>
                                     <div class="menu-link-text"><span>Uso personal</span></div>
-                                    <div class="menu-link-check-icon"><span class="material-symbols-rounded">check</span></div>
+                                    <div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div>
                                 </div>
                                 <div class="menu-link" data-value="student">
                                     <div class="menu-link-icon"><span class="material-symbols-rounded">school</span></div>
                                     <div class="menu-link-text"><span>Estudiante</span></div>
-                                    <div class="menu-link-check-icon"></div>
+                                    <div class="menu-link-icon"></div>
                                 </div>
                                 <div class="menu-link" data-value="teacher">
                                     <div class="menu-link-icon"><span class="material-symbols-rounded">history_edu</span></div>
                                     <div class="menu-link-text"><span>Docente</span></div>
-                                    <div class="menu-link-check-icon"></div>
+                                    <div class="menu-link-icon"></div>
                                 </div>
                                 <div class="menu-link" data-value="small_business">
                                     <div class="menu-link-icon"><span class="material-symbols-rounded">storefront</span></div>
                                     <div class="menu-link-text"><span>Empresa pequeña</span></div>
-                                    <div class="menu-link-check-icon"></div>
+                                    <div class="menu-link-icon"></div>
                                 </div>
                                 <div class="menu-link" data-value="large_business">
                                     <div class="menu-link-icon"><span class="material-symbols-rounded">domain</span></div>
                                     <div class="menu-link-text"><span>Empresa grande</span></div>
-                                    <div class="menu-link-check-icon"></div>
+                                    <div class="menu-link-icon"></div>
                                 </div>
                             </div>
                         </div>
@@ -226,22 +226,22 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                                 <div class="menu-link active" data-value="es-latam">
                                     <div class="menu-link-icon"><span class="material-symbols-rounded">language</span></div>
                                     <div class="menu-link-text"><span>Español (Latinoamérica)</span></div>
-                                    <div class="menu-link-check-icon"><span class="material-symbols-rounded">check</span></div>
+                                    <div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div>
                                 </div>
                                 <div class="menu-link" data-value="es-mx">
                                     <div class="menu-link-icon"><span class="material-symbols-rounded">language</span></div>
                                     <div class="menu-link-text"><span>Español (México)</span></div>
-                                    <div class="menu-link-check-icon"></div>
+                                    <div class="menu-link-icon"></div>
                                 </div>
                                 <div class="menu-link" data-value="en-us">
                                     <div class="menu-link-icon"><span class="material-symbols-rounded">translate</span></div>
                                     <div class="menu-link-text"><span>English (United States)</span></div>
-                                    <div class="menu-link-check-icon"></div>
+                                    <div class="menu-link-icon"></div>
                                 </div>
                                 <div class="menu-link" data-value="en-gb">
                                     <div class="menu-link-icon"><span class="material-symbols-rounded">translate</span></div>
                                     <div class="menu-link-text"><span>English (United Kingdom)</span></div>
-                                    <div class="menu-link-check-icon"></div>
+                                    <div class="menu-link-icon"></div>
                                 </div>
                             </div>
                         </div>

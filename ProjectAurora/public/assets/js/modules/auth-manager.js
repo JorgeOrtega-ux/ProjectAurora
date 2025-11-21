@@ -205,19 +205,21 @@ export function initAuthManager() {
         }
         
         // --- LOGOUT ---
-        const logoutBtn = e.target.closest('.menu-link-logout');
+       const logoutBtn = e.target.closest('.menu-link-logout');
         if (logoutBtn) {
             e.preventDefault(); 
+            
+            // Evitar doble clic
             if (logoutBtn.dataset.processing === "true") return;
             logoutBtn.dataset.processing = "true";
             
-            const iconContainer = logoutBtn.querySelector('.menu-link-icon');
-            let originalIconHTML = '';
-
-            if (iconContainer) {
-                originalIconHTML = iconContainer.innerHTML;
-                iconContainer.innerHTML = '<div class="small-spinner"></div>'; 
-            }
+            // 1. CREAR DINÁMICAMENTE EL CONTENEDOR DEL SPINNER
+            const spinnerContainer = document.createElement('div');
+            spinnerContainer.className = 'menu-link-icon'; // Reusamos tu clase de estilo
+            spinnerContainer.innerHTML = '<div class="small-spinner"></div>';
+            
+            // 2. INSERTARLO AL FINAL DEL BOTÓN (Aparecerá a la derecha)
+            logoutBtn.appendChild(spinnerContainer);
             
             try {
                 const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
@@ -237,14 +239,20 @@ export function initAuthManager() {
                 if (res.success) {
                     if (window.alertManager) window.alertManager.showAlert('Cerrando sesión...', 'info');
                     window.location.href = API_BASE_PATH + 'login';
+                    // No necesitamos eliminar el spinner porque la página se recargará/redirigirá
                 } else {
-                    if (iconContainer) iconContainer.innerHTML = originalIconHTML;
+                    // Error lógico: eliminamos el spinner creado y liberamos el botón
+                    spinnerContainer.remove();
                     logoutBtn.dataset.processing = "false";
+                    if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
                 }
 
             } catch (error) {
-                if (iconContainer) iconContainer.innerHTML = originalIconHTML;
+                // Error de red: eliminamos el spinner creado y liberamos el botón
+                console.error(error);
+                spinnerContainer.remove();
                 logoutBtn.dataset.processing = "false";
+                if (window.alertManager) window.alertManager.showAlert("Error de conexión", 'error');
             }
         }
     });
