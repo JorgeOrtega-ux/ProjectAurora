@@ -1,6 +1,6 @@
 // public/assets/js/friends-manager.js
 
-const API_SOCIAL = (window.BASE_PATH || '/ProjectAurora/') + 'api/social_handler.php';
+const API_FRIENDS = (window.BASE_PATH || '/ProjectAurora/') + 'api/friends_handler.php';
 
 function getCsrf() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -132,7 +132,7 @@ export class FriendsManager {
         try {
             const res = await this.fetchApi({ action: actionType, sender_id: senderId });
             if (res.success) {
-                this.triggerNotificationReload(); // Importante: actualiza la lista de notificaciones (quita los botones)
+                this.triggerNotificationReload(); // Importante: actualiza la lista de notificaciones
 
                 if (actionType === 'accept_request') {
                     if (window.alertManager) window.alertManager.showAlert('¡Ahora son amigos!', 'success');
@@ -201,7 +201,7 @@ export class FriendsManager {
     }
 
     async fetchApi(data) {
-        const response = await fetch(API_SOCIAL, {
+        const response = await fetch(API_FRIENDS, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrf() },
             body: JSON.stringify(data)

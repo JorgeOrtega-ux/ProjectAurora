@@ -1,6 +1,6 @@
 // public/assets/js/notifications-manager.js
 
-const API_SOCIAL = (window.BASE_PATH || '/ProjectAurora/') + 'api/social_handler.php';
+const API_NOTIFICATIONS = (window.BASE_PATH || '/ProjectAurora/') + 'api/notifications_handler.php';
 
 function getCsrf() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -141,7 +141,7 @@ export class NotificationsManager {
     }
 
     async fetchApi(data) {
-        const response = await fetch(API_SOCIAL, {
+        const response = await fetch(API_NOTIFICATIONS, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrf() },
             body: JSON.stringify(data)
