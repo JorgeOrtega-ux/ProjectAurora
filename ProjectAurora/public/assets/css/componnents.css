@@ -340,11 +340,6 @@
         margin-top: 8px !important;
     }
 
-    /* 3. Triggers 100% ancho */
-    .trigger-select-wrapper {
-        width: 100% !important;
-    }
-
     /* 4. Botones 100% ancho */
     .component-button { 
         width: 100% !important; 
@@ -355,6 +350,9 @@
         width: 100% !important;
     }
 
+    .component-card__content {
+        width: 100%;
+    }
     .input-with-actions { flex-wrap: wrap; }
     .component-text-input { min-width: 100%; }
     

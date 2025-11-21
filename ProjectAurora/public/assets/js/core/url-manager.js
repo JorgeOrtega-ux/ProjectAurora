@@ -129,7 +129,12 @@ async function showSection(sectionName, pushState = true) {
             return;
         }
 
+        // 1. Inyectamos el nuevo contenido (esto "elimina" el PHP anterior visualmente)
         container.innerHTML = html;
+        
+        // [SOLUCIÓN] 2. Forzamos el scroll hacia arriba inmediatamente
+        container.scrollTop = 0;
+        
         // container.style.opacity = '1';
 
         updateSidebarState(baseSection);
