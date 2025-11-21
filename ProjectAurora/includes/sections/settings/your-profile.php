@@ -164,7 +164,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                             <span class="material-symbols-rounded">person</span>
                         </div>
                         <div class="trigger-select-text">
-                            <span data-i18n="settings.profile.usagePersonal">Uso personal</span>
+                            <span>Uso personal</span>
                         </div>
                         <div class="trigger-select-arrow">
                             <span class="material-symbols-rounded">arrow_drop_down</span>
@@ -176,15 +176,20 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                             <div class="menu-list">
                                 <div class="menu-link active" data-value="personal">
                                     <div class="menu-link-icon"><span class="material-symbols-rounded">person</span></div>
-                                    <div class="menu-link-text"><span data-i18n="settings.profile.usagePersonal">Uso personal</span></div>
+                                    <div class="menu-link-text"><span>Uso personal</span></div>
                                     <div class="menu-link-check-icon"><span class="material-symbols-rounded">check</span></div>
                                 </div>
                                 <div class="menu-link" data-value="student">
                                     <div class="menu-link-icon"><span class="material-symbols-rounded">school</span></div>
-                                    <div class="menu-link-text"><span data-i18n="settings.profile.usageStudent">Estudiante</span></div>
+                                    <div class="menu-link-text"><span>Estudiante</span></div>
                                     <div class="menu-link-check-icon"></div>
                                 </div>
+                                <div class="menu-link" data-value="developer">
+                                    <div class="menu-link-icon"><span class="material-symbols-rounded">code</span></div>
+                                    <div class="menu-link-text"><span>Desarrollador</span></div>
+                                    <div class="menu-link-check-icon"></div>
                                 </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -202,7 +207,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                 <div class="trigger-select-wrapper">
                     <div class="trigger-selector" data-action="toggleModuleLanguageSelect">
                         <div class="trigger-select-icon"><span class="material-symbols-rounded">language</span></div>
-                        <div class="trigger-select-text"><span data-i18n="settings.profile.langEsLatam">Español (Latinoamérica)</span></div>
+                        <div class="trigger-select-text"><span>Español (Latinoamérica)</span></div>
                         <div class="trigger-select-arrow"><span class="material-symbols-rounded">arrow_drop_down</span></div>
                     </div>
                     <div class="popover-module popover-module--anchor-width body-title disabled" data-module="moduleLanguageSelect" data-preference-type="language">
@@ -210,8 +215,13 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                             <div class="menu-list">
                                 <div class="menu-link active" data-value="es-latam">
                                     <div class="menu-link-icon"><span class="material-symbols-rounded">language</span></div>
-                                    <div class="menu-link-text"><span data-i18n="settings.profile.langEsLatam">Español (Latinoamérica)</span></div>
+                                    <div class="menu-link-text"><span>Español (Latinoamérica)</span></div>
                                     <div class="menu-link-check-icon"><span class="material-symbols-rounded">check</span></div>
+                                </div>
+                                <div class="menu-link" data-value="en-us">
+                                    <div class="menu-link-icon"><span class="material-symbols-rounded">translate</span></div>
+                                    <div class="menu-link-text"><span>English (US)</span></div>
+                                    <div class="menu-link-check-icon"></div>
                                 </div>
                             </div>
                         </div>

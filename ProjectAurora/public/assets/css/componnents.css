@@ -327,8 +327,7 @@
     .component-card__actions {
         width: 100%;
         display: flex;
-        justify-content: flex-end;
-        margin-top: 10px;
+        margin-top: 8px;
     }
 
     /* En móvil, hacemos que los botones bajen si no caben, o mantenemos la fila si prefieres */

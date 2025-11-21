@@ -16,34 +16,43 @@ export function initMainController() {
 
         const target = e.target;
 
-        // A) LÓGICA DE SELECCIÓN EN LISTA DE USUARIOS (NUEVO)
+        // A) LÓGICA DE SELECCIÓN EN LISTA DE USUARIOS
         const userRow = target.closest('.list-item-row');
         if (userRow) {
-            // Evitamos que el click en botones de acción dispare la selección
-            // si en el futuro agregas botones dentro de la fila.
             if (!target.closest('button') && !target.closest('a')) {
                 const container = userRow.closest('.list-body');
                 if (container) {
-                    // 1. Deseleccionar todos los demás
                     container.querySelectorAll('.list-item-row.selected').forEach(row => {
                         row.classList.remove('selected');
                     });
                 }
-                // 2. Seleccionar el actual
                 userRow.classList.add('selected');
-                return; // Opcional: detenemos propagación si es necesario
+                return; 
             }
         }
 
-        // B) LÓGICA DE MÓDULOS (MENÚS)
+        // B) LÓGICA DE SELECCIÓN EN DROPDOWNS (NUEVO: Para Selects de Perfil)
+        // Esto permite que al hacer click en una opción, se cierre el menú y se actualice la UI
+        const dropdownOption = target.closest('.popover-module .menu-link[data-value]');
+        if (dropdownOption) {
+            handleDropdownSelection(dropdownOption);
+            return;
+        }
+
+        // C) LÓGICA DE APERTURA DE MÓDULOS (MENÚS)
         const trigger = target.closest('[data-action]');
         if (trigger) {
             const action = trigger.dataset.action;
             let targetModuleId = null;
 
+            // Mapeo de acciones a IDs de módulos
             if (action === 'toggleModuleSurface') targetModuleId = 'moduleSurface';
             if (action === 'toggleModuleOptions') targetModuleId = 'moduleOptions';
             if (action === 'toggleModuleNotifications') targetModuleId = 'moduleNotifications';
+            
+            // [CORRECCIÓN]: Agregamos los nuevos triggers de configuración
+            if (action === 'toggleModuleUsageSelect') targetModuleId = 'moduleUsageSelect';
+            if (action === 'toggleModuleLanguageSelect') targetModuleId = 'moduleLanguageSelect';
 
             if (targetModuleId) {
                 e.preventDefault();
@@ -94,6 +103,42 @@ export function initMainController() {
             }
         });
     }
+}
+
+// [NUEVO] Función para actualizar visualmente los selects personalizados
+function handleDropdownSelection(optionElement) {
+    const module = optionElement.closest('.popover-module');
+    if (!module) return;
+
+    // 1. Actualizar estado visual (active/check) en la lista
+    const allLinks = module.querySelectorAll('.menu-link');
+    allLinks.forEach(link => {
+        link.classList.remove('active');
+        const checkIcon = link.querySelector('.menu-link-check-icon');
+        if (checkIcon) checkIcon.innerHTML = '';
+    });
+
+    optionElement.classList.add('active');
+    const activeCheck = optionElement.querySelector('.menu-link-check-icon');
+    if (activeCheck) {
+        activeCheck.innerHTML = '<span class="material-symbols-rounded">check</span>';
+    }
+
+    // 2. Actualizar el texto e icono del Trigger (el botón que abre el menú)
+    const wrapper = module.closest('.trigger-select-wrapper');
+    if (wrapper) {
+        const triggerText = wrapper.querySelector('.trigger-selector .trigger-select-text span');
+        const triggerIcon = wrapper.querySelector('.trigger-selector .trigger-select-icon span');
+        
+        const selectedText = optionElement.querySelector('.menu-link-text span')?.textContent;
+        const selectedIcon = optionElement.querySelector('.menu-link-icon span')?.textContent;
+
+        if (triggerText && selectedText) triggerText.textContent = selectedText;
+        if (triggerIcon && selectedIcon) triggerIcon.textContent = selectedIcon;
+    }
+
+    // 3. Cerrar menú
+    closeAllModules();
 }
 
 function toggleModule(moduleId) {
