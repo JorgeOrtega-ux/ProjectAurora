@@ -21,11 +21,11 @@ const allowedSections = [
 ];
 
 const authZone = [
-    'login', 
-    'register', 
-    'register/additional-data', 
-    'register/verification-account', 
-    'forgot-password', 
+    'login',
+    'register',
+    'register/additional-data',
+    'register/verification-account',
+    'forgot-password',
     'status-page',
     'login/verification-additional'
 ];
@@ -46,21 +46,21 @@ export function initUrlManager() {
         const link = e.target.closest('.menu-link[data-nav], a[onclick*="navigateTo"]');
         // Nota: el selector a[onclick...] es para capturar enlaces legacy si los hubiera, 
         // pero tu sidebar usa .menu-link[data-nav]
-        
+
         if (link && link.dataset.nav) {
             e.preventDefault();
             const section = link.dataset.nav;
             if (section !== getSectionFromUrl()) navigateTo(section);
         }
     });
-    
+
     // Inicializar estado visual del sidebar al cargar
     const current = getSectionFromUrl();
     updateSidebarState(current);
     updateActiveMenu(current);
 }
 
-window.navigateTo = function(sectionName) {
+window.navigateTo = function (sectionName) {
     // Normalizaciones rápidas
     if (sectionName === 'settings') sectionName = 'settings/your-profile';
     if (sectionName === 'admin') sectionName = 'admin/dashboard';
@@ -83,7 +83,7 @@ function getSectionFromUrl() {
     let path = window.location.pathname;
     if (path.startsWith(basePath)) path = path.substring(basePath.length);
     path = path.replace(/\/$/, '').split('?')[0];
-    
+
     if (path === '') return 'main';
     // Si path está en allowedSections o empieza con admin/ settings/
     if (allowedSections.includes(path) || path.startsWith('admin/') || path.startsWith('settings/')) {
@@ -95,10 +95,10 @@ function getSectionFromUrl() {
 async function showSection(sectionName, pushState = true) {
     const container = document.querySelector('[data-container="main-section"]');
     if (!container) { window.location.reload(); return; }
-    
+
     // 1. Separar la sección de la búsqueda (?q=...)
     const [baseSection, query] = sectionName.split('?');
-    
+
     // 2. Definir la clave para loader.php
     // [CORRECCIÓN]: Usamos baseSection directamente (ej: 'settings/login-security')
     // Ya no hacemos reemplazos manuales raros, loader.php ahora entiende las rutas.
@@ -106,7 +106,7 @@ async function showSection(sectionName, pushState = true) {
 
     // 3. Construir URL
     let fetchUrl = `${basePath}public/loader.php?section=${loaderKey}&t=${Date.now()}`;
-    
+
     if (query) {
         fetchUrl += `&${query}`; // Añadimos ?q=algo si existe
     }
@@ -116,16 +116,16 @@ async function showSection(sectionName, pushState = true) {
 
     try {
         const resp = await fetch(fetchUrl);
-        
+
         if (!resp.ok) {
             throw new Error(`Error ${resp.status}: ${resp.statusText}`);
         }
-        
+
         const html = await resp.text();
-        
+
         // Detectar si nos devolvió una página completa de login por error (sesión expirada)
         if (html.includes('<!DOCTYPE html>')) {
-            window.location.reload(); 
+            window.location.reload();
             return;
         }
 
@@ -142,7 +142,7 @@ async function showSection(sectionName, pushState = true) {
 
         // Reinicializar tooltips o scripts específicos si es necesario
         if (window.initTooltipManager) window.initTooltipManager();
-
+        if (window.initSettingsManager) window.initSettingsManager();
     } catch (error) {
         console.error(error);
         container.innerHTML = `
@@ -158,7 +158,7 @@ async function showSection(sectionName, pushState = true) {
 function updateSidebarState(sectionName) {
     const appMenu = document.getElementById('sidebar-menu-app');
     const settingsMenu = document.getElementById('sidebar-menu-settings');
-    const adminMenu = document.getElementById('sidebar-menu-admin'); 
+    const adminMenu = document.getElementById('sidebar-menu-admin');
 
     // Ocultar todos
     if (appMenu) appMenu.style.display = 'none';
