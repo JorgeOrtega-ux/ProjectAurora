@@ -4,10 +4,9 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/utilities.php'; 
-require_once __DIR__ . '/../includes/logic/i18n_server.php'; // [NUEVO]
+require_once __DIR__ . '/../includes/logic/i18n_server.php'; 
 
-// 1. Cargar idioma y traducciones para este fragmento
-// Preferencia de sesión > Navegador > 'es-latam'
+// 1. Cargar idioma
 $lang = $_SESSION['user_lang'] ?? detect_browser_language() ?? 'es-latam';
 I18n::load($lang);
 
@@ -26,7 +25,6 @@ $publicSections = [
 $section = $_GET['section'] ?? 'main';
 $section = str_replace(['..', '.php'], '', $section);
 
-// Verificar sesión para rutas privadas
 if (!isset($_SESSION['user_id']) && !in_array($section, $publicSections)) {
     http_response_code(401);
     exit('<div style="padding:20px; text-align:center">Sesión expirada. Recarga la página.</div>');
@@ -53,6 +51,7 @@ $fileMap = [
     'settings/your-profile'     => 'settings/your-profile',
     'settings/login-security'   => 'settings/login-security',
     'settings/accessibility'    => 'settings/accessibility',
+    'settings/change-password'  => 'settings/change-password', // <--- NUEVA ENTRADA
 
     // Admin
     'admin'             => 'admin/dashboard',
@@ -66,7 +65,6 @@ $fileMap = [
     '404'         => 'system/404'
 ];
 
-// 4. Verificar existencia en el mapa
 if (array_key_exists($section, $fileMap)) {
     $realFile = __DIR__ . '/../includes/sections/' . $fileMap[$section] . '.php';
 } else {
@@ -74,11 +72,9 @@ if (array_key_exists($section, $fileMap)) {
     $section = '404'; 
 }
 
-// 5. SIMULAR ROUTER
 $CURRENT_SECTION = $section;
 $basePath = '/ProjectAurora/'; 
 
-// 6. Cargar el archivo
 if ($realFile && file_exists($realFile)) {
     include $realFile;
 } else {

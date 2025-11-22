@@ -5,7 +5,7 @@ import { updateTheme } from '../core/theme-manager.js';
 
 const API_SETTINGS = (window.BASE_PATH || '/ProjectAurora/') + 'api/settings_handler.php';
 
-// [NUEVO] Bandera de control para evitar duplicidad de eventos globales
+// Bandera de control para evitar duplicidad de eventos globales
 let areGlobalsInitialized = false;
 
 function getCsrfToken() {
@@ -22,27 +22,24 @@ function qs(selector) {
 export function initSettingsManager() {
     // 1. Detectar en qué sección estamos
     const isProfile = qs('[data-section="settings/your-profile"]');
-    const isAccess = qs('[data-section="settings/accessibility"]');
+    const isChangePass = qs('[data-section="settings/change-password"]'); // <--- DETECTAR NUEVA SECCIÓN
     
-    // Si no estamos en ninguna sección de configuración, salimos.
-    if (!isProfile && !isAccess) return;
-
-    // 2. Lógica LOCAL (Se ejecuta SIEMPRE que se carga la vista HTML nueva)
-    // Esto es necesario porque los elementos del DOM (inputs, botones) se acaban de crear.
+    // Lógica LOCAL para cada sección
     if (isProfile) {
         initAvatarLogic();
         initUsernameLogic();
         initEmailLogic();
     }
+
+    if (isChangePass) {
+        initChangePasswordLogic(); // <--- INICIALIZAR LOGICA
+    }
     
     // 3. Lógica GLOBAL (Se ejecuta UNA SOLA VEZ por sesión)
-    // Los listeners se pegan al 'document.body', así que no necesitamos volver a ponerlos
-    // cada vez que navegamos, o se duplicarán (causando tu error de 3-4 peticiones).
     if (!areGlobalsInitialized) {
         initPreferencesLogic();        // Selects (Tema, Idioma, Uso)
         initBooleanPreferencesLogic(); // Checkboxes (Toggles)
         
-        // Marcamos como inicializado para bloquear futuras ejecuciones
         areGlobalsInitialized = true;
         console.log('[SettingsManager] Listeners globales inicializados (Única vez).');
     }
@@ -66,6 +63,116 @@ function updateCardError(cardElement, message = '', show = true) {
     } else if (!show && errorDiv) {
         errorDiv.remove();
     }
+}
+
+// ========================================================
+// LÓGICA CAMBIO DE CONTRASEÑA (NUEVO)
+// ========================================================
+function initChangePasswordLogic() {
+    const step1Card = qs('[data-step="password-step-1"]');
+    const step2Card = qs('[data-step="password-step-2"]');
+    const step2Sessions = qs('[data-step="password-step-2-sessions"]');
+    const step2Actions = qs('[data-step="password-step-2-actions"]');
+    
+    const currentPassInput = qs('[data-element="current-password"]');
+    const newPassInput = qs('[data-element="new-password"]');
+    const confirmPassInput = qs('[data-element="confirm-password"]');
+    const logoutCheck = qs('[data-element="logout-others-check"]');
+
+    const verifyBtn = qs('[data-action="verify-current-password"]');
+    const saveBtn = qs('[data-action="save-new-password"]');
+
+    if (!step1Card || !verifyBtn) return;
+
+    // PASO 1: Verificar contraseña actual
+    verifyBtn.onclick = async () => {
+        const pass = currentPassInput.value;
+        if (!pass) {
+            updateCardError(step1Card, 'Ingresa tu contraseña actual.');
+            return;
+        }
+
+        setLoading(verifyBtn, true);
+        updateCardError(step1Card, '', false);
+
+        try {
+            const res = await fetch(API_SETTINGS, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
+                body: JSON.stringify({ action: 'verify_current_password', password: pass })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                // Transición UI: Ocultar input actual, mostrar nuevos inputs
+                currentPassInput.disabled = true; // Bloquear input
+                verifyBtn.closest('.component-card__actions').style.display = 'none'; // Ocultar botón
+                
+                // Mostrar Paso 2
+                step2Card.classList.remove('disabled');
+                step2Card.classList.add('active');
+                step2Sessions.classList.remove('disabled');
+                step2Sessions.classList.add('active');
+                step2Actions.classList.remove('disabled');
+                step2Actions.classList.add('active');
+
+                newPassInput.focus();
+            } else {
+                updateCardError(step1Card, data.message);
+            }
+        } catch (e) {
+            updateCardError(step1Card, 'Error de conexión.');
+        }
+        setLoading(verifyBtn, false);
+    };
+
+    // PASO 2: Guardar nueva contraseña
+    saveBtn.onclick = async () => {
+        const newPass = newPassInput.value;
+        const confirmPass = confirmPassInput.value;
+        const logout = logoutCheck.checked;
+
+        updateCardError(step2Card, '', false);
+
+        if (newPass.length < 8) {
+            updateCardError(step2Card, 'La contraseña debe tener al menos 8 caracteres.');
+            return;
+        }
+
+        if (newPass !== confirmPass) {
+            updateCardError(step2Card, 'Las contraseñas no coinciden.');
+            return;
+        }
+
+        setLoading(saveBtn, true);
+
+        try {
+            const res = await fetch(API_SETTINGS, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
+                body: JSON.stringify({ 
+                    action: 'update_password', 
+                    new_password: newPass,
+                    logout_others: logout
+                })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
+                // Redirigir a seguridad después de un breve delay
+                setTimeout(() => {
+                    if (window.navigateTo) window.navigateTo('settings/login-security');
+                    else window.location.reload();
+                }, 1500);
+            } else {
+                updateCardError(step2Card, data.message);
+            }
+        } catch (e) {
+            updateCardError(step2Card, 'Error de conexión.');
+        }
+        setLoading(saveBtn, false);
+    };
 }
 
 // ========================================================
@@ -129,8 +236,6 @@ function initPreferencesLogic() {
         const option = e.target.closest('.menu-link[data-value]');
         if (!option) return;
 
-        // PROTECCIÓN CONTRA DOBLE CLIC (Race Condition con UI)
-        // Mantenemos esto porque en app-init.js cargamos Settings ANTES que MainController
         if (option.classList.contains('active')) return;
 
         const module = option.closest('.popover-module');
@@ -215,10 +320,6 @@ function initAvatarLogic() {
     if (!elements.fileInput) return;
 
     let originalImageSrc = elements.previewImg.src;
-    
-    // Clonación de nodo para limpiar listeners antiguos si se recarga el DOM
-    // Aunque con la lógica local es suficiente, esto es una buena práctica defensiva.
-    // En este caso, como los elementos son NUEVOS tras la navegación, no hace falta clonar.
     
     const triggerUpload = (e) => { 
         if(e) e.preventDefault(); 
@@ -334,7 +435,6 @@ function initUsernameLogic() {
     if (!els.input) return;
     let originalUsername = els.input.value;
 
-    // Usamos onclick para evitar acumulación si el elemento se reciclara (aunque aquí se recrea)
     els.editBtn.onclick = () => {
         toggleMode(els, true);
         updateCardError(card, '', false);

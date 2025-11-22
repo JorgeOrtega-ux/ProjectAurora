@@ -27,7 +27,7 @@ $dateStr = $createdAt ? date("d/m/Y", strtotime($createdAt)) : date("d/m/Y");
                 </div>
             </div>
             <div class="component-card__actions actions-right">
-                <button type="button" class="component-button" data-action="trigger-password-update" data-i18n="settings.security.password_btn">
+                <button type="button" class="component-button" onclick="navigateTo('settings/change-password')" data-i18n="settings.security.password_btn">
                     <?php echo trans('settings.security.password_btn'); ?>
                 </button>
             </div>

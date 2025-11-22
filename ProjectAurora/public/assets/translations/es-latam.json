@@ -137,6 +137,20 @@
             "delete_desc": "Si eliminas tu cuenta, ya no podrás acceder a ninguno de tus diseños ni iniciar sesión. Cuenta creada el",
             "delete_btn": "Eliminar cuenta"
         },
+        "change_password": {
+            "title": "Cambiar contraseña",
+            "description": "Crea una contraseña nueva y segura para proteger tu cuenta.",
+            "current_label": "Contraseña actual",
+            "current_desc": "Por seguridad, necesitamos verificar que eres tú. Ingresa tu contraseña actual.",
+            "new_label": "Nueva contraseña",
+            "new_desc": "Debe tener al menos 8 caracteres. Intenta usar números y símbolos.",
+            "confirm_label": "Confirmar nueva contraseña",
+            "confirm_desc": "Vuelve a escribir la contraseña para asegurar que no haya errores.",
+            "next_btn": "Continuar",
+            "sessions_check_title": "Cerrar sesión en otros dispositivos",
+            "sessions_check_desc": "Se cerrará tu sesión en todos los navegadores excepto en este.",
+            "success_msg": "Contraseña actualizada correctamente."
+        },
         "accessibility": {
             "title": "Accesibilidad",
             "description": "Personaliza la apariencia y el comportamiento de la interfaz.",

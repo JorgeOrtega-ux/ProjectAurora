@@ -23,7 +23,6 @@ $basePath = '/ProjectAurora/';
 // =======================================================================
 if (isset($_SESSION['user_id'])) {
     try {
-        // [MODIFICADO] Obtenemos TODAS las preferencias necesarias
         $stmt = $pdo->prepare("
             SELECT u.role, u.avatar, u.account_status, 
                    p.language, p.theme, p.extended_message_time, p.open_links_in_new_tab
@@ -38,7 +37,6 @@ if (isset($_SESSION['user_id'])) {
             $_SESSION['user_role'] = $freshUser['role'] ?? 'user';
             $_SESSION['user_avatar'] = $freshUser['avatar'];
             
-            // Guardar preferencias en sesión para SSR e inyección a JS
             $_SESSION['user_lang'] = $freshUser['language'] ?? 'es-latam';
             $_SESSION['user_theme'] = $freshUser['theme'] ?? 'system';
             $_SESSION['user_extended_msg'] = $freshUser['extended_message_time'] ?? 0;
@@ -95,6 +93,7 @@ $allowedSections = [
     'settings/your-profile',
     'settings/login-security',
     'settings/accessibility',
+    'settings/change-password', // <--- NUEVA RUTA AGREGADA
     // Admin
     'admin',
     'admin/dashboard',
@@ -141,13 +140,10 @@ $systemSections = ['status-page', '404', 'error-missing-data'];
 // MAPEO DE ARCHIVOS
 // ==========================================
 
-// Casos especiales de Autenticación
 if ($CURRENT_SECTION === 'login/verification-additional') {
     $SECTION_FILE_NAME = 'auth/login';
-
 } elseif ($CURRENT_SECTION === 'search') {
     $SECTION_FILE_NAME = 'app/search-results';
-
 } elseif (strpos($CURRENT_SECTION, 'register/') === 0 || $CURRENT_SECTION === 'register') {
     $SECTION_FILE_NAME = 'auth/register'; 
 } elseif ($CURRENT_SECTION === 'forgot-password') {
@@ -169,7 +165,7 @@ if ($CURRENT_SECTION === 'login/verification-additional') {
 } elseif (in_array($CURRENT_SECTION, $appSections)) {
     $SECTION_FILE_NAME = 'app/' . $CURRENT_SECTION;
 
-// Casos de Sistema (errores, estado)
+// Casos de Sistema
 } elseif (in_array($CURRENT_SECTION, $systemSections)) {
     $SECTION_FILE_NAME = 'system/' . $CURRENT_SECTION;
 
@@ -198,7 +194,6 @@ if ($isLoggedIn && in_array($CURRENT_SECTION, $publicSections)) {
     header("Location: " . $basePath); exit;
 }
 
-// Requisitos previos
 $requirements = [
     'register/additional-data'      => ['key' => 'temp_register', 'sub' => 'email'],
     'register/verification-account' => ['key' => 'temp_register', 'sub' => 'username'],

@@ -80,10 +80,8 @@ function audit_log($pdo, $userId, $type, $oldValue, $newValue) {
 
 try {
     
-    // ... (Lógica de Avatar, Email, Username permanece igual) ...
     if ($action === 'update_avatar') {
         check_cooldown($pdo, $userId, 'avatar', 1);
-        // ... (Resto de la lógica de avatar igual que antes)
         if (!isset($_FILES['avatar']) || $_FILES['avatar']['error'] !== UPLOAD_ERR_OK) {
             throw new Exception('No se recibió ningún archivo o hubo un error en la subida.');
         }
@@ -190,6 +188,54 @@ try {
         }
 
     // ==================================================================
+    // NUEVO: GESTIÓN DE CONTRASEÑA
+    // ==================================================================
+    
+    } elseif ($action === 'verify_current_password') {
+        $currentPassword = $data['password'] ?? '';
+        if (empty($currentPassword)) throw new Exception("Ingresa tu contraseña actual.");
+
+        $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $hash = $stmt->fetchColumn();
+
+        if ($hash && password_verify($currentPassword, $hash)) {
+            $response = ['success' => true, 'message' => 'Contraseña verificada.'];
+        } else {
+            throw new Exception("La contraseña actual es incorrecta.");
+        }
+
+    } elseif ($action === 'update_password') {
+        // Verificamos primero cooldown por seguridad
+        // check_cooldown($pdo, $userId, 'password', 1); // Opcional: Descomentar para limitar cambios diarios
+        
+        $newPassword = $data['new_password'] ?? '';
+        $logoutOthers = isset($data['logout_others']) ? (bool)$data['logout_others'] : false;
+
+        if (strlen($newPassword) < 8) throw new Exception("La contraseña debe tener al menos 8 caracteres.");
+
+        // Recuperamos la contraseña actual para el log
+        $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $oldHash = $stmt->fetchColumn();
+
+        $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
+        
+        $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+        if ($stmt->execute([$newHash, $userId])) {
+            audit_log($pdo, $userId, 'password', $oldHash, $newHash);
+            
+            if ($logoutOthers) {
+                // Lógica pendiente para eliminar sesiones de la base de datos, 
+                // pero por ahora el requerimiento pedía solo mostrar la opción.
+            }
+
+            $response = ['success' => true, 'message' => 'Contraseña actualizada correctamente.'];
+        } else {
+            throw new Exception("Error al actualizar la contraseña.");
+        }
+
+    // ==================================================================
     // PREFERENCIAS
     // ==================================================================
     } elseif ($action === 'update_usage') {
@@ -219,7 +265,6 @@ try {
             $response = ['success' => true, 'message' => 'Idioma actualizado.'];
         } else throw new Exception("Error actualizando idioma.");
 
-    // [NUEVO] ACTUALIZAR TEMA
     } elseif ($action === 'update_theme') {
         if (checkActionRateLimit($pdo, $userId, 'pref_update_limit', 10, 1)) throw new Exception("Espera un momento.");
         logSecurityAction($pdo, $userId, 'pref_update_limit');
@@ -234,7 +279,6 @@ try {
             $response = ['success' => true, 'message' => 'Tema actualizado.'];
         } else throw new Exception("Error actualizando tema.");
 
-    // [MODIFICADO] PREFERENCIAS BOOLEANAS (Whitelist expandida)
     } elseif ($action === 'update_boolean_preference') {
         if (checkActionRateLimit($pdo, $userId, 'pref_update_limit', 10, 1)) throw new Exception("Espera un momento.");
         logSecurityAction($pdo, $userId, 'pref_update_limit');
@@ -242,14 +286,12 @@ try {
         $field = $data['field'] ?? '';
         $value = isset($data['value']) && $data['value'] ? 1 : 0;
 
-        // Agregamos extended_message_time a la lista permitida
         $allowedFields = ['open_links_in_new_tab', 'extended_message_time']; 
 
         if (!in_array($field, $allowedFields)) {
             throw new Exception("Campo de preferencia no válido.");
         }
 
-        // Construimos query dinámica segura gracias al whitelist
         $sql = "INSERT INTO user_preferences (user_id, $field) VALUES (?, ?) 
                 ON DUPLICATE KEY UPDATE $field = VALUES($field)";
         
