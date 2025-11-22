@@ -1,5 +1,18 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
+
+// Recuperar preferencias de sesión (cargadas en router.php)
+$currentTheme = $_SESSION['user_theme'] ?? 'system';
+$extendedMsg = isset($_SESSION['user_extended_msg']) ? (int)$_SESSION['user_extended_msg'] : 0;
+
+// Texto a mostrar en el trigger del select
+$themeLabelMap = [
+    'system' => 'settings.accessibility.theme_options.system',
+    'light' => 'settings.accessibility.theme_options.light',
+    'dark' => 'settings.accessibility.theme_options.dark'
+];
+$currentThemeLabel = $themeLabelMap[$currentTheme];
+$currentThemeIcon = ($currentTheme === 'light') ? 'light_mode' : (($currentTheme === 'dark') ? 'dark_mode' : 'desktop_windows');
 ?>
 <div class="section-content active" data-section="settings/accessibility">
     <div class="component-wrapper">
@@ -9,6 +22,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             <p class="component-page-description" data-i18n="settings.accessibility.description"><?php echo trans('settings.accessibility.description'); ?></p>
         </div>
 
+        <!-- TARJETA DE TEMA -->
         <div class="component-card component-card--column">
             <div class="component-card__content">
                 <div class="component-card__text">
@@ -20,10 +34,10 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 <div class="trigger-select-wrapper">
                     <div class="trigger-selector" data-action="toggleModuleThemeSelect">
                         <div class="trigger-select-icon">
-                            <span class="material-symbols-rounded">desktop_windows</span>
+                            <span class="material-symbols-rounded"><?php echo $currentThemeIcon; ?></span>
                         </div>
                         <div class="trigger-select-text">
-                            <span data-i18n="settings.accessibility.theme_options.system"><?php echo trans('settings.accessibility.theme_options.system'); ?></span>
+                            <span data-i18n="<?php echo $currentThemeLabel; ?>"><?php echo trans($currentThemeLabel); ?></span>
                         </div>
                         <div class="trigger-select-arrow">
                             <span class="material-symbols-rounded">arrow_drop_down</span>
@@ -34,23 +48,23 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         <div class="menu-content">
                             <div class="menu-list">
                                 
-                                <div class="menu-link active" data-value="system">
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">desktop_windows</span></div>
-                                    <div class="menu-link-text"><span data-i18n="settings.accessibility.theme_options.system"><?php echo trans('settings.accessibility.theme_options.system'); ?></span></div>
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div>
+                                <?php 
+                                $options = [
+                                    ['val' => 'system', 'icon' => 'desktop_windows', 'key' => 'settings.accessibility.theme_options.system'],
+                                    ['val' => 'light',  'icon' => 'light_mode',      'key' => 'settings.accessibility.theme_options.light'],
+                                    ['val' => 'dark',   'icon' => 'dark_mode',       'key' => 'settings.accessibility.theme_options.dark']
+                                ];
+                                
+                                foreach($options as $opt): 
+                                    $isActive = ($currentTheme === $opt['val']) ? 'active' : '';
+                                    $check = $isActive ? '<span class="material-symbols-rounded">check</span>' : '';
+                                ?>
+                                <div class="menu-link <?php echo $isActive; ?>" data-value="<?php echo $opt['val']; ?>">
+                                    <div class="menu-link-icon"><span class="material-symbols-rounded"><?php echo $opt['icon']; ?></span></div>
+                                    <div class="menu-link-text"><span data-i18n="<?php echo $opt['key']; ?>"><?php echo trans($opt['key']); ?></span></div>
+                                    <div class="menu-link-icon"><?php echo $check; ?></div>
                                 </div>
-
-                                <div class="menu-link" data-value="light">
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">light_mode</span></div>
-                                    <div class="menu-link-text"><span data-i18n="settings.accessibility.theme_options.light"><?php echo trans('settings.accessibility.theme_options.light'); ?></span></div>
-                                    <div class="menu-link-icon"></div>
-                                </div>
-
-                                <div class="menu-link" data-value="dark">
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">dark_mode</span></div>
-                                    <div class="menu-link-text"><span data-i18n="settings.accessibility.theme_options.dark"><?php echo trans('settings.accessibility.theme_options.dark'); ?></span></div>
-                                    <div class="menu-link-icon"></div>
-                                </div>
+                                <?php endforeach; ?>
 
                             </div>
                         </div>
@@ -59,6 +73,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             </div>
         </div>
 
+        <!-- TARJETA DE PERMANENCIA DE MENSAJES -->
         <div class="component-card component-card--edit-mode">
             <div class="component-card__content">
                 <div class="component-card__text">
@@ -68,7 +83,11 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             </div>
             <div class="component-card__actions actions-right">
                 <label class="component-toggle-switch">
-                    <input type="checkbox" data-element="toggle-msg-persistence" data-preference-type="boolean" data-field-name="extended_message_time">
+                    <input type="checkbox" 
+                           data-element="toggle-msg-persistence" 
+                           data-preference-type="boolean" 
+                           data-field-name="extended_message_time"
+                           <?php echo ($extendedMsg === 1) ? 'checked' : ''; ?>>
                     <span class="component-toggle-slider"></span>
                 </label>
             </div>

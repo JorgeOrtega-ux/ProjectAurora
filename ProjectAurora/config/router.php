@@ -19,13 +19,14 @@ require_once __DIR__ . '/database.php';
 $basePath = '/ProjectAurora/'; 
 
 // =======================================================================
-// 1. ACTUALIZAR SESIÓN (REFRESH ROLE & LANG) - AL INICIO
+// 1. ACTUALIZAR SESIÓN (REFRESH ROLE & PREFS) - AL INICIO
 // =======================================================================
 if (isset($_SESSION['user_id'])) {
     try {
-        // [MODIFICADO] Obtenemos también el idioma de las preferencias
+        // [MODIFICADO] Obtenemos TODAS las preferencias necesarias
         $stmt = $pdo->prepare("
-            SELECT u.role, u.avatar, u.account_status, p.language 
+            SELECT u.role, u.avatar, u.account_status, 
+                   p.language, p.theme, p.extended_message_time, p.open_links_in_new_tab
             FROM users u 
             LEFT JOIN user_preferences p ON u.id = p.user_id 
             WHERE u.id = ?
@@ -36,8 +37,12 @@ if (isset($_SESSION['user_id'])) {
         if ($freshUser) {
             $_SESSION['user_role'] = $freshUser['role'] ?? 'user';
             $_SESSION['user_avatar'] = $freshUser['avatar'];
-            // [NUEVO] Guardar idioma en sesión para SSR
+            
+            // Guardar preferencias en sesión para SSR e inyección a JS
             $_SESSION['user_lang'] = $freshUser['language'] ?? 'es-latam';
+            $_SESSION['user_theme'] = $freshUser['theme'] ?? 'system';
+            $_SESSION['user_extended_msg'] = $freshUser['extended_message_time'] ?? 0;
+            $_SESSION['user_new_tab'] = $freshUser['open_links_in_new_tab'] ?? 1;
             
             if ($freshUser['account_status'] !== 'active') {
                 $_SESSION = [];

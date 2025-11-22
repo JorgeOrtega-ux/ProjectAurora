@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../config/router.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/utilities.php';
-require_once __DIR__ . '/../includes/logic/i18n_server.php'; // [NUEVO]
+require_once __DIR__ . '/../includes/logic/i18n_server.php'; 
 
 // [SEGURIDAD] Generar token WS solo si hay sesión activa
 $jsUserId = 'null';
@@ -12,16 +12,17 @@ $wsToken = 'null';
 if (isset($_SESSION['user_lang'])) {
     $userLang = $_SESSION['user_lang'];
 } else {
-    // Si no hay sesión, usamos el del navegador
     $userLang = detect_browser_language(); 
 }
+
+// [NUEVO] Obtener tema preferido (default 'system')
+$userTheme = $_SESSION['user_theme'] ?? 'system';
 
 // Cargamos las traducciones en el servidor
 I18n::load($userLang);
 
 if (isset($_SESSION['user_id'])) {
     $jsUserId = $_SESSION['user_id'];
-    // Generamos el token que el JS usará para "loguearse" en el socket
     $token = generate_ws_auth_token($pdo, $jsUserId);
     $wsToken = "'$token'";
 } 
@@ -36,10 +37,10 @@ if (isset($_SESSION['user_id'])) {
     <script>
         window.BASE_PATH = '<?php echo $basePath; ?>';
         window.USER_ID = <?php echo $jsUserId; ?>; 
-        // [SEGURIDAD] Token para el WebSocket
         window.WS_TOKEN = <?php echo $wsToken; ?>;
-        // [I18N] Idioma del usuario para JS (mantenemos esto para que JS sepa cuál cargar)
         window.USER_LANG = '<?php echo $userLang; ?>';
+        // [NUEVO] Inyectar tema al JS
+        window.USER_THEME = '<?php echo $userTheme; ?>';
     </script>
 
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/styles.css">

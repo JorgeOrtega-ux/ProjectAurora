@@ -1,6 +1,7 @@
 // public/assets/js/modules/settings-manager.js
 
-import { changeLanguage } from '../core/i18n-manager.js'; // <--- IMPORTACIÓN AÑADIDA
+import { changeLanguage } from '../core/i18n-manager.js';
+import { updateTheme } from '../core/theme-manager.js'; // Importamos el gestor de temas
 
 const API_SETTINGS = (window.BASE_PATH || '/ProjectAurora/') + 'api/settings_handler.php';
 
@@ -11,72 +12,65 @@ function getCsrfToken() {
     return input ? input.value : '';
 }
 
-// Helper para seleccionar por data-attributes en lugar de ID
 function qs(selector) {
     return document.querySelector(selector);
 }
 
 export function initSettingsManager() {
-    // Inicializar solo si estamos en la sección correcta.
-    if (!qs('[data-section="settings/your-profile"]') && !qs('[data-component="avatar-section"]')) return;
+    // Inicializar solo si estamos en una sección de configuración relevante
+    const isProfile = qs('[data-section="settings/your-profile"]');
+    const isAccess = qs('[data-section="settings/accessibility"]');
+    
+    if (!isProfile && !isAccess) return;
 
-    initAvatarLogic();
-    initUsernameLogic();
-    initEmailLogic();
+    if (isProfile) {
+        initAvatarLogic();
+        initUsernameLogic();
+        initEmailLogic();
+    }
+    
+    // Lógica compartida o específica
     initPreferencesLogic(); 
     initBooleanPreferencesLogic();
 }
 
-// ========================================================
-// HELPER PARA ERRORES FUERA DE LA TARJETA
-// ========================================================
 function updateCardError(cardElement, message = '', show = true) {
     if (!cardElement) return;
-
-    // 1. Buscar si el SIGUIENTE elemento es ya un div de error
     let nextElement = cardElement.nextElementSibling;
     let errorDiv = null;
-
     if (nextElement && nextElement.classList.contains('component-card__error')) {
         errorDiv = nextElement;
     }
-
-    // 2. Si no existe y queremos mostrarlo, lo creamos e insertamos DESPUÉS
     if (!errorDiv && show) {
         errorDiv = document.createElement('div');
         errorDiv.className = 'component-card__error';
         cardElement.after(errorDiv);
     }
-
-    // 3. Actualizar estado
     if (show && errorDiv) {
         errorDiv.textContent = message;
-        requestAnimationFrame(() => {
-            errorDiv.classList.add('active');
-        });
+        requestAnimationFrame(() => errorDiv.classList.add('active'));
     } else if (!show && errorDiv) {
         errorDiv.remove();
     }
 }
 
 // ========================================================
-// LÓGICA DE PREFERENCIAS BOOLEANAS (TOGGLES)
+// TOGGLES (Booleanos)
 // ========================================================
 function initBooleanPreferencesLogic() {
-    const profileSection = qs('[data-section="settings/your-profile"]');
-    if (!profileSection) return;
-
-    profileSection.addEventListener('change', async (e) => {
+    // Escuchar en todo el documento para capturar settings de cualquier sub-sección
+    document.body.addEventListener('change', async (e) => {
         const target = e.target;
         if (target.matches('input[type="checkbox"][data-preference-type="boolean"]')) {
             const fieldName = target.dataset.fieldName;
             const isChecked = target.checked;
             const card = target.closest('.component-card');
+            const toggleWrapper = target.closest('.component-toggle-switch');
 
             if (!fieldName) return;
 
-            // Limpiamos error previo
             updateCardError(card, '', false);
+            if (toggleWrapper) toggleWrapper.classList.add('disabled-interactive');
 
             const payload = {
                 action: 'update_boolean_preference',
@@ -96,45 +90,43 @@ function initBooleanPreferencesLogic() {
                 if (data.success) {
                     if (window.alertManager) window.alertManager.showAlert('Preferencia actualizada.', 'success');
                 } else {
-                    // No revertimos visualmente (Optimista), solo mostramos el error
+                    target.checked = !isChecked; // Revertir visualmente
                     updateCardError(card, data.message);
                 }
             } catch (err) {
+                target.checked = !isChecked;
                 console.error(err);
                 updateCardError(card, 'Error de conexión');
+            } finally {
+                if (toggleWrapper) toggleWrapper.classList.remove('disabled-interactive');
             }
         }
     });
 }
 
 // ========================================================
-// LÓGICA DE PREFERENCIAS (SELECTORES MENU)
+// SELECTORES (Theme, Lang, Usage)
 // ========================================================
 function initPreferencesLogic() {
-    const profileSection = qs('[data-section="settings/your-profile"]');
-    if (!profileSection) return;
-
-    profileSection.addEventListener('click', async (e) => {
+    document.body.addEventListener('click', async (e) => {
         const option = e.target.closest('.menu-link[data-value]');
         if (!option) return;
 
-        // Si la opción ya está activa (seleccionada), no hacemos nada.
-        if (option.classList.contains('active')) {
-            return;
-        }
+        if (option.classList.contains('active')) return;
 
         const module = option.closest('.popover-module');
         if (!module) return;
 
+        const wrapper = module.closest('.trigger-select-wrapper');
         const card = option.closest('.component-card');
-
         const prefType = module.dataset.preferenceType; 
         const value = option.dataset.value;
 
         if (!prefType || !value) return;
 
-        // Limpiamos error previo
         updateCardError(card, '', false);
+        if (wrapper) wrapper.classList.add('disabled-interactive');
+        else module.classList.add('disabled-interactive');
 
         let payload = { action: '', csrf_token: getCsrfToken() };
         
@@ -144,6 +136,9 @@ function initPreferencesLogic() {
         } else if (prefType === 'language') {
             payload.action = 'update_language';
             payload.language = value;
+        } else if (prefType === 'theme') {
+            payload.action = 'update_theme';
+            payload.theme = value;
         }
 
         try {
@@ -157,11 +152,12 @@ function initPreferencesLogic() {
             if (data.success) {
                 if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
                 
-                // --- CAMBIO DE IDIOMA EN TIEMPO REAL ---
                 if (prefType === 'language') {
                     await changeLanguage(value);
                 }
-                // ---------------------------------------
+                if (prefType === 'theme') {
+                    updateTheme(value); // Actualizar tema en tiempo real
+                }
 
             } else {
                 updateCardError(card, data.message);
@@ -169,15 +165,20 @@ function initPreferencesLogic() {
         } catch (err) {
             console.error(err);
             updateCardError(card, 'Error de conexión');
+        } finally {
+            if (wrapper) wrapper.classList.remove('disabled-interactive');
+            else module.classList.remove('disabled-interactive');
         }
     });
 }
 
 // ========================================================
-// LÓGICA DE AVATAR
+// LÓGICA DE AVATAR (Solo si existe el componente)
 // ========================================================
 function initAvatarLogic() {
     const card = qs('[data-component="avatar-section"]');
+    if (!card) return;
+
     const elements = {
         fileInput: qs('[data-element="avatar-upload-input"]'),
         previewImg: qs('[data-element="avatar-preview-image"]'),
@@ -218,9 +219,7 @@ function initAvatarLogic() {
             updateCardError(card, 'Formato no válido. Usa JPG, PNG o WEBP.');
             this.value = ''; return;
         }
-        
         updateCardError(card, '', false);
-
         const reader = new FileReader();
         reader.onload = function(evt) {
             elements.previewImg.src = evt.target.result;
@@ -234,30 +233,19 @@ function initAvatarLogic() {
         updateCardError(card, '', false);
         elements.previewImg.src = originalImageSrc;
         elements.fileInput.value = '';
-        
-        const isDefault = originalImageSrc.includes('data:image') || 
-                          originalImageSrc === '' || 
-                          originalImageSrc.endsWith('/') ||
-                          originalImageSrc.includes('/default/') ||          
-                          originalImageSrc.includes('avatars_default') ||    
-                          originalImageSrc.includes('ui-avatars.com');       
-
-        const mode = isDefault ? 'default' : 'custom';
-        toggleAvatarActions(mode);
+        const isDefault = originalImageSrc.includes('data:image') || originalImageSrc === '' || originalImageSrc.endsWith('/') || originalImageSrc.includes('/default/') || originalImageSrc.includes('avatars_default') || originalImageSrc.includes('ui-avatars.com');       
+        toggleAvatarActions(isDefault ? 'default' : 'custom');
     });
 
     elements.saveBtn.addEventListener('click', async () => {
         const file = elements.fileInput.files[0];
         if (!file) return;
-        
         setLoading(elements.saveBtn, true);
         updateCardError(card, '', false);
-
         const formData = new FormData();
         formData.append('action', 'update_avatar');
         formData.append('avatar', file);
         formData.append('csrf_token', getCsrfToken());
-
         try {
             const res = await fetch(API_SETTINGS, { method: 'POST', body: formData });
             const data = await res.json();
@@ -271,10 +259,7 @@ function initAvatarLogic() {
             } else {
                 updateCardError(card, data.message);
             }
-        } catch (e) { 
-            console.error(e); 
-            updateCardError(card, 'Error de conexión.');
-        }
+        } catch (e) { updateCardError(card, 'Error de conexión.'); }
         setLoading(elements.saveBtn, false, 'Guardar');
     });
 
@@ -282,7 +267,6 @@ function initAvatarLogic() {
         if (!confirm('¿Restablecer avatar por defecto?')) return;
         setLoading(elements.removeBtn, true);
         updateCardError(card, '', false);
-
         try {
             const formData = new FormData();
             formData.append('action', 'remove_avatar');
@@ -299,10 +283,7 @@ function initAvatarLogic() {
             } else {
                 updateCardError(card, data.message);
             }
-        } catch (e) { 
-            console.error(e); 
-            updateCardError(card, 'Error de conexión.');
-        }
+        } catch (e) { updateCardError(card, 'Error de conexión.'); }
         setLoading(elements.removeBtn, false, 'Eliminar');
     });
 
@@ -313,11 +294,9 @@ function initAvatarLogic() {
     }
 }
 
-// ========================================================
-// LÓGICA DE NOMBRE DE USUARIO
-// ========================================================
 function initUsernameLogic() {
     const card = qs('[data-component="username-section"]');
+    if (!card) return;
     const els = {
         viewState: qs('[data-state="username-view-state"]'),
         editState: qs('[data-state="username-edit-state"]'),
@@ -329,78 +308,49 @@ function initUsernameLogic() {
         cancelBtn: qs('[data-action="username-cancel-trigger"]'),
         saveBtn: qs('[data-action="username-save-trigger-btn"]')
     };
-
     if (!els.input) return;
-
     let originalUsername = els.input.value;
 
     els.editBtn.addEventListener('click', () => {
         toggleMode(els, true);
         updateCardError(card, '', false);
-        const val = els.input.value;
-        els.input.value = '';
-        els.input.value = val;
-        els.input.focus();
+        els.input.value = ''; els.input.value = originalUsername; els.input.focus();
     });
-
     els.cancelBtn.addEventListener('click', () => {
         els.input.value = originalUsername;
         updateCardError(card, '', false);
         toggleMode(els, false);
     });
-
     els.saveBtn.addEventListener('click', async () => {
         const newVal = els.input.value.trim();
         updateCardError(card, '', false);
-
-        if (newVal === originalUsername) {
-            toggleMode(els, false);
-            return;
-        }
-
+        if (newVal === originalUsername) { toggleMode(els, false); return; }
         if (newVal.length < 8 || newVal.length > 32) {
-            updateCardError(card, 'El nombre de usuario debe tener entre 8 y 32 caracteres.');
-            return;
+            updateCardError(card, 'El nombre de usuario debe tener entre 8 y 32 caracteres.'); return;
         }
-
         setLoading(els.saveBtn, true);
-
         try {
             const res = await fetch(API_SETTINGS, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': getCsrfToken()
-                },
-                body: JSON.stringify({ 
-                    action: 'update_username', 
-                    username: newVal 
-                })
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
+                body: JSON.stringify({ action: 'update_username', username: newVal })
             });
             const data = await res.json();
-
             if (data.success) {
                 if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
                 originalUsername = data.new_username;
                 els.display.textContent = data.new_username;
                 els.input.value = data.new_username;
                 toggleMode(els, false);
-            } else {
-                updateCardError(card, data.message || 'Error al actualizar.');
-            }
-        } catch (error) {
-            console.error(error);
-            updateCardError(card, 'Error de conexión con el servidor.');
-        }
+            } else { updateCardError(card, data.message || 'Error al actualizar.'); }
+        } catch (error) { updateCardError(card, 'Error de conexión con el servidor.'); }
         setLoading(els.saveBtn, false, 'Guardar');
     });
 }
 
-// ========================================================
-// LÓGICA DE CORREO ELECTRÓNICO
-// ========================================================
 function initEmailLogic() {
     const card = qs('[data-component="email-section"]');
+    if (!card) return;
     const els = {
         viewState: qs('[data-state="email-view-state"]'),
         editState: qs('[data-state="email-edit-state"]'),
@@ -412,86 +362,54 @@ function initEmailLogic() {
         cancelBtn: qs('[data-action="email-cancel-trigger"]'),
         saveBtn: qs('[data-action="email-save-trigger-btn"]')
     };
-
     if (!els.input) return;
-
     let originalEmail = els.input.value;
 
     els.editBtn.addEventListener('click', () => {
         toggleMode(els, true);
         updateCardError(card, '', false);
-        const val = els.input.value;
-        els.input.value = '';
-        els.input.value = val;
-        els.input.focus();
+        els.input.value = ''; els.input.value = originalEmail; els.input.focus();
     });
-
     els.cancelBtn.addEventListener('click', () => {
         els.input.value = originalEmail;
         updateCardError(card, '', false);
         toggleMode(els, false);
     });
-
     els.saveBtn.addEventListener('click', async () => {
         const newVal = els.input.value.trim().toLowerCase();
         updateCardError(card, '', false);
-
-        if (newVal === originalEmail) {
-            toggleMode(els, false);
-            return;
-        }
-
+        if (newVal === originalEmail) { toggleMode(els, false); return; }
         const regex = /^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i;
-        if (!regex.test(newVal)) {
-            updateCardError(card, 'Dominio no permitido (Solo Gmail, Outlook, iCloud, Yahoo).');
-            return;
-        }
-
+        if (!regex.test(newVal)) { updateCardError(card, 'Dominio no permitido.'); return; }
         setLoading(els.saveBtn, true);
-
         try {
             const res = await fetch(API_SETTINGS, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': getCsrfToken()
-                },
-                body: JSON.stringify({ 
-                    action: 'update_email', 
-                    email: newVal 
-                })
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
+                body: JSON.stringify({ action: 'update_email', email: newVal })
             });
             const data = await res.json();
-
             if (data.success) {
                 if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
                 originalEmail = data.new_email;
                 els.display.textContent = data.new_email;
                 els.input.value = data.new_email;
                 toggleMode(els, false);
-            } else {
-                updateCardError(card, data.message || 'Error al actualizar.');
-            }
-        } catch (error) {
-            console.error(error);
-            updateCardError(card, 'Error de conexión con el servidor.');
-        }
+            } else { updateCardError(card, data.message || 'Error al actualizar.'); }
+        } catch (error) { updateCardError(card, 'Error de conexión con el servidor.'); }
         setLoading(els.saveBtn, false, 'Guardar');
     });
 }
 
-// Helper genérico para alternar modo edición/vista
 function toggleMode(els, isEditing) {
     if (isEditing) {
         els.viewState.classList.remove('active'); els.viewState.classList.add('disabled');
         els.actionsView.classList.remove('active'); els.actionsView.classList.add('disabled');
-        
         els.editState.classList.remove('disabled'); els.editState.classList.add('active');
         els.actionsEdit.classList.remove('disabled'); els.actionsEdit.classList.add('active');
     } else {
         els.editState.classList.remove('active'); els.editState.classList.add('disabled');
         els.actionsEdit.classList.remove('active'); els.actionsEdit.classList.add('disabled');
-
         els.viewState.classList.remove('disabled'); els.viewState.classList.add('active');
         els.actionsView.classList.remove('disabled'); els.actionsView.classList.add('active');
     }

@@ -2,7 +2,8 @@
 
 // [CORE]
 import { initUrlManager } from './core/url-manager.js';
-import { initI18n, translateDocument } from './core/i18n-manager.js'; // <--- NUEVO
+import { initI18n, translateDocument } from './core/i18n-manager.js';
+import { initThemeManager } from './core/theme-manager.js'; // <--- NUEVO
 
 // [MODULES]
 import { initAuthManager } from './modules/auth-manager.js';
@@ -19,10 +20,11 @@ import { initDragController } from './ui/drag-controller.js';
 // [SERVICES]
 import { SocketService } from './services/socket-service.js';
 
-document.addEventListener('DOMContentLoaded', async () => { // Async para esperar i18n
+document.addEventListener('DOMContentLoaded', async () => {
     try {
-        // 1. Inicializar i18n PRIMERO
+        // 1. Inicializar i18n y TEMA PRIMERO (Visuales)
         await initI18n();
+        initThemeManager(); // Aplica el tema guardado o del sistema
 
         // Inicializar Core y Auth
         initUrlManager();
@@ -46,7 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => { // Async para espera
         // Inicializar Gestor de Configuración
         window.initSettingsManager = () => {
             initSettingsManager();
-            translateDocument(); // Traducir cuando se carga settings dinámicamente
+            translateDocument();
         };
 
         // Ejecutarlo por primera vez

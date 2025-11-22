@@ -31,7 +31,6 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- CÓDIGOS DE VERIFICACIÓN
--- [MODIFICADO] 'code' aumentado a VARCHAR(64) para soportar SHA-256
 CREATE TABLE IF NOT EXISTS verification_codes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     identifier VARCHAR(255) NOT NULL, 
@@ -90,12 +89,15 @@ CREATE TABLE IF NOT EXISTS ws_auth_tokens (
 );
 
 -- PREFERENCIAS DE USUARIO
+-- [MODIFICADO] Agregados campos theme y extended_message_time
 CREATE TABLE IF NOT EXISTS user_preferences (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL UNIQUE,
     usage_intent VARCHAR(50) DEFAULT 'personal',
     language VARCHAR(10) DEFAULT 'en-us',
+    theme VARCHAR(20) DEFAULT 'system',
     open_links_in_new_tab TINYINT(1) DEFAULT 1, 
+    extended_message_time TINYINT(1) DEFAULT 0,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
