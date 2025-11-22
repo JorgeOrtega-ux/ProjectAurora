@@ -1502,3 +1502,9 @@ a.disabled-link {
         border-radius: 10px;
     }
 }
+
+
+.disabled-interactive {
+    opacity: 0.5;
+    pointer-events: none;
+}

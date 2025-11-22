@@ -1,4 +1,4 @@
-// public/assets/js/url-manager.js
+// public/assets/js/core/url-manager.js
 
 const allowedSections = [
     'main', 'login', 'register', 'explorer', 'search',
@@ -32,21 +32,21 @@ const authZone = [
 
 const basePath = window.BASE_PATH || '/ProjectAurora/';
 
+// Variable para evitar clics múltiples mientras carga
+let isNavigating = false;
+
 export function initUrlManager() {
     window.addEventListener('popstate', (event) => {
         if (event.state && event.state.section) {
             showSection(event.state.section, false);
-        } else {
-            // Si es un reload manual o inicial, no hacemos fetch, dejamos que router.php cargue
-            // Opcional: Podrías forzar reload si la navegación se desincroniza
         }
     });
 
     document.body.addEventListener('click', (e) => {
-        const link = e.target.closest('.menu-link[data-nav], a[onclick*="navigateTo"]');
-        // Nota: el selector a[onclick...] es para capturar enlaces legacy si los hubiera, 
-        // pero tu sidebar usa .menu-link[data-nav]
+        if (isNavigating) return;
 
+        const link = e.target.closest('.menu-link[data-nav], a[onclick*="navigateTo"]');
+        
         if (link && link.dataset.nav) {
             e.preventDefault();
             const section = link.dataset.nav;
@@ -54,14 +54,14 @@ export function initUrlManager() {
         }
     });
 
-    // Inicializar estado visual del sidebar al cargar
     const current = getSectionFromUrl();
     updateSidebarState(current);
     updateActiveMenu(current);
 }
 
 window.navigateTo = function (sectionName) {
-    // Normalizaciones rápidas
+    if (isNavigating) return;
+
     if (sectionName === 'settings') sectionName = 'settings/your-profile';
     if (sectionName === 'admin') sectionName = 'admin/dashboard';
 
@@ -69,12 +69,9 @@ window.navigateTo = function (sectionName) {
     const isCurAuth = authZone.some(z => current.startsWith(z) || z === current);
     const isTarAuth = authZone.some(z => sectionName.startsWith(z) || z === sectionName);
 
-    // Si cambiamos entre Zona Auth (Login) y Zona App (Main), recargamos la página completa
-    // para que el router.php maneje sesiones y redirecciones de seguridad.
     if ((isCurAuth && !isTarAuth) || (!isCurAuth && isTarAuth)) {
         window.location.href = (sectionName === 'main') ? basePath : `${basePath}${sectionName}`;
     } else {
-        // Navegación interna fluida (AJAX)
         showSection(sectionName, true);
     }
 };
@@ -85,7 +82,6 @@ function getSectionFromUrl() {
     path = path.replace(/\/$/, '').split('?')[0];
 
     if (path === '') return 'main';
-    // Si path está en allowedSections o empieza con admin/ settings/
     if (allowedSections.includes(path) || path.startsWith('admin/') || path.startsWith('settings/')) {
         return path;
     }
@@ -93,29 +89,36 @@ function getSectionFromUrl() {
 }
 
 async function showSection(sectionName, pushState = true) {
+    isNavigating = true;
+
     const container = document.querySelector('[data-container="main-section"]');
+    const loader = document.querySelector('.loader-wrapper');
+
     if (!container) { window.location.reload(); return; }
 
-    // 1. Separar la sección de la búsqueda (?q=...)
     const [baseSection, query] = sectionName.split('?');
-
-    // 2. Definir la clave para loader.php
-    // [CORRECCIÓN]: Usamos baseSection directamente (ej: 'settings/login-security')
-    // Ya no hacemos reemplazos manuales raros, loader.php ahora entiende las rutas.
     let loaderKey = baseSection;
-
-    // 3. Construir URL
     let fetchUrl = `${basePath}public/loader.php?section=${loaderKey}&t=${Date.now()}`;
 
     if (query) {
-        fetchUrl += `&${query}`; // Añadimos ?q=algo si existe
+        fetchUrl += `&${query}`;
     }
 
-    // Feedback visual de carga inmediato
-    // container.style.opacity = '0.5'; 
+    // [CORRECCIÓN UI OPTIMISTA] 
+    // Actualizamos el menú INMEDIATAMENTE, antes de cargar nada.
+    updateSidebarState(baseSection);
+    updateActiveMenu(baseSection);
+
+    // 1. Mostrar Loader y limpiar contenido viejo
+    if (loader) loader.style.display = 'flex';
+    container.innerHTML = '';
 
     try {
-        const resp = await fetch(fetchUrl);
+        // Esperamos 500ms mínimo + lo que tarde el fetch
+        const minDelay = new Promise(resolve => setTimeout(resolve, 500));
+        const fetchRequest = fetch(fetchUrl);
+
+        const [resp] = await Promise.all([fetchRequest, minDelay]);
 
         if (!resp.ok) {
             throw new Error(`Error ${resp.status}: ${resp.statusText}`);
@@ -123,31 +126,25 @@ async function showSection(sectionName, pushState = true) {
 
         const html = await resp.text();
 
-        // Detectar si nos devolvió una página completa de login por error (sesión expirada)
         if (html.includes('<!DOCTYPE html>')) {
             window.location.reload();
             return;
         }
 
-        // 1. Inyectamos el nuevo contenido (esto "elimina" el PHP anterior visualmente)
         container.innerHTML = html;
-        
-        // [SOLUCIÓN] 2. Forzamos el scroll hacia arriba inmediatamente
         container.scrollTop = 0;
         
-        // container.style.opacity = '1';
-
-        updateSidebarState(baseSection);
-        updateActiveMenu(baseSection);
+        // Ya no llamamos a updateSidebarState/ActiveMenu aquí porque ya se hizo al inicio.
 
         if (pushState) {
             const newUrl = (baseSection === 'main') ? basePath : `${basePath}${sectionName}`;
             history.pushState({ section: sectionName }, '', newUrl);
         }
 
-        // Reinicializar tooltips o scripts específicos si es necesario
         if (window.initTooltipManager) window.initTooltipManager();
         if (window.initSettingsManager) window.initSettingsManager();
+        if (window.translateDocument) window.translateDocument(container);
+
     } catch (error) {
         console.error(error);
         container.innerHTML = `
@@ -156,7 +153,10 @@ async function showSection(sectionName, pushState = true) {
                 No se pudo cargar la sección.<br>
                 <small>${error.message}</small>
             </div>`;
-        // container.style.opacity = '1';
+    } finally {
+        // 2. Ocultar Loader
+        if (loader) loader.style.display = 'none';
+        isNavigating = false;
     }
 }
 
@@ -165,18 +165,15 @@ function updateSidebarState(sectionName) {
     const settingsMenu = document.getElementById('sidebar-menu-settings');
     const adminMenu = document.getElementById('sidebar-menu-admin');
 
-    // Ocultar todos
     if (appMenu) appMenu.style.display = 'none';
     if (settingsMenu) settingsMenu.style.display = 'none';
     if (adminMenu) adminMenu.style.display = 'none';
 
-    // Mostrar el pertinente
     if (sectionName.startsWith('settings/') && settingsMenu) {
         settingsMenu.style.display = 'flex';
     } else if (sectionName.startsWith('admin/') && adminMenu) {
         adminMenu.style.display = 'flex';
     } else {
-        // Por defecto App
         if (appMenu) appMenu.style.display = 'flex';
     }
 }
@@ -184,8 +181,7 @@ function updateSidebarState(sectionName) {
 function updateActiveMenu(sectionName) {
     const allLinks = document.querySelectorAll('.menu-link[data-nav]');
     allLinks.forEach(link => link.classList.remove('active'));
-
-    // Activar el exacto
+    
     const activeLink = document.querySelector(`.menu-link[data-nav="${sectionName}"]`);
     if (activeLink) {
         activeLink.classList.add('active');
