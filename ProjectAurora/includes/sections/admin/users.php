@@ -1,27 +1,209 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
+
+// 1. SEGURIDAD
 $role = $_SESSION['user_role'] ?? 'user';
 if (!in_array($role, ['founder', 'administrator', 'admin'])) {
     include __DIR__ . '/../system/404.php'; 
     exit;
 }
+
+// 2. CONFIGURACIÓN Y DATOS
+$limit = 25;
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) $page = 1;
+$offset = ($page - 1) * $limit;
+
+$q = isset($_GET['q']) ? trim($_GET['q']) : '';
+$whereClause = "";
+$params = [];
+
+if (!empty($q)) {
+    $whereClause = "WHERE u.username LIKE ? OR u.email LIKE ?";
+    $params[] = "%$q%";
+    $params[] = "%$q%";
+}
+
+// --- HELPERS ---
+function getStatusClass($status) {
+    return match ($status) {
+        'active' => 'status-active',
+        'suspended' => 'status-suspended',
+        'deleted' => 'status-deleted',
+        default => ''
+    };
+}
+
+function formatTimeAgo($datetime) {
+    if (!$datetime) return 'Nunca';
+    $time = strtotime($datetime);
+    $diff = time() - $time;
+    if ($diff < 60) return 'Hace un momento';
+    if ($diff < 3600) return 'Hace ' . floor($diff / 60) . ' min';
+    if ($diff < 86400) return 'Hace ' . floor($diff / 3600) . ' h';
+    return date('d/m/Y', $time);
+}
+
+// Función para renderizar filas (HTML)
+function renderUserRows($users) {
+    ob_start();
+    if (count($users) > 0):
+        foreach ($users as $u): 
+            $avatarUrl = !empty($u['avatar']) ? '/ProjectAurora/' . $u['avatar'] : null;
+            $statusClass = getStatusClass($u['account_status']);
+            $is2FA = ((int)$u['is_2fa_enabled'] === 1);
+            $lastSeen = formatTimeAgo($u['last_seen']);
+        ?>
+        <tr class="admin-row-selectable" onclick="selectSingleRow(this, '<?php echo $u['id']; ?>')">
+            <td style="padding-left: 20px; color: #888;"><?php echo $u['id']; ?></td>
+            <td>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <?php if ($avatarUrl): ?>
+                        <img src="<?php echo htmlspecialchars($avatarUrl); ?>" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+                    <?php else: ?>
+                        <div class="user-avatar-small" style="background-color: #e0e0e0; width: 32px; height: 32px; border-radius: 50%; display:flex; align-items:center; justify-content:center;">
+                            <span class="material-symbols-rounded" style="font-size:18px; color:#666;">person</span>
+                        </div>
+                    <?php endif; ?>
+                    <div style="display:flex; flex-direction:column;">
+                        <span style="font-weight: 600; font-size:14px; color: inherit;"><?php echo htmlspecialchars($u['username']); ?></span>
+                        <span style="font-size:11px; color:#999;">Creado: <?php echo date('d/m/Y', strtotime($u['created_at'])); ?></span>
+                    </div>
+                </div>
+            </td>
+            <td style="font-size:13px;"><?php echo htmlspecialchars($u['email']); ?></td>
+            <td>
+                <span class="status-badge <?php echo $statusClass; ?>">
+                    <?php echo ucfirst($u['account_status']); ?>
+                </span>
+            </td>
+            <td>
+                <span style="font-size:12px; font-weight:500; background:#f5f5f5; padding:2px 6px; border-radius:4px; border:1px solid #e0e0e0;">
+                    <?php echo ucfirst($u['role']); ?>
+                </span>
+            </td>
+            <td style="text-align:center;">
+                <?php if ($is2FA): ?>
+                    <span class="material-symbols-rounded" style="color:#2e7d32; font-size:18px;" title="Protegido">shield_lock</span>
+                <?php else: ?>
+                    <span class="material-symbols-rounded" style="color:#bdbdbd; font-size:18px;" title="No protegido">no_encryption</span>
+                <?php endif; ?>
+            </td>
+            <td style="color:#666; font-size:13px;"><?php echo $lastSeen; ?></td>
+        </tr>
+        <?php endforeach;
+    else: ?>
+        <tr>
+            <td colspan="7" style="text-align:center; padding: 40px; color: #888;">
+                <span class="material-symbols-rounded" style="font-size: 48px; color: #e0e0e0; margin-bottom: 10px;">person_off</span>
+                <p>No se encontraron usuarios.</p>
+            </td>
+        </tr>
+    <?php endif;
+    return ob_get_clean();
+}
+
+// Función para renderizar paginación (HTML)
+function renderPagination($page, $totalPages, $q) {
+    $prevPage = max(1, $page - 1);
+    $nextPage = min($totalPages, $page + 1);
+    $qEncoded = htmlspecialchars($q, ENT_QUOTES);
+    
+    ob_start();
+    ?>
+    <button class="pagination-btn" 
+            onclick="loadUsersTable(<?php echo $prevPage; ?>, '<?php echo $qEncoded; ?>')"
+            <?php echo ($page <= 1) ? 'disabled style="opacity:0.3; pointer-events:none;"' : ''; ?>>
+        <span class="material-symbols-rounded">chevron_left</span>
+    </button>
+    
+    <span class="pagination-number"><?php echo $page; ?> / <?php echo $totalPages; ?></span>
+    
+    <button class="pagination-btn" 
+            onclick="loadUsersTable(<?php echo $nextPage; ?>, '<?php echo $qEncoded; ?>')"
+            <?php echo ($page >= $totalPages) ? 'disabled style="opacity:0.3; pointer-events:none;"' : ''; ?>>
+        <span class="material-symbols-rounded">chevron_right</span>
+    </button>
+    <?php
+    return ob_get_clean();
+}
+
+// --- OBTENCIÓN DE DATOS ---
+try {
+    $sqlCount = "SELECT COUNT(*) FROM users u $whereClause";
+    $stmtCount = $pdo->prepare($sqlCount);
+    $stmtCount->execute($params);
+    $totalUsers = $stmtCount->fetchColumn();
+    
+    $totalPages = ceil($totalUsers / $limit);
+    if ($totalPages < 1) $totalPages = 1;
+    
+    if ($page > $totalPages) {
+        $page = $totalPages;
+        $offset = ($page - 1) * $limit;
+    }
+
+    $sqlUsers = "SELECT u.id, u.username, u.email, u.avatar, u.role, u.account_status, u.created_at, u.is_2fa_enabled,
+                 (SELECT MAX(last_activity) FROM user_sessions WHERE user_id = u.id) as last_seen
+                 FROM users u 
+                 $whereClause 
+                 ORDER BY u.id DESC 
+                 LIMIT $limit OFFSET $offset";
+    
+    $stmt = $pdo->prepare($sqlUsers);
+    $stmt->execute($params);
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+} catch (Exception $e) {
+    $users = [];
+    $totalUsers = 0;
+    $totalPages = 1;
+}
+
+// --- RESPUESTA AJAX (JSON) ---
+if (isset($_GET['ajax_partial']) && $_GET['ajax_partial'] === '1') {
+    header('Content-Type: application/json');
+    echo json_encode([
+        'html_rows' => renderUserRows($users),
+        'html_pagination' => renderPagination($page, $totalPages, $q)
+    ]);
+    exit;
+}
 ?>
+
+<style>
+    .admin-row-selectable {
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+        border-left: 4px solid transparent;
+    }
+    .admin-row-selectable:hover {
+        background-color: #fafafa;
+    }
+    .admin-row-selectable.selected {
+        background-color: #F5F5FA !important;
+        border-left-color: #000000;
+    }
+    .admin-row-selectable.selected td {
+        color: #000; 
+    }
+    .table-loading {
+        opacity: 0.5;
+        pointer-events: none;
+        transition: opacity 0.2s;
+    }
+</style>
+
 <div class="section-content active" data-section="admin/users">
     <div class="section-center-wrapper" style="flex-direction: column; justify-content: flex-start; padding-top: 20px; width: 98%; max-width: none; margin: 0 auto;">
         
         <div class="toolbar-stack">
-            
-            <div class="content-toolbar">
+            <div class="content-toolbar" id="default-toolbar">
                 <div style="display: flex; gap: 8px;">
-                    <button class="toolbar-action-btn" 
-                            data-action="toggle-admin-user-search" 
-                            data-i18n-tooltip="global.search"
-                            data-tooltip="Buscar">
+                    <button class="toolbar-action-btn" data-action="toggle-admin-user-search" data-tooltip="Buscar">
                         <span class="material-symbols-rounded">search</span>
                     </button>
-                    <button class="toolbar-action-btn" 
-                            data-i18n-tooltip="search.filter_tooltip"
-                            data-tooltip="Filtrar">
+                    <button class="toolbar-action-btn" data-tooltip="Filtrar">
                         <span class="material-symbols-rounded">filter_list</span>
                     </button>
                     <button class="toolbar-action-btn" data-tooltip="Nuevo Usuario">
@@ -31,14 +213,8 @@ if (!in_array($role, ['founder', 'administrator', 'admin'])) {
                 
                 <div style="flex: 1;"></div>
 
-                <div class="toolbar-pagination">
-                    <button class="pagination-btn">
-                        <span class="material-symbols-rounded">chevron_left</span>
-                    </button>
-                    <span class="pagination-number">1</span>
-                    <button class="pagination-btn">
-                        <span class="material-symbols-rounded">chevron_right</span>
-                    </button>
+                <div class="toolbar-pagination" id="admin-users-pagination">
+                    <?php echo renderPagination($page, $totalPages, $q); ?>
                 </div>
             </div>
 
@@ -46,58 +222,78 @@ if (!in_array($role, ['founder', 'administrator', 'admin'])) {
                 <div class="search-container" style="width: 100%; max-width: 100%;">
                     <span class="material-symbols-rounded search-icon">search</span>
                     <input type="text" 
+                           id="admin-users-search-input"
                            class="search-input" 
-                           placeholder="Buscar por nombre, correo o ID..." 
-                           spellcheck="false">
+                           placeholder="Buscar por nombre, correo o ID (Presiona Enter)..." 
+                           value="<?php echo htmlspecialchars($q); ?>"
+                           onkeydown="if(event.key === 'Enter') loadUsersTable(1, this.value)">
                 </div>
             </div>
-
         </div>
 
         <div class="admin-table-container">
             <table class="admin-table">
                 <thead>
                     <tr>
-                        <th style="width: 60px;">ID</th>
-                        <th>Username</th>
+                        <th style="width: 50px; padding-left: 20px;">ID</th>
+                        <th>Usuario</th>
                         <th>Email</th>
-                        <th style="width: 120px;">Account Status</th>
-                        <th style="width: 120px;">Rol</th>
-                        <th style="width: 180px;">Creado</th>
-                        <th style="width: 60px;"></th>
+                        <th style="width: 100px;">Estado</th>
+                        <th style="width: 100px;">Rol</th>
+                        <th style="width: 80px; text-align:center;">2FA</th>
+                        <th style="width: 140px;">Última vez</th>
                     </tr>
                 </thead>
                 <tbody id="admin-users-table-body">
-                    <tr>
-                        <td>1</td>
-                        <td>
-                            <div style="display:flex; align-items:center; gap:10px;">
-                                <div class="user-avatar-small" style="background-color: #e0e0e0; width: 32px; height: 32px; border-radius: 50%;"></div>
-                                <span style="font-weight: 600;">AdminUser</span>
-                            </div>
-                        </td>
-                        <td>admin@projectaurora.com</td>
-                        <td><span class="status-badge status-active">Active</span></td>
-                        <td>Administrator</td>
-                        <td>2025-10-01 12:00</td>
-                        <td>
-                            <button class="action-icon-btn"><span class="material-symbols-rounded">more_vert</span></button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>2</td>
-                        <td>UsuarioTest</td>
-                        <td>test@ejemplo.com</td>
-                        <td><span class="status-badge status-suspended">Suspended</span></td>
-                        <td>User</td>
-                        <td>2025-11-15 09:30</td>
-                        <td>
-                            <button class="action-icon-btn"><span class="material-symbols-rounded">more_vert</span></button>
-                        </td>
-                    </tr>
+                    <?php echo renderUserRows($users); ?>
                 </tbody>
             </table>
         </div>
 
     </div>
 </div>
+
+<script>
+    let selectedUserId = null;
+
+    function selectSingleRow(clickedRow, userId) {
+        if (clickedRow.classList.contains('selected')) {
+            clickedRow.classList.remove('selected');
+            selectedUserId = null;
+            return;
+        }
+        const allRows = document.querySelectorAll('.admin-row-selectable.selected');
+        allRows.forEach(r => r.classList.remove('selected'));
+        clickedRow.classList.add('selected');
+        selectedUserId = userId;
+    }
+
+    async function loadUsersTable(page, query) {
+        const tbody = document.getElementById('admin-users-table-body');
+        const pagination = document.getElementById('admin-users-pagination');
+        
+        tbody.classList.add('table-loading');
+
+        const basePath = window.BASE_PATH || '/ProjectAurora/';
+        const fetchUrl = `${basePath}public/loader.php?section=admin/users&page=${page}&q=${encodeURIComponent(query)}&ajax_partial=1`;
+
+        try {
+            const response = await fetch(fetchUrl);
+            const data = await response.json();
+
+            if (data.html_rows !== undefined) {
+                tbody.innerHTML = data.html_rows;
+                pagination.innerHTML = data.html_pagination;
+                
+                const newUrl = `${basePath}admin/users?page=${page}` + (query ? `&q=${encodeURIComponent(query)}` : '');
+                window.history.pushState({path: newUrl}, '', newUrl);
+                
+                selectedUserId = null;
+            }
+        } catch (error) {
+            console.error('Error cargando usuarios:', error);
+        } finally {
+            tbody.classList.remove('table-loading');
+        }
+    }
+</script>
