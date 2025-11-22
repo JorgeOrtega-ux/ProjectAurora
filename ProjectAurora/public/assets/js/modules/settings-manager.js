@@ -22,7 +22,7 @@ function qs(selector) {
 export function initSettingsManager() {
     // 1. Detectar en qué sección estamos
     const isProfile = qs('[data-section="settings/your-profile"]');
-    const isChangePass = qs('[data-section="settings/change-password"]'); // <--- DETECTAR NUEVA SECCIÓN
+    const isChangePass = qs('[data-section="settings/change-password"]');
     
     // Lógica LOCAL para cada sección
     if (isProfile) {
@@ -32,7 +32,7 @@ export function initSettingsManager() {
     }
 
     if (isChangePass) {
-        initChangePasswordLogic(); // <--- INICIALIZAR LOGICA
+        initChangePasswordLogic();
     }
     
     // 3. Lógica GLOBAL (Se ejecuta UNA SOLA VEZ por sesión)
@@ -66,7 +66,7 @@ function updateCardError(cardElement, message = '', show = true) {
 }
 
 // ========================================================
-// LÓGICA CAMBIO DE CONTRASEÑA (NUEVO)
+// LÓGICA CAMBIO DE CONTRASEÑA (CORREGIDA)
 // ========================================================
 function initChangePasswordLogic() {
     const step1Card = qs('[data-step="password-step-1"]');
@@ -106,7 +106,10 @@ function initChangePasswordLogic() {
             if (data.success) {
                 // Transición UI: Ocultar input actual, mostrar nuevos inputs
                 currentPassInput.disabled = true; // Bloquear input
-                verifyBtn.closest('.component-card__actions').style.display = 'none'; // Ocultar botón
+                
+                // --- CORRECCIÓN AQUÍ ---
+                // Ocultamos el botón directamente para evitar errores con el nuevo diseño
+                verifyBtn.style.display = 'none'; 
                 
                 // Mostrar Paso 2
                 step2Card.classList.remove('disabled');
@@ -122,6 +125,7 @@ function initChangePasswordLogic() {
             }
         } catch (e) {
             updateCardError(step1Card, 'Error de conexión.');
+            console.error(e);
         }
         setLoading(verifyBtn, false);
     };
