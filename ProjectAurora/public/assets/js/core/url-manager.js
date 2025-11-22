@@ -12,6 +12,10 @@ const allowedSections = [
     'settings/your-profile',
     'settings/login-security',
     'settings/accessibility',
+    'settings/change-password',
+    'settings/2fa-setup',
+    'settings/sessions',
+    'settings/delete-account',
     // Admin
     'admin',
     'admin/dashboard',
@@ -57,6 +61,9 @@ export function initUrlManager() {
     const current = getSectionFromUrl();
     updateSidebarState(current);
     updateActiveMenu(current);
+    
+    // [NUEVO] Ejecutar scripts también en la carga inicial si la sección lo requiere
+    // (Aunque normalmente el PHP inicial ya renderiza, esto es seguro para navegación futura)
 }
 
 window.navigateTo = function (sectionName) {
@@ -104,18 +111,16 @@ async function showSection(sectionName, pushState = true) {
         fetchUrl += `&${query}`;
     }
 
-    // [CORRECCIÓN UI OPTIMISTA] 
-    // Actualizamos el menú INMEDIATAMENTE, antes de cargar nada.
     updateSidebarState(baseSection);
     updateActiveMenu(baseSection);
 
-    // 1. Mostrar Loader y limpiar contenido viejo
     if (loader) loader.style.display = 'flex';
-    container.innerHTML = '';
+    
+    // Limpieza previa opcional (por si hay listeners globales que limpiar)
+    // ...
 
     try {
-        // Esperamos 500ms mínimo + lo que tarde el fetch
-        const minDelay = new Promise(resolve => setTimeout(resolve, 500));
+        const minDelay = new Promise(resolve => setTimeout(resolve, 300)); // Reducido un poco para agilidad
         const fetchRequest = fetch(fetchUrl);
 
         const [resp] = await Promise.all([fetchRequest, minDelay]);
@@ -133,8 +138,9 @@ async function showSection(sectionName, pushState = true) {
 
         container.innerHTML = html;
         container.scrollTop = 0;
-        
-        // Ya no llamamos a updateSidebarState/ActiveMenu aquí porque ya se hizo al inicio.
+
+        // [CRÍTICO] Ejecutar los scripts que venían en el HTML inyectado
+        executeScripts(container);
 
         if (pushState) {
             const newUrl = (baseSection === 'main') ? basePath : `${basePath}${sectionName}`;
@@ -154,10 +160,29 @@ async function showSection(sectionName, pushState = true) {
                 <small>${error.message}</small>
             </div>`;
     } finally {
-        // 2. Ocultar Loader
         if (loader) loader.style.display = 'none';
         isNavigating = false;
     }
+}
+
+// [NUEVA FUNCIÓN] Extrae y ejecuta scripts insertados vía innerHTML
+function executeScripts(container) {
+    const scripts = container.querySelectorAll('script');
+    
+    scripts.forEach(oldScript => {
+        const newScript = document.createElement('script');
+        
+        // 1. Copiar atributos (src, type, async, etc.)
+        Array.from(oldScript.attributes).forEach(attr => {
+            newScript.setAttribute(attr.name, attr.value);
+        });
+        
+        // 2. Copiar el código interno
+        newScript.textContent = oldScript.textContent;
+        
+        // 3. Reemplazar el script viejo (muerto) por el nuevo (vivo)
+        oldScript.parentNode.replaceChild(newScript, oldScript);
+    });
 }
 
 function updateSidebarState(sectionName) {

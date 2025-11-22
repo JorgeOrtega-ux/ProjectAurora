@@ -44,5 +44,4 @@ function applyTheme(mode) {
         document.body.classList.add('light-theme');
         document.body.classList.remove('dark-theme');
     }
-    console.log(`[ThemeManager] Aplicado: ${mode} (Pref: ${currentThemePreference})`);
 }

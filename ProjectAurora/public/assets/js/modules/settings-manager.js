@@ -49,7 +49,6 @@ export function initSettingsManager() {
         initSessionsNavLogic();
         
         areGlobalsInitialized = true;
-        console.log('[SettingsManager] Listeners globales inicializados (Única vez).');
     }
 }
 
