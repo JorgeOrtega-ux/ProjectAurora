@@ -3,7 +3,9 @@
 
 $logDir = __DIR__ . '/../logs';
 $logFile = $logDir . '/settings_error.log';
-if (!file_exists($logDir)) { mkdir($logDir, 0777, true); }
+if (!file_exists($logDir)) {
+    mkdir($logDir, 0777, true);
+}
 ini_set('log_errors', TRUE);
 ini_set('error_log', $logFile);
 
@@ -35,19 +37,22 @@ $userId = $_SESSION['user_id'];
 $response = ['success' => false, 'message' => 'Acción no válida'];
 
 // --- FUNCIONES AUXILIARES ---
-function generate_uuid_v4() {
+function generate_uuid_v4()
+{
     $data = random_bytes(16);
     $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
     $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
     return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
 }
 
-function get_random_hex_color() {
+function get_random_hex_color()
+{
     $colors = ['C84F4F', '4F7AC8', '8C4FC8', 'C87A4F', '4FC8C8'];
     return $colors[array_rand($colors)];
 }
 
-function check_cooldown($pdo, $userId, $type, $daysLimit) {
+function check_cooldown($pdo, $userId, $type, $daysLimit)
+{
     $stmt = $pdo->prepare("SELECT changed_at FROM user_audit_logs 
                            WHERE user_id = ? AND change_type = ? 
                            ORDER BY changed_at DESC LIMIT 1");
@@ -72,21 +77,27 @@ function check_cooldown($pdo, $userId, $type, $daysLimit) {
     }
 }
 
-function audit_log($pdo, $userId, $type, $oldValue, $newValue) {
-    $ip = get_client_ip();
-    $stmt = $pdo->prepare("INSERT INTO user_audit_logs (user_id, change_type, old_value, new_value, changed_by_ip, changed_at) VALUES (?, ?, ?, ?, ?, NOW())");
-    $stmt->execute([$userId, $type, $oldValue, $newValue, $ip]);
+function audit_log($pdo, $userId, $type, $oldValue, $newValue)
+{
+    try {
+        $ip = get_client_ip();
+        $stmt = $pdo->prepare("INSERT INTO user_audit_logs (user_id, change_type, old_value, new_value, changed_by_ip, changed_at) VALUES (?, ?, ?, ?, ?, NOW())");
+        $stmt->execute([$userId, $type, $oldValue, $newValue, $ip]);
+    } catch (Exception $e) {
+        // Silenciosamente fallar el log para no detener la acción principal, pero registrar en error_log
+        error_log("Error al crear audit_log: " . $e->getMessage());
+    }
 }
 
 try {
-    
+
     if ($action === 'update_avatar') {
         check_cooldown($pdo, $userId, 'avatar', 1);
         if (!isset($_FILES['avatar']) || $_FILES['avatar']['error'] !== UPLOAD_ERR_OK) {
             throw new Exception('No se recibió ningún archivo o hubo un error en la subida.');
         }
         $file = $_FILES['avatar'];
-        $maxSize = 2 * 1024 * 1024; 
+        $maxSize = 2 * 1024 * 1024;
         $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
         if ($file['size'] > $maxSize) throw new Exception('La imagen supera el límite de 2MB.');
         $finfo = new finfo(FILEINFO_MIME_TYPE);
@@ -97,7 +108,7 @@ try {
         $extension = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'png';
         $newFileName = generate_uuid_v4() . '.' . $extension;
         $destination = $uploadDir . $newFileName;
-        $dbPath = 'assets/uploads/avatars/custom/' . $newFileName; 
+        $dbPath = 'assets/uploads/avatars/custom/' . $newFileName;
         if (!move_uploaded_file($file['tmp_name'], $destination)) {
             throw new Exception('Error al guardar la imagen en el servidor.');
         }
@@ -117,7 +128,6 @@ try {
         } else {
             throw new Exception('Error DB.');
         }
-
     } elseif ($action === 'remove_avatar') {
         $stmt = $pdo->prepare("SELECT username, avatar FROM users WHERE id = ?");
         $stmt->execute([$userId]);
@@ -136,7 +146,9 @@ try {
         $imageContent = @file_get_contents($apiUrl);
         if ($imageContent !== false) file_put_contents($destPath, $imageContent);
         if ($oldAvatar && file_exists(__DIR__ . '/../public/' . $oldAvatar)) {
-             if (strpos($oldAvatar, 'custom/') !== false) { @unlink(__DIR__ . '/../public/' . $oldAvatar); }
+            if (strpos($oldAvatar, 'custom/') !== false) {
+                @unlink(__DIR__ . '/../public/' . $oldAvatar);
+            }
         }
         $stmt = $pdo->prepare("UPDATE users SET avatar = ? WHERE id = ?");
         if ($stmt->execute([$dbPath, $userId])) {
@@ -146,7 +158,6 @@ try {
         } else {
             throw new Exception('Error DB.');
         }
-
     } elseif ($action === 'update_username') {
         check_cooldown($pdo, $userId, 'username', 12);
         $newUsername = trim($data['username'] ?? '');
@@ -166,7 +177,6 @@ try {
         } else {
             throw new Exception('Error al actualizar la base de datos.');
         }
-
     } elseif ($action === 'update_email') {
         check_cooldown($pdo, $userId, 'email', 12);
         $newEmail = strtolower(trim($data['email'] ?? ''));
@@ -187,10 +197,10 @@ try {
             throw new Exception('Error al actualizar el correo.');
         }
 
-    // ==================================================================
-    // NUEVO: GESTIÓN DE CONTRASEÑA
-    // ==================================================================
-    
+        // ==================================================================
+        // GESTIÓN DE CONTRASEÑA (AUDIT LOG APLICADO AQUÍ)
+        // ==================================================================
+
     } elseif ($action === 'verify_current_password') {
         $currentPassword = $data['password'] ?? '';
         if (empty($currentPassword)) throw new Exception("Ingresa tu contraseña actual.");
@@ -204,11 +214,9 @@ try {
         } else {
             throw new Exception("La contraseña actual es incorrecta.");
         }
-
     } elseif ($action === 'update_password') {
-        // Verificamos primero cooldown por seguridad
-        // check_cooldown($pdo, $userId, 'password', 1); // Opcional: Descomentar para limitar cambios diarios
-        
+        check_cooldown($pdo, $userId, 'password', 1);
+
         $newPassword = $data['new_password'] ?? '';
         $logoutOthers = isset($data['logout_others']) ? (bool)$data['logout_others'] : false;
 
@@ -220,14 +228,16 @@ try {
         $oldHash = $stmt->fetchColumn();
 
         $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
-        
+
         $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
         if ($stmt->execute([$newHash, $userId])) {
+
+            // === REGISTRO DE AUDITORÍA ===
             audit_log($pdo, $userId, 'password', $oldHash, $newHash);
-            
+            // ============================
+
             if ($logoutOthers) {
-                // Lógica pendiente para eliminar sesiones de la base de datos, 
-                // pero por ahora el requerimiento pedía solo mostrar la opción.
+                // Aquí iría la lógica para invalidar tokens de sesión en BD si implementas tabla de sesiones
             }
 
             $response = ['success' => true, 'message' => 'Contraseña actualizada correctamente.'];
@@ -235,9 +245,9 @@ try {
             throw new Exception("Error al actualizar la contraseña.");
         }
 
-    // ==================================================================
-    // PREFERENCIAS
-    // ==================================================================
+        // ==================================================================
+        // PREFERENCIAS
+        // ==================================================================
     } elseif ($action === 'update_usage') {
         if (checkActionRateLimit($pdo, $userId, 'pref_update_limit', 10, 1)) throw new Exception("Espera un momento.");
         logSecurityAction($pdo, $userId, 'pref_update_limit');
@@ -250,7 +260,6 @@ try {
         if ($pdo->prepare($sql)->execute([$userId, $usage])) {
             $response = ['success' => true, 'message' => 'Preferencia actualizada.'];
         } else throw new Exception("Error actualizando.");
-
     } elseif ($action === 'update_language') {
         if (checkActionRateLimit($pdo, $userId, 'pref_update_limit', 10, 1)) throw new Exception("Espera un momento.");
         logSecurityAction($pdo, $userId, 'pref_update_limit');
@@ -264,7 +273,6 @@ try {
             $_SESSION['user_lang'] = $lang;
             $response = ['success' => true, 'message' => 'Idioma actualizado.'];
         } else throw new Exception("Error actualizando idioma.");
-
     } elseif ($action === 'update_theme') {
         if (checkActionRateLimit($pdo, $userId, 'pref_update_limit', 10, 1)) throw new Exception("Espera un momento.");
         logSecurityAction($pdo, $userId, 'pref_update_limit');
@@ -278,7 +286,6 @@ try {
             $_SESSION['user_theme'] = $theme;
             $response = ['success' => true, 'message' => 'Tema actualizado.'];
         } else throw new Exception("Error actualizando tema.");
-
     } elseif ($action === 'update_boolean_preference') {
         if (checkActionRateLimit($pdo, $userId, 'pref_update_limit', 10, 1)) throw new Exception("Espera un momento.");
         logSecurityAction($pdo, $userId, 'pref_update_limit');
@@ -286,7 +293,7 @@ try {
         $field = $data['field'] ?? '';
         $value = isset($data['value']) && $data['value'] ? 1 : 0;
 
-        $allowedFields = ['open_links_in_new_tab', 'extended_message_time']; 
+        $allowedFields = ['open_links_in_new_tab', 'extended_message_time'];
 
         if (!in_array($field, $allowedFields)) {
             throw new Exception("Campo de preferencia no válido.");
@@ -294,21 +301,19 @@ try {
 
         $sql = "INSERT INTO user_preferences (user_id, $field) VALUES (?, ?) 
                 ON DUPLICATE KEY UPDATE $field = VALUES($field)";
-        
+
         if ($pdo->prepare($sql)->execute([$userId, $value])) {
             if ($field === 'extended_message_time') $_SESSION['user_extended_msg'] = $value;
             if ($field === 'open_links_in_new_tab') $_SESSION['user_new_tab'] = $value;
-            
+
             $response = ['success' => true, 'message' => 'Preferencia actualizada.'];
         } else {
             throw new Exception("Error actualizando preferencia.");
         }
     }
-
 } catch (Exception $e) {
     $response['message'] = $e->getMessage();
 }
 
 echo json_encode($response);
 exit;
-?>

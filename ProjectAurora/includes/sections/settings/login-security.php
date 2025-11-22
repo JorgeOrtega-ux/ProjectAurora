@@ -2,10 +2,25 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 $userId = $_SESSION['user_id'];
+
+// 1. Obtener fecha de creación de la cuenta (para borrar cuenta)
 $stmt = $pdo->prepare("SELECT created_at FROM users WHERE id = ?");
 $stmt->execute([$userId]);
 $createdAt = $stmt->fetchColumn();
 $dateStr = $createdAt ? date("d/m/Y", strtotime($createdAt)) : date("d/m/Y");
+
+// 2. [NUEVO] Obtener última fecha de cambio de contraseña
+$stmtPass = $pdo->prepare("SELECT changed_at FROM user_audit_logs WHERE user_id = ? AND change_type = 'password' ORDER BY changed_at DESC LIMIT 1");
+$stmtPass->execute([$userId]);
+$lastPassChange = $stmtPass->fetchColumn();
+
+// Lógica de visualización
+$passwordDesc = trans('settings.security.password_desc'); // Por defecto: "Nunca has actualizado..."
+if ($lastPassChange) {
+    // Formato amigable: 21/11/2025 a las 14:30
+    $ts = strtotime($lastPassChange);
+    $passwordDesc = "Última actualización: " . date("d/m/Y \a \l\a\s H:i", $ts);
+}
 ?>
 
 <div class="section-content active" data-section="settings/login-security">
@@ -23,7 +38,11 @@ $dateStr = $createdAt ? date("d/m/Y", strtotime($createdAt)) : date("d/m/Y");
                 </div>
                 <div class="component-card__text">
                     <h2 class="component-card__title" data-i18n="settings.security.password_title"><?php echo trans('settings.security.password_title'); ?></h2>
-                    <p class="component-card__description" data-i18n="settings.security.password_desc"><?php echo trans('settings.security.password_desc'); ?></p>
+                    
+                    <p class="component-card__description">
+                        <?php echo htmlspecialchars($passwordDesc); ?>
+                    </p>
+                    
                 </div>
             </div>
             <div class="component-card__actions actions-right">
