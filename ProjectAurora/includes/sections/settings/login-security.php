@@ -3,21 +3,17 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
 $userId = $_SESSION['user_id'];
 
-// 1. Obtener fecha de creación de la cuenta (para borrar cuenta)
 $stmt = $pdo->prepare("SELECT created_at FROM users WHERE id = ?");
 $stmt->execute([$userId]);
 $createdAt = $stmt->fetchColumn();
 $dateStr = $createdAt ? date("d/m/Y", strtotime($createdAt)) : date("d/m/Y");
 
-// 2. [NUEVO] Obtener última fecha de cambio de contraseña
 $stmtPass = $pdo->prepare("SELECT changed_at FROM user_audit_logs WHERE user_id = ? AND change_type = 'password' ORDER BY changed_at DESC LIMIT 1");
 $stmtPass->execute([$userId]);
 $lastPassChange = $stmtPass->fetchColumn();
 
-// Lógica de visualización
-$passwordDesc = trans('settings.security.password_desc'); // Por defecto: "Nunca has actualizado..."
+$passwordDesc = trans('settings.security.password_desc');
 if ($lastPassChange) {
-    // Formato amigable: 21/11/2025 a las 14:30
     $ts = strtotime($lastPassChange);
     $passwordDesc = "Última actualización: " . date("d/m/Y \a \l\a\s H:i", $ts);
 }
@@ -31,59 +27,65 @@ if ($lastPassChange) {
             <p class="component-page-description" data-i18n="settings.security.description"><?php echo trans('settings.security.description'); ?></p>
         </div>
 
-        <div class="component-card component-card--edit-mode" data-component="password-section">
-            <div class="component-card__content">
-                <div class="component-icon-container">
-                    <span class="material-symbols-rounded">lock</span>
+        <div class="component-card component-card--grouped">
+            
+            <div class="component-group-item" data-component="password-section">
+                <div class="component-card__content">
+                    <div class="component-icon-container">
+                        <span class="material-symbols-rounded">lock</span>
+                    </div>
+                    <div class="component-card__text">
+                        <h2 class="component-card__title" data-i18n="settings.security.password_title"><?php echo trans('settings.security.password_title'); ?></h2>
+                        <p class="component-card__description">
+                            <?php echo htmlspecialchars($passwordDesc); ?>
+                        </p>
+                    </div>
                 </div>
-                <div class="component-card__text">
-                    <h2 class="component-card__title" data-i18n="settings.security.password_title"><?php echo trans('settings.security.password_title'); ?></h2>
-                    
-                    <p class="component-card__description">
-                        <?php echo htmlspecialchars($passwordDesc); ?>
-                    </p>
-                    
+                <div class="component-card__actions actions-right">
+                    <button type="button" class="component-button" onclick="navigateTo('settings/change-password')" data-i18n="settings.security.password_btn">
+                        <?php echo trans('settings.security.password_btn'); ?>
+                    </button>
                 </div>
             </div>
-            <div class="component-card__actions actions-right">
-                <button type="button" class="component-button" onclick="navigateTo('settings/change-password')" data-i18n="settings.security.password_btn">
-                    <?php echo trans('settings.security.password_btn'); ?>
-                </button>
-            </div>
-        </div>
 
-        <div class="component-card component-card--edit-mode" data-component="2fa-section">
-            <div class="component-card__content">
-                <div class="component-icon-container">
-                    <span class="material-symbols-rounded">shield_lock</span>
-                </div>
-                <div class="component-card__text">
-                    <h2 class="component-card__title" data-i18n="settings.security.2fa_title"><?php echo trans('settings.security.2fa_title'); ?></h2>
-                    <p class="component-card__description" data-i18n="settings.security.2fa_desc"><?php echo trans('settings.security.2fa_desc'); ?></p>
-                </div>
-            </div>
-            <div class="component-card__actions actions-right">
-                <button type="button" class="component-button" data-action="trigger-2fa-toggle" data-i18n="settings.security.2fa_btn">
-                    <?php echo trans('settings.security.2fa_btn'); ?>
-                </button>
-            </div>
-        </div>
+            <hr class="component-divider">
 
-        <div class="component-card" data-component="sessions-section">
-            <div class="component-card__content">
-                <div class="component-icon-container">
-                    <span class="material-symbols-rounded">devices</span>
+            <div class="component-group-item" data-component="2fa-section">
+                <div class="component-card__content">
+                    <div class="component-icon-container">
+                        <span class="material-symbols-rounded">shield_lock</span>
+                    </div>
+                    <div class="component-card__text">
+                        <h2 class="component-card__title" data-i18n="settings.security.2fa_title"><?php echo trans('settings.security.2fa_title'); ?></h2>
+                        <p class="component-card__description" data-i18n="settings.security.2fa_desc"><?php echo trans('settings.security.2fa_desc'); ?></p>
+                    </div>
                 </div>
-                <div class="component-card__text">
-                    <h2 class="component-card__title" data-i18n="settings.security.sessions_title"><?php echo trans('settings.security.sessions_title'); ?></h2>
-                    <p class="component-card__description" data-i18n="settings.security.sessions_desc"><?php echo trans('settings.security.sessions_desc'); ?></p>
+                <div class="component-card__actions actions-right">
+                    <button type="button" class="component-button" data-action="trigger-2fa-toggle" data-i18n="settings.security.2fa_btn">
+                        <?php echo trans('settings.security.2fa_btn'); ?>
+                    </button>
                 </div>
             </div>
-            <div class="component-card__actions actions-right">
-                <button type="button" class="component-button" data-action="trigger-sessions-manage" data-i18n="settings.security.sessions_btn">
-                    <?php echo trans('settings.security.sessions_btn'); ?>
-                </button>
+
+            <hr class="component-divider">
+
+            <div class="component-group-item component-group-item--stacked-right" data-component="sessions-section">
+                <div class="component-card__content">
+                    <div class="component-icon-container">
+                        <span class="material-symbols-rounded">devices</span>
+                    </div>
+                    <div class="component-card__text">
+                        <h2 class="component-card__title" data-i18n="settings.security.sessions_title"><?php echo trans('settings.security.sessions_title'); ?></h2>
+                        <p class="component-card__description" data-i18n="settings.security.sessions_desc"><?php echo trans('settings.security.sessions_desc'); ?></p>
+                    </div>
+                </div>
+                <div class="component-card__actions actions-right">
+                    <button type="button" class="component-button" data-action="trigger-sessions-manage" data-i18n="settings.security.sessions_btn">
+                        <?php echo trans('settings.security.sessions_btn'); ?>
+                    </button>
+                </div>
             </div>
+
         </div>
 
         <div class="component-card component-card--danger" data-component="delete-account-section">

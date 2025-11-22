@@ -9,33 +9,34 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             <p class="component-page-description" data-i18n="settings.change_password.description"><?php echo trans('settings.change_password.description'); ?></p>
         </div>
 
-        <div class="component-card active component-card--column gap-8" data-step="password-step-1">
-            
-            <div class="component-card__header-row">
-                <div class="component-icon-container">
-                    <span class="material-symbols-rounded">lock</span>
+        <div class="component-card component-card--grouped active" data-step="password-step-1">
+            <div class="component-group-item component-group-item--stacked-right">
+                <div class="component-card__content">
+                    <div class="component-icon-container">
+                        <span class="material-symbols-rounded">lock</span>
+                    </div>
+                    <div class="component-card__text">
+                        <h2 class="component-card__title" data-i18n="settings.change_password.current_label"><?php echo trans('settings.change_password.current_label'); ?></h2>
+                        <p class="component-card__description" data-i18n="settings.change_password.current_desc"><?php echo trans('settings.change_password.current_desc'); ?></p>
+                    </div>
                 </div>
-                <div class="component-card__text">
-                    <h2 class="component-card__title" data-i18n="settings.change_password.current_label"><?php echo trans('settings.change_password.current_label'); ?></h2>
-                    <p class="component-card__description" data-i18n="settings.change_password.current_desc"><?php echo trans('settings.change_password.current_desc'); ?></p>
+                
+                <div class="component-input-wrapper" style="width: 100%;">
+                    <input type="password" class="component-text-input full-width" data-element="current-password" placeholder="********">
                 </div>
-            </div>
 
-            <div class="component-input-wrapper">
-                <input type="password" class="component-text-input full-width" data-element="current-password" placeholder="********">
-            </div>
-
-            <div class="component-card__actions actions-right">
-                <button type="button" class="component-button primary" data-action="verify-current-password" data-i18n="settings.change_password.next_btn">
-                    <?php echo trans('settings.change_password.next_btn'); ?>
-                </button>
+                <div class="component-card__actions">
+                    <button type="button" class="component-button primary" data-action="verify-current-password" data-i18n="settings.change_password.next_btn">
+                        <?php echo trans('settings.change_password.next_btn'); ?>
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div class="component-card disabled component-card--column" data-step="password-step-2">
+        <div class="component-card component-card--grouped disabled" data-step="password-step-2">
             
-            <div class="component-column-item">
-                <div class="component-card__header-row">
+            <div class="component-group-item component-group-item--stacked">
+                <div class="component-card__content">
                     <div class="component-icon-container">
                         <span class="material-symbols-rounded">vpn_key</span>
                     </div>
@@ -44,15 +45,15 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         <p class="component-card__description" data-i18n="settings.change_password.new_desc"><?php echo trans('settings.change_password.new_desc'); ?></p>
                     </div>
                 </div>
-                <div class="component-input-wrapper">
+                <div class="component-input-wrapper" style="width: 100%;">
                     <input type="password" class="component-text-input full-width" data-element="new-password" placeholder="********">
                 </div>
             </div>
 
-            <hr class="component-separator">
+            <hr class="component-divider">
 
-            <div class="component-column-item">
-                <div class="component-card__header-row">
+            <div class="component-group-item component-group-item--stacked">
+                <div class="component-card__content">
                     <div class="component-icon-container">
                         <span class="material-symbols-rounded">check_circle</span>
                     </div>
@@ -61,34 +62,41 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         <p class="component-card__description" data-i18n="settings.change_password.confirm_desc"><?php echo trans('settings.change_password.confirm_desc'); ?></p>
                     </div>
                 </div>
-                <div class="component-input-wrapper">
+                <div class="component-input-wrapper" style="width: 100%;">
                     <input type="password" class="component-text-input full-width" data-element="confirm-password" placeholder="********">
                 </div>
             </div>
-        </div>
 
-        <div class="component-card component-card--edit-mode disabled" data-step="password-step-2-sessions">
-            <div class="component-card__content">
-                <div class="component-icon-container">
-                    <span class="material-symbols-rounded">devices_other</span>
+            <hr class="component-divider">
+
+            <div class="component-group-item disabled" data-step="password-step-2-sessions">
+                <div class="component-card__content">
+                    <div class="component-icon-container">
+                        <span class="material-symbols-rounded">devices_other</span>
+                    </div>
+                    <div class="component-card__text">
+                        <h2 class="component-card__title" data-i18n="settings.change_password.sessions_check_title"><?php echo trans('settings.change_password.sessions_check_title'); ?></h2>
+                        <p class="component-card__description" data-i18n="settings.change_password.sessions_check_desc"><?php echo trans('settings.change_password.sessions_check_desc'); ?></p>
+                    </div>
                 </div>
-                <div class="component-card__text">
-                    <h2 class="component-card__title" data-i18n="settings.change_password.sessions_check_title"><?php echo trans('settings.change_password.sessions_check_title'); ?></h2>
-                    <p class="component-card__description" data-i18n="settings.change_password.sessions_check_desc"><?php echo trans('settings.change_password.sessions_check_desc'); ?></p>
+                <div class="component-card__actions actions-right">
+                    <label class="component-toggle-switch">
+                        <input type="checkbox" data-element="logout-others-check">
+                        <span class="component-toggle-slider"></span>
+                    </label>
                 </div>
             </div>
-            <div class="component-card__actions actions-right">
-                <label class="component-toggle-switch">
-                    <input type="checkbox" data-element="logout-others-check">
-                    <span class="component-toggle-slider"></span>
-                </label>
-            </div>
-        </div>
 
-        <div class="component-card__actions actions-right disabled" data-step="password-step-2-actions">
-            <button type="button" class="component-button primary" data-action="save-new-password" data-i18n="global.save">
-                <?php echo trans('global.save'); ?>
-            </button>
+            <hr class="component-divider">
+
+            <div class="component-group-item disabled" data-step="password-step-2-actions" style="justify-content: flex-end;">
+                <div class="component-card__actions actions-right" style="width: 100%;">
+                    <button type="button" class="component-button primary" data-action="save-new-password" data-i18n="global.save">
+                        <?php echo trans('global.save'); ?>
+                    </button>
+                </div>
+            </div>
+
         </div>
 
     </div>
