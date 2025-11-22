@@ -45,28 +45,48 @@ export function initSettingsManager() {
     }
 }
 
-function updateCardError(cardElement, message = '', show = true) {
-    if (!cardElement) return;
-    let nextElement = cardElement.nextElementSibling;
+/**
+ * [CORREGIDO] Muestra/Oculta errores.
+ * Busca la tarjeta principal (.component-card) para renderizar el error FUERA de ella,
+ * evitando que quede atrapado dentro de un .component-card--grouped.
+ */
+function updateCardError(element, message = '', show = true) {
+    if (!element) return;
+    
+    // Buscamos el contenedor padre 'component-card'. 
+    // Si el elemento pasado YA es la tarjeta (como en change-password), se usa a sí mismo.
+    const cardContainer = element.closest('.component-card') || element;
+
+    let nextElement = cardContainer.nextElementSibling;
     let errorDiv = null;
+
+    // Verificar si ya existe un div de error después de la tarjeta
     if (nextElement && nextElement.classList.contains('component-card__error')) {
         errorDiv = nextElement;
     }
+
+    // Crear div si no existe y debemos mostrar error
     if (!errorDiv && show) {
         errorDiv = document.createElement('div');
         errorDiv.className = 'component-card__error';
-        cardElement.after(errorDiv);
+        cardContainer.after(errorDiv); // Se inserta DESPUÉS de la tarjeta principal
     }
+
     if (show && errorDiv) {
         errorDiv.textContent = message;
+        // Pequeño delay para permitir transición CSS si aplica
         requestAnimationFrame(() => errorDiv.classList.add('active'));
     } else if (!show && errorDiv) {
-        errorDiv.remove();
+        errorDiv.classList.remove('active');
+        // Esperar a que termine transición (opcional) o remover directo
+        setTimeout(() => {
+            if (errorDiv.parentNode) errorDiv.parentNode.removeChild(errorDiv);
+        }, 200); 
     }
 }
 
 // ========================================================
-// LÓGICA CAMBIO DE CONTRASEÑA (CORREGIDA)
+// LÓGICA CAMBIO DE CONTRASEÑA
 // ========================================================
 function initChangePasswordLogic() {
     const step1Card = qs('[data-step="password-step-1"]');
@@ -106,9 +126,6 @@ function initChangePasswordLogic() {
             if (data.success) {
                 // Transición UI: Ocultar input actual, mostrar nuevos inputs
                 currentPassInput.disabled = true; // Bloquear input
-                
-                // --- CORRECCIÓN AQUÍ ---
-                // Ocultamos el botón directamente para evitar errores con el nuevo diseño
                 verifyBtn.style.display = 'none'; 
                 
                 // Mostrar Paso 2
@@ -304,8 +321,9 @@ function initPreferencesLogic() {
 // LÓGICA DE AVATAR (Local)
 // ========================================================
 function initAvatarLogic() {
-    const card = qs('[data-component="avatar-section"]');
-    if (!card) return;
+    // Buscamos el elemento local, pero updateCardError usará su closest('.component-card')
+    const cardItem = qs('[data-component="avatar-section"]');
+    if (!cardItem) return;
 
     const elements = {
         fileInput: qs('[data-element="avatar-upload-input"]'),
@@ -327,7 +345,7 @@ function initAvatarLogic() {
     
     const triggerUpload = (e) => { 
         if(e) e.preventDefault(); 
-        updateCardError(card, '', false);
+        updateCardError(cardItem, '', false);
         elements.fileInput.click(); 
     };
 
@@ -340,14 +358,14 @@ function initAvatarLogic() {
         if (!file) return;
         
         if (file.size > 2097152) {
-            updateCardError(card, 'El archivo es demasiado grande (Máx. 2MB).');
+            updateCardError(cardItem, 'El archivo es demasiado grande (Máx. 2MB).');
             this.value = ''; return;
         }
         if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
-            updateCardError(card, 'Formato no válido. Usa JPG, PNG o WEBP.');
+            updateCardError(cardItem, 'Formato no válido. Usa JPG, PNG o WEBP.');
             this.value = ''; return;
         }
-        updateCardError(card, '', false);
+        updateCardError(cardItem, '', false);
         const reader = new FileReader();
         reader.onload = function(evt) {
             elements.previewImg.src = evt.target.result;
@@ -358,7 +376,7 @@ function initAvatarLogic() {
     };
 
     elements.cancelBtn.onclick = () => {
-        updateCardError(card, '', false);
+        updateCardError(cardItem, '', false);
         elements.previewImg.src = originalImageSrc;
         elements.fileInput.value = '';
         const isDefault = originalImageSrc.includes('data:image') || originalImageSrc === '' || originalImageSrc.endsWith('/') || originalImageSrc.includes('/default/') || originalImageSrc.includes('avatars_default') || originalImageSrc.includes('ui-avatars.com');       
@@ -369,7 +387,7 @@ function initAvatarLogic() {
         const file = elements.fileInput.files[0];
         if (!file) return;
         setLoading(elements.saveBtn, true);
-        updateCardError(card, '', false);
+        updateCardError(cardItem, '', false);
         const formData = new FormData();
         formData.append('action', 'update_avatar');
         formData.append('avatar', file);
@@ -385,16 +403,16 @@ function initAvatarLogic() {
                 updateHeaderAvatar(newSrc);
                 toggleAvatarActions('custom');
             } else {
-                updateCardError(card, data.message);
+                updateCardError(cardItem, data.message);
             }
-        } catch (e) { updateCardError(card, 'Error de conexión.'); }
+        } catch (e) { updateCardError(cardItem, 'Error de conexión.'); }
         setLoading(elements.saveBtn, false, 'Guardar');
     };
 
     elements.removeBtn.onclick = async () => {
         if (!confirm('¿Restablecer avatar por defecto?')) return;
         setLoading(elements.removeBtn, true);
-        updateCardError(card, '', false);
+        updateCardError(cardItem, '', false);
         try {
             const formData = new FormData();
             formData.append('action', 'remove_avatar');
@@ -409,9 +427,9 @@ function initAvatarLogic() {
                 updateHeaderAvatar(newSrc);
                 toggleAvatarActions('default'); 
             } else {
-                updateCardError(card, data.message);
+                updateCardError(cardItem, data.message);
             }
-        } catch (e) { updateCardError(card, 'Error de conexión.'); }
+        } catch (e) { updateCardError(cardItem, 'Error de conexión.'); }
         setLoading(elements.removeBtn, false, 'Eliminar');
     };
 
@@ -423,8 +441,8 @@ function initAvatarLogic() {
 }
 
 function initUsernameLogic() {
-    const card = qs('[data-component="username-section"]');
-    if (!card) return;
+    const itemSection = qs('[data-component="username-section"]');
+    if (!itemSection) return;
     const els = {
         viewState: qs('[data-state="username-view-state"]'),
         editState: qs('[data-state="username-edit-state"]'),
@@ -441,20 +459,20 @@ function initUsernameLogic() {
 
     els.editBtn.onclick = () => {
         toggleMode(els, true);
-        updateCardError(card, '', false);
+        updateCardError(itemSection, '', false);
         els.input.value = ''; els.input.value = originalUsername; els.input.focus();
     };
     els.cancelBtn.onclick = () => {
         els.input.value = originalUsername;
-        updateCardError(card, '', false);
+        updateCardError(itemSection, '', false);
         toggleMode(els, false);
     };
     els.saveBtn.onclick = async () => {
         const newVal = els.input.value.trim();
-        updateCardError(card, '', false);
+        updateCardError(itemSection, '', false);
         if (newVal === originalUsername) { toggleMode(els, false); return; }
         if (newVal.length < 8 || newVal.length > 32) {
-            updateCardError(card, 'El nombre de usuario debe tener entre 8 y 32 caracteres.'); return;
+            updateCardError(itemSection, 'El nombre de usuario debe tener entre 8 y 32 caracteres.'); return;
         }
         setLoading(els.saveBtn, true);
         try {
@@ -470,15 +488,15 @@ function initUsernameLogic() {
                 els.display.textContent = data.new_username;
                 els.input.value = data.new_username;
                 toggleMode(els, false);
-            } else { updateCardError(card, data.message || 'Error al actualizar.'); }
-        } catch (error) { updateCardError(card, 'Error de conexión con el servidor.'); }
+            } else { updateCardError(itemSection, data.message || 'Error al actualizar.'); }
+        } catch (error) { updateCardError(itemSection, 'Error de conexión con el servidor.'); }
         setLoading(els.saveBtn, false, 'Guardar');
     };
 }
 
 function initEmailLogic() {
-    const card = qs('[data-component="email-section"]');
-    if (!card) return;
+    const itemSection = qs('[data-component="email-section"]');
+    if (!itemSection) return;
     const els = {
         viewState: qs('[data-state="email-view-state"]'),
         editState: qs('[data-state="email-edit-state"]'),
@@ -495,20 +513,20 @@ function initEmailLogic() {
 
     els.editBtn.onclick = () => {
         toggleMode(els, true);
-        updateCardError(card, '', false);
+        updateCardError(itemSection, '', false);
         els.input.value = ''; els.input.value = originalEmail; els.input.focus();
     };
     els.cancelBtn.onclick = () => {
         els.input.value = originalEmail;
-        updateCardError(card, '', false);
+        updateCardError(itemSection, '', false);
         toggleMode(els, false);
     };
     els.saveBtn.onclick = async () => {
         const newVal = els.input.value.trim().toLowerCase();
-        updateCardError(card, '', false);
+        updateCardError(itemSection, '', false);
         if (newVal === originalEmail) { toggleMode(els, false); return; }
         const regex = /^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i;
-        if (!regex.test(newVal)) { updateCardError(card, 'Dominio no permitido.'); return; }
+        if (!regex.test(newVal)) { updateCardError(itemSection, 'Dominio no permitido.'); return; }
         setLoading(els.saveBtn, true);
         try {
             const res = await fetch(API_SETTINGS, {
@@ -523,8 +541,8 @@ function initEmailLogic() {
                 els.display.textContent = data.new_email;
                 els.input.value = data.new_email;
                 toggleMode(els, false);
-            } else { updateCardError(card, data.message || 'Error al actualizar.'); }
-        } catch (error) { updateCardError(card, 'Error de conexión con el servidor.'); }
+            } else { updateCardError(itemSection, data.message || 'Error al actualizar.'); }
+        } catch (error) { updateCardError(itemSection, 'Error de conexión con el servidor.'); }
         setLoading(els.saveBtn, false, 'Guardar');
     };
 }

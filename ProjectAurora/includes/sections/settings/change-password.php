@@ -22,7 +22,11 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 </div>
                 
                 <div class="component-input-wrapper w-100">
-                    <input type="password" class="component-text-input full-width" data-element="current-password" placeholder="********">
+                    <input type="password" 
+                           class="component-text-input full-width" 
+                           data-element="current-password" 
+                           data-i18n-placeholder="settings.change_password.current_label"
+                           placeholder="<?php echo trans('settings.change_password.current_label'); ?>">
                 </div>
 
                 <div class="component-card__actions">
@@ -46,7 +50,11 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     </div>
                 </div>
                 <div class="component-input-wrapper w-100">
-                    <input type="password" class="component-text-input full-width" data-element="new-password" placeholder="********">
+                    <input type="password" 
+                           class="component-text-input full-width" 
+                           data-element="new-password" 
+                           data-i18n-placeholder="settings.change_password.new_label"
+                           placeholder="<?php echo trans('settings.change_password.new_label'); ?>">
                 </div>
             </div>
 
@@ -63,7 +71,11 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     </div>
                 </div>
                 <div class="component-input-wrapper w-100">
-                    <input type="password" class="component-text-input full-width" data-element="confirm-password" placeholder="********">
+                    <input type="password" 
+                           class="component-text-input full-width" 
+                           data-element="confirm-password" 
+                           data-i18n-placeholder="settings.change_password.confirm_label"
+                           placeholder="<?php echo trans('settings.change_password.confirm_label'); ?>">
                 </div>
             </div>
 

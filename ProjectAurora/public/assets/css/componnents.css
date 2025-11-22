@@ -75,7 +75,7 @@
 /* Contenido Principal */
 .component-card__content {
     flex: 1 1 auto;
-    min-width: 0; 
+    min-width: 0;
     display: flex;
     align-items: center;
     gap: 20px;
@@ -107,7 +107,7 @@
 }
 
 /* Margen solo para metas que están debajo de inputs de edición */
-.input-with-actions + .component-card__meta {
+.input-with-actions+.component-card__meta {
     margin-top: 6px;
 }
 
@@ -155,10 +155,10 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-top: 8px; 
+    margin-top: 8px;
     width: auto;
     justify-content: flex-start;
-    flex-shrink: 0; 
+    flex-shrink: 0;
 }
 
 /* Estilos base (Desktop) */
@@ -169,7 +169,7 @@
 
 .component-card__actions.actions-right {
     justify-content: flex-end;
-    width: 100%; 
+    width: 100%;
 }
 
 /* Estilos base (Desktop) para acciones a la derecha en modo edición */
@@ -256,7 +256,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: visible; 
+    overflow: visible;
     flex-shrink: 0;
 }
 
@@ -273,9 +273,18 @@
     z-index: 2;
 }
 
-.component-card__avatar[data-role="user"]::before { border-color: #cccccc; }
-.component-card__avatar[data-role="moderator"]::before { border-color: #0000FF; }
-.component-card__avatar[data-role="administrator"]::before { border-color: #FF0000; }
+.component-card__avatar[data-role="user"]::before {
+    border-color: #cccccc;
+}
+
+.component-card__avatar[data-role="moderator"]::before {
+    border-color: #0000FF;
+}
+
+.component-card__avatar[data-role="administrator"]::before {
+    border-color: #FF0000;
+}
+
 .component-card__avatar[data-role="founder"]::before {
     border: none;
     background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
@@ -287,12 +296,12 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: 50%; 
+    border-radius: 50%;
 }
 
 .component-card__avatar-overlay {
     position: absolute;
-    inset: 0; 
+    inset: 0;
     background-color: rgba(0, 0, 0, 0.4);
     display: flex;
     align-items: center;
@@ -302,7 +311,7 @@
     transition: opacity 0.2s;
     cursor: pointer;
     z-index: 3;
-    border-radius: 50%; 
+    border-radius: 50%;
 }
 
 .component-card__avatar:hover .component-card__avatar-overlay {
@@ -312,11 +321,13 @@
 /* =========================================
    UTILITARIOS Y ESTADOS
    ========================================= */
-.active { display: flex; }
+.active {
+    display: flex;
+}
 
 [data-state="username-edit-state"].active,
 [data-state="email-edit-state"].active {
-    display: flex; 
+    display: flex;
     flex-direction: column;
     align-items: flex-start;
     width: 100%;
@@ -328,25 +339,115 @@
     align-items: center;
 }
 
-.disabled { display: none; }
+.disabled {
+    display: none;
+}
 
-.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
 
 /* Selects */
-.trigger-select-wrapper { position: relative; width: 265px; height: 40px; }
-.trigger-selector { display: flex; align-items: center; width: 100%; height: 100%; border: 1px solid #00000020; border-radius: 8px; background-color: #ffffff; cursor: pointer; transition: background-color 0.2s; padding: 0 8px 0 12px; user-select: none; }
-.trigger-select-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 12px; }
-.trigger-select-text { flex-grow: 1; font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.trigger-select-arrow { display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-left: 8px; }
-.trigger-selector:hover { background-color: #f5f5fa; }
+.trigger-select-wrapper {
+    position: relative;
+    width: 265px;
+    height: 40px;
+}
+
+.trigger-selector {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    border: 1px solid #00000020;
+    border-radius: 8px;
+    background-color: #ffffff;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    padding: 0 8px 0 12px;
+    user-select: none;
+}
+
+.trigger-select-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-right: 12px;
+}
+
+.trigger-select-text {
+    flex-grow: 1;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.trigger-select-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+
+.trigger-selector:hover {
+    background-color: #f5f5fa;
+}
 
 /* Toggles */
-.component-toggle-switch { position: relative; display: inline-block; width: 40px; height: 24px; }
-.component-toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
-.component-toggle-switch input:checked+.component-toggle-slider { background-color: #000; }
-.component-toggle-switch .component-toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 34px; }
-.component-toggle-switch input:checked+.component-toggle-slider:before { transform: translateX(16px); }
-.component-toggle-switch .component-toggle-slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 2px; bottom: 2px; background-color: white; transition: .3s; border-radius: 50%; }
+.component-toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 24px;
+}
+
+.component-toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.component-toggle-switch input:checked+.component-toggle-slider {
+    background-color: #000;
+}
+
+.component-toggle-switch .component-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .3s;
+    border-radius: 34px;
+}
+
+.component-toggle-switch input:checked+.component-toggle-slider:before {
+    transform: translateX(16px);
+}
+
+.component-toggle-switch .component-toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
 
 /* Error */
 .component-card__error {
@@ -354,13 +455,14 @@
     padding: 12px 16px;
     background-color: #ffebee;
     color: #d32f2f;
-    border-radius: 12px; 
+    border-radius: 12px;
     font-size: 13px;
     font-weight: 500;
     border: 1px solid #ffcdd2;
     opacity: 0;
     transform: translateY(-5px);
 }
+
 .component-card__error.active {
     opacity: 1;
 }
@@ -372,14 +474,14 @@
 .component-card--column {
     display: flex;
     flex-direction: column;
-    gap: 24px; 
+    gap: 24px;
 }
 
 .component-card--column.gap-8 {
     gap: 8px;
 }
 
-.component-card--column.gap-8 > * {
+.component-card--column.gap-8>* {
     margin-top: 0;
     margin-bottom: 0;
 }
@@ -392,7 +494,6 @@
 
 .component-input-wrapper {
     width: 100%;
-    margin-top: 8px;
 }
 
 .component-text-input.full-width {
@@ -400,9 +501,9 @@
 }
 
 .component-column-item {
-    display: flex; 
+    display: flex;
     flex-direction: column;
-    gap: 8px; 
+    gap: 8px;
 }
 
 .component-separator {
@@ -420,7 +521,7 @@
 .component-card--grouped {
     display: flex;
     flex-direction: column;
-    padding: 0; 
+    padding: 0;
     gap: 0;
 }
 
@@ -432,12 +533,12 @@
 .component-group-item {
     display: flex;
     flex-direction: row;
-    align-items: center; 
+    align-items: center;
     justify-content: space-between;
-    flex-wrap: nowrap; 
-    padding: 24px; 
+    flex-wrap: nowrap;
+    padding: 24px;
     background-color: transparent;
-    gap: 24px; 
+    gap: 24px;
 }
 
 .component-group-item .component-card__actions {
@@ -449,7 +550,7 @@
 .component-group-item--stacked {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: 8px;
 }
 
 .component-group-item--stacked .component-card__content {
@@ -458,7 +559,7 @@
 
 .component-group-item--stacked .component-card__actions {
     width: 100%;
-    justify-content: flex-start; 
+    justify-content: flex-start;
     margin-top: 0;
 }
 
@@ -466,7 +567,7 @@
 .component-group-item--stacked-right {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: 8px;
 }
 
 .component-group-item--stacked-right .component-card__content {
@@ -475,7 +576,7 @@
 
 .component-group-item--stacked-right .component-card__actions {
     width: 100%;
-    justify-content: flex-end; 
+    justify-content: flex-end;
     margin-top: 0;
 }
 
@@ -496,34 +597,38 @@
         align-items: flex-start;
     }
 
-    .component-group-item { 
+    .component-group-item {
         flex-direction: column;
         align-items: flex-start;
         flex-wrap: wrap;
         gap: 0;
     }
-    
+
+    .component-input-wrapper {
+        margin-top: 8px;
+    }
+
     /* [CORRECCIÓN] Se aumenta la especificidad aquí agregando la clase del padre
        para sobrescribir la regla de desktop "width: auto" sin usar !important */
     .component-card__actions,
     .component-group-item .component-card__actions,
     .component-card--edit-mode .component-card__actions.actions-right {
         width: 100%;
-        margin-top: 8px; 
-        justify-content: flex-end; 
+        margin-top: 8px;
+        justify-content: flex-end;
     }
-    
+
     .component-group-item--stacked .component-card__actions {
         justify-content: flex-start;
     }
-    
+
     /* Especificidad aumentada para sobrescribir reglas anteriores */
     .component-card--column.gap-8 .component-card__actions {
         margin-top: 0;
     }
 
-    .component-button { 
-        width: 100%; 
+    .component-button {
+        width: 100%;
     }
 
     .component-card__actions [data-state] {
@@ -533,9 +638,15 @@
     .component-card__content {
         width: 100%;
     }
-    .input-with-actions { flex-wrap: wrap; }
-    .component-text-input { min-width: 100%; }
-    
+
+    .input-with-actions {
+        flex-wrap: wrap;
+    }
+
+    .component-text-input {
+        min-width: 100%;
+    }
+
     [data-state="username-actions-edit"].active,
     [data-state="email-actions-edit"].active {
         width: 100%;
