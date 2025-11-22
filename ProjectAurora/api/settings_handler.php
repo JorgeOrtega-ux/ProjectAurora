@@ -349,6 +349,29 @@ try {
             throw new Exception("Código incorrecto. Intenta sincronizar la hora de tu teléfono.");
         }
 
+    // [NUEVO] DESACTIVAR 2FA
+    } elseif ($action === 'disable_2fa') {
+        $password = $data['password'] ?? '';
+        if (empty($password)) throw new Exception("Ingresa tu contraseña para confirmar.");
+
+        // 1. Verificar contraseña
+        $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $hash = $stmt->fetchColumn();
+
+        if ($hash && password_verify($password, $hash)) {
+            // 2. Desactivar en BD
+            $stmtUpd = $pdo->prepare("UPDATE users SET is_2fa_enabled = 0, two_factor_secret = NULL, backup_codes = NULL WHERE id = ?");
+            if ($stmtUpd->execute([$userId])) {
+                audit_log($pdo, $userId, '2fa_disabled', 'enabled', 'disabled');
+                $response = ['success' => true, 'message' => 'La autenticación en dos pasos ha sido desactivada.'];
+            } else {
+                throw new Exception("Error al actualizar la base de datos.");
+            }
+        } else {
+            throw new Exception("Contraseña incorrecta.");
+        }
+
     // ======================================================
     // GESTIÓN DE SESIONES (DISPOSITIVOS)
     // ======================================================

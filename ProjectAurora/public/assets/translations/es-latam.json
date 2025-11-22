@@ -151,6 +151,24 @@
             "sessions_check_desc": "Se cerrará tu sesión en todos los navegadores excepto en este.",
             "success_msg": "Contraseña actualizada correctamente."
         },
+        "2fa": {
+            "status_active_title": "Estado: Activado",
+            "status_active_desc": "Tu cuenta está protegida. Se requiere un código de autenticación cada vez que inicias sesión.",
+            "disable_warning": "Si desactivas el 2FA, tu cuenta será más vulnerable. Necesitas confirmar tu contraseña.",
+            "disable_btn": "Desactivar 2FA",
+            "step1_title": "Confirma tu identidad",
+            "step2_title": "Configura tu aplicación",
+            "step2_desc": "Escanea este código con Google Authenticator, Authy o Microsoft Authenticator.",
+            "manual_entry": "¿No puedes escanearlo?",
+            "verify_code_title": "Verificar código",
+            "verify_code_desc": "Ingresa el código de 6 dígitos que aparece en tu aplicación.",
+            "activate_btn": "Activar 2FA",
+            "success_title": "¡Autenticación activada!",
+            "success_desc": "Tu cuenta ahora es mucho más segura.",
+            "backup_title": "Códigos de recuperación",
+            "backup_desc": "Si pierdes tu teléfono, estos códigos son la única forma de entrar. Guárdalos en un lugar seguro.",
+            "backup_saved_btn": "He guardado mis códigos"
+        },
         "sessions": {
             "title": "Dispositivos",
             "description": "Estos son los dispositivos que han iniciado sesión en tu cuenta.",

@@ -27,10 +27,15 @@ export function initTwoFactorManager() {
         manualText: qs('#manual-secret-text'),
         codeInput: qs('[data-element="2fa-verify-code"]'),
         confirmBtn: qs('[data-action="confirm-enable-2fa"]'),
-        backupList: qs('#backup-codes-list')
+        backupList: qs('#backup-codes-list'),
+        // Elementos para desactivación
+        disableBtn: qs('[data-action="disable-2fa-btn"]'),
+        disablePass: qs('[data-element="2fa-disable-password"]')
     };
 
-    // --- PASO 1: VERIFICAR CONTRASEÑA ---
+    // --- LÓGICA DE ACTIVACIÓN (Fases 1, 2, 3) ---
+
+    // 1. VERIFICAR CONTRASEÑA
     if (els.verifyBtn) {
         els.verifyBtn.onclick = async () => {
             const password = els.passInput.value;
@@ -39,7 +44,6 @@ export function initTwoFactorManager() {
             setLoading(els.verifyBtn, true);
 
             try {
-                // 1. Verificar contraseña
                 const res = await fetch(API_SETTINGS, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrf() },
@@ -48,7 +52,6 @@ export function initTwoFactorManager() {
                 const data = await res.json();
 
                 if (data.success) {
-                    // 2. Si es correcta, pedir el secreto para el QR
                     await generateSecret(els);
                 } else {
                     if(window.alertManager) window.alertManager.showAlert(data.message, 'error');
@@ -61,7 +64,7 @@ export function initTwoFactorManager() {
         };
     }
 
-    // --- PASO 2: CONFIRMAR CÓDIGO ---
+    // 2. CONFIRMAR CÓDIGO Y ACTIVAR
     if (els.confirmBtn) {
         els.confirmBtn.onclick = async () => {
             const code = els.codeInput.value.trim();
@@ -82,10 +85,8 @@ export function initTwoFactorManager() {
                 const data = await res.json();
 
                 if (data.success) {
-                    // Mostrar códigos de respaldo
                     renderBackupCodes(data.backup_codes, els.backupList);
                     
-                    // Cambiar a Fase 3
                     els.step2.classList.remove('active');
                     els.step2.classList.add('disabled');
                     els.step3.classList.remove('disabled');
@@ -98,6 +99,43 @@ export function initTwoFactorManager() {
                 }
             } catch (e) {
                 setLoading(els.confirmBtn, false, 'Activar 2FA');
+            }
+        };
+    }
+
+    // --- LÓGICA DE DESACTIVACIÓN ---
+    if (els.disableBtn) {
+        els.disableBtn.onclick = async () => {
+            const password = els.disablePass.value;
+            if (!password) return alert('Ingresa tu contraseña para confirmar');
+
+            if (!confirm('¿Estás seguro de desactivar la autenticación en dos pasos? Tu cuenta será menos segura.')) return;
+
+            setLoading(els.disableBtn, true);
+
+            try {
+                const res = await fetch(API_SETTINGS, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrf() },
+                    body: JSON.stringify({ 
+                        action: 'disable_2fa', 
+                        password: password
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    if(window.alertManager) window.alertManager.showAlert(data.message, 'info');
+                    setTimeout(() => {
+                        window.location.reload(); // Recargamos para que PHP muestre el flujo de activación de nuevo
+                    }, 1500);
+                } else {
+                    if(window.alertManager) window.alertManager.showAlert(data.message, 'error');
+                    setLoading(els.disableBtn, false, 'Desactivar 2FA');
+                }
+            } catch (e) {
+                console.error(e);
+                setLoading(els.disableBtn, false, 'Desactivar 2FA');
             }
         };
     }
@@ -116,9 +154,7 @@ async function generateSecret(els) {
             tempSecret = data.secret;
             els.manualText.textContent = data.secret;
 
-            // Generar QR
             els.qrContainer.innerHTML = '';
-            // Formato: otpauth://totp/ProjectAurora:Usuario?secret=SECRETO&issuer=ProjectAurora
             const uri = `otpauth://totp/ProjectAurora:${data.username}?secret=${data.secret}&issuer=ProjectAurora`;
             
             new QRCode(els.qrContainer, {
@@ -127,7 +163,6 @@ async function generateSecret(els) {
                 height: 180
             });
 
-            // Transición visual
             els.step1.classList.remove('active');
             els.step1.classList.add('disabled');
             els.step2.classList.remove('disabled');
@@ -149,7 +184,7 @@ function renderBackupCodes(codes, container) {
 
 function setLoading(btn, isLoading, originalText) {
     if (isLoading) {
-        btn.innerHTML = '<div class="small-spinner"></div>'; // Asegúrate de tener estilos para spinner
+        btn.innerHTML = '<div class="small-spinner"></div>'; 
         btn.disabled = true;
     } else {
         btn.innerHTML = originalText;
