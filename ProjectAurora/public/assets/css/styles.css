@@ -1302,7 +1302,6 @@ a.disabled-link {
     width: 100%;
     max-width: 500px;
     height: 55px;
-    margin-top: 40px;
     background-color: #ffffff;
     border-radius: 12px;
     border: 1px solid #e0e0e0;
@@ -1310,7 +1309,36 @@ a.disabled-link {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 16px;
+    margin-bottom: 0; 
+    transition: all 0.2s ease;
+}
+
+.toolbar-stack {
+    width: 100%;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0 auto 16px auto; 
+}
+
+.search-toolbar-panel {
+    background-color: #ffffff; 
+    z-index: 1;
+    height: auto;
+    min-height: 65px;
+    padding: 10px;
+    transform-origin: top;
+    animation: popInToolbar 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.search-toolbar-panel.disabled {
+    display: none;
+}
+
+@keyframes popInToolbar {
+    from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .toolbar-action-btn {
@@ -1334,8 +1362,149 @@ a.disabled-link {
     border-color: #00000040;
 }
 
+.toolbar-action-btn.active {
+    background-color: #000000;
+    color: #ffffff;
+    border-color: #000000;
+}
+
 .toolbar-action-btn .material-symbols-rounded {
     font-size: 22px;
+}
+
+/* [NUEVO] ESTILOS DE PAGINACIÓN (Toolbar) */
+.toolbar-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 40px;
+    border: 1px solid #00000020;
+    border-radius: 8px;
+    padding: 0 4px;
+    background-color: transparent;
+    min-width: 100px;
+}
+
+.pagination-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 6px;
+    color: #333;
+    transition: background 0.2s;
+}
+
+.pagination-btn:hover {
+    background-color: #f5f5fa;
+}
+
+.pagination-btn .material-symbols-rounded {
+    font-size: 20px;
+}
+
+.pagination-number {
+    font-size: 14px;
+    font-weight: 600;
+    padding: 0 8px;
+    user-select: none;
+}
+
+/* =========================================
+   14. TABLAS ADMINISTRATIVAS
+   ========================================= */
+.admin-table-container {
+    width: 100%;
+    background-color: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e0e0e0;
+    overflow: hidden;
+    overflow-x: auto;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.admin-table thead {
+    background-color: #f9f9f9;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.admin-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: #666;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.admin-table td {
+    padding: 12px 16px;
+    color: #333;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.admin-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.admin-table tbody tr:hover {
+    background-color: #f5f5fa;
+}
+
+/* Badges de Estado */
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.status-active {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #c8e6c9;
+}
+
+.status-suspended {
+    background-color: #ffebee;
+    color: #c62828;
+    border: 1px solid #ffcdd2;
+}
+
+.status-deleted {
+    background-color: #f5f5f5;
+    color: #616161;
+    border: 1px solid #e0e0e0;
+}
+
+.action-icon-btn {
+    background: transparent;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-icon-btn:hover {
+    background-color: #eee;
+    color: #333;
 }
 
 /* =========================================

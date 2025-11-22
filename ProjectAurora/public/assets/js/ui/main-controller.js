@@ -1,12 +1,7 @@
 // assets/js/main-controller.js
 
-// Variable de estado global para controlar animaciones
 let isAnimating = false;
-
-// [CONFIGURACIÓN] Define si el menú lateral (Surface) se cierra al hacer clic en un enlace
 let SHOULD_CLOSE_SURFACE_ON_CLICK = true; 
-
-// Lista de módulos que tienen animación especial en móvil
 const allowedMobileMods = ['moduleOptions', 'moduleNotifications'];
 
 export function initMainController() {
@@ -18,6 +13,17 @@ export function initMainController() {
         if (isAnimating) return;
 
         const target = e.target;
+
+        // --- LÓGICA CIERRE AL CLICAR FUERA (ADMIN SEARCH) ---
+        const adminSearch = document.getElementById('admin-users-search-bar');
+        const adminSearchTrigger = document.querySelector('[data-action="toggle-admin-user-search"]');
+        
+        if (adminSearch && !adminSearch.classList.contains('disabled')) {
+            if (!adminSearch.contains(target) && !adminSearchTrigger.contains(target)) {
+                adminSearch.classList.add('disabled');
+                if (adminSearchTrigger) adminSearchTrigger.classList.remove('active');
+            }
+        }
 
         // A) LÓGICA DE SELECCIÓN EN LISTA DE USUARIOS
         const userRow = target.closest('.list-item-row');
@@ -34,14 +40,14 @@ export function initMainController() {
             }
         }
 
-        // B) LÓGICA DE SELECCIÓN EN DROPDOWNS (Para Selects de Perfil y Accesibilidad)
+        // B) LÓGICA DE SELECCIÓN EN DROPDOWNS
         const dropdownOption = target.closest('.popover-module .menu-link[data-value]');
         if (dropdownOption) {
             handleDropdownSelection(dropdownOption);
             return;
         }
 
-        // C) LÓGICA PARA CERRAR SURFACE AL NAVEGAR (SOLO MÓVIL)
+        // C) LÓGICA PARA CERRAR SURFACE AL NAVEGAR
         const surfaceLink = target.closest('[data-module="moduleSurface"] .menu-link[data-nav]');
         if (surfaceLink) {
             const isSmallScreen = window.innerWidth <= 768;
@@ -56,17 +62,35 @@ export function initMainController() {
             const action = trigger.dataset.action;
             let targetModuleId = null;
 
-            // Mapeo de acciones a IDs de módulos
             if (action === 'toggleModuleSurface') targetModuleId = 'moduleSurface';
             if (action === 'toggleModuleOptions') targetModuleId = 'moduleOptions';
             if (action === 'toggleModuleNotifications') targetModuleId = 'moduleNotifications';
-            
-            // Triggers de configuración
             if (action === 'toggleModuleUsageSelect') targetModuleId = 'moduleUsageSelect';
             if (action === 'toggleModuleLanguageSelect') targetModuleId = 'moduleLanguageSelect';
-            
-            // [MODIFICADO] Nuevo trigger para el selector de Tema
             if (action === 'toggleModuleThemeSelect') targetModuleId = 'moduleThemeSelect';
+
+            if (action === 'toggle-admin-user-search') {
+                e.preventDefault();
+                const searchBar = document.getElementById('admin-users-search-bar');
+                if (searchBar) {
+                    if (searchBar.classList.contains('disabled')) {
+                        searchBar.classList.remove('disabled');
+                        trigger.classList.add('active');
+                        
+                        setTimeout(() => {
+                            const input = searchBar.querySelector('input');
+                            if (input) {
+                                input.focus();
+                                searchBar.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            }
+                        }, 50);
+                    } else {
+                        searchBar.classList.add('disabled');
+                        trigger.classList.remove('active');
+                    }
+                }
+                return;
+            }
 
             if (targetModuleId) {
                 e.preventDefault();
@@ -96,11 +120,17 @@ export function initMainController() {
     document.addEventListener('keydown', (e) => {
         if (allowCloseOnEsc && e.key === 'Escape') {
             closeAllModules();
+            const adminSearch = document.getElementById('admin-users-search-bar');
+            const adminBtn = document.querySelector('[data-action="toggle-admin-user-search"]');
+            if (adminSearch && !adminSearch.classList.contains('disabled')) {
+                adminSearch.classList.add('disabled');
+                if(adminBtn) adminBtn.classList.remove('active');
+            }
         }
     });
     
-    // --- 3. LÓGICA DEL BUSCADOR ---
-    const searchInput = document.querySelector('.search-input');
+    // --- 3. LÓGICA DEL BUSCADOR PRINCIPAL ---
+    const searchInput = document.querySelector('.header .search-input');
     if (searchInput) {
         searchInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
@@ -133,33 +163,26 @@ export function initMainController() {
     }
 }
 
-// Función para actualizar visualmente los selects personalizados
 function handleDropdownSelection(optionElement) {
     const module = optionElement.closest('.popover-module');
     if (!module) return;
 
-    // 1. Actualizar estado visual (active/check) en la lista
     const allLinks = module.querySelectorAll('.menu-link');
     allLinks.forEach(link => {
         link.classList.remove('active');
-        
         const icons = link.querySelectorAll('.menu-link-icon');
         if (icons.length > 1) {
-            const checkContainer = icons[icons.length - 1]; 
-            checkContainer.innerHTML = '';
+            icons[icons.length - 1].innerHTML = '';
         }
     });
 
     optionElement.classList.add('active');
     
-    // Añadir check al elemento activo
     const activeIcons = optionElement.querySelectorAll('.menu-link-icon');
     if (activeIcons.length > 1) {
-        const activeCheckContainer = activeIcons[activeIcons.length - 1];
-        activeCheckContainer.innerHTML = '<span class="material-symbols-rounded">check</span>';
+        activeIcons[activeIcons.length - 1].innerHTML = '<span class="material-symbols-rounded">check</span>';
     }
 
-    // 2. Actualizar el texto e icono del Trigger
     const wrapper = module.closest('.trigger-select-wrapper');
     if (wrapper) {
         const triggerText = wrapper.querySelector('.trigger-selector .trigger-select-text span');
@@ -172,7 +195,6 @@ function handleDropdownSelection(optionElement) {
         if (triggerIcon && selectedIcon) triggerIcon.textContent = selectedIcon;
     }
 
-    // 3. Cerrar menú
     closeAllModules();
 }
 
