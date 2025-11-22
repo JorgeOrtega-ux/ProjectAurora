@@ -2,7 +2,6 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 // 1. SEGURIDAD
-// 1. SEGURIDAD [CORREGIDO]
 $role = $_SESSION['user_role'] ?? 'user';
 if (!in_array($role, ['founder', 'administrator'])) {
     include __DIR__ . '/../system/404.php'; 
@@ -35,13 +34,11 @@ function getStatusClass($status) {
     };
 }
 
-// Función inicial para renderizado servidor (fallback si no hay JS o datos socket)
 function formatTimeAgo($datetime) {
     if (!$datetime) return 'Nunca';
     $time = strtotime($datetime);
     $diff = time() - $time;
     
-    // Lógica básica PHP para render inicial
     if ($diff < 60) return 'Hace un momento';
     if ($diff < 3600) return 'Hace ' . floor($diff / 60) . ' min';
     if ($diff < 86400) return 'Hace ' . floor($diff / 3600) . ' h';
@@ -57,12 +54,10 @@ function renderUserRows($users) {
             $statusClass = getStatusClass($u['account_status']);
             $is2FA = ((int)$u['is_2fa_enabled'] === 1);
             
-            // Obtenemos timestamp SQL
             $rawTime = $u['last_seen']; 
             $initialText = formatTimeAgo($rawTime);
             $userId = $u['id'];
             
-            // Preparamos el timestamp para JS (milisegundos)
             $jsTimestamp = $rawTime ? strtotime($rawTime) * 1000 : 0;
         ?>
         <tr class="admin-row-selectable" onclick="selectSingleRow(this, '<?php echo $userId; ?>')">
@@ -193,50 +188,12 @@ if (isset($_GET['ajax_partial']) && $_GET['ajax_partial'] === '1') {
     ]);
     exit;
 }
+
+$basePath = '/ProjectAurora/';
+if (isset($GLOBALS['basePath'])) $basePath = $GLOBALS['basePath'];
 ?>
 
-<style>
-    .admin-row-selectable {
-        cursor: pointer;
-        transition: background-color 0.15s ease;
-        border-left: 4px solid transparent;
-    }
-    .admin-row-selectable:hover {
-        background-color: #f5f5fa;
-    }
-    .admin-row-selectable.selected {
-        background-color: #f5f5fa;
-        border-left-color: #000000;
-    }
-    .admin-row-selectable.selected td {
-        color: #000; 
-    }
-    .table-loading {
-        opacity: 0.5;
-        pointer-events: none;
-        transition: opacity 0.2s;
-    }
-    
-    /* --- ESTILOS DEL INDICADOR DE ESTADO --- */
-    .status-indicator-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background-color: transparent; /* Offline por defecto */
-        transition: all 0.3s ease;
-        flex-shrink: 0;
-    }
-    
-    .status-indicator-dot.online {
-        background-color: #2e7d32; /* Verde Online */
-        box-shadow: 0 0 0 2px rgba(46, 125, 50, 0.15);
-        transform: scale(1.1);
-    }
-    
-    .status-indicator-dot.offline {
-        background-color: #f5f5fa;
-    }
-</style>
+<link rel="stylesheet" href="<?php echo $basePath; ?>assets/css/admin.css">
 
 <div class="section-content active" data-section="admin/users">
     <div class="section-center-wrapper" style="flex-direction: column; justify-content: flex-start; padding-top: 20px; width: 98%; max-width: none; margin: 0 auto;">
@@ -297,170 +254,4 @@ if (isset($_GET['ajax_partial']) && $_GET['ajax_partial'] === '1') {
     </div>
 </div>
 
-<script>
-    let selectedUserId = null;
-    let timeUpdateInterval = null;
-
-    // --- AUTO-INICIO AL CARGAR LA VISTA ---
-    (function() {
-        // Iniciamos la conexión en vivo y el cronómetro
-        initLivePresence();
-        startTimeUpdater();
-    })();
-
-    function initLivePresence() {
-        // 1. Obtenemos el servicio socket global
-        const socket = window.socketService ? window.socketService.socket : null;
-        
-        // Si está conectado, pedimos la lista inicial
-        if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({ type: 'get_online_users' }));
-        } else {
-            // Si no está listo, reintentamos en 1 segundo
-            setTimeout(initLivePresence, 1000);
-        }
-
-        // 2. Limpiamos listener previo para evitar duplicados si se recarga la tabla
-        document.removeEventListener('socket-message', handlePresenceEvents);
-        // 3. Añadimos el listener para recibir eventos
-        document.addEventListener('socket-message', handlePresenceEvents);
-    }
-
-    function handlePresenceEvents(e) {
-        const { type, payload } = e.detail;
-
-        // A. Lista inicial de usuarios online (respuesta a get_online_users)
-        if (type === 'online_users_list') {
-            const onlineIds = payload; // Array de IDs ["1", "5", "12"]
-            onlineIds.forEach(uid => updateOnlineStatus(uid, true));
-        }
-
-        // B. Cambio de estado individual (conexión/desconexión en tiempo real)
-        if (type === 'user_status_change') {
-            const { user_id, status, timestamp } = payload;
-            const isOnline = (status === 'online');
-            updateOnlineStatus(user_id, isOnline, timestamp);
-        }
-    }
-
-    function updateOnlineStatus(userId, isOnline, offlineTimestamp = null) {
-        const cell = document.getElementById(`presence-${userId}`);
-        if (!cell) return; // El usuario no está visible en esta página de la tabla
-
-        const dot = cell.querySelector('.status-indicator-dot');
-        const text = cell.querySelector('.status-text');
-
-        if (isOnline) {
-            // ESTADO: ONLINE
-            dot.classList.remove('offline');
-            dot.classList.add('online');
-            
-            text.textContent = 'En línea';
-            text.style.fontWeight = '700';
-            text.style.color = '#2e7d32'; // Verde fuerte
-            
-            // Marcador para evitar que el timer sobrescriba el texto
-            cell.dataset.online = "true";
-        } else {
-            // ESTADO: OFFLINE
-            dot.classList.remove('online');
-            dot.classList.add('offline');
-            
-            cell.dataset.online = "false";
-            text.style.fontWeight = '400';
-            text.style.color = '#666'; // Gris normal
-            
-            // Si el evento trae timestamp de desconexión, actualizamos el atributo data
-            if (offlineTimestamp) {
-                const ts = new Date(offlineTimestamp).getTime();
-                cell.dataset.timestamp = ts;
-                text.textContent = 'Hace un momento';
-            }
-        }
-    }
-
-    function startTimeUpdater() {
-        if (timeUpdateInterval) clearInterval(timeUpdateInterval);
-        
-        // Ejecutar cada 60 segundos para actualizar los textos "Hace X min"
-        timeUpdateInterval = setInterval(() => {
-            const cells = document.querySelectorAll('.user-presence-cell');
-            const now = Date.now();
-
-            cells.forEach(cell => {
-                // Si el usuario está online, ignoramos
-                if (cell.dataset.online === "true") return;
-
-                const ts = parseInt(cell.dataset.timestamp);
-                if (!ts || ts === 0) {
-                    // Si no hay fecha válida
-                    const txt = cell.querySelector('.status-text');
-                    if(txt && txt.textContent !== 'Nunca') txt.textContent = 'Nunca';
-                    return;
-                }
-
-                const diffSeconds = Math.floor((now - ts) / 1000);
-                let timeString = '';
-
-                if (diffSeconds < 60) {
-                    timeString = 'Hace un momento';
-                } else if (diffSeconds < 3600) {
-                    timeString = `Hace ${Math.floor(diffSeconds / 60)} min`;
-                } else if (diffSeconds < 86400) { // Menos de 24h
-                    timeString = `Hace ${Math.floor(diffSeconds / 3600)} h`;
-                } else {
-                    const date = new Date(ts);
-                    // Formato corto de fecha dd/mm/yyyy
-                    timeString = date.toLocaleDateString();
-                }
-
-                const txt = cell.querySelector('.status-text');
-                if (txt) txt.textContent = timeString;
-            });
-        }, 60000); // 1 minuto
-    }
-
-    function selectSingleRow(clickedRow, userId) {
-        if (clickedRow.classList.contains('selected')) {
-            clickedRow.classList.remove('selected');
-            selectedUserId = null;
-            return;
-        }
-        const allRows = document.querySelectorAll('.admin-row-selectable.selected');
-        allRows.forEach(r => r.classList.remove('selected'));
-        clickedRow.classList.add('selected');
-        selectedUserId = userId;
-    }
-
-    async function loadUsersTable(page, query) {
-        const tbody = document.getElementById('admin-users-table-body');
-        const pagination = document.getElementById('admin-users-pagination');
-        
-        tbody.classList.add('table-loading');
-
-        const basePath = window.BASE_PATH || '/ProjectAurora/';
-        const fetchUrl = `${basePath}public/loader.php?section=admin/users&page=${page}&q=${encodeURIComponent(query)}&ajax_partial=1`;
-
-        try {
-            const response = await fetch(fetchUrl);
-            const data = await response.json();
-
-            if (data.html_rows !== undefined) {
-                tbody.innerHTML = data.html_rows;
-                pagination.innerHTML = data.html_pagination;
-                
-                const newUrl = `${basePath}admin/users?page=${page}` + (query ? `&q=${encodeURIComponent(query)}` : '');
-                window.history.pushState({path: newUrl}, '', newUrl);
-                
-                selectedUserId = null;
-                
-                // IMPORTANTE: Reinicializar el estado en vivo para las nuevas filas cargadas
-                initLivePresence();
-            }
-        } catch (error) {
-            console.error('Error cargando usuarios:', error);
-        } finally {
-            tbody.classList.remove('table-loading');
-        }
-    }
-</script>
+<script src="<?php echo $basePath; ?>assets/js/modules/admin-users.js"></script>

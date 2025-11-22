@@ -1,0 +1,46 @@
+
+
+.admin-row-selectable {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    border-left: 4px solid transparent;
+}
+
+.admin-row-selectable:hover {
+    background-color: #f5f5fa;
+}
+
+.admin-row-selectable.selected {
+    background-color: #f5f5fa;
+    border-left-color: #000000;
+}
+
+.admin-row-selectable.selected td {
+    color: #000; 
+}
+
+.table-loading {
+    opacity: 0.5;
+    pointer-events: none;
+    transition: opacity 0.2s;
+}
+
+/* --- ESTILOS DEL INDICADOR DE ESTADO --- */
+.status-indicator-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: transparent; /* Offline por defecto */
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.status-indicator-dot.online {
+    background-color: #2e7d32; /* Verde Online */
+    box-shadow: 0 0 0 2px rgba(46, 125, 50, 0.15);
+    transform: scale(1.1);
+}
+
+.status-indicator-dot.offline {
+    background-color: #f5f5fa;
+}
