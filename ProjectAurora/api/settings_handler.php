@@ -38,22 +38,19 @@ $userId = $_SESSION['user_id'];
 $response = ['success' => false, 'message' => 'Acción no válida'];
 
 // --- FUNCIONES AUXILIARES ---
-function generate_uuid_v4()
-{
+function generate_uuid_v4() {
     $data = random_bytes(16);
     $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
     $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
     return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
 }
 
-function get_random_hex_color()
-{
+function get_random_hex_color() {
     $colors = ['C84F4F', '4F7AC8', '8C4FC8', 'C87A4F', '4FC8C8'];
     return $colors[array_rand($colors)];
 }
 
-function check_cooldown($pdo, $userId, $type, $daysLimit)
-{
+function check_cooldown($pdo, $userId, $type, $daysLimit) {
     $stmt = $pdo->prepare("SELECT changed_at FROM user_audit_logs 
                            WHERE user_id = ? AND change_type = ? 
                            ORDER BY changed_at DESC LIMIT 1");
@@ -78,8 +75,7 @@ function check_cooldown($pdo, $userId, $type, $daysLimit)
     }
 }
 
-function audit_log($pdo, $userId, $type, $oldValue, $newValue)
-{
+function audit_log($pdo, $userId, $type, $oldValue, $newValue) {
     try {
         $ip = get_client_ip();
         $stmt = $pdo->prepare("INSERT INTO user_audit_logs (user_id, change_type, old_value, new_value, changed_by_ip, changed_at) VALUES (?, ?, ?, ?, ?, NOW())");
@@ -94,14 +90,12 @@ function parse_user_agent($userAgent) {
     $browser = 'Desconocido';
     $icon = 'devices_other'; 
 
-    // SO
     if (preg_match('/windows|win32/i', $userAgent)) { $os = 'Windows'; $icon = 'desktop_windows'; }
     elseif (preg_match('/macintosh|mac os/i', $userAgent)) { $os = 'macOS'; $icon = 'laptop_mac'; }
     elseif (preg_match('/linux/i', $userAgent)) { $os = 'Linux'; $icon = 'terminal'; }
     elseif (preg_match('/android/i', $userAgent)) { $os = 'Android'; $icon = 'phone_android'; }
     elseif (preg_match('/iphone|ipad|ipod/i', $userAgent)) { $os = 'iOS'; $icon = 'phone_iphone'; }
 
-    // Navegador
     if (preg_match('/msie|trident/i', $userAgent)) $browser = 'Internet Explorer';
     elseif (preg_match('/firefox/i', $userAgent)) $browser = 'Firefox';
     elseif (preg_match('/chrome/i', $userAgent)) $browser = 'Chrome';
@@ -259,17 +253,12 @@ try {
         $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
         if ($stmt->execute([$newHash, $userId])) {
             audit_log($pdo, $userId, 'password', $oldHash, $newHash);
-            
             if ($logoutOthers) {
-                // Eliminar todas las sesiones EXCEPTO la actual
                 $currentSessionId = session_id();
                 $pdo->prepare("DELETE FROM user_sessions WHERE user_id = ? AND session_id != ?")
                     ->execute([$userId, $currentSessionId]);
-                
-                // [WEBSOCKET] Notificar a otros dispositivos
                 send_live_notification($userId, 'force_logout_others', ['exclude_session_id' => $currentSessionId]);
             }
-            
             $response = ['success' => true, 'message' => 'Contraseña actualizada correctamente.'];
         } else {
             throw new Exception("Error al actualizar la contraseña.");
@@ -376,7 +365,7 @@ try {
             $isCurrent = ($sess['session_id'] === $currentSessionId);
             
             $formattedSessions[] = [
-                'id' => $sess['id'], // ID de la BD para eliminar
+                'id' => $sess['id'], 
                 'ip' => $sess['ip_address'],
                 'os' => $info['os'],
                 'browser' => $info['browser'],
@@ -391,17 +380,12 @@ try {
     } elseif ($action === 'revoke_session') {
         $sessionIdDb = $data['session_id_db'] ?? 0;
         if (!$sessionIdDb) throw new Exception("ID de sesión inválido.");
-
-        // 1. Obtener el session_id real (string) antes de borrar para saber a quién expulsar
         $stmtGet = $pdo->prepare("SELECT session_id FROM user_sessions WHERE id = ? AND user_id = ?");
         $stmtGet->execute([$sessionIdDb, $userId]);
         $targetSessionId = $stmtGet->fetchColumn();
-
         if ($targetSessionId) {
-            // 2. Borrar de BD
             $stmt = $pdo->prepare("DELETE FROM user_sessions WHERE id = ?");
             if ($stmt->execute([$sessionIdDb])) {
-                // 3. [WEBSOCKET] Enviar señal de logout a la sesión específica
                 send_live_notification($userId, 'force_logout', ['target_session_id' => $targetSessionId]);
                 $response = ['success' => true, 'message' => 'Sesión cerrada.'];
             } else {
@@ -413,14 +397,52 @@ try {
 
     } elseif ($action === 'revoke_all_sessions') {
         $currentSessionId = session_id();
-        // Borrar todas MENOS la actual
         $stmt = $pdo->prepare("DELETE FROM user_sessions WHERE user_id = ? AND session_id != ?");
         if ($stmt->execute([$userId, $currentSessionId])) {
-            // [WEBSOCKET] Enviar señal a todos menos al actual
             send_live_notification($userId, 'force_logout_others', ['exclude_session_id' => $currentSessionId]);
             $response = ['success' => true, 'message' => 'Se han cerrado todas las demás sesiones.'];
         } else {
             throw new Exception("Error al revocar sesiones.");
+        }
+
+    // ======================================================
+    // ELIMINAR CUENTA (SOFT DELETE)
+    // ======================================================
+    } elseif ($action === 'delete_account') {
+        $password = $data['password'] ?? '';
+        if (empty($password)) throw new Exception("Ingresa tu contraseña.");
+
+        // 1. Verificar contraseña
+        $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $hash = $stmt->fetchColumn();
+
+        if ($hash && password_verify($password, $hash)) {
+            // 2. Ejecutar SOFT DELETE (Cambiar estado a 'deleted')
+            $stmtUpdate = $pdo->prepare("UPDATE users SET account_status = 'deleted' WHERE id = ?");
+            
+            if ($stmtUpdate->execute([$userId])) {
+                
+                // 3. Invalidar todas las sesiones en BD (incluida la actual)
+                $pdo->prepare("DELETE FROM user_sessions WHERE user_id = ?")->execute([$userId]);
+
+                // 4. Cerrar sesión PHP
+                $_SESSION = [];
+                if (ini_get("session.use_cookies")) {
+                    $params = session_get_cookie_params();
+                    setcookie(session_name(), '', time() - 42000, $params["path"], $params["domain"], $params["secure"], $params["httponly"]);
+                }
+                session_destroy();
+                
+                // 5. Enviar señal socket para cerrar en tiempo real en todos los dispositivos
+                send_live_notification($userId, 'force_logout_others', ['exclude_session_id' => 'none']); // 'none' para que cierre todos
+
+                $response = ['success' => true, 'message' => 'Cuenta eliminada.'];
+            } else {
+                throw new Exception("Error al eliminar la cuenta.");
+            }
+        } else {
+            throw new Exception("Contraseña incorrecta.");
         }
     }
     

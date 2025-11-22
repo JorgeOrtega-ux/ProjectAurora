@@ -85,7 +85,6 @@ function is_allowed_domain($email) {
     return true; 
 }
 
-// [MODIFICADO] Función para establecer sesión y GUARDAR EN BD
 function set_user_session($pdo, $user) {
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['user_uuid'] = $user['uuid'];
@@ -93,12 +92,10 @@ function set_user_session($pdo, $user) {
     $_SESSION['user_avatar'] = $user['avatar'];
     $_SESSION['user_role'] = $user['role'];
 
-    // Guardar sesión en la base de datos para gestión de dispositivos
     $sessionId = session_id();
     $ip = get_client_ip();
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
 
-    // Limpiar si había una sesión anterior con el mismo ID (raro pero posible tras regenerate)
     $pdo->prepare("DELETE FROM user_sessions WHERE session_id = ?")->execute([$sessionId]);
 
     $stmt = $pdo->prepare("INSERT INTO user_sessions (user_id, session_id, ip_address, user_agent) VALUES (?, ?, ?, ?)");
@@ -116,7 +113,6 @@ function mask_email($email) {
 $response = ['success' => false, 'message' => 'Acción no válida'];
 
 try {
-    // ... (REGISTRO PASOS 1 y 2 SE MANTIENEN IGUAL) ...
     if ($action === 'register_step_1') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
@@ -188,7 +184,7 @@ try {
             $newUser = ['id' => $newUserId, 'uuid' => $uuid, 'email' => $email, 'avatar' => $dbPath, 'role' => 'user'];
             
             session_regenerate_id(true);
-            set_user_session($pdo, $newUser); // Pasamos $pdo
+            set_user_session($pdo, $newUser); 
 
             $pdo->prepare("DELETE FROM verification_codes WHERE id = ?")->execute([$row['id']]);
             unset($_SESSION['temp_register']);
@@ -200,12 +196,26 @@ try {
     } elseif ($action === 'login') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
+        
         if (checkLockStatus($pdo, $email, 'login_fail')) throw new Exception("Has excedido intentos. Espera " . LOCKOUT_TIME_MINUTES . " mins.");
+        
         $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
         $stmt->execute([$email]);
         $user = $stmt->fetch();
+        
         if ($user && password_verify($password, $user['password'])) {
-            if (isset($user['account_status']) && $user['account_status'] !== 'active') throw new Exception('Tu cuenta no está activa o ha sido suspendida.');
+            
+            // [MODIFICADO] Verificación de Estado de Cuenta
+            if (isset($user['account_status']) && $user['account_status'] !== 'active') {
+                // Devolvemos JSON especial para redirigir en frontend
+                echo json_encode([
+                    'success' => false, 
+                    'is_account_issue' => true, 
+                    'status_type' => $user['account_status']
+                ]);
+                exit;
+            }
+
             if (isset($user['is_2fa_enabled']) && $user['is_2fa_enabled'] == 1) {
                 if (!isset($_SESSION['temp_login_2fa'])) $_SESSION['temp_login_2fa'] = [];
                 $_SESSION['temp_login_2fa']['user_id'] = $user['id'];
@@ -214,7 +224,7 @@ try {
             } else {
                 clearFailedAttempts($pdo, $email);
                 session_regenerate_id(true);
-                set_user_session($pdo, $user); // Pasamos $pdo
+                set_user_session($pdo, $user); 
                 $response = ['success' => true, 'message' => 'Login correcto'];
             }
         } else {
@@ -261,7 +271,7 @@ try {
             unset($user['password']);
             unset($user['two_factor_secret']);
             unset($user['backup_codes']);
-            set_user_session($pdo, $user); // Pasamos $pdo
+            set_user_session($pdo, $user); 
             unset($_SESSION['temp_login_2fa']);
             $response = ['success' => true, 'message' => 'Autenticación completada'];
         } else {
@@ -270,7 +280,6 @@ try {
         }
 
     } elseif ($action === 'logout') {
-        // Eliminar la sesión de la base de datos antes de destruir la de PHP
         $sessionId = session_id();
         $pdo->prepare("DELETE FROM user_sessions WHERE session_id = ?")->execute([$sessionId]);
 

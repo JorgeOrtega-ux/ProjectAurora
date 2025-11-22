@@ -21,7 +21,8 @@ function qs(selector) {
 export function initSettingsManager() {
     const isProfile = qs('[data-section="settings/your-profile"]');
     const isChangePass = qs('[data-section="settings/change-password"]');
-    const isSessions = qs('[data-section="settings/sessions"]'); // Detectar sección sesiones
+    const isSessions = qs('[data-section="settings/sessions"]');
+    const isDeleteAccount = qs('[data-section="settings/delete-account"]'); // Nueva sección
     
     if (isProfile) {
         initAvatarLogic();
@@ -36,18 +37,23 @@ export function initSettingsManager() {
     if (isSessions) {
         initSessionsLogic();
     }
+
+    if (isDeleteAccount) {
+        initDeleteAccountLogic();
+    }
     
     if (!areGlobalsInitialized) {
         initPreferencesLogic();        
         initBooleanPreferencesLogic(); 
-        initAccountDeleteLogic(); // Nuevo: Lógica del botón de eliminar cuenta
-        initSessionsNavLogic();   // Nuevo: Lógica de navegación a sesiones desde security
+        initAccountDeleteNavigation(); // Cambiado nombre para ser más específico
+        initSessionsNavLogic();
         
         areGlobalsInitialized = true;
         console.log('[SettingsManager] Listeners globales inicializados (Única vez).');
     }
 }
 
+// ... (Funciones auxiliares updateCardError, getCsrfToken, qs se mantienen igual) ...
 function updateCardError(element, message = '', show = true) {
     if (!element) return;
     const cardContainer = element.closest('.component-card') || element;
@@ -76,10 +82,76 @@ function updateCardError(element, message = '', show = true) {
 }
 
 // ========================================================
-// LÓGICA DE SESIONES (Dispositivos)
+// LÓGICA ELIMINACIÓN DE CUENTA (NUEVO)
 // ========================================================
+
+// 1. Navegación (Listener Global)
+function initAccountDeleteNavigation() {
+    document.body.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action="trigger-account-delete"]');
+        if (btn) {
+            e.preventDefault();
+            // Ahora redirige a la nueva sección en lugar de mostrar un alert
+            if (window.navigateTo) window.navigateTo('settings/delete-account');
+        }
+    });
+}
+
+// 2. Lógica de la página de confirmación
+function initDeleteAccountLogic() {
+    const confirmBtn = qs('[data-action="confirm-account-deletion"]');
+    const passInput = qs('[data-element="delete-confirm-password"]');
+    const card = qs('.component-card--danger');
+
+    if (!confirmBtn || !passInput) return;
+
+    confirmBtn.onclick = async () => {
+        const password = passInput.value;
+        
+        updateCardError(card, '', false);
+
+        if (!password) {
+            updateCardError(card, 'Por favor, ingresa tu contraseña para confirmar.');
+            return;
+        }
+
+        if (!confirm('ADVERTENCIA FINAL: Esta acción no se puede deshacer. ¿Borrar cuenta permanentemente?')) {
+            return;
+        }
+
+        setLoading(confirmBtn, true);
+
+        try {
+            const res = await fetch(API_SETTINGS, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
+                body: JSON.stringify({ 
+                    action: 'delete_account', 
+                    password: password 
+                })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                // Redirigir a página de estado "Eliminado"
+                window.location.href = (window.BASE_PATH || '/ProjectAurora/') + 'status-page?status=deleted';
+            } else {
+                updateCardError(card, data.message);
+                setLoading(confirmBtn, false, 'Eliminar mi cuenta permanentemente');
+            }
+        } catch (e) {
+            updateCardError(card, 'Error de conexión.');
+            setLoading(confirmBtn, false, 'Eliminar mi cuenta permanentemente');
+        }
+    };
+}
+
+// ... (RESTO DE FUNCIONES: initSessionsLogic, initChangePasswordLogic, initPreferencesLogic, etc. SE MANTIENEN IGUAL) ...
+// Solo asegúrate de no borrar las funciones existentes (initSessionsNavLogic, initAvatarLogic, etc.) 
+// que ya estaban en el archivo original.
+
+// (Copiar funciones helpers: setLoading, toggleMode, updateHeaderAvatar del archivo original)
 function initSessionsNavLogic() {
-    // Listener delegado para el botón de "Administrar dispositivos" en login-security.php
     document.body.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-action="trigger-sessions-manage"]');
         if (btn) {
@@ -94,7 +166,6 @@ async function initSessionsLogic() {
     const revokeAllBtn = qs('[data-action="revoke-all-sessions"]');
     if (!container) return;
 
-    // Cargar lista
     try {
         const res = await fetch(API_SETTINGS, {
             method: 'POST',
@@ -112,7 +183,6 @@ async function initSessionsLogic() {
         container.innerHTML = `<p style="text-align:center; color:#666;">Error de conexión.</p>`;
     }
 
-    // Revocar individual
     container.addEventListener('click', async (e) => {
         const btn = e.target.closest('[data-action="revoke-single"]');
         if (btn) {
@@ -130,7 +200,6 @@ async function initSessionsLogic() {
                 });
                 const data = await res.json();
                 if (data.success) {
-                    // Eliminar tarjeta visualmente
                     const card = btn.closest('.component-card');
                     card.style.opacity = '0';
                     setTimeout(() => card.remove(), 300);
@@ -146,7 +215,6 @@ async function initSessionsLogic() {
         }
     });
 
-    // Revocar todas
     if (revokeAllBtn) {
         revokeAllBtn.onclick = async () => {
             if (!confirm('¿Estás seguro de cerrar todas las demás sesiones?')) return;
@@ -160,7 +228,6 @@ async function initSessionsLogic() {
                 const data = await res.json();
                 if (data.success) {
                     if (window.alertManager) window.alertManager.showAlert('Sesiones cerradas.', 'success');
-                    // Recargar lista
                     initSessionsLogic();
                 } else {
                     if (window.alertManager) window.alertManager.showAlert(data.message, 'error');
@@ -212,9 +279,6 @@ function renderSessionsList(sessions, container) {
     container.innerHTML = html;
 }
 
-// ========================================================
-// LÓGICA CAMBIO DE CONTRASEÑA
-// ========================================================
 function initChangePasswordLogic() {
     const step1Card = qs('[data-step="password-step-1"]');
     const step2Card = qs('[data-step="password-step-2"]');
@@ -318,21 +382,6 @@ function initChangePasswordLogic() {
     };
 }
 
-// ========================================================
-// LÓGICA GLOBAL DE ELIMINACIÓN DE CUENTA
-// ========================================================
-function initAccountDeleteLogic() {
-    document.body.addEventListener('click', (e) => {
-        if (e.target.closest('[data-action="trigger-account-delete"]')) {
-            // Aquí podrías abrir un modal, por ahora un alert simple
-            alert('Esta funcionalidad requiere confirmación avanzada (pendiente de implementar).');
-        }
-    });
-}
-
-// ========================================================
-// TOGGLES (Booleanos)
-// ========================================================
 function initBooleanPreferencesLogic() {
     document.body.addEventListener('change', async (e) => {
         const target = e.target;
@@ -379,9 +428,6 @@ function initBooleanPreferencesLogic() {
     });
 }
 
-// ========================================================
-// SELECTORES (Theme, Lang, Usage)
-// ========================================================
 function initPreferencesLogic() {
     document.body.addEventListener('click', async (e) => {
         const option = e.target.closest('.menu-link[data-value]');
@@ -441,13 +487,9 @@ function initPreferencesLogic() {
     });
 }
 
-// ========================================================
-// LÓGICA DE AVATAR, USERNAME, EMAIL (CÓDIGO EXISTENTE REDUCIDO)
-// ========================================================
 function initAvatarLogic() {
     const cardItem = qs('[data-component="avatar-section"]');
     if (!cardItem) return;
-    // ... (Mantener lógica existente de avatar tal cual) ...
     const elements = {
         fileInput: qs('[data-element="avatar-upload-input"]'),
         previewImg: qs('[data-element="avatar-preview-image"]'),

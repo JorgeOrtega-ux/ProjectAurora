@@ -24,12 +24,10 @@ $basePath = '/ProjectAurora/';
 if (isset($_SESSION['user_id'])) {
     $currentSessionId = session_id();
     
-    // Verificar si la sesión existe en BD
     $stmtCheck = $pdo->prepare("SELECT id FROM user_sessions WHERE session_id = ? AND user_id = ?");
     $stmtCheck->execute([$currentSessionId, $_SESSION['user_id']]);
     
     if ($stmtCheck->rowCount() === 0) {
-        // Si no existe en BD (fue revocada), destruir sesión PHP y redirigir
         $_SESSION = [];
         if (ini_get("session.use_cookies")) {
             $params = session_get_cookie_params();
@@ -39,7 +37,6 @@ if (isset($_SESSION['user_id'])) {
         header("Location: " . $basePath . "login");
         exit;
     } else {
-        // Actualizar última actividad
         $pdo->prepare("UPDATE user_sessions SET last_activity = NOW() WHERE session_id = ?")->execute([$currentSessionId]);
     }
 }
@@ -69,7 +66,6 @@ if (isset($_SESSION['user_id'])) {
             $_SESSION['user_new_tab'] = $freshUser['open_links_in_new_tab'] ?? 1;
             
             if ($freshUser['account_status'] !== 'active') {
-                // Logout forzado si está suspendido
                 $_SESSION = [];
                 if (ini_get("session.use_cookies")) {
                     $params = session_get_cookie_params();
@@ -87,7 +83,6 @@ if (isset($_SESSION['user_id'])) {
             exit;
         }
     } catch (Exception $e) {
-        // Fallback silencioso
     }
 }
 
@@ -122,7 +117,8 @@ $allowedSections = [
     'settings/accessibility',
     'settings/change-password', 
     'settings/2fa-setup',
-    'settings/sessions', // <--- NUEVA RUTA
+    'settings/sessions',
+    'settings/delete-account', // <--- NUEVA RUTA
     // Admin
     'admin',
     'admin/dashboard',
@@ -135,7 +131,6 @@ $CURRENT_SECTION = empty($requestUri) ? 'main' : $requestUri;
 if (!in_array($CURRENT_SECTION, $allowedSections)) $CURRENT_SECTION = '404';
 if ($CURRENT_SECTION === 'main' && $requestUri !== 'main' && !empty($requestUri)) $CURRENT_SECTION = 'main';
 
-// Redirecciones automáticas
 if ($CURRENT_SECTION === 'settings') {
     header("Location: " . $basePath . "settings/your-profile");
     exit;
@@ -159,9 +154,6 @@ if (strpos($CURRENT_SECTION, 'admin/') === 0) {
     }
 }
 
-// ==========================================
-// DEFINICIÓN DE ARRAYS DE SECCIONES
-// ==========================================
 $appSections = ['main', 'explorer'];
 $systemSections = ['status-page', '404', 'error-missing-data'];
 
@@ -190,7 +182,7 @@ if ($CURRENT_SECTION === 'login/verification-additional') {
 } elseif (strpos($CURRENT_SECTION, 'admin/') === 0) {
     $SECTION_FILE_NAME = $CURRENT_SECTION;
 
-// Casos de App (sesión iniciada)
+// Casos de App
 } elseif (in_array($CURRENT_SECTION, $appSections)) {
     $SECTION_FILE_NAME = 'app/' . $CURRENT_SECTION;
 
@@ -202,9 +194,6 @@ if ($CURRENT_SECTION === 'login/verification-additional') {
     $SECTION_FILE_NAME = 'system/404';
 }
 
-// ==========================================
-// SEGURIDAD DE ACCESO (General)
-// ==========================================
 $publicSections = [
     'login', 
     'register', 
@@ -243,9 +232,6 @@ if (array_key_exists($CURRENT_SECTION, $requirements)) {
     }
 }
 
-// ==========================================
-// LÓGICA DE NAVEGACIÓN (SHOWHEADER)
-// ==========================================
 if ($isLoggedIn) {
     $showNavigation = ($SECTION_FILE_NAME !== 'system/error-missing-data');
 } else {

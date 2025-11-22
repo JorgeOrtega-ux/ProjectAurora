@@ -68,3 +68,7 @@
 [2025-11-22 12:55:32] [CUSTOM] [LOGIC] Código incorrecto.
 [2025-11-22 13:34:02] [CUSTOM] [PRUEBA - ELIMINAR EN PROD] Registro para 12@gmail.com | Code: 207A55BB3B5B | Hash: 6d75e175bf407beccbac74e15bf0fe6cee127dd7b7ea0bb2ea47cf6e1e4155b7
 [2025-11-22 13:34:29] [CUSTOM] [LOGIC] Código inválido o expirado.
+[2025-11-22 15:45:58] [CUSTOM] [LOGIC] Credenciales incorrectas.
+[2025-11-22 15:47:04] [CUSTOM] [PRUEBA - ELIMINAR EN PROD] Registro para 12@gmail.com | Code: DF31CB2BFC34 | Hash: 26684b4db6ad4b6adc52a87e5f5758bbcc008c19d0ee56a7dcd5f31d3c26e924
+[2025-11-22 15:50:01] [CUSTOM] [LOGIC] Tu cuenta no está activa o ha sido suspendida.
+[2025-11-22 15:50:15] [CUSTOM] [LOGIC] Tu cuenta no está activa o ha sido suspendida.

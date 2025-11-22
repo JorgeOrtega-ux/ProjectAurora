@@ -2,19 +2,16 @@
 
 const API_BASE_PATH = window.BASE_PATH || '/ProjectAurora/';
 
-// Helper para selectores
 function qs(selector) {
     return document.querySelector(selector);
 }
 
-// Helper para cambiar visibilidad usando clases
 function toggleStepVisibility(hideSelector, showSelector) {
     const toHide = qs(hideSelector);
     const toShow = qs(showSelector);
 
     if (toHide) {
         toHide.classList.remove('active');
-        // Limpiar errores al cambiar de paso
         const err = toHide.querySelector('.form-error-message');
         if (err) { err.textContent = ''; err.classList.remove('active'); }
     }
@@ -23,15 +20,11 @@ function toggleStepVisibility(hideSelector, showSelector) {
     }
 }
 
-// Helper para obtener el token CSRF
 function getCsrfToken() {
     const meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.getAttribute('content') : '';
 }
 
-/* =============================================================
-   SISTEMA DE REENVÍO DE CÓDIGO (TIMER)
-   ============================================================= */
 let resendTimerInterval = null;
 
 function initResendTimer(linkSelector, startSeconds = 60) {
@@ -98,8 +91,6 @@ async function handleResendCode(type, linkSelector) {
 
 export function initAuthManager() {
     
-    // --- [NUEVO] LISTENER DE LOGOUT REMOTO (WEBSOCKET) ---
-    // Escucha eventos enviados por el servidor Python cuando se revoca la sesión
     document.addEventListener('socket-message', (e) => {
         const { type } = e.detail;
         if (type === 'force_logout') {
@@ -108,8 +99,6 @@ export function initAuthManager() {
             } else {
                 alert('Tu sesión ha sido cerrada remotamente.');
             }
-            
-            // Pequeño delay para que el usuario vea la alerta antes de redirigir
             setTimeout(() => {
                 window.location.href = API_BASE_PATH + 'login';
             }, 2000);
@@ -134,7 +123,6 @@ export function initAuthManager() {
 
     document.body.addEventListener('click', async (e) => {
         
-        // --- REGISTRO ---
         if (e.target.closest('[data-action="register-step1"]')) {
             e.preventDefault();
             await handleRegisterStep('step1', 'register_step_1', 2, 'register/additional-data');
@@ -157,19 +145,16 @@ export function initAuthManager() {
             switchRegisterStep(1, 'register');
         }
 
-        // --- RECUPERACIÓN DE CUENTA ---
         if (e.target.closest('[data-action="rec-step1"]')) {
             e.preventDefault();
             await handleRecoveryLinkRequest();
         }
 
-        // --- RESTABLECER CONTRASEÑA (PÁGINA RESET-PASSWORD) ---
         if (e.target.closest('[data-action="reset-final-submit"]')) {
             e.preventDefault();
             await handleResetPasswordFinal();
         }
 
-        // --- UTILIDADES ---
         if (e.target.closest('.floating-input-btn') && !e.target.closest('.username-magic-btn')) {
             const btn = e.target.closest('.floating-input-btn');
             const parent = btn.closest('.floating-label-group');
@@ -196,7 +181,6 @@ export function initAuthManager() {
             }
         }
 
-        // --- LOGIN ---
         if (e.target.closest('[data-action="login-submit"]')) {
             e.preventDefault();
             await handleLogin();
@@ -216,7 +200,6 @@ export function initAuthManager() {
             history.pushState({ section: 'login' }, '', loginUrl);
         }
         
-        // --- LOGOUT ---
        const logoutBtn = e.target.closest('.menu-link-logout');
         if (logoutBtn) {
             e.preventDefault(); 
@@ -385,7 +368,6 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
     return await sendAuthRequest(payload, btnSelector, errorSelector, nextStep, nextUrl);
 }
 
-// --- NUEVA FUNCIÓN: SOLICITAR ENLACE DE RECUPERACIÓN ---
 async function handleRecoveryLinkRequest() {
     const emailIn = qs('[data-input="rec-email"]');
     if(!emailIn) return;
@@ -437,10 +419,9 @@ async function handleRecoveryLinkRequest() {
     btn.disabled = false;
 }
 
-// --- CONFIRMAR CAMBIO DE CONTRASEÑA (MODIFICADO) ---
 async function handleResetPasswordFinal() {
     const passIn = qs('[data-input="reset-pass"]');
-    const passConfirmIn = qs('[data-input="reset-pass-confirm"]'); // Campo de confirmación
+    const passConfirmIn = qs('[data-input="reset-pass-confirm"]'); 
     const tokenIn = qs('[data-input="reset-token"]');
     const errorDiv = qs('[data-error="reset-error"]');
     const btn = qs('[data-action="reset-final-submit"]');
@@ -451,19 +432,16 @@ async function handleResetPasswordFinal() {
     const passConfirmVal = passConfirmIn.value;
     const tokenVal = tokenIn.value;
 
-    // Limpieza UI
     if(errorDiv) { errorDiv.textContent = ''; errorDiv.classList.remove('active'); }
     passIn.classList.remove('input-error');
     passConfirmIn.classList.remove('input-error');
 
-    // Validación 1: Longitud
     if (passVal.length < 8) {
         passIn.classList.add('input-error');
         if(errorDiv) { errorDiv.textContent = "Mínimo 8 caracteres."; errorDiv.classList.add('active'); }
         return;
     }
 
-    // Validación 2: Coincidencia (Client-side)
     if (passVal !== passConfirmVal) {
         passIn.classList.add('input-error');
         passConfirmIn.classList.add('input-error');
@@ -479,7 +457,6 @@ async function handleResetPasswordFinal() {
         const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }, 
-            // ENVIAMOS AMBAS CONTRASEÑAS AL SERVIDOR
             body: JSON.stringify({ 
                 action: 'recovery_final', 
                 token: tokenVal,
@@ -614,6 +591,13 @@ async function handleLogin() {
                 window.location.href = API_BASE_PATH;
             }
         } else {
+            // [MODIFICACIÓN PARA STATUS PAGE]
+            if (res.is_account_issue && res.status_type) {
+                // Redirigir a status page con el motivo (suspended/deleted)
+                window.location.href = API_BASE_PATH + 'status-page?status=' + res.status_type;
+                return; // Salimos para evitar activar el errorDiv
+            }
+
             if(errorDiv) {
                 errorDiv.textContent = res.message;
                 errorDiv.classList.add('active');

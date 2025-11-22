@@ -134,7 +134,7 @@
             "sessions_desc": "Revisa y administra los dispositivos donde has iniciado sesión.",
             "sessions_btn": "Administrar dispositivos",
             "delete_title": "Eliminar tu cuenta",
-            "delete_desc": "Si eliminas tu cuenta, ya no podrás acceder a ninguno de tus diseños ni iniciar sesión. Cuenta creada el",
+            "delete_desc": "Si eliminas tu cuenta, ya no podrás acceder a ninguno de tus diseños ni iniciar sesión.",
             "delete_btn": "Eliminar cuenta"
         },
         "change_password": {
@@ -159,6 +159,15 @@
             "logout_all_confirm": "¿Estás seguro? Se cerrará la sesión en todos los dispositivos excepto este.",
             "last_active": "Última actividad",
             "location_unknown": "Ubicación desconocida"
+        },
+        "delete_account": {
+            "title": "Eliminar cuenta",
+            "description": "¿Estás seguro de que quieres hacer esto?",
+            "warning_title": "Esta acción es irreversible",
+            "warning_text": "Se eliminarán todos tus datos, amigos, mensajes y configuraciones. No podrás recuperar esta cuenta.",
+            "password_label": "Confirma tu contraseña",
+            "confirm_btn": "Eliminar mi cuenta permanentemente",
+            "cancel_btn": "Cancelar, quiero quedarme"
         },
         "accessibility": {
             "title": "Accesibilidad",
