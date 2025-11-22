@@ -97,6 +97,25 @@ async function handleResendCode(type, linkSelector) {
 }
 
 export function initAuthManager() {
+    
+    // --- [NUEVO] LISTENER DE LOGOUT REMOTO (WEBSOCKET) ---
+    // Escucha eventos enviados por el servidor Python cuando se revoca la sesión
+    document.addEventListener('socket-message', (e) => {
+        const { type } = e.detail;
+        if (type === 'force_logout') {
+            if (window.alertManager) {
+                window.alertManager.showAlert('Tu sesión ha sido cerrada remotamente.', 'warning');
+            } else {
+                alert('Tu sesión ha sido cerrada remotamente.');
+            }
+            
+            // Pequeño delay para que el usuario vea la alerta antes de redirigir
+            setTimeout(() => {
+                window.location.href = API_BASE_PATH + 'login';
+            }, 2000);
+        }
+    });
+
     document.body.addEventListener('input', (e) => {
         if (e.target.matches('[data-input="reg-code"], [data-input="login-2fa-code"], [data-input="rec-code"]')) {
             const input = e.target;

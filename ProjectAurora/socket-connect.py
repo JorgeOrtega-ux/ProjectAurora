@@ -1,14 +1,12 @@
 import asyncio
 import websockets
 import json
-import socket
 import mysql.connector
-from datetime import datetime
 
-# Diccionario para guardar conexiones activas: { user_id: websocket_object }
+# Diccionario para guardar conexiones activas:
+# Estructura: { user_id: { session_id: websocket_object, session_id_2: ws_obj } }
 connected_clients = {}
 
-# CONFIGURACIÓN BASE DE DATOS (Igual que en PHP)
 DB_CONFIG = {
     'user': 'root',
     'password': '',
@@ -17,38 +15,36 @@ DB_CONFIG = {
     'raise_on_warnings': True
 }
 
-def verify_token_in_db(token):
+def verify_token_and_get_session(token):
     """
-    Verifica el token contra MySQL.
-    Retorna el user_id si es válido, o None si no.
+    Verifica el token y retorna (user_id, session_id).
     """
     try:
         cnx = mysql.connector.connect(**DB_CONFIG)
         cursor = cnx.cursor()
 
-        # 1. Buscar token válido y no expirado
-        query = "SELECT user_id FROM ws_auth_tokens WHERE token = %s AND expires_at > NOW()"
+        # Obtenemos user_id Y session_id vinculados al token
+        query = "SELECT user_id, session_id FROM ws_auth_tokens WHERE token = %s AND expires_at > NOW()"
         cursor.execute(query, (token,))
         row = cursor.fetchone()
         
-        user_id = None
+        result = None
         if row:
-            user_id = str(row[0])
-            # 2. Opcional: Borrar token usado (Single Use) o dejar que expire.
-            # Por simplicidad y permitir múltiples pestañas, dejamos que expire.
+            # Convertimos a string para consistencia
+            result = (str(row[0]), str(row[1]))
         
         cursor.close()
         cnx.close()
-        return user_id
+        return result
 
     except mysql.connector.Error as err:
         print(f"[DB ERROR] {err}")
         return None
 
 async def handle_browser_client(websocket):
-    """Maneja la conexión con el navegador (Cliente JS)"""
-    # Variable para guardar el ID de esta conexión específica
-    conn_id = "unknown" 
+    """Maneja la conexión con el navegador"""
+    user_id = None
+    session_id = None
     
     try:
         async for message in websocket:
@@ -59,26 +55,27 @@ async def handle_browser_client(websocket):
             
             if data.get('type') == 'auth':
                 token = data.get('token')
-                # 1. Capturamos el ID que envía el JS (o asignamos uno temporal si no viene)
-                conn_id = data.get('request_id', 'no-id')
                 
                 if not token:
-                    # Logueamos con el ID
-                    print(f"[WS][{conn_id}] Error: Token requerido")
                     await websocket.send(json.dumps({"type": "error", "msg": "Token requerido"}))
                     return
 
-                user_id = verify_token_in_db(token)
+                auth_data = verify_token_and_get_session(token)
 
-                if user_id:
-                    connected_clients[user_id] = websocket
-                    # 2. Logueamos el éxito usando el ID
-                    print(f"[WS][{conn_id}] Usuario AUTENTICADO: ID {user_id}")
+                if auth_data:
+                    user_id, session_id = auth_data
                     
-                    await websocket.send(json.dumps({"type": "connected", "msg": "Conectado de forma segura"}))
-                    await websocket.wait_closed()
+                    # Inicializar diccionario del usuario si no existe
+                    if user_id not in connected_clients:
+                        connected_clients[user_id] = {}
+                    
+                    # Guardar conexión mapeada por session_id
+                    connected_clients[user_id][session_id] = websocket
+                    
+                    print(f"[WS] Auth OK: User {user_id} (Session: {session_id})")
+                    await websocket.send(json.dumps({"type": "connected", "msg": "Conectado"}))
                 else:
-                    print(f"[WS][{conn_id}] Fallo de auth (Token inválido)")
+                    print(f"[WS] Auth Failed")
                     await websocket.send(json.dumps({"type": "error", "msg": "Token inválido"}))
                     await websocket.close()
                     return
@@ -86,18 +83,21 @@ async def handle_browser_client(websocket):
     except websockets.exceptions.ConnectionClosed:
         pass
     except Exception as e:
-        print(f"[WS][{conn_id}] Error crítico: {e}")
+        print(f"[WS] Error: {e}")
     finally:
-        # Limpieza
-        for uid, ws in list(connected_clients.items()):
-            if ws == websocket:
-                del connected_clients[uid]
-                print(f"[WS][{conn_id}] Usuario {uid} desconectado.")
+        # Limpieza al desconectar
+        if user_id and session_id and user_id in connected_clients:
+            if session_id in connected_clients[user_id]:
+                del connected_clients[user_id][session_id]
+            # Si el usuario ya no tiene sesiones, borrar la entrada del usuario
+            if not connected_clients[user_id]:
+                del connected_clients[user_id]
+            print(f"[WS] Desconectado: User {user_id} (Session: {session_id})")
 
 async def handle_php_notification(reader, writer):
-    """Escucha notificaciones internas desde PHP (Puerto 8081)"""
+    """Escucha comandos desde PHP"""
     try:
-        data = await reader.read(1024)
+        data = await reader.read(2048)
         message = data.decode()
         
         if not message:
@@ -105,33 +105,60 @@ async def handle_php_notification(reader, writer):
 
         payload = json.loads(message)
         target_id = str(payload.get('target_id'))
+        msg_type = payload.get('type')
         
         if target_id in connected_clients:
-            ws = connected_clients[target_id]
-            try:
-                await ws.send(json.dumps(payload))
-                print(f"[PHP->WS] Mensaje enviado al usuario {target_id}")
-            except Exception as e:
-                print(f"[PHP->WS] Error enviando al usuario {target_id}: {e}")
+            user_sessions = connected_clients[target_id]
+            
+            # CASO 1: Logout forzado de UNA sesión específica
+            if msg_type == 'force_logout':
+                target_session = payload.get('payload', {}).get('target_session_id')
+                
+                if target_session and target_session in user_sessions:
+                    ws = user_sessions[target_session]
+                    try:
+                        await ws.send(json.dumps({'type': 'force_logout', 'message': 'Sesión cerrada remotamente.'}))
+                        # Opcional: cerrar el socket del lado servidor tras enviar
+                        # await ws.close() 
+                        print(f"[PHP->WS] Logout enviado a User {target_id} Session {target_session}")
+                    except Exception as e:
+                        print(f"[PHP->WS] Error enviando logout: {e}")
+
+            # CASO 2: Logout forzado de TODAS las sesiones EXCEPTO una (la actual)
+            elif msg_type == 'force_logout_others':
+                exclude_session = payload.get('payload', {}).get('exclude_session_id')
+                
+                for sess_id, ws in list(user_sessions.items()):
+                    if sess_id != exclude_session:
+                        try:
+                            await ws.send(json.dumps({'type': 'force_logout', 'message': 'Sesión cerrada desde otro dispositivo.'}))
+                            print(f"[PHP->WS] Logout enviado a User {target_id} Session {sess_id}")
+                        except:
+                            pass
+
+            # CASO 3: Notificación normal (enviar a todos los dispositivos del usuario)
+            else:
+                for sess_id, ws in user_sessions.items():
+                    try:
+                        await ws.send(json.dumps(payload))
+                    except:
+                        pass
+                print(f"[PHP->WS] Notificación {msg_type} enviada a User {target_id} ({len(user_sessions)} dispositivos)")
         else:
-            print(f"[PHP->WS] El usuario {target_id} no está conectado actualmente.")
+            print(f"[PHP->WS] Usuario {target_id} no conectado.")
             
     except Exception as e:
-        print(f"[PHP->WS] Error procesando mensaje de PHP: {e}")
+        print(f"[PHP->WS] Error procesando mensaje: {e}")
     finally:
         writer.close()
         await writer.wait_closed()
 
 async def start_servers():
-    print("Iniciando servidores seguros...")
-    # Servidor WebSocket para Navegadores (Puerto 8080)
+    print("Iniciando servidores Project Aurora...")
     async with websockets.serve(handle_browser_client, "localhost", 8080):
-        print("✅ Servidor WebSocket corriendo en ws://localhost:8080")
-        
-        # Servidor TCP para PHP (Puerto 8081)
+        print("✅ WS Server en ws://localhost:8080")
         server = await asyncio.start_server(handle_php_notification, "127.0.0.1", 8081)
-        print("✅ Escuchando notificaciones de PHP en tcp://127.0.0.1:8081")
-
+        print("✅ PHP Listener en tcp://127.0.0.1:8081")
         async with server:
             await server.serve_forever()
 
@@ -139,4 +166,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(start_servers())
     except KeyboardInterrupt:
-        print("\n🛑 Servidor detenido.")
+        print("\nServidor detenido.")

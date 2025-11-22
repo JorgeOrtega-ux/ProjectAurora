@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS users (
     role VARCHAR(20) DEFAULT 'user',
     account_status ENUM('active', 'suspended', 'deleted') DEFAULT 'active',
     is_2fa_enabled TINYINT(1) DEFAULT 0,
+    two_factor_secret VARCHAR(255) NULL,
+    backup_codes JSON NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -78,10 +80,12 @@ CREATE TABLE IF NOT EXISTS notifications (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- TOKENS DE AUTENTICACIÓN WS
+-- TOKENS DE AUTENTICACIÓN WS [MODIFICADA]
+-- Agregamos session_id para identificar qué dispositivo es el dueño del socket
 CREATE TABLE IF NOT EXISTS ws_auth_tokens (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
+    session_id VARCHAR(128) NOT NULL, 
     token VARCHAR(255) NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -89,7 +93,6 @@ CREATE TABLE IF NOT EXISTS ws_auth_tokens (
 );
 
 -- PREFERENCIAS DE USUARIO
--- [MODIFICADO] Agregados campos theme y extended_message_time
 CREATE TABLE IF NOT EXISTS user_preferences (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL UNIQUE,
@@ -113,4 +116,17 @@ CREATE TABLE IF NOT EXISTS user_audit_logs (
     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_audit_check (user_id, change_type, changed_at)
+);
+
+-- SESIONES DE USUARIO
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    session_id VARCHAR(128) NOT NULL,
+    ip_address VARCHAR(45) NOT NULL,
+    user_agent TEXT NOT NULL,
+    last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX (session_id)
 );

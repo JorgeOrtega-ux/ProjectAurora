@@ -49,8 +49,6 @@ function clearFailedAttempts($pdo, $identifier) {
     $stmt->execute([$identifier]);
 }
 
-// --- NUEVAS FUNCIONES DE SEGURIDAD ---
-
 function checkActionRateLimit($pdo, $identifier, $actionType, $limit, $minutes) {
     $sql = "SELECT COUNT(*) as total 
             FROM security_logs 
@@ -73,14 +71,17 @@ function logSecurityAction($pdo, $identifier, $actionType) {
     $stmt->execute([(string)$identifier, $actionType, $ip]);
 }
 
-function generate_ws_auth_token($pdo, $userId) {
+// [MODIFICADO] Ahora acepta y guarda el session_id
+function generate_ws_auth_token($pdo, $userId, $sessionId) {
+    // Eliminamos tokens viejos de este usuario para limpieza
     $stmt = $pdo->prepare("DELETE FROM ws_auth_tokens WHERE user_id = ?");
     $stmt->execute([$userId]);
 
     $token = bin2hex(random_bytes(32)); 
     
-    $stmt = $pdo->prepare("INSERT INTO ws_auth_tokens (user_id, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 2 MINUTE))");
-    $stmt->execute([$userId, $token]);
+    // Guardamos el token vinculado a la sesión actual
+    $stmt = $pdo->prepare("INSERT INTO ws_auth_tokens (user_id, session_id, token, expires_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 2 MINUTE))");
+    $stmt->execute([$userId, $sessionId, $token]);
 
     return $token;
 }
@@ -103,8 +104,9 @@ function send_live_notification($targetUserId, $type, $data = []) {
     $host = '127.0.0.1';
     $port = 8081; 
 
+    // Empaquetamos los datos
     $payload = json_encode([
-        'target_id' => $targetUserId,
+        'target_id' => (string)$targetUserId,
         'type' => $type, 
         'payload' => $data
     ]);
@@ -118,48 +120,23 @@ function send_live_notification($targetUserId, $type, $data = []) {
     return false; 
 }
 
-/**
- * Detecta el idioma del navegador y asigna el más cercano disponible.
- * Idiomas soportados en ProjectAurora: es-latam, es-mx, en-us, en-gb
- */
 function detect_browser_language() {
-    // Idiomas disponibles en el sistema
     $availableLanguages = ['es-latam', 'es-mx', 'en-us', 'en-gb'];
-    
-    // Fallbacks genéricos si no hay coincidencia exacta
-    // Si viene cualquier español (es-AR, es-ES, es-CO) -> es-latam
-    // Si viene cualquier inglés (en-AU, en-CA) -> en-us
-    $familyFallbacks = [
-        'es' => 'es-latam',
-        'en' => 'en-us'
-    ];
-    
-    // Por defecto
+    $familyFallbacks = ['es' => 'es-latam', 'en' => 'en-us'];
     $default = 'en-us';
 
-    if (!isset($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
-        return $default;
-    }
+    if (!isset($_SERVER['HTTP_ACCEPT_LANGUAGE'])) return $default;
 
-    // Parsear header: es-MX,es;q=0.9,en-US;q=0.8,en;q=0.7
     $langs = explode(',', $_SERVER['HTTP_ACCEPT_LANGUAGE']);
-    
     foreach ($langs as $lang) {
-        $lang = trim(explode(';', $lang)[0]); // Quitamos el q=0.9
-        $lang = strtolower($lang); // Convertir a minúsculas (es-mx)
+        $lang = trim(explode(';', $lang)[0]); 
+        $lang = strtolower($lang); 
 
-        // 1. Coincidencia Exacta
-        if (in_array($lang, $availableLanguages)) {
-            return $lang;
-        }
+        if (in_array($lang, $availableLanguages)) return $lang;
 
-        // 2. Coincidencia por Familia (los dos primeros caracteres)
         $langPrefix = substr($lang, 0, 2);
-        if (array_key_exists($langPrefix, $familyFallbacks)) {
-            return $familyFallbacks[$langPrefix];
-        }
+        if (array_key_exists($langPrefix, $familyFallbacks)) return $familyFallbacks[$langPrefix];
     }
-
     return $default;
 }
 ?>

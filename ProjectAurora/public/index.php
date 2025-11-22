@@ -15,7 +15,6 @@ if (isset($_SESSION['user_lang'])) {
     $userLang = detect_browser_language(); 
 }
 
-// [NUEVO] Obtener tema preferido (default 'system')
 $userTheme = $_SESSION['user_theme'] ?? 'system';
 
 // Cargamos las traducciones en el servidor
@@ -23,7 +22,9 @@ I18n::load($userLang);
 
 if (isset($_SESSION['user_id'])) {
     $jsUserId = $_SESSION['user_id'];
-    $token = generate_ws_auth_token($pdo, $jsUserId);
+    // [MODIFICADO] Pasamos session_id() aquí
+    $currentSessionId = session_id();
+    $token = generate_ws_auth_token($pdo, $jsUserId, $currentSessionId);
     $wsToken = "'$token'";
 } 
 ?>
@@ -39,7 +40,6 @@ if (isset($_SESSION['user_id'])) {
         window.USER_ID = <?php echo $jsUserId; ?>; 
         window.WS_TOKEN = <?php echo $wsToken; ?>;
         window.USER_LANG = '<?php echo $userLang; ?>';
-        // [NUEVO] Inyectar tema al JS
         window.USER_THEME = '<?php echo $userTheme; ?>';
     </script>
 

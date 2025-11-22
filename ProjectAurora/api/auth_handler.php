@@ -37,7 +37,6 @@ date_default_timezone_set('America/Matamoros');
 
 require_once '../config/database.php';
 require_once '../config/utilities.php';
-// [NUEVO] Incluimos la librería para validar códigos 2FA
 require_once '../includes/logic/GoogleAuthenticator.php';
 
 $data = json_decode(file_get_contents('php://input'), true);
@@ -86,12 +85,24 @@ function is_allowed_domain($email) {
     return true; 
 }
 
-function set_user_session($user) {
+// [MODIFICADO] Función para establecer sesión y GUARDAR EN BD
+function set_user_session($pdo, $user) {
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['user_uuid'] = $user['uuid'];
     $_SESSION['user_email'] = $user['email'];
     $_SESSION['user_avatar'] = $user['avatar'];
     $_SESSION['user_role'] = $user['role'];
+
+    // Guardar sesión en la base de datos para gestión de dispositivos
+    $sessionId = session_id();
+    $ip = get_client_ip();
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+
+    // Limpiar si había una sesión anterior con el mismo ID (raro pero posible tras regenerate)
+    $pdo->prepare("DELETE FROM user_sessions WHERE session_id = ?")->execute([$sessionId]);
+
+    $stmt = $pdo->prepare("INSERT INTO user_sessions (user_id, session_id, ip_address, user_agent) VALUES (?, ?, ?, ?)");
+    $stmt->execute([$user['id'], $sessionId, $ip, $userAgent]);
 }
 
 function mask_email($email) {
@@ -105,89 +116,59 @@ function mask_email($email) {
 $response = ['success' => false, 'message' => 'Acción no válida'];
 
 try {
-    // ==================================================================
-    // REGISTRO - PASO 1
-    // ==================================================================
+    // ... (REGISTRO PASOS 1 y 2 SE MANTIENEN IGUAL) ...
     if ($action === 'register_step_1') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
-
         if (empty($email) || empty($password)) throw new Exception('Completa todos los campos.');
         if (strlen($email) < 4) throw new Exception('Correo muy corto.');
         if (!is_allowed_domain($email)) throw new Exception('Dominio no permitido.');
         if (strlen($password) < 8) throw new Exception('Contraseña muy corta.');
-
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
         if ($stmt->rowCount() > 0) throw new Exception('El correo ya está registrado.');
-
         if (!isset($_SESSION['temp_register'])) $_SESSION['temp_register'] = [];
         $_SESSION['temp_register']['email'] = $email;
         $_SESSION['temp_register']['password'] = $password;
-
         $response = ['success' => true, 'message' => 'Paso 1 OK'];
 
-    // ==================================================================
-    // REGISTRO - PASO 2 (Generar Code + Hash)
-    // ==================================================================
     } elseif ($action === 'register_step_2') {
         $username = trim($data['username'] ?? '');
         $email = $_SESSION['temp_register']['email'] ?? '';
         $rawPassword = $_SESSION['temp_register']['password'] ?? '';
-
         if (empty($email) || empty($rawPassword)) throw new Exception('Sesión expirada.');
         if (!preg_match('/^[a-zA-Z0-9_]{8,32}$/', $username)) throw new Exception('Usuario inválido.');
-
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
         $stmt->execute([$username]);
         if ($stmt->rowCount() > 0) throw new Exception('El usuario ya existe.');
-
         $passwordHash = password_hash($rawPassword, PASSWORD_BCRYPT);
         $payload = json_encode(['username' => $username, 'password_hash' => $passwordHash]);
-        
-        // 1. Generar Código
         $code = generate_verification_code();
-        // 2. Hashear Código para DB
         $codeHash = hash('sha256', $code);
-
         $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'registration'")->execute([$email]);
         $sql = "INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, 'registration', ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$email, $codeHash, $payload]); // Guardamos el HASH
-
+        $stmt->execute([$email, $codeHash, $payload]);
         unset($_SESSION['temp_register']['password']);
         $_SESSION['temp_register']['username'] = $username;
-
-        // LOG DE PRUEBA
         logger("[PRUEBA - ELIMINAR EN PROD] Registro para $email | Code: $code | Hash: $codeHash");
-        
         $response = ['success' => true, 'message' => 'Código enviado'];
 
-    // ==================================================================
-    // REGISTRO - FINAL (Verificar Code con Hash)
-    // ==================================================================
     } elseif ($action === 'register_final') {
         $inputCode = strtoupper(trim($data['code'] ?? ''));
         $email = $_SESSION['temp_register']['email'] ?? '';
-
         if (empty($email)) throw new Exception('Sesión perdida.');
-
-        // Hasheamos el input para comparar
         $inputHash = hash('sha256', $inputCode);
-
         $sql = "SELECT id, payload FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'registration' AND expires_at > NOW()";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute([$email, $inputHash]); // Comparamos con HASH
+        $stmt->execute([$email, $inputHash]);
         $row = $stmt->fetch();
-
         if (!$row) throw new Exception('Código inválido o expirado.');
-
         $payloadData = json_decode($row['payload'], true);
         $finalUsername = $payloadData['username'];
         $finalPassHash = $payloadData['password_hash'];
         $uuid = generate_uuid();
         $selectedColor = get_random_color();
-
         $apiUrl = "https://ui-avatars.com/api/?name={$finalUsername}&size=256&background={$selectedColor}&color=ffffff&bold=true&length=1";
         $fileName = $uuid . '.png';
         $uploadDir = __DIR__ . '/../public/assets/uploads/avatars/default/';
@@ -197,74 +178,43 @@ try {
         $imageContent = @file_get_contents($apiUrl);
         if ($imageContent !== false) file_put_contents($destPath, $imageContent);
         else $dbPath = null;
-
         $insert = $pdo->prepare("INSERT INTO users (uuid, email, username, password, avatar, role) VALUES (?, ?, ?, ?, ?, 'user')");
         if ($insert->execute([$uuid, $email, $finalUsername, $finalPassHash, $dbPath])) {
             $newUserId = $pdo->lastInsertId();
-
             $detectedLang = detect_browser_language();
             $prefsSql = "INSERT INTO user_preferences (user_id, usage_intent, language) VALUES (?, 'personal', ?)";
             $prefsStmt = $pdo->prepare($prefsSql);
             $prefsStmt->execute([$newUserId, $detectedLang]);
-
-            $newUser = [
-                'id' => $newUserId,
-                'uuid' => $uuid,
-                'email' => $email,
-                'avatar' => $dbPath,
-                'role' => 'user'
-            ];
-
+            $newUser = ['id' => $newUserId, 'uuid' => $uuid, 'email' => $email, 'avatar' => $dbPath, 'role' => 'user'];
+            
             session_regenerate_id(true);
-            set_user_session($newUser);
+            set_user_session($pdo, $newUser); // Pasamos $pdo
 
             $pdo->prepare("DELETE FROM verification_codes WHERE id = ?")->execute([$row['id']]);
             unset($_SESSION['temp_register']);
-
             $response = ['success' => true, 'message' => 'Bienvenido'];
         } else {
             throw new Exception('Error crítico.');
         }
 
-    // ==================================================================
-    // LOGIN (Modificado para 2FA con App)
-    // ==================================================================
     } elseif ($action === 'login') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
-
-        if (checkLockStatus($pdo, $email, 'login_fail')) {
-            throw new Exception("Has excedido intentos. Espera " . LOCKOUT_TIME_MINUTES . " mins.");
-        }
-
+        if (checkLockStatus($pdo, $email, 'login_fail')) throw new Exception("Has excedido intentos. Espera " . LOCKOUT_TIME_MINUTES . " mins.");
         $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
         $stmt->execute([$email]);
         $user = $stmt->fetch();
-
         if ($user && password_verify($password, $user['password'])) {
-            if (isset($user['account_status']) && $user['account_status'] !== 'active') {
-                throw new Exception('Tu cuenta no está activa o ha sido suspendida.');
-            }
-
+            if (isset($user['account_status']) && $user['account_status'] !== 'active') throw new Exception('Tu cuenta no está activa o ha sido suspendida.');
             if (isset($user['is_2fa_enabled']) && $user['is_2fa_enabled'] == 1) {
-                // [CAMBIO 2FA APP] No generamos código ni enviamos correo.
-                // Simplemente preparamos la sesión temporal para el siguiente paso.
-                
                 if (!isset($_SESSION['temp_login_2fa'])) $_SESSION['temp_login_2fa'] = [];
                 $_SESSION['temp_login_2fa']['user_id'] = $user['id'];
                 $_SESSION['temp_login_2fa']['email'] = $user['email'];
-
-                $response = [
-                    'success' => true,
-                    'require_2fa' => true,
-                    'message' => 'Verificación de App requerida',
-                    // Texto genérico ya que no usamos correo para el código
-                    'masked_email' => 'tu aplicación de autenticación'
-                ];
+                $response = ['success' => true, 'require_2fa' => true, 'message' => 'Verificación de App requerida', 'masked_email' => 'tu aplicación de autenticación'];
             } else {
                 clearFailedAttempts($pdo, $email);
                 session_regenerate_id(true);
-                set_user_session($user);
+                set_user_session($pdo, $user); // Pasamos $pdo
                 $response = ['success' => true, 'message' => 'Login correcto'];
             }
         } else {
@@ -272,174 +222,58 @@ try {
             throw new Exception('Credenciales incorrectas.');
         }
 
-    // ==================================================================
-    // LOGIN 2FA VERIFY (Modificado para validar con Google Authenticator)
-    // ==================================================================
     } elseif ($action === 'login_2fa_verify') {
         $inputCode = trim($data['code'] ?? '');
-        // Limpiar formato (quitar espacios o guiones si el usuario los puso)
         $cleanCode = str_replace(['-', ' '], '', $inputCode);
-
         if (empty($_SESSION['temp_login_2fa']['user_id'])) throw new Exception("Sesión expirada. Vuelve a iniciar login.");
-        
         $userId = $_SESSION['temp_login_2fa']['user_id'];
         $email = $_SESSION['temp_login_2fa']['email'];
-
         if (checkLockStatus($pdo, $email, 'login_2fa_fail')) throw new Exception("Muchos intentos fallidos. Espera unos minutos.");
-
-        // 1. OBTENER EL SECRETO Y CÓDIGOS DE RESPALDO
         $stmt = $pdo->prepare("SELECT id, uuid, username, email, avatar, role, two_factor_secret, backup_codes FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $user = $stmt->fetch();
-
         if (!$user) throw new Exception("Usuario no encontrado.");
-
         $secret = $user['two_factor_secret'];
         $backupCodes = json_decode($user['backup_codes'] ?? '[]', true);
         if (!is_array($backupCodes)) $backupCodes = [];
-
         $isAuthenticated = false;
         $usedBackupCode = false;
-
-        // 2. INTENTO A: Verificar con Google Authenticator (TOTP)
-        // Solo si el código tiene 6 dígitos
         if (strlen($cleanCode) === 6) {
             $ga = new PHPGangsta_GoogleAuthenticator();
-            // Tolerancia de 1 (30 segundos arriba/abajo)
-            if ($ga->verifyCode($secret, $cleanCode, 1)) {
-                $isAuthenticated = true;
-            }
+            if ($ga->verifyCode($secret, $cleanCode, 1)) $isAuthenticated = true;
         }
-
-        // 3. INTENTO B: Verificar Códigos de Respaldo (Si falló lo anterior)
         if (!$isAuthenticated) {
-            // Buscamos el código ingresado en el array de backups (con formato original)
             $index = array_search($inputCode, $backupCodes); 
-            
             if ($index !== false) {
                 $isAuthenticated = true;
                 $usedBackupCode = true;
-                // Eliminar el código usado
                 unset($backupCodes[$index]);
-                // Re-indexar array
                 $backupCodes = array_values($backupCodes);
             }
         }
-
         if ($isAuthenticated) {
-            // Si usó backup code, actualizamos la lista en BD
             if ($usedBackupCode) {
                 $newBackups = json_encode($backupCodes);
                 $pdo->prepare("UPDATE users SET backup_codes = ? WHERE id = ?")->execute([$newBackups, $userId]);
             }
-
             clearFailedAttempts($pdo, $email);
             session_regenerate_id(true);
-            
-            // Limpiamos datos sensibles antes de guardar en sesión
             unset($user['password']);
             unset($user['two_factor_secret']);
             unset($user['backup_codes']);
-            
-            set_user_session($user);
+            set_user_session($pdo, $user); // Pasamos $pdo
             unset($_SESSION['temp_login_2fa']);
-            
             $response = ['success' => true, 'message' => 'Autenticación completada'];
         } else {
             logFailedAttempt($pdo, $email, 'login_2fa_fail');
             throw new Exception("Código incorrecto.");
         }
 
-    // ==================================================================
-    // RECUPERACIÓN - PASO 1 (Generar Token + Hash)
-    // ==================================================================
-    } elseif ($action === 'recovery_step_1') {
-        $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
-        if (empty($email) || !is_allowed_domain($email)) throw new Exception('Correo con formato inválido o dominio no permitido.');
-        if (checkLockStatus($pdo, $email, 'recovery_fail')) throw new Exception("Demasiados intentos. Por favor espera " . LOCKOUT_TIME_MINUTES . " minutos.");
-
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-        $stmt->execute([$email]);
-        if ($stmt->rowCount() > 0) {
-            
-            // 1. Generar Token Largo
-            $token = bin2hex(random_bytes(32)); 
-            
-            // 2. Hashear Token
-            $tokenHash = hash('sha256', $token);
-            
-            // 3. Limpiar tokens previos
-            $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'recovery'")->execute([$email]);
-            
-            // 4. Insertar nuevo token (HASHED)
-            $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, expires_at) VALUES (?, 'recovery', ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE))");
-            $stmt->execute([$email, $tokenHash]);
-            
-            // 5. Generar Link
-            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
-            $host = $_SERVER['HTTP_HOST']; 
-            $base = '/ProjectAurora/'; 
-            
-            $link = $protocol . $host . $base . 'reset-password?token=' . $token;
-
-            // LOG DE PRUEBA
-            logger("[PRUEBA - ELIMINAR EN PROD] Recuperación para $email | Link: $link | Hash guardado: $tokenHash");
-            
-            $response = ['success' => true, 'message' => 'Se ha enviado un enlace de recuperación a tu correo.'];
-        } else {
-            logFailedAttempt($pdo, $email, 'recovery_fail');
-            throw new Exception('Este correo no se encuentra registrado en nuestra base de datos.');
-        }
-
-    // ==================================================================
-    // RECUPERACIÓN - FINAL
-    // ==================================================================
-    } elseif ($action === 'recovery_final') {
-        $token = trim($data['token'] ?? '');
-        $newPass = $data['password'] ?? '';
-        $confirmPass = $data['password_confirm'] ?? '';
-
-        if (empty($token) || empty($newPass)) throw new Exception('Datos incompletos.');
-        if ($newPass !== $confirmPass) throw new Exception('Las contraseñas no coinciden.');
-        if (strlen($newPass) < 8) throw new Exception('La contraseña debe tener al menos 8 caracteres.');
-
-        $tokenHash = hash('sha256', $token);
-
-        $sql = "SELECT identifier FROM verification_codes WHERE code = ? AND code_type = 'recovery' AND expires_at > NOW()";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$tokenHash]);
-        $row = $stmt->fetch();
-
-        if (!$row) {
-            throw new Exception('El enlace es inválido o ha expirado.');
-        }
-
-        $email = $row['identifier'];
-
-        $stmtUser = $pdo->prepare("SELECT id, password FROM users WHERE email = ?");
-        $stmtUser->execute([$email]);
-        $userData = $stmtUser->fetch();
-        $oldHash = $userData['password'] ?? 'UNKNOWN';
-        $userIdForLog = $userData['id'] ?? null;
-
-        $newHash = password_hash($newPass, PASSWORD_BCRYPT);
-        $upd = $pdo->prepare("UPDATE users SET password = ? WHERE email = ?");
-        if ($upd->execute([$newHash, $email])) {
-            
-            if ($userIdForLog) {
-                $ip = get_client_ip();
-                $stmtLog = $pdo->prepare("INSERT INTO user_audit_logs (user_id, change_type, old_value, new_value, changed_by_ip, changed_at) VALUES (?, 'password', ?, ?, ?, NOW())");
-                $stmtLog->execute([$userIdForLog, $oldHash, $newHash, $ip]);
-            }
-
-            $pdo->prepare("DELETE FROM verification_codes WHERE code = ?")->execute([$tokenHash]);
-            clearFailedAttempts($pdo, $email);
-            $response = ['success' => true, 'message' => 'Contraseña actualizada. Inicia sesión.'];
-        } else {
-            throw new Exception('Error actualizando base de datos.');
-        }
-
     } elseif ($action === 'logout') {
+        // Eliminar la sesión de la base de datos antes de destruir la de PHP
+        $sessionId = session_id();
+        $pdo->prepare("DELETE FROM user_sessions WHERE session_id = ?")->execute([$sessionId]);
+
         $_SESSION = [];
         if (ini_get("session.use_cookies")) {
             $params = session_get_cookie_params();
@@ -447,6 +281,63 @@ try {
         }
         session_destroy();
         $response = ['success' => true, 'message' => 'Sesión cerrada correctamente'];
+    
+    } elseif ($action === 'recovery_step_1') {
+        $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
+        if (empty($email) || !is_allowed_domain($email)) throw new Exception('Correo con formato inválido o dominio no permitido.');
+        if (checkLockStatus($pdo, $email, 'recovery_fail')) throw new Exception("Demasiados intentos. Por favor espera " . LOCKOUT_TIME_MINUTES . " minutos.");
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        if ($stmt->rowCount() > 0) {
+            $token = bin2hex(random_bytes(32)); 
+            $tokenHash = hash('sha256', $token);
+            $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'recovery'")->execute([$email]);
+            $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, expires_at) VALUES (?, 'recovery', ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE))");
+            $stmt->execute([$email, $tokenHash]);
+            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
+            $host = $_SERVER['HTTP_HOST']; 
+            $base = '/ProjectAurora/'; 
+            $link = $protocol . $host . $base . 'reset-password?token=' . $token;
+            logger("[PRUEBA - ELIMINAR EN PROD] Recuperación para $email | Link: $link | Hash guardado: $tokenHash");
+            $response = ['success' => true, 'message' => 'Se ha enviado un enlace de recuperación a tu correo.'];
+        } else {
+            logFailedAttempt($pdo, $email, 'recovery_fail');
+            throw new Exception('Este correo no se encuentra registrado en nuestra base de datos.');
+        }
+
+    } elseif ($action === 'recovery_final') {
+        $token = trim($data['token'] ?? '');
+        $newPass = $data['password'] ?? '';
+        $confirmPass = $data['password_confirm'] ?? '';
+        if (empty($token) || empty($newPass)) throw new Exception('Datos incompletos.');
+        if ($newPass !== $confirmPass) throw new Exception('Las contraseñas no coinciden.');
+        if (strlen($newPass) < 8) throw new Exception('La contraseña debe tener al menos 8 caracteres.');
+        $tokenHash = hash('sha256', $token);
+        $sql = "SELECT identifier FROM verification_codes WHERE code = ? AND code_type = 'recovery' AND expires_at > NOW()";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$tokenHash]);
+        $row = $stmt->fetch();
+        if (!$row) throw new Exception('El enlace es inválido o ha expirado.');
+        $email = $row['identifier'];
+        $stmtUser = $pdo->prepare("SELECT id, password FROM users WHERE email = ?");
+        $stmtUser->execute([$email]);
+        $userData = $stmtUser->fetch();
+        $oldHash = $userData['password'] ?? 'UNKNOWN';
+        $userIdForLog = $userData['id'] ?? null;
+        $newHash = password_hash($newPass, PASSWORD_BCRYPT);
+        $upd = $pdo->prepare("UPDATE users SET password = ? WHERE email = ?");
+        if ($upd->execute([$newHash, $email])) {
+            if ($userIdForLog) {
+                $ip = get_client_ip();
+                $stmtLog = $pdo->prepare("INSERT INTO user_audit_logs (user_id, change_type, old_value, new_value, changed_by_ip, changed_at) VALUES (?, 'password', ?, ?, ?, NOW())");
+                $stmtLog->execute([$userIdForLog, $oldHash, $newHash, $ip]);
+            }
+            $pdo->prepare("DELETE FROM verification_codes WHERE code = ?")->execute([$tokenHash]);
+            clearFailedAttempts($pdo, $email);
+            $response = ['success' => true, 'message' => 'Contraseña actualizada. Inicia sesión.'];
+        } else {
+            throw new Exception('Error actualizando base de datos.');
+        }
     }
 
 } catch (Exception $e) {

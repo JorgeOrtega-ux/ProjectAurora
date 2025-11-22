@@ -151,6 +151,15 @@
             "sessions_check_desc": "Se cerrará tu sesión en todos los navegadores excepto en este.",
             "success_msg": "Contraseña actualizada correctamente."
         },
+        "sessions": {
+            "title": "Dispositivos",
+            "description": "Estos son los dispositivos que han iniciado sesión en tu cuenta.",
+            "current_device": "Este dispositivo",
+            "logout_all": "Cerrar todas las demás sesiones",
+            "logout_all_confirm": "¿Estás seguro? Se cerrará la sesión en todos los dispositivos excepto este.",
+            "last_active": "Última actividad",
+            "location_unknown": "Ubicación desconocida"
+        },
         "accessibility": {
             "title": "Accesibilidad",
             "description": "Personaliza la apariencia y el comportamiento de la interfaz.",

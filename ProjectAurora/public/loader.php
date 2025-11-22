@@ -51,7 +51,9 @@ $fileMap = [
     'settings/your-profile'     => 'settings/your-profile',
     'settings/login-security'   => 'settings/login-security',
     'settings/accessibility'    => 'settings/accessibility',
-    'settings/change-password'  => 'settings/change-password', // <--- NUEVA ENTRADA
+    'settings/change-password'  => 'settings/change-password',
+    'settings/2fa-setup'        => 'settings/2fa-setup',
+    'settings/sessions'         => 'settings/sessions', // <--- NUEVA ENTRADA
 
     // Admin
     'admin'             => 'admin/dashboard',

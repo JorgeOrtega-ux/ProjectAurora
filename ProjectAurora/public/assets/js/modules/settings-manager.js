@@ -5,7 +5,6 @@ import { updateTheme } from '../core/theme-manager.js';
 
 const API_SETTINGS = (window.BASE_PATH || '/ProjectAurora/') + 'api/settings_handler.php';
 
-// Bandera de control para evitar duplicidad de eventos globales
 let areGlobalsInitialized = false;
 
 function getCsrfToken() {
@@ -20,11 +19,10 @@ function qs(selector) {
 }
 
 export function initSettingsManager() {
-    // 1. Detectar en qué sección estamos
     const isProfile = qs('[data-section="settings/your-profile"]');
     const isChangePass = qs('[data-section="settings/change-password"]');
+    const isSessions = qs('[data-section="settings/sessions"]'); // Detectar sección sesiones
     
-    // Lógica LOCAL para cada sección
     if (isProfile) {
         initAvatarLogic();
         initUsernameLogic();
@@ -34,55 +32,184 @@ export function initSettingsManager() {
     if (isChangePass) {
         initChangePasswordLogic();
     }
+
+    if (isSessions) {
+        initSessionsLogic();
+    }
     
-    // 3. Lógica GLOBAL (Se ejecuta UNA SOLA VEZ por sesión)
     if (!areGlobalsInitialized) {
-        initPreferencesLogic();        // Selects (Tema, Idioma, Uso)
-        initBooleanPreferencesLogic(); // Checkboxes (Toggles)
+        initPreferencesLogic();        
+        initBooleanPreferencesLogic(); 
+        initAccountDeleteLogic(); // Nuevo: Lógica del botón de eliminar cuenta
+        initSessionsNavLogic();   // Nuevo: Lógica de navegación a sesiones desde security
         
         areGlobalsInitialized = true;
         console.log('[SettingsManager] Listeners globales inicializados (Única vez).');
     }
 }
 
-/**
- * [CORREGIDO] Muestra/Oculta errores.
- * Busca la tarjeta principal (.component-card) para renderizar el error FUERA de ella,
- * evitando que quede atrapado dentro de un .component-card--grouped.
- */
 function updateCardError(element, message = '', show = true) {
     if (!element) return;
-    
-    // Buscamos el contenedor padre 'component-card'. 
-    // Si el elemento pasado YA es la tarjeta (como en change-password), se usa a sí mismo.
     const cardContainer = element.closest('.component-card') || element;
-
     let nextElement = cardContainer.nextElementSibling;
     let errorDiv = null;
 
-    // Verificar si ya existe un div de error después de la tarjeta
     if (nextElement && nextElement.classList.contains('component-card__error')) {
         errorDiv = nextElement;
     }
 
-    // Crear div si no existe y debemos mostrar error
     if (!errorDiv && show) {
         errorDiv = document.createElement('div');
         errorDiv.className = 'component-card__error';
-        cardContainer.after(errorDiv); // Se inserta DESPUÉS de la tarjeta principal
+        cardContainer.after(errorDiv);
     }
 
     if (show && errorDiv) {
         errorDiv.textContent = message;
-        // Pequeño delay para permitir transición CSS si aplica
         requestAnimationFrame(() => errorDiv.classList.add('active'));
     } else if (!show && errorDiv) {
         errorDiv.classList.remove('active');
-        // Esperar a que termine transición (opcional) o remover directo
         setTimeout(() => {
             if (errorDiv.parentNode) errorDiv.parentNode.removeChild(errorDiv);
         }, 200); 
     }
+}
+
+// ========================================================
+// LÓGICA DE SESIONES (Dispositivos)
+// ========================================================
+function initSessionsNavLogic() {
+    // Listener delegado para el botón de "Administrar dispositivos" en login-security.php
+    document.body.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action="trigger-sessions-manage"]');
+        if (btn) {
+            e.preventDefault();
+            if (window.navigateTo) window.navigateTo('settings/sessions');
+        }
+    });
+}
+
+async function initSessionsLogic() {
+    const container = qs('#sessions-list-container');
+    const revokeAllBtn = qs('[data-action="revoke-all-sessions"]');
+    if (!container) return;
+
+    // Cargar lista
+    try {
+        const res = await fetch(API_SETTINGS, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
+            body: JSON.stringify({ action: 'get_sessions' })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            renderSessionsList(data.sessions, container);
+        } else {
+            container.innerHTML = `<p style="text-align:center; color:#d32f2f;">${data.message}</p>`;
+        }
+    } catch (e) {
+        container.innerHTML = `<p style="text-align:center; color:#666;">Error de conexión.</p>`;
+    }
+
+    // Revocar individual
+    container.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-action="revoke-single"]');
+        if (btn) {
+            const sessionIdDb = btn.dataset.id;
+            if (!confirm('¿Cerrar sesión en este dispositivo?')) return;
+
+            btn.disabled = true; 
+            btn.innerHTML = '<div class="small-spinner"></div>';
+
+            try {
+                const res = await fetch(API_SETTINGS, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
+                    body: JSON.stringify({ action: 'revoke_session', session_id_db: sessionIdDb })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // Eliminar tarjeta visualmente
+                    const card = btn.closest('.component-card');
+                    card.style.opacity = '0';
+                    setTimeout(() => card.remove(), 300);
+                    if (window.alertManager) window.alertManager.showAlert('Sesión cerrada.', 'success');
+                } else {
+                    if (window.alertManager) window.alertManager.showAlert(data.message, 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = 'Revocar';
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    });
+
+    // Revocar todas
+    if (revokeAllBtn) {
+        revokeAllBtn.onclick = async () => {
+            if (!confirm('¿Estás seguro de cerrar todas las demás sesiones?')) return;
+            setLoading(revokeAllBtn, true);
+            try {
+                const res = await fetch(API_SETTINGS, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
+                    body: JSON.stringify({ action: 'revoke_all_sessions' })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    if (window.alertManager) window.alertManager.showAlert('Sesiones cerradas.', 'success');
+                    // Recargar lista
+                    initSessionsLogic();
+                } else {
+                    if (window.alertManager) window.alertManager.showAlert(data.message, 'error');
+                }
+            } catch (e) {}
+            setLoading(revokeAllBtn, false, 'Cerrar todas las demás sesiones');
+        };
+    }
+}
+
+function renderSessionsList(sessions, container) {
+    if (sessions.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#666;">No se encontraron sesiones.</p>';
+        return;
+    }
+
+    let html = '';
+    sessions.forEach(sess => {
+        const statusBadge = sess.is_current 
+            ? `<span style="background:#e8f5e9; color:#2e7d32; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; margin-left:8px;">ACTUAL</span>` 
+            : '';
+        
+        const revokeBtn = sess.is_current 
+            ? '' 
+            : `<button class="component-button" data-action="revoke-single" data-id="${sess.id}" style="color:#d32f2f; border-color:#ffcdd2;">Cerrar sesión</button>`;
+
+        html += `
+        <div class="component-card component-card--grouped" style="margin-bottom:16px;">
+            <div class="component-group-item">
+                <div class="component-card__content">
+                    <div class="component-icon-container">
+                        <span class="material-symbols-rounded">${sess.icon}</span>
+                    </div>
+                    <div class="component-card__text">
+                        <h2 class="component-card__title" style="display:flex; align-items:center;">
+                            ${sess.os} - ${sess.browser} ${statusBadge}
+                        </h2>
+                        <p class="component-card__description">
+                            ${sess.ip} • Última vez: ${new Date(sess.last_active).toLocaleString()}
+                        </p>
+                    </div>
+                </div>
+                <div class="component-card__actions">
+                    ${revokeBtn}
+                </div>
+            </div>
+        </div>`;
+    });
+    container.innerHTML = html;
 }
 
 // ========================================================
@@ -104,7 +231,6 @@ function initChangePasswordLogic() {
 
     if (!step1Card || !verifyBtn) return;
 
-    // PASO 1: Verificar contraseña actual
     verifyBtn.onclick = async () => {
         const pass = currentPassInput.value;
         if (!pass) {
@@ -124,11 +250,9 @@ function initChangePasswordLogic() {
             const data = await res.json();
 
             if (data.success) {
-                // Transición UI: Ocultar input actual, mostrar nuevos inputs
-                currentPassInput.disabled = true; // Bloquear input
+                currentPassInput.disabled = true;
                 verifyBtn.style.display = 'none'; 
                 
-                // Mostrar Paso 2
                 step2Card.classList.remove('disabled');
                 step2Card.classList.add('active');
                 step2Sessions.classList.remove('disabled');
@@ -147,7 +271,6 @@ function initChangePasswordLogic() {
         setLoading(verifyBtn, false);
     };
 
-    // PASO 2: Guardar nueva contraseña
     saveBtn.onclick = async () => {
         const newPass = newPassInput.value;
         const confirmPass = confirmPassInput.value;
@@ -181,7 +304,6 @@ function initChangePasswordLogic() {
 
             if (data.success) {
                 if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
-                // Redirigir a seguridad después de un breve delay
                 setTimeout(() => {
                     if (window.navigateTo) window.navigateTo('settings/login-security');
                     else window.location.reload();
@@ -197,12 +319,23 @@ function initChangePasswordLogic() {
 }
 
 // ========================================================
-// TOGGLES (Booleanos) - Lógica Global
+// LÓGICA GLOBAL DE ELIMINACIÓN DE CUENTA
+// ========================================================
+function initAccountDeleteLogic() {
+    document.body.addEventListener('click', (e) => {
+        if (e.target.closest('[data-action="trigger-account-delete"]')) {
+            // Aquí podrías abrir un modal, por ahora un alert simple
+            alert('Esta funcionalidad requiere confirmación avanzada (pendiente de implementar).');
+        }
+    });
+}
+
+// ========================================================
+// TOGGLES (Booleanos)
 // ========================================================
 function initBooleanPreferencesLogic() {
     document.body.addEventListener('change', async (e) => {
         const target = e.target;
-        // Delegación de eventos para capturar cualquier toggle booleano
         if (target.matches('input[type="checkbox"][data-preference-type="boolean"]')) {
             const fieldName = target.dataset.fieldName;
             const isChecked = target.checked;
@@ -211,7 +344,6 @@ function initBooleanPreferencesLogic() {
 
             if (!fieldName) return;
 
-            // UI Optimista / Bloqueo
             updateCardError(card, '', false);
             if (toggleWrapper) toggleWrapper.classList.add('disabled-interactive');
 
@@ -233,12 +365,10 @@ function initBooleanPreferencesLogic() {
                 if (data.success) {
                     if (window.alertManager) window.alertManager.showAlert('Preferencia actualizada.', 'success');
                 } else {
-                    // Revertir si hubo error lógico en servidor
                     target.checked = !isChecked; 
                     updateCardError(card, data.message);
                 }
             } catch (err) {
-                // Revertir si hubo error de red
                 target.checked = !isChecked;
                 console.error(err);
                 updateCardError(card, 'Error de conexión');
@@ -250,7 +380,7 @@ function initBooleanPreferencesLogic() {
 }
 
 // ========================================================
-// SELECTORES (Theme, Lang, Usage) - Lógica Global
+// SELECTORES (Theme, Lang, Usage)
 // ========================================================
 function initPreferencesLogic() {
     document.body.addEventListener('click', async (e) => {
@@ -296,14 +426,8 @@ function initPreferencesLogic() {
             
             if (data.success) {
                 if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
-                
-                if (prefType === 'language') {
-                    await changeLanguage(value);
-                }
-                if (prefType === 'theme') {
-                    updateTheme(value);
-                }
-
+                if (prefType === 'language') await changeLanguage(value);
+                if (prefType === 'theme') updateTheme(value);
             } else {
                 updateCardError(card, data.message);
             }
@@ -318,13 +442,12 @@ function initPreferencesLogic() {
 }
 
 // ========================================================
-// LÓGICA DE AVATAR (Local)
+// LÓGICA DE AVATAR, USERNAME, EMAIL (CÓDIGO EXISTENTE REDUCIDO)
 // ========================================================
 function initAvatarLogic() {
-    // Buscamos el elemento local, pero updateCardError usará su closest('.component-card')
     const cardItem = qs('[data-component="avatar-section"]');
     if (!cardItem) return;
-
+    // ... (Mantener lógica existente de avatar tal cual) ...
     const elements = {
         fileInput: qs('[data-element="avatar-upload-input"]'),
         previewImg: qs('[data-element="avatar-preview-image"]'),
@@ -338,33 +461,21 @@ function initAvatarLogic() {
         actionsCustom: qs('[data-state="avatar-actions-custom"]'),
         actionsPreview: qs('[data-state="avatar-actions-preview"]')
     };
-
     if (!elements.fileInput) return;
-
     let originalImageSrc = elements.previewImg.src;
-    
     const triggerUpload = (e) => { 
         if(e) e.preventDefault(); 
         updateCardError(cardItem, '', false);
         elements.fileInput.click(); 
     };
-
     if (elements.uploadBtn) elements.uploadBtn.onclick = triggerUpload;
     if (elements.changeBtn) elements.changeBtn.onclick = triggerUpload;
     if (elements.overlayTrigger) elements.overlayTrigger.onclick = triggerUpload;
-
     elements.fileInput.onchange = function(e) {
         const file = this.files[0];
         if (!file) return;
-        
-        if (file.size > 2097152) {
-            updateCardError(cardItem, 'El archivo es demasiado grande (Máx. 2MB).');
-            this.value = ''; return;
-        }
-        if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
-            updateCardError(cardItem, 'Formato no válido. Usa JPG, PNG o WEBP.');
-            this.value = ''; return;
-        }
+        if (file.size > 2097152) { updateCardError(cardItem, 'El archivo es demasiado grande (Máx. 2MB).'); this.value = ''; return; }
+        if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) { updateCardError(cardItem, 'Formato no válido.'); this.value = ''; return; }
         updateCardError(cardItem, '', false);
         const reader = new FileReader();
         reader.onload = function(evt) {
@@ -374,7 +485,6 @@ function initAvatarLogic() {
         };
         reader.readAsDataURL(file);
     };
-
     elements.cancelBtn.onclick = () => {
         updateCardError(cardItem, '', false);
         elements.previewImg.src = originalImageSrc;
@@ -382,7 +492,6 @@ function initAvatarLogic() {
         const isDefault = originalImageSrc.includes('data:image') || originalImageSrc === '' || originalImageSrc.endsWith('/') || originalImageSrc.includes('/default/') || originalImageSrc.includes('avatars_default') || originalImageSrc.includes('ui-avatars.com');       
         toggleAvatarActions(isDefault ? 'default' : 'custom');
     };
-
     elements.saveBtn.onclick = async () => {
         const file = elements.fileInput.files[0];
         if (!file) return;
@@ -402,13 +511,10 @@ function initAvatarLogic() {
                 originalImageSrc = newSrc;
                 updateHeaderAvatar(newSrc);
                 toggleAvatarActions('custom');
-            } else {
-                updateCardError(cardItem, data.message);
-            }
+            } else { updateCardError(cardItem, data.message); }
         } catch (e) { updateCardError(cardItem, 'Error de conexión.'); }
         setLoading(elements.saveBtn, false, 'Guardar');
     };
-
     elements.removeBtn.onclick = async () => {
         if (!confirm('¿Restablecer avatar por defecto?')) return;
         setLoading(elements.removeBtn, true);
@@ -426,13 +532,10 @@ function initAvatarLogic() {
                 originalImageSrc = newSrc;
                 updateHeaderAvatar(newSrc);
                 toggleAvatarActions('default'); 
-            } else {
-                updateCardError(cardItem, data.message);
-            }
+            } else { updateCardError(cardItem, data.message); }
         } catch (e) { updateCardError(cardItem, 'Error de conexión.'); }
         setLoading(elements.removeBtn, false, 'Eliminar');
     };
-
     function toggleAvatarActions(mode) {
         if(elements.actionsDefault) elements.actionsDefault.className = (mode === 'default') ? 'active' : 'disabled';
         if(elements.actionsCustom) elements.actionsCustom.className = (mode === 'custom') ? 'active' : 'disabled';
@@ -456,39 +559,18 @@ function initUsernameLogic() {
     };
     if (!els.input) return;
     let originalUsername = els.input.value;
-
-    els.editBtn.onclick = () => {
-        toggleMode(els, true);
-        updateCardError(itemSection, '', false);
-        els.input.value = ''; els.input.value = originalUsername; els.input.focus();
-    };
-    els.cancelBtn.onclick = () => {
-        els.input.value = originalUsername;
-        updateCardError(itemSection, '', false);
-        toggleMode(els, false);
-    };
+    els.editBtn.onclick = () => { toggleMode(els, true); updateCardError(itemSection, '', false); els.input.value = ''; els.input.value = originalUsername; els.input.focus(); };
+    els.cancelBtn.onclick = () => { els.input.value = originalUsername; updateCardError(itemSection, '', false); toggleMode(els, false); };
     els.saveBtn.onclick = async () => {
         const newVal = els.input.value.trim();
         updateCardError(itemSection, '', false);
         if (newVal === originalUsername) { toggleMode(els, false); return; }
-        if (newVal.length < 8 || newVal.length > 32) {
-            updateCardError(itemSection, 'El nombre de usuario debe tener entre 8 y 32 caracteres.'); return;
-        }
+        if (newVal.length < 8 || newVal.length > 32) { updateCardError(itemSection, 'El nombre de usuario debe tener entre 8 y 32 caracteres.'); return; }
         setLoading(els.saveBtn, true);
         try {
-            const res = await fetch(API_SETTINGS, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
-                body: JSON.stringify({ action: 'update_username', username: newVal })
-            });
+            const res = await fetch(API_SETTINGS, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }, body: JSON.stringify({ action: 'update_username', username: newVal }) });
             const data = await res.json();
-            if (data.success) {
-                if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
-                originalUsername = data.new_username;
-                els.display.textContent = data.new_username;
-                els.input.value = data.new_username;
-                toggleMode(els, false);
-            } else { updateCardError(itemSection, data.message || 'Error al actualizar.'); }
+            if (data.success) { if (window.alertManager) window.alertManager.showAlert(data.message, 'success'); originalUsername = data.new_username; els.display.textContent = data.new_username; els.input.value = data.new_username; toggleMode(els, false); } else { updateCardError(itemSection, data.message || 'Error al actualizar.'); }
         } catch (error) { updateCardError(itemSection, 'Error de conexión con el servidor.'); }
         setLoading(els.saveBtn, false, 'Guardar');
     };
@@ -510,17 +592,8 @@ function initEmailLogic() {
     };
     if (!els.input) return;
     let originalEmail = els.input.value;
-
-    els.editBtn.onclick = () => {
-        toggleMode(els, true);
-        updateCardError(itemSection, '', false);
-        els.input.value = ''; els.input.value = originalEmail; els.input.focus();
-    };
-    els.cancelBtn.onclick = () => {
-        els.input.value = originalEmail;
-        updateCardError(itemSection, '', false);
-        toggleMode(els, false);
-    };
+    els.editBtn.onclick = () => { toggleMode(els, true); updateCardError(itemSection, '', false); els.input.value = ''; els.input.value = originalEmail; els.input.focus(); };
+    els.cancelBtn.onclick = () => { els.input.value = originalEmail; updateCardError(itemSection, '', false); toggleMode(els, false); };
     els.saveBtn.onclick = async () => {
         const newVal = els.input.value.trim().toLowerCase();
         updateCardError(itemSection, '', false);
@@ -529,19 +602,9 @@ function initEmailLogic() {
         if (!regex.test(newVal)) { updateCardError(itemSection, 'Dominio no permitido.'); return; }
         setLoading(els.saveBtn, true);
         try {
-            const res = await fetch(API_SETTINGS, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
-                body: JSON.stringify({ action: 'update_email', email: newVal })
-            });
+            const res = await fetch(API_SETTINGS, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }, body: JSON.stringify({ action: 'update_email', email: newVal }) });
             const data = await res.json();
-            if (data.success) {
-                if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
-                originalEmail = data.new_email;
-                els.display.textContent = data.new_email;
-                els.input.value = data.new_email;
-                toggleMode(els, false);
-            } else { updateCardError(itemSection, data.message || 'Error al actualizar.'); }
+            if (data.success) { if (window.alertManager) window.alertManager.showAlert(data.message, 'success'); originalEmail = data.new_email; els.display.textContent = data.new_email; els.input.value = data.new_email; toggleMode(els, false); } else { updateCardError(itemSection, data.message || 'Error al actualizar.'); }
         } catch (error) { updateCardError(itemSection, 'Error de conexión con el servidor.'); }
         setLoading(els.saveBtn, false, 'Guardar');
     };

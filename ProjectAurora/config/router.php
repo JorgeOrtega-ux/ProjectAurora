@@ -19,7 +19,33 @@ require_once __DIR__ . '/database.php';
 $basePath = '/ProjectAurora/'; 
 
 // =======================================================================
-// 1. ACTUALIZAR SESIÓN (REFRESH ROLE & PREFS) - AL INICIO
+// 1. VERIFICAR VALIDEZ DE SESIÓN (CONTROL DE DISPOSITIVOS)
+// =======================================================================
+if (isset($_SESSION['user_id'])) {
+    $currentSessionId = session_id();
+    
+    // Verificar si la sesión existe en BD
+    $stmtCheck = $pdo->prepare("SELECT id FROM user_sessions WHERE session_id = ? AND user_id = ?");
+    $stmtCheck->execute([$currentSessionId, $_SESSION['user_id']]);
+    
+    if ($stmtCheck->rowCount() === 0) {
+        // Si no existe en BD (fue revocada), destruir sesión PHP y redirigir
+        $_SESSION = [];
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000, $params["path"], $params["domain"], $params["secure"], $params["httponly"]);
+        }
+        session_destroy();
+        header("Location: " . $basePath . "login");
+        exit;
+    } else {
+        // Actualizar última actividad
+        $pdo->prepare("UPDATE user_sessions SET last_activity = NOW() WHERE session_id = ?")->execute([$currentSessionId]);
+    }
+}
+
+// =======================================================================
+// 2. ACTUALIZAR DATOS DE USUARIO (REFRESH ROLE & PREFS)
 // =======================================================================
 if (isset($_SESSION['user_id'])) {
     try {
@@ -43,6 +69,7 @@ if (isset($_SESSION['user_id'])) {
             $_SESSION['user_new_tab'] = $freshUser['open_links_in_new_tab'] ?? 1;
             
             if ($freshUser['account_status'] !== 'active') {
+                // Logout forzado si está suspendido
                 $_SESSION = [];
                 if (ini_get("session.use_cookies")) {
                     $params = session_get_cookie_params();
@@ -93,8 +120,9 @@ $allowedSections = [
     'settings/your-profile',
     'settings/login-security',
     'settings/accessibility',
-    'settings/change-password', // <--- NUEVA RUTA AGREGADA
-    'settings/2fa-setup', // <--- AÑADIR ESTO
+    'settings/change-password', 
+    'settings/2fa-setup',
+    'settings/sessions', // <--- NUEVA RUTA
     // Admin
     'admin',
     'admin/dashboard',
@@ -183,7 +211,7 @@ $publicSections = [
     'register/additional-data', 
     'register/verification-account', 
     'forgot-password', 
-    'reset-password',
+    'reset-password', 
     'status-page',
     'login/verification-additional'
 ];
