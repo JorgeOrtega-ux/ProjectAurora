@@ -3,7 +3,7 @@
 // [CORE]
 import { initUrlManager } from './core/url-manager.js';
 import { initI18n, translateDocument } from './core/i18n-manager.js';
-import { initThemeManager } from './core/theme-manager.js'; // <--- NUEVO
+import { initThemeManager } from './core/theme-manager.js'; 
 
 // [MODULES]
 import { initAuthManager } from './modules/auth-manager.js';
@@ -30,7 +30,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         initUrlManager();
         initAuthManager();
 
-        // Inicializar UI Base
+        // ----------------------------------------------------
+        // [MODIFICACIÓN CLAVE]
+        // Inicializar Gestor de Configuración ANTES que la UI
+        // para que capture los clics antes de que cambie el estado visual.
+        // ----------------------------------------------------
+        window.initSettingsManager = () => {
+            initSettingsManager();
+            translateDocument();
+        };
+        // Ejecutarlo por primera vez
+        window.initSettingsManager();
+
+        // Inicializar UI Base DESPUÉS
         initMainController();
         initTooltipManager();
 
@@ -44,15 +56,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Inicializar Controladores UI avanzados
         initDragController();
-
-        // Inicializar Gestor de Configuración
-        window.initSettingsManager = () => {
-            initSettingsManager();
-            translateDocument();
-        };
-
-        // Ejecutarlo por primera vez
-        window.initSettingsManager();
 
     } catch (error) {
         console.error('Error crítico al inicializar la aplicación:', error);

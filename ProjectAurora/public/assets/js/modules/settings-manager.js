@@ -1,9 +1,12 @@
 // public/assets/js/modules/settings-manager.js
 
 import { changeLanguage } from '../core/i18n-manager.js';
-import { updateTheme } from '../core/theme-manager.js'; // Importamos el gestor de temas
+import { updateTheme } from '../core/theme-manager.js'; 
 
 const API_SETTINGS = (window.BASE_PATH || '/ProjectAurora/') + 'api/settings_handler.php';
+
+// [NUEVO] Bandera de control para evitar duplicidad de eventos globales
+let areGlobalsInitialized = false;
 
 function getCsrfToken() {
     const meta = document.querySelector('meta[name="csrf-token"]');
@@ -17,21 +20,32 @@ function qs(selector) {
 }
 
 export function initSettingsManager() {
-    // Inicializar solo si estamos en una sección de configuración relevante
+    // 1. Detectar en qué sección estamos
     const isProfile = qs('[data-section="settings/your-profile"]');
     const isAccess = qs('[data-section="settings/accessibility"]');
     
+    // Si no estamos en ninguna sección de configuración, salimos.
     if (!isProfile && !isAccess) return;
 
+    // 2. Lógica LOCAL (Se ejecuta SIEMPRE que se carga la vista HTML nueva)
+    // Esto es necesario porque los elementos del DOM (inputs, botones) se acaban de crear.
     if (isProfile) {
         initAvatarLogic();
         initUsernameLogic();
         initEmailLogic();
     }
     
-    // Lógica compartida o específica
-    initPreferencesLogic(); 
-    initBooleanPreferencesLogic();
+    // 3. Lógica GLOBAL (Se ejecuta UNA SOLA VEZ por sesión)
+    // Los listeners se pegan al 'document.body', así que no necesitamos volver a ponerlos
+    // cada vez que navegamos, o se duplicarán (causando tu error de 3-4 peticiones).
+    if (!areGlobalsInitialized) {
+        initPreferencesLogic();        // Selects (Tema, Idioma, Uso)
+        initBooleanPreferencesLogic(); // Checkboxes (Toggles)
+        
+        // Marcamos como inicializado para bloquear futuras ejecuciones
+        areGlobalsInitialized = true;
+        console.log('[SettingsManager] Listeners globales inicializados (Única vez).');
+    }
 }
 
 function updateCardError(cardElement, message = '', show = true) {
@@ -55,12 +69,12 @@ function updateCardError(cardElement, message = '', show = true) {
 }
 
 // ========================================================
-// TOGGLES (Booleanos)
+// TOGGLES (Booleanos) - Lógica Global
 // ========================================================
 function initBooleanPreferencesLogic() {
-    // Escuchar en todo el documento para capturar settings de cualquier sub-sección
     document.body.addEventListener('change', async (e) => {
         const target = e.target;
+        // Delegación de eventos para capturar cualquier toggle booleano
         if (target.matches('input[type="checkbox"][data-preference-type="boolean"]')) {
             const fieldName = target.dataset.fieldName;
             const isChecked = target.checked;
@@ -69,6 +83,7 @@ function initBooleanPreferencesLogic() {
 
             if (!fieldName) return;
 
+            // UI Optimista / Bloqueo
             updateCardError(card, '', false);
             if (toggleWrapper) toggleWrapper.classList.add('disabled-interactive');
 
@@ -90,10 +105,12 @@ function initBooleanPreferencesLogic() {
                 if (data.success) {
                     if (window.alertManager) window.alertManager.showAlert('Preferencia actualizada.', 'success');
                 } else {
-                    target.checked = !isChecked; // Revertir visualmente
+                    // Revertir si hubo error lógico en servidor
+                    target.checked = !isChecked; 
                     updateCardError(card, data.message);
                 }
             } catch (err) {
+                // Revertir si hubo error de red
                 target.checked = !isChecked;
                 console.error(err);
                 updateCardError(card, 'Error de conexión');
@@ -105,13 +122,15 @@ function initBooleanPreferencesLogic() {
 }
 
 // ========================================================
-// SELECTORES (Theme, Lang, Usage)
+// SELECTORES (Theme, Lang, Usage) - Lógica Global
 // ========================================================
 function initPreferencesLogic() {
     document.body.addEventListener('click', async (e) => {
         const option = e.target.closest('.menu-link[data-value]');
         if (!option) return;
 
+        // PROTECCIÓN CONTRA DOBLE CLIC (Race Condition con UI)
+        // Mantenemos esto porque en app-init.js cargamos Settings ANTES que MainController
         if (option.classList.contains('active')) return;
 
         const module = option.closest('.popover-module');
@@ -156,7 +175,7 @@ function initPreferencesLogic() {
                     await changeLanguage(value);
                 }
                 if (prefType === 'theme') {
-                    updateTheme(value); // Actualizar tema en tiempo real
+                    updateTheme(value);
                 }
 
             } else {
@@ -173,7 +192,7 @@ function initPreferencesLogic() {
 }
 
 // ========================================================
-// LÓGICA DE AVATAR (Solo si existe el componente)
+// LÓGICA DE AVATAR (Local)
 // ========================================================
 function initAvatarLogic() {
     const card = qs('[data-component="avatar-section"]');
@@ -197,17 +216,21 @@ function initAvatarLogic() {
 
     let originalImageSrc = elements.previewImg.src;
     
+    // Clonación de nodo para limpiar listeners antiguos si se recarga el DOM
+    // Aunque con la lógica local es suficiente, esto es una buena práctica defensiva.
+    // En este caso, como los elementos son NUEVOS tras la navegación, no hace falta clonar.
+    
     const triggerUpload = (e) => { 
         if(e) e.preventDefault(); 
         updateCardError(card, '', false);
         elements.fileInput.click(); 
     };
 
-    if (elements.uploadBtn) elements.uploadBtn.addEventListener('click', triggerUpload);
-    if (elements.changeBtn) elements.changeBtn.addEventListener('click', triggerUpload);
-    if (elements.overlayTrigger) elements.overlayTrigger.addEventListener('click', triggerUpload);
+    if (elements.uploadBtn) elements.uploadBtn.onclick = triggerUpload;
+    if (elements.changeBtn) elements.changeBtn.onclick = triggerUpload;
+    if (elements.overlayTrigger) elements.overlayTrigger.onclick = triggerUpload;
 
-    elements.fileInput.addEventListener('change', function(e) {
+    elements.fileInput.onchange = function(e) {
         const file = this.files[0];
         if (!file) return;
         
@@ -227,17 +250,17 @@ function initAvatarLogic() {
             toggleAvatarActions('preview');
         };
         reader.readAsDataURL(file);
-    });
+    };
 
-    elements.cancelBtn.addEventListener('click', () => {
+    elements.cancelBtn.onclick = () => {
         updateCardError(card, '', false);
         elements.previewImg.src = originalImageSrc;
         elements.fileInput.value = '';
         const isDefault = originalImageSrc.includes('data:image') || originalImageSrc === '' || originalImageSrc.endsWith('/') || originalImageSrc.includes('/default/') || originalImageSrc.includes('avatars_default') || originalImageSrc.includes('ui-avatars.com');       
         toggleAvatarActions(isDefault ? 'default' : 'custom');
-    });
+    };
 
-    elements.saveBtn.addEventListener('click', async () => {
+    elements.saveBtn.onclick = async () => {
         const file = elements.fileInput.files[0];
         if (!file) return;
         setLoading(elements.saveBtn, true);
@@ -261,9 +284,9 @@ function initAvatarLogic() {
             }
         } catch (e) { updateCardError(card, 'Error de conexión.'); }
         setLoading(elements.saveBtn, false, 'Guardar');
-    });
+    };
 
-    elements.removeBtn.addEventListener('click', async () => {
+    elements.removeBtn.onclick = async () => {
         if (!confirm('¿Restablecer avatar por defecto?')) return;
         setLoading(elements.removeBtn, true);
         updateCardError(card, '', false);
@@ -285,7 +308,7 @@ function initAvatarLogic() {
             }
         } catch (e) { updateCardError(card, 'Error de conexión.'); }
         setLoading(elements.removeBtn, false, 'Eliminar');
-    });
+    };
 
     function toggleAvatarActions(mode) {
         if(elements.actionsDefault) elements.actionsDefault.className = (mode === 'default') ? 'active' : 'disabled';
@@ -311,17 +334,18 @@ function initUsernameLogic() {
     if (!els.input) return;
     let originalUsername = els.input.value;
 
-    els.editBtn.addEventListener('click', () => {
+    // Usamos onclick para evitar acumulación si el elemento se reciclara (aunque aquí se recrea)
+    els.editBtn.onclick = () => {
         toggleMode(els, true);
         updateCardError(card, '', false);
         els.input.value = ''; els.input.value = originalUsername; els.input.focus();
-    });
-    els.cancelBtn.addEventListener('click', () => {
+    };
+    els.cancelBtn.onclick = () => {
         els.input.value = originalUsername;
         updateCardError(card, '', false);
         toggleMode(els, false);
-    });
-    els.saveBtn.addEventListener('click', async () => {
+    };
+    els.saveBtn.onclick = async () => {
         const newVal = els.input.value.trim();
         updateCardError(card, '', false);
         if (newVal === originalUsername) { toggleMode(els, false); return; }
@@ -345,7 +369,7 @@ function initUsernameLogic() {
             } else { updateCardError(card, data.message || 'Error al actualizar.'); }
         } catch (error) { updateCardError(card, 'Error de conexión con el servidor.'); }
         setLoading(els.saveBtn, false, 'Guardar');
-    });
+    };
 }
 
 function initEmailLogic() {
@@ -365,17 +389,17 @@ function initEmailLogic() {
     if (!els.input) return;
     let originalEmail = els.input.value;
 
-    els.editBtn.addEventListener('click', () => {
+    els.editBtn.onclick = () => {
         toggleMode(els, true);
         updateCardError(card, '', false);
         els.input.value = ''; els.input.value = originalEmail; els.input.focus();
-    });
-    els.cancelBtn.addEventListener('click', () => {
+    };
+    els.cancelBtn.onclick = () => {
         els.input.value = originalEmail;
         updateCardError(card, '', false);
         toggleMode(els, false);
-    });
-    els.saveBtn.addEventListener('click', async () => {
+    };
+    els.saveBtn.onclick = async () => {
         const newVal = els.input.value.trim().toLowerCase();
         updateCardError(card, '', false);
         if (newVal === originalEmail) { toggleMode(els, false); return; }
@@ -398,7 +422,7 @@ function initEmailLogic() {
             } else { updateCardError(card, data.message || 'Error al actualizar.'); }
         } catch (error) { updateCardError(card, 'Error de conexión con el servidor.'); }
         setLoading(els.saveBtn, false, 'Guardar');
-    });
+    };
 }
 
 function toggleMode(els, isEditing) {
