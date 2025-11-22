@@ -21,7 +21,6 @@ $currentThemeIcon = ($currentTheme === 'light') ? 'light_mode' : (($currentTheme
         </div>
 
         <div class="component-card component-card--grouped">
-            
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
                     <div class="component-card__text">
@@ -68,28 +67,25 @@ $currentThemeIcon = ($currentTheme === 'light') ? 'light_mode' : (($currentTheme
                     </div>
                 </div>
             </div>
+        </div>
 
-            <hr class="component-divider">
-
-            <div class="component-group-item">
-                <div class="component-card__content">
-                    <div class="component-card__text">
-                        <h2 class="component-card__title" data-i18n="settings.accessibility.msg_time_title"><?php echo trans('settings.accessibility.msg_time_title'); ?></h2>
-                        <p class="component-card__description" data-i18n="settings.accessibility.msg_time_desc"><?php echo trans('settings.accessibility.msg_time_desc'); ?></p>
-                    </div>
-                </div>
-                <div class="component-card__actions actions-right">
-                    <label class="component-toggle-switch">
-                        <input type="checkbox" 
-                               data-element="toggle-msg-persistence" 
-                               data-preference-type="boolean" 
-                               data-field-name="extended_message_time"
-                               <?php echo ($extendedMsg === 1) ? 'checked' : ''; ?>>
-                        <span class="component-toggle-slider"></span>
-                    </label>
+        <div class="component-card component-card--edit-mode">
+            <div class="component-card__content">
+                <div class="component-card__text">
+                    <h2 class="component-card__title" data-i18n="settings.accessibility.msg_time_title"><?php echo trans('settings.accessibility.msg_time_title'); ?></h2>
+                    <p class="component-card__description" data-i18n="settings.accessibility.msg_time_desc"><?php echo trans('settings.accessibility.msg_time_desc'); ?></p>
                 </div>
             </div>
-
+            <div class="component-card__actions actions-right">
+                <label class="component-toggle-switch">
+                    <input type="checkbox" 
+                           data-element="toggle-msg-persistence" 
+                           data-preference-type="boolean" 
+                           data-field-name="extended_message_time"
+                           <?php echo ($extendedMsg === 1) ? 'checked' : ''; ?>>
+                    <span class="component-toggle-slider"></span>
+                </label>
+            </div>
         </div>
 
     </div>

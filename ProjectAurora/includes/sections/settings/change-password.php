@@ -21,7 +21,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     </div>
                 </div>
                 
-                <div class="component-input-wrapper" style="width: 100%;">
+                <div class="component-input-wrapper w-100">
                     <input type="password" class="component-text-input full-width" data-element="current-password" placeholder="********">
                 </div>
 
@@ -45,7 +45,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         <p class="component-card__description" data-i18n="settings.change_password.new_desc"><?php echo trans('settings.change_password.new_desc'); ?></p>
                     </div>
                 </div>
-                <div class="component-input-wrapper" style="width: 100%;">
+                <div class="component-input-wrapper w-100">
                     <input type="password" class="component-text-input full-width" data-element="new-password" placeholder="********">
                 </div>
             </div>
@@ -62,7 +62,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         <p class="component-card__description" data-i18n="settings.change_password.confirm_desc"><?php echo trans('settings.change_password.confirm_desc'); ?></p>
                     </div>
                 </div>
-                <div class="component-input-wrapper" style="width: 100%;">
+                <div class="component-input-wrapper w-100">
                     <input type="password" class="component-text-input full-width" data-element="confirm-password" placeholder="********">
                 </div>
             </div>
@@ -89,8 +89,8 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
             <hr class="component-divider">
 
-            <div class="component-group-item disabled" data-step="password-step-2-actions" style="justify-content: flex-end;">
-                <div class="component-card__actions actions-right" style="width: 100%;">
+            <div class="component-group-item disabled justify-end" data-step="password-step-2-actions">
+                <div class="component-card__actions actions-right w-100">
                     <button type="button" class="component-button primary" data-action="save-new-password" data-i18n="global.save">
                         <?php echo trans('global.save'); ?>
                     </button>

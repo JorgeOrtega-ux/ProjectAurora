@@ -66,8 +66,8 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                         <?php if ($avatarUrl): ?>
                             <img src="<?php echo htmlspecialchars($avatarUrl); ?>" alt="Avatar" class="component-card__avatar-image" data-element="avatar-preview-image">
                         <?php else: ?>
-                            <img src="" alt="Sin avatar" class="component-card__avatar-image" data-element="avatar-preview-image" style="display: none;">
-                            <span class="material-symbols-rounded default-avatar-icon" style="font-size: 32px; color: #999;">person</span>
+                            <img src="" alt="Sin avatar" class="component-card__avatar-image d-none" data-element="avatar-preview-image">
+                            <span class="material-symbols-rounded default-avatar-icon avatar-placeholder-icon">person</span>
                         <?php endif; ?>
 
                         <div class="component-card__avatar-overlay" data-action="trigger-avatar-upload">
@@ -103,7 +103,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
 
             <div class="component-group-item" data-component="username-section">
                 <div class="component-card__content">
-                    <div class="component-card__text" style="width: 100%;">
+                    <div class="component-card__text w-100">
                         <h2 class="component-card__title" data-i18n="settings.profile.username_title"><?php echo trans('settings.profile.username_title'); ?></h2>
                         <div data-state="username-view-state" class="active">
                             <p class="component-card__description" data-element="username-display-text">
@@ -133,7 +133,7 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
 
             <div class="component-group-item" data-component="email-section">
                 <div class="component-card__content">
-                    <div class="component-card__text" style="width: 100%;">
+                    <div class="component-card__text w-100">
                         <h2 class="component-card__title" data-i18n="settings.profile.email_title"><?php echo trans('settings.profile.email_title'); ?></h2>
                         <div data-state="email-view-state" class="active">
                             <p class="component-card__description" data-element="email-display-text">
