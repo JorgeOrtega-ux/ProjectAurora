@@ -124,31 +124,27 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    /* [FIX PC VERTICAL] Margen de 8px para Triggers/Botones abajo */
+    /* Default para tarjetas horizontales o sin gap específico */
     margin-top: 8px; 
     width: auto;
     justify-content: flex-start;
 }
 
-/* [FIX PC HORIZONTAL] Sin margen cuando el botón está al lado */
 .component-card--edit-mode .component-card__actions {
     margin-top: 0;
     width: auto;
 }
 
-/* Alineación a la derecha */
 .component-card__actions.actions-right {
     justify-content: flex-end;
-    /* En vertical, ocupa todo el ancho para empujar a la derecha */
     width: 100%; 
 }
 
-/* En horizontal, actions-right respeta el flujo flex */
 .component-card--edit-mode .component-card__actions.actions-right {
     width: auto;
 }
 
-/* Estados intermedios (Inputs) */
+/* Estados intermedios */
 .component-card__actions [data-state].active {
     display: flex !important;
     gap: 8px;
@@ -182,7 +178,6 @@
     border-color: #000;
 }
 
-/* BOTÓN BASE (PC) */
 .component-button {
     height: 40px;
     padding: 0 16px;
@@ -199,7 +194,7 @@
     gap: 8px;
     transition: all 0.2s ease;
     white-space: nowrap;
-    width: auto; /* PC: Ancho automático */
+    width: auto;
 }
 
 .component-button:hover {
@@ -281,7 +276,9 @@
     opacity: 1;
 }
 
-/* Utilitarios */
+/* =========================================
+   UTILITARIOS (CORREGIDO)
+   ========================================= */
 .active { display: flex; }
 
 [data-state="username-edit-state"].active,
@@ -292,7 +289,12 @@
     width: 100%;
 }
 
-.disabled { display: none; }
+/* [CORRECCIÓN IMPORTANTE] 
+   Usamos !important para asegurar que si un elemento tiene "disabled",
+   se oculte incluso si tiene otras clases como "component-card--column" que definen display: flex.
+*/
+.disabled { display: none !important; }
+
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
 
 /* Selects */
@@ -325,27 +327,84 @@
 }
 
 /* =========================================
+   NUEVO: ESTILOS PARA CHANGE-PASSWORD
+   ========================================= */
+
+/* Base para tarjetas en columna */
+.component-card--column {
+    display: flex;
+    flex-direction: column;
+    gap: 24px; /* Separación estándar para secciones grandes */
+}
+
+/* Variante para espaciado de 8px exacto (Input, Headers, Btns) */
+.component-card--column.gap-8 {
+    gap: 8px;
+}
+
+/* RESET IMPORTANTE:
+   Cuando usamos .gap-8, eliminamos los márgenes internos de los hijos
+   directos para que el gap sea la única fuente de espacio.
+*/
+.component-card--column.gap-8 > * {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+/* Fila de encabezado (Icono + Textos) */
+.component-card__header-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+/* Wrapper para inputs */
+.component-input-wrapper {
+    width: 100%;
+}
+
+.component-text-input.full-width {
+    width: 100%;
+}
+
+/* Elementos agrupados en el paso 2 */
+.component-column-item {
+    display: flex; 
+    flex-direction: column;
+    gap: 8px; /* Mismo gap de 8px interno */
+}
+
+/* Separador horizontal */
+.component-separator {
+    border: 0;
+    border-top: 1px solid #eee;
+    width: 100%;
+    margin: 0;
+}
+
+/* =========================================
    RESPONSIVE (MOVIL - < 600px)
    ========================================= */
 @media (max-width: 600px) {
-    /* 1. Forzar columna */
     .component-card--edit-mode {
         flex-direction: column;
         align-items: flex-start;
     }
-
-    /* 2. Contenedor Acciones: Forzar 8px y 100% ancho */
+    
+    /* En tarjetas normales, forzamos margen si no es gap-8 */
     .component-card__actions {
         width: 100% !important;
-        margin-top: 8px !important;
+    }
+    
+    /* Si estamos en una tarjeta gap-8, mantenemos margen 0 */
+    .component-card--column.gap-8 .component-card__actions {
+        margin-top: 0 !important;
     }
 
-    /* 4. Botones 100% ancho */
     .component-button { 
         width: 100% !important; 
     }
 
-    /* 5. Contenedores intermedios (data-state) 100% ancho */
     .component-card__actions [data-state] {
         width: 100% !important;
     }
@@ -356,7 +415,6 @@
     .input-with-actions { flex-wrap: wrap; }
     .component-text-input { min-width: 100%; }
     
-    /* Alinear botones de edición a la derecha en móvil */
     [data-state="username-actions-edit"].active,
     [data-state="email-actions-edit"].active {
         width: 100%;

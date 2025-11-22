@@ -9,9 +9,9 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             <p class="component-page-description" data-i18n="settings.change_password.description"><?php echo trans('settings.change_password.description'); ?></p>
         </div>
 
-        <div class="component-card active" data-step="password-step-1" style="flex-direction: column; gap: 0;">
+        <div class="component-card active component-card--column gap-8" data-step="password-step-1">
             
-            <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 8px;">
+            <div class="component-card__header-row">
                 <div class="component-icon-container">
                     <span class="material-symbols-rounded">lock</span>
                 </div>
@@ -21,21 +21,21 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 </div>
             </div>
 
-            <div style="width: 100%; margin-bottom: 8px;">
-                <input type="password" class="component-text-input" data-element="current-password" placeholder="********" style="width: 100%; padding-left: 12px;">
+            <div class="component-input-wrapper">
+                <input type="password" class="component-text-input full-width" data-element="current-password" placeholder="********">
             </div>
 
-            <div style="display: flex; justify-content: flex-end; width: 100%;">
+            <div class="component-card__actions actions-right">
                 <button type="button" class="component-button primary" data-action="verify-current-password" data-i18n="settings.change_password.next_btn">
                     <?php echo trans('settings.change_password.next_btn'); ?>
                 </button>
             </div>
         </div>
 
-        <div class="component-card disabled" data-step="password-step-2" style="flex-direction: column; gap: 24px;">
+        <div class="component-card disabled component-card--column" data-step="password-step-2">
             
-            <div style="display: flex; flex-direction: column;">
-                <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 8px;">
+            <div class="component-column-item">
+                <div class="component-card__header-row">
                     <div class="component-icon-container">
                         <span class="material-symbols-rounded">vpn_key</span>
                     </div>
@@ -44,15 +44,15 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         <p class="component-card__description" data-i18n="settings.change_password.new_desc"><?php echo trans('settings.change_password.new_desc'); ?></p>
                     </div>
                 </div>
-                <div style="width: 100%;">
-                    <input type="password" class="component-text-input" data-element="new-password" placeholder="********" style="width: 100%;">
+                <div class="component-input-wrapper">
+                    <input type="password" class="component-text-input full-width" data-element="new-password" placeholder="********">
                 </div>
             </div>
 
-            <hr style="border: 0; border-top: 1px solid #eee; width: 100%; margin: 0;">
+            <hr class="component-separator">
 
-            <div style="display: flex; flex-direction: column;">
-                <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 8px;">
+            <div class="component-column-item">
+                <div class="component-card__header-row">
                     <div class="component-icon-container">
                         <span class="material-symbols-rounded">check_circle</span>
                     </div>
@@ -61,8 +61,8 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                         <p class="component-card__description" data-i18n="settings.change_password.confirm_desc"><?php echo trans('settings.change_password.confirm_desc'); ?></p>
                     </div>
                 </div>
-                <div style="width: 100%;">
-                    <input type="password" class="component-text-input" data-element="confirm-password" placeholder="********" style="width: 100%;">
+                <div class="component-input-wrapper">
+                    <input type="password" class="component-text-input full-width" data-element="confirm-password" placeholder="********">
                 </div>
             </div>
         </div>
@@ -85,7 +85,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             </div>
         </div>
 
-        <div class="component-card__actions actions-right disabled" data-step="password-step-2-actions" style="justify-content: flex-end; margin-top: 8px;">
+        <div class="component-card__actions actions-right disabled" data-step="password-step-2-actions">
             <button type="button" class="component-button primary" data-action="save-new-password" data-i18n="global.save">
                 <?php echo trans('global.save'); ?>
             </button>
