@@ -82,11 +82,11 @@ html {
 }
 
 .active {
-    display: flex; 
+    display: flex;
 }
 
 .section-content.active {
-    display: block; 
+    display: block;
 }
 
 .disabled {
@@ -367,10 +367,10 @@ html {
     box-shadow: 0 4px 12px #00000020;
     display: flex;
     flex-direction: column;
-    overflow: hidden; 
+    overflow: hidden;
 }
 
-.popover-module .menu-content > .menu-list {
+.popover-module .menu-content>.menu-list {
     padding: 8px;
 }
 
@@ -389,7 +389,7 @@ html {
     position: relative;
     overflow-y: auto;
     display: flex;
-    flex-direction: column; 
+    flex-direction: column;
     background-color: #ffffff;
 }
 
@@ -687,8 +687,13 @@ input[data-input="login-password"] {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* =========================================
@@ -971,7 +976,7 @@ a.disabled-link {
     color: #999;
     text-align: center;
     padding: 20px;
-    flex: 1; 
+    flex: 1;
 }
 
 .notifications-empty .empty-icon {
@@ -1364,23 +1369,43 @@ a.disabled-link {
 }
 
 @keyframes slideIn {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
+    from {
+        transform: translateY(100%);
+    }
+
+    to {
+        transform: translateY(0);
+    }
 }
 
 @keyframes slideOut {
-    from { transform: translateY(0); }
-    to { transform: translateY(100%); }
+    from {
+        transform: translateY(0);
+    }
+
+    to {
+        transform: translateY(100%);
+    }
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes fadeOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
 }
 
 .animate-in {
@@ -1400,7 +1425,11 @@ a.disabled-link {
 }
 
 @media (max-width: 468px) {
-    
+    .general-content:has(.module-surface.active) .general-content-top.shadow {
+        box-shadow: none !important;
+        border-bottom: 1px solid #00000020 !important;
+    }
+
     .popover-module.popover-profile,
     .popover-module.popover-notifications {
         position: fixed;
@@ -1411,18 +1440,18 @@ a.disabled-link {
         width: 100%;
         height: 100%;
         z-index: 9999;
-        
+
         display: flex;
         flex-direction: column;
         justify-content: flex-end;
         align-items: center;
-        
-        background-color: #00000080; 
-        
+
+        background-color: #00000080;
+
         border-radius: 0;
         box-shadow: none;
         padding: 0;
-        max-height: none; 
+        max-height: none;
         max-width: none;
     }
 
@@ -1435,25 +1464,25 @@ a.disabled-link {
     .popover-module.popover-notifications .menu-content {
         width: 100%;
         max-height: 85vh;
-        height: auto; 
+        height: auto;
         background-color: #fff;
-        
+
         border-top-left-radius: 20px;
         border-top-right-radius: 20px;
         border-bottom-left-radius: 0;
         border-bottom-right-radius: 0;
-        
-        will-change: transform; 
+
+        will-change: transform;
         transform: translateY(0);
-        
-        box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
         display: flex;
         flex-direction: column;
     }
 
-     .popover-module.popover-notifications .menu-content {
+    .popover-module.popover-notifications .menu-content {
         height: 55%;
-     }
+    }
 
     .pill-container {
         display: flex;
@@ -1462,7 +1491,7 @@ a.disabled-link {
         padding: 8px 0;
         padding-bottom: 0;
         flex-shrink: 0;
-        touch-action: none; 
+        touch-action: none;
         cursor: grab;
     }
 
