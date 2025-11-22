@@ -155,8 +155,11 @@ async def handle_php_notification(reader, writer):
 
 async def start_servers():
     print("Iniciando servidores Project Aurora...")
-    async with websockets.serve(handle_browser_client, "localhost", 8080):
-        print("✅ WS Server en ws://localhost:8080")
+    # [CORRECCIÓN] Usamos "0.0.0.0" para permitir conexiones externas (móviles, otras PC)
+    async with websockets.serve(handle_browser_client, "0.0.0.0", 8080):
+        print("✅ WS Server escuchando en 0.0.0.0:8080 (Accesible desde red local)")
+        
+        # PHP sigue conectando localmente, así que 127.0.0.1 está bien para el listener interno
         server = await asyncio.start_server(handle_php_notification, "127.0.0.1", 8081)
         print("✅ PHP Listener en tcp://127.0.0.1:8081")
         async with server:

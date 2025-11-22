@@ -1,6 +1,10 @@
 // public/assets/js/services/socket-service.js
 
-const WS_URL = 'ws://localhost:8080';
+// [CORRECCIÓN] Detección dinámica de la IP o dominio actual.
+// Esto permite que funcione en localhost y en IPs de red (ej: 192.168.1.x)
+const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+const host = window.location.hostname;
+const WS_URL = `${protocol}${host}:8080`;
 
 export class SocketService {
     constructor() {
@@ -21,8 +25,8 @@ export class SocketService {
             return;
         }
 
-        // LOG 1: Connecting con Timestamp
-        console.log('websocket_client:', Date.now(), 'connecting...');
+        // LOG: Mostrar a dónde estamos intentando conectar (útil para depuración)
+        console.log('websocket_client:', Date.now(), `connecting to ${WS_URL}...`);
 
         this.socket = new WebSocket(WS_URL);
 
@@ -38,7 +42,7 @@ export class SocketService {
             this.socket.send(JSON.stringify({
                 type: 'auth',
                 token: window.WS_TOKEN,
-                request_id: requestId // <--- ¡NUEVO CAMPO!
+                request_id: requestId 
             }));
         };
 
@@ -50,7 +54,6 @@ export class SocketService {
                 const customEvent = new CustomEvent('socket-message', { detail: data });
                 document.dispatchEvent(customEvent);
 
-                // Eliminamos los logs antiguos de "[WS]..." para mantener el estilo limpio que pediste.
                 if (data.type === 'error') {
                     console.error('websocket_client: error', data.msg);
                 }
@@ -70,7 +73,7 @@ export class SocketService {
 
         this.socket.onerror = (error) => {
             console.error('websocket_client: connection error');
-            this.socket.close();
+            // No cerramos manual, onclose se encargará del retry
         };
     }
 }
