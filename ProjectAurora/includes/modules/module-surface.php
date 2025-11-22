@@ -8,7 +8,8 @@ $isSettings = (strpos($CURRENT_SECTION, 'settings/') === 0);
 $isAdminSection = (strpos($CURRENT_SECTION, 'admin/') === 0);
 
 $userRole = $_SESSION['user_role'] ?? 'user';
-$canSeeAdmin = in_array($userRole, ['founder', 'administrator', 'admin']);
+// [CORREGIDO]
+$canSeeAdmin = in_array($userRole, ['founder', 'administrator']);
 ?>
 <div class="module-content module-surface body-title disabled" data-module="moduleSurface">
     <div class="menu-content">

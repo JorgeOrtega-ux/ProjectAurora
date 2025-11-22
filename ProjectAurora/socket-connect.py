@@ -118,8 +118,8 @@ async def handle_browser_client(websocket):
                     # Guardar conexión mapeada por session_id
                     connected_clients[user_id][session_id] = websocket
                     
-                    # Si es admin, añadirlo a la lista de listeners privilegiados
-                    if user_role in ['founder', 'administrator', 'admin']:
+                    # [CORREGIDO] Si es admin, añadirlo a la lista de listeners privilegiados
+                    if user_role in ['founder', 'administrator']:
                         admin_sessions.add(websocket)
 
                     print(f"[WS] Auth OK: User {user_id} ({user_role}) Session {session_id}")
@@ -132,8 +132,8 @@ async def handle_browser_client(websocket):
 
             # --- COMANDOS DE ADMIN ---
             elif msg_type == 'get_online_users':
-                # Solo responder si ya está autenticado y es admin
-                if user_id and user_role in ['founder', 'administrator', 'admin']:
+                # [CORREGIDO] Solo responder si ya está autenticado y es admin
+                if user_id and user_role in ['founder', 'administrator']:
                     # Enviamos la lista de IDs que tienen al menos una sesión activa
                     online_ids = list(connected_clients.keys())
                     await websocket.send(json.dumps({

@@ -245,7 +245,7 @@
 }
 
 /* =========================================
-   AVATAR
+   AVATAR (ROLES ESTANDARIZADOS)
    ========================================= */
 .component-card__avatar {
     width: 60px;
@@ -608,8 +608,6 @@
         margin-top: 8px;
     }
 
-    /* [CORRECCIÓN] Se aumenta la especificidad aquí agregando la clase del padre
-       para sobrescribir la regla de desktop "width: auto" sin usar !important */
     .component-card__actions,
     .component-group-item .component-card__actions,
     .component-card--edit-mode .component-card__actions.actions-right {
@@ -622,7 +620,6 @@
         justify-content: flex-start;
     }
 
-    /* Especificidad aumentada para sobrescribir reglas anteriores */
     .component-card--column.gap-8 .component-card__actions {
         margin-top: 0;
     }

@@ -83,7 +83,10 @@
             
             <div class="menu-list">
                 
-                <?php if (in_array($userRole, ['founder', 'administrator', 'admin'])): ?>
+                <?php 
+                // [CORREGIDO] Solo founder y administrator
+                if (in_array($userRole, ['founder', 'administrator'])): 
+                ?>
                 <div class="menu-link" onclick="event.preventDefault(); navigateTo('admin'); document.querySelector('[data-module=\'moduleOptions\']').classList.add('disabled'); document.querySelector('[data-module=\'moduleOptions\']').classList.remove('active');">
                     <div class="menu-link-icon">
                         <span class="material-symbols-rounded">admin_panel_settings</span>

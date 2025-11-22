@@ -2,8 +2,9 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 // 1. SEGURIDAD
+// 1. SEGURIDAD [CORREGIDO]
 $role = $_SESSION['user_role'] ?? 'user';
-if (!in_array($role, ['founder', 'administrator', 'admin'])) {
+if (!in_array($role, ['founder', 'administrator'])) {
     include __DIR__ . '/../system/404.php'; 
     exit;
 }
@@ -201,10 +202,10 @@ if (isset($_GET['ajax_partial']) && $_GET['ajax_partial'] === '1') {
         border-left: 4px solid transparent;
     }
     .admin-row-selectable:hover {
-        background-color: #fafafa;
+        background-color: #f5f5fa;
     }
     .admin-row-selectable.selected {
-        background-color: #F5F5FA !important;
+        background-color: #f5f5fa;
         border-left-color: #000000;
     }
     .admin-row-selectable.selected td {
@@ -221,7 +222,7 @@ if (isset($_GET['ajax_partial']) && $_GET['ajax_partial'] === '1') {
         width: 10px;
         height: 10px;
         border-radius: 50%;
-        background-color: #ccc; /* Offline por defecto */
+        background-color: transparent; /* Offline por defecto */
         transition: all 0.3s ease;
         flex-shrink: 0;
     }
@@ -233,7 +234,7 @@ if (isset($_GET['ajax_partial']) && $_GET['ajax_partial'] === '1') {
     }
     
     .status-indicator-dot.offline {
-        background-color: #bdbdbd;
+        background-color: #f5f5fa;
     }
 </style>
 

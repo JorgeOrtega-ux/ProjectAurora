@@ -118,7 +118,7 @@ $allowedSections = [
     'settings/change-password', 
     'settings/2fa-setup',
     'settings/sessions',
-    'settings/delete-account', // <--- NUEVA RUTA
+    'settings/delete-account', 
     // Admin
     'admin',
     'admin/dashboard',
@@ -147,7 +147,8 @@ $isLoggedIn = isset($_SESSION['user_id']);
 // ==========================================
 if (strpos($CURRENT_SECTION, 'admin/') === 0) {
     $userRole = $_SESSION['user_role'] ?? 'user';
-    $allowedAdminRoles = ['founder', 'administrator', 'admin'];
+    // [CORREGIDO] Solo founder y administrator
+    $allowedAdminRoles = ['founder', 'administrator'];
 
     if (!in_array($userRole, $allowedAdminRoles)) {
         $CURRENT_SECTION = '404'; 

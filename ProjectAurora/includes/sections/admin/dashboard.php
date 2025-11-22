@@ -1,7 +1,8 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 $role = $_SESSION['user_role'] ?? 'user';
-if (!in_array($role, ['founder', 'administrator', 'admin'])) {
+// [CORREGIDO]
+if (!in_array($role, ['founder', 'administrator'])) {
     include __DIR__ . '/../system/404.php';
     exit;
 }
