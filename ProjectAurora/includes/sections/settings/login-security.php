@@ -61,9 +61,9 @@ if ($lastPassChange) {
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">
-                    <button type="button" class="component-button" data-action="trigger-2fa-toggle" data-i18n="settings.security.2fa_btn">
-                        <?php echo trans('settings.security.2fa_btn'); ?>
-                    </button>
+                    <button type="button" class="component-button" onclick="navigateTo('settings/2fa-setup')" data-i18n="settings.security.2fa_btn">
+    <?php echo trans('settings.security.2fa_btn'); ?>
+</button>
                 </div>
             </div>
 

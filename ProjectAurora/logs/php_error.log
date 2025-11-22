@@ -61,3 +61,7 @@
 [2025-11-21 16:04:42] [CUSTOM] [LOGIC] Credenciales incorrectas.
 [2025-11-21 16:06:07] [CUSTOM] [PRUEBA - ELIMINAR EN PROD] Registro para 12345@gmail.com | Code: 072976603A7C | Hash: 9a61195d1d58993bd6d4afd241a80c396fc6f5ef6b73e7f790b7a918fd17575c
 [2025-11-21 20:17:15] [CUSTOM] [PRUEBA - ELIMINAR EN PROD] Registro para 12@gmail.com | Code: 25365B74520B | Hash: fc6a9bbec3658215785243e0ea58b54e6a2884ad9a6c73bc4380bee10858e806
+[2025-11-22 12:44:48] [CUSTOM] [PRUEBA - ELIMINAR EN PROD] Login 2FA para 12@gmail.comy | Code: 7D28F0C0DCB9 | Hash: 55e14ca2090d2df397382d36eee8132efa9d72dea07854845a7d82252d166800
+[2025-11-22 12:45:12] [CUSTOM] [LOGIC] Código incorrecto o expirado.
+[2025-11-22 12:46:15] [CUSTOM] [LOGIC] Código incorrecto o expirado.
+[2025-11-22 12:51:14] [CUSTOM] [LOGIC] Credenciales incorrectas.

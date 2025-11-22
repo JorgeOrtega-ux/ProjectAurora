@@ -68,7 +68,7 @@
         "2fa": {
             "title": "Verificación de Seguridad",
             "subtitle": "Tu cuenta tiene activada la verificación en dos pasos.",
-            "instruction": "Ingresa el código enviado a",
+            "instruction": "Abre tu app de autenticación e ingresa el código.",
             "label": "Código de Seguridad",
             "verify_btn": "Verificar Acceso",
             "sent_alert": "Código de seguridad 2FA enviado.",

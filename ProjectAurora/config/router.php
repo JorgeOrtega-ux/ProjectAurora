@@ -94,6 +94,7 @@ $allowedSections = [
     'settings/login-security',
     'settings/accessibility',
     'settings/change-password', // <--- NUEVA RUTA AGREGADA
+    'settings/2fa-setup', // <--- AÑADIR ESTO
     // Admin
     'admin',
     'admin/dashboard',

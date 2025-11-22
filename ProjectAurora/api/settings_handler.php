@@ -16,6 +16,7 @@ date_default_timezone_set('America/Matamoros');
 
 require_once '../config/database.php';
 require_once '../config/utilities.php';
+require_once '../includes/logic/GoogleAuthenticator.php'; // <--- AGREGAR ESTO
 
 $data = json_decode(file_get_contents('php://input'), true);
 $action = $_POST['action'] ?? $data['action'] ?? '';
@@ -310,7 +311,56 @@ try {
         } else {
             throw new Exception("Error actualizando preferencia.");
         }
+    } elseif ($action === 'generate_2fa_secret') {
+        $ga = new PHPGangsta_GoogleAuthenticator();
+        $secret = $ga->createSecret(); // Genera el secreto aleatorio
+        
+        // Obtenemos el username para ponerlo en la app (ej: ProjectAurora:Jorge)
+        $stmt = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $username = $stmt->fetchColumn();
+
+        $response = [
+            'success' => true,
+            'secret' => $secret,
+            'username' => $username
+        ];
+
+    // --- CONFIRMAR Y ACTIVAR (Fase 2) ---
+    } elseif ($action === 'enable_2fa_confirm') {
+        $secret = $data['secret'] ?? '';
+        $code = $data['code'] ?? '';
+
+        if (empty($secret) || empty($code)) throw new Exception("Datos incompletos.");
+
+        $ga = new PHPGangsta_GoogleAuthenticator();
+        // El último parámetro '1' es la tolerancia de tiempo (30 segundos antes/después)
+        $checkResult = $ga->verifyCode($secret, $code, 1);
+
+        if ($checkResult) {
+            // 1. Generar códigos de respaldo (5 códigos simples)
+            $backupCodes = [];
+            for ($i = 0; $i < 5; $i++) {
+                $backupCodes[] = rand(1000, 9999) . '-' . rand(1000, 9999);
+            }
+            $backupCodesJson = json_encode($backupCodes);
+
+            // 2. Guardar en BD
+            $stmt = $pdo->prepare("UPDATE users SET is_2fa_enabled = 1, two_factor_secret = ?, backup_codes = ? WHERE id = ?");
+            if ($stmt->execute([$secret, $backupCodesJson, $userId])) {
+                $response = [
+                    'success' => true,
+                    'message' => '2FA Activado',
+                    'backup_codes' => $backupCodes
+                ];
+            } else {
+                throw new Exception("Error al guardar en la base de datos.");
+            }
+        } else {
+            throw new Exception("Código incorrecto. Intenta sincronizar la hora de tu teléfono.");
+        }
     }
+    
 } catch (Exception $e) {
     $response['message'] = $e->getMessage();
 }

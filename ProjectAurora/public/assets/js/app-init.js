@@ -10,6 +10,7 @@ import { initAuthManager } from './modules/auth-manager.js';
 import { NotificationsManager } from './modules/notifications-manager.js';
 import { FriendsManager } from './modules/friends-manager.js';
 import { initSettingsManager } from './modules/settings-manager.js';
+import { initTwoFactorManager } from './modules/two-factor-manager.js'; // <--- IMPORTAR NUEVO
 
 // [UI]
 import { initMainController } from './ui/main-controller.js';
@@ -37,6 +38,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // ----------------------------------------------------
         window.initSettingsManager = () => {
             initSettingsManager();
+            initTwoFactorManager(); // <--- EJECUTARLO AQUÍ
             translateDocument();
         };
         // Ejecutarlo por primera vez
