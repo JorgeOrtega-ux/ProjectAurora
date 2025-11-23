@@ -10,7 +10,6 @@ import { initAuthManager } from './modules/auth-manager.js';
 import { NotificationsManager } from './modules/notifications-manager.js';
 import { FriendsManager } from './modules/friends-manager.js';
 import { initSettingsManager } from './modules/settings-manager.js';
-// [REMOVIDO] import { initTwoFactorManager } ... ya no es necesario
 
 // [UI]
 import { initMainController } from './ui/main-controller.js';
@@ -21,43 +20,61 @@ import { initDragController } from './ui/drag-controller.js';
 // [SERVICES]
 import { SocketService } from './services/socket-service.js';
 
+/**
+ * Carga dinámica de módulos basada en la sección actual del DOM.
+ * Esto evita cargar JS administrativo para usuarios normales.
+ */
+export async function handleDynamicImports() {
+    const adminUsersSection = document.querySelector('[data-section="admin/users"]');
+    const adminDetailsSection = document.querySelector('[data-section^="admin/user-"]'); // user-status, user-manage, etc.
+
+    if (adminUsersSection) {
+        const { initAdminUsers } = await import('./modules/admin-users.js');
+        initAdminUsers();
+    }
+
+    if (adminDetailsSection) {
+        const { initAdminUserDetails } = await import('./modules/admin-user-details.js');
+        initAdminUserDetails();
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         // 1. Inicializar i18n y TEMA PRIMERO (Visuales)
         await initI18n();
-        initThemeManager(); // Aplica el tema guardado o del sistema
+        initThemeManager(); 
 
         // Inicializar Core y Auth
         initUrlManager();
         initAuthManager();
 
-        // ----------------------------------------------------
-        // [MODIFICADO]
-        // Inicializar Gestor de Configuración ANTES que la UI.
-        // Ahora incluye 2FA internamente.
-        // ----------------------------------------------------
+        // Inicializar Gestor de Configuración
         window.initSettingsManager = () => {
             initSettingsManager();
-            // [REMOVIDO] initTwoFactorManager(); ya está integrado
             translateDocument();
         };
-        // Ejecutarlo por primera vez
         window.initSettingsManager();
 
-        // Inicializar UI Base DESPUÉS
+        // Inicializar UI Base
         initMainController();
         initTooltipManager();
 
         // Inicializar Gestor de Alertas Global
         window.alertManager = new AlertManager();
 
-        // Inicializar Servicios y Managers de Datos
+        // Inicializar Servicios
         window.socketService = new SocketService();
         window.notificationsManager = new NotificationsManager();
         window.friendsManager = new FriendsManager();
 
         // Inicializar Controladores UI avanzados
         initDragController();
+
+        // [NUEVO] Carga perezosa de módulos administrativos
+        // Exponemos la función para que url-manager.js pueda llamarla al navegar
+        window.loadDynamicModules = handleDynamicImports;
+        await handleDynamicImports();
 
     } catch (error) {
         console.error('Error crítico al inicializar la aplicación:', error);

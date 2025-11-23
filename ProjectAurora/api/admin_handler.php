@@ -82,7 +82,7 @@ try {
         ";
 
         $stmtLogs = $pdo->prepare($sqlHistory);
-        $stmtLogs->execute([$targetId]); // Nota: Solo se pasa $targetId una vez ahora
+        $stmtLogs->execute([$targetId]);
         $history = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);
 
         echo json_encode([
