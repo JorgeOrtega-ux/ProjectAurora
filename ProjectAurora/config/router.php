@@ -27,14 +27,52 @@ if (isset($_SESSION['user_id'])) {
     $stmtCheck = $pdo->prepare("SELECT id FROM user_sessions WHERE session_id = ? AND user_id = ?");
     $stmtCheck->execute([$currentSessionId, $_SESSION['user_id']]);
     
+    // Si no se encuentra la sesión en la base de datos (fue borrada por admin o timeout)
     if ($stmtCheck->rowCount() === 0) {
+        
+        // [CORRECCIÓN] Antes de mandar a login, verificamos si fue por suspensión
+        $isSuspended = false;
+        $statusRedirect = '';
+        
+        try {
+            // Consultamos el estado real del usuario
+            $stmtStatus = $pdo->prepare("SELECT account_status, suspension_reason, suspension_end_date FROM users WHERE id = ?");
+            $stmtStatus->execute([$_SESSION['user_id']]);
+            $userStatusData = $stmtStatus->fetch();
+            
+            if ($userStatusData && in_array($userStatusData['account_status'], ['suspended', 'deleted'])) {
+                $isSuspended = true;
+                $statusRedirect = "status-page?status=" . $userStatusData['account_status'];
+                
+                // Opcional: Pasar datos extra a la URL si es suspendido
+                if ($userStatusData['account_status'] === 'suspended') {
+                    if (!empty($userStatusData['suspension_reason'])) {
+                        $statusRedirect .= "&reason=" . urlencode($userStatusData['suspension_reason']);
+                    }
+                    if (!empty($userStatusData['suspension_end_date'])) {
+                        $endDate = new DateTime($userStatusData['suspension_end_date']);
+                        $statusRedirect .= "&until=" . urlencode($endDate->format('d/m/Y'));
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            // Si falla la consulta, procedemos al logout normal
+        }
+
+        // Procedemos a destruir la sesión PHP local
         $_SESSION = [];
         if (ini_get("session.use_cookies")) {
             $params = session_get_cookie_params();
             setcookie(session_name(), '', time() - 42000, $params["path"], $params["domain"], $params["secure"], $params["httponly"]);
         }
         session_destroy();
-        header("Location: " . $basePath . "login");
+        
+        // [DECISIÓN DE REDIRECCIÓN]
+        if ($isSuspended) {
+            header("Location: " . $basePath . $statusRedirect);
+        } else {
+            header("Location: " . $basePath . "login");
+        }
         exit;
     } else {
         $pdo->prepare("UPDATE user_sessions SET last_activity = NOW() WHERE session_id = ?")->execute([$currentSessionId]);
