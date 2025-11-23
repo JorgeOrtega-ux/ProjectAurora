@@ -23,9 +23,14 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                 <span class="toolbar-title-actions">Acciones</span>
             </div>
             <div class="component-toolbar__right">
+                <button class="component-button d-none" id="btn-lift-ban" style="margin-right: 8px; color: #d32f2f; border-color: #ffcdd2;">
+                    <span class="material-symbols-rounded">lock_open</span>
+                    Levantar Sanción
+                </button>
+                
                 <button class="component-button primary" id="btn-save-status">
                     <span class="material-symbols-rounded">save</span>
-                    Aplicar Sanción
+                    <span id="btn-save-text">Aplicar Sanción</span>
                 </button>
             </div>
         </div>
@@ -42,7 +47,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
             <div class="component-group-item">
                 <div class="component-card__content">
                     <div class="component-card__avatar" id="status-avatar-container">
-                        <img src="" id="status-user-avatar" class="component-card__avatar-image hidden-avatar">
+                        <img src="" id="status-user-avatar" class="component-card__avatar-image hidden-avatar" style="display: none;">
                         <span class="material-symbols-rounded default-avatar-icon" id="status-user-icon">person</span>
                     </div>
                     <div class="component-card__text">
@@ -59,6 +64,18 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
             <input type="hidden" id="input-status-value" value="suspended_temp">
             <input type="hidden" id="input-duration-value" value="2">
             <input type="hidden" id="input-reason-value" value="">
+
+            <div id="active-sanction-alert" class="component-group-item d-none" style="background-color: #fff8e1; border-bottom: 1px solid #ffe0b2;">
+                <div class="component-card__content">
+                    <div class="component-icon-container" style="border-color: #ffb74d; background: #fff;">
+                        <span class="material-symbols-rounded" style="color: #f57c00;">warning</span>
+                    </div>
+                    <div class="component-card__text">
+                        <h2 class="component-card__title" style="color: #ef6c00;">Este usuario ya está suspendido</h2>
+                        <p class="component-card__description" id="active-sanction-desc" style="color: #e65100;">...</p>
+                    </div>
+                </div>
+            </div>
 
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
@@ -118,8 +135,8 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                 <div class="component-group-item component-group-item--stacked">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title">Duración</h2>
-                            <p class="component-card__description">Días que el usuario estará bloqueado.</p>
+                            <h2 class="component-card__title">Nueva Duración</h2>
+                            <p class="component-card__description">Días a partir de hoy que el usuario estará bloqueado.</p>
                         </div>
                     </div>
                     <div class="component-card__actions w-100">
@@ -143,12 +160,12 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                         $daysOptions = [2, 4, 6, 8, 12, 30];
                                         foreach ($daysOptions as $d) {
                                             echo "
-                <div class='menu-link' data-action='select-duration-option' data-value='$d'>
-                    <div class='menu-link-icon'>
-                        <span class='material-symbols-rounded'>schedule</span>
-                    </div>
-                    <div class='menu-link-text'>{$d} Días</div>
-                </div>";
+                                            <div class='menu-link' data-action='select-duration-option' data-value='$d'>
+                                                <div class='menu-link-icon'>
+                                                    <span class='material-symbols-rounded'>schedule</span>
+                                                </div>
+                                                <div class='menu-link-text'>{$d} Días</div>
+                                            </div>";
                                         }
                                         ?>
                                     </div>
@@ -208,9 +225,9 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                 </div>
             </div>
 
-            <div class="component-card__error" id="status-error-msg"></div>
-
         </div>
+
+        <div class="component-card__error" id="status-error-msg" style="margin-top: 16px;"></div>
 
         <div class="component-card mt-16">
             <h3 class="history-title">

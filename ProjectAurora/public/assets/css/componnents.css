@@ -830,3 +830,11 @@
 .component-toolbar.d-none {
     display: none;
 }
+
+.component-group-item.d-none {
+    display: none;
+}
+
+.component-button.d-none {
+    display: none;
+}

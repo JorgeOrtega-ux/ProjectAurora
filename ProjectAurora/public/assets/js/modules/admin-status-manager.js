@@ -6,6 +6,13 @@
     
     if (!targetId) return;
 
+    // Estado Actual del Usuario
+    let currentUserState = {
+        isSuspended: false,
+        isPermanent: false,
+        reason: null
+    };
+
     // UI Elements
     const inputStatus = document.getElementById('input-status-value');
     const inputDuration = document.getElementById('input-duration-value');
@@ -17,9 +24,15 @@
     const txtReason = document.getElementById('current-reason-text');
     
     const btnSave = document.getElementById('btn-save-status');
+    const btnLift = document.getElementById('btn-lift-ban');
+    const btnSaveText = document.getElementById('btn-save-text');
+    
     const errorBox = document.getElementById('status-error-msg');
     const historyBody = document.getElementById('suspension-history-body');
     const wrapperDuration = document.getElementById('wrapper-duration');
+    
+    const activeAlert = document.getElementById('active-sanction-alert');
+    const activeAlertDesc = document.getElementById('active-sanction-desc');
 
     // --- EVENT DELEGATION ---
 
@@ -33,7 +46,6 @@
             const targetEl = document.getElementById(targetId);
             
             if (targetEl) {
-                // Cerrar otros abiertos
                 closeAllDropdowns();
                 targetEl.classList.toggle('disabled');
             }
@@ -123,8 +135,6 @@
                 
                 document.getElementById('status-username').textContent = u.username;
                 document.getElementById('status-email').textContent = u.email;
-                
-                // [CORREGIDO] Asignar el rol al contenedor para mostrar el borde
                 const container = document.getElementById('status-avatar-container');
                 if (container) container.dataset.role = u.role;
 
@@ -135,44 +145,104 @@
                     document.getElementById('status-user-icon').style.display = 'none';
                 }
 
+                // Estado
                 if (u.account_status === 'suspended') {
+                    currentUserState.isSuspended = true;
+                    currentUserState.reason = u.suspension_reason;
+                    
+                    activeAlert.classList.remove('d-none');
+                    btnLift.classList.remove('d-none');
+                    btnSaveText.textContent = 'Actualizar Sanción';
+
+                    let activeText = '';
                     if (u.suspension_end_date === null) {
+                        currentUserState.isPermanent = true;
+                        activeText = 'Permanente';
                         selectStatus('suspended_perm', 'Suspensión Permanente', 'block', '#d32f2f');
                     } else {
+                        currentUserState.isPermanent = false;
+                        const endDate = new Date(u.suspension_end_date).toLocaleDateString();
+                        activeText = `Hasta el ${endDate}`;
                         selectStatus('suspended_temp', 'Suspensión Temporal', 'timer', '#f57c00');
                     }
+                    
+                    activeAlertDesc.innerHTML = `<strong>${activeText}</strong><br>Motivo: ${u.suspension_reason}`;
                     if (u.suspension_reason) selectReason(u.suspension_reason);
+
                 } else {
+                    currentUserState.isSuspended = false;
+                    currentUserState.isPermanent = false;
+                    currentUserState.reason = null;
+
+                    activeAlert.classList.add('d-none');
+                    btnLift.classList.add('d-none');
+                    btnSaveText.textContent = 'Aplicar Sanción';
                     selectStatus('suspended_temp', 'Suspensión Temporal', 'timer', '#f57c00');
                 }
 
                 if (data.history && data.history.length > 0) {
                     renderHistory(data.history);
                 } else {
-                    historyBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:16px; color:#888;">Sin historial de suspensiones.</td></tr>';
+                    historyBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:16px; color:#888;">Sin historial de suspensiones.</td></tr>';
                 }
             }
         } catch(e) { console.error(e); }
     }
 
+    // [ACTUALIZADO] Nueva lógica de renderizado de historial
     function renderHistory(logs) {
         let html = '';
+        
         logs.forEach(log => {
             const start = new Date(log.started_at).toLocaleDateString();
-            let end = '-';
-            let duration = 'Permanente';
-            if (log.ends_at) {
-                end = new Date(log.ends_at).toLocaleDateString();
-                duration = log.duration_days + ' días';
-            }
             const adminName = log.admin_name ? log.admin_name : 'Sistema';
+            
+            // 1. Duración y Fin Programado
+            let durationDisplay = '';
+            let endDisplay = '';
+
+            if (parseInt(log.duration_days) === -1) {
+                durationDisplay = 'Permanente';
+                endDisplay = 'Indefinido';
+            } else {
+                durationDisplay = log.duration_days + ' días';
+                if (log.ends_at) {
+                    endDisplay = new Date(log.ends_at).toLocaleDateString();
+                } else {
+                    endDisplay = '-';
+                }
+            }
+
+            // 2. Información de Levantamiento (Nueva Columna)
+            let liftedDisplay = '<span style="color:#ccc;">-</span>';
+            
+            if (log.lifted_at) {
+                const liftedDate = new Date(log.lifted_at).toLocaleDateString();
+                const lifter = log.lifter_name ? log.lifter_name : 'Admin';
+                
+                liftedDisplay = `
+                    <div style="display:flex; flex-direction:column;">
+                        <span style="color:#2e7d32; font-weight:600; font-size:12px;">
+                            <span class="material-symbols-rounded" style="font-size:14px; vertical-align:text-bottom;">check_circle</span> 
+                            ${liftedDate}
+                        </span>
+                        <span style="color:#888; font-size:11px;">por ${lifter}</span>
+                    </div>
+                `;
+            }
+
             html += `
                 <tr>
                     <td>${start}</td>
-                    <td><span style="display:inline-block; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${log.reason}">${log.reason}</span></td>
-                    <td>${duration}</td>
-                    <td>${end}</td>
+                    <td>
+                        <span style="display:inline-block; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${log.reason}">
+                            ${log.reason}
+                        </span>
+                    </td>
+                    <td>${durationDisplay}</td>
+                    <td>${endDisplay}</td>
                     <td><span style="background:#eee; padding:2px 6px; border-radius:4px; font-size:12px;">${adminName}</span></td>
+                    <td>${liftedDisplay}</td>
                 </tr>
             `;
         });
@@ -192,8 +262,14 @@
             return; 
         }
 
+        // VALIDACIÓN ANTI-DUPLICADOS FRONTEND
+        if (currentUserState.isPermanent && statusType === 'suspended_perm' && reason === currentUserState.reason) {
+            showError('Este usuario ya tiene una suspensión permanente activa por el mismo motivo.');
+            return;
+        }
+
         btnSave.disabled = true;
-        btnSave.textContent = 'Aplicando...';
+        btnSave.innerHTML = '<div class="small-spinner"></div>';
 
         const payload = {
             action: 'update_user_status',
@@ -219,7 +295,7 @@
             const data = await res.json();
 
             if(data.success) {
-                if(window.alertManager) window.alertManager.showAlert('Sanción aplicada correctamente.', 'success');
+                if(window.alertManager) window.alertManager.showAlert(data.message, 'success');
                 loadUserData();
             } else {
                 showError(data.message);
@@ -228,7 +304,41 @@
             showError('Error de conexión.');
         } finally {
             btnSave.disabled = false;
-            btnSave.textContent = 'Aplicar Sanción';
+            btnSave.innerHTML = '<span class="material-symbols-rounded">save</span><span id="btn-save-text">' + (currentUserState.isSuspended ? 'Actualizar Sanción' : 'Aplicar Sanción') + '</span>';
+        }
+    };
+
+    // --- Levantar Sanción ---
+    btnLift.onclick = async () => {
+        if (!confirm('¿Estás seguro de querer levantar la sanción y reactivar inmediatamente a este usuario?')) return;
+
+        btnLift.disabled = true;
+        const originalContent = btnLift.innerHTML;
+        btnLift.innerHTML = '<div class="small-spinner" style="border-color:#d32f2f; border-top-color:transparent;"></div>';
+
+        try {
+            const res = await fetch(API_ADMIN, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrf() },
+                body: JSON.stringify({ 
+                    action: 'update_user_status',
+                    target_id: targetId,
+                    status: 'active'
+                })
+            });
+            const data = await res.json();
+
+            if(data.success) {
+                if(window.alertManager) window.alertManager.showAlert('Sanción levantada. Usuario activo.', 'success');
+                loadUserData();
+            } else {
+                showError(data.message);
+            }
+        } catch(e) {
+            showError('Error de conexión al intentar levantar la sanción.');
+        } finally {
+            btnLift.disabled = false;
+            btnLift.innerHTML = originalContent;
         }
     };
 

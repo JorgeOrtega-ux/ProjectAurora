@@ -27,14 +27,14 @@ CREATE TABLE IF NOT EXISTS users (
     role VARCHAR(20) DEFAULT 'user',
     account_status ENUM('active', 'suspended', 'deleted') DEFAULT 'active',
     
-    -- Campos de Suspensión
+    -- Campos de Suspensión (Estado Actual)
     suspension_reason TEXT NULL,
     suspension_end_date TIMESTAMP NULL,
     
-    -- Campos de Eliminación (NUEVOS)
+    -- Campos de Eliminación
     deletion_type ENUM('admin_decision', 'user_decision') NULL, 
-    deletion_reason TEXT NULL, -- Razón dada por el usuario o admin
-    admin_comments TEXT NULL,  -- Comentarios internos del admin
+    deletion_reason TEXT NULL,
+    admin_comments TEXT NULL,
     
     is_2fa_enabled TINYINT(1) DEFAULT 0,
     two_factor_secret VARCHAR(255) NULL,
@@ -140,15 +140,21 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     INDEX (session_id)
 );
 
--- LOGS DE SUSPENSIÓN
+-- LOGS DE SUSPENSIÓN [MODIFICADA]
 CREATE TABLE IF NOT EXISTS user_suspension_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    admin_id INT NULL,
+    admin_id INT NULL, -- Quien puso la sanción
     reason TEXT NOT NULL,
     duration_days INT NOT NULL,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    ends_at TIMESTAMP NULL,
+    ends_at TIMESTAMP NULL, -- Fecha fin programada original
+    
+    -- NUEVOS CAMPOS PARA LEVANTAMIENTO
+    lifted_by INT NULL, -- Admin que levantó la sanción manualmente
+    lifted_at TIMESTAMP NULL, -- Fecha real en que se levantó
+    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (lifted_by) REFERENCES users(id) ON DELETE SET NULL
 );

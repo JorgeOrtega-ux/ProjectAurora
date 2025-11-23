@@ -44,7 +44,6 @@ try {
 
         if (!$user) throw new Exception("Usuario no encontrado.");
 
-        // Calcular días restantes si está suspendido
         $daysRemaining = 0;
         if ($user['account_status'] === 'suspended' && $user['suspension_end_date']) {
             $end = new DateTime($user['suspension_end_date']);
@@ -54,10 +53,14 @@ try {
             }
         }
 
+        // [MODIFICADO] Consulta para incluir nombre de quien levantó la sanción
         $stmtLogs = $pdo->prepare("
-            SELECT sl.*, u.username as admin_name 
+            SELECT sl.*, 
+                   u_admin.username as admin_name,
+                   u_lifter.username as lifter_name
             FROM user_suspension_logs sl
-            LEFT JOIN users u ON sl.admin_id = u.id
+            LEFT JOIN users u_admin ON sl.admin_id = u_admin.id
+            LEFT JOIN users u_lifter ON sl.lifted_by = u_lifter.id
             WHERE sl.user_id = ? 
             ORDER BY sl.started_at DESC
         ");
@@ -74,9 +77,6 @@ try {
     // --- ACTUALIZAR SANCIONES (SOLO SUSPENDIDO) ---
     } elseif ($action === 'update_user_status') {
         $targetId = (int)($data['target_id'] ?? 0);
-        // status debe ser 'suspended' obligatoriamente aquí, 
-        // a menos que se use para quitar sanción (reactivar).
-        // Pero la UI de sanciones solo enviará suspended.
         $newStatus = $data['status'] ?? 'suspended'; 
         $reason = $data['reason'] ?? null;
         $durationInput = $data['duration_days'] ?? 0; 
@@ -85,10 +85,18 @@ try {
 
         if ($targetId === $currentAdminId) throw new Exception("No puedes sancionarte a ti mismo.");
 
+        // OBTENER ESTADO ACTUAL
+        $stmtCheck = $pdo->prepare("SELECT account_status, suspension_reason, suspension_end_date FROM users WHERE id = ?");
+        $stmtCheck->execute([$targetId]);
+        $currentUser = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+        if (!$currentUser) throw new Exception("Usuario no existe.");
+
         $suspensionEnd = null;
         $finalReason = null;
         $dbDuration = 0;
 
+        // LÓGICA DE NUEVA SUSPENSIÓN
         if ($newStatus === 'suspended') {
             if (empty($reason)) throw new Exception("Debes especificar una razón.");
             $finalReason = $reason;
@@ -103,15 +111,47 @@ try {
                 $dbDuration = $days;
             }
 
+            // VALIDACIÓN ANTI-DUPLICADOS
+            if ($currentUser['account_status'] === 'suspended') {
+                $isReasonSame = ($currentUser['suspension_reason'] === $finalReason);
+                
+                $isDurationSame = false;
+                if ($currentUser['suspension_end_date'] === null && $suspensionEnd === null) {
+                    $isDurationSame = true; 
+                } elseif ($currentUser['suspension_end_date'] !== null && $suspensionEnd !== null) {
+                    $currentEnd = new DateTime($currentUser['suspension_end_date']);
+                    $newEnd = new DateTime($suspensionEnd);
+                    $diff = abs($currentEnd->getTimestamp() - $newEnd->getTimestamp());
+                    if ($diff < 43200) $isDurationSame = true; 
+                }
+
+                if ($isReasonSame && $isDurationSame) {
+                    throw new Exception("Este usuario ya tiene activa esta misma sanción.");
+                }
+            }
+
+            // Insertar log de suspensión
             $stmtLog = $pdo->prepare("INSERT INTO user_suspension_logs (user_id, admin_id, reason, duration_days, ends_at) VALUES (?, ?, ?, ?, ?)");
             $stmtLog->execute([$targetId, $currentAdminId, $finalReason, $dbDuration, $suspensionEnd]);
+
         } else {
-            // Si por alguna razón mandan 'active' desde aquí (levantar castigo)
+            // LÓGICA DE LEVANTAR SANCIÓN (status = active)
             $finalReason = null;
             $suspensionEnd = null;
+
+            // [NUEVO] En lugar de insertar, actualizamos el log activo más reciente
+            // Buscamos el último log que no haya sido levantado aún
+            $stmtFindLog = $pdo->prepare("SELECT id FROM user_suspension_logs WHERE user_id = ? AND lifted_at IS NULL ORDER BY id DESC LIMIT 1");
+            $stmtFindLog->execute([$targetId]);
+            $activeLogId = $stmtFindLog->fetchColumn();
+
+            if ($activeLogId) {
+                $stmtUpdateLog = $pdo->prepare("UPDATE user_suspension_logs SET lifted_by = ?, lifted_at = NOW() WHERE id = ?");
+                $stmtUpdateLog->execute([$currentAdminId, $activeLogId]);
+            }
         }
 
-        // Limpiamos campos de eliminación si existían, ya que ahora es una sanción
+        // Actualizar la tabla de usuarios
         $sql = "UPDATE users SET account_status = ?, suspension_reason = ?, suspension_end_date = ?, deletion_type = NULL, deletion_reason = NULL, admin_comments = NULL WHERE id = ?";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$newStatus, $finalReason, $suspensionEnd, $targetId]);
@@ -121,40 +161,36 @@ try {
             send_live_notification($targetId, 'force_logout', ['reason' => 'suspended']);
         }
 
-        echo json_encode(['success' => true, 'message' => 'Sanción aplicada correctamente.']);
+        $msg = ($newStatus === 'active') ? 'Sanción levantada correctamente.' : 'Sanción aplicada correctamente.';
+        echo json_encode(['success' => true, 'message' => $msg]);
 
     // --- GESTIONAR USUARIO (ACTIVO / ELIMINADO) ---
     } elseif ($action === 'update_user_general') {
+        // (Esta parte se mantiene igual que antes)
         $targetId = (int)($data['target_id'] ?? 0);
-        $newStatus = $data['status'] ?? 'active'; // 'active' o 'deleted'
+        $newStatus = $data['status'] ?? 'active';
         $currentAdminId = $_SESSION['user_id'];
 
         if ($targetId === $currentAdminId) throw new Exception("No puedes modificar tu propia cuenta aquí.");
 
         if ($newStatus === 'deleted') {
             $delType = $data['deletion_type'] ?? 'admin_decision';
-            $delReason = $data['deletion_reason'] ?? null; // Solo si es user_decision
+            $delReason = $data['deletion_reason'] ?? null; 
             $adminComments = $data['admin_comments'] ?? null;
 
             if (empty($adminComments)) throw new Exception("Debes escribir un comentario administrativo.");
-            
-            if ($delType === 'user_decision' && empty($delReason)) {
-                throw new Exception("Debes especificar la razón del usuario.");
-            }
+            if ($delType === 'user_decision' && empty($delReason)) throw new Exception("Debes especificar la razón del usuario.");
 
-            // Actualizamos estado y guardamos los detalles
             $sql = "UPDATE users SET account_status = 'deleted', deletion_type = ?, deletion_reason = ?, admin_comments = ?, suspension_reason = NULL, suspension_end_date = NULL WHERE id = ?";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$delType, $delReason, $adminComments, $targetId]);
 
-            // Expulsión inmediata
             $pdo->prepare("DELETE FROM user_sessions WHERE user_id = ?")->execute([$targetId]);
             send_live_notification($targetId, 'force_logout', ['reason' => 'deleted']);
 
             echo json_encode(['success' => true, 'message' => 'Cuenta eliminada correctamente.']);
 
         } elseif ($newStatus === 'active') {
-            // Reactivar cuenta: Limpiamos todo
             $sql = "UPDATE users SET account_status = 'active', suspension_reason = NULL, suspension_end_date = NULL, deletion_type = NULL, deletion_reason = NULL, admin_comments = NULL WHERE id = ?";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$targetId]);

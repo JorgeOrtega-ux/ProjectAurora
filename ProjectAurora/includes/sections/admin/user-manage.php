@@ -1,7 +1,8 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (!in_array($_SESSION['user_role'], ['founder', 'administrator'])) {
-    include __DIR__ . '/../system/404.php'; exit;
+    include __DIR__ . '/../system/404.php';
+    exit;
 }
 
 $targetUid = $_GET['uid'] ?? 0;
@@ -10,8 +11,8 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
 
 <link rel="stylesheet" href="<?php echo $basePath; ?>assets/css/admin.css">
 
-<div class="section-content active" data-section="admin/user-manage">
-    
+<div class="section-content active" data-section="admin/user-status">
+
     <div class="toolbar-stack">
         <div class="component-toolbar">
             <div class="component-toolbar__group">
@@ -19,12 +20,17 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                     <span class="material-symbols-rounded">arrow_back</span>
                 </div>
                 <div class="component-toolbar__separator"></div>
-                <span style="font-size: 14px; font-weight: 600; color: #666;">Estado</span>
+                <span class="toolbar-title-actions">Acciones</span>
             </div>
             <div class="component-toolbar__right">
-                <button class="component-button primary" id="btn-save-manage">
+                <button class="component-button d-none" id="btn-lift-ban" style="margin-right: 8px; color: #d32f2f; border-color: #ffcdd2;">
+                    <span class="material-symbols-rounded">lock_open</span>
+                    Levantar Sanción
+                </button>
+                
+                <button class="component-button primary" id="btn-save-status">
                     <span class="material-symbols-rounded">save</span>
-                    Guardar Estado
+                    <span id="btn-save-text">Aplicar Sanción</span>
                 </button>
             </div>
         </div>
@@ -33,72 +39,89 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
     <div class="component-wrapper section-with-toolbar">
 
         <div class="component-header-card">
-            <h1 class="component-page-title">Gestionar Usuario</h1>
-            <p class="component-page-description">Ciclo de vida de la cuenta y notas administrativas.</p>
+            <h1 class="component-page-title">Gestionar Sanciones</h1>
+            <p class="component-page-description">Aplica suspensiones temporales o permanentes.</p>
         </div>
 
         <div class="component-card component-card--grouped">
             <div class="component-group-item">
                 <div class="component-card__content">
-                    <div class="component-card__avatar" id="manage-avatar-container">
-                        <img src="" id="manage-user-avatar" class="component-card__avatar-image" style="display:none;">
-                        <span class="material-symbols-rounded default-avatar-icon" id="manage-user-icon" style="font-size: 24px;">person</span>
+                    <div class="component-card__avatar" id="status-avatar-container">
+                        <img src="" id="status-user-avatar" class="component-card__avatar-image hidden-avatar" style="display: none;">
+                        <span class="material-symbols-rounded default-avatar-icon" id="status-user-icon">person</span>
                     </div>
                     <div class="component-card__text">
-                        <h2 class="component-card__title" id="manage-username">Cargando...</h2>
-                        <p class="component-card__description" id="manage-email">...</p>
+                        <h2 class="component-card__title" id="status-username">Cargando...</h2>
+                        <p class="component-card__description" id="status-email">...</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="component-card component-card--grouped" style="margin-top: 16px;">
-            <input type="hidden" id="manage-target-id" value="<?php echo htmlspecialchars($targetUid); ?>">
-            
-            <input type="hidden" id="manage-status-value" value="active">
-            <input type="hidden" id="manage-deletion-type" value="admin_decision">
+        <div class="component-card component-card--grouped mt-16">
+            <input type="hidden" id="target-user-id" value="<?php echo htmlspecialchars($targetUid); ?>">
+
+            <input type="hidden" id="input-status-value" value="suspended_temp">
+            <input type="hidden" id="input-duration-value" value="2">
+            <input type="hidden" id="input-reason-value" value="">
+
+            <div id="active-sanction-alert" class="component-group-item d-none" style="background-color: #fff8e1; border-bottom: 1px solid #ffe0b2;">
+                <div class="component-card__content">
+                    <div class="component-icon-container" style="border-color: #ffb74d; background: #fff;">
+                        <span class="material-symbols-rounded" style="color: #f57c00;">warning</span>
+                    </div>
+                    <div class="component-card__text">
+                        <h2 class="component-card__title" style="color: #ef6c00;">Este usuario ya está suspendido</h2>
+                        <p class="component-card__description" id="active-sanction-desc" style="color: #e65100;">...</p>
+                    </div>
+                </div>
+            </div>
 
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Estado de la cuenta</h2>
-                        <p class="component-card__description">Activar o Eliminar definitivamente.</p>
+                        <h2 class="component-card__title">Tipo de Sanción</h2>
+                        <p class="component-card__description">Selecciona el nivel de restricción.</p>
                     </div>
                 </div>
                 <div class="component-card__actions w-100">
                     <div class="trigger-select-wrapper w-100">
-                        <div class="trigger-selector" data-action="toggle-dropdown" data-target="dropdown-manage-status">
+                        <div class="trigger-selector" data-action="toggle-dropdown" data-target="dropdown-status-options">
                             <div class="trigger-select-icon">
-                                <span class="material-symbols-rounded" id="manage-status-icon" style="color: #2e7d32;">check_circle</span>
+                                <span class="material-symbols-rounded" id="current-status-icon">timer</span>
                             </div>
                             <div class="trigger-select-text">
-                                <span id="manage-status-text">Activo</span>
+                                <span id="current-status-text">Suspensión Temporal</span>
                             </div>
                             <div class="trigger-select-arrow">
                                 <span class="material-symbols-rounded">arrow_drop_down</span>
                             </div>
                         </div>
-                        
-                        <div class="popover-module disabled" id="dropdown-manage-status" style="width: 100%; position: absolute; top: 100%; z-index: 10;">
+
+                        <div class="popover-module disabled" id="dropdown-status-options">
                             <div class="menu-content">
                                 <div class="menu-list">
-                                    <div class="menu-link" 
-                                         data-action="select-manage-status" 
-                                         data-value="active" 
-                                         data-label="Activo" 
-                                         data-icon="check_circle" 
-                                         data-color="#2e7d32">
-                                        <div class="menu-link-icon"><span class="material-symbols-rounded" style="color:#2e7d32">check_circle</span></div>
-                                        <div class="menu-link-text">Activo</div>
+                                    <div class="menu-link"
+                                        data-action="select-status-option"
+                                        data-value="suspended_temp"
+                                        data-label="Suspensión Temporal"
+                                        data-icon="timer"
+                                        data-color="#f57c00">
+                                        <div class="menu-link-icon">
+                                            <span class="material-symbols-rounded status-temp">timer</span>
+                                        </div>
+                                        <div class="menu-link-text">Suspensión Temporal</div>
                                     </div>
-                                    <div class="menu-link" 
-                                         data-action="select-manage-status" 
-                                         data-value="deleted" 
-                                         data-label="Cuenta Eliminada" 
-                                         data-icon="delete_forever" 
-                                         data-color="#616161">
-                                        <div class="menu-link-icon"><span class="material-symbols-rounded" style="color:#616161">delete_forever</span></div>
-                                        <div class="menu-link-text">Cuenta Eliminada</div>
+                                    <div class="menu-link"
+                                        data-action="select-status-option"
+                                        data-value="suspended_perm"
+                                        data-label="Suspensión Permanente"
+                                        data-icon="block"
+                                        data-color="#d32f2f">
+                                        <div class="menu-link-icon">
+                                            <span class="material-symbols-rounded status-perm">block</span>
+                                        </div>
+                                        <div class="menu-link-text">Suspensión Permanente</div>
                                     </div>
                                 </div>
                             </div>
@@ -107,84 +130,132 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                 </div>
             </div>
 
-            <div id="wrapper-deletion-details" class="w-100 d-none">
+            <div id="wrapper-duration" class="w-100">
                 <hr class="component-divider">
-                
                 <div class="component-group-item component-group-item--stacked">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title">Tipo de Decisión</h2>
-                            <p class="component-card__description">¿Quién solicitó la eliminación?</p>
+                            <h2 class="component-card__title">Nueva Duración</h2>
+                            <p class="component-card__description">Días a partir de hoy que el usuario estará bloqueado.</p>
                         </div>
                     </div>
                     <div class="component-card__actions w-100">
                         <div class="trigger-select-wrapper w-100">
-                            <div class="trigger-selector" data-action="toggle-dropdown" data-target="dropdown-deletion-type">
+                            <div class="trigger-selector" data-action="toggle-dropdown" data-target="dropdown-duration">
                                 <div class="trigger-select-icon">
-                                    <span class="material-symbols-rounded">gavel</span>
+                                    <span class="material-symbols-rounded">calendar_today</span>
                                 </div>
                                 <div class="trigger-select-text">
-                                    <span id="text-deletion-type">Decisión Administrativa</span>
+                                    <span id="current-duration-text">2 Días</span>
                                 </div>
                                 <div class="trigger-select-arrow">
                                     <span class="material-symbols-rounded">arrow_drop_down</span>
                                 </div>
                             </div>
-                            
-                            <div class="popover-module disabled" id="dropdown-deletion-type" style="width: 100%; position: absolute; top: 100%; z-index: 10;">
+
+                            <div class="popover-module disabled" id="dropdown-duration">
                                 <div class="menu-content">
                                     <div class="menu-list">
-                                        <div class="menu-link" 
-                                             data-action="select-deletion-type" 
-                                             data-value="admin_decision" 
-                                             data-label="Decisión Administrativa">
-                                            <div class="menu-link-icon"><span class="material-symbols-rounded">admin_panel_settings</span></div>
-                                            <div class="menu-link-text">Decisión Administrativa</div>
-                                        </div>
-                                        <div class="menu-link" 
-                                             data-action="select-deletion-type" 
-                                             data-value="user_decision" 
-                                             data-label="Decisión del Usuario">
-                                            <div class="menu-link-icon"><span class="material-symbols-rounded">person</span></div>
-                                            <div class="menu-link-text">Decisión del Usuario</div>
-                                        </div>
+                                        <?php
+                                        $daysOptions = [2, 4, 6, 8, 12, 30];
+                                        foreach ($daysOptions as $d) {
+                                            echo "
+                                            <div class='menu-link' data-action='select-duration-option' data-value='$d'>
+                                                <div class='menu-link-icon'>
+                                                    <span class='material-symbols-rounded'>schedule</span>
+                                                </div>
+                                                <div class='menu-link-text'>{$d} Días</div>
+                                            </div>";
+                                        }
+                                        ?>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="wrapper-reason" class="w-100">
+                <hr class="component-divider">
+                <div class="component-group-item component-group-item--stacked">
+                    <div class="component-card__content">
+                        <div class="component-card__text">
+                            <h2 class="component-card__title">Motivo de la Sanción</h2>
+                            <p class="component-card__description">Requerido para aplicar el castigo.</p>
+                        </div>
+                    </div>
+                    <div class="component-card__actions w-100">
+                        <div class="trigger-select-wrapper w-100">
+                            <div class="trigger-selector" data-action="toggle-dropdown" data-target="dropdown-reasons">
+                                <div class="trigger-select-icon">
+                                    <span class="material-symbols-rounded">gavel</span>
+                                </div>
+                                <div class="trigger-select-text">
+                                    <span id="current-reason-text">Selecciona una razón...</span>
+                                </div>
+                                <div class="trigger-select-arrow">
+                                    <span class="material-symbols-rounded">arrow_drop_down</span>
+                                </div>
+                            </div>
+
+                            <div class="popover-module disabled" id="dropdown-reasons">
+                                <div class="menu-content">
+                                    <div class="menu-list">
+                                        <?php
+                                        $reasons = [
+                                            "Violación de términos de servicio",
+                                            "Comportamiento inapropiado / Acoso",
+                                            "Cuenta falsa o Spam",
+                                            "Riesgo de seguridad",
+                                            "Solicitud de verificación de identidad"
+                                        ];
+                                        foreach ($reasons as $r) {
+                                            echo "<div class='menu-link' data-action=\"select-reason-option\" data-value=\"$r\">
+                                                    <div class='menu-link-text'>$r</div>
+                                                  </div>";
+                                        }
+                                        ?>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <div id="wrapper-user-reason" class="d-none">
-                    <hr class="component-divider">
-                    <div class="component-group-item component-group-item--stacked">
-                        <div class="component-card__text">
-                            <h2 class="component-card__title">Razón del Usuario</h2>
-                            <p class="component-card__description">Motivo proporcionado por el usuario para salir.</p>
-                        </div>
-                        <div class="component-input-wrapper w-100" style="margin-top: 10px;">
-                            <textarea id="input-user-reason" class="component-text-input full-width" style="height: 80px; padding: 10px;" placeholder="Ej: No utilizo la plataforma frecuentemente..."></textarea>
-                        </div>
-                    </div>
-                </div>
-
-                <hr class="component-divider">
-                <div class="component-group-item component-group-item--stacked">
-                    <div class="component-card__text">
-                        <h2 class="component-card__title">Comentarios Administrativos</h2>
-                        <p class="component-card__description">Registro interno del motivo de la eliminación.</p>
-                    </div>
-                    <div class="component-input-wrapper w-100" style="margin-top: 10px;">
-                        <textarea id="input-admin-comments" class="component-text-input full-width" style="height: 80px; padding: 10px;" placeholder="Ej: Solicitud vía ticket #1234 o Inactividad prolongada..."></textarea>
-                    </div>
-                </div>
-
             </div>
-            
-            <div class="component-card__error" id="manage-error-msg" style="margin: 20px 0 0 0; width: 100%;"></div>
 
         </div>
+
+        <div class="component-card__error" id="status-error-msg" style="margin-top: 16px;"></div>
+
+        <div class="component-card mt-16">
+            <h3 class="history-title">
+                <span class="material-symbols-rounded history-icon">history</span>
+                Historial de Suspensiones
+            </h3>
+
+            <div class="admin-table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha Inicio</th>
+                            <th>Razón</th>
+                            <th>Duración</th>
+                            <th>Fin Programado</th>
+                            <th>Admin</th>
+                            <th>Levantada</th> </tr>
+                    </thead>
+                    <tbody id="suspension-history-body">
+                        <tr>
+                            <td colspan="6" class="history-loading">Cargando historial...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 </div>
 
-<script src="<?php echo $basePath; ?>assets/js/modules/admin-manage-manager.js"></script>
+<script src="<?php echo $basePath; ?>assets/js/modules/admin-status-manager.js"></script>
