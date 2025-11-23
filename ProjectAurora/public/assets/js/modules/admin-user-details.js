@@ -33,7 +33,7 @@
             const statusId = document.getElementById('target-user-id');
             const manageId = document.getElementById('manage-target-id');
             const historyId = document.getElementById('history-target-id');
-            const roleId = document.getElementById('role-target-id'); // [NUEVO]
+            const roleId = document.getElementById('role-target-id');
 
             if (statusId) {
                 this.context = 'status';
@@ -47,7 +47,7 @@
                 this.context = 'history';
                 this.targetId = historyId.value;
                 this.prefix = 'history-';
-            } else if (roleId) { // [NUEVO]
+            } else if (roleId) {
                 this.context = 'role';
                 this.targetId = roleId.value;
                 this.prefix = 'role-';
@@ -88,7 +88,7 @@
             let errorBox = null;
             
             if (this.context === 'manage') errorBox = document.getElementById('manage-error-msg');
-            else if (this.context === 'role') errorBox = document.getElementById('role-error-msg'); // [NUEVO]
+            else if (this.context === 'role') errorBox = document.getElementById('role-error-msg');
             else {
                 const container = document.querySelector('.component-wrapper');
                 errorBox = container.querySelector('.component-card__error');
@@ -128,7 +128,7 @@
                 if (this.context === 'status') this.initStatusLogic();
                 if (this.context === 'manage') this.initManageLogic();
                 if (this.context === 'history') this.renderHistoryTable(data.history);
-                if (this.context === 'role') this.initRoleLogic(); // [NUEVO]
+                if (this.context === 'role') this.initRoleLogic();
             } else {
                 this.showError(t('global.error_connection') + ': ' + data.message);
             }
@@ -213,14 +213,12 @@
             if (action === 'select-reason-option') this.updateReasonUI(val);
             if (action === 'select-manage-status') this.updateManageStatusUI(val, label, icon, color);
             if (action === 'select-deletion-type') this.updateDeletionTypeUI(val, label);
-            if (action === 'select-role-option') this.updateRoleUI(val, label, icon, color); // [NUEVO]
+            if (action === 'select-role-option') this.updateRoleUI(val, label, icon, color);
 
             this.closeAllDropdowns();
         }
 
-        // =======================================================
-        // LOGICA STATUS (User Status)
-        // =======================================================
+        // --- STATUS LOGIC ---
         initStatusLogic() {
             const u = this.user;
             const activeAlert = document.getElementById('active-sanction-alert');
@@ -392,9 +390,7 @@
             this.setLoading(btnLift, false, originalHtml);
         }
 
-        // =======================================================
-        // LOGICA MANAGE (User Manage - General)
-        // =======================================================
+        // --- MANAGE LOGIC ---
         initManageLogic() {
             const u = this.user;
             const btnSave = document.getElementById('btn-save-manage');
@@ -476,14 +472,11 @@
             this.setLoading(btnSave, false, `<span class="material-symbols-rounded">save</span> ${t('global.save_status')}`);
         }
 
-        // =======================================================
-        // [NUEVO] LOGICA ROL (User Role)
-        // =======================================================
+        // --- ROLE LOGIC ---
         initRoleLogic() {
             const u = this.user;
             const btnSave = document.getElementById('btn-save-role');
             
-            // Establecer estado inicial basado en el usuario cargado
             let roleLabel = 'Usuario';
             let roleIcon = 'person';
             let roleColor = '#666';
@@ -500,7 +493,6 @@
                 roleLabel = 'Fundador';
                 roleIcon = 'diamond';
                 roleColor = '#FFC107';
-                // Opcional: Deshabilitar cambio de rol si es Founder
             }
 
             this.updateRoleUI(u.role, roleLabel, roleIcon, roleColor);
@@ -534,16 +526,14 @@
 
             if (res.success) {
                 if (window.alertManager) window.alertManager.showAlert(res.message, 'success');
-                this.loadData(); // Recargar para ver cambios reflejados (header)
+                this.loadData(); 
             } else {
                 this.showError(res.message);
             }
             this.setLoading(btnSave, false, `<span class="material-symbols-rounded">save</span> ${t('global.save')}`);
         }
 
-        // =======================================================
-        // HISTORY LOGIC
-        // =======================================================
+        // --- HISTORY LOGIC [ACTUALIZADO PARA MOSTRAR ROLES] ---
         renderHistoryTable(logs) {
             const tbody = document.getElementById('full-history-body');
             if (!tbody) return;
@@ -561,37 +551,56 @@
 
             let html = '';
             logs.forEach(log => {
-                const start = new Date(log.started_at).toLocaleString();
+                const start = new Date(log.event_date).toLocaleString();
                 const adminName = log.admin_name || 'Sistema';
                 
-                let durationDisplay = (parseInt(log.duration_days) === -1) 
-                    ? `<span style="color: #d32f2f; font-weight: 600;">${t('admin.status.perm_ban')}</span>` 
-                    : log.duration_days + ' ' + t('global.days');
-                
-                let endDisplay = (parseInt(log.duration_days) === -1) 
-                    ? t('admin.history.indefinite') || 'Indefinido'
-                    : (log.ends_at ? new Date(log.ends_at).toLocaleString() : '-');
+                let icon = 'gavel';
+                let reasonText = log.reason;
+                let durationDisplay = '-';
+                let endDisplay = '-';
+                let liftedDisplay = '-';
 
-                let liftedDisplay = '';
-                if (log.lifted_at) {
-                    const liftedDate = new Date(log.lifted_at).toLocaleString();
-                    const lifter = log.lifter_name || 'Admin';
-                    liftedDisplay = `
-                        <div style="display:flex; flex-direction:column;">
-                            <span style="color:#2e7d32; font-weight:600; font-size:13px; display:flex; align-items:center; gap:4px;">
-                                <span class="material-symbols-rounded" style="font-size:16px;">check_circle</span> 
-                                ${t('admin.history.lifted_on') || 'Levantada el'} ${liftedDate}
-                            </span>
-                            <span style="color:#888; font-size:11px; margin-left:20px;">${t('admin.history.by') || 'por'} ${lifter}</span>
-                        </div>`;
-                } else {
-                    const now = new Date();
-                    const endDate = log.ends_at ? new Date(log.ends_at) : null;
-                    if (parseInt(log.duration_days) === -1 || (endDate && endDate > now)) {
-                        liftedDisplay = '<span class="component-badge component-badge--danger">' + (t('global.active') || 'Activa') + '</span>';
+                if (log.log_type === 'suspension') {
+                    // Lógica de Sanciones
+                    icon = 'gavel';
+                    
+                    durationDisplay = (parseInt(log.duration_days) === -1) 
+                        ? `<span style="color: #d32f2f; font-weight: 600;">${t('admin.status.perm_ban')}</span>` 
+                        : log.duration_days + ' ' + t('global.days');
+                    
+                    endDisplay = (parseInt(log.duration_days) === -1) 
+                        ? t('admin.history.indefinite') || 'Indefinido'
+                        : (log.ends_at ? new Date(log.ends_at).toLocaleString() : '-');
+
+                    if (log.lifted_at) {
+                        const liftedDate = new Date(log.lifted_at).toLocaleString();
+                        const lifter = log.lifter_name || 'Admin';
+                        liftedDisplay = `
+                            <div style="display:flex; flex-direction:column;">
+                                <span style="color:#2e7d32; font-weight:600; font-size:13px; display:flex; align-items:center; gap:4px;">
+                                    <span class="material-symbols-rounded" style="font-size:16px;">check_circle</span> 
+                                    ${t('admin.history.lifted_on') || 'Levantada el'} ${liftedDate}
+                                </span>
+                                <span style="color:#888; font-size:11px; margin-left:20px;">${t('admin.history.by') || 'por'} ${lifter}</span>
+                            </div>`;
                     } else {
-                        liftedDisplay = '<span class="component-badge component-badge--neutral">' + (t('global.status.expired') || 'Expirada') + '</span>';
+                        const now = new Date();
+                        const endDate = log.ends_at ? new Date(log.ends_at) : null;
+                        if (parseInt(log.duration_days) === -1 || (endDate && endDate > now)) {
+                            liftedDisplay = '<span class="component-badge component-badge--danger">' + (t('global.active') || 'Activa') + '</span>';
+                        } else {
+                            liftedDisplay = '<span class="component-badge component-badge--neutral">' + (t('global.status.expired') || 'Expirada') + '</span>';
+                        }
                     }
+                
+                } else if (log.log_type === 'role_change') {
+                    // Lógica de Cambio de Rol
+                    icon = 'manage_accounts';
+                    // Formato Visual: User -> Admin
+                    reasonText = `<span style="font-weight:600;">${log.old_role}</span> <span class="material-symbols-rounded" style="font-size:12px; vertical-align:middle;">arrow_forward</span> <span style="font-weight:600; color:#000;">${log.new_role}</span>`;
+                    durationDisplay = '-';
+                    endDisplay = '-';
+                    liftedDisplay = '<span class="component-badge component-badge--success" style="background:#e3f2fd; color:#1565c0; border-color:#bbdefb;">Cambio de Rol</span>';
                 }
 
                 html += `
@@ -599,8 +608,8 @@
                         <td>${start}</td>
                         <td>
                             <div style="display:flex; align-items:center; gap:8px;">
-                                <span class="material-symbols-rounded" style="color:#666; font-size:18px;">gavel</span>
-                                ${log.reason}
+                                <span class="material-symbols-rounded" style="color:#666; font-size:18px;">${icon}</span>
+                                ${reasonText}
                             </div>
                         </td>
                         <td>${durationDisplay}</td>

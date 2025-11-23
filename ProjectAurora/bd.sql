@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- AUDITORÍA DE CAMBIOS DE PERFIL
+-- AUDITORÍA GENERAL (Perfil, Password, etc.)
 CREATE TABLE IF NOT EXISTS user_audit_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -140,21 +140,33 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     INDEX (session_id)
 );
 
--- LOGS DE SUSPENSIÓN [MODIFICADA]
+-- LOGS DE SUSPENSIÓN (Sanciones)
 CREATE TABLE IF NOT EXISTS user_suspension_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    admin_id INT NULL, -- Quien puso la sanción
+    admin_id INT NULL, 
     reason TEXT NOT NULL,
     duration_days INT NOT NULL,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    ends_at TIMESTAMP NULL, -- Fecha fin programada original
-    
-    -- NUEVOS CAMPOS PARA LEVANTAMIENTO
-    lifted_by INT NULL, -- Admin que levantó la sanción manualmente
-    lifted_at TIMESTAMP NULL, -- Fecha real en que se levantó
-    
+    ends_at TIMESTAMP NULL, 
+    lifted_by INT NULL, 
+    lifted_at TIMESTAMP NULL, 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (lifted_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- [NUEVA] TABLA INDEPENDIENTE PARA AUDITORÍA DE ROLES
+CREATE TABLE IF NOT EXISTS user_role_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,       -- A quién se le cambió
+    admin_id INT NULL,          -- Quién hizo el cambio
+    old_role VARCHAR(50) NOT NULL,
+    new_role VARCHAR(50) NOT NULL,
+    ip_address VARCHAR(45) NOT NULL, -- IP del admin
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_role_audit (user_id, admin_id, changed_at)
 );

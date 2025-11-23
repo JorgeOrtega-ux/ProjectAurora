@@ -117,6 +117,18 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                     </div>
                 </div>
             </div>
+
+            <div class="component-group-item" style="padding-top: 0;">
+                <div style="background-color: #fff8e1; border: 1px solid #ffe0b2; border-radius: 8px; padding: 12px; display: flex; gap: 12px; align-items: flex-start; width: 100%;">
+                    <span class="material-symbols-rounded" style="color: #f57c00; font-size: 20px; margin-top: 2px;">info</span>
+                    <div>
+                        <h4 style="margin: 0 0 4px 0; font-size: 13px; font-weight: 600; color: #e65100;">Aviso de Seguridad</h4>
+                        <p style="margin: 0; font-size: 12px; color: #ef6c00; line-height: 1.4;">
+                            Esta es una acción administrativa sensible. Todos los cambios de roles son <strong>auditados y registrados</strong> permanentemente para su revisión. Asegúrate de tener la autorización correspondiente.
+                        </p>
+                    </div>
+                </div>
+            </div>
             
             <div class="component-card__error" id="role-error-msg" style="margin-top: 16px;"></div>
 
