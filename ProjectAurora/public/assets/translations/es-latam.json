@@ -42,7 +42,8 @@
         "settings": "Configuración",
         "help": "Ayuda y comentarios",
         "logout": "Cerrar sesión",
-        "admin_panel": "Panel de administración"
+        "admin_panel": "Panel de administración",
+        "logout_tooltip": "Cerrar sesión actual"
     },
     "header": {
         "menu_tooltip": "Menú Principal",
@@ -55,6 +56,12 @@
         "alt_profile": "Perfil"
     },
     "auth": {
+        "placeholders": {
+            "email": "ejemplo@correo.com",
+            "username": "usuario123",
+            "password": "Tu contraseña",
+            "code": "123456"
+        },
         "login": {
             "title": "Iniciar Sesión",
             "subtitle": "Bienvenido de nuevo.",
@@ -119,9 +126,9 @@
             "email_short": "Correo muy corto.",
             "email_domain": "Dominio no permitido.",
             "email_exists": "El correo ya está registrado.",
-            "username_invalid": "Usuario inválido.",
             "too_many_attempts": "Has excedido intentos. Por favor espera.",
-            "invalid_credentials": "Credenciales incorrectas."
+            "invalid_credentials": "Credenciales incorrectas.",
+            "network_error": "Error de conexión con el servidor."
         },
         "code_sent": "Código enviado",
         "welcome": "Bienvenido",
@@ -156,6 +163,7 @@
             "password_title": "Contraseña",
             "password_desc": "Nunca has actualizado tu contraseña.",
             "password_btn": "Actualizar",
+            "password_required": "Por favor, ingresa tu contraseña.",
             "2fa_title": "Verificación de dos pasos (2FA)",
             "2fa_desc": "Añade una capa extra de seguridad a tu cuenta.",
             "2fa_btn": "Habilitar",
@@ -199,7 +207,8 @@
             "backup_desc": "Si pierdes tu teléfono, estos códigos son la única forma de entrar. Guárdalos en un lugar seguro.",
             "backup_saved_btn": "He guardado mis códigos",
             "activated": "2FA Activado",
-            "invalid_code": "Código incorrecto."
+            "invalid_code": "Código incorrecto.",
+            "code_length_error": "El código debe tener 6 dígitos."
         },
         "sessions": {
             "title": "Dispositivos",
@@ -209,7 +218,10 @@
             "logout_all_confirm": "¿Estás seguro? Se cerrará la sesión en todos los dispositivos excepto este.",
             "last_active": "Última actividad",
             "location_unknown": "Ubicación desconocida",
-            "empty": "No se encontraron sesiones."
+            "empty": "No se encontraron sesiones.",
+            "session_revoked": "Sesión cerrada correctamente.",
+            "all_revoked": "Se han cerrado todas las otras sesiones.",
+            "logout_confirm": "¿Seguro que quieres cerrar esta sesión?"
         },
         "delete_account": {
             "title": "Eliminar cuenta",
@@ -294,6 +306,20 @@
         "now_friends": "¡Ahora son amigos!"
     },
     "admin": {
+        "sidebar": {
+            "dashboard": "Tablero",
+            "users": "Usuarios",
+            "system": "Sistema",
+            "backups": "Copias de Seguridad"
+        },
+        "dashboard": {
+            "title": "Dashboard Administrativo",
+            "desc": "Bienvenido al panel de control.",
+            "total_users": "Usuarios Totales",
+            "active_sessions": "Sesiones Activas",
+            "server_load": "Carga del Servidor",
+            "memory_usage": "Uso de Memoria"
+        },
         "dashboard_title": "Dashboard Administrativo",
         "dashboard_desc": "Bienvenido al panel de control.",
         "users_title": "Gestión de Usuarios",
@@ -310,7 +336,8 @@
                 "status": "Estado",
                 "role": "Rol",
                 "2fa": "2FA",
-                "presence": "Estado / Última vez"
+                "presence": "Estado / Última vez",
+                "actions": "Acciones"
             },
             "tooltip": {
                 "protected": "Protegido",
@@ -320,7 +347,11 @@
             "empty_state": "No se encontraron usuarios.",
             "actions": {
                 "manage": "Gestionar Usuario",
-                "sanctions": "Gestionar Sanciones"
+                "sanctions": "Gestionar Sanciones",
+                "edit": "Editar",
+                "ban": "Banear",
+                "delete": "Eliminar",
+                "confirm_delete": "¿Estás seguro de eliminar a este usuario?"
             },
             "search_placeholder": "Buscar por nombre, correo o ID (Presiona Enter)..."
         },
@@ -390,6 +421,12 @@
             "ban_applied": "Sanción aplicada correctamente.",
             "ban_lifted": "Sanción levantada correctamente.",
             "account_deleted": "Cuenta eliminada correctamente."
+        },
+        "server": {
+          "cpu": "Uso de CPU",
+          "ram": "Uso de RAM",
+          "disk": "Espacio en Disco",
+          "uptime": "Tiempo de Actividad"
         }
     },
     "languages": {
