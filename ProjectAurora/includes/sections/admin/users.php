@@ -4,7 +4,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 // 1. SEGURIDAD
 $role = $_SESSION['user_role'] ?? 'user';
 if (!in_array($role, ['founder', 'administrator'])) {
-    include __DIR__ . '/../system/404.php'; 
+    include __DIR__ . '/../system/404.php';
     exit;
 }
 
@@ -25,7 +25,8 @@ if (!empty($q)) {
 }
 
 // --- HELPERS ---
-function getStatusClass($status) {
+function getStatusClass($status)
+{
     return match ($status) {
         'active' => 'component-badge--success',
         'suspended' => 'component-badge--danger',
@@ -34,11 +35,12 @@ function getStatusClass($status) {
     };
 }
 
-function formatTimeAgo($datetime) {
+function formatTimeAgo($datetime)
+{
     if (!$datetime) return 'Nunca';
     $time = strtotime($datetime);
     $diff = time() - $time;
-    
+
     if ($diff < 60) return 'Hace un momento';
     if ($diff < 3600) return 'Hace ' . floor($diff / 60) . ' min';
     if ($diff < 86400) return 'Hace ' . floor($diff / 3600) . ' h';
@@ -46,64 +48,64 @@ function formatTimeAgo($datetime) {
 }
 
 // Función para renderizar filas (HTML)
-function renderUserRows($users) {
+function renderUserRows($users)
+{
     ob_start();
     if (count($users) > 0):
-        foreach ($users as $u): 
+        foreach ($users as $u):
             $avatarUrl = !empty($u['avatar']) ? '/ProjectAurora/' . $u['avatar'] : null;
             $statusClass = getStatusClass($u['account_status']);
             $is2FA = ((int)$u['is_2fa_enabled'] === 1);
-            $rawTime = $u['last_seen']; 
+            $rawTime = $u['last_seen'];
             $initialText = formatTimeAgo($rawTime);
             $userId = $u['id'];
             $jsTimestamp = $rawTime ? strtotime($rawTime) * 1000 : 0;
-        ?>
-        <tr class="component-table-row selectable" data-uid="<?php echo $userId; ?>" onclick="selectSingleRow(event, this, '<?php echo $userId; ?>')">
-            <td style="padding-left: 20px; color: #888; width: 50px;"><?php echo $userId; ?></td>
-            <td>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <?php if ($avatarUrl): ?>
-                        <img src="<?php echo htmlspecialchars($avatarUrl); ?>" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
-                    <?php else: ?>
-                        <div style="background-color: #e0e0e0; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                            <span class="material-symbols-rounded" style="font-size: 18px; color: #666;">person</span>
+?>
+            <tr class="component-table-row selectable" data-uid="<?php echo $userId; ?>" onclick="selectSingleRow(event, this, '<?php echo $userId; ?>')">
+                <td class="col-id"><?php echo $userId; ?></td>
+                <td>
+                    <div class="user-info-cell">
+                        <?php if ($avatarUrl): ?>
+                            <img src="<?php echo htmlspecialchars($avatarUrl); ?>" alt="Avatar" class="user-avatar-img">
+                        <?php else: ?>
+                            <div class="user-avatar-placeholder">
+                                <span class="material-symbols-rounded avatar-icon">person</span>
+                            </div>
+                        <?php endif; ?>
+                        <div class="user-details-wrapper">
+                            <span class="user-username"><?php echo htmlspecialchars($u['username']); ?></span>
+                            <span class="user-created">Creado: <?php echo date('d/m/Y', strtotime($u['created_at'])); ?></span>
                         </div>
-                    <?php endif; ?>
-                    <div style="display: flex; flex-direction: column;">
-                        <span style="font-weight: 600; font-size: 14px; color: inherit;"><?php echo htmlspecialchars($u['username']); ?></span>
-                        <span style="font-size: 11px; color: #999;">Creado: <?php echo date('d/m/Y', strtotime($u['created_at'])); ?></span>
                     </div>
-                </div>
-            </td>
-            <td style="font-size: 13px;"><?php echo htmlspecialchars($u['email']); ?></td>
-            <td style="width: 100px;">
-                <span class="component-badge <?php echo $statusClass; ?>">
-                    <?php echo ucfirst($u['account_status']); ?>
-                </span>
-            </td>
-            <td style="width: 100px;">
-                <span class="component-badge component-badge--neutral" style="border: 1px solid #e0e0e0; background: #f5f5f5;">
-                    <?php echo ucfirst($u['role']); ?>
-                </span>
-            </td>
-            <td style="width: 80px; text-align: center;">
-                <?php if ($is2FA): ?>
-                    <span class="material-symbols-rounded" style="color: #2e7d32; font-size: 18px;" title="Protegido">shield_lock</span>
-                <?php else: ?>
-                    <span class="material-symbols-rounded" style="color: #bdbdbd; font-size: 18px;" title="No protegido">no_encryption</span>
-                <?php endif; ?>
-            </td>
-            <td class="user-presence-cell" 
-                id="presence-<?php echo $userId; ?>" 
-                data-uid="<?php echo $userId; ?>" 
-                data-timestamp="<?php echo $jsTimestamp; ?>" 
-                style="width: 160px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="component-status-dot offline"></div>
-                    <span class="status-text" style="color: #666; font-size: 13px;"><?php echo $initialText; ?></span>
-                </div>
-            </td>
-        </tr>
+                </td>
+                <td class="col-email"><?php echo htmlspecialchars($u['email']); ?></td>
+                <td class="col-status">
+                    <span class="component-badge <?php echo $statusClass; ?>">
+                        <?php echo ucfirst($u['account_status']); ?>
+                    </span>
+                </td>
+                <td class="col-role">
+                    <span class="component-badge component-badge--neutral role-badge">
+                        <?php echo ucfirst($u['role']); ?>
+                    </span>
+                </td>
+                <td class="col-2fa">
+                    <?php if ($is2FA): ?>
+                        <span class="material-symbols-rounded icon-2fa-on" title="Protegido">shield_lock</span>
+                    <?php else: ?>
+                        <span class="material-symbols-rounded icon-2fa-off" title="No protegido">no_encryption</span>
+                    <?php endif; ?>
+                </td>
+                <td class="user-presence-cell col-presence"
+                    id="presence-<?php echo $userId; ?>"
+                    data-uid="<?php echo $userId; ?>"
+                    data-timestamp="<?php echo $jsTimestamp; ?>">
+                    <div class="presence-wrapper">
+                        <div class="component-status-dot offline"></div>
+                        <span class="status-text presence-text-default"><?php echo $initialText; ?></span>
+                    </div>
+                </td>
+            </tr>
         <?php endforeach;
     else: ?>
         <tr>
@@ -116,27 +118,28 @@ function renderUserRows($users) {
     return ob_get_clean();
 }
 
-function renderPagination($page, $totalPages, $q) {
+function renderPagination($page, $totalPages, $q)
+{
     $prevPage = max(1, $page - 1);
     $nextPage = min($totalPages, $page + 1);
     $qEncoded = htmlspecialchars($q, ENT_QUOTES);
-    
+
     // Clases disabled
     $prevDisabled = ($page <= 1) ? 'disabled' : '';
     $nextDisabled = ($page >= $totalPages) ? 'disabled' : '';
 
     ob_start();
     ?>
-    <button class="component-pagination__btn <?php echo $prevDisabled; ?>" 
-            onclick="loadUsersTable(<?php echo $prevPage; ?>, '<?php echo $qEncoded; ?>')">
+    <button class="component-pagination__btn <?php echo $prevDisabled; ?>"
+        onclick="loadUsersTable(<?php echo $prevPage; ?>, '<?php echo $qEncoded; ?>')">
         <span class="material-symbols-rounded">chevron_left</span>
     </button>
     <span class="component-pagination__text"><?php echo $page; ?> / <?php echo $totalPages; ?></span>
-    <button class="component-pagination__btn <?php echo $nextDisabled; ?>" 
-            onclick="loadUsersTable(<?php echo $nextPage; ?>, '<?php echo $qEncoded; ?>')">
+    <button class="component-pagination__btn <?php echo $nextDisabled; ?>"
+        onclick="loadUsersTable(<?php echo $nextPage; ?>, '<?php echo $qEncoded; ?>')">
         <span class="material-symbols-rounded">chevron_right</span>
     </button>
-    <?php
+<?php
     return ob_get_clean();
 }
 
@@ -145,10 +148,13 @@ try {
     $stmtCount = $pdo->prepare($sqlCount);
     $stmtCount->execute($params);
     $totalUsers = $stmtCount->fetchColumn();
-    
+
     $totalPages = ceil($totalUsers / $limit);
     if ($totalPages < 1) $totalPages = 1;
-    if ($page > $totalPages) { $page = $totalPages; $offset = ($page - 1) * $limit; }
+    if ($page > $totalPages) {
+        $page = $totalPages;
+        $offset = ($page - 1) * $limit;
+    }
 
     $sqlUsers = "SELECT u.id, u.username, u.email, u.avatar, u.role, u.account_status, u.created_at, u.is_2fa_enabled,
                  (SELECT MAX(last_activity) FROM user_sessions WHERE user_id = u.id) as last_seen
@@ -156,7 +162,11 @@ try {
     $stmt = $pdo->prepare($sqlUsers);
     $stmt->execute($params);
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (Exception $e) { $users = []; $totalUsers = 0; $totalPages = 1; }
+} catch (Exception $e) {
+    $users = [];
+    $totalUsers = 0;
+    $totalPages = 1;
+}
 
 if (isset($_GET['ajax_partial']) && $_GET['ajax_partial'] === '1') {
     header('Content-Type: application/json');
@@ -169,10 +179,10 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
 <link rel="stylesheet" href="<?php echo $basePath; ?>assets/css/admin.css">
 
 <div class="section-content active" data-section="admin/users">
-    <div class="section-center-wrapper section-with-toolbar" style="flex-direction: column; justify-content: flex-start; width: 98%; max-width: none; margin: 0 auto;">
-        
+    <div class="section-center-wrapper section-with-toolbar admin-users-wrapper">
+
         <div class="toolbar-stack">
-            
+
             <div class="component-toolbar" id="toolbar-default">
                 <div class="component-toolbar__group">
                     <button class="component-icon-button" data-action="toggle-admin-user-search" data-tooltip="Buscar">
@@ -183,18 +193,18 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                         <span class="material-symbols-rounded">filter_list</span>
                     </button>
                 </div>
-                
+
                 <div id="admin-users-pagination" class="component-pagination component-toolbar__right">
                     <?php echo renderPagination($page, $totalPages, $q); ?>
                 </div>
 
                 <div class="component-toolbar search-toolbar-panel disabled" id="admin-users-search-bar">
-                    <div class="search-container" style="width: 100%; max-width: 100%;">
+                    <div class="search-container full-width-search">
                         <span class="material-symbols-rounded search-icon">search</span>
-                        <input type="text" id="admin-users-search-input" class="search-input" 
-                               placeholder="Buscar por nombre, correo o ID (Presiona Enter)..." 
-                               value="<?php echo htmlspecialchars($q); ?>"
-                               onkeydown="if(event.key === 'Enter') loadUsersTable(1, this.value)">
+                        <input type="text" id="admin-users-search-input" class="search-input"
+                            placeholder="Buscar por nombre, correo o ID (Presiona Enter)..."
+                            value="<?php echo htmlspecialchars($q); ?>"
+                            onkeydown="if(event.key === 'Enter') loadUsersTable(1, this.value)">
                     </div>
                 </div>
             </div>
@@ -221,13 +231,13 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
             <table class="component-table">
                 <thead>
                     <tr>
-                        <th style="padding-left: 20px; width: 50px;">ID</th>
+                        <th class="col-id">ID</th>
                         <th>Usuario</th>
                         <th>Email</th>
-                        <th style="width: 100px;">Estado</th>
-                        <th style="width: 100px;">Rol</th>
-                        <th style="width: 80px; text-align: center;">2FA</th>
-                        <th style="width: 160px;">Estado / Última vez</th>
+                        <th class="col-status">Estado</th>
+                        <th class="col-role">Rol</th>
+                        <th class="col-2fa">2FA</th>
+                        <th class="col-presence">Estado / Última vez</th>
                     </tr>
                 </thead>
                 <tbody id="admin-users-table-body">
