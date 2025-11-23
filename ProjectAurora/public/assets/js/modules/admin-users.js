@@ -7,7 +7,6 @@
     // --- UI Logic for Selection ---
 
     window.selectSingleRow = function(event, clickedRow, userId) {
-        // Prevenir que el clic se propague y dispare el deselect global
         if (event) event.stopPropagation();
 
         // Si clicamos el mismo que ya está seleccionado, deseleccionamos (toggle)
@@ -17,7 +16,8 @@
         }
 
         // 1. Limpiar selección previa
-        const allRows = document.querySelectorAll('.admin-row-selectable.selected');
+        // [CORRECCIÓN] Usamos atributo data para encontrar filas seleccionables
+        const allRows = document.querySelectorAll('[data-selectable].selected');
         allRows.forEach(r => r.classList.remove('selected'));
 
         // 2. Seleccionar nuevo
@@ -30,8 +30,10 @@
     };
 
     window.deselectAllUsers = function() {
-        const allRows = document.querySelectorAll('.admin-row-selectable.selected');
+        // [CORRECCIÓN] Limpieza robusta basada en data attributes
+        const allRows = document.querySelectorAll('[data-selectable].selected');
         allRows.forEach(r => r.classList.remove('selected'));
+        
         selectedUserId = null;
         toggleToolbars(false);
     };
@@ -75,8 +77,8 @@
         // Solo actuar si hay algo seleccionado
         if (!selectedUserId) return;
 
-        // Si el clic NO fue en una fila seleccionable NI en la toolbar de selección
-        const clickedRow = e.target.closest('.admin-row-selectable');
+        // [CORRECCIÓN] El clic debe ser en un elemento con data-selectable="true"
+        const clickedRow = e.target.closest('[data-selectable="true"]');
         const clickedToolbar = e.target.closest('#toolbar-selected');
 
         if (!clickedRow && !clickedToolbar) {
@@ -130,14 +132,11 @@
     // --- AUTO-INICIO AL CARGAR EL SCRIPT (Socket Presence) ---
     
     function initLivePresence() {
-        // 1. Obtenemos el servicio socket global
         const socket = window.socketService ? window.socketService.socket : null;
         
-        // Si está conectado, pedimos la lista inicial
         if (socket && socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify({ type: 'get_online_users' }));
         } else {
-            // Si no está listo, reintentamos en 1 segundo
             if (!window._livePresenceRetry) {
                 window._livePresenceRetry = setTimeout(() => {
                     window._livePresenceRetry = null;
@@ -146,22 +145,18 @@
             }
         }
 
-        // 2. Limpiamos listener previo
         document.removeEventListener('socket-message', handlePresenceEvents);
-        // 3. Añadimos el listener
         document.addEventListener('socket-message', handlePresenceEvents);
     }
 
     function handlePresenceEvents(e) {
         const { type, payload } = e.detail;
 
-        // A. Lista inicial de usuarios online
         if (type === 'online_users_list') {
             const onlineIds = payload;
             onlineIds.forEach(uid => updateOnlineStatus(uid, true));
         }
 
-        // B. Cambio de estado individual
         if (type === 'user_status_change') {
             const { user_id, status, timestamp } = payload;
             const isOnline = (status === 'online');
@@ -210,7 +205,6 @@
     function startTimeUpdater() {
         if (timeUpdateInterval) clearInterval(timeUpdateInterval);
         
-        // Ejecutar cada 60 segundos
         timeUpdateInterval = setInterval(() => {
             const cells = document.querySelectorAll('.user-presence-cell');
             const now = Date.now();
@@ -245,7 +239,6 @@
         }, 60000);
     }
 
-    // Iniciar lógica
     initLivePresence();
     startTimeUpdater();
 

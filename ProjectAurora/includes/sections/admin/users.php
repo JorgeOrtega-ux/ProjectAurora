@@ -61,7 +61,7 @@ function renderUserRows($users)
             $userId = $u['id'];
             $jsTimestamp = $rawTime ? strtotime($rawTime) * 1000 : 0;
 ?>
-            <tr class="component-table-row selectable" data-uid="<?php echo $userId; ?>" onclick="selectSingleRow(event, this, '<?php echo $userId; ?>')">
+            <tr class="component-table-row" data-selectable="true" data-uid="<?php echo $userId; ?>" onclick="selectSingleRow(event, this, '<?php echo $userId; ?>')">
                 <td class="col-id"><?php echo $userId; ?></td>
                 <td>
                     <div class="user-info-cell">

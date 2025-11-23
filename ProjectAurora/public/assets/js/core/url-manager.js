@@ -210,8 +210,9 @@ function updateActiveMenu(sectionName) {
     const allLinks = document.querySelectorAll('.menu-link[data-nav]');
     allLinks.forEach(link => link.classList.remove('active'));
     
-    const activeLink = document.querySelector(`.menu-link[data-nav="${sectionName}"]`);
-    if (activeLink) {
-        activeLink.classList.add('active');
-    }
+    // CORRECCIÓN: Usar querySelectorAll para activar AMBOS (Header y Sidebar)
+    const activeLinks = document.querySelectorAll(`.menu-link[data-nav="${sectionName}"]`);
+    activeLinks.forEach(link => {
+        link.classList.add('active');
+    });
 }

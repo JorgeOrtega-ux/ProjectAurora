@@ -640,11 +640,12 @@
     border-left: 4px solid transparent;
 }
 
-.component-table-row.selectable {
+/* [CORRECCIÓN] Estilos genéricos basados en data-selectable */
+[data-selectable="true"] {
     cursor: pointer;
 }
 
-.component-table-row.selectable:hover {
+[data-selectable="true"]:hover {
     background-color: #f5f5fa;
 }
 
