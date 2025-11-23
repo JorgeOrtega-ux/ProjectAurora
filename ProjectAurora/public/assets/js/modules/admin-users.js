@@ -4,18 +4,95 @@
     let selectedUserId = null;
     let timeUpdateInterval = null;
 
-    // Exponer funciones globales necesarias para los eventos onclick del HTML
-    window.selectSingleRow = function(clickedRow, userId) {
+    // --- UI Logic for Selection ---
+
+    window.selectSingleRow = function(event, clickedRow, userId) {
+        // Prevenir que el clic se propague y dispare el deselect global
+        if (event) event.stopPropagation();
+
+        // Si clicamos el mismo que ya está seleccionado, deseleccionamos (toggle)
         if (clickedRow.classList.contains('selected')) {
-            clickedRow.classList.remove('selected');
-            selectedUserId = null;
+            window.deselectAllUsers();
             return;
         }
+
+        // 1. Limpiar selección previa
         const allRows = document.querySelectorAll('.admin-row-selectable.selected');
         allRows.forEach(r => r.classList.remove('selected'));
+
+        // 2. Seleccionar nuevo
         clickedRow.classList.add('selected');
         selectedUserId = userId;
+
+        // 3. Actualizar Toolbars
+        toggleToolbars(true);
+        setupActionButtons(userId);
     };
+
+    window.deselectAllUsers = function() {
+        const allRows = document.querySelectorAll('.admin-row-selectable.selected');
+        allRows.forEach(r => r.classList.remove('selected'));
+        selectedUserId = null;
+        toggleToolbars(false);
+    };
+
+    function toggleToolbars(isSelectionActive) {
+        const tbDefault = document.getElementById('toolbar-default');
+        const tbSelected = document.getElementById('toolbar-selected');
+
+        if (!tbDefault || !tbSelected) return;
+
+        if (isSelectionActive) {
+            tbDefault.style.display = 'none';
+            tbSelected.style.display = 'flex';
+        } else {
+            tbSelected.style.display = 'none';
+            tbDefault.style.display = 'flex';
+        }
+    }
+
+    function setupActionButtons(uid) {
+        const btnSanctions = document.getElementById('btn-manage-sanctions');
+        const btnGeneral = document.getElementById('btn-manage-general');
+
+        if (btnSanctions) {
+            btnSanctions.onclick = () => {
+                if(uid) window.navigateTo('admin/user-status?uid=' + uid);
+            };
+        }
+        
+        if (btnGeneral) {
+            btnGeneral.onclick = () => {
+                if(uid) window.navigateTo('admin/user-manage?uid=' + uid);
+            };
+        }
+    }
+
+    // --- Global Listeners (Deselection) ---
+
+    // 1. Clic fuera para deseleccionar
+    document.addEventListener('click', (e) => {
+        // Solo actuar si hay algo seleccionado
+        if (!selectedUserId) return;
+
+        // Si el clic NO fue en una fila seleccionable NI en la toolbar de selección
+        const clickedRow = e.target.closest('.admin-row-selectable');
+        const clickedToolbar = e.target.closest('#toolbar-selected');
+
+        if (!clickedRow && !clickedToolbar) {
+            window.deselectAllUsers();
+        }
+    });
+
+    // 2. Tecla ESC para deseleccionar
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && selectedUserId) {
+            window.deselectAllUsers();
+        }
+    });
+
+
+    // --- Data Loading & Pagination ---
 
     window.loadUsersTable = async function(page, query) {
         const tbody = document.getElementById('admin-users-table-body');
@@ -37,7 +114,8 @@
                 const newUrl = `${basePath}admin/users?page=${page}` + (query ? `&q=${encodeURIComponent(query)}` : '');
                 window.history.pushState({path: newUrl}, '', newUrl);
                 
-                selectedUserId = null;
+                // Resetear selección al cambiar de página
+                window.deselectAllUsers();
                 
                 // IMPORTANTE: Reinicializar el estado en vivo para las nuevas filas cargadas
                 initLivePresence();
@@ -49,7 +127,7 @@
         }
     };
 
-    // --- AUTO-INICIO AL CARGAR EL SCRIPT ---
+    // --- AUTO-INICIO AL CARGAR EL SCRIPT (Socket Presence) ---
     
     function initLivePresence() {
         // 1. Obtenemos el servicio socket global
@@ -60,7 +138,6 @@
             socket.send(JSON.stringify({ type: 'get_online_users' }));
         } else {
             // Si no está listo, reintentamos en 1 segundo
-            // (Usamos una variable global para evitar múltiples timeouts si se recarga)
             if (!window._livePresenceRetry) {
                 window._livePresenceRetry = setTimeout(() => {
                     window._livePresenceRetry = null;

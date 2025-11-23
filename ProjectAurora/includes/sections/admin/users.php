@@ -53,14 +53,12 @@ function renderUserRows($users) {
             $avatarUrl = !empty($u['avatar']) ? '/ProjectAurora/' . $u['avatar'] : null;
             $statusClass = getStatusClass($u['account_status']);
             $is2FA = ((int)$u['is_2fa_enabled'] === 1);
-            
             $rawTime = $u['last_seen']; 
             $initialText = formatTimeAgo($rawTime);
             $userId = $u['id'];
-            
             $jsTimestamp = $rawTime ? strtotime($rawTime) * 1000 : 0;
         ?>
-        <tr class="admin-row-selectable" onclick="selectSingleRow(this, '<?php echo $userId; ?>')">
+        <tr class="admin-row-selectable" data-uid="<?php echo $userId; ?>" onclick="selectSingleRow(event, this, '<?php echo $userId; ?>')">
             <td style="padding-left: 20px; color: #888;"><?php echo $userId; ?></td>
             <td>
                 <div style="display:flex; align-items:center; gap:10px;">
@@ -95,20 +93,15 @@ function renderUserRows($users) {
                     <span class="material-symbols-rounded" style="color:#bdbdbd; font-size:18px;" title="No protegido">no_encryption</span>
                 <?php endif; ?>
             </td>
-            
             <td class="user-presence-cell" 
                 id="presence-<?php echo $userId; ?>" 
                 data-uid="<?php echo $userId; ?>" 
                 data-timestamp="<?php echo $jsTimestamp; ?>">
-                
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <div class="status-indicator-dot offline"></div>
-                    <span class="status-text" style="color:#666; font-size:13px;">
-                        <?php echo $initialText; ?>
-                    </span>
+                    <span class="status-text" style="color:#666; font-size:13px;"><?php echo $initialText; ?></span>
                 </div>
             </td>
-
         </tr>
         <?php endforeach;
     else: ?>
@@ -122,12 +115,10 @@ function renderUserRows($users) {
     return ob_get_clean();
 }
 
-// Función para renderizar paginación (HTML)
 function renderPagination($page, $totalPages, $q) {
     $prevPage = max(1, $page - 1);
     $nextPage = min($totalPages, $page + 1);
     $qEncoded = htmlspecialchars($q, ENT_QUOTES);
-    
     ob_start();
     ?>
     <button class="pagination-btn" 
@@ -135,9 +126,7 @@ function renderPagination($page, $totalPages, $q) {
             <?php echo ($page <= 1) ? 'disabled style="opacity:0.3; pointer-events:none;"' : ''; ?>>
         <span class="material-symbols-rounded">chevron_left</span>
     </button>
-    
     <span class="pagination-number"><?php echo $page; ?> / <?php echo $totalPages; ?></span>
-    
     <button class="pagination-btn" 
             onclick="loadUsersTable(<?php echo $nextPage; ?>, '<?php echo $qEncoded; ?>')"
             <?php echo ($page >= $totalPages) ? 'disabled style="opacity:0.3; pointer-events:none;"' : ''; ?>>
@@ -147,7 +136,6 @@ function renderPagination($page, $totalPages, $q) {
     return ob_get_clean();
 }
 
-// --- OBTENCIÓN DE DATOS ---
 try {
     $sqlCount = "SELECT COUNT(*) FROM users u $whereClause";
     $stmtCount = $pdo->prepare($sqlCount);
@@ -156,41 +144,22 @@ try {
     
     $totalPages = ceil($totalUsers / $limit);
     if ($totalPages < 1) $totalPages = 1;
-    
-    if ($page > $totalPages) {
-        $page = $totalPages;
-        $offset = ($page - 1) * $limit;
-    }
+    if ($page > $totalPages) { $page = $totalPages; $offset = ($page - 1) * $limit; }
 
     $sqlUsers = "SELECT u.id, u.username, u.email, u.avatar, u.role, u.account_status, u.created_at, u.is_2fa_enabled,
                  (SELECT MAX(last_activity) FROM user_sessions WHERE user_id = u.id) as last_seen
-                 FROM users u 
-                 $whereClause 
-                 ORDER BY u.id DESC 
-                 LIMIT $limit OFFSET $offset";
-    
+                 FROM users u $whereClause ORDER BY u.id DESC LIMIT $limit OFFSET $offset";
     $stmt = $pdo->prepare($sqlUsers);
     $stmt->execute($params);
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) { $users = []; $totalUsers = 0; $totalPages = 1; }
 
-} catch (Exception $e) {
-    $users = [];
-    $totalUsers = 0;
-    $totalPages = 1;
-}
-
-// --- RESPUESTA AJAX (JSON) ---
 if (isset($_GET['ajax_partial']) && $_GET['ajax_partial'] === '1') {
     header('Content-Type: application/json');
-    echo json_encode([
-        'html_rows' => renderUserRows($users),
-        'html_pagination' => renderPagination($page, $totalPages, $q)
-    ]);
+    echo json_encode(['html_rows' => renderUserRows($users), 'html_pagination' => renderPagination($page, $totalPages, $q)]);
     exit;
 }
-
-$basePath = '/ProjectAurora/';
-if (isset($GLOBALS['basePath'])) $basePath = $GLOBALS['basePath'];
+$basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora/';
 ?>
 
 <link rel="stylesheet" href="<?php echo $basePath; ?>assets/css/admin.css">
@@ -199,91 +168,49 @@ if (isset($GLOBALS['basePath'])) $basePath = $GLOBALS['basePath'];
     <div class="section-center-wrapper section-with-toolbar" style="flex-direction: column; justify-content: flex-start; width: 98%; max-width: none; margin: 0 auto;">
         
         <div class="toolbar-stack">
-           <div class="content-toolbar" id="default-toolbar">
-                <div style="display: flex; gap: 8px;">
+            
+            <div class="content-toolbar" id="toolbar-default">
+                <div style="display: flex; gap: 8px; align-items: center;">
                     <button class="toolbar-action-btn" data-action="toggle-admin-user-search" data-tooltip="Buscar">
                         <span class="material-symbols-rounded">search</span>
                     </button>
-                    
                     <div style="width: 1px; height: 24px; background: #ddd; margin: 0 4px;"></div>
-
-                    <button class="toolbar-action-btn" id="btn-manage-general" data-tooltip="Gestionar Usuarios" disabled style="opacity: 0.5;">
-                        <span class="material-symbols-rounded">manage_accounts</span>
-                    </button>
-
-                    <button class="toolbar-action-btn" id="btn-manage-sanctions" data-tooltip="Gestionar Sanciones" disabled style="opacity: 0.5;">
-                        <span class="material-symbols-rounded">gavel</span>
-                    </button>
-                    
-                    <div style="width: 1px; height: 24px; background: #ddd; margin: 0 4px;"></div>
-
                     <button class="toolbar-action-btn" data-tooltip="Filtrar">
                         <span class="material-symbols-rounded">filter_list</span>
                     </button>
                 </div>
-
+                
                 <div id="admin-users-pagination" class="toolbar-pagination" style="margin-left: auto;">
                     <?php echo renderPagination($page, $totalPages, $q); ?>
                 </div>
-            </div>
 
-            <script>
-                document.addEventListener('DOMContentLoaded', () => {
-                    const btnSanctions = document.getElementById('btn-manage-sanctions');
-                    const btnGeneral = document.getElementById('btn-manage-general');
-                    
-                    const tableBody = document.getElementById('admin-users-table-body');
-                    
-                    if(tableBody) {
-                        const observer = new MutationObserver(() => {
-                            const selected = document.querySelector('.admin-row-selectable.selected');
-                            if(selected) {
-                                // Habilitar botones
-                                btnSanctions.disabled = false;
-                                btnSanctions.style.opacity = '1';
-                                btnGeneral.disabled = false;
-                                btnGeneral.style.opacity = '1';
-
-                                // Obtener ID
-                                const onclickAttr = selected.getAttribute('onclick');
-                                const match = onclickAttr.match(/'(\d+)'/);
-                                const uid = (match && match[1]) ? match[1] : 0;
-
-                                btnSanctions.onclick = () => {
-                                    if(uid) window.navigateTo('admin/user-status?uid=' + uid);
-                                };
-                                
-                                btnGeneral.onclick = () => {
-                                    if(uid) window.navigateTo('admin/user-manage?uid=' + uid);
-                                };
-
-                            } else {
-                                // Deshabilitar botones
-                                btnSanctions.disabled = true;
-                                btnSanctions.style.opacity = '0.5';
-                                btnSanctions.onclick = null;
-
-                                btnGeneral.disabled = true;
-                                btnGeneral.style.opacity = '0.5';
-                                btnGeneral.onclick = null;
-                            }
-                        });
-                        observer.observe(tableBody, { attributes: true, subtree: true, attributeFilter: ['class'] });
-                    }
-                });
-            </script>
-
-            <div class="content-toolbar search-toolbar-panel disabled" id="admin-users-search-bar">
-                <div class="search-container" style="width: 100%; max-width: 100%;">
-                    <span class="material-symbols-rounded search-icon">search</span>
-                    <input type="text" 
-                           id="admin-users-search-input"
-                           class="search-input" 
-                           placeholder="Buscar por nombre, correo o ID (Presiona Enter)..." 
-                           value="<?php echo htmlspecialchars($q); ?>"
-                           onkeydown="if(event.key === 'Enter') loadUsersTable(1, this.value)">
+                <div class="content-toolbar search-toolbar-panel disabled" id="admin-users-search-bar">
+                    <div class="search-container" style="width: 100%; max-width: 100%;">
+                        <span class="material-symbols-rounded search-icon">search</span>
+                        <input type="text" id="admin-users-search-input" class="search-input" 
+                               placeholder="Buscar por nombre, correo o ID (Presiona Enter)..." 
+                               value="<?php echo htmlspecialchars($q); ?>"
+                               onkeydown="if(event.key === 'Enter') loadUsersTable(1, this.value)">
+                    </div>
                 </div>
             </div>
+
+            <div class="content-toolbar" id="toolbar-selected" style="display: none;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button class="toolbar-action-btn" id="btn-manage-general" data-tooltip="Gestionar Usuario">
+                        <span class="material-symbols-rounded">manage_accounts</span>
+                    </button>
+                    <button class="toolbar-action-btn" id="btn-manage-sanctions" data-tooltip="Gestionar Sanciones">
+                        <span class="material-symbols-rounded">gavel</span>
+                    </button>
+                </div>
+                <div style="margin-left: auto;">
+                    <button class="toolbar-action-btn" onclick="window.deselectAllUsers()" data-tooltip="Deseleccionar">
+                        <span class="material-symbols-rounded">close</span>
+                    </button>
+                </div>
+            </div>
+
         </div>
 
         <div class="admin-table-container">
@@ -304,8 +231,6 @@ if (isset($GLOBALS['basePath'])) $basePath = $GLOBALS['basePath'];
                 </tbody>
             </table>
         </div>
-
     </div>
 </div>
-
 <script src="<?php echo $basePath; ?>assets/js/modules/admin-users.js"></script>
