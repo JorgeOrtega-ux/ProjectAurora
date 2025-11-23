@@ -11,7 +11,7 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
 }
 ?>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
 
 <div class="section-content active" data-section="settings/2fa-setup">
     <div class="component-wrapper">

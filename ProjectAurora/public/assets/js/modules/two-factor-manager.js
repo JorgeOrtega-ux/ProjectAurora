@@ -154,14 +154,30 @@ async function generateSecret(els) {
             tempSecret = data.secret;
             els.manualText.textContent = data.secret;
 
+            // Limpiar contenedor previo
             els.qrContainer.innerHTML = '';
+            
             const uri = `otpauth://totp/ProjectAurora:${data.username}?secret=${data.secret}&issuer=ProjectAurora`;
             
-            new QRCode(els.qrContainer, {
-                text: uri,
-                width: 180,
-                height: 180
+            // [MODIFICADO] Configuración de Alta Calidad (SVG + Transparencia)
+            const qrCode = new QRCodeStyling({
+                width: 280,  // Tamaño base aumentado para mejor detalle
+                height: 280,
+                type: "svg", // Vectorial: Calidad infinita en cualquier pantalla
+                data: uri,
+                dotsOptions: {
+                    color: "#000000",
+                    type: "rounded" // Puntos redondeados
+                },
+                cornersSquareOptions: {
+                    type: "extra-rounded" // Esquinas redondeadas
+                },
+                backgroundOptions: {
+                    color: "transparent", // Fondo transparente (toma el del contenedor padre)
+                }
             });
+
+            qrCode.append(els.qrContainer);
 
             els.step1.classList.remove('active');
             els.step1.classList.add('disabled');
