@@ -205,14 +205,26 @@ try {
         
         if ($user && password_verify($password, $user['password'])) {
             
-            // [MODIFICADO] Verificación de Estado de Cuenta
+            // [MODIFICADO] Verificación Detallada de Estado
             if (isset($user['account_status']) && $user['account_status'] !== 'active') {
-                // Devolvemos JSON especial para redirigir en frontend
-                echo json_encode([
+                
+                $responseData = [
                     'success' => false, 
                     'is_account_issue' => true, 
                     'status_type' => $user['account_status']
-                ]);
+                ];
+
+                // Si está suspendido, agregamos los detalles para mostrarlos en status-page
+                if ($user['account_status'] === 'suspended') {
+                    $responseData['reason'] = $user['suspension_reason'];
+                    
+                    if ($user['suspension_end_date']) {
+                        $end = new DateTime($user['suspension_end_date']);
+                        $responseData['until'] = $end->format('d/m/Y');
+                    }
+                }
+
+                echo json_encode($responseData);
                 exit;
             }
 

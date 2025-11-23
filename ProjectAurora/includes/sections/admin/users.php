@@ -199,25 +199,59 @@ if (isset($GLOBALS['basePath'])) $basePath = $GLOBALS['basePath'];
     <div class="section-center-wrapper" style="flex-direction: column; justify-content: flex-start; padding-top: 20px; width: 98%; max-width: none; margin: 0 auto;">
         
         <div class="toolbar-stack">
-            <div class="content-toolbar" id="default-toolbar">
-                <div style="display: flex; gap: 8px;">
-                    <button class="toolbar-action-btn" data-action="toggle-admin-user-search" data-tooltip="Buscar">
-                        <span class="material-symbols-rounded">search</span>
-                    </button>
-                    <button class="toolbar-action-btn" data-tooltip="Filtrar">
-                        <span class="material-symbols-rounded">filter_list</span>
-                    </button>
-                    <button class="toolbar-action-btn" data-tooltip="Nuevo Usuario">
-                        <span class="material-symbols-rounded">person_add</span>
-                    </button>
-                </div>
-                
-                <div style="flex: 1;"></div>
+           <div class="content-toolbar" id="default-toolbar">
+    <div style="display: flex; gap: 8px;">
+        <button class="toolbar-action-btn" data-action="toggle-admin-user-search" data-tooltip="Buscar">
+            <span class="material-symbols-rounded">search</span>
+        </button>
+        
+        <button class="toolbar-action-btn" id="btn-manage-status" data-tooltip="Gestionar Estado" disabled style="opacity: 0.5;">
+            <span class="material-symbols-rounded">gavel</span>
+        </button>
+        <div style="width: 1px; height: 24px; background: #ddd; margin: 0 4px;"></div>
 
-                <div class="toolbar-pagination" id="admin-users-pagination">
-                    <?php echo renderPagination($page, $totalPages, $q); ?>
-                </div>
-            </div>
+        <button class="toolbar-action-btn" data-tooltip="Filtrar">
+            <span class="material-symbols-rounded">filter_list</span>
+        </button>
+    </div>
+    
+    </div>
+
+<script>
+    // Pequeño script inline para conectar el botón con la navegación
+    // (La lógica de selección ya está en admin-users.js, aquí solo escuchamos el click)
+    document.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('btn-manage-status');
+        
+        // Observer para detectar cuando se selecciona una fila (admin-users.js añade la clase .selected)
+        const tableBody = document.getElementById('admin-users-table-body');
+        
+        if(tableBody) {
+            const observer = new MutationObserver(() => {
+                const selected = document.querySelector('.admin-row-selectable.selected');
+                if(selected) {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.onclick = () => {
+                        // Obtenemos el ID del usuario del evento onclick de la fila
+                        // La fila tiene onclick="selectSingleRow(this, 'ID')"
+                        const onclickAttr = selected.getAttribute('onclick');
+                        const match = onclickAttr.match(/'(\d+)'/);
+                        if(match && match[1]) {
+                            window.navigateTo('admin/user-status?uid=' + match[1]);
+                        }
+                    };
+                } else {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.onclick = null;
+                }
+            });
+            observer.observe(tableBody, { attributes: true, subtree: true, attributeFilter: ['class'] });
+        }
+    });
+</script>
+
 
             <div class="content-toolbar search-toolbar-panel disabled" id="admin-users-search-bar">
                 <div class="search-container" style="width: 100%; max-width: 100%;">

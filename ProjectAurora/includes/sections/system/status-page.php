@@ -1,22 +1,3 @@
-<?php
-// includes/sections/system/status-page.php
-
-$status = $_GET['status'] ?? 'suspended';
-
-// Configuración por defecto (Suspendido)
-$icon = "block";
-$themeClass = "status-theme-suspended"; // Clase para color rojo
-$titleKey = "status.suspended_title";
-$msgKey = "status.suspended_msg";
-
-// Configuración para Eliminado
-if ($status === 'deleted') {
-    $titleKey = "status.deleted_title";
-    $msgKey = "status.deleted_msg";
-    $icon = "delete_forever";
-    $themeClass = "status-theme-deleted"; // Clase para color gris
-}
-?>
 
 <style>
     /* Contenedor específico de la página de estado */
@@ -81,10 +62,29 @@ if ($status === 'deleted') {
         color: #616161;
     }
 </style>
+<?php
+// includes/sections/system/status-page.php
+
+$status = $_GET['status'] ?? 'suspended';
+$reason = $_GET['reason'] ?? null;
+$until = $_GET['until'] ?? null;
+
+// Configuración por defecto (Suspendido)
+$icon = "block";
+$themeClass = "status-theme-suspended"; 
+$titleKey = "status.suspended_title";
+$msgKey = "status.suspended_msg";
+
+if ($status === 'deleted') {
+    $titleKey = "status.deleted_title";
+    $msgKey = "status.deleted_msg";
+    $icon = "delete_forever";
+    $themeClass = "status-theme-deleted";
+}
+?>
 
 <div class="section-content active" data-section="status-page">
     <div class="section-center-wrapper">
-        
         <div class="form-container status-page-container">
             
             <div class="status-icon-wrapper">
@@ -100,6 +100,21 @@ if ($status === 'deleted') {
             <p class="status-message" data-i18n="<?php echo $msgKey; ?>">
                 <?php echo trans($msgKey); ?>
             </p>
+
+            <?php if ($status === 'suspended' && ($reason || $until)): ?>
+                <div style="background: #fff5f5; padding: 15px; border-radius: 8px; border: 1px solid #ffcdd2; margin-bottom: 30px; text-align: left;">
+                    <?php if ($reason): ?>
+                        <p style="margin: 0 0 8px 0; color: #d32f2f; font-size: 14px;">
+                            <strong>Razón:</strong> <?php echo htmlspecialchars(urldecode($reason)); ?>
+                        </p>
+                    <?php endif; ?>
+                    <?php if ($until): ?>
+                        <p style="margin: 0; color: #d32f2f; font-size: 14px;">
+                            <strong>Hasta:</strong> <?php echo htmlspecialchars(urldecode($until)); ?>
+                        </p>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
             
             <div>
                 <a href="<?php echo isset($basePath) ? $basePath : '/ProjectAurora/'; ?>login" class="status-back-link">
@@ -109,6 +124,5 @@ if ($status === 'deleted') {
             </div>
 
         </div>
-
     </div>
 </div>

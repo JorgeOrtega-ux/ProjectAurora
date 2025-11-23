@@ -123,6 +123,7 @@ $allowedSections = [
     'admin',
     'admin/dashboard',
     'admin/users',
+    'admin/user-status', // <--- NUEVA RUTA
     'admin/backups',
     'admin/server'
 ];

@@ -593,9 +593,14 @@ async function handleLogin() {
         } else {
             // [MODIFICACIÓN PARA STATUS PAGE]
             if (res.is_account_issue && res.status_type) {
-                // Redirigir a status page con el motivo (suspended/deleted)
-                window.location.href = API_BASE_PATH + 'status-page?status=' + res.status_type;
-                return; // Salimos para evitar activar el errorDiv
+                let redirectUrl = API_BASE_PATH + 'status-page?status=' + res.status_type;
+                
+                // Agregar params extra si existen
+                if (res.reason) redirectUrl += '&reason=' + encodeURIComponent(res.reason);
+                if (res.until) redirectUrl += '&until=' + encodeURIComponent(res.until);
+
+                window.location.href = redirectUrl;
+                return; 
             }
 
             if(errorDiv) {
