@@ -12,8 +12,9 @@ DirectoryIndex public/index.php
     RewriteRule ^public/ - [L]
 
     # Regla 2: Bloquear carpetas sensibles
-    RewriteRule ^(config|logs|bd\.sql) - [F,L]
-
+    # En tu .htaccess, modifica esta línea:
+    RewriteRule ^(config|logs|bd\.sql|\.env) - [F,L]
+    
     # Regla 3: Servir assets y archivos reales de /public (ESTA FUNCIONA)
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{DOCUMENT_ROOT}/ProjectAurora/public/$1 -f
