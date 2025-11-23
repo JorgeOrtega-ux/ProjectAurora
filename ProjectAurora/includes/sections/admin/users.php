@@ -205,9 +205,16 @@ if (isset($GLOBALS['basePath'])) $basePath = $GLOBALS['basePath'];
             <span class="material-symbols-rounded">search</span>
         </button>
         
-        <button class="toolbar-action-btn" id="btn-manage-status" data-tooltip="Gestionar Estado" disabled style="opacity: 0.5;">
+        <div style="width: 1px; height: 24px; background: #ddd; margin: 0 4px;"></div>
+
+        <button class="toolbar-action-btn" id="btn-manage-general" data-tooltip="Gestionar Usuarios" disabled style="opacity: 0.5;">
+            <span class="material-symbols-rounded">manage_accounts</span>
+        </button>
+
+        <button class="toolbar-action-btn" id="btn-manage-sanctions" data-tooltip="Gestionar Sanciones" disabled style="opacity: 0.5;">
             <span class="material-symbols-rounded">gavel</span>
         </button>
+        
         <div style="width: 1px; height: 24px; background: #ddd; margin: 0 4px;"></div>
 
         <button class="toolbar-action-btn" data-tooltip="Filtrar">
@@ -218,40 +225,50 @@ if (isset($GLOBALS['basePath'])) $basePath = $GLOBALS['basePath'];
     </div>
 
 <script>
-    // Pequeño script inline para conectar el botón con la navegación
-    // (La lógica de selección ya está en admin-users.js, aquí solo escuchamos el click)
     document.addEventListener('DOMContentLoaded', () => {
-        const btn = document.getElementById('btn-manage-status');
+        const btnSanctions = document.getElementById('btn-manage-sanctions');
+        const btnGeneral = document.getElementById('btn-manage-general');
         
-        // Observer para detectar cuando se selecciona una fila (admin-users.js añade la clase .selected)
         const tableBody = document.getElementById('admin-users-table-body');
         
         if(tableBody) {
             const observer = new MutationObserver(() => {
                 const selected = document.querySelector('.admin-row-selectable.selected');
                 if(selected) {
-                    btn.disabled = false;
-                    btn.style.opacity = '1';
-                    btn.onclick = () => {
-                        // Obtenemos el ID del usuario del evento onclick de la fila
-                        // La fila tiene onclick="selectSingleRow(this, 'ID')"
-                        const onclickAttr = selected.getAttribute('onclick');
-                        const match = onclickAttr.match(/'(\d+)'/);
-                        if(match && match[1]) {
-                            window.navigateTo('admin/user-status?uid=' + match[1]);
-                        }
+                    // Habilitar botones
+                    btnSanctions.disabled = false;
+                    btnSanctions.style.opacity = '1';
+                    btnGeneral.disabled = false;
+                    btnGeneral.style.opacity = '1';
+
+                    // Obtener ID
+                    const onclickAttr = selected.getAttribute('onclick');
+                    const match = onclickAttr.match(/'(\d+)'/);
+                    const uid = (match && match[1]) ? match[1] : 0;
+
+                    btnSanctions.onclick = () => {
+                        if(uid) window.navigateTo('admin/user-status?uid=' + uid);
                     };
+                    
+                    btnGeneral.onclick = () => {
+                        if(uid) window.navigateTo('admin/user-manage?uid=' + uid);
+                    };
+
                 } else {
-                    btn.disabled = true;
-                    btn.style.opacity = '0.5';
-                    btn.onclick = null;
+                    // Deshabilitar botones
+                    btnSanctions.disabled = true;
+                    btnSanctions.style.opacity = '0.5';
+                    btnSanctions.onclick = null;
+
+                    btnGeneral.disabled = true;
+                    btnGeneral.style.opacity = '0.5';
+                    btnGeneral.onclick = null;
                 }
             });
             observer.observe(tableBody, { attributes: true, subtree: true, attributeFilter: ['class'] });
         }
     });
 </script>
-
 
             <div class="content-toolbar search-toolbar-panel disabled" id="admin-users-search-bar">
                 <div class="search-container" style="width: 100%; max-width: 100%;">

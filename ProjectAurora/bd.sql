@@ -26,8 +26,16 @@ CREATE TABLE IF NOT EXISTS users (
     avatar VARCHAR(255) NULL,
     role VARCHAR(20) DEFAULT 'user',
     account_status ENUM('active', 'suspended', 'deleted') DEFAULT 'active',
-    suspension_reason TEXT NULL,          -- [NUEVO] Razón de la suspensión actual
-    suspension_end_date TIMESTAMP NULL,   -- [NUEVO] Fecha fin de la suspensión actual
+    
+    -- Campos de Suspensión
+    suspension_reason TEXT NULL,
+    suspension_end_date TIMESTAMP NULL,
+    
+    -- Campos de Eliminación (NUEVOS)
+    deletion_type ENUM('admin_decision', 'user_decision') NULL, 
+    deletion_reason TEXT NULL, -- Razón dada por el usuario o admin
+    admin_comments TEXT NULL,  -- Comentarios internos del admin
+    
     is_2fa_enabled TINYINT(1) DEFAULT 0,
     two_factor_secret VARCHAR(255) NULL,
     backup_codes JSON NULL,
@@ -132,7 +140,7 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     INDEX (session_id)
 );
 
--- [NUEVO] LOGS DE SUSPENSIÓN
+-- LOGS DE SUSPENSIÓN
 CREATE TABLE IF NOT EXISTS user_suspension_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,

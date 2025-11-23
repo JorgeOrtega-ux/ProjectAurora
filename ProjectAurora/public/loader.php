@@ -12,14 +12,8 @@ I18n::load($lang);
 
 // 2. Seguridad básica
 $publicSections = [
-    'login', 
-    'register', 
-    'register/additional-data', 
-    'register/verification-account', 
-    'forgot-password', 
-    'reset-password', 
-    'status-page',
-    'login/verification-additional'
+    'login', 'register', 'register/additional-data', 'register/verification-account', 
+    'forgot-password', 'reset-password', 'status-page', 'login/verification-additional'
 ];
 
 $section = $_GET['section'] ?? 'main';
@@ -53,13 +47,15 @@ $fileMap = [
     'settings/accessibility'    => 'settings/accessibility',
     'settings/change-password'  => 'settings/change-password',
     'settings/2fa-setup'        => 'settings/2fa-setup',
-    'settings/sessions'         => 'settings/sessions', // <--- NUEVA ENTRADA
+    'settings/sessions'         => 'settings/sessions',
+    'settings/delete-account'   => 'settings/delete-account',
 
     // Admin
     'admin'             => 'admin/dashboard',
     'admin/dashboard'   => 'admin/dashboard',
     'admin/users'       => 'admin/users',
-    'admin/user-status' => 'admin/user-status', // <--- NUEVO MAPEO
+    'admin/user-status' => 'admin/user-status', 
+    'admin/user-manage' => 'admin/user-manage', // <--- AQUI
     'admin/backups'     => 'admin/backups',
     'admin/server'      => 'admin/server',
     

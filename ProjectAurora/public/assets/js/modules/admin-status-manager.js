@@ -11,10 +11,7 @@
     const dropdownDuration = document.getElementById('dropdown-duration');
     const dropdownReasons = document.getElementById('dropdown-reasons');
     
-    // Aquí usamos los wrappers que contienen (HR + Item)
     const wrapperDuration = document.getElementById('wrapper-duration');
-    const wrapperReason = document.getElementById('wrapper-reason');
-    
     const inputStatus = document.getElementById('input-status-value');
     const inputDuration = document.getElementById('input-duration-value');
     const inputReason = document.getElementById('input-reason-value');
@@ -38,18 +35,12 @@
         
         dropdownStatus.classList.add('disabled');
 
-        // Control de visibilidad de los Wrappers
-        if (val === 'active') {
-            wrapperDuration.classList.add('d-none');
-            wrapperReason.classList.add('d-none');
-        } 
-        else if (val === 'suspended_temp') {
+        // Control de visibilidad
+        if (val === 'suspended_temp') {
             wrapperDuration.classList.remove('d-none');
-            wrapperReason.classList.remove('d-none');
         } 
         else if (val === 'suspended_perm') {
-            wrapperDuration.classList.add('d-none'); // Permanente no necesita duración
-            wrapperReason.classList.remove('d-none');
+            wrapperDuration.classList.add('d-none'); 
         }
     };
 
@@ -71,13 +62,19 @@
         statusTrigger.onclick = (e) => {
             e.stopPropagation();
             dropdownStatus.classList.toggle('disabled');
+            // Cerramos los otros por si acaso
+            dropdownDuration.classList.add('disabled');
+            dropdownReasons.classList.add('disabled');
         }
     }
 
-    // Cerrar al hacer clic fuera
+    // [CORRECCIÓN AQUÍ] Listener para cerrar dropdowns específicos al hacer clic fuera
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.trigger-select-wrapper')) {
-            document.querySelectorAll('.popover-module').forEach(el => el.classList.add('disabled'));
+            // En lugar de cerrar '.popover-module' (que cierra el header), cerramos solo estos:
+            if (dropdownStatus) dropdownStatus.classList.add('disabled');
+            if (dropdownDuration) dropdownDuration.classList.add('disabled');
+            if (dropdownReasons) dropdownReasons.classList.add('disabled');
         }
     });
 
@@ -94,7 +91,6 @@
             if(data.success) {
                 const u = data.user;
                 
-                // 1. Cabecera
                 document.getElementById('status-username').textContent = u.username;
                 document.getElementById('status-email').textContent = u.email;
                 
@@ -105,23 +101,17 @@
                     document.getElementById('status-user-icon').style.display = 'none';
                 }
 
-                // 2. Preseleccionar Estado
-                if (u.account_status === 'active') {
-                    selectStatus('active', 'Activo', 'check_circle', '#2e7d32');
-                } 
-                else if (u.account_status === 'suspended') {
+                if (u.account_status === 'suspended') {
                     if (u.suspension_end_date === null) {
-                        // Permanente
                         selectStatus('suspended_perm', 'Suspensión Permanente', 'block', '#d32f2f');
                     } else {
-                        // Temporal
                         selectStatus('suspended_temp', 'Suspensión Temporal', 'timer', '#f57c00');
                     }
-                    
                     if (u.suspension_reason) selectReason(u.suspension_reason);
+                } else {
+                    selectStatus('suspended_temp', 'Suspensión Temporal', 'timer', '#f57c00');
                 }
 
-                // 3. Historial
                 if (data.history && data.history.length > 0) {
                     renderHistory(data.history);
                 } else {
@@ -135,17 +125,13 @@
         let html = '';
         logs.forEach(log => {
             const start = new Date(log.started_at).toLocaleDateString();
-            
             let end = '-';
             let duration = 'Permanente';
-            
             if (log.ends_at) {
                 end = new Date(log.ends_at).toLocaleDateString();
                 duration = log.duration_days + ' días';
             }
-
             const adminName = log.admin_name ? log.admin_name : 'Sistema';
-            
             html += `
                 <tr>
                     <td>${start}</td>
@@ -161,37 +147,32 @@
 
     // --- Guardar ---
     btnSave.onclick = async () => {
-        const statusType = inputStatus.value; // active, suspended_temp, suspended_perm
+        const statusType = inputStatus.value; 
         const reason = inputReason.value;
         const duration = inputDuration.value;
 
         showError('', false);
 
-        // Validar
-        if (statusType.startsWith('suspended')) {
-            if (!reason) { 
-                showError('Debes seleccionar una razón para la suspensión.'); 
-                return; 
-            }
+        if (!reason) { 
+            showError('Debes seleccionar una razón para la sanción.'); 
+            return; 
         }
 
         btnSave.disabled = true;
-        btnSave.textContent = 'Guardando...';
+        btnSave.textContent = 'Aplicando...';
 
         const payload = {
             action: 'update_user_status',
             target_id: targetId,
-            status: 'active', 
+            status: 'suspended', 
             reason: reason,
             duration_days: 0
         };
 
         if (statusType === 'suspended_perm') {
-            payload.status = 'suspended';
             payload.duration_days = 'permanent'; 
         } 
         else if (statusType === 'suspended_temp') {
-            payload.status = 'suspended';
             payload.duration_days = parseInt(duration);
         }
 
@@ -204,7 +185,7 @@
             const data = await res.json();
 
             if(data.success) {
-                if(window.alertManager) window.alertManager.showAlert('Estado actualizado correctamente.', 'success');
+                if(window.alertManager) window.alertManager.showAlert('Sanción aplicada correctamente.', 'success');
                 loadUserData();
             } else {
                 showError(data.message);
@@ -213,7 +194,7 @@
             showError('Error de conexión.');
         } finally {
             btnSave.disabled = false;
-            btnSave.textContent = 'Guardar Cambios';
+            btnSave.textContent = 'Aplicar Sanción';
         }
     };
 

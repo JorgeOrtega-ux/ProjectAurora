@@ -27,15 +27,11 @@ if (isset($_SESSION['user_id'])) {
     $stmtCheck = $pdo->prepare("SELECT id FROM user_sessions WHERE session_id = ? AND user_id = ?");
     $stmtCheck->execute([$currentSessionId, $_SESSION['user_id']]);
     
-    // Si no se encuentra la sesión en la base de datos (fue borrada por admin o timeout)
     if ($stmtCheck->rowCount() === 0) {
-        
-        // [CORRECCIÓN] Antes de mandar a login, verificamos si fue por suspensión
         $isSuspended = false;
         $statusRedirect = '';
         
         try {
-            // Consultamos el estado real del usuario
             $stmtStatus = $pdo->prepare("SELECT account_status, suspension_reason, suspension_end_date FROM users WHERE id = ?");
             $stmtStatus->execute([$_SESSION['user_id']]);
             $userStatusData = $stmtStatus->fetch();
@@ -44,7 +40,6 @@ if (isset($_SESSION['user_id'])) {
                 $isSuspended = true;
                 $statusRedirect = "status-page?status=" . $userStatusData['account_status'];
                 
-                // Opcional: Pasar datos extra a la URL si es suspendido
                 if ($userStatusData['account_status'] === 'suspended') {
                     if (!empty($userStatusData['suspension_reason'])) {
                         $statusRedirect .= "&reason=" . urlencode($userStatusData['suspension_reason']);
@@ -55,11 +50,8 @@ if (isset($_SESSION['user_id'])) {
                     }
                 }
             }
-        } catch (Exception $e) {
-            // Si falla la consulta, procedemos al logout normal
-        }
+        } catch (Exception $e) {}
 
-        // Procedemos a destruir la sesión PHP local
         $_SESSION = [];
         if (ini_get("session.use_cookies")) {
             $params = session_get_cookie_params();
@@ -67,7 +59,6 @@ if (isset($_SESSION['user_id'])) {
         }
         session_destroy();
         
-        // [DECISIÓN DE REDIRECCIÓN]
         if ($isSuspended) {
             header("Location: " . $basePath . $statusRedirect);
         } else {
@@ -120,8 +111,7 @@ if (isset($_SESSION['user_id'])) {
             header("Location: " . $basePath . "login");
             exit;
         }
-    } catch (Exception $e) {
-    }
+    } catch (Exception $e) {}
 }
 
 $DEFAULT_SECTION = 'main';
@@ -161,7 +151,8 @@ $allowedSections = [
     'admin',
     'admin/dashboard',
     'admin/users',
-    'admin/user-status', // <--- NUEVA RUTA
+    'admin/user-status', 
+    'admin/user-manage', // <--- AQUI LA NUEVA RUTA
     'admin/backups',
     'admin/server'
 ];
@@ -181,12 +172,9 @@ if ($CURRENT_SECTION === 'admin') {
 
 $isLoggedIn = isset($_SESSION['user_id']);
 
-// ==========================================
 // SEGURIDAD ROLES ADMIN
-// ==========================================
 if (strpos($CURRENT_SECTION, 'admin/') === 0) {
     $userRole = $_SESSION['user_role'] ?? 'user';
-    // [CORREGIDO] Solo founder y administrator
     $allowedAdminRoles = ['founder', 'administrator'];
 
     if (!in_array($userRole, $allowedAdminRoles)) {
@@ -197,10 +185,7 @@ if (strpos($CURRENT_SECTION, 'admin/') === 0) {
 $appSections = ['main', 'explorer'];
 $systemSections = ['status-page', '404', 'error-missing-data'];
 
-// ==========================================
 // MAPEO DE ARCHIVOS
-// ==========================================
-
 if ($CURRENT_SECTION === 'login/verification-additional') {
     $SECTION_FILE_NAME = 'auth/login';
 } elseif ($CURRENT_SECTION === 'search') {
@@ -213,36 +198,21 @@ if ($CURRENT_SECTION === 'login/verification-additional') {
     $SECTION_FILE_NAME = 'auth/reset-password';
 } elseif ($CURRENT_SECTION === 'login') {
     $SECTION_FILE_NAME = 'auth/login';
-
-// Casos de Settings
 } elseif (strpos($CURRENT_SECTION, 'settings/') === 0) {
     $SECTION_FILE_NAME = $CURRENT_SECTION; 
-
-// Casos de Admin
 } elseif (strpos($CURRENT_SECTION, 'admin/') === 0) {
     $SECTION_FILE_NAME = $CURRENT_SECTION;
-
-// Casos de App
 } elseif (in_array($CURRENT_SECTION, $appSections)) {
     $SECTION_FILE_NAME = 'app/' . $CURRENT_SECTION;
-
-// Casos de Sistema
 } elseif (in_array($CURRENT_SECTION, $systemSections)) {
     $SECTION_FILE_NAME = 'system/' . $CURRENT_SECTION;
-
 } else {
     $SECTION_FILE_NAME = 'system/404';
 }
 
 $publicSections = [
-    'login', 
-    'register', 
-    'register/additional-data', 
-    'register/verification-account', 
-    'forgot-password', 
-    'reset-password', 
-    'status-page',
-    'login/verification-additional'
+    'login', 'register', 'register/additional-data', 'register/verification-account', 
+    'forgot-password', 'reset-password', 'status-page', 'login/verification-additional'
 ];
 
 if (!$isLoggedIn && !in_array($CURRENT_SECTION, $publicSections) && $CURRENT_SECTION !== '404') {

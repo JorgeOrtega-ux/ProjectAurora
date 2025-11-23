@@ -17,14 +17,14 @@ $targetUid = $_GET['uid'] ?? 0;
                     <span>Volver a usuarios</span>
                 </a>
             </div>
-            <h1 class="component-page-title">Gestionar Estado</h1>
-            <p class="component-page-description">Modifica el acceso del usuario a la plataforma.</p>
+            <h1 class="component-page-title" style="color: #f57c00;">Gestionar Sanciones</h1>
+            <p class="component-page-description">Aplica suspensiones temporales o permanentes.</p>
         </div>
 
         <div class="content-toolbar" style="width: 100%; max-width: 100%; justify-content: flex-end; margin: 16px 0;">
             <button class="component-button primary" id="btn-save-status">
                 <span class="material-symbols-rounded">save</span>
-                Guardar Cambios
+                Aplicar Sanción
             </button>
         </div>
 
@@ -46,25 +46,25 @@ $targetUid = $_GET['uid'] ?? 0;
         <div class="component-card component-card--grouped" style="margin-top: 16px;">
             <input type="hidden" id="target-user-id" value="<?php echo htmlspecialchars($targetUid); ?>">
             
-            <input type="hidden" id="input-status-value" value="active">
+            <input type="hidden" id="input-status-value" value="suspended_temp">
             <input type="hidden" id="input-duration-value" value="2">
             <input type="hidden" id="input-reason-value" value="">
 
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Estado de la cuenta</h2>
-                        <p class="component-card__description">Define si el usuario puede acceder a la plataforma.</p>
+                        <h2 class="component-card__title">Tipo de Sanción</h2>
+                        <p class="component-card__description">Selecciona el nivel de restricción.</p>
                     </div>
                 </div>
                 <div class="component-card__actions w-100">
                     <div class="trigger-select-wrapper w-100">
                         <div class="trigger-selector" data-action="toggleStatusDropdown">
                             <div class="trigger-select-icon">
-                                <span class="material-symbols-rounded" id="current-status-icon" style="color: #2e7d32;">check_circle</span>
+                                <span class="material-symbols-rounded" id="current-status-icon" style="color: #f57c00;">timer</span>
                             </div>
                             <div class="trigger-select-text">
-                                <span id="current-status-text">Activo</span>
+                                <span id="current-status-text">Suspensión Temporal</span>
                             </div>
                             <div class="trigger-select-arrow">
                                 <span class="material-symbols-rounded">arrow_drop_down</span>
@@ -74,10 +74,6 @@ $targetUid = $_GET['uid'] ?? 0;
                         <div class="popover-module disabled" id="dropdown-status-options" style="width: 100%; position: absolute; top: 100%; z-index: 10;">
                             <div class="menu-content">
                                 <div class="menu-list">
-                                    <div class="menu-link" onclick="selectStatus('active', 'Activo', 'check_circle', '#2e7d32')">
-                                        <div class="menu-link-icon"><span class="material-symbols-rounded" style="color:#2e7d32">check_circle</span></div>
-                                        <div class="menu-link-text">Activo</div>
-                                    </div>
                                     <div class="menu-link" onclick="selectStatus('suspended_temp', 'Suspensión Temporal', 'timer', '#f57c00')">
                                         <div class="menu-link-icon"><span class="material-symbols-rounded" style="color:#f57c00">timer</span></div>
                                         <div class="menu-link-text">Suspensión Temporal</div>
@@ -93,13 +89,13 @@ $targetUid = $_GET['uid'] ?? 0;
                 </div>
             </div>
 
-            <div id="wrapper-duration" class="w-100 d-none">
+            <div id="wrapper-duration" class="w-100">
                 <hr class="component-divider">
                 <div class="component-group-item component-group-item--stacked">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title" style="color: #f57c00;">Duración del castigo</h2>
-                            <p class="component-card__description">Selecciona cuántos días durará la suspensión.</p>
+                            <h2 class="component-card__title" style="color: #f57c00;">Duración</h2>
+                            <p class="component-card__description">Días que el usuario estará bloqueado.</p>
                         </div>
                     </div>
                     <div class="component-card__actions w-100">
@@ -137,13 +133,13 @@ $targetUid = $_GET['uid'] ?? 0;
                 </div>
             </div>
 
-            <div id="wrapper-reason" class="w-100 d-none">
+            <div id="wrapper-reason" class="w-100">
                 <hr class="component-divider">
                 <div class="component-group-item component-group-item--stacked">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title" style="color: #d32f2f;">Motivo</h2>
-                            <p class="component-card__description">Selecciona la razón de la sanción.</p>
+                            <h2 class="component-card__title" style="color: #d32f2f;">Motivo de la Sanción</h2>
+                            <p class="component-card__description">Requerido para aplicar el castigo.</p>
                         </div>
                     </div>
                     <div class="component-card__actions w-100">
