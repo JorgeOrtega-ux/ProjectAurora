@@ -239,7 +239,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
 
         </div>
 
-        <div class="component-card component-card--grouped mt-16" style="cursor: pointer;" data-nav="admin/user-history?uid=<?php echo htmlspecialchars($targetUid); ?>">
+       <div class="component-card component-card--grouped mt-16">
             <div class="component-group-item">
                 <div class="component-card__content">
                     <div class="component-icon-container">
@@ -250,8 +250,12 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                         <p class="component-card__description" data-i18n="admin.history.card_desc"><?php echo trans('admin.history.card_desc'); ?></p>
                     </div>
                 </div>
-                <div class="component-card__actions">
-                    <span class="material-symbols-rounded" style="color: #999;">chevron_right</span>
+                <div class="component-card__actions actions-right">
+                    <button type="button" class="component-button" 
+                            data-nav="admin/user-history?uid=<?php echo htmlspecialchars($targetUid); ?>" 
+                            data-i18n="admin.history.view_btn">
+                        <?php echo trans('admin.history.view_btn'); ?>
+                    </button>
                 </div>
             </div>
         </div>

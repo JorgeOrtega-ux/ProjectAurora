@@ -401,7 +401,10 @@
                 "admin": "Admin (Sancionador)",
                 "final_status": "Estado Final"
             },
-            "empty": "Este usuario no tiene registros de sanciones previas."
+            "empty": "Este usuario no tiene registros de sanciones previas.",
+            "view_btn": "Ver historial",
+            "lifted_on": "Levantada el",
+            "by": "por"
         },
         "reasons": {
             "tos": "Violación de términos de servicio",
@@ -423,10 +426,10 @@
             "account_deleted": "Cuenta eliminada correctamente."
         },
         "server": {
-          "cpu": "Uso de CPU",
-          "ram": "Uso de RAM",
-          "disk": "Espacio en Disco",
-          "uptime": "Tiempo de Actividad"
+            "cpu": "Uso de CPU",
+            "ram": "Uso de RAM",
+            "disk": "Espacio en Disco",
+            "uptime": "Tiempo de Actividad"
         }
     },
     "languages": {
