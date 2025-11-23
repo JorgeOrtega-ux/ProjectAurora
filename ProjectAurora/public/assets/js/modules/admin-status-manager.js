@@ -27,12 +27,52 @@
     const btnLift = document.getElementById('btn-lift-ban');
     const btnSaveText = document.getElementById('btn-save-text');
     
-    const errorBox = document.getElementById('status-error-msg');
     const historyBody = document.getElementById('suspension-history-body');
     const wrapperDuration = document.getElementById('wrapper-duration');
     
     const activeAlert = document.getElementById('active-sanction-alert');
     const activeAlertDesc = document.getElementById('active-sanction-desc');
+
+    // [NUEVO] Función para gestionar errores dinámicos (igual a Settings)
+    function updateCardError(element, message = '', show = true) {
+        if (!element) return;
+        
+        // Buscar el contenedor de la tarjeta (padre del input)
+        const cardContainer = element.closest('.component-card') || element;
+        let nextElement = cardContainer.nextElementSibling;
+        let errorDiv = null;
+
+        // Verificar si ya existe un error debajo
+        if (nextElement && nextElement.classList.contains('component-card__error')) {
+            errorDiv = nextElement;
+        }
+
+        // Crear si no existe y se debe mostrar
+        if (!errorDiv && show) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'component-card__error';
+            errorDiv.style.marginTop = '16px'; // Margen para separar de la tarjeta
+            cardContainer.after(errorDiv);
+        }
+
+        // Mostrar u Ocultar
+        if (show && errorDiv) {
+            errorDiv.textContent = message;
+            requestAnimationFrame(() => errorDiv.classList.add('active'));
+        } else if (!show && errorDiv) {
+            errorDiv.classList.remove('active');
+            // Esperar a la transición CSS antes de eliminar del DOM
+            setTimeout(() => {
+                if (errorDiv.parentNode) errorDiv.parentNode.removeChild(errorDiv);
+            }, 200);
+        }
+    }
+
+    function showError(msg, show = true) {
+        // Usamos el input principal como referencia para encontrar la tarjeta
+        // El input está dentro de la tarjeta agrupada (.component-card--grouped)
+        updateCardError(inputStatus, msg, show);
+    }
 
     // --- EVENT DELEGATION ---
 
@@ -213,7 +253,7 @@
                 }
             }
 
-            // 2. Información de Levantamiento (Nueva Columna)
+            // 2. Información de Levantamiento
             let liftedDisplay = '<span style="color:#ccc;">-</span>';
             
             if (log.lifted_at) {
@@ -344,15 +384,6 @@
 
     function getCsrf() {
         return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    }
-
-    function showError(msg, show = true) {
-        if(show) {
-            errorBox.textContent = msg;
-            errorBox.classList.add('active');
-        } else {
-            errorBox.classList.remove('active');
-        }
     }
 
     loadUserData();

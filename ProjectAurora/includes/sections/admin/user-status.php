@@ -227,8 +227,6 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
 
         </div>
 
-        <div class="component-card__error" id="status-error-msg" style="margin-top: 16px;"></div>
-
         <div class="component-card mt-16">
             <h3 class="history-title">
                 <span class="material-symbols-rounded history-icon">history</span>
@@ -244,11 +242,11 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                             <th>Duración</th>
                             <th>Fin</th>
                             <th>Admin</th>
-                        </tr>
+                            <th>Levantada</th> </tr>
                     </thead>
                     <tbody id="suspension-history-body">
                         <tr>
-                            <td colspan="5" class="history-loading">Cargando historial...</td>
+                            <td colspan="6" class="history-loading">Cargando historial...</td>
                         </tr>
                     </tbody>
                 </table>
