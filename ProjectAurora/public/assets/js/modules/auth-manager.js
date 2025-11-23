@@ -1,5 +1,7 @@
 // assets/js/auth-manager.js
 
+import { t } from '../core/i18n-manager.js';
+
 const API_BASE_PATH = window.BASE_PATH || '/ProjectAurora/';
 
 function qs(selector) {
@@ -36,15 +38,16 @@ function initResendTimer(linkSelector, startSeconds = 60) {
     let seconds = startSeconds;
     
     link.classList.add('disabled-link');
-    link.textContent = `Reenviar código de verificación (${seconds})`;
+    // Usamos una clave lógica combinada con el número
+    link.textContent = `${t('auth.register.resend_code')} (${seconds})`;
 
     resendTimerInterval = setInterval(() => {
         seconds--;
         if (seconds > 0) {
-            link.textContent = `Reenviar código de verificación (${seconds})`;
+            link.textContent = `${t('auth.register.resend_code')} (${seconds})`;
         } else {
             clearInterval(resendTimerInterval);
-            link.textContent = "Reenviar código de verificación";
+            link.textContent = t('auth.register.resend_code');
             link.classList.remove('disabled-link');
         }
     }, 1000);
@@ -92,23 +95,20 @@ async function handleResendCode(type, linkSelector) {
 export function initAuthManager() {
     
     document.addEventListener('socket-message', (e) => {
-        // [MODIFICADO] Extraemos también la propiedad 'reason'
         const { type, reason } = e.detail;
         
         if (type === 'force_logout') {
+            const msg = t('global.session_expired'); // Usando clave genérica o crear una nueva
             if (window.alertManager) {
-                window.alertManager.showAlert('Tu sesión ha sido cerrada remotamente.', 'warning');
+                window.alertManager.showAlert(msg, 'warning');
             } else {
-                alert('Tu sesión ha sido cerrada remotamente.');
+                alert(msg);
             }
             
             setTimeout(() => {
-                // [MODIFICADO] Lógica de redirección inteligente
                 if (reason === 'suspended' || reason === 'deleted') {
-                    // Si hay razón de castigo, vamos a status-page
                     window.location.href = API_BASE_PATH + 'status-page?status=' + reason;
                 } else {
-                    // Si no (ej. cerrar sesión normal), vamos al login
                     window.location.href = API_BASE_PATH + 'login';
                 }
             }, 2000);
@@ -239,7 +239,7 @@ export function initAuthManager() {
                 const res = await response.json();
 
                 if (res.success) {
-                    if (window.alertManager) window.alertManager.showAlert('Cerrando sesión...', 'info');
+                    if (window.alertManager) window.alertManager.showAlert(t('global.loading'), 'info');
                     window.location.href = API_BASE_PATH + 'login';
                 } else {
                     spinnerContainer.remove();
@@ -251,7 +251,7 @@ export function initAuthManager() {
                 console.error(error);
                 spinnerContainer.remove();
                 logoutBtn.dataset.processing = "false";
-                if (window.alertManager) window.alertManager.showAlert("Error de conexión", 'error');
+                if (window.alertManager) window.alertManager.showAlert(t('global.error_connection'), 'error');
             }
         }
     });
@@ -314,10 +314,10 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
         const passVal = passIn.value;
 
         if (!isValidEmailDomain(emailVal)) {
-            errorMessage = "Correo inválido. Solo se permite: Gmail, Outlook, iCloud, Yahoo.";
+            errorMessage = t('auth.errors.email_invalid_domain');
             emailIn.classList.add('input-error');
         } else if (passVal.length < 8) {
-            errorMessage = "La contraseña debe tener al menos 8 caracteres.";
+            errorMessage = t('auth.errors.password_short');
             passIn.classList.add('input-error');
         }
 
@@ -337,7 +337,7 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
 
         const userVal = userIn.value.trim();
         if (!isValidUsername(userVal)) {
-            errorMessage = "Usuario inválido: 8-32 caracteres. Solo letras, números y '_'.";
+            errorMessage = t('auth.errors.username_invalid');
             userIn.classList.add('input-error');
         }
 
@@ -366,7 +366,7 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
     });
 
     if (hasEmpty) {
-        if(errorDiv) { errorDiv.textContent = "Todos los campos son requeridos."; errorDiv.classList.add('active'); }
+        if(errorDiv) { errorDiv.textContent = t('auth.errors.all_required'); errorDiv.classList.add('active'); }
         return false;
     }
 
@@ -391,13 +391,13 @@ async function handleRecoveryLinkRequest() {
 
     if(!emailVal) { 
         emailIn.classList.add('input-error'); 
-        if(errorDiv) { errorDiv.textContent = "El correo es requerido."; errorDiv.classList.add('active'); }
+        if(errorDiv) { errorDiv.textContent = t('auth.errors.all_required'); errorDiv.classList.add('active'); }
         return; 
     }
 
     if (!isValidEmailDomain(emailVal)) {
         emailIn.classList.add('input-error');
-        if(errorDiv) { errorDiv.textContent = "Dominio inválido."; errorDiv.classList.add('active'); }
+        if(errorDiv) { errorDiv.textContent = t('auth.errors.email_invalid_domain'); errorDiv.classList.add('active'); }
         return;
     }
 
@@ -417,13 +417,13 @@ async function handleRecoveryLinkRequest() {
             const display = qs('[data-display="rec-email"]');
             if(display) display.textContent = emailVal;
             
-            if (window.alertManager) window.alertManager.showAlert('Enlace enviado. Revisa tu correo.', 'success');
+            if (window.alertManager) window.alertManager.showAlert(t('auth.recovery.link_sent_alert'), 'success');
             toggleStepVisibility('[data-step="rec-1"]', '[data-step="rec-success"]');
         } else {
             if(errorDiv) { errorDiv.textContent = res.message; errorDiv.classList.add('active'); }
         }
     } catch (e) {
-        if(errorDiv) { errorDiv.textContent = "Error de conexión"; errorDiv.classList.add('active'); }
+        if(errorDiv) { errorDiv.textContent = t('global.error_connection'); errorDiv.classList.add('active'); }
     }
     btn.innerHTML = originalContent;
     btn.disabled = false;
@@ -448,14 +448,14 @@ async function handleResetPasswordFinal() {
 
     if (passVal.length < 8) {
         passIn.classList.add('input-error');
-        if(errorDiv) { errorDiv.textContent = "Mínimo 8 caracteres."; errorDiv.classList.add('active'); }
+        if(errorDiv) { errorDiv.textContent = t('auth.errors.password_short'); errorDiv.classList.add('active'); }
         return;
     }
 
     if (passVal !== passConfirmVal) {
         passIn.classList.add('input-error');
         passConfirmIn.classList.add('input-error');
-        if(errorDiv) { errorDiv.textContent = "Las contraseñas no coinciden."; errorDiv.classList.add('active'); }
+        if(errorDiv) { errorDiv.textContent = t('auth.errors.pass_mismatch'); errorDiv.classList.add('active'); }
         return;
     }
 
@@ -477,7 +477,7 @@ async function handleResetPasswordFinal() {
         const res = await response.json();
 
         if (res.success) {
-            if (window.alertManager) window.alertManager.showAlert('Contraseña actualizada con éxito.', 'success');
+            if (window.alertManager) window.alertManager.showAlert(t('auth.recovery.pass_updated'), 'success');
             window.location.href = API_BASE_PATH + 'login';
         } else {
             if(errorDiv) { errorDiv.textContent = res.message; errorDiv.classList.add('active'); }
@@ -485,7 +485,7 @@ async function handleResetPasswordFinal() {
             btn.disabled = false;
         }
     } catch (e) {
-        if(errorDiv) { errorDiv.textContent = "Error de conexión"; errorDiv.classList.add('active'); }
+        if(errorDiv) { errorDiv.textContent = t('global.error_connection'); errorDiv.classList.add('active'); }
         btn.innerHTML = originalContent; 
         btn.disabled = false;
     }
@@ -518,7 +518,7 @@ async function sendAuthRequest(payload, btnSelector, errorSelector, nextStep, ne
                 window.location.href = API_BASE_PATH;
             } else {
                 if (payload.action === 'register_step_2' && window.alertManager) {
-                    window.alertManager.showAlert('Código de verificación enviado.', 'success');
+                    window.alertManager.showAlert(t('auth.register.code_sent_alert'), 'success');
                 }
                 switchRegisterStep(nextStep, nextUrl);
                 if(btn) { btn.innerHTML = originalContent; btn.disabled = false; }
@@ -530,7 +530,7 @@ async function sendAuthRequest(payload, btnSelector, errorSelector, nextStep, ne
             return false;
         }
     } catch (error) {
-        if(errorDiv) { errorDiv.textContent = "Error de conexión"; errorDiv.classList.add('active'); }
+        if(errorDiv) { errorDiv.textContent = t('global.error_connection'); errorDiv.classList.add('active'); }
         if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
         return false;
     }
@@ -585,7 +585,7 @@ async function handleLogin() {
                     displayEmail.textContent = res.masked_email;
                 }
                 
-                if (window.alertManager) window.alertManager.showAlert('Código de seguridad 2FA enviado.', 'info');
+                if (window.alertManager) window.alertManager.showAlert(t('auth.2fa.sent_alert'), 'info');
                 initResendTimer('[data-action="resend-login"]');
 
                 btn.innerHTML = originalContent;
@@ -597,18 +597,14 @@ async function handleLogin() {
                 }, 100);
 
             } else {
-                if (window.alertManager) window.alertManager.showAlert('Inicio de sesión exitoso.', 'info');
+                if (window.alertManager) window.alertManager.showAlert(t('auth.login.success'), 'info');
                 window.location.href = API_BASE_PATH;
             }
         } else {
-            // [MODIFICACIÓN PARA STATUS PAGE]
             if (res.is_account_issue && res.status_type) {
                 let redirectUrl = API_BASE_PATH + 'status-page?status=' + res.status_type;
-                
-                // Agregar params extra si existen
                 if (res.reason) redirectUrl += '&reason=' + encodeURIComponent(res.reason);
                 if (res.until) redirectUrl += '&until=' + encodeURIComponent(res.until);
-
                 window.location.href = redirectUrl;
                 return; 
             }
@@ -624,7 +620,7 @@ async function handleLogin() {
         }
     } catch (e) {
         if(errorDiv) {
-            errorDiv.textContent = "Error de conexión";
+            errorDiv.textContent = t('global.error_connection');
             errorDiv.classList.add('active');
         }
         btn.innerHTML = originalContent;
@@ -666,7 +662,7 @@ async function handleLogin2FA() {
 
         const res = await response.json();
         if (res.success) {
-            if (window.alertManager) window.alertManager.showAlert('Acceso verificado. ¡Bienvenido!', 'success');
+            if (window.alertManager) window.alertManager.showAlert(t('auth.2fa.success_alert'), 'success');
             window.location.href = API_BASE_PATH;
         } else {
             if(errorDiv) {
@@ -679,7 +675,7 @@ async function handleLogin2FA() {
         }
     } catch (e) {
         if(errorDiv) {
-            errorDiv.textContent = "Error de conexión";
+            errorDiv.textContent = t('global.error_connection');
             errorDiv.classList.add('active');
         }
         btn.innerHTML = originalContent;

@@ -15,6 +15,11 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/../core/database.php';
+require_once __DIR__ . '/../../includes/logic/i18n_server.php'; // [NUEVO] Cargar i18n
+
+// [NUEVO] Inicializar idioma
+$langRouter = $_SESSION['user_lang'] ?? detect_browser_language() ?? 'es-latam';
+I18n::load($langRouter);
 
 $basePath = '/ProjectAurora/'; 
 
@@ -123,7 +128,7 @@ $requestUri = rtrim($requestUri, '/');
 
 // --- API ROUTING ---
 if (strpos($requestUri, 'api/') === 0) {
-    $apiFilePath = __DIR__ . '/../' . $requestUri;
+    $apiFilePath = __DIR__ . '/../../' . $requestUri; // Ajuste de ruta
     if (file_exists($apiFilePath)) { require_once $apiFilePath; exit; }
     else { http_response_code(404); echo json_encode(['error'=>'API not found']); exit; }
 }
@@ -153,7 +158,7 @@ $allowedSections = [
     'admin/users',
     'admin/user-status', 
     'admin/user-manage',
-    'admin/user-history', // <--- NUEVA RUTA AGREGADA AQUÍ
+    'admin/user-history',
     'admin/backups',
     'admin/server'
 ];
@@ -239,7 +244,8 @@ if (array_key_exists($CURRENT_SECTION, $requirements)) {
             exit;
         }
         $SECTION_FILE_NAME = 'system/error-missing-data';
-        $missingDataMessage = "No has completado el paso anterior para acceder a <strong>$CURRENT_SECTION</strong>.";
+        // [CORREGIDO] Uso de trans() concatenando la sección variable
+        $missingDataMessage = trans('system.missing_data_context') . " <strong>$CURRENT_SECTION</strong>.";
     }
 }
 

@@ -1,5 +1,7 @@
 // public/assets/js/notifications-manager.js
 
+import { t } from '../core/i18n-manager.js';
+
 const API_NOTIFICATIONS = (window.BASE_PATH || '/ProjectAurora/') + 'api/notifications_handler.php';
 
 function getCsrf() {
@@ -10,17 +12,14 @@ export class NotificationsManager {
     constructor() {
         this.loadNotifications();
         this.initSocketListener();
-        this.initGlobalListeners(); // Para marcar como leído
+        this.initGlobalListeners(); 
     }
-
-    // --- LISTENERS ---
 
     initSocketListener() {
         document.addEventListener('socket-message', (e) => {
             const { type, payload } = e.detail;
             const alertMgr = window.alertManager;
 
-            // Lógica de alertas y recarga de notificaciones
             if (type === 'friend_request') {
                 if (alertMgr) alertMgr.showAlert(payload.message, 'info');
                 this.loadNotifications();
@@ -31,13 +30,11 @@ export class NotificationsManager {
                 this.loadNotifications();
             }
 
-            // Si cancelan o eliminan, solo actualizamos la lista silenciosamente
             if (type === 'request_cancelled' || type === 'friend_removed') {
                 this.loadNotifications();
             }
         });
         
-        // Escuchar evento interno por si FriendsManager hace cambios y pide recargar
         document.addEventListener('reload-notifications', () => {
             this.loadNotifications();
         });
@@ -50,8 +47,6 @@ export class NotificationsManager {
             }
         });
     }
-
-    // --- API & RENDER ---
 
     async loadNotifications() {
         try {
@@ -66,13 +61,12 @@ export class NotificationsManager {
     }
 
     async markAllRead() {
-        // UI Optimista
         const dots = document.querySelectorAll('.unread-dot');
         dots.forEach(d => d.remove());
         this.updateBadge(0);
 
         await this.fetchApi({ action: 'mark_read_all' });
-        this.loadNotifications(); // Recarga real para asegurar sincronización
+        this.loadNotifications(); 
     }
 
     updateBadge(count) {
@@ -96,7 +90,6 @@ export class NotificationsManager {
 
     renderNotifications(notifs) {
         const container = document.querySelector('.menu-content-bottom'); 
-        // Validamos que estemos en el contenedor correcto (el del módulo de notificaciones)
         if (!container || !container.closest('[data-module="moduleNotifications"]')) return;
         
         if (notifs.length === 0) { 
@@ -111,11 +104,10 @@ export class NotificationsManager {
             
             let actionsHtml = '';
             if (n.type === 'friend_request') {
-                // Nota: Los botones tienen data-sid (sender id) para que FriendsManager los detecte
                 actionsHtml = `
                     <div class="notif-actions">
-                        <button class="notif-btn accept" data-action="accept-req">Aceptar</button>
-                        <button class="notif-btn decline" data-action="decline-req">Rechazar</button>
+                        <button class="notif-btn accept" data-action="accept-req">${t('search.actions.accept')}</button>
+                        <button class="notif-btn decline" data-action="decline-req">${t('search.actions.decline')}</button>
                     </div>
                 `;
             }
@@ -137,7 +129,7 @@ export class NotificationsManager {
     }
 
     renderEmptyState(container) {
-        container.innerHTML = `<div class="notifications-empty"><span class="material-symbols-rounded empty-icon">notifications_off</span><p>No hay nada nuevo por el momento</p></div>`;
+        container.innerHTML = `<div class="notifications-empty"><span class="material-symbols-rounded empty-icon">notifications_off</span><p>${t('header.no_notifications')}</p></div>`;
     }
 
     async fetchApi(data) {

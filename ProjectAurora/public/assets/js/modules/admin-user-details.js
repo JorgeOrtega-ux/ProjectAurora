@@ -1,26 +1,23 @@
 // public/assets/js/modules/admin-user-details.js
 
-/**
- * AdminUserDetails
- * Módulo unificado para la gestión de detalles de usuario en el panel de administración.
- * Maneja: Sanciones (Status), Gestión General (Manage) e Historial (History).
- */
-
 (function () {
+    // Helper de traducción local
+    function t(key) {
+        return window.t ? window.t(key) : key;
+    }
+
     const API_ADMIN = (window.BASE_PATH || '/ProjectAurora/') + 'api/admin_handler.php';
 
     class AdminUserManager {
         constructor() {
-            // 1. Detección de Contexto y ID del Objetivo
-            this.context = null; // 'status', 'manage', 'history'
+            this.context = null;
             this.targetId = null;
-            this.prefix = null;  // Prefijo de IDs del DOM (ej: 'status-', 'manage-')
+            this.prefix = null; 
 
             this.detectContext();
 
-            if (!this.targetId) return; // Si no hay ID, no hacemos nada
+            if (!this.targetId) return;
 
-            // 2. Estado Global
             this.user = null;
             this.currentUserState = {
                 isSuspended: false,
@@ -28,14 +25,10 @@
                 reason: null
             };
 
-            // 3. Inicialización
             this.initGlobalListeners();
             this.loadData();
         }
 
-        /**
-         * Detecta en qué página estamos buscando los inputs ocultos de ID específicos
-         */
         detectContext() {
             const statusId = document.getElementById('target-user-id');
             const manageId = document.getElementById('manage-target-id');
@@ -56,10 +49,6 @@
             }
         }
 
-        // ============================================================
-        // UTILIDADES DRY (API, CSRF, UI)
-        // ============================================================
-
         getCsrf() {
             return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         }
@@ -74,14 +63,14 @@
                 return await res.json();
             } catch (e) {
                 console.error("API Error:", e);
-                return { success: false, message: 'Error de conexión con el servidor.' };
+                return { success: false, message: t('global.error_connection') };
             }
         }
 
         setLoading(btn, isLoading, originalText = '') {
             if (!btn) return;
             if (isLoading) {
-                btn.dataset.original = btn.innerHTML; // Guardar HTML completo (iconos incluidos)
+                btn.dataset.original = btn.innerHTML;
                 btn.disabled = true;
                 btn.innerHTML = '<div class="small-spinner" style="border-color:currentColor; border-top-color:transparent;"></div>';
             } else {
@@ -91,16 +80,13 @@
         }
 
         showError(message, show = true) {
-            // Intenta encontrar el contenedor de error específico del contexto
             let errorBox = null;
             
             if (this.context === 'manage') errorBox = document.getElementById('manage-error-msg');
             else {
-                // Fallback genérico para Status (busca .component-card__error dinámicamente)
                 const container = document.querySelector('.component-wrapper');
                 errorBox = container.querySelector('.component-card__error');
                 if (!errorBox && show) {
-                    // Si no existe, lo creamos (Lógica de admin-status-manager)
                     const card = document.querySelector('.component-card--grouped');
                     if (card) {
                         errorBox = document.createElement('div');
@@ -119,13 +105,9 @@
                     errorBox.classList.remove('active');
                 }
             } else if (show) {
-                alert(message); // Fallback final
+                alert(message);
             }
         }
-
-        // ============================================================
-        // CARGA DE DATOS
-        // ============================================================
 
         async loadData() {
             const data = await this.fetchApi({ 
@@ -137,12 +119,11 @@
                 this.user = data.user;
                 this.renderHeader();
 
-                // Enrutamiento de lógica según contexto
                 if (this.context === 'status') this.initStatusLogic();
                 if (this.context === 'manage') this.initManageLogic();
                 if (this.context === 'history') this.renderHistoryTable(data.history);
             } else {
-                this.showError('Error cargando datos del usuario: ' + data.message);
+                this.showError(t('global.error_connection') + ': ' + data.message);
             }
         }
 
@@ -150,7 +131,6 @@
             const u = this.user;
             if (!u) return;
 
-            // Elementos comunes con prefijo dinámico
             const elUsername = document.getElementById(`${this.prefix}username`);
             const elEmail = document.getElementById(`${this.prefix}email`);
             const elAvatarContainer = document.getElementById(`${this.prefix}avatar-container`);
@@ -168,14 +148,8 @@
             }
         }
 
-        // ============================================================
-        // EVENTOS GLOBALES (Dropdowns)
-        // ============================================================
-
         initGlobalListeners() {
             document.body.addEventListener('click', (e) => {
-                
-                // 1. Toggle Dropdowns
                 const toggleBtn = e.target.closest('[data-action="toggle-dropdown"]');
                 if (toggleBtn) {
                     e.stopPropagation();
@@ -183,14 +157,12 @@
                     return;
                 }
 
-                // 2. Selección en Dropdowns (Delegación genérica)
                 const option = e.target.closest('.menu-link[data-action]');
                 if (option) {
                     this.handleDropdownSelection(option);
                     return;
                 }
 
-                // 3. Cerrar al hacer clic fuera
                 if (!e.target.closest('.trigger-select-wrapper')) {
                     this.closeAllDropdowns();
                 }
@@ -208,7 +180,6 @@
 
         closeAllDropdowns() {
             document.querySelectorAll('.popover-module:not(.disabled)').forEach(el => {
-                // Solo cerrar los dropdowns de admin (evitar cerrar notificaciones/perfil si se usaran clases similares)
                 if (el.closest('.section-content')) el.classList.add('disabled');
             });
         }
@@ -220,7 +191,6 @@
             const icon = option.dataset.icon;
             const color = option.dataset.color;
 
-            // Actualizar UI visual del dropdown (Checkmark)
             const menuList = option.closest('.menu-list');
             if (menuList) {
                 menuList.querySelectorAll('.menu-link').forEach(o => {
@@ -231,7 +201,6 @@
                 if (option.lastElementChild) option.lastElementChild.innerHTML = '<span class="material-symbols-rounded">check</span>';
             }
 
-            // Lógica específica por acción
             if (action === 'select-status-option') this.updateStatusUI(val, label, icon, color);
             if (action === 'select-duration-option') this.updateDurationUI(val);
             if (action === 'select-reason-option') this.updateReasonUI(val);
@@ -240,10 +209,6 @@
 
             this.closeAllDropdowns();
         }
-
-        // ============================================================
-        // LÓGICA DE ESTADO (SANCIONES)
-        // ============================================================
 
         initStatusLogic() {
             const u = this.user;
@@ -259,23 +224,23 @@
                 
                 activeAlert.classList.remove('d-none');
                 btnLift.classList.remove('d-none');
-                btnSaveText.textContent = 'Actualizar Sanción';
+                btnSaveText.textContent = t('admin.status.update_ban');
 
                 let activeText = '';
                 if (u.suspension_end_date === null) {
                     this.currentUserState.isPermanent = true;
-                    activeText = 'Permanente';
-                    this.updateStatusUI('suspended_perm', 'Suspensión Permanente', 'block', '#d32f2f');
+                    activeText = t('admin.status.perm_ban');
+                    this.updateStatusUI('suspended_perm', activeText, 'block', '#d32f2f');
                     this.setDropdownInitialActive('dropdown-status-options', 'suspended_perm');
                 } else {
                     this.currentUserState.isPermanent = false;
                     const endDate = new Date(u.suspension_end_date).toLocaleDateString();
-                    activeText = `Hasta el ${endDate}`;
-                    this.updateStatusUI('suspended_temp', 'Suspensión Temporal', 'timer', '#f57c00');
+                    activeText = t('admin.status.until') + ' ' + endDate; // "Hasta el..."
+                    this.updateStatusUI('suspended_temp', t('admin.status.temp_ban'), 'timer', '#f57c00');
                     this.setDropdownInitialActive('dropdown-status-options', 'suspended_temp');
                 }
                 
-                activeAlertDesc.innerHTML = `<strong>${activeText}</strong><br>Motivo: ${u.suspension_reason}`;
+                activeAlertDesc.innerHTML = `<strong>${activeText}</strong><br>${t('admin.status.reason_label')}: ${u.suspension_reason}`;
                 if (u.suspension_reason) {
                     this.updateReasonUI(u.suspension_reason);
                     this.setDropdownInitialActive('dropdown-reasons', u.suspension_reason);
@@ -284,12 +249,11 @@
             } else {
                 activeAlert.classList.add('d-none');
                 btnLift.classList.add('d-none');
-                btnSaveText.textContent = 'Aplicar Sanción';
-                this.updateStatusUI('suspended_temp', 'Suspensión Temporal', 'timer', '#f57c00');
+                btnSaveText.textContent = t('admin.status.apply_ban');
+                this.updateStatusUI('suspended_temp', t('admin.status.temp_ban'), 'timer', '#f57c00');
                 this.setDropdownInitialActive('dropdown-status-options', 'suspended_temp');
             }
 
-            // Listeners Botones
             btnSave.onclick = () => this.saveStatusSanction();
             btnLift.onclick = () => this.liftBan();
         }
@@ -308,7 +272,7 @@
 
         updateDurationUI(days) {
             document.getElementById('input-duration-value').value = days;
-            document.getElementById('current-duration-text').textContent = days + ' Días';
+            document.getElementById('current-duration-text').textContent = days + ' ' + t('global.days');
         }
 
         updateReasonUI(reason) {
@@ -324,10 +288,10 @@
 
             this.showError('', false);
 
-            if (!reason) { this.showError('Debes seleccionar una razón para la sanción.'); return; }
+            if (!reason) { this.showError(t('admin.error.reason_required')); return; }
 
             if (this.currentUserState.isPermanent && statusType === 'suspended_perm' && reason === this.currentUserState.reason) {
-                this.showError('El usuario ya tiene esta sanción activa.'); return;
+                this.showError(t('admin.status.already_suspended')); return;
             }
 
             this.setLoading(btnSave, true);
@@ -344,16 +308,16 @@
             
             if (res.success) {
                 if (window.alertManager) window.alertManager.showAlert(res.message, 'success');
-                this.loadData(); // Recargar para actualizar estado
+                this.loadData(); 
             } else {
                 this.showError(res.message);
             }
             
-            this.setLoading(btnSave, false, `<span class="material-symbols-rounded">save</span><span id="btn-save-text">${this.currentUserState.isSuspended ? 'Actualizar Sanción' : 'Aplicar Sanción'}</span>`);
+            this.setLoading(btnSave, false, `<span class="material-symbols-rounded">save</span><span id="btn-save-text">${this.currentUserState.isSuspended ? t('admin.status.update_ban') : t('admin.status.apply_ban')}</span>`);
         }
 
         async liftBan() {
-            if (!confirm('¿Levantar sanción y reactivar usuario?')) return;
+            if (!confirm(t('global.are_you_sure') || '¿Seguro?')) return;
             
             const btnLift = document.getElementById('btn-lift-ban');
             const originalHtml = btnLift.innerHTML;
@@ -374,27 +338,23 @@
             this.setLoading(btnLift, false, originalHtml);
         }
 
-        // ============================================================
-        // LÓGICA DE GESTIÓN GENERAL (MANAGE)
-        // ============================================================
-
         initManageLogic() {
             const u = this.user;
             const btnSave = document.getElementById('btn-save-manage');
 
             if (u.account_status === 'deleted') {
-                this.updateManageStatusUI('deleted', 'Cuenta Eliminada', 'delete_forever', '#616161');
+                this.updateManageStatusUI('deleted', t('global.deleted'), 'delete_forever', '#616161');
                 this.setDropdownInitialActive('dropdown-manage-status', 'deleted');
 
                 if (u.deletion_type) {
-                    const typeText = (u.deletion_type === 'user_decision') ? 'Decisión del Usuario' : 'Decisión Administrativa';
+                    const typeText = (u.deletion_type === 'user_decision') ? t('admin.manage.user_dec') : t('admin.manage.admin_dec');
                     this.updateDeletionTypeUI(u.deletion_type, typeText);
                     this.setDropdownInitialActive('dropdown-deletion-type', u.deletion_type);
                 }
                 if (u.deletion_reason) document.getElementById('input-user-reason').value = u.deletion_reason;
                 if (u.admin_comments) document.getElementById('input-admin-comments').value = u.admin_comments;
             } else {
-                this.updateManageStatusUI('active', 'Activo', 'check_circle', '#2e7d32');
+                this.updateManageStatusUI('active', t('global.active'), 'check_circle', '#2e7d32');
                 this.setDropdownInitialActive('dropdown-manage-status', 'active');
             }
 
@@ -438,11 +398,11 @@
             };
 
             if (status === 'deleted') {
-                if (!adminComments) { this.showError('Comentarios administrativos requeridos.'); return; }
+                if (!adminComments) { this.showError(t('admin.manage.admin_comments_desc')); return; }
                 payload.deletion_type = delType;
                 payload.admin_comments = adminComments;
                 if (delType === 'user_decision') {
-                    if (!userReason) { this.showError('Razón del usuario requerida.'); return; }
+                    if (!userReason) { this.showError(t('admin.manage.user_reason_desc')); return; }
                     payload.deletion_reason = userReason;
                 }
             }
@@ -456,12 +416,8 @@
             } else {
                 this.showError(res.message);
             }
-            this.setLoading(btnSave, false, `<span class="material-symbols-rounded">save</span> Guardar Estado`);
+            this.setLoading(btnSave, false, `<span class="material-symbols-rounded">save</span> ${t('global.save_status')}`);
         }
-
-        // ============================================================
-        // LÓGICA DE HISTORIAL (HISTORY)
-        // ============================================================
 
         renderHistoryTable(logs) {
             const tbody = document.getElementById('full-history-body');
@@ -472,7 +428,7 @@
                     <tr>
                         <td colspan="6" class="component-table-empty">
                             <span class="material-symbols-rounded component-table-empty-icon">history_toggle_off</span>
-                            <p>Este usuario no tiene registros de sanciones previas.</p>
+                            <p>${t('admin.history.empty')}</p>
                         </td>
                     </tr>`;
                 return;
@@ -484,11 +440,11 @@
                 const adminName = log.admin_name || 'Sistema';
                 
                 let durationDisplay = (parseInt(log.duration_days) === -1) 
-                    ? '<span style="color: #d32f2f; font-weight: 600;">Permanente</span>' 
-                    : log.duration_days + ' días';
+                    ? `<span style="color: #d32f2f; font-weight: 600;">${t('admin.status.perm_ban')}</span>` 
+                    : log.duration_days + ' ' + t('global.days');
                 
                 let endDisplay = (parseInt(log.duration_days) === -1) 
-                    ? 'Indefinido' 
+                    ? t('admin.history.indefinite') || 'Indefinido'
                     : (log.ends_at ? new Date(log.ends_at).toLocaleString() : '-');
 
                 let liftedDisplay = '';
@@ -499,17 +455,17 @@
                         <div style="display:flex; flex-direction:column;">
                             <span style="color:#2e7d32; font-weight:600; font-size:13px; display:flex; align-items:center; gap:4px;">
                                 <span class="material-symbols-rounded" style="font-size:16px;">check_circle</span> 
-                                Levantada el ${liftedDate}
+                                ${t('admin.history.lifted_on') || 'Levantada el'} ${liftedDate}
                             </span>
-                            <span style="color:#888; font-size:11px; margin-left:20px;">por ${lifter}</span>
+                            <span style="color:#888; font-size:11px; margin-left:20px;">${t('admin.history.by') || 'por'} ${lifter}</span>
                         </div>`;
                 } else {
                     const now = new Date();
                     const endDate = log.ends_at ? new Date(log.ends_at) : null;
                     if (parseInt(log.duration_days) === -1 || (endDate && endDate > now)) {
-                        liftedDisplay = '<span class="component-badge component-badge--danger">Activa</span>';
+                        liftedDisplay = '<span class="component-badge component-badge--danger">' + (t('global.active') || 'Activa') + '</span>';
                     } else {
-                        liftedDisplay = '<span class="component-badge component-badge--neutral">Expirada</span>';
+                        liftedDisplay = '<span class="component-badge component-badge--neutral">' + (t('global.status.expired') || 'Expirada') + '</span>';
                     }
                 }
 
@@ -536,13 +492,11 @@
             tbody.innerHTML = html;
         }
 
-        // --- Helper para setear estado visual inicial en dropdowns ---
         setDropdownInitialActive(dropdownId, value) {
             const dropdown = document.getElementById(dropdownId);
             if (!dropdown) return;
             const option = dropdown.querySelector(`.menu-link[data-value="${value}"]`);
             if (option) {
-                // Simular click o setear clases manualmente
                 dropdown.querySelectorAll('.menu-link').forEach(o => {
                     o.classList.remove('active');
                     if (o.lastElementChild) o.lastElementChild.innerHTML = '';
@@ -553,7 +507,6 @@
         }
     }
 
-    // Instanciar al cargar
     new AdminUserManager();
 
 })();

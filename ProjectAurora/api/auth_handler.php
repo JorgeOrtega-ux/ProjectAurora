@@ -38,6 +38,11 @@ date_default_timezone_set('America/Matamoros');
 require_once '../config/core/database.php';
 require_once '../config/helpers/utilities.php';
 require_once '../includes/logic/GoogleAuthenticator.php';
+require_once '../includes/logic/i18n_server.php'; // [NUEVO]
+
+// [NUEVO] Cargar idioma
+$lang = $_SESSION['user_lang'] ?? detect_browser_language() ?? 'es-latam';
+I18n::load($lang);
 
 $data = json_decode(file_get_contents('php://input'), true);
 $action = $data['action'] ?? '';
@@ -45,7 +50,7 @@ $csrfToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $data['csrf_token'] ?? '';
 
 if (!verify_csrf_token($csrfToken)) {
     http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Error de seguridad (CSRF).']);
+    echo json_encode(['success' => false, 'message' => trans('global.error_csrf')]);
     exit;
 }
 
@@ -110,19 +115,19 @@ function mask_email($email) {
     return $email;
 }
 
-$response = ['success' => false, 'message' => 'Acción no válida'];
+$response = ['success' => false, 'message' => trans('global.action_invalid')];
 
 try {
     if ($action === 'register_step_1') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
-        if (empty($email) || empty($password)) throw new Exception('Completa todos los campos.');
-        if (strlen($email) < 4) throw new Exception('Correo muy corto.');
-        if (!is_allowed_domain($email)) throw new Exception('Dominio no permitido.');
-        if (strlen($password) < 8) throw new Exception('Contraseña muy corta.');
+        if (empty($email) || empty($password)) throw new Exception(trans('auth.errors.all_required'));
+        if (strlen($email) < 4) throw new Exception(trans('auth.errors.email_short'));
+        if (!is_allowed_domain($email)) throw new Exception(trans('auth.errors.email_domain'));
+        if (strlen($password) < 8) throw new Exception(trans('auth.errors.password_short'));
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
-        if ($stmt->rowCount() > 0) throw new Exception('El correo ya está registrado.');
+        if ($stmt->rowCount() > 0) throw new Exception(trans('auth.errors.email_exists'));
         if (!isset($_SESSION['temp_register'])) $_SESSION['temp_register'] = [];
         $_SESSION['temp_register']['email'] = $email;
         $_SESSION['temp_register']['password'] = $password;
@@ -132,11 +137,11 @@ try {
         $username = trim($data['username'] ?? '');
         $email = $_SESSION['temp_register']['email'] ?? '';
         $rawPassword = $_SESSION['temp_register']['password'] ?? '';
-        if (empty($email) || empty($rawPassword)) throw new Exception('Sesión expirada.');
-        if (!preg_match('/^[a-zA-Z0-9_]{8,32}$/', $username)) throw new Exception('Usuario inválido.');
+        if (empty($email) || empty($rawPassword)) throw new Exception(trans('global.session_expired'));
+        if (!preg_match('/^[a-zA-Z0-9_]{8,32}$/', $username)) throw new Exception(trans('auth.errors.username_invalid'));
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
         $stmt->execute([$username]);
-        if ($stmt->rowCount() > 0) throw new Exception('El usuario ya existe.');
+        if ($stmt->rowCount() > 0) throw new Exception(trans('settings.username.taken'));
         $passwordHash = password_hash($rawPassword, PASSWORD_BCRYPT);
         $payload = json_encode(['username' => $username, 'password_hash' => $passwordHash]);
         $code = generate_verification_code();
@@ -148,18 +153,18 @@ try {
         unset($_SESSION['temp_register']['password']);
         $_SESSION['temp_register']['username'] = $username;
         logger("[PRUEBA - ELIMINAR EN PROD] Registro para $email | Code: $code | Hash: $codeHash");
-        $response = ['success' => true, 'message' => 'Código enviado'];
+        $response = ['success' => true, 'message' => trans('auth.code_sent')];
 
     } elseif ($action === 'register_final') {
         $inputCode = strtoupper(trim($data['code'] ?? ''));
         $email = $_SESSION['temp_register']['email'] ?? '';
-        if (empty($email)) throw new Exception('Sesión perdida.');
+        if (empty($email)) throw new Exception(trans('global.session_expired'));
         $inputHash = hash('sha256', $inputCode);
         $sql = "SELECT id, payload FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'registration' AND expires_at > NOW()";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$email, $inputHash]);
         $row = $stmt->fetch();
-        if (!$row) throw new Exception('Código inválido o expirado.');
+        if (!$row) throw new Exception(trans('auth.errors.invalid_code'));
         $payloadData = json_decode($row['payload'], true);
         $finalUsername = $payloadData['username'];
         $finalPassHash = $payloadData['password_hash'];
@@ -188,16 +193,16 @@ try {
 
             $pdo->prepare("DELETE FROM verification_codes WHERE id = ?")->execute([$row['id']]);
             unset($_SESSION['temp_register']);
-            $response = ['success' => true, 'message' => 'Bienvenido'];
+            $response = ['success' => true, 'message' => trans('auth.welcome')];
         } else {
-            throw new Exception('Error crítico.');
+            throw new Exception(trans('global.error_connection'));
         }
 
     } elseif ($action === 'login') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
         
-        if (checkLockStatus($pdo, $email, 'login_fail')) throw new Exception("Has excedido intentos. Espera " . LOCKOUT_TIME_MINUTES . " mins.");
+        if (checkLockStatus($pdo, $email, 'login_fail')) throw new Exception(trans('auth.errors.too_many_attempts') . " " . LOCKOUT_TIME_MINUTES . " mins.");
         
         $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
         $stmt->execute([$email]);
@@ -205,41 +210,30 @@ try {
         
         if ($user && password_verify($password, $user['password'])) {
             
-            // [NUEVO] VERIFICAR SI LA SUSPENSIÓN YA EXPIRÓ
-            // Comprobamos si la cuenta está suspendida y si ya pasó la fecha de fin.
             if ($user['account_status'] === 'suspended' && !empty($user['suspension_end_date'])) {
                 $endDate = new DateTime($user['suspension_end_date']);
                 $now = new DateTime();
                 
                 if ($now > $endDate) {
-                    // La fecha ya pasó: Reactivamos al usuario en la BD
                     $stmtReactivate = $pdo->prepare("UPDATE users SET account_status = 'active', suspension_reason = NULL, suspension_end_date = NULL WHERE id = ?");
                     $stmtReactivate->execute([$user['id']]);
-                    
-                    // Actualizamos la variable local $user para que pase la validación siguiente
                     $user['account_status'] = 'active';
                 }
             }
 
-            // [MODIFICADO] Verificación Detallada de Estado
             if (isset($user['account_status']) && $user['account_status'] !== 'active') {
-                
                 $responseData = [
                     'success' => false, 
                     'is_account_issue' => true, 
                     'status_type' => $user['account_status']
                 ];
-
-                // Si está suspendido, agregamos los detalles para mostrarlos en status-page
                 if ($user['account_status'] === 'suspended') {
                     $responseData['reason'] = $user['suspension_reason'];
-                    
                     if ($user['suspension_end_date']) {
                         $end = new DateTime($user['suspension_end_date']);
                         $responseData['until'] = $end->format('d/m/Y');
                     }
                 }
-
                 echo json_encode($responseData);
                 exit;
             }
@@ -248,29 +242,29 @@ try {
                 if (!isset($_SESSION['temp_login_2fa'])) $_SESSION['temp_login_2fa'] = [];
                 $_SESSION['temp_login_2fa']['user_id'] = $user['id'];
                 $_SESSION['temp_login_2fa']['email'] = $user['email'];
-                $response = ['success' => true, 'require_2fa' => true, 'message' => 'Verificación de App requerida', 'masked_email' => 'tu aplicación de autenticación'];
+                $response = ['success' => true, 'require_2fa' => true, 'message' => trans('auth.2fa_required'), 'masked_email' => 'tu aplicación de autenticación'];
             } else {
                 clearFailedAttempts($pdo, $email);
                 session_regenerate_id(true);
                 set_user_session($pdo, $user); 
-                $response = ['success' => true, 'message' => 'Login correcto'];
+                $response = ['success' => true, 'message' => trans('auth.login_success')];
             }
         } else {
             logFailedAttempt($pdo, $email, 'login_fail');
-            throw new Exception('Credenciales incorrectas.');
+            throw new Exception(trans('auth.errors.invalid_credentials'));
         }
 
     } elseif ($action === 'login_2fa_verify') {
         $inputCode = trim($data['code'] ?? '');
         $cleanCode = str_replace(['-', ' '], '', $inputCode);
-        if (empty($_SESSION['temp_login_2fa']['user_id'])) throw new Exception("Sesión expirada. Vuelve a iniciar login.");
+        if (empty($_SESSION['temp_login_2fa']['user_id'])) throw new Exception(trans('global.session_expired'));
         $userId = $_SESSION['temp_login_2fa']['user_id'];
         $email = $_SESSION['temp_login_2fa']['email'];
-        if (checkLockStatus($pdo, $email, 'login_2fa_fail')) throw new Exception("Muchos intentos fallidos. Espera unos minutos.");
+        if (checkLockStatus($pdo, $email, 'login_2fa_fail')) throw new Exception(trans('auth.errors.too_many_attempts'));
         $stmt = $pdo->prepare("SELECT id, uuid, username, email, avatar, role, two_factor_secret, backup_codes FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $user = $stmt->fetch();
-        if (!$user) throw new Exception("Usuario no encontrado.");
+        if (!$user) throw new Exception(trans('admin.error.user_not_found'));
         $secret = $user['two_factor_secret'];
         $backupCodes = json_decode($user['backup_codes'] ?? '[]', true);
         if (!is_array($backupCodes)) $backupCodes = [];
@@ -301,10 +295,10 @@ try {
             unset($user['backup_codes']);
             set_user_session($pdo, $user); 
             unset($_SESSION['temp_login_2fa']);
-            $response = ['success' => true, 'message' => 'Autenticación completada'];
+            $response = ['success' => true, 'message' => trans('auth.2fa.success_alert')];
         } else {
             logFailedAttempt($pdo, $email, 'login_2fa_fail');
-            throw new Exception("Código incorrecto.");
+            throw new Exception(trans('auth.2fa.invalid_code'));
         }
 
     } elseif ($action === 'logout') {
@@ -321,8 +315,8 @@ try {
     
     } elseif ($action === 'recovery_step_1') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
-        if (empty($email) || !is_allowed_domain($email)) throw new Exception('Correo con formato inválido o dominio no permitido.');
-        if (checkLockStatus($pdo, $email, 'recovery_fail')) throw new Exception("Demasiados intentos. Por favor espera " . LOCKOUT_TIME_MINUTES . " minutos.");
+        if (empty($email) || !is_allowed_domain($email)) throw new Exception(trans('auth.errors.email_invalid_domain'));
+        if (checkLockStatus($pdo, $email, 'recovery_fail')) throw new Exception(trans('auth.errors.too_many_attempts') . " " . LOCKOUT_TIME_MINUTES . " m.");
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
         if ($stmt->rowCount() > 0) {
@@ -335,26 +329,26 @@ try {
             $host = $_SERVER['HTTP_HOST']; 
             $base = '/ProjectAurora/'; 
             $link = $protocol . $host . $base . 'reset-password?token=' . $token;
-            logger("[PRUEBA - ELIMINAR EN PROD] Recuperación para $email | Link: $link | Hash guardado: $tokenHash");
-            $response = ['success' => true, 'message' => 'Se ha enviado un enlace de recuperación a tu correo.'];
+            logger("[PRUEBA] Recuperación para $email | Link: $link | Hash guardado: $tokenHash");
+            $response = ['success' => true, 'message' => trans('auth.recovery.link_sent_alert')];
         } else {
             logFailedAttempt($pdo, $email, 'recovery_fail');
-            throw new Exception('Este correo no se encuentra registrado en nuestra base de datos.');
+            throw new Exception(trans('auth.errors.invalid_credentials'));
         }
 
     } elseif ($action === 'recovery_final') {
         $token = trim($data['token'] ?? '');
         $newPass = $data['password'] ?? '';
         $confirmPass = $data['password_confirm'] ?? '';
-        if (empty($token) || empty($newPass)) throw new Exception('Datos incompletos.');
-        if ($newPass !== $confirmPass) throw new Exception('Las contraseñas no coinciden.');
-        if (strlen($newPass) < 8) throw new Exception('La contraseña debe tener al menos 8 caracteres.');
+        if (empty($token) || empty($newPass)) throw new Exception(trans('auth.errors.all_required'));
+        if ($newPass !== $confirmPass) throw new Exception(trans('auth.errors.pass_mismatch'));
+        if (strlen($newPass) < 8) throw new Exception(trans('auth.errors.password_short'));
         $tokenHash = hash('sha256', $token);
         $sql = "SELECT identifier FROM verification_codes WHERE code = ? AND code_type = 'recovery' AND expires_at > NOW()";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$tokenHash]);
         $row = $stmt->fetch();
-        if (!$row) throw new Exception('El enlace es inválido o ha expirado.');
+        if (!$row) throw new Exception(trans('auth.recovery.invalid_link_title'));
         $email = $row['identifier'];
         $stmtUser = $pdo->prepare("SELECT id, password FROM users WHERE email = ?");
         $stmtUser->execute([$email]);
@@ -371,27 +365,15 @@ try {
             }
             $pdo->prepare("DELETE FROM verification_codes WHERE code = ?")->execute([$tokenHash]);
             clearFailedAttempts($pdo, $email);
-            $response = ['success' => true, 'message' => 'Contraseña actualizada. Inicia sesión.'];
+            $response = ['success' => true, 'message' => trans('auth.recovery.pass_updated')];
         } else {
-            throw new Exception('Error actualizando base de datos.');
+            throw new Exception(trans('global.error_connection'));
         }
     }
 
 } catch (Exception $e) {
     $realErrorMessage = $e->getMessage();
-    if (strpos($realErrorMessage, 'espera') === false) {
-        $prefix = (strpos($realErrorMessage, 'SQLSTATE') !== false) ? '[DB ERROR] ' : '[LOGIC] ';
-        logger($prefix . $realErrorMessage);
-    }
-    if (strpos($realErrorMessage, 'SQLSTATE') !== false) {
-        if (strpos($realErrorMessage, 'Duplicate entry') !== false) {
-            $response['message'] = 'El nombre de usuario o correo ya está registrado.';
-        } else {
-            $response['message'] = 'Ocurrió un error interno en el servidor.';
-        }
-    } else {
-        $response['message'] = $realErrorMessage;
-    }
+    $response['message'] = $realErrorMessage;
 }
 
 echo json_encode($response);

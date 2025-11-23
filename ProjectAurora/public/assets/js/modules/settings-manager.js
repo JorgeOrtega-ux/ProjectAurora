@@ -1,6 +1,6 @@
 // public/assets/js/modules/settings-manager.js
 
-import { changeLanguage } from '../core/i18n-manager.js';
+import { changeLanguage, t } from '../core/i18n-manager.js';
 import { updateTheme } from '../core/theme-manager.js'; 
 
 const API_SETTINGS = (window.BASE_PATH || '/ProjectAurora/') + 'api/settings_handler.php';
@@ -23,7 +23,6 @@ export function initSettingsManager() {
     const isChangePass = qs('[data-section="settings/change-password"]');
     const isSessions = qs('[data-section="settings/sessions"]');
     const isDeleteAccount = qs('[data-section="settings/delete-account"]');
-    // [NUEVO] Detección de la sección 2FA
     const is2FA = qs('[data-section="settings/2fa-setup"]');
     
     if (isProfile) {
@@ -44,7 +43,6 @@ export function initSettingsManager() {
         initDeleteAccountLogic();
     }
 
-    // [NUEVO] Inicialización de lógica 2FA
     if (is2FA) {
         initTwoFactorLogic();
     }
@@ -146,11 +144,11 @@ function initDeleteAccountLogic() {
         updateCardError(card, '', false);
 
         if (!password) {
-            updateCardError(card, 'Por favor, ingresa tu contraseña para confirmar.');
+            updateCardError(card, t('settings.delete_account.password_label')); 
             return;
         }
 
-        if (!confirm('ADVERTENCIA FINAL: Esta acción no se puede deshacer. ¿Borrar cuenta permanentemente?')) {
+        if (!confirm(t('settings.delete_account.warning_text'))) {
             return;
         }
 
@@ -171,11 +169,11 @@ function initDeleteAccountLogic() {
                 window.location.href = (window.BASE_PATH || '/ProjectAurora/') + 'status-page?status=deleted';
             } else {
                 updateCardError(card, data.message);
-                setLoading(confirmBtn, false, 'Eliminar mi cuenta permanentemente');
+                setLoading(confirmBtn, false, t('settings.delete_account.confirm_btn'));
             }
         } catch (e) {
-            updateCardError(card, 'Error de conexión.');
-            setLoading(confirmBtn, false, 'Eliminar mi cuenta permanentemente');
+            updateCardError(card, t('global.error_connection'));
+            setLoading(confirmBtn, false, t('settings.delete_account.confirm_btn'));
         }
     };
 }
@@ -213,14 +211,14 @@ async function initSessionsLogic() {
             container.innerHTML = `<p style="text-align:center; color:#d32f2f;">${data.message}</p>`;
         }
     } catch (e) {
-        container.innerHTML = `<p style="text-align:center; color:#666;">Error de conexión.</p>`;
+        container.innerHTML = `<p style="text-align:center; color:#666;">${t('global.error_connection')}</p>`;
     }
 
     container.addEventListener('click', async (e) => {
         const btn = e.target.closest('[data-action="revoke-single"]');
         if (btn) {
             const sessionIdDb = btn.dataset.id;
-            if (!confirm('¿Cerrar sesión en este dispositivo?')) return;
+            if (!confirm(t('settings.sessions.logout_confirm') || '¿Cerrar sesión?')) return;
 
             btn.disabled = true; 
             btn.innerHTML = '<div class="small-spinner"></div>';
@@ -236,11 +234,11 @@ async function initSessionsLogic() {
                     const card = btn.closest('.component-card');
                     card.style.opacity = '0';
                     setTimeout(() => card.remove(), 300);
-                    if (window.alertManager) window.alertManager.showAlert('Sesión cerrada.', 'success');
+                    if (window.alertManager) window.alertManager.showAlert(t('settings.sessions.session_revoked') || 'Sesión cerrada.', 'success');
                 } else {
                     if (window.alertManager) window.alertManager.showAlert(data.message, 'error');
                     btn.disabled = false;
-                    btn.innerHTML = 'Revocar';
+                    btn.innerHTML = t('global.delete');
                 }
             } catch (e) {
                 console.error(e);
@@ -250,7 +248,7 @@ async function initSessionsLogic() {
 
     if (revokeAllBtn) {
         revokeAllBtn.onclick = async () => {
-            if (!confirm('¿Estás seguro de cerrar todas las demás sesiones?')) return;
+            if (!confirm(t('settings.sessions.logout_all_confirm'))) return;
             setLoading(revokeAllBtn, true);
             try {
                 const res = await fetch(API_SETTINGS, {
@@ -260,32 +258,32 @@ async function initSessionsLogic() {
                 });
                 const data = await res.json();
                 if (data.success) {
-                    if (window.alertManager) window.alertManager.showAlert('Sesiones cerradas.', 'success');
+                    if (window.alertManager) window.alertManager.showAlert(t('settings.sessions.all_revoked') || 'Sesiones cerradas.', 'success');
                     initSessionsLogic();
                 } else {
                     if (window.alertManager) window.alertManager.showAlert(data.message, 'error');
                 }
             } catch (e) {}
-            setLoading(revokeAllBtn, false, 'Cerrar todas las demás sesiones');
+            setLoading(revokeAllBtn, false, t('settings.sessions.logout_all'));
         };
     }
 }
 
 function renderSessionsList(sessions, container) {
     if (sessions.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:#666;">No se encontraron sesiones.</p>';
+        container.innerHTML = `<p style="text-align:center; color:#666;">${t('settings.sessions.empty')}</p>`;
         return;
     }
 
     let html = '';
     sessions.forEach(sess => {
         const statusBadge = sess.is_current 
-            ? `<span style="background:#e8f5e9; color:#2e7d32; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; margin-left:8px;">ACTUAL</span>` 
+            ? `<span style="background:#e8f5e9; color:#2e7d32; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; margin-left:8px;">${t('settings.sessions.current_device')}</span>` 
             : '';
         
         const revokeBtn = sess.is_current 
             ? '' 
-            : `<button class="component-button" data-action="revoke-single" data-id="${sess.id}" style="color:#d32f2f; border-color:#ffcdd2;">Cerrar sesión</button>`;
+            : `<button class="component-button" data-action="revoke-single" data-id="${sess.id}" style="color:#d32f2f; border-color:#ffcdd2;">${t('global.delete')}</button>`;
 
         html += `
         <div class="component-card component-card--grouped" style="margin-bottom:16px;">
@@ -299,7 +297,7 @@ function renderSessionsList(sessions, container) {
                             ${sess.os} - ${sess.browser} ${statusBadge}
                         </h2>
                         <p class="component-card__description">
-                            ${sess.ip} • Última vez: ${new Date(sess.last_active).toLocaleString()}
+                            ${sess.ip} • ${t('settings.sessions.last_active')}: ${new Date(sess.last_active).toLocaleString()}
                         </p>
                     </div>
                 </div>
@@ -335,7 +333,7 @@ function initChangePasswordLogic() {
     verifyBtn.onclick = async () => {
         const pass = currentPassInput.value;
         if (!pass) {
-            updateCardError(step1Card, 'Ingresa tu contraseña actual.');
+            updateCardError(step1Card, t('settings.change_password.current_desc'));
             return;
         }
 
@@ -366,7 +364,7 @@ function initChangePasswordLogic() {
                 updateCardError(step1Card, data.message);
             }
         } catch (e) {
-            updateCardError(step1Card, 'Error de conexión.');
+            updateCardError(step1Card, t('global.error_connection'));
             console.error(e);
         }
         setLoading(verifyBtn, false);
@@ -380,12 +378,12 @@ function initChangePasswordLogic() {
         updateCardError(step2Card, '', false);
 
         if (newPass.length < 8) {
-            updateCardError(step2Card, 'La contraseña debe tener al menos 8 caracteres.');
+            updateCardError(step2Card, t('auth.errors.password_short'));
             return;
         }
 
         if (newPass !== confirmPass) {
-            updateCardError(step2Card, 'Las contraseñas no coinciden.');
+            updateCardError(step2Card, t('auth.errors.pass_mismatch'));
             return;
         }
 
@@ -413,7 +411,7 @@ function initChangePasswordLogic() {
                 updateCardError(step2Card, data.message);
             }
         } catch (e) {
-            updateCardError(step2Card, 'Error de conexión.');
+            updateCardError(step2Card, t('global.error_connection'));
         }
         setLoading(saveBtn, false);
     };
@@ -453,7 +451,7 @@ function initBooleanPreferencesLogic() {
                 const data = await res.json();
                 
                 if (data.success) {
-                    if (window.alertManager) window.alertManager.showAlert('Preferencia actualizada.', 'success');
+                    if (window.alertManager) window.alertManager.showAlert(t('global.save_status'), 'success');
                 } else {
                     target.checked = !isChecked; 
                     updateCardError(card, data.message);
@@ -461,7 +459,7 @@ function initBooleanPreferencesLogic() {
             } catch (err) {
                 target.checked = !isChecked;
                 console.error(err);
-                updateCardError(card, 'Error de conexión');
+                updateCardError(card, t('global.error_connection'));
             } finally {
                 if (toggleWrapper) toggleWrapper.classList.remove('disabled-interactive');
             }
@@ -520,7 +518,7 @@ function initPreferencesLogic() {
             }
         } catch (err) {
             console.error(err);
-            updateCardError(card, 'Error de conexión');
+            updateCardError(card, t('global.error_connection'));
         } finally {
             if (wrapper) wrapper.classList.remove('disabled-interactive');
             else module.classList.remove('disabled-interactive');
@@ -529,7 +527,7 @@ function initPreferencesLogic() {
 }
 
 // ========================================================
-// LÓGICA PERFIL (Avatar, Username, Email)
+// LÓGICA PERFIL
 // ========================================================
 
 function initAvatarLogic() {
@@ -561,8 +559,8 @@ function initAvatarLogic() {
     elements.fileInput.onchange = function(e) {
         const file = this.files[0];
         if (!file) return;
-        if (file.size > 2097152) { updateCardError(cardItem, 'El archivo es demasiado grande (Máx. 2MB).'); this.value = ''; return; }
-        if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) { updateCardError(cardItem, 'Formato no válido.'); this.value = ''; return; }
+        if (file.size > 2097152) { updateCardError(cardItem, t('settings.avatar.error_size')); this.value = ''; return; }
+        if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) { updateCardError(cardItem, t('settings.avatar.error_format')); this.value = ''; return; }
         updateCardError(cardItem, '', false);
         const reader = new FileReader();
         reader.onload = function(evt) {
@@ -599,11 +597,11 @@ function initAvatarLogic() {
                 updateHeaderAvatar(newSrc);
                 toggleAvatarActions('custom');
             } else { updateCardError(cardItem, data.message); }
-        } catch (e) { updateCardError(cardItem, 'Error de conexión.'); }
-        setLoading(elements.saveBtn, false, 'Guardar');
+        } catch (e) { updateCardError(cardItem, t('global.error_connection')); }
+        setLoading(elements.saveBtn, false, t('global.save'));
     };
     elements.removeBtn.onclick = async () => {
-        if (!confirm('¿Restablecer avatar por defecto?')) return;
+        if (!confirm(t('settings.avatar.reset_confirm') || '¿Restablecer avatar?')) return;
         setLoading(elements.removeBtn, true);
         updateCardError(cardItem, '', false);
         try {
@@ -620,8 +618,8 @@ function initAvatarLogic() {
                 updateHeaderAvatar(newSrc);
                 toggleAvatarActions('default'); 
             } else { updateCardError(cardItem, data.message); }
-        } catch (e) { updateCardError(cardItem, 'Error de conexión.'); }
-        setLoading(elements.removeBtn, false, 'Eliminar');
+        } catch (e) { updateCardError(cardItem, t('global.error_connection')); }
+        setLoading(elements.removeBtn, false, t('global.delete'));
     };
     function toggleAvatarActions(mode) {
         if(elements.actionsDefault) elements.actionsDefault.className = (mode === 'default') ? 'active' : 'disabled';
@@ -652,14 +650,14 @@ function initUsernameLogic() {
         const newVal = els.input.value.trim();
         updateCardError(itemSection, '', false);
         if (newVal === originalUsername) { toggleMode(els, false); return; }
-        if (newVal.length < 8 || newVal.length > 32) { updateCardError(itemSection, 'El nombre de usuario debe tener entre 8 y 32 caracteres.'); return; }
+        if (newVal.length < 8 || newVal.length > 32) { updateCardError(itemSection, t('auth.errors.username_invalid')); return; }
         setLoading(els.saveBtn, true);
         try {
             const res = await fetch(API_SETTINGS, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }, body: JSON.stringify({ action: 'update_username', username: newVal }) });
             const data = await res.json();
             if (data.success) { if (window.alertManager) window.alertManager.showAlert(data.message, 'success'); originalUsername = data.new_username; els.display.textContent = data.new_username; els.input.value = data.new_username; toggleMode(els, false); } else { updateCardError(itemSection, data.message || 'Error al actualizar.'); }
-        } catch (error) { updateCardError(itemSection, 'Error de conexión con el servidor.'); }
-        setLoading(els.saveBtn, false, 'Guardar');
+        } catch (error) { updateCardError(itemSection, t('global.error_connection')); }
+        setLoading(els.saveBtn, false, t('global.save'));
     };
 }
 
@@ -686,23 +684,22 @@ function initEmailLogic() {
         updateCardError(itemSection, '', false);
         if (newVal === originalEmail) { toggleMode(els, false); return; }
         const regex = /^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i;
-        if (!regex.test(newVal)) { updateCardError(itemSection, 'Dominio no permitido.'); return; }
+        if (!regex.test(newVal)) { updateCardError(itemSection, t('auth.errors.email_invalid_domain')); return; }
         setLoading(els.saveBtn, true);
         try {
             const res = await fetch(API_SETTINGS, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }, body: JSON.stringify({ action: 'update_email', email: newVal }) });
             const data = await res.json();
             if (data.success) { if (window.alertManager) window.alertManager.showAlert(data.message, 'success'); originalEmail = data.new_email; els.display.textContent = data.new_email; els.input.value = data.new_email; toggleMode(els, false); } else { updateCardError(itemSection, data.message || 'Error al actualizar.'); }
-        } catch (error) { updateCardError(itemSection, 'Error de conexión con el servidor.'); }
-        setLoading(els.saveBtn, false, 'Guardar');
+        } catch (error) { updateCardError(itemSection, t('global.error_connection')); }
+        setLoading(els.saveBtn, false, t('global.save'));
     };
 }
 
 // ========================================================
-// [NUEVO] LÓGICA 2FA INTEGRADA
+// LÓGICA 2FA
 // ========================================================
 
 function initTwoFactorLogic() {
-    // --- Listener de recarga (Botón Cancelar) ---
     document.body.addEventListener('click', (e) => {
         if (e.target.closest('[data-action="reload-page"]')) {
             location.reload();
@@ -726,11 +723,10 @@ function initTwoFactorLogic() {
 
     let tempSecret = '';
 
-    // 1. VERIFICAR CONTRASEÑA (Activar)
     if (els.verifyBtn) {
         els.verifyBtn.onclick = async () => {
             const password = els.passInput.value;
-            if (!password) return alert('Ingresa tu contraseña');
+            if (!password) return alert(t('settings.security.password_required') || 'Ingresa tu contraseña');
 
             setLoading(els.verifyBtn, true);
 
@@ -746,16 +742,15 @@ function initTwoFactorLogic() {
                     await generateSecret(els);
                 } else {
                     if(window.alertManager) window.alertManager.showAlert(data.message, 'error');
-                    setLoading(els.verifyBtn, false, 'Continuar');
+                    setLoading(els.verifyBtn, false, t('global.continue'));
                 }
             } catch (e) {
                 console.error(e);
-                setLoading(els.verifyBtn, false, 'Continuar');
+                setLoading(els.verifyBtn, false, t('global.continue'));
             }
         };
     }
 
-    // 2. CONFIRMAR CÓDIGO Y ACTIVAR
     if (els.confirmBtn) {
         els.confirmBtn.onclick = async () => {
             const code = els.codeInput.value.trim();
@@ -783,24 +778,23 @@ function initTwoFactorLogic() {
                     els.step3.classList.remove('disabled');
                     els.step3.classList.add('active');
                     
-                    if(window.alertManager) window.alertManager.showAlert('2FA Activado correctamente', 'success');
+                    if(window.alertManager) window.alertManager.showAlert(t('settings.2fa.success_title'), 'success');
                 } else {
                     if(window.alertManager) window.alertManager.showAlert(data.message, 'error');
-                    setLoading(els.confirmBtn, false, 'Activar 2FA');
+                    setLoading(els.confirmBtn, false, t('settings.2fa.activate_btn'));
                 }
             } catch (e) {
-                setLoading(els.confirmBtn, false, 'Activar 2FA');
+                setLoading(els.confirmBtn, false, t('settings.2fa.activate_btn'));
             }
         };
     }
 
-    // 3. DESACTIVAR 2FA
     if (els.disableBtn) {
         els.disableBtn.onclick = async () => {
             const password = els.disablePass.value;
-            if (!password) return alert('Ingresa tu contraseña para confirmar');
+            if (!password) return alert(t('settings.security.password_required') || 'Ingresa tu contraseña');
 
-            if (!confirm('¿Estás seguro de desactivar la autenticación en dos pasos? Tu cuenta será menos segura.')) return;
+            if (!confirm(t('settings.2fa.disable_warning'))) return;
 
             setLoading(els.disableBtn, true);
 
@@ -822,16 +816,15 @@ function initTwoFactorLogic() {
                     }, 1500);
                 } else {
                     if(window.alertManager) window.alertManager.showAlert(data.message, 'error');
-                    setLoading(els.disableBtn, false, 'Desactivar 2FA');
+                    setLoading(els.disableBtn, false, t('settings.2fa.disable_btn'));
                 }
             } catch (e) {
                 console.error(e);
-                setLoading(els.disableBtn, false, 'Desactivar 2FA');
+                setLoading(els.disableBtn, false, t('settings.2fa.disable_btn'));
             }
         };
     }
 
-    // Helpers internos de 2FA
     async function generateSecret(els) {
         try {
             const res = await fetch(API_SETTINGS, {
@@ -844,8 +837,6 @@ function initTwoFactorLogic() {
             if (data.success) {
                 tempSecret = data.secret;
                 els.manualText.textContent = data.secret;
-    
-                // Limpiar contenedor previo
                 els.qrContainer.innerHTML = '';
                 
                 const uri = `otpauth://totp/ProjectAurora:${data.username}?secret=${data.secret}&issuer=ProjectAurora`;

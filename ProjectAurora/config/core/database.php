@@ -50,8 +50,20 @@ try {
     // $pdo->exec("SET time_zone = '" . date('P') . "'");
     
 } catch (\PDOException $e) {
-    // En producción no muestres el error real
-    // error_log($e->getMessage()); // Descomentar para logs del servidor
-    die(json_encode(['success' => false, 'message' => 'Error de conexión a base de datos']));
+    // [CORREGIDO] Intento de carga segura de i18n para mostrar error localizado
+    if (!class_exists('I18n')) {
+        $i18nPath = __DIR__ . '/../../includes/logic/i18n_server.php';
+        if (file_exists($i18nPath)) {
+            require_once $i18nPath;
+            // Carga mínima de idioma (no tenemos sesión garantizada aquí, usamos detección o default)
+            require_once __DIR__ . '/../helpers/utilities.php'; 
+            $lang = detect_browser_language() ?? 'es-latam';
+            I18n::load($lang);
+        }
+    }
+    
+    $errorMsg = function_exists('trans') ? trans('global.error_connection') : 'Error de conexión a base de datos';
+    
+    die(json_encode(['success' => false, 'message' => $errorMsg]));
 }
 ?>

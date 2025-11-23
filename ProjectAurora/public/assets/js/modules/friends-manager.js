@@ -1,4 +1,6 @@
-// public/assets/js/friends-manager.js
+// public/assets/js/modules/friends-manager.js
+
+import { t } from '../core/i18n-manager.js';
 
 const API_FRIENDS = (window.BASE_PATH || '/ProjectAurora/') + 'api/friends_handler.php';
 
@@ -12,13 +14,10 @@ export class FriendsManager {
         this.initSocketListener();
     }
 
-    // --- LISTENERS ---
-
     initSocketListener() {
         document.addEventListener('socket-message', (e) => {
             const { type, payload } = e.detail;
 
-            // Actualizar botones en tiempo real según eventos del socket
             if (type === 'friend_request') {
                 this.updateUIButtons(payload.sender_id, 'request_received');
             }
@@ -35,7 +34,6 @@ export class FriendsManager {
         document.body.addEventListener('click', async (e) => {
             const target = e.target;
             
-            // 1. Enviar Solicitud
             const addBtn = target.closest('.btn-add-friend');
             if (addBtn && !target.closest('.btn-remove-friend') && !target.closest('.btn-cancel-request') && !addBtn.disabled) {
                 e.preventDefault();
@@ -43,7 +41,6 @@ export class FriendsManager {
                 return; 
             }
 
-            // 2. Cancelar Solicitud
             const cancelBtn = target.closest('.btn-cancel-request');
             if (cancelBtn) {
                 e.preventDefault();
@@ -51,17 +48,16 @@ export class FriendsManager {
                 return; 
             }
 
-            // 3. Eliminar Amigo
             const removeBtn = target.closest('.btn-remove-friend');
             if (removeBtn) {
                 e.preventDefault();
-                if(confirm('¿Seguro que quieres eliminar a este amigo?')) {
+                // Usamos confirmación traducida o genérica
+                if(confirm(t('search.actions.remove_confirm') || '¿Seguro que quieres eliminar a este amigo?')) {
                     await this.removeFriend(removeBtn.dataset.uid, removeBtn);
                 }
                 return;
             }
 
-            // 4. Aceptar Solicitud (En perfil o notificación)
             const acceptBtn = target.closest('.btn-accept-request') || target.closest('[data-action="accept-req"]');
             if (acceptBtn) {
                 e.preventDefault();
@@ -70,7 +66,6 @@ export class FriendsManager {
                 return;
             }
 
-            // 5. Rechazar Solicitud (En perfil o notificación)
             const declineBtn = target.closest('.btn-decline-request') || target.closest('[data-action="decline-req"]');
             if (declineBtn) {
                 e.preventDefault();
@@ -81,19 +76,17 @@ export class FriendsManager {
         });
     }
 
-    // --- ACCIONES DE API ---
-
     async sendFriendRequest(targetId, btn) {
         this.setLoading(btn, true);
         try {
             const res = await this.fetchApi({ action: 'send_request', target_id: targetId });
             if (res.success) {
-                if (window.alertManager) window.alertManager.showAlert('Solicitud enviada', 'success');
+                if (window.alertManager) window.alertManager.showAlert(t('notifications.request_sent'), 'success');
                 this.updateUIButtons(targetId, 'request_sent');
             } else {
-                this.handleError(res, btn, 'Agregar a amigos');
+                this.handleError(res, btn, t('search.actions.add'));
             }
-        } catch (e) { this.handleError(null, btn, 'Agregar a amigos'); }
+        } catch (e) { this.handleError(null, btn, t('search.actions.add')); }
     }
 
     async cancelRequest(targetId, btn) {
@@ -101,13 +94,13 @@ export class FriendsManager {
         try {
             const res = await this.fetchApi({ action: 'cancel_request', target_id: targetId });
             if (res.success) {
-                if (window.alertManager) window.alertManager.showAlert('Solicitud cancelada', 'info');
+                if (window.alertManager) window.alertManager.showAlert(t('notifications.request_cancelled'), 'info');
                 this.updateUIButtons(targetId, 'none');
-                this.triggerNotificationReload(); // Para limpiar notificaciones si existieran
+                this.triggerNotificationReload(); 
             } else {
-                this.handleError(res, btn, 'Cancelar solicitud');
+                this.handleError(res, btn, t('search.actions.cancel'));
             }
-        } catch (e) { this.handleError(null, btn, 'Cancelar solicitud'); }
+        } catch (e) { this.handleError(null, btn, t('search.actions.cancel')); }
     }
 
     async removeFriend(targetId, btn) {
@@ -115,13 +108,13 @@ export class FriendsManager {
         try {
             const res = await this.fetchApi({ action: 'remove_friend', target_id: targetId });
             if (res.success) {
-                if (window.alertManager) window.alertManager.showAlert('Amigo eliminado', 'info');
+                if (window.alertManager) window.alertManager.showAlert(t('notifications.friend_removed'), 'info');
                 this.updateUIButtons(targetId, 'none');
                 this.triggerNotificationReload(); 
             } else {
-                this.handleError(res, btn, 'Eliminar amigo');
+                this.handleError(res, btn, t('search.actions.remove'));
             }
-        } catch (e) { this.handleError(null, btn, 'Eliminar amigo'); }
+        } catch (e) { this.handleError(null, btn, t('search.actions.remove')); }
     }
 
     async respondRequest(actionType, btn, senderId) {
@@ -132,13 +125,13 @@ export class FriendsManager {
         try {
             const res = await this.fetchApi({ action: actionType, sender_id: senderId });
             if (res.success) {
-                this.triggerNotificationReload(); // Importante: actualiza la lista de notificaciones
+                this.triggerNotificationReload(); 
 
                 if (actionType === 'accept_request') {
-                    if (window.alertManager) window.alertManager.showAlert('¡Ahora son amigos!', 'success');
+                    if (window.alertManager) window.alertManager.showAlert(t('notifications.now_friends'), 'success');
                     this.updateUIButtons(senderId, 'friends');
                 } else {
-                    if (window.alertManager) window.alertManager.showAlert('Solicitud rechazada', 'info');
+                    if (window.alertManager) window.alertManager.showAlert(t('notifications.request_declined'), 'info');
                     this.updateUIButtons(senderId, 'none');
                 }
             } else {
@@ -152,8 +145,6 @@ export class FriendsManager {
         }
     }
 
-    // --- HELPERS UI ---
-
     updateUIButtons(userId, state) {
         const container = document.getElementById(`actions-${userId}`);
         if (!container) return;
@@ -161,20 +152,20 @@ export class FriendsManager {
         let html = '';
         switch (state) {
             case 'friends':
-                html = `<button class="btn-add-friend btn-remove-friend" data-uid="${userId}">Eliminar amigo</button>`;
+                html = `<button class="btn-add-friend btn-remove-friend" data-uid="${userId}">${t('search.actions.remove')}</button>`;
                 break;
             case 'request_sent':
-                html = `<button class="btn-add-friend btn-cancel-request" data-uid="${userId}">Cancelar solicitud</button>`;
+                html = `<button class="btn-add-friend btn-cancel-request" data-uid="${userId}">${t('search.actions.cancel')}</button>`;
                 break;
             case 'request_received':
                 html = `
-                    <button class="btn-accept-request" data-uid="${userId}">Aceptar</button>
-                    <button class="btn-decline-request" data-uid="${userId}">Rechazar</button>
+                    <button class="btn-accept-request" data-uid="${userId}">${t('search.actions.accept')}</button>
+                    <button class="btn-decline-request" data-uid="${userId}">${t('search.actions.decline')}</button>
                 `;
                 break;
             case 'none':
             default:
-                html = `<button class="btn-add-friend" data-uid="${userId}">Agregar a amigos</button>`;
+                html = `<button class="btn-add-friend" data-uid="${userId}">${t('search.actions.add')}</button>`;
                 break;
         }
         container.innerHTML = html;

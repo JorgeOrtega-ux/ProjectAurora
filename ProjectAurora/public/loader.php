@@ -21,7 +21,8 @@ $section = str_replace(['..', '.php'], '', $section);
 
 if (!isset($_SESSION['user_id']) && !in_array($section, $publicSections)) {
     http_response_code(401);
-    exit('<div style="padding:20px; text-align:center">Sesión expirada. Recarga la página.</div>');
+    // [CORREGIDO] Mensaje traducido
+    exit('<div style="padding:20px; text-align:center">' . trans('global.session_expired') . '</div>');
 }
 
 // 3. Mapa COMPLETO de rutas
@@ -56,7 +57,7 @@ $fileMap = [
     'admin/users'       => 'admin/users',
     'admin/user-status' => 'admin/user-status', 
     'admin/user-manage' => 'admin/user-manage',
-    'admin/user-history'=> 'admin/user-history', // <--- AQUI ESTÁ EL MAPEO NUEVO
+    'admin/user-history'=> 'admin/user-history',
     'admin/backups'     => 'admin/backups',
     'admin/server'      => 'admin/server',
     
@@ -79,6 +80,7 @@ if ($realFile && file_exists($realFile)) {
     include $realFile;
 } else {
     http_response_code(404);
-    echo '<div style="padding:20px; text-align:center;">Archivo no encontrado en el servidor.</div>';
+    // [CORREGIDO] Mensaje traducido
+    echo '<div style="padding:20px; text-align:center;">' . trans('system.file_not_found') . '</div>';
 }
 ?>

@@ -1,7 +1,6 @@
 <?php
 // api/notifications_handler.php
 
-// Configuración de logs específica para notificaciones
 $logDir = __DIR__ . '/../logs';
 $logFile = $logDir . '/notifications_error.log';
 if (!file_exists($logDir)) { mkdir($logDir, 0777, true); }
@@ -15,31 +14,32 @@ date_default_timezone_set('America/Matamoros');
 
 require_once '../config/core/database.php';
 require_once '../config/helpers/utilities.php';
+require_once '../includes/logic/i18n_server.php'; // [NUEVO]
+
+// [NUEVO] Cargar idioma
+$lang = $_SESSION['user_lang'] ?? detect_browser_language() ?? 'es-latam';
+I18n::load($lang);
 
 $data = json_decode(file_get_contents('php://input'), true);
 $action = $data['action'] ?? '';
 $csrfToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $data['csrf_token'] ?? '';
 
-// Validación CSRF
 if (!verify_csrf_token($csrfToken)) {
     http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Error de seguridad (CSRF).']);
+    echo json_encode(['success' => false, 'message' => trans('global.error_csrf')]);
     exit;
 }
 
-// Validación de Sesión
 if (!isset($_SESSION['user_id'])) {
-    echo json_encode(['success' => false, 'message' => 'Sesión expirada.']);
+    echo json_encode(['success' => false, 'message' => trans('global.session_expired')]);
     exit;
 }
 
 $currentUserId = $_SESSION['user_id'];
-$response = ['success' => false, 'message' => 'Acción no válida'];
+$response = ['success' => false, 'message' => trans('global.action_invalid')];
 
 try {
-    // --- OBTENER NOTIFICACIONES ---
     if ($action === 'get_notifications') {
-        // Obtenemos notificaciones y datos del remitente (incluyendo rol)
         $sql = "SELECT n.*, u.avatar as sender_avatar, u.role as sender_role
                 FROM notifications n 
                 LEFT JOIN users u ON n.related_id = u.id
@@ -49,7 +49,6 @@ try {
         $stmt->execute([$currentUserId]);
         $notifs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Contar las no leídas
         $sqlCount = "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0";
         $stmtCount = $pdo->prepare($sqlCount);
         $stmtCount->execute([$currentUserId]);
@@ -61,10 +60,9 @@ try {
             'unread_count' => (int)$unreadCount
         ];
 
-    // --- MARCAR TODAS LEÍDAS ---
     } elseif ($action === 'mark_read_all') {
         $pdo->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ?")->execute([$currentUserId]);
-        $response = ['success' => true, 'message' => 'Marcadas como leídas.'];
+        $response = ['success' => true, 'message' => trans('header.mark_read')];
     }
 
 } catch (Exception $e) {

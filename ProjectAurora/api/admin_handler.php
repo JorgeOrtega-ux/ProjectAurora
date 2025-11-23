@@ -14,6 +14,11 @@ date_default_timezone_set('America/Matamoros');
 
 require_once '../config/core/database.php';
 require_once '../config/helpers/utilities.php';
+require_once '../includes/logic/i18n_server.php'; // [NUEVO]
+
+// [NUEVO] Cargar idioma
+$lang = $_SESSION['user_lang'] ?? detect_browser_language() ?? 'es-latam';
+I18n::load($lang);
 
 $data = json_decode(file_get_contents('php://input'), true);
 $action = $data['action'] ?? '';
@@ -22,14 +27,14 @@ $csrfToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $data['csrf_token'] ?? '';
 // 1. SEGURIDAD: Verificar CSRF
 if (!verify_csrf_token($csrfToken)) {
     http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Error de seguridad (CSRF).']);
+    echo json_encode(['success' => false, 'message' => trans('global.error_csrf')]);
     exit;
 }
 
 // 2. SEGURIDAD: Verificar Rol de Admin
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['founder', 'administrator'])) {
     http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Acceso denegado.']);
+    echo json_encode(['success' => false, 'message' => trans('admin.error.access_denied')]);
     exit;
 }
 
@@ -42,7 +47,7 @@ try {
         $stmt->execute([$targetId]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$user) throw new Exception("Usuario no encontrado.");
+        if (!$user) throw new Exception(trans('admin.error.user_not_found'));
 
         $daysRemaining = 0;
         if ($user['account_status'] === 'suspended' && $user['suspension_end_date']) {
@@ -53,7 +58,6 @@ try {
             }
         }
 
-        // [MODIFICADO] Consulta para incluir nombre de quien levantó la sanción
         $stmtLogs = $pdo->prepare("
             SELECT sl.*, 
                    u_admin.username as admin_name,
@@ -74,7 +78,7 @@ try {
             'history' => $history
         ]);
 
-    // --- ACTUALIZAR SANCIONES (SOLO SUSPENDIDO) ---
+    // --- ACTUALIZAR SANCIONES ---
     } elseif ($action === 'update_user_status') {
         $targetId = (int)($data['target_id'] ?? 0);
         $newStatus = $data['status'] ?? 'suspended'; 
@@ -83,14 +87,14 @@ try {
         
         $currentAdminId = $_SESSION['user_id'];
 
-        if ($targetId === $currentAdminId) throw new Exception("No puedes sancionarte a ti mismo.");
+        if ($targetId === $currentAdminId) throw new Exception(trans('admin.error.self_sanction'));
 
         // OBTENER ESTADO ACTUAL
         $stmtCheck = $pdo->prepare("SELECT account_status, suspension_reason, suspension_end_date FROM users WHERE id = ?");
         $stmtCheck->execute([$targetId]);
         $currentUser = $stmtCheck->fetch(PDO::FETCH_ASSOC);
 
-        if (!$currentUser) throw new Exception("Usuario no existe.");
+        if (!$currentUser) throw new Exception(trans('admin.error.user_not_exist'));
 
         $suspensionEnd = null;
         $finalReason = null;
@@ -98,7 +102,7 @@ try {
 
         // LÓGICA DE NUEVA SUSPENSIÓN
         if ($newStatus === 'suspended') {
-            if (empty($reason)) throw new Exception("Debes especificar una razón.");
+            if (empty($reason)) throw new Exception(trans('admin.error.reason_required'));
             $finalReason = $reason;
 
             if ($durationInput === 'permanent') {
@@ -106,7 +110,7 @@ try {
                 $dbDuration = -1; 
             } else {
                 $days = (int)$durationInput;
-                if ($days < 1) throw new Exception("Duración inválida.");
+                if ($days < 1) throw new Exception(trans('global.action_invalid'));
                 $suspensionEnd = date('Y-m-d H:i:s', strtotime("+$days days"));
                 $dbDuration = $days;
             }
@@ -126,21 +130,18 @@ try {
                 }
 
                 if ($isReasonSame && $isDurationSame) {
-                    throw new Exception("Este usuario ya tiene activa esta misma sanción.");
+                    throw new Exception(trans('admin.status.already_suspended'));
                 }
             }
 
-            // Insertar log de suspensión
             $stmtLog = $pdo->prepare("INSERT INTO user_suspension_logs (user_id, admin_id, reason, duration_days, ends_at) VALUES (?, ?, ?, ?, ?)");
             $stmtLog->execute([$targetId, $currentAdminId, $finalReason, $dbDuration, $suspensionEnd]);
 
         } else {
-            // LÓGICA DE LEVANTAR SANCIÓN (status = active)
+            // LEVANTAR SANCIÓN
             $finalReason = null;
             $suspensionEnd = null;
 
-            // [NUEVO] En lugar de insertar, actualizamos el log activo más reciente
-            // Buscamos el último log que no haya sido levantado aún
             $stmtFindLog = $pdo->prepare("SELECT id FROM user_suspension_logs WHERE user_id = ? AND lifted_at IS NULL ORDER BY id DESC LIMIT 1");
             $stmtFindLog->execute([$targetId]);
             $activeLogId = $stmtFindLog->fetchColumn();
@@ -151,7 +152,6 @@ try {
             }
         }
 
-        // Actualizar la tabla de usuarios
         $sql = "UPDATE users SET account_status = ?, suspension_reason = ?, suspension_end_date = ?, deletion_type = NULL, deletion_reason = NULL, admin_comments = NULL WHERE id = ?";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$newStatus, $finalReason, $suspensionEnd, $targetId]);
@@ -161,25 +161,24 @@ try {
             send_live_notification($targetId, 'force_logout', ['reason' => 'suspended']);
         }
 
-        $msg = ($newStatus === 'active') ? 'Sanción levantada correctamente.' : 'Sanción aplicada correctamente.';
+        $msg = ($newStatus === 'active') ? trans('admin.success.ban_lifted') : trans('admin.success.ban_applied');
         echo json_encode(['success' => true, 'message' => $msg]);
 
-    // --- GESTIONAR USUARIO (ACTIVO / ELIMINADO) ---
+    // --- GESTIONAR USUARIO ---
     } elseif ($action === 'update_user_general') {
-        // (Esta parte se mantiene igual que antes)
         $targetId = (int)($data['target_id'] ?? 0);
         $newStatus = $data['status'] ?? 'active';
         $currentAdminId = $_SESSION['user_id'];
 
-        if ($targetId === $currentAdminId) throw new Exception("No puedes modificar tu propia cuenta aquí.");
+        if ($targetId === $currentAdminId) throw new Exception(trans('admin.error.self_sanction'));
 
         if ($newStatus === 'deleted') {
             $delType = $data['deletion_type'] ?? 'admin_decision';
             $delReason = $data['deletion_reason'] ?? null; 
             $adminComments = $data['admin_comments'] ?? null;
 
-            if (empty($adminComments)) throw new Exception("Debes escribir un comentario administrativo.");
-            if ($delType === 'user_decision' && empty($delReason)) throw new Exception("Debes especificar la razón del usuario.");
+            if (empty($adminComments)) throw new Exception(trans('admin.error.reason_required'));
+            if ($delType === 'user_decision' && empty($delReason)) throw new Exception(trans('admin.error.reason_required'));
 
             $sql = "UPDATE users SET account_status = 'deleted', deletion_type = ?, deletion_reason = ?, admin_comments = ?, suspension_reason = NULL, suspension_end_date = NULL WHERE id = ?";
             $stmt = $pdo->prepare($sql);
@@ -188,16 +187,16 @@ try {
             $pdo->prepare("DELETE FROM user_sessions WHERE user_id = ?")->execute([$targetId]);
             send_live_notification($targetId, 'force_logout', ['reason' => 'deleted']);
 
-            echo json_encode(['success' => true, 'message' => 'Cuenta eliminada correctamente.']);
+            echo json_encode(['success' => true, 'message' => trans('admin.success.account_deleted')]);
 
         } elseif ($newStatus === 'active') {
             $sql = "UPDATE users SET account_status = 'active', suspension_reason = NULL, suspension_end_date = NULL, deletion_type = NULL, deletion_reason = NULL, admin_comments = NULL WHERE id = ?";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$targetId]);
 
-            echo json_encode(['success' => true, 'message' => 'Cuenta reactivada correctamente.']);
+            echo json_encode(['success' => true, 'message' => trans('global.save_status')]);
         } else {
-            throw new Exception("Estado no válido para esta sección.");
+            throw new Exception(trans('global.action_invalid'));
         }
     }
 

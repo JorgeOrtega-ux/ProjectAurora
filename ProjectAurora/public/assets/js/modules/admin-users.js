@@ -1,21 +1,22 @@
 // public/assets/js/modules/admin-users.js
 
 (function() {
+    // Función helper para traducir dentro del IIFE
+    function t(key, params = {}) {
+        if (window.t) return window.t(key, params);
+        return key;
+    }
+
     let selectedUserId = null;
     let timeUpdateInterval = null;
 
-    // --- EVENT DELEGATION ---
-    // Reemplaza todos los onclick/onkeydown inline
-
     document.body.addEventListener('click', (e) => {
-        // 1. Selección de Fila
         const row = e.target.closest('[data-action="select-user-row"]');
         if (row) {
             handleRowSelection(e, row);
             return;
         }
 
-        // 2. Paginación
         const pageBtn = e.target.closest('[data-action="paginate-users"]');
         if (pageBtn && !pageBtn.classList.contains('disabled')) {
             e.preventDefault();
@@ -25,7 +26,6 @@
             return;
         }
 
-        // 3. Deseleccionar Todo (Botón cerrar)
         const deselectBtn = e.target.closest('[data-action="deselect-users"]');
         if (deselectBtn) {
             e.preventDefault();
@@ -33,7 +33,6 @@
             return;
         }
 
-        // 4. Clic fuera para deseleccionar (Lógica existente)
         if (selectedUserId) {
             const clickedRow = e.target.closest('[data-selectable="true"]');
             const clickedToolbar = e.target.closest('#toolbar-selected');
@@ -44,22 +43,17 @@
     });
 
     document.body.addEventListener('keydown', (e) => {
-        // 5. Búsqueda (Enter)
         if (e.target.matches('[data-action="admin-search-input"]') && e.key === 'Enter') {
             e.preventDefault();
             window.loadUsersTable(1, e.target.value);
         }
 
-        // 6. ESC para deseleccionar
         if (e.key === 'Escape' && selectedUserId) {
             window.deselectAllUsers();
         }
     });
 
-    // --- UI Logic ---
-
     function handleRowSelection(event, clickedRow) {
-        // Si clicamos el mismo que ya está seleccionado, deseleccionamos
         if (clickedRow.classList.contains('selected')) {
             window.deselectAllUsers();
             return;
@@ -67,15 +61,12 @@
 
         const userId = clickedRow.dataset.uid;
 
-        // Limpiar selección previa
         const allRows = document.querySelectorAll('[data-selectable].selected');
         allRows.forEach(r => r.classList.remove('selected'));
 
-        // Seleccionar nuevo
         clickedRow.classList.add('selected');
         selectedUserId = userId;
 
-        // Actualizar UI
         toggleToolbars(true);
         setupActionButtons(userId);
     }
@@ -107,7 +98,6 @@
         const btnSanctions = document.getElementById('btn-manage-sanctions');
         const btnGeneral = document.getElementById('btn-manage-general');
 
-        // Asignamos eventos programáticamente si existen los botones
         if (btnSanctions) {
             btnSanctions.onclick = () => {
                 if(uid) window.navigateTo('admin/user-status?uid=' + uid);
@@ -120,8 +110,6 @@
             };
         }
     }
-
-    // --- Data Loading & Pagination ---
 
     window.loadUsersTable = async function(page, query) {
         const tbody = document.getElementById('admin-users-table-body');
@@ -153,8 +141,6 @@
         }
     };
 
-    // --- Presence System (Socket) ---
-    
     function initLivePresence() {
         const socket = window.socketService ? window.socketService.socket : null;
         
@@ -201,7 +187,7 @@
                 dot.classList.add('online');
             }
             if (text) {
-                text.textContent = 'En línea';
+                text.textContent = t('global.active') || 'En línea'; // "En línea" ahora se asocia a "Activo" o una clave específica
                 text.style.fontWeight = '700';
                 text.style.color = '#2e7d32';
             }
@@ -221,7 +207,7 @@
             if (offlineTimestamp) {
                 const ts = new Date(offlineTimestamp).getTime();
                 cell.dataset.timestamp = ts;
-                if (text) text.textContent = 'Hace un momento';
+                if (text) text.textContent = t('global.time.just_now');
             }
         }
     }
@@ -240,7 +226,7 @@
                 const txt = cell.querySelector('.status-text');
                 
                 if (!ts || ts === 0) {
-                    if(txt && txt.textContent !== 'Nunca') txt.textContent = 'Nunca';
+                    if(txt && txt.textContent !== t('global.time.never')) txt.textContent = t('global.time.never');
                     return;
                 }
 
@@ -248,11 +234,11 @@
                 let timeString = '';
 
                 if (diffSeconds < 60) {
-                    timeString = 'Hace un momento';
+                    timeString = t('global.time.just_now');
                 } else if (diffSeconds < 3600) {
-                    timeString = `Hace ${Math.floor(diffSeconds / 60)} min`;
+                    timeString = t('global.time.minutes_ago', { count: Math.floor(diffSeconds / 60) });
                 } else if (diffSeconds < 86400) { 
-                    timeString = `Hace ${Math.floor(diffSeconds / 3600)} h`;
+                    timeString = t('global.time.hours_ago', { count: Math.floor(diffSeconds / 3600) });
                 } else {
                     const date = new Date(ts);
                     timeString = date.toLocaleDateString();

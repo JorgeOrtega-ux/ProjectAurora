@@ -63,7 +63,11 @@ if (!empty($token) && isset($pdo)) {
                     <p style="margin: 0; font-size: 14px; color: #666; line-height: 1.5;">
                         <span data-i18n="auth.recovery.invalid_link_desc"><?php echo trans('auth.recovery.invalid_link_desc'); ?></span>
                         <br><br>
-                        Por favor, <a href="#" data-nav="forgot-password" style="color: #000; font-weight: 600; text-decoration: underline;" data-i18n="auth.recovery.request_new"><?php echo trans('auth.recovery.request_new'); ?></a>.
+                        
+                        <span data-i18n="global.please"><?php echo trans('global.please'); ?></span>, 
+                        <a href="#" data-nav="forgot-password" style="color: #000; font-weight: 600; text-decoration: underline;" data-i18n="auth.recovery.request_new">
+                            <?php echo trans('auth.recovery.request_new'); ?>
+                        </a>.
                     </p>
                 </div>
 
