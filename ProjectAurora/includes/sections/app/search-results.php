@@ -5,7 +5,7 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-require_once __DIR__ . '/../../../config/database.php';
+require_once __DIR__ . '/../../../config/core/database.php';
 require_once __DIR__ . '/../../logic/search_fetcher.php'; 
 require_once __DIR__ . '/../../logic/i18n_server.php';
 

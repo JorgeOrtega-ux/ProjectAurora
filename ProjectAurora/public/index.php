@@ -1,14 +1,12 @@
 <?php
-require_once __DIR__ . '/../config/router.php';
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/utilities.php';
+require_once __DIR__ . '/../config/routes/router.php';
+require_once __DIR__ . '/../config/core/database.php';
+require_once __DIR__ . '/../config/helpers/utilities.php';
 require_once __DIR__ . '/../includes/logic/i18n_server.php'; 
 
-// [SEGURIDAD] Generar token WS solo si hay sesión activa
 $jsUserId = 'null';
 $wsToken = 'null';
 
-// Determinación del idioma para SSR
 if (isset($_SESSION['user_lang'])) {
     $userLang = $_SESSION['user_lang'];
 } else {
@@ -17,12 +15,10 @@ if (isset($_SESSION['user_lang'])) {
 
 $userTheme = $_SESSION['user_theme'] ?? 'system';
 
-// Cargamos las traducciones en el servidor
 I18n::load($userLang);
 
 if (isset($_SESSION['user_id'])) {
     $jsUserId = $_SESSION['user_id'];
-    // [MODIFICADO] Pasamos session_id() aquí
     $currentSessionId = session_id();
     $token = generate_ws_auth_token($pdo, $jsUserId, $currentSessionId);
     $wsToken = "'$token'";

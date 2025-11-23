@@ -2,8 +2,8 @@
 // public/loader.php
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/utilities.php'; 
+require_once '../config/core/database.php';
+require_once '../config/helpers/utilities.php';
 require_once __DIR__ . '/../includes/logic/i18n_server.php'; 
 
 // 1. Cargar idioma

@@ -14,8 +14,8 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 header('Content-Type: application/json');
 date_default_timezone_set('America/Matamoros');
 
-require_once '../config/database.php';
-require_once '../config/utilities.php';
+require_once '../config/core/database.php';
+require_once '../config/helpers/utilities.php';
 require_once '../includes/logic/GoogleAuthenticator.php'; 
 
 $data = json_decode(file_get_contents('php://input'), true);
