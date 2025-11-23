@@ -205,6 +205,22 @@ try {
         
         if ($user && password_verify($password, $user['password'])) {
             
+            // [NUEVO] VERIFICAR SI LA SUSPENSIÓN YA EXPIRÓ
+            // Comprobamos si la cuenta está suspendida y si ya pasó la fecha de fin.
+            if ($user['account_status'] === 'suspended' && !empty($user['suspension_end_date'])) {
+                $endDate = new DateTime($user['suspension_end_date']);
+                $now = new DateTime();
+                
+                if ($now > $endDate) {
+                    // La fecha ya pasó: Reactivamos al usuario en la BD
+                    $stmtReactivate = $pdo->prepare("UPDATE users SET account_status = 'active', suspension_reason = NULL, suspension_end_date = NULL WHERE id = ?");
+                    $stmtReactivate->execute([$user['id']]);
+                    
+                    // Actualizamos la variable local $user para que pase la validación siguiente
+                    $user['account_status'] = 'active';
+                }
+            }
+
             // [MODIFICADO] Verificación Detallada de Estado
             if (isset($user['account_status']) && $user['account_status'] !== 'active') {
                 

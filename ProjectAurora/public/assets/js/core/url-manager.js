@@ -113,7 +113,8 @@ async function showSection(sectionName, pushState = true) {
 
     updateSidebarState(baseSection);
     updateActiveMenu(baseSection);
-
+// [AGREGADO] Limpiar el contenido anterior inmediatamente para que no se vea de fondo
+    container.innerHTML = '';
     if (loader) loader.style.display = 'flex';
     
     // Limpieza previa opcional (por si hay listeners globales que limpiar)
