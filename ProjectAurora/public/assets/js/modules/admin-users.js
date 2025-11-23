@@ -4,33 +4,83 @@
     let selectedUserId = null;
     let timeUpdateInterval = null;
 
-    // --- UI Logic for Selection ---
+    // --- EVENT DELEGATION ---
+    // Reemplaza todos los onclick/onkeydown inline
 
-    window.selectSingleRow = function(event, clickedRow, userId) {
-        if (event) event.stopPropagation();
+    document.body.addEventListener('click', (e) => {
+        // 1. Selección de Fila
+        const row = e.target.closest('[data-action="select-user-row"]');
+        if (row) {
+            handleRowSelection(e, row);
+            return;
+        }
 
-        // Si clicamos el mismo que ya está seleccionado, deseleccionamos (toggle)
+        // 2. Paginación
+        const pageBtn = e.target.closest('[data-action="paginate-users"]');
+        if (pageBtn && !pageBtn.classList.contains('disabled')) {
+            e.preventDefault();
+            const page = pageBtn.dataset.page;
+            const query = pageBtn.dataset.query;
+            window.loadUsersTable(page, query);
+            return;
+        }
+
+        // 3. Deseleccionar Todo (Botón cerrar)
+        const deselectBtn = e.target.closest('[data-action="deselect-users"]');
+        if (deselectBtn) {
+            e.preventDefault();
+            window.deselectAllUsers();
+            return;
+        }
+
+        // 4. Clic fuera para deseleccionar (Lógica existente)
+        if (selectedUserId) {
+            const clickedRow = e.target.closest('[data-selectable="true"]');
+            const clickedToolbar = e.target.closest('#toolbar-selected');
+            if (!clickedRow && !clickedToolbar) {
+                window.deselectAllUsers();
+            }
+        }
+    });
+
+    document.body.addEventListener('keydown', (e) => {
+        // 5. Búsqueda (Enter)
+        if (e.target.matches('[data-action="admin-search-input"]') && e.key === 'Enter') {
+            e.preventDefault();
+            window.loadUsersTable(1, e.target.value);
+        }
+
+        // 6. ESC para deseleccionar
+        if (e.key === 'Escape' && selectedUserId) {
+            window.deselectAllUsers();
+        }
+    });
+
+    // --- UI Logic ---
+
+    function handleRowSelection(event, clickedRow) {
+        // Si clicamos el mismo que ya está seleccionado, deseleccionamos
         if (clickedRow.classList.contains('selected')) {
             window.deselectAllUsers();
             return;
         }
 
-        // 1. Limpiar selección previa
-        // [CORRECCIÓN] Usamos atributo data para encontrar filas seleccionables
+        const userId = clickedRow.dataset.uid;
+
+        // Limpiar selección previa
         const allRows = document.querySelectorAll('[data-selectable].selected');
         allRows.forEach(r => r.classList.remove('selected'));
 
-        // 2. Seleccionar nuevo
+        // Seleccionar nuevo
         clickedRow.classList.add('selected');
         selectedUserId = userId;
 
-        // 3. Actualizar Toolbars
+        // Actualizar UI
         toggleToolbars(true);
         setupActionButtons(userId);
-    };
+    }
 
     window.deselectAllUsers = function() {
-        // [CORRECCIÓN] Limpieza robusta basada en data attributes
         const allRows = document.querySelectorAll('[data-selectable].selected');
         allRows.forEach(r => r.classList.remove('selected'));
         
@@ -57,6 +107,7 @@
         const btnSanctions = document.getElementById('btn-manage-sanctions');
         const btnGeneral = document.getElementById('btn-manage-general');
 
+        // Asignamos eventos programáticamente si existen los botones
         if (btnSanctions) {
             btnSanctions.onclick = () => {
                 if(uid) window.navigateTo('admin/user-status?uid=' + uid);
@@ -69,30 +120,6 @@
             };
         }
     }
-
-    // --- Global Listeners (Deselection) ---
-
-    // 1. Clic fuera para deseleccionar
-    document.addEventListener('click', (e) => {
-        // Solo actuar si hay algo seleccionado
-        if (!selectedUserId) return;
-
-        // [CORRECCIÓN] El clic debe ser en un elemento con data-selectable="true"
-        const clickedRow = e.target.closest('[data-selectable="true"]');
-        const clickedToolbar = e.target.closest('#toolbar-selected');
-
-        if (!clickedRow && !clickedToolbar) {
-            window.deselectAllUsers();
-        }
-    });
-
-    // 2. Tecla ESC para deseleccionar
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && selectedUserId) {
-            window.deselectAllUsers();
-        }
-    });
-
 
     // --- Data Loading & Pagination ---
 
@@ -116,10 +143,7 @@
                 const newUrl = `${basePath}admin/users?page=${page}` + (query ? `&q=${encodeURIComponent(query)}` : '');
                 window.history.pushState({path: newUrl}, '', newUrl);
                 
-                // Resetear selección al cambiar de página
                 window.deselectAllUsers();
-                
-                // IMPORTANTE: Reinicializar el estado en vivo para las nuevas filas cargadas
                 initLivePresence();
             }
         } catch (error) {
@@ -129,7 +153,7 @@
         }
     };
 
-    // --- AUTO-INICIO AL CARGAR EL SCRIPT (Socket Presence) ---
+    // --- Presence System (Socket) ---
     
     function initLivePresence() {
         const socket = window.socketService ? window.socketService.socket : null;

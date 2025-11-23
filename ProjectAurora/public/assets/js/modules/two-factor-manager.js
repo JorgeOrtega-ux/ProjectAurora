@@ -17,6 +17,13 @@ export function initTwoFactorManager() {
     // Solo ejecutar si estamos en la sección correcta
     if (!qs('[data-section="settings/2fa-setup"]')) return;
 
+    // --- Listener de recarga (Botón Cancelar) ---
+    document.body.addEventListener('click', (e) => {
+        if (e.target.closest('[data-action="reload-page"]')) {
+            location.reload();
+        }
+    });
+
     const els = {
         step1: qs('[data-step="2fa-step-1"]'),
         step2: qs('[data-step="2fa-step-2"]'),

@@ -6,12 +6,7 @@
     
     if (!targetId) return;
 
-    // --- Selectores UI ---
-    const dropdownStatus = document.getElementById('dropdown-status-options');
-    const dropdownDuration = document.getElementById('dropdown-duration');
-    const dropdownReasons = document.getElementById('dropdown-reasons');
-    
-    const wrapperDuration = document.getElementById('wrapper-duration');
+    // UI Elements
     const inputStatus = document.getElementById('input-status-value');
     const inputDuration = document.getElementById('input-duration-value');
     const inputReason = document.getElementById('input-reason-value');
@@ -24,59 +19,94 @@
     const btnSave = document.getElementById('btn-save-status');
     const errorBox = document.getElementById('status-error-msg');
     const historyBody = document.getElementById('suspension-history-body');
+    const wrapperDuration = document.getElementById('wrapper-duration');
 
-    // --- Funciones Globales ---
+    // --- EVENT DELEGATION ---
 
-    window.selectStatus = function(val, text, icon, color) {
+    document.body.addEventListener('click', (e) => {
+        
+        // 1. Toggle Dropdowns
+        const toggleBtn = e.target.closest('[data-action="toggle-dropdown"]');
+        if (toggleBtn) {
+            e.stopPropagation();
+            const targetId = toggleBtn.dataset.target;
+            const targetEl = document.getElementById(targetId);
+            
+            if (targetEl) {
+                // Cerrar otros abiertos
+                closeAllDropdowns();
+                targetEl.classList.toggle('disabled');
+            }
+            return;
+        }
+
+        // 2. Select Status Option
+        const statusOpt = e.target.closest('[data-action="select-status-option"]');
+        if (statusOpt) {
+            const val = statusOpt.dataset.value;
+            const label = statusOpt.dataset.label;
+            const icon = statusOpt.dataset.icon;
+            const color = statusOpt.dataset.color;
+            
+            selectStatus(val, label, icon, color);
+            closeAllDropdowns();
+            return;
+        }
+
+        // 3. Select Duration Option
+        const durOpt = e.target.closest('[data-action="select-duration-option"]');
+        if (durOpt) {
+            selectDuration(durOpt.dataset.value);
+            closeAllDropdowns();
+            return;
+        }
+
+        // 4. Select Reason Option
+        const reasonOpt = e.target.closest('[data-action="select-reason-option"]');
+        if (reasonOpt) {
+            selectReason(reasonOpt.dataset.value);
+            closeAllDropdowns();
+            return;
+        }
+
+        // 5. Close Dropdowns if clicking outside
+        if (!e.target.closest('.trigger-select-wrapper')) {
+            closeAllDropdowns();
+        }
+    });
+
+    function closeAllDropdowns() {
+        const dropdowns = ['dropdown-status-options', 'dropdown-duration', 'dropdown-reasons'];
+        dropdowns.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('disabled');
+        });
+    }
+
+    // --- UI Logic Functions ---
+
+    function selectStatus(val, text, icon, color) {
         inputStatus.value = val;
         txtStatus.textContent = text;
         iconStatus.textContent = icon;
         iconStatus.style.color = color;
         
-        dropdownStatus.classList.add('disabled');
-
-        // Control de visibilidad
         if (val === 'suspended_temp') {
             wrapperDuration.classList.remove('d-none');
-        } 
-        else if (val === 'suspended_perm') {
+        } else if (val === 'suspended_perm') {
             wrapperDuration.classList.add('d-none'); 
-        }
-    };
-
-    window.selectDuration = function(days) {
-        inputDuration.value = days;
-        txtDuration.textContent = days + ' Días';
-        dropdownDuration.classList.add('disabled');
-    };
-
-    window.selectReason = function(reason) {
-        inputReason.value = reason;
-        txtReason.textContent = reason;
-        dropdownReasons.classList.add('disabled');
-    };
-
-    // --- Toggle Dropdown Principal ---
-    const statusTrigger = document.querySelector('[data-action="toggleStatusDropdown"]');
-    if(statusTrigger) {
-        statusTrigger.onclick = (e) => {
-            e.stopPropagation();
-            dropdownStatus.classList.toggle('disabled');
-            // Cerramos los otros por si acaso
-            dropdownDuration.classList.add('disabled');
-            dropdownReasons.classList.add('disabled');
         }
     }
 
-    // [CORRECCIÓN AQUÍ] Listener para cerrar dropdowns específicos al hacer clic fuera
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.trigger-select-wrapper')) {
-            // En lugar de cerrar '.popover-module' (que cierra el header), cerramos solo estos:
-            if (dropdownStatus) dropdownStatus.classList.add('disabled');
-            if (dropdownDuration) dropdownDuration.classList.add('disabled');
-            if (dropdownReasons) dropdownReasons.classList.add('disabled');
-        }
-    });
+    function selectDuration(days) {
+        inputDuration.value = days;
+        txtDuration.textContent = days + ' Días';
+    }
+
+    function selectReason(reason) {
+        inputReason.value = reason;
+        txtReason.textContent = reason;
+    }
 
     // --- Carga Inicial ---
     async function loadUserData() {

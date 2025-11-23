@@ -26,52 +26,84 @@
     const btnSave = document.getElementById('btn-save-manage');
     const errorBox = document.getElementById('manage-error-msg');
 
-    // --- Funciones de Selección ---
+    // --- EVENT DELEGATION ---
 
-    window.selectManageStatus = function(val, text, icon, color) {
+    document.body.addEventListener('click', (e) => {
+        
+        // 1. Toggle Dropdowns
+        const toggleBtn = e.target.closest('[data-action="toggle-dropdown"]');
+        if (toggleBtn) {
+            e.stopPropagation();
+            const targetId = toggleBtn.dataset.target;
+            const targetEl = document.getElementById(targetId);
+            
+            if (targetEl) {
+                closeAllDropdowns();
+                targetEl.classList.toggle('disabled');
+            }
+            return;
+        }
+
+        // 2. Select Account Status
+        const statusOpt = e.target.closest('[data-action="select-manage-status"]');
+        if (statusOpt) {
+            const val = statusOpt.dataset.value;
+            const label = statusOpt.dataset.label;
+            const icon = statusOpt.dataset.icon;
+            const color = statusOpt.dataset.color;
+            
+            selectManageStatus(val, label, icon, color);
+            closeAllDropdowns();
+            return;
+        }
+
+        // 3. Select Deletion Type
+        const delTypeOpt = e.target.closest('[data-action="select-deletion-type"]');
+        if (delTypeOpt) {
+            const val = delTypeOpt.dataset.value;
+            const label = delTypeOpt.dataset.label;
+            
+            selectDeletionType(val, label);
+            closeAllDropdowns();
+            return;
+        }
+
+        // 4. Close Dropdowns if clicking outside
+        if (!e.target.closest('.trigger-select-wrapper')) {
+            closeAllDropdowns();
+        }
+    });
+
+    function closeAllDropdowns() {
+        if (dropdownStatus) dropdownStatus.classList.add('disabled');
+        if (dropdownDelType) dropdownDelType.classList.add('disabled');
+    }
+
+    // --- Logic Functions ---
+
+    function selectManageStatus(val, text, icon, color) {
         inputStatus.value = val;
         txtStatus.textContent = text;
         iconStatus.textContent = icon;
         iconStatus.style.color = color;
-        dropdownStatus.classList.add('disabled');
 
         if (val === 'deleted') {
             wrapperDelDetails.classList.remove('d-none');
         } else {
             wrapperDelDetails.classList.add('d-none');
         }
-    };
+    }
 
-    window.selectDeletionType = function(val, text) {
+    function selectDeletionType(val, text) {
         inputDelType.value = val;
         txtDelType.textContent = text;
-        dropdownDelType.classList.add('disabled');
 
         if (val === 'user_decision') {
             wrapperUserReason.classList.remove('d-none');
         } else {
             wrapperUserReason.classList.add('d-none');
         }
-    };
-
-    // --- Toggles ---
-    const statusTrigger = document.querySelector('[data-action="toggleManageStatusDropdown"]');
-    if(statusTrigger) {
-        statusTrigger.onclick = (e) => {
-            e.stopPropagation();
-            dropdownStatus.classList.toggle('disabled');
-            dropdownDelType.classList.add('disabled'); // Cerramos el otro si está abierto
-        }
     }
-
-    // [CORRECCIÓN AQUÍ] Listener específico
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.trigger-select-wrapper')) {
-            // Solo cerramos nuestros propios dropdowns
-            if (dropdownStatus) dropdownStatus.classList.add('disabled');
-            if (dropdownDelType) dropdownDelType.classList.add('disabled');
-        }
-    });
 
     // --- Load User Data ---
     async function loadUserData() {

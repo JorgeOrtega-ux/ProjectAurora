@@ -127,7 +127,7 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
                             style="letter-spacing: 4px; font-size: 18px; text-align: center;">
                     </div>
                     <div class="component-card__actions actions-right w-100">
-                        <button type="button" class="component-button" onclick="location.reload()" data-i18n="global.cancel"><?php echo trans('global.cancel'); ?></button>
+                        <button type="button" class="component-button" data-action="reload-page" data-i18n="global.cancel"><?php echo trans('global.cancel'); ?></button>
                         <button type="button" class="component-button primary" data-action="confirm-enable-2fa" data-i18n="settings.2fa.activate_btn">
                             <?php echo trans('settings.2fa.activate_btn'); ?>
                         </button>

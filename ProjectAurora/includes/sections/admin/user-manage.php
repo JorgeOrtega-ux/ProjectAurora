@@ -67,7 +67,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                 </div>
                 <div class="component-card__actions w-100">
                     <div class="trigger-select-wrapper w-100">
-                        <div class="trigger-selector" data-action="toggleManageStatusDropdown">
+                        <div class="trigger-selector" data-action="toggle-dropdown" data-target="dropdown-manage-status">
                             <div class="trigger-select-icon">
                                 <span class="material-symbols-rounded" id="manage-status-icon" style="color: #2e7d32;">check_circle</span>
                             </div>
@@ -82,11 +82,21 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                         <div class="popover-module disabled" id="dropdown-manage-status" style="width: 100%; position: absolute; top: 100%; z-index: 10;">
                             <div class="menu-content">
                                 <div class="menu-list">
-                                    <div class="menu-link" onclick="selectManageStatus('active', 'Activo', 'check_circle', '#2e7d32')">
+                                    <div class="menu-link" 
+                                         data-action="select-manage-status" 
+                                         data-value="active" 
+                                         data-label="Activo" 
+                                         data-icon="check_circle" 
+                                         data-color="#2e7d32">
                                         <div class="menu-link-icon"><span class="material-symbols-rounded" style="color:#2e7d32">check_circle</span></div>
                                         <div class="menu-link-text">Activo</div>
                                     </div>
-                                    <div class="menu-link" onclick="selectManageStatus('deleted', 'Cuenta Eliminada', 'delete_forever', '#616161')">
+                                    <div class="menu-link" 
+                                         data-action="select-manage-status" 
+                                         data-value="deleted" 
+                                         data-label="Cuenta Eliminada" 
+                                         data-icon="delete_forever" 
+                                         data-color="#616161">
                                         <div class="menu-link-icon"><span class="material-symbols-rounded" style="color:#616161">delete_forever</span></div>
                                         <div class="menu-link-text">Cuenta Eliminada</div>
                                     </div>
@@ -109,7 +119,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                     </div>
                     <div class="component-card__actions w-100">
                         <div class="trigger-select-wrapper w-100">
-                            <div class="trigger-selector" onclick="document.getElementById('dropdown-deletion-type').classList.toggle('disabled')">
+                            <div class="trigger-selector" data-action="toggle-dropdown" data-target="dropdown-deletion-type">
                                 <div class="trigger-select-icon">
                                     <span class="material-symbols-rounded">gavel</span>
                                 </div>
@@ -124,11 +134,17 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                             <div class="popover-module disabled" id="dropdown-deletion-type" style="width: 100%; position: absolute; top: 100%; z-index: 10;">
                                 <div class="menu-content">
                                     <div class="menu-list">
-                                        <div class="menu-link" onclick="selectDeletionType('admin_decision', 'Decisión Administrativa')">
+                                        <div class="menu-link" 
+                                             data-action="select-deletion-type" 
+                                             data-value="admin_decision" 
+                                             data-label="Decisión Administrativa">
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">admin_panel_settings</span></div>
                                             <div class="menu-link-text">Decisión Administrativa</div>
                                         </div>
-                                        <div class="menu-link" onclick="selectDeletionType('user_decision', 'Decisión del Usuario')">
+                                        <div class="menu-link" 
+                                             data-action="select-deletion-type" 
+                                             data-value="user_decision" 
+                                             data-label="Decisión del Usuario">
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">person</span></div>
                                             <div class="menu-link-text">Decisión del Usuario</div>
                                         </div>

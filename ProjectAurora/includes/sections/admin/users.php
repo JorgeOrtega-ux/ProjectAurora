@@ -61,7 +61,10 @@ function renderUserRows($users)
             $userId = $u['id'];
             $jsTimestamp = $rawTime ? strtotime($rawTime) * 1000 : 0;
 ?>
-            <tr class="component-table-row" data-selectable="true" data-uid="<?php echo $userId; ?>" onclick="selectSingleRow(event, this, '<?php echo $userId; ?>')">
+            <tr class="component-table-row" 
+                data-selectable="true" 
+                data-action="select-user-row" 
+                data-uid="<?php echo $userId; ?>">
                 <td class="col-id"><?php echo $userId; ?></td>
                 <td>
                     <div class="user-info-cell">
@@ -122,21 +125,25 @@ function renderPagination($page, $totalPages, $q)
 {
     $prevPage = max(1, $page - 1);
     $nextPage = min($totalPages, $page + 1);
+    // Nota: codificamos en atributo data, no inline JS
     $qEncoded = htmlspecialchars($q, ENT_QUOTES);
 
-    // Clases disabled
     $prevDisabled = ($page <= 1) ? 'disabled' : '';
     $nextDisabled = ($page >= $totalPages) ? 'disabled' : '';
 
     ob_start();
     ?>
     <button class="component-pagination__btn <?php echo $prevDisabled; ?>"
-        onclick="loadUsersTable(<?php echo $prevPage; ?>, '<?php echo $qEncoded; ?>')">
+        data-action="paginate-users" 
+        data-page="<?php echo $prevPage; ?>" 
+        data-query="<?php echo $qEncoded; ?>">
         <span class="material-symbols-rounded">chevron_left</span>
     </button>
     <span class="component-pagination__text"><?php echo $page; ?> / <?php echo $totalPages; ?></span>
     <button class="component-pagination__btn <?php echo $nextDisabled; ?>"
-        onclick="loadUsersTable(<?php echo $nextPage; ?>, '<?php echo $qEncoded; ?>')">
+        data-action="paginate-users" 
+        data-page="<?php echo $nextPage; ?>" 
+        data-query="<?php echo $qEncoded; ?>">
         <span class="material-symbols-rounded">chevron_right</span>
     </button>
 <?php
@@ -204,8 +211,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                         <input type="text" id="admin-users-search-input" class="search-input"
                             placeholder="Buscar por nombre, correo o ID (Presiona Enter)..."
                             value="<?php echo htmlspecialchars($q); ?>"
-                            onkeydown="if(event.key === 'Enter') loadUsersTable(1, this.value)">
-                    </div>
+                            data-action="admin-search-input"> </div>
                 </div>
             </div>
 
@@ -219,7 +225,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                     </button>
                 </div>
                 <div class="component-toolbar__right">
-                    <button class="component-icon-button" onclick="window.deselectAllUsers()" data-tooltip="Deseleccionar">
+                    <button class="component-icon-button" data-action="deselect-users" data-tooltip="Deseleccionar">
                         <span class="material-symbols-rounded">close</span>
                     </button>
                 </div>
