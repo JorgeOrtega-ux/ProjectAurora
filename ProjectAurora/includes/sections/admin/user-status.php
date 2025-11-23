@@ -21,6 +21,13 @@ $targetUid = $_GET['uid'] ?? 0;
             <p class="component-page-description">Modifica el acceso del usuario a la plataforma.</p>
         </div>
 
+        <div class="content-toolbar" style="width: 100%; max-width: 100%; justify-content: flex-end; margin: 16px 0;">
+            <button class="component-button primary" id="btn-save-status">
+                <span class="material-symbols-rounded">save</span>
+                Guardar Cambios
+            </button>
+        </div>
+
         <div class="component-card component-card--grouped">
             <div class="component-group-item">
                 <div class="component-card__content">
@@ -36,18 +43,32 @@ $targetUid = $_GET['uid'] ?? 0;
             </div>
         </div>
 
-        <div class="component-card" style="margin-top: 16px;">
+        <div class="component-card component-card--grouped" style="margin-top: 16px;">
             <input type="hidden" id="target-user-id" value="<?php echo htmlspecialchars($targetUid); ?>">
             
-            <div class="component-card__content" style="flex-direction: column; align-items: flex-start; gap: 20px;">
-                
-                <div class="w-100">
-                    <label style="font-size: 13px; font-weight: 600; color: #333; display: block; margin-bottom: 8px;">Estado de la cuenta</label>
-                    <div class="trigger-select-wrapper" style="width: 100%;">
+            <input type="hidden" id="input-status-value" value="active">
+            <input type="hidden" id="input-duration-value" value="2">
+            <input type="hidden" id="input-reason-value" value="">
+
+            <div class="component-group-item component-group-item--stacked">
+                <div class="component-card__content">
+                    <div class="component-card__text">
+                        <h2 class="component-card__title">Estado de la cuenta</h2>
+                        <p class="component-card__description">Define si el usuario puede acceder a la plataforma.</p>
+                    </div>
+                </div>
+                <div class="component-card__actions w-100">
+                    <div class="trigger-select-wrapper w-100">
                         <div class="trigger-selector" data-action="toggleStatusDropdown">
-                            <div class="trigger-select-icon"><span class="material-symbols-rounded" id="current-status-icon">check_circle</span></div>
-                            <div class="trigger-select-text"><span id="current-status-text">Activo</span></div>
-                            <div class="trigger-select-arrow"><span class="material-symbols-rounded">arrow_drop_down</span></div>
+                            <div class="trigger-select-icon">
+                                <span class="material-symbols-rounded" id="current-status-icon" style="color: #2e7d32;">check_circle</span>
+                            </div>
+                            <div class="trigger-select-text">
+                                <span id="current-status-text">Activo</span>
+                            </div>
+                            <div class="trigger-select-arrow">
+                                <span class="material-symbols-rounded">arrow_drop_down</span>
+                            </div>
                         </div>
                         
                         <div class="popover-module disabled" id="dropdown-status-options" style="width: 100%; position: absolute; top: 100%; z-index: 10;">
@@ -57,36 +78,88 @@ $targetUid = $_GET['uid'] ?? 0;
                                         <div class="menu-link-icon"><span class="material-symbols-rounded" style="color:#2e7d32">check_circle</span></div>
                                         <div class="menu-link-text">Activo</div>
                                     </div>
-                                    <div class="menu-link" onclick="selectStatus('suspended', 'Suspendido', 'block', '#d32f2f')">
-                                        <div class="menu-link-icon"><span class="material-symbols-rounded" style="color:#d32f2f">block</span></div>
-                                        <div class="menu-link-text">Suspendido</div>
+                                    <div class="menu-link" onclick="selectStatus('suspended_temp', 'Suspensión Temporal', 'timer', '#f57c00')">
+                                        <div class="menu-link-icon"><span class="material-symbols-rounded" style="color:#f57c00">timer</span></div>
+                                        <div class="menu-link-text">Suspensión Temporal</div>
                                     </div>
-                                    <div class="menu-link" onclick="selectStatus('deleted', 'Eliminado', 'delete', '#616161')">
-                                        <div class="menu-link-icon"><span class="material-symbols-rounded" style="color:#616161">delete</span></div>
-                                        <div class="menu-link-text">Eliminado</div>
+                                    <div class="menu-link" onclick="selectStatus('suspended_perm', 'Suspensión Permanente', 'block', '#d32f2f')">
+                                        <div class="menu-link-icon"><span class="material-symbols-rounded" style="color:#d32f2f">block</span></div>
+                                        <div class="menu-link-text">Suspensión Permanente</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <input type="hidden" id="input-status-value" value="active">
                     </div>
                 </div>
+            </div>
 
-                <div id="panel-suspension" class="w-100 d-none" style="background: #fff5f5; padding: 16px; border-radius: 8px; border: 1px solid #ffcdd2;">
-                    <h3 style="font-size: 14px; color: #d32f2f; margin-bottom: 12px;">Detalles de la Suspensión</h3>
-                    
-                    <div class="w-100" style="margin-bottom: 16px;">
-                        <label style="font-size: 12px; font-weight: 600; color: #d32f2f; display: block; margin-bottom: 6px;">Duración (Días)</label>
-                        <input type="number" id="input-days" class="component-text-input w-100" min="1" value="7" placeholder="Ej: 7">
+            <div id="wrapper-duration" class="w-100 d-none">
+                <hr class="component-divider">
+                <div class="component-group-item component-group-item--stacked">
+                    <div class="component-card__content">
+                        <div class="component-card__text">
+                            <h2 class="component-card__title" style="color: #f57c00;">Duración del castigo</h2>
+                            <p class="component-card__description">Selecciona cuántos días durará la suspensión.</p>
+                        </div>
                     </div>
-
-                    <div class="w-100">
-                        <label style="font-size: 12px; font-weight: 600; color: #d32f2f; display: block; margin-bottom: 6px;">Razón</label>
-                        <div class="trigger-select-wrapper" style="width: 100%;">
-                            <div class="trigger-selector" onclick="document.getElementById('dropdown-reasons').classList.toggle('disabled')">
-                                <div class="trigger-select-text"><span id="reason-text">Selecciona una razón...</span></div>
-                                <div class="trigger-select-arrow"><span class="material-symbols-rounded">arrow_drop_down</span></div>
+                    <div class="component-card__actions w-100">
+                        <div class="trigger-select-wrapper w-100">
+                            <div class="trigger-selector" onclick="document.getElementById('dropdown-duration').classList.toggle('disabled')">
+                                <div class="trigger-select-icon">
+                                    <span class="material-symbols-rounded">calendar_today</span>
+                                </div>
+                                <div class="trigger-select-text">
+                                    <span id="current-duration-text">2 Días</span>
+                                </div>
+                                <div class="trigger-select-arrow">
+                                    <span class="material-symbols-rounded">arrow_drop_down</span>
+                                </div>
                             </div>
+                            
+                            <div class="popover-module disabled" id="dropdown-duration" style="width: 100%; position: absolute; top: 100%; z-index: 10;">
+                                <div class="menu-content">
+                                    <div class="menu-list">
+                                        <?php 
+                                        $daysOptions = [2, 4, 6, 8, 12, 30];
+                                        foreach($daysOptions as $d) {
+                                            echo "
+                                            <div class='menu-link' onclick=\"selectDuration($d)\">
+                                                <div class='menu-link-icon'><span class='material-symbols-rounded'>schedule</span></div>
+                                                <div class='menu-link-text'>$d Días</div>
+                                            </div>";
+                                        }
+                                        ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="wrapper-reason" class="w-100 d-none">
+                <hr class="component-divider">
+                <div class="component-group-item component-group-item--stacked">
+                    <div class="component-card__content">
+                        <div class="component-card__text">
+                            <h2 class="component-card__title" style="color: #d32f2f;">Motivo</h2>
+                            <p class="component-card__description">Selecciona la razón de la sanción.</p>
+                        </div>
+                    </div>
+                    <div class="component-card__actions w-100">
+                        <div class="trigger-select-wrapper w-100">
+                            <div class="trigger-selector" onclick="document.getElementById('dropdown-reasons').classList.toggle('disabled')">
+                                <div class="trigger-select-icon">
+                                    <span class="material-symbols-rounded">gavel</span>
+                                </div>
+                                <div class="trigger-select-text">
+                                    <span id="current-reason-text">Selecciona una razón...</span>
+                                </div>
+                                <div class="trigger-select-arrow">
+                                    <span class="material-symbols-rounded">arrow_drop_down</span>
+                                </div>
+                            </div>
+                            
                             <div class="popover-module disabled" id="dropdown-reasons" style="width: 100%; position: absolute; top: 100%; z-index: 10;">
                                 <div class="menu-content">
                                     <div class="menu-list">
@@ -105,17 +178,13 @@ $targetUid = $_GET['uid'] ?? 0;
                                     </div>
                                 </div>
                             </div>
-                            <input type="hidden" id="input-reason-value">
                         </div>
                     </div>
                 </div>
-
-                <div class="component-card__actions w-100 justify-end">
-                    <button class="component-button primary" id="btn-save-status">Guardar Cambios</button>
-                </div>
-                <div class="component-card__error" id="status-error-msg"></div>
-
             </div>
+            
+            <div class="component-card__error" id="status-error-msg" style="margin: 20px 0 0 0; width: 100%;"></div>
+
         </div>
 
         <div class="component-card" style="margin-top: 16px;">
