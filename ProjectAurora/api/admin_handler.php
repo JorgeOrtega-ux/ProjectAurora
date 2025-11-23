@@ -164,7 +164,7 @@ try {
         $msg = ($newStatus === 'active') ? trans('admin.success.ban_lifted') : trans('admin.success.ban_applied');
         echo json_encode(['success' => true, 'message' => $msg]);
 
-    // --- GESTIONAR USUARIO ---
+    // --- GESTIONAR USUARIO (GENERAL) ---
     } elseif ($action === 'update_user_general') {
         $targetId = (int)($data['target_id'] ?? 0);
         $newStatus = $data['status'] ?? 'active';
@@ -197,6 +197,64 @@ try {
             echo json_encode(['success' => true, 'message' => trans('global.save_status')]);
         } else {
             throw new Exception(trans('global.action_invalid'));
+        }
+
+    // --- GESTIONAR ROL DE USUARIO [NUEVO] ---
+    } elseif ($action === 'update_user_role') {
+        $targetId = (int)($data['target_id'] ?? 0);
+        $newRole = $data['role'] ?? 'user';
+        $currentAdminId = $_SESSION['user_id'];
+        $currentAdminRole = $_SESSION['user_role'];
+
+        // 1. No se puede cambiar el rol a sí mismo para evitar auto-bloqueo o escalada
+        if ($targetId === $currentAdminId) {
+            throw new Exception("No puedes cambiar tu propio rol desde aquí.");
+        }
+
+        // 2. Validar roles permitidos
+        $allowedRoles = ['user', 'moderator', 'administrator'];
+        if (!in_array($newRole, $allowedRoles)) {
+            throw new Exception(trans('global.action_invalid'));
+        }
+
+        // 3. Obtener rol actual del objetivo
+        $stmtTarget = $pdo->prepare("SELECT role FROM users WHERE id = ?");
+        $stmtTarget->execute([$targetId]);
+        $oldRole = $stmtTarget->fetchColumn();
+
+        // 4. REGLAS DE JERARQUÍA
+        
+        // A. Nadie puede modificar a un Fundador (excepto otro Fundador teóricamente, pero bloqueamos por UI).
+        if ($oldRole === 'founder') {
+            throw new Exception("No tienes permisos para modificar a un Fundador.");
+        }
+
+        // B. Un Administrador NO puede promover a nadie a Fundador.
+        if ($newRole === 'founder') {
+            throw new Exception("No se puede asignar el rol de Fundador.");
+        }
+
+        // C. (Opcional) Podríamos restringir que un Admin modifique a otro Admin, 
+        // pero generalmente se permite. Dejamos libre admin <-> admin.
+
+        // Ejecutar cambio
+        $sql = "UPDATE users SET role = ? WHERE id = ?";
+        $stmt = $pdo->prepare($sql);
+        
+        if ($stmt->execute([$newRole, $targetId])) {
+            // Registrar en logs de auditoría
+            $ip = get_client_ip();
+            // Usamos una tabla de logs o reutilizamos user_audit_logs si tiene soporte, 
+            // si no, lo logueamos al archivo.
+            // Para este ejemplo usaremos el archivo de log.
+            error_log("Role Change: Admin($currentAdminId) changed User($targetId) from $oldRole to $newRole via IP $ip");
+
+            // Notificar al usuario para refrescar su sesión
+            send_live_notification($targetId, 'force_logout', ['reason' => 'role_change']);
+
+            echo json_encode(['success' => true, 'message' => trans('global.save_status')]);
+        } else {
+            throw new Exception(trans('global.error_connection'));
         }
     }
 

@@ -1,0 +1,127 @@
+<?php
+if (session_status() === PHP_SESSION_NONE) session_start();
+if (!in_array($_SESSION['user_role'], ['founder', 'administrator'])) {
+    include __DIR__ . '/../system/404.php';
+    exit;
+}
+
+$targetUid = $_GET['uid'] ?? 0;
+$basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora/';
+?>
+
+<link rel="stylesheet" href="<?php echo $basePath; ?>assets/css/admin.css">
+
+<div class="section-content active" data-section="admin/user-role">
+    
+    <div class="toolbar-stack">
+        <div class="component-toolbar">
+            <div class="component-toolbar__group">
+                <div class="component-icon-button" data-nav="admin/users" data-i18n-tooltip="global.back" data-tooltip="<?php echo trans('global.back'); ?>">
+                    <span class="material-symbols-rounded">arrow_back</span>
+                </div>
+                <div class="component-toolbar__separator"></div>
+                <span class="toolbar-title-actions">Gestión de Roles</span>
+            </div>
+            <div class="component-toolbar__right">
+                <button class="component-button primary" id="btn-save-role">
+                    <span class="material-symbols-rounded">save</span>
+                    <span data-i18n="global.save"><?php echo trans('global.save'); ?></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="component-wrapper section-with-toolbar">
+
+        <div class="component-header-card">
+            <h1 class="component-page-title">Asignar Rol de Usuario</h1>
+            <p class="component-page-description">Modifica los permisos y el nivel de acceso de este usuario en la plataforma.</p>
+        </div>
+
+        <div class="component-card component-card--grouped">
+            <div class="component-group-item">
+                <div class="component-card__content">
+                    <div class="component-card__avatar" id="role-avatar-container">
+                        <img src="" id="role-user-avatar" class="component-card__avatar-image hidden-avatar" style="display: none;">
+                        <span class="material-symbols-rounded default-avatar-icon" id="role-user-icon">person</span>
+                    </div>
+                    <div class="component-card__text">
+                        <h2 class="component-card__title" id="role-username" data-i18n="global.loading"><?php echo trans('global.loading'); ?></h2>
+                        <p class="component-card__description" id="role-email">...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="component-card component-card--grouped mt-16">
+            <input type="hidden" id="role-target-id" value="<?php echo htmlspecialchars($targetUid); ?>">
+            <input type="hidden" id="role-input-value" value="user">
+
+            <div class="component-group-item component-group-item--stacked">
+                <div class="component-card__content">
+                    <div class="component-card__text">
+                        <h2 class="component-card__title">Seleccionar Rol</h2>
+                        <p class="component-card__description">El rol define qué acciones puede realizar el usuario.</p>
+                    </div>
+                </div>
+                <div class="component-card__actions w-100">
+                    <div class="trigger-select-wrapper w-100">
+                        <div class="trigger-selector" data-action="toggle-dropdown" data-target="dropdown-roles">
+                            <div class="trigger-select-icon">
+                                <span class="material-symbols-rounded" id="current-role-icon">person</span>
+                            </div>
+                            <div class="trigger-select-text">
+                                <span id="current-role-text">Usuario</span>
+                            </div>
+                            <div class="trigger-select-arrow">
+                                <span class="material-symbols-rounded">arrow_drop_down</span>
+                            </div>
+                        </div>
+
+                        <div class="popover-module popover-module--anchor-width body-title disabled" id="dropdown-roles">
+                            <div class="menu-content">
+                                <div class="menu-list">
+                                    <div class="menu-link" 
+                                         data-action="select-role-option" 
+                                         data-value="user" 
+                                         data-label="Usuario" 
+                                         data-icon="person" 
+                                         data-color="#666">
+                                        <div class="menu-link-icon"><span class="material-symbols-rounded">person</span></div>
+                                        <div class="menu-link-text">Usuario</div>
+                                        <div class="menu-link-icon"></div>
+                                    </div>
+                                    <div class="menu-link" 
+                                         data-action="select-role-option" 
+                                         data-value="moderator" 
+                                         data-label="Moderador" 
+                                         data-icon="security" 
+                                         data-color="#0000FF">
+                                        <div class="menu-link-icon"><span class="material-symbols-rounded" style="color: #0000FF;">security</span></div>
+                                        <div class="menu-link-text">Moderador</div>
+                                        <div class="menu-link-icon"></div>
+                                    </div>
+                                    <div class="menu-link" 
+                                         data-action="select-role-option" 
+                                         data-value="administrator" 
+                                         data-label="Administrador" 
+                                         data-icon="admin_panel_settings" 
+                                         data-color="#d32f2f">
+                                        <div class="menu-link-icon"><span class="material-symbols-rounded" style="color: #d32f2f;">admin_panel_settings</span></div>
+                                        <div class="menu-link-text">Administrador</div>
+                                        <div class="menu-link-icon"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="component-card__error" id="role-error-msg" style="margin-top: 16px;"></div>
+
+        </div>
+    </div>
+</div>
+
+<script src="<?php echo $basePath; ?>assets/js/modules/admin-user-details.js"></script>

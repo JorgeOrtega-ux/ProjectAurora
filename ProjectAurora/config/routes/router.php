@@ -159,6 +159,7 @@ $allowedSections = [
     'admin/user-status', 
     'admin/user-manage',
     'admin/user-history',
+    'admin/user-role',
     'admin/backups',
     'admin/server'
 ];

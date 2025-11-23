@@ -33,6 +33,7 @@
             const statusId = document.getElementById('target-user-id');
             const manageId = document.getElementById('manage-target-id');
             const historyId = document.getElementById('history-target-id');
+            const roleId = document.getElementById('role-target-id'); // [NUEVO]
 
             if (statusId) {
                 this.context = 'status';
@@ -46,6 +47,10 @@
                 this.context = 'history';
                 this.targetId = historyId.value;
                 this.prefix = 'history-';
+            } else if (roleId) { // [NUEVO]
+                this.context = 'role';
+                this.targetId = roleId.value;
+                this.prefix = 'role-';
             }
         }
 
@@ -83,6 +88,7 @@
             let errorBox = null;
             
             if (this.context === 'manage') errorBox = document.getElementById('manage-error-msg');
+            else if (this.context === 'role') errorBox = document.getElementById('role-error-msg'); // [NUEVO]
             else {
                 const container = document.querySelector('.component-wrapper');
                 errorBox = container.querySelector('.component-card__error');
@@ -122,6 +128,7 @@
                 if (this.context === 'status') this.initStatusLogic();
                 if (this.context === 'manage') this.initManageLogic();
                 if (this.context === 'history') this.renderHistoryTable(data.history);
+                if (this.context === 'role') this.initRoleLogic(); // [NUEVO]
             } else {
                 this.showError(t('global.error_connection') + ': ' + data.message);
             }
@@ -206,10 +213,14 @@
             if (action === 'select-reason-option') this.updateReasonUI(val);
             if (action === 'select-manage-status') this.updateManageStatusUI(val, label, icon, color);
             if (action === 'select-deletion-type') this.updateDeletionTypeUI(val, label);
+            if (action === 'select-role-option') this.updateRoleUI(val, label, icon, color); // [NUEVO]
 
             this.closeAllDropdowns();
         }
 
+        // =======================================================
+        // LOGICA STATUS (User Status)
+        // =======================================================
         initStatusLogic() {
             const u = this.user;
             const activeAlert = document.getElementById('active-sanction-alert');
@@ -251,20 +262,17 @@
                 btnLift.classList.add('d-none');
                 btnSaveText.textContent = t('admin.status.apply_ban');
                 
-                // Estado inicial limpio
                 document.getElementById('input-status-value').value = '';
                 document.getElementById('current-status-text').textContent = t('admin.status.select_type');
                 document.getElementById('current-status-icon').textContent = 'gavel';
                 document.getElementById('current-status-icon').style.color = '#666';
                 
-                // Reset duración
                 document.getElementById('input-duration-value').value = '';
                 document.getElementById('current-duration-text').textContent = t('admin.status.select_duration');
                 
                 document.getElementById('wrapper-duration').classList.add('d-none');
                 document.getElementById('wrapper-reason').classList.add('d-none'); 
                 
-                // Limpiar activos
                 const dropdowns = ['dropdown-status-options', 'dropdown-duration'];
                 dropdowns.forEach(id => {
                     const dd = document.getElementById(id);
@@ -294,12 +302,11 @@
 
             if (val === 'suspended_temp') {
                 wrapperDuration.classList.remove('d-none');
-                // Si ya hay duración seleccionada (por ejemplo al editar o re-seleccionar), mostrar motivo
                 if (durationVal) wrapperReason.classList.remove('d-none');
                 else wrapperReason.classList.add('d-none');
             } else if (val === 'suspended_perm') {
                 wrapperDuration.classList.add('d-none');
-                wrapperReason.classList.remove('d-none'); // Permanente no pide duración, salta a motivo
+                wrapperReason.classList.remove('d-none'); 
             } else {
                 wrapperDuration.classList.add('d-none');
                 wrapperReason.classList.add('d-none');
@@ -309,7 +316,6 @@
         updateDurationUI(days) {
             document.getElementById('input-duration-value').value = days;
             document.getElementById('current-duration-text').textContent = days + ' ' + t('global.days');
-            // Al seleccionar duración, mostrar el motivo
             document.getElementById('wrapper-reason').classList.remove('d-none');
         }
 
@@ -386,6 +392,9 @@
             this.setLoading(btnLift, false, originalHtml);
         }
 
+        // =======================================================
+        // LOGICA MANAGE (User Manage - General)
+        // =======================================================
         initManageLogic() {
             const u = this.user;
             const btnSave = document.getElementById('btn-save-manage');
@@ -467,6 +476,74 @@
             this.setLoading(btnSave, false, `<span class="material-symbols-rounded">save</span> ${t('global.save_status')}`);
         }
 
+        // =======================================================
+        // [NUEVO] LOGICA ROL (User Role)
+        // =======================================================
+        initRoleLogic() {
+            const u = this.user;
+            const btnSave = document.getElementById('btn-save-role');
+            
+            // Establecer estado inicial basado en el usuario cargado
+            let roleLabel = 'Usuario';
+            let roleIcon = 'person';
+            let roleColor = '#666';
+
+            if (u.role === 'moderator') {
+                roleLabel = 'Moderador';
+                roleIcon = 'security';
+                roleColor = '#0000FF';
+            } else if (u.role === 'administrator') {
+                roleLabel = 'Administrador';
+                roleIcon = 'admin_panel_settings';
+                roleColor = '#d32f2f';
+            } else if (u.role === 'founder') {
+                roleLabel = 'Fundador';
+                roleIcon = 'diamond';
+                roleColor = '#FFC107';
+                // Opcional: Deshabilitar cambio de rol si es Founder
+            }
+
+            this.updateRoleUI(u.role, roleLabel, roleIcon, roleColor);
+            this.setDropdownInitialActive('dropdown-roles', u.role);
+
+            btnSave.onclick = () => this.saveRoleChanges();
+        }
+
+        updateRoleUI(val, text, icon, color) {
+            document.getElementById('role-input-value').value = val;
+            document.getElementById('current-role-text').textContent = text;
+            const iconEl = document.getElementById('current-role-icon');
+            iconEl.textContent = icon;
+            iconEl.style.color = color;
+        }
+
+        async saveRoleChanges() {
+            const newRole = document.getElementById('role-input-value').value;
+            const btnSave = document.getElementById('btn-save-role');
+
+            this.showError('', false);
+            this.setLoading(btnSave, true);
+
+            const payload = {
+                action: 'update_user_role',
+                target_id: this.targetId,
+                role: newRole
+            };
+
+            const res = await this.fetchApi(payload);
+
+            if (res.success) {
+                if (window.alertManager) window.alertManager.showAlert(res.message, 'success');
+                this.loadData(); // Recargar para ver cambios reflejados (header)
+            } else {
+                this.showError(res.message);
+            }
+            this.setLoading(btnSave, false, `<span class="material-symbols-rounded">save</span> ${t('global.save')}`);
+        }
+
+        // =======================================================
+        // HISTORY LOGIC
+        // =======================================================
         renderHistoryTable(logs) {
             const tbody = document.getElementById('full-history-body');
             if (!tbody) return;

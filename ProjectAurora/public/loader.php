@@ -58,6 +58,7 @@ $fileMap = [
     'admin/user-status' => 'admin/user-status', 
     'admin/user-manage' => 'admin/user-manage',
     'admin/user-history'=> 'admin/user-history',
+    'admin/user-role'   => 'admin/user-role',
     'admin/backups'     => 'admin/backups',
     'admin/server'      => 'admin/server',
     

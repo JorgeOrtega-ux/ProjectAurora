@@ -88,8 +88,10 @@
         if (isSelectionActive) {
             tbDefault.style.display = 'none';
             tbSelected.style.display = 'flex';
+            tbSelected.classList.remove('d-none');
         } else {
             tbSelected.style.display = 'none';
+            tbSelected.classList.add('d-none');
             tbDefault.style.display = 'flex';
         }
     }
@@ -97,6 +99,7 @@
     function setupActionButtons(uid) {
         const btnSanctions = document.getElementById('btn-manage-sanctions');
         const btnGeneral = document.getElementById('btn-manage-general');
+        const btnRole = document.getElementById('btn-manage-role');
 
         if (btnSanctions) {
             btnSanctions.onclick = () => {
@@ -107,6 +110,12 @@
         if (btnGeneral) {
             btnGeneral.onclick = () => {
                 if(uid) window.navigateTo('admin/user-manage?uid=' + uid);
+            };
+        }
+
+        if (btnRole) {
+            btnRole.onclick = () => {
+                if(uid) window.navigateTo('admin/user-role?uid=' + uid);
             };
         }
     }
@@ -187,7 +196,7 @@
                 dot.classList.add('online');
             }
             if (text) {
-                text.textContent = t('global.active') || 'En línea'; // "En línea" ahora se asocia a "Activo" o una clave específica
+                text.textContent = t('global.active') || 'En línea'; 
                 text.style.fontWeight = '700';
                 text.style.color = '#2e7d32';
             }
