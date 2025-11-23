@@ -194,13 +194,18 @@ async def handle_php_notification(reader, writer):
                 
                 # B) Si NO hay target_session_id, es un logout GLOBAL (Admin Ban/Suspend)
                 else:
-                    print(f"[PHP->WS] Ejecutando expulsión global para usuario {target_id}")
-                    # Recorremos TODAS las sesiones activas de ese usuario
+                    # [MODIFICADO] Capturamos la razón enviada desde admin_handler.php
+                    reason = payload.get('payload', {}).get('reason', 'unknown')
+                    
+                    print(f"[PHP->WS] Ejecutando expulsión global para usuario {target_id}. Razón: {reason}")
+                    
                     for sess_id, ws in list(user_sessions.items()):
                         try:
+                            # [MODIFICADO] Incluimos la razón en el JSON enviado al navegador
                             await ws.send(json.dumps({
                                 'type': 'force_logout', 
-                                'message': 'Tu cuenta ha sido suspendida o modificada.'
+                                'message': 'Tu cuenta ha sido suspendida o modificada.',
+                                'reason': reason 
                             }))
                         except Exception as e:
                             print(f"[PHP->WS] Error en broadcast logout: {e}")

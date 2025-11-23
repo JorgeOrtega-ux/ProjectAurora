@@ -92,15 +92,25 @@ async function handleResendCode(type, linkSelector) {
 export function initAuthManager() {
     
     document.addEventListener('socket-message', (e) => {
-        const { type } = e.detail;
+        // [MODIFICADO] Extraemos también la propiedad 'reason'
+        const { type, reason } = e.detail;
+        
         if (type === 'force_logout') {
             if (window.alertManager) {
                 window.alertManager.showAlert('Tu sesión ha sido cerrada remotamente.', 'warning');
             } else {
                 alert('Tu sesión ha sido cerrada remotamente.');
             }
+            
             setTimeout(() => {
-                window.location.href = API_BASE_PATH + 'login';
+                // [MODIFICADO] Lógica de redirección inteligente
+                if (reason === 'suspended' || reason === 'deleted') {
+                    // Si hay razón de castigo, vamos a status-page
+                    window.location.href = API_BASE_PATH + 'status-page?status=' + reason;
+                } else {
+                    // Si no (ej. cerrar sesión normal), vamos al login
+                    window.location.href = API_BASE_PATH + 'login';
+                }
             }, 2000);
         }
     });
