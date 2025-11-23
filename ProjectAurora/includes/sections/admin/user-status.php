@@ -1,3 +1,4 @@
+
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (!in_array($_SESSION['user_role'], ['founder', 'administrator'])) {
@@ -98,10 +99,10 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                             </div>
                         </div>
 
-                        <div class="popover-module disabled" id="dropdown-status-options">
+                        <div class="popover-module popover-module--anchor-width body-title disabled" id="dropdown-status-options">
                             <div class="menu-content">
                                 <div class="menu-list">
-                                    <div class="menu-link"
+                                    <div class="menu-link active"
                                         data-action="select-status-option"
                                         data-value="suspended_temp"
                                         data-label="Suspensión Temporal"
@@ -111,6 +112,9 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                             <span class="material-symbols-rounded status-temp">timer</span>
                                         </div>
                                         <div class="menu-link-text">Suspensión Temporal</div>
+                                        <div class="menu-link-icon">
+                                            <span class="material-symbols-rounded">check</span>
+                                        </div>
                                     </div>
                                     <div class="menu-link"
                                         data-action="select-status-option"
@@ -122,6 +126,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                             <span class="material-symbols-rounded status-perm">block</span>
                                         </div>
                                         <div class="menu-link-text">Suspensión Permanente</div>
+                                        <div class="menu-link-icon"></div>
                                     </div>
                                 </div>
                             </div>
@@ -153,18 +158,21 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                 </div>
                             </div>
 
-                            <div class="popover-module disabled" id="dropdown-duration">
+                            <div class="popover-module popover-module--anchor-width body-title disabled" id="dropdown-duration">
                                 <div class="menu-content">
                                     <div class="menu-list">
                                         <?php
                                         $daysOptions = [2, 4, 6, 8, 12, 30];
                                         foreach ($daysOptions as $d) {
+                                            $isActive = ($d === 2) ? 'active' : '';
+                                            $check = ($d === 2) ? '<span class="material-symbols-rounded">check</span>' : '';
                                             echo "
-                                            <div class='menu-link' data-action='select-duration-option' data-value='$d'>
+                                            <div class='menu-link $isActive' data-action='select-duration-option' data-value='$d'>
                                                 <div class='menu-link-icon'>
                                                     <span class='material-symbols-rounded'>schedule</span>
                                                 </div>
                                                 <div class='menu-link-text'>{$d} Días</div>
+                                                <div class='menu-link-icon'>$check</div>
                                             </div>";
                                         }
                                         ?>
@@ -200,7 +208,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                 </div>
                             </div>
 
-                            <div class="popover-module disabled" id="dropdown-reasons">
+                            <div class="popover-module popover-module--anchor-width body-title disabled" id="dropdown-reasons">
                                 <div class="menu-content">
                                     <div class="menu-list">
                                         <?php
@@ -212,8 +220,11 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                             "Solicitud de verificación de identidad"
                                         ];
                                         foreach ($reasons as $r) {
+                                            // Initial state has no reason selected
                                             echo "<div class='menu-link' data-action=\"select-reason-option\" data-value=\"$r\">
+                                                    <div class='menu-link-icon'><span class='material-symbols-rounded'>gavel</span></div>
                                                     <div class='menu-link-text'>$r</div>
+                                                    <div class='menu-link-icon'></div>
                                                   </div>";
                                         }
                                         ?>

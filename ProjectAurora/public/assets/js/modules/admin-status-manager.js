@@ -1,4 +1,3 @@
-// public/assets/js/modules/admin-status-manager.js
 
 (function() {
     const API_ADMIN = (window.BASE_PATH || '/ProjectAurora/') + 'api/admin_handler.php';
@@ -33,35 +32,28 @@
     const activeAlert = document.getElementById('active-sanction-alert');
     const activeAlertDesc = document.getElementById('active-sanction-desc');
 
-    // [NUEVO] Función para gestionar errores dinámicos (igual a Settings)
     function updateCardError(element, message = '', show = true) {
         if (!element) return;
-        
-        // Buscar el contenedor de la tarjeta (padre del input)
         const cardContainer = element.closest('.component-card') || element;
         let nextElement = cardContainer.nextElementSibling;
         let errorDiv = null;
 
-        // Verificar si ya existe un error debajo
         if (nextElement && nextElement.classList.contains('component-card__error')) {
             errorDiv = nextElement;
         }
 
-        // Crear si no existe y se debe mostrar
         if (!errorDiv && show) {
             errorDiv = document.createElement('div');
             errorDiv.className = 'component-card__error';
-            errorDiv.style.marginTop = '16px'; // Margen para separar de la tarjeta
+            errorDiv.style.marginTop = '16px'; 
             cardContainer.after(errorDiv);
         }
 
-        // Mostrar u Ocultar
         if (show && errorDiv) {
             errorDiv.textContent = message;
             requestAnimationFrame(() => errorDiv.classList.add('active'));
         } else if (!show && errorDiv) {
             errorDiv.classList.remove('active');
-            // Esperar a la transición CSS antes de eliminar del DOM
             setTimeout(() => {
                 if (errorDiv.parentNode) errorDiv.parentNode.removeChild(errorDiv);
             }, 200);
@@ -69,16 +61,34 @@
     }
 
     function showError(msg, show = true) {
-        // Usamos el input principal como referencia para encontrar la tarjeta
-        // El input está dentro de la tarjeta agrupada (.component-card--grouped)
         updateCardError(inputStatus, msg, show);
+    }
+
+    // --- UI HELPER FOR DROPDOWN VISUALS ---
+    function handleDropdownSelectionVisuals(selectedOption) {
+        // 1. Find parent container
+        const menuList = selectedOption.closest('.menu-list');
+        if (!menuList) return;
+
+        // 2. Reset all options in this dropdown
+        const allOptions = menuList.querySelectorAll('.menu-link');
+        allOptions.forEach(opt => {
+            opt.classList.remove('active');
+            const iconContainer = opt.lastElementChild; // The right-side icon container
+            if (iconContainer) iconContainer.innerHTML = '';
+        });
+
+        // 3. Set active state for selected
+        selectedOption.classList.add('active');
+        const activeIconContainer = selectedOption.lastElementChild;
+        if (activeIconContainer) activeIconContainer.innerHTML = '<span class="material-symbols-rounded">check</span>';
     }
 
     // --- EVENT DELEGATION ---
 
     document.body.addEventListener('click', (e) => {
         
-        // 1. Toggle Dropdowns
+        // 1. Toggle Dropdowns (Fixed Logic)
         const toggleBtn = e.target.closest('[data-action="toggle-dropdown"]');
         if (toggleBtn) {
             e.stopPropagation();
@@ -86,8 +96,15 @@
             const targetEl = document.getElementById(targetId);
             
             if (targetEl) {
-                closeAllDropdowns();
-                targetEl.classList.toggle('disabled');
+                // Check if it's currently open before closing all
+                const isCurrentlyOpen = !targetEl.classList.contains('disabled');
+                
+                closeAllDropdowns(); // Close others
+                
+                // Toggle logic: if it was closed, open it. If open, leave it closed (since closeAll closed it)
+                if (!isCurrentlyOpen) {
+                    targetEl.classList.remove('disabled');
+                }
             }
             return;
         }
@@ -101,6 +118,7 @@
             const color = statusOpt.dataset.color;
             
             selectStatus(val, label, icon, color);
+            handleDropdownSelectionVisuals(statusOpt); // Update checkmarks
             closeAllDropdowns();
             return;
         }
@@ -109,6 +127,7 @@
         const durOpt = e.target.closest('[data-action="select-duration-option"]');
         if (durOpt) {
             selectDuration(durOpt.dataset.value);
+            handleDropdownSelectionVisuals(durOpt); // Update checkmarks
             closeAllDropdowns();
             return;
         }
@@ -117,6 +136,7 @@
         const reasonOpt = e.target.closest('[data-action="select-reason-option"]');
         if (reasonOpt) {
             selectReason(reasonOpt.dataset.value);
+            handleDropdownSelectionVisuals(reasonOpt); // Update checkmarks
             closeAllDropdowns();
             return;
         }
@@ -199,15 +219,21 @@
                         currentUserState.isPermanent = true;
                         activeText = 'Permanente';
                         selectStatus('suspended_perm', 'Suspensión Permanente', 'block', '#d32f2f');
+                        // Update UI selection manually for initial load
+                        updateInitialSelection('dropdown-status-options', 'suspended_perm');
                     } else {
                         currentUserState.isPermanent = false;
                         const endDate = new Date(u.suspension_end_date).toLocaleDateString();
                         activeText = `Hasta el ${endDate}`;
                         selectStatus('suspended_temp', 'Suspensión Temporal', 'timer', '#f57c00');
+                        updateInitialSelection('dropdown-status-options', 'suspended_temp');
                     }
                     
                     activeAlertDesc.innerHTML = `<strong>${activeText}</strong><br>Motivo: ${u.suspension_reason}`;
-                    if (u.suspension_reason) selectReason(u.suspension_reason);
+                    if (u.suspension_reason) {
+                        selectReason(u.suspension_reason);
+                        updateInitialSelection('dropdown-reasons', u.suspension_reason);
+                    }
 
                 } else {
                     currentUserState.isSuspended = false;
@@ -218,6 +244,7 @@
                     btnLift.classList.add('d-none');
                     btnSaveText.textContent = 'Aplicar Sanción';
                     selectStatus('suspended_temp', 'Suspensión Temporal', 'timer', '#f57c00');
+                    updateInitialSelection('dropdown-status-options', 'suspended_temp');
                 }
 
                 if (data.history && data.history.length > 0) {
@@ -229,15 +256,19 @@
         } catch(e) { console.error(e); }
     }
 
-    // [ACTUALIZADO] Nueva lógica de renderizado de historial
+    function updateInitialSelection(dropdownId, value) {
+        const dropdown = document.getElementById(dropdownId);
+        if (!dropdown) return;
+        const option = dropdown.querySelector(`.menu-link[data-value="${value}"]`);
+        if (option) handleDropdownSelectionVisuals(option);
+    }
+
     function renderHistory(logs) {
         let html = '';
-        
         logs.forEach(log => {
             const start = new Date(log.started_at).toLocaleDateString();
             const adminName = log.admin_name ? log.admin_name : 'Sistema';
             
-            // 1. Duración y Fin Programado
             let durationDisplay = '';
             let endDisplay = '';
 
@@ -253,13 +284,10 @@
                 }
             }
 
-            // 2. Información de Levantamiento
             let liftedDisplay = '<span style="color:#ccc;">-</span>';
-            
             if (log.lifted_at) {
                 const liftedDate = new Date(log.lifted_at).toLocaleDateString();
                 const lifter = log.lifter_name ? log.lifter_name : 'Admin';
-                
                 liftedDisplay = `
                     <div style="display:flex; flex-direction:column;">
                         <span style="color:#2e7d32; font-weight:600; font-size:12px;">
@@ -274,22 +302,16 @@
             html += `
                 <tr>
                     <td>${start}</td>
-                    <td>
-                        <span style="display:inline-block; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${log.reason}">
-                            ${log.reason}
-                        </span>
-                    </td>
+                    <td><span style="display:inline-block; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${log.reason}">${log.reason}</span></td>
                     <td>${durationDisplay}</td>
                     <td>${endDisplay}</td>
                     <td><span style="background:#eee; padding:2px 6px; border-radius:4px; font-size:12px;">${adminName}</span></td>
                     <td>${liftedDisplay}</td>
-                </tr>
-            `;
+                </tr>`;
         });
         historyBody.innerHTML = html;
     }
 
-    // --- Guardar ---
     btnSave.onclick = async () => {
         const statusType = inputStatus.value; 
         const reason = inputReason.value;
@@ -302,7 +324,6 @@
             return; 
         }
 
-        // VALIDACIÓN ANTI-DUPLICADOS FRONTEND
         if (currentUserState.isPermanent && statusType === 'suspended_perm' && reason === currentUserState.reason) {
             showError('Este usuario ya tiene una suspensión permanente activa por el mismo motivo.');
             return;
@@ -348,7 +369,6 @@
         }
     };
 
-    // --- Levantar Sanción ---
     btnLift.onclick = async () => {
         if (!confirm('¿Estás seguro de querer levantar la sanción y reactivar inmediatamente a este usuario?')) return;
 

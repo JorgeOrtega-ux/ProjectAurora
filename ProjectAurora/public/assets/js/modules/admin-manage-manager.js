@@ -1,4 +1,3 @@
-// public/assets/js/modules/admin-manage-manager.js
 
 (function() {
     const API_ADMIN = (window.BASE_PATH || '/ProjectAurora/') + 'api/admin_handler.php';
@@ -26,11 +25,28 @@
     const btnSave = document.getElementById('btn-save-manage');
     const errorBox = document.getElementById('manage-error-msg');
 
+    // --- UI HELPER FOR DROPDOWN VISUALS ---
+    function handleDropdownSelectionVisuals(selectedOption) {
+        const menuList = selectedOption.closest('.menu-list');
+        if (!menuList) return;
+
+        const allOptions = menuList.querySelectorAll('.menu-link');
+        allOptions.forEach(opt => {
+            opt.classList.remove('active');
+            const iconContainer = opt.lastElementChild;
+            if (iconContainer) iconContainer.innerHTML = '';
+        });
+
+        selectedOption.classList.add('active');
+        const activeIconContainer = selectedOption.lastElementChild;
+        if (activeIconContainer) activeIconContainer.innerHTML = '<span class="material-symbols-rounded">check</span>';
+    }
+
     // --- EVENT DELEGATION ---
 
     document.body.addEventListener('click', (e) => {
         
-        // 1. Toggle Dropdowns
+        // 1. Toggle Dropdowns (Fixed)
         const toggleBtn = e.target.closest('[data-action="toggle-dropdown"]');
         if (toggleBtn) {
             e.stopPropagation();
@@ -38,8 +54,11 @@
             const targetEl = document.getElementById(targetId);
             
             if (targetEl) {
+                const isCurrentlyOpen = !targetEl.classList.contains('disabled');
                 closeAllDropdowns();
-                targetEl.classList.toggle('disabled');
+                if (!isCurrentlyOpen) {
+                    targetEl.classList.remove('disabled');
+                }
             }
             return;
         }
@@ -53,6 +72,7 @@
             const color = statusOpt.dataset.color;
             
             selectManageStatus(val, label, icon, color);
+            handleDropdownSelectionVisuals(statusOpt); // Update checkmarks
             closeAllDropdowns();
             return;
         }
@@ -64,6 +84,7 @@
             const label = delTypeOpt.dataset.label;
             
             selectDeletionType(val, label);
+            handleDropdownSelectionVisuals(delTypeOpt); // Update checkmarks
             closeAllDropdowns();
             return;
         }
@@ -105,6 +126,13 @@
         }
     }
 
+    function updateInitialSelection(dropdownId, value) {
+        const dropdown = document.getElementById(dropdownId);
+        if (!dropdown) return;
+        const option = dropdown.querySelector(`.menu-link[data-value="${value}"]`);
+        if (option) handleDropdownSelectionVisuals(option);
+    }
+
     // --- Load User Data ---
     async function loadUserData() {
         try {
@@ -120,7 +148,6 @@
                 document.getElementById('manage-username').textContent = u.username;
                 document.getElementById('manage-email').textContent = u.email;
                 
-                // [CORREGIDO] Asignar rol al contenedor para mostrar el borde
                 const container = document.getElementById('manage-avatar-container');
                 if (container) container.dataset.role = u.role;
 
@@ -134,16 +161,19 @@
                 // Precargar estado
                 if (u.account_status === 'deleted') {
                     selectManageStatus('deleted', 'Cuenta Eliminada', 'delete_forever', '#616161');
+                    updateInitialSelection('dropdown-manage-status', 'deleted');
                     
                     if (u.deletion_type) {
                         const typeText = (u.deletion_type === 'user_decision') ? 'Decisión del Usuario' : 'Decisión Administrativa';
                         selectDeletionType(u.deletion_type, typeText);
+                        updateInitialSelection('dropdown-deletion-type', u.deletion_type);
                     }
                     if (u.deletion_reason) inputUserReason.value = u.deletion_reason;
                     if (u.admin_comments) inputAdminComments.value = u.admin_comments;
 
                 } else {
                     selectManageStatus('active', 'Activo', 'check_circle', '#2e7d32');
+                    updateInitialSelection('dropdown-manage-status', 'active');
                 }
             }
         } catch(e) { console.error(e); }
