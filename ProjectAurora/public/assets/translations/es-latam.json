@@ -22,6 +22,7 @@
         "active": "Activo",
         "deleted": "Cuenta Eliminada",
         "alt_avatar": "Avatar",
+        "please": "Por favor",
         "time": {
             "never": "Nunca",
             "just_now": "Hace un momento",
@@ -370,7 +371,9 @@
             "duration_desc": "Días a partir de hoy que el usuario estará bloqueado.",
             "reason_label": "Motivo de la Sanción",
             "reason_desc": "Requerido para aplicar el castigo.",
-            "select_reason": "Selecciona una razón..."
+            "select_reason": "Selecciona una razón...",
+            "select_type": "Selecciona una sanción...",
+            "select_duration": "Selecciona un tiempo..."
         },
         "manage": {
             "title": "Gestionar Usuario",
@@ -418,7 +421,9 @@
             "user_not_found": "Usuario no encontrado.",
             "self_sanction": "No puedes sancionarte a ti mismo.",
             "user_not_exist": "Usuario no existe.",
-            "reason_required": "Debes especificar una razón."
+            "reason_required": "Debes especificar una razón.",
+            "type_required": "Debes seleccionar un tipo de sanción.",
+            "duration_required": "Debes seleccionar una duración."
         },
         "success": {
             "ban_applied": "Sanción aplicada correctamente.",

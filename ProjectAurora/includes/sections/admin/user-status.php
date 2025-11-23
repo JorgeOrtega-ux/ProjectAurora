@@ -61,8 +61,8 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
         <div class="component-card component-card--grouped mt-16">
             <input type="hidden" id="target-user-id" value="<?php echo htmlspecialchars($targetUid); ?>">
 
-            <input type="hidden" id="input-status-value" value="suspended_temp">
-            <input type="hidden" id="input-duration-value" value="2">
+            <input type="hidden" id="input-status-value" value="">
+            <input type="hidden" id="input-duration-value" value="">
             <input type="hidden" id="input-reason-value" value="">
 
             <div id="active-sanction-alert" class="component-group-item d-none" style="background-color: #fff8e1; border-bottom: 1px solid #ffe0b2;">
@@ -88,10 +88,10 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                     <div class="trigger-select-wrapper w-100">
                         <div class="trigger-selector" data-action="toggle-dropdown" data-target="dropdown-status-options">
                             <div class="trigger-select-icon">
-                                <span class="material-symbols-rounded" id="current-status-icon">timer</span>
+                                <span class="material-symbols-rounded" id="current-status-icon">gavel</span>
                             </div>
                             <div class="trigger-select-text">
-                                <span id="current-status-text" data-i18n="admin.status.temp_ban"><?php echo trans('admin.status.temp_ban'); ?></span>
+                                <span id="current-status-text" data-i18n="admin.status.select_type"><?php echo trans('admin.status.select_type'); ?></span>
                             </div>
                             <div class="trigger-select-arrow">
                                 <span class="material-symbols-rounded">arrow_drop_down</span>
@@ -101,7 +101,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                         <div class="popover-module popover-module--anchor-width body-title disabled" id="dropdown-status-options">
                             <div class="menu-content">
                                 <div class="menu-list">
-                                    <div class="menu-link active"
+                                    <div class="menu-link"
                                         data-action="select-status-option"
                                         data-value="suspended_temp"
                                         data-label="<?php echo trans('admin.status.temp_ban'); ?>"
@@ -111,9 +111,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                             <span class="material-symbols-rounded status-temp">timer</span>
                                         </div>
                                         <div class="menu-link-text" data-i18n="admin.status.temp_ban"><?php echo trans('admin.status.temp_ban'); ?></div>
-                                        <div class="menu-link-icon">
-                                            <span class="material-symbols-rounded">check</span>
-                                        </div>
+                                        <div class="menu-link-icon"></div>
                                     </div>
                                     <div class="menu-link"
                                         data-action="select-status-option"
@@ -134,7 +132,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                 </div>
             </div>
 
-            <div id="wrapper-duration" class="w-100">
+            <div id="wrapper-duration" class="w-100 d-none">
                 <hr class="component-divider">
                 <div class="component-group-item component-group-item--stacked">
                     <div class="component-card__content">
@@ -150,7 +148,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                     <span class="material-symbols-rounded">calendar_today</span>
                                 </div>
                                 <div class="trigger-select-text">
-                                    <span id="current-duration-text">2 <span data-i18n="global.days"><?php echo trans('global.days'); ?></span></span>
+                                    <span id="current-duration-text" data-i18n="admin.status.select_duration"><?php echo trans('admin.status.select_duration'); ?></span>
                                 </div>
                                 <div class="trigger-select-arrow">
                                     <span class="material-symbols-rounded">arrow_drop_down</span>
@@ -163,16 +161,14 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                         <?php
                                         $daysOptions = [2, 4, 6, 8, 12, 30];
                                         foreach ($daysOptions as $d) {
-                                            $isActive = ($d === 2) ? 'active' : '';
-                                            $check = ($d === 2) ? '<span class="material-symbols-rounded">check</span>' : '';
                                             $daysLabel = trans('global.days');
                                             echo "
-                                            <div class='menu-link $isActive' data-action='select-duration-option' data-value='$d'>
+                                            <div class='menu-link' data-action='select-duration-option' data-value='$d'>
                                                 <div class='menu-link-icon'>
                                                     <span class='material-symbols-rounded'>schedule</span>
                                                 </div>
                                                 <div class='menu-link-text'>{$d} {$daysLabel}</div>
-                                                <div class='menu-link-icon'>$check</div>
+                                                <div class='menu-link-icon'></div>
                                             </div>";
                                         }
                                         ?>
@@ -185,7 +181,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                 </div>
             </div>
 
-            <div id="wrapper-reason" class="w-100">
+            <div id="wrapper-reason" class="w-100 d-none">
                 <hr class="component-divider">
                 <div class="component-group-item component-group-item--stacked">
                     <div class="component-card__content">

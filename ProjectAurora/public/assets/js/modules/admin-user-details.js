@@ -235,7 +235,7 @@
                 } else {
                     this.currentUserState.isPermanent = false;
                     const endDate = new Date(u.suspension_end_date).toLocaleDateString();
-                    activeText = t('admin.status.until') + ' ' + endDate; // "Hasta el..."
+                    activeText = t('admin.status.until') + ' ' + endDate; 
                     this.updateStatusUI('suspended_temp', t('admin.status.temp_ban'), 'timer', '#f57c00');
                     this.setDropdownInitialActive('dropdown-status-options', 'suspended_temp');
                 }
@@ -250,8 +250,31 @@
                 activeAlert.classList.add('d-none');
                 btnLift.classList.add('d-none');
                 btnSaveText.textContent = t('admin.status.apply_ban');
-                this.updateStatusUI('suspended_temp', t('admin.status.temp_ban'), 'timer', '#f57c00');
-                this.setDropdownInitialActive('dropdown-status-options', 'suspended_temp');
+                
+                // Estado inicial limpio
+                document.getElementById('input-status-value').value = '';
+                document.getElementById('current-status-text').textContent = t('admin.status.select_type');
+                document.getElementById('current-status-icon').textContent = 'gavel';
+                document.getElementById('current-status-icon').style.color = '#666';
+                
+                // Reset duración
+                document.getElementById('input-duration-value').value = '';
+                document.getElementById('current-duration-text').textContent = t('admin.status.select_duration');
+                
+                document.getElementById('wrapper-duration').classList.add('d-none');
+                document.getElementById('wrapper-reason').classList.add('d-none'); 
+                
+                // Limpiar activos
+                const dropdowns = ['dropdown-status-options', 'dropdown-duration'];
+                dropdowns.forEach(id => {
+                    const dd = document.getElementById(id);
+                    if(dd) {
+                        dd.querySelectorAll('.menu-link').forEach(o => {
+                            o.classList.remove('active');
+                            if (o.lastElementChild) o.lastElementChild.innerHTML = '';
+                        });
+                    }
+                });
             }
 
             btnSave.onclick = () => this.saveStatusSanction();
@@ -266,13 +289,28 @@
             iconEl.style.color = color;
 
             const wrapperDuration = document.getElementById('wrapper-duration');
-            if (val === 'suspended_temp') wrapperDuration.classList.remove('d-none');
-            else wrapperDuration.classList.add('d-none');
+            const wrapperReason = document.getElementById('wrapper-reason');
+            const durationVal = document.getElementById('input-duration-value').value;
+
+            if (val === 'suspended_temp') {
+                wrapperDuration.classList.remove('d-none');
+                // Si ya hay duración seleccionada (por ejemplo al editar o re-seleccionar), mostrar motivo
+                if (durationVal) wrapperReason.classList.remove('d-none');
+                else wrapperReason.classList.add('d-none');
+            } else if (val === 'suspended_perm') {
+                wrapperDuration.classList.add('d-none');
+                wrapperReason.classList.remove('d-none'); // Permanente no pide duración, salta a motivo
+            } else {
+                wrapperDuration.classList.add('d-none');
+                wrapperReason.classList.add('d-none');
+            }
         }
 
         updateDurationUI(days) {
             document.getElementById('input-duration-value').value = days;
             document.getElementById('current-duration-text').textContent = days + ' ' + t('global.days');
+            // Al seleccionar duración, mostrar el motivo
+            document.getElementById('wrapper-reason').classList.remove('d-none');
         }
 
         updateReasonUI(reason) {
@@ -287,6 +325,16 @@
             const btnSave = document.getElementById('btn-save-status');
 
             this.showError('', false);
+
+            if (!statusType) { 
+                this.showError(t('admin.error.type_required') || 'Selecciona un tipo de sanción.'); 
+                return; 
+            }
+
+            if (statusType === 'suspended_temp' && !duration) {
+                this.showError(t('admin.error.duration_required') || 'Selecciona una duración.');
+                return;
+            }
 
             if (!reason) { this.showError(t('admin.error.reason_required')); return; }
 
