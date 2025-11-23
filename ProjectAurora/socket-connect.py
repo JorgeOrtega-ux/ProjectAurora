@@ -118,7 +118,7 @@ async def handle_browser_client(websocket):
                     # Guardar conexión mapeada por session_id
                     connected_clients[user_id][session_id] = websocket
                     
-                    # [CORREGIDO] Si es admin, añadirlo a la lista de listeners privilegiados
+                    # Si es admin, añadirlo a la lista de listeners privilegiados
                     if user_role in ['founder', 'administrator']:
                         admin_sessions.add(websocket)
 
@@ -132,7 +132,7 @@ async def handle_browser_client(websocket):
 
             # --- COMANDOS DE ADMIN ---
             elif msg_type == 'get_online_users':
-                # [CORREGIDO] Solo responder si ya está autenticado y es admin
+                # Solo responder si ya está autenticado y es admin
                 if user_id and user_role in ['founder', 'administrator']:
                     # Enviamos la lista de IDs que tienen al menos una sesión activa
                     online_ids = list(connected_clients.keys())
@@ -179,18 +179,31 @@ async def handle_php_notification(reader, writer):
         if target_id in connected_clients:
             user_sessions = connected_clients[target_id]
             
-            # CASO 1: Logout forzado de UNA sesión específica
+            # CASO 1: Logout forzado (Global o Específico)
             if msg_type == 'force_logout':
                 target_session = payload.get('payload', {}).get('target_session_id')
                 
-                if target_session and target_session in user_sessions:
-                    ws = user_sessions[target_session]
-                    try:
-                        await ws.send(json.dumps({'type': 'force_logout', 'message': 'Sesión cerrada remotamente.'}))
-                        # Opcional: cerrar socket desde servidor
-                        # await ws.close()
-                    except Exception as e:
-                        print(f"[PHP->WS] Error enviando logout: {e}")
+                # A) Si hay un target_session_id, cerramos SOLO esa sesión (Revocar dispositivo)
+                if target_session:
+                    if target_session in user_sessions:
+                        ws = user_sessions[target_session]
+                        try:
+                            await ws.send(json.dumps({'type': 'force_logout', 'message': 'Sesión cerrada remotamente.'}))
+                        except Exception as e:
+                            print(f"[PHP->WS] Error enviando logout: {e}")
+                
+                # B) Si NO hay target_session_id, es un logout GLOBAL (Admin Ban/Suspend)
+                else:
+                    print(f"[PHP->WS] Ejecutando expulsión global para usuario {target_id}")
+                    # Recorremos TODAS las sesiones activas de ese usuario
+                    for sess_id, ws in list(user_sessions.items()):
+                        try:
+                            await ws.send(json.dumps({
+                                'type': 'force_logout', 
+                                'message': 'Tu cuenta ha sido suspendida o modificada.'
+                            }))
+                        except Exception as e:
+                            print(f"[PHP->WS] Error en broadcast logout: {e}")
 
             # CASO 2: Logout forzado de TODAS las sesiones EXCEPTO una
             elif msg_type == 'force_logout_others':
