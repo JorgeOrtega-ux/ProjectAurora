@@ -5,25 +5,34 @@ if (!in_array($_SESSION['user_role'], ['founder', 'administrator'])) {
 }
 
 $targetUid = $_GET['uid'] ?? 0;
+$basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora/';
 ?>
 
+<link rel="stylesheet" href="<?php echo $basePath; ?>assets/css/admin.css">
+
 <div class="section-content active" data-section="admin/user-manage">
-    <div class="content-toolbar" style="width: 100%; max-width: 500px; justify-content: flex-end;">
-        <button class="component-button primary" id="btn-save-manage">
-            <span class="material-symbols-rounded">save</span>
-            Guardar Estado
-        </button>
+    
+    <div class="toolbar-stack">
+        <div class="component-toolbar">
+            <div class="component-toolbar__group">
+                <div class="component-icon-button" data-nav="admin/users" data-tooltip="Volver">
+                    <span class="material-symbols-rounded">arrow_back</span>
+                </div>
+                <div class="component-toolbar__separator"></div>
+                <span style="font-size: 14px; font-weight: 600; color: #666;">Estado</span>
+            </div>
+            <div class="component-toolbar__right">
+                <button class="component-button primary" id="btn-save-manage">
+                    <span class="material-symbols-rounded">save</span>
+                    Guardar Estado
+                </button>
+            </div>
+        </div>
     </div>
 
     <div class="component-wrapper section-with-toolbar">
 
         <div class="component-header-card">
-            <div class="auth-back-link" style="margin-bottom: 15px; text-align: left;">
-                <a href="#" data-nav="admin/users" style="color:#666; text-decoration:none; display:flex; align-items:center; gap:5px; font-size:14px;">
-                    <span class="material-symbols-rounded" style="font-size:18px;">arrow_back</span> 
-                    <span>Volver a usuarios</span>
-                </a>
-            </div>
             <h1 class="component-page-title">Gestionar Usuario</h1>
             <p class="component-page-description">Ciclo de vida de la cuenta y notas administrativas.</p>
         </div>
@@ -162,4 +171,4 @@ $targetUid = $_GET['uid'] ?? 0;
     </div>
 </div>
 
-<script src="<?php echo isset($basePath) ? $basePath : '/ProjectAurora/'; ?>assets/js/modules/admin-manage-manager.js"></script>
+<script src="<?php echo $basePath; ?>assets/js/modules/admin-manage-manager.js"></script>

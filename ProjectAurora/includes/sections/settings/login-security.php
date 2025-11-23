@@ -88,20 +88,22 @@ if ($lastPassChange) {
 
         </div>
 
-        <div class="component-card component-card--danger" data-component="delete-account-section">
-            <div class="component-card__content">
-                <div class="component-card__text">
-                    <h2 class="component-card__title" data-i18n="settings.security.delete_title"><?php echo trans('settings.security.delete_title'); ?></h2>
-                    <p class="component-card__description">
-                        <span data-i18n="settings.security.delete_desc"><?php echo trans('settings.security.delete_desc'); ?></span> 
-                        <?php echo $dateStr; ?>
-                    </p>
+        <div class="component-card component-card--grouped component-card--danger" data-component="delete-account-section">
+            <div class="component-group-item component-group-item--stacked-right">
+                <div class="component-card__content">
+                    <div class="component-card__text">
+                        <h2 class="component-card__title" data-i18n="settings.security.delete_title"><?php echo trans('settings.security.delete_title'); ?></h2>
+                        <p class="component-card__description">
+                            <span data-i18n="settings.security.delete_desc"><?php echo trans('settings.security.delete_desc'); ?></span> 
+                            <?php echo $dateStr; ?>
+                        </p>
+                    </div>
                 </div>
-            </div>
-            <div class="component-card__actions actions-right">
-                <button type="button" class="component-button danger" data-action="trigger-account-delete" data-i18n="settings.security.delete_btn">
-                    <?php echo trans('settings.security.delete_btn'); ?>
-                </button>
+                <div class="component-card__actions actions-right">
+                    <button type="button" class="component-button danger" data-action="trigger-account-delete" data-i18n="settings.security.delete_btn">
+                        <?php echo trans('settings.security.delete_btn'); ?>
+                    </button>
+                </div>
             </div>
         </div>
 

@@ -5,12 +5,6 @@ if (session_status() === PHP_SESSION_NONE) session_start();
     <div class="component-wrapper">
 
         <div class="component-header-card">
-            <div class="auth-back-link" style="margin-bottom: 15px; text-align: left;">
-                <a href="#" data-nav="settings/login-security" style="color:#666; text-decoration:none; display:flex; align-items:center; gap:5px; font-size:14px;">
-                    <span class="material-symbols-rounded" style="font-size:18px;">arrow_back</span> 
-                    <span data-i18n="global.back"><?php echo trans('global.back'); ?></span>
-                </a>
-            </div>
             <h1 class="component-page-title" data-i18n="settings.sessions.title"><?php echo trans('settings.sessions.title'); ?></h1>
             <p class="component-page-description" data-i18n="settings.sessions.description"><?php echo trans('settings.sessions.description'); ?></p>
         </div>
