@@ -122,3 +122,81 @@
 .search-toolbar-panel.disabled {
     display: none;
 }
+
+/* =========================================
+   BOTONES Y ACCIONES DEL TOOLBAR
+   (Movidos desde styles.css)
+   ========================================= */
+
+.toolbar-action-btn {
+    background: transparent;
+    border: 1px solid #00000020;
+    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #333;
+    outline: none;
+}
+
+.toolbar-action-btn:hover {
+    background-color: #f5f5fa;
+    color: #000;
+    border-color: #00000040;
+}
+
+.toolbar-action-btn.active {
+    background-color: #000000;
+    color: #ffffff;
+    border-color: #000000;
+}
+
+.toolbar-action-btn .material-symbols-rounded {
+    font-size: 22px;
+}
+
+/* --- PAGINACIÓN --- */
+.toolbar-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 40px;
+    border: 1px solid #00000020;
+    border-radius: 8px;
+    padding: 0 4px;
+    background-color: transparent;
+    min-width: 100px;
+}
+
+.pagination-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 6px;
+    color: #333;
+    transition: background 0.2s;
+}
+
+.pagination-btn:hover {
+    background-color: #f5f5fa;
+}
+
+.pagination-btn .material-symbols-rounded {
+    font-size: 20px;
+}
+
+.pagination-number {
+    font-size: 14px;
+    font-weight: 600;
+    padding: 0 8px;
+    user-select: none;
+}
