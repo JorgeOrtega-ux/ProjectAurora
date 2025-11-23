@@ -196,79 +196,82 @@ if (isset($GLOBALS['basePath'])) $basePath = $GLOBALS['basePath'];
 <link rel="stylesheet" href="<?php echo $basePath; ?>assets/css/admin.css">
 
 <div class="section-content active" data-section="admin/users">
-    <div class="section-center-wrapper" style="flex-direction: column; justify-content: flex-start; padding-top: 20px; width: 98%; max-width: none; margin: 0 auto;">
+    <div class="section-center-wrapper section-with-toolbar" style="flex-direction: column; justify-content: flex-start; width: 98%; max-width: none; margin: 0 auto;">
         
         <div class="toolbar-stack">
            <div class="content-toolbar" id="default-toolbar">
-    <div style="display: flex; gap: 8px;">
-        <button class="toolbar-action-btn" data-action="toggle-admin-user-search" data-tooltip="Buscar">
-            <span class="material-symbols-rounded">search</span>
-        </button>
-        
-        <div style="width: 1px; height: 24px; background: #ddd; margin: 0 4px;"></div>
-
-        <button class="toolbar-action-btn" id="btn-manage-general" data-tooltip="Gestionar Usuarios" disabled style="opacity: 0.5;">
-            <span class="material-symbols-rounded">manage_accounts</span>
-        </button>
-
-        <button class="toolbar-action-btn" id="btn-manage-sanctions" data-tooltip="Gestionar Sanciones" disabled style="opacity: 0.5;">
-            <span class="material-symbols-rounded">gavel</span>
-        </button>
-        
-        <div style="width: 1px; height: 24px; background: #ddd; margin: 0 4px;"></div>
-
-        <button class="toolbar-action-btn" data-tooltip="Filtrar">
-            <span class="material-symbols-rounded">filter_list</span>
-        </button>
-    </div>
-    
-    </div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const btnSanctions = document.getElementById('btn-manage-sanctions');
-        const btnGeneral = document.getElementById('btn-manage-general');
-        
-        const tableBody = document.getElementById('admin-users-table-body');
-        
-        if(tableBody) {
-            const observer = new MutationObserver(() => {
-                const selected = document.querySelector('.admin-row-selectable.selected');
-                if(selected) {
-                    // Habilitar botones
-                    btnSanctions.disabled = false;
-                    btnSanctions.style.opacity = '1';
-                    btnGeneral.disabled = false;
-                    btnGeneral.style.opacity = '1';
-
-                    // Obtener ID
-                    const onclickAttr = selected.getAttribute('onclick');
-                    const match = onclickAttr.match(/'(\d+)'/);
-                    const uid = (match && match[1]) ? match[1] : 0;
-
-                    btnSanctions.onclick = () => {
-                        if(uid) window.navigateTo('admin/user-status?uid=' + uid);
-                    };
+                <div style="display: flex; gap: 8px;">
+                    <button class="toolbar-action-btn" data-action="toggle-admin-user-search" data-tooltip="Buscar">
+                        <span class="material-symbols-rounded">search</span>
+                    </button>
                     
-                    btnGeneral.onclick = () => {
-                        if(uid) window.navigateTo('admin/user-manage?uid=' + uid);
-                    };
+                    <div style="width: 1px; height: 24px; background: #ddd; margin: 0 4px;"></div>
 
-                } else {
-                    // Deshabilitar botones
-                    btnSanctions.disabled = true;
-                    btnSanctions.style.opacity = '0.5';
-                    btnSanctions.onclick = null;
+                    <button class="toolbar-action-btn" id="btn-manage-general" data-tooltip="Gestionar Usuarios" disabled style="opacity: 0.5;">
+                        <span class="material-symbols-rounded">manage_accounts</span>
+                    </button>
 
-                    btnGeneral.disabled = true;
-                    btnGeneral.style.opacity = '0.5';
-                    btnGeneral.onclick = null;
-                }
-            });
-            observer.observe(tableBody, { attributes: true, subtree: true, attributeFilter: ['class'] });
-        }
-    });
-</script>
+                    <button class="toolbar-action-btn" id="btn-manage-sanctions" data-tooltip="Gestionar Sanciones" disabled style="opacity: 0.5;">
+                        <span class="material-symbols-rounded">gavel</span>
+                    </button>
+                    
+                    <div style="width: 1px; height: 24px; background: #ddd; margin: 0 4px;"></div>
+
+                    <button class="toolbar-action-btn" data-tooltip="Filtrar">
+                        <span class="material-symbols-rounded">filter_list</span>
+                    </button>
+                </div>
+
+                <div id="admin-users-pagination" class="toolbar-pagination" style="margin-left: auto;">
+                    <?php echo renderPagination($page, $totalPages, $q); ?>
+                </div>
+            </div>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    const btnSanctions = document.getElementById('btn-manage-sanctions');
+                    const btnGeneral = document.getElementById('btn-manage-general');
+                    
+                    const tableBody = document.getElementById('admin-users-table-body');
+                    
+                    if(tableBody) {
+                        const observer = new MutationObserver(() => {
+                            const selected = document.querySelector('.admin-row-selectable.selected');
+                            if(selected) {
+                                // Habilitar botones
+                                btnSanctions.disabled = false;
+                                btnSanctions.style.opacity = '1';
+                                btnGeneral.disabled = false;
+                                btnGeneral.style.opacity = '1';
+
+                                // Obtener ID
+                                const onclickAttr = selected.getAttribute('onclick');
+                                const match = onclickAttr.match(/'(\d+)'/);
+                                const uid = (match && match[1]) ? match[1] : 0;
+
+                                btnSanctions.onclick = () => {
+                                    if(uid) window.navigateTo('admin/user-status?uid=' + uid);
+                                };
+                                
+                                btnGeneral.onclick = () => {
+                                    if(uid) window.navigateTo('admin/user-manage?uid=' + uid);
+                                };
+
+                            } else {
+                                // Deshabilitar botones
+                                btnSanctions.disabled = true;
+                                btnSanctions.style.opacity = '0.5';
+                                btnSanctions.onclick = null;
+
+                                btnGeneral.disabled = true;
+                                btnGeneral.style.opacity = '0.5';
+                                btnGeneral.onclick = null;
+                            }
+                        });
+                        observer.observe(tableBody, { attributes: true, subtree: true, attributeFilter: ['class'] });
+                    }
+                });
+            </script>
 
             <div class="content-toolbar search-toolbar-panel disabled" id="admin-users-search-bar">
                 <div class="search-container" style="width: 100%; max-width: 100%;">

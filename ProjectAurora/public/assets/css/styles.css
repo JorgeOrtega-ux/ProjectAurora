@@ -50,7 +50,6 @@ html {
     border-bottom: 1px solid #00000020;
     z-index: 999;
     position: relative;
-    /* [MODIFICADO] Transición suave para la sombra */
     transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
@@ -75,6 +74,8 @@ html {
 .section-content {
     width: 100%;
     height: 100%;
+    position: relative;
+    /* Necesario para el toolbar absoluto */
 }
 
 .section-content.overflow-y {
@@ -91,6 +92,11 @@ html {
 
 .disabled {
     display: none;
+}
+
+/* CLASE PARA SECCIONES CON TOOLBAR FLOTANTE */
+.section-with-toolbar {
+    padding-top: 95px !important;
 }
 
 /* =========================================
@@ -236,7 +242,6 @@ html {
     background-color: #f5f5fa;
 }
 
-/* BADGE DE NOTIFICACIONES */
 .notification-badge {
     position: absolute;
     top: -6px;
@@ -262,9 +267,6 @@ html {
     display: none;
 }
 
-/* =========================================
-   4. PERFIL DE USUARIO Y ROLES
-   ========================================= */
 .header-button.profile-button {
     position: relative;
     padding: 0;
@@ -786,11 +788,9 @@ input[data-input="login-password"] {
     font-weight: 500;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     background-color: #333;
-
     display: flex;
     align-items: center;
     gap: 12px;
-
     opacity: 0;
     transform: translateX(-20px);
     transition: opacity 0.5s ease, transform 0.5s ease;
@@ -1298,6 +1298,7 @@ a.disabled-link {
 /* =========================================
    12. TOOLBARS & FILTERS
    ========================================= */
+/* [MODIFICADO] Toolbar Absoluto */
 .content-toolbar {
     width: 100%;
     max-width: 500px;
@@ -1309,22 +1310,31 @@ a.disabled-link {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 0; 
     transition: all 0.2s ease;
+
+    /* Posicionamiento absoluto centrado superior */
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    margin: 0 !important;
 }
 
+/* [MODIFICADO] Stack para cuando hay múltiples toolbars (Search) */
 .toolbar-stack {
     width: 100%;
     max-width: 500px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin: 0 auto 16px auto; 
+    /* Ya no necesita flex column layout porque los hijos son absolutos */
+    margin: 0 auto;
+    /* Altura 0 o mínima para no ocupar espacio en el flujo normal */
+    height: 0;
 }
 
 .search-toolbar-panel {
-    background-color: #ffffff; 
-    z-index: 1;
+    background-color: #ffffff;
+    z-index: 101;
+    /* Encima del toolbar normal */
     height: auto;
     min-height: 65px;
     padding: 10px;
@@ -1337,8 +1347,15 @@ a.disabled-link {
 }
 
 @keyframes popInToolbar {
-    from { opacity: 0; transform: translateY(-10px) scale(0.98); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-10px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0) scale(1);
+    }
 }
 
 .toolbar-action-btn {
@@ -1372,7 +1389,7 @@ a.disabled-link {
     font-size: 22px;
 }
 
-/* [NUEVO] ESTILOS DE PAGINACIÓN (Toolbar) */
+/* Paginación */
 .toolbar-pagination {
     display: flex;
     align-items: center;
@@ -1415,7 +1432,7 @@ a.disabled-link {
 }
 
 /* =========================================
-   14. TABLAS ADMINISTRATIVAS
+   13. TABLAS ADMINISTRATIVAS
    ========================================= */
 .admin-table-container {
     width: 100%;
@@ -1463,7 +1480,6 @@ a.disabled-link {
     background-color: #f5f5fa;
 }
 
-/* Badges de Estado */
 .status-badge {
     padding: 4px 10px;
     border-radius: 50px;
@@ -1508,7 +1524,7 @@ a.disabled-link {
 }
 
 /* =========================================
-   13. BOTÓN CARGAR MÁS
+   14. BOTÓN CARGAR MÁS
    ========================================= */
 .btn-load-more {
     background-color: transparent;
@@ -1610,14 +1626,11 @@ a.disabled-link {
         width: 100%;
         height: 100%;
         z-index: 9999;
-
         display: flex;
         flex-direction: column;
         justify-content: flex-end;
         align-items: center;
-
         background-color: #00000080;
-
         border-radius: 0;
         box-shadow: none;
         padding: 0;
@@ -1636,15 +1649,12 @@ a.disabled-link {
         max-height: 85vh;
         height: auto;
         background-color: #fff;
-
         border-top-left-radius: 20px;
         border-top-right-radius: 20px;
         border-bottom-left-radius: 0;
         border-bottom-right-radius: 0;
-
         will-change: transform;
         transform: translateY(0);
-
         box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
         display: flex;
         flex-direction: column;
@@ -1672,7 +1682,6 @@ a.disabled-link {
         border-radius: 10px;
     }
 }
-
 
 .disabled-interactive {
     opacity: 0.5;

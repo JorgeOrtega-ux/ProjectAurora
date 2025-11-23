@@ -7,8 +7,6 @@ if (!isset($_SESSION['user_id'])) {
 
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../logic/search_fetcher.php'; 
-// Aseguramos que trans() esté disponible si se carga directo vía AJAX parcial, 
-// aunque loader.php ya lo incluye, no está de más si se require directo.
 require_once __DIR__ . '/../../logic/i18n_server.php';
 
 $q = isset($_GET['q']) ? trim($_GET['q']) : '';
@@ -17,7 +15,6 @@ $isAjaxPartial = isset($_GET['ajax_partial']) && $_GET['ajax_partial'] === '1';
 $currentUserId = $_SESSION['user_id'];
 $limit = 5; 
 
-// Si es carga parcial AJAX, intentamos cargar el idioma de sesión
 if ($isAjaxPartial) {
     $lang = $_SESSION['user_lang'] ?? 'es-latam';
     I18n::load($lang);
@@ -78,13 +75,12 @@ if ($isAjaxPartial) {
     if ($hasMore) {
         echo '<div id="ajax-has-more-flag" style="display:none;"></div>';
     }
-    // JS seguirá traduciendo por si acaso, pero el HTML ya va hidratado.
     echo '<script>if(window.translateDocument) window.translateDocument(document.getElementById("search-results-list"));</script>';
     exit;
 }
 ?>
 <div class="section-content active" data-section="search">
-    <div class="section-center-wrapper" style="justify-content: flex-start; align-items: center; flex-direction: column;">
+    <div class="section-center-wrapper section-with-toolbar" style="justify-content: flex-start; align-items: center; flex-direction: column;">
 
         <div class="content-toolbar">
             <button class="toolbar-action-btn" 

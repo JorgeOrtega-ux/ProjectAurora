@@ -8,7 +8,14 @@ $targetUid = $_GET['uid'] ?? 0;
 ?>
 
 <div class="section-content active" data-section="admin/user-status">
-    <div class="component-wrapper">
+    <div class="content-toolbar" style="width: 100%; max-width: 500px; justify-content: flex-end;">
+        <button class="component-button primary" id="btn-save-status">
+            <span class="material-symbols-rounded">save</span>
+            Aplicar Sanción
+        </button>
+    </div>
+
+    <div class="component-wrapper section-with-toolbar">
 
         <div class="component-header-card">
             <div class="auth-back-link" style="margin-bottom: 15px; text-align: left;">
@@ -19,13 +26,6 @@ $targetUid = $_GET['uid'] ?? 0;
             </div>
             <h1 class="component-page-title" style="color: #f57c00;">Gestionar Sanciones</h1>
             <p class="component-page-description">Aplica suspensiones temporales o permanentes.</p>
-        </div>
-
-        <div class="content-toolbar" style="width: 100%; max-width: 100%; justify-content: flex-end; margin: 16px 0;">
-            <button class="component-button primary" id="btn-save-status">
-                <span class="material-symbols-rounded">save</span>
-                Aplicar Sanción
-            </button>
         </div>
 
         <div class="component-card component-card--grouped">
