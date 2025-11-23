@@ -38,23 +38,40 @@ try {
     if ($action === 'get_user_details') {
         $targetId = $data['target_id'] ?? 0;
         
+        // A. Datos principales
         $stmt = $pdo->prepare("SELECT id, username, email, avatar, role, account_status, suspension_reason, suspension_end_date FROM users WHERE id = ?");
         $stmt->execute([$targetId]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$user) throw new Exception("Usuario no encontrado.");
 
-        // Calcular días restantes si está suspendido
+        // B. Calcular días restantes si está suspendido actualmente
         $daysRemaining = 0;
         if ($user['suspension_end_date']) {
             $end = new DateTime($user['suspension_end_date']);
             $now = new DateTime();
             if ($end > $now) {
-                $daysRemaining = $now->diff($end)->days + 1; // +1 para redondear hacia arriba
+                $daysRemaining = $now->diff($end)->days + 1; 
             }
         }
 
-        echo json_encode(['success' => true, 'user' => $user, 'days_remaining' => $daysRemaining]);
+        // C. [NUEVO] Obtener historial de suspensiones
+        $stmtLogs = $pdo->prepare("
+            SELECT sl.*, u.username as admin_name 
+            FROM user_suspension_logs sl
+            LEFT JOIN users u ON sl.admin_id = u.id
+            WHERE sl.user_id = ? 
+            ORDER BY sl.started_at DESC
+        ");
+        $stmtLogs->execute([$targetId]);
+        $history = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'success' => true, 
+            'user' => $user, 
+            'days_remaining' => $daysRemaining,
+            'history' => $history
+        ]);
 
     // --- ACTUALIZAR ESTADO ---
     } elseif ($action === 'update_user_status') {
@@ -62,8 +79,9 @@ try {
         $newStatus = $data['status'] ?? 'active';
         $reason = $data['reason'] ?? null;
         $durationDays = (int)($data['days'] ?? 0);
+        $currentAdminId = $_SESSION['user_id'];
 
-        if ($targetId === $_SESSION['user_id']) {
+        if ($targetId === $currentAdminId) {
             throw new Exception("No puedes cambiar tu propio estado.");
         }
 
@@ -77,11 +95,16 @@ try {
             
             $finalReason = $reason;
             $suspensionEnd = date('Y-m-d H:i:s', strtotime("+$durationDays days"));
+
+            // [NUEVO] Guardar en el log histórico
+            $stmtLog = $pdo->prepare("INSERT INTO user_suspension_logs (user_id, admin_id, reason, duration_days, ends_at) VALUES (?, ?, ?, ?, ?)");
+            $stmtLog->execute([$targetId, $currentAdminId, $finalReason, $durationDays, $suspensionEnd]);
+
         } elseif ($newStatus === 'deleted') {
             $finalReason = "Cuenta eliminada por administración.";
         }
 
-        // Actualizar BD
+        // Actualizar BD Principal
         $sql = "UPDATE users SET account_status = ?, suspension_reason = ?, suspension_end_date = ? WHERE id = ?";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$newStatus, $finalReason, $suspensionEnd, $targetId]);
@@ -97,7 +120,7 @@ try {
             ]);
         }
 
-        echo json_encode(['success' => true, 'message' => 'Estado del usuario actualizado correctamente.']);
+        echo json_encode(['success' => true, 'message' => 'Estado actualizado y registrado.']);
     }
 
 } catch (Exception $e) {

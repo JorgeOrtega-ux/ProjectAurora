@@ -14,6 +14,7 @@
     const inputReason = document.getElementById('input-reason-value');
     const btnSave = document.getElementById('btn-save-status');
     const errorBox = document.getElementById('status-error-msg');
+    const historyBody = document.getElementById('suspension-history-body');
 
     // --- Funciones Globales para el HTML ---
     window.selectStatus = function(val, text, icon, color) {
@@ -83,8 +84,35 @@
                     if(u.suspension_reason) selectReason(u.suspension_reason);
                     if(data.days_remaining) document.getElementById('input-days').value = data.days_remaining;
                 }
+
+                // [NUEVO] Renderizar Historial
+                if (data.history && data.history.length > 0) {
+                    renderHistory(data.history);
+                } else {
+                    historyBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:16px; color:#888;">Este usuario no tiene suspensiones previas.</td></tr>';
+                }
             }
         } catch(e) { console.error(e); }
+    }
+
+    function renderHistory(logs) {
+        let html = '';
+        logs.forEach(log => {
+            const start = new Date(log.started_at).toLocaleDateString();
+            const end = log.ends_at ? new Date(log.ends_at).toLocaleDateString() : '-';
+            const adminName = log.admin_name ? log.admin_name : 'Sistema';
+            
+            html += `
+                <tr>
+                    <td>${start}</td>
+                    <td><span style="display:inline-block; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${log.reason}">${log.reason}</span></td>
+                    <td>${log.duration_days} días</td>
+                    <td>${end}</td>
+                    <td><span style="background:#eee; padding:2px 6px; border-radius:4px; font-size:12px;">${adminName}</span></td>
+                </tr>
+            `;
+        });
+        historyBody.innerHTML = html;
     }
 
     // --- Guardar ---
@@ -119,9 +147,11 @@
 
             if(data.success) {
                 if(window.alertManager) window.alertManager.showAlert('Estado actualizado correctamente.', 'success');
-                setTimeout(() => {
-                    if(window.navigateTo) window.navigateTo('admin/users');
-                }, 1000);
+                
+                // Recargamos los datos para ver el nuevo log en la tabla
+                loadUserData();
+                btnSave.disabled = false;
+                btnSave.textContent = 'Guardar Cambios';
             } else {
                 showError(data.message);
                 btnSave.disabled = false;

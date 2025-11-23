@@ -118,6 +118,32 @@ $targetUid = $_GET['uid'] ?? 0;
             </div>
         </div>
 
+        <div class="component-card" style="margin-top: 16px;">
+            <h3 style="font-size: 16px; margin: 0 0 16px 0; display: flex; align-items: center; gap: 8px;">
+                <span class="material-symbols-rounded" style="color: #666;">history</span>
+                Historial de Suspensiones
+            </h3>
+            
+            <div class="admin-table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha Inicio</th>
+                            <th>Razón</th>
+                            <th>Duración</th>
+                            <th>Fin</th>
+                            <th>Admin</th>
+                        </tr>
+                    </thead>
+                    <tbody id="suspension-history-body">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 20px; color: #999;">Cargando historial...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 </div>
 

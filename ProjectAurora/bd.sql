@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS users (
     avatar VARCHAR(255) NULL,
     role VARCHAR(20) DEFAULT 'user',
     account_status ENUM('active', 'suspended', 'deleted') DEFAULT 'active',
+    suspension_reason TEXT NULL,          -- [NUEVO] Razón de la suspensión actual
+    suspension_end_date TIMESTAMP NULL,   -- [NUEVO] Fecha fin de la suspensión actual
     is_2fa_enabled TINYINT(1) DEFAULT 0,
     two_factor_secret VARCHAR(255) NULL,
     backup_codes JSON NULL,
@@ -80,8 +82,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- TOKENS DE AUTENTICACIÓN WS [MODIFICADA]
--- Agregamos session_id para identificar qué dispositivo es el dueño del socket
+-- TOKENS DE AUTENTICACIÓN WS
 CREATE TABLE IF NOT EXISTS ws_auth_tokens (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -109,7 +110,7 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 CREATE TABLE IF NOT EXISTS user_audit_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    change_type ENUM('username', 'email', 'avatar', 'password') NOT NULL,
+    change_type ENUM('username', 'email', 'avatar', 'password', '2fa_disabled') NOT NULL,
     old_value TEXT NULL,
     new_value TEXT NULL,
     changed_by_ip VARCHAR(45) NOT NULL,
@@ -129,4 +130,17 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX (session_id)
+);
+
+-- [NUEVO] LOGS DE SUSPENSIÓN
+CREATE TABLE IF NOT EXISTS user_suspension_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    admin_id INT NULL,
+    reason TEXT NOT NULL,
+    duration_days INT NOT NULL,
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ends_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
