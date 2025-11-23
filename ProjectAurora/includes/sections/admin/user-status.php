@@ -1,4 +1,3 @@
-
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (!in_array($_SESSION['user_role'], ['founder', 'administrator'])) {
@@ -220,7 +219,6 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                             "Solicitud de verificación de identidad"
                                         ];
                                         foreach ($reasons as $r) {
-                                            // Initial state has no reason selected
                                             echo "<div class='menu-link' data-action=\"select-reason-option\" data-value=\"$r\">
                                                     <div class='menu-link-icon'><span class='material-symbols-rounded'>gavel</span></div>
                                                     <div class='menu-link-text'>$r</div>
@@ -238,29 +236,20 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
 
         </div>
 
-        <div class="component-card mt-16">
-            <h3 class="history-title">
-                <span class="material-symbols-rounded history-icon">history</span>
-                Historial de Suspensiones
-            </h3>
-
-            <div class="admin-table-container">
-                <table class="admin-table">
-                    <thead>
-                        <tr>
-                            <th>Fecha Inicio</th>
-                            <th>Razón</th>
-                            <th>Duración</th>
-                            <th>Fin</th>
-                            <th>Admin</th>
-                            <th>Levantada</th> </tr>
-                    </thead>
-                    <tbody id="suspension-history-body">
-                        <tr>
-                            <td colspan="6" class="history-loading">Cargando historial...</td>
-                        </tr>
-                    </tbody>
-                </table>
+        <div class="component-card component-card--grouped mt-16" style="cursor: pointer;" data-nav="admin/user-history?uid=<?php echo htmlspecialchars($targetUid); ?>">
+            <div class="component-group-item">
+                <div class="component-card__content">
+                    <div class="component-icon-container">
+                        <span class="material-symbols-rounded">history</span>
+                    </div>
+                    <div class="component-card__text">
+                        <h2 class="component-card__title">Historial de Sanciones</h2>
+                        <p class="component-card__description">Ver todos los registros de bloqueos pasados.</p>
+                    </div>
+                </div>
+                <div class="component-card__actions">
+                    <span class="material-symbols-rounded" style="color: #999;">chevron_right</span>
+                </div>
             </div>
         </div>
 

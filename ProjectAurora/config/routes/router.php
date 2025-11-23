@@ -1,5 +1,5 @@
 <?php
-// config/router.php
+// config/routes/router.php
 
 // [SEGURIDAD] Configuración de Cookies de Sesión
 if (session_status() === PHP_SESSION_NONE) {
@@ -152,7 +152,8 @@ $allowedSections = [
     'admin/dashboard',
     'admin/users',
     'admin/user-status', 
-    'admin/user-manage', // <--- AQUI LA NUEVA RUTA
+    'admin/user-manage',
+    'admin/user-history', // <--- NUEVA RUTA AGREGADA AQUÍ
     'admin/backups',
     'admin/server'
 ];

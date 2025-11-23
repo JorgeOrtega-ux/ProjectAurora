@@ -1,3 +1,4 @@
+// public/assets/js/modules/admin-status-manager.js
 
 (function() {
     const API_ADMIN = (window.BASE_PATH || '/ProjectAurora/') + 'api/admin_handler.php';
@@ -26,7 +27,6 @@
     const btnLift = document.getElementById('btn-lift-ban');
     const btnSaveText = document.getElementById('btn-save-text');
     
-    const historyBody = document.getElementById('suspension-history-body');
     const wrapperDuration = document.getElementById('wrapper-duration');
     
     const activeAlert = document.getElementById('active-sanction-alert');
@@ -64,44 +64,31 @@
         updateCardError(inputStatus, msg, show);
     }
 
-    // --- UI HELPER FOR DROPDOWN VISUALS ---
     function handleDropdownSelectionVisuals(selectedOption) {
-        // 1. Find parent container
         const menuList = selectedOption.closest('.menu-list');
         if (!menuList) return;
 
-        // 2. Reset all options in this dropdown
         const allOptions = menuList.querySelectorAll('.menu-link');
         allOptions.forEach(opt => {
             opt.classList.remove('active');
-            const iconContainer = opt.lastElementChild; // The right-side icon container
+            const iconContainer = opt.lastElementChild; 
             if (iconContainer) iconContainer.innerHTML = '';
         });
 
-        // 3. Set active state for selected
         selectedOption.classList.add('active');
         const activeIconContainer = selectedOption.lastElementChild;
         if (activeIconContainer) activeIconContainer.innerHTML = '<span class="material-symbols-rounded">check</span>';
     }
 
-    // --- EVENT DELEGATION ---
-
     document.body.addEventListener('click', (e) => {
-        
-        // 1. Toggle Dropdowns (Fixed Logic)
         const toggleBtn = e.target.closest('[data-action="toggle-dropdown"]');
         if (toggleBtn) {
             e.stopPropagation();
             const targetId = toggleBtn.dataset.target;
             const targetEl = document.getElementById(targetId);
-            
             if (targetEl) {
-                // Check if it's currently open before closing all
                 const isCurrentlyOpen = !targetEl.classList.contains('disabled');
-                
-                closeAllDropdowns(); // Close others
-                
-                // Toggle logic: if it was closed, open it. If open, leave it closed (since closeAll closed it)
+                closeAllDropdowns(); 
                 if (!isCurrentlyOpen) {
                     targetEl.classList.remove('disabled');
                 }
@@ -109,39 +96,34 @@
             return;
         }
 
-        // 2. Select Status Option
         const statusOpt = e.target.closest('[data-action="select-status-option"]');
         if (statusOpt) {
             const val = statusOpt.dataset.value;
             const label = statusOpt.dataset.label;
             const icon = statusOpt.dataset.icon;
             const color = statusOpt.dataset.color;
-            
             selectStatus(val, label, icon, color);
-            handleDropdownSelectionVisuals(statusOpt); // Update checkmarks
+            handleDropdownSelectionVisuals(statusOpt); 
             closeAllDropdowns();
             return;
         }
 
-        // 3. Select Duration Option
         const durOpt = e.target.closest('[data-action="select-duration-option"]');
         if (durOpt) {
             selectDuration(durOpt.dataset.value);
-            handleDropdownSelectionVisuals(durOpt); // Update checkmarks
+            handleDropdownSelectionVisuals(durOpt); 
             closeAllDropdowns();
             return;
         }
 
-        // 4. Select Reason Option
         const reasonOpt = e.target.closest('[data-action="select-reason-option"]');
         if (reasonOpt) {
             selectReason(reasonOpt.dataset.value);
-            handleDropdownSelectionVisuals(reasonOpt); // Update checkmarks
+            handleDropdownSelectionVisuals(reasonOpt);
             closeAllDropdowns();
             return;
         }
 
-        // 5. Close Dropdowns if clicking outside
         if (!e.target.closest('.trigger-select-wrapper')) {
             closeAllDropdowns();
         }
@@ -154,8 +136,6 @@
             if (el) el.classList.add('disabled');
         });
     }
-
-    // --- UI Logic Functions ---
 
     function selectStatus(val, text, icon, color) {
         inputStatus.value = val;
@@ -180,7 +160,6 @@
         txtReason.textContent = reason;
     }
 
-    // --- Carga Inicial ---
     async function loadUserData() {
         try {
             const res = await fetch(API_ADMIN, {
@@ -205,7 +184,6 @@
                     document.getElementById('status-user-icon').style.display = 'none';
                 }
 
-                // Estado
                 if (u.account_status === 'suspended') {
                     currentUserState.isSuspended = true;
                     currentUserState.reason = u.suspension_reason;
@@ -219,7 +197,6 @@
                         currentUserState.isPermanent = true;
                         activeText = 'Permanente';
                         selectStatus('suspended_perm', 'Suspensión Permanente', 'block', '#d32f2f');
-                        // Update UI selection manually for initial load
                         updateInitialSelection('dropdown-status-options', 'suspended_perm');
                     } else {
                         currentUserState.isPermanent = false;
@@ -246,12 +223,6 @@
                     selectStatus('suspended_temp', 'Suspensión Temporal', 'timer', '#f57c00');
                     updateInitialSelection('dropdown-status-options', 'suspended_temp');
                 }
-
-                if (data.history && data.history.length > 0) {
-                    renderHistory(data.history);
-                } else {
-                    historyBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:16px; color:#888;">Sin historial de suspensiones.</td></tr>';
-                }
             }
         } catch(e) { console.error(e); }
     }
@@ -261,55 +232,6 @@
         if (!dropdown) return;
         const option = dropdown.querySelector(`.menu-link[data-value="${value}"]`);
         if (option) handleDropdownSelectionVisuals(option);
-    }
-
-    function renderHistory(logs) {
-        let html = '';
-        logs.forEach(log => {
-            const start = new Date(log.started_at).toLocaleDateString();
-            const adminName = log.admin_name ? log.admin_name : 'Sistema';
-            
-            let durationDisplay = '';
-            let endDisplay = '';
-
-            if (parseInt(log.duration_days) === -1) {
-                durationDisplay = 'Permanente';
-                endDisplay = 'Indefinido';
-            } else {
-                durationDisplay = log.duration_days + ' días';
-                if (log.ends_at) {
-                    endDisplay = new Date(log.ends_at).toLocaleDateString();
-                } else {
-                    endDisplay = '-';
-                }
-            }
-
-            let liftedDisplay = '<span style="color:#ccc;">-</span>';
-            if (log.lifted_at) {
-                const liftedDate = new Date(log.lifted_at).toLocaleDateString();
-                const lifter = log.lifter_name ? log.lifter_name : 'Admin';
-                liftedDisplay = `
-                    <div style="display:flex; flex-direction:column;">
-                        <span style="color:#2e7d32; font-weight:600; font-size:12px;">
-                            <span class="material-symbols-rounded" style="font-size:14px; vertical-align:text-bottom;">check_circle</span> 
-                            ${liftedDate}
-                        </span>
-                        <span style="color:#888; font-size:11px;">por ${lifter}</span>
-                    </div>
-                `;
-            }
-
-            html += `
-                <tr>
-                    <td>${start}</td>
-                    <td><span style="display:inline-block; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${log.reason}">${log.reason}</span></td>
-                    <td>${durationDisplay}</td>
-                    <td>${endDisplay}</td>
-                    <td><span style="background:#eee; padding:2px 6px; border-radius:4px; font-size:12px;">${adminName}</span></td>
-                    <td>${liftedDisplay}</td>
-                </tr>`;
-        });
-        historyBody.innerHTML = html;
     }
 
     btnSave.onclick = async () => {

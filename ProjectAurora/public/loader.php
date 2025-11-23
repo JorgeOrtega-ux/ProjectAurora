@@ -55,7 +55,8 @@ $fileMap = [
     'admin/dashboard'   => 'admin/dashboard',
     'admin/users'       => 'admin/users',
     'admin/user-status' => 'admin/user-status', 
-    'admin/user-manage' => 'admin/user-manage', // <--- AQUI
+    'admin/user-manage' => 'admin/user-manage',
+    'admin/user-history'=> 'admin/user-history', // <--- AQUI ESTÁ EL MAPEO NUEVO
     'admin/backups'     => 'admin/backups',
     'admin/server'      => 'admin/server',
     
