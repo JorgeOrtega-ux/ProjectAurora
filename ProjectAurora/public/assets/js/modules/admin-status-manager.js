@@ -124,6 +124,10 @@
                 document.getElementById('status-username').textContent = u.username;
                 document.getElementById('status-email').textContent = u.email;
                 
+                // [CORREGIDO] Asignar el rol al contenedor para mostrar el borde
+                const container = document.getElementById('status-avatar-container');
+                if (container) container.dataset.role = u.role;
+
                 if(u.avatar) {
                     const img = document.getElementById('status-user-avatar');
                     img.src = (window.BASE_PATH || '/ProjectAurora/') + u.avatar;

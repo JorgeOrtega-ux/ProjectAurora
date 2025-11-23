@@ -40,7 +40,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
         <div class="component-card component-card--grouped">
             <div class="component-group-item">
                 <div class="component-card__content">
-                    <div class="component-card__avatar">
+                    <div class="component-card__avatar" id="manage-avatar-container">
                         <img src="" id="manage-user-avatar" class="component-card__avatar-image" style="display:none;">
                         <span class="material-symbols-rounded default-avatar-icon" id="manage-user-icon" style="font-size: 24px;">person</span>
                     </div>

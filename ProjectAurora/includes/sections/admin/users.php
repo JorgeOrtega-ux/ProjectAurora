@@ -60,6 +60,8 @@ function renderUserRows($users)
             $initialText = formatTimeAgo($rawTime);
             $userId = $u['id'];
             $jsTimestamp = $rawTime ? strtotime($rawTime) * 1000 : 0;
+            // [NUEVO] Obtenemos el rol para el borde
+            $userRole = $u['role'] ?? 'user';
 ?>
             <tr class="component-table-row" 
                 data-selectable="true" 
@@ -68,13 +70,15 @@ function renderUserRows($users)
                 <td class="col-id"><?php echo $userId; ?></td>
                 <td>
                     <div class="user-info-cell">
-                        <?php if ($avatarUrl): ?>
-                            <img src="<?php echo htmlspecialchars($avatarUrl); ?>" alt="Avatar" class="user-avatar-img">
-                        <?php else: ?>
-                            <div class="user-avatar-placeholder">
-                                <span class="material-symbols-rounded avatar-icon">person</span>
-                            </div>
-                        <?php endif; ?>
+                        <div class="user-table-avatar" data-role="<?php echo htmlspecialchars($userRole); ?>">
+                            <?php if ($avatarUrl): ?>
+                                <img src="<?php echo htmlspecialchars($avatarUrl); ?>" alt="Avatar">
+                            <?php else: ?>
+                                <div class="user-avatar-placeholder">
+                                    <span class="material-symbols-rounded avatar-icon">person</span>
+                                </div>
+                            <?php endif; ?>
+                        </div>
                         <div class="user-details-wrapper">
                             <span class="user-username"><?php echo htmlspecialchars($u['username']); ?></span>
                             <span class="user-created">Creado: <?php echo date('d/m/Y', strtotime($u['created_at'])); ?></span>
@@ -125,7 +129,6 @@ function renderPagination($page, $totalPages, $q)
 {
     $prevPage = max(1, $page - 1);
     $nextPage = min($totalPages, $page + 1);
-    // Nota: codificamos en atributo data, no inline JS
     $qEncoded = htmlspecialchars($q, ENT_QUOTES);
 
     $prevDisabled = ($page <= 1) ? 'disabled' : '';
