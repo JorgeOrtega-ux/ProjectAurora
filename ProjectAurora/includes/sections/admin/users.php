@@ -27,10 +27,10 @@ if (!empty($q)) {
 // --- HELPERS ---
 function getStatusClass($status) {
     return match ($status) {
-        'active' => 'status-active',
-        'suspended' => 'status-suspended',
-        'deleted' => 'status-deleted',
-        default => ''
+        'active' => 'component-badge--success',
+        'suspended' => 'component-badge--danger',
+        'deleted' => 'component-badge--neutral',
+        default => 'component-badge--neutral'
     };
 }
 
@@ -58,56 +58,57 @@ function renderUserRows($users) {
             $userId = $u['id'];
             $jsTimestamp = $rawTime ? strtotime($rawTime) * 1000 : 0;
         ?>
-        <tr class="admin-row-selectable" data-uid="<?php echo $userId; ?>" onclick="selectSingleRow(event, this, '<?php echo $userId; ?>')">
-            <td style="padding-left: 20px; color: #888;"><?php echo $userId; ?></td>
+        <tr class="component-table-row selectable" data-uid="<?php echo $userId; ?>" onclick="selectSingleRow(event, this, '<?php echo $userId; ?>')">
+            <td style="padding-left: 20px; color: #888; width: 50px;"><?php echo $userId; ?></td>
             <td>
-                <div style="display:flex; align-items:center; gap:10px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
                     <?php if ($avatarUrl): ?>
                         <img src="<?php echo htmlspecialchars($avatarUrl); ?>" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
                     <?php else: ?>
-                        <div class="user-avatar-small" style="background-color: #e0e0e0; width: 32px; height: 32px; border-radius: 50%; display:flex; align-items:center; justify-content:center;">
-                            <span class="material-symbols-rounded" style="font-size:18px; color:#666;">person</span>
+                        <div style="background-color: #e0e0e0; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                            <span class="material-symbols-rounded" style="font-size: 18px; color: #666;">person</span>
                         </div>
                     <?php endif; ?>
-                    <div style="display:flex; flex-direction:column;">
-                        <span style="font-weight: 600; font-size:14px; color: inherit;"><?php echo htmlspecialchars($u['username']); ?></span>
-                        <span style="font-size:11px; color:#999;">Creado: <?php echo date('d/m/Y', strtotime($u['created_at'])); ?></span>
+                    <div style="display: flex; flex-direction: column;">
+                        <span style="font-weight: 600; font-size: 14px; color: inherit;"><?php echo htmlspecialchars($u['username']); ?></span>
+                        <span style="font-size: 11px; color: #999;">Creado: <?php echo date('d/m/Y', strtotime($u['created_at'])); ?></span>
                     </div>
                 </div>
             </td>
-            <td style="font-size:13px;"><?php echo htmlspecialchars($u['email']); ?></td>
-            <td>
-                <span class="status-badge <?php echo $statusClass; ?>">
+            <td style="font-size: 13px;"><?php echo htmlspecialchars($u['email']); ?></td>
+            <td style="width: 100px;">
+                <span class="component-badge <?php echo $statusClass; ?>">
                     <?php echo ucfirst($u['account_status']); ?>
                 </span>
             </td>
-            <td>
-                <span style="font-size:12px; font-weight:500; background:#f5f5f5; padding:2px 6px; border-radius:4px; border:1px solid #e0e0e0;">
+            <td style="width: 100px;">
+                <span class="component-badge component-badge--neutral" style="border: 1px solid #e0e0e0; background: #f5f5f5;">
                     <?php echo ucfirst($u['role']); ?>
                 </span>
             </td>
-            <td style="text-align:center;">
+            <td style="width: 80px; text-align: center;">
                 <?php if ($is2FA): ?>
-                    <span class="material-symbols-rounded" style="color:#2e7d32; font-size:18px;" title="Protegido">shield_lock</span>
+                    <span class="material-symbols-rounded" style="color: #2e7d32; font-size: 18px;" title="Protegido">shield_lock</span>
                 <?php else: ?>
-                    <span class="material-symbols-rounded" style="color:#bdbdbd; font-size:18px;" title="No protegido">no_encryption</span>
+                    <span class="material-symbols-rounded" style="color: #bdbdbd; font-size: 18px;" title="No protegido">no_encryption</span>
                 <?php endif; ?>
             </td>
             <td class="user-presence-cell" 
                 id="presence-<?php echo $userId; ?>" 
                 data-uid="<?php echo $userId; ?>" 
-                data-timestamp="<?php echo $jsTimestamp; ?>">
+                data-timestamp="<?php echo $jsTimestamp; ?>" 
+                style="width: 160px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="status-indicator-dot offline"></div>
-                    <span class="status-text" style="color:#666; font-size:13px;"><?php echo $initialText; ?></span>
+                    <div class="component-status-dot offline"></div>
+                    <span class="status-text" style="color: #666; font-size: 13px;"><?php echo $initialText; ?></span>
                 </div>
             </td>
         </tr>
         <?php endforeach;
     else: ?>
         <tr>
-            <td colspan="7" style="text-align:center; padding: 40px; color: #888;">
-                <span class="material-symbols-rounded" style="font-size: 48px; color: #e0e0e0; margin-bottom: 10px;">person_off</span>
+            <td colspan="7" class="component-table-empty">
+                <span class="material-symbols-rounded component-table-empty-icon">person_off</span>
                 <p>No se encontraron usuarios.</p>
             </td>
         </tr>
@@ -119,17 +120,20 @@ function renderPagination($page, $totalPages, $q) {
     $prevPage = max(1, $page - 1);
     $nextPage = min($totalPages, $page + 1);
     $qEncoded = htmlspecialchars($q, ENT_QUOTES);
+    
+    // Clases disabled
+    $prevDisabled = ($page <= 1) ? 'disabled' : '';
+    $nextDisabled = ($page >= $totalPages) ? 'disabled' : '';
+
     ob_start();
     ?>
-    <button class="pagination-btn" 
-            onclick="loadUsersTable(<?php echo $prevPage; ?>, '<?php echo $qEncoded; ?>')"
-            <?php echo ($page <= 1) ? 'disabled style="opacity:0.3; pointer-events:none;"' : ''; ?>>
+    <button class="component-pagination__btn <?php echo $prevDisabled; ?>" 
+            onclick="loadUsersTable(<?php echo $prevPage; ?>, '<?php echo $qEncoded; ?>')">
         <span class="material-symbols-rounded">chevron_left</span>
     </button>
-    <span class="pagination-number"><?php echo $page; ?> / <?php echo $totalPages; ?></span>
-    <button class="pagination-btn" 
-            onclick="loadUsersTable(<?php echo $nextPage; ?>, '<?php echo $qEncoded; ?>')"
-            <?php echo ($page >= $totalPages) ? 'disabled style="opacity:0.3; pointer-events:none;"' : ''; ?>>
+    <span class="component-pagination__text"><?php echo $page; ?> / <?php echo $totalPages; ?></span>
+    <button class="component-pagination__btn <?php echo $nextDisabled; ?>" 
+            onclick="loadUsersTable(<?php echo $nextPage; ?>, '<?php echo $qEncoded; ?>')">
         <span class="material-symbols-rounded">chevron_right</span>
     </button>
     <?php
@@ -169,22 +173,22 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
         
         <div class="toolbar-stack">
             
-            <div class="content-toolbar" id="toolbar-default">
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <button class="toolbar-action-btn" data-action="toggle-admin-user-search" data-tooltip="Buscar">
+            <div class="component-toolbar" id="toolbar-default">
+                <div class="component-toolbar__group">
+                    <button class="component-icon-button" data-action="toggle-admin-user-search" data-tooltip="Buscar">
                         <span class="material-symbols-rounded">search</span>
                     </button>
-                    <div style="width: 1px; height: 24px; background: #ddd; margin: 0 4px;"></div>
-                    <button class="toolbar-action-btn" data-tooltip="Filtrar">
+                    <div class="component-toolbar__separator"></div>
+                    <button class="component-icon-button" data-tooltip="Filtrar">
                         <span class="material-symbols-rounded">filter_list</span>
                     </button>
                 </div>
                 
-                <div id="admin-users-pagination" class="toolbar-pagination" style="margin-left: auto;">
+                <div id="admin-users-pagination" class="component-pagination component-toolbar__right">
                     <?php echo renderPagination($page, $totalPages, $q); ?>
                 </div>
 
-                <div class="content-toolbar search-toolbar-panel disabled" id="admin-users-search-bar">
+                <div class="component-toolbar search-toolbar-panel disabled" id="admin-users-search-bar">
                     <div class="search-container" style="width: 100%; max-width: 100%;">
                         <span class="material-symbols-rounded search-icon">search</span>
                         <input type="text" id="admin-users-search-input" class="search-input" 
@@ -195,17 +199,17 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                 </div>
             </div>
 
-            <div class="content-toolbar" id="toolbar-selected" style="display: none;">
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <button class="toolbar-action-btn" id="btn-manage-general" data-tooltip="Gestionar Usuario">
+            <div class="component-toolbar d-none" id="toolbar-selected">
+                <div class="component-toolbar__group">
+                    <button class="component-icon-button" id="btn-manage-general" data-tooltip="Gestionar Usuario">
                         <span class="material-symbols-rounded">manage_accounts</span>
                     </button>
-                    <button class="toolbar-action-btn" id="btn-manage-sanctions" data-tooltip="Gestionar Sanciones">
+                    <button class="component-icon-button" id="btn-manage-sanctions" data-tooltip="Gestionar Sanciones">
                         <span class="material-symbols-rounded">gavel</span>
                     </button>
                 </div>
-                <div style="margin-left: auto;">
-                    <button class="toolbar-action-btn" onclick="window.deselectAllUsers()" data-tooltip="Deseleccionar">
+                <div class="component-toolbar__right">
+                    <button class="component-icon-button" onclick="window.deselectAllUsers()" data-tooltip="Deseleccionar">
                         <span class="material-symbols-rounded">close</span>
                     </button>
                 </div>
@@ -213,16 +217,16 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
 
         </div>
 
-        <div class="admin-table-container">
-            <table class="admin-table">
+        <div class="component-table-container">
+            <table class="component-table">
                 <thead>
                     <tr>
-                        <th style="width: 50px; padding-left: 20px;">ID</th>
+                        <th style="padding-left: 20px; width: 50px;">ID</th>
                         <th>Usuario</th>
                         <th>Email</th>
                         <th style="width: 100px;">Estado</th>
                         <th style="width: 100px;">Rol</th>
-                        <th style="width: 80px; text-align:center;">2FA</th>
+                        <th style="width: 80px; text-align: center;">2FA</th>
                         <th style="width: 160px;">Estado / Última vez</th>
                     </tr>
                 </thead>
