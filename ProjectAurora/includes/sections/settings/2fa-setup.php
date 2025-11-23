@@ -43,6 +43,7 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
                     <div class="component-input-wrapper w-100">
                         <input type="password" class="component-text-input full-width" 
                                data-element="2fa-disable-password" 
+                               data-i18n-placeholder="settings.change_password.current_label"
                                placeholder="<?php echo trans('settings.change_password.current_label'); ?>">
                     </div>
 
@@ -71,6 +72,7 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
                     <div class="component-input-wrapper w-100">
                         <input type="password" class="component-text-input full-width" 
                                data-element="2fa-current-password" 
+                               data-i18n-placeholder="settings.change_password.current_label"
                                placeholder="<?php echo trans('settings.change_password.current_label'); ?>">
                     </div>
 
@@ -102,7 +104,7 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
                     <div style="text-align: center; width: 100%;">
                         <p style="font-size: 13px; color: #666; margin-bottom: 5px;" data-i18n="settings.2fa.manual_entry"><?php echo trans('settings.2fa.manual_entry'); ?></p>
                         <div style="background: #eee; padding: 8px; border-radius: 4px; display: inline-block; font-family: monospace; letter-spacing: 1px;">
-                            <strong id="manual-secret-text">Cargando...</strong>
+                            <strong id="manual-secret-text" data-i18n="global.loading"><?php echo trans('global.loading'); ?></strong>
                         </div>
                     </div>
                 </div>

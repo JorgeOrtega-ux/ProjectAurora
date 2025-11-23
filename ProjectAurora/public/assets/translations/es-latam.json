@@ -11,7 +11,23 @@
         "error_connection": "Error de conexión",
         "error_csrf": "Error de seguridad (CSRF)",
         "session_expired": "Sesión expirada",
-        "action_invalid": "Acción no válida"
+        "action_invalid": "Acción no válida",
+        "search": "Buscar",
+        "filter": "Filtrar",
+        "deselect": "Deseleccionar",
+        "actions": "Acciones",
+        "days": "Días",
+        "status": "Estado",
+        "save_status": "Guardar Estado",
+        "active": "Activo",
+        "deleted": "Cuenta Eliminada",
+        "alt_avatar": "Avatar",
+        "time": {
+            "never": "Nunca",
+            "just_now": "Hace un momento",
+            "minutes_ago": "Hace {count} min",
+            "hours_ago": "Hace {count} h"
+        }
     },
     "nav": {
         "home": "Página principal",
@@ -35,7 +51,8 @@
         "profile_tooltip": "Tu Cuenta",
         "mark_read": "Marcar todas como leídas",
         "notifications_title": "Notificaciones",
-        "no_notifications": "No hay nada nuevo por el momento"
+        "no_notifications": "No hay nada nuevo por el momento",
+        "alt_profile": "Perfil"
     },
     "auth": {
         "login": {
@@ -97,9 +114,19 @@
             "email_invalid_domain": "Correo inválido. Solo se permite: Gmail, Outlook, iCloud, Yahoo.",
             "password_short": "La contraseña debe tener al menos 8 caracteres.",
             "username_invalid": "Usuario inválido: 8-32 caracteres. Solo letras, números y '_'.",
-            "all_required": "Todos los campos son requeridos.",
-            "pass_mismatch": "Las contraseñas no coinciden."
-        }
+            "all_required": "Completa todos los campos.",
+            "pass_mismatch": "Las contraseñas no coinciden.",
+            "email_short": "Correo muy corto.",
+            "email_domain": "Dominio no permitido.",
+            "email_exists": "El correo ya está registrado.",
+            "username_invalid": "Usuario inválido.",
+            "too_many_attempts": "Has excedido intentos. Por favor espera.",
+            "invalid_credentials": "Credenciales incorrectas."
+        },
+        "code_sent": "Código enviado",
+        "welcome": "Bienvenido",
+        "login_success": "Login correcto",
+        "2fa_required": "Verificación de App requerida"
     },
     "settings": {
         "profile": {
@@ -119,7 +146,9 @@
             "lang_title": "Idioma",
             "lang_desc": "Selecciona tu idioma preferido.",
             "new_tab_title": "Abrir los enlaces en una pestaña nueva",
-            "new_tab_desc": "En el navegador web, los enlaces siempre se abrirán en una pestaña nueva."
+            "new_tab_desc": "En el navegador web, los enlaces siempre se abrirán en una pestaña nueva.",
+            "alt_avatar": "Avatar",
+            "alt_no_avatar": "Sin avatar"
         },
         "security": {
             "title": "Inicio de sesión y seguridad",
@@ -135,7 +164,8 @@
             "sessions_btn": "Administrar dispositivos",
             "delete_title": "Eliminar tu cuenta",
             "delete_desc": "Si eliminas tu cuenta, ya no podrás acceder a ninguno de tus diseños ni iniciar sesión.",
-            "delete_btn": "Eliminar cuenta"
+            "delete_btn": "Eliminar cuenta",
+            "last_update": "Última actualización: "
         },
         "change_password": {
             "title": "Cambiar contraseña",
@@ -167,7 +197,9 @@
             "success_desc": "Tu cuenta ahora es mucho más segura.",
             "backup_title": "Códigos de recuperación",
             "backup_desc": "Si pierdes tu teléfono, estos códigos son la única forma de entrar. Guárdalos en un lugar seguro.",
-            "backup_saved_btn": "He guardado mis códigos"
+            "backup_saved_btn": "He guardado mis códigos",
+            "activated": "2FA Activado",
+            "invalid_code": "Código incorrecto."
         },
         "sessions": {
             "title": "Dispositivos",
@@ -176,7 +208,8 @@
             "logout_all": "Cerrar todas las demás sesiones",
             "logout_all_confirm": "¿Estás seguro? Se cerrará la sesión en todos los dispositivos excepto este.",
             "last_active": "Última actividad",
-            "location_unknown": "Ubicación desconocida"
+            "location_unknown": "Ubicación desconocida",
+            "empty": "No se encontraron sesiones."
         },
         "delete_account": {
             "title": "Eliminar cuenta",
@@ -206,6 +239,21 @@
             "teacher": "Docente",
             "small_business": "Empresa pequeña",
             "large_business": "Empresa grande"
+        },
+        "cooldown_error": "Debes esperar para volver a cambiar esto.",
+        "avatar": {
+            "error_size": "La imagen supera el límite de 2MB.",
+            "error_format": "Formato no permitido.",
+            "success": "Foto de perfil actualizada.",
+            "reset": "Avatar restablecido."
+        },
+        "username": {
+            "same": "El nombre de usuario es igual al actual.",
+            "taken": "Este nombre de usuario ya está en uso."
+        },
+        "password": {
+            "verified": "Contraseña verificada.",
+            "invalid_current": "La contraseña actual es incorrecta."
         }
     },
     "search": {
@@ -220,7 +268,8 @@
             "cancel": "Cancelar solicitud",
             "accept": "Aceptar",
             "decline": "Rechazar"
-        }
+        },
+        "user_subtitle": "Comunidad Aurora"
     },
     "status": {
         "suspended_title": "Cuenta Suspendida",
@@ -251,7 +300,106 @@
         "users_desc": "Administra los usuarios registrados en la plataforma.",
         "backups_title": "Copias de Seguridad",
         "backups_desc": "Gestiona y restaura copias de la base de datos.",
-        "server_title": "Configuración del Servidor",
-        "server_desc": "Logs, variables de entorno y estado del sistema."
+        "server_title": "Configuración del servidor",
+        "server_desc": "Logs, variables de entorno y estado del sistema.",
+        "users": {
+            "table": {
+                "id": "ID",
+                "username": "Usuario",
+                "email": "Email",
+                "status": "Estado",
+                "role": "Rol",
+                "2fa": "2FA",
+                "presence": "Estado / Última vez"
+            },
+            "tooltip": {
+                "protected": "Protegido",
+                "unprotected": "No protegido"
+            },
+            "created_at": "Creado: ",
+            "empty_state": "No se encontraron usuarios.",
+            "actions": {
+                "manage": "Gestionar Usuario",
+                "sanctions": "Gestionar Sanciones"
+            },
+            "search_placeholder": "Buscar por nombre, correo o ID (Presiona Enter)..."
+        },
+        "status": {
+            "lift_ban": "Levantar Sanción",
+            "apply_ban": "Aplicar Sanción",
+            "update_ban": "Actualizar Sanción",
+            "page_title": "Gestionar Sanciones",
+            "page_desc": "Aplica suspensiones temporales o permanentes.",
+            "already_suspended": "Este usuario ya está suspendido",
+            "type_label": "Tipo de Sanción",
+            "type_desc": "Selecciona el nivel de restricción.",
+            "temp_ban": "Suspensión Temporal",
+            "perm_ban": "Suspensión Permanente",
+            "duration_label": "Nueva Duración",
+            "duration_desc": "Días a partir de hoy que el usuario estará bloqueado.",
+            "reason_label": "Motivo de la Sanción",
+            "reason_desc": "Requerido para aplicar el castigo.",
+            "select_reason": "Selecciona una razón..."
+        },
+        "manage": {
+            "title": "Gestionar Usuario",
+            "desc": "Ciclo de vida de la cuenta y notas administrativas.",
+            "status_label": "Estado de la cuenta",
+            "status_desc": "Activar o Eliminar definitivamente.",
+            "decision_label": "Tipo de Decisión",
+            "decision_desc": "¿Quién solicitó la eliminación?",
+            "admin_dec": "Decisión Administrativa",
+            "user_dec": "Decisión del Usuario",
+            "user_reason_label": "Razón del Usuario",
+            "user_reason_desc": "Motivo proporcionado por el usuario para salir.",
+            "user_reason_placeholder": "Ej: No utilizo la plataforma frecuentemente...",
+            "admin_comments_label": "Comentarios Administrativos",
+            "admin_comments_desc": "Registro interno del motivo de la eliminación.",
+            "admin_comments_placeholder": "Ej: Solicitud vía ticket #1234..."
+        },
+        "history": {
+            "back_status": "Volver a Estado",
+            "title": "Historial de Sanciones",
+            "card_title": "Historial de Sanciones",
+            "card_desc": "Ver todos los registros de bloqueos pasados.",
+            "table": {
+                "start": "Fecha Inicio",
+                "reason": "Razón",
+                "duration": "Duración",
+                "end_original": "Fecha Fin (Original)",
+                "admin": "Admin (Sancionador)",
+                "final_status": "Estado Final"
+            },
+            "empty": "Este usuario no tiene registros de sanciones previas."
+        },
+        "reasons": {
+            "tos": "Violación de términos de servicio",
+            "harassment": "Comportamiento inapropiado / Acoso",
+            "spam": "Cuenta falsa o Spam",
+            "security": "Riesgo de seguridad",
+            "verification": "Solicitud de verificación de identidad"
+        },
+        "error": {
+            "access_denied": "Acceso denegado.",
+            "user_not_found": "Usuario no encontrado.",
+            "self_sanction": "No puedes sancionarte a ti mismo.",
+            "user_not_exist": "Usuario no existe.",
+            "reason_required": "Debes especificar una razón."
+        },
+        "success": {
+            "ban_applied": "Sanción aplicada correctamente.",
+            "ban_lifted": "Sanción levantada correctamente.",
+            "account_deleted": "Cuenta eliminada correctamente."
+        }
+    },
+    "languages": {
+        "es_latam": "Español (Latinoamérica)",
+        "es_mx": "Español (México)",
+        "en_us": "English (United States)",
+        "en_gb": "English (United Kingdom)"
+    },
+    "api": {
+        "error_csrf": "Error de seguridad (CSRF).",
+        "session_expired": "Sesión expirada."
     }
 }

@@ -30,10 +30,10 @@ $usageIcons = [
 ];
 $usageDisplayIcon = $usageIcons[$currentUsage] ?? 'person'; 
 
-$langDisplayText = 'English (United States)';
-if($currentLang == 'es-latam') $langDisplayText = 'Español (Latinoamérica)';
-if($currentLang == 'es-mx') $langDisplayText = 'Español (México)';
-if($currentLang == 'en-gb') $langDisplayText = 'English (United Kingdom)';
+$langDisplayText = trans('languages.en_us');
+if($currentLang == 'es-latam') $langDisplayText = trans('languages.es_latam');
+if($currentLang == 'es-mx') $langDisplayText = trans('languages.es_mx');
+if($currentLang == 'en-gb') $langDisplayText = trans('languages.en_gb');
 
 $avatarUrl = null;
 if ($userAvatar && !empty($userAvatar)) {
@@ -64,9 +64,9 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                 <div class="component-card__content">
                     <div class="component-card__avatar" data-element="avatar-preview-container" data-role="<?php echo htmlspecialchars($userRole); ?>">
                         <?php if ($avatarUrl): ?>
-                            <img src="<?php echo htmlspecialchars($avatarUrl); ?>" alt="Avatar" class="component-card__avatar-image" data-element="avatar-preview-image">
+                            <img src="<?php echo htmlspecialchars($avatarUrl); ?>" alt="<?php echo trans('settings.profile.alt_avatar'); ?>" class="component-card__avatar-image" data-element="avatar-preview-image">
                         <?php else: ?>
-                            <img src="" alt="Sin avatar" class="component-card__avatar-image d-none" data-element="avatar-preview-image">
+                            <img src="" alt="<?php echo trans('settings.profile.alt_no_avatar'); ?>" class="component-card__avatar-image d-none" data-element="avatar-preview-image">
                             <span class="material-symbols-rounded default-avatar-icon avatar-placeholder-icon">person</span>
                         <?php endif; ?>
 
@@ -233,18 +233,19 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                                 <div class="menu-list">
                                     <?php 
                                     $langOptions = [
-                                        ['val' => 'es-latam', 'icon' => 'language', 'label' => 'Español (Latinoamérica)'],
-                                        ['val' => 'es-mx', 'icon' => 'language', 'label' => 'Español (México)'],
-                                        ['val' => 'en-us', 'icon' => 'language', 'label' => 'English (United States)'],
-                                        ['val' => 'en-gb', 'icon' => 'language', 'label' => 'English (United Kingdom)'],
+                                        ['val' => 'es-latam', 'icon' => 'language', 'label_key' => 'languages.es_latam'],
+                                        ['val' => 'es-mx', 'icon' => 'language', 'label_key' => 'languages.es_mx'],
+                                        ['val' => 'en-us', 'icon' => 'language', 'label_key' => 'languages.en_us'],
+                                        ['val' => 'en-gb', 'icon' => 'language', 'label_key' => 'languages.en_gb'],
                                     ];
                                     foreach ($langOptions as $opt): 
                                         $isActive = ($currentLang === $opt['val']) ? 'active' : '';
                                         $check = ($isActive) ? '<span class="material-symbols-rounded">check</span>' : '';
+                                        $label = trans($opt['label_key']);
                                     ?>
                                     <div class="menu-link <?php echo $isActive; ?>" data-value="<?php echo $opt['val']; ?>">
                                         <div class="menu-link-icon"><span class="material-symbols-rounded"><?php echo $opt['icon']; ?></span></div>
-                                        <div class="menu-link-text"><span><?php echo $opt['label']; ?></span></div>
+                                        <div class="menu-link-text"><span data-i18n="<?php echo $opt['label_key']; ?>"><?php echo $label; ?></span></div>
                                         <div class="menu-link-icon"><?php echo $check; ?></div>
                                     </div>
                                     <?php endforeach; ?>

@@ -3,7 +3,6 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
 $userId = $_SESSION['user_id'];
 
-// [MODIFICADO] Agregamos is_2fa_enabled a la consulta
 $stmt = $pdo->prepare("SELECT created_at, is_2fa_enabled FROM users WHERE id = ?");
 $stmt->execute([$userId]);
 $userData = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -20,13 +19,10 @@ $lastPassChange = $stmtPass->fetchColumn();
 $passwordDesc = trans('settings.security.password_desc');
 if ($lastPassChange) {
     $ts = strtotime($lastPassChange);
-    $passwordDesc = "Última actualización: " . date("d/m/Y \a \l\a\s H:i", $ts);
+    $passwordDesc = trans('settings.security.last_update') . date("d/m/Y \a \l\a\s H:i", $ts);
 }
 
-// [NUEVO] Determinar texto del botón 2FA
 $btn2faKey = $is2faEnabled ? 'settings.2fa.disable_btn' : 'settings.security.2fa_btn';
-// settings.2fa.disable_btn = "Desactivar 2FA" (según tu es-latam.json)
-// settings.security.2fa_btn = "Habilitar"
 ?>
 
 <div class="section-content active" data-section="settings/login-security">

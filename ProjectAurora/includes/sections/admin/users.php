@@ -37,13 +37,13 @@ function getStatusClass($status)
 
 function formatTimeAgo($datetime)
 {
-    if (!$datetime) return 'Nunca';
+    if (!$datetime) return trans('global.time.never');
     $time = strtotime($datetime);
     $diff = time() - $time;
 
-    if ($diff < 60) return 'Hace un momento';
-    if ($diff < 3600) return 'Hace ' . floor($diff / 60) . ' min';
-    if ($diff < 86400) return 'Hace ' . floor($diff / 3600) . ' h';
+    if ($diff < 60) return trans('global.time.just_now');
+    if ($diff < 3600) return trans('global.time.minutes_ago', ['count' => floor($diff / 60)]);
+    if ($diff < 86400) return trans('global.time.hours_ago', ['count' => floor($diff / 3600)]);
     return date('d/m/Y', $time);
 }
 
@@ -60,7 +60,6 @@ function renderUserRows($users)
             $initialText = formatTimeAgo($rawTime);
             $userId = $u['id'];
             $jsTimestamp = $rawTime ? strtotime($rawTime) * 1000 : 0;
-            // [NUEVO] Obtenemos el rol para el borde
             $userRole = $u['role'] ?? 'user';
 ?>
             <tr class="component-table-row" 
@@ -81,7 +80,10 @@ function renderUserRows($users)
                         </div>
                         <div class="user-details-wrapper">
                             <span class="user-username"><?php echo htmlspecialchars($u['username']); ?></span>
-                            <span class="user-created">Creado: <?php echo date('d/m/Y', strtotime($u['created_at'])); ?></span>
+                            <span class="user-created">
+                                <span data-i18n="admin.users.created_at"><?php echo trans('admin.users.created_at'); ?></span>
+                                <?php echo date('d/m/Y', strtotime($u['created_at'])); ?>
+                            </span>
                         </div>
                     </div>
                 </td>
@@ -98,9 +100,13 @@ function renderUserRows($users)
                 </td>
                 <td class="col-2fa">
                     <?php if ($is2FA): ?>
-                        <span class="material-symbols-rounded icon-2fa-on" title="Protegido">shield_lock</span>
+                        <span class="material-symbols-rounded icon-2fa-on" 
+                              data-i18n-title="admin.users.tooltip.protected"
+                              title="<?php echo trans('admin.users.tooltip.protected'); ?>">shield_lock</span>
                     <?php else: ?>
-                        <span class="material-symbols-rounded icon-2fa-off" title="No protegido">no_encryption</span>
+                        <span class="material-symbols-rounded icon-2fa-off" 
+                              data-i18n-title="admin.users.tooltip.unprotected"
+                              title="<?php echo trans('admin.users.tooltip.unprotected'); ?>">no_encryption</span>
                     <?php endif; ?>
                 </td>
                 <td class="user-presence-cell col-presence"
@@ -118,7 +124,7 @@ function renderUserRows($users)
         <tr>
             <td colspan="7" class="component-table-empty">
                 <span class="material-symbols-rounded component-table-empty-icon">person_off</span>
-                <p>No se encontraron usuarios.</p>
+                <p data-i18n="admin.users.empty_state"><?php echo trans('admin.users.empty_state'); ?></p>
             </td>
         </tr>
     <?php endif;
@@ -195,11 +201,15 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
 
             <div class="component-toolbar" id="toolbar-default">
                 <div class="component-toolbar__group">
-                    <button class="component-icon-button" data-action="toggle-admin-user-search" data-tooltip="Buscar">
+                    <button class="component-icon-button" data-action="toggle-admin-user-search" 
+                            data-i18n-tooltip="global.search" 
+                            data-tooltip="<?php echo trans('global.search'); ?>">
                         <span class="material-symbols-rounded">search</span>
                     </button>
                     <div class="component-toolbar__separator"></div>
-                    <button class="component-icon-button" data-tooltip="Filtrar">
+                    <button class="component-icon-button" 
+                            data-i18n-tooltip="global.filter" 
+                            data-tooltip="<?php echo trans('global.filter'); ?>">
                         <span class="material-symbols-rounded">filter_list</span>
                     </button>
                 </div>
@@ -212,7 +222,8 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                     <div class="search-container full-width-search">
                         <span class="material-symbols-rounded search-icon">search</span>
                         <input type="text" id="admin-users-search-input" class="search-input"
-                            placeholder="Buscar por nombre, correo o ID (Presiona Enter)..."
+                            data-i18n-placeholder="admin.users.search_placeholder"
+                            placeholder="<?php echo trans('admin.users.search_placeholder'); ?>"
                             value="<?php echo htmlspecialchars($q); ?>"
                             data-action="admin-search-input"> </div>
                 </div>
@@ -220,15 +231,21 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
 
             <div class="component-toolbar d-none" id="toolbar-selected">
                 <div class="component-toolbar__group">
-                    <button class="component-icon-button" id="btn-manage-general" data-tooltip="Gestionar Usuario">
+                    <button class="component-icon-button" id="btn-manage-general" 
+                            data-i18n-tooltip="admin.users.actions.manage" 
+                            data-tooltip="<?php echo trans('admin.users.actions.manage'); ?>">
                         <span class="material-symbols-rounded">manage_accounts</span>
                     </button>
-                    <button class="component-icon-button" id="btn-manage-sanctions" data-tooltip="Gestionar Sanciones">
+                    <button class="component-icon-button" id="btn-manage-sanctions" 
+                            data-i18n-tooltip="admin.users.actions.sanctions" 
+                            data-tooltip="<?php echo trans('admin.users.actions.sanctions'); ?>">
                         <span class="material-symbols-rounded">gavel</span>
                     </button>
                 </div>
                 <div class="component-toolbar__right">
-                    <button class="component-icon-button" data-action="deselect-users" data-tooltip="Deseleccionar">
+                    <button class="component-icon-button" data-action="deselect-users" 
+                            data-i18n-tooltip="global.deselect" 
+                            data-tooltip="<?php echo trans('global.deselect'); ?>">
                         <span class="material-symbols-rounded">close</span>
                     </button>
                 </div>
@@ -240,13 +257,13 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
             <table class="component-table">
                 <thead>
                     <tr>
-                        <th class="col-id">ID</th>
-                        <th>Usuario</th>
-                        <th>Email</th>
-                        <th class="col-status">Estado</th>
-                        <th class="col-role">Rol</th>
-                        <th class="col-2fa">2FA</th>
-                        <th class="col-presence">Estado / Última vez</th>
+                        <th class="col-id" data-i18n="admin.users.table.id"><?php echo trans('admin.users.table.id'); ?></th>
+                        <th data-i18n="admin.users.table.username"><?php echo trans('admin.users.table.username'); ?></th>
+                        <th data-i18n="admin.users.table.email"><?php echo trans('admin.users.table.email'); ?></th>
+                        <th class="col-status" data-i18n="admin.users.table.status"><?php echo trans('admin.users.table.status'); ?></th>
+                        <th class="col-role" data-i18n="admin.users.table.role"><?php echo trans('admin.users.table.role'); ?></th>
+                        <th class="col-2fa" data-i18n="admin.users.table.2fa"><?php echo trans('admin.users.table.2fa'); ?></th>
+                        <th class="col-presence" data-i18n="admin.users.table.presence"><?php echo trans('admin.users.table.presence'); ?></th>
                     </tr>
                 </thead>
                 <tbody id="admin-users-table-body">

@@ -48,14 +48,14 @@ $renderUserCard = function ($user) use ($currentUserId) {
         <div class="user-info-group">
             <div class="user-avatar-container" data-role="<?php echo htmlspecialchars($role); ?>">
                 <?php if ($avatarPath): ?>
-                    <img src="<?php echo htmlspecialchars($avatarPath); ?>" alt="Avatar">
+                    <img src="<?php echo htmlspecialchars($avatarPath); ?>" alt="<?php echo trans('global.alt_avatar'); ?>">
                 <?php else: ?>
                     <span class="material-symbols-rounded default-avatar">person</span>
                 <?php endif; ?>
             </div>
             <div class="user-details">
                 <span class="user-name"><?php echo htmlspecialchars($user['username']); ?></span>
-                <span class="user-meta-text">Comunidad Aurora</span>
+                <span class="user-meta-text" data-i18n="search.user_subtitle"><?php echo trans('search.user_subtitle'); ?></span>
                 <span class="user-meta-text" style="font-size: 12px; color: #888; margin-top: 2px;">
                     <?php echo $mutualCount; ?> <span data-i18n="search.mutual_friends"><?php echo trans('search.mutual_friends'); ?></span>
                 </span>

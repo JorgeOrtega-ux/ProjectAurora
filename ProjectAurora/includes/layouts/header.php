@@ -41,7 +41,7 @@
                 <?php
                 if (isset($_SESSION['user_avatar']) && !empty($_SESSION['user_avatar'])) {
                     $avatarUrl = $basePath . $_SESSION['user_avatar'];
-                    echo '<img src="' . htmlspecialchars($avatarUrl) . '" alt="Perfil" class="profile-img">';
+                    echo '<img src="' . htmlspecialchars($avatarUrl) . '" alt="' . trans('header.alt_profile') . '" class="profile-img">';
                 } else {
                     echo '<span class="material-symbols-rounded">person</span>';
                 }

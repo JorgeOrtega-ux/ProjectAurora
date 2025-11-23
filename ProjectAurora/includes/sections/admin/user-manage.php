@@ -1,4 +1,3 @@
-
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (!in_array($_SESSION['user_role'], ['founder', 'administrator'])) {
@@ -16,16 +15,16 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
     <div class="toolbar-stack">
         <div class="component-toolbar">
             <div class="component-toolbar__group">
-                <div class="component-icon-button" data-nav="admin/users" data-tooltip="Volver">
+                <div class="component-icon-button" data-nav="admin/users" data-i18n-tooltip="global.back" data-tooltip="<?php echo trans('global.back'); ?>">
                     <span class="material-symbols-rounded">arrow_back</span>
                 </div>
                 <div class="component-toolbar__separator"></div>
-                <span style="font-size: 14px; font-weight: 600; color: #666;">Estado</span>
+                <span style="font-size: 14px; font-weight: 600; color: #666;" data-i18n="global.status"><?php echo trans('global.status'); ?></span>
             </div>
             <div class="component-toolbar__right">
                 <button class="component-button primary" id="btn-save-manage">
                     <span class="material-symbols-rounded">save</span>
-                    Guardar Estado
+                    <span data-i18n="global.save_status"><?php echo trans('global.save_status'); ?></span>
                 </button>
             </div>
         </div>
@@ -34,8 +33,8 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
     <div class="component-wrapper section-with-toolbar">
 
         <div class="component-header-card">
-            <h1 class="component-page-title">Gestionar Usuario</h1>
-            <p class="component-page-description">Ciclo de vida de la cuenta y notas administrativas.</p>
+            <h1 class="component-page-title" data-i18n="admin.manage.title"><?php echo trans('admin.manage.title'); ?></h1>
+            <p class="component-page-description" data-i18n="admin.manage.desc"><?php echo trans('admin.manage.desc'); ?></p>
         </div>
 
         <div class="component-card component-card--grouped">
@@ -46,7 +45,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                         <span class="material-symbols-rounded default-avatar-icon" id="manage-user-icon" style="font-size: 24px;">person</span>
                     </div>
                     <div class="component-card__text">
-                        <h2 class="component-card__title" id="manage-username">Cargando...</h2>
+                        <h2 class="component-card__title" id="manage-username" data-i18n="global.loading"><?php echo trans('global.loading'); ?></h2>
                         <p class="component-card__description" id="manage-email">...</p>
                     </div>
                 </div>
@@ -62,8 +61,8 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Estado de la cuenta</h2>
-                        <p class="component-card__description">Activar o Eliminar definitivamente.</p>
+                        <h2 class="component-card__title" data-i18n="admin.manage.status_label"><?php echo trans('admin.manage.status_label'); ?></h2>
+                        <p class="component-card__description" data-i18n="admin.manage.status_desc"><?php echo trans('admin.manage.status_desc'); ?></p>
                     </div>
                 </div>
                 <div class="component-card__actions w-100">
@@ -73,7 +72,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                 <span class="material-symbols-rounded" id="manage-status-icon" style="color: #2e7d32;">check_circle</span>
                             </div>
                             <div class="trigger-select-text">
-                                <span id="manage-status-text">Activo</span>
+                                <span id="manage-status-text" data-i18n="global.active"><?php echo trans('global.active'); ?></span>
                             </div>
                             <div class="trigger-select-arrow">
                                 <span class="material-symbols-rounded">arrow_drop_down</span>
@@ -86,21 +85,21 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                     <div class="menu-link active" 
                                          data-action="select-manage-status" 
                                          data-value="active" 
-                                         data-label="Activo" 
+                                         data-label="<?php echo trans('global.active'); ?>" 
                                          data-icon="check_circle" 
                                          data-color="#2e7d32">
                                         <div class="menu-link-icon"><span class="material-symbols-rounded" style="color:#2e7d32">check_circle</span></div>
-                                        <div class="menu-link-text">Activo</div>
+                                        <div class="menu-link-text" data-i18n="global.active"><?php echo trans('global.active'); ?></div>
                                         <div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div>
                                     </div>
                                     <div class="menu-link" 
                                          data-action="select-manage-status" 
                                          data-value="deleted" 
-                                         data-label="Cuenta Eliminada" 
+                                         data-label="<?php echo trans('global.deleted'); ?>" 
                                          data-icon="delete_forever" 
                                          data-color="#616161">
                                         <div class="menu-link-icon"><span class="material-symbols-rounded" style="color:#616161">delete_forever</span></div>
-                                        <div class="menu-link-text">Cuenta Eliminada</div>
+                                        <div class="menu-link-text" data-i18n="global.deleted"><?php echo trans('global.deleted'); ?></div>
                                         <div class="menu-link-icon"></div>
                                     </div>
                                 </div>
@@ -116,8 +115,8 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                 <div class="component-group-item component-group-item--stacked">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title">Tipo de Decisión</h2>
-                            <p class="component-card__description">¿Quién solicitó la eliminación?</p>
+                            <h2 class="component-card__title" data-i18n="admin.manage.decision_label"><?php echo trans('admin.manage.decision_label'); ?></h2>
+                            <p class="component-card__description" data-i18n="admin.manage.decision_desc"><?php echo trans('admin.manage.decision_desc'); ?></p>
                         </div>
                     </div>
                     <div class="component-card__actions w-100">
@@ -127,7 +126,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                     <span class="material-symbols-rounded">gavel</span>
                                 </div>
                                 <div class="trigger-select-text">
-                                    <span id="text-deletion-type">Decisión Administrativa</span>
+                                    <span id="text-deletion-type" data-i18n="admin.manage.admin_dec"><?php echo trans('admin.manage.admin_dec'); ?></span>
                                 </div>
                                 <div class="trigger-select-arrow">
                                     <span class="material-symbols-rounded">arrow_drop_down</span>
@@ -140,17 +139,17 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                         <div class="menu-link active" 
                                              data-action="select-deletion-type" 
                                              data-value="admin_decision" 
-                                             data-label="Decisión Administrativa">
+                                             data-label="<?php echo trans('admin.manage.admin_dec'); ?>">
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">admin_panel_settings</span></div>
-                                            <div class="menu-link-text">Decisión Administrativa</div>
+                                            <div class="menu-link-text" data-i18n="admin.manage.admin_dec"><?php echo trans('admin.manage.admin_dec'); ?></div>
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div>
                                         </div>
                                         <div class="menu-link" 
                                              data-action="select-deletion-type" 
                                              data-value="user_decision" 
-                                             data-label="Decisión del Usuario">
+                                             data-label="<?php echo trans('admin.manage.user_dec'); ?>">
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">person</span></div>
-                                            <div class="menu-link-text">Decisión del Usuario</div>
+                                            <div class="menu-link-text" data-i18n="admin.manage.user_dec"><?php echo trans('admin.manage.user_dec'); ?></div>
                                             <div class="menu-link-icon"></div>
                                         </div>
                                     </div>
@@ -164,11 +163,15 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                     <hr class="component-divider">
                     <div class="component-group-item component-group-item--stacked">
                         <div class="component-card__text">
-                            <h2 class="component-card__title">Razón del Usuario</h2>
-                            <p class="component-card__description">Motivo proporcionado por el usuario para salir.</p>
+                            <h2 class="component-card__title" data-i18n="admin.manage.user_reason_label"><?php echo trans('admin.manage.user_reason_label'); ?></h2>
+                            <p class="component-card__description" data-i18n="admin.manage.user_reason_desc"><?php echo trans('admin.manage.user_reason_desc'); ?></p>
                         </div>
                         <div class="component-input-wrapper w-100" style="margin-top: 10px;">
-                            <textarea id="input-user-reason" class="component-text-input full-width" style="height: 80px; padding: 10px;" placeholder="Ej: No utilizo la plataforma frecuentemente..."></textarea>
+                            <textarea id="input-user-reason" 
+                                      class="component-text-input full-width" 
+                                      style="height: 80px; padding: 10px;" 
+                                      data-i18n-placeholder="admin.manage.user_reason_placeholder"
+                                      placeholder="<?php echo trans('admin.manage.user_reason_placeholder'); ?>"></textarea>
                         </div>
                     </div>
                 </div>
@@ -176,11 +179,15 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                 <hr class="component-divider">
                 <div class="component-group-item component-group-item--stacked">
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Comentarios Administrativos</h2>
-                        <p class="component-card__description">Registro interno del motivo de la eliminación.</p>
+                        <h2 class="component-card__title" data-i18n="admin.manage.admin_comments_label"><?php echo trans('admin.manage.admin_comments_label'); ?></h2>
+                        <p class="component-card__description" data-i18n="admin.manage.admin_comments_desc"><?php echo trans('admin.manage.admin_comments_desc'); ?></p>
                     </div>
                     <div class="component-input-wrapper w-100" style="margin-top: 10px;">
-                        <textarea id="input-admin-comments" class="component-text-input full-width" style="height: 80px; padding: 10px;" placeholder="Ej: Solicitud vía ticket #1234 o Inactividad prolongada..."></textarea>
+                        <textarea id="input-admin-comments" 
+                                  class="component-text-input full-width" 
+                                  style="height: 80px; padding: 10px;" 
+                                  data-i18n-placeholder="admin.manage.admin_comments_placeholder"
+                                  placeholder="<?php echo trans('admin.manage.admin_comments_placeholder'); ?>"></textarea>
                     </div>
                 </div>
 
