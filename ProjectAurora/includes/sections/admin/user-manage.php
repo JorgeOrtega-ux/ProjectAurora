@@ -19,7 +19,7 @@ $targetUid = $_GET['uid'] ?? 0;
 
         <div class="component-header-card">
             <div class="auth-back-link" style="margin-bottom: 15px; text-align: left;">
-                <a href="#" onclick="event.preventDefault(); navigateTo('admin/users')" style="color:#666; text-decoration:none; display:flex; align-items:center; gap:5px; font-size:14px;">
+                <a href="#" data-nav="admin/users" style="color:#666; text-decoration:none; display:flex; align-items:center; gap:5px; font-size:14px;">
                     <span class="material-symbols-rounded" style="font-size:18px;">arrow_back</span> 
                     <span>Volver a usuarios</span>
                 </a>

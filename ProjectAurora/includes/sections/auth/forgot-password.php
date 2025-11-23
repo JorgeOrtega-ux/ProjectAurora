@@ -7,7 +7,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
         <div class="form-container">
             
             <div class="auth-back-link">
-                <a href="#" onclick="event.preventDefault(); navigateTo('login')" style="color:#666; text-decoration:none; display:flex; align-items:center; gap:5px; font-size:14px;">
+                <a href="#" data-nav="login" style="color:#666; text-decoration:none; display:flex; align-items:center; gap:5px; font-size:14px;">
                     <span class="material-symbols-rounded" style="font-size:18px;">arrow_back</span> 
                     <span data-i18n="global.back"><?php echo trans('global.back'); ?></span>
                 </a>

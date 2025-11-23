@@ -1,5 +1,7 @@
 // public/assets/js/core/url-manager.js
 
+import { closeAllModules } from '../ui/main-controller.js';
+
 const allowedSections = [
     'main', 'login', 'register', 'explorer', 'search',
     'register/additional-data',
@@ -21,7 +23,9 @@ const allowedSections = [
     'admin/dashboard',
     'admin/users',
     'admin/backups',
-    'admin/server'
+    'admin/server',
+    'admin/user-status',
+    'admin/user-manage'
 ];
 
 const authZone = [
@@ -46,28 +50,36 @@ export function initUrlManager() {
         }
     });
 
+    // [MODIFICADO] Listener genérico para cualquier elemento con data-nav
     document.body.addEventListener('click', (e) => {
         if (isNavigating) return;
 
-        const link = e.target.closest('.menu-link[data-nav], a[onclick*="navigateTo"]');
+        // Busca el elemento más cercano con data-nav (puede ser un div, a, button, span, etc.)
+        const target = e.target.closest('[data-nav]');
         
-        if (link && link.dataset.nav) {
-            e.preventDefault();
-            const section = link.dataset.nav;
-            if (section !== getSectionFromUrl()) navigateTo(section);
+        if (target) {
+            e.preventDefault(); // Prevenir comportamiento de enlace normal si es un <a>
+            const section = target.dataset.nav;
+            
+            // Solo navegar si la sección es diferente a la actual (opcional, pero recomendado)
+            if (section !== getSectionFromUrl()) {
+                navigateTo(section);
+            }
         }
     });
 
     const current = getSectionFromUrl();
     updateSidebarState(current);
     updateActiveMenu(current);
-    
-    // [NUEVO] Ejecutar scripts también en la carga inicial si la sección lo requiere
-    // (Aunque normalmente el PHP inicial ya renderiza, esto es seguro para navegación futura)
 }
 
 window.navigateTo = function (sectionName) {
     if (isNavigating) return;
+
+    // [NUEVO] Cerrar cualquier módulo/menú abierto al iniciar navegación
+    if (typeof closeAllModules === 'function') {
+        closeAllModules();
+    }
 
     if (sectionName === 'settings') sectionName = 'settings/your-profile';
     if (sectionName === 'admin') sectionName = 'admin/dashboard';
@@ -76,6 +88,7 @@ window.navigateTo = function (sectionName) {
     const isCurAuth = authZone.some(z => current.startsWith(z) || z === current);
     const isTarAuth = authZone.some(z => sectionName.startsWith(z) || z === sectionName);
 
+    // Si cambiamos entre zona pública y privada, recargar página completa
     if ((isCurAuth && !isTarAuth) || (!isCurAuth && isTarAuth)) {
         window.location.href = (sectionName === 'main') ? basePath : `${basePath}${sectionName}`;
     } else {
@@ -113,15 +126,12 @@ async function showSection(sectionName, pushState = true) {
 
     updateSidebarState(baseSection);
     updateActiveMenu(baseSection);
-// [AGREGADO] Limpiar el contenido anterior inmediatamente para que no se vea de fondo
+
     container.innerHTML = '';
     if (loader) loader.style.display = 'flex';
-    
-    // Limpieza previa opcional (por si hay listeners globales que limpiar)
-    // ...
 
     try {
-        const minDelay = new Promise(resolve => setTimeout(resolve, 300)); // Reducido un poco para agilidad
+        const minDelay = new Promise(resolve => setTimeout(resolve, 200)); 
         const fetchRequest = fetch(fetchUrl);
 
         const [resp] = await Promise.all([fetchRequest, minDelay]);
@@ -140,7 +150,6 @@ async function showSection(sectionName, pushState = true) {
         container.innerHTML = html;
         container.scrollTop = 0;
 
-        // [CRÍTICO] Ejecutar los scripts que venían en el HTML inyectado
         executeScripts(container);
 
         if (pushState) {
@@ -148,6 +157,7 @@ async function showSection(sectionName, pushState = true) {
             history.pushState({ section: sectionName }, '', newUrl);
         }
 
+        // Reinicializar módulos necesarios
         if (window.initTooltipManager) window.initTooltipManager();
         if (window.initSettingsManager) window.initSettingsManager();
         if (window.translateDocument) window.translateDocument(container);
@@ -166,22 +176,14 @@ async function showSection(sectionName, pushState = true) {
     }
 }
 
-// [NUEVA FUNCIÓN] Extrae y ejecuta scripts insertados vía innerHTML
 function executeScripts(container) {
     const scripts = container.querySelectorAll('script');
-    
     scripts.forEach(oldScript => {
         const newScript = document.createElement('script');
-        
-        // 1. Copiar atributos (src, type, async, etc.)
         Array.from(oldScript.attributes).forEach(attr => {
             newScript.setAttribute(attr.name, attr.value);
         });
-        
-        // 2. Copiar el código interno
         newScript.textContent = oldScript.textContent;
-        
-        // 3. Reemplazar el script viejo (muerto) por el nuevo (vivo)
         oldScript.parentNode.replaceChild(newScript, oldScript);
     });
 }

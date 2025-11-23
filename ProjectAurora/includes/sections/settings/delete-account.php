@@ -1,5 +1,4 @@
 <?php
-// includes/sections/settings/delete-account.php
 if (session_status() === PHP_SESSION_NONE) session_start();
 ?>
 <div class="section-content active" data-section="settings/delete-account">
@@ -38,7 +37,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 </div>
 
                 <div class="component-card__actions w-100" style="justify-content: space-between; margin-top: 10px;">
-                    <button type="button" class="component-button" onclick="navigateTo('settings/login-security')" data-i18n="settings.delete_account.cancel_btn">
+                    <button type="button" class="component-button" data-nav="settings/login-security" data-i18n="settings.delete_account.cancel_btn">
                         <?php echo trans('settings.delete_account.cancel_btn'); ?>
                     </button>
                     

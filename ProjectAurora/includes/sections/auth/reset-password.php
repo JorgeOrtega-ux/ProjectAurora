@@ -1,5 +1,4 @@
 <?php
-// includes/sections/auth/reset-password.php
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 $token = isset($_GET['token']) ? trim($_GET['token']) : '';
@@ -64,12 +63,12 @@ if (!empty($token) && isset($pdo)) {
                     <p style="margin: 0; font-size: 14px; color: #666; line-height: 1.5;">
                         <span data-i18n="auth.recovery.invalid_link_desc"><?php echo trans('auth.recovery.invalid_link_desc'); ?></span>
                         <br><br>
-                        Por favor, <a href="#" onclick="event.preventDefault(); navigateTo('forgot-password')" style="color: #000; font-weight: 600; text-decoration: underline;" data-i18n="auth.recovery.request_new"><?php echo trans('auth.recovery.request_new'); ?></a>.
+                        Por favor, <a href="#" data-nav="forgot-password" style="color: #000; font-weight: 600; text-decoration: underline;" data-i18n="auth.recovery.request_new"><?php echo trans('auth.recovery.request_new'); ?></a>.
                     </p>
                 </div>
 
                 <div style="margin-top: 25px; text-align: center;">
-                    <a href="#" onclick="event.preventDefault(); navigateTo('login')" style="color:#666; text-decoration:none; font-size:14px; font-weight:500;">
+                    <a href="#" data-nav="login" style="color:#666; text-decoration:none; font-size:14px; font-weight:500;">
                         <span class="material-symbols-rounded" style="font-size:16px; vertical-align: text-bottom;">arrow_back</span> 
                         <span data-i18n="global.back_home"><?php echo trans('global.back_home'); ?></span>
                     </a>

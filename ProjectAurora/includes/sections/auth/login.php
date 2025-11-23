@@ -49,7 +49,7 @@ if ($isStep2 && isset($_SESSION['temp_login_2fa']['email'])) {
                 </div>
 
                 <div class="auth-link-wrapper">
-                    <a href="#" onclick="event.preventDefault(); navigateTo('forgot-password')" style="color:#666; text-decoration:none; font-size:14px; font-weight:500;" data-i18n="auth.login.forgot_password">
+                    <a href="#" data-nav="forgot-password" style="color:#666; text-decoration:none; font-size:14px; font-weight:500;" data-i18n="auth.login.forgot_password">
                         <?php echo trans('auth.login.forgot_password'); ?>
                     </a>
                 </div>
@@ -60,7 +60,7 @@ if ($isStep2 && isset($_SESSION['temp_login_2fa']['email'])) {
 
                 <div class="form-footer-link">
                     <span data-i18n="auth.login.no_account"><?php echo trans('auth.login.no_account'); ?></span> 
-                    <a href="#" onclick="event.preventDefault(); navigateTo('register')" data-i18n="auth.login.register_link"><?php echo trans('auth.login.register_link'); ?></a>
+                    <a href="#" data-nav="register" data-i18n="auth.login.register_link"><?php echo trans('auth.login.register_link'); ?></a>
                 </div>
             </div>
 

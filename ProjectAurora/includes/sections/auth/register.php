@@ -48,7 +48,7 @@ if (isset($CURRENT_SECTION)) {
                 
                 <div class="form-footer-link">
                     <span data-i18n="auth.register.have_account"><?php echo trans('auth.register.have_account'); ?></span> 
-                    <a href="#" onclick="event.preventDefault(); navigateTo('login')" data-i18n="auth.register.login_link"><?php echo trans('auth.register.login_link'); ?></a>
+                    <a href="#" data-nav="login" data-i18n="auth.register.login_link"><?php echo trans('auth.register.login_link'); ?></a>
                 </div>
             </div>
 

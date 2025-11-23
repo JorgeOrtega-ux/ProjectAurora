@@ -42,7 +42,7 @@ if ($lastPassChange) {
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">
-                    <button type="button" class="component-button" onclick="navigateTo('settings/change-password')" data-i18n="settings.security.password_btn">
+                    <button type="button" class="component-button" data-nav="settings/change-password" data-i18n="settings.security.password_btn">
                         <?php echo trans('settings.security.password_btn'); ?>
                     </button>
                 </div>
@@ -61,7 +61,7 @@ if ($lastPassChange) {
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">
-                    <button type="button" class="component-button" onclick="navigateTo('settings/2fa-setup')" data-i18n="settings.security.2fa_btn">
+                    <button type="button" class="component-button" data-nav="settings/2fa-setup" data-i18n="settings.security.2fa_btn">
                         <?php echo trans('settings.security.2fa_btn'); ?>
                     </button>
                 </div>

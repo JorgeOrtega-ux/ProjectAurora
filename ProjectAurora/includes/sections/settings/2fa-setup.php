@@ -1,8 +1,6 @@
 <?php
-// includes/sections/settings/2fa-setup.php
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-// Verificar estado actual del 2FA
 $is2faEnabled = false;
 if (isset($pdo) && isset($_SESSION['user_id'])) {
     $stmt = $pdo->prepare("SELECT is_2fa_enabled FROM users WHERE id = ?");
@@ -174,7 +172,7 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
                         </div>
 
                     <div class="component-card__actions actions-right w-100">
-                        <button type="button" class="component-button primary" onclick="navigateTo('settings/login-security')" data-i18n="settings.2fa.backup_saved_btn">
+                        <button type="button" class="component-button primary" data-nav="settings/login-security" data-i18n="settings.2fa.backup_saved_btn">
                             <?php echo trans('settings.2fa.backup_saved_btn'); ?>
                         </button>
                     </div>

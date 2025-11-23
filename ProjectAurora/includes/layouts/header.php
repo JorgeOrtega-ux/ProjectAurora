@@ -84,10 +84,9 @@
             <div class="menu-list">
                 
                 <?php 
-                // [CORREGIDO] Solo founder y administrator
                 if (in_array($userRole, ['founder', 'administrator'])): 
                 ?>
-                <div class="menu-link" onclick="event.preventDefault(); navigateTo('admin'); document.querySelector('[data-module=\'moduleOptions\']').classList.add('disabled'); document.querySelector('[data-module=\'moduleOptions\']').classList.remove('active');">
+                <div class="menu-link" data-nav="admin">
                     <div class="menu-link-icon">
                         <span class="material-symbols-rounded">admin_panel_settings</span>
                     </div>
@@ -97,7 +96,7 @@
                 </div>
                 <?php endif; ?>
 
-                <div class="menu-link" onclick="event.preventDefault(); navigateTo('settings/your-profile'); document.querySelector('[data-module=\'moduleOptions\']').classList.add('disabled'); document.querySelector('[data-module=\'moduleOptions\']').classList.remove('active');">
+                <div class="menu-link" data-nav="settings/your-profile">
                     <div class="menu-link-icon">
                         <span class="material-symbols-rounded">settings</span>
                     </div>
