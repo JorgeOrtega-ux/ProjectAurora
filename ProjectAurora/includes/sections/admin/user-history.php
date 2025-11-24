@@ -66,5 +66,3 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
 
     </div>
 </div>
-
-<script src="<?php echo $basePath; ?>assets/js/modules/admin-user-details.js"></script>

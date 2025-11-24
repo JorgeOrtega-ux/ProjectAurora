@@ -7,18 +7,18 @@ import { initThemeManager } from './core/theme-manager.js';
 
 // [MODULES]
 import { initAuthManager } from './modules/auth-manager.js';
-import { NotificationsManager } from './modules/notifications-manager.js';
-import { FriendsManager } from './modules/friends-manager.js';
+import { initNotificationsManager } from './modules/notifications-manager.js';
+import { initFriendsManager } from './modules/friends-manager.js';
 import { initSettingsManager } from './modules/settings-manager.js';
 
 // [UI]
 import { initMainController } from './ui/main-controller.js';
-import { AlertManager } from './ui/alert-manager.js';
+import { initAlertManager } from './ui/alert-manager.js';
 import { initTooltipManager } from './ui/tooltip-manager.js';
 import { initDragController } from './ui/drag-controller.js';
 
 // [SERVICES]
-import { SocketService } from './services/socket-service.js';
+import { initSocketService } from './services/socket-service.js';
 
 /**
  * Carga dinámica de módulos basada en la sección actual del DOM.
@@ -61,12 +61,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         initTooltipManager();
 
         // Inicializar Gestor de Alertas Global
-        window.alertManager = new AlertManager();
+        initAlertManager();
 
         // Inicializar Servicios
-        window.socketService = new SocketService();
-        window.notificationsManager = new NotificationsManager();
-        window.friendsManager = new FriendsManager();
+        initSocketService();
+        initNotificationsManager();
+        initFriendsManager();
 
         // Inicializar Controladores UI avanzados
         initDragController();

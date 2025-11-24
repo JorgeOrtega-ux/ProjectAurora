@@ -23,14 +23,16 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                 <span class="toolbar-title-actions" data-i18n="global.actions"><?php echo trans('global.actions'); ?></span>
             </div>
             <div class="component-toolbar__right">
-                <button class="component-button d-none" id="btn-lift-ban" style="margin-right: 8px; color: #d32f2f; border-color: #ffcdd2;">
+                <button class="component-icon-button d-none" id="btn-lift-ban" 
+                        data-i18n-tooltip="admin.status.lift_ban" 
+                        data-tooltip="<?php echo trans('admin.status.lift_ban'); ?>">
                     <span class="material-symbols-rounded">lock_open</span>
-                    <span data-i18n="admin.status.lift_ban"><?php echo trans('admin.status.lift_ban'); ?></span>
                 </button>
                 
-                <button class="component-button primary" id="btn-save-status">
+                <button class="component-icon-button" id="btn-save-status" 
+                        data-i18n-tooltip="admin.status.apply_ban" 
+                        data-tooltip="<?php echo trans('admin.status.apply_ban'); ?>">
                     <span class="material-symbols-rounded">save</span>
-                    <span id="btn-save-text" data-i18n="admin.status.apply_ban"><?php echo trans('admin.status.apply_ban'); ?></span>
                 </button>
             </div>
         </div>
@@ -258,5 +260,3 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
 
     </div>
 </div>
-
-<script src="<?php echo $basePath; ?>assets/js/modules/admin-user-details.js"></script>

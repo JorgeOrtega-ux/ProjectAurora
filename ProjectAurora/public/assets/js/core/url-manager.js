@@ -161,6 +161,9 @@ async function showSection(sectionName, pushState = true) {
         if (window.initTooltipManager) window.initTooltipManager();
         if (window.initSettingsManager) window.initSettingsManager();
         if (window.translateDocument) window.translateDocument(container);
+        
+        // [CORRECCIÓN CRÍTICA] Cargar módulos dinámicos (Admin) si es necesario
+        if (window.loadDynamicModules) await window.loadDynamicModules();
 
     } catch (error) {
         console.error(error);
@@ -210,7 +213,6 @@ function updateActiveMenu(sectionName) {
     const allLinks = document.querySelectorAll('.menu-link[data-nav]');
     allLinks.forEach(link => link.classList.remove('active'));
     
-    // CORRECCIÓN: Usar querySelectorAll para activar AMBOS (Header y Sidebar)
     const activeLinks = document.querySelectorAll(`.menu-link[data-nav="${sectionName}"]`);
     activeLinks.forEach(link => {
         link.classList.add('active');

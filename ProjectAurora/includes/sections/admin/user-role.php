@@ -23,9 +23,10 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                 <span class="toolbar-title-actions">Gestión de Roles</span>
             </div>
             <div class="component-toolbar__right">
-                <button class="component-button primary" id="btn-save-role">
+                <button class="component-icon-button" id="btn-save-role" 
+                        data-i18n-tooltip="global.save" 
+                        data-tooltip="<?php echo trans('global.save'); ?>">
                     <span class="material-symbols-rounded">save</span>
-                    <span data-i18n="global.save"><?php echo trans('global.save'); ?></span>
                 </button>
             </div>
         </div>
@@ -135,5 +136,3 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
         </div>
     </div>
 </div>
-
-<script src="<?php echo $basePath; ?>assets/js/modules/admin-user-details.js"></script>

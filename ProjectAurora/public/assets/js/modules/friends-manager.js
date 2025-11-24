@@ -8,195 +8,192 @@ function getCsrf() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 }
 
-export class FriendsManager {
-    constructor() {
-        this.initClickListeners();
-        this.initSocketListener();
-    }
+async function fetchApi(data) {
+    const response = await fetch(API_FRIENDS, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrf() },
+        body: JSON.stringify(data)
+    });
+    return await response.json();
+}
 
-    initSocketListener() {
-        document.addEventListener('socket-message', (e) => {
-            const { type, payload } = e.detail;
-
-            if (type === 'friend_request') {
-                this.updateUIButtons(payload.sender_id, 'request_received');
-            }
-            if (type === 'friend_accepted') {
-                this.updateUIButtons(payload.accepter_id, 'friends');
-            }
-            if (type === 'request_cancelled' || type === 'request_declined' || type === 'friend_removed') {
-                this.updateUIButtons(payload.sender_id, 'none');
-            }
-        });
-    }
-
-    initClickListeners() {
-        document.body.addEventListener('click', async (e) => {
-            const target = e.target;
-            
-            const addBtn = target.closest('.btn-add-friend');
-            if (addBtn && !target.closest('.btn-remove-friend') && !target.closest('.btn-cancel-request') && !addBtn.disabled) {
-                e.preventDefault();
-                await this.sendFriendRequest(addBtn.dataset.uid, addBtn);
-                return; 
-            }
-
-            const cancelBtn = target.closest('.btn-cancel-request');
-            if (cancelBtn) {
-                e.preventDefault();
-                await this.cancelRequest(cancelBtn.dataset.uid, cancelBtn);
-                return; 
-            }
-
-            const removeBtn = target.closest('.btn-remove-friend');
-            if (removeBtn) {
-                e.preventDefault();
-                // Usamos confirmación traducida o genérica
-                if(confirm(t('search.actions.remove_confirm') || '¿Seguro que quieres eliminar a este amigo?')) {
-                    await this.removeFriend(removeBtn.dataset.uid, removeBtn);
-                }
-                return;
-            }
-
-            const acceptBtn = target.closest('.btn-accept-request') || target.closest('[data-action="accept-req"]');
-            if (acceptBtn) {
-                e.preventDefault();
-                const uid = acceptBtn.dataset.uid || acceptBtn.closest('.notification-item')?.dataset.sid;
-                await this.respondRequest('accept_request', acceptBtn, uid);
-                return;
-            }
-
-            const declineBtn = target.closest('.btn-decline-request') || target.closest('[data-action="decline-req"]');
-            if (declineBtn) {
-                e.preventDefault();
-                const uid = declineBtn.dataset.uid || declineBtn.closest('.notification-item')?.dataset.sid;
-                await this.respondRequest('decline_request', declineBtn, uid);
-                return;
-            }
-        });
-    }
-
-    async sendFriendRequest(targetId, btn) {
-        this.setLoading(btn, true);
-        try {
-            const res = await this.fetchApi({ action: 'send_request', target_id: targetId });
-            if (res.success) {
-                if (window.alertManager) window.alertManager.showAlert(t('notifications.request_sent'), 'success');
-                this.updateUIButtons(targetId, 'request_sent');
-            } else {
-                this.handleError(res, btn, t('search.actions.add'));
-            }
-        } catch (e) { this.handleError(null, btn, t('search.actions.add')); }
-    }
-
-    async cancelRequest(targetId, btn) {
-        this.setLoading(btn, true);
-        try {
-            const res = await this.fetchApi({ action: 'cancel_request', target_id: targetId });
-            if (res.success) {
-                if (window.alertManager) window.alertManager.showAlert(t('notifications.request_cancelled'), 'info');
-                this.updateUIButtons(targetId, 'none');
-                this.triggerNotificationReload(); 
-            } else {
-                this.handleError(res, btn, t('search.actions.cancel'));
-            }
-        } catch (e) { this.handleError(null, btn, t('search.actions.cancel')); }
-    }
-
-    async removeFriend(targetId, btn) {
-        this.setLoading(btn, true);
-        try {
-            const res = await this.fetchApi({ action: 'remove_friend', target_id: targetId });
-            if (res.success) {
-                if (window.alertManager) window.alertManager.showAlert(t('notifications.friend_removed'), 'info');
-                this.updateUIButtons(targetId, 'none');
-                this.triggerNotificationReload(); 
-            } else {
-                this.handleError(res, btn, t('search.actions.remove'));
-            }
-        } catch (e) { this.handleError(null, btn, t('search.actions.remove')); }
-    }
-
-    async respondRequest(actionType, btn, senderId) {
-        const originalContent = btn.innerHTML;
-        btn.innerHTML = '<div class="small-spinner"></div>';
+function setLoading(btn, isLoading, originalText = '') {
+    if (isLoading) {
+        btn.dataset.original = btn.textContent;
+        btn.innerHTML = '<div class="small-spinner" style="border-color:#ccc; border-top-color:#000;"></div>';
         btn.disabled = true;
+    } else {
+        btn.innerHTML = originalText || btn.dataset.original;
+        btn.disabled = false;
+    }
+}
 
-        try {
-            const res = await this.fetchApi({ action: actionType, sender_id: senderId });
-            if (res.success) {
-                this.triggerNotificationReload(); 
+function handleError(res, btn, originalText) {
+    if (window.alertManager && res) window.alertManager.showAlert(res.message, 'error');
+    setLoading(btn, false, originalText);
+}
 
-                if (actionType === 'accept_request') {
-                    if (window.alertManager) window.alertManager.showAlert(t('notifications.now_friends'), 'success');
-                    this.updateUIButtons(senderId, 'friends');
-                } else {
-                    if (window.alertManager) window.alertManager.showAlert(t('notifications.request_declined'), 'info');
-                    this.updateUIButtons(senderId, 'none');
-                }
+function triggerNotificationReload() {
+    document.dispatchEvent(new CustomEvent('reload-notifications'));
+}
+
+function updateUIButtons(userId, state) {
+    const container = document.getElementById(`actions-${userId}`);
+    if (!container) return;
+
+    let html = '';
+    switch (state) {
+        case 'friends':
+            html = `<button class="btn-add-friend btn-remove-friend" data-uid="${userId}">${t('search.actions.remove')}</button>`;
+            break;
+        case 'request_sent':
+            html = `<button class="btn-add-friend btn-cancel-request" data-uid="${userId}">${t('search.actions.cancel')}</button>`;
+            break;
+        case 'request_received':
+            html = `
+                <button class="btn-accept-request" data-uid="${userId}">${t('search.actions.accept')}</button>
+                <button class="btn-decline-request" data-uid="${userId}">${t('search.actions.decline')}</button>
+            `;
+            break;
+        case 'none':
+        default:
+            html = `<button class="btn-add-friend" data-uid="${userId}">${t('search.actions.add')}</button>`;
+            break;
+    }
+    container.innerHTML = html;
+}
+
+async function sendFriendRequest(targetId, btn) {
+    setLoading(btn, true);
+    try {
+        const res = await fetchApi({ action: 'send_request', target_id: targetId });
+        if (res.success) {
+            if (window.alertManager) window.alertManager.showAlert(t('notifications.request_sent'), 'success');
+            updateUIButtons(targetId, 'request_sent');
+        } else {
+            handleError(res, btn, t('search.actions.add'));
+        }
+    } catch (e) { handleError(null, btn, t('search.actions.add')); }
+}
+
+async function cancelRequest(targetId, btn) {
+    setLoading(btn, true);
+    try {
+        const res = await fetchApi({ action: 'cancel_request', target_id: targetId });
+        if (res.success) {
+            if (window.alertManager) window.alertManager.showAlert(t('notifications.request_cancelled'), 'info');
+            updateUIButtons(targetId, 'none');
+            triggerNotificationReload(); 
+        } else {
+            handleError(res, btn, t('search.actions.cancel'));
+        }
+    } catch (e) { handleError(null, btn, t('search.actions.cancel')); }
+}
+
+async function removeFriend(targetId, btn) {
+    setLoading(btn, true);
+    try {
+        const res = await fetchApi({ action: 'remove_friend', target_id: targetId });
+        if (res.success) {
+            if (window.alertManager) window.alertManager.showAlert(t('notifications.friend_removed'), 'info');
+            updateUIButtons(targetId, 'none');
+            triggerNotificationReload(); 
+        } else {
+            handleError(res, btn, t('search.actions.remove'));
+        }
+    } catch (e) { handleError(null, btn, t('search.actions.remove')); }
+}
+
+async function respondRequest(actionType, btn, senderId) {
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<div class="small-spinner"></div>';
+    btn.disabled = true;
+
+    try {
+        const res = await fetchApi({ action: actionType, sender_id: senderId });
+        if (res.success) {
+            triggerNotificationReload(); 
+
+            if (actionType === 'accept_request') {
+                if (window.alertManager) window.alertManager.showAlert(t('notifications.now_friends'), 'success');
+                updateUIButtons(senderId, 'friends');
             } else {
-                btn.innerHTML = originalContent;
-                btn.disabled = false;
-                if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
+                if (window.alertManager) window.alertManager.showAlert(t('notifications.request_declined'), 'info');
+                updateUIButtons(senderId, 'none');
             }
-        } catch (e) {
+        } else {
             btn.innerHTML = originalContent;
             btn.disabled = false;
+            if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
         }
+    } catch (e) {
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
     }
+}
 
-    updateUIButtons(userId, state) {
-        const container = document.getElementById(`actions-${userId}`);
-        if (!container) return;
+function initSocketListener() {
+    document.addEventListener('socket-message', (e) => {
+        const { type, payload } = e.detail;
 
-        let html = '';
-        switch (state) {
-            case 'friends':
-                html = `<button class="btn-add-friend btn-remove-friend" data-uid="${userId}">${t('search.actions.remove')}</button>`;
-                break;
-            case 'request_sent':
-                html = `<button class="btn-add-friend btn-cancel-request" data-uid="${userId}">${t('search.actions.cancel')}</button>`;
-                break;
-            case 'request_received':
-                html = `
-                    <button class="btn-accept-request" data-uid="${userId}">${t('search.actions.accept')}</button>
-                    <button class="btn-decline-request" data-uid="${userId}">${t('search.actions.decline')}</button>
-                `;
-                break;
-            case 'none':
-            default:
-                html = `<button class="btn-add-friend" data-uid="${userId}">${t('search.actions.add')}</button>`;
-                break;
+        if (type === 'friend_request') {
+            updateUIButtons(payload.sender_id, 'request_received');
         }
-        container.innerHTML = html;
-    }
-
-    triggerNotificationReload() {
-        document.dispatchEvent(new CustomEvent('reload-notifications'));
-    }
-
-    setLoading(btn, isLoading, originalText = '') {
-        if (isLoading) {
-            btn.dataset.original = btn.textContent;
-            btn.innerHTML = '<div class="small-spinner" style="border-color:#ccc; border-top-color:#000;"></div>';
-            btn.disabled = true;
-        } else {
-            btn.innerHTML = originalText || btn.dataset.original;
-            btn.disabled = false;
+        if (type === 'friend_accepted') {
+            updateUIButtons(payload.accepter_id, 'friends');
         }
-    }
+        if (type === 'request_cancelled' || type === 'request_declined' || type === 'friend_removed') {
+            updateUIButtons(payload.sender_id, 'none');
+        }
+    });
+}
 
-    handleError(res, btn, originalText) {
-        if (window.alertManager && res) window.alertManager.showAlert(res.message, 'error');
-        this.setLoading(btn, false, originalText);
-    }
+function initClickListeners() {
+    document.body.addEventListener('click', async (e) => {
+        const target = e.target;
+        
+        const addBtn = target.closest('.btn-add-friend');
+        if (addBtn && !target.closest('.btn-remove-friend') && !target.closest('.btn-cancel-request') && !addBtn.disabled) {
+            e.preventDefault();
+            await sendFriendRequest(addBtn.dataset.uid, addBtn);
+            return; 
+        }
 
-    async fetchApi(data) {
-        const response = await fetch(API_FRIENDS, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrf() },
-            body: JSON.stringify(data)
-        });
-        return await response.json();
-    }
+        const cancelBtn = target.closest('.btn-cancel-request');
+        if (cancelBtn) {
+            e.preventDefault();
+            await cancelRequest(cancelBtn.dataset.uid, cancelBtn);
+            return; 
+        }
+
+        const removeBtn = target.closest('.btn-remove-friend');
+        if (removeBtn) {
+            e.preventDefault();
+            if(confirm(t('search.actions.remove_confirm') || '¿Seguro que quieres eliminar a este amigo?')) {
+                await removeFriend(removeBtn.dataset.uid, removeBtn);
+            }
+            return;
+        }
+
+        const acceptBtn = target.closest('.btn-accept-request') || target.closest('[data-action="accept-req"]');
+        if (acceptBtn) {
+            e.preventDefault();
+            const uid = acceptBtn.dataset.uid || acceptBtn.closest('.notification-item')?.dataset.sid;
+            await respondRequest('accept_request', acceptBtn, uid);
+            return;
+        }
+
+        const declineBtn = target.closest('.btn-decline-request') || target.closest('[data-action="decline-req"]');
+        if (declineBtn) {
+            e.preventDefault();
+            const uid = declineBtn.dataset.uid || declineBtn.closest('.notification-item')?.dataset.sid;
+            await respondRequest('decline_request', declineBtn, uid);
+            return;
+        }
+    });
+}
+
+export function initFriendsManager() {
+    initClickListeners();
+    initSocketListener();
 }

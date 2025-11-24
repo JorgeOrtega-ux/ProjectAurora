@@ -231,7 +231,6 @@ function initStatusLogic() {
     const activeAlert = document.getElementById('active-sanction-alert');
     const activeAlertDesc = document.getElementById('active-sanction-desc');
     const btnLift = document.getElementById('btn-lift-ban');
-    const btnSaveText = document.getElementById('btn-save-text');
     const btnSave = document.getElementById('btn-save-status');
 
     if (u.account_status === 'suspended') {
@@ -240,7 +239,10 @@ function initStatusLogic() {
         
         activeAlert.classList.remove('d-none');
         btnLift.classList.remove('d-none');
-        btnSaveText.textContent = t('admin.status.update_ban');
+        
+        // Actualizar Tooltip en lugar de texto interno
+        btnSave.setAttribute('data-i18n-tooltip', 'admin.status.update_ban');
+        btnSave.setAttribute('data-tooltip', t('admin.status.update_ban'));
 
         let activeText = '';
         if (u.suspension_end_date === null) {
@@ -265,7 +267,10 @@ function initStatusLogic() {
     } else {
         activeAlert.classList.add('d-none');
         btnLift.classList.add('d-none');
-        btnSaveText.textContent = t('admin.status.apply_ban');
+        
+        // Restaurar tooltip por defecto
+        btnSave.setAttribute('data-i18n-tooltip', 'admin.status.apply_ban');
+        btnSave.setAttribute('data-tooltip', t('admin.status.apply_ban'));
         
         document.getElementById('input-status-value').value = '';
         document.getElementById('current-status-text').textContent = t('admin.status.select_type');
@@ -372,14 +377,14 @@ async function saveStatusSanction() {
         showError(res.message);
     }
     
-    setLoading(btnSave, false, `<span class="material-symbols-rounded">save</span><span id="btn-save-text">${currentUserState.isSuspended ? t('admin.status.update_ban') : t('admin.status.apply_ban')}</span>`);
+    // Restaurar el botón al estado de icono (sin pasar texto)
+    setLoading(btnSave, false);
 }
 
 async function liftBan() {
     if (!confirm(t('global.are_you_sure') || '¿Seguro?')) return;
     
     const btnLift = document.getElementById('btn-lift-ban');
-    const originalHtml = btnLift.innerHTML;
     setLoading(btnLift, true);
 
     const res = await fetchApi({
@@ -394,7 +399,7 @@ async function liftBan() {
     } else {
         showError(res.message);
     }
-    setLoading(btnLift, false, originalHtml);
+    setLoading(btnLift, false);
 }
 
 // --- MANAGE LOGIC ---
@@ -476,7 +481,7 @@ async function saveManageChanges() {
     } else {
         showError(res.message);
     }
-    setLoading(btnSave, false, `<span class="material-symbols-rounded">save</span> ${t('global.save_status')}`);
+    setLoading(btnSave, false);
 }
 
 // --- ROLE LOGIC ---
@@ -537,7 +542,7 @@ async function saveRoleChanges() {
     } else {
         showError(res.message);
     }
-    setLoading(btnSave, false, `<span class="material-symbols-rounded">save</span> ${t('global.save')}`);
+    setLoading(btnSave, false);
 }
 
 // --- HISTORY LOGIC ---
