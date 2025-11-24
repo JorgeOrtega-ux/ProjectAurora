@@ -165,14 +165,31 @@ CREATE TABLE IF NOT EXISTS user_role_logs (
     INDEX idx_role_audit (user_id, admin_id, changed_at)
 );
 
--- [MODIFICADO] CONFIGURACIÓN DEL SERVIDOR (Sin límite de usuarios)
+-- CONFIGURACIÓN DEL SERVIDOR (Extendida)
 CREATE TABLE IF NOT EXISTS server_config (
     id INT PRIMARY KEY DEFAULT 1,
     maintenance_mode TINYINT(1) DEFAULT 0,
     allow_registrations TINYINT(1) DEFAULT 1,
+    
+    -- Nuevas configuraciones
+    min_password_length INT DEFAULT 8,
+    max_password_length INT DEFAULT 72,
+    min_username_length INT DEFAULT 6,
+    max_username_length INT DEFAULT 32,
+    max_email_length INT DEFAULT 255,
+    
+    max_login_attempts INT DEFAULT 5,
+    lockout_time_minutes INT DEFAULT 5,
+    
+    code_resend_cooldown INT DEFAULT 60, -- Segundos
+    
+    username_cooldown INT DEFAULT 30, -- Días
+    email_cooldown INT DEFAULT 12,    -- Días
+    
+    avatar_max_size INT DEFAULT 2,    -- MB
+    
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- Inicializar configuración por defecto
-INSERT IGNORE INTO server_config (id, maintenance_mode, allow_registrations) 
-VALUES (1, 0, 1);
+INSERT IGNORE INTO server_config (id) VALUES (1);

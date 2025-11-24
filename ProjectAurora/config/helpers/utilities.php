@@ -3,9 +3,6 @@
 
 date_default_timezone_set('America/Matamoros');
 
-define('MAX_LOGIN_ATTEMPTS', 5);      
-define('LOCKOUT_TIME_MINUTES', 5);    
-
 function get_client_ip() {
     if (!empty($_SERVER['HTTP_CLIENT_IP'])) return $_SERVER['HTTP_CLIENT_IP'];
     if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) return $_SERVER['HTTP_X_FORWARDED_FOR'];
@@ -13,9 +10,11 @@ function get_client_ip() {
 }
 
 function checkLockStatus($pdo, $identifier, $specificAction = null) {
+    $config = getServerConfig($pdo);
+    $limit = (int)($config['max_login_attempts'] ?? 5);
+    $minutes = (int)($config['lockout_time_minutes'] ?? 5);
+    
     $ip = get_client_ip();
-    $limit = MAX_LOGIN_ATTEMPTS;
-    $minutes = LOCKOUT_TIME_MINUTES;
 
     $sql = "SELECT COUNT(*) as total 
             FROM security_logs 
@@ -141,7 +140,22 @@ function getServerConfig($pdo) {
         $stmt = $pdo->query("SELECT * FROM server_config WHERE id = 1");
         $config = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$config) {
-            return ['maintenance_mode' => 0, 'allow_registrations' => 1];
+            // Valores por defecto de seguridad si la tabla está vacía
+            return [
+                'maintenance_mode' => 0, 
+                'allow_registrations' => 1,
+                'min_password_length' => 8, 
+                'max_password_length' => 72,
+                'min_username_length' => 6, 
+                'max_username_length' => 32,
+                'max_email_length' => 255, 
+                'max_login_attempts' => 5,
+                'lockout_time_minutes' => 5, 
+                'code_resend_cooldown' => 60,
+                'username_cooldown' => 30, 
+                'email_cooldown' => 12, 
+                'avatar_max_size' => 2
+            ];
         }
         return $config;
     } catch (Exception $e) {

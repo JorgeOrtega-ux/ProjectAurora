@@ -17,9 +17,8 @@ date_default_timezone_set('America/Matamoros');
 require_once '../config/core/database.php';
 require_once '../config/helpers/utilities.php';
 require_once '../includes/logic/GoogleAuthenticator.php';
-require_once '../includes/logic/i18n_server.php'; // [NUEVO]
+require_once '../includes/logic/i18n_server.php';
 
-// [NUEVO] Cargar idioma
 $lang = $_SESSION['user_lang'] ?? detect_browser_language() ?? 'es-latam';
 I18n::load($lang);
 
@@ -41,6 +40,9 @@ if (!isset($_SESSION['user_id'])) {
 
 $userId = $_SESSION['user_id'];
 $response = ['success' => false, 'message' => trans('global.action_invalid')];
+
+// Cargar Configuración
+$serverConfig = getServerConfig($pdo);
 
 // --- FUNCIONES AUXILIARES ---
 function generate_uuid_v4() {
@@ -69,8 +71,7 @@ function check_cooldown($pdo, $userId, $type, $daysLimit) {
         $daysPassed = $diff->days;
 
         if ($daysPassed < $daysLimit) {
-            // Mensaje simplificado o traducido
-            throw new Exception(trans('settings.cooldown_error'));
+            throw new Exception(trans('settings.cooldown_error') . " ($daysLimit " . trans('global.days') . ")");
         }
     }
 }
@@ -113,25 +114,34 @@ try {
     // ======================================================
     if ($action === 'update_avatar') {
         check_cooldown($pdo, $userId, 'avatar', 1);
+        
         if (!isset($_FILES['avatar']) || $_FILES['avatar']['error'] !== UPLOAD_ERR_OK) {
             throw new Exception(trans('settings.avatar.error_format'));
         }
         $file = $_FILES['avatar'];
-        $maxSize = 2 * 1024 * 1024;
+        
+        // [DINAMICO] Tamaño máximo
+        $maxMB = (int)($serverConfig['avatar_max_size'] ?? 2);
+        $maxSize = $maxMB * 1024 * 1024;
+        
+        if ($file['size'] > $maxSize) throw new Exception(trans('settings.avatar.error_size') . " (Max {$maxMB}MB)");
+        
         $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-        if ($file['size'] > $maxSize) throw new Exception(trans('settings.avatar.error_size'));
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $mimeType = $finfo->file($file['tmp_name']);
         if (!in_array($mimeType, $allowedTypes)) throw new Exception(trans('settings.avatar.error_format'));
+        
         $uploadDir = __DIR__ . '/../public/assets/uploads/avatars/custom/';
         if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
         $extension = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'png';
         $newFileName = generate_uuid_v4() . '.' . $extension;
         $destination = $uploadDir . $newFileName;
         $dbPath = 'assets/uploads/avatars/custom/' . $newFileName;
+        
         if (!move_uploaded_file($file['tmp_name'], $destination)) {
             throw new Exception(trans('global.error_connection'));
         }
+        
         $stmt = $pdo->prepare("SELECT avatar FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $oldAvatar = $stmt->fetchColumn();
@@ -184,10 +194,21 @@ try {
     // USERNAME
     // ======================================================
     } elseif ($action === 'update_username') {
-        check_cooldown($pdo, $userId, 'username', 12);
+        // [DINAMICO] Cooldown
+        $cooldownDays = (int)($serverConfig['username_cooldown'] ?? 30);
+        check_cooldown($pdo, $userId, 'username', $cooldownDays);
+        
         $newUsername = trim($data['username'] ?? '');
-        if (strlen($newUsername) < 8 || strlen($newUsername) > 32) throw new Exception(trans('auth.errors.username_invalid'));
+        
+        // [DINAMICO] Longitudes
+        $minLen = (int)($serverConfig['min_username_length'] ?? 6);
+        $maxLen = (int)($serverConfig['max_username_length'] ?? 32);
+        
+        if (strlen($newUsername) < $minLen || strlen($newUsername) > $maxLen) {
+            throw new Exception(trans('auth.errors.username_invalid') . " ($minLen-$maxLen chars)");
+        }
         if (!preg_match('/^[a-zA-Z0-9_]+$/', $newUsername)) throw new Exception(trans('auth.errors.username_invalid'));
+        
         $stmtGet = $pdo->prepare("SELECT username FROM users WHERE id = ?");
         $stmtGet->execute([$userId]);
         $oldUsername = $stmtGet->fetchColumn();
@@ -195,6 +216,7 @@ try {
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? AND id != ?");
         $stmt->execute([$newUsername, $userId]);
         if ($stmt->rowCount() > 0) throw new Exception(trans('settings.username.taken'));
+        
         $stmt = $pdo->prepare("UPDATE users SET username = ? WHERE id = ?");
         if ($stmt->execute([$newUsername, $userId])) {
             audit_log($pdo, $userId, 'username', $oldUsername, $newUsername);
@@ -207,10 +229,19 @@ try {
     // EMAIL
     // ======================================================
     } elseif ($action === 'update_email') {
-        check_cooldown($pdo, $userId, 'email', 12);
+        // [DINAMICO] Cooldown
+        $cooldownDays = (int)($serverConfig['email_cooldown'] ?? 12);
+        check_cooldown($pdo, $userId, 'email', $cooldownDays);
+        
         $newEmail = strtolower(trim($data['email'] ?? ''));
+        
+        // [DINAMICO] Longitud Max
+        $maxLen = (int)($serverConfig['max_email_length'] ?? 255);
+        if (strlen($newEmail) > $maxLen) throw new Exception("Email demasiado largo (Max $maxLen chars)");
+
         if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) throw new Exception(trans('auth.errors.email_invalid_domain'));
         if (!preg_match('/^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i', $newEmail)) throw new Exception(trans('auth.errors.email_domain'));
+        
         $stmtGet = $pdo->prepare("SELECT email FROM users WHERE id = ?");
         $stmtGet->execute([$userId]);
         $oldEmail = $stmtGet->fetchColumn();
@@ -218,6 +249,7 @@ try {
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
         $stmt->execute([$newEmail, $userId]);
         if ($stmt->rowCount() > 0) throw new Exception(trans('auth.errors.email_exists'));
+        
         $stmt = $pdo->prepare("UPDATE users SET email = ? WHERE id = ?");
         if ($stmt->execute([$newEmail, $userId])) {
             audit_log($pdo, $userId, 'email', $oldEmail, $newEmail);
@@ -245,11 +277,20 @@ try {
         check_cooldown($pdo, $userId, 'password', 1);
         $newPassword = $data['new_password'] ?? '';
         $logoutOthers = isset($data['logout_others']) ? (bool)$data['logout_others'] : false;
-        if (strlen($newPassword) < 8) throw new Exception(trans('auth.errors.password_short'));
+        
+        // [DINAMICO] Password Length
+        $minPass = (int)($serverConfig['min_password_length'] ?? 8);
+        $maxPass = (int)($serverConfig['max_password_length'] ?? 72);
+        
+        if (strlen($newPassword) < $minPass || strlen($newPassword) > $maxPass) {
+            throw new Exception(trans('auth.errors.password_short') . " ($minPass-$maxPass chars)");
+        }
+
         $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $oldHash = $stmt->fetchColumn();
         $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
+        
         $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
         if ($stmt->execute([$newHash, $userId])) {
             audit_log($pdo, $userId, 'password', $oldHash, $newHash);

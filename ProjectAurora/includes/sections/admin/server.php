@@ -59,5 +59,63 @@ $regMode = (int)$serverConfig['allow_registrations'];
             </div>
         </div>
 
+        <div class="component-divider"></div>
+
+        <?php
+        function renderStepper($titleKey, $descKey, $action, $value, $min, $max, $step1=1, $step10=10) {
+            $title = trans($titleKey);
+            $desc = trans($descKey);
+            $valueId = 'stepper-value-' . str_replace('update-', '', $action);
+            
+            echo <<<HTML
+            <div class="component-card component-card--column active">
+                <div class="component-card__content">
+                    <div class="component-card__text">
+                        <h2 class="component-card__title" data-i18n="$titleKey">$title</h2>
+                        <p class="component-card__description" data-i18n="$descKey">$desc</p>
+                    </div>
+                </div>
+                <div class="component-card__actions">
+                    <div class="component-stepper component-stepper--multi" style="max-width: 265px;" 
+                         data-action="$action" 
+                         data-current-value="$value" 
+                         data-min="$min" 
+                         data-max="$max"
+                         data-step-1="$step1"
+                         data-step-10="$step10">
+                        <button type="button" class="stepper-button" data-step-action="decrement-10">
+                            <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
+                        </button>
+                        <button type="button" class="stepper-button" data-step-action="decrement-1">
+                            <span class="material-symbols-rounded">chevron_left</span>
+                        </button>
+                        <div class="stepper-value" id="$valueId">$value</div>
+                        <button type="button" class="stepper-button" data-step-action="increment-1">
+                            <span class="material-symbols-rounded">chevron_right</span>
+                        </button>
+                        <button type="button" class="stepper-button" data-step-action="increment-10">
+                            <span class="material-symbols-rounded">keyboard_double_arrow_right</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+HTML;
+        }
+
+        renderStepper('admin.server.minPasswordLengthTitle', 'admin.server.minPasswordLengthDesc', 'update-min-password-length', (int)$serverConfig['min_password_length'], 8, 72);
+        renderStepper('admin.server.maxPasswordLengthTitle', 'admin.server.maxPasswordLengthDesc', 'update-max-password-length', (int)$serverConfig['max_password_length'], 8, 72);
+        renderStepper('admin.server.minUsernameLengthTitle', 'admin.server.minUsernameLengthDesc', 'update-min-username-length', (int)$serverConfig['min_username_length'], 6, 32);
+        renderStepper('admin.server.maxUsernameLengthTitle', 'admin.server.maxUsernameLengthDesc', 'update-max-username-length', (int)$serverConfig['max_username_length'], 6, 32);
+        renderStepper('admin.server.maxEmailLengthTitle', 'admin.server.maxEmailLengthDesc', 'update-max-email-length', (int)$serverConfig['max_email_length'], 64, 255);
+        
+        renderStepper('admin.server.maxLoginAttemptsTitle', 'admin.server.maxLoginAttemptsDesc', 'update-max-login-attempts', (int)$serverConfig['max_login_attempts'], 3, 20);
+        renderStepper('admin.server.lockoutTimeMinutesTitle', 'admin.server.lockoutTimeMinutesDesc', 'update-lockout-time-minutes', (int)$serverConfig['lockout_time_minutes'], 1, 60);
+        renderStepper('admin.server.codeResendCooldownTitle', 'admin.server.codeResendCooldownDesc', 'update-code-resend-cooldown', (int)$serverConfig['code_resend_cooldown'], 30, 300, 5, 15);
+        
+        renderStepper('admin.server.usernameCooldownTitle', 'admin.server.usernameCooldownDesc', 'update-username-cooldown', (int)$serverConfig['username_cooldown'], 1, 365);
+        renderStepper('admin.server.emailCooldownTitle', 'admin.server.emailCooldownDesc', 'update-email-cooldown', (int)$serverConfig['email_cooldown'], 1, 365);
+        renderStepper('admin.server.avatarMaxSizeTitle', 'admin.server.avatarMaxSizeDesc', 'update-avatar-max-size', (int)$serverConfig['avatar_max_size'], 1, 20);
+        ?>
+
     </div>
 </div>

@@ -44,14 +44,12 @@ try {
     if ($action === 'get_user_details') {
         $targetId = $data['target_id'] ?? 0;
         
-        // Info básica
         $stmt = $pdo->prepare("SELECT id, username, email, avatar, role, account_status, suspension_reason, suspension_end_date, deletion_type, deletion_reason, admin_comments FROM users WHERE id = ?");
         $stmt->execute([$targetId]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$user) throw new Exception(trans('admin.error.user_not_found'));
 
-        // Días restantes de suspensión
         $daysRemaining = 0;
         if ($user['account_status'] === 'suspended' && $user['suspension_end_date']) {
             $end = new DateTime($user['suspension_end_date']);
@@ -61,7 +59,6 @@ try {
             }
         }
 
-        // 3. Obtener historial SOLO DE SANCIONES
         $sqlHistory = "
             SELECT 
                 'suspension' as log_type,
@@ -105,11 +102,9 @@ try {
         
         if ($targetId === $currentAdminId) throw new Exception(trans('admin.error.self_sanction'));
 
-        // Validar existencia
-        $stmtCheck = $pdo->prepare("SELECT account_status, suspension_reason, suspension_end_date FROM users WHERE id = ?");
+        $stmtCheck = $pdo->prepare("SELECT account_status FROM users WHERE id = ?");
         $stmtCheck->execute([$targetId]);
-        $currentUser = $stmtCheck->fetch(PDO::FETCH_ASSOC);
-        if (!$currentUser) throw new Exception(trans('admin.error.user_not_exist'));
+        if (!$stmtCheck->fetch()) throw new Exception(trans('admin.error.user_not_exist'));
 
         $suspensionEnd = null;
         $finalReason = null;
@@ -127,11 +122,9 @@ try {
                 $suspensionEnd = date('Y-m-d H:i:s', strtotime("+$days days"));
                 $dbDuration = $days;
             }
-            // Loguear sanción
             $stmtLog = $pdo->prepare("INSERT INTO user_suspension_logs (user_id, admin_id, reason, duration_days, ends_at) VALUES (?, ?, ?, ?, ?)");
             $stmtLog->execute([$targetId, $currentAdminId, $finalReason, $dbDuration, $suspensionEnd]);
         } else {
-            // Levantar sanción
             $stmtFindLog = $pdo->prepare("SELECT id FROM user_suspension_logs WHERE user_id = ? AND lifted_at IS NULL ORDER BY id DESC LIMIT 1");
             $stmtFindLog->execute([$targetId]);
             $activeLogId = $stmtFindLog->fetchColumn();
@@ -197,7 +190,6 @@ try {
         $stmtTarget->execute([$targetId]);
         $oldRole = $stmtTarget->fetchColumn();
 
-        // Reglas de jerarquía
         if ($oldRole === 'founder') throw new Exception("No tienes permisos para modificar a un Fundador.");
         if ($newRole === 'founder') throw new Exception("No se puede asignar el rol de Fundador.");
 
@@ -223,41 +215,59 @@ try {
         }
 
    // ======================================================
-    // 5. CONFIGURACIÓN DEL SERVIDOR (SIN LIMITES)
+    // 5. CONFIGURACIÓN DEL SERVIDOR (ACTUALIZADO)
     // ======================================================
     } elseif ($action === 'update_server_config') {
         
         $key = $data['key'] ?? '';
         $value = $data['value'] ?? 0;
 
-        $allowedKeys = ['maintenance_mode', 'allow_registrations'];
+        // LISTA DE CLAVES PERMITIDAS ACTUALIZADA
+        $allowedKeys = [
+            'maintenance_mode', 
+            'allow_registrations',
+            'min_password_length', 
+            'max_password_length',
+            'min_username_length', 
+            'max_username_length', 
+            'max_email_length',
+            'max_login_attempts', 
+            'lockout_time_minutes',
+            'code_resend_cooldown', 
+            'username_cooldown', 
+            'email_cooldown', 
+            'avatar_max_size'
+        ];
+
         if (!in_array($key, $allowedKeys)) {
             throw new Exception(trans('global.action_invalid'));
         }
 
-        // 1. Activar Mantenimiento
-        if ($key === 'maintenance_mode' && (int)$value === 1) {
-            $sql = "UPDATE server_config SET maintenance_mode = 1, allow_registrations = 0 WHERE id = 1";
-            $pdo->exec($sql);
-            send_live_notification('global', 'system_status_update', ['maintenance' => true]);
-        
-        // 2. Desactivar Mantenimiento
-        } elseif ($key === 'maintenance_mode' && (int)$value === 0) {
-            $sql = "UPDATE server_config SET maintenance_mode = 0 WHERE id = 1";
-            $pdo->exec($sql);
-            send_live_notification('global', 'system_status_update', ['maintenance' => false]);
+        // Castear valor a entero por seguridad
+        $intVal = (int)$value;
 
-        // 3. Activar Registros
-        } elseif ($key === 'allow_registrations') {
-            if ((int)$value === 1) {
-                $curr = getServerConfig($pdo);
-                if ((int)$curr['maintenance_mode'] === 1) {
-                    throw new Exception("No puedes activar registros durante el mantenimiento.");
-                }
+        // 1. Activar Mantenimiento
+        if ($key === 'maintenance_mode') {
+            $sql = "UPDATE server_config SET maintenance_mode = ? WHERE id = 1";
+            $pdo->prepare($sql)->execute([$intVal === 1 ? 1 : 0]);
+            
+            if ($intVal === 1) {
+                $pdo->exec("UPDATE server_config SET allow_registrations = 0 WHERE id = 1");
             }
-            $sql = "UPDATE server_config SET allow_registrations = ? WHERE id = 1";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$value]);
+            send_live_notification('global', 'system_status_update', ['maintenance' => ($intVal === 1)]);
+        
+        // 2. Activar Registros
+        } elseif ($key === 'allow_registrations') {
+            $curr = getServerConfig($pdo);
+            if ($intVal === 1 && (int)$curr['maintenance_mode'] === 1) {
+                throw new Exception("No puedes activar registros durante el mantenimiento.");
+            }
+            $pdo->prepare("UPDATE server_config SET allow_registrations = ? WHERE id = 1")->execute([$intVal === 1 ? 1 : 0]);
+        
+        // 3. Actualizar otros valores numéricos
+        } else {
+            $sql = "UPDATE server_config SET $key = ? WHERE id = 1";
+            $pdo->prepare($sql)->execute([$intVal]);
         }
 
         echo json_encode(['success' => true, 'message' => trans('global.save_status')]);

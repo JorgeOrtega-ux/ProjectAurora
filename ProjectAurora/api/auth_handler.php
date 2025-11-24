@@ -13,8 +13,7 @@ ini_set('display_errors', FALSE);
 ini_set('log_errors', TRUE);
 ini_set('error_log', $logFile);
 
-function logger($message)
-{
+function logger($message) {
     global $logFile;
     $date = date('Y-m-d H:i:s');
     file_put_contents($logFile, "[$date] [CUSTOM] $message" . PHP_EOL, FILE_APPEND);
@@ -132,10 +131,18 @@ try {
 
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
+        
+        // [DINAMICO] Límites
+        $minPass = (int)($serverConfig['min_password_length'] ?? 8);
+        $maxPass = (int)($serverConfig['max_password_length'] ?? 72);
+        $maxEmail = (int)($serverConfig['max_email_length'] ?? 255);
+
         if (empty($email) || empty($password)) throw new Exception(trans('auth.errors.all_required'));
-        if (strlen($email) < 4) throw new Exception(trans('auth.errors.email_short'));
+        if (strlen($email) < 4 || strlen($email) > $maxEmail) throw new Exception("Longitud de email inválida.");
         if (!is_allowed_domain($email)) throw new Exception(trans('auth.errors.email_domain'));
-        if (strlen($password) < 8) throw new Exception(trans('auth.errors.password_short'));
+        if (strlen($password) < $minPass || strlen($password) > $maxPass) {
+            throw new Exception(trans('auth.errors.password_short') . " ($minPass-$maxPass chars)");
+        }
         
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
@@ -157,19 +164,42 @@ try {
         $rawPassword = $_SESSION['temp_register']['password'] ?? '';
         
         if (empty($email) || empty($rawPassword)) throw new Exception(trans('global.session_expired'));
-        if (!preg_match('/^[a-zA-Z0-9_]{8,32}$/', $username)) throw new Exception(trans('auth.errors.username_invalid'));
+        
+        // [DINAMICO] Límites usuario
+        $minUser = (int)($serverConfig['min_username_length'] ?? 6);
+        $maxUser = (int)($serverConfig['max_username_length'] ?? 32);
+
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $username) || strlen($username) < $minUser || strlen($username) > $maxUser) {
+            throw new Exception(trans('auth.errors.username_invalid') . " ($minUser-$maxUser chars)");
+        }
         
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
         $stmt->execute([$username]);
         if ($stmt->rowCount() > 0) throw new Exception(trans('settings.username.taken'));
         
+        // [DINAMICO] Cooldown de reenvío
+        $cooldownSecs = (int)($serverConfig['code_resend_cooldown'] ?? 60);
+        $stmtLastCode = $pdo->prepare("SELECT created_at FROM verification_codes WHERE identifier = ? AND code_type = 'registration' ORDER BY created_at DESC LIMIT 1");
+        $stmtLastCode->execute([$email]);
+        $lastCreated = $stmtLastCode->fetchColumn();
+        
+        if ($lastCreated) {
+            $diff = time() - strtotime($lastCreated);
+            if ($diff < $cooldownSecs) {
+                $wait = $cooldownSecs - $diff;
+                // Enviar remaining_time para que el frontend actualice el timer
+                echo json_encode(['success' => false, 'message' => trans('auth.errors.too_many_attempts'), 'remaining_time' => $wait]);
+                exit;
+            }
+        }
+
         $passwordHash = password_hash($rawPassword, PASSWORD_BCRYPT);
         $payload = json_encode(['username' => $username, 'password_hash' => $passwordHash]);
         $code = generate_verification_code();
         $codeHash = hash('sha256', $code);
         
         $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'registration'")->execute([$email]);
-        $sql = "INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, 'registration', ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))";
+        $sql = "INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at, created_at) VALUES (?, 'registration', ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE), NOW())";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$email, $codeHash, $payload]);
         
@@ -177,6 +207,47 @@ try {
         $_SESSION['temp_register']['username'] = $username;
         logger("[REGISTRO] Code para $email: $code"); 
         $response = ['success' => true, 'message' => trans('auth.code_sent')];
+
+    // ======================================================
+    // REENVÍO DE CÓDIGO GENÉRICO
+    // ======================================================
+    } elseif ($action === 'resend_code') {
+        $type = $data['type'] ?? '';
+        $email = '';
+        
+        if ($type === 'register') $email = $_SESSION['temp_register']['email'] ?? '';
+        elseif ($type === 'login') $email = $_SESSION['temp_login_2fa']['email'] ?? '';
+        
+        if (empty($email)) throw new Exception(trans('global.session_expired'));
+
+        $cooldownSecs = (int)($serverConfig['code_resend_cooldown'] ?? 60);
+
+        if ($type === 'register') {
+             $stmtLast = $pdo->prepare("SELECT created_at, payload FROM verification_codes WHERE identifier = ? AND code_type = 'registration' ORDER BY created_at DESC LIMIT 1");
+             $stmtLast->execute([$email]);
+             $row = $stmtLast->fetch(PDO::FETCH_ASSOC);
+             
+             if ($row) {
+                 $diff = time() - strtotime($row['created_at']);
+                 if ($diff < $cooldownSecs) {
+                     echo json_encode(['success' => false, 'message' => trans('auth.errors.too_many_attempts'), 'remaining_time' => ($cooldownSecs - $diff)]);
+                     exit;
+                 }
+                 $payload = $row['payload']; 
+             } else {
+                 throw new Exception(trans('global.error_connection'));
+             }
+
+             $code = generate_verification_code();
+             $codeHash = hash('sha256', $code);
+             $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'registration'")->execute([$email]);
+             $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at, created_at) VALUES (?, 'registration', ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE), NOW())")->execute([$email, $codeHash, $payload]);
+             
+             logger("[RESEND REGISTRO] Code para $email: $code");
+             $response = ['success' => true, 'message' => trans('auth.code_sent')];
+        } else {
+             $response = ['success' => false, 'message' => 'Operation not supported'];
+        }
 
     // ======================================================
     // REGISTRO - FINAL
@@ -240,7 +311,11 @@ try {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
         
-        if (checkLockStatus($pdo, $email, 'login_fail')) throw new Exception(trans('auth.errors.too_many_attempts') . " " . LOCKOUT_TIME_MINUTES . " mins.");
+        // checkLockStatus ahora usa los valores dinámicos internamente
+        if (checkLockStatus($pdo, $email, 'login_fail')) {
+            $mins = $serverConfig['lockout_time_minutes'] ?? 5;
+            throw new Exception(trans('auth.errors.too_many_attempts') . " " . $mins . " mins.");
+        }
         
         $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
         $stmt->execute([$email]);
@@ -252,7 +327,6 @@ try {
             $isVip = in_array($role, ['founder', 'administrator', 'moderator']);
             $isMaintenance = (int)$serverConfig['maintenance_mode'] === 1;
 
-            // Revisar suspensión temporal
             if ($user['account_status'] === 'suspended' && !empty($user['suspension_end_date'])) {
                 $endDate = new DateTime($user['suspension_end_date']);
                 $now = new DateTime();
@@ -290,7 +364,6 @@ try {
                 session_regenerate_id(true);
                 set_user_session($pdo, $user); 
                 
-                // Flag para redirección de mantenimiento en Frontend
                 $shouldRedirectMaintenance = ($isMaintenance && !$isVip);
 
                 $response = [
@@ -395,7 +468,12 @@ try {
     } elseif ($action === 'recovery_step_1') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         if (empty($email) || !is_allowed_domain($email)) throw new Exception(trans('auth.errors.email_invalid_domain'));
-        if (checkLockStatus($pdo, $email, 'recovery_fail')) throw new Exception(trans('auth.errors.too_many_attempts') . " " . LOCKOUT_TIME_MINUTES . " m.");
+        
+        // El lockout time ahora es dinámico
+        if (checkLockStatus($pdo, $email, 'recovery_fail')) {
+            $mins = $serverConfig['lockout_time_minutes'] ?? 5;
+            throw new Exception(trans('auth.errors.too_many_attempts') . " " . $mins . " m.");
+        }
         
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
@@ -418,7 +496,13 @@ try {
         
         if (empty($token) || empty($newPass)) throw new Exception(trans('auth.errors.all_required'));
         if ($newPass !== $confirmPass) throw new Exception(trans('auth.errors.pass_mismatch'));
-        if (strlen($newPass) < 8) throw new Exception(trans('auth.errors.password_short'));
+        
+        // [DINAMICO]
+        $minPass = (int)($serverConfig['min_password_length'] ?? 8);
+        $maxPass = (int)($serverConfig['max_password_length'] ?? 72);
+        if (strlen($newPass) < $minPass || strlen($newPass) > $maxPass) {
+            throw new Exception(trans('auth.errors.password_short') . " ($minPass-$maxPass chars)");
+        }
         
         $tokenHash = hash('sha256', $token);
         $sql = "SELECT identifier FROM verification_codes WHERE code = ? AND code_type = 'recovery' AND expires_at > NOW()";
