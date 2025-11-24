@@ -188,94 +188,72 @@ try {
         $currentAdminId = $_SESSION['user_id'];
         $currentAdminRole = $_SESSION['user_role']; 
 
-        // A. Auto-protección
-        if ($targetId === $currentAdminId) {
-            throw new Exception("No puedes cambiar tu propio rol.");
-        }
+        if ($targetId === $currentAdminId) throw new Exception("No puedes cambiar tu propio rol.");
 
-        // B. Roles válidos
         $allowedRoles = ['user', 'moderator', 'administrator'];
-        if (!in_array($newRole, $allowedRoles)) {
-            throw new Exception(trans('global.action_invalid'));
-        }
+        if (!in_array($newRole, $allowedRoles)) throw new Exception(trans('global.action_invalid'));
 
-        // C. Obtener rol actual del objetivo
         $stmtTarget = $pdo->prepare("SELECT role FROM users WHERE id = ?");
         $stmtTarget->execute([$targetId]);
         $oldRole = $stmtTarget->fetchColumn();
 
-        // --- REGLAS DE JERARQUÍA ---
+        // Reglas de jerarquía
+        if ($oldRole === 'founder') throw new Exception("No tienes permisos para modificar a un Fundador.");
+        if ($newRole === 'founder') throw new Exception("No se puede asignar el rol de Fundador.");
 
-        // 1. Nadie puede tocar a un Fundador
-        if ($oldRole === 'founder') {
-            throw new Exception("No tienes permisos para modificar a un Fundador.");
-        }
-
-        // 2. Nadie puede ASIGNAR el rol de Fundador
-        if ($newRole === 'founder') {
-            throw new Exception("No se puede asignar el rol de Fundador.");
-        }
-
-        // 3. Reglas para ADMINISTRADORES (No Fundadores)
         if ($currentAdminRole === 'administrator') {
-            // NO pueden modificar a otro Administrador
-            if ($oldRole === 'administrator') {
-                throw new Exception("No tienes permisos para modificar a otro Administrador.");
-            }
-            // NO pueden asignar el rol de Administrador
-            if ($newRole === 'administrator') {
-                throw new Exception("Solo el Fundador puede asignar el rol de Administrador.");
-            }
+            if ($oldRole === 'administrator') throw new Exception("No tienes permisos para modificar a otro Administrador.");
+            if ($newRole === 'administrator') throw new Exception("Solo el Fundador puede asignar el rol de Administrador.");
         }
 
-        // 4. Validar si es el mismo rol
-        if ($oldRole === $newRole) {
-            throw new Exception("El usuario ya tiene ese rol.");
-        }
+        if ($oldRole === $newRole) throw new Exception("El usuario ya tiene ese rol.");
 
-        // Ejecutar cambio
         $sql = "UPDATE users SET role = ? WHERE id = ?";
         $stmt = $pdo->prepare($sql);
         
         if ($stmt->execute([$newRole, $targetId])) {
-            
-            // Guardar en tabla INDEPENDIENTE `user_role_logs`
             $ip = get_client_ip();
             $stmtAudit = $pdo->prepare("INSERT INTO user_role_logs (user_id, admin_id, old_role, new_role, ip_address, changed_at) VALUES (?, ?, ?, ?, ?, NOW())");
             $stmtAudit->execute([$targetId, $currentAdminId, $oldRole, $newRole, $ip]);
 
-            // Sacar al usuario para refrescar permisos
             send_live_notification($targetId, 'force_logout', ['reason' => 'role_change']);
-
             echo json_encode(['success' => true, 'message' => trans('global.save_status')]);
         } else {
             throw new Exception(trans('global.error_connection'));
         }
 
     // ======================================================
-    // 5. [NUEVO] CONFIGURACIÓN DEL SERVIDOR
+    // 5. CONFIGURACIÓN DEL SERVIDOR (CON BROADCAST)
     // ======================================================
     } elseif ($action === 'update_server_config') {
         
         $key = $data['key'] ?? '';
         $value = $data['value'] ?? 0;
 
-        // Mapeo seguro de columnas permitidas
         $allowedKeys = ['maintenance_mode', 'allow_registrations', 'max_concurrent_users'];
         if (!in_array($key, $allowedKeys)) {
             throw new Exception(trans('global.action_invalid'));
         }
 
-        // LÓGICA DE NEGOCIO:
-        
-        // 1. Si activamos Mantenimiento (1), forzamos desactivar Registros (0)
+        // 1. Activar Mantenimiento
         if ($key === 'maintenance_mode' && (int)$value === 1) {
             $sql = "UPDATE server_config SET maintenance_mode = 1, allow_registrations = 0 WHERE id = 1";
             $pdo->exec($sql);
             
-            // Opcional: Se podrían enviar notificaciones de logout aquí, pero el router/WS lo manejan dinámicamente.
+            // ENVIAR SEÑAL GLOBAL: Mantenimiento Activado
+            send_live_notification('global', 'system_status_update', ['maintenance' => true]);
         
-        // 2. Si activamos Registros (1), verificamos que no haya Mantenimiento activo
+        // 2. Desactivar Mantenimiento
+        } elseif ($key === 'maintenance_mode' && (int)$value === 0) {
+            $sql = "UPDATE server_config SET maintenance_mode = 0 WHERE id = 1";
+            $pdo->exec($sql);
+
+            // ENVIAR SEÑAL GLOBAL: Mantenimiento Desactivado
+            // Esto hará que todos recarguen la página. El router.php verificará si hay cupo.
+            // Si ActiveSessions > MaxUsers, el router redirigirá a status-page?status=server_full.
+            send_live_notification('global', 'system_status_update', ['maintenance' => false]);
+
+        // 3. Activar Registros
         } elseif ($key === 'allow_registrations' && (int)$value === 1) {
             $curr = getServerConfig($pdo);
             if ((int)$curr['maintenance_mode'] === 1) {
@@ -285,7 +263,7 @@ try {
             $pdo->exec($sql);
             
         } else {
-            // Actualización genérica
+            // Actualización genérica (ej: max_concurrent_users)
             $sql = "UPDATE server_config SET $key = ? WHERE id = 1";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$value]);

@@ -102,7 +102,7 @@ function send_live_notification($targetUserId, $type, $data = []) {
     $port = 8081; 
 
     $payload = json_encode([
-        'target_id' => (string)$targetUserId,
+        'target_id' => (string)$targetUserId, // Puede ser "global"
         'type' => $type, 
         'payload' => $data
     ]);
@@ -136,18 +136,28 @@ function detect_browser_language() {
     return $default;
 }
 
-// [NUEVO] Obtener configuración del servidor
 function getServerConfig($pdo) {
     try {
         $stmt = $pdo->query("SELECT * FROM server_config WHERE id = 1");
         $config = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$config) {
-            // Fallback por si la tabla está vacía
             return ['maintenance_mode' => 0, 'allow_registrations' => 1, 'max_concurrent_users' => 500];
         }
         return $config;
     } catch (Exception $e) {
         return ['maintenance_mode' => 0, 'allow_registrations' => 1, 'max_concurrent_users' => 500];
+    }
+}
+
+// [NUEVO] Contar sesiones activas (excluyendo administradores si se desea, pero usualmente cuenta conexiones)
+function countActiveSessions($pdo) {
+    // Contamos sesiones activas en los últimos 10 minutos, por ejemplo, o todas las que estén en la tabla
+    // Si limpias la tabla user_sessions al cerrar sesión, COUNT(*) es preciso.
+    try {
+        $stmt = $pdo->query("SELECT COUNT(*) FROM user_sessions");
+        return (int)$stmt->fetchColumn();
+    } catch (Exception $e) {
+        return 0;
     }
 }
 ?>

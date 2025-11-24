@@ -20,18 +20,16 @@ async function updateConfig(key, value, elementToRevertOnError) {
         if (data.success) {
             if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
             
-            // Lógica especial de UI: Si activamos mantenimiento, desactivamos visualmente registro
+            // Lógica visual específica: Si activamos mantenimiento, desactivamos registro visualmente
             if (key === 'maintenance_mode' && value === 1) {
                 const regToggle = document.getElementById('toggle-allow-registration');
                 if (regToggle) regToggle.checked = false;
             }
         } else {
             if (window.alertManager) window.alertManager.showAlert(data.message, 'error');
-            if (elementToRevertOnError) {
-                // Revertir UI
-                if (elementToRevertOnError.type === 'checkbox') {
-                    elementToRevertOnError.checked = !elementToRevertOnError.checked;
-                }
+            // Revertir cambio visual si falló
+            if (elementToRevertOnError && elementToRevertOnError.type === 'checkbox') {
+                elementToRevertOnError.checked = !elementToRevertOnError.checked;
             }
         }
     } catch (e) {
@@ -43,55 +41,67 @@ async function updateConfig(key, value, elementToRevertOnError) {
     }
 }
 
+// Variable para controlar el debounce del stepper y no saturar el servidor
+let stepperTimeout = null;
+
 export function initAdminServer() {
-    // Toggle Mantenimiento
-    const maintToggle = document.getElementById('toggle-maintenance-mode');
-    if (maintToggle) {
-        maintToggle.addEventListener('change', (e) => {
-            updateConfig('maintenance_mode', e.target.checked ? 1 : 0, e.target);
-        });
-    }
+    // Usamos Delegación de Eventos Global para evitar problemas con la carga dinámica (SPA)
+    
+    // 1. Listener para Checkboxes (Mantenimiento y Registro)
+    document.body.addEventListener('change', (e) => {
+        const target = e.target;
+        
+        // Detectar Toggle de Mantenimiento
+        if (target.matches('#toggle-maintenance-mode')) {
+            updateConfig('maintenance_mode', target.checked ? 1 : 0, target);
+        }
 
-    // Toggle Registro
-    const regToggle = document.getElementById('toggle-allow-registration');
-    if (regToggle) {
-        regToggle.addEventListener('change', (e) => {
-            updateConfig('allow_registrations', e.target.checked ? 1 : 0, e.target);
-        });
-    }
+        // Detectar Toggle de Registro
+        if (target.matches('#toggle-allow-registration')) {
+            updateConfig('allow_registrations', target.checked ? 1 : 0, target);
+        }
+    });
 
-    // Stepper
-    const steppers = document.querySelectorAll('.component-stepper');
-    steppers.forEach(container => {
+    // 2. Listener para Steppers (Botones de incremento/decremento)
+    document.body.addEventListener('click', (e) => {
+        // Buscamos si el click fue dentro de un botón de stepper
+        const btn = e.target.closest('.stepper-button');
+        if (!btn) return;
+
+        // Buscamos el contenedor padre del stepper
+        const container = btn.closest('.component-stepper');
+        if (!container) return;
+
+        // Solo actuamos si es el stepper de configuración de servidor
+        if (container.dataset.action !== 'update-max-concurrent-users') return;
+
+        e.preventDefault(); // Evitar comportamientos extraños
+
         const valueDisplay = container.querySelector('.stepper-value');
         const min = parseInt(container.dataset.min) || 0;
         const max = parseInt(container.dataset.max) || 9999;
         let currentVal = parseInt(container.dataset.currentValue) || 0;
+        const action = btn.dataset.stepAction;
 
-        // Función local para actualizar valor visual y backend
-        const updateStepper = (newVal) => {
-            if (newVal < min) newVal = min;
-            if (newVal > max) newVal = max;
-            currentVal = newVal;
-            valueDisplay.textContent = currentVal;
-            container.dataset.currentValue = currentVal;
-            
-            // Debounce para no saturar API
-            clearTimeout(container.debounceTimer);
-            container.debounceTimer = setTimeout(() => {
-                updateConfig('max_concurrent_users', currentVal, null);
-            }, 500);
-        };
+        // Calcular nuevo valor
+        if (action === 'increment-1') currentVal += 1;
+        if (action === 'increment-10') currentVal += 10;
+        if (action === 'decrement-1') currentVal -= 1;
+        if (action === 'decrement-10') currentVal -= 10;
 
-        container.addEventListener('click', (e) => {
-            const btn = e.target.closest('.stepper-button');
-            if (!btn) return;
-            
-            const action = btn.dataset.stepAction;
-            if (action === 'increment-1') updateStepper(currentVal + 1);
-            if (action === 'increment-10') updateStepper(currentVal + 10);
-            if (action === 'decrement-1') updateStepper(currentVal - 1);
-            if (action === 'decrement-10') updateStepper(currentVal - 10);
-        });
+        // Validar límites
+        if (currentVal < min) currentVal = min;
+        if (currentVal > max) currentVal = max;
+
+        // Actualizar UI inmediatamente
+        valueDisplay.textContent = currentVal;
+        container.dataset.currentValue = currentVal;
+
+        // Enviar al servidor con Debounce (esperar 500ms a que el usuario deje de clickear)
+        if (stepperTimeout) clearTimeout(stepperTimeout);
+        
+        stepperTimeout = setTimeout(() => {
+            updateConfig('max_concurrent_users', currentVal, null);
+        }, 500);
     });
 }

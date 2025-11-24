@@ -120,15 +120,12 @@ function mask_email($email) {
 $response = ['success' => false, 'message' => trans('global.action_invalid')];
 
 try {
-    // [NUEVO] Obtener configuración del servidor para validar registros y mantenimiento
-    // Asegúrate de que la función getServerConfig() esté en config/helpers/utilities.php
     $serverConfig = getServerConfig($pdo);
 
     // ======================================================
     // REGISTRO - PASO 1
     // ======================================================
     if ($action === 'register_step_1') {
-        // [VALIDACIÓN] ¿Están permitidos los registros?
         if ((int)$serverConfig['allow_registrations'] === 0) {
             throw new Exception(trans('auth.register.closed_error') ?? 'El registro de nuevos usuarios está cerrado temporalmente.');
         }
@@ -178,7 +175,7 @@ try {
         
         unset($_SESSION['temp_register']['password']);
         $_SESSION['temp_register']['username'] = $username;
-        logger("[REGISTRO] Code para $email: $code"); // Eliminar en producción
+        logger("[REGISTRO] Code para $email: $code"); 
         $response = ['success' => true, 'message' => trans('auth.code_sent')];
 
     // ======================================================
@@ -250,6 +247,22 @@ try {
         $user = $stmt->fetch();
         
         if ($user && password_verify($password, $user['password'])) {
+            
+            // [NUEVO] COMPROBACIÓN DE LÍMITE DE USUARIOS
+            $role = $user['role'];
+            $isVip = in_array($role, ['founder', 'administrator', 'moderator']);
+            $isMaintenance = (int)$serverConfig['maintenance_mode'] === 1;
+            $activeSessions = countActiveSessions($pdo);
+            $maxUsers = (int)$serverConfig['max_concurrent_users'];
+
+            // Si NO es VIP y el Mantenimiento está APAGADO, comprobamos el cupo.
+            // Si el mantenimiento está ENCENDIDO, permitimos el login para que el Router lo mande a la sala de espera.
+            if (!$isVip && !$isMaintenance) {
+                if ($activeSessions >= $maxUsers) {
+                    throw new Exception(trans('auth.login.server_full'));
+                }
+            }
+
             // Revisar suspensión temporal
             if ($user['account_status'] === 'suspended' && !empty($user['suspension_end_date'])) {
                 $endDate = new DateTime($user['suspension_end_date']);
@@ -288,11 +301,8 @@ try {
                 session_regenerate_id(true);
                 set_user_session($pdo, $user); 
                 
-                // [NUEVO] Comprobar si hay MANTENIMIENTO y el usuario NO es admin/founder
-                // Si está activo, enviamos flag para que el JS redirija a status-page
-                $isMaintenance = (int)$serverConfig['maintenance_mode'] === 1;
-                $isRegularUser = !in_array($user['role'], ['founder', 'administrator']);
-                $shouldRedirectMaintenance = ($isMaintenance && $isRegularUser);
+                // Flag para redirección de mantenimiento en Frontend
+                $shouldRedirectMaintenance = ($isMaintenance && !$isVip);
 
                 $response = [
                     'success' => true, 
@@ -323,6 +333,19 @@ try {
         $user = $stmt->fetch();
         
         if (!$user) throw new Exception(trans('admin.error.user_not_found'));
+        
+        // [NUEVO] COMPROBACIÓN DE LÍMITE DE USUARIOS EN 2FA TAMBIÉN
+        $role = $user['role'];
+        $isVip = in_array($role, ['founder', 'administrator', 'moderator']);
+        $isMaintenance = (int)$serverConfig['maintenance_mode'] === 1;
+        $activeSessions = countActiveSessions($pdo);
+        $maxUsers = (int)$serverConfig['max_concurrent_users'];
+
+        if (!$isVip && !$isMaintenance) {
+            if ($activeSessions >= $maxUsers) {
+                throw new Exception(trans('auth.login.server_full'));
+            }
+        }
         
         $secret = $user['two_factor_secret'];
         $backupCodes = json_decode($user['backup_codes'] ?? '[]', true);
@@ -359,10 +382,7 @@ try {
             set_user_session($pdo, $user); 
             unset($_SESSION['temp_login_2fa']);
             
-            // [NUEVO] Comprobación de mantenimiento en 2FA
-            $isMaintenance = (int)$serverConfig['maintenance_mode'] === 1;
-            $isRegularUser = !in_array($user['role'], ['founder', 'administrator']);
-            $shouldRedirectMaintenance = ($isMaintenance && $isRegularUser);
+            $shouldRedirectMaintenance = ($isMaintenance && !$isVip);
 
             $response = [
                 'success' => true, 
@@ -390,7 +410,7 @@ try {
         $response = ['success' => true, 'message' => 'Sesión cerrada correctamente'];
     
     // ======================================================
-    // RECUPERACIÓN - PASO 1
+    // RECUPERACIÓN
     // ======================================================
     } elseif ($action === 'recovery_step_1') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
@@ -405,22 +425,12 @@ try {
             $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'recovery'")->execute([$email]);
             $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, expires_at) VALUES (?, 'recovery', ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE))");
             $stmt->execute([$email, $tokenHash]);
-            
-            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
-            $host = $_SERVER['HTTP_HOST']; 
-            $base = '/ProjectAurora/'; 
-            $link = $protocol . $host . $base . 'reset-password?token=' . $token;
-            
-            logger("[RECUPERACIÓN] $email | Link: $link");
             $response = ['success' => true, 'message' => trans('auth.recovery.link_sent_alert')];
         } else {
             logFailedAttempt($pdo, $email, 'recovery_fail');
             throw new Exception(trans('auth.errors.invalid_credentials'));
         }
 
-    // ======================================================
-    // RECUPERACIÓN - FINAL
-    // ======================================================
     } elseif ($action === 'recovery_final') {
         $token = trim($data['token'] ?? '');
         $newPass = $data['password'] ?? '';

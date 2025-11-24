@@ -71,7 +71,8 @@
             "forgot_password": "¿Olvidaste tu contraseña?",
             "no_account": "¿No tienes una cuenta?",
             "register_link": "Regístrate",
-            "success": "Inicio de sesión exitoso."
+            "success": "Inicio de sesión exitoso.",
+            "server_full": "El servidor está lleno. Intenta más tarde."
         },
         "register": {
             "title": "Registro",
@@ -88,7 +89,8 @@
             "code_label": "Código",
             "verify_btn": "Verificar y Crear Cuenta",
             "resend_code": "Reenviar código de verificación",
-            "code_sent_alert": "Código de verificación enviado."
+            "code_sent_alert": "Código de verificación enviado.",
+            "closed_error": "El registro de nuevos usuarios está cerrado temporalmente."
         },
         "2fa": {
             "title": "Verificación de Seguridad",
@@ -288,7 +290,11 @@
         "suspended_title": "Cuenta Suspendida",
         "suspended_msg": "Tu cuenta ha sido suspendida temporalmente por incumplir nuestras normas.",
         "deleted_title": "Cuenta Eliminada",
-        "deleted_msg": "Esta cuenta ha sido eliminada permanentemente. Si consideras que es un error, contacta a soporte."
+        "deleted_msg": "Esta cuenta ha sido eliminada permanentemente. Si consideras que es un error, contacta a soporte.",
+        "maintenance_title": "Mantenimiento",
+        "maintenance_msg": "Estamos realizando mejoras en la plataforma. Volveremos pronto.",
+        "server_full_title": "Servidor Lleno",
+        "server_full_msg": "Hemos alcanzado el límite máximo de usuarios conectados. Por favor, intenta de nuevo en unos minutos."
     },
     "system": {
         "404_title": "¡Ups! Página no encontrada.",

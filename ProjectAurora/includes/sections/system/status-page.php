@@ -7,9 +7,23 @@
     .status-back-link { color: #888; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 5px; transition: color 0.2s ease; }
     .status-back-link:hover { color: #333; }
     .status-back-icon { font-size: 16px; }
+    
     .status-theme-suspended { color: #d32f2f; }
     .status-theme-deleted { color: #616161; }
-    .status-theme-maintenance { color: #f57c00; } /* [NUEVO] Naranja */
+    .status-theme-maintenance { color: #f57c00; }
+    .status-theme-server-full { color: #1976d2; }
+
+    /* Spinner para la cola */
+    .queue-spinner {
+        display: none; /* Oculto por defecto */
+        width: 40px;
+        height: 40px;
+        border: 4px solid #e3f2fd;
+        border-top: 4px solid #1976d2;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px auto;
+    }
 </style>
 <?php
 // includes/sections/system/status-page.php
@@ -18,7 +32,6 @@ $status = $_GET['status'] ?? 'suspended';
 $reason = $_GET['reason'] ?? null;
 $until = $_GET['until'] ?? null;
 
-// Configuración por defecto (Suspendido)
 $icon = "block";
 $themeClass = "status-theme-suspended"; 
 $titleKey = "status.suspended_title";
@@ -30,11 +43,15 @@ if ($status === 'deleted') {
     $icon = "delete_forever";
     $themeClass = "status-theme-deleted";
 } elseif ($status === 'maintenance') {
-    // [NUEVO] Caso Mantenimiento
     $titleKey = "status.maintenance_title";
     $msgKey = "status.maintenance_msg";
-    $icon = "engineering"; // Icono de ingeniería/construcción
+    $icon = "engineering"; 
     $themeClass = "status-theme-maintenance";
+} elseif ($status === 'server_full') {
+    $titleKey = "status.server_full_title";
+    $msgKey = "status.server_full_msg";
+    $icon = "cloud_off"; 
+    $themeClass = "status-theme-server-full";
 }
 ?>
 
@@ -48,11 +65,13 @@ if ($status === 'deleted') {
                 </span>
             </div>
 
-            <h1 class="status-title <?php echo $themeClass; ?>" data-i18n="<?php echo $titleKey; ?>">
+            <div id="queue-spinner" class="queue-spinner"></div>
+
+            <h1 id="status-title-text" class="status-title <?php echo $themeClass; ?>" data-i18n="<?php echo $titleKey; ?>">
                 <?php echo trans($titleKey); ?>
             </h1>
             
-            <p class="status-message" data-i18n="<?php echo $msgKey; ?>">
+            <p id="status-message-text" class="status-message" data-i18n="<?php echo $msgKey; ?>">
                 <?php echo trans($msgKey); ?>
             </p>
 
@@ -71,13 +90,20 @@ if ($status === 'deleted') {
                 </div>
             <?php endif; ?>
             
-            <?php if ($status !== 'maintenance'): ?>
-            <div>
-                <a href="<?php echo isset($basePath) ? $basePath : '/ProjectAurora/'; ?>login" class="status-back-link">
-                    <span class="material-symbols-rounded status-back-icon">arrow_back</span> 
-                    <span data-i18n="global.back_home"><?php echo trans('global.back_home'); ?></span>
-                </a>
-            </div>
+            <?php if ($status !== 'maintenance' && $status !== 'server_full'): ?>
+                <div>
+                    <a href="<?php echo isset($basePath) ? $basePath : '/ProjectAurora/'; ?>login" class="status-back-link">
+                        <span class="material-symbols-rounded status-back-icon">arrow_back</span> 
+                        <span data-i18n="global.back_home"><?php echo trans('global.back_home'); ?></span>
+                    </a>
+                </div>
+            <?php elseif ($status === 'server_full'): ?>
+                <div>
+                    <a href="<?php echo isset($basePath) ? $basePath : '/ProjectAurora/'; ?>" class="status-back-link">
+                        <span class="material-symbols-rounded status-back-icon">refresh</span> 
+                        <span>Reintentar ahora</span>
+                    </a>
+                </div>
             <?php endif; ?>
 
         </div>
