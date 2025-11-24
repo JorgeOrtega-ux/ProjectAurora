@@ -141,27 +141,11 @@ function getServerConfig($pdo) {
         $stmt = $pdo->query("SELECT * FROM server_config WHERE id = 1");
         $config = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$config) {
-            return ['maintenance_mode' => 0, 'allow_registrations' => 1, 'max_concurrent_users' => 500];
+            return ['maintenance_mode' => 0, 'allow_registrations' => 1];
         }
         return $config;
     } catch (Exception $e) {
-        return ['maintenance_mode' => 0, 'allow_registrations' => 1, 'max_concurrent_users' => 500];
-    }
-}
-
-// [MODIFICADO] Verifica si el usuario entra en el cupo basándose en su orden de llegada
-function isUserAllowedByRank($pdo, $sessionId, $maxUsers) {
-    try {
-        // Obtenemos los IDs de sesión de los usuarios más antiguos (prioridad de llegada)
-        // Ordenamos por ID (que es autoincremental y refleja el orden de creación)
-        $sql = "SELECT session_id FROM user_sessions ORDER BY id ASC LIMIT " . (int)$maxUsers;
-        $stmt = $pdo->query($sql);
-        $allowedSessions = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-        // Si mi sesión está en la lista de "permitidos", retorno true
-        return in_array($sessionId, $allowedSessions);
-    } catch (Exception $e) {
-        return false;
+        return ['maintenance_mode' => 0, 'allow_registrations' => 1];
     }
 }
 

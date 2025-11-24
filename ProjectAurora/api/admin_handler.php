@@ -223,14 +223,14 @@ try {
         }
 
    // ======================================================
-    // 5. CONFIGURACIÓN DEL SERVIDOR (CON BROADCAST)
+    // 5. CONFIGURACIÓN DEL SERVIDOR (SIN LIMITES)
     // ======================================================
     } elseif ($action === 'update_server_config') {
         
         $key = $data['key'] ?? '';
         $value = $data['value'] ?? 0;
 
-        $allowedKeys = ['maintenance_mode', 'allow_registrations', 'max_concurrent_users'];
+        $allowedKeys = ['maintenance_mode', 'allow_registrations'];
         if (!in_array($key, $allowedKeys)) {
             throw new Exception(trans('global.action_invalid'));
         }
@@ -258,15 +258,6 @@ try {
             $sql = "UPDATE server_config SET allow_registrations = ? WHERE id = 1";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$value]);
-            
-        } elseif ($key === 'max_concurrent_users') {
-            // [MODIFICADO] Actualización de Límite con Rebalanceo en Vivo
-            $sql = "UPDATE server_config SET max_concurrent_users = ? WHERE id = 1";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$value]);
-
-            // Avisar a Python para que expulse a los sobrantes inmediatamente
-            send_live_notification('global', 'rebalance_connections', ['new_limit' => $value]);
         }
 
         echo json_encode(['success' => true, 'message' => trans('global.save_status')]);

@@ -248,20 +248,9 @@ try {
         
         if ($user && password_verify($password, $user['password'])) {
             
-            // [NUEVO] COMPROBACIÓN DE LÍMITE DE USUARIOS
             $role = $user['role'];
             $isVip = in_array($role, ['founder', 'administrator', 'moderator']);
             $isMaintenance = (int)$serverConfig['maintenance_mode'] === 1;
-            $activeSessions = countActiveSessions($pdo);
-            $maxUsers = (int)$serverConfig['max_concurrent_users'];
-
-            // Si NO es VIP y el Mantenimiento está APAGADO, comprobamos el cupo.
-            // Si el mantenimiento está ENCENDIDO, permitimos el login para que el Router lo mande a la sala de espera.
-            if (!$isVip && !$isMaintenance) {
-                if ($activeSessions >= $maxUsers) {
-                    throw new Exception(trans('auth.login.server_full'));
-                }
-            }
 
             // Revisar suspensión temporal
             if ($user['account_status'] === 'suspended' && !empty($user['suspension_end_date'])) {
@@ -334,18 +323,9 @@ try {
         
         if (!$user) throw new Exception(trans('admin.error.user_not_found'));
         
-        // [NUEVO] COMPROBACIÓN DE LÍMITE DE USUARIOS EN 2FA TAMBIÉN
         $role = $user['role'];
         $isVip = in_array($role, ['founder', 'administrator', 'moderator']);
         $isMaintenance = (int)$serverConfig['maintenance_mode'] === 1;
-        $activeSessions = countActiveSessions($pdo);
-        $maxUsers = (int)$serverConfig['max_concurrent_users'];
-
-        if (!$isVip && !$isMaintenance) {
-            if ($activeSessions >= $maxUsers) {
-                throw new Exception(trans('auth.login.server_full'));
-            }
-        }
         
         $secret = $user['two_factor_secret'];
         $backupCodes = json_decode($user['backup_codes'] ?? '[]', true);

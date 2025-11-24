@@ -28,7 +28,6 @@ $basePath = '/ProjectAurora/';
 // =======================================================================
 $serverConfig = getServerConfig($pdo);
 $isMaintenanceMode = (int)$serverConfig['maintenance_mode'] === 1;
-$maxUsers = (int)$serverConfig['max_concurrent_users'];
 
 // =======================================================================
 // 1. VERIFICAR VALIDEZ DE SESIÓN
@@ -151,15 +150,6 @@ if ($isMaintenanceMode && $isUserRole && !in_array($CURRENT_SECTION, $maintenanc
     exit;
 }
 
-// B) LÍMITE DE USUARIOS (Corregido con Ranking por antigüedad)
-if (!$isMaintenanceMode && $isUserRole && !in_array($CURRENT_SECTION, $maintenanceAllowed)) {
-    // Verificamos si el usuario "entra" en los primeros N puestos
-    if (!isUserAllowedByRank($pdo, session_id(), $maxUsers)) {
-        header("Location: " . $basePath . "status-page?status=server_full");
-        exit;
-    }
-}
-
 // C) SALIDA DE STATUS-PAGE
 if ($CURRENT_SECTION === 'status-page') {
     $statusParam = $_GET['status'] ?? '';
@@ -168,15 +158,6 @@ if ($CURRENT_SECTION === 'status-page') {
         if (!$isMaintenanceMode || !$isUserRole) {
             header("Location: " . $basePath);
             exit;
-        }
-    }
-    if ($statusParam === 'server_full') {
-        // Si el servidor ya no está lleno PARA ESTE USUARIO (su rango subió), entrar.
-        if (!$isMaintenanceMode && $isUserRole) {
-            if (isUserAllowedByRank($pdo, session_id(), $maxUsers)) {
-                header("Location: " . $basePath);
-                exit;
-            }
         }
     }
     if (in_array($statusParam, ['suspended', 'deleted']) && $freshUser && $freshUser['account_status'] === 'active') {
@@ -236,9 +217,6 @@ if (array_key_exists($CURRENT_SECTION, $requirements)) {
 if ($isLoggedIn) {
     $statusParam = $_GET['status'] ?? '';
     if ($isMaintenanceMode && $isUserRole) {
-        $showNavigation = false;
-    }
-    elseif ($CURRENT_SECTION === 'status-page' && $statusParam === 'server_full') {
         $showNavigation = false;
     }
     else {

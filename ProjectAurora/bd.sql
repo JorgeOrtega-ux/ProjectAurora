@@ -165,15 +165,14 @@ CREATE TABLE IF NOT EXISTS user_role_logs (
     INDEX idx_role_audit (user_id, admin_id, changed_at)
 );
 
--- [NUEVO] CONFIGURACIÓN DEL SERVIDOR
+-- [MODIFICADO] CONFIGURACIÓN DEL SERVIDOR (Sin límite de usuarios)
 CREATE TABLE IF NOT EXISTS server_config (
     id INT PRIMARY KEY DEFAULT 1,
     maintenance_mode TINYINT(1) DEFAULT 0,
     allow_registrations TINYINT(1) DEFAULT 1,
-    max_concurrent_users INT DEFAULT 500,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Inicializar configuración por defecto si no existe
-INSERT IGNORE INTO server_config (id, maintenance_mode, allow_registrations, max_concurrent_users) 
-VALUES (1, 0, 1, 500);
+-- Inicializar configuración por defecto
+INSERT IGNORE INTO server_config (id, maintenance_mode, allow_registrations) 
+VALUES (1, 0, 1);
