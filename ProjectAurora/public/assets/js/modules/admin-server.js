@@ -4,6 +4,7 @@ import { t } from '../core/i18n-manager.js';
 
 const API_ADMIN = (window.BASE_PATH || '/ProjectAurora/') + 'api/admin_handler.php';
 let debounceTimer = null;
+let currentDomains = [];
 
 function getCsrf() {
     return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -21,7 +22,6 @@ const actionKeyMap = {
     'update-code-resend-cooldown': 'code_resend_cooldown',
     'update-username-cooldown': 'username_cooldown',
     'update-email-cooldown': 'email_cooldown',
-    // [MODIFICADO]
     'update-avatar-max-size': 'profile_picture_max_size' 
 };
 
@@ -39,7 +39,7 @@ async function updateConfig(key, value, elementToRevertOnError, silent = false) 
             
             if (!window.SERVER_CONFIG) window.SERVER_CONFIG = {};
             window.SERVER_CONFIG[key] = value;
-            console.log(`[Config] Updated ${key} to ${value}`);
+            console.log(`[Config] Updated ${key} to`, value);
 
             if (key === 'maintenance_mode' && value === 1) {
                 const regToggle = document.getElementById('toggle-allow-registration');
@@ -121,31 +121,62 @@ function updateCardTexts(stepper, newValue) {
     });
 }
 
+// --- LÓGICA DE DOMINIOS ---
+
+function loadInitialDomains() {
+    const container = document.getElementById('domain-list-container');
+    if (!container) return;
+    
+    currentDomains = [];
+    container.querySelectorAll('.domain-chip').forEach(chip => {
+        const text = chip.querySelector('span:nth-child(2)').textContent;
+        currentDomains.push(text);
+    });
+}
+
+async function syncDomains() {
+    await updateConfig('allowed_email_domains', currentDomains, null, false);
+}
+
+function renderDomains() {
+    const container = document.getElementById('domain-list-container');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    currentDomains.forEach(dom => {
+        const chip = document.createElement('div');
+        chip.className = 'domain-chip';
+        chip.innerHTML = `
+            <span class="material-symbols-rounded chip-icon">language</span>
+            <span>${dom}</span>
+            <span class="material-symbols-rounded chip-remove" data-action="remove-domain" data-domain="${dom}">close</span>
+        `;
+        container.appendChild(chip);
+    });
+}
+
 export function initAdminServer() {
+    loadInitialDomains();
+
     // Listener para Checkboxes
     document.body.addEventListener('change', (e) => {
         const target = e.target;
-        
         if (target.matches('#toggle-maintenance-mode')) {
             updateConfig('maintenance_mode', target.checked ? 1 : 0, target);
         }
-
         if (target.matches('#toggle-allow-registration')) {
             updateConfig('allow_registrations', target.checked ? 1 : 0, target);
         }
     });
 
-    // Listener para Steppers
-    document.body.addEventListener('click', (e) => {
-        const btn = e.target.closest('.stepper-button');
-        if (btn) {
-            handleStepperClick(btn);
-        }
-    });
+    // Listener para Steppers y Acordeones y Dominios
+    document.body.addEventListener('click', async (e) => {
+        const target = e.target;
 
-    // Listener para Acordeones
-    document.body.addEventListener('click', (e) => {
-        const header = e.target.closest('[data-action="toggle-accordion"]');
+        const btn = target.closest('.stepper-button');
+        if (btn) handleStepperClick(btn);
+
+        const header = target.closest('[data-action="toggle-accordion"]');
         if (header) {
             const currentAccordion = header.closest('.component-accordion');
             if (currentAccordion) {
@@ -156,6 +187,59 @@ export function initAdminServer() {
                     }
                 });
                 currentAccordion.classList.toggle('active');
+            }
+        }
+
+        // DOMINIOS: Mostrar Formulario
+        if (target.closest('[data-action="show-add-domain-form"]')) {
+            document.getElementById('add-domain-btn-wrapper').classList.add('d-none');
+            document.getElementById('add-domain-form-wrapper').classList.remove('d-none');
+            document.getElementById('new-domain-input').focus();
+        }
+
+        // DOMINIOS: Cancelar Formulario
+        if (target.closest('[data-action="cancel-add-domain"]')) {
+            document.getElementById('new-domain-input').value = '';
+            document.getElementById('add-domain-form-wrapper').classList.add('d-none');
+            document.getElementById('add-domain-btn-wrapper').classList.remove('d-none');
+        }
+
+        // DOMINIOS: Guardar Nuevo
+        if (target.closest('[data-action="save-new-domain"]')) {
+            const input = document.getElementById('new-domain-input');
+            let val = input.value.trim().toLowerCase();
+
+            if (!val) return;
+            
+            // Validación estricta
+            const domainRegex = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}$/;
+            if (!domainRegex.test(val)) {
+                if(window.alertManager) window.alertManager.showAlert('Formato inválido. Debe ser ej: gmail.com', 'error');
+                return;
+            }
+
+            if (currentDomains.includes(val)) {
+                if(window.alertManager) window.alertManager.showAlert('Este dominio ya está en la lista', 'warning');
+                return;
+            }
+
+            currentDomains.push(val);
+            renderDomains();
+            await syncDomains();
+
+            input.value = '';
+            document.getElementById('add-domain-form-wrapper').classList.add('d-none');
+            document.getElementById('add-domain-btn-wrapper').classList.remove('d-none');
+        }
+
+        // DOMINIOS: Eliminar
+        const removeBtn = target.closest('[data-action="remove-domain"]');
+        if (removeBtn) {
+            const domainToRemove = removeBtn.dataset.domain;
+            if (confirm(`¿Eliminar ${domainToRemove}?`)) {
+                currentDomains = currentDomains.filter(d => d !== domainToRemove);
+                renderDomains();
+                await syncDomains();
             }
         }
     });

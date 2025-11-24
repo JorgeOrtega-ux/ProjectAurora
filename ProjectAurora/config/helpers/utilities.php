@@ -154,7 +154,8 @@ function getServerConfig($pdo) {
                 'code_resend_cooldown' => 60,
                 'username_cooldown' => 30, 
                 'email_cooldown' => 12, 
-                'avatar_max_size' => 2
+                'profile_picture_max_size' => 2,
+                'allowed_email_domains' => NULL // Por defecto NULL = todos
             ];
         }
         return $config;
@@ -170,5 +171,22 @@ function countActiveSessions($pdo) {
     } catch (Exception $e) {
         return 0;
     }
+}
+
+// [NUEVO] Validador estricto de dominios
+function is_allowed_domain($email, $pdo) {
+    $config = getServerConfig($pdo);
+    $allowedJson = $config['allowed_email_domains'] ?? '[]';
+    $allowedDomains = json_decode($allowedJson, true);
+
+    if (empty($allowedDomains) || !is_array($allowedDomains)) {
+        return true; // Lista vacía = permitir todo
+    }
+
+    $parts = explode('@', $email);
+    $domain = array_pop($parts); 
+
+    // Validación estricta (case-insensitive)
+    return in_array(strtolower($domain), array_map('strtolower', $allowedDomains));
 }
 ?>

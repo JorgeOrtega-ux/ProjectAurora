@@ -126,7 +126,8 @@
             "link_sent_alert": "Enlace enviado. Revisa tu correo."
         },
         "errors": {
-            "email_invalid_domain": "Correo inválido. Solo se permite: Gmail, Outlook, iCloud, Yahoo.",
+            "email_invalid_domain": "Correo inválido. Formato incorrecto.",
+            "email_domain_restricted": "El dominio de este correo no está permitido en nuestros registros.",
             "password_short": "La contraseña debe tener al menos {min} caracteres.",
             "username_invalid": "Usuario inválido: {min}-{max} caracteres. Solo letras, números y '_'.",
             "all_required": "Completa todos los campos.",
@@ -157,7 +158,7 @@
             "username_title": "Nombre de usuario",
             "username_meta": "{min}-{max} caracteres. Letras, números y guión bajo.",
             "email_title": "Correo Electrónico",
-            "email_meta": "Debe ser un dominio válido (Gmail, Outlook, iCloud, Yahoo).",
+            "email_meta": "Debe ser un dominio válido permitido.",
             "usage_title": "¿Para qué usarás ProjectAurora?",
             "usage_desc": "Esto nos ayudará a personalizar tu experiencia.",
             "lang_title": "Idioma",
@@ -489,7 +490,15 @@
             "emailCooldownTitle": "Cooldown de Email (Días)",
             "emailCooldownDesc": "Días que un usuario debe esperar antes de poder cambiar su email de nuevo.",
             "profilePictureMaxSizeTitle": "Tamaño Máx. de Foto de Perfil (MB)",
-            "profilePictureMaxSizeDesc": "Tamaño máximo permitido para la subida de fotos de perfil, en Megabytes (ej. 2 = 2MB)."
+            "profilePictureMaxSizeDesc": "Tamaño máximo permitido para la subida de fotos de perfil, en Megabytes (ej. 2 = 2MB).",
+            "domainsTitle": "Dominios de Email Permitidos",
+            "domainsDesc": "Gestiona qué dominios de email pueden registrarse.",
+            "domainsListTitle": "Lista de Dominios",
+            "domainsListDesc": "Lista de dominios permitidos (ej. gmail.com). Dejar vacío para permitir cualquiera.",
+            "add_domain_btn": "Agregar dominio",
+            "domain_placeholder": "Escribe el dominio (ej. miempresa.com)",
+            "save_domain": "Guardar cambios",
+            "cancel_domain": "Cancelar"
         }
     },
     "languages": {

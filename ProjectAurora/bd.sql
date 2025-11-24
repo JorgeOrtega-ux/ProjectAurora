@@ -190,8 +190,12 @@ CREATE TABLE IF NOT EXISTS server_config (
     
     profile_picture_max_size INT DEFAULT 2,    -- MB
     
+    -- [NUEVO] Dominios permitidos (JSON)
+    allowed_email_domains JSON DEFAULT NULL,
+
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Inicializar configuración por defecto
-INSERT IGNORE INTO server_config (id) VALUES (1);
+-- Inicializar configuración por defecto con dominios
+INSERT IGNORE INTO server_config (id, allowed_email_domains) 
+VALUES (1, '["gmail.com", "outlook.com", "hotmail.com", "yahoo.com", "icloud.com"]');

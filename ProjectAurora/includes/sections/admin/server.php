@@ -13,12 +13,9 @@ $regMode = (int)$serverConfig['allow_registrations'];
 
 // Función helper para renderizar los steppers
 function renderStepper($titleKey, $descKey, $action, $value, $min, $max, $step1=1, $step10=10) {
-    // [CORRECCIÓN] Usar el valor real de la BD
     $transVal = $value; 
-
     $title = trans($titleKey, ['val' => $transVal]);
     $desc = trans($descKey, ['val' => $transVal]);
-    
     $jsonVars = htmlspecialchars(json_encode(['val' => $transVal]), ENT_QUOTES, 'UTF-8');
     $valueId = 'stepper-value-' . str_replace('update-', '', $action);
     
@@ -169,8 +166,74 @@ HTML;
                 
                 renderStepper('admin.server.usernameCooldownTitle', 'admin.server.usernameCooldownDesc', 'update-username-cooldown', (int)$serverConfig['username_cooldown'], 1, 365);
                 renderStepper('admin.server.emailCooldownTitle', 'admin.server.emailCooldownDesc', 'update-email-cooldown', (int)$serverConfig['email_cooldown'], 1, 365);
-                renderStepper('admin.server.avatarMaxSizeTitle', 'admin.server.avatarMaxSizeDesc', 'update-avatar-max-size', (int)$serverConfig['avatar_max_size'], 1, 20);
+                
+                renderStepper('admin.server.profilePictureMaxSizeTitle', 'admin.server.profilePictureMaxSizeDesc', 'update-avatar-max-size', (int)$serverConfig['profile_picture_max_size'], 1, 20);
                 ?>
+            </div>
+        </div>
+
+        <div class="component-accordion">
+            <div class="component-accordion__header" data-action="toggle-accordion">
+                <div class="component-accordion__icon">
+                    <span class="material-symbols-rounded">mail</span>
+                </div>
+                <div class="component-accordion__text">
+                    <h2 class="component-accordion__title" data-i18n="admin.server.domainsTitle"><?php echo trans('admin.server.domainsTitle'); ?></h2>
+                    <p class="component-card__description" data-i18n="admin.server.domainsDesc"><?php echo trans('admin.server.domainsDesc'); ?></p>
+                </div>
+                <div class="component-accordion__arrow">
+                    <span class="material-symbols-rounded">expand_more</span>
+                </div>
+            </div>
+            <div class="component-accordion__content">
+                
+                <div class="component-card component-card--column active">
+                    <div class="component-card__content" style="align-items: flex-start; width:100%;">
+                        <div class="component-card__text">
+                            <h2 class="component-card__title" data-i18n="admin.server.domainsListTitle"><?php echo trans('admin.server.domainsListTitle'); ?></h2>
+                            <p class="component-card__description" data-i18n="admin.server.domainsListDesc" style="margin-bottom: 16px;">
+                                <?php echo trans('admin.server.domainsListDesc'); ?>
+                            </p>
+                            
+                            <?php 
+                                $domains = json_decode($serverConfig['allowed_email_domains'] ?? '[]', true);
+                                if(!is_array($domains)) $domains = [];
+                            ?>
+                            <div id="domain-list-container" class="domain-chips-container">
+                                <?php foreach($domains as $dom): ?>
+                                    <div class="domain-chip">
+                                        <span class="material-symbols-rounded chip-icon">language</span>
+                                        <span><?php echo htmlspecialchars($dom); ?></span>
+                                        <span class="material-symbols-rounded chip-remove" data-action="remove-domain" data-domain="<?php echo htmlspecialchars($dom); ?>">close</span>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+
+                            <div id="add-domain-btn-wrapper">
+                                <button class="component-button primary" data-action="show-add-domain-form">
+                                    <span data-i18n="admin.server.add_domain_btn"><?php echo trans('admin.server.add_domain_btn'); ?></span>
+                                </button>
+                            </div>
+
+                            <div id="add-domain-form-wrapper" class="add-domain-form d-none">
+                                <div class="component-input-wrapper w-100">
+                                    <input type="text" id="new-domain-input" class="component-text-input full-width" 
+                                           placeholder="ej. gmail.com" style="background:#fff;">
+                                </div>
+                                <div class="add-domain-actions">
+                                    <button class="component-button" data-action="cancel-add-domain" data-i18n="admin.server.cancel_domain">
+                                        <?php echo trans('admin.server.cancel_domain'); ?>
+                                    </button>
+                                    <button class="component-button primary" data-action="save-new-domain" data-i18n="admin.server.save_domain">
+                                        <?php echo trans('admin.server.save_domain'); ?>
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 

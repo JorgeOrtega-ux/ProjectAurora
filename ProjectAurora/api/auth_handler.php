@@ -83,13 +83,6 @@ function generate_verification_code() {
     return strtoupper(bin2hex(random_bytes(6)));
 }
 
-function is_allowed_domain($email) {
-    if (!preg_match('/@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i', $email)) {
-        return false;
-    }
-    return true; 
-}
-
 function set_user_session($pdo, $user) {
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['user_uuid'] = $user['uuid'];
@@ -135,7 +128,9 @@ try {
         if (empty($email) || empty($password)) throw new Exception(trans('auth.errors.all_required'));
         if (strlen($email) < 4) throw new Exception(trans('auth.errors.email_short'));
         if (strlen($email) > $maxEmail) throw new Exception(trans('auth.errors.email_long', ['max' => $maxEmail]));
-        if (!is_allowed_domain($email)) throw new Exception(trans('auth.errors.email_domain'));
+        
+        // [MODIFICADO] Validación de dominios
+        if (!is_allowed_domain($email, $pdo)) throw new Exception(trans('auth.errors.email_domain_restricted'));
         
         if (strlen($password) < $minPass) {
             throw new Exception(trans('auth.errors.password_short', ['min' => $minPass]));
@@ -264,7 +259,6 @@ try {
         $apiUrl = "https://ui-avatars.com/api/?name={$finalUsername}&size=256&background={$selectedColor}&color=ffffff&bold=true&length=1";
         
         $fileName = $uuid . '.png';
-        // [MODIFICADO] Carpeta de fotos de perfil
         $uploadDir = __DIR__ . '/../public/assets/uploads/profile_pictures/default/';
         if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
         $destPath = $uploadDir . $fileName;
@@ -274,7 +268,6 @@ try {
         if ($imageContent !== false) file_put_contents($destPath, $imageContent);
         else $dbPath = null;
         
-        // [MODIFICADO] Insertar en profile_picture
         $insert = $pdo->prepare("INSERT INTO users (uuid, email, username, password, profile_picture, role) VALUES (?, ?, ?, ?, ?, 'user')");
         if ($insert->execute([$uuid, $email, $finalUsername, $finalPassHash, $dbPath])) {
             $newUserId = $pdo->lastInsertId();
@@ -283,7 +276,6 @@ try {
             $prefsStmt = $pdo->prepare($prefsSql);
             $prefsStmt->execute([$newUserId, $detectedLang]);
             
-            // [MODIFICADO] Objeto de usuario para sesión
             $newUser = ['id' => $newUserId, 'uuid' => $uuid, 'email' => $email, 'profile_picture' => $dbPath, 'role' => 'user'];
             session_regenerate_id(true);
             set_user_session($pdo, $newUser); 
@@ -374,7 +366,6 @@ try {
         
         if (checkLockStatus($pdo, $email, 'login_2fa_fail')) throw new Exception(trans('auth.errors.too_many_attempts'));
         
-        // [MODIFICADO] Selección de profile_picture
         $stmt = $pdo->prepare("SELECT id, uuid, username, email, profile_picture, role, two_factor_secret, backup_codes FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $user = $stmt->fetch();
@@ -446,7 +437,9 @@ try {
     
     } elseif ($action === 'recovery_step_1') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
-        if (empty($email) || !is_allowed_domain($email)) throw new Exception(trans('auth.errors.email_invalid_domain'));
+        
+        // [MODIFICADO] Validación de dominios
+        if (empty($email) || !is_allowed_domain($email, $pdo)) throw new Exception(trans('auth.errors.email_domain_restricted'));
         
         if (checkLockStatus($pdo, $email, 'recovery_fail')) {
             $mins = $serverConfig['lockout_time_minutes'] ?? 5;

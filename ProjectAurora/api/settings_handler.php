@@ -41,10 +41,9 @@ if (!isset($_SESSION['user_id'])) {
 $userId = $_SESSION['user_id'];
 $response = ['success' => false, 'message' => trans('global.action_invalid')];
 
-// Cargar Configuración
 $serverConfig = getServerConfig($pdo);
 
-// --- FUNCIONES AUXILIARES ---
+// ... (funciones auxiliares generate_uuid_v4, etc. se mantienen igual) ...
 function generate_uuid_v4() {
     $data = random_bytes(16);
     $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
@@ -109,12 +108,9 @@ function parse_user_agent($userAgent) {
 
 try {
 
-    // ======================================================
-    // FOTO DE PERFIL (Anteriormente Avatar)
-    // ======================================================
+    // ... (UPDATE PICTURE Y USERNAME se mantienen igual) ...
     if ($action === 'update_profile_picture') {
         check_cooldown($pdo, $userId, 'profile_picture', 1);
-        
         if (!isset($_FILES['profile_picture']) || $_FILES['profile_picture']['error'] !== UPLOAD_ERR_OK) {
             throw new Exception(trans('settings.profile.error_format'));
         }
@@ -130,7 +126,6 @@ try {
         $mimeType = $finfo->file($file['tmp_name']);
         if (!in_array($mimeType, $allowedTypes)) throw new Exception(trans('settings.profile.error_format'));
         
-        // [MODIFICADO] Ruta de uploads
         $uploadDir = __DIR__ . '/../public/assets/uploads/profile_pictures/custom/';
         if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
         $extension = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'png';
@@ -190,9 +185,6 @@ try {
             throw new Exception(trans('global.error_connection'));
         }
 
-    // ======================================================
-    // USERNAME
-    // ======================================================
     } elseif ($action === 'update_username') {
         $cooldownDays = (int)($serverConfig['username_cooldown'] ?? 30);
         check_cooldown($pdo, $userId, 'username', $cooldownDays);
@@ -223,9 +215,6 @@ try {
             throw new Exception(trans('global.error_connection'));
         }
 
-    // ======================================================
-    // EMAIL
-    // ======================================================
     } elseif ($action === 'update_email') {
         $cooldownDays = (int)($serverConfig['email_cooldown'] ?? 12);
         check_cooldown($pdo, $userId, 'email', $cooldownDays);
@@ -236,7 +225,9 @@ try {
         if (strlen($newEmail) > $maxLen) throw new Exception(trans('auth.errors.email_long', ['max' => $maxLen]));
 
         if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) throw new Exception(trans('auth.errors.email_invalid_domain'));
-        if (!preg_match('/^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i', $newEmail)) throw new Exception(trans('auth.errors.email_domain'));
+        
+        // [MODIFICADO] Validación de dominios
+        if (!is_allowed_domain($newEmail, $pdo)) throw new Exception(trans('auth.errors.email_domain_restricted'));
         
         $stmtGet = $pdo->prepare("SELECT email FROM users WHERE id = ?");
         $stmtGet->execute([$userId]);
@@ -254,9 +245,7 @@ try {
             throw new Exception(trans('global.error_connection'));
         }
 
-    // ======================================================
-    // PASSWORD
-    // ======================================================
+    // ... (RESTO DE ACCIONES: password, preferences, 2fa, sessions, delete_account se mantienen igual) ...
     } elseif ($action === 'verify_current_password') {
         $currentPassword = $data['password'] ?? '';
         if (empty($currentPassword)) throw new Exception(trans('auth.errors.all_required'));
@@ -303,9 +292,6 @@ try {
             throw new Exception(trans('global.error_connection'));
         }
 
-    // ======================================================
-    // PREFERENCIAS
-    // ======================================================
     } elseif ($action === 'update_usage') {
         if (checkActionRateLimit($pdo, $userId, 'pref_update_limit', 10, 1)) throw new Exception(trans('auth.errors.too_many_attempts'));
         logSecurityAction($pdo, $userId, 'pref_update_limit');
@@ -357,9 +343,6 @@ try {
             throw new Exception(trans('global.error_connection'));
         }
 
-    // ======================================================
-    // 2FA SETUP
-    // ======================================================
     } elseif ($action === 'generate_2fa_secret') {
         $ga = new PHPGangsta_GoogleAuthenticator();
         $secret = $ga->createSecret(); 
@@ -408,9 +391,6 @@ try {
             throw new Exception(trans('settings.password.invalid_current'));
         }
 
-    // ======================================================
-    // GESTIÓN DE SESIONES
-    // ======================================================
     } elseif ($action === 'get_sessions') {
         $stmt = $pdo->prepare("SELECT id, session_id, ip_address, user_agent, last_activity, created_at FROM user_sessions WHERE user_id = ? ORDER BY last_activity DESC");
         $stmt->execute([$userId]);
@@ -464,9 +444,6 @@ try {
             throw new Exception(trans('global.error_connection'));
         }
 
-    // ======================================================
-    // ELIMINAR CUENTA
-    // ======================================================
     } elseif ($action === 'delete_account') {
         $password = $data['password'] ?? '';
         if (empty($password)) throw new Exception(trans('auth.errors.all_required'));

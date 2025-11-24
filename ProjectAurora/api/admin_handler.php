@@ -38,13 +38,10 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['founder'
 }
 
 try {
-    // ======================================================
-    // 1. OBTENER DATOS E HISTORIAL (COMBINADO)
-    // ======================================================
+    // ... (Bloques 1 a 4 se mantienen igual: get_user_details, update_user_status, update_user_general, update_user_role) ...
     if ($action === 'get_user_details') {
         $targetId = $data['target_id'] ?? 0;
         
-        // [MODIFICADO] profile_picture
         $stmt = $pdo->prepare("SELECT id, username, email, profile_picture, role, account_status, suspension_reason, suspension_end_date, deletion_type, deletion_reason, admin_comments FROM users WHERE id = ?");
         $stmt->execute([$targetId]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -90,9 +87,6 @@ try {
             'history' => $history
         ]);
 
-    // ======================================================
-    // 2. ACTUALIZAR SANCIONES (BAN/UNBAN)
-    // ======================================================
     } elseif ($action === 'update_user_status') {
         $targetId = (int)($data['target_id'] ?? 0);
         $newStatus = $data['status'] ?? 'suspended'; 
@@ -145,9 +139,6 @@ try {
 
         echo json_encode(['success' => true, 'message' => ($newStatus === 'active') ? trans('admin.success.ban_lifted') : trans('admin.success.ban_applied')]);
 
-    // ======================================================
-    // 3. GESTIONAR USUARIO (ELIMINAR/ACTIVAR)
-    // ======================================================
     } elseif ($action === 'update_user_general') {
         $targetId = (int)($data['target_id'] ?? 0);
         $newStatus = $data['status'] ?? 'active';
@@ -173,9 +164,6 @@ try {
             echo json_encode(['success' => true, 'message' => trans('global.save_status')]);
         }
 
-    // ======================================================
-    // 4. GESTIONAR ROL DE USUARIO
-    // ======================================================
     } elseif ($action === 'update_user_role') {
         $targetId = (int)($data['target_id'] ?? 0);
         $newRole = $data['role'] ?? 'user';
@@ -223,7 +211,6 @@ try {
         $key = $data['key'] ?? '';
         $value = $data['value'] ?? 0;
 
-        // [MODIFICADO] LISTA DE CLAVES PERMITIDAS
         $allowedKeys = [
             'maintenance_mode', 
             'allow_registrations',
@@ -237,18 +224,17 @@ try {
             'code_resend_cooldown', 
             'username_cooldown', 
             'email_cooldown', 
-            'profile_picture_max_size' // [MODIFICADO]
+            'profile_picture_max_size',
+            'allowed_email_domains' // [NUEVO]
         ];
 
         if (!in_array($key, $allowedKeys)) {
             throw new Exception(trans('global.action_invalid'));
         }
 
-        // Castear valor a entero por seguridad
-        $intVal = (int)$value;
-
         // 1. Activar Mantenimiento
         if ($key === 'maintenance_mode') {
+            $intVal = (int)$value;
             $sql = "UPDATE server_config SET maintenance_mode = ? WHERE id = 1";
             $pdo->prepare($sql)->execute([$intVal === 1 ? 1 : 0]);
             
@@ -259,16 +245,24 @@ try {
         
         // 2. Activar Registros
         } elseif ($key === 'allow_registrations') {
+            $intVal = (int)$value;
             $curr = getServerConfig($pdo);
             if ($intVal === 1 && (int)$curr['maintenance_mode'] === 1) {
                 throw new Exception("No puedes activar registros durante el mantenimiento.");
             }
             $pdo->prepare("UPDATE server_config SET allow_registrations = ? WHERE id = 1")->execute([$intVal === 1 ? 1 : 0]);
         
-        // 3. Actualizar otros valores numéricos
+        // 3. Actualizar otros valores (Numéricos o JSON)
         } else {
             $sql = "UPDATE server_config SET $key = ? WHERE id = 1";
-            $pdo->prepare($sql)->execute([$intVal]);
+            
+            if ($key === 'allowed_email_domains') {
+                // Guardar como JSON. Si es null o vacío, se guarda como NULL
+                $finalVal = (!empty($value) && is_array($value)) ? json_encode($value) : NULL;
+            } else {
+                $finalVal = (int)$value;
+            }
+            $pdo->prepare($sql)->execute([$finalVal]);
         }
 
         echo json_encode(['success' => true, 'message' => trans('global.save_status')]);
