@@ -453,11 +453,13 @@ function initBooleanPreferencesLogic() {
                 if (data.success) {
                     if (window.alertManager) window.alertManager.showAlert(t('global.save_status'), 'success');
                 } else {
-                    target.checked = !isChecked; 
+                    // [ELIMINADO] Ya no revertimos el checkbox si hay error
+                    // target.checked = !isChecked; 
                     updateCardError(card, data.message);
                 }
             } catch (err) {
-                target.checked = !isChecked;
+                // [ELIMINADO] Ya no revertimos el checkbox si hay error de conexión
+                // target.checked = !isChecked;
                 console.error(err);
                 updateCardError(card, t('global.error_connection'));
             } finally {
