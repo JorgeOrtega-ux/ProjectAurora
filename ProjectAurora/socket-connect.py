@@ -30,8 +30,6 @@ def log(message):
         broadcast_log(log_line)
 
 def broadcast_log(log_line):
-    # Este mensaje es interno para debug, puede mantener su estructura o simplificarse
-    # Lo dejamos simple para evitar confusiones en el cliente si decidiera leerlo
     payload = json.dumps({"type": "server_log_debug", "log": log_line})
     dead_sockets = set()
     for ws in admin_sessions:
@@ -41,16 +39,11 @@ def broadcast_log(log_line):
 
 # --- FUNCIÓN PARA AVISAR CAMBIO DE ESTADO ---
 async def broadcast_user_status(user_id, status):
-    """
-    Envía un mensaje DIRECTO (sin envoltura extra) a los admins.
-    El JS espera: { type: 'user_status_change', payload: {...} }
-    """
     if not admin_sessions:
         return
 
     timestamp = datetime.datetime.now().isoformat()
     
-    # CORRECCIÓN: Estructura plana, sin 'socket-message' ni 'detail'
     message = json.dumps({
         "type": "user_status_change",
         "payload": {
@@ -116,8 +109,6 @@ async def handle_browser_client(websocket):
                     log(f"✅ Usuario {user_id} ({user_role}) se ha unido. Sesión: {session_id}")
                     
                     await websocket.send(json.dumps({"type": "connected"}))
-
-                    # Avisar a los admins que este usuario entró (Estado: Online)
                     await broadcast_user_status(user_id, 'online')
 
                 else:
@@ -126,7 +117,6 @@ async def handle_browser_client(websocket):
 
             elif msg_type == 'get_online_users':
                 if user_role in ['founder', 'administrator']:
-                    # CORRECCIÓN: Enviar estructura plana que espera el JS
                     response = json.dumps({
                         "type": "online_users_list", 
                         "payload": list(connected_clients.keys())
@@ -145,10 +135,8 @@ async def handle_browser_client(websocket):
                 if session_id in connected_clients[user_id]: 
                     del connected_clients[user_id][session_id]
                 
-                # Si el usuario ya no tiene ninguna sesión abierta
                 if not connected_clients[user_id]: 
                     del connected_clients[user_id]
-                    # Avisar a los admins que salió totalmente (Estado: Offline)
                     await broadcast_user_status(user_id, 'offline')
         
         if websocket in admin_sessions: admin_sessions.remove(websocket)
@@ -158,30 +146,60 @@ async def handle_php_notification(reader, writer):
         data = await reader.read(2048)
         msg = data.decode()
         if not msg: return
-        payload = json.loads(msg)
-        target = str(payload.get('target_id'))
         
-        # CORRECCIÓN: No envolvemos en 'socket-message'. 
-        # PHP ya envía la estructura {type: '...', payload: ...} correcta.
-        client_message = json.dumps(payload)
+        full_payload = json.loads(msg)
+        target = str(full_payload.get('target_id'))
+        msg_type = full_payload.get('type')
+        inner_payload = full_payload.get('payload', {})
+        
+        client_message = json.dumps(full_payload)
         
         if target == 'global':
-            log(f"📢 Enviando notificación GLOBAL: {payload.get('type')}")
+            log(f"📢 Enviando notificación GLOBAL: {msg_type}")
             for uid, sessions in list(connected_clients.items()):
                 for sid, ws in list(sessions.items()):
                     try: await ws.send(client_message)
                     except: pass
 
         elif target in connected_clients:
-            log(f"📨 Enviando notificación a Usuario {target}: {payload.get('type')}")
-            for ws in connected_clients[target].values():
-                try: await ws.send(client_message)
-                except: pass
+            log(f"📨 Enviando notificación a Usuario {target}: {msg_type}")
+            
+            # [LÓGICA DE FILTRADO DE SESIONES]
+            target_sess = inner_payload.get('target_session_id')
+            exclude_sess = inner_payload.get('exclude_session_id')
+
+            # Iteramos sobre una copia para evitar problemas si hay desconexiones
+            for sess_id, ws in list(connected_clients[target].items()):
+                should_send = True
+                
+                # 1. Si es para una sesión específica (ej: revoke_session)
+                if target_sess and str(target_sess) != str(sess_id):
+                    should_send = False
+                
+                # 2. Si es para todos MENOS esta sesión (ej: change password)
+                if exclude_sess and str(exclude_sess) == str(sess_id):
+                    should_send = False
+                
+                if should_send:
+                    # Si es 'force_logout_others', transformamos el mensaje a 'force_logout'
+                    # para que el JS del cliente lo entienda sin lógica extra.
+                    if msg_type == 'force_logout_others':
+                        new_payload = full_payload.copy()
+                        new_payload['type'] = 'force_logout'
+                        if 'payload' not in new_payload: new_payload['payload'] = {}
+                        new_payload['payload']['reason'] = 'security_change'
+                        final_msg = json.dumps(new_payload)
+                    else:
+                        final_msg = client_message
+
+                    try: await ws.send(final_msg)
+                    except: pass
+
     except Exception as e: log(f"[Bridge Error] {e}")
     finally: writer.close(); await writer.wait_closed()
 
 async def start_servers():
-    log("=== Servidor Aurora Iniciado (Estructura JSON Corregida) ===")
+    log("=== Servidor Aurora Iniciado (Filtrado de Sesiones Activo) ===")
     async with websockets.serve(handle_browser_client, "0.0.0.0", 8080):
         server = await asyncio.start_server(handle_php_notification, "127.0.0.1", 8081)
         async with server: await server.serve_forever()

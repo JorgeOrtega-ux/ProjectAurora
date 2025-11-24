@@ -97,6 +97,9 @@ $btn2faKey = $is2faEnabled ? 'settings.2fa.disable_btn' : 'settings.security.2fa
         <div class="component-card component-card--grouped component-card--danger" data-component="delete-account-section">
             <div class="component-group-item component-group-item--stacked-right">
                 <div class="component-card__content">
+                    <div class="component-icon-container" style="color: #d32f2f; border-color: #ffcdd2; background-color: transparent;">
+                        <span class="material-symbols-rounded" style="color: #d32f2f;">no_accounts</span>
+                    </div>
                     <div class="component-card__text">
                         <h2 class="component-card__title" data-i18n="settings.security.delete_title"><?php echo trans('settings.security.delete_title'); ?></h2>
                         <p class="component-card__description">

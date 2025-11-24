@@ -94,7 +94,11 @@ async function handleResendCode(type, linkSelector) {
 export function initAuthManager() {
     
     document.addEventListener('socket-message', (e) => {
-        const { type, reason } = e.detail;
+        // [CORRECCIÓN] Extraer correctamente el payload
+        const data = e.detail; 
+        const type = data.type;
+        const payload = data.payload || {};
+        const reason = payload.reason; // Ahora sí leemos la razón correctamente
         
         if (type === 'force_logout') {
             const msg = t('global.session_expired'); 

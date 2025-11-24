@@ -17,6 +17,9 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
         <div class="component-card component-card--danger" style="margin-top: 20px;">
             <div class="component-card__content">
+                <div class="component-icon-container" style="color: #d32f2f; border-color: #ffcdd2; background-color: transparent;">
+                    <span class="material-symbols-rounded" style="color: #d32f2f;">warning</span>
+                </div>
                 <div class="component-card__text">
                     <h2 class="component-card__title" data-i18n="settings.sessions.logout_all"><?php echo trans('settings.sessions.logout_all'); ?></h2>
                     <p class="component-card__description" data-i18n="settings.sessions.logout_all_confirm"><?php echo trans('settings.sessions.logout_all_confirm'); ?></p>
