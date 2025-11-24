@@ -26,7 +26,6 @@ export function initSettingsManager() {
     const is2FA = qs('[data-section="settings/2fa-setup"]');
     
     if (isProfile) {
-        // [MODIFICADO]
         initProfilePictureLogic();
         initUsernameLogic();
         initEmailLogic();
@@ -378,6 +377,7 @@ function initChangePasswordLogic() {
 
         updateCardError(step2Card, '', false);
 
+        // [CORRECCIÓN] Validacion dinámica de contraseña
         const minPass = window.SERVER_CONFIG?.min_password_length || 8;
 
         if (newPass.length < minPass) {
@@ -541,7 +541,6 @@ function initPreferencesLogic() {
 // ========================================================
 
 function initProfilePictureLogic() {
-    // [MODIFICADO] selectores
     const cardItem = qs('[data-component="profile-picture-section"]');
     if (!cardItem) return;
     const elements = {
@@ -571,8 +570,7 @@ function initProfilePictureLogic() {
         const file = this.files[0];
         if (!file) return;
         
-        const maxMB = window.SERVER_CONFIG?.avatar_max_size || 2; // NOTE: Keeping avatar_max_size key for backward compatibility with server config or update it there too? Updated in admin-server.js map but server config might still send it. Let's use profile_picture_max_size if available or fallback.
-        // Actually, server config key was updated in PHP. Let's assume window.SERVER_CONFIG matches.
+        // [CORRECCIÓN] Lectura dinámica de configuración de imagen
         const maxMBReal = window.SERVER_CONFIG?.profile_picture_max_size || window.SERVER_CONFIG?.avatar_max_size || 2;
         const maxBytes = maxMBReal * 1024 * 1024;
 
@@ -604,7 +602,6 @@ function initProfilePictureLogic() {
         setLoading(elements.saveBtn, true);
         updateCardError(cardItem, '', false);
         const formData = new FormData();
-        // [MODIFICADO] update_profile_picture
         formData.append('action', 'update_profile_picture');
         formData.append('profile_picture', file);
         formData.append('csrf_token', getCsrfToken());
@@ -613,7 +610,7 @@ function initProfilePictureLogic() {
             const data = await res.json();
             if (data.success) {
                 if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
-                const newSrc = data.avatar_url + '?t=' + new Date().getTime(); // API still returns 'avatar_url' key
+                const newSrc = data.avatar_url + '?t=' + new Date().getTime(); 
                 elements.previewImg.src = newSrc;
                 originalImageSrc = newSrc;
                 updateHeaderAvatar(newSrc);
@@ -672,6 +669,7 @@ function initUsernameLogic() {
         const newVal = els.input.value.trim();
         updateCardError(itemSection, '', false);
         
+        // [CORRECCIÓN] Validaciones dinámicas de username
         const minUser = window.SERVER_CONFIG?.min_username_length || 6;
         const maxUser = window.SERVER_CONFIG?.max_username_length || 32;
 
@@ -708,12 +706,33 @@ function initEmailLogic() {
     let originalEmail = els.input.value;
     els.editBtn.onclick = () => { toggleMode(els, true); updateCardError(itemSection, '', false); els.input.value = ''; els.input.value = originalEmail; els.input.focus(); };
     els.cancelBtn.onclick = () => { els.input.value = originalEmail; updateCardError(itemSection, '', false); toggleMode(els, false); };
+    
     els.saveBtn.onclick = async () => {
         const newVal = els.input.value.trim().toLowerCase();
         updateCardError(itemSection, '', false);
         if (newVal === originalEmail) { toggleMode(els, false); return; }
-        const regex = /^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i;
-        if (!regex.test(newVal)) { updateCardError(itemSection, t('auth.errors.email_invalid_domain')); return; }
+        
+        // [CORRECCIÓN] Validación de dominio permitidos
+        // 1. Validación formato básico
+        const basicRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!basicRegex.test(newVal)) { 
+            updateCardError(itemSection, t('auth.errors.email_invalid_domain')); 
+            return; 
+        }
+        
+        // 2. Validación dinámica de dominios desde SERVER_CONFIG
+        const config = window.SERVER_CONFIG || {};
+        let allowed = config.allowed_email_domains;
+        if (typeof allowed === 'string') { try { allowed = JSON.parse(allowed); } catch(e){ allowed = []; } }
+
+        // Si hay lista y no está vacía, validar
+        if (Array.isArray(allowed) && allowed.length > 0) {
+            const domain = newVal.split('@')[1].toLowerCase();
+            if (!allowed.some(d => d.toLowerCase() === domain)) {
+                updateCardError(itemSection, t('auth.errors.email_domain_restricted'));
+                return;
+            }
+        }
         
         const maxEmail = window.SERVER_CONFIG?.max_email_length || 255;
         if(newVal.length > maxEmail) { updateCardError(itemSection, t('auth.errors.email_long', {max: maxEmail})); return; }

@@ -94,11 +94,10 @@ async function handleResendCode(type, linkSelector) {
 export function initAuthManager() {
     
     document.addEventListener('socket-message', (e) => {
-        // [CORRECCIÓN] Extraer correctamente el payload
         const data = e.detail; 
         const type = data.type;
         const payload = data.payload || {};
-        const reason = payload.reason; // Ahora sí leemos la razón correctamente
+        const reason = payload.reason; 
         
         if (type === 'force_logout') {
             const msg = t('global.session_expired'); 
@@ -294,13 +293,36 @@ function switchRegisterStep(stepNumber, urlPath) {
     }
 }
 
+/**
+ * CORRECCIÓN: Validación dinámica de dominios usando SERVER_CONFIG.
+ */
 function isValidEmailDomain(email) {
-    const regex = /^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i;
-    return regex.test(email);
+    // 1. Validación básica de formato (independiente del dominio)
+    const basicRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!basicRegex.test(email)) return false;
+
+    // 2. Obtener configuración inyectada
+    const config = window.SERVER_CONFIG || {};
+    let allowed = config.allowed_email_domains;
+
+    // 3. Parsear si viene como string JSON (de la BD)
+    if (typeof allowed === 'string') {
+        try { allowed = JSON.parse(allowed); } catch(e) { allowed = []; }
+    }
+
+    // 4. Si la lista es null, undefined o vacía, se permiten todos los dominios
+    if (!allowed || !Array.isArray(allowed) || allowed.length === 0) {
+        return true;
+    }
+
+    // 5. Verificar si el dominio del usuario está en la lista
+    const parts = email.split('@');
+    const domain = parts[parts.length - 1].toLowerCase();
+    
+    return allowed.some(d => d.toLowerCase() === domain);
 }
 
 function isValidUsername(username) {
-    // [CORRECCIÓN DINÁMICA]
     const min = window.SERVER_CONFIG?.min_username_length || 6;
     const max = window.SERVER_CONFIG?.max_username_length || 32;
     const regex = new RegExp(`^[a-zA-Z0-9_]{${min},${max}}$`);
@@ -320,11 +342,10 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
         const emailVal = emailIn.value.trim().toLowerCase();
         const passVal = passIn.value;
 
-        // [CORRECCIÓN DINÁMICA]
         const minPass = window.SERVER_CONFIG?.min_password_length || 8;
 
         if (!isValidEmailDomain(emailVal)) {
-            errorMessage = t('auth.errors.email_invalid_domain');
+            errorMessage = t('auth.errors.email_domain_restricted');
             emailIn.classList.add('input-error');
         } else if (passVal.length < minPass) {
             errorMessage = t('auth.errors.password_short', { min: minPass });
@@ -410,7 +431,7 @@ async function handleRecoveryLinkRequest() {
 
     if (!isValidEmailDomain(emailVal)) {
         emailIn.classList.add('input-error');
-        if(errorDiv) { errorDiv.textContent = t('auth.errors.email_invalid_domain'); errorDiv.classList.add('active'); }
+        if(errorDiv) { errorDiv.textContent = t('auth.errors.email_domain_restricted'); errorDiv.classList.add('active'); }
         return;
     }
 
@@ -459,7 +480,6 @@ async function handleResetPasswordFinal() {
     passIn.classList.remove('input-error');
     passConfirmIn.classList.remove('input-error');
 
-    // [CORRECCIÓN DINÁMICA]
     const minPass = window.SERVER_CONFIG?.min_password_length || 8;
 
     if (passVal.length < minPass) {
