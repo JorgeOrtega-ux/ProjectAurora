@@ -25,7 +25,8 @@ $results = $searchData['results'];
 $hasMore = $searchData['hasMore'];
 
 $renderUserCard = function ($user) use ($currentUserId) {
-    $avatarPath = !empty($user['avatar']) ? '/ProjectAurora/' . $user['avatar'] : null;
+    // [CORRECCIÓN] Usar profile_picture que es lo que devuelve la BD y Fetcher
+    $avatarPath = !empty($user['profile_picture']) ? '/ProjectAurora/' . $user['profile_picture'] : null;
     $uid = $user['id'];
     $role = $user['role'] ?? 'user';
     $mutualCount = $user['mutual_friends'];
@@ -46,7 +47,7 @@ $renderUserCard = function ($user) use ($currentUserId) {
 ?>
     <div class="user-card-item">
         <div class="user-info-group">
-            <div class="user-avatar-container" data-role="<?php echo htmlspecialchars($role); ?>">
+            <div class="user-pfp-container" data-role="<?php echo htmlspecialchars($role); ?>">
                 <?php if ($avatarPath): ?>
                     <img src="<?php echo htmlspecialchars($avatarPath); ?>" alt="<?php echo trans('global.alt_avatar'); ?>">
                 <?php else: ?>

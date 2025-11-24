@@ -5,7 +5,7 @@ class SearchFetcher {
 
     /**
      * Busca usuarios y calcula el estado de amistad y amigos en común.
-     * * @param PDO $pdo Conexión a la base de datos.
+     * @param PDO $pdo Conexión a la base de datos.
      * @param int $currentUserId ID del usuario que realiza la búsqueda.
      * @param string $query Término de búsqueda.
      * @param int $offset Desplazamiento para paginación.
@@ -25,7 +25,8 @@ class SearchFetcher {
         $queryLimit = $limit + 1;
 
         try {
-            $sql = "SELECT u.id, u.username, u.avatar, u.role, 
+            // [CORRECCIÓN] Se cambió u.avatar por u.profile_picture para coincidir con la BD
+            $sql = "SELECT u.id, u.username, u.profile_picture, u.role, 
                            f.status as friend_status, f.sender_id,
                            (
                                SELECT COUNT(*) 
@@ -47,7 +48,7 @@ class SearchFetcher {
 
             $stmt = $pdo->prepare($sql);
             
-            // Bind de parámetros (el conteo de mutuos requiere 3 veces el ID del usuario actual)
+            // Bind de parámetros
             $stmt->execute([
                 $currentUserId, $currentUserId, $currentUserId, // Para subconsulta mutual_friends
                 $currentUserId, $currentUserId,                 // Para JOIN friendships principal
@@ -60,11 +61,10 @@ class SearchFetcher {
             // Lógica de paginación
             if (count($results) > $limit) {
                 $hasMore = true;
-                array_pop($results); // Quitamos el elemento extra que pedimos solo para verificar
+                array_pop($results); 
             }
 
         } catch (PDOException $e) {
-            // Opcional: Loguear error
             error_log("Error en SearchFetcher: " . $e->getMessage());
             return ['results' => [], 'hasMore' => false];
         }

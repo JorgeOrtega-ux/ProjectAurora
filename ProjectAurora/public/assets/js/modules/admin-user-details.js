@@ -173,7 +173,7 @@ function renderHeader() {
 
     const elUsername = document.getElementById(`${prefix}username`);
     const elEmail = document.getElementById(`${prefix}email`);
-    const elAvatarContainer = document.getElementById(`${prefix}pfp-container`); // Corrección de ID base
+    const elAvatarContainer = document.getElementById(`${prefix}pfp-container`); 
     const elAvatarImg = document.getElementById(`${prefix}user-avatar`);
     const elAvatarIcon = document.getElementById(`${prefix}user-icon`);
 
@@ -181,10 +181,22 @@ function renderHeader() {
     if (elEmail) elEmail.textContent = userData.email;
     if (elAvatarContainer) elAvatarContainer.dataset.role = userData.role;
 
-    if (userData.profile_picture && elAvatarImg) {
-        elAvatarImg.src = (window.BASE_PATH || '/ProjectAurora/') + userData.profile_picture;
-        elAvatarImg.style.display = 'block';
+    // [CORRECCIÓN ROBUSTA]
+    // 1. Aseguramos que userData.profile_picture no esté vacío
+    // 2. Ocultamos icono, mostramos imagen si hay foto
+    // 3. Ocultamos imagen, mostramos icono si no hay foto
+    if (userData.profile_picture && userData.profile_picture.trim() !== '') {
+        if (elAvatarImg) {
+            elAvatarImg.src = (window.BASE_PATH || '/ProjectAurora/') + userData.profile_picture;
+            elAvatarImg.style.display = 'block';
+        }
         if (elAvatarIcon) elAvatarIcon.style.display = 'none';
+    } else {
+        if (elAvatarImg) {
+            elAvatarImg.style.display = 'none';
+            elAvatarImg.src = '';
+        }
+        if (elAvatarIcon) elAvatarIcon.style.display = 'flex'; // Flex para centrar el icono
     }
 }
 

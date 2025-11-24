@@ -15,6 +15,8 @@ if ($page < 1) $page = 1;
 $offset = ($page - 1) * $limit;
 
 $q = isset($_GET['q']) ? trim($_GET['q']) : '';
+$sort = isset($_GET['sort']) ? $_GET['sort'] : 'date_newest'; // Default sort
+
 $whereClause = "";
 $params = [];
 
@@ -22,6 +24,24 @@ if (!empty($q)) {
     $whereClause = "WHERE u.username LIKE ? OR u.email LIKE ?";
     $params[] = "%$q%";
     $params[] = "%$q%";
+}
+
+// Lógica de Ordenamiento
+$orderBy = "ORDER BY u.created_at DESC"; // Default
+switch ($sort) {
+    case 'name_asc':
+        $orderBy = "ORDER BY u.username ASC";
+        break;
+    case 'name_desc':
+        $orderBy = "ORDER BY u.username DESC";
+        break;
+    case 'date_oldest':
+        $orderBy = "ORDER BY u.created_at ASC";
+        break;
+    case 'date_newest':
+    default:
+        $orderBy = "ORDER BY u.created_at DESC";
+        break;
 }
 
 // --- HELPERS ---
@@ -53,7 +73,6 @@ function renderUserRows($users)
     ob_start();
     if (count($users) > 0):
         foreach ($users as $u):
-            // [MODIFICADO] profile_picture
             $pfpUrl = !empty($u['profile_picture']) ? '/ProjectAurora/' . $u['profile_picture'] : null;
             $statusClass = getStatusClass($u['account_status']);
             $is2FA = ((int)$u['is_2fa_enabled'] === 1);
@@ -132,11 +151,12 @@ function renderUserRows($users)
     return ob_get_clean();
 }
 
-function renderPagination($page, $totalPages, $q)
+function renderPagination($page, $totalPages, $q, $sort)
 {
     $prevPage = max(1, $page - 1);
     $nextPage = min($totalPages, $page + 1);
     $qEncoded = htmlspecialchars($q, ENT_QUOTES);
+    $sortEncoded = htmlspecialchars($sort, ENT_QUOTES);
 
     $prevDisabled = ($page <= 1) ? 'disabled' : '';
     $nextDisabled = ($page >= $totalPages) ? 'disabled' : '';
@@ -146,14 +166,16 @@ function renderPagination($page, $totalPages, $q)
     <button class="component-pagination__btn <?php echo $prevDisabled; ?>"
         data-action="paginate-users" 
         data-page="<?php echo $prevPage; ?>" 
-        data-query="<?php echo $qEncoded; ?>">
+        data-query="<?php echo $qEncoded; ?>"
+        data-sort="<?php echo $sortEncoded; ?>">
         <span class="material-symbols-rounded">chevron_left</span>
     </button>
     <span class="component-pagination__text"><?php echo $page; ?> / <?php echo $totalPages; ?></span>
     <button class="component-pagination__btn <?php echo $nextDisabled; ?>"
         data-action="paginate-users" 
         data-page="<?php echo $nextPage; ?>" 
-        data-query="<?php echo $qEncoded; ?>">
+        data-query="<?php echo $qEncoded; ?>"
+        data-sort="<?php echo $sortEncoded; ?>">
         <span class="material-symbols-rounded">chevron_right</span>
     </button>
 <?php
@@ -173,10 +195,9 @@ try {
         $offset = ($page - 1) * $limit;
     }
 
-    // [MODIFICADO] profile_picture
     $sqlUsers = "SELECT u.id, u.username, u.email, u.profile_picture, u.role, u.account_status, u.created_at, u.is_2fa_enabled,
                  (SELECT MAX(last_activity) FROM user_sessions WHERE user_id = u.id) as last_seen
-                 FROM users u $whereClause ORDER BY u.id DESC LIMIT $limit OFFSET $offset";
+                 FROM users u $whereClause $orderBy LIMIT $limit OFFSET $offset";
     $stmt = $pdo->prepare($sqlUsers);
     $stmt->execute($params);
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -188,7 +209,7 @@ try {
 
 if (isset($_GET['ajax_partial']) && $_GET['ajax_partial'] === '1') {
     header('Content-Type: application/json');
-    echo json_encode(['html_rows' => renderUserRows($users), 'html_pagination' => renderPagination($page, $totalPages, $q)]);
+    echo json_encode(['html_rows' => renderUserRows($users), 'html_pagination' => renderPagination($page, $totalPages, $q, $sort)]);
     exit;
 }
 $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora/';
@@ -208,16 +229,58 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                             data-tooltip="<?php echo trans('global.search'); ?>">
                         <span class="material-symbols-rounded">search</span>
                     </button>
+                    
                     <div class="component-toolbar__separator"></div>
-                    <button class="component-icon-button" 
-                            data-i18n-tooltip="global.filter" 
-                            data-tooltip="<?php echo trans('global.filter'); ?>">
-                        <span class="material-symbols-rounded">filter_list</span>
-                    </button>
+                    
+                    <div style="position: relative;">
+                        <button class="component-icon-button <?php echo ($sort !== 'date_newest') ? 'active' : ''; ?>" 
+                                data-action="toggle-dropdown" 
+                                data-target="dropdown-admin-filters"
+                                data-i18n-tooltip="global.filter" 
+                                data-tooltip="<?php echo trans('global.filter'); ?>">
+                            <span class="material-symbols-rounded">filter_list</span>
+                        </button>
+
+                        <div class="popover-module popover-module--anchor-left disabled" id="dropdown-admin-filters" style="width: 220px; left: 0; top: calc(100% + 8px);">
+                            <div class="menu-content">
+                                <div class="menu-list">
+                                    <div class="menu-link <?php echo ($sort === 'name_asc') ? 'active' : ''; ?>" 
+                                         data-action="filter-users" data-sort="name_asc">
+                                        <div class="menu-link-icon"><span class="material-symbols-rounded">sort_by_alpha</span></div>
+                                        <div class="menu-link-text" data-i18n="admin.users.filter.name_asc"><?php echo trans('admin.users.filter.name_asc'); ?></div>
+                                        <?php if($sort === 'name_asc'): ?><div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div><?php endif; ?>
+                                    </div>
+                                    
+                                    <div class="menu-link <?php echo ($sort === 'name_desc') ? 'active' : ''; ?>" 
+                                         data-action="filter-users" data-sort="name_desc">
+                                        <div class="menu-link-icon"><span class="material-symbols-rounded">sort_by_alpha</span></div>
+                                        <div class="menu-link-text" data-i18n="admin.users.filter.name_desc"><?php echo trans('admin.users.filter.name_desc'); ?></div>
+                                        <?php if($sort === 'name_desc'): ?><div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div><?php endif; ?>
+                                    </div>
+
+                                    <div class="component-divider" style="margin: 4px 0;"></div>
+
+                                    <div class="menu-link <?php echo ($sort === 'date_newest') ? 'active' : ''; ?>" 
+                                         data-action="filter-users" data-sort="date_newest">
+                                        <div class="menu-link-icon"><span class="material-symbols-rounded">calendar_today</span></div>
+                                        <div class="menu-link-text" data-i18n="admin.users.filter.date_newest"><?php echo trans('admin.users.filter.date_newest'); ?></div>
+                                        <?php if($sort === 'date_newest'): ?><div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div><?php endif; ?>
+                                    </div>
+
+                                    <div class="menu-link <?php echo ($sort === 'date_oldest') ? 'active' : ''; ?>" 
+                                         data-action="filter-users" data-sort="date_oldest">
+                                        <div class="menu-link-icon"><span class="material-symbols-rounded">history</span></div>
+                                        <div class="menu-link-text" data-i18n="admin.users.filter.date_oldest"><?php echo trans('admin.users.filter.date_oldest'); ?></div>
+                                        <?php if($sort === 'date_oldest'): ?><div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div><?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="admin-users-pagination" class="component-pagination component-toolbar__right">
-                    <?php echo renderPagination($page, $totalPages, $q); ?>
+                    <?php echo renderPagination($page, $totalPages, $q, $sort); ?>
                 </div>
 
                 <div class="component-toolbar search-toolbar-panel disabled" id="admin-users-search-bar">

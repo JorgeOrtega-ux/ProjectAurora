@@ -23,11 +23,15 @@
         "deleted": "Cuenta Eliminada",
         "alt_avatar": "Foto de perfil",
         "please": "Por favor",
+        "are_you_sure": "¿Estás seguro?",
         "time": {
             "never": "Nunca",
             "just_now": "Hace un momento",
             "minutes_ago": "Hace {count} min",
             "hours_ago": "Hace {count} h"
+        },
+        "status": {
+            "expired": "Expirada"
         }
     },
     "nav": {
@@ -99,7 +103,8 @@
             "label": "Código de Seguridad",
             "verify_btn": "Verificar Acceso",
             "sent_alert": "Código de seguridad 2FA enviado.",
-            "success_alert": "Acceso verificado. ¡Bienvenido!"
+            "success_alert": "Acceso verificado. ¡Bienvenido!",
+            "invalid_code": "Código incorrecto."
         },
         "recovery": {
             "title": "Recuperar Cuenta",
@@ -132,7 +137,8 @@
             "email_exists": "El correo ya está registrado.",
             "too_many_attempts": "Has excedido intentos. Por favor espera.",
             "invalid_credentials": "Credenciales incorrectas.",
-            "network_error": "Error de conexión con el servidor."
+            "network_error": "Error de conexión con el servidor.",
+            "invalid_code": "Código inválido."
         },
         "code_sent": "Código enviado",
         "welcome": "Bienvenido",
@@ -367,7 +373,13 @@
                 "delete": "Eliminar",
                 "confirm_delete": "¿Estás seguro de eliminar a este usuario?"
             },
-            "search_placeholder": "Buscar por nombre, correo o ID (Presiona Enter)..."
+            "search_placeholder": "Buscar por nombre, correo o ID (Presiona Enter)...",
+            "filter": {
+                "name_asc": "Nombre (A-Z)",
+                "name_desc": "Nombre (Z-A)",
+                "date_newest": "Más recientes",
+                "date_oldest": "Más antiguos"
+            }
         },
         "status": {
             "lift_ban": "Levantar Sanción",
