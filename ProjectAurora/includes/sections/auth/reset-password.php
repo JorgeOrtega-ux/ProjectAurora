@@ -42,7 +42,6 @@ if (!empty($token) && isset($pdo)) {
                     </div>
 
                     <button class="form-button" data-action="reset-final-submit" data-i18n="auth.recovery.change_btn"><?php echo trans('auth.recovery.change_btn'); ?></button>
-                    <div data-error="reset-error" class="form-error-message"></div>
                 </div>
 
             <?php else: ?>

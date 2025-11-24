@@ -14,8 +14,8 @@ function toggleStepVisibility(hideSelector, showSelector) {
 
     if (toHide) {
         toHide.classList.remove('active');
-        const err = toHide.querySelector('.form-error-message');
-        if (err) { err.textContent = ''; err.classList.remove('active'); }
+        // Limpiar error dinámico si existe
+        updateFormError(toHide, '', false);
     }
     if (toShow) {
         toShow.classList.add('active');
@@ -25,6 +25,43 @@ function toggleStepVisibility(hideSelector, showSelector) {
 function getCsrfToken() {
     const meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.getAttribute('content') : '';
+}
+
+/**
+ * Muestra u oculta un error dinámicamente dentro de un contenedor de paso.
+ * @param {HTMLElement|string} container El contenedor (ej: .auth-step-container)
+ * @param {string} message El mensaje de error
+ * @param {boolean} show Mostrar u ocultar
+ */
+function updateFormError(container, message = '', show = true) {
+    const el = (typeof container === 'string') ? qs(container) : container;
+    if (!el) return;
+
+    let errorDiv = el.querySelector('.form-error-message');
+
+    if (!errorDiv && show) {
+        errorDiv = document.createElement('div');
+        errorDiv.className = 'form-error-message';
+        // Insertar antes del footer-link o al final si no existe
+        const footer = el.querySelector('.form-footer-link');
+        if (footer) {
+            el.insertBefore(errorDiv, footer);
+        } else {
+            el.appendChild(errorDiv);
+        }
+    }
+
+    if (show && errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.classList.add('active');
+    } else if (!show && errorDiv) {
+        errorDiv.classList.remove('active');
+        // Opcional: eliminar del DOM tras transición, o dejarlo oculto
+        // Para coincidir con el estilo admin, lo eliminamos:
+        setTimeout(() => {
+            if (errorDiv.parentNode) errorDiv.parentNode.removeChild(errorDiv);
+        }, 200);
+    }
 }
 
 let resendTimerInterval = null;
@@ -38,7 +75,6 @@ function initResendTimer(linkSelector, startSeconds = 60) {
     let seconds = startSeconds;
     
     link.classList.add('disabled-link');
-    // Usamos una clave lógica combinada con el número
     link.textContent = `${t('auth.register.resend_code')} (${seconds})`;
 
     resendTimerInterval = setInterval(() => {
@@ -98,7 +134,7 @@ export function initAuthManager() {
         const { type, reason } = e.detail;
         
         if (type === 'force_logout') {
-            const msg = t('global.session_expired'); // Usando clave genérica o crear una nueva
+            const msg = t('global.session_expired'); 
             if (window.alertManager) {
                 window.alertManager.showAlert(msg, 'warning');
             } else {
@@ -302,7 +338,7 @@ function isValidUsername(username) {
 
 async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
     let payload = { action: apiAction };
-    let btnSelector, errorSelector, inputSelectors = [];
+    let btnSelector, inputSelectors = [], containerSelector;
     let errorMessage = '';
 
     if (stepName === 'step1') {
@@ -328,7 +364,7 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
         if (emailDisplay) emailDisplay.textContent = emailVal;
 
         btnSelector = '[data-action="register-step1"]'; 
-        errorSelector = '[data-error="register-1"]'; 
+        containerSelector = '[data-step="register-1"]'; 
         inputSelectors = ['[data-input="reg-email"]', '[data-input="reg-password"]'];
     
     } else if (stepName === 'step2') {
@@ -343,7 +379,7 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
 
         payload.username = userVal;
         btnSelector = '[data-action="register-step2"]'; 
-        errorSelector = '[data-error="register-2"]'; 
+        containerSelector = '[data-step="register-2"]'; 
         inputSelectors = ['[data-input="reg-username"]'];
     
     } else if (stepName === 'step3') {
@@ -351,13 +387,13 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
         if (!codeIn) return false;
         payload.code = codeIn.value.replace(/-/g, '');
         btnSelector = '[data-action="register-step3"]'; 
-        errorSelector = '[data-error="register-3"]'; 
+        containerSelector = '[data-step="register-3"]'; 
         inputSelectors = ['[data-input="reg-code"]'];
     }
 
     inputSelectors.forEach(sel => qs(sel).classList.remove('input-error'));
-    const errorDiv = qs(errorSelector);
-    if(errorDiv) { errorDiv.textContent = ''; errorDiv.classList.remove('active'); }
+    // Limpiar error previo
+    updateFormError(containerSelector, '', false);
 
     let hasEmpty = false;
     inputSelectors.forEach(sel => {
@@ -366,38 +402,38 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
     });
 
     if (hasEmpty) {
-        if(errorDiv) { errorDiv.textContent = t('auth.errors.all_required'); errorDiv.classList.add('active'); }
+        updateFormError(containerSelector, t('auth.errors.all_required'));
         return false;
     }
 
     if (errorMessage) {
-        if(errorDiv) { errorDiv.textContent = errorMessage; errorDiv.classList.add('active'); }
+        updateFormError(containerSelector, errorMessage);
         return false;
     }
 
-    return await sendAuthRequest(payload, btnSelector, errorSelector, nextStep, nextUrl);
+    return await sendAuthRequest(payload, btnSelector, containerSelector, nextStep, nextUrl);
 }
 
 async function handleRecoveryLinkRequest() {
     const emailIn = qs('[data-input="rec-email"]');
+    const containerSelector = '[data-step="rec-1"]';
     if(!emailIn) return;
 
     const emailVal = emailIn.value.trim().toLowerCase();
-    const errorDiv = qs('[data-error="rec-1"]');
     const btn = qs('[data-action="rec-step1"]');
     
-    if(errorDiv) { errorDiv.textContent = ''; errorDiv.classList.remove('active'); }
+    updateFormError(containerSelector, '', false);
     emailIn.classList.remove('input-error');
 
     if(!emailVal) { 
         emailIn.classList.add('input-error'); 
-        if(errorDiv) { errorDiv.textContent = t('auth.errors.all_required'); errorDiv.classList.add('active'); }
+        updateFormError(containerSelector, t('auth.errors.all_required'));
         return; 
     }
 
     if (!isValidEmailDomain(emailVal)) {
         emailIn.classList.add('input-error');
-        if(errorDiv) { errorDiv.textContent = t('auth.errors.email_invalid_domain'); errorDiv.classList.add('active'); }
+        updateFormError(containerSelector, t('auth.errors.email_invalid_domain'));
         return;
     }
 
@@ -420,10 +456,10 @@ async function handleRecoveryLinkRequest() {
             if (window.alertManager) window.alertManager.showAlert(t('auth.recovery.link_sent_alert'), 'success');
             toggleStepVisibility('[data-step="rec-1"]', '[data-step="rec-success"]');
         } else {
-            if(errorDiv) { errorDiv.textContent = res.message; errorDiv.classList.add('active'); }
+            updateFormError(containerSelector, res.message);
         }
     } catch (e) {
-        if(errorDiv) { errorDiv.textContent = t('global.error_connection'); errorDiv.classList.add('active'); }
+        updateFormError(containerSelector, t('global.error_connection'));
     }
     btn.innerHTML = originalContent;
     btn.disabled = false;
@@ -433,29 +469,31 @@ async function handleResetPasswordFinal() {
     const passIn = qs('[data-input="reset-pass"]');
     const passConfirmIn = qs('[data-input="reset-pass-confirm"]'); 
     const tokenIn = qs('[data-input="reset-token"]');
-    const errorDiv = qs('[data-error="reset-error"]');
     const btn = qs('[data-action="reset-final-submit"]');
+    // El contenedor de este paso en reset-password.php es .auth-step-container active,
+    // pero como solo hay uno activo, podemos buscar el más cercano al botón.
+    const container = btn.closest('.auth-step-container');
 
-    if (!passIn || !tokenIn || !passConfirmIn) return;
+    if (!passIn || !tokenIn || !passConfirmIn || !container) return;
 
     const passVal = passIn.value;
     const passConfirmVal = passConfirmIn.value;
     const tokenVal = tokenIn.value;
 
-    if(errorDiv) { errorDiv.textContent = ''; errorDiv.classList.remove('active'); }
+    updateFormError(container, '', false);
     passIn.classList.remove('input-error');
     passConfirmIn.classList.remove('input-error');
 
     if (passVal.length < 8) {
         passIn.classList.add('input-error');
-        if(errorDiv) { errorDiv.textContent = t('auth.errors.password_short'); errorDiv.classList.add('active'); }
+        updateFormError(container, t('auth.errors.password_short'));
         return;
     }
 
     if (passVal !== passConfirmVal) {
         passIn.classList.add('input-error');
         passConfirmIn.classList.add('input-error');
-        if(errorDiv) { errorDiv.textContent = t('auth.errors.pass_mismatch'); errorDiv.classList.add('active'); }
+        updateFormError(container, t('auth.errors.pass_mismatch'));
         return;
     }
 
@@ -480,20 +518,19 @@ async function handleResetPasswordFinal() {
             if (window.alertManager) window.alertManager.showAlert(t('auth.recovery.pass_updated'), 'success');
             window.location.href = API_BASE_PATH + 'login';
         } else {
-            if(errorDiv) { errorDiv.textContent = res.message; errorDiv.classList.add('active'); }
+            updateFormError(container, res.message);
             btn.innerHTML = originalContent; 
             btn.disabled = false;
         }
     } catch (e) {
-        if(errorDiv) { errorDiv.textContent = t('global.error_connection'); errorDiv.classList.add('active'); }
+        updateFormError(container, t('global.error_connection'));
         btn.innerHTML = originalContent; 
         btn.disabled = false;
     }
 }
 
-async function sendAuthRequest(payload, btnSelector, errorSelector, nextStep, nextUrl) {
+async function sendAuthRequest(payload, btnSelector, containerSelector, nextStep, nextUrl) {
     const btn = qs(btnSelector);
-    const errorDiv = qs(errorSelector);
     let originalContent = '';
 
     if(btn) { 
@@ -525,12 +562,12 @@ async function sendAuthRequest(payload, btnSelector, errorSelector, nextStep, ne
             }
             return true;
         } else {
-            if(errorDiv) { errorDiv.textContent = result.message; errorDiv.classList.add('active'); }
+            updateFormError(containerSelector, result.message);
             if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
             return false;
         }
     } catch (error) {
-        if(errorDiv) { errorDiv.textContent = t('global.error_connection'); errorDiv.classList.add('active'); }
+        updateFormError(containerSelector, t('global.error_connection'));
         if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
         return false;
     }
@@ -539,9 +576,9 @@ async function sendAuthRequest(payload, btnSelector, errorSelector, nextStep, ne
 async function handleLogin() {
     const emailInput = qs('[data-input="login-email"]');
     const passInput = qs('[data-input="login-password"]');
-    const errorDiv = qs('[data-error="login-error"]');
+    const containerSelector = '[data-step="login-1"]';
 
-    if(errorDiv) errorDiv.classList.remove('active');
+    updateFormError(containerSelector, '', false);
     emailInput.classList.remove('input-error');
     passInput.classList.remove('input-error');
 
@@ -609,20 +646,14 @@ async function handleLogin() {
                 return; 
             }
 
-            if(errorDiv) {
-                errorDiv.textContent = res.message;
-                errorDiv.classList.add('active');
-            }
+            updateFormError(containerSelector, res.message);
             emailInput.classList.add('input-error');
             passInput.classList.add('input-error');
             btn.innerHTML = originalContent;
             btn.disabled = false;
         }
     } catch (e) {
-        if(errorDiv) {
-            errorDiv.textContent = t('global.error_connection');
-            errorDiv.classList.add('active');
-        }
+        updateFormError(containerSelector, t('global.error_connection'));
         btn.innerHTML = originalContent;
         btn.disabled = false;
     }
@@ -630,7 +661,7 @@ async function handleLogin() {
 
 async function handleLogin2FA() {
     const codeInput = qs('[data-input="login-2fa-code"]');
-    const errorDiv = qs('[data-error="login-2fa"]');
+    const containerSelector = '[data-step="login-2"]';
     
     if (!codeInput) return;
     if (!codeInput.value.trim()) {
@@ -643,7 +674,8 @@ async function handleLogin2FA() {
 
     btn.innerHTML = '<div class="btn-spinner"></div>'; 
     btn.disabled = true;
-    if(errorDiv) errorDiv.classList.remove('active');
+    
+    updateFormError(containerSelector, '', false);
 
     const cleanCode = codeInput.value.trim().replace(/-/g, '');
 
@@ -665,19 +697,13 @@ async function handleLogin2FA() {
             if (window.alertManager) window.alertManager.showAlert(t('auth.2fa.success_alert'), 'success');
             window.location.href = API_BASE_PATH;
         } else {
-            if(errorDiv) {
-                errorDiv.textContent = res.message;
-                errorDiv.classList.add('active');
-            }
+            updateFormError(containerSelector, res.message);
             codeInput.classList.add('input-error');
             btn.innerHTML = originalContent;
             btn.disabled = false;
         }
     } catch (e) {
-        if(errorDiv) {
-            errorDiv.textContent = t('global.error_connection');
-            errorDiv.classList.add('active');
-        }
+        updateFormError(containerSelector, t('global.error_connection'));
         btn.innerHTML = originalContent;
         btn.disabled = false;
     }

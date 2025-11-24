@@ -92,33 +92,62 @@ function setLoading(btn, isLoading, originalText = '') {
     }
 }
 
-function showError(message, show = true) {
-    let errorBox = null;
-    
-    if (currentContext === 'manage') errorBox = document.getElementById('manage-error-msg');
-    else if (currentContext === 'role') errorBox = document.getElementById('role-error-msg');
-    else {
-        const container = document.querySelector('.component-wrapper');
-        errorBox = container.querySelector('.component-card__error');
-        if (!errorBox && show) {
-            const card = document.querySelector('.component-card--grouped');
-            if (card) {
-                errorBox = document.createElement('div');
-                errorBox.className = 'component-card__error';
-                errorBox.style.marginTop = '16px';
-                card.after(errorBox);
-            }
-        }
+/**
+ * Genera o elimina dinámicamente el mensaje de error debajo de la tarjeta contenedora.
+ * @param {HTMLElement} element Elemento de referencia (botón o input) dentro de la tarjeta
+ * @param {string} message Mensaje a mostrar
+ * @param {boolean} show true para mostrar, false para ocultar
+ */
+function updateCardError(element, message = '', show = true) {
+    if (!element) return;
+    // Buscamos la tarjeta padre más cercana
+    const cardContainer = element.closest('.component-card') || element.closest('.form-container');
+    if (!cardContainer) return;
+
+    let nextElement = cardContainer.nextElementSibling;
+    let errorDiv = null;
+
+    // Verificar si ya existe el error
+    if (nextElement && nextElement.classList.contains('component-card__error')) {
+        errorDiv = nextElement;
     }
 
-    if (errorBox) {
-        if (show) {
-            errorBox.textContent = message;
-            errorBox.classList.add('active');
-        } else {
-            errorBox.classList.remove('active');
-        }
+    if (!errorDiv && show) {
+        errorDiv = document.createElement('div');
+        errorDiv.className = 'component-card__error';
+        errorDiv.style.marginTop = '16px';
+        cardContainer.after(errorDiv);
+    }
+
+    if (show && errorDiv) {
+        errorDiv.textContent = message;
+        // Pequeño delay para permitir la animación CSS si existe
+        requestAnimationFrame(() => errorDiv.classList.add('active'));
+    } else if (!show && errorDiv) {
+        errorDiv.classList.remove('active');
+        // Esperar transición CSS antes de eliminar del DOM
+        setTimeout(() => {
+            if (errorDiv.parentNode) errorDiv.parentNode.removeChild(errorDiv);
+        }, 200);
+    }
+}
+
+function showError(message, show = true) {
+    // Determinamos dónde mostrar el error basado en el contexto
+    let anchorElement = null;
+
+    if (currentContext === 'manage') {
+        anchorElement = document.querySelector('#btn-save-manage') || document.querySelector('.component-card:last-of-type');
+    } else if (currentContext === 'role') {
+        anchorElement = document.querySelector('#btn-save-role') || document.querySelector('.component-card:last-of-type');
+    } else if (currentContext === 'status') {
+        anchorElement = document.querySelector('#btn-save-status') || document.querySelector('.component-card:last-of-type');
+    }
+
+    if (anchorElement) {
+        updateCardError(anchorElement, message, show);
     } else if (show) {
+        // Fallback por si no encuentra el elemento
         alert(message);
     }
 }
@@ -203,7 +232,6 @@ function handleDropdownSelection(option) {
     const val = option.dataset.value;
     const label = option.dataset.label || option.querySelector('.menu-link-text').textContent;
     const icon = option.dataset.icon;
-    // const color = option.dataset.color; // ELIMINADO: Ya no leemos el color
 
     const menuList = option.closest('.menu-list');
     if (menuList) {
@@ -215,7 +243,6 @@ function handleDropdownSelection(option) {
         if (option.lastElementChild) option.lastElementChild.innerHTML = '<span class="material-symbols-rounded">check</span>';
     }
 
-    // Eliminado el argumento de color en todas las llamadas
     if (action === 'select-status-option') updateStatusUI(val, label, icon);
     if (action === 'select-duration-option') updateDurationUI(val);
     if (action === 'select-reason-option') updateReasonUI(val);
@@ -241,7 +268,6 @@ function initStatusLogic() {
         activeAlert.classList.remove('d-none');
         btnLift.classList.remove('d-none');
         
-        // Actualizar Tooltip en lugar de texto interno
         btnSave.setAttribute('data-i18n-tooltip', 'admin.status.update_ban');
         btnSave.setAttribute('data-tooltip', t('admin.status.update_ban'));
 
@@ -249,14 +275,12 @@ function initStatusLogic() {
         if (u.suspension_end_date === null) {
             currentUserState.isPermanent = true;
             activeText = t('admin.status.perm_ban');
-            // Eliminado color
             updateStatusUI('suspended_perm', activeText, 'block');
             setDropdownInitialActive('dropdown-status-options', 'suspended_perm');
         } else {
             currentUserState.isPermanent = false;
             const endDate = new Date(u.suspension_end_date).toLocaleDateString();
             activeText = t('admin.status.until') + ' ' + endDate; 
-            // Eliminado color
             updateStatusUI('suspended_temp', t('admin.status.temp_ban'), 'timer');
             setDropdownInitialActive('dropdown-status-options', 'suspended_temp');
         }
@@ -271,14 +295,12 @@ function initStatusLogic() {
         activeAlert.classList.add('d-none');
         btnLift.classList.add('d-none');
         
-        // Restaurar tooltip por defecto
         btnSave.setAttribute('data-i18n-tooltip', 'admin.status.apply_ban');
         btnSave.setAttribute('data-tooltip', t('admin.status.apply_ban'));
         
         document.getElementById('input-status-value').value = '';
         document.getElementById('current-status-text').textContent = t('admin.status.select_type');
         document.getElementById('current-status-icon').textContent = 'gavel';
-        // document.getElementById('current-status-icon').style.color = '#666'; // ELIMINADO
         document.getElementById('current-status-icon').style.color = '';
         
         document.getElementById('input-duration-value').value = '';
@@ -308,7 +330,7 @@ function updateStatusUI(val, text, icon) {
     document.getElementById('current-status-text').textContent = text;
     const iconEl = document.getElementById('current-status-icon');
     iconEl.textContent = icon;
-    iconEl.style.color = ''; // Reseteamos color
+    iconEl.style.color = ''; 
 
     const wrapperDuration = document.getElementById('wrapper-duration');
     const wrapperReason = document.getElementById('wrapper-reason');
@@ -411,7 +433,6 @@ function initManageLogic() {
     const btnSave = document.getElementById('btn-save-manage');
 
     if (u.account_status === 'deleted') {
-        // Eliminado color
         updateManageStatusUI('deleted', t('global.deleted'), 'delete_forever');
         setDropdownInitialActive('dropdown-manage-status', 'deleted');
 
@@ -423,7 +444,6 @@ function initManageLogic() {
         if (u.deletion_reason) document.getElementById('input-user-reason').value = u.deletion_reason;
         if (u.admin_comments) document.getElementById('input-admin-comments').value = u.admin_comments;
     } else {
-        // Eliminado color
         updateManageStatusUI('active', t('global.active'), 'check_circle');
         setDropdownInitialActive('dropdown-manage-status', 'active');
     }
@@ -436,7 +456,7 @@ function updateManageStatusUI(val, text, icon) {
     document.getElementById('manage-status-text').textContent = text;
     const iconEl = document.getElementById('manage-status-icon');
     iconEl.textContent = icon;
-    iconEl.style.color = ''; // Reseteamos color
+    iconEl.style.color = ''; 
 
     const wrapper = document.getElementById('wrapper-deletion-details');
     if (val === 'deleted') wrapper.classList.remove('d-none');
@@ -496,7 +516,6 @@ function initRoleLogic() {
     
     let roleLabel = 'Usuario';
     let roleIcon = 'person';
-    // roleColor eliminado
 
     if (u.role === 'moderator') {
         roleLabel = 'Moderador';
@@ -520,7 +539,7 @@ function updateRoleUI(val, text, icon) {
     document.getElementById('current-role-text').textContent = text;
     const iconEl = document.getElementById('current-role-icon');
     iconEl.textContent = icon;
-    iconEl.style.color = ''; // Reseteamos color
+    iconEl.style.color = ''; 
 }
 
 async function saveRoleChanges() {
@@ -576,7 +595,6 @@ function renderHistoryTable(logs) {
 
         if (log.log_type === 'suspension') {
             icon = 'gavel';
-            // Ajustado a estilo neutral/negro
             durationDisplay = (parseInt(log.duration_days) === -1) 
                 ? `<span style="font-weight: 600;">${t('admin.status.perm_ban')}</span>` 
                 : log.duration_days + ' ' + t('global.days');
@@ -588,7 +606,6 @@ function renderHistoryTable(logs) {
             if (log.lifted_at) {
                 const liftedDate = new Date(log.lifted_at).toLocaleString();
                 const lifter = log.lifter_name || 'Admin';
-                // Colores neutralizados
                 liftedDisplay = `
                     <div style="display:flex; flex-direction:column;">
                         <span style="font-weight:600; font-size:13px; display:flex; align-items:center; gap:4px;">

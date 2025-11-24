@@ -44,7 +44,6 @@ if (isset($CURRENT_SECTION)) {
                 </div>
 
                 <button class="form-button" data-action="register-step1" data-i18n="auth.register.next"><?php echo trans('auth.register.next'); ?></button>
-                <div data-error="register-1" class="form-error-message"></div>
                 
                 <div class="form-footer-link">
                     <span data-i18n="auth.register.have_account"><?php echo trans('auth.register.have_account'); ?></span> 
@@ -78,7 +77,6 @@ if (isset($CURRENT_SECTION)) {
                 </div>
 
                 <button class="form-button" data-action="register-step2" data-i18n="global.continue"><?php echo trans('global.continue'); ?></button>
-                <div data-error="register-2" class="form-error-message"></div>
             </div>
 
             <div data-step="register-3" class="auth-step-container <?php echo ($initialStep === 3) ? 'active' : ''; ?>">
@@ -103,7 +101,6 @@ if (isset($CURRENT_SECTION)) {
                 </div>
 
                 <button class="form-button" data-action="register-step3" data-i18n="auth.register.verify_btn"><?php echo trans('auth.register.verify_btn'); ?></button>
-                <div data-error="register-3" class="form-error-message"></div>
                 
                 <div class="form-footer-link">
                     <a href="#" data-action="resend-register" class="disabled-link" data-i18n="auth.register.resend_code"><?php echo trans('auth.register.resend_code'); ?></a>

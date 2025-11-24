@@ -1,4 +1,5 @@
 <?php
+// includes/sections/admin/user-role.php
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (!in_array($_SESSION['user_role'], ['founder', 'administrator'])) {
     include __DIR__ . '/../system/404.php';
@@ -117,8 +118,6 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
             </div>
         </div>
         
-        <div class="component-card__error" id="role-error-msg" style="margin-top: 16px;"></div>
-
         <div class="security-notice">
             <span class="material-symbols-rounded security-notice__icon">info</span>
             <div>

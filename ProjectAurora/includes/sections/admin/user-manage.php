@@ -1,4 +1,5 @@
 <?php
+// includes/sections/admin/user-manage.php
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (!in_array($_SESSION['user_role'], ['founder', 'administrator'])) {
     include __DIR__ . '/../system/404.php'; exit;
@@ -194,8 +195,6 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
 
             </div>
             
-            <div class="component-card__error" id="manage-error-msg" style="margin: 20px 0 0 0; width: 100%;"></div>
-
         </div>
     </div>
 </div>
