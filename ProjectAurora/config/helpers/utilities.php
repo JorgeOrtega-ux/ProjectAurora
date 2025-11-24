@@ -1,5 +1,5 @@
 <?php
-// config/utilities.php
+// config/helpers/utilities.php
 
 date_default_timezone_set('America/Matamoros');
 
@@ -71,15 +71,12 @@ function logSecurityAction($pdo, $identifier, $actionType) {
     $stmt->execute([(string)$identifier, $actionType, $ip]);
 }
 
-// [MODIFICADO] Ahora acepta y guarda el session_id
 function generate_ws_auth_token($pdo, $userId, $sessionId) {
-    // Eliminamos tokens viejos de este usuario para limpieza
     $stmt = $pdo->prepare("DELETE FROM ws_auth_tokens WHERE user_id = ?");
     $stmt->execute([$userId]);
 
     $token = bin2hex(random_bytes(32)); 
     
-    // Guardamos el token vinculado a la sesión actual
     $stmt = $pdo->prepare("INSERT INTO ws_auth_tokens (user_id, session_id, token, expires_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 2 MINUTE))");
     $stmt->execute([$userId, $sessionId, $token]);
 
@@ -104,7 +101,6 @@ function send_live_notification($targetUserId, $type, $data = []) {
     $host = '127.0.0.1';
     $port = 8081; 
 
-    // Empaquetamos los datos
     $payload = json_encode([
         'target_id' => (string)$targetUserId,
         'type' => $type, 
@@ -138,5 +134,20 @@ function detect_browser_language() {
         if (array_key_exists($langPrefix, $familyFallbacks)) return $familyFallbacks[$langPrefix];
     }
     return $default;
+}
+
+// [NUEVO] Obtener configuración del servidor
+function getServerConfig($pdo) {
+    try {
+        $stmt = $pdo->query("SELECT * FROM server_config WHERE id = 1");
+        $config = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$config) {
+            // Fallback por si la tabla está vacía
+            return ['maintenance_mode' => 0, 'allow_registrations' => 1, 'max_concurrent_users' => 500];
+        }
+        return $config;
+    } catch (Exception $e) {
+        return ['maintenance_mode' => 0, 'allow_registrations' => 1, 'max_concurrent_users' => 500];
+    }
 }
 ?>

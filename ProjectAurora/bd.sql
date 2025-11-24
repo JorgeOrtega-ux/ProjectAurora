@@ -26,16 +26,11 @@ CREATE TABLE IF NOT EXISTS users (
     avatar VARCHAR(255) NULL,
     role VARCHAR(20) DEFAULT 'user',
     account_status ENUM('active', 'suspended', 'deleted') DEFAULT 'active',
-    
-    -- Campos de Suspensión (Estado Actual)
     suspension_reason TEXT NULL,
     suspension_end_date TIMESTAMP NULL,
-    
-    -- Campos de Eliminación
     deletion_type ENUM('admin_decision', 'user_decision') NULL, 
     deletion_reason TEXT NULL,
     admin_comments TEXT NULL,
-    
     is_2fa_enabled TINYINT(1) DEFAULT 0,
     two_factor_secret VARCHAR(255) NULL,
     backup_codes JSON NULL,
@@ -114,7 +109,7 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- AUDITORÍA GENERAL (Perfil, Password, etc.)
+-- AUDITORÍA GENERAL
 CREATE TABLE IF NOT EXISTS user_audit_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -140,7 +135,7 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     INDEX (session_id)
 );
 
--- LOGS DE SUSPENSIÓN (Sanciones)
+-- LOGS DE SUSPENSIÓN
 CREATE TABLE IF NOT EXISTS user_suspension_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -156,17 +151,29 @@ CREATE TABLE IF NOT EXISTS user_suspension_logs (
     FOREIGN KEY (lifted_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- [NUEVA] TABLA INDEPENDIENTE PARA AUDITORÍA DE ROLES
+-- AUDITORÍA DE ROLES
 CREATE TABLE IF NOT EXISTS user_role_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,       -- A quién se le cambió
-    admin_id INT NULL,          -- Quién hizo el cambio
+    user_id INT NOT NULL,
+    admin_id INT NULL,
     old_role VARCHAR(50) NOT NULL,
     new_role VARCHAR(50) NOT NULL,
-    ip_address VARCHAR(45) NOT NULL, -- IP del admin
+    ip_address VARCHAR(45) NOT NULL,
     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_role_audit (user_id, admin_id, changed_at)
 );
+
+-- [NUEVO] CONFIGURACIÓN DEL SERVIDOR
+CREATE TABLE IF NOT EXISTS server_config (
+    id INT PRIMARY KEY DEFAULT 1,
+    maintenance_mode TINYINT(1) DEFAULT 0,
+    allow_registrations TINYINT(1) DEFAULT 1,
+    max_concurrent_users INT DEFAULT 500,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Inicializar configuración por defecto si no existe
+INSERT IGNORE INTO server_config (id, maintenance_mode, allow_registrations, max_concurrent_users) 
+VALUES (1, 0, 1, 500);

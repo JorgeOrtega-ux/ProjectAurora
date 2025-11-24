@@ -61,7 +61,7 @@ try {
             }
         }
 
-      // 3. Obtener historial SOLO DE SANCIONES
+        // 3. Obtener historial SOLO DE SANCIONES
         $sqlHistory = "
             SELECT 
                 'suspension' as log_type,
@@ -111,7 +111,6 @@ try {
         $currentUser = $stmtCheck->fetch(PDO::FETCH_ASSOC);
         if (!$currentUser) throw new Exception(trans('admin.error.user_not_exist'));
 
-        // ... Lógica de suspensión (abreviada, igual a la anterior) ...
         $suspensionEnd = null;
         $finalReason = null;
         $dbDuration = 0;
@@ -181,13 +180,13 @@ try {
         }
 
     // ======================================================
-    // 4. GESTIONAR ROL DE USUARIO (LÓGICA ESTRICTA)
+    // 4. GESTIONAR ROL DE USUARIO
     // ======================================================
     } elseif ($action === 'update_user_role') {
         $targetId = (int)($data['target_id'] ?? 0);
         $newRole = $data['role'] ?? 'user';
         $currentAdminId = $_SESSION['user_id'];
-        $currentAdminRole = $_SESSION['user_role']; // 'founder' o 'administrator'
+        $currentAdminRole = $_SESSION['user_role']; 
 
         // A. Auto-protección
         if ($targetId === $currentAdminId) {
@@ -205,9 +204,9 @@ try {
         $stmtTarget->execute([$targetId]);
         $oldRole = $stmtTarget->fetchColumn();
 
-        // --- REGLAS DE JERARQUÍA (ESTRICTAS) ---
+        // --- REGLAS DE JERARQUÍA ---
 
-        // 1. Nadie puede tocar a un Fundador (salvo BD directa)
+        // 1. Nadie puede tocar a un Fundador
         if ($oldRole === 'founder') {
             throw new Exception("No tienes permisos para modificar a un Fundador.");
         }
@@ -217,15 +216,13 @@ try {
             throw new Exception("No se puede asignar el rol de Fundador.");
         }
 
-        // 3. Reglas para ADMINISTRADORES (Que no son Founder)
+        // 3. Reglas para ADMINISTRADORES (No Fundadores)
         if ($currentAdminRole === 'administrator') {
-            
             // NO pueden modificar a otro Administrador
             if ($oldRole === 'administrator') {
                 throw new Exception("No tienes permisos para modificar a otro Administrador.");
             }
-
-            // NO pueden asignar el rol de Administrador [TU REQUISITO PRINCIPAL]
+            // NO pueden asignar el rol de Administrador
             if ($newRole === 'administrator') {
                 throw new Exception("Solo el Fundador puede asignar el rol de Administrador.");
             }
@@ -242,7 +239,7 @@ try {
         
         if ($stmt->execute([$newRole, $targetId])) {
             
-            // [NUEVO] Guardar en tabla INDEPENDIENTE `user_role_logs`
+            // Guardar en tabla INDEPENDIENTE `user_role_logs`
             $ip = get_client_ip();
             $stmtAudit = $pdo->prepare("INSERT INTO user_role_logs (user_id, admin_id, old_role, new_role, ip_address, changed_at) VALUES (?, ?, ?, ?, ?, NOW())");
             $stmtAudit->execute([$targetId, $currentAdminId, $oldRole, $newRole, $ip]);
@@ -254,6 +251,47 @@ try {
         } else {
             throw new Exception(trans('global.error_connection'));
         }
+
+    // ======================================================
+    // 5. [NUEVO] CONFIGURACIÓN DEL SERVIDOR
+    // ======================================================
+    } elseif ($action === 'update_server_config') {
+        
+        $key = $data['key'] ?? '';
+        $value = $data['value'] ?? 0;
+
+        // Mapeo seguro de columnas permitidas
+        $allowedKeys = ['maintenance_mode', 'allow_registrations', 'max_concurrent_users'];
+        if (!in_array($key, $allowedKeys)) {
+            throw new Exception(trans('global.action_invalid'));
+        }
+
+        // LÓGICA DE NEGOCIO:
+        
+        // 1. Si activamos Mantenimiento (1), forzamos desactivar Registros (0)
+        if ($key === 'maintenance_mode' && (int)$value === 1) {
+            $sql = "UPDATE server_config SET maintenance_mode = 1, allow_registrations = 0 WHERE id = 1";
+            $pdo->exec($sql);
+            
+            // Opcional: Se podrían enviar notificaciones de logout aquí, pero el router/WS lo manejan dinámicamente.
+        
+        // 2. Si activamos Registros (1), verificamos que no haya Mantenimiento activo
+        } elseif ($key === 'allow_registrations' && (int)$value === 1) {
+            $curr = getServerConfig($pdo);
+            if ((int)$curr['maintenance_mode'] === 1) {
+                throw new Exception("No puedes activar registros durante el mantenimiento.");
+            }
+            $sql = "UPDATE server_config SET allow_registrations = 1 WHERE id = 1";
+            $pdo->exec($sql);
+            
+        } else {
+            // Actualización genérica
+            $sql = "UPDATE server_config SET $key = ? WHERE id = 1";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$value]);
+        }
+
+        echo json_encode(['success' => true, 'message' => trans('global.save_status')]);
     }
 
 } catch (Exception $e) {

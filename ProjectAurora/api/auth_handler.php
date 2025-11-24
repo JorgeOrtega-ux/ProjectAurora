@@ -38,9 +38,9 @@ date_default_timezone_set('America/Matamoros');
 require_once '../config/core/database.php';
 require_once '../config/helpers/utilities.php';
 require_once '../includes/logic/GoogleAuthenticator.php';
-require_once '../includes/logic/i18n_server.php'; // [NUEVO]
+require_once '../includes/logic/i18n_server.php';
 
-// [NUEVO] Cargar idioma
+// Cargar idioma
 $lang = $_SESSION['user_lang'] ?? detect_browser_language() ?? 'es-latam';
 I18n::load($lang);
 
@@ -66,6 +66,8 @@ try {
 } catch (Exception $e) {
     logger("Warning: No se pudo sincronizar time_zone SQL: " . $e->getMessage());
 }
+
+// --- FUNCIONES AUXILIARES ---
 
 function generate_uuid() {
     $data = random_bytes(16);
@@ -118,67 +120,103 @@ function mask_email($email) {
 $response = ['success' => false, 'message' => trans('global.action_invalid')];
 
 try {
+    // [NUEVO] Obtener configuración del servidor para validar registros y mantenimiento
+    // Asegúrate de que la función getServerConfig() esté en config/helpers/utilities.php
+    $serverConfig = getServerConfig($pdo);
+
+    // ======================================================
+    // REGISTRO - PASO 1
+    // ======================================================
     if ($action === 'register_step_1') {
+        // [VALIDACIÓN] ¿Están permitidos los registros?
+        if ((int)$serverConfig['allow_registrations'] === 0) {
+            throw new Exception(trans('auth.register.closed_error') ?? 'El registro de nuevos usuarios está cerrado temporalmente.');
+        }
+
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
         if (empty($email) || empty($password)) throw new Exception(trans('auth.errors.all_required'));
         if (strlen($email) < 4) throw new Exception(trans('auth.errors.email_short'));
         if (!is_allowed_domain($email)) throw new Exception(trans('auth.errors.email_domain'));
         if (strlen($password) < 8) throw new Exception(trans('auth.errors.password_short'));
+        
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
         if ($stmt->rowCount() > 0) throw new Exception(trans('auth.errors.email_exists'));
+        
         if (!isset($_SESSION['temp_register'])) $_SESSION['temp_register'] = [];
         $_SESSION['temp_register']['email'] = $email;
         $_SESSION['temp_register']['password'] = $password;
         $response = ['success' => true, 'message' => 'Paso 1 OK'];
 
+    // ======================================================
+    // REGISTRO - PASO 2
+    // ======================================================
     } elseif ($action === 'register_step_2') {
+        if ((int)$serverConfig['allow_registrations'] === 0) throw new Exception(trans('auth.register.closed_error'));
+
         $username = trim($data['username'] ?? '');
         $email = $_SESSION['temp_register']['email'] ?? '';
         $rawPassword = $_SESSION['temp_register']['password'] ?? '';
+        
         if (empty($email) || empty($rawPassword)) throw new Exception(trans('global.session_expired'));
         if (!preg_match('/^[a-zA-Z0-9_]{8,32}$/', $username)) throw new Exception(trans('auth.errors.username_invalid'));
+        
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
         $stmt->execute([$username]);
         if ($stmt->rowCount() > 0) throw new Exception(trans('settings.username.taken'));
+        
         $passwordHash = password_hash($rawPassword, PASSWORD_BCRYPT);
         $payload = json_encode(['username' => $username, 'password_hash' => $passwordHash]);
         $code = generate_verification_code();
         $codeHash = hash('sha256', $code);
+        
         $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'registration'")->execute([$email]);
         $sql = "INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, 'registration', ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$email, $codeHash, $payload]);
+        
         unset($_SESSION['temp_register']['password']);
         $_SESSION['temp_register']['username'] = $username;
-        logger("[PRUEBA - ELIMINAR EN PROD] Registro para $email | Code: $code | Hash: $codeHash");
+        logger("[REGISTRO] Code para $email: $code"); // Eliminar en producción
         $response = ['success' => true, 'message' => trans('auth.code_sent')];
 
+    // ======================================================
+    // REGISTRO - FINAL
+    // ======================================================
     } elseif ($action === 'register_final') {
+        if ((int)$serverConfig['allow_registrations'] === 0) throw new Exception(trans('auth.register.closed_error'));
+
         $inputCode = strtoupper(trim($data['code'] ?? ''));
         $email = $_SESSION['temp_register']['email'] ?? '';
         if (empty($email)) throw new Exception(trans('global.session_expired'));
+        
         $inputHash = hash('sha256', $inputCode);
         $sql = "SELECT id, payload FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'registration' AND expires_at > NOW()";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$email, $inputHash]);
         $row = $stmt->fetch();
+        
         if (!$row) throw new Exception(trans('auth.errors.invalid_code'));
+        
         $payloadData = json_decode($row['payload'], true);
         $finalUsername = $payloadData['username'];
         $finalPassHash = $payloadData['password_hash'];
+        
         $uuid = generate_uuid();
         $selectedColor = get_random_color();
         $apiUrl = "https://ui-avatars.com/api/?name={$finalUsername}&size=256&background={$selectedColor}&color=ffffff&bold=true&length=1";
+        
         $fileName = $uuid . '.png';
         $uploadDir = __DIR__ . '/../public/assets/uploads/avatars/default/';
         if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
         $destPath = $uploadDir . $fileName;
         $dbPath = 'assets/uploads/avatars/default/' . $fileName;
+        
         $imageContent = @file_get_contents($apiUrl);
         if ($imageContent !== false) file_put_contents($destPath, $imageContent);
         else $dbPath = null;
+        
         $insert = $pdo->prepare("INSERT INTO users (uuid, email, username, password, avatar, role) VALUES (?, ?, ?, ?, ?, 'user')");
         if ($insert->execute([$uuid, $email, $finalUsername, $finalPassHash, $dbPath])) {
             $newUserId = $pdo->lastInsertId();
@@ -186,8 +224,8 @@ try {
             $prefsSql = "INSERT INTO user_preferences (user_id, usage_intent, language) VALUES (?, 'personal', ?)";
             $prefsStmt = $pdo->prepare($prefsSql);
             $prefsStmt->execute([$newUserId, $detectedLang]);
-            $newUser = ['id' => $newUserId, 'uuid' => $uuid, 'email' => $email, 'avatar' => $dbPath, 'role' => 'user'];
             
+            $newUser = ['id' => $newUserId, 'uuid' => $uuid, 'email' => $email, 'avatar' => $dbPath, 'role' => 'user'];
             session_regenerate_id(true);
             set_user_session($pdo, $newUser); 
 
@@ -198,6 +236,9 @@ try {
             throw new Exception(trans('global.error_connection'));
         }
 
+    // ======================================================
+    // LOGIN
+    // ======================================================
     } elseif ($action === 'login') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
@@ -209,11 +250,10 @@ try {
         $user = $stmt->fetch();
         
         if ($user && password_verify($password, $user['password'])) {
-            
+            // Revisar suspensión temporal
             if ($user['account_status'] === 'suspended' && !empty($user['suspension_end_date'])) {
                 $endDate = new DateTime($user['suspension_end_date']);
                 $now = new DateTime();
-                
                 if ($now > $endDate) {
                     $stmtReactivate = $pdo->prepare("UPDATE users SET account_status = 'active', suspension_reason = NULL, suspension_end_date = NULL WHERE id = ?");
                     $stmtReactivate->execute([$user['id']]);
@@ -247,33 +287,55 @@ try {
                 clearFailedAttempts($pdo, $email);
                 session_regenerate_id(true);
                 set_user_session($pdo, $user); 
-                $response = ['success' => true, 'message' => trans('auth.login_success')];
+                
+                // [NUEVO] Comprobar si hay MANTENIMIENTO y el usuario NO es admin/founder
+                // Si está activo, enviamos flag para que el JS redirija a status-page
+                $isMaintenance = (int)$serverConfig['maintenance_mode'] === 1;
+                $isRegularUser = !in_array($user['role'], ['founder', 'administrator']);
+                $shouldRedirectMaintenance = ($isMaintenance && $isRegularUser);
+
+                $response = [
+                    'success' => true, 
+                    'message' => trans('auth.login_success'),
+                    'redirect_maintenance' => $shouldRedirectMaintenance
+                ];
             }
         } else {
             logFailedAttempt($pdo, $email, 'login_fail');
             throw new Exception(trans('auth.errors.invalid_credentials'));
         }
 
+    // ======================================================
+    // VERIFICACIÓN 2FA
+    // ======================================================
     } elseif ($action === 'login_2fa_verify') {
         $inputCode = trim($data['code'] ?? '');
         $cleanCode = str_replace(['-', ' '], '', $inputCode);
+        
         if (empty($_SESSION['temp_login_2fa']['user_id'])) throw new Exception(trans('global.session_expired'));
         $userId = $_SESSION['temp_login_2fa']['user_id'];
         $email = $_SESSION['temp_login_2fa']['email'];
+        
         if (checkLockStatus($pdo, $email, 'login_2fa_fail')) throw new Exception(trans('auth.errors.too_many_attempts'));
+        
         $stmt = $pdo->prepare("SELECT id, uuid, username, email, avatar, role, two_factor_secret, backup_codes FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $user = $stmt->fetch();
+        
         if (!$user) throw new Exception(trans('admin.error.user_not_found'));
+        
         $secret = $user['two_factor_secret'];
         $backupCodes = json_decode($user['backup_codes'] ?? '[]', true);
         if (!is_array($backupCodes)) $backupCodes = [];
+        
         $isAuthenticated = false;
         $usedBackupCode = false;
+        
         if (strlen($cleanCode) === 6) {
             $ga = new PHPGangsta_GoogleAuthenticator();
             if ($ga->verifyCode($secret, $cleanCode, 1)) $isAuthenticated = true;
         }
+        
         if (!$isAuthenticated) {
             $index = array_search($inputCode, $backupCodes); 
             if ($index !== false) {
@@ -283,6 +345,7 @@ try {
                 $backupCodes = array_values($backupCodes);
             }
         }
+        
         if ($isAuthenticated) {
             if ($usedBackupCode) {
                 $newBackups = json_encode($backupCodes);
@@ -295,12 +358,25 @@ try {
             unset($user['backup_codes']);
             set_user_session($pdo, $user); 
             unset($_SESSION['temp_login_2fa']);
-            $response = ['success' => true, 'message' => trans('auth.2fa.success_alert')];
+            
+            // [NUEVO] Comprobación de mantenimiento en 2FA
+            $isMaintenance = (int)$serverConfig['maintenance_mode'] === 1;
+            $isRegularUser = !in_array($user['role'], ['founder', 'administrator']);
+            $shouldRedirectMaintenance = ($isMaintenance && $isRegularUser);
+
+            $response = [
+                'success' => true, 
+                'message' => trans('auth.2fa.success_alert'),
+                'redirect_maintenance' => $shouldRedirectMaintenance
+            ];
         } else {
             logFailedAttempt($pdo, $email, 'login_2fa_fail');
             throw new Exception(trans('auth.2fa.invalid_code'));
         }
 
+    // ======================================================
+    // LOGOUT
+    // ======================================================
     } elseif ($action === 'logout') {
         $sessionId = session_id();
         $pdo->prepare("DELETE FROM user_sessions WHERE session_id = ?")->execute([$sessionId]);
@@ -313,10 +389,14 @@ try {
         session_destroy();
         $response = ['success' => true, 'message' => 'Sesión cerrada correctamente'];
     
+    // ======================================================
+    // RECUPERACIÓN - PASO 1
+    // ======================================================
     } elseif ($action === 'recovery_step_1') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         if (empty($email) || !is_allowed_domain($email)) throw new Exception(trans('auth.errors.email_invalid_domain'));
         if (checkLockStatus($pdo, $email, 'recovery_fail')) throw new Exception(trans('auth.errors.too_many_attempts') . " " . LOCKOUT_TIME_MINUTES . " m.");
+        
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
         if ($stmt->rowCount() > 0) {
@@ -325,36 +405,46 @@ try {
             $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'recovery'")->execute([$email]);
             $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, expires_at) VALUES (?, 'recovery', ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE))");
             $stmt->execute([$email, $tokenHash]);
+            
             $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
             $host = $_SERVER['HTTP_HOST']; 
             $base = '/ProjectAurora/'; 
             $link = $protocol . $host . $base . 'reset-password?token=' . $token;
-            logger("[PRUEBA] Recuperación para $email | Link: $link | Hash guardado: $tokenHash");
+            
+            logger("[RECUPERACIÓN] $email | Link: $link");
             $response = ['success' => true, 'message' => trans('auth.recovery.link_sent_alert')];
         } else {
             logFailedAttempt($pdo, $email, 'recovery_fail');
             throw new Exception(trans('auth.errors.invalid_credentials'));
         }
 
+    // ======================================================
+    // RECUPERACIÓN - FINAL
+    // ======================================================
     } elseif ($action === 'recovery_final') {
         $token = trim($data['token'] ?? '');
         $newPass = $data['password'] ?? '';
         $confirmPass = $data['password_confirm'] ?? '';
+        
         if (empty($token) || empty($newPass)) throw new Exception(trans('auth.errors.all_required'));
         if ($newPass !== $confirmPass) throw new Exception(trans('auth.errors.pass_mismatch'));
         if (strlen($newPass) < 8) throw new Exception(trans('auth.errors.password_short'));
+        
         $tokenHash = hash('sha256', $token);
         $sql = "SELECT identifier FROM verification_codes WHERE code = ? AND code_type = 'recovery' AND expires_at > NOW()";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$tokenHash]);
         $row = $stmt->fetch();
+        
         if (!$row) throw new Exception(trans('auth.recovery.invalid_link_title'));
+        
         $email = $row['identifier'];
         $stmtUser = $pdo->prepare("SELECT id, password FROM users WHERE email = ?");
         $stmtUser->execute([$email]);
         $userData = $stmtUser->fetch();
         $oldHash = $userData['password'] ?? 'UNKNOWN';
         $userIdForLog = $userData['id'] ?? null;
+        
         $newHash = password_hash($newPass, PASSWORD_BCRYPT);
         $upd = $pdo->prepare("UPDATE users SET password = ? WHERE email = ?");
         if ($upd->execute([$newHash, $email])) {

@@ -15,16 +15,22 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/../core/database.php';
-require_once __DIR__ . '/../../includes/logic/i18n_server.php'; // [NUEVO] Cargar i18n
+require_once __DIR__ . '/../helpers/utilities.php'; // Asegurar carga de utilidades
+require_once __DIR__ . '/../../includes/logic/i18n_server.php'; 
 
-// [NUEVO] Inicializar idioma
 $langRouter = $_SESSION['user_lang'] ?? detect_browser_language() ?? 'es-latam';
 I18n::load($langRouter);
 
 $basePath = '/ProjectAurora/'; 
 
 // =======================================================================
-// 1. VERIFICAR VALIDEZ DE SESIÓN (CONTROL DE DISPOSITIVOS)
+// VERIFICAR CONFIGURACIÓN DEL SERVIDOR (MANTENIMIENTO)
+// =======================================================================
+$serverConfig = getServerConfig($pdo);
+$isMaintenanceMode = (int)$serverConfig['maintenance_mode'] === 1;
+
+// =======================================================================
+// 1. VERIFICAR VALIDEZ DE SESIÓN
 // =======================================================================
 if (isset($_SESSION['user_id'])) {
     $currentSessionId = session_id();
@@ -76,7 +82,7 @@ if (isset($_SESSION['user_id'])) {
 }
 
 // =======================================================================
-// 2. ACTUALIZAR DATOS DE USUARIO (REFRESH ROLE & PREFS)
+// 2. ACTUALIZAR DATOS DE USUARIO
 // =======================================================================
 if (isset($_SESSION['user_id'])) {
     try {
@@ -119,21 +125,19 @@ if (isset($_SESSION['user_id'])) {
     } catch (Exception $e) {}
 }
 
-$DEFAULT_SECTION = 'main';
 $requestUri = $_SERVER['REQUEST_URI'];
-
 if (strpos($requestUri, $basePath) === 0) $requestUri = substr($requestUri, strlen($basePath));
 $requestUri = strtok($requestUri, '?');
 $requestUri = rtrim($requestUri, '/');
 
 // --- API ROUTING ---
 if (strpos($requestUri, 'api/') === 0) {
-    $apiFilePath = __DIR__ . '/../../' . $requestUri; // Ajuste de ruta
+    $apiFilePath = __DIR__ . '/../../' . $requestUri; 
     if (file_exists($apiFilePath)) { require_once $apiFilePath; exit; }
     else { http_response_code(404); echo json_encode(['error'=>'API not found']); exit; }
 }
 
-// --- LISTA BLANCA DE URLS ---
+$DEFAULT_SECTION = 'main';
 $allowedSections = [
     'main', 'login', 'register', 'explorer',
     'register/additional-data', 
@@ -143,37 +147,30 @@ $allowedSections = [
     'status-page',
     'login/verification-additional',
     'search', 
-    // Settings
-    'settings',
-    'settings/your-profile',
-    'settings/login-security',
-    'settings/accessibility',
-    'settings/change-password', 
-    'settings/2fa-setup',
-    'settings/sessions',
-    'settings/delete-account', 
-    // Admin
-    'admin',
-    'admin/dashboard',
-    'admin/users',
-    'admin/user-status', 
-    'admin/user-manage',
-    'admin/user-history',
-    'admin/user-role',
-    'admin/backups',
-    'admin/server'
+    'settings', 'settings/your-profile', 'settings/login-security',
+    'settings/accessibility', 'settings/change-password', 
+    'settings/2fa-setup', 'settings/sessions', 'settings/delete-account', 
+    'admin', 'admin/dashboard', 'admin/users',
+    'admin/user-status', 'admin/user-manage', 'admin/user-history',
+    'admin/user-role', 'admin/backups', 'admin/server'
 ];
 
 $CURRENT_SECTION = empty($requestUri) ? 'main' : $requestUri;
 if (!in_array($CURRENT_SECTION, $allowedSections)) $CURRENT_SECTION = '404';
 if ($CURRENT_SECTION === 'main' && $requestUri !== 'main' && !empty($requestUri)) $CURRENT_SECTION = 'main';
 
-if ($CURRENT_SECTION === 'settings') {
-    header("Location: " . $basePath . "settings/your-profile");
-    exit;
-}
-if ($CURRENT_SECTION === 'admin') {
-    header("Location: " . $basePath . "admin/dashboard");
+// --- REDIRECCIONES BÁSICAS ---
+if ($CURRENT_SECTION === 'settings') { header("Location: " . $basePath . "settings/your-profile"); exit; }
+if ($CURRENT_SECTION === 'admin') { header("Location: " . $basePath . "admin/dashboard"); exit; }
+
+// [NUEVO] LÓGICA DE MANTENIMIENTO
+// Si está activo, el usuario es rol 'user', y NO está en una página permitida
+$maintenanceAllowed = ['status-page', 'login', 'register', 'forgot-password', 'reset-password', 'login/verification-additional'];
+// También permitimos que los admins naveguen
+$isUserRole = ($_SESSION['user_role'] ?? 'user') === 'user';
+
+if ($isMaintenanceMode && $isUserRole && !in_array($CURRENT_SECTION, $maintenanceAllowed)) {
+    header("Location: " . $basePath . "status-page?status=maintenance");
     exit;
 }
 
@@ -183,10 +180,7 @@ $isLoggedIn = isset($_SESSION['user_id']);
 if (strpos($CURRENT_SECTION, 'admin/') === 0) {
     $userRole = $_SESSION['user_role'] ?? 'user';
     $allowedAdminRoles = ['founder', 'administrator'];
-
-    if (!in_array($userRole, $allowedAdminRoles)) {
-        $CURRENT_SECTION = '404'; 
-    }
+    if (!in_array($userRole, $allowedAdminRoles)) $CURRENT_SECTION = '404'; 
 }
 
 $appSections = ['main', 'explorer'];
@@ -245,13 +239,17 @@ if (array_key_exists($CURRENT_SECTION, $requirements)) {
             exit;
         }
         $SECTION_FILE_NAME = 'system/error-missing-data';
-        // [CORREGIDO] Uso de trans() concatenando la sección variable
         $missingDataMessage = trans('system.missing_data_context') . " <strong>$CURRENT_SECTION</strong>.";
     }
 }
 
 if ($isLoggedIn) {
-    $showNavigation = ($SECTION_FILE_NAME !== 'system/error-missing-data');
+    // Ocultar navegación en mantenimiento para usuarios normales
+    if ($isMaintenanceMode && $isUserRole) {
+        $showNavigation = false;
+    } else {
+        $showNavigation = ($SECTION_FILE_NAME !== 'system/error-missing-data');
+    }
 } else {
     $showNavigation = !($SECTION_FILE_NAME === 'system/error-missing-data' || $CURRENT_SECTION === '404') && !in_array($CURRENT_SECTION, $publicSections);
 }

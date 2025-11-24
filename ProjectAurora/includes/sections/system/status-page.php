@@ -1,66 +1,15 @@
-
 <style>
-    /* Contenedor específico de la página de estado */
-    .status-page-container {
-        text-align: center;
-        padding-top: 0;
-    }
-
-    /* Wrapper del icono para espaciado */
-    .status-icon-wrapper {
-        margin-bottom: 20px;
-    }
-
-    /* Icono principal */
-    .status-icon {
-        font-size: 80px;
-    }
-
-    /* Título principal */
-    .status-title {
-        margin-bottom: 15px;
-        font-size: 28px;
-    }
-
-    /* Texto descriptivo */
-    .status-message {
-        color: #555;
-        line-height: 1.6;
-        font-size: 16px;
-        margin-bottom: 40px;
-    }
-
-    /* Enlace de volver */
-    .status-back-link {
-        color: #888;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        transition: color 0.2s ease;
-    }
-
-    .status-back-link:hover {
-        color: #333;
-    }
-
-    .status-back-icon {
-        font-size: 16px;
-    }
-
-    /* --- TEMAS DE COLOR DINÁMICOS --- */
-    
-    /* Tema Rojo (Suspendido) */
-    .status-theme-suspended {
-        color: #d32f2f;
-    }
-
-    /* Tema Gris (Eliminado) */
-    .status-theme-deleted {
-        color: #616161;
-    }
+    .status-page-container { text-align: center; padding-top: 0; }
+    .status-icon-wrapper { margin-bottom: 20px; }
+    .status-icon { font-size: 80px; }
+    .status-title { margin-bottom: 15px; font-size: 28px; }
+    .status-message { color: #555; line-height: 1.6; font-size: 16px; margin-bottom: 40px; }
+    .status-back-link { color: #888; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 5px; transition: color 0.2s ease; }
+    .status-back-link:hover { color: #333; }
+    .status-back-icon { font-size: 16px; }
+    .status-theme-suspended { color: #d32f2f; }
+    .status-theme-deleted { color: #616161; }
+    .status-theme-maintenance { color: #f57c00; } /* [NUEVO] Naranja */
 </style>
 <?php
 // includes/sections/system/status-page.php
@@ -80,6 +29,12 @@ if ($status === 'deleted') {
     $msgKey = "status.deleted_msg";
     $icon = "delete_forever";
     $themeClass = "status-theme-deleted";
+} elseif ($status === 'maintenance') {
+    // [NUEVO] Caso Mantenimiento
+    $titleKey = "status.maintenance_title";
+    $msgKey = "status.maintenance_msg";
+    $icon = "engineering"; // Icono de ingeniería/construcción
+    $themeClass = "status-theme-maintenance";
 }
 ?>
 
@@ -116,12 +71,14 @@ if ($status === 'deleted') {
                 </div>
             <?php endif; ?>
             
+            <?php if ($status !== 'maintenance'): ?>
             <div>
                 <a href="<?php echo isset($basePath) ? $basePath : '/ProjectAurora/'; ?>login" class="status-back-link">
                     <span class="material-symbols-rounded status-back-icon">arrow_back</span> 
                     <span data-i18n="global.back_home"><?php echo trans('global.back_home'); ?></span>
                 </a>
             </div>
+            <?php endif; ?>
 
         </div>
     </div>

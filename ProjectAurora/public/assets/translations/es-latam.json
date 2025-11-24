@@ -295,7 +295,8 @@
         "404_msg": "No pudimos encontrar la página que buscas. Es posible que se haya movido o ya no exista.",
         "missing_data_title": "¡Uy! Faltan datos.",
         "missing_data_error": "Error 400: Faltan datos",
-        "missing_data_default": "No has completado el paso anterior antes de acceder a esta página."
+        "missing_data_default": "No has completado el paso anterior antes de acceder a esta página.",
+        "missing_data_context": "Faltan datos necesarios para la sección"
     },
     "notifications": {
         "friend_request": "<strong>{username}</strong> quiere ser tu amigo.",
@@ -328,7 +329,7 @@
         "backups_title": "Copias de Seguridad",
         "backups_desc": "Gestiona y restaura copias de la base de datos.",
         "server_title": "Configuración del servidor",
-        "server_desc": "Logs, variables de entorno y estado del sistema.",
+        "server_desc": "Ajustes globales, mantenimiento y límites del sistema.",
         "users": {
             "table": {
                 "id": "ID",
@@ -373,7 +374,8 @@
             "reason_desc": "Requerido para aplicar el castigo.",
             "select_reason": "Selecciona una razón...",
             "select_type": "Selecciona una sanción...",
-            "select_duration": "Selecciona un tiempo..."
+            "select_duration": "Selecciona un tiempo...",
+            "until": "Hasta el"
         },
         "manage": {
             "title": "Gestionar Usuario",
@@ -407,7 +409,8 @@
             "empty": "Este usuario no tiene registros de sanciones previas.",
             "view_btn": "Ver historial",
             "lifted_on": "Levantada el",
-            "by": "por"
+            "by": "por",
+            "indefinite": "Indefinido"
         },
         "reasons": {
             "tos": "Violación de términos de servicio",
@@ -434,7 +437,13 @@
             "cpu": "Uso de CPU",
             "ram": "Uso de RAM",
             "disk": "Espacio en Disco",
-            "uptime": "Tiempo de Actividad"
+            "uptime": "Tiempo de Actividad",
+            "maintenanceTitle": "Modo Mantenimiento",
+            "maintenanceDesc": "Si está activo, los usuarios con rol 'user' no podrán navegar por el sitio y verán una página de mantenimiento.",
+            "registrationTitle": "Permitir nuevos registros",
+            "registrationDesc": "Si está inactivo, los nuevos usuarios no podrán registrarse.",
+            "maxConcurrentUsersTitle": "Límite Máximo de Usuarios",
+            "maxConcurrentUsersDesc": "El número máximo de usuarios que pueden estar conectados al mismo tiempo."
         }
     },
     "languages": {
