@@ -33,10 +33,10 @@ $usageIcons = [
 ];
 $usageDisplayIcon = $usageIcons[$currentUsage] ?? 'person'; 
 
-$langDisplayText = trans('languages.en_us');
-if($currentLang == 'es-latam') $langDisplayText = trans('languages.es_latam');
-if($currentLang == 'es-mx') $langDisplayText = trans('languages.es_mx');
-if($currentLang == 'en-gb') $langDisplayText = trans('languages.en_gb');
+$langDisplayText = translation('languages.en_us');
+if($currentLang == 'es-latam') $langDisplayText = translation('languages.es_latam');
+if($currentLang == 'es-mx') $langDisplayText = translation('languages.es_mx');
+if($currentLang == 'en-gb') $langDisplayText = translation('languages.en_gb');
 
 $pfpUrl = null;
 if ($userProfilePic && !empty($userProfilePic)) {
@@ -54,8 +54,8 @@ $hasCustomPfp = !$isDefaultPfp && ($pfpUrl !== null);
     <div class="component-wrapper">
 
         <div class="component-header-card">
-            <h1 class="component-page-title" data-i18n="settings.profile.title"><?php echo trans('settings.profile.title'); ?></h1>
-            <p class="component-page-description" data-i18n="settings.profile.description"><?php echo trans('settings.profile.description'); ?></p>
+            <h1 class="component-page-title" data-i18n="settings.profile.title"><?php echo translation('settings.profile.title'); ?></h1>
+            <p class="component-page-description" data-i18n="settings.profile.description"><?php echo translation('settings.profile.description'); ?></p>
         </div>
 
         <div class="component-card component-card--grouped">
@@ -67,9 +67,9 @@ $hasCustomPfp = !$isDefaultPfp && ($pfpUrl !== null);
                 <div class="component-card__content">
                     <div class="component-card__profile-picture" data-element="profile-picture-preview-container" data-role="<?php echo htmlspecialchars($userRole); ?>">
                         <?php if ($pfpUrl): ?>
-                            <img src="<?php echo htmlspecialchars($pfpUrl); ?>" alt="<?php echo trans('settings.profile.alt_avatar'); ?>" class="component-card__avatar-image" data-element="profile-picture-preview-image">
+                            <img src="<?php echo htmlspecialchars($pfpUrl); ?>" alt="<?php echo translation('settings.profile.alt_avatar'); ?>" class="component-card__avatar-image" data-element="profile-picture-preview-image">
                         <?php else: ?>
-                            <img src="" alt="<?php echo trans('settings.profile.alt_no_avatar'); ?>" class="component-card__avatar-image d-none" data-element="profile-picture-preview-image">
+                            <img src="" alt="<?php echo translation('settings.profile.alt_no_avatar'); ?>" class="component-card__avatar-image d-none" data-element="profile-picture-preview-image">
                             <span class="material-symbols-rounded default-avatar-icon avatar-placeholder-icon">person</span>
                         <?php endif; ?>
 
@@ -79,27 +79,27 @@ $hasCustomPfp = !$isDefaultPfp && ($pfpUrl !== null);
                     </div>
 
                     <div class="component-card__text">
-                        <h2 class="component-card__title" data-i18n="settings.profile.profile_picture_title"><?php echo trans('settings.profile.profile_picture_title'); ?></h2>
-                        <p class="component-card__description" data-i18n="settings.profile.profile_picture_desc"><?php echo trans('settings.profile.profile_picture_desc'); ?></p>
+                        <h2 class="component-card__title" data-i18n="settings.profile.profile_picture_title"><?php echo translation('settings.profile.profile_picture_title'); ?></h2>
+                        <p class="component-card__description" data-i18n="settings.profile.profile_picture_desc"><?php echo translation('settings.profile.profile_picture_desc'); ?></p>
                         <p class="component-card__meta" data-i18n="settings.profile.profile_picture_meta">
-                            <?php echo trans('settings.profile.profile_picture_meta', ['size' => $sConfig['profile_picture_max_size']]); ?>
+                            <?php echo translation('settings.profile.profile_picture_meta', ['size' => $sConfig['profile_picture_max_size']]); ?>
                         </p>
                     </div>
                 </div>
 
                 <div class="component-card__actions actions-right">
                     <div data-state="profile-picture-actions-default" class="<?php echo !$hasCustomPfp ? 'active' : 'disabled'; ?>">
-                        <button type="button" class="component-button" data-action="profile-picture-upload-trigger" data-i18n="settings.profile.upload_btn"><?php echo trans('settings.profile.upload_btn'); ?></button>
+                        <button type="button" class="component-button" data-action="profile-picture-upload-trigger" data-i18n="settings.profile.upload_btn"><?php echo translation('settings.profile.upload_btn'); ?></button>
                     </div>
 
                     <div data-state="profile-picture-actions-custom" class="<?php echo $hasCustomPfp ? 'active' : 'disabled'; ?>">
-                        <button type="button" class="component-button" data-action="profile-picture-remove-trigger" data-i18n="global.delete"><?php echo trans('global.delete'); ?></button>
-                        <button type="button" class="component-button" data-action="profile-picture-change-trigger" data-i18n="settings.profile.change_btn"><?php echo trans('settings.profile.change_btn'); ?></button>
+                        <button type="button" class="component-button" data-action="profile-picture-remove-trigger" data-i18n="global.delete"><?php echo translation('global.delete'); ?></button>
+                        <button type="button" class="component-button" data-action="profile-picture-change-trigger" data-i18n="settings.profile.change_btn"><?php echo translation('settings.profile.change_btn'); ?></button>
                     </div>
 
                     <div data-state="profile-picture-actions-preview" class="disabled">
-                        <button type="button" class="component-button" data-action="profile-picture-cancel-trigger" data-i18n="global.cancel"><?php echo trans('global.cancel'); ?></button>
-                        <button type="button" class="component-button primary" data-action="profile-picture-save-trigger-btn" data-i18n="global.save"><?php echo trans('global.save'); ?></button>
+                        <button type="button" class="component-button" data-action="profile-picture-cancel-trigger" data-i18n="global.cancel"><?php echo translation('global.cancel'); ?></button>
+                        <button type="button" class="component-button primary" data-action="profile-picture-save-trigger-btn" data-i18n="global.save"><?php echo translation('global.save'); ?></button>
                     </div>
                 </div>
             </div>
@@ -109,7 +109,7 @@ $hasCustomPfp = !$isDefaultPfp && ($pfpUrl !== null);
             <div class="component-group-item" data-component="username-section">
                 <div class="component-card__content">
                     <div class="component-card__text w-100">
-                        <h2 class="component-card__title" data-i18n="settings.profile.username_title"><?php echo trans('settings.profile.username_title'); ?></h2>
+                        <h2 class="component-card__title" data-i18n="settings.profile.username_title"><?php echo translation('settings.profile.username_title'); ?></h2>
                         <div data-state="username-view-state" class="active">
                             <p class="component-card__description" data-element="username-display-text">
                                 <?php echo htmlspecialchars($currentUsername); ?>
@@ -123,18 +123,18 @@ $hasCustomPfp = !$isDefaultPfp && ($pfpUrl !== null);
                                     minlength="<?php echo $sConfig['min_username_length']; ?>" 
                                     maxlength="<?php echo $sConfig['max_username_length']; ?>">
                                 <div data-state="username-actions-edit" class="disabled">
-                                    <button type="button" class="component-button" data-action="username-cancel-trigger" data-i18n="global.cancel"><?php echo trans('global.cancel'); ?></button>
-                                    <button type="button" class="component-button primary" data-action="username-save-trigger-btn" data-i18n="global.save"><?php echo trans('global.save'); ?></button>
+                                    <button type="button" class="component-button" data-action="username-cancel-trigger" data-i18n="global.cancel"><?php echo translation('global.cancel'); ?></button>
+                                    <button type="button" class="component-button primary" data-action="username-save-trigger-btn" data-i18n="global.save"><?php echo translation('global.save'); ?></button>
                                 </div>
                             </div>
                             <p class="component-card__meta" data-i18n="settings.profile.username_meta">
-                                <?php echo trans('settings.profile.username_meta', ['min' => $sConfig['min_username_length'], 'max' => $sConfig['max_username_length']]); ?>
+                                <?php echo translation('settings.profile.username_meta', ['min' => $sConfig['min_username_length'], 'max' => $sConfig['max_username_length']]); ?>
                             </p>
                         </div>
                     </div>
                 </div>
                 <div class="component-card__actions actions-right active" data-state="username-actions-view">
-                    <button type="button" class="component-button" data-action="username-edit-trigger" data-i18n="global.edit"><?php echo trans('global.edit'); ?></button>
+                    <button type="button" class="component-button" data-action="username-edit-trigger" data-i18n="global.edit"><?php echo translation('global.edit'); ?></button>
                 </div>
             </div>
 
@@ -143,7 +143,7 @@ $hasCustomPfp = !$isDefaultPfp && ($pfpUrl !== null);
             <div class="component-group-item" data-component="email-section">
                 <div class="component-card__content">
                     <div class="component-card__text w-100">
-                        <h2 class="component-card__title" data-i18n="settings.profile.email_title"><?php echo trans('settings.profile.email_title'); ?></h2>
+                        <h2 class="component-card__title" data-i18n="settings.profile.email_title"><?php echo translation('settings.profile.email_title'); ?></h2>
                         <div data-state="email-view-state" class="active">
                             <p class="component-card__description" data-element="email-display-text">
                                 <?php echo htmlspecialchars($currentEmail); ?>
@@ -155,16 +155,16 @@ $hasCustomPfp = !$isDefaultPfp && ($pfpUrl !== null);
                                     value="<?php echo htmlspecialchars($currentEmail); ?>"
                                     required>
                                 <div data-state="email-actions-edit" class="disabled">
-                                    <button type="button" class="component-button" data-action="email-cancel-trigger" data-i18n="global.cancel"><?php echo trans('global.cancel'); ?></button>
-                                    <button type="button" class="component-button primary" data-action="email-save-trigger-btn" data-i18n="global.save"><?php echo trans('global.save'); ?></button>
+                                    <button type="button" class="component-button" data-action="email-cancel-trigger" data-i18n="global.cancel"><?php echo translation('global.cancel'); ?></button>
+                                    <button type="button" class="component-button primary" data-action="email-save-trigger-btn" data-i18n="global.save"><?php echo translation('global.save'); ?></button>
                                 </div>
                             </div>
-                            <p class="component-card__meta" data-i18n="settings.profile.email_meta"><?php echo trans('settings.profile.email_meta'); ?></p>
+                            <p class="component-card__meta" data-i18n="settings.profile.email_meta"><?php echo translation('settings.profile.email_meta'); ?></p>
                         </div>
                     </div>
                 </div>
                 <div class="component-card__actions actions-right active" data-state="email-actions-view">
-                    <button type="button" class="component-button" data-action="email-edit-trigger" data-i18n="global.edit"><?php echo trans('global.edit'); ?></button>
+                    <button type="button" class="component-button" data-action="email-edit-trigger" data-i18n="global.edit"><?php echo translation('global.edit'); ?></button>
                 </div>
             </div>
 
@@ -175,8 +175,8 @@ $hasCustomPfp = !$isDefaultPfp && ($pfpUrl !== null);
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title" data-i18n="settings.profile.usage_title"><?php echo trans('settings.profile.usage_title'); ?></h2>
-                        <p class="component-card__description" data-i18n="settings.profile.usage_desc"><?php echo trans('settings.profile.usage_desc'); ?></p>
+                        <h2 class="component-card__title" data-i18n="settings.profile.usage_title"><?php echo translation('settings.profile.usage_title'); ?></h2>
+                        <p class="component-card__description" data-i18n="settings.profile.usage_desc"><?php echo translation('settings.profile.usage_desc'); ?></p>
                     </div>
                 </div>
                 <div class="component-card__actions">
@@ -186,7 +186,7 @@ $hasCustomPfp = !$isDefaultPfp && ($pfpUrl !== null);
                                 <span class="material-symbols-rounded"><?php echo htmlspecialchars($usageDisplayIcon); ?></span>
                             </div>
                             <div class="trigger-select-text">
-                                <span data-i18n="settings.usage_options.<?php echo $currentUsage; ?>"><?php echo trans("settings.usage_options.{$currentUsage}"); ?></span>
+                                <span data-i18n="settings.usage_options.<?php echo $currentUsage; ?>"><?php echo translation("settings.usage_options.{$currentUsage}"); ?></span>
                             </div>
                             <div class="trigger-select-arrow">
                                 <span class="material-symbols-rounded">arrow_drop_down</span>
@@ -210,7 +210,7 @@ $hasCustomPfp = !$isDefaultPfp && ($pfpUrl !== null);
                                     ?>
                                     <div class="menu-link <?php echo $isActive; ?>" data-value="<?php echo $opt['val']; ?>">
                                         <div class="menu-link-icon"><span class="material-symbols-rounded"><?php echo $opt['icon']; ?></span></div>
-                                        <div class="menu-link-text"><span data-i18n="<?php echo $opt['i18n']; ?>"><?php echo trans($opt['i18n']); ?></span></div>
+                                        <div class="menu-link-text"><span data-i18n="<?php echo $opt['i18n']; ?>"><?php echo translation($opt['i18n']); ?></span></div>
                                         <div class="menu-link-icon"><?php echo $check; ?></div>
                                     </div>
                                     <?php endforeach; ?>
@@ -226,8 +226,8 @@ $hasCustomPfp = !$isDefaultPfp && ($pfpUrl !== null);
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title" data-i18n="settings.profile.lang_title"><?php echo trans('settings.profile.lang_title'); ?></h2>
-                        <p class="component-card__description" data-i18n="settings.profile.lang_desc"><?php echo trans('settings.profile.lang_desc'); ?></p>
+                        <h2 class="component-card__title" data-i18n="settings.profile.lang_title"><?php echo translation('settings.profile.lang_title'); ?></h2>
+                        <p class="component-card__description" data-i18n="settings.profile.lang_desc"><?php echo translation('settings.profile.lang_desc'); ?></p>
                     </div>
                 </div>
                 <div class="component-card__actions">
@@ -250,7 +250,7 @@ $hasCustomPfp = !$isDefaultPfp && ($pfpUrl !== null);
                                     foreach ($langOptions as $opt): 
                                         $isActive = ($currentLang === $opt['val']) ? 'active' : '';
                                         $check = ($isActive) ? '<span class="material-symbols-rounded">check</span>' : '';
-                                        $label = trans($opt['label_key']);
+                                        $label = translation($opt['label_key']);
                                     ?>
                                     <div class="menu-link <?php echo $isActive; ?>" data-value="<?php echo $opt['val']; ?>">
                                         <div class="menu-link-icon"><span class="material-symbols-rounded"><?php echo $opt['icon']; ?></span></div>
@@ -270,8 +270,8 @@ $hasCustomPfp = !$isDefaultPfp && ($pfpUrl !== null);
         <div class="component-card component-card--edit-mode" data-component="toggle-new-tab-card">
             <div class="component-card__content">
                 <div class="component-card__text">
-                    <h2 class="component-card__title" data-i18n="settings.profile.new_tab_title"><?php echo trans('settings.profile.new_tab_title'); ?></h2>
-                    <p class="component-card__description" data-i18n="settings.profile.new_tab_desc"><?php echo trans('settings.profile.new_tab_desc'); ?></p>
+                    <h2 class="component-card__title" data-i18n="settings.profile.new_tab_title"><?php echo translation('settings.profile.new_tab_title'); ?></h2>
+                    <p class="component-card__description" data-i18n="settings.profile.new_tab_desc"><?php echo translation('settings.profile.new_tab_desc'); ?></p>
                 </div>
             </div>
             <div class="component-card__actions actions-right">

@@ -211,7 +211,7 @@ if (array_key_exists($CURRENT_SECTION, $requirements)) {
     if (!$hasData) {
         if ($CURRENT_SECTION === 'login/verification-additional') { header("Location: " . $basePath . "login"); exit; }
         $SECTION_FILE_NAME = 'system/error-missing-data';
-        $missingDataMessage = trans('system.missing_data_context') . " <strong>$CURRENT_SECTION</strong>.";
+        $missingDataMessage = translation('system.missing_data_context') . " <strong>$CURRENT_SECTION</strong>.";
     }
 }
 

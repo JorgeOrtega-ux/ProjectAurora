@@ -62,7 +62,7 @@ try {
         }
     }
     
-    $errorMsg = function_exists('trans') ? trans('global.error_connection') : 'Error de conexión a base de datos';
+    $errorMsg = function_exists('translation') ? translation('global.error_connection') : 'Error de conexión a base de datos';
     
     die(json_encode(['success' => false, 'message' => $errorMsg]));
 }

@@ -42,19 +42,19 @@
         <div class="form-container missing-data-container">
             
             <h1 class="missing-data-title" data-i18n="system.missing_data_title">
-                <?php echo trans('system.missing_data_title'); ?>
+                <?php echo translation('system.missing_data_title'); ?>
             </h1>
             
             <div class="missing-data-box">
                 <h3 class="missing-data-error-title" data-i18n="system.missing_data_error">
-                    <?php echo trans('system.missing_data_error'); ?>
+                    <?php echo translation('system.missing_data_error'); ?>
                 </h3>
                 
                 <p class="missing-data-text">
                     <?php 
                     echo isset($missingDataMessage) 
                         ? $missingDataMessage 
-                        : '<span data-i18n="system.missing_data_default">' . trans('system.missing_data_default') . '</span>'; 
+                        : '<span data-i18n="system.missing_data_default">' . translation('system.missing_data_default') . '</span>'; 
                     ?>
                 </p>
             </div>

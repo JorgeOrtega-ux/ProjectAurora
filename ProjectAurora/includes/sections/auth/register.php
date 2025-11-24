@@ -18,8 +18,8 @@ $sConfig = isset($GLOBALS['serverConfig']) ? $GLOBALS['serverConfig'] : getServe
         <div class="form-container">
             
             <div data-step="register-1" class="auth-step-container <?php echo ($initialStep === 1) ? 'active' : ''; ?>">
-                <h1 data-i18n="auth.register.title"><?php echo trans('auth.register.title'); ?></h1>
-                <p data-i18n="auth.register.subtitle_1"><?php echo trans('auth.register.subtitle_1'); ?></p>
+                <h1 data-i18n="auth.register.title"><?php echo translation('auth.register.title'); ?></h1>
+                <p data-i18n="auth.register.subtitle_1"><?php echo translation('auth.register.subtitle_1'); ?></p>
                 
                 <div class="floating-label-group">
                     <input 
@@ -30,7 +30,7 @@ $sConfig = isset($GLOBALS['serverConfig']) ? $GLOBALS['serverConfig'] : getServe
                         placeholder=" " 
                         value="<?php echo $_SESSION['temp_register']['email'] ?? ''; ?>"
                     >
-                    <label class="floating-label" data-i18n="auth.login.email_label"><?php echo trans('auth.login.email_label'); ?></label>
+                    <label class="floating-label" data-i18n="auth.login.email_label"><?php echo translation('auth.login.email_label'); ?></label>
                 </div>
 
                 <div class="floating-label-group">
@@ -43,25 +43,25 @@ $sConfig = isset($GLOBALS['serverConfig']) ? $GLOBALS['serverConfig'] : getServe
                         minlength="<?php echo $sConfig['min_password_length']; ?>"
                     >
                     <label class="floating-label" data-i18n="auth.register.password_hint">
-                        <?php echo trans('auth.register.password_hint', ['min' => $sConfig['min_password_length']]); ?>
+                        <?php echo translation('auth.register.password_hint', ['min' => $sConfig['min_password_length']]); ?>
                     </label>
                     <button type="button" class="floating-input-btn"><span class="material-symbols-rounded">visibility</span></button>
                 </div>
 
-                <button class="form-button" data-action="register-step1" data-i18n="auth.register.next"><?php echo trans('auth.register.next'); ?></button>
+                <button class="form-button" data-action="register-step1" data-i18n="auth.register.next"><?php echo translation('auth.register.next'); ?></button>
                 <div data-error="register-1" class="form-error-message"></div>
                 
                 <div class="form-footer-link">
-                    <span data-i18n="auth.register.have_account"><?php echo trans('auth.register.have_account'); ?></span> 
-                    <a href="#" data-nav="login" data-i18n="auth.register.login_link"><?php echo trans('auth.register.login_link'); ?></a>
+                    <span data-i18n="auth.register.have_account"><?php echo translation('auth.register.have_account'); ?></span> 
+                    <a href="#" data-nav="login" data-i18n="auth.register.login_link"><?php echo translation('auth.register.login_link'); ?></a>
                 </div>
             </div>
 
             <div data-step="register-2" class="auth-step-container <?php echo ($initialStep === 2) ? 'active' : ''; ?>">
                 <div class="auth-back-link">
                     </div>
-                <h1 data-i18n="auth.register.subtitle_2"><?php echo trans('auth.register.subtitle_2'); ?></h1>
-                <p data-i18n="auth.register.username_hint"><?php echo trans('auth.register.username_hint'); ?></p>
+                <h1 data-i18n="auth.register.subtitle_2"><?php echo translation('auth.register.subtitle_2'); ?></h1>
+                <p data-i18n="auth.register.username_hint"><?php echo translation('auth.register.username_hint'); ?></p>
                 
                 <div class="floating-label-group">
                     <input 
@@ -76,7 +76,7 @@ $sConfig = isset($GLOBALS['serverConfig']) ? $GLOBALS['serverConfig'] : getServe
                         style="padding-right: 50px;" 
                     >
                     <label class="floating-label" data-i18n="auth.register.username_label">
-                        <?php echo trans('auth.register.username_label', ['min' => $sConfig['min_username_length'], 'max' => $sConfig['max_username_length']]); ?>
+                        <?php echo translation('auth.register.username_label', ['min' => $sConfig['min_username_length'], 'max' => $sConfig['max_username_length']]); ?>
                     </label>
                     
                     <button type="button" class="floating-input-btn username-magic-btn" title="Generar usuario aleatorio">
@@ -84,15 +84,15 @@ $sConfig = isset($GLOBALS['serverConfig']) ? $GLOBALS['serverConfig'] : getServe
                     </button>
                 </div>
 
-                <button class="form-button" data-action="register-step2" data-i18n="global.continue"><?php echo trans('global.continue'); ?></button>
+                <button class="form-button" data-action="register-step2" data-i18n="global.continue"><?php echo translation('global.continue'); ?></button>
                 <div data-error="register-2" class="form-error-message"></div>
             </div>
 
             <div data-step="register-3" class="auth-step-container <?php echo ($initialStep === 3) ? 'active' : ''; ?>">
-                <h1 data-i18n="auth.register.subtitle_3"><?php echo trans('auth.register.subtitle_3'); ?></h1>
+                <h1 data-i18n="auth.register.subtitle_3"><?php echo translation('auth.register.subtitle_3'); ?></h1>
                 
                 <p style="font-size:14px;">
-                    <span data-i18n="auth.register.code_sent"><?php echo trans('auth.register.code_sent'); ?></span> 
+                    <span data-i18n="auth.register.code_sent"><?php echo translation('auth.register.code_sent'); ?></span> 
                     <strong data-display="email-verify"><?php echo $_SESSION['temp_register']['email'] ?? 'tu correo'; ?></strong>.
                 </p>
                 
@@ -106,14 +106,14 @@ $sConfig = isset($GLOBALS['serverConfig']) ? $GLOBALS['serverConfig'] : getServe
                         maxlength="14" 
                         style="letter-spacing: 2px; text-transform: uppercase;"
                     >
-                    <label class="floating-label" data-i18n="auth.register.code_label"><?php echo trans('auth.register.code_label'); ?></label>
+                    <label class="floating-label" data-i18n="auth.register.code_label"><?php echo translation('auth.register.code_label'); ?></label>
                 </div>
 
-                <button class="form-button" data-action="register-step3" data-i18n="auth.register.verify_btn"><?php echo trans('auth.register.verify_btn'); ?></button>
+                <button class="form-button" data-action="register-step3" data-i18n="auth.register.verify_btn"><?php echo translation('auth.register.verify_btn'); ?></button>
                 <div data-error="register-3" class="form-error-message"></div>
                 
                 <div class="form-footer-link">
-                    <a href="#" data-action="resend-register" class="disabled-link" data-i18n="auth.register.resend_code"><?php echo trans('auth.register.resend_code'); ?></a>
+                    <a href="#" data-action="resend-register" class="disabled-link" data-i18n="auth.register.resend_code"><?php echo translation('auth.register.resend_code'); ?></a>
                 </div>
             </div>
 

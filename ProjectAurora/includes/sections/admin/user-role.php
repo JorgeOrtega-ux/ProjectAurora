@@ -17,7 +17,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
     <div class="toolbar-stack">
         <div class="component-toolbar">
             <div class="component-toolbar__group">
-                <div class="component-icon-button" data-nav="admin/users" data-i18n-tooltip="global.back" data-tooltip="<?php echo trans('global.back'); ?>">
+                <div class="component-icon-button" data-nav="admin/users" data-i18n-tooltip="global.back" data-tooltip="<?php echo translation('global.back'); ?>">
                     <span class="material-symbols-rounded">arrow_back</span>
                 </div>
                 <div class="component-toolbar__separator"></div>
@@ -26,7 +26,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
             <div class="component-toolbar__right">
                 <button class="component-icon-button" id="btn-save-role" 
                         data-i18n-tooltip="global.save" 
-                        data-tooltip="<?php echo trans('global.save'); ?>">
+                        data-tooltip="<?php echo translation('global.save'); ?>">
                     <span class="material-symbols-rounded">save</span>
                 </button>
             </div>
@@ -48,7 +48,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                         <span class="material-symbols-rounded default-avatar-icon" id="role-user-icon">person</span>
                     </div>
                     <div class="component-card__text">
-                        <h2 class="component-card__title" id="role-username" data-i18n="global.loading"><?php echo trans('global.loading'); ?></h2>
+                        <h2 class="component-card__title" id="role-username" data-i18n="global.loading"><?php echo translation('global.loading'); ?></h2>
                         <p class="component-card__description" id="role-email">...</p>
                     </div>
                 </div>

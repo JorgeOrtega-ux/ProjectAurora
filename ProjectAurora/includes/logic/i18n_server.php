@@ -61,8 +61,8 @@ class I18n {
 }
 
 // Helper function global
-if (!function_exists('trans')) {
-    function trans($key, $vars = []) {
+if (!function_exists('translation')) {
+    function translation($key, $vars = []) {
         return I18n::get($key, $vars);
     }
 }

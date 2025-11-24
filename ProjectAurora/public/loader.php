@@ -22,7 +22,7 @@ $section = str_replace(['..', '.php'], '', $section);
 if (!isset($_SESSION['user_id']) && !in_array($section, $publicSections)) {
     http_response_code(401);
     // [CORREGIDO] Mensaje traducido
-    exit('<div style="padding:20px; text-align:center">' . trans('global.session_expired') . '</div>');
+    exit('<div style="padding:20px; text-align:center">' . translation('global.session_expired') . '</div>');
 }
 
 // 3. Mapa COMPLETO de rutas
@@ -83,6 +83,6 @@ if ($realFile && file_exists($realFile)) {
 } else {
     http_response_code(404);
     // [CORREGIDO] Mensaje traducido
-    echo '<div style="padding:20px; text-align:center;">' . trans('system.file_not_found') . '</div>';
+    echo '<div style="padding:20px; text-align:center;">' . translation('system.file_not_found') . '</div>';
 }
 ?>

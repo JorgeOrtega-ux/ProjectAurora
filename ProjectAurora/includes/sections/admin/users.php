@@ -57,13 +57,13 @@ function getStatusClass($status)
 
 function formatTimeAgo($datetime)
 {
-    if (!$datetime) return trans('global.time.never');
+    if (!$datetime) return translation('global.time.never');
     $time = strtotime($datetime);
     $diff = time() - $time;
 
-    if ($diff < 60) return trans('global.time.just_now');
-    if ($diff < 3600) return trans('global.time.minutes_ago', ['count' => floor($diff / 60)]);
-    if ($diff < 86400) return trans('global.time.hours_ago', ['count' => floor($diff / 3600)]);
+    if ($diff < 60) return translation('global.time.just_now');
+    if ($diff < 3600) return translation('global.time.minutes_ago', ['count' => floor($diff / 60)]);
+    if ($diff < 86400) return translation('global.time.hours_ago', ['count' => floor($diff / 3600)]);
     return date('d/m/Y', $time);
 }
 
@@ -101,7 +101,7 @@ function renderUserRows($users)
                         <div class="user-details-wrapper">
                             <span class="user-username"><?php echo htmlspecialchars($u['username']); ?></span>
                             <span class="user-created">
-                                <span data-i18n="admin.users.created_at"><?php echo trans('admin.users.created_at'); ?></span>
+                                <span data-i18n="admin.users.created_at"><?php echo translation('admin.users.created_at'); ?></span>
                                 <?php echo date('d/m/Y', strtotime($u['created_at'])); ?>
                             </span>
                         </div>
@@ -122,11 +122,11 @@ function renderUserRows($users)
                     <?php if ($is2FA): ?>
                         <span class="material-symbols-rounded icon-2fa-on" 
                               data-i18n-title="admin.users.tooltip.protected"
-                              title="<?php echo trans('admin.users.tooltip.protected'); ?>">shield_lock</span>
+                              title="<?php echo translation('admin.users.tooltip.protected'); ?>">shield_lock</span>
                     <?php else: ?>
                         <span class="material-symbols-rounded icon-2fa-off" 
                               data-i18n-title="admin.users.tooltip.unprotected"
-                              title="<?php echo trans('admin.users.tooltip.unprotected'); ?>">no_encryption</span>
+                              title="<?php echo translation('admin.users.tooltip.unprotected'); ?>">no_encryption</span>
                     <?php endif; ?>
                 </td>
                 <td class="user-presence-cell col-presence"
@@ -144,7 +144,7 @@ function renderUserRows($users)
         <tr>
             <td colspan="7" class="component-table-empty">
                 <span class="material-symbols-rounded component-table-empty-icon">person_off</span>
-                <p data-i18n="admin.users.empty_state"><?php echo trans('admin.users.empty_state'); ?></p>
+                <p data-i18n="admin.users.empty_state"><?php echo translation('admin.users.empty_state'); ?></p>
             </td>
         </tr>
     <?php endif;
@@ -226,7 +226,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                 <div class="component-toolbar__group">
                     <button class="component-icon-button" data-action="toggle-admin-user-search" 
                             data-i18n-tooltip="global.search" 
-                            data-tooltip="<?php echo trans('global.search'); ?>">
+                            data-tooltip="<?php echo translation('global.search'); ?>">
                         <span class="material-symbols-rounded">search</span>
                     </button>
                     
@@ -237,7 +237,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                 data-action="toggle-dropdown" 
                                 data-target="dropdown-admin-filters"
                                 data-i18n-tooltip="global.filter" 
-                                data-tooltip="<?php echo trans('global.filter'); ?>">
+                                data-tooltip="<?php echo translation('global.filter'); ?>">
                             <span class="material-symbols-rounded">filter_list</span>
                         </button>
 
@@ -247,14 +247,14 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                     <div class="menu-link <?php echo ($sort === 'name_asc') ? 'active' : ''; ?>" 
                                          data-action="filter-users" data-sort="name_asc">
                                         <div class="menu-link-icon"><span class="material-symbols-rounded">sort_by_alpha</span></div>
-                                        <div class="menu-link-text" data-i18n="admin.users.filter.name_asc"><?php echo trans('admin.users.filter.name_asc'); ?></div>
+                                        <div class="menu-link-text" data-i18n="admin.users.filter.name_asc"><?php echo translation('admin.users.filter.name_asc'); ?></div>
                                         <?php if($sort === 'name_asc'): ?><div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div><?php endif; ?>
                                     </div>
                                     
                                     <div class="menu-link <?php echo ($sort === 'name_desc') ? 'active' : ''; ?>" 
                                          data-action="filter-users" data-sort="name_desc">
                                         <div class="menu-link-icon"><span class="material-symbols-rounded">sort_by_alpha</span></div>
-                                        <div class="menu-link-text" data-i18n="admin.users.filter.name_desc"><?php echo trans('admin.users.filter.name_desc'); ?></div>
+                                        <div class="menu-link-text" data-i18n="admin.users.filter.name_desc"><?php echo translation('admin.users.filter.name_desc'); ?></div>
                                         <?php if($sort === 'name_desc'): ?><div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div><?php endif; ?>
                                     </div>
 
@@ -263,14 +263,14 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                     <div class="menu-link <?php echo ($sort === 'date_newest') ? 'active' : ''; ?>" 
                                          data-action="filter-users" data-sort="date_newest">
                                         <div class="menu-link-icon"><span class="material-symbols-rounded">calendar_today</span></div>
-                                        <div class="menu-link-text" data-i18n="admin.users.filter.date_newest"><?php echo trans('admin.users.filter.date_newest'); ?></div>
+                                        <div class="menu-link-text" data-i18n="admin.users.filter.date_newest"><?php echo translation('admin.users.filter.date_newest'); ?></div>
                                         <?php if($sort === 'date_newest'): ?><div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div><?php endif; ?>
                                     </div>
 
                                     <div class="menu-link <?php echo ($sort === 'date_oldest') ? 'active' : ''; ?>" 
                                          data-action="filter-users" data-sort="date_oldest">
                                         <div class="menu-link-icon"><span class="material-symbols-rounded">history</span></div>
-                                        <div class="menu-link-text" data-i18n="admin.users.filter.date_oldest"><?php echo trans('admin.users.filter.date_oldest'); ?></div>
+                                        <div class="menu-link-text" data-i18n="admin.users.filter.date_oldest"><?php echo translation('admin.users.filter.date_oldest'); ?></div>
                                         <?php if($sort === 'date_oldest'): ?><div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div><?php endif; ?>
                                     </div>
                                 </div>
@@ -288,7 +288,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                         <span class="material-symbols-rounded search-icon">search</span>
                         <input type="text" id="admin-users-search-input" class="search-input"
                             data-i18n-placeholder="admin.users.search_placeholder"
-                            placeholder="<?php echo trans('admin.users.search_placeholder'); ?>"
+                            placeholder="<?php echo translation('admin.users.search_placeholder'); ?>"
                             value="<?php echo htmlspecialchars($q); ?>"
                             data-action="admin-search-input"> </div>
                 </div>
@@ -298,7 +298,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                 <div class="component-toolbar__group">
                     <button class="component-icon-button" id="btn-manage-general" 
                             data-i18n-tooltip="admin.users.actions.manage" 
-                            data-tooltip="<?php echo trans('admin.users.actions.manage'); ?>">
+                            data-tooltip="<?php echo translation('admin.users.actions.manage'); ?>">
                         <span class="material-symbols-rounded">manage_accounts</span>
                     </button>
                     <button class="component-icon-button" id="btn-manage-role" 
@@ -308,14 +308,14 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                     </button>
                     <button class="component-icon-button" id="btn-manage-sanctions" 
                             data-i18n-tooltip="admin.users.actions.sanctions" 
-                            data-tooltip="<?php echo trans('admin.users.actions.sanctions'); ?>">
+                            data-tooltip="<?php echo translation('admin.users.actions.sanctions'); ?>">
                         <span class="material-symbols-rounded">gavel</span>
                     </button>
                 </div>
                 <div class="component-toolbar__right">
                     <button class="component-icon-button" data-action="deselect-users" 
                             data-i18n-tooltip="global.deselect" 
-                            data-tooltip="<?php echo trans('global.deselect'); ?>">
+                            data-tooltip="<?php echo translation('global.deselect'); ?>">
                         <span class="material-symbols-rounded">close</span>
                     </button>
                 </div>
@@ -327,13 +327,13 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
             <table class="component-table">
                 <thead>
                     <tr>
-                        <th class="col-id" data-i18n="admin.users.table.id"><?php echo trans('admin.users.table.id'); ?></th>
-                        <th data-i18n="admin.users.table.username"><?php echo trans('admin.users.table.username'); ?></th>
-                        <th data-i18n="admin.users.table.email"><?php echo trans('admin.users.table.email'); ?></th>
-                        <th class="col-status" data-i18n="admin.users.table.status"><?php echo trans('admin.users.table.status'); ?></th>
-                        <th class="col-role" data-i18n="admin.users.table.role"><?php echo trans('admin.users.table.role'); ?></th>
-                        <th class="col-2fa" data-i18n="admin.users.table.2fa"><?php echo trans('admin.users.table.2fa'); ?></th>
-                        <th class="col-presence" data-i18n="admin.users.table.presence"><?php echo trans('admin.users.table.presence'); ?></th>
+                        <th class="col-id" data-i18n="admin.users.table.id"><?php echo translation('admin.users.table.id'); ?></th>
+                        <th data-i18n="admin.users.table.username"><?php echo translation('admin.users.table.username'); ?></th>
+                        <th data-i18n="admin.users.table.email"><?php echo translation('admin.users.table.email'); ?></th>
+                        <th class="col-status" data-i18n="admin.users.table.status"><?php echo translation('admin.users.table.status'); ?></th>
+                        <th class="col-role" data-i18n="admin.users.table.role"><?php echo translation('admin.users.table.role'); ?></th>
+                        <th class="col-2fa" data-i18n="admin.users.table.2fa"><?php echo translation('admin.users.table.2fa'); ?></th>
+                        <th class="col-presence" data-i18n="admin.users.table.presence"><?php echo translation('admin.users.table.presence'); ?></th>
                     </tr>
                 </thead>
                 <tbody id="admin-users-table-body">

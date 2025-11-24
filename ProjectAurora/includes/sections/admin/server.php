@@ -14,8 +14,8 @@ $regMode = (int)$serverConfig['allow_registrations'];
 // Función helper para renderizar los steppers
 function renderStepper($titleKey, $descKey, $action, $value, $min, $max, $step1=1, $step10=10) {
     $transVal = $value; 
-    $title = trans($titleKey, ['val' => $transVal]);
-    $desc = trans($descKey, ['val' => $transVal]);
+    $title = translation($titleKey, ['val' => $transVal]);
+    $desc = translation($descKey, ['val' => $transVal]);
     $jsonVars = htmlspecialchars(json_encode(['val' => $transVal]), ENT_QUOTES, 'UTF-8');
     $valueId = 'stepper-value-' . str_replace('update-', '', $action);
     
@@ -59,8 +59,8 @@ HTML;
     <div class="component-wrapper">
 
         <div class="component-header-card">
-            <h1 class="component-page-title" data-i18n="admin.server_title"><?php echo trans('admin.server_title'); ?></h1>
-            <p class="component-page-description" data-i18n="admin.server_desc"><?php echo trans('admin.server_desc'); ?></p>
+            <h1 class="component-page-title" data-i18n="admin.server_title"><?php echo translation('admin.server_title'); ?></h1>
+            <p class="component-page-description" data-i18n="admin.server_desc"><?php echo translation('admin.server_desc'); ?></p>
         </div>
 
         <div class="component-accordion">
@@ -82,10 +82,10 @@ HTML;
                     <div class="component-card__content">
                         <div class="component-card__text">
                             <h2 class="component-card__title" data-i18n="admin.server.maintenanceTitle">
-                                <?php echo trans('admin.server.maintenanceTitle'); ?>
+                                <?php echo translation('admin.server.maintenanceTitle'); ?>
                             </h2>
                             <p class="component-card__description" data-i18n="admin.server.maintenanceDesc">
-                                <?php echo trans('admin.server.maintenanceDesc'); ?>
+                                <?php echo translation('admin.server.maintenanceDesc'); ?>
                             </p>
                         </div>
                     </div>
@@ -102,10 +102,10 @@ HTML;
                     <div class="component-card__content">
                         <div class="component-card__text">
                             <h2 class="component-card__title" data-i18n="admin.server.registrationTitle">
-                                <?php echo trans('admin.server.registrationTitle'); ?>
+                                <?php echo translation('admin.server.registrationTitle'); ?>
                             </h2>
                             <p class="component-card__description" data-i18n="admin.server.registrationDesc">
-                                <?php echo trans('admin.server.registrationDesc'); ?>
+                                <?php echo translation('admin.server.registrationDesc'); ?>
                             </p>
                         </div>
                     </div>
@@ -178,8 +178,8 @@ HTML;
                     <span class="material-symbols-rounded">mail</span>
                 </div>
                 <div class="component-accordion__text">
-                    <h2 class="component-accordion__title" data-i18n="admin.server.domainsTitle"><?php echo trans('admin.server.domainsTitle'); ?></h2>
-                    <p class="component-card__description" data-i18n="admin.server.domainsDesc"><?php echo trans('admin.server.domainsDesc'); ?></p>
+                    <h2 class="component-accordion__title" data-i18n="admin.server.domainsTitle"><?php echo translation('admin.server.domainsTitle'); ?></h2>
+                    <p class="component-card__description" data-i18n="admin.server.domainsDesc"><?php echo translation('admin.server.domainsDesc'); ?></p>
                 </div>
                 <div class="component-accordion__arrow">
                     <span class="material-symbols-rounded">expand_more</span>
@@ -190,9 +190,9 @@ HTML;
                 <div class="component-card component-card--column active">
                     <div class="component-card__content" style="align-items: flex-start; width:100%;">
                         <div class="component-card__text">
-                            <h2 class="component-card__title" data-i18n="admin.server.domainsListTitle"><?php echo trans('admin.server.domainsListTitle'); ?></h2>
+                            <h2 class="component-card__title" data-i18n="admin.server.domainsListTitle"><?php echo translation('admin.server.domainsListTitle'); ?></h2>
                             <p class="component-card__description" data-i18n="admin.server.domainsListDesc" style="margin-bottom: 16px;">
-                                <?php echo trans('admin.server.domainsListDesc'); ?>
+                                <?php echo translation('admin.server.domainsListDesc'); ?>
                             </p>
                             
                             <?php 
@@ -211,7 +211,7 @@ HTML;
 
                             <div id="add-domain-btn-wrapper">
                                 <button class="component-button primary" data-action="show-add-domain-form">
-                                    <span data-i18n="admin.server.add_domain_btn"><?php echo trans('admin.server.add_domain_btn'); ?></span>
+                                    <span data-i18n="admin.server.add_domain_btn"><?php echo translation('admin.server.add_domain_btn'); ?></span>
                                 </button>
                             </div>
 
@@ -222,10 +222,10 @@ HTML;
                                 </div>
                                 <div class="add-domain-actions">
                                     <button class="component-button" data-action="cancel-add-domain" data-i18n="admin.server.cancel_domain">
-                                        <?php echo trans('admin.server.cancel_domain'); ?>
+                                        <?php echo translation('admin.server.cancel_domain'); ?>
                                     </button>
                                     <button class="component-button primary" data-action="save-new-domain" data-i18n="admin.server.save_domain">
-                                        <?php echo trans('admin.server.save_domain'); ?>
+                                        <?php echo translation('admin.server.save_domain'); ?>
                                     </button>
                                 </div>
                             </div>

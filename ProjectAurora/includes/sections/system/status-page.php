@@ -68,11 +68,11 @@ if ($status === 'deleted') {
             <div id="queue-spinner" class="queue-spinner"></div>
 
             <h1 id="status-title-text" class="status-title <?php echo $themeClass; ?>" data-i18n="<?php echo $titleKey; ?>">
-                <?php echo trans($titleKey); ?>
+                <?php echo translation($titleKey); ?>
             </h1>
             
             <p id="status-message-text" class="status-message" data-i18n="<?php echo $msgKey; ?>">
-                <?php echo trans($msgKey); ?>
+                <?php echo translation($msgKey); ?>
             </p>
 
             <?php if ($status === 'suspended' && ($reason || $until)): ?>
@@ -94,7 +94,7 @@ if ($status === 'deleted') {
                 <div>
                     <a href="<?php echo isset($basePath) ? $basePath : '/ProjectAurora/'; ?>login" class="status-back-link">
                         <span class="material-symbols-rounded status-back-icon">arrow_back</span> 
-                        <span data-i18n="global.back_home"><?php echo trans('global.back_home'); ?></span>
+                        <span data-i18n="global.back_home"><?php echo translation('global.back_home'); ?></span>
                     </a>
                 </div>
             <?php elseif ($status === 'server_full'): ?>

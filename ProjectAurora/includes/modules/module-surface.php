@@ -22,7 +22,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator']);
                         <span class="material-symbols-rounded">home</span>
                     </div>
                     <div class="menu-link-text">
-                        <span data-i18n="nav.home"><?php echo trans('nav.home'); ?></span>
+                        <span data-i18n="nav.home"><?php echo translation('nav.home'); ?></span>
                     </div>
                 </div>
 
@@ -32,7 +32,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator']);
                         <span class="material-symbols-rounded">explore</span>
                     </div>
                     <div class="menu-link-text">
-                        <span data-i18n="nav.explore"><?php echo trans('nav.explore'); ?></span>
+                        <span data-i18n="nav.explore"><?php echo translation('nav.explore'); ?></span>
                     </div>
                 </div>
 
@@ -47,7 +47,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator']);
                         <span class="material-symbols-rounded">arrow_back</span>
                     </div>
                     <div class="menu-link-text">
-                        <span data-i18n="global.back_home"><?php echo trans('global.back_home'); ?></span>
+                        <span data-i18n="global.back_home"><?php echo translation('global.back_home'); ?></span>
                     </div>
                 </div>
 
@@ -57,7 +57,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator']);
                         <span class="material-symbols-rounded">person</span>
                     </div>
                     <div class="menu-link-text">
-                        <span data-i18n="nav.profile"><?php echo trans('nav.profile'); ?></span>
+                        <span data-i18n="nav.profile"><?php echo translation('nav.profile'); ?></span>
                     </div>
                 </div>
 
@@ -67,7 +67,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator']);
                         <span class="material-symbols-rounded">lock</span>
                     </div>
                     <div class="menu-link-text">
-                        <span data-i18n="nav.security"><?php echo trans('nav.security'); ?></span>
+                        <span data-i18n="nav.security"><?php echo translation('nav.security'); ?></span>
                     </div>
                 </div>
 
@@ -77,7 +77,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator']);
                         <span class="material-symbols-rounded">accessibility_new</span>
                     </div>
                     <div class="menu-link-text">
-                        <span data-i18n="nav.accessibility"><?php echo trans('nav.accessibility'); ?></span>
+                        <span data-i18n="nav.accessibility"><?php echo translation('nav.accessibility'); ?></span>
                     </div>
                 </div>
 
@@ -94,7 +94,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator']);
                         <span class="material-symbols-rounded">arrow_back</span>
                     </div>
                     <div class="menu-link-text">
-                        <span data-i18n="global.back_home"><?php echo trans('global.back_home'); ?></span>
+                        <span data-i18n="global.back_home"><?php echo translation('global.back_home'); ?></span>
                     </div>
                 </div>
 
@@ -104,7 +104,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator']);
                         <span class="material-symbols-rounded">dashboard</span>
                     </div>
                     <div class="menu-link-text">
-                        <span data-i18n="nav.admin_dashboard"><?php echo trans('nav.admin_dashboard'); ?></span>
+                        <span data-i18n="nav.admin_dashboard"><?php echo translation('nav.admin_dashboard'); ?></span>
                     </div>
                 </div>
 
@@ -114,7 +114,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator']);
                         <span class="material-symbols-rounded">group</span>
                     </div>
                     <div class="menu-link-text">
-                        <span data-i18n="nav.admin_users"><?php echo trans('nav.admin_users'); ?></span>
+                        <span data-i18n="nav.admin_users"><?php echo translation('nav.admin_users'); ?></span>
                     </div>
                 </div>
 
@@ -128,7 +128,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator']);
                         <span class="material-symbols-rounded">backup</span>
                     </div>
                     <div class="menu-link-text">
-                        <span data-i18n="nav.admin_backups"><?php echo trans('nav.admin_backups'); ?></span>
+                        <span data-i18n="nav.admin_backups"><?php echo translation('nav.admin_backups'); ?></span>
                     </div>
                 </div>
 
@@ -138,7 +138,7 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator']);
                         <span class="material-symbols-rounded">dns</span>
                     </div>
                     <div class="menu-link-text">
-                        <span data-i18n="nav.admin_server"><?php echo trans('nav.admin_server'); ?></span>
+                        <span data-i18n="nav.admin_server"><?php echo translation('nav.admin_server'); ?></span>
                     </div>
                 </div>
 

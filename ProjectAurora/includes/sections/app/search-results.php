@@ -33,32 +33,32 @@ $renderUserCard = function ($user) use ($currentUserId) {
 
     $actionsHtml = '';
     if ($user['friend_status'] === 'accepted') {
-        $actionsHtml = '<button class="btn-add-friend btn-remove-friend" data-uid="' . $uid . '" data-i18n="search.actions.remove">' . trans('search.actions.remove') . '</button>';
+        $actionsHtml = '<button class="btn-add-friend btn-remove-friend" data-uid="' . $uid . '" data-i18n="search.actions.remove">' . translation('search.actions.remove') . '</button>';
     } elseif ($user['friend_status'] === 'pending') {
         if ($user['sender_id'] == $currentUserId) {
-            $actionsHtml = '<button class="btn-add-friend btn-cancel-request" data-uid="' . $uid . '" data-i18n="search.actions.cancel">' . trans('search.actions.cancel') . '</button>';
+            $actionsHtml = '<button class="btn-add-friend btn-cancel-request" data-uid="' . $uid . '" data-i18n="search.actions.cancel">' . translation('search.actions.cancel') . '</button>';
         } else {
-            $actionsHtml = '<button class="btn-accept-request" data-uid="' . $uid . '" data-i18n="search.actions.accept">' . trans('search.actions.accept') . '</button>
-                            <button class="btn-decline-request" data-uid="' . $uid . '" data-i18n="search.actions.decline">' . trans('search.actions.decline') . '</button>';
+            $actionsHtml = '<button class="btn-accept-request" data-uid="' . $uid . '" data-i18n="search.actions.accept">' . translation('search.actions.accept') . '</button>
+                            <button class="btn-decline-request" data-uid="' . $uid . '" data-i18n="search.actions.decline">' . translation('search.actions.decline') . '</button>';
         }
     } else {
-        $actionsHtml = '<button class="btn-add-friend" data-uid="' . $uid . '" data-i18n="search.actions.add">' . trans('search.actions.add') . '</button>';
+        $actionsHtml = '<button class="btn-add-friend" data-uid="' . $uid . '" data-i18n="search.actions.add">' . translation('search.actions.add') . '</button>';
     }
 ?>
     <div class="user-card-item">
         <div class="user-info-group">
             <div class="user-pfp-container" data-role="<?php echo htmlspecialchars($role); ?>">
                 <?php if ($avatarPath): ?>
-                    <img src="<?php echo htmlspecialchars($avatarPath); ?>" alt="<?php echo trans('global.alt_avatar'); ?>">
+                    <img src="<?php echo htmlspecialchars($avatarPath); ?>" alt="<?php echo translation('global.alt_avatar'); ?>">
                 <?php else: ?>
                     <span class="material-symbols-rounded default-avatar">person</span>
                 <?php endif; ?>
             </div>
             <div class="user-details">
                 <span class="user-name"><?php echo htmlspecialchars($user['username']); ?></span>
-                <span class="user-meta-text" data-i18n="search.user_subtitle"><?php echo trans('search.user_subtitle'); ?></span>
+                <span class="user-meta-text" data-i18n="search.user_subtitle"><?php echo translation('search.user_subtitle'); ?></span>
                 <span class="user-meta-text" style="font-size: 12px; color: #888; margin-top: 2px;">
-                    <?php echo $mutualCount; ?> <span data-i18n="search.mutual_friends"><?php echo trans('search.mutual_friends'); ?></span>
+                    <?php echo $mutualCount; ?> <span data-i18n="search.mutual_friends"><?php echo translation('search.mutual_friends'); ?></span>
                 </span>
             </div>
         </div>
@@ -86,7 +86,7 @@ if ($isAjaxPartial) {
         <div class="content-toolbar">
             <button class="toolbar-action-btn" 
                     data-i18n-tooltip="search.filter_tooltip" 
-                    data-tooltip="<?php echo trans('search.filter_tooltip'); ?>">
+                    data-tooltip="<?php echo translation('search.filter_tooltip'); ?>">
                 <span class="material-symbols-rounded">filter_list</span>
             </button>
         </div>
@@ -95,12 +95,12 @@ if ($isAjaxPartial) {
             <?php if (empty($q)): ?>
                 <div class="search-empty-state">
                     <span class="material-symbols-rounded">search</span>
-                    <p data-i18n="search.empty_state"><?php echo trans('search.empty_state'); ?></p>
+                    <p data-i18n="search.empty_state"><?php echo translation('search.empty_state'); ?></p>
                 </div>
             <?php elseif (count($results) === 0 && $offset === 0): ?>
                 <div class="search-empty-state">
                     <span class="material-symbols-rounded">person_off</span>
-                    <p><span data-i18n="search.no_results"><?php echo trans('search.no_results'); ?></span> "<strong><?php echo htmlspecialchars($q); ?></strong>".</p>
+                    <p><span data-i18n="search.no_results"><?php echo translation('search.no_results'); ?></span> "<strong><?php echo htmlspecialchars($q); ?></strong>".</p>
                 </div>
             <?php else: ?>
 
@@ -118,7 +118,7 @@ if ($isAjaxPartial) {
                             data-query="<?php echo htmlspecialchars($q); ?>"
                             data-offset="<?php echo $limit; ?>"
                             data-i18n="search.load_more">
-                            <?php echo trans('search.load_more'); ?>
+                            <?php echo translation('search.load_more'); ?>
                         </button>
                     </div>
                 <?php endif; ?>
