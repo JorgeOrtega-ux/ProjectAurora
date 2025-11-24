@@ -15,6 +15,10 @@ if (isset($_SESSION['user_lang'])) {
 
 $userTheme = $_SESSION['user_theme'] ?? 'system';
 
+// [NUEVO] Obtener preferencias de sesión para inyectar en JS
+$userExtendedMsg = isset($_SESSION['user_extended_msg']) ? (int)$_SESSION['user_extended_msg'] : 0;
+$openLinksNewTab = isset($_SESSION['user_new_tab']) ? (int)$_SESSION['user_new_tab'] : 1;
+
 I18n::load($userLang);
 
 if (isset($_SESSION['user_id'])) {
@@ -37,6 +41,10 @@ if (isset($_SESSION['user_id'])) {
         window.WS_TOKEN = <?php echo $wsToken; ?>;
         window.USER_LANG = '<?php echo $userLang; ?>';
         window.USER_THEME = '<?php echo $userTheme; ?>';
+        
+        // [NUEVO] Variables globales de preferencias
+        window.USER_EXTENDED_MSG = <?php echo $userExtendedMsg; ?>; 
+        window.OPEN_NEW_TAB = <?php echo $openLinksNewTab; ?>; 
     </script>
 
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/styles.css">

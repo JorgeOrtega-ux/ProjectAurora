@@ -50,11 +50,24 @@ export function initUrlManager() {
         }
     });
 
-    // [MODIFICADO] Listener genérico para cualquier elemento con data-nav
+    // [MODIFICADO] Listener genérico para navegación interna (SPA)
     document.body.addEventListener('click', (e) => {
-        if (isNavigating) return;
+        
+        // 1. Manejo de enlaces normales <a> para "Abrir en nueva pestaña"
+        const link = e.target.closest('a[href]');
+        if (link) {
+            // Si la preferencia está activa y no es un enlace vacío '#' o javascript
+            const href = link.getAttribute('href');
+            if (window.OPEN_NEW_TAB === 1 && href && !href.startsWith('#') && !href.startsWith('javascript:')) {
+                // Si ya tiene target, lo respetamos, si no, forzamos _blank
+                if (!link.target) {
+                    link.target = "_blank";
+                }
+            }
+        }
 
-        // Busca el elemento más cercano con data-nav (puede ser un div, a, button, span, etc.)
+        // 2. Manejo de navegación interna SPA (data-nav)
+        if (isNavigating) return;
         const target = e.target.closest('[data-nav]');
         
         if (target) {

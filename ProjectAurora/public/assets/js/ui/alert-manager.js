@@ -47,6 +47,13 @@ export function showAlert(message, type = 'info', duration = 4000) {
     };
     const iconName = iconMap[type] || 'info';
 
+    // [NUEVO] Lógica de tiempo extendido
+    // Si window.USER_EXTENDED_MSG es 1, duplicamos la duración por defecto.
+    let finalDuration = duration;
+    if (window.USER_EXTENDED_MSG === 1) {
+        finalDuration = 8000; // 8 segundos en lugar de 4
+    }
+
     const alertBox = document.createElement('div');
     alertBox.className = `alert-box alert-${type}`;
 
@@ -67,7 +74,7 @@ export function showAlert(message, type = 'info', duration = 4000) {
 
     const hideTimer = setTimeout(() => {
         hideAlert(alertBox);
-    }, duration);
+    }, finalDuration);
 
     alertBox.addEventListener('click', () => {
         clearTimeout(hideTimer);

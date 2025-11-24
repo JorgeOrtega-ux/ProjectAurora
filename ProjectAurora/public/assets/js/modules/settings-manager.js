@@ -452,14 +452,20 @@ function initBooleanPreferencesLogic() {
                 
                 if (data.success) {
                     if (window.alertManager) window.alertManager.showAlert(t('global.save_status'), 'success');
+                    
+                    // [MODIFICADO] Actualizar variables globales en caliente
+                    if (fieldName === 'open_links_in_new_tab') {
+                        window.OPEN_NEW_TAB = isChecked ? 1 : 0;
+                        console.log("Setting Updated: Open Links in New Tab =", window.OPEN_NEW_TAB);
+                    } else if (fieldName === 'extended_message_time') {
+                        window.USER_EXTENDED_MSG = isChecked ? 1 : 0;
+                        console.log("Setting Updated: Extended Message Time =", window.USER_EXTENDED_MSG);
+                    }
+
                 } else {
-                    // [ELIMINADO] Ya no revertimos el checkbox si hay error
-                    // target.checked = !isChecked; 
                     updateCardError(card, data.message);
                 }
             } catch (err) {
-                // [ELIMINADO] Ya no revertimos el checkbox si hay error de conexión
-                // target.checked = !isChecked;
                 console.error(err);
                 updateCardError(card, t('global.error_connection'));
             } finally {
