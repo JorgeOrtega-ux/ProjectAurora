@@ -115,16 +115,15 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                     </div>
                 </div>
             </div>
-            
-            <div class="component-card__error" id="role-error-msg" style="margin-top: 16px;"></div>
-
         </div>
+        
+        <div class="component-card__error" id="role-error-msg" style="margin-top: 16px;"></div>
 
-        <div style="background-color: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; display: flex; gap: 12px; align-items: flex-start; width: 100%; margin-top: 16px;">
-            <span class="material-symbols-rounded" style="font-size: 20px; margin-top: 2px;">info</span>
+        <div class="security-notice">
+            <span class="material-symbols-rounded security-notice__icon">info</span>
             <div>
-                <h4 style="margin: 0 0 4px 0; font-size: 13px; font-weight: 600;">Aviso de Seguridad</h4>
-                <p style="margin: 0; font-size: 12px; line-height: 1.4;">
+                <h4 class="security-notice__title">Aviso de Seguridad</h4>
+                <p class="security-notice__text">
                     Esta es una acción administrativa sensible. Todos los cambios de roles son <strong>auditados y registrados</strong> permanentemente para su revisión. Asegúrate de tener la autorización correspondiente.
                 </p>
             </div>

@@ -207,3 +207,35 @@ td.col-id {
     color: #666;
     font-size: 13px;
 }
+
+/* =========================================
+   AVISO DE SEGURIDAD (User Role)
+   ========================================= */
+.security-notice {
+    background-color: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    width: 100%;
+    margin-top: 16px;
+}
+
+.security-notice__icon {
+    font-size: 20px;
+    margin-top: 2px;
+}
+
+.security-notice__title {
+    margin: 0 0 4px 0;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.security-notice__text {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.4;
+}
