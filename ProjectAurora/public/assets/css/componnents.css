@@ -72,7 +72,7 @@
     flex-wrap: wrap;
 }
 
-/* --- NUEVO: TARJETA MODO COLUMNA (PARA STEPPERS U OTROS) --- */
+/* --- TARJETA MODO COLUMNA --- */
 .component-card--column {
     display: flex;
     flex-direction: column;
@@ -471,7 +471,7 @@
 }
 
 /* =========================================
-   ESTILOS DE AGRUPACIÓN (GROUPS)
+   ESTILOS DE AGRUPACIÓN
    ========================================= */
 .component-card--grouped {
     display: flex;
@@ -537,10 +537,8 @@
 }
 
 /* =========================================================
-   NUEVOS MÓDULOS: TABLAS, TOOLBARS Y BADGES (Estandarizados)
+   NUEVOS MÓDULOS: TABLAS, TOOLBARS Y STEPPER
    ========================================================= */
-
-/* --- TOOLBAR PRINCIPAL --- */
 .component-toolbar {
     position: relative;
     z-index: 20;
@@ -572,7 +570,6 @@
     margin-left: auto;
 }
 
-/* Botón de Icono para Toolbar */
 .component-icon-button {
     background: transparent;
     border: 1px solid #00000020;
@@ -604,7 +601,6 @@
     font-size: 22px;
 }
 
-/* --- TABLA DE DATOS --- */
 .component-table-container {
     width: 100%;
     background-color: #ffffff;
@@ -669,7 +665,6 @@
     color: #000;
 }
 
-/* Estado Vacío */
 .component-table-empty {
     text-align: center;
     padding: 40px;
@@ -683,7 +678,6 @@
     display: block;
 }
 
-/* --- PAGINACIÓN --- */
 .component-pagination {
     display: flex;
     align-items: center;
@@ -730,7 +724,6 @@
     user-select: none;
 }
 
-/* --- BADGES (ETIQUETAS) --- */
 .component-badge {
     font-size: 12px;
     font-weight: 600;
@@ -758,7 +751,6 @@
     border: 1px solid #e0e0e0;
 }
 
-/* --- STATUS DOT (Indicador en línea) --- */
 .component-status-dot {
     width: 10px;
     height: 10px;
@@ -778,9 +770,6 @@
     background-color: #f5f5fa;
 }
 
-/* =========================================
-   NUEVO: STEPPER (CONTADOR)
-   ========================================= */
 .component-stepper {
     display: flex;
     align-items: center;
@@ -818,6 +807,113 @@
     font-weight: 600;
     color: #000;
     user-select: none;
+}
+
+/* =========================================
+   NUEVO: ACORDEONES (ESTILO DESCONECTADO)
+   ========================================= */
+.component-accordion {
+    background-color: transparent;
+    /* Fondo transparente para el wrapper */
+    border: none;
+    box-shadow: none;
+    flex-direction: column;
+}
+
+/* El Header se comporta como la "Tarjeta" principal */
+.component-accordion__header {
+    background-color: #ffffff;
+    border: 1px solid #00000020;
+    border-radius: 12px;
+    /* Bordes siempre redondeados */
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+}
+
+.component-accordion__header:hover {
+    background-color: #f9f9f9;
+}
+
+.component-accordion__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background-color: #f5f5fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+    flex-shrink: 0;
+}
+
+.component-accordion__icon .material-symbols-rounded {
+    font-size: 24px;
+}
+
+.component-accordion__text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.component-accordion__title {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+    color: #000;
+}
+
+.component-accordion__description {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+}
+
+.component-accordion__arrow {
+    color: #666;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+}
+
+.component-accordion.active .component-accordion__arrow {
+    transform: rotate(180deg);
+    color: #000;
+}
+
+/* El contenido está separado, creando el efecto de "no conectado" */
+.component-accordion__content {
+    display: none;
+    padding-top: 16px;
+    /* Espacio entre el header y la primera tarjeta */
+    flex-direction: column;
+    gap: 16px;
+    /* Espacio entre las tarjetas internas */
+    background-color: transparent;
+    border: none;
+}
+
+.component-accordion.active .component-accordion__content {
+    display: flex;
+    animation: accordionFadeIn 0.3s ease forwards;
+}
+
+@keyframes accordionFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* =========================================
@@ -877,6 +973,25 @@
         width: 100%;
         justify-content: flex-end;
         gap: 8px;
+    }
+
+    /* Ajuste responsive para el acordeón */
+    .component-accordion__header {
+        padding: 16px;
+        gap: 12px;
+    }
+
+    .component-accordion__icon {
+        width: 32px;
+        height: 32px;
+    }
+
+    .component-accordion__icon .material-symbols-rounded {
+        font-size: 20px;
+    }
+
+    .component-accordion__title {
+        font-size: 15px;
     }
 }
 

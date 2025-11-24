@@ -36,8 +36,6 @@ async function updateConfig(key, value, elementToRevertOnError, silent = false) 
         if (data.success) {
             if (!silent && window.alertManager) window.alertManager.showAlert(data.message, 'success');
             
-            // [CORRECCIÓN CRÍTICA] Actualizar configuración global en caliente
-            // Esto asegura que las validaciones (auth, settings) usen el nuevo valor inmediatamente
             if (!window.SERVER_CONFIG) window.SERVER_CONFIG = {};
             window.SERVER_CONFIG[key] = value;
             console.log(`[Config] Updated ${key} to ${value}`);
@@ -84,12 +82,15 @@ function handleStepperClick(btn) {
     if (newVal < min) newVal = min;
     if (newVal > max) newVal = max;
 
-    // Update UI
+    // 1. Update UI
     stepper.dataset.currentValue = newVal;
     const valueDisplay = stepper.querySelector('.stepper-value');
     if (valueDisplay) valueDisplay.textContent = newVal;
 
-    // Update button states
+    // 2. Update Dynamic Texts (i18n)
+    updateCardTexts(stepper, newVal);
+
+    // 3. Update button states
     const btns = stepper.querySelectorAll('.stepper-button');
     btns.forEach(b => {
         const type = b.dataset.stepAction;
@@ -97,7 +98,7 @@ function handleStepperClick(btn) {
         if (type.includes('increment')) b.disabled = (newVal >= max);
     });
 
-    // Send to server (Debounced)
+    // 4. Send to server (Debounced)
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
         const key = actionKeyMap[action];
@@ -105,6 +106,18 @@ function handleStepperClick(btn) {
             updateConfig(key, newVal, null, true); // Silent update
         }
     }, 500);
+}
+
+function updateCardTexts(stepper, newValue) {
+    const card = stepper.closest('.component-card');
+    if (!card) return;
+
+    const textElements = card.querySelectorAll('[data-i18n]');
+    textElements.forEach(el => {
+        const key = el.dataset.i18n;
+        el.innerHTML = t(key, { val: newValue });
+        el.setAttribute('data-i18n-vars', JSON.stringify({ val: newValue }));
+    });
 }
 
 export function initAdminServer() {
@@ -126,6 +139,29 @@ export function initAdminServer() {
         const btn = e.target.closest('.stepper-button');
         if (btn) {
             handleStepperClick(btn);
+        }
+    });
+
+    // [MODIFICADO] Listener para Acordeones (Comportamiento exclusivo)
+    document.body.addEventListener('click', (e) => {
+        const header = e.target.closest('[data-action="toggle-accordion"]');
+        if (header) {
+            const currentAccordion = header.closest('.component-accordion');
+            if (currentAccordion) {
+                
+                // 1. Buscar todos los acordeones abiertos
+                const allActive = document.querySelectorAll('.component-accordion.active');
+                
+                // 2. Cerrar todos EXCEPTO el actual (si es que ya estaba abierto, el toggle de abajo lo cerrará)
+                allActive.forEach(acc => {
+                    if (acc !== currentAccordion) {
+                        acc.classList.remove('active');
+                    }
+                });
+
+                // 3. Alternar el actual (Abrir si estaba cerrado, cerrar si estaba abierto)
+                currentAccordion.classList.toggle('active');
+            }
         }
     });
     
