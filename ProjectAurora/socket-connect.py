@@ -54,7 +54,8 @@ def verify_token_and_get_session(token):
         cursor.close()
         cnx.close()
         return result
-    except mysql.connector.Error:
+    except mysql.connector.Error as e:
+        log(f"[DB Error] {e}")
         return None
 
 async def handle_browser_client(websocket):
@@ -72,6 +73,7 @@ async def handle_browser_client(websocket):
                 auth_data = verify_token_and_get_session(token)
                 if auth_data:
                     user_id, session_id, user_role = auth_data
+                    
                     if user_id not in connected_clients:
                         connected_clients[user_id] = {}
                     connected_clients[user_id][session_id] = websocket
@@ -79,20 +81,34 @@ async def handle_browser_client(websocket):
                     if user_role in ['founder', 'administrator']:
                         admin_sessions.add(websocket)
                     
+                    # [LOG NUEVO] Conexión exitosa
+                    log(f"✅ Usuario {user_id} ({user_role}) se ha unido. Sesión: {session_id}")
+                    
                     await websocket.send(json.dumps({"type": "connected"}))
                 else:
+                    # [LOG NUEVO] Fallo de autenticación
+                    log(f"❌ Intento de conexión fallido: Token inválido o expirado.")
                     await websocket.send(json.dumps({"type": "error", "msg": "Auth failed"}))
 
             elif msg_type == 'get_online_users':
                 if user_role in ['founder', 'administrator']:
+                    # [LOG OPCIONAL] Admin solicitando lista (puede ser muy ruidoso, descomentar si se desea)
+                    # log(f"ℹ️ Admin {user_id} solicitó lista de usuarios.")
                     await websocket.send(json.dumps({"type": "online_users_list", "payload": list(connected_clients.keys())}))
 
-    except websockets.exceptions.ConnectionClosed: pass
-    except Exception: pass
+    except websockets.exceptions.ConnectionClosed: 
+        pass
+    except Exception as e: 
+        log(f"⚠️ Error en cliente socket: {e}")
     finally:
-        if user_id and session_id and user_id in connected_clients:
-            if session_id in connected_clients[user_id]: del connected_clients[user_id][session_id]
-            if not connected_clients[user_id]: del connected_clients[user_id]
+        # [LOG NUEVO] Desconexión
+        if user_id and session_id:
+            log(f"👋 Usuario {user_id} se ha desconectado. Sesión: {session_id}")
+            
+            if user_id in connected_clients:
+                if session_id in connected_clients[user_id]: del connected_clients[user_id][session_id]
+                if not connected_clients[user_id]: del connected_clients[user_id]
+        
         if websocket in admin_sessions: admin_sessions.remove(websocket)
 
 async def handle_php_notification(reader, writer):
@@ -104,13 +120,16 @@ async def handle_php_notification(reader, writer):
         target = str(payload.get('target_id'))
         
         if target == 'global':
-            # Broadcast normal
+            # [LOG NUEVO] Notificación global
+            log(f"📢 Enviando notificación GLOBAL: {payload.get('type')}")
             for uid, sessions in list(connected_clients.items()):
                 for sid, ws in list(sessions.items()):
                     try: await ws.send(json.dumps(payload))
                     except: pass
 
         elif target in connected_clients:
+            # [LOG NUEVO] Notificación privada
+            log(f"📨 Enviando notificación a Usuario {target}: {payload.get('type')}")
             for ws in connected_clients[target].values():
                 try: await ws.send(json.dumps(payload))
                 except: pass
@@ -118,7 +137,7 @@ async def handle_php_notification(reader, writer):
     finally: writer.close(); await writer.wait_closed()
 
 async def start_servers():
-    log("=== Servidor Aurora Iniciado (Queue Removed) ===")
+    log("=== Servidor Aurora Iniciado (Logs Activados) ===")
     async with websockets.serve(handle_browser_client, "0.0.0.0", 8080):
         server = await asyncio.start_server(handle_php_notification, "127.0.0.1", 8081)
         async with server: await server.serve_forever()

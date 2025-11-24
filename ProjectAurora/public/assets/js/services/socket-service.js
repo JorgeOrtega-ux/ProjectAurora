@@ -9,7 +9,9 @@ let socket = null;
 function connect() {
     if (!window.USER_ID) return;
     
-    console.log('websocket_client: connecting...');
+    const timestamp = Date.now();
+    console.log(`websocket_client: ${timestamp} connecting...`); // [LOG RESTAURADO]
+    
     socket = new WebSocket(WS_URL);
 
     if (window.socketService) {
@@ -18,9 +20,12 @@ function connect() {
 
     socket.onopen = () => {
         console.log('websocket_client: connected');
+        console.log('websocket_client: status CONNECTED'); // [LOG RESTAURADO]
         
         if (window.WS_TOKEN) {
             const requestId = Math.random().toString(16).substring(2, 10);
+            console.log(`websocket_client: request id ${requestId}`); // [LOG RESTAURADO]
+
             socket.send(JSON.stringify({
                 type: 'auth',
                 token: window.WS_TOKEN,
@@ -32,9 +37,14 @@ function connect() {
     socket.onmessage = (event) => {
         try {
             const data = JSON.parse(event.data);
+            
+            // Log extra para ver qué llega (opcional)
+            // console.log('websocket_client: message received', data.type); 
+
             document.dispatchEvent(new CustomEvent('socket-message', { detail: data }));
             
             if (data.type === 'system_status_update') {
+                console.log('websocket_client: system status update received, reloading...');
                 window.location.reload();
             }
 
@@ -43,10 +53,15 @@ function connect() {
         }
     };
 
-    socket.onclose = () => {
+    socket.onclose = (e) => {
+        console.log('websocket_client: disconnected', e.reason); // [LOG RESTAURADO]
         if (window.USER_ID) {
             setTimeout(connect, reconnectInterval);
         }
+    };
+    
+    socket.onerror = (err) => {
+        console.error('websocket_client: error', err);
     };
 }
 
