@@ -25,7 +25,8 @@ const allowedSections = [
     'admin/backups',
     'admin/server',
     'admin/user-status',
-    'admin/user-manage'
+    'admin/user-manage',
+    'admin/user-notification' // [NUEVO] Agregado explícitamente
 ];
 
 const authZone = [

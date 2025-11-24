@@ -64,3 +64,36 @@
 2025-11-24 12:19:17,536 - INFO - Usuario 1 desconectado completamente.
 2025-11-24 12:19:17,765 - INFO - connection open
 2025-11-24 12:19:17,781 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: e1jdgk3m...
+2025-11-24 12:22:18,839 - INFO - Usuario 2 desconectado completamente.
+2025-11-24 12:22:18,990 - INFO - connection open
+2025-11-24 12:22:19,013 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-24 12:22:24,054 - INFO - connection open
+2025-11-24 12:22:24,059 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-24 12:22:29,066 - INFO - connection open
+2025-11-24 12:22:29,074 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-24 12:22:34,087 - INFO - connection open
+2025-11-24 12:22:34,101 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-24 12:22:35,024 - INFO - connection open
+2025-11-24 12:22:35,029 - INFO - Usuario conectado: ID 2 | Rol: user | Sesión: 43dnubej...
+2025-11-24 12:22:40,340 - INFO - Usuario 2 desconectado completamente.
+2025-11-24 12:22:40,417 - INFO - connection open
+2025-11-24 12:22:40,435 - INFO - Usuario conectado: ID 2 | Rol: user | Sesión: 43dnubej...
+2025-11-24 12:23:46,510 - INFO - Usuario 1 desconectado completamente.
+2025-11-24 12:23:47,030 - INFO - connection open
+2025-11-24 12:23:47,038 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: e1jdgk3m...
+2025-11-24 12:23:47,357 - INFO - Usuario 2 desconectado completamente.
+2025-11-24 12:23:47,677 - INFO - connection open
+2025-11-24 12:23:47,679 - INFO - Usuario conectado: ID 2 | Rol: user | Sesión: 43dnubej...
+2025-11-24 12:24:02,691 - INFO - Usuario 1 desconectado completamente.
+2025-11-24 12:24:03,433 - INFO - connection open
+2025-11-24 12:24:03,443 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: e1jdgk3m...
+2025-11-24 12:24:03,577 - INFO - Usuario 1 desconectado completamente.
+2025-11-24 12:24:04,330 - INFO - connection open
+2025-11-24 12:24:04,354 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: e1jdgk3m...
+2025-11-24 12:25:23,806 - INFO - 📨 Notificación a Usuario 2: force_logout 
+2025-11-24 12:25:25,926 - INFO - Usuario 2 desconectado completamente.
+2025-11-24 12:25:39,642 - INFO - connection open
+2025-11-24 12:25:39,645 - INFO - Usuario conectado: ID 2 | Rol: user | Sesión: qir20u1c...
+2025-11-24 12:26:12,855 - INFO - Usuario 1 desconectado completamente.
+2025-11-24 12:26:13,372 - INFO - connection open
+2025-11-24 12:26:13,378 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: e1jdgk3m...

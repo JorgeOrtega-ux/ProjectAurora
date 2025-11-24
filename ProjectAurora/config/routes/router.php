@@ -128,7 +128,7 @@ $allowedSections = [
     'forgot-password', 'reset-password', 'status-page', 'login/verification-additional',
     'search', 'settings', 'settings/your-profile', 'settings/login-security',
     'settings/accessibility', 'settings/change-password', 'settings/2fa-setup', 'settings/sessions', 'settings/delete-account', 
-    'admin', 'admin/dashboard', 'admin/users', 'admin/user-status', 'admin/user-manage', 'admin/user-history', 'admin/user-role', 'admin/backups', 'admin/server'
+    'admin', 'admin/dashboard', 'admin/users', 'admin/user-status', 'admin/user-manage', 'admin/user-notification', 'admin/user-history', 'admin/user-role', 'admin/backups', 'admin/server'
 ];
 
 $CURRENT_SECTION = empty($requestUri) ? 'main' : $requestUri;
