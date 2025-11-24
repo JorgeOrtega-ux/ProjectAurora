@@ -140,7 +140,6 @@ function getServerConfig($pdo) {
         $stmt = $pdo->query("SELECT * FROM server_config WHERE id = 1");
         $config = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$config) {
-            // Valores por defecto de seguridad si la tabla está vacía
             return [
                 'maintenance_mode' => 0, 
                 'allow_registrations' => 1,
@@ -155,7 +154,7 @@ function getServerConfig($pdo) {
                 'username_cooldown' => 30, 
                 'email_cooldown' => 12, 
                 'profile_picture_max_size' => 2,
-                'allowed_email_domains' => NULL // Por defecto NULL = todos
+                'allowed_email_domains' => NULL
             ];
         }
         return $config;
@@ -173,20 +172,32 @@ function countActiveSessions($pdo) {
     }
 }
 
-// [NUEVO] Validador estricto de dominios
 function is_allowed_domain($email, $pdo) {
     $config = getServerConfig($pdo);
     $allowedJson = $config['allowed_email_domains'] ?? '[]';
     $allowedDomains = json_decode($allowedJson, true);
 
     if (empty($allowedDomains) || !is_array($allowedDomains)) {
-        return true; // Lista vacía = permitir todo
+        return true;
     }
 
     $parts = explode('@', $email);
     $domain = array_pop($parts); 
 
-    // Validación estricta (case-insensitive)
     return in_array(strtolower($domain), array_map('strtolower', $allowedDomains));
+}
+
+// [NUEVO] Función centralizada para UUID v4
+function generate_uuid() {
+    $data = random_bytes(16);
+    $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
+    $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
+    return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+}
+
+// [NUEVO] Función centralizada para color aleatorio
+function get_random_color() {
+    $colors = ['C84F4F', '4F7AC8', '8C4FC8', 'C87A4F', '4FC8C8'];
+    return $colors[array_rand($colors)];
 }
 ?>

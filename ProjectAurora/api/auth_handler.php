@@ -67,18 +67,6 @@ try {
 
 // --- FUNCIONES AUXILIARES ---
 
-function generate_uuid() {
-    $data = random_bytes(16);
-    $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
-    $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
-    return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
-}
-
-function get_random_color() {
-    $colors = ['C84F4F', '4F7AC8', '8C4FC8', 'C87A4F', '4FC8C8'];
-    return $colors[array_rand($colors)];
-}
-
 function generate_verification_code() {
     return strtoupper(bin2hex(random_bytes(6)));
 }
@@ -87,7 +75,7 @@ function set_user_session($pdo, $user) {
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['user_uuid'] = $user['uuid'];
     $_SESSION['user_email'] = $user['email'];
-    $_SESSION['user_profile_picture'] = $user['profile_picture']; // [MODIFICADO]
+    $_SESSION['user_profile_picture'] = $user['profile_picture'];
     $_SESSION['user_role'] = $user['role'];
 
     $sessionId = session_id();
@@ -129,7 +117,6 @@ try {
         if (strlen($email) < 4) throw new Exception(translation('auth.errors.email_short'));
         if (strlen($email) > $maxEmail) throw new Exception(translation('auth.errors.email_long', ['max' => $maxEmail]));
         
-        // [MODIFICADO] Validación de dominios
         if (!is_allowed_domain($email, $pdo)) throw new Exception(translation('auth.errors.email_domain_restricted'));
         
         if (strlen($password) < $minPass) {
@@ -255,7 +242,10 @@ try {
         $finalPassHash = $payloadData['password_hash'];
         
         $uuid = generate_uuid();
+        
+        // [CORREGIDO] Se usa get_random_color() centralizada
         $selectedColor = get_random_color();
+        
         $apiUrl = "https://ui-avatars.com/api/?name={$finalUsername}&size=256&background={$selectedColor}&color=ffffff&bold=true&length=1";
         
         $fileName = $uuid . '.png';
@@ -438,7 +428,6 @@ try {
     } elseif ($action === 'recovery_step_1') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         
-        // [MODIFICADO] Validación de dominios
         if (empty($email) || !is_allowed_domain($email, $pdo)) throw new Exception(translation('auth.errors.email_domain_restricted'));
         
         if (checkLockStatus($pdo, $email, 'recovery_fail')) {

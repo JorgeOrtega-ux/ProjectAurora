@@ -43,19 +43,6 @@ $response = ['success' => false, 'message' => translation('global.action_invalid
 
 $serverConfig = getServerConfig($pdo);
 
-// ... (funciones auxiliares generate_uuid_v4, etc. se mantienen igual) ...
-function generate_uuid_v4() {
-    $data = random_bytes(16);
-    $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
-    $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
-    return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
-}
-
-function get_random_hex_color() {
-    $colors = ['C84F4F', '4F7AC8', '8C4FC8', 'C87A4F', '4FC8C8'];
-    return $colors[array_rand($colors)];
-}
-
 function check_cooldown($pdo, $userId, $type, $daysLimit) {
     $stmt = $pdo->prepare("SELECT changed_at FROM user_audit_logs 
                            WHERE user_id = ? AND change_type = ? 
@@ -129,7 +116,9 @@ try {
         $uploadDir = __DIR__ . '/../public/assets/uploads/profile_pictures/custom/';
         if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
         $extension = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'png';
-        $newFileName = generate_uuid_v4() . '.' . $extension;
+        
+        $newFileName = generate_uuid() . '.' . $extension;
+        
         $destination = $uploadDir . $newFileName;
         $dbPath = 'assets/uploads/profile_pictures/custom/' . $newFileName;
         
@@ -161,8 +150,11 @@ try {
         if (!$user) throw new Exception(translation('admin.error.user_not_found'));
         $oldPic = $user['profile_picture'];
         $username = $user['username'];
-        $color = get_random_hex_color();
-        $uuid = generate_uuid_v4();
+        
+        // [CORREGIDO] Se usa get_random_color() centralizada
+        $color = get_random_color();
+        
+        $uuid = generate_uuid();
         $apiUrl = "https://ui-avatars.com/api/?name={$username}&size=256&background={$color}&color=ffffff&bold=true&length=1";
         $newFileName = $uuid . '.png';
         $uploadDir = __DIR__ . '/../public/assets/uploads/profile_pictures/default/';
@@ -226,7 +218,6 @@ try {
 
         if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) throw new Exception(translation('auth.errors.email_invalid_domain'));
         
-        // [MODIFICADO] Validación de dominios
         if (!is_allowed_domain($newEmail, $pdo)) throw new Exception(translation('auth.errors.email_domain_restricted'));
         
         $stmtGet = $pdo->prepare("SELECT email FROM users WHERE id = ?");
