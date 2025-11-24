@@ -56,6 +56,8 @@ if ($isStep2 && isset($_SESSION['temp_login_2fa']['email'])) {
 
                 <button class="form-button" data-action="login-submit" data-i18n="global.continue"><?php echo trans('global.continue'); ?></button>
 
+                <div data-error="login-error" class="form-error-message"></div>
+
                 <div class="form-footer-link">
                     <span data-i18n="auth.login.no_account"><?php echo trans('auth.login.no_account'); ?></span> 
                     <a href="#" data-nav="register" data-i18n="auth.login.register_link"><?php echo trans('auth.login.register_link'); ?></a>
@@ -93,6 +95,8 @@ if ($isStep2 && isset($_SESSION['temp_login_2fa']['email'])) {
 
                 <button class="form-button" data-action="login-2fa-submit" data-i18n="auth.2fa.verify_btn"><?php echo trans('auth.2fa.verify_btn'); ?></button>
 
+                <div data-error="login-2fa" class="form-error-message"></div>
+                
                 <div class="form-footer-link">
                     <a href="#" data-action="resend-login" class="disabled-link" data-i18n="auth.register.resend_code"><?php echo trans('auth.register.resend_code'); ?></a> (60)
                 </div>

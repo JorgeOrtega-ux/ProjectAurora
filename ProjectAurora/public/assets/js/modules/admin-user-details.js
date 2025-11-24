@@ -93,39 +93,41 @@ function setLoading(btn, isLoading, originalText = '') {
 }
 
 /**
- * Genera o elimina dinámicamente el mensaje de error debajo de la tarjeta contenedora.
- * @param {HTMLElement} element Elemento de referencia (botón o input) dentro de la tarjeta
- * @param {string} message Mensaje a mostrar
- * @param {boolean} show true para mostrar, false para ocultar
+ * [DINÁMICO] Genera o elimina el mensaje de error en el DOM.
  */
 function updateCardError(element, message = '', show = true) {
     if (!element) return;
-    // Buscamos la tarjeta padre más cercana
-    const cardContainer = element.closest('.component-card') || element.closest('.form-container');
+    
+    // Buscar la tarjeta contenedora (o wrapper principal)
+    const cardContainer = element.closest('.component-card') || element.closest('.component-wrapper');
+    
+    // Si no encuentra tarjeta contenedora, abortamos para evitar errores
     if (!cardContainer) return;
 
     let nextElement = cardContainer.nextElementSibling;
     let errorDiv = null;
 
-    // Verificar si ya existe el error
+    // Verificar si ya creamos un error anteriormente (es el siguiente hermano)
     if (nextElement && nextElement.classList.contains('component-card__error')) {
         errorDiv = nextElement;
     }
 
+    // Si hay que mostrar y no existe, lo creamos dinámicamente
     if (!errorDiv && show) {
         errorDiv = document.createElement('div');
         errorDiv.className = 'component-card__error';
-        errorDiv.style.marginTop = '16px';
+        // Estilo para asegurar separación visual
+        errorDiv.style.marginTop = '16px'; 
         cardContainer.after(errorDiv);
     }
 
     if (show && errorDiv) {
         errorDiv.textContent = message;
-        // Pequeño delay para permitir la animación CSS si existe
+        // Pequeño delay para permitir la transición CSS (opacity)
         requestAnimationFrame(() => errorDiv.classList.add('active'));
     } else if (!show && errorDiv) {
         errorDiv.classList.remove('active');
-        // Esperar transición CSS antes de eliminar del DOM
+        // Esperar a que termine la transición CSS (0.2s) antes de eliminar del DOM
         setTimeout(() => {
             if (errorDiv.parentNode) errorDiv.parentNode.removeChild(errorDiv);
         }, 200);
@@ -133,22 +135,39 @@ function updateCardError(element, message = '', show = true) {
 }
 
 function showError(message, show = true) {
-    // Determinamos dónde mostrar el error basado en el contexto
+    // CORRECCIÓN CRÍTICA: No usamos los botones del toolbar (#btn-save...) porque son flotantes
+    // y no están dentro de la estructura de tarjetas del contenido.
+    // Buscamos elementos DENTRO de las tarjetas de formulario.
+    
     let anchorElement = null;
 
     if (currentContext === 'manage') {
-        anchorElement = document.querySelector('#btn-save-manage') || document.querySelector('.component-card:last-of-type');
+        // Usamos el dropdown de estado o el input hidden como ancla
+        anchorElement = document.querySelector('#dropdown-manage-status') || document.getElementById('manage-target-id');
     } else if (currentContext === 'role') {
-        anchorElement = document.querySelector('#btn-save-role') || document.querySelector('.component-card:last-of-type');
+        // Usamos el dropdown de roles
+        anchorElement = document.querySelector('#dropdown-roles') || document.getElementById('role-target-id');
     } else if (currentContext === 'status') {
-        anchorElement = document.querySelector('#btn-save-status') || document.querySelector('.component-card:last-of-type');
+        // Usamos el dropdown de tipo de sanción
+        anchorElement = document.querySelector('#dropdown-status-options') || document.getElementById('target-user-id');
+    }
+
+    // Nos aseguramos de obtener la TARJETA contenedora de ese elemento
+    if (anchorElement) {
+        const card = anchorElement.closest('.component-card');
+        if (card) anchorElement = card;
+    }
+
+    // Fallback: Si algo falla, usamos la última tarjeta visible del wrapper
+    if (!anchorElement) {
+        anchorElement = document.querySelector('.component-wrapper .component-card:last-of-type');
     }
 
     if (anchorElement) {
         updateCardError(anchorElement, message, show);
-    } else if (show) {
-        // Fallback por si no encuentra el elemento
-        alert(message);
+    } else {
+        // Último recurso si no hay DOM válido
+        if (show && message) alert(message);
     }
 }
 

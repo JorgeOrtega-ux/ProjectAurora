@@ -23,6 +23,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 </div>
 
                 <button class="form-button" data-action="rec-step1" data-i18n="auth.recovery.send_btn"><?php echo trans('auth.recovery.send_btn'); ?></button>
+                <div data-error="rec-1" class="form-error-message"></div>
             </div>
 
             <div data-step="rec-success" class="auth-step-container">
