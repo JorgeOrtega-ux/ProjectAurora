@@ -1,0 +1,19 @@
+2025-11-24 11:50:30,111 - INFO - === Servidor Aurora Iniciado (Async + Logging Profesional) ===
+2025-11-24 11:50:30,228 - INFO - server listening on 0.0.0.0:8080
+2025-11-24 11:50:30,632 - INFO - connection open
+2025-11-24 11:50:30,648 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-24 11:50:31,511 - INFO - connection open
+2025-11-24 11:50:31,515 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-24 11:50:35,577 - INFO - connection open
+2025-11-24 11:50:35,584 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: e1jdgk3m...
+2025-11-24 11:51:20,053 - INFO - === Servidor Aurora Iniciado (Async + Logging Profesional) ===
+2025-11-24 11:51:20,122 - INFO - server listening on 0.0.0.0:8080
+2025-11-24 11:51:24,107 - INFO - connection open
+2025-11-24 11:51:24,111 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: e1jdgk3m...
+2025-11-24 11:52:57,751 - INFO - âœ… Pool de conexiones a base de datos inicializado.
+2025-11-24 11:52:57,788 - INFO - === Servidor Aurora Iniciado (Async + Logging Profesional) ===
+2025-11-24 11:52:58,183 - INFO - server listening on 0.0.0.0:8080
+2025-11-24 11:52:58,590 - INFO - connection open
+2025-11-24 11:52:58,593 - WARNING - Intento de conexiÃ³n fallido. Token invÃ¡lido.
+2025-11-24 11:53:01,246 - INFO - connection open
+2025-11-24 11:53:01,257 - INFO - Usuario conectado: ID 1 | Rol: founder | SesiÃ³n: e1jdgk3m...
