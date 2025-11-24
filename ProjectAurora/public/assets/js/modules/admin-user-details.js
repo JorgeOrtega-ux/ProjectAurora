@@ -17,7 +17,7 @@ let currentUserState = {
 let isInitialized = false;
 
 /**
- * Inicializa la lógica para las páginas de detalles de usuario (Status, Manage, History, Role).
+ * Inicializa la lógica para las páginas de detalles de usuario (Status, Manage, History, Role, Notification).
  */
 export function initAdminUserDetails() {
     detectContext();
@@ -39,6 +39,7 @@ function detectContext() {
     const manageId = document.getElementById('manage-target-id');
     const historyId = document.getElementById('history-target-id');
     const roleId = document.getElementById('role-target-id');
+    const notifId = document.getElementById('notification-target-id'); // [NUEVO]
 
     if (statusId) {
         currentContext = 'status';
@@ -56,6 +57,10 @@ function detectContext() {
         currentContext = 'role';
         targetId = roleId.value;
         prefix = 'role-';
+    } else if (notifId) {
+        currentContext = 'notification';
+        targetId = notifId.value;
+        prefix = 'notification-';
     } else {
         currentContext = null;
         targetId = null;
@@ -126,17 +131,13 @@ function showError(message, show = true) {
     let anchorElement = null;
 
     if (currentContext === 'manage') {
-        // Intentamos anclar el error al botón de enviar notificación si estamos en esa zona
-        const btnSend = document.getElementById('btn-send-notification');
-        if (btnSend && btnSend.offsetParent !== null) { // visible
-             anchorElement = btnSend;
-        } else {
-             anchorElement = document.querySelector('#dropdown-manage-status') || document.getElementById('manage-target-id');
-        }
+        anchorElement = document.querySelector('#dropdown-manage-status') || document.getElementById('manage-target-id');
     } else if (currentContext === 'role') {
         anchorElement = document.querySelector('#dropdown-roles') || document.getElementById('role-target-id');
     } else if (currentContext === 'status') {
         anchorElement = document.querySelector('#dropdown-status-options') || document.getElementById('target-user-id');
+    } else if (currentContext === 'notification') {
+        anchorElement = document.getElementById('btn-send-notification');
     }
 
     if (anchorElement) {
@@ -169,6 +170,7 @@ async function loadData() {
         if (currentContext === 'manage') initManageLogic();
         if (currentContext === 'history') renderHistoryTable(data.history);
         if (currentContext === 'role') initRoleLogic();
+        if (currentContext === 'notification') initNotificationLogic(); // [NUEVO]
     } else {
         showError(t('global.error_connection') + ': ' + data.message);
     }
@@ -179,7 +181,7 @@ function renderHeader() {
 
     const elUsername = document.getElementById(`${prefix}username`);
     const elEmail = document.getElementById(`${prefix}email`);
-    const elAvatarContainer = document.getElementById(`${prefix}avatar-container`);
+    const elAvatarContainer = document.getElementById(`${prefix}pfp-container`); // Corrección de ID base
     const elAvatarImg = document.getElementById(`${prefix}user-avatar`);
     const elAvatarIcon = document.getElementById(`${prefix}user-icon`);
 
@@ -187,8 +189,8 @@ function renderHeader() {
     if (elEmail) elEmail.textContent = userData.email;
     if (elAvatarContainer) elAvatarContainer.dataset.role = userData.role;
 
-    if (userData.avatar && elAvatarImg) {
-        elAvatarImg.src = (window.BASE_PATH || '/ProjectAurora/') + userData.avatar;
+    if (userData.profile_picture && elAvatarImg) {
+        elAvatarImg.src = (window.BASE_PATH || '/ProjectAurora/') + userData.profile_picture;
         elAvatarImg.style.display = 'block';
         if (elAvatarIcon) elAvatarIcon.style.display = 'none';
     }
@@ -236,17 +238,15 @@ function handleDropdownSelection(option) {
     const label = option.dataset.label || option.querySelector('.menu-link-text').textContent;
     const icon = option.dataset.icon;
 
-    // Gestión visual de selección en la lista (solo si está dentro de una lista)
+    // Gestión visual de selección
     const menuList = option.closest('.menu-list');
     if (menuList) {
         menuList.querySelectorAll('.menu-link').forEach(o => {
             o.classList.remove('active');
-            // Eliminar el icono de check si existe
             const lastIcon = o.lastElementChild;
             if (lastIcon && lastIcon.classList.contains('menu-link-icon')) lastIcon.innerHTML = '';
         });
         option.classList.add('active');
-        // Agregar check al seleccionado si tiene estructura de iconos
         const lastIcon = option.lastElementChild;
         if (lastIcon && lastIcon.classList.contains('menu-link-icon')) {
             lastIcon.innerHTML = '<span class="material-symbols-rounded">check</span>';
@@ -262,7 +262,6 @@ function handleDropdownSelection(option) {
     
     // [NUEVO] Selección de plantilla de notificación
     if (action === 'select-notif-template') {
-        // Usamos los datasets específicos de la plantilla
         const level = option.dataset.level;
         const message = option.dataset.message;
         const displayText = option.querySelector('.menu-link-text').textContent;
@@ -468,44 +467,48 @@ function initManageLogic() {
     }
 
     btnSave.onclick = () => saveManageChanges();
+}
 
-    // [NUEVO] Inicializar botón de notificación si existe
+// --- NOTIFICATION LOGIC (NUEVO) ---
+function initNotificationLogic() {
+    // Resetear UI por si acaso
+    updateNotifTemplateUI('info', '', 'Seleccionar plantilla...');
+    
     const btnSendNotif = document.getElementById('btn-send-notification');
     if (btnSendNotif) {
         btnSendNotif.onclick = () => sendCustomNotification();
     }
 }
 
-// [NUEVO] Lógica de UI para Notificaciones
 function updateNotifTemplateUI(level, message, displayText) {
-    // 1. Actualizar el Trigger del Dropdown
     document.getElementById('notif-template-text').textContent = displayText;
     
-    // 2. Rellenar Textarea y Nivel
     const messageInput = document.getElementById('input-notif-message');
     const levelInput = document.getElementById('notif-level-value');
     
-    messageInput.value = message;
-    levelInput.value = level;
+    if (messageInput) messageInput.value = message;
+    if (levelInput) levelInput.value = level;
 
-    // 3. Feedback Visual del Nivel (Badge)
     const badge = document.getElementById('notif-level-indicator');
     const badgeLabel = document.getElementById('notif-level-label');
     
-    // Limpiar clases previas
+    if (!badge || !badgeLabel) return;
+
     badge.className = 'component-badge';
     
     if (level === 'urgent') {
         badge.classList.add('component-badge--danger');
         badgeLabel.textContent = 'Urgente / Crítico';
+        badge.style.backgroundColor = ''; 
+        badge.style.color = '';
+        badge.style.border = '';
     } else if (level === 'warning') {
-        badge.style.backgroundColor = '#fff3e0'; // Hardcoded orange style match
+        badge.style.backgroundColor = '#fff3e0';
         badge.style.color = '#e65100';
         badge.style.border = '1px solid #ffe0b2';
         badgeLabel.textContent = 'Advertencia';
     } else {
         badge.classList.add('component-badge--neutral');
-        // Reset estilos inline si veníamos de warning
         badge.style.backgroundColor = ''; 
         badge.style.color = '';
         badge.style.border = '';
@@ -513,7 +516,6 @@ function updateNotifTemplateUI(level, message, displayText) {
     }
 }
 
-// [NUEVO] Función para enviar la notificación
 async function sendCustomNotification() {
     const level = document.getElementById('notif-level-value').value;
     const message = document.getElementById('input-notif-message').value.trim();
@@ -539,10 +541,7 @@ async function sendCustomNotification() {
 
     if (res.success) {
         if (window.alertManager) window.alertManager.showAlert('Notificación enviada correctamente', 'success');
-        // Limpiar
         document.getElementById('input-notif-message').value = ''; 
-        // Resetear UI
-        document.getElementById('notif-template-text').textContent = 'Seleccionar plantilla...';
         updateNotifTemplateUI('info', '', 'Seleccionar plantilla...');
     } else {
         showError(res.message);

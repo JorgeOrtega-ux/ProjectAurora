@@ -126,11 +126,15 @@ function setupActionButtons(uid) {
     const btnSanctions = document.getElementById('btn-manage-sanctions');
     const btnGeneral = document.getElementById('btn-manage-general');
     const btnRole = document.getElementById('btn-manage-role');
+    // [NUEVO] Botón de notificaciones
+    const btnNotifs = document.getElementById('btn-manage-notifications');
 
     // Usamos window.navigateTo asumido de url-manager.js
     if (btnSanctions) btnSanctions.onclick = () => uid && window.navigateTo('admin/user-status?uid=' + uid);
     if (btnGeneral) btnGeneral.onclick = () => uid && window.navigateTo('admin/user-manage?uid=' + uid);
     if (btnRole) btnRole.onclick = () => uid && window.navigateTo('admin/user-role?uid=' + uid);
+    // [NUEVO] Listener
+    if (btnNotifs) btnNotifs.onclick = () => uid && window.navigateTo('admin/user-notification?uid=' + uid);
 }
 
 async function loadUsersTable(page, query) {

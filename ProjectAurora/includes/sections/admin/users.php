@@ -238,6 +238,11 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                             data-tooltip="<?php echo trans('admin.users.actions.manage'); ?>">
                         <span class="material-symbols-rounded">manage_accounts</span>
                     </button>
+                    <button class="component-icon-button" id="btn-manage-notifications" 
+                            data-i18n-tooltip="admin.header.notifications_title" 
+                            data-tooltip="Gestionar Notificaciones">
+                        <span class="material-symbols-rounded">campaign</span>
+                    </button>
                     <button class="component-icon-button" id="btn-manage-role" 
                             data-i18n-tooltip="admin.users.actions.role" 
                             data-tooltip="Rol de usuario">

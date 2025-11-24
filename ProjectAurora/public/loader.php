@@ -57,6 +57,7 @@ $fileMap = [
     'admin/users'       => 'admin/users',
     'admin/user-status' => 'admin/user-status', 
     'admin/user-manage' => 'admin/user-manage',
+    'admin/user-notification' => 'admin/user-notification', // [NUEVO]
     'admin/user-history'=> 'admin/user-history',
     'admin/user-role'   => 'admin/user-role',
     'admin/backups'     => 'admin/backups',
