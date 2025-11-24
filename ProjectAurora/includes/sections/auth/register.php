@@ -8,6 +8,9 @@ if (isset($CURRENT_SECTION)) {
 } else if (isset($_GET['step'])) {
     $initialStep = (int)$_GET['step'];
 }
+
+// [CORRECCIÓN] Obtener configuración para los textos dinámicos
+$sConfig = isset($GLOBALS['serverConfig']) ? $GLOBALS['serverConfig'] : getServerConfig($pdo);
 ?>
 
 <div class="section-content active" data-section="register">
@@ -37,9 +40,11 @@ if (isset($CURRENT_SECTION)) {
                         class="floating-input" 
                         required 
                         placeholder=" "
-                        minlength="8"
+                        minlength="<?php echo $sConfig['min_password_length']; ?>"
                     >
-                    <label class="floating-label" data-i18n="auth.register.password_hint"><?php echo trans('auth.register.password_hint'); ?></label>
+                    <label class="floating-label" data-i18n="auth.register.password_hint">
+                        <?php echo trans('auth.register.password_hint', ['min' => $sConfig['min_password_length']]); ?>
+                    </label>
                     <button type="button" class="floating-input-btn"><span class="material-symbols-rounded">visibility</span></button>
                 </div>
 
@@ -65,12 +70,14 @@ if (isset($CURRENT_SECTION)) {
                         class="floating-input" 
                         required 
                         placeholder=" " 
-                        minlength="8"
-                        maxlength="32"
+                        minlength="<?php echo $sConfig['min_username_length']; ?>"
+                        maxlength="<?php echo $sConfig['max_username_length']; ?>"
                         pattern="[a-zA-Z0-9_]+"
                         style="padding-right: 50px;" 
                     >
-                    <label class="floating-label" data-i18n="auth.register.username_label"><?php echo trans('auth.register.username_label'); ?></label>
+                    <label class="floating-label" data-i18n="auth.register.username_label">
+                        <?php echo trans('auth.register.username_label', ['min' => $sConfig['min_username_length'], 'max' => $sConfig['max_username_length']]); ?>
+                    </label>
                     
                     <button type="button" class="floating-input-btn username-magic-btn" title="Generar usuario aleatorio">
                         <span class="material-symbols-rounded">auto_fix_high</span>

@@ -138,10 +138,15 @@ try {
         $maxEmail = (int)($serverConfig['max_email_length'] ?? 255);
 
         if (empty($email) || empty($password)) throw new Exception(trans('auth.errors.all_required'));
-        if (strlen($email) < 4 || strlen($email) > $maxEmail) throw new Exception("Longitud de email inválida.");
+        if (strlen($email) < 4) throw new Exception(trans('auth.errors.email_short'));
+        if (strlen($email) > $maxEmail) throw new Exception(trans('auth.errors.email_long', ['max' => $maxEmail]));
         if (!is_allowed_domain($email)) throw new Exception(trans('auth.errors.email_domain'));
-        if (strlen($password) < $minPass || strlen($password) > $maxPass) {
-            throw new Exception(trans('auth.errors.password_short') . " ($minPass-$maxPass chars)");
+        
+        if (strlen($password) < $minPass) {
+            throw new Exception(trans('auth.errors.password_short', ['min' => $minPass]));
+        }
+        if (strlen($password) > $maxPass) {
+            throw new Exception("La contraseña es demasiado larga (Máximo $maxPass caracteres).");
         }
         
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
@@ -170,7 +175,7 @@ try {
         $maxUser = (int)($serverConfig['max_username_length'] ?? 32);
 
         if (!preg_match('/^[a-zA-Z0-9_]+$/', $username) || strlen($username) < $minUser || strlen($username) > $maxUser) {
-            throw new Exception(trans('auth.errors.username_invalid') . " ($minUser-$maxUser chars)");
+            throw new Exception(trans('auth.errors.username_invalid', ['min' => $minUser, 'max' => $maxUser]));
         }
         
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
@@ -500,8 +505,12 @@ try {
         // [DINAMICO]
         $minPass = (int)($serverConfig['min_password_length'] ?? 8);
         $maxPass = (int)($serverConfig['max_password_length'] ?? 72);
-        if (strlen($newPass) < $minPass || strlen($newPass) > $maxPass) {
-            throw new Exception(trans('auth.errors.password_short') . " ($minPass-$maxPass chars)");
+        
+        if (strlen($newPass) < $minPass) {
+            throw new Exception(trans('auth.errors.password_short', ['min' => $minPass]));
+        }
+        if (strlen($newPass) > $maxPass) {
+            throw new Exception("La contraseña es demasiado larga (Máximo $maxPass caracteres).");
         }
         
         $tokenHash = hash('sha256', $token);

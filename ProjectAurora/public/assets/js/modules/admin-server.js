@@ -36,6 +36,12 @@ async function updateConfig(key, value, elementToRevertOnError, silent = false) 
         if (data.success) {
             if (!silent && window.alertManager) window.alertManager.showAlert(data.message, 'success');
             
+            // [CORRECCIÓN CRÍTICA] Actualizar configuración global en caliente
+            // Esto asegura que las validaciones (auth, settings) usen el nuevo valor inmediatamente
+            if (!window.SERVER_CONFIG) window.SERVER_CONFIG = {};
+            window.SERVER_CONFIG[key] = value;
+            console.log(`[Config] Updated ${key} to ${value}`);
+
             if (key === 'maintenance_mode' && value === 1) {
                 const regToggle = document.getElementById('toggle-allow-registration');
                 if (regToggle) regToggle.checked = false;

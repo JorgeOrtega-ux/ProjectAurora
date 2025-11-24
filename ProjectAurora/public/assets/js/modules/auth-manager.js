@@ -38,7 +38,6 @@ function initResendTimer(linkSelector, startSeconds = 60) {
     let seconds = startSeconds;
     
     link.classList.add('disabled-link');
-    // Usamos una clave lógica combinada con el número
     link.textContent = `${t('auth.register.resend_code')} (${seconds})`;
 
     resendTimerInterval = setInterval(() => {
@@ -98,7 +97,7 @@ export function initAuthManager() {
         const { type, reason } = e.detail;
         
         if (type === 'force_logout') {
-            const msg = t('global.session_expired'); // Usando clave genérica o crear una nueva
+            const msg = t('global.session_expired'); 
             if (window.alertManager) {
                 window.alertManager.showAlert(msg, 'warning');
             } else {
@@ -295,8 +294,12 @@ function isValidEmailDomain(email) {
     const regex = /^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i;
     return regex.test(email);
 }
+
 function isValidUsername(username) {
-    const regex = /^[a-zA-Z0-9_]{8,32}$/;
+    // [CORRECCIÓN DINÁMICA]
+    const min = window.SERVER_CONFIG?.min_username_length || 6;
+    const max = window.SERVER_CONFIG?.max_username_length || 32;
+    const regex = new RegExp(`^[a-zA-Z0-9_]{${min},${max}}$`);
     return regex.test(username);
 }
 
@@ -313,11 +316,14 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
         const emailVal = emailIn.value.trim().toLowerCase();
         const passVal = passIn.value;
 
+        // [CORRECCIÓN DINÁMICA]
+        const minPass = window.SERVER_CONFIG?.min_password_length || 8;
+
         if (!isValidEmailDomain(emailVal)) {
             errorMessage = t('auth.errors.email_invalid_domain');
             emailIn.classList.add('input-error');
-        } else if (passVal.length < 8) {
-            errorMessage = t('auth.errors.password_short');
+        } else if (passVal.length < minPass) {
+            errorMessage = t('auth.errors.password_short', { min: minPass });
             passIn.classList.add('input-error');
         }
 
@@ -336,8 +342,11 @@ async function handleRegisterStep(stepName, apiAction, nextStep, nextUrl) {
         if (!userIn) return false;
 
         const userVal = userIn.value.trim();
+        const minUser = window.SERVER_CONFIG?.min_username_length || 6;
+        const maxUser = window.SERVER_CONFIG?.max_username_length || 32;
+
         if (!isValidUsername(userVal)) {
-            errorMessage = t('auth.errors.username_invalid');
+            errorMessage = t('auth.errors.username_invalid', { min: minUser, max: maxUser });
             userIn.classList.add('input-error');
         }
 
@@ -446,9 +455,12 @@ async function handleResetPasswordFinal() {
     passIn.classList.remove('input-error');
     passConfirmIn.classList.remove('input-error');
 
-    if (passVal.length < 8) {
+    // [CORRECCIÓN DINÁMICA]
+    const minPass = window.SERVER_CONFIG?.min_password_length || 8;
+
+    if (passVal.length < minPass) {
         passIn.classList.add('input-error');
-        if(errorDiv) { errorDiv.textContent = t('auth.errors.password_short'); errorDiv.classList.add('active'); }
+        if(errorDiv) { errorDiv.textContent = t('auth.errors.password_short', { min: minPass }); errorDiv.classList.add('active'); }
         return;
     }
 

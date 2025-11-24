@@ -223,10 +223,13 @@ function updateSidebarState(sectionName) {
 }
 
 function updateActiveMenu(sectionName) {
+    // 1. Limpiamos 'active' de TODOS los enlaces de navegación
     const allLinks = document.querySelectorAll('.menu-link[data-nav]');
     allLinks.forEach(link => link.classList.remove('active'));
     
-    const activeLinks = document.querySelectorAll(`.menu-link[data-nav="${sectionName}"]`);
+    // 2. Activamos SOLO los enlaces que están dentro del sidebar (moduleSurface)
+    // Esto evita que los enlaces del header (moduleOptions) se activen.
+    const activeLinks = document.querySelectorAll(`[data-module="moduleSurface"] .menu-link[data-nav="${sectionName}"]`);
     activeLinks.forEach(link => {
         link.classList.add('active');
     });

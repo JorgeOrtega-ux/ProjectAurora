@@ -63,16 +63,29 @@ $regMode = (int)$serverConfig['allow_registrations'];
 
         <?php
         function renderStepper($titleKey, $descKey, $action, $value, $min, $max, $step1=1, $step10=10) {
-            $title = trans($titleKey);
-            $desc = trans($descKey);
+            // Lógica para determinar qué valor mostrar en la descripción (el límite UI)
+            $transVal = $min; 
+            if (strpos(strtolower($descKey), 'max') !== false) {
+                $transVal = $max;
+            } else if (strpos(strtolower($descKey), 'cooldown') !== false) {
+                $transVal = $min;
+            }
+
+            // 1. Traducción PHP (Server Side)
+            $title = trans($titleKey, ['val' => $transVal]);
+            $desc = trans($descKey, ['val' => $transVal]);
+            
+            // 2. Datos para JS (Client Side) - [CORRECCIÓN CRÍTICA]
+            $jsonVars = htmlspecialchars(json_encode(['val' => $transVal]), ENT_QUOTES, 'UTF-8');
+            
             $valueId = 'stepper-value-' . str_replace('update-', '', $action);
             
             echo <<<HTML
             <div class="component-card component-card--column active">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title" data-i18n="$titleKey">$title</h2>
-                        <p class="component-card__description" data-i18n="$descKey">$desc</p>
+                        <h2 class="component-card__title" data-i18n="$titleKey" data-i18n-vars='$jsonVars'>$title</h2>
+                        <p class="component-card__description" data-i18n="$descKey" data-i18n-vars='$jsonVars'>$desc</p>
                     </div>
                 </div>
                 <div class="component-card__actions">

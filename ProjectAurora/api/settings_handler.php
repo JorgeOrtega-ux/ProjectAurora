@@ -124,7 +124,7 @@ try {
         $maxMB = (int)($serverConfig['avatar_max_size'] ?? 2);
         $maxSize = $maxMB * 1024 * 1024;
         
-        if ($file['size'] > $maxSize) throw new Exception(trans('settings.avatar.error_size') . " (Max {$maxMB}MB)");
+        if ($file['size'] > $maxSize) throw new Exception(trans('settings.avatar.error_size', ['size' => $maxMB]));
         
         $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
         $finfo = new finfo(FILEINFO_MIME_TYPE);
@@ -205,9 +205,9 @@ try {
         $maxLen = (int)($serverConfig['max_username_length'] ?? 32);
         
         if (strlen($newUsername) < $minLen || strlen($newUsername) > $maxLen) {
-            throw new Exception(trans('auth.errors.username_invalid') . " ($minLen-$maxLen chars)");
+            throw new Exception(trans('auth.errors.username_invalid', ['min' => $minLen, 'max' => $maxLen]));
         }
-        if (!preg_match('/^[a-zA-Z0-9_]+$/', $newUsername)) throw new Exception(trans('auth.errors.username_invalid'));
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $newUsername)) throw new Exception(trans('auth.errors.username_invalid', ['min' => $minLen, 'max' => $maxLen]));
         
         $stmtGet = $pdo->prepare("SELECT username FROM users WHERE id = ?");
         $stmtGet->execute([$userId]);
@@ -237,7 +237,7 @@ try {
         
         // [DINAMICO] Longitud Max
         $maxLen = (int)($serverConfig['max_email_length'] ?? 255);
-        if (strlen($newEmail) > $maxLen) throw new Exception("Email demasiado largo (Max $maxLen chars)");
+        if (strlen($newEmail) > $maxLen) throw new Exception(trans('auth.errors.email_long', ['max' => $maxLen]));
 
         if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) throw new Exception(trans('auth.errors.email_invalid_domain'));
         if (!preg_match('/^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i', $newEmail)) throw new Exception(trans('auth.errors.email_domain'));
@@ -282,8 +282,11 @@ try {
         $minPass = (int)($serverConfig['min_password_length'] ?? 8);
         $maxPass = (int)($serverConfig['max_password_length'] ?? 72);
         
-        if (strlen($newPassword) < $minPass || strlen($newPassword) > $maxPass) {
-            throw new Exception(trans('auth.errors.password_short') . " ($minPass-$maxPass chars)");
+        if (strlen($newPassword) < $minPass) {
+            throw new Exception(trans('auth.errors.password_short', ['min' => $minPass]));
+        }
+        if (strlen($newPassword) > $maxPass) {
+            throw new Exception("La contraseña es demasiado larga (Máximo $maxPass caracteres).");
         }
 
         $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");

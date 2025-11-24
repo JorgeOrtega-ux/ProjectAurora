@@ -4,6 +4,9 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 $basePath = $basePath ?? '/ProjectAurora/';
 $userId = $_SESSION['user_id'];
 
+// [CORRECCIÓN] Configuración
+$sConfig = isset($GLOBALS['serverConfig']) ? $GLOBALS['serverConfig'] : getServerConfig($pdo);
+
 $stmt = $pdo->prepare("SELECT username, email, avatar, role FROM users WHERE id = ?");
 $stmt->execute([$userId]);
 $currentUser = $stmt->fetch();
@@ -78,7 +81,9 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                     <div class="component-card__text">
                         <h2 class="component-card__title" data-i18n="settings.profile.avatar_title"><?php echo trans('settings.profile.avatar_title'); ?></h2>
                         <p class="component-card__description" data-i18n="settings.profile.avatar_desc"><?php echo trans('settings.profile.avatar_desc'); ?></p>
-                        <p class="component-card__meta" data-i18n="settings.profile.avatar_meta"><?php echo trans('settings.profile.avatar_meta'); ?></p>
+                        <p class="component-card__meta" data-i18n="settings.profile.avatar_meta">
+                            <?php echo trans('settings.profile.avatar_meta', ['size' => $sConfig['avatar_max_size']]); ?>
+                        </p>
                     </div>
                 </div>
 
@@ -114,13 +119,17 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
                             <div class="input-with-actions">
                                 <input type="text" class="component-text-input" data-element="username-input"
                                     value="<?php echo htmlspecialchars($currentUsername); ?>"
-                                    required minlength="8" maxlength="32">
+                                    required 
+                                    minlength="<?php echo $sConfig['min_username_length']; ?>" 
+                                    maxlength="<?php echo $sConfig['max_username_length']; ?>">
                                 <div data-state="username-actions-edit" class="disabled">
                                     <button type="button" class="component-button" data-action="username-cancel-trigger" data-i18n="global.cancel"><?php echo trans('global.cancel'); ?></button>
                                     <button type="button" class="component-button primary" data-action="username-save-trigger-btn" data-i18n="global.save"><?php echo trans('global.save'); ?></button>
                                 </div>
                             </div>
-                            <p class="component-card__meta" data-i18n="settings.profile.username_meta"><?php echo trans('settings.profile.username_meta'); ?></p>
+                            <p class="component-card__meta" data-i18n="settings.profile.username_meta">
+                                <?php echo trans('settings.profile.username_meta', ['min' => $sConfig['min_username_length'], 'max' => $sConfig['max_username_length']]); ?>
+                            </p>
                         </div>
                     </div>
                 </div>

@@ -377,8 +377,11 @@ function initChangePasswordLogic() {
 
         updateCardError(step2Card, '', false);
 
-        if (newPass.length < 8) {
-            updateCardError(step2Card, t('auth.errors.password_short'));
+        // [CORRECCIÓN DINÁMICA]
+        const minPass = window.SERVER_CONFIG?.min_password_length || 8;
+
+        if (newPass.length < minPass) {
+            updateCardError(step2Card, t('auth.errors.password_short', { min: minPass }));
             return;
         }
 
@@ -453,7 +456,6 @@ function initBooleanPreferencesLogic() {
                 if (data.success) {
                     if (window.alertManager) window.alertManager.showAlert(t('global.save_status'), 'success');
                     
-                    // [MODIFICADO] Actualizar variables globales en caliente
                     if (fieldName === 'open_links_in_new_tab') {
                         window.OPEN_NEW_TAB = isChecked ? 1 : 0;
                         console.log("Setting Updated: Open Links in New Tab =", window.OPEN_NEW_TAB);
@@ -567,7 +569,16 @@ function initAvatarLogic() {
     elements.fileInput.onchange = function(e) {
         const file = this.files[0];
         if (!file) return;
-        if (file.size > 2097152) { updateCardError(cardItem, t('settings.avatar.error_size')); this.value = ''; return; }
+        
+        // [CORRECCIÓN DINÁMICA]
+        const maxMB = window.SERVER_CONFIG?.avatar_max_size || 2;
+        const maxBytes = maxMB * 1024 * 1024;
+
+        if (file.size > maxBytes) { 
+            updateCardError(cardItem, t('settings.avatar.error_size', { size: maxMB })); 
+            this.value = ''; 
+            return; 
+        }
         if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) { updateCardError(cardItem, t('settings.avatar.error_format')); this.value = ''; return; }
         updateCardError(cardItem, '', false);
         const reader = new FileReader();
@@ -657,8 +668,16 @@ function initUsernameLogic() {
     els.saveBtn.onclick = async () => {
         const newVal = els.input.value.trim();
         updateCardError(itemSection, '', false);
+        
+        // [CORRECCIÓN DINÁMICA]
+        const minUser = window.SERVER_CONFIG?.min_username_length || 6;
+        const maxUser = window.SERVER_CONFIG?.max_username_length || 32;
+
         if (newVal === originalUsername) { toggleMode(els, false); return; }
-        if (newVal.length < 8 || newVal.length > 32) { updateCardError(itemSection, t('auth.errors.username_invalid')); return; }
+        if (newVal.length < minUser || newVal.length > maxUser) { 
+            updateCardError(itemSection, t('auth.errors.username_invalid', { min: minUser, max: maxUser })); 
+            return; 
+        }
         setLoading(els.saveBtn, true);
         try {
             const res = await fetch(API_SETTINGS, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }, body: JSON.stringify({ action: 'update_username', username: newVal }) });
@@ -693,6 +712,10 @@ function initEmailLogic() {
         if (newVal === originalEmail) { toggleMode(els, false); return; }
         const regex = /^[^@\s]+@(gmail|outlook|icloud|yahoo)\.[a-z]{2,}(\.[a-z]{2,})?$/i;
         if (!regex.test(newVal)) { updateCardError(itemSection, t('auth.errors.email_invalid_domain')); return; }
+        
+        const maxEmail = window.SERVER_CONFIG?.max_email_length || 255;
+        if(newVal.length > maxEmail) { updateCardError(itemSection, t('auth.errors.email_long', {max: maxEmail})); return; }
+
         setLoading(els.saveBtn, true);
         try {
             const res = await fetch(API_SETTINGS, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }, body: JSON.stringify({ action: 'update_email', email: newVal }) });

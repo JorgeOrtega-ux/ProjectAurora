@@ -19,6 +19,9 @@ $userTheme = $_SESSION['user_theme'] ?? 'system';
 $userExtendedMsg = isset($_SESSION['user_extended_msg']) ? (int)$_SESSION['user_extended_msg'] : 0;
 $openLinksNewTab = isset($_SESSION['user_new_tab']) ? (int)$_SESSION['user_new_tab'] : 1;
 
+// [CORRECCIÓN CRÍTICA] Obtener configuración del servidor para validaciones dinámicas
+$serverConfigData = getServerConfig($pdo);
+
 I18n::load($userLang);
 
 if (isset($_SESSION['user_id'])) {
@@ -45,6 +48,9 @@ if (isset($_SESSION['user_id'])) {
         // [NUEVO] Variables globales de preferencias
         window.USER_EXTENDED_MSG = <?php echo $userExtendedMsg; ?>; 
         window.OPEN_NEW_TAB = <?php echo $openLinksNewTab; ?>; 
+        
+        // [CORRECCIÓN CRÍTICA] Inyección de configuración del servidor
+        window.SERVER_CONFIG = <?php echo json_encode($serverConfigData); ?>;
     </script>
 
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/styles.css">

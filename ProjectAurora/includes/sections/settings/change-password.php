@@ -1,5 +1,8 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
+
+// [CORRECCIÓN] Configuración
+$sConfig = isset($GLOBALS['serverConfig']) ? $GLOBALS['serverConfig'] : getServerConfig($pdo);
 ?>
 <div class="section-content active" data-section="settings/change-password">
     <div class="component-wrapper">
@@ -46,7 +49,9 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     </div>
                     <div class="component-card__text">
                         <h2 class="component-card__title" data-i18n="settings.change_password.new_label"><?php echo trans('settings.change_password.new_label'); ?></h2>
-                        <p class="component-card__description" data-i18n="settings.change_password.new_desc"><?php echo trans('settings.change_password.new_desc'); ?></p>
+                        <p class="component-card__description" data-i18n="settings.change_password.new_desc">
+                            <?php echo trans('settings.change_password.new_desc', ['min' => $sConfig['min_password_length']]); ?>
+                        </p>
                     </div>
                 </div>
                 <div class="component-input-wrapper w-100">

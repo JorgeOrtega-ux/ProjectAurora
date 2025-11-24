@@ -9,6 +9,40 @@ if (window.USER_LANG) {
     currentLang = window.USER_LANG;
 }
 
+/**
+ * Mapea claves de traducción a variables dinámicas de la configuración del servidor.
+ * Esto permite que {min}, {max}, {size} se rellenen automáticamente en validaciones JS.
+ */
+function getKeyVars(key) {
+    const config = window.SERVER_CONFIG || {};
+    
+    switch(key) {
+        // Contraseñas
+        case 'auth.register.password_hint':
+        case 'settings.change_password.new_desc':
+        case 'auth.errors.password_short':
+            return { min: config.min_password_length || 8 };
+        
+        // Usuarios
+        case 'auth.register.username_label':
+        case 'settings.profile.username_meta':
+        case 'auth.errors.username_invalid':
+            return { min: config.min_username_length || 6, max: config.max_username_length || 32 };
+            
+        // Avatar
+        case 'settings.profile.avatar_meta':
+        case 'settings.avatar.error_size':
+            return { size: config.avatar_max_size || 2 };
+            
+        // Email
+        case 'auth.errors.email_long':
+            return { max: config.max_email_length || 255 };
+            
+        default:
+            return {};
+    }
+}
+
 export async function initI18n() {
     try {
         const response = await fetch(`${BASE_PATH}assets/translations/${currentLang}.json`);
@@ -42,7 +76,6 @@ export async function changeLanguage(newLang) {
         const response = await fetch(`${BASE_PATH}assets/translations/${newLang}.json`);
         
         if (!response.ok) {
-            // Si el archivo no existe, lanzamos error para ir al catch
             throw new Error(`Translation file not found for ${newLang}`);
         }
         
@@ -51,12 +84,8 @@ export async function changeLanguage(newLang) {
 
     } catch (error) {
         console.warn(`[i18n] No se encontró traducción para "${newLang}". Se mostrarán las claves.`);
-        // CLAVE DE LA SOLUCIÓN:
-        // Si falla, vaciamos las traducciones para que la función t() devuelva las keys
         translations = {}; 
     } finally {
-        // ESTO ES LO IMPORTANTE:
-        // Ejecutamos la traducción SIEMPRE, haya habido éxito o error.
         translateDocument();
     }
 }
@@ -68,6 +97,10 @@ window.changeLanguage = changeLanguage;
  * y reemplazo de variables {name}.
  */
 export function t(key, vars = {}) {
+    // Combinar variables manuales con variables automáticas de configuración
+    const autoVars = getKeyVars(key);
+    const finalVars = { ...autoVars, ...vars };
+
     const keys = key.split('.');
     let current = translations;
     
@@ -81,8 +114,8 @@ export function t(key, vars = {}) {
     let text = current;
     
     if (typeof text === 'string') {
-        Object.keys(vars).forEach(variable => {
-            text = text.replace(new RegExp(`{${variable}}`, 'g'), vars[variable]);
+        Object.keys(finalVars).forEach(variable => {
+            text = text.replace(new RegExp(`{${variable}}`, 'g'), finalVars[variable]);
         });
     }
     
@@ -97,7 +130,15 @@ export function translateDocument(container = document) {
     const elements = container.querySelectorAll('[data-i18n]');
     elements.forEach(el => {
         const key = el.getAttribute('data-i18n');
-        el.innerHTML = t(key); // Usamos innerHTML para permitir etiquetas como <strong>
+        
+        // [CORRECCIÓN CRÍTICA] Leer variables locales inyectadas desde PHP (ej: {val: 8})
+        const rawVars = el.getAttribute('data-i18n-vars');
+        let localVars = {};
+        if (rawVars) {
+            try { localVars = JSON.parse(rawVars); } catch(e) { console.warn('Invalid i18n-vars JSON', e); }
+        }
+        
+        el.innerHTML = t(key, localVars); 
     });
 
     // 2. Placeholders
