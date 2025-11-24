@@ -45,6 +45,12 @@ function renderNotifications(notifs) {
             `;
         }
 
+        // Renderizado especial para alertas administrativas en la lista
+        if (n.type === 'admin_alert') {
+             // Podríamos agregar un icono de advertencia o color diferente aquí si quisieras
+             // Por ahora usa el avatar del admin (o default si null)
+        }
+
         const unreadDot = (parseInt(n.is_read) === 0) ? '<div class="unread-dot"></div>' : '';
 
         html += `
@@ -118,6 +124,19 @@ function initSocketListener() {
 
         if (type === 'request_cancelled' || type === 'friend_removed') {
             loadNotifications();
+        }
+
+        // NUEVO: Manejo de Alertas Administrativas
+        if (type === 'admin_alert') {
+            loadNotifications(); // Actualizar lista para que quede registro
+
+            if (payload.level === 'urgent') {
+                if (alertMgr) alertMgr.showAlert(`⚠️ URGENTE: ${payload.message}`, 'error', 10000);
+            } else if (payload.level === 'warning') {
+                if (alertMgr) alertMgr.showAlert(`⚠️ Advertencia: ${payload.message}`, 'warning', 8000);
+            } else {
+                if (alertMgr) alertMgr.showAlert(`Mensaje Admin: ${payload.message}`, 'info');
+            }
         }
     });
     

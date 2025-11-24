@@ -92,42 +92,30 @@ function setLoading(btn, isLoading, originalText = '') {
     }
 }
 
-/**
- * [DINÁMICO] Genera o elimina el mensaje de error en el DOM.
- */
 function updateCardError(element, message = '', show = true) {
     if (!element) return;
-    
-    // Buscar la tarjeta contenedora (o wrapper principal)
     const cardContainer = element.closest('.component-card') || element.closest('.component-wrapper');
-    
-    // Si no encuentra tarjeta contenedora, abortamos para evitar errores
     if (!cardContainer) return;
 
     let nextElement = cardContainer.nextElementSibling;
     let errorDiv = null;
 
-    // Verificar si ya creamos un error anteriormente (es el siguiente hermano)
     if (nextElement && nextElement.classList.contains('component-card__error')) {
         errorDiv = nextElement;
     }
 
-    // Si hay que mostrar y no existe, lo creamos dinámicamente
     if (!errorDiv && show) {
         errorDiv = document.createElement('div');
         errorDiv.className = 'component-card__error';
-        // Estilo para asegurar separación visual
         errorDiv.style.marginTop = '16px'; 
         cardContainer.after(errorDiv);
     }
 
     if (show && errorDiv) {
         errorDiv.textContent = message;
-        // Pequeño delay para permitir la transición CSS (opacity)
         requestAnimationFrame(() => errorDiv.classList.add('active'));
     } else if (!show && errorDiv) {
         errorDiv.classList.remove('active');
-        // Esperar a que termine la transición CSS (0.2s) antes de eliminar del DOM
         setTimeout(() => {
             if (errorDiv.parentNode) errorDiv.parentNode.removeChild(errorDiv);
         }, 200);
@@ -135,30 +123,27 @@ function updateCardError(element, message = '', show = true) {
 }
 
 function showError(message, show = true) {
-    // CORRECCIÓN CRÍTICA: No usamos los botones del toolbar (#btn-save...) porque son flotantes
-    // y no están dentro de la estructura de tarjetas del contenido.
-    // Buscamos elementos DENTRO de las tarjetas de formulario.
-    
     let anchorElement = null;
 
     if (currentContext === 'manage') {
-        // Usamos el dropdown de estado o el input hidden como ancla
-        anchorElement = document.querySelector('#dropdown-manage-status') || document.getElementById('manage-target-id');
+        // Intentamos anclar el error al botón de enviar notificación si estamos en esa zona
+        const btnSend = document.getElementById('btn-send-notification');
+        if (btnSend && btnSend.offsetParent !== null) { // visible
+             anchorElement = btnSend;
+        } else {
+             anchorElement = document.querySelector('#dropdown-manage-status') || document.getElementById('manage-target-id');
+        }
     } else if (currentContext === 'role') {
-        // Usamos el dropdown de roles
         anchorElement = document.querySelector('#dropdown-roles') || document.getElementById('role-target-id');
     } else if (currentContext === 'status') {
-        // Usamos el dropdown de tipo de sanción
         anchorElement = document.querySelector('#dropdown-status-options') || document.getElementById('target-user-id');
     }
 
-    // Nos aseguramos de obtener la TARJETA contenedora de ese elemento
     if (anchorElement) {
         const card = anchorElement.closest('.component-card');
         if (card) anchorElement = card;
     }
 
-    // Fallback: Si algo falla, usamos la última tarjeta visible del wrapper
     if (!anchorElement) {
         anchorElement = document.querySelector('.component-wrapper .component-card:last-of-type');
     }
@@ -166,7 +151,6 @@ function showError(message, show = true) {
     if (anchorElement) {
         updateCardError(anchorElement, message, show);
     } else {
-        // Último recurso si no hay DOM válido
         if (show && message) alert(message);
     }
 }
@@ -252,14 +236,21 @@ function handleDropdownSelection(option) {
     const label = option.dataset.label || option.querySelector('.menu-link-text').textContent;
     const icon = option.dataset.icon;
 
+    // Gestión visual de selección en la lista (solo si está dentro de una lista)
     const menuList = option.closest('.menu-list');
     if (menuList) {
         menuList.querySelectorAll('.menu-link').forEach(o => {
             o.classList.remove('active');
-            if (o.lastElementChild) o.lastElementChild.innerHTML = '';
+            // Eliminar el icono de check si existe
+            const lastIcon = o.lastElementChild;
+            if (lastIcon && lastIcon.classList.contains('menu-link-icon')) lastIcon.innerHTML = '';
         });
         option.classList.add('active');
-        if (option.lastElementChild) option.lastElementChild.innerHTML = '<span class="material-symbols-rounded">check</span>';
+        // Agregar check al seleccionado si tiene estructura de iconos
+        const lastIcon = option.lastElementChild;
+        if (lastIcon && lastIcon.classList.contains('menu-link-icon')) {
+            lastIcon.innerHTML = '<span class="material-symbols-rounded">check</span>';
+        }
     }
 
     if (action === 'select-status-option') updateStatusUI(val, label, icon);
@@ -268,6 +259,15 @@ function handleDropdownSelection(option) {
     if (action === 'select-manage-status') updateManageStatusUI(val, label, icon);
     if (action === 'select-deletion-type') updateDeletionTypeUI(val, label);
     if (action === 'select-role-option') updateRoleUI(val, label, icon);
+    
+    // [NUEVO] Selección de plantilla de notificación
+    if (action === 'select-notif-template') {
+        // Usamos los datasets específicos de la plantilla
+        const level = option.dataset.level;
+        const message = option.dataset.message;
+        const displayText = option.querySelector('.menu-link-text').textContent;
+        updateNotifTemplateUI(level, message, displayText);
+    }
 
     closeAllDropdowns();
 }
@@ -468,6 +468,86 @@ function initManageLogic() {
     }
 
     btnSave.onclick = () => saveManageChanges();
+
+    // [NUEVO] Inicializar botón de notificación si existe
+    const btnSendNotif = document.getElementById('btn-send-notification');
+    if (btnSendNotif) {
+        btnSendNotif.onclick = () => sendCustomNotification();
+    }
+}
+
+// [NUEVO] Lógica de UI para Notificaciones
+function updateNotifTemplateUI(level, message, displayText) {
+    // 1. Actualizar el Trigger del Dropdown
+    document.getElementById('notif-template-text').textContent = displayText;
+    
+    // 2. Rellenar Textarea y Nivel
+    const messageInput = document.getElementById('input-notif-message');
+    const levelInput = document.getElementById('notif-level-value');
+    
+    messageInput.value = message;
+    levelInput.value = level;
+
+    // 3. Feedback Visual del Nivel (Badge)
+    const badge = document.getElementById('notif-level-indicator');
+    const badgeLabel = document.getElementById('notif-level-label');
+    
+    // Limpiar clases previas
+    badge.className = 'component-badge';
+    
+    if (level === 'urgent') {
+        badge.classList.add('component-badge--danger');
+        badgeLabel.textContent = 'Urgente / Crítico';
+    } else if (level === 'warning') {
+        badge.style.backgroundColor = '#fff3e0'; // Hardcoded orange style match
+        badge.style.color = '#e65100';
+        badge.style.border = '1px solid #ffe0b2';
+        badgeLabel.textContent = 'Advertencia';
+    } else {
+        badge.classList.add('component-badge--neutral');
+        // Reset estilos inline si veníamos de warning
+        badge.style.backgroundColor = ''; 
+        badge.style.color = '';
+        badge.style.border = '';
+        badgeLabel.textContent = 'Informativa';
+    }
+}
+
+// [NUEVO] Función para enviar la notificación
+async function sendCustomNotification() {
+    const level = document.getElementById('notif-level-value').value;
+    const message = document.getElementById('input-notif-message').value.trim();
+    const btnSend = document.getElementById('btn-send-notification');
+
+    showError('', false); 
+
+    if (!message) {
+        showError('El mensaje no puede estar vacío.');
+        return;
+    }
+
+    setLoading(btnSend, true);
+
+    const payload = {
+        action: 'send_admin_notification',
+        target_id: targetId,
+        level: level,
+        message: message
+    };
+
+    const res = await fetchApi(payload);
+
+    if (res.success) {
+        if (window.alertManager) window.alertManager.showAlert('Notificación enviada correctamente', 'success');
+        // Limpiar
+        document.getElementById('input-notif-message').value = ''; 
+        // Resetear UI
+        document.getElementById('notif-template-text').textContent = 'Seleccionar plantilla...';
+        updateNotifTemplateUI('info', '', 'Seleccionar plantilla...');
+    } else {
+        showError(res.message);
+    }
+    setLoading(btnSend, false);
 }
 
 function updateManageStatusUI(val, text, icon) {

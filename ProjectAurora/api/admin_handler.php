@@ -272,6 +272,31 @@ try {
         }
 
         echo json_encode(['success' => true, 'message' => trans('global.save_status')]);
+
+    // ======================================================
+    // 6. ENVIAR NOTIFICACIÓN ADMINISTRATIVA (NUEVO)
+    // ======================================================
+    } elseif ($action === 'send_admin_notification') {
+        $targetId = (int)($data['target_id'] ?? 0);
+        $level = $data['level'] ?? 'info'; 
+        $message = trim($data['message'] ?? '');
+        $currentAdminId = $_SESSION['user_id'];
+
+        if (empty($message)) throw new Exception("El mensaje no puede estar vacío.");
+        
+        // Guardar en base de datos (Historial persistente)
+        $stmt = $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_id) VALUES (?, 'admin_alert', ?, ?)");
+        $stmt->execute([$targetId, $message, $currentAdminId]);
+
+        // Enviar por WebSocket (Tiempo Real)
+        $socketData = [
+            'message' => $message,
+            'level' => $level
+        ];
+        
+        send_live_notification($targetId, 'admin_alert', $socketData);
+
+        echo json_encode(['success' => true, 'message' => 'Notificación enviada.']);
     }
 
 } catch (Exception $e) {
