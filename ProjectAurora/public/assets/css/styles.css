@@ -401,6 +401,35 @@ html {
     color: #000;
 }
 
+/* --- LAYOUT DE SUPERFICIE DIVIDIDA (FLEXBOX) --- */
+.menu-content-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+.menu-content-group-top {
+    flex: 1 1 auto; /* Crece para ocupar espacio */
+    overflow-y: auto; /* Scroll si el contenido es largo */
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 0; /* Corrección para flexbox scroll */
+}
+
+.menu-content-group-bottom {
+    flex: 0 0 auto; /* No crece, tamaño fijo al contenido */
+    margin-top: auto; /* Empuja hacia el fondo */
+    padding-top: 8px;
+    border-top: 1px solid #00000010; /* Separador visual */
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+/* ----------------------------------------------- */
+
 .menu-list {
     display: flex;
     flex-direction: column;
