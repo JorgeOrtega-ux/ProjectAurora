@@ -145,16 +145,16 @@ if ($CURRENT_SECTION === 'admin') { header("Location: " . $basePath . "admin/das
 $isUserRole = ($_SESSION['user_role'] ?? 'user') === 'user';
 $maintenanceAllowed = ['status-page', 'login', 'register', 'forgot-password', 'reset-password', 'login/verification-additional'];
 
-// A) MANTENIMIENTO (Prioridad Alta)
+// A) MANTENIMIENTO
 if ($isMaintenanceMode && $isUserRole && !in_array($CURRENT_SECTION, $maintenanceAllowed)) {
     header("Location: " . $basePath . "status-page?status=maintenance");
     exit;
 }
 
-// B) LÍMITE DE USUARIOS
+// B) LÍMITE DE USUARIOS (Corregido con Ranking por antigüedad)
 if (!$isMaintenanceMode && $isUserRole && !in_array($CURRENT_SECTION, $maintenanceAllowed)) {
-    $activeSessions = countActiveSessions($pdo);
-    if ($activeSessions > $maxUsers) {
+    // Verificamos si el usuario "entra" en los primeros N puestos
+    if (!isUserAllowedByRank($pdo, session_id(), $maxUsers)) {
         header("Location: " . $basePath . "status-page?status=server_full");
         exit;
     }
@@ -171,10 +171,12 @@ if ($CURRENT_SECTION === 'status-page') {
         }
     }
     if ($statusParam === 'server_full') {
-        $activeSessions = countActiveSessions($pdo);
-        if (!$isMaintenanceMode && ($activeSessions <= $maxUsers || !$isUserRole)) {
-            header("Location: " . $basePath);
-            exit;
+        // Si el servidor ya no está lleno PARA ESTE USUARIO (su rango subió), entrar.
+        if (!$isMaintenanceMode && $isUserRole) {
+            if (isUserAllowedByRank($pdo, session_id(), $maxUsers)) {
+                header("Location: " . $basePath);
+                exit;
+            }
         }
     }
     if (in_array($statusParam, ['suspended', 'deleted']) && $freshUser && $freshUser['account_status'] === 'active') {
@@ -184,7 +186,7 @@ if ($CURRENT_SECTION === 'status-page') {
 }
 
 // =======================================================================
-// 5. VISIBILIDAD DE NAVEGACIÓN (CORRECCIÓN VISUAL)
+// 5. VISIBILIDAD DE NAVEGACIÓN
 // =======================================================================
 
 $isLoggedIn = isset($_SESSION['user_id']);
@@ -231,19 +233,14 @@ if (array_key_exists($CURRENT_SECTION, $requirements)) {
     }
 }
 
-// --- [CORRECCIÓN] CONTROL DE VISIBILIDAD DEL HEADER ---
 if ($isLoggedIn) {
     $statusParam = $_GET['status'] ?? '';
-
-    // 1. Si hay mantenimiento activo y es usuario normal -> OCULTAR
     if ($isMaintenanceMode && $isUserRole) {
         $showNavigation = false;
     }
-    // 2. [FIX] Si el servidor está lleno -> OCULTAR
     elseif ($CURRENT_SECTION === 'status-page' && $statusParam === 'server_full') {
         $showNavigation = false;
     }
-    // 3. En cualquier otro caso normal -> MOSTRAR (excepto errores de sistema)
     else {
         $showNavigation = ($SECTION_FILE_NAME !== 'system/error-missing-data');
     }

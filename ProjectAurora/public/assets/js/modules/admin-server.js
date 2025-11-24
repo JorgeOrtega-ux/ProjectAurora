@@ -20,14 +20,12 @@ async function updateConfig(key, value, elementToRevertOnError) {
         if (data.success) {
             if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
             
-            // Lógica visual específica: Si activamos mantenimiento, desactivamos registro visualmente
             if (key === 'maintenance_mode' && value === 1) {
                 const regToggle = document.getElementById('toggle-allow-registration');
                 if (regToggle) regToggle.checked = false;
             }
         } else {
             if (window.alertManager) window.alertManager.showAlert(data.message, 'error');
-            // Revertir cambio visual si falló
             if (elementToRevertOnError && elementToRevertOnError.type === 'checkbox') {
                 elementToRevertOnError.checked = !elementToRevertOnError.checked;
             }
@@ -41,41 +39,71 @@ async function updateConfig(key, value, elementToRevertOnError) {
     }
 }
 
-// Variable para controlar el debounce del stepper y no saturar el servidor
 let stepperTimeout = null;
 
-export function initAdminServer() {
-    // Usamos Delegación de Eventos Global para evitar problemas con la carga dinámica (SPA)
+function handleServerStats(e) {
+    const { type, stats, log } = e.detail;
     
-    // 1. Listener para Checkboxes (Mantenimiento y Registro)
+    // Actualizar Estadísticas
+    if (type === 'server_stats_debug' && stats) {
+        const elMax = document.getElementById('debug-max-users');
+        const elDb = document.getElementById('debug-db-sessions');
+        const elQueue = document.getElementById('debug-queue-len');
+        const elReal = document.getElementById('debug-real-users');
+
+        if (elMax) elMax.textContent = stats.max_users;
+        if (elDb) elDb.textContent = stats.db_total_sessions;
+        if (elQueue) elQueue.textContent = stats.queue_length;
+        if (elReal) elReal.textContent = stats.real_users_in_app;
+    }
+
+    // Actualizar Consola de Logs
+    if (type === 'server_log_debug' && log) {
+        const consoleDiv = document.getElementById('server-log-console');
+        if (consoleDiv) {
+            const line = document.createElement('div');
+            line.textContent = log;
+            consoleDiv.appendChild(line);
+            // Auto-scroll al final
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+            
+            // Limitar a 100 líneas para no saturar memoria
+            if (consoleDiv.children.length > 100) {
+                consoleDiv.removeChild(consoleDiv.firstChild);
+            }
+        }
+    }
+}
+
+export function initAdminServer() {
+    // Limpiar listener anterior si existía
+    document.removeEventListener('socket-message', handleServerStats);
+    document.addEventListener('socket-message', handleServerStats);
+
+    // 1. Listener para Checkboxes
     document.body.addEventListener('change', (e) => {
         const target = e.target;
         
-        // Detectar Toggle de Mantenimiento
         if (target.matches('#toggle-maintenance-mode')) {
             updateConfig('maintenance_mode', target.checked ? 1 : 0, target);
         }
 
-        // Detectar Toggle de Registro
         if (target.matches('#toggle-allow-registration')) {
             updateConfig('allow_registrations', target.checked ? 1 : 0, target);
         }
     });
 
-    // 2. Listener para Steppers (Botones de incremento/decremento)
+    // 2. Listener para Steppers
     document.body.addEventListener('click', (e) => {
-        // Buscamos si el click fue dentro de un botón de stepper
         const btn = e.target.closest('.stepper-button');
         if (!btn) return;
 
-        // Buscamos el contenedor padre del stepper
         const container = btn.closest('.component-stepper');
         if (!container) return;
 
-        // Solo actuamos si es el stepper de configuración de servidor
         if (container.dataset.action !== 'update-max-concurrent-users') return;
 
-        e.preventDefault(); // Evitar comportamientos extraños
+        e.preventDefault();
 
         const valueDisplay = container.querySelector('.stepper-value');
         const min = parseInt(container.dataset.min) || 0;
@@ -83,21 +111,21 @@ export function initAdminServer() {
         let currentVal = parseInt(container.dataset.currentValue) || 0;
         const action = btn.dataset.stepAction;
 
-        // Calcular nuevo valor
         if (action === 'increment-1') currentVal += 1;
         if (action === 'increment-10') currentVal += 10;
         if (action === 'decrement-1') currentVal -= 1;
         if (action === 'decrement-10') currentVal -= 10;
 
-        // Validar límites
         if (currentVal < min) currentVal = min;
         if (currentVal > max) currentVal = max;
 
-        // Actualizar UI inmediatamente
         valueDisplay.textContent = currentVal;
         container.dataset.currentValue = currentVal;
 
-        // Enviar al servidor con Debounce (esperar 500ms a que el usuario deje de clickear)
+        // Actualizar UI local inmediatamente
+        const elMax = document.getElementById('debug-max-users');
+        if(elMax) elMax.textContent = currentVal;
+
         if (stepperTimeout) clearTimeout(stepperTimeout);
         
         stepperTimeout = setTimeout(() => {

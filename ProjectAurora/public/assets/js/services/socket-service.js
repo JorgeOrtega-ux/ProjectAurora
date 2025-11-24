@@ -7,12 +7,11 @@ const reconnectInterval = 5000;
 let socket = null;
 
 function connect() {
-    // Permitir conexión incluso sin USER_ID si estamos en cola pública
     const isQueuePage = window.location.href.includes('status=server_full');
     
     if (!window.USER_ID && !isQueuePage) return;
     
-    console.log('websocket_client:', Date.now(), `connecting to ${WS_URL}...`);
+    console.log('websocket_client: connecting...');
     socket = new WebSocket(WS_URL);
 
     if (window.socketService) {
@@ -22,7 +21,6 @@ function connect() {
     socket.onopen = () => {
         console.log('websocket_client: connected');
         
-        // 1. Autenticación Normal (si hay sesión)
         if (window.WS_TOKEN) {
             const requestId = Math.random().toString(16).substring(2, 10);
             socket.send(JSON.stringify({
@@ -32,9 +30,7 @@ function connect() {
             }));
         }
 
-        // 2. Unirse a la Cola (si estamos en pantalla de servidor lleno)
         if (isQueuePage) {
-            console.log('Uniendo a la cola de espera...');
             socket.send(JSON.stringify({ type: 'join_queue' }));
         }
     };
@@ -44,18 +40,23 @@ function connect() {
             const data = JSON.parse(event.data);
             document.dispatchEvent(new CustomEvent('socket-message', { detail: data }));
             
-            // --- EVENTOS DE COLA ---
+            // --- EVENTOS DE COLA Y ACCESO ---
+            
             if (data.type === 'queue_update') {
                 updateQueueUI(data.position);
             }
 
             if (data.type === 'access_granted') {
-                console.log('Acceso concedido! Redirigiendo...');
-                // Redirigir a la raíz. El router.php verá que hay espacio y dejará pasar.
+                console.log('Acceso concedido. Redirigiendo...');
                 window.location.href = (window.BASE_PATH || '/ProjectAurora/');
             }
 
-            // --- EVENTOS DEL SISTEMA ---
+            // [NUEVO] REDIRECCIÓN FORZADA (Cuando reducen los slots)
+            if (data.type === 'force_redirect') {
+                console.warn('Límite de usuarios reducido. Redirigiendo a cola...');
+                window.location.href = data.url;
+            }
+
             if (data.type === 'system_status_update') {
                 window.location.reload();
             }
@@ -66,7 +67,6 @@ function connect() {
     };
 
     socket.onclose = () => {
-        // Reintentar conexión siempre si estamos en cola o logueados
         if (window.USER_ID || isQueuePage) {
             setTimeout(connect, reconnectInterval);
         }
@@ -80,14 +80,11 @@ function updateQueueUI(pos) {
     const spinner = document.getElementById('queue-spinner');
 
     if (title) {
-        // Texto dinámico con la posición
         title.textContent = `En Cola: Posición ${pos}`;
         title.style.color = '#1976d2';
     }
     if (msg) msg.textContent = 'El servidor está lleno. Entrarás automáticamente cuando se libere un espacio.';
-    if (icon) icon.textContent = 'hourglass_top'; // Icono de reloj
-    
-    // Mostrar spinner de carga si existe
+    if (icon) icon.textContent = 'hourglass_top'; 
     if (spinner) spinner.style.display = 'block';
 }
 

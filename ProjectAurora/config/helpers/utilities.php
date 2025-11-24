@@ -102,7 +102,7 @@ function send_live_notification($targetUserId, $type, $data = []) {
     $port = 8081; 
 
     $payload = json_encode([
-        'target_id' => (string)$targetUserId, // Puede ser "global"
+        'target_id' => (string)$targetUserId, 
         'type' => $type, 
         'payload' => $data
     ]);
@@ -149,10 +149,23 @@ function getServerConfig($pdo) {
     }
 }
 
-// [NUEVO] Contar sesiones activas (excluyendo administradores si se desea, pero usualmente cuenta conexiones)
+// [MODIFICADO] Verifica si el usuario entra en el cupo basándose en su orden de llegada
+function isUserAllowedByRank($pdo, $sessionId, $maxUsers) {
+    try {
+        // Obtenemos los IDs de sesión de los usuarios más antiguos (prioridad de llegada)
+        // Ordenamos por ID (que es autoincremental y refleja el orden de creación)
+        $sql = "SELECT session_id FROM user_sessions ORDER BY id ASC LIMIT " . (int)$maxUsers;
+        $stmt = $pdo->query($sql);
+        $allowedSessions = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        // Si mi sesión está en la lista de "permitidos", retorno true
+        return in_array($sessionId, $allowedSessions);
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
 function countActiveSessions($pdo) {
-    // Contamos sesiones activas en los últimos 10 minutos, por ejemplo, o todas las que estén en la tabla
-    // Si limpias la tabla user_sessions al cerrar sesión, COUNT(*) es preciso.
     try {
         $stmt = $pdo->query("SELECT COUNT(*) FROM user_sessions");
         return (int)$stmt->fetchColumn();

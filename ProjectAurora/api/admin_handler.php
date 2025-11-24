@@ -222,7 +222,7 @@ try {
             throw new Exception(trans('global.error_connection'));
         }
 
-    // ======================================================
+   // ======================================================
     // 5. CONFIGURACIÓN DEL SERVIDOR (CON BROADCAST)
     // ======================================================
     } elseif ($action === 'update_server_config') {
@@ -239,34 +239,34 @@ try {
         if ($key === 'maintenance_mode' && (int)$value === 1) {
             $sql = "UPDATE server_config SET maintenance_mode = 1, allow_registrations = 0 WHERE id = 1";
             $pdo->exec($sql);
-            
-            // ENVIAR SEÑAL GLOBAL: Mantenimiento Activado
             send_live_notification('global', 'system_status_update', ['maintenance' => true]);
         
         // 2. Desactivar Mantenimiento
         } elseif ($key === 'maintenance_mode' && (int)$value === 0) {
             $sql = "UPDATE server_config SET maintenance_mode = 0 WHERE id = 1";
             $pdo->exec($sql);
-
-            // ENVIAR SEÑAL GLOBAL: Mantenimiento Desactivado
-            // Esto hará que todos recarguen la página. El router.php verificará si hay cupo.
-            // Si ActiveSessions > MaxUsers, el router redirigirá a status-page?status=server_full.
             send_live_notification('global', 'system_status_update', ['maintenance' => false]);
 
         // 3. Activar Registros
-        } elseif ($key === 'allow_registrations' && (int)$value === 1) {
-            $curr = getServerConfig($pdo);
-            if ((int)$curr['maintenance_mode'] === 1) {
-                throw new Exception("No puedes activar registros durante el mantenimiento.");
+        } elseif ($key === 'allow_registrations') {
+            if ((int)$value === 1) {
+                $curr = getServerConfig($pdo);
+                if ((int)$curr['maintenance_mode'] === 1) {
+                    throw new Exception("No puedes activar registros durante el mantenimiento.");
+                }
             }
-            $sql = "UPDATE server_config SET allow_registrations = 1 WHERE id = 1";
-            $pdo->exec($sql);
-            
-        } else {
-            // Actualización genérica (ej: max_concurrent_users)
-            $sql = "UPDATE server_config SET $key = ? WHERE id = 1";
+            $sql = "UPDATE server_config SET allow_registrations = ? WHERE id = 1";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$value]);
+            
+        } elseif ($key === 'max_concurrent_users') {
+            // [MODIFICADO] Actualización de Límite con Rebalanceo en Vivo
+            $sql = "UPDATE server_config SET max_concurrent_users = ? WHERE id = 1";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$value]);
+
+            // Avisar a Python para que expulse a los sobrantes inmediatamente
+            send_live_notification('global', 'rebalance_connections', ['new_limit' => $value]);
         }
 
         echo json_encode(['success' => true, 'message' => trans('global.save_status')]);
