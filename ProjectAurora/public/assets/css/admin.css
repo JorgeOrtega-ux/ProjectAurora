@@ -97,8 +97,8 @@ td.col-id {
     gap: 10px;
 }
 
-/* [NUEVO] Avatar Tabla con Roles */
-.user-table-avatar {
+/* [NUEVO] Foto de Perfil Tabla con Roles */
+.user-table-pfp {
     position: relative;
     width: 32px;
     height: 32px;
@@ -109,8 +109,8 @@ td.col-id {
     flex-shrink: 0;
 }
 
-.user-table-avatar img,
-.user-table-avatar .user-avatar-placeholder {
+.user-table-pfp img,
+.user-table-pfp .user-pfp-placeholder {
     width: 100%;
     height: 100%;
     border-radius: 50%;
@@ -118,20 +118,20 @@ td.col-id {
     z-index: 1;
 }
 
-.user-avatar-placeholder {
+.user-pfp-placeholder {
     background-color: #e0e0e0;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.avatar-icon {
+.pfp-icon {
     font-size: 18px;
     color: #666;
 }
 
 /* Bordes de Roles para Tabla */
-.user-table-avatar::before {
+.user-table-pfp::before {
     content: '';
     position: absolute;
     border-radius: 50%;
@@ -144,19 +144,19 @@ td.col-id {
     pointer-events: none;
 }
 
-.user-table-avatar[data-role="user"]::before {
+.user-table-pfp[data-role="user"]::before {
     border-color: #cccccc;
 }
 
-.user-table-avatar[data-role="moderator"]::before {
+.user-table-pfp[data-role="moderator"]::before {
     border-color: #0000FF;
 }
 
-.user-table-avatar[data-role="administrator"]::before {
+.user-table-pfp[data-role="administrator"]::before {
     border-color: #FF0000;
 }
 
-.user-table-avatar[data-role="founder"]::before {
+.user-table-pfp[data-role="founder"]::before {
     border: none;
     background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
     mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);

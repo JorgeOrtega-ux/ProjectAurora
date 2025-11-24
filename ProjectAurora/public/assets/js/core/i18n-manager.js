@@ -29,10 +29,11 @@ function getKeyVars(key) {
         case 'auth.errors.username_invalid':
             return { min: config.min_username_length || 6, max: config.max_username_length || 32 };
             
-        // Avatar
-        case 'settings.profile.avatar_meta':
-        case 'settings.avatar.error_size':
-            return { size: config.avatar_max_size || 2 };
+        // Foto de perfil
+        // [MODIFICADO] Clave actualizada
+        case 'settings.profile.profile_picture_meta':
+        case 'settings.profile.error_size':
+            return { size: config.profile_picture_max_size || 2 };
             
         // Email
         case 'auth.errors.email_long':
@@ -131,7 +132,6 @@ export function translateDocument(container = document) {
     elements.forEach(el => {
         const key = el.getAttribute('data-i18n');
         
-        // [CORRECCIÓN CRÍTICA] Leer variables locales inyectadas desde PHP (ej: {val: 8})
         const rawVars = el.getAttribute('data-i18n-vars');
         let localVars = {};
         if (rawVars) {

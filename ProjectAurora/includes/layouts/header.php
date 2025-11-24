@@ -39,9 +39,10 @@
                 data-i18n-tooltip="header.profile_tooltip"
                 data-tooltip="<?php echo trans('header.profile_tooltip'); ?>"> 
                 <?php
-                if (isset($_SESSION['user_avatar']) && !empty($_SESSION['user_avatar'])) {
-                    $avatarUrl = $basePath . $_SESSION['user_avatar'];
-                    echo '<img src="' . htmlspecialchars($avatarUrl) . '" alt="' . trans('header.alt_profile') . '" class="profile-img">';
+                // [MODIFICADO] user_profile_picture
+                if (isset($_SESSION['user_profile_picture']) && !empty($_SESSION['user_profile_picture'])) {
+                    $pfpUrl = $basePath . $_SESSION['user_profile_picture'];
+                    echo '<img src="' . htmlspecialchars($pfpUrl) . '" alt="' . trans('header.alt_profile') . '" class="profile-img">';
                 } else {
                     echo '<span class="material-symbols-rounded">person</span>';
                 }

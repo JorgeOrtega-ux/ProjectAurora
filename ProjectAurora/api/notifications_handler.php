@@ -14,9 +14,8 @@ date_default_timezone_set('America/Matamoros');
 
 require_once '../config/core/database.php';
 require_once '../config/helpers/utilities.php';
-require_once '../includes/logic/i18n_server.php'; // [NUEVO]
+require_once '../includes/logic/i18n_server.php';
 
-// [NUEVO] Cargar idioma
 $lang = $_SESSION['user_lang'] ?? detect_browser_language() ?? 'es-latam';
 I18n::load($lang);
 
@@ -40,7 +39,8 @@ $response = ['success' => false, 'message' => trans('global.action_invalid')];
 
 try {
     if ($action === 'get_notifications') {
-        $sql = "SELECT n.*, u.avatar as sender_avatar, u.role as sender_role
+        // [MODIFICADO] profile_picture
+        $sql = "SELECT n.*, u.profile_picture as sender_profile_picture, u.role as sender_role
                 FROM notifications n 
                 LEFT JOIN users u ON n.related_id = u.id
                 WHERE n.user_id = ? 

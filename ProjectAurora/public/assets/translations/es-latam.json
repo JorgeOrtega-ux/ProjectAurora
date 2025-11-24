@@ -21,7 +21,7 @@
         "save_status": "Guardar Estado",
         "active": "Activo",
         "deleted": "Cuenta Eliminada",
-        "alt_avatar": "Avatar",
+        "alt_avatar": "Foto de perfil",
         "please": "Por favor",
         "time": {
             "never": "Nunca",
@@ -142,10 +142,10 @@
     "settings": {
         "profile": {
             "title": "Tu Perfil",
-            "description": "Aquí podrás editar tu información de perfil y personalizar tu avatar.",
-            "avatar_title": "Foto de perfil",
-            "avatar_desc": "Esto ayudará a tus compañeros a reconocerte.",
-            "avatar_meta": "Máximo {size}MB. Formatos: PNG, JPG, WEBP.",
+            "description": "Aquí podrás editar tu información de perfil y personalizar tu foto.",
+            "profile_picture_title": "Foto de perfil",
+            "profile_picture_desc": "Esto ayudará a tus compañeros a reconocerte.",
+            "profile_picture_meta": "Máximo {size}MB. Formatos: PNG, JPG, WEBP.",
             "upload_btn": "Subir foto",
             "change_btn": "Cambiar foto",
             "username_title": "Nombre de usuario",
@@ -158,8 +158,13 @@
             "lang_desc": "Selecciona tu idioma preferido.",
             "new_tab_title": "Abrir los enlaces en una pestaña nueva",
             "new_tab_desc": "En el navegador web, los enlaces siempre se abrirán en una pestaña nueva.",
-            "alt_avatar": "Avatar",
-            "alt_no_avatar": "Sin avatar"
+            "alt_avatar": "Foto de perfil",
+            "alt_no_avatar": "Sin foto de perfil",
+            "reset_confirm": "¿Restablecer foto de perfil?",
+            "error_format": "Formato no permitido.",
+            "error_size": "La imagen supera el límite de {size}MB.",
+            "success": "Foto de perfil actualizada.",
+            "reset": "Foto de perfil restablecida."
         },
         "security": {
             "title": "Inicio de sesión y seguridad",
@@ -471,8 +476,8 @@
             "usernameCooldownDesc": "Días que un usuario debe esperar antes de poder cambiar su nombre de usuario de nuevo.",
             "emailCooldownTitle": "Cooldown de Email (Días)",
             "emailCooldownDesc": "Días que un usuario debe esperar antes de poder cambiar su email de nuevo.",
-            "avatarMaxSizeTitle": "Tamaño Máx. de Avatar (MB)",
-            "avatarMaxSizeDesc": "Tamaño máximo permitido para la subida de avatares, en Megabytes (ej. 2 = 2MB)."
+            "profilePictureMaxSizeTitle": "Tamaño Máx. de Foto de Perfil (MB)",
+            "profilePictureMaxSizeDesc": "Tamaño máximo permitido para la subida de fotos de perfil, en Megabytes (ej. 2 = 2MB)."
         }
     },
     "languages": {

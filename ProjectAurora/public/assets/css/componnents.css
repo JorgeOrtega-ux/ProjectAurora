@@ -21,7 +21,7 @@
     justify-content: flex-end;
 }
 
-.avatar-placeholder-icon {
+.pfp-placeholder-icon {
     font-size: 32px;
     color: #999;
 }
@@ -252,9 +252,9 @@
 }
 
 /* =========================================
-   AVATAR
+   FOTO DE PERFIL (Anteriormente Avatar)
    ========================================= */
-.component-card__avatar {
+.component-card__profile-picture {
     width: 60px;
     height: 60px;
     border-radius: 50%;
@@ -267,7 +267,7 @@
     flex-shrink: 0;
 }
 
-.component-card__avatar::before {
+.component-card__profile-picture::before {
     content: '';
     position: absolute;
     border-radius: 50%;
@@ -280,19 +280,19 @@
     z-index: 2;
 }
 
-.component-card__avatar[data-role="user"]::before {
+.component-card__profile-picture[data-role="user"]::before {
     border-color: #cccccc;
 }
 
-.component-card__avatar[data-role="moderator"]::before {
+.component-card__profile-picture[data-role="moderator"]::before {
     border-color: #0000FF;
 }
 
-.component-card__avatar[data-role="administrator"]::before {
+.component-card__profile-picture[data-role="administrator"]::before {
     border-color: #FF0000;
 }
 
-.component-card__avatar[data-role="founder"]::before {
+.component-card__profile-picture[data-role="founder"]::before {
     border: none;
     background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
     mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
@@ -321,7 +321,7 @@
     border-radius: 50%;
 }
 
-.component-card__avatar:hover .component-card__avatar-overlay {
+.component-card__profile-picture:hover .component-card__avatar-overlay {
     opacity: 1;
 }
 

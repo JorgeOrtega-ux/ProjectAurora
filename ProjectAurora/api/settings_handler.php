@@ -110,82 +110,82 @@ function parse_user_agent($userAgent) {
 try {
 
     // ======================================================
-    // AVATAR
+    // FOTO DE PERFIL (Anteriormente Avatar)
     // ======================================================
-    if ($action === 'update_avatar') {
-        check_cooldown($pdo, $userId, 'avatar', 1);
+    if ($action === 'update_profile_picture') {
+        check_cooldown($pdo, $userId, 'profile_picture', 1);
         
-        if (!isset($_FILES['avatar']) || $_FILES['avatar']['error'] !== UPLOAD_ERR_OK) {
-            throw new Exception(trans('settings.avatar.error_format'));
+        if (!isset($_FILES['profile_picture']) || $_FILES['profile_picture']['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception(trans('settings.profile.error_format'));
         }
-        $file = $_FILES['avatar'];
+        $file = $_FILES['profile_picture'];
         
-        // [DINAMICO] Tamaño máximo
-        $maxMB = (int)($serverConfig['avatar_max_size'] ?? 2);
+        $maxMB = (int)($serverConfig['profile_picture_max_size'] ?? 2);
         $maxSize = $maxMB * 1024 * 1024;
         
-        if ($file['size'] > $maxSize) throw new Exception(trans('settings.avatar.error_size', ['size' => $maxMB]));
+        if ($file['size'] > $maxSize) throw new Exception(trans('settings.profile.error_size', ['size' => $maxMB]));
         
         $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $mimeType = $finfo->file($file['tmp_name']);
-        if (!in_array($mimeType, $allowedTypes)) throw new Exception(trans('settings.avatar.error_format'));
+        if (!in_array($mimeType, $allowedTypes)) throw new Exception(trans('settings.profile.error_format'));
         
-        $uploadDir = __DIR__ . '/../public/assets/uploads/avatars/custom/';
+        // [MODIFICADO] Ruta de uploads
+        $uploadDir = __DIR__ . '/../public/assets/uploads/profile_pictures/custom/';
         if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
         $extension = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'png';
         $newFileName = generate_uuid_v4() . '.' . $extension;
         $destination = $uploadDir . $newFileName;
-        $dbPath = 'assets/uploads/avatars/custom/' . $newFileName;
+        $dbPath = 'assets/uploads/profile_pictures/custom/' . $newFileName;
         
         if (!move_uploaded_file($file['tmp_name'], $destination)) {
             throw new Exception(trans('global.error_connection'));
         }
         
-        $stmt = $pdo->prepare("SELECT avatar FROM users WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT profile_picture FROM users WHERE id = ?");
         $stmt->execute([$userId]);
-        $oldAvatar = $stmt->fetchColumn();
-        if ($oldAvatar && file_exists(__DIR__ . '/../public/' . $oldAvatar)) {
-            if (strpos($oldAvatar, 'custom/') !== false) {
-                @unlink(__DIR__ . '/../public/' . $oldAvatar);
+        $oldPic = $stmt->fetchColumn();
+        if ($oldPic && file_exists(__DIR__ . '/../public/' . $oldPic)) {
+            if (strpos($oldPic, 'custom/') !== false) {
+                @unlink(__DIR__ . '/../public/' . $oldPic);
             }
         }
-        $stmt = $pdo->prepare("UPDATE users SET avatar = ? WHERE id = ?");
+        $stmt = $pdo->prepare("UPDATE users SET profile_picture = ? WHERE id = ?");
         if ($stmt->execute([$dbPath, $userId])) {
-            $_SESSION['user_avatar'] = $dbPath;
-            audit_log($pdo, $userId, 'avatar', $oldAvatar, $dbPath);
-            $response = ['success' => true, 'message' => trans('settings.avatar.success'), 'avatar_url' => '/ProjectAurora/' . $dbPath];
+            $_SESSION['user_profile_picture'] = $dbPath;
+            audit_log($pdo, $userId, 'profile_picture', $oldPic, $dbPath);
+            $response = ['success' => true, 'message' => trans('settings.profile.success'), 'avatar_url' => '/ProjectAurora/' . $dbPath];
         } else {
             throw new Exception(trans('global.error_connection'));
         }
 
-    } elseif ($action === 'remove_avatar') {
-        $stmt = $pdo->prepare("SELECT username, avatar FROM users WHERE id = ?");
+    } elseif ($action === 'remove_profile_picture') {
+        $stmt = $pdo->prepare("SELECT username, profile_picture FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $user = $stmt->fetch();
         if (!$user) throw new Exception(trans('admin.error.user_not_found'));
-        $oldAvatar = $user['avatar'];
+        $oldPic = $user['profile_picture'];
         $username = $user['username'];
         $color = get_random_hex_color();
         $uuid = generate_uuid_v4();
         $apiUrl = "https://ui-avatars.com/api/?name={$username}&size=256&background={$color}&color=ffffff&bold=true&length=1";
         $newFileName = $uuid . '.png';
-        $uploadDir = __DIR__ . '/../public/assets/uploads/avatars/default/';
+        $uploadDir = __DIR__ . '/../public/assets/uploads/profile_pictures/default/';
         if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
         $destPath = $uploadDir . $newFileName;
-        $dbPath = 'assets/uploads/avatars/default/' . $newFileName;
+        $dbPath = 'assets/uploads/profile_pictures/default/' . $newFileName;
         $imageContent = @file_get_contents($apiUrl);
         if ($imageContent !== false) file_put_contents($destPath, $imageContent);
-        if ($oldAvatar && file_exists(__DIR__ . '/../public/' . $oldAvatar)) {
-            if (strpos($oldAvatar, 'custom/') !== false) {
-                @unlink(__DIR__ . '/../public/' . $oldAvatar);
+        if ($oldPic && file_exists(__DIR__ . '/../public/' . $oldPic)) {
+            if (strpos($oldPic, 'custom/') !== false) {
+                @unlink(__DIR__ . '/../public/' . $oldPic);
             }
         }
-        $stmt = $pdo->prepare("UPDATE users SET avatar = ? WHERE id = ?");
+        $stmt = $pdo->prepare("UPDATE users SET profile_picture = ? WHERE id = ?");
         if ($stmt->execute([$dbPath, $userId])) {
-            $_SESSION['user_avatar'] = $dbPath;
-            audit_log($pdo, $userId, 'avatar', $oldAvatar, $dbPath);
-            $response = ['success' => true, 'message' => trans('settings.avatar.reset'), 'avatar_url' => '/ProjectAurora/' . $dbPath];
+            $_SESSION['user_profile_picture'] = $dbPath;
+            audit_log($pdo, $userId, 'profile_picture', $oldPic, $dbPath);
+            $response = ['success' => true, 'message' => trans('settings.profile.reset'), 'avatar_url' => '/ProjectAurora/' . $dbPath];
         } else {
             throw new Exception(trans('global.error_connection'));
         }
@@ -194,13 +194,11 @@ try {
     // USERNAME
     // ======================================================
     } elseif ($action === 'update_username') {
-        // [DINAMICO] Cooldown
         $cooldownDays = (int)($serverConfig['username_cooldown'] ?? 30);
         check_cooldown($pdo, $userId, 'username', $cooldownDays);
         
         $newUsername = trim($data['username'] ?? '');
         
-        // [DINAMICO] Longitudes
         $minLen = (int)($serverConfig['min_username_length'] ?? 6);
         $maxLen = (int)($serverConfig['max_username_length'] ?? 32);
         
@@ -229,13 +227,11 @@ try {
     // EMAIL
     // ======================================================
     } elseif ($action === 'update_email') {
-        // [DINAMICO] Cooldown
         $cooldownDays = (int)($serverConfig['email_cooldown'] ?? 12);
         check_cooldown($pdo, $userId, 'email', $cooldownDays);
         
         $newEmail = strtolower(trim($data['email'] ?? ''));
         
-        // [DINAMICO] Longitud Max
         $maxLen = (int)($serverConfig['max_email_length'] ?? 255);
         if (strlen($newEmail) > $maxLen) throw new Exception(trans('auth.errors.email_long', ['max' => $maxLen]));
 
@@ -278,7 +274,6 @@ try {
         $newPassword = $data['new_password'] ?? '';
         $logoutOthers = isset($data['logout_others']) ? (bool)$data['logout_others'] : false;
         
-        // [DINAMICO] Password Length
         $minPass = (int)($serverConfig['min_password_length'] ?? 8);
         $maxPass = (int)($serverConfig['max_password_length'] ?? 72);
         

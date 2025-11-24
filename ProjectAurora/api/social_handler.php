@@ -14,9 +14,8 @@ date_default_timezone_set('America/Matamoros');
 
 require_once '../config/core/database.php';
 require_once '../config/helpers/utilities.php';
-require_once '../includes/logic/i18n_server.php'; // [NUEVO]
+require_once '../includes/logic/i18n_server.php';
 
-// [NUEVO] Cargar idioma
 $lang = $_SESSION['user_lang'] ?? detect_browser_language() ?? 'es-latam';
 I18n::load($lang);
 
@@ -39,15 +38,13 @@ $currentUserId = $_SESSION['user_id'];
 $response = ['success' => false, 'message' => trans('global.action_invalid')];
 
 try {
-    $uSt = $pdo->prepare("SELECT username, avatar FROM users WHERE id = ?");
+    $uSt = $pdo->prepare("SELECT username, profile_picture FROM users WHERE id = ?");
     $uSt->execute([$currentUserId]);
     $currentUserData = $uSt->fetch();
     $myUsername = $currentUserData['username'];
-    $myAvatar = $currentUserData['avatar'];
+    $myProfilePic = $currentUserData['profile_picture'];
 
-    // --- ENVIAR SOLICITUD ---
     if ($action === 'send_request') {
-        
         if (checkActionRateLimit($pdo, $currentUserId, 'friend_request_limit', 10, 1)) {
             throw new Exception(trans('auth.errors.too_many_attempts'));
         }
@@ -67,7 +64,6 @@ try {
         $stmt = $pdo->prepare("INSERT INTO friendships (sender_id, receiver_id, status) VALUES (?, ?, 'pending')");
         $stmt->execute([$currentUserId, $targetId]);
 
-        // Notificación
         $msg = trans('notifications.friend_request', ['username' => $myUsername]);
         $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_id) VALUES (?, 'friend_request', ?, ?)")
             ->execute([$targetId, $msg, $currentUserId]);
@@ -76,12 +72,11 @@ try {
             'message' => $msg,
             'sender_id' => $currentUserId,
             'sender_username' => $myUsername,
-            'sender_avatar' => $myAvatar
+            'sender_profile_picture' => $myProfilePic
         ]);
 
         $response = ['success' => true, 'message' => trans('notifications.request_sent')];
 
-    // --- CANCELAR SOLICITUD ---
     } elseif ($action === 'cancel_request') {
         $targetId = (int)($data['target_id'] ?? 0);
 
@@ -102,7 +97,6 @@ try {
             throw new Exception(trans('global.error_connection'));
         }
 
-    // --- ACEPTAR SOLICITUD ---
     } elseif ($action === 'accept_request') {
         $senderId = (int)($data['sender_id'] ?? 0);
 
@@ -130,7 +124,6 @@ try {
             throw new Exception(trans('global.error_connection'));
         }
 
-    // --- RECHAZAR SOLICITUD ---
     } elseif ($action === 'decline_request') {
         $senderId = (int)($data['sender_id'] ?? 0);
 
@@ -145,7 +138,6 @@ try {
 
         $response = ['success' => true, 'message' => trans('notifications.request_declined')];
 
-    // --- ELIMINAR AMIGO ---
     } elseif ($action === 'remove_friend') {
         $friendId = (int)($data['target_id'] ?? 0);
         
@@ -162,9 +154,9 @@ try {
 
         $response = ['success' => true, 'message' => trans('notifications.friend_removed')];
 
-    // --- OBTENER NOTIFICACIONES ---
     } elseif ($action === 'get_notifications') {
-        $sql = "SELECT n.*, u.avatar as sender_avatar, u.role as sender_role
+        // [MODIFICADO] profile_picture alias
+        $sql = "SELECT n.*, u.profile_picture as sender_profile_picture, u.role as sender_role
                 FROM notifications n 
                 LEFT JOIN users u ON n.related_id = u.id
                 WHERE n.user_id = ? 
@@ -184,7 +176,6 @@ try {
             'unread_count' => (int)$unreadCount
         ];
 
-    // --- MARCAR TODAS LEÍDAS ---
     } elseif ($action === 'mark_read_all') {
         $pdo->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ?")->execute([$currentUserId]);
         $response = ['success' => true, 'message' => trans('header.mark_read')];

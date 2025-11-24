@@ -39,7 +39,6 @@ require_once '../config/helpers/utilities.php';
 require_once '../includes/logic/GoogleAuthenticator.php';
 require_once '../includes/logic/i18n_server.php';
 
-// Cargar idioma
 $lang = $_SESSION['user_lang'] ?? detect_browser_language() ?? 'es-latam';
 I18n::load($lang);
 
@@ -95,7 +94,7 @@ function set_user_session($pdo, $user) {
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['user_uuid'] = $user['uuid'];
     $_SESSION['user_email'] = $user['email'];
-    $_SESSION['user_avatar'] = $user['avatar'];
+    $_SESSION['user_profile_picture'] = $user['profile_picture']; // [MODIFICADO]
     $_SESSION['user_role'] = $user['role'];
 
     $sessionId = session_id();
@@ -121,9 +120,6 @@ $response = ['success' => false, 'message' => trans('global.action_invalid')];
 try {
     $serverConfig = getServerConfig($pdo);
 
-    // ======================================================
-    // REGISTRO - PASO 1
-    // ======================================================
     if ($action === 'register_step_1') {
         if ((int)$serverConfig['allow_registrations'] === 0) {
             throw new Exception(trans('auth.register.closed_error') ?? 'El registro de nuevos usuarios está cerrado temporalmente.');
@@ -132,7 +128,6 @@ try {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
         
-        // [DINAMICO] Límites
         $minPass = (int)($serverConfig['min_password_length'] ?? 8);
         $maxPass = (int)($serverConfig['max_password_length'] ?? 72);
         $maxEmail = (int)($serverConfig['max_email_length'] ?? 255);
@@ -158,9 +153,6 @@ try {
         $_SESSION['temp_register']['password'] = $password;
         $response = ['success' => true, 'message' => 'Paso 1 OK'];
 
-    // ======================================================
-    // REGISTRO - PASO 2
-    // ======================================================
     } elseif ($action === 'register_step_2') {
         if ((int)$serverConfig['allow_registrations'] === 0) throw new Exception(trans('auth.register.closed_error'));
 
@@ -170,7 +162,6 @@ try {
         
         if (empty($email) || empty($rawPassword)) throw new Exception(trans('global.session_expired'));
         
-        // [DINAMICO] Límites usuario
         $minUser = (int)($serverConfig['min_username_length'] ?? 6);
         $maxUser = (int)($serverConfig['max_username_length'] ?? 32);
 
@@ -182,7 +173,6 @@ try {
         $stmt->execute([$username]);
         if ($stmt->rowCount() > 0) throw new Exception(trans('settings.username.taken'));
         
-        // [DINAMICO] Cooldown de reenvío
         $cooldownSecs = (int)($serverConfig['code_resend_cooldown'] ?? 60);
         $stmtLastCode = $pdo->prepare("SELECT created_at FROM verification_codes WHERE identifier = ? AND code_type = 'registration' ORDER BY created_at DESC LIMIT 1");
         $stmtLastCode->execute([$email]);
@@ -192,7 +182,6 @@ try {
             $diff = time() - strtotime($lastCreated);
             if ($diff < $cooldownSecs) {
                 $wait = $cooldownSecs - $diff;
-                // Enviar remaining_time para que el frontend actualice el timer
                 echo json_encode(['success' => false, 'message' => trans('auth.errors.too_many_attempts'), 'remaining_time' => $wait]);
                 exit;
             }
@@ -213,9 +202,6 @@ try {
         logger("[REGISTRO] Code para $email: $code"); 
         $response = ['success' => true, 'message' => trans('auth.code_sent')];
 
-    // ======================================================
-    // REENVÍO DE CÓDIGO GENÉRICO
-    // ======================================================
     } elseif ($action === 'resend_code') {
         $type = $data['type'] ?? '';
         $email = '';
@@ -254,9 +240,6 @@ try {
              $response = ['success' => false, 'message' => 'Operation not supported'];
         }
 
-    // ======================================================
-    // REGISTRO - FINAL
-    // ======================================================
     } elseif ($action === 'register_final') {
         if ((int)$serverConfig['allow_registrations'] === 0) throw new Exception(trans('auth.register.closed_error'));
 
@@ -281,16 +264,18 @@ try {
         $apiUrl = "https://ui-avatars.com/api/?name={$finalUsername}&size=256&background={$selectedColor}&color=ffffff&bold=true&length=1";
         
         $fileName = $uuid . '.png';
-        $uploadDir = __DIR__ . '/../public/assets/uploads/avatars/default/';
+        // [MODIFICADO] Carpeta de fotos de perfil
+        $uploadDir = __DIR__ . '/../public/assets/uploads/profile_pictures/default/';
         if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
         $destPath = $uploadDir . $fileName;
-        $dbPath = 'assets/uploads/avatars/default/' . $fileName;
+        $dbPath = 'assets/uploads/profile_pictures/default/' . $fileName;
         
         $imageContent = @file_get_contents($apiUrl);
         if ($imageContent !== false) file_put_contents($destPath, $imageContent);
         else $dbPath = null;
         
-        $insert = $pdo->prepare("INSERT INTO users (uuid, email, username, password, avatar, role) VALUES (?, ?, ?, ?, ?, 'user')");
+        // [MODIFICADO] Insertar en profile_picture
+        $insert = $pdo->prepare("INSERT INTO users (uuid, email, username, password, profile_picture, role) VALUES (?, ?, ?, ?, ?, 'user')");
         if ($insert->execute([$uuid, $email, $finalUsername, $finalPassHash, $dbPath])) {
             $newUserId = $pdo->lastInsertId();
             $detectedLang = detect_browser_language();
@@ -298,7 +283,8 @@ try {
             $prefsStmt = $pdo->prepare($prefsSql);
             $prefsStmt->execute([$newUserId, $detectedLang]);
             
-            $newUser = ['id' => $newUserId, 'uuid' => $uuid, 'email' => $email, 'avatar' => $dbPath, 'role' => 'user'];
+            // [MODIFICADO] Objeto de usuario para sesión
+            $newUser = ['id' => $newUserId, 'uuid' => $uuid, 'email' => $email, 'profile_picture' => $dbPath, 'role' => 'user'];
             session_regenerate_id(true);
             set_user_session($pdo, $newUser); 
 
@@ -309,14 +295,10 @@ try {
             throw new Exception(trans('global.error_connection'));
         }
 
-    // ======================================================
-    // LOGIN
-    // ======================================================
     } elseif ($action === 'login') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         $password = $data['password'] ?? '';
         
-        // checkLockStatus ahora usa los valores dinámicos internamente
         if (checkLockStatus($pdo, $email, 'login_fail')) {
             $mins = $serverConfig['lockout_time_minutes'] ?? 5;
             throw new Exception(trans('auth.errors.too_many_attempts') . " " . $mins . " mins.");
@@ -382,9 +364,6 @@ try {
             throw new Exception(trans('auth.errors.invalid_credentials'));
         }
 
-    // ======================================================
-    // VERIFICACIÓN 2FA
-    // ======================================================
     } elseif ($action === 'login_2fa_verify') {
         $inputCode = trim($data['code'] ?? '');
         $cleanCode = str_replace(['-', ' '], '', $inputCode);
@@ -395,7 +374,8 @@ try {
         
         if (checkLockStatus($pdo, $email, 'login_2fa_fail')) throw new Exception(trans('auth.errors.too_many_attempts'));
         
-        $stmt = $pdo->prepare("SELECT id, uuid, username, email, avatar, role, two_factor_secret, backup_codes FROM users WHERE id = ?");
+        // [MODIFICADO] Selección de profile_picture
+        $stmt = $pdo->prepare("SELECT id, uuid, username, email, profile_picture, role, two_factor_secret, backup_codes FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $user = $stmt->fetch();
         
@@ -452,9 +432,6 @@ try {
             throw new Exception(trans('auth.2fa.invalid_code'));
         }
 
-    // ======================================================
-    // LOGOUT
-    // ======================================================
     } elseif ($action === 'logout') {
         $sessionId = session_id();
         $pdo->prepare("DELETE FROM user_sessions WHERE session_id = ?")->execute([$sessionId]);
@@ -467,14 +444,10 @@ try {
         session_destroy();
         $response = ['success' => true, 'message' => 'Sesión cerrada correctamente'];
     
-    // ======================================================
-    // RECUPERACIÓN
-    // ======================================================
     } elseif ($action === 'recovery_step_1') {
         $email = strtolower(filter_var($data['email'] ?? '', FILTER_SANITIZE_EMAIL));
         if (empty($email) || !is_allowed_domain($email)) throw new Exception(trans('auth.errors.email_invalid_domain'));
         
-        // El lockout time ahora es dinámico
         if (checkLockStatus($pdo, $email, 'recovery_fail')) {
             $mins = $serverConfig['lockout_time_minutes'] ?? 5;
             throw new Exception(trans('auth.errors.too_many_attempts') . " " . $mins . " m.");
@@ -502,7 +475,6 @@ try {
         if (empty($token) || empty($newPass)) throw new Exception(trans('auth.errors.all_required'));
         if ($newPass !== $confirmPass) throw new Exception(trans('auth.errors.pass_mismatch'));
         
-        // [DINAMICO]
         $minPass = (int)($serverConfig['min_password_length'] ?? 8);
         $maxPass = (int)($serverConfig['max_password_length'] ?? 72);
         

@@ -14,9 +14,8 @@ date_default_timezone_set('America/Matamoros');
 
 require_once '../config/core/database.php';
 require_once '../config/helpers/utilities.php';
-require_once '../includes/logic/i18n_server.php'; // [NUEVO]
+require_once '../includes/logic/i18n_server.php';
 
-// [NUEVO] Cargar idioma
 $lang = $_SESSION['user_lang'] ?? detect_browser_language() ?? 'es-latam';
 I18n::load($lang);
 
@@ -39,11 +38,12 @@ $currentUserId = $_SESSION['user_id'];
 $response = ['success' => false, 'message' => trans('global.action_invalid')];
 
 try {
-    $uSt = $pdo->prepare("SELECT username, avatar FROM users WHERE id = ?");
+    // [MODIFICADO] profile_picture
+    $uSt = $pdo->prepare("SELECT username, profile_picture FROM users WHERE id = ?");
     $uSt->execute([$currentUserId]);
     $currentUserData = $uSt->fetch();
     $myUsername = $currentUserData['username'];
-    $myAvatar = $currentUserData['avatar'];
+    $myProfilePic = $currentUserData['profile_picture'];
 
     // --- ENVIAR SOLICITUD ---
     if ($action === 'send_request') {
@@ -66,7 +66,6 @@ try {
         $stmt = $pdo->prepare("INSERT INTO friendships (sender_id, receiver_id, status) VALUES (?, ?, 'pending')");
         $stmt->execute([$currentUserId, $targetId]);
 
-        // Notificación
         $msg = trans('notifications.friend_request', ['username' => $myUsername]);
         $pdo->prepare("INSERT INTO notifications (user_id, type, message, related_id) VALUES (?, 'friend_request', ?, ?)")
             ->execute([$targetId, $msg, $currentUserId]);
@@ -75,7 +74,7 @@ try {
             'message' => $msg,
             'sender_id' => $currentUserId,
             'sender_username' => $myUsername,
-            'sender_avatar' => $myAvatar
+            'sender_profile_picture' => $myProfilePic // [MODIFICADO]
         ]);
 
         $response = ['success' => true, 'message' => trans('notifications.request_sent')];

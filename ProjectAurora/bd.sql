@@ -1,3 +1,5 @@
+-- bd.sql
+
 -- ==========================================
 -- 1. LIMPIEZA INICIAL (RESET)
 -- ==========================================
@@ -23,7 +25,7 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
-    avatar VARCHAR(255) NULL,
+    profile_picture VARCHAR(255) NULL,
     role VARCHAR(20) DEFAULT 'user',
     account_status ENUM('active', 'suspended', 'deleted') DEFAULT 'active',
     suspension_reason TEXT NULL,
@@ -113,7 +115,7 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 CREATE TABLE IF NOT EXISTS user_audit_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    change_type ENUM('username', 'email', 'avatar', 'password', '2fa_disabled') NOT NULL,
+    change_type ENUM('username', 'email', 'profile_picture', 'password', '2fa_disabled') NOT NULL,
     old_value TEXT NULL,
     new_value TEXT NULL,
     changed_by_ip VARCHAR(45) NOT NULL,
@@ -186,7 +188,7 @@ CREATE TABLE IF NOT EXISTS server_config (
     username_cooldown INT DEFAULT 30, -- Días
     email_cooldown INT DEFAULT 12,    -- Días
     
-    avatar_max_size INT DEFAULT 2,    -- MB
+    profile_picture_max_size INT DEFAULT 2,    -- MB
     
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

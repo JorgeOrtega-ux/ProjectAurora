@@ -4,16 +4,16 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 $basePath = $basePath ?? '/ProjectAurora/';
 $userId = $_SESSION['user_id'];
 
-// [CORRECCIÓN] Configuración
 $sConfig = isset($GLOBALS['serverConfig']) ? $GLOBALS['serverConfig'] : getServerConfig($pdo);
 
-$stmt = $pdo->prepare("SELECT username, email, avatar, role FROM users WHERE id = ?");
+// [MODIFICADO] profile_picture
+$stmt = $pdo->prepare("SELECT username, email, profile_picture, role FROM users WHERE id = ?");
 $stmt->execute([$userId]);
 $currentUser = $stmt->fetch();
 
 $currentUsername = $currentUser['username'] ?? 'Usuario';
 $currentEmail = $currentUser['email'] ?? 'correo@ejemplo.com';
-$userAvatar = $currentUser['avatar'] ?? null;
+$userProfilePic = $currentUser['profile_picture'] ?? null;
 $userRole = $currentUser['role'] ?? 'user';
 
 $stmtPrefs = $pdo->prepare("SELECT usage_intent, language, open_links_in_new_tab FROM user_preferences WHERE user_id = ?");
@@ -38,16 +38,16 @@ if($currentLang == 'es-latam') $langDisplayText = trans('languages.es_latam');
 if($currentLang == 'es-mx') $langDisplayText = trans('languages.es_mx');
 if($currentLang == 'en-gb') $langDisplayText = trans('languages.en_gb');
 
-$avatarUrl = null;
-if ($userAvatar && !empty($userAvatar)) {
-    $avatarUrl = $basePath . $userAvatar . '?t=' . time();
+$pfpUrl = null;
+if ($userProfilePic && !empty($userProfilePic)) {
+    $pfpUrl = $basePath . $userProfilePic . '?t=' . time();
 }
 
-$isDefaultAvatar = false;
-if (empty($userAvatar) || strpos($userAvatar, '/default/') !== false) {
-    $isDefaultAvatar = true;
+$isDefaultPfp = false;
+if (empty($userProfilePic) || strpos($userProfilePic, '/default/') !== false) {
+    $isDefaultPfp = true;
 }
-$hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
+$hasCustomPfp = !$isDefaultPfp && ($pfpUrl !== null);
 ?>
 
 <div class="section-content active" data-section="settings/your-profile">
@@ -60,46 +60,46 @@ $hasCustomAvatar = !$isDefaultAvatar && ($avatarUrl !== null);
 
         <div class="component-card component-card--grouped">
             
-            <div class="component-group-item" data-component="avatar-section">
+            <div class="component-group-item" data-component="profile-picture-section">
                 <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
-                <input type="file" class="visually-hidden" data-element="avatar-upload-input" name="avatar" accept="image/png, image/jpeg, image/gif, image/webp">
+                <input type="file" class="visually-hidden" data-element="profile-picture-upload-input" name="profile_picture" accept="image/png, image/jpeg, image/gif, image/webp">
 
                 <div class="component-card__content">
-                    <div class="component-card__avatar" data-element="avatar-preview-container" data-role="<?php echo htmlspecialchars($userRole); ?>">
-                        <?php if ($avatarUrl): ?>
-                            <img src="<?php echo htmlspecialchars($avatarUrl); ?>" alt="<?php echo trans('settings.profile.alt_avatar'); ?>" class="component-card__avatar-image" data-element="avatar-preview-image">
+                    <div class="component-card__profile-picture" data-element="profile-picture-preview-container" data-role="<?php echo htmlspecialchars($userRole); ?>">
+                        <?php if ($pfpUrl): ?>
+                            <img src="<?php echo htmlspecialchars($pfpUrl); ?>" alt="<?php echo trans('settings.profile.alt_avatar'); ?>" class="component-card__avatar-image" data-element="profile-picture-preview-image">
                         <?php else: ?>
-                            <img src="" alt="<?php echo trans('settings.profile.alt_no_avatar'); ?>" class="component-card__avatar-image d-none" data-element="avatar-preview-image">
+                            <img src="" alt="<?php echo trans('settings.profile.alt_no_avatar'); ?>" class="component-card__avatar-image d-none" data-element="profile-picture-preview-image">
                             <span class="material-symbols-rounded default-avatar-icon avatar-placeholder-icon">person</span>
                         <?php endif; ?>
 
-                        <div class="component-card__avatar-overlay" data-action="trigger-avatar-upload">
+                        <div class="component-card__avatar-overlay" data-action="trigger-profile-picture-upload">
                             <span class="material-symbols-rounded">photo_camera</span>
                         </div>
                     </div>
 
                     <div class="component-card__text">
-                        <h2 class="component-card__title" data-i18n="settings.profile.avatar_title"><?php echo trans('settings.profile.avatar_title'); ?></h2>
-                        <p class="component-card__description" data-i18n="settings.profile.avatar_desc"><?php echo trans('settings.profile.avatar_desc'); ?></p>
-                        <p class="component-card__meta" data-i18n="settings.profile.avatar_meta">
-                            <?php echo trans('settings.profile.avatar_meta', ['size' => $sConfig['avatar_max_size']]); ?>
+                        <h2 class="component-card__title" data-i18n="settings.profile.profile_picture_title"><?php echo trans('settings.profile.profile_picture_title'); ?></h2>
+                        <p class="component-card__description" data-i18n="settings.profile.profile_picture_desc"><?php echo trans('settings.profile.profile_picture_desc'); ?></p>
+                        <p class="component-card__meta" data-i18n="settings.profile.profile_picture_meta">
+                            <?php echo trans('settings.profile.profile_picture_meta', ['size' => $sConfig['profile_picture_max_size']]); ?>
                         </p>
                     </div>
                 </div>
 
                 <div class="component-card__actions actions-right">
-                    <div data-state="avatar-actions-default" class="<?php echo !$hasCustomAvatar ? 'active' : 'disabled'; ?>">
-                        <button type="button" class="component-button" data-action="avatar-upload-trigger" data-i18n="settings.profile.upload_btn"><?php echo trans('settings.profile.upload_btn'); ?></button>
+                    <div data-state="profile-picture-actions-default" class="<?php echo !$hasCustomPfp ? 'active' : 'disabled'; ?>">
+                        <button type="button" class="component-button" data-action="profile-picture-upload-trigger" data-i18n="settings.profile.upload_btn"><?php echo trans('settings.profile.upload_btn'); ?></button>
                     </div>
 
-                    <div data-state="avatar-actions-custom" class="<?php echo $hasCustomAvatar ? 'active' : 'disabled'; ?>">
-                        <button type="button" class="component-button" data-action="avatar-remove-trigger" data-i18n="global.delete"><?php echo trans('global.delete'); ?></button>
-                        <button type="button" class="component-button" data-action="avatar-change-trigger" data-i18n="settings.profile.change_btn"><?php echo trans('settings.profile.change_btn'); ?></button>
+                    <div data-state="profile-picture-actions-custom" class="<?php echo $hasCustomPfp ? 'active' : 'disabled'; ?>">
+                        <button type="button" class="component-button" data-action="profile-picture-remove-trigger" data-i18n="global.delete"><?php echo trans('global.delete'); ?></button>
+                        <button type="button" class="component-button" data-action="profile-picture-change-trigger" data-i18n="settings.profile.change_btn"><?php echo trans('settings.profile.change_btn'); ?></button>
                     </div>
 
-                    <div data-state="avatar-actions-preview" class="disabled">
-                        <button type="button" class="component-button" data-action="avatar-cancel-trigger" data-i18n="global.cancel"><?php echo trans('global.cancel'); ?></button>
-                        <button type="button" class="component-button" data-action="avatar-save-trigger-btn" data-i18n="global.save"><?php echo trans('global.save'); ?></button>
+                    <div data-state="profile-picture-actions-preview" class="disabled">
+                        <button type="button" class="component-button" data-action="profile-picture-cancel-trigger" data-i18n="global.cancel"><?php echo trans('global.cancel'); ?></button>
+                        <button type="button" class="component-button primary" data-action="profile-picture-save-trigger-btn" data-i18n="global.save"><?php echo trans('global.save'); ?></button>
                     </div>
                 </div>
             </div>

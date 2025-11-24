@@ -53,7 +53,8 @@ function renderUserRows($users)
     ob_start();
     if (count($users) > 0):
         foreach ($users as $u):
-            $avatarUrl = !empty($u['avatar']) ? '/ProjectAurora/' . $u['avatar'] : null;
+            // [MODIFICADO] profile_picture
+            $pfpUrl = !empty($u['profile_picture']) ? '/ProjectAurora/' . $u['profile_picture'] : null;
             $statusClass = getStatusClass($u['account_status']);
             $is2FA = ((int)$u['is_2fa_enabled'] === 1);
             $rawTime = $u['last_seen'];
@@ -69,9 +70,9 @@ function renderUserRows($users)
                 <td class="col-id"><?php echo $userId; ?></td>
                 <td>
                     <div class="user-info-cell">
-                        <div class="user-table-avatar" data-role="<?php echo htmlspecialchars($userRole); ?>">
-                            <?php if ($avatarUrl): ?>
-                                <img src="<?php echo htmlspecialchars($avatarUrl); ?>" alt="Avatar">
+                        <div class="user-table-pfp" data-role="<?php echo htmlspecialchars($userRole); ?>">
+                            <?php if ($pfpUrl): ?>
+                                <img src="<?php echo htmlspecialchars($pfpUrl); ?>" alt="Foto de perfil">
                             <?php else: ?>
                                 <div class="user-avatar-placeholder">
                                     <span class="material-symbols-rounded avatar-icon">person</span>
@@ -172,7 +173,8 @@ try {
         $offset = ($page - 1) * $limit;
     }
 
-    $sqlUsers = "SELECT u.id, u.username, u.email, u.avatar, u.role, u.account_status, u.created_at, u.is_2fa_enabled,
+    // [MODIFICADO] profile_picture
+    $sqlUsers = "SELECT u.id, u.username, u.email, u.profile_picture, u.role, u.account_status, u.created_at, u.is_2fa_enabled,
                  (SELECT MAX(last_activity) FROM user_sessions WHERE user_id = u.id) as last_seen
                  FROM users u $whereClause ORDER BY u.id DESC LIMIT $limit OFFSET $offset";
     $stmt = $pdo->prepare($sqlUsers);

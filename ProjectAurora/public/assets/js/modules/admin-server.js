@@ -21,7 +21,8 @@ const actionKeyMap = {
     'update-code-resend-cooldown': 'code_resend_cooldown',
     'update-username-cooldown': 'username_cooldown',
     'update-email-cooldown': 'email_cooldown',
-    'update-avatar-max-size': 'avatar_max_size'
+    // [MODIFICADO]
+    'update-avatar-max-size': 'profile_picture_max_size' 
 };
 
 async function updateConfig(key, value, elementToRevertOnError, silent = false) {
@@ -142,24 +143,18 @@ export function initAdminServer() {
         }
     });
 
-    // [MODIFICADO] Listener para Acordeones (Comportamiento exclusivo)
+    // Listener para Acordeones
     document.body.addEventListener('click', (e) => {
         const header = e.target.closest('[data-action="toggle-accordion"]');
         if (header) {
             const currentAccordion = header.closest('.component-accordion');
             if (currentAccordion) {
-                
-                // 1. Buscar todos los acordeones abiertos
                 const allActive = document.querySelectorAll('.component-accordion.active');
-                
-                // 2. Cerrar todos EXCEPTO el actual (si es que ya estaba abierto, el toggle de abajo lo cerrará)
                 allActive.forEach(acc => {
                     if (acc !== currentAccordion) {
                         acc.classList.remove('active');
                     }
                 });
-
-                // 3. Alternar el actual (Abrir si estaba cerrado, cerrar si estaba abierto)
                 currentAccordion.classList.toggle('active');
             }
         }

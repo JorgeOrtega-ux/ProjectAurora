@@ -30,7 +30,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
         <input type="hidden" id="history-target-id" value="<?php echo htmlspecialchars($targetUid); ?>">
 
         <div class="component-header-card w-100" style="margin-bottom: 16px; display: flex; align-items: center; gap: 16px; text-align: left; padding: 16px;">
-            <div class="user-table-avatar" id="history-avatar-container" style="width: 48px; height: 48px;">
+            <div class="user-table-pfp" id="history-pfp-container" style="width: 48px; height: 48px;">
                 <img src="" id="history-user-avatar" style="display: none;">
                 <div class="user-avatar-placeholder" id="history-user-icon">
                     <span class="material-symbols-rounded avatar-icon" style="font-size: 24px;">person</span>

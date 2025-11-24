@@ -44,7 +44,8 @@ try {
     if ($action === 'get_user_details') {
         $targetId = $data['target_id'] ?? 0;
         
-        $stmt = $pdo->prepare("SELECT id, username, email, avatar, role, account_status, suspension_reason, suspension_end_date, deletion_type, deletion_reason, admin_comments FROM users WHERE id = ?");
+        // [MODIFICADO] profile_picture
+        $stmt = $pdo->prepare("SELECT id, username, email, profile_picture, role, account_status, suspension_reason, suspension_end_date, deletion_type, deletion_reason, admin_comments FROM users WHERE id = ?");
         $stmt->execute([$targetId]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -222,7 +223,7 @@ try {
         $key = $data['key'] ?? '';
         $value = $data['value'] ?? 0;
 
-        // LISTA DE CLAVES PERMITIDAS ACTUALIZADA
+        // [MODIFICADO] LISTA DE CLAVES PERMITIDAS
         $allowedKeys = [
             'maintenance_mode', 
             'allow_registrations',
@@ -236,7 +237,7 @@ try {
             'code_resend_cooldown', 
             'username_cooldown', 
             'email_cooldown', 
-            'avatar_max_size'
+            'profile_picture_max_size' // [MODIFICADO]
         ];
 
         if (!in_array($key, $allowedKeys)) {

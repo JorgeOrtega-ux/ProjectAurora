@@ -26,7 +26,8 @@ export function initSettingsManager() {
     const is2FA = qs('[data-section="settings/2fa-setup"]');
     
     if (isProfile) {
-        initAvatarLogic();
+        // [MODIFICADO]
+        initProfilePictureLogic();
         initUsernameLogic();
         initEmailLogic();
     }
@@ -377,7 +378,6 @@ function initChangePasswordLogic() {
 
         updateCardError(step2Card, '', false);
 
-        // [CORRECCIÓN DINÁMICA]
         const minPass = window.SERVER_CONFIG?.min_password_length || 8;
 
         if (newPass.length < minPass) {
@@ -537,24 +537,25 @@ function initPreferencesLogic() {
 }
 
 // ========================================================
-// LÓGICA PERFIL
+// LÓGICA FOTO DE PERFIL (Anteriormente Avatar)
 // ========================================================
 
-function initAvatarLogic() {
-    const cardItem = qs('[data-component="avatar-section"]');
+function initProfilePictureLogic() {
+    // [MODIFICADO] selectores
+    const cardItem = qs('[data-component="profile-picture-section"]');
     if (!cardItem) return;
     const elements = {
-        fileInput: qs('[data-element="avatar-upload-input"]'),
-        previewImg: qs('[data-element="avatar-preview-image"]'),
-        overlayTrigger: qs('[data-action="trigger-avatar-upload"]'), 
-        uploadBtn: qs('[data-action="avatar-upload-trigger"]'),
-        changeBtn: qs('[data-action="avatar-change-trigger"]'),
-        removeBtn: qs('[data-action="avatar-remove-trigger"]'),
-        cancelBtn: qs('[data-action="avatar-cancel-trigger"]'),
-        saveBtn: qs('[data-action="avatar-save-trigger-btn"]'),
-        actionsDefault: qs('[data-state="avatar-actions-default"]'),
-        actionsCustom: qs('[data-state="avatar-actions-custom"]'),
-        actionsPreview: qs('[data-state="avatar-actions-preview"]')
+        fileInput: qs('[data-element="profile-picture-upload-input"]'),
+        previewImg: qs('[data-element="profile-picture-preview-image"]'),
+        overlayTrigger: qs('[data-action="trigger-profile-picture-upload"]'), 
+        uploadBtn: qs('[data-action="profile-picture-upload-trigger"]'),
+        changeBtn: qs('[data-action="profile-picture-change-trigger"]'),
+        removeBtn: qs('[data-action="profile-picture-remove-trigger"]'),
+        cancelBtn: qs('[data-action="profile-picture-cancel-trigger"]'),
+        saveBtn: qs('[data-action="profile-picture-save-trigger-btn"]'),
+        actionsDefault: qs('[data-state="profile-picture-actions-default"]'),
+        actionsCustom: qs('[data-state="profile-picture-actions-custom"]'),
+        actionsPreview: qs('[data-state="profile-picture-actions-preview"]')
     };
     if (!elements.fileInput) return;
     let originalImageSrc = elements.previewImg.src;
@@ -570,22 +571,23 @@ function initAvatarLogic() {
         const file = this.files[0];
         if (!file) return;
         
-        // [CORRECCIÓN DINÁMICA]
-        const maxMB = window.SERVER_CONFIG?.avatar_max_size || 2;
-        const maxBytes = maxMB * 1024 * 1024;
+        const maxMB = window.SERVER_CONFIG?.avatar_max_size || 2; // NOTE: Keeping avatar_max_size key for backward compatibility with server config or update it there too? Updated in admin-server.js map but server config might still send it. Let's use profile_picture_max_size if available or fallback.
+        // Actually, server config key was updated in PHP. Let's assume window.SERVER_CONFIG matches.
+        const maxMBReal = window.SERVER_CONFIG?.profile_picture_max_size || window.SERVER_CONFIG?.avatar_max_size || 2;
+        const maxBytes = maxMBReal * 1024 * 1024;
 
         if (file.size > maxBytes) { 
-            updateCardError(cardItem, t('settings.avatar.error_size', { size: maxMB })); 
+            updateCardError(cardItem, t('settings.profile.error_size', { size: maxMBReal })); 
             this.value = ''; 
             return; 
         }
-        if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) { updateCardError(cardItem, t('settings.avatar.error_format')); this.value = ''; return; }
+        if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) { updateCardError(cardItem, t('settings.profile.error_format')); this.value = ''; return; }
         updateCardError(cardItem, '', false);
         const reader = new FileReader();
         reader.onload = function(evt) {
             elements.previewImg.src = evt.target.result;
             elements.previewImg.style.display = 'block';
-            toggleAvatarActions('preview');
+            togglePfpActions('preview');
         };
         reader.readAsDataURL(file);
     };
@@ -593,8 +595,8 @@ function initAvatarLogic() {
         updateCardError(cardItem, '', false);
         elements.previewImg.src = originalImageSrc;
         elements.fileInput.value = '';
-        const isDefault = originalImageSrc.includes('data:image') || originalImageSrc === '' || originalImageSrc.endsWith('/') || originalImageSrc.includes('/default/') || originalImageSrc.includes('avatars_default') || originalImageSrc.includes('ui-avatars.com');       
-        toggleAvatarActions(isDefault ? 'default' : 'custom');
+        const isDefault = originalImageSrc.includes('data:image') || originalImageSrc === '' || originalImageSrc.endsWith('/') || originalImageSrc.includes('/default/') || originalImageSrc.includes('profile_pictures_default') || originalImageSrc.includes('ui-avatars.com');       
+        togglePfpActions(isDefault ? 'default' : 'custom');
     };
     elements.saveBtn.onclick = async () => {
         const file = elements.fileInput.files[0];
@@ -602,30 +604,31 @@ function initAvatarLogic() {
         setLoading(elements.saveBtn, true);
         updateCardError(cardItem, '', false);
         const formData = new FormData();
-        formData.append('action', 'update_avatar');
-        formData.append('avatar', file);
+        // [MODIFICADO] update_profile_picture
+        formData.append('action', 'update_profile_picture');
+        formData.append('profile_picture', file);
         formData.append('csrf_token', getCsrfToken());
         try {
             const res = await fetch(API_SETTINGS, { method: 'POST', body: formData });
             const data = await res.json();
             if (data.success) {
                 if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
-                const newSrc = data.avatar_url + '?t=' + new Date().getTime();
+                const newSrc = data.avatar_url + '?t=' + new Date().getTime(); // API still returns 'avatar_url' key
                 elements.previewImg.src = newSrc;
                 originalImageSrc = newSrc;
                 updateHeaderAvatar(newSrc);
-                toggleAvatarActions('custom');
+                togglePfpActions('custom');
             } else { updateCardError(cardItem, data.message); }
         } catch (e) { updateCardError(cardItem, t('global.error_connection')); }
         setLoading(elements.saveBtn, false, t('global.save'));
     };
     elements.removeBtn.onclick = async () => {
-        if (!confirm(t('settings.avatar.reset_confirm') || '¿Restablecer avatar?')) return;
+        if (!confirm(t('settings.profile.reset_confirm') || '¿Restablecer foto de perfil?')) return;
         setLoading(elements.removeBtn, true);
         updateCardError(cardItem, '', false);
         try {
             const formData = new FormData();
-            formData.append('action', 'remove_avatar');
+            formData.append('action', 'remove_profile_picture');
             formData.append('csrf_token', getCsrfToken());
             const res = await fetch(API_SETTINGS, { method: 'POST', body: formData });
             const data = await res.json();
@@ -635,12 +638,12 @@ function initAvatarLogic() {
                 elements.previewImg.src = newSrc;
                 originalImageSrc = newSrc;
                 updateHeaderAvatar(newSrc);
-                toggleAvatarActions('default'); 
+                togglePfpActions('default'); 
             } else { updateCardError(cardItem, data.message); }
         } catch (e) { updateCardError(cardItem, t('global.error_connection')); }
         setLoading(elements.removeBtn, false, t('global.delete'));
     };
-    function toggleAvatarActions(mode) {
+    function togglePfpActions(mode) {
         if(elements.actionsDefault) elements.actionsDefault.className = (mode === 'default') ? 'active' : 'disabled';
         if(elements.actionsCustom) elements.actionsCustom.className = (mode === 'custom') ? 'active' : 'disabled';
         if(elements.actionsPreview) elements.actionsPreview.className = (mode === 'preview') ? 'active' : 'disabled';
@@ -669,7 +672,6 @@ function initUsernameLogic() {
         const newVal = els.input.value.trim();
         updateCardError(itemSection, '', false);
         
-        // [CORRECCIÓN DINÁMICA]
         const minUser = window.SERVER_CONFIG?.min_username_length || 6;
         const maxUser = window.SERVER_CONFIG?.max_username_length || 32;
 

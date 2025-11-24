@@ -79,13 +79,14 @@ if (isset($_SESSION['user_id'])) {
 $freshUser = null; 
 if (isset($_SESSION['user_id'])) {
     try {
-        $stmt = $pdo->prepare("SELECT u.role, u.avatar, u.account_status, p.language, p.theme, p.extended_message_time, p.open_links_in_new_tab FROM users u LEFT JOIN user_preferences p ON u.id = p.user_id WHERE u.id = ?");
+        // [MODIFICADO] profile_picture
+        $stmt = $pdo->prepare("SELECT u.role, u.profile_picture, u.account_status, p.language, p.theme, p.extended_message_time, p.open_links_in_new_tab FROM users u LEFT JOIN user_preferences p ON u.id = p.user_id WHERE u.id = ?");
         $stmt->execute([$_SESSION['user_id']]);
         $freshUser = $stmt->fetch();
 
         if ($freshUser) {
             $_SESSION['user_role'] = $freshUser['role'] ?? 'user';
-            $_SESSION['user_avatar'] = $freshUser['avatar'];
+            $_SESSION['user_profile_picture'] = $freshUser['profile_picture']; // [MODIFICADO]
             $_SESSION['user_lang'] = $freshUser['language'] ?? 'es-latam';
             $_SESSION['user_theme'] = $freshUser['theme'] ?? 'system';
             $_SESSION['user_extended_msg'] = $freshUser['extended_message_time'] ?? 0;
