@@ -203,7 +203,7 @@ function handleDropdownSelection(option) {
     const val = option.dataset.value;
     const label = option.dataset.label || option.querySelector('.menu-link-text').textContent;
     const icon = option.dataset.icon;
-    const color = option.dataset.color;
+    // const color = option.dataset.color; // ELIMINADO: Ya no leemos el color
 
     const menuList = option.closest('.menu-list');
     if (menuList) {
@@ -215,12 +215,13 @@ function handleDropdownSelection(option) {
         if (option.lastElementChild) option.lastElementChild.innerHTML = '<span class="material-symbols-rounded">check</span>';
     }
 
-    if (action === 'select-status-option') updateStatusUI(val, label, icon, color);
+    // Eliminado el argumento de color en todas las llamadas
+    if (action === 'select-status-option') updateStatusUI(val, label, icon);
     if (action === 'select-duration-option') updateDurationUI(val);
     if (action === 'select-reason-option') updateReasonUI(val);
-    if (action === 'select-manage-status') updateManageStatusUI(val, label, icon, color);
+    if (action === 'select-manage-status') updateManageStatusUI(val, label, icon);
     if (action === 'select-deletion-type') updateDeletionTypeUI(val, label);
-    if (action === 'select-role-option') updateRoleUI(val, label, icon, color);
+    if (action === 'select-role-option') updateRoleUI(val, label, icon);
 
     closeAllDropdowns();
 }
@@ -248,13 +249,15 @@ function initStatusLogic() {
         if (u.suspension_end_date === null) {
             currentUserState.isPermanent = true;
             activeText = t('admin.status.perm_ban');
-            updateStatusUI('suspended_perm', activeText, 'block', '#d32f2f');
+            // Eliminado color
+            updateStatusUI('suspended_perm', activeText, 'block');
             setDropdownInitialActive('dropdown-status-options', 'suspended_perm');
         } else {
             currentUserState.isPermanent = false;
             const endDate = new Date(u.suspension_end_date).toLocaleDateString();
             activeText = t('admin.status.until') + ' ' + endDate; 
-            updateStatusUI('suspended_temp', t('admin.status.temp_ban'), 'timer', '#f57c00');
+            // Eliminado color
+            updateStatusUI('suspended_temp', t('admin.status.temp_ban'), 'timer');
             setDropdownInitialActive('dropdown-status-options', 'suspended_temp');
         }
         
@@ -275,7 +278,8 @@ function initStatusLogic() {
         document.getElementById('input-status-value').value = '';
         document.getElementById('current-status-text').textContent = t('admin.status.select_type');
         document.getElementById('current-status-icon').textContent = 'gavel';
-        document.getElementById('current-status-icon').style.color = '#666';
+        // document.getElementById('current-status-icon').style.color = '#666'; // ELIMINADO
+        document.getElementById('current-status-icon').style.color = '';
         
         document.getElementById('input-duration-value').value = '';
         document.getElementById('current-duration-text').textContent = t('admin.status.select_duration');
@@ -299,12 +303,12 @@ function initStatusLogic() {
     btnLift.onclick = () => liftBan();
 }
 
-function updateStatusUI(val, text, icon, color) {
+function updateStatusUI(val, text, icon) {
     document.getElementById('input-status-value').value = val;
     document.getElementById('current-status-text').textContent = text;
     const iconEl = document.getElementById('current-status-icon');
     iconEl.textContent = icon;
-    iconEl.style.color = color;
+    iconEl.style.color = ''; // Reseteamos color
 
     const wrapperDuration = document.getElementById('wrapper-duration');
     const wrapperReason = document.getElementById('wrapper-reason');
@@ -377,7 +381,6 @@ async function saveStatusSanction() {
         showError(res.message);
     }
     
-    // Restaurar el botón al estado de icono (sin pasar texto)
     setLoading(btnSave, false);
 }
 
@@ -408,7 +411,8 @@ function initManageLogic() {
     const btnSave = document.getElementById('btn-save-manage');
 
     if (u.account_status === 'deleted') {
-        updateManageStatusUI('deleted', t('global.deleted'), 'delete_forever', '#616161');
+        // Eliminado color
+        updateManageStatusUI('deleted', t('global.deleted'), 'delete_forever');
         setDropdownInitialActive('dropdown-manage-status', 'deleted');
 
         if (u.deletion_type) {
@@ -419,19 +423,20 @@ function initManageLogic() {
         if (u.deletion_reason) document.getElementById('input-user-reason').value = u.deletion_reason;
         if (u.admin_comments) document.getElementById('input-admin-comments').value = u.admin_comments;
     } else {
-        updateManageStatusUI('active', t('global.active'), 'check_circle', '#2e7d32');
+        // Eliminado color
+        updateManageStatusUI('active', t('global.active'), 'check_circle');
         setDropdownInitialActive('dropdown-manage-status', 'active');
     }
 
     btnSave.onclick = () => saveManageChanges();
 }
 
-function updateManageStatusUI(val, text, icon, color) {
+function updateManageStatusUI(val, text, icon) {
     document.getElementById('manage-status-value').value = val;
     document.getElementById('manage-status-text').textContent = text;
     const iconEl = document.getElementById('manage-status-icon');
     iconEl.textContent = icon;
-    iconEl.style.color = color;
+    iconEl.style.color = ''; // Reseteamos color
 
     const wrapper = document.getElementById('wrapper-deletion-details');
     if (val === 'deleted') wrapper.classList.remove('d-none');
@@ -491,34 +496,31 @@ function initRoleLogic() {
     
     let roleLabel = 'Usuario';
     let roleIcon = 'person';
-    let roleColor = '#666';
+    // roleColor eliminado
 
     if (u.role === 'moderator') {
         roleLabel = 'Moderador';
         roleIcon = 'security';
-        roleColor = '#0000FF';
     } else if (u.role === 'administrator') {
         roleLabel = 'Administrador';
         roleIcon = 'admin_panel_settings';
-        roleColor = '#d32f2f';
     } else if (u.role === 'founder') {
         roleLabel = 'Fundador';
         roleIcon = 'diamond';
-        roleColor = '#FFC107';
     }
 
-    updateRoleUI(u.role, roleLabel, roleIcon, roleColor);
+    updateRoleUI(u.role, roleLabel, roleIcon);
     setDropdownInitialActive('dropdown-roles', u.role);
 
     btnSave.onclick = () => saveRoleChanges();
 }
 
-function updateRoleUI(val, text, icon, color) {
+function updateRoleUI(val, text, icon) {
     document.getElementById('role-input-value').value = val;
     document.getElementById('current-role-text').textContent = text;
     const iconEl = document.getElementById('current-role-icon');
     iconEl.textContent = icon;
-    iconEl.style.color = color;
+    iconEl.style.color = ''; // Reseteamos color
 }
 
 async function saveRoleChanges() {
@@ -574,8 +576,9 @@ function renderHistoryTable(logs) {
 
         if (log.log_type === 'suspension') {
             icon = 'gavel';
+            // Ajustado a estilo neutral/negro
             durationDisplay = (parseInt(log.duration_days) === -1) 
-                ? `<span style="color: #d32f2f; font-weight: 600;">${t('admin.status.perm_ban')}</span>` 
+                ? `<span style="font-weight: 600;">${t('admin.status.perm_ban')}</span>` 
                 : log.duration_days + ' ' + t('global.days');
             
             endDisplay = (parseInt(log.duration_days) === -1) 
@@ -585,9 +588,10 @@ function renderHistoryTable(logs) {
             if (log.lifted_at) {
                 const liftedDate = new Date(log.lifted_at).toLocaleString();
                 const lifter = log.lifter_name || 'Admin';
+                // Colores neutralizados
                 liftedDisplay = `
                     <div style="display:flex; flex-direction:column;">
-                        <span style="color:#2e7d32; font-weight:600; font-size:13px; display:flex; align-items:center; gap:4px;">
+                        <span style="font-weight:600; font-size:13px; display:flex; align-items:center; gap:4px;">
                             <span class="material-symbols-rounded" style="font-size:16px;">check_circle</span> 
                             ${t('admin.history.lifted_on') || 'Levantada el'} ${liftedDate}
                         </span>
@@ -597,7 +601,7 @@ function renderHistoryTable(logs) {
                 const now = new Date();
                 const endDate = log.ends_at ? new Date(log.ends_at) : null;
                 if (parseInt(log.duration_days) === -1 || (endDate && endDate > now)) {
-                    liftedDisplay = '<span class="component-badge component-badge--danger">' + (t('global.active') || 'Activa') + '</span>';
+                    liftedDisplay = '<span class="component-badge component-badge--neutral">' + (t('global.active') || 'Activa') + '</span>';
                 } else {
                     liftedDisplay = '<span class="component-badge component-badge--neutral">' + (t('global.status.expired') || 'Expirada') + '</span>';
                 }
@@ -606,7 +610,7 @@ function renderHistoryTable(logs) {
         } else if (log.log_type === 'role_change') {
             icon = 'manage_accounts';
             reasonText = `<span style="font-weight:600;">${log.old_role}</span> <span class="material-symbols-rounded" style="font-size:12px; vertical-align:middle;">arrow_forward</span> <span style="font-weight:600; color:#000;">${log.new_role}</span>`;
-            liftedDisplay = '<span class="component-badge component-badge--success" style="background:#e3f2fd; color:#1565c0; border-color:#bbdefb;">Cambio de Rol</span>';
+            liftedDisplay = '<span class="component-badge component-badge--neutral">Cambio de Rol</span>';
         }
 
         html += `

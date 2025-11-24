@@ -86,8 +86,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                          data-action="select-role-option" 
                                          data-value="user" 
                                          data-label="Usuario" 
-                                         data-icon="person" 
-                                         data-color="#666">
+                                         data-icon="person">
                                         <div class="menu-link-icon"><span class="material-symbols-rounded">person</span></div>
                                         <div class="menu-link-text">Usuario</div>
                                         <div class="menu-link-icon"></div>
@@ -96,9 +95,8 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                          data-action="select-role-option" 
                                          data-value="moderator" 
                                          data-label="Moderador" 
-                                         data-icon="security" 
-                                         data-color="#0000FF">
-                                        <div class="menu-link-icon"><span class="material-symbols-rounded" style="color: #0000FF;">security</span></div>
+                                         data-icon="security">
+                                        <div class="menu-link-icon"><span class="material-symbols-rounded">security</span></div>
                                         <div class="menu-link-text">Moderador</div>
                                         <div class="menu-link-icon"></div>
                                     </div>
@@ -106,9 +104,8 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                          data-action="select-role-option" 
                                          data-value="administrator" 
                                          data-label="Administrador" 
-                                         data-icon="admin_panel_settings" 
-                                         data-color="#d32f2f">
-                                        <div class="menu-link-icon"><span class="material-symbols-rounded" style="color: #d32f2f;">admin_panel_settings</span></div>
+                                         data-icon="admin_panel_settings">
+                                        <div class="menu-link-icon"><span class="material-symbols-rounded">admin_panel_settings</span></div>
                                         <div class="menu-link-text">Administrador</div>
                                         <div class="menu-link-icon"></div>
                                     </div>
@@ -118,21 +115,20 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                     </div>
                 </div>
             </div>
-
-            <div class="component-group-item" style="padding-top: 0;">
-                <div style="background-color: #fff8e1; border: 1px solid #ffe0b2; border-radius: 8px; padding: 12px; display: flex; gap: 12px; align-items: flex-start; width: 100%;">
-                    <span class="material-symbols-rounded" style="color: #f57c00; font-size: 20px; margin-top: 2px;">info</span>
-                    <div>
-                        <h4 style="margin: 0 0 4px 0; font-size: 13px; font-weight: 600; color: #e65100;">Aviso de Seguridad</h4>
-                        <p style="margin: 0; font-size: 12px; color: #ef6c00; line-height: 1.4;">
-                            Esta es una acción administrativa sensible. Todos los cambios de roles son <strong>auditados y registrados</strong> permanentemente para su revisión. Asegúrate de tener la autorización correspondiente.
-                        </p>
-                    </div>
-                </div>
-            </div>
             
             <div class="component-card__error" id="role-error-msg" style="margin-top: 16px;"></div>
 
         </div>
+
+        <div style="background-color: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; display: flex; gap: 12px; align-items: flex-start; width: 100%; margin-top: 16px;">
+            <span class="material-symbols-rounded" style="font-size: 20px; margin-top: 2px;">info</span>
+            <div>
+                <h4 style="margin: 0 0 4px 0; font-size: 13px; font-weight: 600;">Aviso de Seguridad</h4>
+                <p style="margin: 0; font-size: 12px; line-height: 1.4;">
+                    Esta es una acción administrativa sensible. Todos los cambios de roles son <strong>auditados y registrados</strong> permanentemente para su revisión. Asegúrate de tener la autorización correspondiente.
+                </p>
+            </div>
+        </div>
+
     </div>
 </div>

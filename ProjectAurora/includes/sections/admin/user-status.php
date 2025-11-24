@@ -67,14 +67,14 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
             <input type="hidden" id="input-duration-value" value="">
             <input type="hidden" id="input-reason-value" value="">
 
-            <div id="active-sanction-alert" class="component-group-item d-none" style="background-color: #fff8e1; border-bottom: 1px solid #ffe0b2;">
+            <div id="active-sanction-alert" class="component-group-item d-none" style="background-color: #f5f5f5; border-bottom: 1px solid #e0e0e0;">
                 <div class="component-card__content">
-                    <div class="component-icon-container" style="border-color: #ffb74d; background: #fff;">
-                        <span class="material-symbols-rounded" style="color: #f57c00;">warning</span>
+                    <div class="component-icon-container" style="border-color: #e0e0e0; background: #fff;">
+                        <span class="material-symbols-rounded">warning</span>
                     </div>
                     <div class="component-card__text">
-                        <h2 class="component-card__title" style="color: #ef6c00;" data-i18n="admin.status.already_suspended"><?php echo trans('admin.status.already_suspended'); ?></h2>
-                        <p class="component-card__description" id="active-sanction-desc" style="color: #e65100;">...</p>
+                        <h2 class="component-card__title" data-i18n="admin.status.already_suspended"><?php echo trans('admin.status.already_suspended'); ?></h2>
+                        <p class="component-card__description" id="active-sanction-desc">...</p>
                     </div>
                 </div>
             </div>
@@ -107,8 +107,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                         data-action="select-status-option"
                                         data-value="suspended_temp"
                                         data-label="<?php echo trans('admin.status.temp_ban'); ?>"
-                                        data-icon="timer"
-                                        data-color="#f57c00">
+                                        data-icon="timer">
                                         <div class="menu-link-icon">
                                             <span class="material-symbols-rounded status-temp">timer</span>
                                         </div>
@@ -119,8 +118,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                         data-action="select-status-option"
                                         data-value="suspended_perm"
                                         data-label="<?php echo trans('admin.status.perm_ban'); ?>"
-                                        data-icon="block"
-                                        data-color="#d32f2f">
+                                        data-icon="block">
                                         <div class="menu-link-icon">
                                             <span class="material-symbols-rounded status-perm">block</span>
                                         </div>
