@@ -339,9 +339,9 @@
             "title": "Dashboard Administrativo",
             "desc": "Bienvenido al panel de control.",
             "total_users": "Usuarios Totales",
+            "online_users": "Usuarios en Línea",
             "active_sessions": "Sesiones Activas",
-            "server_load": "Carga del Servidor",
-            "memory_usage": "Uso de Memoria"
+            "new_users_today": "Nuevos hoy"
         },
         "dashboard_title": "Dashboard Administrativo",
         "dashboard_desc": "Bienvenido al panel de control.",

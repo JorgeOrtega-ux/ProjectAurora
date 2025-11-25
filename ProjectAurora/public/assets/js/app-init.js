@@ -24,11 +24,17 @@ import { initSocketService } from './services/socket-service.js';
  * Carga dinámica de módulos.
  */
 export async function handleDynamicImports() {
+    const adminDashboardSection = document.querySelector('[data-section="admin/dashboard"]');
     const adminUsersSection = document.querySelector('[data-section="admin/users"]');
     const adminDetailsSection = document.querySelector('[data-section^="admin/user-"]'); 
     const adminServerSection = document.querySelector('[data-section="admin/server"]');
-    // [NUEVO]
     const adminBackupsSection = document.querySelector('[data-section="admin/backups"]');
+
+    // [NUEVO: Módulo Dashboard]
+    if (adminDashboardSection) {
+        const { initAdminDashboard } = await import('./modules/admin-dashboard.js');
+        initAdminDashboard();
+    }
 
     if (adminUsersSection) {
         const { initAdminUsers } = await import('./modules/admin-users.js');
@@ -45,7 +51,6 @@ export async function handleDynamicImports() {
         initAdminServer();
     }
 
-    // [NUEVO] Carga del módulo de backups
     if (adminBackupsSection) {
         const { initAdminBackups } = await import('./modules/admin-backups.js');
         initAdminBackups();

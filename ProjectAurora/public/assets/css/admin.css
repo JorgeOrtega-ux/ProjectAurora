@@ -210,3 +210,26 @@ td.col-id { color: #888; }
     gap: 8px;
     margin-top: 12px;
 }
+
+/* [NUEVO] GRID PARA DASHBOARD */
+.dashboard-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    width: 100%;
+}
+
+.dashboard-stat-label {
+    font-size: 13px;
+    color: #666;
+    font-weight: 500;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.dashboard-stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #000;
+    margin: 0;
+}

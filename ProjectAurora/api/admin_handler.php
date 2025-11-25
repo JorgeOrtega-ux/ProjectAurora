@@ -48,42 +48,61 @@ function formatSize($bytes) {
     return $bytes . ' bytes';
 }
 
-// HELPER PARA OBTENER RUTA DEL BINARIO (MEJORADO)
+// HELPER PARA OBTENER RUTA DEL BINARIO
 function getDbBinary($binaryName) {
-    // 1. Buscar en variables de entorno cargadas en database.php
     $customPath = $_ENV['DB_BIN_PATH'] ?? getenv('DB_BIN_PATH');
     
     if (!empty($customPath)) {
-        // Normalizar barras a formato Unix (funciona en Windows también)
         $customPath = rtrim(str_replace('\\', '/', $customPath), '/');
         $binary = $customPath . '/' . $binaryName;
         
-        // En Windows, añadir .exe si falta
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
             if (!str_ends_with(strtolower($binary), '.exe')) {
                 $binary .= '.exe';
             }
         }
         
-        // IMPORTANTE: Verificar si existe antes de devolverlo
         if (!file_exists($binary)) {
             throw new Exception("El archivo no existe en la ruta configurada: $binary. Verifica DB_BIN_PATH en .env");
         }
         
-        return '"' . $binary . '"'; // Comillas para espacios
+        return '"' . $binary . '"'; 
     }
-    
-    // Si no hay variable, intentar comando global
     return $binaryName;
 }
 
 try {
-    // ... (Bloques GET_USER_DETAILS, UPDATE_STATUS, GENERAL, ROLE, SERVER_CONFIG se mantienen igual)
-    // Para ahorrar espacio aquí, asumo que mantienes esos bloques del código anterior.
-    // Si los necesitas, dímelo. Aquí pongo los bloques de BACKUP que son los que fallan.
 
-    if ($action === 'get_user_details') {
-        // ... (Mismo código que antes para get_user_details) ...
+    // === DASHBOARD STATS (NUEVO) ===
+    if ($action === 'get_dashboard_stats') {
+        
+        // 1. Total Usuarios (excluyendo eliminados)
+        $stmtTotal = $pdo->query("SELECT COUNT(*) FROM users WHERE account_status != 'deleted'");
+        $totalUsers = $stmtTotal->fetchColumn();
+
+        // 2. Usuarios Conectados (Basado en actividad reciente < 5 min en DB como respaldo)
+        $stmtOnline = $pdo->query("SELECT COUNT(DISTINCT user_id) FROM user_sessions WHERE last_activity > (NOW() - INTERVAL 5 MINUTE)");
+        $onlineUsers = $stmtOnline->fetchColumn();
+
+        // 3. Nuevos Hoy
+        $stmtNew = $pdo->query("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CURDATE()");
+        $newUsersToday = $stmtNew->fetchColumn();
+
+        // 4. Sesiones Totales Activas
+        $stmtSessions = $pdo->query("SELECT COUNT(*) FROM user_sessions");
+        $activeSessions = $stmtSessions->fetchColumn();
+
+        echo json_encode([
+            'success' => true,
+            'stats' => [
+                'total_users' => $totalUsers,
+                'online_users' => $onlineUsers,
+                'new_users_today' => $newUsersToday,
+                'active_sessions' => $activeSessions
+            ]
+        ]);
+
+    } elseif ($action === 'get_user_details') {
         $targetId = $data['target_id'] ?? 0;
         $stmt = $pdo->prepare("SELECT id, username, email, profile_picture, role, account_status, suspension_reason, suspension_end_date, deletion_type, deletion_reason, admin_comments FROM users WHERE id = ?");
         $stmt->execute([$targetId]);
@@ -102,7 +121,6 @@ try {
         echo json_encode(['success' => true, 'user' => $user, 'days_remaining' => $daysRemaining, 'history' => $history]);
 
     } elseif ($action === 'update_user_status') {
-        // ... (Mismo código update_user_status) ...
         $targetId = (int)($data['target_id'] ?? 0);
         $newStatus = $data['status'] ?? 'suspended'; 
         $reason = $data['reason'] ?? null;
@@ -135,7 +153,6 @@ try {
         echo json_encode(['success' => true, 'message' => ($newStatus === 'active') ? translation('admin.success.ban_lifted') : translation('admin.success.ban_applied')]);
 
     } elseif ($action === 'update_user_general') {
-        // ... (Mismo código update_user_general) ...
         $targetId = (int)($data['target_id'] ?? 0);
         $newStatus = $data['status'] ?? 'active';
         $currentAdminId = $_SESSION['user_id'];
@@ -156,7 +173,6 @@ try {
         }
 
     } elseif ($action === 'update_user_role') {
-        // ... (Mismo código update_user_role) ...
         $targetId = (int)($data['target_id'] ?? 0);
         $newRole = $data['role'] ?? 'user';
         $currentAdminId = $_SESSION['user_id'];
@@ -187,7 +203,6 @@ try {
         }
 
     } elseif ($action === 'update_server_config') {
-        // ... (Mismo código update_server_config) ...
         $key = $data['key'] ?? '';
         $value = $data['value'] ?? 0;
         $allowedKeys = ['maintenance_mode', 'allow_registrations', 'min_password_length', 'max_password_length', 'min_username_length', 'max_username_length', 'max_email_length', 'max_login_attempts', 'lockout_time_minutes', 'code_resend_cooldown', 'username_cooldown', 'email_cooldown', 'profile_picture_max_size', 'allowed_email_domains'];
@@ -211,8 +226,6 @@ try {
         }
         echo json_encode(['success' => true, 'message' => translation('global.save_status')]);
 
-    // === SECCIÓN BACKUPS (CORREGIDA) ===
-    
     } elseif ($action === 'list_backups') {
         $files = array_diff(scandir($backupDir), ['.', '..']);
         $backups = [];
@@ -243,17 +256,14 @@ try {
         $filename = 'backup_' . date('Y-m-d_H-i-s') . '.sql';
         $filepath = $backupDir . '/' . $filename;
 
-        // Si hay pass, usar -p, si no, dejar vacío (XAMPP default)
         $passArg = !empty($pass) ? "-p\"$pass\"" : "";
         
-        // Obtener ejecutable verificado
         try {
             $mysqldump = getDbBinary('mysqldump');
         } catch (Exception $e) {
-            throw $e; // Relanzar el error específico de ruta
+            throw $e; 
         }
         
-        // Ejecutar comando
         $command = "$mysqldump --opt -h $host -u $user $passArg $db > \"$filepath\" 2>&1";
         exec($command, $output, $returnVar);
 
@@ -261,7 +271,7 @@ try {
             echo json_encode(['success' => true, 'message' => translation('admin.backups.created_success')]);
         } else {
             if (file_exists($filepath)) @unlink($filepath);
-            $debugCmd = str_replace($pass, '*****', $command); // Ocultar pass
+            $debugCmd = str_replace($pass, '*****', $command); 
             $outStr = implode(" | ", $output);
             throw new Exception("Error (Código $returnVar). CMD: $debugCmd. SALIDA: $outStr");
         }
