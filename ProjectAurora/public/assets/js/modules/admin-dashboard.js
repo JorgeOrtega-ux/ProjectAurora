@@ -3,7 +3,7 @@
 import { t } from '../core/i18n-manager.js';
 
 const API_ADMIN = (window.BASE_PATH || '/ProjectAurora/') + 'api/admin_handler.php';
-let isInitialized = false;
+let isInitialized = false; // Controla solo los listeners globales
 let refreshInterval = null;
 
 function getCsrf() {
@@ -34,7 +34,6 @@ function updateUI(stats) {
     const elSessions = document.getElementById('stat-active-sessions');
 
     if (elTotal) elTotal.textContent = stats.total_users;
-    // Solo actualizamos online desde DB si no tenemos datos de socket aun
     if (elOnline && elOnline.textContent === '...') elOnline.textContent = stats.online_users;
     if (elNew) elNew.textContent = '+' + stats.new_users_today;
     if (elSessions) elSessions.textContent = stats.active_sessions;
@@ -42,36 +41,40 @@ function updateUI(stats) {
 
 // Escucha en tiempo real del socket
 function initSocketListener() {
+    // Esto se debe ejecutar SIEMPRE para pedir los datos frescos al entrar
     const socket = window.socketService ? window.socketService.socket : null;
-    
     if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: 'get_online_users' }));
     }
 
-    document.addEventListener('socket-message', (e) => {
-        const { type, payload } = e.detail;
-        const elOnline = document.getElementById('stat-online-users');
+    // El listener global solo se añade UNA vez
+    if (!isInitialized) {
+        document.addEventListener('socket-message', (e) => {
+            const { type, payload } = e.detail;
+            const elOnline = document.getElementById('stat-online-users');
 
-        if (type === 'online_users_list' && elOnline) {
-            elOnline.textContent = payload.length;
-        }
+            if (type === 'online_users_list' && elOnline) {
+                elOnline.textContent = payload.length;
+            }
 
-        // Si cambia el estado de alguien, pedimos la lista completa para sincronizar
-        if (type === 'user_status_change' && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({ type: 'get_online_users' }));
-        }
-    });
+            if (type === 'user_status_change' && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'get_online_users' }));
+            }
+        });
+    }
 }
 
 export function initAdminDashboard() {
-    if (isInitialized) return;
-    
+    // 1. Siempre cargar datos frescos al entrar a la sección
     fetchStats();
+    
+    // 2. Configurar o re-configurar listeners necesarios
     initSocketListener();
 
-    // Refresco automático de estadísticas base (BD) cada 30s
+    // 3. Reiniciar el intervalo siempre (para evitar múltiples intervalos o que se detenga)
     if (refreshInterval) clearInterval(refreshInterval);
     refreshInterval = setInterval(fetchStats, 30000);
 
+    // Marcar como inicializado SOLO para evitar duplicar listeners globales (como document.addEventListener)
     isInitialized = true;
 }

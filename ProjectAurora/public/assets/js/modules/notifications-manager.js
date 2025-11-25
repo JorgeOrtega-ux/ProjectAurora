@@ -32,7 +32,9 @@ function renderNotifications(notifs) {
     
     let html = '';
     notifs.forEach(n => {
-        const avatar = n.sender_avatar ? (window.BASE_PATH || '/ProjectAurora/') + n.sender_avatar : null;
+        // Recuperamos el rol y la imagen
+        const role = n.sender_role || 'user'; 
+        const avatar = n.sender_profile_picture ? (window.BASE_PATH || '/ProjectAurora/') + n.sender_profile_picture : null;
         const avatarHtml = avatar ? `<img src="${avatar}" class="notif-avatar">` : `<span class="material-symbols-rounded notif-default-icon">person</span>`;
         
         let actionsHtml = '';
@@ -47,9 +49,14 @@ function renderNotifications(notifs) {
 
         const unreadDot = (parseInt(n.is_read) === 0) ? '<div class="unread-dot"></div>' : '';
 
+        // [MODIFICADO] Agregamos data-role="${role}" al contenedor de la imagen
         html += `
             <div class="notification-item" data-nid="${n.id}" data-sid="${n.related_id}">
-                <div class="notif-left"><div class="notif-img-container">${avatarHtml}</div></div>
+                <div class="notif-left">
+                    <div class="notif-img-container" data-role="${role}">
+                        ${avatarHtml}
+                    </div>
+                </div>
                 <div class="notif-content">
                     <p class="notif-text">${n.message}</p>
                     ${actionsHtml}

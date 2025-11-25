@@ -77,7 +77,6 @@ html {
     width: 100%;
     height: 100%;
     position: relative;
-    /* Necesario para el toolbar absoluto */
 }
 
 .section-content.overflow-y {
@@ -413,24 +412,23 @@ html {
 }
 
 .menu-content-group-top {
-    flex: 1 1 auto; /* Crece para ocupar espacio */
-    overflow-y: auto; /* Scroll si el contenido es largo */
+    flex: 1 1 auto; 
+    overflow-y: auto; 
     display: flex;
     flex-direction: column;
     gap: 4px;
-    min-height: 0; /* Corrección para flexbox scroll */
+    min-height: 0; 
 }
 
 .menu-content-group-bottom {
-    flex: 0 0 auto; /* No crece, tamaño fijo al contenido */
-    margin-top: auto; /* Empuja hacia el fondo */
+    flex: 0 0 auto; 
+    margin-top: auto; 
     padding-top: 8px;
-    border-top: 1px solid #00000010; /* Separador visual */
+    border-top: 1px solid #00000010; 
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
-/* ----------------------------------------------- */
 
 .menu-list {
     display: flex;
@@ -1058,27 +1056,72 @@ a.disabled-link {
     flex-shrink: 0;
 }
 
+/* === [CORRECCIÓN] ESTILOS NOTIF-IMG-CONTAINER === */
 .notif-img-container {
     width: 40px;
     height: 40px;
     border-radius: 50%;
     background-color: #eee;
-    overflow: hidden;
+    
+    /* Permitir que el borde salga del contenedor */
+    overflow: visible !important; 
+    
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative; /* Para el posicionamiento del borde */
 }
 
 .notif-avatar {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    border-radius: 50%;
+    display: block;
+    position: relative;
+    z-index: 1;
 }
 
 .notif-default-icon {
     font-size: 24px;
     color: #999;
 }
+
+/* Borde del Rol */
+.notif-img-container::before {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border: 2px solid transparent;
+    pointer-events: none;
+    z-index: 2;
+    transition: border-color 0.2s ease;
+}
+
+/* Colores de Roles */
+.notif-img-container[data-role="user"]::before {
+    border-color: #cccccc;
+}
+
+.notif-img-container[data-role="moderator"]::before {
+    border-color: #0000FF;
+}
+
+.notif-img-container[data-role="administrator"]::before {
+    border-color: #FF0000;
+}
+
+.notif-img-container[data-role="founder"]::before {
+    border: none;
+    background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+}
+/* === FIN CORRECCIÓN === */
 
 .notif-content {
     display: flex;
