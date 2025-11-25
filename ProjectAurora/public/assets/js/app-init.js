@@ -26,8 +26,9 @@ import { initSocketService } from './services/socket-service.js';
 export async function handleDynamicImports() {
     const adminUsersSection = document.querySelector('[data-section="admin/users"]');
     const adminDetailsSection = document.querySelector('[data-section^="admin/user-"]'); 
-    // [NUEVO]
     const adminServerSection = document.querySelector('[data-section="admin/server"]');
+    // [NUEVO]
+    const adminBackupsSection = document.querySelector('[data-section="admin/backups"]');
 
     if (adminUsersSection) {
         const { initAdminUsers } = await import('./modules/admin-users.js');
@@ -42,6 +43,12 @@ export async function handleDynamicImports() {
     if (adminServerSection) {
         const { initAdminServer } = await import('./modules/admin-server.js');
         initAdminServer();
+    }
+
+    // [NUEVO] Carga del módulo de backups
+    if (adminBackupsSection) {
+        const { initAdminBackups } = await import('./modules/admin-backups.js');
+        initAdminBackups();
     }
 }
 

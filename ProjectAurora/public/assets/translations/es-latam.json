@@ -295,7 +295,8 @@
             "remove": "Eliminar amigo",
             "cancel": "Cancelar solicitud",
             "accept": "Aceptar",
-            "decline": "Rechazar"
+            "decline": "Rechazar",
+            "remove_confirm": "¿Seguro que quieres eliminar a este amigo?"
         },
         "user_subtitle": "Comunidad Aurora"
     },
@@ -315,7 +316,8 @@
         "missing_data_title": "¡Uy! Faltan datos.",
         "missing_data_error": "Error 400: Faltan datos",
         "missing_data_default": "No has completado el paso anterior antes de acceder a esta página.",
-        "missing_data_context": "Faltan datos necesarios para la sección"
+        "missing_data_context": "Faltan datos necesarios para la sección",
+        "file_not_found": "Archivo de sección no encontrado."
     },
     "notifications": {
         "friend_request": "<strong>{username}</strong> quiere ser tu amigo.",
@@ -349,6 +351,21 @@
         "backups_desc": "Gestiona y restaura copias de la base de datos.",
         "server_title": "Configuración del servidor",
         "server_desc": "Ajustes globales, mantenimiento y límites del sistema.",
+        "backups": {
+            "create_btn": "Crear Copia",
+            "restore_btn": "Restaurar Copia",
+            "empty": "No hay copias de seguridad disponibles.",
+            "filename": "Archivo",
+            "size": "Tamaño",
+            "date": "Fecha",
+            "creating": "Creando backup...",
+            "restoring": "Restaurando...",
+            "confirm_restore": "¡PELIGRO! Esto sobrescribirá la base de datos actual. ¿Seguro que quieres restaurar esta copia?",
+            "confirm_delete": "¿Eliminar esta copia de seguridad?",
+            "created_success": "Copia de seguridad creada exitosamente.",
+            "restore_success": "Base de datos restaurada correctamente.",
+            "delete_success": "Copia de seguridad eliminada."
+        },
         "users": {
             "table": {
                 "id": "ID",
@@ -369,6 +386,7 @@
             "actions": {
                 "manage": "Gestionar Usuario",
                 "sanctions": "Gestionar Sanciones",
+                "role": "Asignar Rol",
                 "edit": "Editar",
                 "ban": "Banear",
                 "delete": "Eliminar",

@@ -219,3 +219,75 @@
 2025-11-24 14:31:54,247 - INFO - Usuario 1 desconectado completamente.
 2025-11-24 14:31:54,355 - INFO - connection open
 2025-11-24 14:31:54,357 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: omupa7hb...
+2025-11-24 14:33:24,691 - INFO - Usuario 1 desconectado completamente.
+2025-11-24 14:34:14,518 - INFO - connection open
+2025-11-24 14:34:14,522 - INFO - Usuario conectado: ID 2 | Rol: user | Sesión: ds4nj6ct...
+2025-11-24 14:34:23,169 - INFO - connection open
+2025-11-24 14:34:23,171 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: omupa7hb...
+2025-11-24 14:34:36,241 - INFO - 📨 Notificación a Usuario 2: friend_request 
+2025-11-24 14:34:43,939 - INFO - 📨 Notificación a Usuario 1: friend_accepted 
+2025-11-24 14:34:45,992 - INFO - Usuario 2 desconectado completamente.
+2025-11-24 14:34:47,093 - INFO - Usuario 1 desconectado completamente.
+2025-11-25 13:52:09,039 - INFO - connection open
+2025-11-25 13:52:10,043 - ERROR - Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\jorge\AppData\Local\Programs\Python\Python313\Lib\asyncio\events.py", line 89, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jorge\AppData\Local\Programs\Python\Python313\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una conexión existente por el host remoto
+2025-11-25 13:52:10,956 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: lkqqssne...
+2025-11-25 13:53:08,738 - INFO - ✅ Pool de conexiones a base de datos inicializado.
+2025-11-25 13:53:08,780 - INFO - === Servidor Aurora Iniciado (Async + Logging Profesional) ===
+2025-11-25 13:53:09,132 - INFO - server listening on 0.0.0.0:8080
+2025-11-25 13:53:09,462 - INFO - connection open
+2025-11-25 13:53:09,465 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: lkqqssne...
+2025-11-25 13:53:22,392 - INFO - Usuario 1 desconectado completamente.
+2025-11-25 13:53:22,405 - INFO - connection open
+2025-11-25 13:53:22,407 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: lkqqssne...
+2025-11-25 13:54:17,357 - INFO - Usuario 1 desconectado completamente.
+2025-11-25 13:54:17,437 - INFO - connection open
+2025-11-25 13:54:17,441 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: lkqqssne...
+2025-11-25 13:54:38,041 - INFO - 📢 Notificación GLOBAL: system_status_update
+2025-11-25 13:54:38,169 - INFO - Usuario 1 desconectado completamente.
+2025-11-25 13:54:38,258 - INFO - connection open
+2025-11-25 13:54:38,271 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: lkqqssne...
+2025-11-25 13:54:39,904 - INFO - 📢 Notificación GLOBAL: system_status_update
+2025-11-25 13:54:40,016 - INFO - Usuario 1 desconectado completamente.
+2025-11-25 13:54:40,082 - INFO - connection open
+2025-11-25 13:54:40,085 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: lkqqssne...
+2025-11-25 13:54:41,658 - INFO - 📢 Notificación GLOBAL: system_status_update
+2025-11-25 13:54:41,783 - INFO - Usuario 1 desconectado completamente.
+2025-11-25 13:54:41,859 - INFO - connection open
+2025-11-25 13:54:41,866 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: lkqqssne...
+2025-11-25 13:54:43,672 - INFO - 📢 Notificación GLOBAL: system_status_update
+2025-11-25 13:54:43,803 - INFO - Usuario 1 desconectado completamente.
+2025-11-25 13:54:43,885 - INFO - connection open
+2025-11-25 13:54:43,887 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: lkqqssne...
+2025-11-25 13:58:06,798 - INFO - Usuario 1 desconectado completamente.
+2025-11-25 13:58:06,867 - INFO - connection open
+2025-11-25 13:58:06,870 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: lkqqssne...
+2025-11-25 13:59:57,126 - INFO - Usuario 1 desconectado completamente.
+2025-11-25 13:59:57,793 - INFO - connection open
+2025-11-25 13:59:57,798 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: lkqqssne...
+2025-11-25 14:03:21,310 - INFO - Usuario 1 desconectado completamente.
+2025-11-25 14:03:22,042 - INFO - connection open
+2025-11-25 14:03:22,049 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: lkqqssne...
+2025-11-25 14:05:10,470 - INFO - Usuario 1 desconectado completamente.
+2025-11-25 14:05:10,598 - INFO - connection open
+2025-11-25 14:05:10,601 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: lkqqssne...
+2025-11-25 14:05:11,523 - INFO - Usuario 1 desconectado completamente.
+2025-11-25 14:05:12,259 - INFO - connection open
+2025-11-25 14:05:12,263 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: lkqqssne...
+2025-11-25 14:06:55,062 - INFO - Usuario 1 desconectado completamente.
+2025-11-25 14:06:56,256 - INFO - connection open
+2025-11-25 14:06:56,262 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: lkqqssne...
+2025-11-25 14:09:07,503 - INFO - 📢 Notificación GLOBAL: force_logout
+2025-11-25 14:09:09,823 - INFO - Usuario 1 desconectado completamente.
+2025-11-25 14:09:18,392 - INFO - connection open
+2025-11-25 14:09:18,395 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: rbasikmd...
+2025-11-25 14:10:35,824 - INFO - connection open
+2025-11-25 14:10:35,827 - INFO - Usuario conectado: ID 2 | Rol: user | Sesión: 1uu9fgf2...
