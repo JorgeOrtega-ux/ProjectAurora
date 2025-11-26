@@ -1,12 +1,9 @@
-// assets/js/auth-manager.js
+// assets/js/modules/auth-manager.js
 
 import { t } from '../core/i18n-manager.js';
+import { postJson, qs } from '../core/utilities.js';
 
 const API_BASE_PATH = window.BASE_PATH || '/ProjectAurora/';
-
-function qs(selector) {
-    return document.querySelector(selector);
-}
 
 function toggleStepVisibility(hideSelector, showSelector) {
     const toHide = qs(hideSelector);
@@ -20,11 +17,6 @@ function toggleStepVisibility(hideSelector, showSelector) {
     if (toShow) {
         toShow.classList.add('active');
     }
-}
-
-function getCsrfToken() {
-    const meta = document.querySelector('meta[name="csrf-token"]');
-    return meta ? meta.getAttribute('content') : '';
 }
 
 let resendTimerInterval = null;
@@ -58,36 +50,22 @@ async function handleResendCode(type, linkSelector) {
 
     link.classList.add('disabled-link');
 
-    try {
-        const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': getCsrfToken()
-            },
-            body: JSON.stringify({ 
-                action: 'resend_code',
-                type: type
-            })
-        });
-
-        const res = await response.json();
+    const res = await postJson('api/auth_handler.php', { 
+        action: 'resend_code',
+        type: type
+    });
+    
+    if (res.success) {
+        if (window.alertManager) window.alertManager.showAlert(res.message, 'success');
+        initResendTimer(linkSelector, 60);
+    } else {
+        if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
         
-        if (res.success) {
-            if (window.alertManager) window.alertManager.showAlert(res.message, 'success');
-            initResendTimer(linkSelector, 60);
+        if (res.remaining_time) {
+            initResendTimer(linkSelector, res.remaining_time);
         } else {
-            if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
-            
-            if (res.remaining_time) {
-                initResendTimer(linkSelector, res.remaining_time);
-            } else {
-                link.classList.remove('disabled-link');
-            }
+            link.classList.remove('disabled-link');
         }
-    } catch (error) {
-        console.error(error);
-        if (link) link.classList.remove('disabled-link');
     }
 }
 
@@ -225,35 +203,15 @@ export function initAuthManager() {
             
             logoutBtn.appendChild(spinnerContainer);
             
-            try {
-                const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': getCsrfToken()
-                    },
-                    body: JSON.stringify({ 
-                        action: 'logout',
-                        csrf_token: getCsrfToken()
-                    })
-                });
+            const res = await postJson('api/auth_handler.php', { action: 'logout' });
 
-                const res = await response.json();
-
-                if (res.success) {
-                    if (window.alertManager) window.alertManager.showAlert(t('global.loading'), 'info');
-                    window.location.href = API_BASE_PATH + 'login';
-                } else {
-                    spinnerContainer.remove();
-                    logoutBtn.dataset.processing = "false";
-                    if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
-                }
-
-            } catch (error) {
-                console.error(error);
+            if (res.success) {
+                if (window.alertManager) window.alertManager.showAlert(t('global.loading'), 'info');
+                window.location.href = API_BASE_PATH + 'login';
+            } else {
                 spinnerContainer.remove();
                 logoutBtn.dataset.processing = "false";
-                if (window.alertManager) window.alertManager.showAlert(t('global.error_connection'), 'error');
+                if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
             }
         }
     });
@@ -293,29 +251,21 @@ function switchRegisterStep(stepNumber, urlPath) {
     }
 }
 
-/**
- * CORRECCIÓN: Validación dinámica de dominios usando SERVER_CONFIG.
- */
 function isValidEmailDomain(email) {
-    // 1. Validación básica de formato (independiente del dominio)
     const basicRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!basicRegex.test(email)) return false;
 
-    // 2. Obtener configuración inyectada
     const config = window.SERVER_CONFIG || {};
     let allowed = config.allowed_email_domains;
 
-    // 3. Parsear si viene como string JSON (de la BD)
     if (typeof allowed === 'string') {
         try { allowed = JSON.parse(allowed); } catch(e) { allowed = []; }
     }
 
-    // 4. Si la lista es null, undefined o vacía, se permiten todos los dominios
     if (!allowed || !Array.isArray(allowed) || allowed.length === 0) {
         return true;
     }
 
-    // 5. Verificar si el dominio del usuario está en la lista
     const parts = email.split('@');
     const domain = parts[parts.length - 1].toLowerCase();
     
@@ -439,26 +389,18 @@ async function handleRecoveryLinkRequest() {
     btn.innerHTML = '<div class="btn-spinner"></div>';
     btn.disabled = true;
 
-    try {
-        const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }, 
-            body: JSON.stringify({ action: 'recovery_step_1', email: emailVal })
-        });
-        const res = await response.json();
+    const res = await postJson('api/auth_handler.php', { action: 'recovery_step_1', email: emailVal });
 
-        if (res.success) {
-            const display = qs('[data-display="rec-email"]');
-            if(display) display.textContent = emailVal;
-            
-            if (window.alertManager) window.alertManager.showAlert(t('auth.recovery.link_sent_alert'), 'success');
-            toggleStepVisibility('[data-step="rec-1"]', '[data-step="rec-success"]');
-        } else {
-            if(errorDiv) { errorDiv.textContent = res.message; errorDiv.classList.add('active'); }
-        }
-    } catch (e) {
-        if(errorDiv) { errorDiv.textContent = t('global.error_connection'); errorDiv.classList.add('active'); }
+    if (res.success) {
+        const display = qs('[data-display="rec-email"]');
+        if(display) display.textContent = emailVal;
+        
+        if (window.alertManager) window.alertManager.showAlert(t('auth.recovery.link_sent_alert'), 'success');
+        toggleStepVisibility('[data-step="rec-1"]', '[data-step="rec-success"]');
+    } else {
+        if(errorDiv) { errorDiv.textContent = res.message; errorDiv.classList.add('active'); }
     }
+    
     btn.innerHTML = originalContent;
     btn.disabled = false;
 }
@@ -499,29 +441,18 @@ async function handleResetPasswordFinal() {
     btn.innerHTML = '<div class="btn-spinner"></div>';
     btn.disabled = true;
 
-    try {
-        const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }, 
-            body: JSON.stringify({ 
-                action: 'recovery_final', 
-                token: tokenVal,
-                password: passVal,
-                password_confirm: passConfirmVal 
-            })
-        });
-        const res = await response.json();
+    const res = await postJson('api/auth_handler.php', { 
+        action: 'recovery_final', 
+        token: tokenVal,
+        password: passVal,
+        password_confirm: passConfirmVal 
+    });
 
-        if (res.success) {
-            if (window.alertManager) window.alertManager.showAlert(t('auth.recovery.pass_updated'), 'success');
-            window.location.href = API_BASE_PATH + 'login';
-        } else {
-            if(errorDiv) { errorDiv.textContent = res.message; errorDiv.classList.add('active'); }
-            btn.innerHTML = originalContent; 
-            btn.disabled = false;
-        }
-    } catch (e) {
-        if(errorDiv) { errorDiv.textContent = t('global.error_connection'); errorDiv.classList.add('active'); }
+    if (res.success) {
+        if (window.alertManager) window.alertManager.showAlert(t('auth.recovery.pass_updated'), 'success');
+        window.location.href = API_BASE_PATH + 'login';
+    } else {
+        if(errorDiv) { errorDiv.textContent = res.message; errorDiv.classList.add('active'); }
         btn.innerHTML = originalContent; 
         btn.disabled = false;
     }
@@ -538,35 +469,21 @@ async function sendAuthRequest(payload, btnSelector, errorSelector, nextStep, ne
         btn.disabled = true; 
     }
     
-    try {
-        const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
-            method: 'POST', 
-            headers: { 
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': getCsrfToken()
-            }, 
-            body: JSON.stringify(payload)
-        });
-        const result = await response.json();
+    const result = await postJson('api/auth_handler.php', payload);
 
-        if (result.success) {
-            if (nextStep === 'main') {
-                window.location.href = API_BASE_PATH;
-            } else {
-                if (payload.action === 'register_step_2' && window.alertManager) {
-                    window.alertManager.showAlert(t('auth.register.code_sent_alert'), 'success');
-                }
-                switchRegisterStep(nextStep, nextUrl);
-                if(btn) { btn.innerHTML = originalContent; btn.disabled = false; }
-            }
-            return true;
+    if (result.success) {
+        if (nextStep === 'main') {
+            window.location.href = API_BASE_PATH;
         } else {
-            if(errorDiv) { errorDiv.textContent = result.message; errorDiv.classList.add('active'); }
-            if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
-            return false;
+            if (payload.action === 'register_step_2' && window.alertManager) {
+                window.alertManager.showAlert(t('auth.register.code_sent_alert'), 'success');
+            }
+            switchRegisterStep(nextStep, nextUrl);
+            if(btn) { btn.innerHTML = originalContent; btn.disabled = false; }
         }
-    } catch (error) {
-        if(errorDiv) { errorDiv.textContent = t('global.error_connection'); errorDiv.classList.add('active'); }
+        return true;
+    } else {
+        if(errorDiv) { errorDiv.textContent = result.message; errorDiv.classList.add('active'); }
         if(btn) { btn.innerHTML = originalContent; btn.disabled = false; } 
         return false;
     }
@@ -593,72 +510,54 @@ async function handleLogin() {
     btn.innerHTML = '<div class="btn-spinner"></div>'; 
     btn.disabled = true;
 
-    try {
-        const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': getCsrfToken()
-            },
-            body: JSON.stringify({ 
-                action: 'login', 
-                email: emailInput.value.toLowerCase(), 
-                password: passInput.value 
-            })
-        });
+    const res = await postJson('api/auth_handler.php', { 
+        action: 'login', 
+        email: emailInput.value.toLowerCase(), 
+        password: passInput.value 
+    });
+    
+    if (res.success) {
+        if (res.require_2fa) {
+            const nextUrl = API_BASE_PATH + 'login/verification-additional';
+            history.pushState({ section: 'login/verification-additional' }, '', nextUrl);
 
-        const res = await response.json();
-        
-        if (res.success) {
-            if (res.require_2fa) {
-                const nextUrl = API_BASE_PATH + 'login/verification-additional';
-                history.pushState({ section: 'login/verification-additional' }, '', nextUrl);
-
-                toggleStepVisibility('[data-step="login-1"]', '[data-step="login-2"]');
-                
-                const displayEmail = qs('[data-display="login-2fa-email"]');
-                if(displayEmail && res.masked_email) {
-                    displayEmail.textContent = res.masked_email;
-                }
-                
-                if (window.alertManager) window.alertManager.showAlert(t('auth.2fa.sent_alert'), 'info');
-                initResendTimer('[data-action="resend-login"]');
-
-                btn.innerHTML = originalContent;
-                btn.disabled = false;
-                
-                setTimeout(() => {
-                    const codeField = qs('[data-input="login-2fa-code"]');
-                    if(codeField) codeField.focus();
-                }, 100);
-
-            } else {
-                if (window.alertManager) window.alertManager.showAlert(t('auth.login.success'), 'info');
-                window.location.href = API_BASE_PATH;
+            toggleStepVisibility('[data-step="login-1"]', '[data-step="login-2"]');
+            
+            const displayEmail = qs('[data-display="login-2fa-email"]');
+            if(displayEmail && res.masked_email) {
+                displayEmail.textContent = res.masked_email;
             }
-        } else {
-            if (res.is_account_issue && res.status_type) {
-                let redirectUrl = API_BASE_PATH + 'status-page?status=' + res.status_type;
-                if (res.reason) redirectUrl += '&reason=' + encodeURIComponent(res.reason);
-                if (res.until) redirectUrl += '&until=' + encodeURIComponent(res.until);
-                window.location.href = redirectUrl;
-                return; 
-            }
+            
+            if (window.alertManager) window.alertManager.showAlert(t('auth.2fa.sent_alert'), 'info');
+            initResendTimer('[data-action="resend-login"]');
 
-            if(errorDiv) {
-                errorDiv.textContent = res.message;
-                errorDiv.classList.add('active');
-            }
-            emailInput.classList.add('input-error');
-            passInput.classList.add('input-error');
             btn.innerHTML = originalContent;
             btn.disabled = false;
+            
+            setTimeout(() => {
+                const codeField = qs('[data-input="login-2fa-code"]');
+                if(codeField) codeField.focus();
+            }, 100);
+
+        } else {
+            if (window.alertManager) window.alertManager.showAlert(t('auth.login.success'), 'info');
+            window.location.href = API_BASE_PATH;
         }
-    } catch (e) {
+    } else {
+        if (res.is_account_issue && res.status_type) {
+            let redirectUrl = API_BASE_PATH + 'status-page?status=' + res.status_type;
+            if (res.reason) redirectUrl += '&reason=' + encodeURIComponent(res.reason);
+            if (res.until) redirectUrl += '&until=' + encodeURIComponent(res.until);
+            window.location.href = redirectUrl;
+            return; 
+        }
+
         if(errorDiv) {
-            errorDiv.textContent = t('global.error_connection');
+            errorDiv.textContent = res.message;
             errorDiv.classList.add('active');
         }
+        emailInput.classList.add('input-error');
+        passInput.classList.add('input-error');
         btn.innerHTML = originalContent;
         btn.disabled = false;
     }
@@ -683,37 +582,20 @@ async function handleLogin2FA() {
 
     const cleanCode = codeInput.value.trim().replace(/-/g, '');
 
-    try {
-        const response = await fetch(`${API_BASE_PATH}api/auth_handler.php`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': getCsrfToken()
-            },
-            body: JSON.stringify({ 
-                action: 'login_2fa_verify', 
-                code: cleanCode
-            })
-        });
+    const res = await postJson('api/auth_handler.php', { 
+        action: 'login_2fa_verify', 
+        code: cleanCode
+    });
 
-        const res = await response.json();
-        if (res.success) {
-            if (window.alertManager) window.alertManager.showAlert(t('auth.2fa.success_alert'), 'success');
-            window.location.href = API_BASE_PATH;
-        } else {
-            if(errorDiv) {
-                errorDiv.textContent = res.message;
-                errorDiv.classList.add('active');
-            }
-            codeInput.classList.add('input-error');
-            btn.innerHTML = originalContent;
-            btn.disabled = false;
-        }
-    } catch (e) {
+    if (res.success) {
+        if (window.alertManager) window.alertManager.showAlert(t('auth.2fa.success_alert'), 'success');
+        window.location.href = API_BASE_PATH;
+    } else {
         if(errorDiv) {
-            errorDiv.textContent = t('global.error_connection');
+            errorDiv.textContent = res.message;
             errorDiv.classList.add('active');
         }
+        codeInput.classList.add('input-error');
         btn.innerHTML = originalContent;
         btn.disabled = false;
     }

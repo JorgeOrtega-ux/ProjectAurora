@@ -1,37 +1,7 @@
 // public/assets/js/modules/friends-manager.js
 
 import { t } from '../../core/i18n-manager.js';
-
-const API_FRIENDS = (window.BASE_PATH || '/ProjectAurora/') + 'api/friends_handler.php';
-
-function getCsrf() {
-    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-}
-
-async function fetchApi(data) {
-    const response = await fetch(API_FRIENDS, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrf() },
-        body: JSON.stringify(data)
-    });
-    return await response.json();
-}
-
-function setLoading(btn, isLoading, originalText = '') {
-    if (isLoading) {
-        btn.dataset.original = btn.textContent;
-        btn.innerHTML = '<div class="small-spinner" style="border-color:#ccc; border-top-color:#000;"></div>';
-        btn.disabled = true;
-    } else {
-        btn.innerHTML = originalText || btn.dataset.original;
-        btn.disabled = false;
-    }
-}
-
-function handleError(res, btn, originalText) {
-    if (window.alertManager && res) window.alertManager.showAlert(res.message, 'error');
-    setLoading(btn, false, originalText);
-}
+import { postJson, setButtonLoading } from '../../core/utilities.js';
 
 function triggerNotificationReload() {
     document.dispatchEvent(new CustomEvent('reload-notifications'));
@@ -64,44 +34,47 @@ function updateUIButtons(userId, state) {
 }
 
 async function sendFriendRequest(targetId, btn) {
-    setLoading(btn, true);
+    setButtonLoading(btn, true);
     try {
-        const res = await fetchApi({ action: 'send_request', target_id: targetId });
+        const res = await postJson('api/friends_handler.php', { action: 'send_request', target_id: targetId });
         if (res.success) {
             if (window.alertManager) window.alertManager.showAlert(t('notifications.request_sent'), 'success');
             updateUIButtons(targetId, 'request_sent');
         } else {
-            handleError(res, btn, t('search.actions.add'));
+            if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
+            setButtonLoading(btn, false);
         }
-    } catch (e) { handleError(null, btn, t('search.actions.add')); }
+    } catch (e) { setButtonLoading(btn, false); }
 }
 
 async function cancelRequest(targetId, btn) {
-    setLoading(btn, true);
+    setButtonLoading(btn, true);
     try {
-        const res = await fetchApi({ action: 'cancel_request', target_id: targetId });
+        const res = await postJson('api/friends_handler.php', { action: 'cancel_request', target_id: targetId });
         if (res.success) {
             if (window.alertManager) window.alertManager.showAlert(t('notifications.request_cancelled'), 'info');
             updateUIButtons(targetId, 'none');
             triggerNotificationReload(); 
         } else {
-            handleError(res, btn, t('search.actions.cancel'));
+            if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
+            setButtonLoading(btn, false);
         }
-    } catch (e) { handleError(null, btn, t('search.actions.cancel')); }
+    } catch (e) { setButtonLoading(btn, false); }
 }
 
 async function removeFriend(targetId, btn) {
-    setLoading(btn, true);
+    setButtonLoading(btn, true);
     try {
-        const res = await fetchApi({ action: 'remove_friend', target_id: targetId });
+        const res = await postJson('api/friends_handler.php', { action: 'remove_friend', target_id: targetId });
         if (res.success) {
             if (window.alertManager) window.alertManager.showAlert(t('notifications.friend_removed'), 'info');
             updateUIButtons(targetId, 'none');
             triggerNotificationReload(); 
         } else {
-            handleError(res, btn, t('search.actions.remove'));
+            if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
+            setButtonLoading(btn, false);
         }
-    } catch (e) { handleError(null, btn, t('search.actions.remove')); }
+    } catch (e) { setButtonLoading(btn, false); }
 }
 
 async function respondRequest(actionType, btn, senderId) {
@@ -110,7 +83,7 @@ async function respondRequest(actionType, btn, senderId) {
     btn.disabled = true;
 
     try {
-        const res = await fetchApi({ action: actionType, sender_id: senderId });
+        const res = await postJson('api/friends_handler.php', { action: actionType, sender_id: senderId });
         if (res.success) {
             triggerNotificationReload(); 
 

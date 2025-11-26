@@ -1,16 +1,11 @@
-// public/assets/js/modules/admin-server.js
+// public/assets/js/modules/admin/admin-server.js
 
 import { t } from '../../core/i18n-manager.js';
+import { postJson } from '../../core/utilities.js';
 
-const API_ADMIN = (window.BASE_PATH || '/ProjectAurora/') + 'api/admin_handler.php';
 let debounceTimer = null;
 let currentDomains = [];
 
-function getCsrf() {
-    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-}
-
-// Mapa de acciones a claves de BD
 const actionKeyMap = {
     'update-min-password-length': 'min_password_length',
     'update-max-password-length': 'max_password_length',
@@ -26,34 +21,25 @@ const actionKeyMap = {
 };
 
 async function updateConfig(key, value, elementToRevertOnError, silent = false) {
-    try {
-        const res = await fetch(API_ADMIN, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrf() },
-            body: JSON.stringify({ action: 'update_server_config', key, value })
-        });
-        const data = await res.json();
+    const res = await postJson('api/admin_handler.php', { 
+        action: 'update_server_config', 
+        key, 
+        value 
+    });
 
-        if (data.success) {
-            if (!silent && window.alertManager) window.alertManager.showAlert(data.message, 'success');
-            
-            if (!window.SERVER_CONFIG) window.SERVER_CONFIG = {};
-            window.SERVER_CONFIG[key] = value;
-            console.log(`[Config] Updated ${key} to`, value);
+    if (res.success) {
+        if (!silent && window.alertManager) window.alertManager.showAlert(res.message, 'success');
+        
+        if (!window.SERVER_CONFIG) window.SERVER_CONFIG = {};
+        window.SERVER_CONFIG[key] = value;
+        console.log(`[Config] Updated ${key} to`, value);
 
-            if (key === 'maintenance_mode' && value === 1) {
-                const regToggle = document.getElementById('toggle-allow-registration');
-                if (regToggle) regToggle.checked = false;
-            }
-        } else {
-            if (window.alertManager) window.alertManager.showAlert(data.message, 'error');
-            if (elementToRevertOnError && elementToRevertOnError.type === 'checkbox') {
-                elementToRevertOnError.checked = !elementToRevertOnError.checked;
-            }
+        if (key === 'maintenance_mode' && value === 1) {
+            const regToggle = document.getElementById('toggle-allow-registration');
+            if (regToggle) regToggle.checked = false;
         }
-    } catch (e) {
-        console.error(e);
-        if (window.alertManager) window.alertManager.showAlert(t('global.error_connection'), 'error');
+    } else {
+        if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
         if (elementToRevertOnError && elementToRevertOnError.type === 'checkbox') {
             elementToRevertOnError.checked = !elementToRevertOnError.checked;
         }
@@ -83,15 +69,12 @@ function handleStepperClick(btn) {
     if (newVal < min) newVal = min;
     if (newVal > max) newVal = max;
 
-    // 1. Update UI
     stepper.dataset.currentValue = newVal;
     const valueDisplay = stepper.querySelector('.stepper-value');
     if (valueDisplay) valueDisplay.textContent = newVal;
 
-    // 2. Update Dynamic Texts (i18n)
     updateCardTexts(stepper, newVal);
 
-    // 3. Update button states
     const btns = stepper.querySelectorAll('.stepper-button');
     btns.forEach(b => {
         const type = b.dataset.stepAction;
@@ -99,12 +82,11 @@ function handleStepperClick(btn) {
         if (type.includes('increment')) b.disabled = (newVal >= max);
     });
 
-    // 4. Send to server (Debounced)
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
         const key = actionKeyMap[action];
         if (key) {
-            updateConfig(key, newVal, null, true); // Silent update
+            updateConfig(key, newVal, null, true); 
         }
     }, 500);
 }
@@ -120,8 +102,6 @@ function updateCardTexts(stepper, newValue) {
         el.setAttribute('data-i18n-vars', JSON.stringify({ val: newValue }));
     });
 }
-
-// --- LÓGICA DE DOMINIOS ---
 
 function loadInitialDomains() {
     const container = document.getElementById('domain-list-container');
@@ -158,7 +138,6 @@ function renderDomains() {
 export function initAdminServer() {
     loadInitialDomains();
 
-    // Listener para Checkboxes
     document.body.addEventListener('change', (e) => {
         const target = e.target;
         if (target.matches('#toggle-maintenance-mode')) {
@@ -169,7 +148,6 @@ export function initAdminServer() {
         }
     });
 
-    // Listener para Steppers y Acordeones y Dominios
     document.body.addEventListener('click', async (e) => {
         const target = e.target;
 
@@ -190,28 +168,24 @@ export function initAdminServer() {
             }
         }
 
-        // DOMINIOS: Mostrar Formulario
         if (target.closest('[data-action="show-add-domain-form"]')) {
             document.getElementById('add-domain-btn-wrapper').classList.add('d-none');
             document.getElementById('add-domain-form-wrapper').classList.remove('d-none');
             document.getElementById('new-domain-input').focus();
         }
 
-        // DOMINIOS: Cancelar Formulario
         if (target.closest('[data-action="cancel-add-domain"]')) {
             document.getElementById('new-domain-input').value = '';
             document.getElementById('add-domain-form-wrapper').classList.add('d-none');
             document.getElementById('add-domain-btn-wrapper').classList.remove('d-none');
         }
 
-        // DOMINIOS: Guardar Nuevo
         if (target.closest('[data-action="save-new-domain"]')) {
             const input = document.getElementById('new-domain-input');
             let val = input.value.trim().toLowerCase();
 
             if (!val) return;
             
-            // Validación estricta
             const domainRegex = /^[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,}$/;
             if (!domainRegex.test(val)) {
                 if(window.alertManager) window.alertManager.showAlert('Formato inválido. Debe ser ej: gmail.com', 'error');
@@ -232,7 +206,6 @@ export function initAdminServer() {
             document.getElementById('add-domain-btn-wrapper').classList.remove('d-none');
         }
 
-        // DOMINIOS: Eliminar
         const removeBtn = target.closest('[data-action="remove-domain"]');
         if (removeBtn) {
             const domainToRemove = removeBtn.dataset.domain;
@@ -244,7 +217,6 @@ export function initAdminServer() {
         }
     });
     
-    // Init state buttons
     document.querySelectorAll('.component-stepper').forEach(stepper => {
         const min = parseInt(stepper.dataset.min);
         const max = parseInt(stepper.dataset.max);

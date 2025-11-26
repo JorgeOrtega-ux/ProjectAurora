@@ -1,39 +1,9 @@
-// public/assets/js/modules/admin-backups.js
+// public/assets/js/modules/admin/admin-backups.js
 
 import { t } from '../../core/i18n-manager.js';
+import { postJson, setButtonLoading } from '../../core/utilities.js';
 
-const API_ADMIN = (window.BASE_PATH || '/ProjectAurora/') + 'api/admin_handler.php';
 let selectedBackup = null;
-
-function getCsrf() {
-    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-}
-
-async function fetchApi(payload) {
-    try {
-        const res = await fetch(API_ADMIN, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrf() },
-            body: JSON.stringify(payload)
-        });
-        return await res.json();
-    } catch (e) {
-        console.error("API Error:", e);
-        return { success: false, message: t('global.error_connection') };
-    }
-}
-
-function setLoading(btn, isLoading) {
-    if (!btn) return;
-    if (isLoading) {
-        btn.dataset.originalHTML = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<div class="small-spinner" style="border-color:currentColor; border-top-color:transparent;"></div>';
-    } else {
-        btn.innerHTML = btn.dataset.originalHTML || btn.innerHTML;
-        btn.disabled = false;
-    }
-}
 
 export function initAdminBackups() {
     loadBackups();
@@ -42,42 +12,36 @@ export function initAdminBackups() {
 
 function initListeners() {
     document.body.addEventListener('click', (e) => {
-        // Seleccionar fila (Ahora buscamos user-capsule-row)
         const row = e.target.closest('.user-capsule-row[data-action="select-backup-row"]');
         if (row) {
             handleRowSelection(row);
             return;
         }
 
-        // Crear Backup
         const createBtn = e.target.closest('[data-action="create-backup"]');
         if (createBtn) {
             createBackup(createBtn);
             return;
         }
 
-        // Restaurar Backup
         const restoreBtn = e.target.closest('#btn-restore-backup');
         if (restoreBtn) {
             restoreBackup(restoreBtn);
             return;
         }
 
-        // Eliminar Backup
         const deleteBtn = e.target.closest('[data-action="delete-backup"]');
         if (deleteBtn) {
             deleteBackup(deleteBtn);
             return;
         }
 
-        // Deseleccionar
         const deselectBtn = e.target.closest('[data-action="deselect-backup"]');
         if (deselectBtn) {
             deselectAll();
             return;
         }
 
-        // Clic fuera para deseleccionar
         if (selectedBackup && !e.target.closest('.capsule-list-container') && !e.target.closest('.component-toolbar')) {
             deselectAll();
         }
@@ -90,7 +54,7 @@ async function loadBackups() {
 
     container.innerHTML = `<div class="small-spinner" style="margin: 20px auto;"></div>`;
 
-    const res = await fetchApi({ action: 'list_backups' });
+    const res = await postJson('api/admin_handler.php', { action: 'list_backups' });
 
     if (res.success) {
         renderList(res.backups);
@@ -112,7 +76,6 @@ function renderList(backups) {
 
     let html = '';
     backups.forEach(b => {
-        // Usamos las mismas clases que en admin-users.js para consistencia visual
         html += `
             <div class="user-capsule-row" 
                 data-selectable="true" 
@@ -179,9 +142,9 @@ function updateToolbars(isSelected, filename = '') {
 }
 
 async function createBackup(btn) {
-    setLoading(btn, true);
+    setButtonLoading(btn, true);
     
-    const res = await fetchApi({ action: 'create_backup' });
+    const res = await postJson('api/admin_handler.php', { action: 'create_backup' });
     
     if (res.success) {
         if(window.alertManager) window.alertManager.showAlert(res.message, 'success');
@@ -189,25 +152,25 @@ async function createBackup(btn) {
     } else {
         if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
     }
-    setLoading(btn, false);
+    setButtonLoading(btn, false);
 }
 
 async function restoreBackup(btn) {
     if (!selectedBackup) return;
     if (!confirm(t('admin.backups.confirm_restore'))) return;
 
-    setLoading(btn, true);
+    setButtonLoading(btn, true);
     
-    const res = await fetchApi({ action: 'restore_backup', filename: selectedBackup });
+    const res = await postJson('api/admin_handler.php', { action: 'restore_backup', filename: selectedBackup });
     
     if (res.success) {
         if(window.alertManager) window.alertManager.showAlert(res.message, 'success');
         setTimeout(() => {
-            window.location.reload(); // Importante recargar tras restaurar DB
+            window.location.reload();
         }, 2000);
     } else {
         if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
-        setLoading(btn, false);
+        setButtonLoading(btn, false);
     }
 }
 
@@ -215,9 +178,9 @@ async function deleteBackup(btn) {
     if (!selectedBackup) return;
     if (!confirm(t('admin.backups.confirm_delete'))) return;
 
-    setLoading(btn, true);
+    setButtonLoading(btn, true);
 
-    const res = await fetchApi({ action: 'delete_backup', filename: selectedBackup });
+    const res = await postJson('api/admin_handler.php', { action: 'delete_backup', filename: selectedBackup });
 
     if (res.success) {
         if(window.alertManager) window.alertManager.showAlert(res.message, 'info');
@@ -226,5 +189,5 @@ async function deleteBackup(btn) {
     } else {
         if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
     }
-    setLoading(btn, false);
+    setButtonLoading(btn, false);
 }

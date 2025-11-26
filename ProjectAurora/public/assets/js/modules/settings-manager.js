@@ -2,21 +2,9 @@
 
 import { changeLanguage, t } from '../core/i18n-manager.js';
 import { updateTheme } from '../core/theme-manager.js'; 
-
-const API_SETTINGS = (window.BASE_PATH || '/ProjectAurora/') + 'api/settings_handler.php';
+import { postJson, setButtonLoading, toggleCardError, qs } from '../core/utilities.js';
 
 let areGlobalsInitialized = false;
-
-function getCsrfToken() {
-    const meta = document.querySelector('meta[name="csrf-token"]');
-    if (meta) return meta.getAttribute('content');
-    const input = document.querySelector('input[name="csrf_token"]');
-    return input ? input.value : '';
-}
-
-function qs(selector) {
-    return document.querySelector(selector);
-}
 
 export function initSettingsManager() {
     const isProfile = qs('[data-section="settings/your-profile"]');
@@ -57,48 +45,6 @@ export function initSettingsManager() {
     }
 }
 
-// ========================================================
-// UTILIDADES UI (Helpers)
-// ========================================================
-
-function updateCardError(element, message = '', show = true) {
-    if (!element) return;
-    const cardContainer = element.closest('.component-card') || element;
-    let nextElement = cardContainer.nextElementSibling;
-    let errorDiv = null;
-
-    if (nextElement && nextElement.classList.contains('component-card__error')) {
-        errorDiv = nextElement;
-    }
-
-    if (!errorDiv && show) {
-        errorDiv = document.createElement('div');
-        errorDiv.className = 'component-card__error';
-        cardContainer.after(errorDiv);
-    }
-
-    if (show && errorDiv) {
-        errorDiv.textContent = message;
-        requestAnimationFrame(() => errorDiv.classList.add('active'));
-    } else if (!show && errorDiv) {
-        errorDiv.classList.remove('active');
-        setTimeout(() => {
-            if (errorDiv.parentNode) errorDiv.parentNode.removeChild(errorDiv);
-        }, 200); 
-    }
-}
-
-function setLoading(btn, isLoading, originalText) {
-    if (isLoading) {
-        btn.dataset.original = btn.textContent;
-        btn.innerHTML = '<div class="small-spinner"></div>';
-        btn.disabled = true;
-    } else {
-        btn.innerHTML = originalText || btn.dataset.original;
-        btn.disabled = false;
-    }
-}
-
 function toggleMode(els, isEditing) {
     if (isEditing) {
         els.viewState.classList.remove('active'); els.viewState.classList.add('disabled');
@@ -117,10 +63,6 @@ function updateHeaderAvatar(src) {
     const headerImg = document.querySelector('.header-button.profile-button .profile-img');
     if (headerImg) headerImg.src = src;
 }
-
-// ========================================================
-// LÓGICA ELIMINACIÓN DE CUENTA
-// ========================================================
 
 function initAccountDeleteNavigation() {
     document.body.addEventListener('click', (e) => {
@@ -141,10 +83,10 @@ function initDeleteAccountLogic() {
 
     confirmBtn.onclick = async () => {
         const password = passInput.value;
-        updateCardError(card, '', false);
+        toggleCardError(card, '', false);
 
         if (!password) {
-            updateCardError(card, t('settings.delete_account.password_label')); 
+            toggleCardError(card, t('settings.delete_account.password_label')); 
             return;
         }
 
@@ -152,35 +94,21 @@ function initDeleteAccountLogic() {
             return;
         }
 
-        setLoading(confirmBtn, true);
+        setButtonLoading(confirmBtn, true);
 
-        try {
-            const res = await fetch(API_SETTINGS, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
-                body: JSON.stringify({ 
-                    action: 'delete_account', 
-                    password: password 
-                })
-            });
-            const data = await res.json();
+        const res = await postJson('api/settings_handler.php', { 
+            action: 'delete_account', 
+            password: password 
+        });
 
-            if (data.success) {
-                window.location.href = (window.BASE_PATH || '/ProjectAurora/') + 'status-page?status=deleted';
-            } else {
-                updateCardError(card, data.message);
-                setLoading(confirmBtn, false, t('settings.delete_account.confirm_btn'));
-            }
-        } catch (e) {
-            updateCardError(card, t('global.error_connection'));
-            setLoading(confirmBtn, false, t('settings.delete_account.confirm_btn'));
+        if (res.success) {
+            window.location.href = (window.BASE_PATH || '/ProjectAurora/') + 'status-page?status=deleted';
+        } else {
+            toggleCardError(card, res.message);
+            setButtonLoading(confirmBtn, false, t('settings.delete_account.confirm_btn'));
         }
     };
 }
-
-// ========================================================
-// LÓGICA SESIONES
-// ========================================================
 
 function initSessionsNavLogic() {
     document.body.addEventListener('click', (e) => {
@@ -197,21 +125,12 @@ async function initSessionsLogic() {
     const revokeAllBtn = qs('[data-action="revoke-all-sessions"]');
     if (!container) return;
 
-    try {
-        const res = await fetch(API_SETTINGS, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
-            body: JSON.stringify({ action: 'get_sessions' })
-        });
-        const data = await res.json();
+    const res = await postJson('api/settings_handler.php', { action: 'get_sessions' });
 
-        if (data.success) {
-            renderSessionsList(data.sessions, container);
-        } else {
-            container.innerHTML = `<p style="text-align:center; color:#d32f2f;">${data.message}</p>`;
-        }
-    } catch (e) {
-        container.innerHTML = `<p style="text-align:center; color:#666;">${t('global.error_connection')}</p>`;
+    if (res.success) {
+        renderSessionsList(res.sessions, container);
+    } else {
+        container.innerHTML = `<p style="text-align:center; color:#d32f2f;">${res.message}</p>`;
     }
 
     container.addEventListener('click', async (e) => {
@@ -223,25 +142,17 @@ async function initSessionsLogic() {
             btn.disabled = true; 
             btn.innerHTML = '<div class="small-spinner"></div>';
 
-            try {
-                const res = await fetch(API_SETTINGS, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
-                    body: JSON.stringify({ action: 'revoke_session', session_id_db: sessionIdDb })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    const card = btn.closest('.component-card');
-                    card.style.opacity = '0';
-                    setTimeout(() => card.remove(), 300);
-                    if (window.alertManager) window.alertManager.showAlert(t('settings.sessions.session_revoked') || 'Sesión cerrada.', 'success');
-                } else {
-                    if (window.alertManager) window.alertManager.showAlert(data.message, 'error');
-                    btn.disabled = false;
-                    btn.innerHTML = t('global.delete');
-                }
-            } catch (e) {
-                console.error(e);
+            const res = await postJson('api/settings_handler.php', { action: 'revoke_session', session_id_db: sessionIdDb });
+            
+            if (res.success) {
+                const card = btn.closest('.component-card');
+                card.style.opacity = '0';
+                setTimeout(() => card.remove(), 300);
+                if (window.alertManager) window.alertManager.showAlert(t('settings.sessions.session_revoked') || 'Sesión cerrada.', 'success');
+            } else {
+                if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = t('global.delete');
             }
         }
     });
@@ -249,22 +160,17 @@ async function initSessionsLogic() {
     if (revokeAllBtn) {
         revokeAllBtn.onclick = async () => {
             if (!confirm(t('settings.sessions.logout_all_confirm'))) return;
-            setLoading(revokeAllBtn, true);
-            try {
-                const res = await fetch(API_SETTINGS, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
-                    body: JSON.stringify({ action: 'revoke_all_sessions' })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    if (window.alertManager) window.alertManager.showAlert(t('settings.sessions.all_revoked') || 'Sesiones cerradas.', 'success');
-                    initSessionsLogic();
-                } else {
-                    if (window.alertManager) window.alertManager.showAlert(data.message, 'error');
-                }
-            } catch (e) {}
-            setLoading(revokeAllBtn, false, t('settings.sessions.logout_all'));
+            setButtonLoading(revokeAllBtn, true);
+            
+            const res = await postJson('api/settings_handler.php', { action: 'revoke_all_sessions' });
+            
+            if (res.success) {
+                if (window.alertManager) window.alertManager.showAlert(t('settings.sessions.all_revoked') || 'Sesiones cerradas.', 'success');
+                initSessionsLogic();
+            } else {
+                if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
+            }
+            setButtonLoading(revokeAllBtn, false, t('settings.sessions.logout_all'));
         };
     }
 }
@@ -310,10 +216,6 @@ function renderSessionsList(sessions, container) {
     container.innerHTML = html;
 }
 
-// ========================================================
-// LÓGICA CAMBIAR CONTRASEÑA
-// ========================================================
-
 function initChangePasswordLogic() {
     const step1Card = qs('[data-step="password-step-1"]');
     const step2Card = qs('[data-step="password-step-2"]');
@@ -333,41 +235,31 @@ function initChangePasswordLogic() {
     verifyBtn.onclick = async () => {
         const pass = currentPassInput.value;
         if (!pass) {
-            updateCardError(step1Card, t('settings.change_password.current_desc'));
+            toggleCardError(step1Card, t('settings.change_password.current_desc'));
             return;
         }
 
-        setLoading(verifyBtn, true);
-        updateCardError(step1Card, '', false);
+        setButtonLoading(verifyBtn, true);
+        toggleCardError(step1Card, '', false);
 
-        try {
-            const res = await fetch(API_SETTINGS, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
-                body: JSON.stringify({ action: 'verify_current_password', password: pass })
-            });
-            const data = await res.json();
+        const res = await postJson('api/settings_handler.php', { action: 'verify_current_password', password: pass });
 
-            if (data.success) {
-                currentPassInput.disabled = true;
-                verifyBtn.style.display = 'none'; 
-                
-                step2Card.classList.remove('disabled');
-                step2Card.classList.add('active');
-                step2Sessions.classList.remove('disabled');
-                step2Sessions.classList.add('active');
-                step2Actions.classList.remove('disabled');
-                step2Actions.classList.add('active');
+        if (res.success) {
+            currentPassInput.disabled = true;
+            verifyBtn.style.display = 'none'; 
+            
+            step2Card.classList.remove('disabled');
+            step2Card.classList.add('active');
+            step2Sessions.classList.remove('disabled');
+            step2Sessions.classList.add('active');
+            step2Actions.classList.remove('disabled');
+            step2Actions.classList.add('active');
 
-                newPassInput.focus();
-            } else {
-                updateCardError(step1Card, data.message);
-            }
-        } catch (e) {
-            updateCardError(step1Card, t('global.error_connection'));
-            console.error(e);
+            newPassInput.focus();
+        } else {
+            toggleCardError(step1Card, res.message);
         }
-        setLoading(verifyBtn, false);
+        setButtonLoading(verifyBtn, false);
     };
 
     saveBtn.onclick = async () => {
@@ -375,54 +267,40 @@ function initChangePasswordLogic() {
         const confirmPass = confirmPassInput.value;
         const logout = logoutCheck.checked;
 
-        updateCardError(step2Card, '', false);
+        toggleCardError(step2Card, '', false);
 
-        // [CORRECCIÓN] Validacion dinámica de contraseña
         const minPass = window.SERVER_CONFIG?.min_password_length || 8;
 
         if (newPass.length < minPass) {
-            updateCardError(step2Card, t('auth.errors.password_short', { min: minPass }));
+            toggleCardError(step2Card, t('auth.errors.password_short', { min: minPass }));
             return;
         }
 
         if (newPass !== confirmPass) {
-            updateCardError(step2Card, t('auth.errors.pass_mismatch'));
+            toggleCardError(step2Card, t('auth.errors.pass_mismatch'));
             return;
         }
 
-        setLoading(saveBtn, true);
+        setButtonLoading(saveBtn, true);
 
-        try {
-            const res = await fetch(API_SETTINGS, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
-                body: JSON.stringify({ 
-                    action: 'update_password', 
-                    new_password: newPass,
-                    logout_others: logout
-                })
-            });
-            const data = await res.json();
+        const res = await postJson('api/settings_handler.php', { 
+            action: 'update_password', 
+            new_password: newPass,
+            logout_others: logout
+        });
 
-            if (data.success) {
-                if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
-                setTimeout(() => {
-                    if (window.navigateTo) window.navigateTo('settings/login-security');
-                    else window.location.reload();
-                }, 1500);
-            } else {
-                updateCardError(step2Card, data.message);
-            }
-        } catch (e) {
-            updateCardError(step2Card, t('global.error_connection'));
+        if (res.success) {
+            if (window.alertManager) window.alertManager.showAlert(res.message, 'success');
+            setTimeout(() => {
+                if (window.navigateTo) window.navigateTo('settings/login-security');
+                else window.location.reload();
+            }, 1500);
+        } else {
+            toggleCardError(step2Card, res.message);
         }
-        setLoading(saveBtn, false);
+        setButtonLoading(saveBtn, false);
     };
 }
-
-// ========================================================
-// LÓGICA PREFERENCIAS
-// ========================================================
 
 function initBooleanPreferencesLogic() {
     document.body.addEventListener('change', async (e) => {
@@ -435,44 +313,28 @@ function initBooleanPreferencesLogic() {
 
             if (!fieldName) return;
 
-            updateCardError(card, '', false);
+            toggleCardError(card, '', false);
             if (toggleWrapper) toggleWrapper.classList.add('disabled-interactive');
 
-            const payload = {
+            const res = await postJson('api/settings_handler.php', {
                 action: 'update_boolean_preference',
                 field: fieldName,
-                value: isChecked, 
-                csrf_token: getCsrfToken()
-            };
-
-            try {
-                const res = await fetch(API_SETTINGS, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
+                value: isChecked
+            });
+            
+            if (res.success) {
+                if (window.alertManager) window.alertManager.showAlert(t('global.save_status'), 'success');
                 
-                if (data.success) {
-                    if (window.alertManager) window.alertManager.showAlert(t('global.save_status'), 'success');
-                    
-                    if (fieldName === 'open_links_in_new_tab') {
-                        window.OPEN_NEW_TAB = isChecked ? 1 : 0;
-                        console.log("Setting Updated: Open Links in New Tab =", window.OPEN_NEW_TAB);
-                    } else if (fieldName === 'extended_message_time') {
-                        window.USER_EXTENDED_MSG = isChecked ? 1 : 0;
-                        console.log("Setting Updated: Extended Message Time =", window.USER_EXTENDED_MSG);
-                    }
-
-                } else {
-                    updateCardError(card, data.message);
+                if (fieldName === 'open_links_in_new_tab') {
+                    window.OPEN_NEW_TAB = isChecked ? 1 : 0;
+                } else if (fieldName === 'extended_message_time') {
+                    window.USER_EXTENDED_MSG = isChecked ? 1 : 0;
                 }
-            } catch (err) {
-                console.error(err);
-                updateCardError(card, t('global.error_connection'));
-            } finally {
-                if (toggleWrapper) toggleWrapper.classList.remove('disabled-interactive');
+
+            } else {
+                toggleCardError(card, res.message);
             }
+            if (toggleWrapper) toggleWrapper.classList.remove('disabled-interactive');
         }
     });
 }
@@ -494,11 +356,11 @@ function initPreferencesLogic() {
 
         if (!prefType || !value) return;
 
-        updateCardError(card, '', false);
+        toggleCardError(card, '', false);
         if (wrapper) wrapper.classList.add('disabled-interactive');
         else module.classList.add('disabled-interactive');
 
-        let payload = { action: '', csrf_token: getCsrfToken() };
+        let payload = { action: '' };
         
         if (prefType === 'usage') {
             payload.action = 'update_usage';
@@ -511,34 +373,20 @@ function initPreferencesLogic() {
             payload.theme = value;
         }
 
-        try {
-            const res = await fetch(API_SETTINGS, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await res.json();
-            
-            if (data.success) {
-                if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
-                if (prefType === 'language') await changeLanguage(value);
-                if (prefType === 'theme') updateTheme(value);
-            } else {
-                updateCardError(card, data.message);
-            }
-        } catch (err) {
-            console.error(err);
-            updateCardError(card, t('global.error_connection'));
-        } finally {
-            if (wrapper) wrapper.classList.remove('disabled-interactive');
-            else module.classList.remove('disabled-interactive');
+        const res = await postJson('api/settings_handler.php', payload);
+        
+        if (res.success) {
+            if (window.alertManager) window.alertManager.showAlert(res.message, 'success');
+            if (prefType === 'language') await changeLanguage(value);
+            if (prefType === 'theme') updateTheme(value);
+        } else {
+            toggleCardError(card, res.message);
         }
+        
+        if (wrapper) wrapper.classList.remove('disabled-interactive');
+        else module.classList.remove('disabled-interactive');
     });
 }
-
-// ========================================================
-// LÓGICA FOTO DE PERFIL (Anteriormente Avatar)
-// ========================================================
 
 function initProfilePictureLogic() {
     const cardItem = qs('[data-component="profile-picture-section"]');
@@ -560,7 +408,7 @@ function initProfilePictureLogic() {
     let originalImageSrc = elements.previewImg.src;
     const triggerUpload = (e) => { 
         if(e) e.preventDefault(); 
-        updateCardError(cardItem, '', false);
+        toggleCardError(cardItem, '', false);
         elements.fileInput.click(); 
     };
     if (elements.uploadBtn) elements.uploadBtn.onclick = triggerUpload;
@@ -570,17 +418,16 @@ function initProfilePictureLogic() {
         const file = this.files[0];
         if (!file) return;
         
-        // [CORRECCIÓN] Lectura dinámica de configuración de imagen
-        const maxMBReal = window.SERVER_CONFIG?.profile_picture_max_size || window.SERVER_CONFIG?.avatar_max_size || 2;
+        const maxMBReal = window.SERVER_CONFIG?.profile_picture_max_size || 2;
         const maxBytes = maxMBReal * 1024 * 1024;
 
         if (file.size > maxBytes) { 
-            updateCardError(cardItem, t('settings.profile.error_size', { size: maxMBReal })); 
+            toggleCardError(cardItem, t('settings.profile.error_size', { size: maxMBReal })); 
             this.value = ''; 
             return; 
         }
-        if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) { updateCardError(cardItem, t('settings.profile.error_format')); this.value = ''; return; }
-        updateCardError(cardItem, '', false);
+        if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) { toggleCardError(cardItem, t('settings.profile.error_format')); this.value = ''; return; }
+        toggleCardError(cardItem, '', false);
         const reader = new FileReader();
         reader.onload = function(evt) {
             elements.previewImg.src = evt.target.result;
@@ -590,23 +437,27 @@ function initProfilePictureLogic() {
         reader.readAsDataURL(file);
     };
     elements.cancelBtn.onclick = () => {
-        updateCardError(cardItem, '', false);
+        toggleCardError(cardItem, '', false);
         elements.previewImg.src = originalImageSrc;
         elements.fileInput.value = '';
         const isDefault = originalImageSrc.includes('data:image') || originalImageSrc === '' || originalImageSrc.endsWith('/') || originalImageSrc.includes('/default/') || originalImageSrc.includes('profile_pictures_default') || originalImageSrc.includes('ui-avatars.com');       
         togglePfpActions(isDefault ? 'default' : 'custom');
     };
+    
     elements.saveBtn.onclick = async () => {
         const file = elements.fileInput.files[0];
         if (!file) return;
-        setLoading(elements.saveBtn, true);
-        updateCardError(cardItem, '', false);
+        setButtonLoading(elements.saveBtn, true);
+        toggleCardError(cardItem, '', false);
+        
+        // MANUAL FETCH NEEDED FOR FILE UPLOAD
         const formData = new FormData();
         formData.append('action', 'update_profile_picture');
         formData.append('profile_picture', file);
-        formData.append('csrf_token', getCsrfToken());
+        formData.append('csrf_token', qs('meta[name="csrf-token"]').getAttribute('content')); // Manual CSRF for FormData
+        
         try {
-            const res = await fetch(API_SETTINGS, { method: 'POST', body: formData });
+            const res = await fetch((window.BASE_PATH || '/ProjectAurora/') + 'api/settings_handler.php', { method: 'POST', body: formData });
             const data = await res.json();
             if (data.success) {
                 if (window.alertManager) window.alertManager.showAlert(data.message, 'success');
@@ -615,31 +466,31 @@ function initProfilePictureLogic() {
                 originalImageSrc = newSrc;
                 updateHeaderAvatar(newSrc);
                 togglePfpActions('custom');
-            } else { updateCardError(cardItem, data.message); }
-        } catch (e) { updateCardError(cardItem, t('global.error_connection')); }
-        setLoading(elements.saveBtn, false, t('global.save'));
+            } else { toggleCardError(cardItem, data.message); }
+        } catch (e) { toggleCardError(cardItem, t('global.error_connection')); }
+        setButtonLoading(elements.saveBtn, false, t('global.save'));
     };
+
     elements.removeBtn.onclick = async () => {
         if (!confirm(t('settings.profile.reset_confirm') || '¿Restablecer foto de perfil?')) return;
-        setLoading(elements.removeBtn, true);
-        updateCardError(cardItem, '', false);
-        try {
-            const formData = new FormData();
-            formData.append('action', 'remove_profile_picture');
-            formData.append('csrf_token', getCsrfToken());
-            const res = await fetch(API_SETTINGS, { method: 'POST', body: formData });
-            const data = await res.json();
-            if (data.success) {
-                if (window.alertManager) window.alertManager.showAlert(data.message, 'info');
-                const newSrc = data.avatar_url + '?t=' + new Date().getTime();
-                elements.previewImg.src = newSrc;
-                originalImageSrc = newSrc;
-                updateHeaderAvatar(newSrc);
-                togglePfpActions('default'); 
-            } else { updateCardError(cardItem, data.message); }
-        } catch (e) { updateCardError(cardItem, t('global.error_connection')); }
-        setLoading(elements.removeBtn, false, t('global.delete'));
+        setButtonLoading(elements.removeBtn, true);
+        toggleCardError(cardItem, '', false);
+        
+        // MANUAL FETCH NEEDED FOR FORM DATA IF COMPATIBILITY REQUIRED, BUT postJson SUPPORTS JSON
+        // Remove pfp doesn't need file, so use postJson
+        const res = await postJson('api/settings_handler.php', { action: 'remove_profile_picture' });
+        
+        if (res.success) {
+            if (window.alertManager) window.alertManager.showAlert(res.message, 'info');
+            const newSrc = res.avatar_url + '?t=' + new Date().getTime();
+            elements.previewImg.src = newSrc;
+            originalImageSrc = newSrc;
+            updateHeaderAvatar(newSrc);
+            togglePfpActions('default'); 
+        } else { toggleCardError(cardItem, res.message); }
+        setButtonLoading(elements.removeBtn, false, t('global.delete'));
     };
+
     function togglePfpActions(mode) {
         if(elements.actionsDefault) elements.actionsDefault.className = (mode === 'default') ? 'active' : 'disabled';
         if(elements.actionsCustom) elements.actionsCustom.className = (mode === 'custom') ? 'active' : 'disabled';
@@ -663,28 +514,33 @@ function initUsernameLogic() {
     };
     if (!els.input) return;
     let originalUsername = els.input.value;
-    els.editBtn.onclick = () => { toggleMode(els, true); updateCardError(itemSection, '', false); els.input.value = ''; els.input.value = originalUsername; els.input.focus(); };
-    els.cancelBtn.onclick = () => { els.input.value = originalUsername; updateCardError(itemSection, '', false); toggleMode(els, false); };
+    els.editBtn.onclick = () => { toggleMode(els, true); toggleCardError(itemSection, '', false); els.input.value = ''; els.input.value = originalUsername; els.input.focus(); };
+    els.cancelBtn.onclick = () => { els.input.value = originalUsername; toggleCardError(itemSection, '', false); toggleMode(els, false); };
     els.saveBtn.onclick = async () => {
         const newVal = els.input.value.trim();
-        updateCardError(itemSection, '', false);
+        toggleCardError(itemSection, '', false);
         
-        // [CORRECCIÓN] Validaciones dinámicas de username
         const minUser = window.SERVER_CONFIG?.min_username_length || 6;
         const maxUser = window.SERVER_CONFIG?.max_username_length || 32;
 
         if (newVal === originalUsername) { toggleMode(els, false); return; }
         if (newVal.length < minUser || newVal.length > maxUser) { 
-            updateCardError(itemSection, t('auth.errors.username_invalid', { min: minUser, max: maxUser })); 
+            toggleCardError(itemSection, t('auth.errors.username_invalid', { min: minUser, max: maxUser })); 
             return; 
         }
-        setLoading(els.saveBtn, true);
-        try {
-            const res = await fetch(API_SETTINGS, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }, body: JSON.stringify({ action: 'update_username', username: newVal }) });
-            const data = await res.json();
-            if (data.success) { if (window.alertManager) window.alertManager.showAlert(data.message, 'success'); originalUsername = data.new_username; els.display.textContent = data.new_username; els.input.value = data.new_username; toggleMode(els, false); } else { updateCardError(itemSection, data.message || 'Error al actualizar.'); }
-        } catch (error) { updateCardError(itemSection, t('global.error_connection')); }
-        setLoading(els.saveBtn, false, t('global.save'));
+        setButtonLoading(els.saveBtn, true);
+        
+        const res = await postJson('api/settings_handler.php', { action: 'update_username', username: newVal });
+        
+        if (res.success) { 
+            if (window.alertManager) window.alertManager.showAlert(res.message, 'success'); 
+            originalUsername = res.new_username; 
+            els.display.textContent = res.new_username; 
+            els.input.value = res.new_username; 
+            toggleMode(els, false); 
+        } else { toggleCardError(itemSection, res.message || 'Error al actualizar.'); }
+        
+        setButtonLoading(els.saveBtn, false, t('global.save'));
     };
 }
 
@@ -704,52 +560,50 @@ function initEmailLogic() {
     };
     if (!els.input) return;
     let originalEmail = els.input.value;
-    els.editBtn.onclick = () => { toggleMode(els, true); updateCardError(itemSection, '', false); els.input.value = ''; els.input.value = originalEmail; els.input.focus(); };
-    els.cancelBtn.onclick = () => { els.input.value = originalEmail; updateCardError(itemSection, '', false); toggleMode(els, false); };
+    els.editBtn.onclick = () => { toggleMode(els, true); toggleCardError(itemSection, '', false); els.input.value = ''; els.input.value = originalEmail; els.input.focus(); };
+    els.cancelBtn.onclick = () => { els.input.value = originalEmail; toggleCardError(itemSection, '', false); toggleMode(els, false); };
     
     els.saveBtn.onclick = async () => {
         const newVal = els.input.value.trim().toLowerCase();
-        updateCardError(itemSection, '', false);
+        toggleCardError(itemSection, '', false);
         if (newVal === originalEmail) { toggleMode(els, false); return; }
         
-        // [CORRECCIÓN] Validación de dominio permitidos
-        // 1. Validación formato básico
         const basicRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!basicRegex.test(newVal)) { 
-            updateCardError(itemSection, t('auth.errors.email_invalid_domain')); 
+            toggleCardError(itemSection, t('auth.errors.email_invalid_domain')); 
             return; 
         }
         
-        // 2. Validación dinámica de dominios desde SERVER_CONFIG
         const config = window.SERVER_CONFIG || {};
         let allowed = config.allowed_email_domains;
         if (typeof allowed === 'string') { try { allowed = JSON.parse(allowed); } catch(e){ allowed = []; } }
 
-        // Si hay lista y no está vacía, validar
         if (Array.isArray(allowed) && allowed.length > 0) {
             const domain = newVal.split('@')[1].toLowerCase();
             if (!allowed.some(d => d.toLowerCase() === domain)) {
-                updateCardError(itemSection, t('auth.errors.email_domain_restricted'));
+                toggleCardError(itemSection, t('auth.errors.email_domain_restricted'));
                 return;
             }
         }
         
         const maxEmail = window.SERVER_CONFIG?.max_email_length || 255;
-        if(newVal.length > maxEmail) { updateCardError(itemSection, t('auth.errors.email_long', {max: maxEmail})); return; }
+        if(newVal.length > maxEmail) { toggleCardError(itemSection, t('auth.errors.email_long', {max: maxEmail})); return; }
 
-        setLoading(els.saveBtn, true);
-        try {
-            const res = await fetch(API_SETTINGS, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }, body: JSON.stringify({ action: 'update_email', email: newVal }) });
-            const data = await res.json();
-            if (data.success) { if (window.alertManager) window.alertManager.showAlert(data.message, 'success'); originalEmail = data.new_email; els.display.textContent = data.new_email; els.input.value = data.new_email; toggleMode(els, false); } else { updateCardError(itemSection, data.message || 'Error al actualizar.'); }
-        } catch (error) { updateCardError(itemSection, t('global.error_connection')); }
-        setLoading(els.saveBtn, false, t('global.save'));
+        setButtonLoading(els.saveBtn, true);
+        
+        const res = await postJson('api/settings_handler.php', { action: 'update_email', email: newVal });
+        
+        if (res.success) { 
+            if (window.alertManager) window.alertManager.showAlert(res.message, 'success'); 
+            originalEmail = res.new_email; 
+            els.display.textContent = res.new_email; 
+            els.input.value = res.new_email; 
+            toggleMode(els, false); 
+        } else { toggleCardError(itemSection, res.message || 'Error al actualizar.'); }
+        
+        setButtonLoading(els.saveBtn, false, t('global.save'));
     };
 }
-
-// ========================================================
-// LÓGICA 2FA
-// ========================================================
 
 function initTwoFactorLogic() {
     document.body.addEventListener('click', (e) => {
@@ -780,25 +634,15 @@ function initTwoFactorLogic() {
             const password = els.passInput.value;
             if (!password) return alert(t('settings.security.password_required') || 'Ingresa tu contraseña');
 
-            setLoading(els.verifyBtn, true);
+            setButtonLoading(els.verifyBtn, true);
 
-            try {
-                const res = await fetch(API_SETTINGS, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
-                    body: JSON.stringify({ action: 'verify_current_password', password: password })
-                });
-                const data = await res.json();
+            const res = await postJson('api/settings_handler.php', { action: 'verify_current_password', password: password });
 
-                if (data.success) {
-                    await generateSecret(els);
-                } else {
-                    if(window.alertManager) window.alertManager.showAlert(data.message, 'error');
-                    setLoading(els.verifyBtn, false, t('global.continue'));
-                }
-            } catch (e) {
-                console.error(e);
-                setLoading(els.verifyBtn, false, t('global.continue'));
+            if (res.success) {
+                await generateSecret(els);
+            } else {
+                if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
+                setButtonLoading(els.verifyBtn, false, t('global.continue'));
             }
         };
     }
@@ -808,35 +652,26 @@ function initTwoFactorLogic() {
             const code = els.codeInput.value.trim();
             if (code.length !== 6) return alert('El código debe tener 6 dígitos');
 
-            setLoading(els.confirmBtn, true);
+            setButtonLoading(els.confirmBtn, true);
 
-            try {
-                const res = await fetch(API_SETTINGS, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
-                    body: JSON.stringify({ 
-                        action: 'enable_2fa_confirm', 
-                        secret: tempSecret,
-                        code: code
-                    })
-                });
-                const data = await res.json();
+            const res = await postJson('api/settings_handler.php', { 
+                action: 'enable_2fa_confirm', 
+                secret: tempSecret,
+                code: code
+            });
 
-                if (data.success) {
-                    renderBackupCodes(data.backup_codes, els.backupList);
-                    
-                    els.step2.classList.remove('active');
-                    els.step2.classList.add('disabled');
-                    els.step3.classList.remove('disabled');
-                    els.step3.classList.add('active');
-                    
-                    if(window.alertManager) window.alertManager.showAlert(t('settings.2fa.success_title'), 'success');
-                } else {
-                    if(window.alertManager) window.alertManager.showAlert(data.message, 'error');
-                    setLoading(els.confirmBtn, false, t('settings.2fa.activate_btn'));
-                }
-            } catch (e) {
-                setLoading(els.confirmBtn, false, t('settings.2fa.activate_btn'));
+            if (res.success) {
+                renderBackupCodes(res.backup_codes, els.backupList);
+                
+                els.step2.classList.remove('active');
+                els.step2.classList.add('disabled');
+                els.step3.classList.remove('disabled');
+                els.step3.classList.add('active');
+                
+                if(window.alertManager) window.alertManager.showAlert(t('settings.2fa.success_title'), 'success');
+            } else {
+                if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
+                setButtonLoading(els.confirmBtn, false, t('settings.2fa.activate_btn'));
             }
         };
     }
@@ -848,70 +683,51 @@ function initTwoFactorLogic() {
 
             if (!confirm(t('settings.2fa.disable_warning'))) return;
 
-            setLoading(els.disableBtn, true);
+            setButtonLoading(els.disableBtn, true);
 
-            try {
-                const res = await fetch(API_SETTINGS, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
-                    body: JSON.stringify({ 
-                        action: 'disable_2fa', 
-                        password: password
-                    })
-                });
-                const data = await res.json();
+            const res = await postJson('api/settings_handler.php', { 
+                action: 'disable_2fa', 
+                password: password
+            });
 
-                if (data.success) {
-                    if(window.alertManager) window.alertManager.showAlert(data.message, 'info');
-                    setTimeout(() => {
-                        window.location.reload(); 
-                    }, 1500);
-                } else {
-                    if(window.alertManager) window.alertManager.showAlert(data.message, 'error');
-                    setLoading(els.disableBtn, false, t('settings.2fa.disable_btn'));
-                }
-            } catch (e) {
-                console.error(e);
-                setLoading(els.disableBtn, false, t('settings.2fa.disable_btn'));
+            if (res.success) {
+                if(window.alertManager) window.alertManager.showAlert(res.message, 'info');
+                setTimeout(() => {
+                    window.location.reload(); 
+                }, 1500);
+            } else {
+                if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
+                setButtonLoading(els.disableBtn, false, t('settings.2fa.disable_btn'));
             }
         };
     }
 
     async function generateSecret(els) {
-        try {
-            const res = await fetch(API_SETTINGS, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() },
-                body: JSON.stringify({ action: 'generate_2fa_secret' })
+        const res = await postJson('api/settings_handler.php', { action: 'generate_2fa_secret' });
+
+        if (res.success) {
+            tempSecret = res.secret;
+            els.manualText.textContent = res.secret;
+            els.qrContainer.innerHTML = '';
+            
+            const uri = `otpauth://totp/ProjectAurora:${res.username}?secret=${res.secret}&issuer=ProjectAurora`;
+            
+            const qrCode = new QRCodeStyling({
+                width: 280,
+                height: 280,
+                type: "svg",
+                data: uri,
+                dotsOptions: { color: "#000000", type: "rounded" },
+                cornersSquareOptions: { type: "extra-rounded" },
+                backgroundOptions: { color: "transparent" }
             });
-            const data = await res.json();
-    
-            if (data.success) {
-                tempSecret = data.secret;
-                els.manualText.textContent = data.secret;
-                els.qrContainer.innerHTML = '';
-                
-                const uri = `otpauth://totp/ProjectAurora:${data.username}?secret=${data.secret}&issuer=ProjectAurora`;
-                
-                const qrCode = new QRCodeStyling({
-                    width: 280,
-                    height: 280,
-                    type: "svg",
-                    data: uri,
-                    dotsOptions: { color: "#000000", type: "rounded" },
-                    cornersSquareOptions: { type: "extra-rounded" },
-                    backgroundOptions: { color: "transparent" }
-                });
-    
-                qrCode.append(els.qrContainer);
-    
-                els.step1.classList.remove('active');
-                els.step1.classList.add('disabled');
-                els.step2.classList.remove('disabled');
-                els.step2.classList.add('active');
-            }
-        } catch (e) {
-            console.error("Error generando secreto", e);
+
+            qrCode.append(els.qrContainer);
+
+            els.step1.classList.remove('active');
+            els.step1.classList.add('disabled');
+            els.step2.classList.remove('disabled');
+            els.step2.classList.add('active');
         }
     }
     

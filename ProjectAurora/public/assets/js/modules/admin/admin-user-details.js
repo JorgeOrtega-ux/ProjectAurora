@@ -1,10 +1,8 @@
-// public/assets/js/modules/admin-user-details.js
+// public/assets/js/modules/admin/admin-user-details.js
 
 import { t } from '../../core/i18n-manager.js';
+import { postJson, setButtonLoading, toggleCardError } from '../../core/utilities.js';
 
-const API_ADMIN = (window.BASE_PATH || '/ProjectAurora/') + 'api/admin_handler.php';
-
-// Estado del módulo
 let currentContext = null;
 let targetId = null;
 let prefix = null;
@@ -14,34 +12,26 @@ let currentUserState = {
     isPermanent: false,
     reason: null
 };
-let isInitialized = false; // Controla listeners globales
+let isInitialized = false; 
 
-/**
- * Función principal de inicialización.
- * Se llama cada vez que se carga una vista de detalles de usuario (role, status, manage, history).
- */
 export function initAdminUserDetails() {
-    // 1. RESET DE ESTADO OBLIGATORIO
     currentContext = null;
     targetId = null;
     prefix = null;
     userData = null;
     currentUserState = { isSuspended: false, isPermanent: false, reason: null };
 
-    // 2. Detectar nuevo contexto en el DOM actual
     detectContext();
 
     if (!targetId) {
         return;
     }
 
-    // 3. Listeners Globales (Solo una vez por carga de página completa)
     if (!isInitialized) {
         initGlobalListeners();
         isInitialized = true;
     }
 
-    // 4. Cargar datos frescos
     loadData();
 }
 
@@ -70,66 +60,6 @@ function detectContext() {
     }
 }
 
-function getCsrf() {
-    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-}
-
-async function fetchApi(payload) {
-    try {
-        const res = await fetch(API_ADMIN, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrf() },
-            body: JSON.stringify(payload)
-        });
-        return await res.json();
-    } catch (e) {
-        console.error("API Error:", e);
-        return { success: false, message: t('global.error_connection') };
-    }
-}
-
-function setLoading(btn, isLoading, originalText = '') {
-    if (!btn) return;
-    if (isLoading) {
-        btn.dataset.original = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<div class="small-spinner" style="border-color:currentColor; border-top-color:transparent;"></div>';
-    } else {
-        btn.innerHTML = originalText || btn.dataset.original;
-        btn.disabled = false;
-    }
-}
-
-function updateCardError(element, message = '', show = true) {
-    if (!element) return;
-    const cardContainer = element.closest('.component-card') || element.closest('.component-wrapper');
-    if (!cardContainer) return;
-
-    let nextElement = cardContainer.nextElementSibling;
-    let errorDiv = null;
-
-    if (nextElement && nextElement.classList.contains('component-card__error')) {
-        errorDiv = nextElement;
-    }
-
-    if (!errorDiv && show) {
-        errorDiv = document.createElement('div');
-        errorDiv.className = 'component-card__error';
-        errorDiv.style.marginTop = '16px'; 
-        cardContainer.after(errorDiv);
-    }
-
-    if (show && errorDiv) {
-        errorDiv.textContent = message;
-        requestAnimationFrame(() => errorDiv.classList.add('active'));
-    } else if (!show && errorDiv) {
-        errorDiv.classList.remove('active');
-        setTimeout(() => {
-            if (errorDiv.parentNode) errorDiv.parentNode.removeChild(errorDiv);
-        }, 200);
-    }
-}
-
 function showError(message, show = true) {
     let anchorElement = null;
 
@@ -151,14 +81,14 @@ function showError(message, show = true) {
     }
 
     if (anchorElement) {
-        updateCardError(anchorElement, message, show);
+        toggleCardError(anchorElement, message, show);
     } else {
         if (show && message) alert(message);
     }
 }
 
 async function loadData() {
-    const data = await fetchApi({ 
+    const data = await postJson('api/admin_handler.php', { 
         action: 'get_user_details', 
         target_id: targetId 
     });
@@ -228,8 +158,6 @@ function handleDropdownSelection(option) {
     if (action === 'select-role-option') updateRoleUI(val, label, icon);
 }
 
-/* ================= LÓGICA POR CONTEXTO ================= */
-
 // --- ROL ---
 function initRoleLogic() {
     const u = userData;
@@ -273,7 +201,7 @@ async function saveRoleChanges() {
     const btnSave = document.getElementById('btn-save-role');
 
     showError('', false);
-    setLoading(btnSave, true);
+    setButtonLoading(btnSave, true);
 
     const payload = {
         action: 'update_user_role',
@@ -281,7 +209,7 @@ async function saveRoleChanges() {
         role: newRole
     };
 
-    const res = await fetchApi(payload);
+    const res = await postJson('api/admin_handler.php', payload);
 
     if (res.success) {
         if (window.alertManager) window.alertManager.showAlert(res.message, 'success');
@@ -289,7 +217,7 @@ async function saveRoleChanges() {
     } else {
         showError(res.message);
     }
-    setLoading(btnSave, false);
+    setButtonLoading(btnSave, false);
 }
 
 // --- STATUS ---
@@ -348,7 +276,6 @@ function initStatusLogic() {
         document.getElementById('wrapper-duration').classList.add('d-none');
         document.getElementById('wrapper-reason').classList.add('d-none'); 
         
-        // Reset UI dropdowns
         const dropdowns = ['dropdown-status-options', 'dropdown-duration'];
         dropdowns.forEach(id => {
             const dd = document.getElementById(id);
@@ -424,7 +351,7 @@ async function saveStatusSanction() {
         showError(t('admin.status.already_suspended')); return;
     }
 
-    setLoading(btnSave, true);
+    setButtonLoading(btnSave, true);
 
     const payload = {
         action: 'update_user_status',
@@ -434,7 +361,7 @@ async function saveStatusSanction() {
         duration_days: (statusType === 'suspended_perm') ? 'permanent' : parseInt(duration)
     };
 
-    const res = await fetchApi(payload);
+    const res = await postJson('api/admin_handler.php', payload);
     
     if (res.success) {
         if (window.alertManager) window.alertManager.showAlert(res.message, 'success');
@@ -443,16 +370,16 @@ async function saveStatusSanction() {
         showError(res.message);
     }
     
-    setLoading(btnSave, false);
+    setButtonLoading(btnSave, false);
 }
 
 async function liftBan() {
     if (!confirm(t('global.are_you_sure') || '¿Seguro?')) return;
     
     const btnLift = document.getElementById('btn-lift-ban');
-    setLoading(btnLift, true);
+    setButtonLoading(btnLift, true);
 
-    const res = await fetchApi({
+    const res = await postJson('api/admin_handler.php', {
         action: 'update_user_status',
         target_id: targetId,
         status: 'active'
@@ -464,7 +391,7 @@ async function liftBan() {
     } else {
         showError(res.message);
     }
-    setLoading(btnLift, false);
+    setButtonLoading(btnLift, false);
 }
 
 // --- MANAGE ---
@@ -537,8 +464,8 @@ async function saveManageChanges() {
         }
     }
 
-    setLoading(btnSave, true);
-    const res = await fetchApi(payload);
+    setButtonLoading(btnSave, true);
+    const res = await postJson('api/admin_handler.php', payload);
 
     if (res.success) {
         if (window.alertManager) window.alertManager.showAlert(res.message, 'success');
@@ -546,10 +473,9 @@ async function saveManageChanges() {
     } else {
         showError(res.message);
     }
-    setLoading(btnSave, false);
+    setButtonLoading(btnSave, false);
 }
 
-// --- HISTORY ---
 function renderHistoryTable(logs) {
     const tbody = document.getElementById('full-history-body');
     if (!tbody) return;

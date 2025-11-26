@@ -1,21 +1,7 @@
 // public/assets/js/modules/notifications-manager.js
 
 import { t } from '../../core/i18n-manager.js';
-
-const API_NOTIFICATIONS = (window.BASE_PATH || '/ProjectAurora/') + 'api/notifications_handler.php';
-
-function getCsrf() {
-    return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-}
-
-async function fetchApi(data) {
-    const response = await fetch(API_NOTIFICATIONS, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': getCsrf() },
-        body: JSON.stringify(data)
-    });
-    return await response.json();
-}
+import { postJson } from '../../core/utilities.js';
 
 function renderEmptyState(container) {
     container.innerHTML = `<div class="notifications-empty"><span class="material-symbols-rounded empty-icon">notifications_off</span><p>${t('header.no_notifications')}</p></div>`;
@@ -32,7 +18,6 @@ function renderNotifications(notifs) {
     
     let html = '';
     notifs.forEach(n => {
-        // Recuperamos el rol y la imagen
         const role = n.sender_role || 'user'; 
         const avatar = n.sender_profile_picture ? (window.BASE_PATH || '/ProjectAurora/') + n.sender_profile_picture : null;
         const avatarHtml = avatar ? `<img src="${avatar}" class="notif-avatar">` : `<span class="material-symbols-rounded notif-default-icon">person</span>`;
@@ -49,7 +34,6 @@ function renderNotifications(notifs) {
 
         const unreadDot = (parseInt(n.is_read) === 0) ? '<div class="unread-dot"></div>' : '';
 
-        // [MODIFICADO] Agregamos data-role="${role}" al contenedor de la imagen
         html += `
             <div class="notification-item" data-nid="${n.id}" data-sid="${n.related_id}">
                 <div class="notif-left">
@@ -88,14 +72,10 @@ function updateBadge(count) {
 }
 
 async function loadNotifications() {
-    try {
-        const res = await fetchApi({ action: 'get_notifications' });
-        if (res.success) { 
-            renderNotifications(res.notifications);
-            updateBadge(res.unread_count); 
-        }
-    } catch (e) { 
-        console.error('[Notifications] Error cargando:', e);
+    const res = await postJson('api/notifications_handler.php', { action: 'get_notifications' });
+    if (res.success) { 
+        renderNotifications(res.notifications);
+        updateBadge(res.unread_count); 
     }
 }
 
@@ -104,7 +84,7 @@ async function markAllRead() {
     dots.forEach(d => d.remove());
     updateBadge(0);
 
-    await fetchApi({ action: 'mark_read_all' });
+    await postJson('api/notifications_handler.php', { action: 'mark_read_all' });
     loadNotifications(); 
 }
 
