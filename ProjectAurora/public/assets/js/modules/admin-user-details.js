@@ -16,44 +16,40 @@ let currentUserState = {
 };
 let isInitialized = false; // Controla listeners globales
 
+/**
+ * Función principal de inicialización.
+ * Se llama cada vez que se carga una vista de detalles de usuario (role, status, manage, history).
+ */
 export function initAdminUserDetails() {
-    console.log("[AdminUserDetails] initAdminUserDetails llamado.");
-    
-    // SIEMPRE redetectar contexto, incluso si ya se inicializó antes.
-    // El DOM ha cambiado, así que los inputs hidden antiguos ya no existen.
+    // 1. RESET DE ESTADO OBLIGATORIO
+    currentContext = null;
+    targetId = null;
+    prefix = null;
+    userData = null;
+    currentUserState = { isSuspended: false, isPermanent: false, reason: null };
+
+    // 2. Detectar nuevo contexto en el DOM actual
     detectContext();
 
-    console.log("[AdminUserDetails] Contexto detectado:", { currentContext, targetId });
-
     if (!targetId) {
-        console.warn("[AdminUserDetails] No se encontró targetId. Abortando.");
         return;
     }
 
-    // Listeners globales (solo una vez por sesión de página)
+    // 3. Listeners Globales (Solo una vez por carga de página completa)
     if (!isInitialized) {
-        console.log("[AdminUserDetails] Agregando listeners globales por primera vez.");
         initGlobalListeners();
         isInitialized = true;
     }
 
-    currentUserState = { isSuspended: false, isPermanent: false, reason: null };
+    // 4. Cargar datos frescos
     loadData();
 }
 
 function detectContext() {
-    // Buscamos los inputs hidden que identifican la página
     const statusId = document.getElementById('target-user-id');
     const manageId = document.getElementById('manage-target-id');
     const historyId = document.getElementById('history-target-id');
     const roleId = document.getElementById('role-target-id');
-
-    console.log("[AdminUserDetails] Buscando inputs hidden en el DOM:", { 
-        status: statusId, 
-        manage: manageId, 
-        history: historyId, 
-        role: roleId 
-    });
 
     if (statusId) {
         currentContext = 'status';
@@ -71,9 +67,6 @@ function detectContext() {
         currentContext = 'role';
         targetId = roleId.value;
         prefix = 'role-';
-    } else {
-        currentContext = null;
-        targetId = null;
     }
 }
 
@@ -165,7 +158,6 @@ function showError(message, show = true) {
 }
 
 async function loadData() {
-    console.log("[AdminUserDetails] Cargando datos para ID:", targetId);
     const data = await fetchApi({ 
         action: 'get_user_details', 
         target_id: targetId 
@@ -216,8 +208,6 @@ function initGlobalListeners() {
     document.body.addEventListener('click', (e) => {
         const option = e.target.closest('.menu-link[data-action]');
         if (option) {
-            // Verificar si el clic ocurrió dentro de un dropdown de este módulo
-            // Importante para no interferir con otros menús si los hubiera
             handleDropdownSelection(option);
             return;
         }
@@ -230,8 +220,6 @@ function handleDropdownSelection(option) {
     const label = option.dataset.label || option.querySelector('.menu-link-text').textContent;
     const icon = option.dataset.icon;
 
-    console.log("[AdminUserDetails] Selección de dropdown:", { action, val, label });
-
     if (action === 'select-status-option') updateStatusUI(val, label, icon);
     if (action === 'select-duration-option') updateDurationUI(val);
     if (action === 'select-reason-option') updateReasonUI(val);
@@ -240,6 +228,71 @@ function handleDropdownSelection(option) {
     if (action === 'select-role-option') updateRoleUI(val, label, icon);
 }
 
+/* ================= LÓGICA POR CONTEXTO ================= */
+
+// --- ROL ---
+function initRoleLogic() {
+    const u = userData;
+    const btnSave = document.getElementById('btn-save-role');
+    
+    let roleLabel = 'Usuario';
+    let roleIcon = 'person';
+
+    if (u.role === 'moderator') {
+        roleLabel = 'Moderador';
+        roleIcon = 'security';
+    } else if (u.role === 'administrator') {
+        roleLabel = 'Administrador';
+        roleIcon = 'admin_panel_settings';
+    } else if (u.role === 'founder') {
+        roleLabel = 'Fundador';
+        roleIcon = 'diamond';
+    }
+
+    updateRoleUI(u.role, roleLabel, roleIcon);
+    setDropdownInitialActive('dropdown-roles', u.role);
+
+    if(btnSave) btnSave.onclick = () => saveRoleChanges();
+}
+
+function updateRoleUI(val, text, icon) {
+    const input = document.getElementById('role-input-value');
+    const txt = document.getElementById('current-role-text');
+    const ico = document.getElementById('current-role-icon');
+    
+    if(input) input.value = val;
+    if(txt) txt.textContent = text;
+    if(ico) {
+        ico.textContent = icon;
+        ico.style.color = ''; 
+    }
+}
+
+async function saveRoleChanges() {
+    const newRole = document.getElementById('role-input-value').value;
+    const btnSave = document.getElementById('btn-save-role');
+
+    showError('', false);
+    setLoading(btnSave, true);
+
+    const payload = {
+        action: 'update_user_role',
+        target_id: targetId,
+        role: newRole
+    };
+
+    const res = await fetchApi(payload);
+
+    if (res.success) {
+        if (window.alertManager) window.alertManager.showAlert(res.message, 'success');
+        loadData(); 
+    } else {
+        showError(res.message);
+    }
+    setLoading(btnSave, false);
+}
+
+// --- STATUS ---
 function initStatusLogic() {
     const u = userData;
     const activeAlert = document.getElementById('active-sanction-alert');
@@ -251,8 +304,8 @@ function initStatusLogic() {
         currentUserState.isSuspended = true;
         currentUserState.reason = u.suspension_reason;
         
-        activeAlert.classList.remove('d-none');
-        btnLift.classList.remove('d-none');
+        if(activeAlert) activeAlert.classList.remove('d-none');
+        if(btnLift) btnLift.classList.remove('d-none');
         
         btnSave.setAttribute('data-i18n-tooltip', 'admin.status.update_ban');
         btnSave.setAttribute('data-tooltip', t('admin.status.update_ban'));
@@ -271,15 +324,15 @@ function initStatusLogic() {
             setDropdownInitialActive('dropdown-status-options', 'suspended_temp');
         }
         
-        activeAlertDesc.innerHTML = `<strong>${activeText}</strong><br>${t('admin.status.reason_label')}: ${u.suspension_reason}`;
+        if(activeAlertDesc) activeAlertDesc.innerHTML = `<strong>${activeText}</strong><br>${t('admin.status.reason_label')}: ${u.suspension_reason}`;
         if (u.suspension_reason) {
             updateReasonUI(u.suspension_reason);
             setDropdownInitialActive('dropdown-reasons', u.suspension_reason);
         }
 
     } else {
-        activeAlert.classList.add('d-none');
-        btnLift.classList.add('d-none');
+        if(activeAlert) activeAlert.classList.add('d-none');
+        if(btnLift) btnLift.classList.add('d-none');
         
         btnSave.setAttribute('data-i18n-tooltip', 'admin.status.apply_ban');
         btnSave.setAttribute('data-tooltip', t('admin.status.apply_ban'));
@@ -295,6 +348,7 @@ function initStatusLogic() {
         document.getElementById('wrapper-duration').classList.add('d-none');
         document.getElementById('wrapper-reason').classList.add('d-none'); 
         
+        // Reset UI dropdowns
         const dropdowns = ['dropdown-status-options', 'dropdown-duration'];
         dropdowns.forEach(id => {
             const dd = document.getElementById(id);
@@ -413,6 +467,7 @@ async function liftBan() {
     setLoading(btnLift, false);
 }
 
+// --- MANAGE ---
 function initManageLogic() {
     const u = userData;
     const btnSave = document.getElementById('btn-save-manage');
@@ -433,7 +488,7 @@ function initManageLogic() {
         setDropdownInitialActive('dropdown-manage-status', 'active');
     }
 
-    btnSave.onclick = () => saveManageChanges();
+    if(btnSave) btnSave.onclick = () => saveManageChanges();
 }
 
 function updateManageStatusUI(val, text, icon) {
@@ -494,65 +549,7 @@ async function saveManageChanges() {
     setLoading(btnSave, false);
 }
 
-function initRoleLogic() {
-    console.log("[AdminUserDetails] Inicializando lógica de ROL");
-    const u = userData;
-    const btnSave = document.getElementById('btn-save-role');
-    
-    let roleLabel = 'Usuario';
-    let roleIcon = 'person';
-
-    if (u.role === 'moderator') {
-        roleLabel = 'Moderador';
-        roleIcon = 'security';
-    } else if (u.role === 'administrator') {
-        roleLabel = 'Administrador';
-        roleIcon = 'admin_panel_settings';
-    } else if (u.role === 'founder') {
-        roleLabel = 'Fundador';
-        roleIcon = 'diamond';
-    }
-
-    updateRoleUI(u.role, roleLabel, roleIcon);
-    setDropdownInitialActive('dropdown-roles', u.role);
-
-    btnSave.onclick = () => saveRoleChanges();
-}
-
-function updateRoleUI(val, text, icon) {
-    document.getElementById('role-input-value').value = val;
-    document.getElementById('current-role-text').textContent = text;
-    const iconEl = document.getElementById('current-role-icon');
-    iconEl.textContent = icon;
-    iconEl.style.color = ''; 
-}
-
-async function saveRoleChanges() {
-    const newRole = document.getElementById('role-input-value').value;
-    const btnSave = document.getElementById('btn-save-role');
-
-    console.log("[AdminUserDetails] Guardando ROL:", newRole);
-
-    showError('', false);
-    setLoading(btnSave, true);
-
-    const payload = {
-        action: 'update_user_role',
-        target_id: targetId,
-        role: newRole
-    };
-
-    const res = await fetchApi(payload);
-
-    if (res.success) {
-        if (window.alertManager) window.alertManager.showAlert(res.message, 'success');
-        loadData(); 
-    } else {
-        showError(res.message);
-    }
-    setLoading(btnSave, false);
-}
-
+// --- HISTORY ---
 function renderHistoryTable(logs) {
     const tbody = document.getElementById('full-history-body');
     if (!tbody) return;

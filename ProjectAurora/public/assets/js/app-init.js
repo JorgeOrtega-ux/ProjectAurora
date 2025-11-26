@@ -20,41 +20,31 @@ import { initDragController } from './ui/drag-controller.js';
 // [SERVICES]
 import { initSocketService } from './services/socket-service.js';
 
+// [ADMIN MODULES - IMPORTACIÓN ESTÁTICA]
+import { initAdminDashboard } from './modules/admin-dashboard.js';
+import { initAdminUsers } from './modules/admin-users.js';
+import { initAdminUserDetails } from './modules/admin-user-details.js';
+import { initAdminServer } from './modules/admin-server.js';
+import { initAdminBackups } from './modules/admin-backups.js';
+
 /**
- * Carga dinámica de módulos.
+ * Manejador de módulos por sección.
+ * Se llama cada vez que url-manager cambia el contenido.
  */
-export async function handleDynamicImports() {
-    const adminDashboardSection = document.querySelector('[data-section="admin/dashboard"]');
-    const adminUsersSection = document.querySelector('[data-section="admin/users"]');
-    const adminDetailsSection = document.querySelector('[data-section^="admin/user-"]'); 
-    const adminServerSection = document.querySelector('[data-section="admin/server"]');
-    const adminBackupsSection = document.querySelector('[data-section="admin/backups"]');
+export async function handleModuleLoading() {
+    // Detectar qué sección está activa en el DOM
+    const adminDashboard = document.querySelector('[data-section="admin/dashboard"]');
+    const adminUsers = document.querySelector('[data-section="admin/users"]');
+    // Detecta cualquier sub-página de usuario (status, manage, history, role)
+    const adminUserDetails = document.querySelector('[data-section^="admin/user-"]'); 
+    const adminServer = document.querySelector('[data-section="admin/server"]');
+    const adminBackups = document.querySelector('[data-section="admin/backups"]');
 
-    // [NUEVO: Módulo Dashboard]
-    if (adminDashboardSection) {
-        const { initAdminDashboard } = await import('./modules/admin-dashboard.js');
-        initAdminDashboard();
-    }
-
-    if (adminUsersSection) {
-        const { initAdminUsers } = await import('./modules/admin-users.js');
-        initAdminUsers();
-    }
-
-    if (adminDetailsSection) {
-        const { initAdminUserDetails } = await import('./modules/admin-user-details.js');
-        initAdminUserDetails();
-    }
-
-    if (adminServerSection) {
-        const { initAdminServer } = await import('./modules/admin-server.js');
-        initAdminServer();
-    }
-
-    if (adminBackupsSection) {
-        const { initAdminBackups } = await import('./modules/admin-backups.js');
-        initAdminBackups();
-    }
+    if (adminDashboard) initAdminDashboard();
+    if (adminUsers) initAdminUsers();
+    if (adminUserDetails) initAdminUserDetails();
+    if (adminServer) initAdminServer();
+    if (adminBackups) initAdminBackups();
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -64,6 +54,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         initUrlManager();
         initAuthManager();
 
+        // Wrapper para settings que incluye traducción
         window.initSettingsManager = () => {
             initSettingsManager();
             translateDocument();
@@ -78,8 +69,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         initFriendsManager();
         initDragController();
 
-        window.loadDynamicModules = handleDynamicImports;
-        await handleDynamicImports();
+        // Exponer la función de carga para url-manager.js
+        window.loadDynamicModules = handleModuleLoading;
+        
+        // Ejecutar carga inicial
+        await handleModuleLoading();
 
     } catch (error) {
         console.error('Error crítico al inicializar la aplicación:', error);
