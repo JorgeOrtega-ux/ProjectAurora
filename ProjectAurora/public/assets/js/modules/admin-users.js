@@ -6,14 +6,9 @@ const BASE_PATH = window.BASE_PATH || '/ProjectAurora/';
 let selectedUserId = null;
 let timeUpdateInterval = null;
 let isInitialized = false;
-let currentSort = 'date_newest'; // Estado local para el ordenamiento
+let currentSort = 'date_newest'; 
 
-/**
- * Inicializa el módulo de administración de usuarios.
- * Configura listeners y presencia en tiempo real.
- */
 export function initAdminUsers() {
-    // Recuperar filtro inicial de la URL si existe
     const urlParams = new URLSearchParams(window.location.search);
     currentSort = urlParams.get('sort') || 'date_newest';
 
@@ -45,7 +40,6 @@ function initGlobalListeners() {
             e.preventDefault();
             const page = pageBtn.dataset.page;
             const query = pageBtn.dataset.query;
-            // El sort ya está en currentSort global o en dataset, preferimos global para consistencia
             loadUsersTable(page, query, currentSort);
             return;
         }
@@ -58,17 +52,9 @@ function initGlobalListeners() {
             return;
         }
 
-        // 4. Toggle Dropdown (Filtros)
-        const toggleBtn = e.target.closest('[data-action="toggle-dropdown"]');
-        if (toggleBtn) {
-            e.stopPropagation();
-            e.preventDefault();
-            const targetId = toggleBtn.dataset.target;
-            toggleDropdown(targetId);
-            return;
-        }
+        // [MODIFICADO] Eliminado el manejador de toggle-dropdown (ahora en main-controller)
 
-        // 5. Selección de Filtro
+        // 4. Selección de Filtro
         const filterOption = e.target.closest('[data-action="filter-users"]');
         if (filterOption) {
             e.preventDefault();
@@ -76,13 +62,9 @@ function initGlobalListeners() {
             return;
         }
 
-        // Clic fuera para cerrar dropdowns
-        if (!e.target.closest('.popover-module') && !e.target.closest('[data-action="toggle-dropdown"]')) {
-            closeAllDropdowns();
-        }
-
         // Clic fuera para deseleccionar usuarios
         if (selectedUserId) {
+            // Ajustado para ignorar clics en cosas genéricas de UI
             const clickedRow = e.target.closest('[data-selectable="true"]');
             const clickedToolbar = e.target.closest('#toolbar-selected');
             const clickedDropdown = e.target.closest('.popover-module');
@@ -95,83 +77,46 @@ function initGlobalListeners() {
     });
 
     document.body.addEventListener('keydown', (e) => {
-        // Búsqueda
         if (e.target.matches('[data-action="admin-search-input"]') && e.key === 'Enter') {
             e.preventDefault();
             loadUsersTable(1, e.target.value, currentSort);
         }
 
-        // Escape para deseleccionar y cerrar dropdowns
         if (e.key === 'Escape') {
             if (selectedUserId) deselectAllUsers();
-            closeAllDropdowns();
+            // closeAllDropdowns ya no es necesario aquí, main-controller lo maneja
         }
     });
 }
 
-// --- LÓGICA DE DROPDOWN ---
-
-function toggleDropdown(targetId) {
-    const targetEl = document.getElementById(targetId);
-    if (targetEl) {
-        const isCurrentlyOpen = !targetEl.classList.contains('disabled');
-        closeAllDropdowns(); // Cierra otros abiertos
-        if (!isCurrentlyOpen) targetEl.classList.remove('disabled');
-    }
-}
-
-function closeAllDropdowns() {
-    document.querySelectorAll('.popover-module:not(.disabled)').forEach(el => {
-        // Solo cerrar los que están dentro de la sección de usuarios para no afectar header
-        if (el.closest('.admin-users-wrapper')) el.classList.add('disabled');
-    });
-}
+// [MODIFICADO] Eliminadas funciones toggleDropdown y closeAllDropdowns locales
 
 function handleFilterSelection(option) {
     const sortValue = option.dataset.sort;
     if (sortValue === currentSort) {
-        closeAllDropdowns();
+        // closeAllDropdowns(); // Ya manejado por handleDropdownSelection en main-controller
         return;
     }
 
     currentSort = sortValue;
     
-    // Actualizar visualmente el active
-    const menuList = option.closest('.menu-list');
-    menuList.querySelectorAll('.menu-link').forEach(el => {
-        el.classList.remove('active');
-        const icon = el.querySelector('.menu-link-icon:last-child');
-        if (icon) icon.innerHTML = ''; // Quitar check
-    });
-    
-    option.classList.add('active');
-    // Añadir check al seleccionado
-    const iconContainer = option.querySelector('.menu-link-icon:last-child');
-    if (!iconContainer) {
-        const newIcon = document.createElement('div');
-        newIcon.className = 'menu-link-icon';
-        newIcon.innerHTML = '<span class="material-symbols-rounded">check</span>';
-        option.appendChild(newIcon);
-    } else {
-        iconContainer.innerHTML = '<span class="material-symbols-rounded">check</span>';
-    }
-
-    // Activar visualmente el botón principal si hay filtro
+    // La actualización visual del check la maneja main-controller ahora, 
+    // pero si necesitamos lógica específica extra (como el botón principal), la dejamos:
     const triggerBtn = document.querySelector('[data-target="dropdown-admin-filters"]');
     if (triggerBtn) {
         if (currentSort !== 'date_newest') triggerBtn.classList.add('active');
         else triggerBtn.classList.remove('active');
     }
 
-    closeAllDropdowns();
+    // closeAllDropdowns(); // Ya manejado por main-controller
     
-    // Recargar tabla
     const searchInput = document.getElementById('admin-users-search-input');
     const query = searchInput ? searchInput.value : '';
     loadUsersTable(1, query, currentSort);
 }
 
-// --- LÓGICA DE UI ---
+// --- LÓGICA DE UI (Selección de filas, toolbar) ---
+// (Se mantiene igual que antes)
 
 function handleRowSelection(event, clickedRow) {
     if (clickedRow.classList.contains('selected')) {
@@ -242,7 +187,6 @@ async function loadUsersTable(page, query, sort = 'date_newest') {
             if (tbody) tbody.innerHTML = data.html_rows;
             if (pagination) pagination.innerHTML = data.html_pagination;
             
-            // Actualizar URL sin recargar
             let newUrl = `${BASE_PATH}admin/users?page=${page}`;
             if (query) newUrl += `&q=${encodeURIComponent(query)}`;
             if (sort && sort !== 'date_newest') newUrl += `&sort=${sort}`;
@@ -260,7 +204,6 @@ async function loadUsersTable(page, query, sort = 'date_newest') {
 }
 
 // --- LÓGICA DE PRESENCIA ---
-
 function initLivePresence() {
     const socket = window.socketService ? window.socketService.socket : null;
     

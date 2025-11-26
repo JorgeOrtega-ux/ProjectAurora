@@ -2,6 +2,7 @@
 
 import { closeAllModules } from '../ui/main-controller.js';
 
+// ... (resto de imports y variables igual) ...
 const allowedSections = [
     'main', 'login', 'register', 'explorer', 'search',
     'register/additional-data',
@@ -25,7 +26,10 @@ const allowedSections = [
     'admin/backups',
     'admin/server',
     'admin/user-status',
-    'admin/user-manage'
+    'admin/user-manage',
+    'admin/user-role', // Asegúrate de que esté aquí
+    'admin/user-history',
+    'admin/user-notification'
 ];
 
 const authZone = [
@@ -39,43 +43,33 @@ const authZone = [
 ];
 
 const basePath = window.BASE_PATH || '/ProjectAurora/';
-
-// Variable para evitar clics múltiples mientras carga
 let isNavigating = false;
 
 export function initUrlManager() {
+    console.log("[UrlManager] Inicializado");
     window.addEventListener('popstate', (event) => {
         if (event.state && event.state.section) {
             showSection(event.state.section, false);
         }
     });
 
-    // [MODIFICADO] Listener genérico para navegación interna (SPA)
     document.body.addEventListener('click', (e) => {
-        
-        // 1. Manejo de enlaces normales <a> para "Abrir en nueva pestaña"
         const link = e.target.closest('a[href]');
         if (link) {
-            // Si la preferencia está activa y no es un enlace vacío '#' o javascript
             const href = link.getAttribute('href');
             if (window.OPEN_NEW_TAB === 1 && href && !href.startsWith('#') && !href.startsWith('javascript:')) {
-                // Si ya tiene target, lo respetamos, si no, forzamos _blank
-                if (!link.target) {
-                    link.target = "_blank";
-                }
+                if (!link.target) link.target = "_blank";
             }
         }
 
-        // 2. Manejo de navegación interna SPA (data-nav)
         if (isNavigating) return;
         const target = e.target.closest('[data-nav]');
         
         if (target) {
-            e.preventDefault(); // Prevenir comportamiento de enlace normal si es un <a>
+            e.preventDefault();
             const section = target.dataset.nav;
-            
-            // Solo navegar si la sección es diferente a la actual (opcional, pero recomendado)
             if (section !== getSectionFromUrl()) {
+                console.log("[UrlManager] Click detectado, navegando a:", section);
                 navigateTo(section);
             }
         }
@@ -88,20 +82,17 @@ export function initUrlManager() {
 
 window.navigateTo = function (sectionName) {
     if (isNavigating) return;
-
-    // [NUEVO] Cerrar cualquier módulo/menú abierto al iniciar navegación
-    if (typeof closeAllModules === 'function') {
-        closeAllModules();
-    }
+    if (typeof closeAllModules === 'function') closeAllModules();
 
     if (sectionName === 'settings') sectionName = 'settings/your-profile';
     if (sectionName === 'admin') sectionName = 'admin/dashboard';
+
+    console.log("[UrlManager] navigateTo:", sectionName);
 
     const current = getSectionFromUrl();
     const isCurAuth = authZone.some(z => current.startsWith(z) || z === current);
     const isTarAuth = authZone.some(z => sectionName.startsWith(z) || z === sectionName);
 
-    // Si cambiamos entre zona pública y privada, recargar página completa
     if ((isCurAuth && !isTarAuth) || (!isCurAuth && isTarAuth)) {
         window.location.href = (sectionName === 'main') ? basePath : `${basePath}${sectionName}`;
     } else {
@@ -123,6 +114,7 @@ function getSectionFromUrl() {
 
 async function showSection(sectionName, pushState = true) {
     isNavigating = true;
+    console.log("[UrlManager] Cargando sección:", sectionName);
 
     const container = document.querySelector('[data-container="main-section"]');
     const loader = document.querySelector('.loader-wrapper');
@@ -133,9 +125,7 @@ async function showSection(sectionName, pushState = true) {
     let loaderKey = baseSection;
     let fetchUrl = `${basePath}public/loader.php?section=${loaderKey}&t=${Date.now()}`;
 
-    if (query) {
-        fetchUrl += `&${query}`;
-    }
+    if (query) fetchUrl += `&${query}`;
 
     updateSidebarState(baseSection);
     updateActiveMenu(baseSection);
@@ -146,22 +136,16 @@ async function showSection(sectionName, pushState = true) {
     try {
         const minDelay = new Promise(resolve => setTimeout(resolve, 200)); 
         const fetchRequest = fetch(fetchUrl);
-
         const [resp] = await Promise.all([fetchRequest, minDelay]);
 
-        if (!resp.ok) {
-            throw new Error(`Error ${resp.status}: ${resp.statusText}`);
-        }
+        if (!resp.ok) throw new Error(`Error ${resp.status}`);
 
         const html = await resp.text();
-
-        if (html.includes('<!DOCTYPE html>')) {
-            window.location.reload();
-            return;
-        }
+        if (html.includes('<!DOCTYPE html>')) { window.location.reload(); return; }
 
         container.innerHTML = html;
         container.scrollTop = 0;
+        console.log("[UrlManager] HTML insertado en el DOM");
 
         executeScripts(container);
 
@@ -170,22 +154,22 @@ async function showSection(sectionName, pushState = true) {
             history.pushState({ section: sectionName }, '', newUrl);
         }
 
-        // Reinicializar módulos necesarios
         if (window.initTooltipManager) window.initTooltipManager();
         if (window.initSettingsManager) window.initSettingsManager();
         if (window.translateDocument) window.translateDocument(container);
         
-        // [CORRECCIÓN CRÍTICA] Cargar módulos dinámicos (Admin) si es necesario
-        if (window.loadDynamicModules) await window.loadDynamicModules();
+        // LOG CRÍTICO
+        console.log("[UrlManager] Llamando a loadDynamicModules...");
+        if (window.loadDynamicModules) {
+            await window.loadDynamicModules();
+            console.log("[UrlManager] loadDynamicModules finalizado.");
+        } else {
+            console.error("[UrlManager] window.loadDynamicModules NO existe.");
+        }
 
     } catch (error) {
-        console.error(error);
-        container.innerHTML = `
-            <div style="padding:40px; text-align:center; color:#666;">
-                <span class="material-symbols-rounded" style="font-size:48px; margin-bottom:10px;">wifi_off</span><br>
-                No se pudo cargar la sección.<br>
-                <small>${error.message}</small>
-            </div>`;
+        console.error("[UrlManager] Error:", error);
+        container.innerHTML = `<div style="padding:20px;">Error al cargar.</div>`;
     } finally {
         if (loader) loader.style.display = 'none';
         isNavigating = false;
@@ -196,14 +180,13 @@ function executeScripts(container) {
     const scripts = container.querySelectorAll('script');
     scripts.forEach(oldScript => {
         const newScript = document.createElement('script');
-        Array.from(oldScript.attributes).forEach(attr => {
-            newScript.setAttribute(attr.name, attr.value);
-        });
+        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
         newScript.textContent = oldScript.textContent;
         oldScript.parentNode.replaceChild(newScript, oldScript);
     });
 }
 
+// ... (resto de funciones updateSidebarState, updateActiveMenu igual) ...
 function updateSidebarState(sectionName) {
     const appMenu = document.getElementById('sidebar-menu-app');
     const settingsMenu = document.getElementById('sidebar-menu-settings');
@@ -223,14 +206,8 @@ function updateSidebarState(sectionName) {
 }
 
 function updateActiveMenu(sectionName) {
-    // 1. Limpiamos 'active' de TODOS los enlaces de navegación
     const allLinks = document.querySelectorAll('.menu-link[data-nav]');
     allLinks.forEach(link => link.classList.remove('active'));
-    
-    // 2. Activamos SOLO los enlaces que están dentro del sidebar (moduleSurface)
-    // Esto evita que los enlaces del header (moduleOptions) se activen.
     const activeLinks = document.querySelectorAll(`[data-module="moduleSurface"] .menu-link[data-nav="${sectionName}"]`);
-    activeLinks.forEach(link => {
-        link.classList.add('active');
-    });
+    activeLinks.forEach(link => link.classList.add('active'));
 }

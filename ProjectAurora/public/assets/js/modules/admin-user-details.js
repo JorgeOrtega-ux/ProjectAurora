@@ -14,31 +14,46 @@ let currentUserState = {
     isPermanent: false,
     reason: null
 };
-let isInitialized = false;
+let isInitialized = false; // Controla listeners globales
 
-/**
- * Inicializa la lógica para las páginas de detalles de usuario (Status, Manage, History, Role).
- */
 export function initAdminUserDetails() {
+    console.log("[AdminUserDetails] initAdminUserDetails llamado.");
+    
+    // SIEMPRE redetectar contexto, incluso si ya se inicializó antes.
+    // El DOM ha cambiado, así que los inputs hidden antiguos ya no existen.
     detectContext();
 
-    if (!targetId) return;
+    console.log("[AdminUserDetails] Contexto detectado:", { currentContext, targetId });
 
+    if (!targetId) {
+        console.warn("[AdminUserDetails] No se encontró targetId. Abortando.");
+        return;
+    }
+
+    // Listeners globales (solo una vez por sesión de página)
     if (!isInitialized) {
+        console.log("[AdminUserDetails] Agregando listeners globales por primera vez.");
         initGlobalListeners();
         isInitialized = true;
     }
 
-    // Resetear estado local al cargar nuevo usuario
     currentUserState = { isSuspended: false, isPermanent: false, reason: null };
     loadData();
 }
 
 function detectContext() {
+    // Buscamos los inputs hidden que identifican la página
     const statusId = document.getElementById('target-user-id');
     const manageId = document.getElementById('manage-target-id');
     const historyId = document.getElementById('history-target-id');
     const roleId = document.getElementById('role-target-id');
+
+    console.log("[AdminUserDetails] Buscando inputs hidden en el DOM:", { 
+        status: statusId, 
+        manage: manageId, 
+        history: historyId, 
+        role: roleId 
+    });
 
     if (statusId) {
         currentContext = 'status';
@@ -150,6 +165,7 @@ function showError(message, show = true) {
 }
 
 async function loadData() {
+    console.log("[AdminUserDetails] Cargando datos para ID:", targetId);
     const data = await fetchApi({ 
         action: 'get_user_details', 
         target_id: targetId 
@@ -181,10 +197,6 @@ function renderHeader() {
     if (elEmail) elEmail.textContent = userData.email;
     if (elAvatarContainer) elAvatarContainer.dataset.role = userData.role;
 
-    // [CORRECCIÓN ROBUSTA]
-    // 1. Aseguramos que userData.profile_picture no esté vacío
-    // 2. Ocultamos icono, mostramos imagen si hay foto
-    // 3. Ocultamos imagen, mostramos icono si no hay foto
     if (userData.profile_picture && userData.profile_picture.trim() !== '') {
         if (elAvatarImg) {
             elAvatarImg.src = (window.BASE_PATH || '/ProjectAurora/') + userData.profile_picture;
@@ -196,43 +208,19 @@ function renderHeader() {
             elAvatarImg.style.display = 'none';
             elAvatarImg.src = '';
         }
-        if (elAvatarIcon) elAvatarIcon.style.display = 'flex'; // Flex para centrar el icono
+        if (elAvatarIcon) elAvatarIcon.style.display = 'flex'; 
     }
 }
 
 function initGlobalListeners() {
     document.body.addEventListener('click', (e) => {
-        const toggleBtn = e.target.closest('[data-action="toggle-dropdown"]');
-        if (toggleBtn) {
-            e.stopPropagation();
-            toggleDropdown(toggleBtn.dataset.target);
-            return;
-        }
-
         const option = e.target.closest('.menu-link[data-action]');
         if (option) {
+            // Verificar si el clic ocurrió dentro de un dropdown de este módulo
+            // Importante para no interferir con otros menús si los hubiera
             handleDropdownSelection(option);
             return;
         }
-
-        if (!e.target.closest('.trigger-select-wrapper')) {
-            closeAllDropdowns();
-        }
-    });
-}
-
-function toggleDropdown(targetId) {
-    const targetEl = document.getElementById(targetId);
-    if (targetEl) {
-        const isCurrentlyOpen = !targetEl.classList.contains('disabled');
-        closeAllDropdowns();
-        if (!isCurrentlyOpen) targetEl.classList.remove('disabled');
-    }
-}
-
-function closeAllDropdowns() {
-    document.querySelectorAll('.popover-module:not(.disabled)').forEach(el => {
-        if (el.closest('.section-content')) el.classList.add('disabled');
     });
 }
 
@@ -242,20 +230,7 @@ function handleDropdownSelection(option) {
     const label = option.dataset.label || option.querySelector('.menu-link-text').textContent;
     const icon = option.dataset.icon;
 
-    // Gestión visual de selección
-    const menuList = option.closest('.menu-list');
-    if (menuList) {
-        menuList.querySelectorAll('.menu-link').forEach(o => {
-            o.classList.remove('active');
-            const lastIcon = o.lastElementChild;
-            if (lastIcon && lastIcon.classList.contains('menu-link-icon')) lastIcon.innerHTML = '';
-        });
-        option.classList.add('active');
-        const lastIcon = option.lastElementChild;
-        if (lastIcon && lastIcon.classList.contains('menu-link-icon')) {
-            lastIcon.innerHTML = '<span class="material-symbols-rounded">check</span>';
-        }
-    }
+    console.log("[AdminUserDetails] Selección de dropdown:", { action, val, label });
 
     if (action === 'select-status-option') updateStatusUI(val, label, icon);
     if (action === 'select-duration-option') updateDurationUI(val);
@@ -263,11 +238,8 @@ function handleDropdownSelection(option) {
     if (action === 'select-manage-status') updateManageStatusUI(val, label, icon);
     if (action === 'select-deletion-type') updateDeletionTypeUI(val, label);
     if (action === 'select-role-option') updateRoleUI(val, label, icon);
-
-    closeAllDropdowns();
 }
 
-// --- STATUS LOGIC ---
 function initStatusLogic() {
     const u = userData;
     const activeAlert = document.getElementById('active-sanction-alert');
@@ -441,7 +413,6 @@ async function liftBan() {
     setLoading(btnLift, false);
 }
 
-// --- MANAGE LOGIC ---
 function initManageLogic() {
     const u = userData;
     const btnSave = document.getElementById('btn-save-manage');
@@ -523,8 +494,8 @@ async function saveManageChanges() {
     setLoading(btnSave, false);
 }
 
-// --- ROLE LOGIC ---
 function initRoleLogic() {
+    console.log("[AdminUserDetails] Inicializando lógica de ROL");
     const u = userData;
     const btnSave = document.getElementById('btn-save-role');
     
@@ -560,6 +531,8 @@ async function saveRoleChanges() {
     const newRole = document.getElementById('role-input-value').value;
     const btnSave = document.getElementById('btn-save-role');
 
+    console.log("[AdminUserDetails] Guardando ROL:", newRole);
+
     showError('', false);
     setLoading(btnSave, true);
 
@@ -580,7 +553,6 @@ async function saveRoleChanges() {
     setLoading(btnSave, false);
 }
 
-// --- HISTORY LOGIC ---
 function renderHistoryTable(logs) {
     const tbody = document.getElementById('full-history-body');
     if (!tbody) return;

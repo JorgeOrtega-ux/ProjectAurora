@@ -14,6 +14,17 @@ export function initMainController() {
 
         const target = e.target;
 
+        // --- [NUEVO] LÓGICA GLOBAL DE DROPDOWNS GENÉRICOS ---
+        // Centralizamos la apertura de menús para evitar conflictos entre módulos
+        const toggleDropdownBtn = target.closest('[data-action="toggle-dropdown"]');
+        if (toggleDropdownBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const targetId = toggleDropdownBtn.dataset.target;
+            toggleGenericDropdown(targetId);
+            return;
+        }
+
         // --- LÓGICA CIERRE AL CLICAR FUERA (ADMIN SEARCH) ---
         const adminSearch = document.getElementById('admin-users-search-bar');
         const adminSearchTrigger = document.querySelector('[data-action="toggle-admin-user-search"]');
@@ -109,9 +120,12 @@ export function initMainController() {
         if (allowCloseOnClickOutside) {
             const clickedInsideContent = target.closest('.menu-content');
             const clickedInsideTrigger = target.closest('[data-action^="toggleModule"]'); 
+            const clickedInsideGeneric = target.closest('.popover-module'); // [NUEVO]
+            const clickedInsideGenericTrigger = target.closest('[data-action="toggle-dropdown"]'); // [NUEVO]
 
-            if (!clickedInsideContent && !clickedInsideTrigger) {
+            if (!clickedInsideContent && !clickedInsideTrigger && !clickedInsideGeneric && !clickedInsideGenericTrigger) {
                 closeAllModules();
+                closeGenericDropdowns(); // [NUEVO]
             }
         }
     });
@@ -120,6 +134,7 @@ export function initMainController() {
     document.addEventListener('keydown', (e) => {
         if (allowCloseOnEsc && e.key === 'Escape') {
             closeAllModules();
+            closeGenericDropdowns(); // [NUEVO]
             const adminSearch = document.getElementById('admin-users-search-bar');
             const adminBtn = document.querySelector('[data-action="toggle-admin-user-search"]');
             if (adminSearch && !adminSearch.classList.contains('disabled')) {
@@ -163,6 +178,35 @@ export function initMainController() {
     }
 }
 
+// [NUEVO] Funciones auxiliares para Dropdowns Genéricos
+function toggleGenericDropdown(targetId) {
+    const targetEl = document.getElementById(targetId);
+    if (targetEl) {
+        const isCurrentlyOpen = !targetEl.classList.contains('disabled');
+        // Cerrar otros módulos y dropdowns
+        closeAllModules();
+        closeGenericDropdowns(); 
+        
+        if (!isCurrentlyOpen) {
+            targetEl.classList.remove('disabled');
+            // Opcional: Añadir clase active al trigger si es necesario visualmente
+            const trigger = document.querySelector(`[data-target="${targetId}"]`);
+            if(trigger) trigger.classList.add('active');
+        }
+    }
+}
+
+function closeGenericDropdowns() {
+    // Cierra todos los popover-module que NO son módulos principales (data-module)
+    document.querySelectorAll('.popover-module:not([data-module]):not(.disabled)').forEach(el => {
+        el.classList.add('disabled');
+    });
+    // Quitar estado active de los triggers
+    document.querySelectorAll('[data-action="toggle-dropdown"].active').forEach(el => {
+        el.classList.remove('active');
+    });
+}
+
 function handleDropdownSelection(optionElement) {
     const module = optionElement.closest('.popover-module');
     if (!module) return;
@@ -188,7 +232,8 @@ function handleDropdownSelection(optionElement) {
         const triggerText = wrapper.querySelector('.trigger-selector .trigger-select-text span');
         const triggerIcon = wrapper.querySelector('.trigger-selector .trigger-select-icon span');
         
-        const selectedText = optionElement.querySelector('.menu-link-text span')?.textContent;
+        const selectedText = optionElement.querySelector('.menu-link-text span')?.textContent 
+                             || optionElement.querySelector('.menu-link-text')?.textContent;
         const selectedIcon = optionElement.querySelector('.menu-link-icon span')?.textContent;
 
         if (triggerText && selectedText) triggerText.textContent = selectedText;
@@ -196,6 +241,7 @@ function handleDropdownSelection(optionElement) {
     }
 
     closeAllModules();
+    closeGenericDropdowns(); // [NUEVO] Asegurar que se cierre al seleccionar
 }
 
 function toggleModule(moduleId) {
@@ -214,6 +260,7 @@ function toggleModule(moduleId) {
         }
     } else {
         closeAllModules(moduleId); 
+        closeGenericDropdowns(); // [NUEVO]
         module.classList.remove('disabled');
         module.classList.add('active');
 
