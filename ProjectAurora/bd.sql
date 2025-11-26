@@ -201,9 +201,6 @@ INSERT IGNORE INTO server_config (id, allowed_email_domains)
 VALUES (1, '["gmail.com", "outlook.com", "hotmail.com", "yahoo.com", "icloud.com"]');
 
 
-
-
-
 -- 1. Tabla de Comunidades
 CREATE TABLE IF NOT EXISTS communities (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -215,6 +212,7 @@ CREATE TABLE IF NOT EXISTS communities (
     privacy ENUM('public', 'private') DEFAULT 'public',
     member_count INT DEFAULT 1,
     profile_picture VARCHAR(255) NULL,
+    banner_picture VARCHAR(255) NULL, -- [NUEVO CAMPO BANNER]
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX (privacy),
@@ -234,10 +232,23 @@ CREATE TABLE IF NOT EXISTS community_members (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. Datos de Prueba (5 Grupos)
--- Asegúrate de que el usuario con ID 1 exista, si no, cambia el creator_id
-INSERT IGNORE INTO communities (uuid, creator_id, community_name, description, access_code, privacy, member_count) VALUES
-('comm-uuid-001', 1, 'Desarrolladores PHP', 'Comunidad para amantes del código backend.', 'PHP7-CODE-2025', 'public', 120),
-('comm-uuid-002', 1, 'Diseño UI/UX', 'Compartimos recursos de diseño e inspiración.', 'DSGN-2025-FREE', 'public', 45),
-('comm-uuid-003', 1, 'Proyecto Aurora Secret', 'Solo personal autorizado del proyecto.', 'AURO-XH55-99ZZ', 'private', 5),
-('comm-uuid-004', 1, 'Gaming Latam', 'Torneos y discusiones sobre videojuegos.', 'GAME-PLAY-NOW1', 'public', 890),
-('comm-uuid-005', 1, 'Club de Lectura VIP', 'Acceso solo con invitación para lectores.', 'READ-BOOK-CLUB', 'private', 12);
+-- [ACTUALIZADO] Se agregaron banner_picture con imágenes de placeholder
+INSERT IGNORE INTO communities (uuid, creator_id, community_name, description, access_code, privacy, member_count, profile_picture, banner_picture) VALUES
+('comm-uuid-001', 1, 'Desarrolladores PHP', 'Comunidad para amantes del código backend.', 'PHP7-CODE-2025', 'public', 120, 'https://ui-avatars.com/api/?name=PHP&background=0D8ABC&color=fff', 'https://picsum.photos/seed/php/600/200'),
+('comm-uuid-002', 1, 'Diseño UI/UX', 'Compartimos recursos de diseño e inspiración.', 'DSGN-2025-FREE', 'public', 45, 'https://ui-avatars.com/api/?name=UI&background=E91E63&color=fff', 'https://picsum.photos/seed/uiux/600/200'),
+('comm-uuid-003', 1, 'Proyecto Aurora Secret', 'Solo personal autorizado del proyecto.', 'AURO-XH55-99ZZ', 'private', 5, 'https://ui-avatars.com/api/?name=PA&background=000000&color=fff', 'https://picsum.photos/seed/aurora/600/200'),
+('comm-uuid-004', 1, 'Gaming Latam', 'Torneos y discusiones sobre videojuegos.', 'GAME-PLAY-NOW1', 'public', 890, 'https://ui-avatars.com/api/?name=GL&background=4CAF50&color=fff', 'https://picsum.photos/seed/gaming/600/200'),
+('comm-uuid-005', 1, 'Club de Lectura VIP', 'Acceso solo con invitación para lectores.', 'READ-BOOK-CLUB', 'private', 12, 'https://ui-avatars.com/api/?name=CL&background=FF9800&color=fff', 'https://picsum.photos/seed/books/600/200');
+
+-- Tabla para el historial y estado de alertas globales
+CREATE TABLE IF NOT EXISTS system_alerts_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    type VARCHAR(50) NOT NULL,          -- Identificador de la plantilla (ej: 'high_traffic')
+    instance_id VARCHAR(50) NOT NULL,   -- UUID único para esta emisión específica
+    status ENUM('active', 'stopped') DEFAULT 'active',
+    admin_id INT NOT NULL,              -- Quién la activó
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    stopped_at TIMESTAMP NULL,
+    FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

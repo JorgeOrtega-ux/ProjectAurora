@@ -122,6 +122,16 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator']);
 
             <div class="menu-content-group-bottom menu-list">
                 
+                <div class="menu-link <?php echo ($CURRENT_SECTION === 'admin/alerts') ? 'active' : ''; ?>"
+                    data-nav="admin/alerts">
+                    <div class="menu-link-icon">
+                        <span class="material-symbols-rounded">campaign</span>
+                    </div>
+                    <div class="menu-link-text">
+                        <span data-i18n="nav.admin_alerts"><?php echo translation('nav.admin_alerts'); ?></span>
+                    </div>
+                </div>
+
                 <div class="menu-link <?php echo ($CURRENT_SECTION === 'admin/backups') ? 'active' : ''; ?>"
                     data-nav="admin/backups">
                     <div class="menu-link-icon">

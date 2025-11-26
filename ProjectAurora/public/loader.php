@@ -30,7 +30,7 @@ $fileMap = [
     'main'           => 'app/main',
     'explorer'       => 'app/explorer',
     'search'         => 'app/search-results',
-    'join-community' => 'app/join-community', // [NUEVO]
+    'join-community' => 'app/join-community', 
 
     // Auth
     'login'                         => 'auth/login',
@@ -61,6 +61,7 @@ $fileMap = [
     'admin/user-role'   => 'admin/user-role',
     'admin/backups'     => 'admin/backups',
     'admin/server'      => 'admin/server',
+    'admin/alerts'      => 'admin/alerts', // [NUEVO]
     
     // System
     'status-page' => 'system/status-page',

@@ -73,22 +73,17 @@ function getDbBinary($binaryName) {
 
 try {
 
-    // === DASHBOARD STATS (NUEVO) ===
+    // === DASHBOARD STATS ===
     if ($action === 'get_dashboard_stats') {
-        
-        // 1. Total Usuarios (excluyendo eliminados)
         $stmtTotal = $pdo->query("SELECT COUNT(*) FROM users WHERE account_status != 'deleted'");
         $totalUsers = $stmtTotal->fetchColumn();
 
-        // 2. Usuarios Conectados (Basado en actividad reciente < 5 min en DB como respaldo)
         $stmtOnline = $pdo->query("SELECT COUNT(DISTINCT user_id) FROM user_sessions WHERE last_activity > (NOW() - INTERVAL 5 MINUTE)");
         $onlineUsers = $stmtOnline->fetchColumn();
 
-        // 3. Nuevos Hoy
         $stmtNew = $pdo->query("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CURDATE()");
         $newUsersToday = $stmtNew->fetchColumn();
 
-        // 4. Sesiones Totales Activas
         $stmtSessions = $pdo->query("SELECT COUNT(*) FROM user_sessions");
         $activeSessions = $stmtSessions->fetchColumn();
 
@@ -102,6 +97,57 @@ try {
             ]
         ]);
 
+    // === ALERTAS GLOBALES (NUEVO) ===
+    } elseif ($action === 'get_alert_status') {
+        $stmt = $pdo->query("SELECT type, instance_id FROM system_alerts_history WHERE status = 'active' ORDER BY id DESC LIMIT 1");
+        $activeAlert = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        echo json_encode(['success' => true, 'active_alert' => $activeAlert]);
+
+    } elseif ($action === 'activate_alert') {
+        $type = $data['type'] ?? '';
+        if (empty($type)) throw new Exception(translation('global.action_invalid'));
+
+        // 1. Verificar si hay alerta activa
+        $stmtCheck = $pdo->query("SELECT id FROM system_alerts_history WHERE status = 'active' LIMIT 1");
+        if ($stmtCheck->rowCount() > 0) {
+            throw new Exception(translation('admin.error.alert_active') ?? 'Ya hay una alerta activa. Detenla primero.');
+        }
+
+        // 2. Crear nueva alerta
+        $instanceId = generate_uuid(); 
+        $adminId = $_SESSION['user_id'];
+        
+        $stmt = $pdo->prepare("INSERT INTO system_alerts_history (type, instance_id, status, admin_id, started_at) VALUES (?, ?, 'active', ?, NOW())");
+        if ($stmt->execute([$type, $instanceId, $adminId])) {
+            // 3. Notificar vía WebSocket
+            send_live_notification('global', 'system_alert_update', [
+                'status' => 'active',
+                'type' => $type,
+                'instance_id' => $instanceId
+            ]);
+            echo json_encode(['success' => true, 'message' => translation('admin.alerts.success_emit')]);
+        } else {
+            throw new Exception(translation('global.error_connection'));
+        }
+
+    } elseif ($action === 'stop_alert') {
+        // 1. Detener alertas activas
+        $stmt = $pdo->prepare("UPDATE system_alerts_history SET status = 'stopped', stopped_at = NOW() WHERE status = 'active'");
+        $stmt->execute();
+
+        if ($stmt->rowCount() > 0) {
+            // 2. Notificar vía WebSocket
+            send_live_notification('global', 'system_alert_update', [
+                'status' => 'inactive'
+            ]);
+            echo json_encode(['success' => true, 'message' => translation('admin.alerts.success_stop')]);
+        } else {
+            // Si no había nada que detener, igual es éxito
+            echo json_encode(['success' => true, 'message' => 'No había alertas activas.']);
+        }
+
+    // === USUARIOS (Existente) ===
     } elseif ($action === 'get_user_details') {
         $targetId = $data['target_id'] ?? 0;
         $stmt = $pdo->prepare("SELECT id, username, email, profile_picture, role, account_status, suspension_reason, suspension_end_date, deletion_type, deletion_reason, admin_comments FROM users WHERE id = ?");

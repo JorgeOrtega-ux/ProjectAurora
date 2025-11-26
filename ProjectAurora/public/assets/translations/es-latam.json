@@ -44,6 +44,7 @@
         "admin_users": "Gestionar usuarios",
         "admin_backups": "Copias de seguridad",
         "admin_server": "Configuración del servidor",
+        "admin_alerts": "Alertas Globales",
         "settings": "Configuración",
         "help": "Ayuda y comentarios",
         "logout": "Cerrar sesión",
@@ -351,6 +352,39 @@
         "backups_desc": "Gestiona y restaura copias de la base de datos.",
         "server_title": "Configuración del servidor",
         "server_desc": "Ajustes globales, mantenimiento y límites del sistema.",
+        "alerts_title": "Centro de Alertas Globales",
+        "alerts_desc": "Gestiona los mensajes masivos que ven todos los usuarios.",
+        "alerts": {
+            "stop_btn": "Detener Alerta",
+            "emit_btn": "Emitir Alerta",
+            "active_label": "ACTIVA",
+            "confirm_emit": "¿Seguro que quieres emitir esta alerta a TODOS los usuarios?",
+            "confirm_stop": "¿Detener la alerta actual?",
+            "success_emit": "Alerta emitida globalmente.",
+            "success_stop": "Alerta detenida.",
+            "templates": {
+                "maintenance_warning": {
+                    "title": "Mantenimiento Programado",
+                    "desc": "Avisa de un mantenimiento inminente.",
+                    "text": "Project Aurora entrará en mantenimiento en breve. Guarda tus cambios."
+                },
+                "high_traffic": {
+                    "title": "Alta Demanda",
+                    "desc": "Avisa sobre lentitud por tráfico.",
+                    "text": "Nuestros servidores están experimentando una alta demanda. Es posible que notes lentitud."
+                },
+                "critical_issue": {
+                    "title": "Incidencia Técnica",
+                    "desc": "Error grave en el sistema.",
+                    "text": "Estamos investigando problemas técnicos con algunos servicios. Gracias por tu paciencia."
+                },
+                "update_info": {
+                    "title": "Nueva Actualización",
+                    "desc": "Informa sobre novedades.",
+                    "text": "¡Hemos actualizado la plataforma! Recarga la página para ver las novedades."
+                }
+            }
+        },
         "backups": {
             "create_btn": "Crear Copia",
             "restore_btn": "Restaurar Copia",
@@ -469,7 +503,8 @@
             "user_not_exist": "Usuario no existe.",
             "reason_required": "Debes especificar una razón.",
             "type_required": "Debes seleccionar un tipo de sanción.",
-            "duration_required": "Debes seleccionar una duración."
+            "duration_required": "Debes seleccionar una duración.",
+            "alert_active": "Ya hay una alerta activa. Detenla primero."
         },
         "success": {
             "ban_applied": "Sanción aplicada correctamente.",
@@ -528,5 +563,11 @@
     "api": {
         "error_csrf": "Error de seguridad (CSRF).",
         "session_expired": "Sesión expirada."
+    },
+    "alerts": {
+        "maintenance_warning": "<strong>Mantenimiento:</strong> Project Aurora entrará en mantenimiento en breve. Guarda tus cambios.",
+        "high_traffic": "<strong>Alta Demanda:</strong> Nuestros servidores están experimentando una alta demanda. Es posible que notes lentitud.",
+        "critical_issue": "<strong>Error Crítico:</strong> Estamos investigando problemas técnicos. Gracias por tu paciencia.",
+        "update_info": "<strong>Actualización:</strong> ¡Hemos actualizado la plataforma! Recarga la página para ver las novedades."
     }
 }

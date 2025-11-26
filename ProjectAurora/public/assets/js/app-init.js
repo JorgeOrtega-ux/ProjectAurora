@@ -10,7 +10,8 @@ import { initAuthManager } from './modules/auth-manager.js';
 import { initNotificationsManager } from './modules/social/notifications-manager.js';
 import { initFriendsManager } from './modules/social/friends-manager.js';
 import { initSettingsManager } from './modules/settings-manager.js';
-import { initCommunitiesManager } from './modules/communities-manager.js'; // [NUEVO]
+import { initCommunitiesManager } from './modules/communities-manager.js'; 
+import { initBannerManager } from './modules/banner-manager.js'; // [NUEVO]
 
 // [UI]
 import { initMainController } from './ui/main-controller.js';
@@ -27,6 +28,7 @@ import { initAdminUsers } from './modules/admin/admin-users.js';
 import { initAdminUserDetails } from './modules/admin/admin-user-details.js';
 import { initAdminServer } from './modules/admin/admin-server.js';
 import { initAdminBackups } from './modules/admin/admin-backups.js';
+import { initAdminAlerts } from './modules/admin/admin-alerts.js'; // [NUEVO]
 
 /**
  * Manejador de módulos por sección.
@@ -38,8 +40,9 @@ export async function handleModuleLoading() {
     const adminUserDetails = document.querySelector('[data-section^="admin/user-"]'); 
     const adminServer = document.querySelector('[data-section="admin/server"]');
     const adminBackups = document.querySelector('[data-section="admin/backups"]');
+    const adminAlerts = document.querySelector('[data-section="admin/alerts"]'); // [NUEVO]
     
-    // [NUEVO] Secciones de comunidad
+    // Secciones de comunidad
     const joinComm = document.querySelector('[data-section="join-community"]');
     const mainPage = document.querySelector('[data-section="main"]');
     const explorerPage = document.querySelector('[data-section="explorer"]');
@@ -49,6 +52,7 @@ export async function handleModuleLoading() {
     if (adminUserDetails) initAdminUserDetails();
     if (adminServer) initAdminServer();
     if (adminBackups) initAdminBackups();
+    if (adminAlerts) initAdminAlerts(); // [NUEVO]
 
     // Inicializar lógica de comunidades si estamos en vistas relevantes
     if (joinComm || mainPage || explorerPage) {
@@ -76,6 +80,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         initNotificationsManager();
         initFriendsManager();
         initDragController();
+        
+        initBannerManager(); // [NUEVO] Iniciar el gestor de banners globalmente
 
         // Exponer la función de carga
         window.loadDynamicModules = handleModuleLoading;
