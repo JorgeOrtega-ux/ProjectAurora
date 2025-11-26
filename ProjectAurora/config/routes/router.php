@@ -1,7 +1,6 @@
 <?php
 // config/routes/router.php
 
-// [SEGURIDAD] Configuración de Cookies de Sesión
 if (session_status() === PHP_SESSION_NONE) {
     $lifetime = 60 * 60 * 24 * 30; 
     ini_set('session.cookie_lifetime', $lifetime);
@@ -23,18 +22,11 @@ I18n::load($langRouter);
 
 $basePath = '/ProjectAurora/'; 
 
-// =======================================================================
-// CONFIGURACIÓN DEL SERVIDOR
-// =======================================================================
 $serverConfig = getServerConfig($pdo);
 $isMaintenanceMode = (int)$serverConfig['maintenance_mode'] === 1;
 
-// =======================================================================
-// 1. VERIFICAR VALIDEZ DE SESIÓN
-// =======================================================================
 if (isset($_SESSION['user_id'])) {
     $currentSessionId = session_id();
-    
     $stmtCheck = $pdo->prepare("SELECT id FROM user_sessions WHERE session_id = ? AND user_id = ?");
     $stmtCheck->execute([$currentSessionId, $_SESSION['user_id']]);
     
@@ -73,20 +65,16 @@ if (isset($_SESSION['user_id'])) {
     }
 }
 
-// =======================================================================
-// 2. ACTUALIZAR DATOS DE USUARIO
-// =======================================================================
 $freshUser = null; 
 if (isset($_SESSION['user_id'])) {
     try {
-        // [MODIFICADO] profile_picture
         $stmt = $pdo->prepare("SELECT u.role, u.profile_picture, u.account_status, p.language, p.theme, p.extended_message_time, p.open_links_in_new_tab FROM users u LEFT JOIN user_preferences p ON u.id = p.user_id WHERE u.id = ?");
         $stmt->execute([$_SESSION['user_id']]);
         $freshUser = $stmt->fetch();
 
         if ($freshUser) {
             $_SESSION['user_role'] = $freshUser['role'] ?? 'user';
-            $_SESSION['user_profile_picture'] = $freshUser['profile_picture']; // [MODIFICADO]
+            $_SESSION['user_profile_picture'] = $freshUser['profile_picture'];
             $_SESSION['user_lang'] = $freshUser['language'] ?? 'es-latam';
             $_SESSION['user_theme'] = $freshUser['theme'] ?? 'system';
             $_SESSION['user_extended_msg'] = $freshUser['extended_message_time'] ?? 0;
@@ -107,9 +95,6 @@ if (isset($_SESSION['user_id'])) {
     } catch (Exception $e) {}
 }
 
-// =======================================================================
-// 3. ENRUTAMIENTO
-// =======================================================================
 $requestUri = $_SERVER['REQUEST_URI'];
 if (strpos($requestUri, $basePath) === 0) $requestUri = substr($requestUri, strlen($basePath));
 $requestUri = strtok($requestUri, '?');
@@ -123,7 +108,7 @@ if (strpos($requestUri, 'api/') === 0) {
 
 $DEFAULT_SECTION = 'main';
 $allowedSections = [
-    'main', 'login', 'register', 'explorer',
+    'main', 'login', 'register', 'explorer', 'join-community', // [NUEVO]
     'register/additional-data', 'register/verification-account',
     'forgot-password', 'reset-password', 'status-page', 'login/verification-additional',
     'search', 'settings', 'settings/your-profile', 'settings/login-security',
@@ -138,23 +123,16 @@ if ($CURRENT_SECTION === 'main' && $requestUri !== 'main' && !empty($requestUri)
 if ($CURRENT_SECTION === 'settings') { header("Location: " . $basePath . "settings/your-profile"); exit; }
 if ($CURRENT_SECTION === 'admin') { header("Location: " . $basePath . "admin/dashboard"); exit; }
 
-// =======================================================================
-// 4. LÓGICA DE ESTADO Y RESTRICCIONES
-// =======================================================================
-
 $isUserRole = ($_SESSION['user_role'] ?? 'user') === 'user';
 $maintenanceAllowed = ['status-page', 'login', 'register', 'forgot-password', 'reset-password', 'login/verification-additional'];
 
-// A) MANTENIMIENTO
 if ($isMaintenanceMode && $isUserRole && !in_array($CURRENT_SECTION, $maintenanceAllowed)) {
     header("Location: " . $basePath . "status-page?status=maintenance");
     exit;
 }
 
-// C) SALIDA DE STATUS-PAGE
 if ($CURRENT_SECTION === 'status-page') {
     $statusParam = $_GET['status'] ?? '';
-
     if ($statusParam === 'maintenance') {
         if (!$isMaintenanceMode || !$isUserRole) {
             header("Location: " . $basePath);
@@ -167,10 +145,6 @@ if ($CURRENT_SECTION === 'status-page') {
     }
 }
 
-// =======================================================================
-// 5. VISIBILIDAD DE NAVEGACIÓN
-// =======================================================================
-
 $isLoggedIn = isset($_SESSION['user_id']);
 
 if (strpos($CURRENT_SECTION, 'admin/') === 0) {
@@ -179,7 +153,7 @@ if (strpos($CURRENT_SECTION, 'admin/') === 0) {
     if (!in_array($userRole, $allowedAdminRoles)) $CURRENT_SECTION = '404'; 
 }
 
-$appSections = ['main', 'explorer'];
+$appSections = ['main', 'explorer', 'join-community']; // [NUEVO]
 $systemSections = ['status-page', '404', 'error-missing-data'];
 
 if ($CURRENT_SECTION === 'login/verification-additional') { $SECTION_FILE_NAME = 'auth/login'; } 

@@ -21,16 +21,16 @@ $section = str_replace(['..', '.php'], '', $section);
 
 if (!isset($_SESSION['user_id']) && !in_array($section, $publicSections)) {
     http_response_code(401);
-    // [CORREGIDO] Mensaje traducido
     exit('<div style="padding:20px; text-align:center">' . translation('global.session_expired') . '</div>');
 }
 
 // 3. Mapa COMPLETO de rutas
 $fileMap = [
     // App
-    'main'      => 'app/main',
-    'explorer'  => 'app/explorer',
-    'search'    => 'app/search-results',
+    'main'           => 'app/main',
+    'explorer'       => 'app/explorer',
+    'search'         => 'app/search-results',
+    'join-community' => 'app/join-community', // [NUEVO]
 
     // Auth
     'login'                         => 'auth/login',
@@ -81,7 +81,6 @@ if ($realFile && file_exists($realFile)) {
     include $realFile;
 } else {
     http_response_code(404);
-    // [CORREGIDO] Mensaje traducido
     echo '<div style="padding:20px; text-align:center;">' . translation('system.file_not_found') . '</div>';
 }
 ?>

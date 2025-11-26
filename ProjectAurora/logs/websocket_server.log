@@ -613,3 +613,4 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-11-26 01:07:15,878 - INFO - Usuario 1 desconectado completamente.
 2025-11-26 01:07:16,821 - INFO - connection open
 2025-11-26 01:07:16,856 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: rbasikmd...
+2025-11-26 01:10:54,544 - INFO - Usuario 1 desconectado completamente.
