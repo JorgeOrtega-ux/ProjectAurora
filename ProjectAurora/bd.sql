@@ -199,3 +199,45 @@ CREATE TABLE IF NOT EXISTS server_config (
 -- Inicializar configuración por defecto con dominios
 INSERT IGNORE INTO server_config (id, allowed_email_domains) 
 VALUES (1, '["gmail.com", "outlook.com", "hotmail.com", "yahoo.com", "icloud.com"]');
+
+
+
+
+
+-- 1. Tabla de Comunidades
+CREATE TABLE IF NOT EXISTS communities (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    uuid CHAR(36) NOT NULL UNIQUE,
+    creator_id INT NOT NULL,
+    community_name VARCHAR(100) NOT NULL,
+    description TEXT NULL,
+    access_code CHAR(14) NOT NULL UNIQUE, -- Formato XXXX-XXXX-XXXX
+    privacy ENUM('public', 'private') DEFAULT 'public',
+    member_count INT DEFAULT 1,
+    profile_picture VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX (privacy),
+    INDEX (access_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2. Tabla de Miembros
+CREATE TABLE IF NOT EXISTS community_members (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    community_id INT NOT NULL,
+    user_id INT NOT NULL,
+    role ENUM('member', 'admin', 'moderator') DEFAULT 'member',
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (community_id) REFERENCES communities(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_membership (community_id, user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 3. Datos de Prueba (5 Grupos)
+-- Asegúrate de que el usuario con ID 1 exista, si no, cambia el creator_id
+INSERT IGNORE INTO communities (uuid, creator_id, community_name, description, access_code, privacy, member_count) VALUES
+('comm-uuid-001', 1, 'Desarrolladores PHP', 'Comunidad para amantes del código backend.', 'PHP7-CODE-2025', 'public', 120),
+('comm-uuid-002', 1, 'Diseño UI/UX', 'Compartimos recursos de diseño e inspiración.', 'DSGN-2025-FREE', 'public', 45),
+('comm-uuid-003', 1, 'Proyecto Aurora Secret', 'Solo personal autorizado del proyecto.', 'AURO-XH55-99ZZ', 'private', 5),
+('comm-uuid-004', 1, 'Gaming Latam', 'Torneos y discusiones sobre videojuegos.', 'GAME-PLAY-NOW1', 'public', 890),
+('comm-uuid-005', 1, 'Club de Lectura VIP', 'Acceso solo con invitación para lectores.', 'READ-BOOK-CLUB', 'private', 12);
