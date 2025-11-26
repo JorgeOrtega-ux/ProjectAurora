@@ -652,10 +652,6 @@
     cursor: pointer;
 }
 
-[data-selectable="true"]:hover {
-    background-color: #f5f5fa;
-}
-
 .component-table-row.selected {
     background-color: #f5f5fa;
     border-left-color: #000000;
