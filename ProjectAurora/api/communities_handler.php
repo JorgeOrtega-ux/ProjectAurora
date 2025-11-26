@@ -80,7 +80,8 @@ try {
 
     // --- OBTENER MIS COMUNIDADES (PÁGINA PRINCIPAL) ---
     } elseif ($action === 'get_my_communities') {
-        $sql = "SELECT c.id, c.community_name, c.description, c.privacy, c.member_count, c.profile_picture, cm.role
+        // [MODIFICADO] Se selecciona c.banner_picture
+        $sql = "SELECT c.id, c.community_name, c.description, c.privacy, c.member_count, c.profile_picture, c.banner_picture, cm.role
                 FROM communities c
                 JOIN community_members cm ON c.id = cm.community_id
                 WHERE cm.user_id = ?
@@ -93,8 +94,8 @@ try {
 
     // --- OBTENER COMUNIDADES PÚBLICAS (EXPLORAR) ---
     } elseif ($action === 'get_public_communities') {
-        // Buscar comunidades públicas donde el usuario NO sea miembro
-        $sql = "SELECT c.id, c.community_name, c.description, c.member_count, c.profile_picture
+        // [MODIFICADO] Se selecciona c.banner_picture
+        $sql = "SELECT c.id, c.community_name, c.description, c.member_count, c.profile_picture, c.banner_picture
                 FROM communities c
                 WHERE c.privacy = 'public'
                 AND c.id NOT IN (SELECT community_id FROM community_members WHERE user_id = ?)
