@@ -127,22 +127,16 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                     </div>
                 </div>
 
-                <div id="alert-config-container" class="d-none">
+                <div id="wrapper-date-picker" class="w-100 d-none">
                     <hr class="component-divider">
-                    
                     <div class="component-group-item component-group-item--stacked">
                         <div class="component-card__content">
                             <div class="component-card__text">
-                                <h2 class="component-card__title" data-i18n="admin.alerts.config_title">
-                                    <?php echo translation('admin.alerts.config_title'); ?>
-                                </h2>
-                                <p class="component-card__description" data-i18n="admin.alerts.config_desc">
-                                    <?php echo translation('admin.alerts.config_desc'); ?>
-                                </p>
+                                <h2 class="component-card__title" data-i18n="admin.alerts.date_title">Fecha y Hora</h2>
+                                <p class="component-card__description" data-i18n="admin.alerts.date_desc">Define cuándo se activará o mostrará esta información.</p>
                             </div>
                         </div>
-
-                        <div id="wrapper-date-picker" class="component-card__actions w-100 d-none">
+                        <div class="component-card__actions w-100">
                             <div class="trigger-select-wrapper w-100">
                                 <div class="trigger-selector" data-action="toggle-dropdown" data-target="popover-datetime-picker">
                                     <div class="trigger-select-icon">
@@ -178,43 +172,45 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                 </div>
                             </div>
                         </div>
-
                     </div>
-
-                    <div id="wrapper-link-container" class="component-group-item component-group-item--stacked d-none" style="border-top: 1px solid #00000010;">
-                        <div class="component-card__content">
-                            <div class="component-card__text">
-                                <label style="font-size: 14px; font-weight: 600; color: #333; display: block;" data-i18n="admin.alerts.link_label">
-                                    <?php echo translation('admin.alerts.link_label'); ?>
-                                </label>
-                                <p class="component-card__description">Enlace donde los usuarios pueden leer más información.</p>
-                            </div>
-                        </div>
-                        <div class="component-input-wrapper w-100" style="margin-top: 8px;">
-                            <div class="input-with-actions">
-                                <span class="material-symbols-rounded" style="color:#666; margin-right: 4px;">link</span>
-                                <input type="text" id="input-alert-link" class="component-text-input full-width" 
-                                       data-i18n-placeholder="admin.alerts.link_placeholder"
-                                       placeholder="https://...">
-                            </div>
-                        </div>
-                    </div>
-
                 </div>
 
-                <hr class="component-divider">
-
-                <div class="component-group-item">
-                    <div class="component-card__content">
-                         <div class="component-card__text">
-                            <h2 class="component-card__title">Vista Previa</h2>
-                            <p class="component-card__description" id="alert-preview-desc">Selecciona un tipo para ver la descripción.</p>
+                <div id="wrapper-link-container" class="w-100 d-none">
+                    <hr class="component-divider">
+                    <div class="component-group-item component-group-item--stacked">
+                        <div class="component-card__content">
+                            <div class="component-card__text">
+                                <h2 class="component-card__title" data-i18n="admin.alerts.link_label">Enlace de información</h2>
+                                <p class="component-card__description" data-i18n="admin.alerts.link_desc">Proporciona una URL para que los usuarios obtengan más detalles.</p>
+                            </div>
+                        </div>
+                        <div class="component-card__actions w-100">
+                            <div class="component-input-wrapper w-100">
+                                <div class="input-with-actions">
+                                    <span class="material-symbols-rounded" style="color:#666; margin-right: 4px;">link</span>
+                                    <input type="text" id="input-alert-link" class="component-text-input full-width" 
+                                           data-i18n-placeholder="admin.alerts.link_placeholder"
+                                           placeholder="https://...">
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="component-card__actions actions-right">
-                        <button class="component-button primary" id="btn-emit-selected-alert" disabled>
-                            <span data-i18n="admin.alerts.emit_btn"><?php echo translation('admin.alerts.emit_btn'); ?></span>
-                        </button>
+                </div>
+
+                <div id="wrapper-preview" class="w-100">
+                    <hr class="component-divider">
+                    <div class="component-group-item">
+                        <div class="component-card__content">
+                             <div class="component-card__text">
+                                <h2 class="component-card__title">Vista Previa</h2>
+                                <p class="component-card__description" id="alert-preview-desc">Selecciona un tipo para ver la descripción.</p>
+                            </div>
+                        </div>
+                        <div class="component-card__actions actions-right">
+                            <button class="component-button primary" id="btn-emit-selected-alert" disabled>
+                                <span data-i18n="admin.alerts.emit_btn"><?php echo translation('admin.alerts.emit_btn'); ?></span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 

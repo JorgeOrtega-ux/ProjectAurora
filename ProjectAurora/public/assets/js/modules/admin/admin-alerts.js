@@ -4,6 +4,22 @@ import { t } from '../../core/i18n-manager.js';
 import { postJson, setButtonLoading } from '../../core/utilities.js';
 import { closeAllModules } from '../../ui/main-controller.js';
 
+// --- CONFIGURACIÓN DE FLUJO ---
+const TYPES_WITH_DATE = [
+    'maintenance_warning',
+    'terms_update',
+    'privacy_update',
+    'cookie_update',
+    'update_info' // Flujo: Primero fecha
+];
+
+const TYPES_WITH_LINK = [
+    'update_info', // Flujo: Después enlace
+    'terms_update',
+    'privacy_update',
+    'cookie_update'
+];
+
 export function initAdminAlerts() {
     checkActiveAlert();
     initListeners();
@@ -89,45 +105,37 @@ function handleSelection(option) {
     const previewEl = document.getElementById('alert-preview-desc');
     if (previewEl) previewEl.textContent = t(descKey);
 
-    // Habilitar botón
+    // Habilitar botón principal
     const btn = document.getElementById('btn-emit-selected-alert');
     if (btn) {
         btn.disabled = false;
         btn.textContent = t('admin.alerts.emit_btn');
     }
 
-    // === LOGICA DE CAMPOS ADICIONALES ===
-    const configContainer = document.getElementById('alert-config-container');
+    // === LÓGICA SECUENCIAL ESTRICTA ===
     const dateWrapper = document.getElementById('wrapper-date-picker');
     const linkContainer = document.getElementById('wrapper-link-container');
 
-    // 1. Resetear todo a oculto
-    configContainer.classList.add('d-none');
+    // 1. RESET: Ocultar ambos wrappers completos
     dateWrapper.classList.add('d-none');
     linkContainer.classList.add('d-none');
 
-    // 2. Determinar requisitos
-    // Tipos con Fecha: maintenance, terms, privacy, cookie
-    const needsDate = ['maintenance_warning', 'terms_update', 'privacy_update', 'cookie_update'].includes(val);
-    // Tipos con Link: update_info, terms, privacy, cookie
-    const needsLink = ['update_info', 'terms_update', 'privacy_update', 'cookie_update'].includes(val);
+    const requiresDate = TYPES_WITH_DATE.includes(val);
+    const requiresLink = TYPES_WITH_LINK.includes(val);
 
-    if (needsDate || needsLink) {
-        configContainer.classList.remove('d-none');
-    }
-
-    // 3. Lógica Secuencial
-    if (needsDate) {
-        // Si requiere fecha, mostramos fecha primero. 
-        // El enlace se mostrará DESPUÉS de confirmar la fecha (ver handleDateTimeConfirm).
+    // 2. SECUENCIA:
+    if (requiresDate) {
+        // Si requiere fecha, mostramos el wrapper de fecha.
+        // El de enlace permanece oculto hasta confirmar.
         dateWrapper.classList.remove('d-none');
         
-        // Limpiamos texto del selector de fecha por si había uno previo
+        // Reset visual
         document.getElementById('selected-datetime-text').textContent = t('admin.alerts.select_date_placeholder');
         document.getElementById('input-alert-date').value = '';
+        document.getElementById('input-alert-time').value = '';
     } 
-    else if (needsLink) {
-        // Si NO requiere fecha pero SI enlace (ej: update_info), mostramos el enlace directamente
+    else if (requiresLink) {
+        // Si NO requiere fecha pero SÍ enlace, mostrar wrapper de enlace directamente
         linkContainer.classList.remove('d-none');
         setTimeout(() => document.getElementById('input-alert-link').focus(), 100);
     }
@@ -142,46 +150,49 @@ function handleDateTimeConfirm() {
         return;
     }
 
-    // Guardar en hiddens
+    // Guardar
     document.getElementById('input-alert-date').value = dateIn;
     document.getElementById('input-alert-time').value = timeIn;
 
-    // Formato legible para el trigger
-    const displayDate = new Date(dateIn + 'T00:00:00').toLocaleDateString(); // Ajuste zona horaria simple
+    // Actualizar texto visual
+    const displayDate = new Date(dateIn + 'T00:00:00').toLocaleDateString();
     const displayText = `${displayDate} ${timeIn ? 'a las ' + timeIn : ''}`;
-    
     document.getElementById('selected-datetime-text').textContent = displayText;
     
-    // Cerrar el popover
+    // Cerrar popover
     closeAllModules(); 
 
-    // === SECUENCIA: AHORA MOSTRAR ENLACE SI ES NECESARIO ===
+    // === PASO 2: MOSTRAR ENLACE SI ES NECESARIO ===
     const currentType = document.getElementById('input-alert-type').value;
-    const needsLink = ['terms_update', 'privacy_update', 'cookie_update'].includes(currentType);
+    const requiresLink = TYPES_WITH_LINK.includes(currentType);
     
-    if (needsLink) {
+    if (requiresLink) {
         const linkContainer = document.getElementById('wrapper-link-container');
         linkContainer.classList.remove('d-none');
-        linkContainer.classList.add('animate-fade-in'); // Pequeña animación visual
-        setTimeout(() => document.getElementById('input-alert-link').focus(), 100);
+        linkContainer.classList.add('animate-fade-in'); 
+        
+        setTimeout(() => {
+            const linkInput = document.getElementById('input-alert-link');
+            if (linkInput) linkInput.focus();
+        }, 200);
     }
 }
 
 function initListeners() {
     document.body.addEventListener('click', async (e) => {
         
-        // 1. Selección del Tipo de Alerta
+        // 1. Selección del Tipo
         const option = e.target.closest('[data-action="select-alert-option"]');
         if (option) {
             handleSelection(option);
             return;
         }
 
-        // 2. Confirmar Fecha en el Popover
+        // 2. Confirmar Fecha
         const confirmDateBtn = e.target.closest('[data-action="confirm-datetime"]');
         if (confirmDateBtn) {
             e.preventDefault();
-            e.stopPropagation(); // Evitar que se cierre inmediatamente por click outside
+            e.stopPropagation();
             handleDateTimeConfirm();
             return;
         }
@@ -192,21 +203,23 @@ function initListeners() {
             const type = document.getElementById('input-alert-type').value;
             if (!type) return;
 
-            // Validaciones
-            const needsDate = !document.getElementById('wrapper-date-picker').classList.contains('d-none');
-            // Check si el container de link está visible
-            const needsLink = !document.getElementById('wrapper-link-container').classList.contains('d-none');
+            // Validaciones (checking visibility of containers)
+            const dateWrapper = document.getElementById('wrapper-date-picker');
+            const linkContainer = document.getElementById('wrapper-link-container');
+            
+            const needsDate = !dateWrapper.classList.contains('d-none');
+            const needsLink = !linkContainer.classList.contains('d-none');
 
             const dateVal = document.getElementById('input-alert-date').value;
-            const timeVal = document.getElementById('input-alert-time').value;
             const linkVal = document.getElementById('input-alert-link').value;
+            const timeVal = document.getElementById('input-alert-time').value;
 
             if (needsDate && !dateVal) {
-                alert(t('admin.error.reason_required') + ' (Fecha faltante)');
+                alert(t('admin.error.reason_required') + ' (Falta la fecha)');
                 return;
             }
             if (needsLink && !linkVal) {
-                alert(t('admin.error.reason_required') + ' (Enlace faltante)');
+                alert(t('admin.error.reason_required') + ' (Falta el enlace)');
                 return;
             }
 
@@ -245,7 +258,8 @@ function initListeners() {
             
             if (res.success) {
                 if(window.alertManager) window.alertManager.showAlert(res.message, 'info');
-                // Limpiar UI
+                
+                // Reset UI
                 document.getElementById('selected-datetime-text').textContent = t('admin.alerts.select_date_placeholder');
                 document.getElementById('input-alert-date').value = '';
                 document.getElementById('input-alert-time').value = '';
