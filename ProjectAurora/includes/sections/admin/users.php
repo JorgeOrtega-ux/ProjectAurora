@@ -199,7 +199,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
         <div class="component-toolbar d-none" id="toolbar-selected">
             <div class="component-toolbar__group">
                 <button class="component-icon-button" id="btn-manage-general" data-i18n-tooltip="admin.users.actions.manage" data-tooltip="<?php echo translation('admin.users.actions.manage'); ?>"><span class="material-symbols-rounded">manage_accounts</span></button>
-                <button class="component-icon-button" id="btn-manage-role" data-i18n-tooltip="admin.users.actions.role" data-tooltip="Rol de usuario"><span class="material-symbols-rounded">shield_person</span></button>
+                <button class="component-icon-button" id="btn-edit-user" data-i18n-tooltip="global.edit" data-tooltip="Editar Usuario"><span class="material-symbols-rounded">edit_square</span></button> <button class="component-icon-button" id="btn-manage-role" data-i18n-tooltip="admin.users.actions.role" data-tooltip="Rol de usuario"><span class="material-symbols-rounded">shield_person</span></button>
                 <button class="component-icon-button" id="btn-manage-sanctions" data-i18n-tooltip="admin.users.actions.sanctions" data-tooltip="<?php echo translation('admin.users.actions.sanctions'); ?>"><span class="material-symbols-rounded">gavel</span></button>
             </div>
             <div class="component-toolbar__right">

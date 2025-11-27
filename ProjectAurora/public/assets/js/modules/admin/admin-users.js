@@ -1,4 +1,4 @@
-// public/assets/js/modules/admin-users.js
+// public/assets/js/modules/admin/admin-users.js
 
 import { t } from '../../core/i18n-manager.js';
 
@@ -52,8 +52,6 @@ function initGlobalListeners() {
             return;
         }
 
-        // [MODIFICADO] Eliminado el manejador de toggle-dropdown (ahora en main-controller)
-
         // 4. Selección de Filtro
         const filterOption = e.target.closest('[data-action="filter-users"]');
         if (filterOption) {
@@ -64,7 +62,6 @@ function initGlobalListeners() {
 
         // Clic fuera para deseleccionar usuarios
         if (selectedUserId) {
-            // Ajustado para ignorar clics en cosas genéricas de UI
             const clickedRow = e.target.closest('[data-selectable="true"]');
             const clickedToolbar = e.target.closest('#toolbar-selected');
             const clickedDropdown = e.target.closest('.popover-module');
@@ -84,39 +81,26 @@ function initGlobalListeners() {
 
         if (e.key === 'Escape') {
             if (selectedUserId) deselectAllUsers();
-            // closeAllDropdowns ya no es necesario aquí, main-controller lo maneja
         }
     });
 }
 
-// [MODIFICADO] Eliminadas funciones toggleDropdown y closeAllDropdowns locales
-
 function handleFilterSelection(option) {
     const sortValue = option.dataset.sort;
-    if (sortValue === currentSort) {
-        // closeAllDropdowns(); // Ya manejado por handleDropdownSelection en main-controller
-        return;
-    }
+    if (sortValue === currentSort) return;
 
     currentSort = sortValue;
     
-    // La actualización visual del check la maneja main-controller ahora, 
-    // pero si necesitamos lógica específica extra (como el botón principal), la dejamos:
     const triggerBtn = document.querySelector('[data-target="dropdown-admin-filters"]');
     if (triggerBtn) {
         if (currentSort !== 'date_newest') triggerBtn.classList.add('active');
         else triggerBtn.classList.remove('active');
     }
 
-    // closeAllDropdowns(); // Ya manejado por main-controller
-    
     const searchInput = document.getElementById('admin-users-search-input');
     const query = searchInput ? searchInput.value : '';
     loadUsersTable(1, query, currentSort);
 }
-
-// --- LÓGICA DE UI (Selección de filas, toolbar) ---
-// (Se mantiene igual que antes)
 
 function handleRowSelection(event, clickedRow) {
     if (clickedRow.classList.contains('selected')) {
@@ -165,10 +149,12 @@ function setupActionButtons(uid) {
     const btnSanctions = document.getElementById('btn-manage-sanctions');
     const btnGeneral = document.getElementById('btn-manage-general');
     const btnRole = document.getElementById('btn-manage-role');
+    const btnEdit = document.getElementById('btn-edit-user'); // [NUEVO]
 
     if (btnSanctions) btnSanctions.onclick = () => uid && window.navigateTo('admin/user-status?uid=' + uid);
     if (btnGeneral) btnGeneral.onclick = () => uid && window.navigateTo('admin/user-manage?uid=' + uid);
     if (btnRole) btnRole.onclick = () => uid && window.navigateTo('admin/user-role?uid=' + uid);
+    if (btnEdit) btnEdit.onclick = () => uid && window.navigateTo('admin/user-edit?uid=' + uid); // [NUEVO]
 }
 
 async function loadUsersTable(page, query, sort = 'date_newest') {
@@ -203,7 +189,6 @@ async function loadUsersTable(page, query, sort = 'date_newest') {
     }
 }
 
-// --- LÓGICA DE PRESENCIA ---
 function initLivePresence() {
     const socket = window.socketService ? window.socketService.socket : null;
     

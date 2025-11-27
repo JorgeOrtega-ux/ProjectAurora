@@ -11,7 +11,7 @@ import { initNotificationsManager } from './modules/social/notifications-manager
 import { initFriendsManager } from './modules/social/friends-manager.js';
 import { initSettingsManager } from './modules/settings-manager.js';
 import { initCommunitiesManager } from './modules/communities-manager.js'; 
-import { initBannerManager } from './modules/banner-manager.js'; // [NUEVO]
+import { initBannerManager } from './modules/banner-manager.js';
 
 // [UI]
 import { initMainController } from './ui/main-controller.js';
@@ -28,7 +28,8 @@ import { initAdminUsers } from './modules/admin/admin-users.js';
 import { initAdminUserDetails } from './modules/admin/admin-user-details.js';
 import { initAdminServer } from './modules/admin/admin-server.js';
 import { initAdminBackups } from './modules/admin/admin-backups.js';
-import { initAdminAlerts } from './modules/admin/admin-alerts.js'; // [NUEVO]
+import { initAdminAlerts } from './modules/admin/admin-alerts.js';
+import { initAdminUserEdit } from './modules/admin/admin-user-edit.js'; // [NUEVO]
 
 /**
  * Manejador de módulos por sección.
@@ -38,9 +39,13 @@ export async function handleModuleLoading() {
     const adminDashboard = document.querySelector('[data-section="admin/dashboard"]');
     const adminUsers = document.querySelector('[data-section="admin/users"]');
     const adminUserDetails = document.querySelector('[data-section^="admin/user-"]'); 
+    // Nota: adminUserDetails detecta user-status, user-manage, user-role y ahora user-edit si empieza por user-
+    // Sin embargo, para evitar conflictos, verificamos específicamente user-edit
+    const adminUserEdit = document.querySelector('[data-section="admin/user-edit"]');
+    
     const adminServer = document.querySelector('[data-section="admin/server"]');
     const adminBackups = document.querySelector('[data-section="admin/backups"]');
-    const adminAlerts = document.querySelector('[data-section="admin/alerts"]'); // [NUEVO]
+    const adminAlerts = document.querySelector('[data-section="admin/alerts"]');
     
     // Secciones de comunidad
     const joinComm = document.querySelector('[data-section="join-community"]');
@@ -49,10 +54,15 @@ export async function handleModuleLoading() {
 
     if (adminDashboard) initAdminDashboard();
     if (adminUsers) initAdminUsers();
-    if (adminUserDetails) initAdminUserDetails();
+    
+    // user-details maneja status, manage, history, role.
+    // user-edit es un módulo separado.
+    if (adminUserDetails && !adminUserEdit) initAdminUserDetails();
+    if (adminUserEdit) initAdminUserEdit(); // [NUEVO]
+
     if (adminServer) initAdminServer();
     if (adminBackups) initAdminBackups();
-    if (adminAlerts) initAdminAlerts(); // [NUEVO]
+    if (adminAlerts) initAdminAlerts();
 
     // Inicializar lógica de comunidades si estamos en vistas relevantes
     if (joinComm || mainPage || explorerPage) {
@@ -81,7 +91,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         initFriendsManager();
         initDragController();
         
-        initBannerManager(); // [NUEVO] Iniciar el gestor de banners globalmente
+        initBannerManager();
 
         // Exponer la función de carga
         window.loadDynamicModules = handleModuleLoading;

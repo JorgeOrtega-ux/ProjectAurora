@@ -729,3 +729,32 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-11-27 10:41:47,052 - INFO - Usuario 1 desconectado completamente.
 2025-11-27 10:41:47,414 - INFO - connection open
 2025-11-27 10:41:47,436 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: 1jldasd9...
+2025-11-27 10:59:06,171 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 10:59:06,922 - INFO - connection open
+2025-11-27 10:59:06,933 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: 1jldasd9...
+2025-11-27 10:59:46,162 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 10:59:46,361 - INFO - connection open
+2025-11-27 10:59:46,379 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: 1jldasd9...
+2025-11-27 11:03:39,331 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 11:03:39,428 - INFO - connection open
+2025-11-27 11:03:39,448 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: 1jldasd9...
+2025-11-27 11:08:22,764 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 11:08:23,481 - INFO - connection open
+2025-11-27 11:08:23,491 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: 1jldasd9...
+2025-11-27 11:08:46,008 - INFO - connection open
+2025-11-27 11:08:46,011 - INFO - Usuario conectado: ID 2 | Rol: administrator | Sesión: bm7rhqki...
+2025-11-27 11:08:55,021 - INFO - 📨 Notificación a Usuario 2: admin_notification 
+2025-11-27 11:09:04,396 - INFO - 📨 Notificación a Usuario 2: admin_notification 
+2025-11-27 11:09:10,727 - INFO - 📨 Notificación a Usuario 2: admin_notification 
+2025-11-27 11:09:28,253 - INFO - 📨 Notificación a Usuario 2: admin_notification 
+2025-11-27 11:10:12,800 - INFO - 📨 Notificación a Usuario 2: admin_notification 
+2025-11-27 11:10:16,818 - INFO - 📨 Notificación a Usuario 2: admin_notification 
+2025-11-27 11:13:52,043 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 11:13:52,550 - INFO - connection open
+2025-11-27 11:13:52,573 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: 1jldasd9...
+2025-11-27 11:14:04,806 - INFO - 📨 Notificación a Usuario 2: admin_notification 
+2025-11-27 11:14:10,438 - INFO - 📨 Notificación a Usuario 2: admin_notification 
+2025-11-27 11:14:17,874 - INFO - 📨 Notificación a Usuario 2: admin_notification 
+2025-11-27 11:16:32,277 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 11:16:32,452 - INFO - connection open
+2025-11-27 11:16:32,454 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: 1jldasd9...

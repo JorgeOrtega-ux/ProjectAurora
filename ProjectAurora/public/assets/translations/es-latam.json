@@ -327,7 +327,11 @@
         "request_cancelled": "Solicitud cancelada.",
         "request_declined": "Solicitud rechazada.",
         "friend_removed": "Amigo eliminado.",
-        "now_friends": "¡Ahora son amigos!"
+        "now_friends": "¡Ahora son amigos!",
+        "admin_update_pfp": "Un administrador actualizó tu foto de perfil.",
+        "admin_reset_pfp": "Un administrador restableció tu foto de perfil.",
+        "admin_update_username": "Un administrador cambió tu nombre de usuario a <strong>{username}</strong>.",
+        "admin_update_email": "Un administrador cambió tu correo a <strong>{email}</strong>."
     },
     "admin": {
         "sidebar": {

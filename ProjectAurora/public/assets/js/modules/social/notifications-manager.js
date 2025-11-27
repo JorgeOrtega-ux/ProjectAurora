@@ -20,7 +20,14 @@ function renderNotifications(notifs) {
     notifs.forEach(n => {
         const role = n.sender_role || 'user'; 
         const avatar = n.sender_profile_picture ? (window.BASE_PATH || '/ProjectAurora/') + n.sender_profile_picture : null;
-        const avatarHtml = avatar ? `<img src="${avatar}" class="notif-avatar">` : `<span class="material-symbols-rounded notif-default-icon">person</span>`;
+        
+        // Manejo especial para notificaciones de sistema/admin que no tienen sender_profile_picture
+        let avatarHtml;
+        if (n.type === 'admin_alert' || n.type === 'system') {
+             avatarHtml = `<span class="material-symbols-rounded notif-default-icon" style="color: #1976d2;">admin_panel_settings</span>`;
+        } else {
+             avatarHtml = avatar ? `<img src="${avatar}" class="notif-avatar">` : `<span class="material-symbols-rounded notif-default-icon">person</span>`;
+        }
         
         let actionsHtml = '';
         if (n.type === 'friend_request') {
@@ -34,6 +41,7 @@ function renderNotifications(notifs) {
 
         const unreadDot = (parseInt(n.is_read) === 0) ? '<div class="unread-dot"></div>' : '';
 
+        // Para admin_alert usamos un estilo ligeramente distinto o el mismo
         html += `
             <div class="notification-item" data-nid="${n.id}" data-sid="${n.related_id}">
                 <div class="notif-left">
@@ -105,6 +113,12 @@ function initSocketListener() {
 
         if (type === 'request_cancelled' || type === 'friend_removed') {
             loadNotifications();
+        }
+
+        // [NUEVO] Escuchar notificaciones de admin
+        if (type === 'admin_notification') {
+            if (alertMgr) alertMgr.showAlert(payload.message, 'info'); // Mostrar toast
+            loadNotifications(); // Recargar lista
         }
     });
     
