@@ -758,3 +758,14 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-11-27 11:16:32,277 - INFO - Usuario 1 desconectado completamente.
 2025-11-27 11:16:32,452 - INFO - connection open
 2025-11-27 11:16:32,454 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: 1jldasd9...
+2025-11-27 11:31:51,349 - INFO - Usuario 2 desconectado completamente.
+2025-11-27 11:31:52,373 - INFO - connection open
+2025-11-27 11:31:52,384 - INFO - Usuario conectado: ID 2 | Rol: administrator | Sesión: bm7rhqki...
+2025-11-27 11:32:44,333 - INFO - 📨 Notificación a Usuario 2: admin_notification 
+2025-11-27 11:32:49,093 - INFO - Usuario 2 desconectado completamente.
+2025-11-27 11:32:49,206 - INFO - connection open
+2025-11-27 11:32:49,226 - INFO - Usuario conectado: ID 2 | Rol: administrator | Sesión: bm7rhqki...
+2025-11-27 11:32:55,148 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 11:32:55,402 - INFO - connection open
+2025-11-27 11:32:55,407 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: 1jldasd9...
+2025-11-27 11:33:15,940 - INFO - Usuario 2 desconectado completamente.

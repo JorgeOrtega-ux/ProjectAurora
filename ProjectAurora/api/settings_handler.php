@@ -95,7 +95,6 @@ function parse_user_agent($userAgent) {
 
 try {
 
-    // ... (UPDATE PICTURE Y USERNAME se mantienen igual) ...
     if ($action === 'update_profile_picture') {
         check_cooldown($pdo, $userId, 'profile_picture', 1);
         if (!isset($_FILES['profile_picture']) || $_FILES['profile_picture']['error'] !== UPLOAD_ERR_OK) {
@@ -148,10 +147,22 @@ try {
         $stmt->execute([$userId]);
         $user = $stmt->fetch();
         if (!$user) throw new Exception(translation('admin.error.user_not_found'));
+        
         $oldPic = $user['profile_picture'];
         $username = $user['username'];
         
-        // [CORREGIDO] Se usa get_random_color() centralizada
+        // --- [NUEVA PROTECCIÓN] ---
+        // Si ya es default, devolvemos éxito sin hacer nada.
+        if ($oldPic && strpos($oldPic, '/default/') !== false) {
+            echo json_encode([
+                'success' => true, 
+                'message' => translation('settings.profile.reset'), 
+                'avatar_url' => '/ProjectAurora/' . $oldPic
+            ]);
+            exit;
+        }
+        // --------------------------
+        
         $color = get_random_color();
         
         $uuid = generate_uuid();
@@ -161,13 +172,16 @@ try {
         if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
         $destPath = $uploadDir . $newFileName;
         $dbPath = 'assets/uploads/profile_pictures/default/' . $newFileName;
+        
         $imageContent = @file_get_contents($apiUrl);
         if ($imageContent !== false) file_put_contents($destPath, $imageContent);
+        
         if ($oldPic && file_exists(__DIR__ . '/../public/' . $oldPic)) {
             if (strpos($oldPic, 'custom/') !== false) {
                 @unlink(__DIR__ . '/../public/' . $oldPic);
             }
         }
+        
         $stmt = $pdo->prepare("UPDATE users SET profile_picture = ? WHERE id = ?");
         if ($stmt->execute([$dbPath, $userId])) {
             $_SESSION['user_profile_picture'] = $dbPath;
@@ -194,7 +208,9 @@ try {
         $stmtGet = $pdo->prepare("SELECT username FROM users WHERE id = ?");
         $stmtGet->execute([$userId]);
         $oldUsername = $stmtGet->fetchColumn();
+        
         if ($oldUsername === $newUsername) throw new Exception(translation('settings.username.same'));
+        
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? AND id != ?");
         $stmt->execute([$newUsername, $userId]);
         if ($stmt->rowCount() > 0) throw new Exception(translation('settings.username.taken'));
@@ -223,7 +239,10 @@ try {
         $stmtGet = $pdo->prepare("SELECT email FROM users WHERE id = ?");
         $stmtGet->execute([$userId]);
         $oldEmail = $stmtGet->fetchColumn();
-        if ($oldEmail === $newEmail) throw new Exception(translation('settings.username.same'));
+        
+        // [CORRECCIÓN APLICADA: settings.email.same]
+        if ($oldEmail === $newEmail) throw new Exception(translation('settings.email.same'));
+        
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
         $stmt->execute([$newEmail, $userId]);
         if ($stmt->rowCount() > 0) throw new Exception(translation('auth.errors.email_exists'));
@@ -236,7 +255,6 @@ try {
             throw new Exception(translation('global.error_connection'));
         }
 
-    // ... (RESTO DE ACCIONES: password, preferences, 2fa, sessions, delete_account se mantienen igual) ...
     } elseif ($action === 'verify_current_password') {
         $currentPassword = $data['password'] ?? '';
         if (empty($currentPassword)) throw new Exception(translation('auth.errors.all_required'));

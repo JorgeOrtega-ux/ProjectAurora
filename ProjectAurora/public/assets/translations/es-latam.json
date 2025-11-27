@@ -280,6 +280,9 @@
             "same": "El nombre de usuario es igual al actual.",
             "taken": "Este nombre de usuario ya está en uso."
         },
+        "email": {
+            "same": "El correo electrónico es igual al actual."
+        },
         "password": {
             "verified": "Contraseña verificada.",
             "invalid_current": "La contraseña actual es incorrecta."
