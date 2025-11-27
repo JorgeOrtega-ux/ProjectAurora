@@ -103,18 +103,20 @@ function initJoinByCode() {
 // --- CARGADORES ---
 async function loadMyCommunities() {
     const container = document.getElementById('my-communities-list');
+    const emptyState = document.getElementById('my-communities-empty'); // Referencia al estado vacío externo
     if (!container) return;
 
     const res = await postJson('api/communities_handler.php', { action: 'get_my_communities' });
     
+    // Limpiar el spinner
+    container.innerHTML = '';
+
     if (res.success && res.communities.length > 0) {
         container.innerHTML = res.communities.map(c => renderCommunityCard(c, true)).join('');
+        if (emptyState) emptyState.classList.add('d-none');
     } else {
-        container.innerHTML = `
-            <div class="search-empty-state" style="grid-column: 1 / -1;">
-                <span class="material-symbols-rounded">diversity_3</span>
-                <p>No estás en ninguna comunidad aún.</p>
-            </div>`;
+        // Mostrar el estado vacío externo
+        if (emptyState) emptyState.classList.remove('d-none');
     }
 }
 
@@ -161,7 +163,17 @@ function initListeners() {
             const res = await postJson('api/communities_handler.php', { action: 'leave_community', community_id: id });
             if (res.success) {
                 if(window.alertManager) window.alertManager.showAlert(res.message, 'info');
-                leaveBtn.closest('.comm-card').remove();
+                
+                // Remover tarjeta y verificar si quedó vacío
+                const card = leaveBtn.closest('.comm-card');
+                const container = card.parentElement;
+                card.remove();
+                
+                if (container && container.children.length === 0) {
+                    const emptyState = document.getElementById('my-communities-empty');
+                    if (emptyState) emptyState.classList.remove('d-none');
+                }
+
             } else {
                 if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
                 leaveBtn.innerHTML = originalHTML;

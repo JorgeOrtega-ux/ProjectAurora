@@ -650,6 +650,9 @@
     animation: slideUpFade 0.3s ease-in forwards;
 }
 
+.full-height {
+    height: 100%;
+}
 @keyframes slideUpFade {
     to {
         transform: translateY(-100%);
