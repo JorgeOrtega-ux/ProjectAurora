@@ -11,9 +11,24 @@ if (!in_array($role, ['founder', 'administrator'])) {
 
 <div class="section-content active" data-section="admin/dashboard">
     
-    <div class="component-wrapper section-with-toolbar" style="padding-top: 20px !important; max-width: 100%;">
+    <div class="toolbar-stack">
+        <div class="component-toolbar">
+            <div class="component-toolbar__group">
+                <span class="toolbar-title-actions" style="margin-left: 8px;" data-i18n="nav.admin_dashboard"><?php echo translation('nav.admin_dashboard'); ?></span>
+            </div>
+            <div class="component-toolbar__right">
+                <button class="component-icon-button" data-nav="admin/alerts" 
+                        data-i18n-tooltip="admin.alerts_title" 
+                        data-tooltip="<?php echo translation('admin.alerts_title'); ?>">
+                    <span class="material-symbols-rounded">campaign</span>
+                </button>
+            </div>
+        </div>
+    </div>
 
-        <div class="dashboard-stats-grid mt-16">
+    <div class="component-wrapper section-with-toolbar" style="max-width: 100%;">
+
+        <div class="dashboard-stats-grid">
             
             <div class="component-card component-card--column">
                 <div class="component-card__content" style="width:100%; gap:16px;">

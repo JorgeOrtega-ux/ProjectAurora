@@ -57,45 +57,86 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                 </div>
             </div>
 
-            <div class="dashboard-stats-grid">
-                <?php
-                $templates = [
-                    ['id' => 'maintenance_warning', 'icon' => 'engineering', 'color' => '#f57c00', 'bg' => '#fff3e0'],
-                    ['id' => 'high_traffic', 'icon' => 'dns', 'color' => '#d32f2f', 'bg' => '#ffebee'],
-                    ['id' => 'critical_issue', 'icon' => 'report', 'color' => '#c62828', 'bg' => '#ffcdd2'],
-                    ['id' => 'update_info', 'icon' => 'info', 'color' => '#1976d2', 'bg' => '#e3f2fd']
-                ];
+            <div class="component-card component-card--grouped">
+                <input type="hidden" id="input-alert-type" value="">
 
-                foreach ($templates as $tpl) {
-                    $titleKey = "admin.alerts.templates.{$tpl['id']}.title";
-                    $descKey = "admin.alerts.templates.{$tpl['id']}.desc";
-                    ?>
-                    <div class="component-card component-card--column alert-template-card" data-template-id="<?php echo $tpl['id']; ?>">
-                        <div class="component-card__content" style="width:100%; gap:12px;">
-                            <div class="component-icon-container" style="background-color: <?php echo $tpl['bg']; ?>; border-color: <?php echo $tpl['bg']; ?>;">
-                                <span class="material-symbols-rounded" style="color: <?php echo $tpl['color']; ?>;"><?php echo $tpl['icon']; ?></span>
-                            </div>
-                            <div class="component-card__text">
-                                <h2 class="component-card__title" data-i18n="<?php echo $titleKey; ?>">
-                                    <?php echo translation($titleKey); ?>
-                                </h2>
-                                <p class="component-card__description" data-i18n="<?php echo $descKey; ?>">
-                                    <?php echo translation($descKey); ?>
-                                </p>
-                            </div>
-                        </div>
-                        <div class="component-card__actions w-100" style="justify-content: flex-end;">
-                            <button class="component-button primary btn-emit-alert" 
-                                    data-action="emit-alert" 
-                                    data-id="<?php echo $tpl['id']; ?>"
-                                    data-i18n="admin.alerts.emit_btn">
-                                <?php echo translation('admin.alerts.emit_btn'); ?>
-                            </button>
+                <div class="component-group-item component-group-item--stacked">
+                    <div class="component-card__content">
+                        <div class="component-card__text">
+                            <h2 class="component-card__title" data-i18n="admin.alerts.select_title">Seleccionar Alerta</h2>
+                            <p class="component-card__description" data-i18n="admin.alerts.select_desc">Elige el tipo de mensaje global que verán los usuarios.</p>
                         </div>
                     </div>
-                    <?php
-                }
-                ?>
+                    
+                    <div class="component-card__actions w-100">
+                        <div class="trigger-select-wrapper w-100">
+                            <div class="trigger-selector" data-action="toggle-dropdown" data-target="dropdown-alert-types">
+                                <div class="trigger-select-icon">
+                                    <span class="material-symbols-rounded" id="current-alert-icon">campaign</span>
+                                </div>
+                                <div class="trigger-select-text">
+                                    <span id="current-alert-text">Selecciona una alerta...</span>
+                                </div>
+                                <div class="trigger-select-arrow">
+                                    <span class="material-symbols-rounded">arrow_drop_down</span>
+                                </div>
+                            </div>
+
+                            <div class="popover-module popover-module--anchor-width body-title disabled" id="dropdown-alert-types">
+                                <div class="menu-content">
+                                    <div class="menu-list">
+                                        <?php
+                                        $templates = [
+                                            ['id' => 'maintenance_warning', 'icon' => 'engineering', 'color' => '#f57c00'],
+                                            ['id' => 'high_traffic', 'icon' => 'dns', 'color' => '#212121'],
+                                            ['id' => 'critical_issue', 'icon' => 'report', 'color' => '#d32f2f'],
+                                            ['id' => 'update_info', 'icon' => 'info', 'color' => '#1976d2']
+                                        ];
+
+                                        foreach ($templates as $tpl) {
+                                            $titleKey = "admin.alerts.templates.{$tpl['id']}.title";
+                                            $titleVal = translation($titleKey);
+                                            ?>
+                                            <div class="menu-link" 
+                                                 data-action="select-alert-option" 
+                                                 data-value="<?php echo $tpl['id']; ?>"
+                                                 data-label="<?php echo $titleVal; ?>"
+                                                 data-icon="<?php echo $tpl['icon']; ?>"
+                                                 data-color="<?php echo $tpl['color']; ?>">
+                                                <div class="menu-link-icon">
+                                                    <span class="material-symbols-rounded" style="color: <?php echo $tpl['color']; ?>"><?php echo $tpl['icon']; ?></span>
+                                                </div>
+                                                <div class="menu-link-text">
+                                                    <?php echo $titleVal; ?>
+                                                </div>
+                                                <div class="menu-link-icon"></div>
+                                            </div>
+                                            <?php
+                                        }
+                                        ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="component-divider">
+
+                <div class="component-group-item">
+                    <div class="component-card__content">
+                         <div class="component-card__text">
+                            <h2 class="component-card__title">Vista Previa</h2>
+                            <p class="component-card__description" id="alert-preview-desc">Selecciona un tipo para ver la descripción.</p>
+                        </div>
+                    </div>
+                    <div class="component-card__actions actions-right">
+                        <button class="component-button primary" id="btn-emit-selected-alert" disabled>
+                            <span data-i18n="admin.alerts.emit_btn"><?php echo translation('admin.alerts.emit_btn'); ?></span>
+                        </button>
+                    </div>
+                </div>
+
             </div>
         </div>
 
