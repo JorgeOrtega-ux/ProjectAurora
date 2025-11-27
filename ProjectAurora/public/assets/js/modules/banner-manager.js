@@ -91,7 +91,15 @@ function renderBanner(type, instanceId, metaData = {}) {
         </button>
     `;
 
-    document.body.prepend(banner);
+    // [CORREGIDO] Inyectar dentro de .main-content
+    const targetContainer = document.querySelector('.main-content');
+    
+    if (targetContainer) {
+        targetContainer.prepend(banner);
+    } else {
+        // Fallback al body si no existe el layout principal (ej: login fuera del layout app)
+        document.body.prepend(banner);
+    }
 
     // Lógica de cierre
     banner.querySelector('.banner-close').addEventListener('click', () => {
