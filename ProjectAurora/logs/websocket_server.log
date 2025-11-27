@@ -769,3 +769,52 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-11-27 11:32:55,402 - INFO - connection open
 2025-11-27 11:32:55,407 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: 1jldasd9...
 2025-11-27 11:33:15,940 - INFO - Usuario 2 desconectado completamente.
+2025-11-27 11:35:45,757 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 13:51:26,775 - INFO - ✅ Pool de conexiones a base de datos inicializado.
+2025-11-27 13:51:26,814 - INFO - === Servidor Aurora Iniciado (Async + Logging Profesional) ===
+2025-11-27 13:51:28,532 - INFO - server listening on 0.0.0.0:8080
+2025-11-27 13:51:29,012 - INFO - connection open
+2025-11-27 13:51:29,016 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 13:51:39,826 - INFO - connection open
+2025-11-27 13:51:39,831 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 13:51:54,014 - INFO - connection open
+2025-11-27 13:51:54,017 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 13:51:59,031 - INFO - connection open
+2025-11-27 13:51:59,033 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 13:52:00,714 - INFO - connection open
+2025-11-27 13:52:00,718 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 13:52:05,765 - INFO - connection open
+2025-11-27 13:52:05,768 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 13:52:11,720 - INFO - connection open
+2025-11-27 13:52:11,722 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 13:52:17,727 - INFO - connection open
+2025-11-27 13:52:17,730 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 13:52:23,726 - INFO - connection open
+2025-11-27 13:52:23,730 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 13:52:29,734 - INFO - connection open
+2025-11-27 13:52:29,739 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 13:52:35,229 - INFO - connection open
+2025-11-27 13:52:35,234 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 13:52:37,757 - INFO - connection open
+2025-11-27 13:52:37,773 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 13:52:42,779 - INFO - connection open
+2025-11-27 13:52:42,782 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 13:52:47,789 - INFO - connection open
+2025-11-27 13:52:47,942 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 13:52:52,948 - INFO - connection open
+2025-11-27 13:52:52,953 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 13:52:57,973 - INFO - connection open
+2025-11-27 13:52:57,977 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 13:53:02,992 - INFO - connection open
+2025-11-27 13:53:02,995 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 13:53:15,317 - INFO - ✅ Pool de conexiones a base de datos inicializado.
+2025-11-27 13:53:15,444 - INFO - === Servidor Aurora Iniciado (Async + Logging Profesional) ===
+2025-11-27 13:53:15,563 - INFO - server listening on 0.0.0.0:8080
+2025-11-27 13:53:16,047 - INFO - connection open
+2025-11-27 13:53:16,050 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 13:53:19,341 - INFO - connection open
+2025-11-27 13:53:19,345 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: 1jldasd9...
+2025-11-27 13:54:45,982 - INFO - 📨 Notificación a Usuario 1: admin_notification 
+2025-11-27 13:55:01,214 - INFO - 📨 Notificación a Usuario 1: admin_notification 
+2025-11-27 13:55:12,454 - INFO - 📨 Notificación a Usuario 1: admin_notification 
+2025-11-27 13:55:19,563 - INFO - 📨 Notificación a Usuario 1: admin_notification 

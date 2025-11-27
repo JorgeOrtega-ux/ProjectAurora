@@ -62,11 +62,13 @@ function check_cooldown($pdo, $userId, $type, $daysLimit) {
     }
 }
 
+// [MODIFICADO] Función audit_log actualizada para incluir performed_by
 function audit_log($pdo, $userId, $type, $oldValue, $newValue) {
     try {
         $ip = get_client_ip();
-        $stmt = $pdo->prepare("INSERT INTO user_audit_logs (user_id, change_type, old_value, new_value, changed_by_ip, changed_at) VALUES (?, ?, ?, ?, ?, NOW())");
-        $stmt->execute([$userId, $type, $oldValue, $newValue, $ip]);
+        // Insertamos $userId en performed_by porque en settings el usuario se modifica a sí mismo
+        $stmt = $pdo->prepare("INSERT INTO user_audit_logs (user_id, performed_by, change_type, old_value, new_value, changed_by_ip, changed_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+        $stmt->execute([$userId, $userId, $type, $oldValue, $newValue, $ip]);
     } catch (Exception $e) {
         error_log("Error al crear audit_log: " . $e->getMessage());
     }
@@ -240,7 +242,6 @@ try {
         $stmtGet->execute([$userId]);
         $oldEmail = $stmtGet->fetchColumn();
         
-        // [CORRECCIÓN APLICADA: settings.email.same]
         if ($oldEmail === $newEmail) throw new Exception(translation('settings.email.same'));
         
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ?");

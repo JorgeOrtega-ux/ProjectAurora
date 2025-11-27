@@ -71,10 +71,12 @@ function getDbBinary($binaryName) {
     return $binaryName;
 }
 
+// [MODIFICADO] Función admin_audit_log actualizada para incluir performed_by
 function admin_audit_log($pdo, $targetUserId, $type, $oldVal, $newVal, $adminId) {
     $ip = get_client_ip();
-    $stmt = $pdo->prepare("INSERT INTO user_audit_logs (user_id, change_type, old_value, new_value, changed_by_ip, changed_at) VALUES (?, ?, ?, ?, ?, NOW())");
-    $stmt->execute([$targetUserId, $type, $oldVal, $newVal, $ip]);
+    // Insertamos $adminId en performed_by
+    $stmt = $pdo->prepare("INSERT INTO user_audit_logs (user_id, performed_by, change_type, old_value, new_value, changed_by_ip, changed_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+    $stmt->execute([$targetUserId, $adminId, $type, $oldVal, $newVal, $ip]);
     
     global $logFile;
     $msg = sprintf(

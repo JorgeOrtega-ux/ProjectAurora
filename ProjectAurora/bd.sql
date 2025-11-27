@@ -111,16 +111,18 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- AUDITORÍA GENERAL
+-- AUDITORÍA GENERAL [MODIFICADO: Agregado performed_by]
 CREATE TABLE IF NOT EXISTS user_audit_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
+    performed_by INT NULL, -- ID de quien realizó la acción (usuario o admin)
     change_type ENUM('username', 'email', 'profile_picture', 'password', '2fa_disabled') NOT NULL,
     old_value TEXT NULL,
     new_value TEXT NULL,
     changed_by_ip VARCHAR(45) NOT NULL,
     changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (performed_by) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_audit_check (user_id, change_type, changed_at)
 );
 
