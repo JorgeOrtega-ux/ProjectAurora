@@ -210,7 +210,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
 
     <div class="component-wrapper section-with-toolbar admin-users-content-wrapper">
         
-        <div class="component-header-card w-100" style="margin-bottom: 16px; text-align: left;">
+        <div class="component-header-card w-100">
             <h1 class="component-page-title" data-i18n="admin.users_title"><?php echo translation('admin.users_title'); ?></h1>
             <p class="component-page-description" data-i18n="admin.users_desc"><?php echo translation('admin.users_desc'); ?></p>
         </div>

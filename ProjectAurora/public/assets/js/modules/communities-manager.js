@@ -31,6 +31,7 @@ function renderCommunityCard(comm, isMyList) {
         ? `<img src="${comm.profile_picture}" class="comm-avatar-img" alt="${comm.community_name}">` 
         : `<div class="comm-avatar-placeholder"><span class="material-symbols-rounded">groups</span></div>`;
 
+    // [MODIFICADO] Se movió .comm-badges para que esté después de .comm-desc
     return `
     <div class="comm-card">
         <div class="comm-banner" style="background-image: url('${bannerSrc}');"></div>
@@ -49,14 +50,14 @@ function renderCommunityCard(comm, isMyList) {
             <div class="comm-info">
                 <h3 class="comm-title">${comm.community_name}</h3>
                 
+                <p class="comm-desc">
+                    ${comm.description || 'Sin descripción disponible.'}
+                </p>
+
                 <div class="comm-badges">
                     <span class="comm-badge">${memberText}</span>
                     <span class="comm-badge">${privacyText}</span>
                 </div>
-
-                <p class="comm-desc">
-                    ${comm.description || 'Sin descripción disponible.'}
-                </p>
             </div>
         </div>
     </div>`;
