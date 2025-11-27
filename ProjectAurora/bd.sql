@@ -212,7 +212,7 @@ CREATE TABLE IF NOT EXISTS communities (
     privacy ENUM('public', 'private') DEFAULT 'public',
     member_count INT DEFAULT 1,
     profile_picture VARCHAR(255) NULL,
-    banner_picture VARCHAR(255) NULL, -- [NUEVO CAMPO BANNER]
+    banner_picture VARCHAR(255) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX (privacy),
@@ -232,7 +232,6 @@ CREATE TABLE IF NOT EXISTS community_members (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. Datos de Prueba (5 Grupos)
--- [ACTUALIZADO] Se agregaron banner_picture con imágenes de placeholder
 INSERT IGNORE INTO communities (uuid, creator_id, community_name, description, access_code, privacy, member_count, profile_picture, banner_picture) VALUES
 ('comm-uuid-001', 1, 'Desarrolladores PHP', 'Comunidad para amantes del código backend.', 'PHP7-CODE-2025', 'public', 120, 'https://ui-avatars.com/api/?name=PHP&background=0D8ABC&color=fff', 'https://picsum.photos/seed/php/600/200'),
 ('comm-uuid-002', 1, 'Diseño UI/UX', 'Compartimos recursos de diseño e inspiración.', 'DSGN-2025-FREE', 'public', 45, 'https://ui-avatars.com/api/?name=UI&background=E91E63&color=fff', 'https://picsum.photos/seed/uiux/600/200'),
@@ -243,12 +242,13 @@ INSERT IGNORE INTO communities (uuid, creator_id, community_name, description, a
 -- Tabla para el historial y estado de alertas globales
 CREATE TABLE IF NOT EXISTS system_alerts_history (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    type VARCHAR(50) NOT NULL,          -- Identificador de la plantilla (ej: 'high_traffic')
-    instance_id VARCHAR(50) NOT NULL,   -- UUID único para esta emisión específica
+    type VARCHAR(50) NOT NULL,          
+    instance_id VARCHAR(50) NOT NULL,   
     status ENUM('active', 'stopped') DEFAULT 'active',
-    admin_id INT NOT NULL,              -- Quién la activó
+    admin_id INT NOT NULL,
     started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     stopped_at TIMESTAMP NULL,
+    meta_data JSON NULL, -- [NUEVO] Para almacenar fecha, enlace, etc.
     FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

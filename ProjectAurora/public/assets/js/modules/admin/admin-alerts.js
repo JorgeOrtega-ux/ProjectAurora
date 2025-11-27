@@ -2,6 +2,7 @@
 
 import { t } from '../../core/i18n-manager.js';
 import { postJson, setButtonLoading } from '../../core/utilities.js';
+import { closeAllModules } from '../../ui/main-controller.js';
 
 export function initAdminAlerts() {
     checkActiveAlert();
@@ -18,16 +19,27 @@ async function checkActiveAlert() {
 function updateUI(activeAlert) {
     const indicator = document.getElementById('active-alert-indicator');
     const indicatorName = document.getElementById('active-alert-name');
+    const indicatorMeta = document.getElementById('active-alert-meta');
     
-    // El botón principal de emitir
     const mainEmitBtn = document.getElementById('btn-emit-selected-alert');
-    // El wrapper del selector para deshabilitarlo si hay alerta
     const triggerWrapper = document.querySelector('.trigger-select-wrapper');
 
     if (activeAlert) {
         // Hay alerta activa
         if (indicator) indicator.classList.remove('d-none');
         if (indicatorName) indicatorName.textContent = t(`admin.alerts.templates.${activeAlert.type}.title`);
+        
+        // Mostrar metadatos si existen
+        if (indicatorMeta) {
+            let metaText = '';
+            if (activeAlert.meta_data) {
+                const meta = (typeof activeAlert.meta_data === 'string') ? JSON.parse(activeAlert.meta_data) : activeAlert.meta_data;
+                
+                if (meta.date) metaText += `📅 ${meta.date} ${meta.time || ''} `;
+                if (meta.link) metaText += `🔗 ${meta.link}`;
+            }
+            indicatorMeta.textContent = metaText;
+        }
         
         if (mainEmitBtn) {
             mainEmitBtn.disabled = true;
@@ -40,16 +52,13 @@ function updateUI(activeAlert) {
         }
 
     } else {
-        // No hay alerta activa
         if (indicator) indicator.classList.add('d-none');
         
-        // Habilitar controles
         if (triggerWrapper) {
             triggerWrapper.classList.remove('disabled-interactive');
             triggerWrapper.style.opacity = '1';
         }
 
-        // Revisar si hay selección para habilitar el botón
         const currentSelection = document.getElementById('input-alert-type').value;
         if (mainEmitBtn) {
             if (currentSelection) {
@@ -68,50 +77,129 @@ function handleSelection(option) {
     const icon = option.dataset.icon;
     const color = option.dataset.color;
 
-    // Actualizar Input
+    // Inputs
     document.getElementById('input-alert-type').value = val;
-
-    // Actualizar Trigger Visual
     document.getElementById('current-alert-text').textContent = label;
     const iconEl = document.getElementById('current-alert-icon');
     iconEl.textContent = icon;
     iconEl.style.color = color;
 
-    // Actualizar Preview
+    // Preview Description
     const descKey = `admin.alerts.templates.${val}.desc`;
     const previewEl = document.getElementById('alert-preview-desc');
     if (previewEl) previewEl.textContent = t(descKey);
 
-    // Habilitar botón emitir
+    // Habilitar botón
     const btn = document.getElementById('btn-emit-selected-alert');
     if (btn) {
         btn.disabled = false;
         btn.textContent = t('admin.alerts.emit_btn');
     }
+
+    // === LOGICA DE CAMPOS ADICIONALES ===
+    const configContainer = document.getElementById('alert-config-container');
+    const dateWrapper = document.getElementById('wrapper-date-picker');
+    const linkWrapper = document.getElementById('wrapper-link-input');
+
+    // Resetear visibilidad
+    configContainer.classList.add('d-none');
+    dateWrapper.classList.add('d-none');
+    linkWrapper.classList.add('d-none');
+
+    // Determinar qué mostrar según el tipo
+    // Tipos con Fecha: maintenance, terms, privacy, cookie
+    const needsDate = ['maintenance_warning', 'terms_update', 'privacy_update', 'cookie_update'].includes(val);
+    // Tipos con Link: update_info, terms, privacy, cookie
+    const needsLink = ['update_info', 'terms_update', 'privacy_update', 'cookie_update'].includes(val);
+
+    if (needsDate || needsLink) {
+        configContainer.classList.remove('d-none');
+    }
+
+    if (needsDate) dateWrapper.classList.remove('d-none');
+    if (needsLink) linkWrapper.classList.remove('d-none');
+}
+
+function handleDateTimeConfirm() {
+    const dateIn = document.getElementById('picker-date-input').value;
+    const timeIn = document.getElementById('picker-time-input').value;
+    
+    if (!dateIn) {
+        alert('Selecciona al menos una fecha.');
+        return;
+    }
+
+    // Guardar en hiddens
+    document.getElementById('input-alert-date').value = dateIn;
+    document.getElementById('input-alert-time').value = timeIn;
+
+    // Formato legible para el trigger
+    const displayDate = new Date(dateIn + 'T00:00:00').toLocaleDateString(); // Ajuste zona horaria simple
+    const displayText = `${displayDate} ${timeIn ? 'a las ' + timeIn : ''}`;
+    
+    document.getElementById('selected-datetime-text').textContent = displayText;
+    
+    // Cerrar el popover (invocando closeAllModules que cierra dropdowns genéricos)
+    closeAllModules(); 
 }
 
 function initListeners() {
     document.body.addEventListener('click', async (e) => {
         
-        // Selección del Dropdown
+        // 1. Selección del Tipo de Alerta
         const option = e.target.closest('[data-action="select-alert-option"]');
         if (option) {
-            // El manejo visual de 'active' lo hace main-controller.js
-            // Nosotros manejamos la lógica específica
             handleSelection(option);
             return;
         }
 
-        // Botón Emitir (Nuevo)
+        // 2. Confirmar Fecha en el Popover
+        const confirmDateBtn = e.target.closest('[data-action="confirm-datetime"]');
+        if (confirmDateBtn) {
+            e.preventDefault();
+            e.stopPropagation(); // Evitar que se cierre inmediatamente por click outside
+            handleDateTimeConfirm();
+            return;
+        }
+
+        // 3. Emitir Alerta
         const emitBtn = e.target.closest('#btn-emit-selected-alert');
         if (emitBtn && !emitBtn.disabled) {
             const type = document.getElementById('input-alert-type').value;
             if (!type) return;
 
+            // Validaciones
+            const needsDate = !document.getElementById('wrapper-date-picker').classList.contains('d-none');
+            const needsLink = !document.getElementById('wrapper-link-input').classList.contains('d-none');
+
+            const dateVal = document.getElementById('input-alert-date').value;
+            const timeVal = document.getElementById('input-alert-time').value;
+            const linkVal = document.getElementById('input-alert-link').value;
+
+            if (needsDate && !dateVal) {
+                alert(t('admin.error.reason_required') + ' (Fecha faltante)');
+                return;
+            }
+            if (needsLink && !linkVal) {
+                alert(t('admin.error.reason_required') + ' (Enlace faltante)');
+                return;
+            }
+
             if (!confirm(t('admin.alerts.confirm_emit'))) return;
 
             setButtonLoading(emitBtn, true);
-            const res = await postJson('api/admin_handler.php', { action: 'activate_alert', type });
+            
+            const payload = { 
+                action: 'activate_alert', 
+                type,
+                meta_data: {
+                    date: dateVal,
+                    time: timeVal,
+                    link: linkVal
+                }
+            };
+
+            const res = await postJson('api/admin_handler.php', payload);
             
             if (res.success) {
                 if(window.alertManager) window.alertManager.showAlert(res.message, 'success');
@@ -122,7 +210,7 @@ function initListeners() {
             }
         }
 
-        // Botón Detener (Stop)
+        // 4. Detener Alerta
         const stopBtn = e.target.closest('[data-action="stop-alert"]');
         if (stopBtn) {
             if (!confirm(t('admin.alerts.confirm_stop'))) return;
@@ -132,6 +220,12 @@ function initListeners() {
             
             if (res.success) {
                 if(window.alertManager) window.alertManager.showAlert(res.message, 'info');
+                // Limpiar UI
+                document.getElementById('selected-datetime-text').textContent = t('admin.alerts.select_date_placeholder');
+                document.getElementById('input-alert-date').value = '';
+                document.getElementById('input-alert-time').value = '';
+                document.getElementById('input-alert-link').value = '';
+                
                 checkActiveAlert();
             } else {
                 if(window.alertManager) window.alertManager.showAlert(res.message, 'error');

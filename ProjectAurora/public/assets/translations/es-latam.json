@@ -362,11 +362,20 @@
             "confirm_stop": "¿Detener la alerta actual?",
             "success_emit": "Alerta emitida globalmente.",
             "success_stop": "Alerta detenida.",
+            "config_title": "Configuración Adicional",
+            "config_desc": "Personaliza los detalles de la alerta.",
+            "date_label": "Fecha y Hora",
+            "select_date_placeholder": "Seleccionar fecha y hora...",
+            "link_label": "Enlace de información",
+            "link_placeholder": "https://ejemplo.com/novedades",
+            "calendar": {
+                "confirm_btn": "Establecer Fecha"
+            },
             "templates": {
                 "maintenance_warning": {
                     "title": "Mantenimiento Programado",
-                    "desc": "Avisa de un mantenimiento inminente.",
-                    "text": "Project Aurora entrará en mantenimiento en breve. Guarda tus cambios."
+                    "desc": "Avisa de un mantenimiento inminente. Requiere fecha.",
+                    "text": "El mantenimiento está programado para el día {date} a las {time}."
                 },
                 "high_traffic": {
                     "title": "Alta Demanda",
@@ -380,10 +389,26 @@
                 },
                 "update_info": {
                     "title": "Nueva Actualización",
-                    "desc": "Informa sobre novedades.",
-                    "text": "¡Hemos actualizado la plataforma! Recarga la página para ver las novedades."
+                    "desc": "Informa sobre novedades. Requiere enlace.",
+                    "text": "¡Hemos actualizado la plataforma! Mira lo nuevo que actualizamos."
+                },
+                "terms_update": {
+                    "title": "Actualización de Términos",
+                    "desc": "Notifica cambios legales. Requiere fecha y enlace.",
+                    "text": "Los nuevos términos y condiciones entrarán en vigor a partir del día {date}."
+                },
+                "privacy_update": {
+                    "title": "Política de Privacidad",
+                    "desc": "Notifica cambios de privacidad. Requiere fecha y enlace.",
+                    "text": "Nuestra nueva política de privacidad entrará en vigor a partir del día {date}."
+                },
+                "cookie_update": {
+                    "title": "Política de Cookies",
+                    "desc": "Notifica cambios en cookies. Requiere fecha y enlace.",
+                    "text": "Hemos actualizado nuestra política de cookies efectiva desde el día {date}."
                 }
-            }
+            },
+            "see_more": "ver más"
         },
         "backups": {
             "create_btn": "Crear Copia",

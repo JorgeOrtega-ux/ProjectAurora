@@ -14,7 +14,7 @@ export function initBannerManager() {
         const { type, payload } = e.detail;
         if (type === 'system_alert_update') {
             if (payload.status === 'active') {
-                renderBanner(payload.type, payload.instance_id);
+                renderBanner(payload.type, payload.instance_id, payload.meta_data);
             } else {
                 removeBanner();
             }
@@ -23,14 +23,18 @@ export function initBannerManager() {
 }
 
 async function checkInitialStatus() {
-    // Consultamos el estado actual sin molestar al socket si no es necesario
     const res = await postJson('api/admin_handler.php', { action: 'get_alert_status' });
     if (res.success && res.active_alert) {
-        renderBanner(res.active_alert.type, res.active_alert.instance_id);
+        // Si viene de DB, meta_data podría ser string JSON
+        let meta = res.active_alert.meta_data;
+        if (typeof meta === 'string') {
+            try { meta = JSON.parse(meta); } catch(e) {}
+        }
+        renderBanner(res.active_alert.type, res.active_alert.instance_id, meta);
     }
 }
 
-function renderBanner(type, instanceId) {
+function renderBanner(type, instanceId, metaData = {}) {
     // Verificar si el usuario ya cerró ESTA instancia específica
     if (localStorage.getItem(STORAGE_PREFIX + instanceId)) {
         return;
@@ -46,16 +50,36 @@ function renderBanner(type, instanceId) {
     banner.id = 'global-system-banner';
     banner.className = `system-banner banner-${type}`;
     
-    // Mapeo de iconos/colores básicos (aunque CSS manejará colores)
     const icons = {
         'maintenance_warning': 'engineering',
         'high_traffic': 'dns',
         'critical_issue': 'report',
-        'update_info': 'info'
+        'update_info': 'update',
+        'terms_update': 'gavel',
+        'privacy_update': 'policy',
+        'cookie_update': 'cookie'
     };
 
     const icon = icons[type] || 'info';
-    const text = t(`admin.alerts.templates.${type}.text`);
+    
+    // Construcción Dinámica del Mensaje
+    let text = t(`admin.alerts.templates.${type}.text`);
+    
+    // Reemplazar variables {date} y {time} si existen en la plantilla
+    if (metaData.date) {
+        // Formatear fecha bonita si es posible (ej: 2025-11-28 -> 28 de noviembre del 2025)
+        const dateObj = new Date(metaData.date + 'T00:00:00');
+        const dateStr = dateObj.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+        
+        text = text.replace('{date}', dateStr);
+        text = text.replace('{time}', metaData.time || '');
+    }
+
+    // Append Link si existe
+    if (metaData.link) {
+        const seeMoreText = t('admin.alerts.see_more') || 'ver más';
+        text += ` <a href="${metaData.link}" target="_blank" style="color:inherit; text-decoration:underline; font-weight:700;">${seeMoreText}</a>`;
+    }
 
     banner.innerHTML = `
         <div class="banner-content">
@@ -67,7 +91,6 @@ function renderBanner(type, instanceId) {
         </button>
     `;
 
-    // Insertar al principio del body o antes del header
     document.body.prepend(banner);
 
     // Lógica de cierre

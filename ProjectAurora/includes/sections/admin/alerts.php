@@ -48,6 +48,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                         <p class="component-card__description" style="color: #1b5e20;">
                             Esta alerta está siendo mostrada a todos los usuarios conectados.
                         </p>
+                        <div id="active-alert-meta" style="margin-top: 8px; font-size: 13px; color: #1b5e20;"></div>
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">
@@ -59,6 +60,8 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
 
             <div class="component-card component-card--grouped">
                 <input type="hidden" id="input-alert-type" value="">
+                <input type="hidden" id="input-alert-date" value="">
+                <input type="hidden" id="input-alert-time" value="">
 
                 <div class="component-group-item component-group-item--stacked">
                     <div class="component-card__content">
@@ -90,7 +93,10 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                             ['id' => 'maintenance_warning', 'icon' => 'engineering', 'color' => '#f57c00'],
                                             ['id' => 'high_traffic', 'icon' => 'dns', 'color' => '#212121'],
                                             ['id' => 'critical_issue', 'icon' => 'report', 'color' => '#d32f2f'],
-                                            ['id' => 'update_info', 'icon' => 'info', 'color' => '#1976d2']
+                                            ['id' => 'update_info', 'icon' => 'update', 'color' => '#1976d2'],
+                                            ['id' => 'terms_update', 'icon' => 'gavel', 'color' => '#616161'],
+                                            ['id' => 'privacy_update', 'icon' => 'policy', 'color' => '#616161'],
+                                            ['id' => 'cookie_update', 'icon' => 'cookie', 'color' => '#616161']
                                         ];
 
                                         foreach ($templates as $tpl) {
@@ -118,6 +124,73 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div id="alert-config-container" class="d-none">
+                    <hr class="component-divider">
+                    
+                    <div class="component-group-item component-group-item--stacked">
+                        <div class="component-card__content">
+                            <div class="component-card__text">
+                                <h2 class="component-card__title" data-i18n="admin.alerts.config_title">
+                                    <?php echo translation('admin.alerts.config_title'); ?>
+                                </h2>
+                                <p class="component-card__description" data-i18n="admin.alerts.config_desc">
+                                    <?php echo translation('admin.alerts.config_desc'); ?>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div id="wrapper-date-picker" class="component-card__actions w-100 d-none">
+                            <div class="trigger-select-wrapper w-100">
+                                <div class="trigger-selector" data-action="toggle-dropdown" data-target="popover-datetime-picker">
+                                    <div class="trigger-select-icon">
+                                        <span class="material-symbols-rounded">calendar_month</span>
+                                    </div>
+                                    <div class="trigger-select-text">
+                                        <span id="selected-datetime-text" data-i18n="admin.alerts.select_date_placeholder">
+                                            <?php echo translation('admin.alerts.select_date_placeholder'); ?>
+                                        </span>
+                                    </div>
+                                    <div class="trigger-select-arrow">
+                                        <span class="material-symbols-rounded">edit_calendar</span>
+                                    </div>
+                                </div>
+
+                                <div class="popover-module popover-module--anchor-width body-title disabled" id="popover-datetime-picker" style="padding: 16px;">
+                                    <div class="menu-content" style="padding: 16px;">
+                                        <div style="display:flex; flex-direction:column; gap: 12px;">
+                                            <label style="font-size:12px; font-weight:600; color:#666;">Fecha</label>
+                                            <input type="date" id="picker-date-input" class="component-text-input full-width" style="height: 40px;">
+                                            
+                                            <label style="font-size:12px; font-weight:600; color:#666;">Hora</label>
+                                            <input type="time" id="picker-time-input" class="component-text-input full-width" style="height: 40px;">
+                                            
+                                            <button type="button" class="component-button primary w-100" data-action="confirm-datetime" style="margin-top: 8px;">
+                                                <span class="material-symbols-rounded">check</span>
+                                                <span data-i18n="admin.alerts.calendar.confirm_btn">
+                                                    <?php echo translation('admin.alerts.calendar.confirm_btn'); ?>
+                                                </span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="wrapper-link-input" class="component-input-wrapper w-100 d-none" style="margin-top: 8px;">
+                            <label style="font-size: 13px; font-weight: 600; color: #333; display: block; margin-bottom: 8px;" data-i18n="admin.alerts.link_label">
+                                <?php echo translation('admin.alerts.link_label'); ?>
+                            </label>
+                            <div class="input-with-actions">
+                                <span class="material-symbols-rounded" style="color:#666; margin-right: 4px;">link</span>
+                                <input type="text" id="input-alert-link" class="component-text-input full-width" 
+                                       data-i18n-placeholder="admin.alerts.link_placeholder"
+                                       placeholder="https://...">
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
