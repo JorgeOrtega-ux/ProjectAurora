@@ -44,6 +44,12 @@ $response = ['success' => false, 'message' => translation('global.action_invalid
 $serverConfig = getServerConfig($pdo);
 
 function check_cooldown($pdo, $userId, $type, $daysLimit) {
+    // [MODIFICADO] Permitir que el Staff (Founder/Admin) ignore el cooldown
+    if (isset($_SESSION['user_role']) && in_array($_SESSION['user_role'], ['founder', 'administrator'])) {
+        return;
+    }
+    // ---------------------------------------------------------------------
+
     $stmt = $pdo->prepare("SELECT changed_at FROM user_audit_logs 
                            WHERE user_id = ? AND change_type = ? 
                            ORDER BY changed_at DESC LIMIT 1");

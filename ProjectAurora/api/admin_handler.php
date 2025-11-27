@@ -295,6 +295,13 @@ try {
 
     } elseif ($action === 'admin_update_username') {
         $targetId = (int)$data['target_id'] ?? 0;
+        
+        // [NUEVO] Bloqueo de auto-edición para Username
+        if ($targetId === $currentAdminId) {
+            throw new Exception("Usa Configuración para editar tu perfil.");
+        }
+        // ---------------------------------------------
+
         $newUsername = trim($data['username'] ?? '');
         
         if (empty($newUsername)) throw new Exception("Nombre de usuario vacío");
@@ -329,6 +336,13 @@ try {
 
     } elseif ($action === 'admin_update_email') {
         $targetId = (int)$data['target_id'] ?? 0;
+
+        // [NUEVO] Bloqueo de auto-edición para Email
+        if ($targetId === $currentAdminId) {
+            throw new Exception("Usa Configuración para editar tu perfil.");
+        }
+        // ---------------------------------------------
+
         $newEmail = strtolower(trim($data['email'] ?? ''));
 
         if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) throw new Exception(translation('auth.errors.email_invalid_domain'));

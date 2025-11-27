@@ -818,3 +818,74 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-11-27 13:55:01,214 - INFO - 📨 Notificación a Usuario 1: admin_notification 
 2025-11-27 13:55:12,454 - INFO - 📨 Notificación a Usuario 1: admin_notification 
 2025-11-27 13:55:19,563 - INFO - 📨 Notificación a Usuario 1: admin_notification 
+2025-11-27 14:00:30,085 - INFO - 📢 Notificación GLOBAL: system_alert_update
+2025-11-27 14:00:44,053 - INFO - 📢 Notificación GLOBAL: system_alert_update
+2025-11-27 14:02:21,742 - INFO - 📢 Notificación GLOBAL: system_alert_update
+2025-11-27 14:02:30,490 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 14:02:30,642 - INFO - connection open
+2025-11-27 14:02:30,648 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:02:30,938 - INFO - connection open
+2025-11-27 14:02:31,012 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: 1jldasd9...
+2025-11-27 14:02:31,283 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 14:02:31,346 - INFO - connection open
+2025-11-27 14:02:31,368 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:02:31,557 - INFO - connection open
+2025-11-27 14:02:31,561 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:02:31,928 - INFO - connection open
+2025-11-27 14:02:31,931 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: 1jldasd9...
+2025-11-27 14:02:35,402 - INFO - 📢 Notificación GLOBAL: system_alert_update
+2025-11-27 14:03:40,702 - INFO - connection open
+2025-11-27 14:03:40,709 - INFO - Usuario conectado: ID 2 | Rol: administrator | Sesión: 2fq9bio4...
+2025-11-27 14:05:02,535 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 14:05:03,107 - INFO - connection open
+2025-11-27 14:05:03,151 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:05:04,336 - INFO - Usuario 2 desconectado completamente.
+2025-11-27 14:05:04,822 - INFO - connection open
+2025-11-27 14:05:04,825 - INFO - Usuario conectado: ID 2 | Rol: administrator | Sesión: 2fq9bio4...
+2025-11-27 14:05:08,165 - INFO - connection open
+2025-11-27 14:05:08,167 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:05:13,175 - INFO - connection open
+2025-11-27 14:05:13,180 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:05:18,198 - INFO - connection open
+2025-11-27 14:05:18,203 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:05:23,212 - INFO - connection open
+2025-11-27 14:05:23,215 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:05:28,226 - INFO - connection open
+2025-11-27 14:05:28,229 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:05:33,247 - INFO - connection open
+2025-11-27 14:05:33,251 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:05:38,262 - INFO - connection open
+2025-11-27 14:05:38,266 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:05:43,280 - INFO - connection open
+2025-11-27 14:05:43,285 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:05:48,299 - INFO - connection open
+2025-11-27 14:05:48,304 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:05:53,310 - INFO - connection open
+2025-11-27 14:05:53,315 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:05:58,322 - INFO - connection open
+2025-11-27 14:05:58,325 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:06:01,312 - INFO - 📨 Notificación a Usuario 2: admin_notification 
+2025-11-27 14:06:02,891 - INFO - Usuario 2 desconectado completamente.
+2025-11-27 14:06:02,949 - INFO - connection open
+2025-11-27 14:06:02,954 - INFO - Usuario conectado: ID 2 | Rol: administrator | Sesión: 2fq9bio4...
+2025-11-27 14:06:03,336 - INFO - connection open
+2025-11-27 14:06:03,341 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:06:08,362 - INFO - connection open
+2025-11-27 14:06:08,366 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:06:13,375 - INFO - connection open
+2025-11-27 14:06:13,379 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:06:15,722 - INFO - Usuario 2 desconectado completamente.
+2025-11-27 14:06:18,397 - INFO - connection open
+2025-11-27 14:06:18,400 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:06:23,416 - INFO - connection open
+2025-11-27 14:06:23,503 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:06:28,514 - INFO - connection open
+2025-11-27 14:06:28,519 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:06:33,541 - INFO - connection open
+2025-11-27 14:06:33,575 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: 1jldasd9...
+2025-11-27 14:07:21,030 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 14:07:21,114 - INFO - connection open
+2025-11-27 14:07:21,117 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: 1jldasd9...
+2025-11-27 14:08:24,517 - INFO - connection open
+2025-11-27 14:08:24,523 - INFO - Usuario conectado: ID 2 | Rol: administrator | Sesión: 8jl28km5...
+2025-11-27 14:08:49,169 - INFO - Usuario 2 desconectado completamente.
