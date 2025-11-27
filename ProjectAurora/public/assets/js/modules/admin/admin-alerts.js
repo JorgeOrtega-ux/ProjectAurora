@@ -99,14 +99,14 @@ function handleSelection(option) {
     // === LOGICA DE CAMPOS ADICIONALES ===
     const configContainer = document.getElementById('alert-config-container');
     const dateWrapper = document.getElementById('wrapper-date-picker');
-    const linkWrapper = document.getElementById('wrapper-link-input');
+    const linkContainer = document.getElementById('wrapper-link-container');
 
-    // Resetear visibilidad
+    // 1. Resetear todo a oculto
     configContainer.classList.add('d-none');
     dateWrapper.classList.add('d-none');
-    linkWrapper.classList.add('d-none');
+    linkContainer.classList.add('d-none');
 
-    // Determinar qué mostrar según el tipo
+    // 2. Determinar requisitos
     // Tipos con Fecha: maintenance, terms, privacy, cookie
     const needsDate = ['maintenance_warning', 'terms_update', 'privacy_update', 'cookie_update'].includes(val);
     // Tipos con Link: update_info, terms, privacy, cookie
@@ -116,8 +116,21 @@ function handleSelection(option) {
         configContainer.classList.remove('d-none');
     }
 
-    if (needsDate) dateWrapper.classList.remove('d-none');
-    if (needsLink) linkWrapper.classList.remove('d-none');
+    // 3. Lógica Secuencial
+    if (needsDate) {
+        // Si requiere fecha, mostramos fecha primero. 
+        // El enlace se mostrará DESPUÉS de confirmar la fecha (ver handleDateTimeConfirm).
+        dateWrapper.classList.remove('d-none');
+        
+        // Limpiamos texto del selector de fecha por si había uno previo
+        document.getElementById('selected-datetime-text').textContent = t('admin.alerts.select_date_placeholder');
+        document.getElementById('input-alert-date').value = '';
+    } 
+    else if (needsLink) {
+        // Si NO requiere fecha pero SI enlace (ej: update_info), mostramos el enlace directamente
+        linkContainer.classList.remove('d-none');
+        setTimeout(() => document.getElementById('input-alert-link').focus(), 100);
+    }
 }
 
 function handleDateTimeConfirm() {
@@ -139,8 +152,19 @@ function handleDateTimeConfirm() {
     
     document.getElementById('selected-datetime-text').textContent = displayText;
     
-    // Cerrar el popover (invocando closeAllModules que cierra dropdowns genéricos)
+    // Cerrar el popover
     closeAllModules(); 
+
+    // === SECUENCIA: AHORA MOSTRAR ENLACE SI ES NECESARIO ===
+    const currentType = document.getElementById('input-alert-type').value;
+    const needsLink = ['terms_update', 'privacy_update', 'cookie_update'].includes(currentType);
+    
+    if (needsLink) {
+        const linkContainer = document.getElementById('wrapper-link-container');
+        linkContainer.classList.remove('d-none');
+        linkContainer.classList.add('animate-fade-in'); // Pequeña animación visual
+        setTimeout(() => document.getElementById('input-alert-link').focus(), 100);
+    }
 }
 
 function initListeners() {
@@ -170,7 +194,8 @@ function initListeners() {
 
             // Validaciones
             const needsDate = !document.getElementById('wrapper-date-picker').classList.contains('d-none');
-            const needsLink = !document.getElementById('wrapper-link-input').classList.contains('d-none');
+            // Check si el container de link está visible
+            const needsLink = !document.getElementById('wrapper-link-container').classList.contains('d-none');
 
             const dateVal = document.getElementById('input-alert-date').value;
             const timeVal = document.getElementById('input-alert-time').value;

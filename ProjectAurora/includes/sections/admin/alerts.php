@@ -179,10 +179,18 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                             </div>
                         </div>
 
-                        <div id="wrapper-link-input" class="component-input-wrapper w-100 d-none" style="margin-top: 8px;">
-                            <label style="font-size: 13px; font-weight: 600; color: #333; display: block; margin-bottom: 8px;" data-i18n="admin.alerts.link_label">
-                                <?php echo translation('admin.alerts.link_label'); ?>
-                            </label>
+                    </div>
+
+                    <div id="wrapper-link-container" class="component-group-item component-group-item--stacked d-none" style="border-top: 1px solid #00000010;">
+                        <div class="component-card__content">
+                            <div class="component-card__text">
+                                <label style="font-size: 14px; font-weight: 600; color: #333; display: block;" data-i18n="admin.alerts.link_label">
+                                    <?php echo translation('admin.alerts.link_label'); ?>
+                                </label>
+                                <p class="component-card__description">Enlace donde los usuarios pueden leer más información.</p>
+                            </div>
+                        </div>
+                        <div class="component-input-wrapper w-100" style="margin-top: 8px;">
                             <div class="input-with-actions">
                                 <span class="material-symbols-rounded" style="color:#666; margin-right: 4px;">link</span>
                                 <input type="text" id="input-alert-link" class="component-text-input full-width" 
@@ -190,8 +198,8 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
                                        placeholder="https://...">
                             </div>
                         </div>
-
                     </div>
+
                 </div>
 
                 <hr class="component-divider">
