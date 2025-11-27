@@ -889,3 +889,44 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-11-27 14:08:24,517 - INFO - connection open
 2025-11-27 14:08:24,523 - INFO - Usuario conectado: ID 2 | Rol: administrator | Sesión: 8jl28km5...
 2025-11-27 14:08:49,169 - INFO - Usuario 2 desconectado completamente.
+2025-11-27 14:10:21,213 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 14:34:35,932 - INFO - connection open
+2025-11-27 14:34:35,948 - WARNING - Intento de conexión fallido. Token inválido.
+2025-11-27 14:35:29,098 - INFO - ✅ Pool de conexiones a base de datos inicializado (Max 20).
+2025-11-27 14:35:29,137 - INFO - === Servidor Aurora Iniciado (Async + Logging Profesional) ===
+2025-11-27 14:35:29,222 - INFO - server listening on 0.0.0.0:8080
+2025-11-27 14:35:40,765 - INFO - connection open
+2025-11-27 14:35:40,870 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: r2sf4q96...
+2025-11-27 14:36:02,594 - INFO - connection open
+2025-11-27 14:36:02,620 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: r2sf4q96...
+2025-11-27 14:36:06,419 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 14:36:06,478 - INFO - connection open
+2025-11-27 14:36:06,484 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: r2sf4q96...
+2025-11-27 14:36:44,665 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 14:36:44,742 - INFO - connection open
+2025-11-27 14:36:44,832 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: r2sf4q96...
+2025-11-27 14:36:44,893 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 14:36:44,951 - INFO - connection open
+2025-11-27 14:36:44,957 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: r2sf4q96...
+2025-11-27 14:36:45,047 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 14:36:45,102 - INFO - connection open
+2025-11-27 14:36:45,107 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: r2sf4q96...
+2025-11-27 14:36:45,356 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 14:36:45,413 - INFO - connection open
+2025-11-27 14:36:45,415 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: r2sf4q96...
+2025-11-27 14:36:45,648 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 14:36:45,710 - INFO - connection open
+2025-11-27 14:36:45,727 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: r2sf4q96...
+2025-11-27 14:36:46,258 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 14:36:46,327 - INFO - connection open
+2025-11-27 14:36:46,331 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: r2sf4q96...
+2025-11-27 14:37:18,830 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 14:37:18,895 - INFO - connection open
+2025-11-27 14:37:18,899 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: r2sf4q96...
+2025-11-27 14:38:31,470 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 14:38:31,537 - INFO - connection open
+2025-11-27 14:38:31,546 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: r2sf4q96...
+2025-11-27 14:39:52,320 - INFO - Usuario 1 desconectado completamente.
+2025-11-27 14:39:52,393 - INFO - connection open
+2025-11-27 14:39:52,401 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: r2sf4q96...
+2025-11-27 14:44:41,591 - INFO - Usuario 1 desconectado completamente.

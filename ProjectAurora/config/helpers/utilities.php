@@ -71,15 +71,23 @@ function logSecurityAction($pdo, $identifier, $actionType) {
 }
 
 function generate_ws_auth_token($pdo, $userId, $sessionId) {
-    $stmt = $pdo->prepare("DELETE FROM ws_auth_tokens WHERE user_id = ?");
-    $stmt->execute([$userId]);
+    // [FIX MULTI-PESTAÑA] No borrar todos los tokens del usuario. 
+    // Solo limpiar los expirados para mantener la tabla limpia.
+    $stmtCleanup = $pdo->prepare("DELETE FROM ws_auth_tokens WHERE expires_at < NOW()");
+    $stmtCleanup->execute();
 
-    $token = bin2hex(random_bytes(32)); 
+    // Generar token criptográficamente seguro
+    $rawToken = bin2hex(random_bytes(32)); 
     
+    // [FIX SEGURIDAD] Hashear el token antes de guardarlo (SHA-256)
+    $tokenHash = hash('sha256', $rawToken);
+    
+    // Insertar el nuevo token (hash)
     $stmt = $pdo->prepare("INSERT INTO ws_auth_tokens (user_id, session_id, token, expires_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 2 MINUTE))");
-    $stmt->execute([$userId, $sessionId, $token]);
+    $stmt->execute([$userId, $sessionId, $tokenHash]);
 
-    return $token;
+    // Retornar el token crudo al cliente (JS) para que pueda autenticarse
+    return $rawToken;
 }
 
 function generate_csrf_token() {
@@ -99,6 +107,7 @@ function verify_csrf_token($token) {
 function send_live_notification($targetUserId, $type, $data = []) {
     $host = '127.0.0.1';
     $port = 8081; 
+    $timeout = 2; // [FIX TIMEOUT] 2 segundos máximo de espera
 
     $payload = json_encode([
         'target_id' => (string)$targetUserId, 
@@ -106,12 +115,16 @@ function send_live_notification($targetUserId, $type, $data = []) {
         'payload' => $data
     ]);
 
-    $fp = @fsockopen($host, $port, $errno, $errstr, 1); 
+    // [FIX FRAGILIDAD] Manejo de errores y timeout en la conexión
+    $fp = @fsockopen($host, $port, $errno, $errstr, $timeout); 
     if ($fp) {
+        // Establecer timeout también para la escritura/lectura
+        stream_set_timeout($fp, $timeout);
         fwrite($fp, $payload);
         fclose($fp);
         return true;
     }
+    // Si falla (Python apagado), simplemente retorna false sin colgar PHP
     return false; 
 }
 
@@ -187,7 +200,6 @@ function is_allowed_domain($email, $pdo) {
     return in_array(strtolower($domain), array_map('strtolower', $allowedDomains));
 }
 
-// [NUEVO] Función centralizada para UUID v4
 function generate_uuid() {
     $data = random_bytes(16);
     $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
@@ -195,7 +207,6 @@ function generate_uuid() {
     return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
 }
 
-// [NUEVO] Función centralizada para color aleatorio
 function get_random_color() {
     $colors = ['C84F4F', '4F7AC8', '8C4FC8', 'C87A4F', '4FC8C8'];
     return $colors[array_rand($colors)];

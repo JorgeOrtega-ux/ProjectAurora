@@ -5,12 +5,13 @@ const host = window.location.hostname;
 const WS_URL = `${protocol}${host}:8080`;
 const reconnectInterval = 5000;
 let socket = null;
+let shouldReconnect = true; // [FIX BUCLE INFINITO] Bandera de control
 
 function connect() {
     if (!window.USER_ID) return;
     
     const timestamp = Date.now();
-    console.log(`websocket_client: ${timestamp} connecting...`); // [LOG RESTAURADO]
+    console.log(`websocket_client: ${timestamp} connecting...`);
     
     socket = new WebSocket(WS_URL);
 
@@ -20,12 +21,10 @@ function connect() {
 
     socket.onopen = () => {
         console.log('websocket_client: connected');
-        console.log('websocket_client: status CONNECTED'); // [LOG RESTAURADO]
+        shouldReconnect = true; // Resetear bandera al conectar
         
         if (window.WS_TOKEN) {
             const requestId = Math.random().toString(16).substring(2, 10);
-            console.log(`websocket_client: request id ${requestId}`); // [LOG RESTAURADO]
-
             socket.send(JSON.stringify({
                 type: 'auth',
                 token: window.WS_TOKEN,
@@ -38,8 +37,13 @@ function connect() {
         try {
             const data = JSON.parse(event.data);
             
-            // Log extra para ver qué llega (opcional)
-            // console.log('websocket_client: message received', data.type); 
+            // [FIX BUCLE INFINITO] Manejar error de autenticación fatal
+            if (data.type === 'auth_error_permanent' || data.type === 'error') {
+                console.error('websocket_client: Auth failed permanently. Stopping reconnection.');
+                shouldReconnect = false;
+                socket.close(); // Cierre limpio
+                return;
+            }
 
             document.dispatchEvent(new CustomEvent('socket-message', { detail: data }));
             
@@ -54,8 +58,10 @@ function connect() {
     };
 
     socket.onclose = (e) => {
-        console.log('websocket_client: disconnected', e.reason); // [LOG RESTAURADO]
-        if (window.USER_ID) {
+        console.log('websocket_client: disconnected', e.reason);
+        
+        // [FIX BUCLE INFINITO] Solo reconectar si no fue un error fatal
+        if (window.USER_ID && shouldReconnect) {
             setTimeout(connect, reconnectInterval);
         }
     };
