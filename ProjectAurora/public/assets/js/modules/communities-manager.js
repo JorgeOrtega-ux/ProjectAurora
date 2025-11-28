@@ -69,7 +69,6 @@ function renderChatListItem(item) {
 // ==========================================
 // RENDERIZADO DE EXPLORER (Comunidades Públicas)
 // ==========================================
-// ... (Se mantiene la función renderCommunityCard igual) ...
 function renderCommunityCard(comm, isJoined) {
     const avatar = comm.profile_picture ? 
         (window.BASE_PATH || '/ProjectAurora/') + comm.profile_picture : 
@@ -123,15 +122,19 @@ async function loadSidebarList() {
     if (res.success && res.list.length > 0) {
         sidebarItems = res.list;
         container.innerHTML = res.list.map(c => renderChatListItem(c)).join('');
-        
-        // Si hay un UUID activo, abrirlo si tenemos datos
-        if (window.ACTIVE_CHAT_UUID) {
-            const itemData = sidebarItems.find(c => c.uuid === window.ACTIVE_CHAT_UUID);
-            if(itemData) openChat(window.ACTIVE_CHAT_UUID, itemData);
-            // Si no está en la lista (ej: nuevo DM desde perfil), chat-manager lo cargará desde API
-        }
     } else {
+        sidebarItems = []; // Asegurar que esté vacío si no hay datos
         container.innerHTML = `<p style="text-align:center; color:#999; padding:20px;">No tienes chats ni comunidades.</p>`;
+    }
+
+    // [CORRECCIÓN CRÍTICA] 
+    // Si hay un UUID activo (cargado por router/loader), intentamos abrir el chat.
+    // Si el chat NO está en sidebarItems (porque es un DM nuevo sin mensajes), pasamos NULL en data.
+    // chat-manager.js tiene lógica para hacer fetch si data es null.
+    if (window.ACTIVE_CHAT_UUID) {
+        const itemData = sidebarItems.find(c => c.uuid === window.ACTIVE_CHAT_UUID);
+        // Pasamos itemData si existe, o null. openChat se encargará de buscarlo si es null.
+        openChat(window.ACTIVE_CHAT_UUID, itemData || null);
     }
 }
 
@@ -196,7 +199,6 @@ function initListListeners() {
         // Manejar tanto new_chat_message (comunidad) como private_message
         if (type === 'new_chat_message' || type === 'private_message') {
             const targetUuid = payload.target_uuid || payload.community_uuid;
-            const isPrivate = (type === 'private_message');
             
             // Buscar item en sidebar
             const item = document.querySelector(`.chat-item[data-uuid="${targetUuid}"]`);
@@ -237,7 +239,6 @@ function initJoinByCode() {
     if (!btn) return;
     const input = document.querySelector('[data-input="community-code"]');
     
-    // ... (Lógica de input formatting igual) ...
     if(input) {
         input.addEventListener('input', (e) => {
             let v = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();

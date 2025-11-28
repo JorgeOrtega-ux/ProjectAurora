@@ -17,6 +17,7 @@ $publicSections = [
 ];
 
 $section = $_GET['section'] ?? 'main';
+// Limpieza básica de path traversal
 $section = str_replace(['..', '.php'], '', $section);
 
 if (!isset($_SESSION['user_id']) && !in_array($section, $publicSections)) {
@@ -24,7 +25,19 @@ if (!isset($_SESSION['user_id']) && !in_array($section, $publicSections)) {
     exit('<div style="padding:20px; text-align:center">' . translation('global.session_expired') . '</div>');
 }
 
-// 3. Mapa COMPLETO de rutas
+// 3. [FIX] Manejo de rutas dinámicas de chat (DM y Comunidad)
+// Esto permite que el AJAX del url-manager cargue 'main.php' pero con el contexto correcto
+if (preg_match('/^c\/([a-zA-Z0-9-]+)$/', $section, $matches)) {
+    $section = 'main';
+    $activeContextType = 'community';
+    $activeContextUuid = $matches[1];
+} elseif (preg_match('/^dm\/([a-zA-Z0-9-]+)$/', $section, $matches)) {
+    $section = 'main';
+    $activeContextType = 'private';
+    $activeContextUuid = $matches[1];
+}
+
+// 4. Mapa COMPLETO de rutas estáticas
 $fileMap = [
     // App
     'main'           => 'app/main',
@@ -59,7 +72,7 @@ $fileMap = [
     'admin/user-manage' => 'admin/user-manage',
     'admin/user-history'=> 'admin/user-history',
     'admin/user-role'   => 'admin/user-role',
-    'admin/user-edit'   => 'admin/user-edit', // [NUEVO]
+    'admin/user-edit'   => 'admin/user-edit',
     'admin/backups'     => 'admin/backups',
     'admin/server'      => 'admin/server',
     'admin/alerts'      => 'admin/alerts',

@@ -27,7 +27,7 @@ const allowedSections = [
     'admin/server',
     'admin/user-status',
     'admin/user-manage',
-    'admin/user-role', // Asegúrate de que esté aquí
+    'admin/user-role', 
     'admin/user-history',
     'admin/user-notification'
 ];
@@ -50,6 +50,9 @@ export function initUrlManager() {
     window.addEventListener('popstate', (event) => {
         if (event.state && event.state.section) {
             showSection(event.state.section, false);
+        } else {
+            // Fallback si no hay estado (ej: primera carga o back externo)
+            showSection(getSectionFromUrl(), false);
         }
     });
 
@@ -68,10 +71,9 @@ export function initUrlManager() {
         if (target) {
             e.preventDefault();
             const section = target.dataset.nav;
-            if (section !== getSectionFromUrl()) {
-                console.log("[UrlManager] Click detectado, navegando a:", section);
-                navigateTo(section);
-            }
+            // Permitir navegación incluso si es la misma sección para casos como "Volver a inicio"
+            console.log("[UrlManager] Click detectado, navegando a:", section);
+            navigateTo(section);
         }
     });
 
@@ -93,6 +95,7 @@ window.navigateTo = function (sectionName) {
     const isCurAuth = authZone.some(z => current.startsWith(z) || z === current);
     const isTarAuth = authZone.some(z => sectionName.startsWith(z) || z === sectionName);
 
+    // Redirección completa si cambiamos entre zona pública y privada para asegurar limpieza de estados
     if ((isCurAuth && !isTarAuth) || (!isCurAuth && isTarAuth)) {
         window.location.href = (sectionName === 'main') ? basePath : `${basePath}${sectionName}`;
     } else {
@@ -106,6 +109,12 @@ function getSectionFromUrl() {
     path = path.replace(/\/$/, '').split('?')[0];
 
     if (path === '') return 'main';
+    
+    // [FIX] Detectar patrones dinámicos para chats
+    if (path.startsWith('dm/') || path.startsWith('c/')) {
+        return path;
+    }
+
     if (allowedSections.includes(path) || path.startsWith('admin/') || path.startsWith('settings/')) {
         return path;
     }
@@ -119,16 +128,29 @@ async function showSection(sectionName, pushState = true) {
     const container = document.querySelector('[data-container="main-section"]');
     const loader = document.querySelector('.loader-wrapper');
 
-    if (!container) { window.location.reload(); return; }
+    if (!container) { 
+        // Si no existe el contenedor (ej: estamos en login.php standalone), recargar
+        window.location.href = (sectionName === 'main') ? basePath : `${basePath}${sectionName}`;
+        return; 
+    }
 
+    // Preparar URL para el loader
     const [baseSection, query] = sectionName.split('?');
-    let loaderKey = baseSection;
-    let fetchUrl = `${basePath}public/loader.php?section=${loaderKey}&t=${Date.now()}`;
+    
+    // Pasar la sección completa (incluyendo dm/xyz) al loader
+    let fetchUrl = `${basePath}public/loader.php?section=${baseSection}&t=${Date.now()}`;
 
     if (query) fetchUrl += `&${query}`;
 
-    updateSidebarState(baseSection);
-    updateActiveMenu(baseSection);
+    // Actualizar UI lateral (Sidebar)
+    // Si es un chat (dm/ o c/), activamos el menú "main" (Home)
+    let sidebarContext = baseSection;
+    if (baseSection.startsWith('dm/') || baseSection.startsWith('c/')) {
+        sidebarContext = 'main';
+    }
+    
+    updateSidebarState(sidebarContext);
+    updateActiveMenu(sidebarContext);
 
     container.innerHTML = '';
     if (loader) loader.style.display = 'flex';
@@ -141,7 +163,12 @@ async function showSection(sectionName, pushState = true) {
         if (!resp.ok) throw new Error(`Error ${resp.status}`);
 
         const html = await resp.text();
-        if (html.includes('<!DOCTYPE html>')) { window.location.reload(); return; }
+        
+        // Si el loader nos devolvió una página completa (ej: redirección a login), recargar
+        if (html.includes('<!DOCTYPE html>')) { 
+            window.location.reload(); 
+            return; 
+        }
 
         container.innerHTML = html;
         container.scrollTop = 0;
@@ -154,22 +181,20 @@ async function showSection(sectionName, pushState = true) {
             history.pushState({ section: sectionName }, '', newUrl);
         }
 
+        // Reinicializar módulos dinámicos
         if (window.initTooltipManager) window.initTooltipManager();
         if (window.initSettingsManager) window.initSettingsManager();
         if (window.translateDocument) window.translateDocument(container);
         
-        // LOG CRÍTICO
         console.log("[UrlManager] Llamando a loadDynamicModules...");
         if (window.loadDynamicModules) {
             await window.loadDynamicModules();
             console.log("[UrlManager] loadDynamicModules finalizado.");
-        } else {
-            console.error("[UrlManager] window.loadDynamicModules NO existe.");
-        }
+        } 
 
     } catch (error) {
         console.error("[UrlManager] Error:", error);
-        container.innerHTML = `<div style="padding:20px;">Error al cargar.</div>`;
+        container.innerHTML = `<div style="padding:20px; text-align:center;">Error al cargar el contenido. Intenta recargar la página.</div>`;
     } finally {
         if (loader) loader.style.display = 'none';
         isNavigating = false;
@@ -186,7 +211,6 @@ function executeScripts(container) {
     });
 }
 
-// ... (resto de funciones updateSidebarState, updateActiveMenu igual) ...
 function updateSidebarState(sectionName) {
     const appMenu = document.getElementById('sidebar-menu-app');
     const settingsMenu = document.getElementById('sidebar-menu-settings');
@@ -201,6 +225,7 @@ function updateSidebarState(sectionName) {
     } else if (sectionName.startsWith('admin/') && adminMenu) {
         adminMenu.style.display = 'flex';
     } else {
+        // Main, Explorer, Chats
         if (appMenu) appMenu.style.display = 'flex';
     }
 }
@@ -208,6 +233,8 @@ function updateSidebarState(sectionName) {
 function updateActiveMenu(sectionName) {
     const allLinks = document.querySelectorAll('.menu-link[data-nav]');
     allLinks.forEach(link => link.classList.remove('active'));
+    
+    // Buscar coincidencia exacta o padres
     const activeLinks = document.querySelectorAll(`[data-module="moduleSurface"] .menu-link[data-nav="${sectionName}"]`);
     activeLinks.forEach(link => link.classList.add('active'));
 }
