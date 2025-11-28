@@ -107,8 +107,7 @@ function updateChatInterface(data) {
     const infoBtn = document.getElementById('btn-group-info-toggle');
     const headerInfo = document.getElementById('chat-header-info-clickable');
     
-    // [MODIFICADO] Obtenemos el container del avatar para aplicar el borde de rol
-    const headerAvatarContainer = document.querySelector('.chat-avatar-container'); // Es el padre de img
+    const headerAvatarContainer = document.querySelector('.chat-avatar-container'); 
 
     if (data) {
         if (placeholder) placeholder.classList.add('d-none');
@@ -127,29 +126,12 @@ function updateChatInterface(data) {
             img.style.borderRadius = isPrivate ? '50%' : '12px'; 
         }
         
-        // [MODIFICADO] Lógica para aplicar el rol al contenedor del header
         if (headerAvatarContainer) {
-            // Limpiamos atributos previos de rol
             headerAvatarContainer.removeAttribute('data-role');
             
-            // Si es DM, aplicamos el rol del usuario destino
             if (isPrivate && data.role) {
-                // Usamos la misma clase que usamos en las notificaciones para aplicar el borde
-                // O mejor, creamos una regla específica o reutilizamos .notif-img-container logic
-                // Pero como styles.css tiene .header-button.profile-button[data-role], podemos reusar esa lógica
-                // O simplemente añadir data-role al contenedor y asegurar que el CSS lo soporte.
-                // En styles.css, no hay un selector genérico .chat-avatar-container[data-role], así que lo añadí.
-                // Sin embargo, para no complicar el CSS aquí, asumiremos que el CSS que añadí abajo lo maneja.
-                // Pero espera, en styles.css que te di NO puse .chat-avatar-container[data-role].
-                // Lo corregiré añadiendo la clase 'notif-img-container' temporalmente o simplemente 
-                // confiando en que el usuario añadirá el CSS necesario si quiere borde en el header.
-                // Dado que el usuario pidió "borde del role en los chats y lista de chats", el header es un extra.
-                // Pero vamos a intentar ponerlo.
                 headerAvatarContainer.setAttribute('data-role', data.role);
-                
-                // Hack rápido: añadir la clase que ya tiene estilos de borde
-                headerAvatarContainer.classList.add('notif-img-container'); // Reutiliza estilos de borde
-                // Ajustar estilo porque notif-img-container tiene overflow visible y size fijo
+                headerAvatarContainer.classList.add('notif-img-container'); 
                 headerAvatarContainer.style.width = '40px';
                 headerAvatarContainer.style.height = '40px';
             } else {
@@ -495,7 +477,6 @@ function disableReplyMode() {
     document.getElementById('reply-preview-container')?.classList.add('d-none');
 }
 
-// [MODIFICADO] Lógica completa para eliminar y reportar
 function showMessagePopover(btn, msgId, user, text) {
     closeMessagePopover();
     const senderId = btn.dataset.senderId;
@@ -538,7 +519,6 @@ function showMessagePopover(btn, msgId, user, text) {
         document.addEventListener('click', closeHandler);
     }, 0);
 
-    // Listeners del popover
     popover.querySelector('[data-action="reply-message"]').addEventListener('click', () => { 
         enableReplyMode(msgId, user, text); 
         closeMessagePopover(); 
@@ -561,7 +541,6 @@ function closeMessagePopover() {
     document.querySelector('.message-options-popover')?.remove();
 }
 
-// [NUEVO] Funciones de acción
 async function handleDeleteMessage(msgId) {
     if (!confirm(t('global.are_you_sure') || '¿Estás seguro de eliminar este mensaje?')) return;
 
@@ -573,7 +552,6 @@ async function handleDeleteMessage(msgId) {
     });
 
     if (res.success) {
-        // La UI se actualizará vía socket, pero podemos forzar un estado visual
         const msgEl = document.getElementById(`msg-${msgId}`);
         if (msgEl) msgEl.style.opacity = '0.5';
     } else {
@@ -627,14 +605,11 @@ function initChatListeners() {
             }
         }
 
-        // [NUEVO] Manejar eventos de borrado en tiempo real
         if (type === 'message_deleted' || type === 'private_message_deleted') {
             const msgId = payload.message_id;
             const msgEl = document.getElementById(`msg-${msgId}`);
             if (msgEl) {
-                // Reemplazar el HTML del mensaje por el de "Eliminado"
                 const wrapper = document.createElement('div');
-                // Usamos la misma función helper pero simulando un objeto msg mínimo
                 const dummyMsg = { id: msgId, status: 'deleted', sender_id: payload.sender_id };
                 const isMe = (parseInt(payload.sender_id) === parseInt(window.USER_ID));
                 wrapper.innerHTML = createDeletedMessageHTML(dummyMsg, isMe);
@@ -651,6 +626,7 @@ function initChatListeners() {
 
 function initListeners() {
     document.body.addEventListener('click', async (e) => {
+        
         if (e.target.closest('#btn-back-to-list')) {
             const layout = document.querySelector('.chat-layout-container');
             if (layout) layout.classList.remove('chat-active');

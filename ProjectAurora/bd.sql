@@ -15,7 +15,7 @@ COLLATE utf8mb4_unicode_ci;
 USE project_aurora_db;
 
 -- ==========================================
--- 3. CREACIÓN DE TABLAS
+-- 3. CREACIÓN DE TABLAS PRINCIPALES
 -- ==========================================
 
 -- USUARIOS
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS verification_codes (
     INDEX (code)
 );
 
--- SEGURIDAD
+-- SEGURIDAD Y LOGS
 CREATE TABLE IF NOT EXISTS security_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_identifier VARCHAR(255) NOT NULL,
@@ -192,7 +192,24 @@ CREATE TABLE IF NOT EXISTS server_config (
 INSERT IGNORE INTO server_config (id, allowed_email_domains) 
 VALUES (1, '["gmail.com", "outlook.com", "hotmail.com", "yahoo.com", "icloud.com"]');
 
--- COMUNIDADES
+-- HISTORIAL ALERTAS
+CREATE TABLE IF NOT EXISTS system_alerts_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    type VARCHAR(50) NOT NULL,          
+    instance_id VARCHAR(50) NOT NULL,   
+    status ENUM('active', 'stopped') DEFAULT 'active',
+    admin_id INT NOT NULL,
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    stopped_at TIMESTAMP NULL,
+    meta_data JSON NULL,
+    FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================
+-- 4. COMUNIDADES
+-- ==========================================
+
 CREATE TABLE IF NOT EXISTS communities (
     id INT AUTO_INCREMENT PRIMARY KEY,
     uuid CHAR(36) NOT NULL UNIQUE,
@@ -210,7 +227,6 @@ CREATE TABLE IF NOT EXISTS communities (
     INDEX (access_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- MIEMBROS DE COMUNIDAD
 CREATE TABLE IF NOT EXISTS community_members (
     id INT AUTO_INCREMENT PRIMARY KEY,
     community_id INT NOT NULL,
@@ -223,29 +239,6 @@ CREATE TABLE IF NOT EXISTS community_members (
     UNIQUE KEY unique_membership (community_id, user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- DATOS DE PRUEBA
-INSERT IGNORE INTO communities (uuid, creator_id, community_name, description, access_code, privacy, member_count, profile_picture, banner_picture) VALUES
-('comm-uuid-001', 1, 'Desarrolladores PHP', 'Comunidad para amantes del código backend.', 'PHP7-CODE-2025', 'public', 120, 'https://ui-avatars.com/api/?name=PHP&background=0D8ABC&color=fff', 'https://picsum.photos/seed/php/600/200'),
-('comm-uuid-002', 1, 'Diseño UI/UX', 'Compartimos recursos de diseño e inspiración.', 'DSGN-2025-FREE', 'public', 45, 'https://ui-avatars.com/api/?name=UI&background=E91E63&color=fff', 'https://picsum.photos/seed/uiux/600/200'),
-('comm-uuid-003', 1, 'Proyecto Aurora Secret', 'Solo personal autorizado del proyecto.', 'AURO-XH55-99ZZ', 'private', 5, 'https://ui-avatars.com/api/?name=PA&background=000000&color=fff', 'https://picsum.photos/seed/aurora/600/200'),
-('comm-uuid-004', 1, 'Gaming Latam', 'Torneos y discusiones sobre videojuegos.', 'GAME-PLAY-NOW1', 'public', 890, 'https://ui-avatars.com/api/?name=GL&background=4CAF50&color=fff', 'https://picsum.photos/seed/gaming/600/200'),
-('comm-uuid-005', 1, 'Club de Lectura VIP', 'Acceso solo con invitación para lectores.', 'READ-BOOK-CLUB', 'private', 12, 'https://ui-avatars.com/api/?name=CL&background=FF9800&color=fff', 'https://picsum.photos/seed/books/600/200');
-
--- HISTORIAL ALERTAS
-CREATE TABLE IF NOT EXISTS system_alerts_history (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    type VARCHAR(50) NOT NULL,          
-    instance_id VARCHAR(50) NOT NULL,   
-    status ENUM('active', 'stopped') DEFAULT 'active',
-    admin_id INT NOT NULL,
-    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    stopped_at TIMESTAMP NULL,
-    meta_data JSON NULL,
-    FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- MENSAJES DE CHAT
 CREATE TABLE IF NOT EXISTS community_messages (
     id INT AUTO_INCREMENT PRIMARY KEY,
     community_id INT NOT NULL,
@@ -253,7 +246,7 @@ CREATE TABLE IF NOT EXISTS community_messages (
     reply_to_id INT NULL,
     message TEXT NOT NULL,
     type ENUM('text', 'image', 'system', 'mixed') DEFAULT 'text',
-    status ENUM('active', 'deleted') DEFAULT 'active', -- [NUEVO] Columna de estado
+    status ENUM('active', 'deleted') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (community_id) REFERENCES communities(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -261,7 +254,6 @@ CREATE TABLE IF NOT EXISTS community_messages (
     INDEX (community_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- REPORTES DE MENSAJES [NUEVA TABLA]
 CREATE TABLE IF NOT EXISTS community_message_reports (
     id INT AUTO_INCREMENT PRIMARY KEY,
     message_id INT NOT NULL,
@@ -272,31 +264,10 @@ CREATE TABLE IF NOT EXISTS community_message_reports (
     FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Tabla para almacenar los archivos físicos
-CREATE TABLE IF NOT EXISTS community_files (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    uuid CHAR(36) NOT NULL UNIQUE,
-    uploader_id INT NOT NULL,
-    file_path VARCHAR(255) NOT NULL,
-    file_name VARCHAR(255) NOT NULL,
-    file_type VARCHAR(50) NOT NULL, -- image/png, etc
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (uploader_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+-- ==========================================
+-- 5. MENSAJERÍA PRIVADA (DMs)
+-- ==========================================
 
--- Tabla pivote para unir mensajes con archivos (1 a N)
-CREATE TABLE IF NOT EXISTS community_message_attachments (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    message_id INT NOT NULL,
-    file_id INT NOT NULL,
-    FOREIGN KEY (message_id) REFERENCES community_messages(id) ON DELETE CASCADE,
-    FOREIGN KEY (file_id) REFERENCES community_files(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- bd_update.sql
--- migration_v2.sql
-
--- 1. Tabla para Mensajes Privados
 CREATE TABLE IF NOT EXISTS private_messages (
     id INT AUTO_INCREMENT PRIMARY KEY,
     sender_id INT NOT NULL,
@@ -314,9 +285,43 @@ CREATE TABLE IF NOT EXISTS private_messages (
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 2. Tabla Pivote para Archivos en Mensajes Privados
--- Reutilizamos la tabla community_files para guardar los archivos físicos, 
--- pero usamos esta nueva tabla para vincularlos a los mensajes privados.
+-- [NUEVO] Reportes de mensajes privados
+CREATE TABLE IF NOT EXISTS private_message_reports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    message_id INT NOT NULL,
+    reporter_id INT NOT NULL,
+    reason TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (message_id) REFERENCES private_messages(id) ON DELETE CASCADE,
+    FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================
+-- 6. GESTIÓN DE ARCHIVOS
+-- ==========================================
+
+-- Tabla central de archivos físicos
+CREATE TABLE IF NOT EXISTS community_files (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    uuid CHAR(36) NOT NULL UNIQUE,
+    uploader_id INT NOT NULL,
+    file_path VARCHAR(255) NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    file_type VARCHAR(50) NOT NULL, 
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (uploader_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Adjuntos en Comunidad
+CREATE TABLE IF NOT EXISTS community_message_attachments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    message_id INT NOT NULL,
+    file_id INT NOT NULL,
+    FOREIGN KEY (message_id) REFERENCES community_messages(id) ON DELETE CASCADE,
+    FOREIGN KEY (file_id) REFERENCES community_files(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Adjuntos en Privado
 CREATE TABLE IF NOT EXISTS private_message_attachments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     message_id INT NOT NULL,
@@ -324,3 +329,14 @@ CREATE TABLE IF NOT EXISTS private_message_attachments (
     FOREIGN KEY (message_id) REFERENCES private_messages(id) ON DELETE CASCADE,
     FOREIGN KEY (file_id) REFERENCES community_files(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================
+-- 7. DATOS DE PRUEBA (Dummy Data)
+-- ==========================================
+
+INSERT IGNORE INTO communities (uuid, creator_id, community_name, description, access_code, privacy, member_count, profile_picture, banner_picture) VALUES
+('comm-uuid-001', 1, 'Desarrolladores PHP', 'Comunidad para amantes del código backend.', 'PHP7-CODE-2025', 'public', 120, 'https://ui-avatars.com/api/?name=PHP&background=0D8ABC&color=fff', 'https://picsum.photos/seed/php/600/200'),
+('comm-uuid-002', 1, 'Diseño UI/UX', 'Compartimos recursos de diseño e inspiración.', 'DSGN-2025-FREE', 'public', 45, 'https://ui-avatars.com/api/?name=UI&background=E91E63&color=fff', 'https://picsum.photos/seed/uiux/600/200'),
+('comm-uuid-003', 1, 'Proyecto Aurora Secret', 'Solo personal autorizado del proyecto.', 'AURO-XH55-99ZZ', 'private', 5, 'https://ui-avatars.com/api/?name=PA&background=000000&color=fff', 'https://picsum.photos/seed/aurora/600/200'),
+('comm-uuid-004', 1, 'Gaming Latam', 'Torneos y discusiones sobre videojuegos.', 'GAME-PLAY-NOW1', 'public', 890, 'https://ui-avatars.com/api/?name=GL&background=4CAF50&color=fff', 'https://picsum.photos/seed/gaming/600/200'),
+('comm-uuid-005', 1, 'Club de Lectura VIP', 'Acceso solo con invitación para lectores.', 'READ-BOOK-CLUB', 'private', 12, 'https://ui-avatars.com/api/?name=CL&background=FF9800&color=fff', 'https://picsum.photos/seed/books/600/200');

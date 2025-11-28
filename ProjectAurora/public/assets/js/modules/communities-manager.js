@@ -21,7 +21,7 @@ function escapeHtml(text) {
 }
 
 // ==========================================
-// RENDERIZADO DE LA LISTA LATERAL (UNIFICADA)
+// RENDERIZADO DE LA LISTA LATERAL
 // ==========================================
 
 function renderChatListItem(item) {
@@ -47,9 +47,8 @@ function renderChatListItem(item) {
 
     const previewStyle = (unreadCount > 0 && isActive === '') ? 'font-weight: 700; color: #000;' : '';
     
-    // [MODIFICADO] Nueva estructura para soporte de bordes de rol
-    const role = item.role || 'user'; // Viene del backend ahora
-    const shapeClass = isPrivate ? '' : 'community-shape'; // Redondo para usuarios, cuadrado para comms
+    const role = item.role || 'user'; 
+    const shapeClass = isPrivate ? '' : 'community-shape'; 
 
     return `
     <div class="chat-item ${isActive}" data-action="select-chat" data-uuid="${item.uuid}" data-type="${item.type}">
@@ -68,11 +67,15 @@ function renderChatListItem(item) {
                 ${badgeHtml}
             </div>
         </div>
+
+        <button class="chat-hover-btn" data-action="open-chat-menu" data-uuid="${item.uuid}" data-type="${item.type}">
+            <span class="material-symbols-rounded">expand_more</span>
+        </button>
     </div>`;
 }
 
 // ==========================================
-// RENDERIZADO DE EXPLORER (Comunidades Públicas)
+// RENDERIZADO DE EXPLORER
 // ==========================================
 function renderCommunityCard(comm, isJoined) {
     const avatar = comm.profile_picture ? 
@@ -149,11 +152,95 @@ async function loadPublicCommunities() {
 }
 
 // ==========================================
+// [MODIFICADO] GESTIÓN DE MENÚ FLOTANTE CONTEXTUAL
+// ==========================================
+
+function showChatMenu(btn, uuid, type) {
+    // 1. Eliminar cualquier popover previo
+    document.querySelector('.chat-popover-menu')?.remove();
+
+    // 2. Definir opciones según el tipo
+    let specificOptions = '';
+
+    if (type === 'private') {
+        // Opciones para Usuario
+        specificOptions = `
+            <div class="chat-popover-item danger">
+                <span class="material-symbols-rounded">block</span> Bloquear
+            </div>
+            <div class="chat-popover-item danger">
+                <span class="material-symbols-rounded">person_remove</span> Eliminar amigo
+            </div>
+        `;
+    } else {
+        // Opciones para Grupo
+        specificOptions = `
+            <div class="chat-popover-item danger">
+                <span class="material-symbols-rounded">logout</span> Abandonar grupo
+            </div>
+        `;
+    }
+
+    // 3. Crear menú HTML (Comunes + Específicos)
+    const menu = document.createElement('div');
+    menu.className = 'chat-popover-menu';
+    menu.innerHTML = `
+        <div class="chat-popover-item">
+            <span class="material-symbols-rounded">push_pin</span> Fijar chat
+        </div>
+        <div class="chat-popover-item">
+            <span class="material-symbols-rounded">star</span> Marcar favorito
+        </div>
+        <div class="chat-popover-item danger">
+            <span class="material-symbols-rounded">delete</span> Eliminar chat
+        </div>
+        <div class="chat-popover-separator"></div>
+        ${specificOptions}
+    `;
+
+    // 4. Posicionar
+    const rect = btn.getBoundingClientRect();
+    menu.style.top = (rect.bottom + 5) + 'px';
+    
+    // Alinear a la derecha del botón para que no se salga
+    if (rect.right + 200 > window.innerWidth) {
+        menu.style.right = (window.innerWidth - rect.right) + 'px';
+    } else {
+        menu.style.left = (rect.left - 150) + 'px'; // Desplazado a la izquierda para alineación visual
+    }
+
+    document.body.appendChild(menu);
+    btn.classList.add('active'); 
+
+    // 5. Cerrar al hacer clic fuera
+    setTimeout(() => {
+        const closeHandler = (e) => {
+            if (!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+                menu.remove();
+                btn.classList.remove('active');
+                document.removeEventListener('click', closeHandler);
+            }
+        };
+        document.addEventListener('click', closeHandler);
+    }, 0);
+}
+
+// ==========================================
 // LISTENERS
 // ==========================================
 
 function initListListeners() {
     document.getElementById('my-communities-list')?.addEventListener('click', (e) => {
+        // [MODIFICADO] Detectar clic en la flecha del chat con TYPE
+        const chatMenuBtn = e.target.closest('[data-action="open-chat-menu"]');
+        if (chatMenuBtn) {
+            e.preventDefault();
+            e.stopPropagation(); 
+            // Pasamos el tipo al gestor del menú
+            showChatMenu(chatMenuBtn, chatMenuBtn.dataset.uuid, chatMenuBtn.dataset.type);
+            return;
+        }
+
         const item = e.target.closest('.chat-item');
         if (item) {
             const uuid = item.dataset.uuid;

@@ -46,7 +46,6 @@ $userId = $_SESSION['user_id'];
 try {
     // --- ENVIAR MENSAJE ---
     if ($action === 'send_message') {
-        // ... (Lógica de envío intacta, omitida por brevedad si ya la tienes, pero la incluyo completa para asegurar integridad)
         $uuid = $data['target_uuid'] ?? $data['community_uuid'] ?? ''; 
         $context = $data['context'] ?? 'community'; 
         $messageText = trim($data['message'] ?? '');
@@ -137,16 +136,10 @@ try {
             }
             $pdo->commit();
 
-            // Preparar respuesta para socket (simplificada)
+            // Preparar broadcast
             $stmtUser = $pdo->prepare("SELECT username, profile_picture, role FROM users WHERE id = ?");
             $stmtUser->execute([$userId]);
             $userData = $stmtUser->fetch(PDO::FETCH_ASSOC);
-
-            // Obtener datos del reply
-            $replyData = [];
-            if ($replyToId) {
-                // (Logica de reply omitida para brevedad, se mantiene igual que antes)
-            }
 
             $broadcastPayload = [
                 'id' => $msgId,
@@ -182,7 +175,6 @@ try {
 
     // --- OBTENER MENSAJES ---
     } elseif ($action === 'get_messages') {
-        // (Lógica de get_messages se mantiene igual, ya estaba bien)
         $uuid = $data['target_uuid'] ?? $data['community_uuid'] ?? '';
         $context = $data['context'] ?? 'community';
         $limit = isset($data['limit']) ? (int)$data['limit'] : 50;
@@ -262,18 +254,16 @@ try {
 
         echo json_encode(['success' => true, 'messages' => array_reverse($messages), 'has_more' => (count($messages) >= $limit)]);
 
-    // --- [MODIFICADO] ELIMINAR MENSAJE ---
+    // --- ELIMINAR MENSAJE ---
     } elseif ($action === 'delete_message') {
         $msgId = (int)($data['message_id'] ?? 0);
         $context = $data['context'] ?? 'community';
         
         if (!$msgId) throw new Exception(translation('global.action_invalid'));
 
-        // Determinar tabla y ID de usuario
         $table = ($context === 'private') ? 'private_messages' : 'community_messages';
         $userCol = ($context === 'private') ? 'sender_id' : 'user_id';
 
-        // Verificar propiedad del mensaje
         $stmt = $pdo->prepare("SELECT id, created_at, status FROM $table WHERE id = ? AND $userCol = ?");
         $stmt->execute([$msgId, $userId]);
         $msg = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -281,29 +271,21 @@ try {
         if (!$msg) throw new Exception("Mensaje no encontrado o no tienes permiso.");
         if ($msg['status'] === 'deleted') throw new Exception("Ya eliminado.");
 
-        // Verificar límite de tiempo (24 horas)
         $msgTime = strtotime($msg['created_at']);
         if (time() - $msgTime > (24 * 3600)) throw new Exception(translation('chat.error.delete_timeout') ?? 'Tiempo expirado para borrar');
 
-        // Realizar borrado lógico
         $pdo->prepare("UPDATE $table SET status = 'deleted', message = '', type = 'text' WHERE id = ?")->execute([$msgId]);
         
-        // Broadcast
         $eventType = ($context === 'private') ? 'private_message_deleted' : 'message_deleted';
         
-        // Necesitamos saber a quién avisar
         if ($context === 'private') {
-            // Obtener el receiver para notificarle
             $stmtRec = $pdo->prepare("SELECT receiver_id FROM private_messages WHERE id = ?");
             $stmtRec->execute([$msgId]);
             $receiverId = $stmtRec->fetchColumn();
             
-            // Avisar al receptor
             send_live_notification($receiverId, $eventType, ['message_id' => $msgId, 'sender_id' => $userId]);
-            // Avisar a mí mismo (otras sesiones)
             send_live_notification($userId, $eventType, ['message_id' => $msgId, 'sender_id' => $userId]);
         } else {
-            // Comunidad broadcast
             $stmtComm = $pdo->prepare("SELECT community_id FROM community_messages WHERE id = ?");
             $stmtComm->execute([$msgId]);
             $commId = $stmtComm->fetchColumn();
@@ -316,7 +298,7 @@ try {
 
         echo json_encode(['success' => true, 'message' => translation('chat.message_deleted')]);
 
-    // --- [MODIFICADO] REPORTAR MENSAJE ---
+    // --- REPORTAR MENSAJE ---
     } elseif ($action === 'report_message') {
         $msgId = (int)($data['message_id'] ?? 0);
         $reason = trim($data['reason'] ?? '');
@@ -324,29 +306,22 @@ try {
 
         if (!$msgId || empty($reason)) throw new Exception(translation('admin.error.reason_required'));
 
-        // Determinar tabla de mensajes
         $table = ($context === 'private') ? 'private_messages' : 'community_messages';
         
-        // Verificar existencia
         $stmtCheck = $pdo->prepare("SELECT id FROM $table WHERE id = ?");
         $stmtCheck->execute([$msgId]);
         if (!$stmtCheck->fetch()) throw new Exception("Mensaje no existe.");
 
-        // Insertar en tabla de reportes
-        // Nota: Asumimos que community_message_reports se usa para ambos o creamos una lógica genérica.
-        // Dado que la DB original solo tiene community_message_reports, insertaremos ahí si es comunidad,
-        // o en un log de seguridad si es privado (ya que no puedo alterar tu DB sin SQL explícito).
-        // Sin embargo, para que funcione visualmente:
-        
         if ($context === 'private') {
-            // Loguear en security_logs como workaround seguro
-            $logMsg = "REPORT PRIVATE MSG ID: $msgId. REASON: $reason. BY USER: $userId";
-            $ip = get_client_ip();
-            $pdo->prepare("INSERT INTO security_logs (user_identifier, action_type, ip_address, created_at) VALUES (?, 'report_msg', ?, NOW())")
-                ->execute([$logMsg, $ip]);
+            // Lógica para reportes privados con tabla dedicada
+            $stmtRep = $pdo->prepare("SELECT id FROM private_message_reports WHERE message_id = ? AND reporter_id = ?");
+            $stmtRep->execute([$msgId, $userId]);
+            if ($stmtRep->rowCount() > 0) throw new Exception(translation('chat.error.already_reported') ?? 'Ya reportado');
+
+            $stmtIns = $pdo->prepare("INSERT INTO private_message_reports (message_id, reporter_id, reason, created_at) VALUES (?, ?, ?, NOW())");
+            $stmtIns->execute([$msgId, $userId, $reason]);
         } else {
-            // Comunidad
-            // Verificar si ya reportó
+            // Lógica para reportes de comunidad
             $stmtRep = $pdo->prepare("SELECT id FROM community_message_reports WHERE message_id = ? AND reporter_id = ?");
             $stmtRep->execute([$msgId, $userId]);
             if ($stmtRep->rowCount() > 0) throw new Exception(translation('chat.error.already_reported') ?? 'Ya reportado');
@@ -354,9 +329,6 @@ try {
             $stmtIns = $pdo->prepare("INSERT INTO community_message_reports (message_id, reporter_id, reason, created_at) VALUES (?, ?, ?, NOW())");
             $stmtIns->execute([$msgId, $userId, $reason]);
         }
-
-        // Notificar Admins (Opcional)
-        // send_live_notification('admins', 'admin_alert', ['message' => "Nuevo reporte de mensaje."]);
 
         echo json_encode(['success' => true, 'message' => translation('chat.report_success')]);
     }
