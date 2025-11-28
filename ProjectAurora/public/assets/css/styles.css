@@ -2760,4 +2760,38 @@ a.disabled-link {
 }
 .chat-popover-item.danger .material-symbols-rounded {
     color: #d32f2f;
+}/* ESTILOS PARA INDICADORES DE PIN Y FAVORITO */
+.chat-item {
+    position: relative;
+    /* ... resto de estilos chat-item ... */
+}
+
+/* Contenedor de indicadores (arriba a la derecha del item, pero a la izquierda del hover button) */
+.chat-item-indicators {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 4px;
+    pointer-events: none; /* No bloquear clics */
+}
+
+.icon-indicator {
+    font-size: 14px;
+    color: #666;
+}
+
+.icon-indicator.pinned {
+    color: #1976d2; /* Azul */
+    transform: rotate(45deg);
+}
+
+.icon-indicator.favorite {
+    color: #fbc02d; /* Amarillo/Dorado */
+}
+
+/* Ajuste del menú flotante */
+.chat-hover-btn {
+    /* ... estilos existentes ... */
+    z-index: 15; /* Asegurar que esté por encima de indicadores */
 }

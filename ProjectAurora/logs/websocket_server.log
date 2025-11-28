@@ -1409,3 +1409,38 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-11-28 16:11:11,650 - INFO - Usuario conectado: ID 1 | Rol: user
 2025-11-28 16:24:06,635 - INFO - connection open
 2025-11-28 16:24:06,638 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 16:29:07,093 - INFO - connection open
+2025-11-28 16:29:07,100 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 16:29:08,361 - INFO - connection open
+2025-11-28 16:29:08,366 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 16:29:09,215 - INFO - connection open
+2025-11-28 16:29:09,249 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 16:34:40,029 - INFO - connection open
+2025-11-28 16:34:40,164 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 16:34:50,900 - INFO - connection open
+2025-11-28 16:34:51,063 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-11-28 16:35:09,403 - INFO - connection open
+2025-11-28 16:35:09,410 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 16:35:18,539 - INFO - connection open
+2025-11-28 16:35:18,541 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 16:43:03,638 - INFO - connection open
+2025-11-28 16:43:03,646 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 16:43:23,940 - INFO - connection open
+2025-11-28 16:43:23,945 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 16:43:33,550 - INFO - connection open
+2025-11-28 16:43:33,554 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 16:43:42,554 - INFO - connection open
+2025-11-28 16:43:42,560 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 16:44:09,977 - INFO - connection open
+2025-11-28 16:44:10,025 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 16:44:56,102 - WARNING - Usuario 2 intentó enviar DM a UUID inexistente: 21b54873-3e24-4a66-9ec3-d63e56d202aa
+2025-11-28 16:44:59,527 - WARNING - Usuario 2 intentó enviar DM a UUID inexistente: 21b54873-3e24-4a66-9ec3-d63e56d202aa
+2025-11-28 16:44:59,839 - WARNING - Usuario 2 intentó enviar DM a UUID inexistente: 21b54873-3e24-4a66-9ec3-d63e56d202aa
+2025-11-28 16:45:20,703 - INFO - connection open
+2025-11-28 16:45:20,706 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-11-28 16:45:41,882 - INFO - connection open
+2025-11-28 16:45:41,889 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-11-28 16:46:31,678 - INFO - connection open
+2025-11-28 16:46:31,685 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 16:46:45,598 - INFO - connection open
+2025-11-28 16:46:45,629 - INFO - Usuario conectado: ID 1 | Rol: user

@@ -19,7 +19,6 @@ require_once '../includes/logic/i18n_server.php';
 $lang = $_SESSION['user_lang'] ?? detect_browser_language() ?? 'es-latam';
 I18n::load($lang);
 
-// Detectar si es JSON o FormData
 $contentType = $_SERVER["CONTENT_TYPE"] ?? '';
 if (strpos($contentType, "application/json") !== false) {
     $data = json_decode(file_get_contents('php://input'), true);
@@ -191,6 +190,13 @@ try {
             $stmtRead = $pdo->prepare("UPDATE private_messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ? AND is_read = 0");
             $stmtRead->execute([$targetId, $userId]);
 
+            // [MODIFICADO] Filtrar por fecha de limpieza
+            $stmtClear = $pdo->prepare("SELECT cleared_at FROM private_chat_clearance WHERE user_id = ? AND partner_id = ?");
+            $stmtClear->execute([$userId, $targetId]);
+            $clearedAt = $stmtClear->fetchColumn(); 
+            // Si no hay fecha, usamos fecha muy antigua para traer todo
+            $clearedAt = $clearedAt ? $clearedAt : '1970-01-01 00:00:00';
+
             $sql = "
                 SELECT m.id, m.message, m.created_at, m.type, m.reply_to_id, m.status, m.sender_id,
                        u.username as sender_username, u.profile_picture as sender_profile_picture, u.role as sender_role,
@@ -201,12 +207,13 @@ try {
                 JOIN users u ON m.sender_id = u.id
                 LEFT JOIN private_messages p ON m.reply_to_id = p.id
                 LEFT JOIN users pu ON p.sender_id = pu.id
-                WHERE (m.sender_id = ? AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = ?)
+                WHERE ((m.sender_id = ? AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = ?))
+                AND m.created_at > ?
                 ORDER BY m.created_at DESC 
                 LIMIT $limit OFFSET $offset
             ";
             $stmt = $pdo->prepare($sql);
-            $stmt->execute([$userId, $targetId, $targetId, $userId]);
+            $stmt->execute([$userId, $targetId, $targetId, $userId, $clearedAt]);
 
         } else {
             $stmtC = $pdo->prepare("SELECT c.id FROM communities c JOIN community_members cm ON c.id = cm.community_id WHERE c.uuid = ? AND cm.user_id = ?");
@@ -254,7 +261,7 @@ try {
 
         echo json_encode(['success' => true, 'messages' => array_reverse($messages), 'has_more' => (count($messages) >= $limit)]);
 
-    // --- ELIMINAR MENSAJE ---
+    // --- ELIMINAR MENSAJE INDIVIDUAL ---
     } elseif ($action === 'delete_message') {
         $msgId = (int)($data['message_id'] ?? 0);
         $context = $data['context'] ?? 'community';
@@ -298,6 +305,29 @@ try {
 
         echo json_encode(['success' => true, 'message' => translation('chat.message_deleted')]);
 
+    // --- [NUEVO] ELIMINAR CONVERSACIÓN (SOLO PARA MI) ---
+    } elseif ($action === 'delete_conversation') {
+        $uuid = $data['target_uuid'] ?? '';
+        
+        if (empty($uuid)) throw new Exception(translation('global.action_invalid'));
+
+        // 1. Obtener ID del partner
+        $stmtU = $pdo->prepare("SELECT id FROM users WHERE uuid = ?");
+        $stmtU->execute([$uuid]);
+        $partnerId = $stmtU->fetchColumn();
+
+        if (!$partnerId) throw new Exception("Usuario no encontrado.");
+
+        // 2. Insertar o actualizar la fecha de limpieza
+        // Usamos ON DUPLICATE KEY UPDATE para actualizar si ya se había borrado antes
+        $sql = "INSERT INTO private_chat_clearance (user_id, partner_id, cleared_at) 
+                VALUES (?, ?, NOW()) 
+                ON DUPLICATE KEY UPDATE cleared_at = NOW()";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$userId, $partnerId]);
+
+        echo json_encode(['success' => true, 'message' => 'Chat eliminado de tu lista.']);
+
     // --- REPORTAR MENSAJE ---
     } elseif ($action === 'report_message') {
         $msgId = (int)($data['message_id'] ?? 0);
@@ -313,7 +343,6 @@ try {
         if (!$stmtCheck->fetch()) throw new Exception("Mensaje no existe.");
 
         if ($context === 'private') {
-            // Lógica para reportes privados con tabla dedicada
             $stmtRep = $pdo->prepare("SELECT id FROM private_message_reports WHERE message_id = ? AND reporter_id = ?");
             $stmtRep->execute([$msgId, $userId]);
             if ($stmtRep->rowCount() > 0) throw new Exception(translation('chat.error.already_reported') ?? 'Ya reportado');
@@ -321,7 +350,6 @@ try {
             $stmtIns = $pdo->prepare("INSERT INTO private_message_reports (message_id, reporter_id, reason, created_at) VALUES (?, ?, ?, NOW())");
             $stmtIns->execute([$msgId, $userId, $reason]);
         } else {
-            // Lógica para reportes de comunidad
             $stmtRep = $pdo->prepare("SELECT id FROM community_message_reports WHERE message_id = ? AND reporter_id = ?");
             $stmtRep->execute([$msgId, $userId]);
             if ($stmtRep->rowCount() > 0) throw new Exception(translation('chat.error.already_reported') ?? 'Ya reportado');

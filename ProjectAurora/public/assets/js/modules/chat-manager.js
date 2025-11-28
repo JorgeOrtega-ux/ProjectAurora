@@ -577,6 +577,25 @@ async function handleReportMessage(msgId) {
     }
 }
 
+// [NUEVO] MANEJAR ELIMINAR CONVERSACIÓN COMPLETA
+async function handleDeleteConversation(uuid) {
+    if(!confirm('¿Seguro que quieres eliminar este chat? Solo se borrará para ti.')) return;
+    
+    const res = await postJson('api/chat_handler.php', {
+        action: 'delete_conversation',
+        target_uuid: uuid
+    });
+
+    if(res.success) {
+        if(window.alertManager) window.alertManager.showAlert(res.message, 'success');
+        // Redirigir a main para limpiar la vista actual
+        if(window.navigateTo) window.navigateTo('main');
+        else window.location.href = window.BASE_PATH + 'main';
+    } else {
+        if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
+    }
+}
+
 // ==========================================
 // INICIALIZACIÓN
 // ==========================================
@@ -654,6 +673,16 @@ function initListeners() {
         if (e.target.closest('[data-action="close-group-info"]')) { 
             e.preventDefault(); 
             document.getElementById('chat-info-panel')?.classList.add('d-none'); 
+        }
+
+        // [NUEVO] Listener para eliminar conversación desde el menú contextual
+        const delChatBtn = e.target.closest('[data-action="delete-chat-conversation"]');
+        if (delChatBtn) {
+            e.preventDefault();
+            const uuid = delChatBtn.dataset.uuid;
+            // Remover el menú primero
+            document.querySelector('.chat-popover-menu')?.remove();
+            await handleDeleteConversation(uuid);
         }
     });
 }

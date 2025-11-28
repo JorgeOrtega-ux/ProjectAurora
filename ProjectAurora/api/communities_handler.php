@@ -82,7 +82,7 @@ try {
         $sqlCommunities = "SELECT 
                     'community' as type,
                     c.id, c.uuid, c.community_name as name, 
-                    c.profile_picture, 
+                    c.profile_picture, cm.is_pinned, cm.is_favorite,
                     (SELECT message FROM community_messages WHERE community_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
                     (SELECT created_at FROM community_messages WHERE community_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_at,
                     (SELECT COUNT(*) FROM community_messages WHERE community_id = c.id AND created_at > cm.last_read_at AND user_id != cm.user_id) as unread_count
@@ -95,11 +95,12 @@ try {
         $communities = $stmtComm->fetchAll(PDO::FETCH_ASSOC);
 
         // 2. Obtener Chats Privados Activos
-        // [MODIFICADO] Agregado u.role a la selección
         $sqlDMs = "SELECT 
                     'private' as type,
                     u.id, u.uuid, u.username as name, 
-                    u.profile_picture, u.role, 
+                    u.profile_picture, u.role,
+                    COALESCE(pcc.is_pinned, 0) as is_pinned,
+                    COALESCE(pcc.is_favorite, 0) as is_favorite,
                     m.message as last_message,
                     m.created_at as last_message_at,
                     (SELECT COUNT(*) FROM private_messages pm WHERE pm.sender_id = u.id AND pm.receiver_id = ? AND pm.is_read = 0) as unread_count
@@ -116,23 +117,122 @@ try {
                            GROUP BY CASE WHEN sender_id = ? THEN receiver_id ELSE sender_id END
                        )
                    ) m ON u.id = m.partner_id
-                   WHERE u.account_status = 'active'";
+                   LEFT JOIN private_chat_clearance pcc ON (pcc.user_id = ? AND pcc.partner_id = u.id)
+                   WHERE u.account_status = 'active'
+                   AND (pcc.cleared_at IS NULL OR m.created_at > pcc.cleared_at)";
 
         $stmtDMs = $pdo->prepare($sqlDMs);
-        $stmtDMs->execute([$userId, $userId, $userId, $userId, $userId]);
+        $stmtDMs->execute([$userId, $userId, $userId, $userId, $userId, $userId]);
         $dms = $stmtDMs->fetchAll(PDO::FETCH_ASSOC);
 
         // 3. Unificar y Ordenar
         $fullList = array_merge($communities, $dms);
         
-        // Ordenar por fecha del último mensaje descendente
+        // Ordenar: Primero Pin, luego Fecha
         usort($fullList, function($a, $b) {
+            $pinA = (int)($a['is_pinned'] ?? 0);
+            $pinB = (int)($b['is_pinned'] ?? 0);
+            
+            if ($pinA !== $pinB) {
+                return $pinB - $pinA; // 1 (pinned) primero
+            }
+
             $t1 = $a['last_message_at'] ? strtotime($a['last_message_at']) : 0;
             $t2 = $b['last_message_at'] ? strtotime($b['last_message_at']) : 0;
             return $t2 - $t1;
         });
 
         echo json_encode(['success' => true, 'list' => $fullList]);
+
+    // --- TOGGLE PIN CHAT ---
+    } elseif ($action === 'toggle_pin') {
+        $uuid = $data['uuid'] ?? '';
+        $type = $data['type'] ?? ''; 
+        
+        if (!$uuid || !$type) throw new Exception(translation('global.action_invalid'));
+
+        // Contar pines totales
+        $sqlCount = "SELECT 
+            (SELECT COUNT(*) FROM community_members WHERE user_id = ? AND is_pinned = 1) + 
+            (SELECT COUNT(*) FROM private_chat_clearance WHERE user_id = ? AND is_pinned = 1) as total_pinned";
+        $stmtCount = $pdo->prepare($sqlCount);
+        $stmtCount->execute([$userId, $userId]);
+        $totalPinned = (int)$stmtCount->fetchColumn();
+
+        $newState = 0;
+
+        if ($type === 'community') {
+            $stmtCurr = $pdo->prepare("SELECT is_pinned, id FROM community_members WHERE user_id = ? AND community_id = (SELECT id FROM communities WHERE uuid = ?)");
+            $stmtCurr->execute([$userId, $uuid]);
+            $row = $stmtCurr->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$row) throw new Exception("Comunidad no encontrada.");
+            
+            $currentPinned = (int)$row['is_pinned'];
+            $newState = $currentPinned ? 0 : 1;
+
+            if ($newState === 1 && $totalPinned >= 3) throw new Exception("Máximo 3 chats fijados.");
+
+            $pdo->prepare("UPDATE community_members SET is_pinned = ? WHERE id = ?")->execute([$newState, $row['id']]);
+
+        } elseif ($type === 'private') {
+            $stmtU = $pdo->prepare("SELECT id FROM users WHERE uuid = ?");
+            $stmtU->execute([$uuid]);
+            $partnerId = $stmtU->fetchColumn();
+            if (!$partnerId) throw new Exception("Usuario no encontrado.");
+
+            $stmtCurr = $pdo->prepare("SELECT is_pinned FROM private_chat_clearance WHERE user_id = ? AND partner_id = ?");
+            $stmtCurr->execute([$userId, $partnerId]);
+            $currentPinned = (int)$stmtCurr->fetchColumn();
+
+            $newState = $currentPinned ? 0 : 1;
+
+            if ($newState === 1 && $totalPinned >= 3) throw new Exception("Máximo 3 chats fijados.");
+
+            $sqlUpd = "INSERT INTO private_chat_clearance (user_id, partner_id, is_pinned) VALUES (?, ?, ?) 
+                       ON DUPLICATE KEY UPDATE is_pinned = VALUES(is_pinned)";
+            $pdo->prepare($sqlUpd)->execute([$userId, $partnerId, $newState]);
+        }
+
+        echo json_encode(['success' => true, 'is_pinned' => $newState, 'message' => $newState ? 'Chat fijado' : 'Chat desfijado']);
+
+    // --- TOGGLE FAVORITE CHAT ---
+    } elseif ($action === 'toggle_favorite') {
+        $uuid = $data['uuid'] ?? '';
+        $type = $data['type'] ?? ''; 
+        
+        if (!$uuid || !$type) throw new Exception(translation('global.action_invalid'));
+
+        $newState = 0;
+
+        if ($type === 'community') {
+            $stmtCurr = $pdo->prepare("SELECT is_favorite, id FROM community_members WHERE user_id = ? AND community_id = (SELECT id FROM communities WHERE uuid = ?)");
+            $stmtCurr->execute([$userId, $uuid]);
+            $row = $stmtCurr->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$row) throw new Exception("Error.");
+            
+            $newState = ((int)$row['is_favorite']) ? 0 : 1;
+            $pdo->prepare("UPDATE community_members SET is_favorite = ? WHERE id = ?")->execute([$newState, $row['id']]);
+
+        } elseif ($type === 'private') {
+            $stmtU = $pdo->prepare("SELECT id FROM users WHERE uuid = ?");
+            $stmtU->execute([$uuid]);
+            $partnerId = $stmtU->fetchColumn();
+            if (!$partnerId) throw new Exception("Error.");
+
+            $stmtCurr = $pdo->prepare("SELECT is_favorite FROM private_chat_clearance WHERE user_id = ? AND partner_id = ?");
+            $stmtCurr->execute([$userId, $partnerId]);
+            $currentFav = (int)$stmtCurr->fetchColumn();
+
+            $newState = $currentFav ? 0 : 1;
+
+            $sqlUpd = "INSERT INTO private_chat_clearance (user_id, partner_id, is_favorite) VALUES (?, ?, ?) 
+                       ON DUPLICATE KEY UPDATE is_favorite = VALUES(is_favorite)";
+            $pdo->prepare($sqlUpd)->execute([$userId, $partnerId, $newState]);
+        }
+
+        echo json_encode(['success' => true, 'is_favorite' => $newState, 'message' => $newState ? 'Marcado como favorito' : 'Quitado de favoritos']);
 
     // --- OBTENER COMUNIDADES PÚBLICAS ---
     } elseif ($action === 'get_public_communities') {
@@ -144,35 +244,33 @@ try {
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$userId]);
         $communities = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
         echo json_encode(['success' => true, 'communities' => $communities]);
 
     // --- UNIRSE A PÚBLICA ---
     } elseif ($action === 'join_public') {
         $communityId = (int)($data['community_id'] ?? 0);
-        
-        $stmtC = $pdo->prepare("SELECT id, privacy FROM communities WHERE id = ?");
-        $stmtC->execute([$communityId]);
-        $comm = $stmtC->fetch();
-
-        if (!$comm || $comm['privacy'] !== 'public') {
-            throw new Exception(translation('global.action_invalid'));
-        }
-
         $stmtCheck = $pdo->prepare("SELECT id FROM community_members WHERE community_id = ? AND user_id = ?");
         $stmtCheck->execute([$communityId, $userId]);
         if ($stmtCheck->rowCount() > 0) throw new Exception("Ya eres miembro.");
-
         $pdo->beginTransaction();
         $pdo->prepare("INSERT INTO community_members (community_id, user_id) VALUES (?, ?)")->execute([$communityId, $userId]);
         $pdo->prepare("UPDATE communities SET member_count = member_count + 1 WHERE id = ?")->execute([$communityId]);
         $pdo->commit();
-
         echo json_encode(['success' => true, 'message' => 'Te has unido al grupo.']);
 
     // --- ABANDONAR ---
     } elseif ($action === 'leave_community') {
+        $uuid = $data['uuid'] ?? '';
         $communityId = (int)($data['community_id'] ?? 0);
+
+        // [CORRECCIÓN] Resolución de UUID a ID si es necesario
+        if ($communityId === 0 && !empty($uuid)) {
+            $stmtId = $pdo->prepare("SELECT id FROM communities WHERE uuid = ?");
+            $stmtId->execute([$uuid]);
+            $communityId = $stmtId->fetchColumn();
+        }
+
+        if (empty($communityId)) throw new Exception(translation('global.action_invalid'));
 
         $pdo->beginTransaction();
         $stmtDel = $pdo->prepare("DELETE FROM community_members WHERE community_id = ? AND user_id = ?");
@@ -184,87 +282,36 @@ try {
             echo json_encode(['success' => true, 'message' => 'Has salido del grupo.']);
         } else {
             $pdo->rollBack();
-            throw new Exception(translation('global.action_invalid'));
+            throw new Exception("No eres miembro de este grupo.");
         }
 
-    // --- OBTENER DETALLES DE UNA COMUNIDAD POR UUID ---
+    // --- OBTENER DETALLES COMUNIDAD POR UUID ---
     } elseif ($action === 'get_community_by_uuid') {
         $uuid = trim($data['uuid'] ?? '');
-        $sql = "SELECT c.id, c.uuid, c.community_name, c.profile_picture, c.banner_picture, cm.role
-                FROM communities c
-                JOIN community_members cm ON c.id = cm.community_id
-                WHERE c.uuid = ? AND cm.user_id = ?";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$uuid, $userId]);
-        $comm = $stmt->fetch(PDO::FETCH_ASSOC);
+        $sql = "SELECT c.id, c.uuid, c.community_name, c.profile_picture, c.banner_picture, cm.role FROM communities c JOIN community_members cm ON c.id = cm.community_id WHERE c.uuid = ? AND cm.user_id = ?";
+        $stmt = $pdo->prepare($sql); $stmt->execute([$uuid, $userId]); $comm = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($comm) { $comm['type'] = 'community'; echo json_encode(['success' => true, 'data' => $comm]); } 
+        else echo json_encode(['success' => false, 'message' => 'Error']);
 
-        if ($comm) {
-            $comm['type'] = 'community'; 
-            echo json_encode(['success' => true, 'data' => $comm]);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Comunidad no encontrada o acceso denegado']);
-        }
-
-    // --- OBTENER DETALLES DE USUARIO (PARA DM) POR UUID ---
+    // --- OBTENER DETALLES USUARIO (DM) POR UUID ---
     } elseif ($action === 'get_user_chat_by_uuid') {
         $uuid = trim($data['uuid'] ?? '');
-        // [MODIFICADO] Añadido role a la selección
         $sql = "SELECT id, uuid, username as community_name, profile_picture, role FROM users WHERE uuid = ? AND id != ?";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$uuid, $userId]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($user) {
-            $user['type'] = 'private'; 
-            $user['banner_picture'] = null; 
-            // Ya no forzamos 'role' = 'member', usamos el real del usuario si existe, o member por defecto
-            if(empty($user['role'])) $user['role'] = 'member';
-            
-            echo json_encode(['success' => true, 'data' => $user]);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Usuario no encontrado']);
-        }
+        $stmt = $pdo->prepare($sql); $stmt->execute([$uuid, $userId]); $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($user) { $user['type'] = 'private'; $user['banner_picture'] = null; if(empty($user['role'])) $user['role'] = 'member'; echo json_encode(['success' => true, 'data' => $user]); }
+        else echo json_encode(['success' => false, 'message' => 'Usuario no encontrado']);
 
     // --- OBTENER DETALLES COMPLETOS (INFO PANEL) ---
     } elseif ($action === 'get_community_details') {
         $uuid = trim($data['uuid'] ?? '');
-        
-        $stmtC = $pdo->prepare("SELECT c.id, c.community_name, c.description, c.profile_picture, c.access_code, c.member_count 
-                                FROM communities c 
-                                JOIN community_members cm ON c.id = cm.community_id 
-                                WHERE c.uuid = ? AND cm.user_id = ?");
-        $stmtC->execute([$uuid, $userId]);
-        $info = $stmtC->fetch(PDO::FETCH_ASSOC);
-
-        if (!$info) throw new Exception("Acceso denegado o comunidad no encontrada.");
-
-        $sqlMembers = "SELECT u.id, u.username, u.profile_picture, cm.role 
-                       FROM community_members cm 
-                       JOIN users u ON cm.user_id = u.id 
-                       WHERE cm.community_id = ? 
-                       ORDER BY FIELD(cm.role, 'admin', 'moderator', 'member'), u.username ASC";
-        $stmtM = $pdo->prepare($sqlMembers);
-        $stmtM->execute([$info['id']]);
-        $members = $stmtM->fetchAll(PDO::FETCH_ASSOC);
-
-        $sqlFiles = "SELECT f.file_path, f.file_type, f.created_at, u.username, u.profile_picture 
-                     FROM community_files f
-                     JOIN users u ON f.uploader_id = u.id
-                     JOIN community_message_attachments cma ON f.id = cma.file_id
-                     JOIN community_messages m ON cma.message_id = m.id
-                     WHERE m.community_id = ? AND m.status = 'active' AND f.file_type LIKE 'image/%'
-                     ORDER BY f.created_at DESC LIMIT 12";
-        $stmtF = $pdo->prepare($sqlFiles);
-        $stmtF->execute([$info['id']]);
-        $files = $stmtF->fetchAll(PDO::FETCH_ASSOC);
-
-        echo json_encode([
-            'success' => true,
-            'info' => $info,
-            'members' => $members,
-            'files' => $files
-        ]);
-
+        $stmtC = $pdo->prepare("SELECT c.id, c.community_name, c.description, c.profile_picture, c.access_code, c.member_count FROM communities c JOIN community_members cm ON c.id = cm.community_id WHERE c.uuid = ? AND cm.user_id = ?");
+        $stmtC->execute([$uuid, $userId]); $info = $stmtC->fetch(PDO::FETCH_ASSOC);
+        if (!$info) throw new Exception("Error.");
+        $sqlMembers = "SELECT u.id, u.username, u.profile_picture, cm.role FROM community_members cm JOIN users u ON cm.user_id = u.id WHERE cm.community_id = ? ORDER BY FIELD(cm.role, 'admin', 'moderator', 'member'), u.username ASC";
+        $stmtM = $pdo->prepare($sqlMembers); $stmtM->execute([$info['id']]); $members = $stmtM->fetchAll(PDO::FETCH_ASSOC);
+        $sqlFiles = "SELECT f.file_path, f.file_type, f.created_at, u.username, u.profile_picture FROM community_files f JOIN users u ON f.uploader_id = u.id JOIN community_message_attachments cma ON f.id = cma.file_id JOIN community_messages m ON cma.message_id = m.id WHERE m.community_id = ? AND m.status = 'active' AND f.file_type LIKE 'image/%' ORDER BY f.created_at DESC LIMIT 12";
+        $stmtF = $pdo->prepare($sqlFiles); $stmtF->execute([$info['id']]); $files = $stmtF->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode(['success' => true, 'info' => $info, 'members' => $members, 'files' => $files]);
     } else {
         throw new Exception(translation('global.action_invalid'));
     }

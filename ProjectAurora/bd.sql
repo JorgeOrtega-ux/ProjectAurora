@@ -18,7 +18,6 @@ USE project_aurora_db;
 -- 3. CREACIÓN DE TABLAS PRINCIPALES
 -- ==========================================
 
--- USUARIOS
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     uuid CHAR(36) NOT NULL UNIQUE,
@@ -39,7 +38,6 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- CÓDIGOS DE VERIFICACIÓN
 CREATE TABLE IF NOT EXISTS verification_codes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     identifier VARCHAR(255) NOT NULL, 
@@ -52,7 +50,6 @@ CREATE TABLE IF NOT EXISTS verification_codes (
     INDEX (code)
 );
 
--- SEGURIDAD Y LOGS
 CREATE TABLE IF NOT EXISTS security_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_identifier VARCHAR(255) NOT NULL,
@@ -62,7 +59,6 @@ CREATE TABLE IF NOT EXISTS security_logs (
     INDEX idx_security_check (user_identifier, ip_address, created_at)
 );
 
--- AMISTADES
 CREATE TABLE IF NOT EXISTS friendships (
     id INT AUTO_INCREMENT PRIMARY KEY,
     sender_id INT NOT NULL,
@@ -75,7 +71,6 @@ CREATE TABLE IF NOT EXISTS friendships (
     UNIQUE KEY unique_friendship (sender_id, receiver_id)
 );
 
--- NOTIFICACIONES
 CREATE TABLE IF NOT EXISTS notifications (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL, 
@@ -87,7 +82,6 @@ CREATE TABLE IF NOT EXISTS notifications (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- TOKENS DE AUTENTICACIÓN WS
 CREATE TABLE IF NOT EXISTS ws_auth_tokens (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -98,7 +92,6 @@ CREATE TABLE IF NOT EXISTS ws_auth_tokens (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- PREFERENCIAS DE USUARIO
 CREATE TABLE IF NOT EXISTS user_preferences (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL UNIQUE,
@@ -111,7 +104,6 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- AUDITORÍA GENERAL
 CREATE TABLE IF NOT EXISTS user_audit_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -126,7 +118,6 @@ CREATE TABLE IF NOT EXISTS user_audit_logs (
     INDEX idx_audit_check (user_id, change_type, changed_at)
 );
 
--- SESIONES DE USUARIO
 CREATE TABLE IF NOT EXISTS user_sessions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -139,7 +130,6 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     INDEX (session_id)
 );
 
--- LOGS DE SUSPENSIÓN
 CREATE TABLE IF NOT EXISTS user_suspension_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -155,7 +145,6 @@ CREATE TABLE IF NOT EXISTS user_suspension_logs (
     FOREIGN KEY (lifted_by) REFERENCES users(id) ON DELETE SET NULL
 );
 
--- AUDITORÍA DE ROLES
 CREATE TABLE IF NOT EXISTS user_role_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -169,7 +158,6 @@ CREATE TABLE IF NOT EXISTS user_role_logs (
     INDEX idx_role_audit (user_id, admin_id, changed_at)
 );
 
--- CONFIGURACIÓN DEL SERVIDOR
 CREATE TABLE IF NOT EXISTS server_config (
     id INT PRIMARY KEY DEFAULT 1,
     maintenance_mode TINYINT(1) DEFAULT 0,
@@ -192,7 +180,6 @@ CREATE TABLE IF NOT EXISTS server_config (
 INSERT IGNORE INTO server_config (id, allowed_email_domains) 
 VALUES (1, '["gmail.com", "outlook.com", "hotmail.com", "yahoo.com", "icloud.com"]');
 
--- HISTORIAL ALERTAS
 CREATE TABLE IF NOT EXISTS system_alerts_history (
     id INT AUTO_INCREMENT PRIMARY KEY,
     type VARCHAR(50) NOT NULL,          
@@ -227,11 +214,14 @@ CREATE TABLE IF NOT EXISTS communities (
     INDEX (access_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- [MODIFICADO] Añadido is_pinned y is_favorite
 CREATE TABLE IF NOT EXISTS community_members (
     id INT AUTO_INCREMENT PRIMARY KEY,
     community_id INT NOT NULL,
     user_id INT NOT NULL,
     role ENUM('member', 'admin', 'moderator') DEFAULT 'member',
+    is_pinned TINYINT(1) DEFAULT 0,
+    is_favorite TINYINT(1) DEFAULT 0,
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (community_id) REFERENCES communities(id) ON DELETE CASCADE,
@@ -268,6 +258,19 @@ CREATE TABLE IF NOT EXISTS community_message_reports (
 -- 5. MENSAJERÍA PRIVADA (DMs)
 -- ==========================================
 
+-- [MODIFICADO] Tabla de gestión local de chats privados (Borrado, Pines, Favoritos)
+CREATE TABLE IF NOT EXISTS private_chat_clearance (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    partner_id INT NOT NULL,
+    cleared_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_pinned TINYINT(1) DEFAULT 0,
+    is_favorite TINYINT(1) DEFAULT 0,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (partner_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_clearance (user_id, partner_id)
+);
+
 CREATE TABLE IF NOT EXISTS private_messages (
     id INT AUTO_INCREMENT PRIMARY KEY,
     sender_id INT NOT NULL,
@@ -285,7 +288,6 @@ CREATE TABLE IF NOT EXISTS private_messages (
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- [NUEVO] Reportes de mensajes privados
 CREATE TABLE IF NOT EXISTS private_message_reports (
     id INT AUTO_INCREMENT PRIMARY KEY,
     message_id INT NOT NULL,
@@ -300,7 +302,6 @@ CREATE TABLE IF NOT EXISTS private_message_reports (
 -- 6. GESTIÓN DE ARCHIVOS
 -- ==========================================
 
--- Tabla central de archivos físicos
 CREATE TABLE IF NOT EXISTS community_files (
     id INT AUTO_INCREMENT PRIMARY KEY,
     uuid CHAR(36) NOT NULL UNIQUE,
@@ -312,7 +313,6 @@ CREATE TABLE IF NOT EXISTS community_files (
     FOREIGN KEY (uploader_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Adjuntos en Comunidad
 CREATE TABLE IF NOT EXISTS community_message_attachments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     message_id INT NOT NULL,
@@ -321,7 +321,6 @@ CREATE TABLE IF NOT EXISTS community_message_attachments (
     FOREIGN KEY (file_id) REFERENCES community_files(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Adjuntos en Privado
 CREATE TABLE IF NOT EXISTS private_message_attachments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     message_id INT NOT NULL,
@@ -339,4 +338,4 @@ INSERT IGNORE INTO communities (uuid, creator_id, community_name, description, a
 ('comm-uuid-002', 1, 'Diseño UI/UX', 'Compartimos recursos de diseño e inspiración.', 'DSGN-2025-FREE', 'public', 45, 'https://ui-avatars.com/api/?name=UI&background=E91E63&color=fff', 'https://picsum.photos/seed/uiux/600/200'),
 ('comm-uuid-003', 1, 'Proyecto Aurora Secret', 'Solo personal autorizado del proyecto.', 'AURO-XH55-99ZZ', 'private', 5, 'https://ui-avatars.com/api/?name=PA&background=000000&color=fff', 'https://picsum.photos/seed/aurora/600/200'),
 ('comm-uuid-004', 1, 'Gaming Latam', 'Torneos y discusiones sobre videojuegos.', 'GAME-PLAY-NOW1', 'public', 890, 'https://ui-avatars.com/api/?name=GL&background=4CAF50&color=fff', 'https://picsum.photos/seed/gaming/600/200'),
-('comm-uuid-005', 1, 'Club de Lectura VIP', 'Acceso solo con invitación para lectores.', 'READ-BOOK-CLUB', 'private', 12, 'https://ui-avatars.com/api/?name=CL&background=FF9800&color=fff', 'https://picsum.photos/seed/books/600/200');
+('comm-uuid-005', 1, 'Club de Lectura VIP', 'Acceso solo con invitación para lectores.','READ-BOOK-CLUB','private',12,'https://ui-avatars.com/api/?name=CL&background=FF9800&color=fff','https://picsum.photos/seed/books/600/200');
