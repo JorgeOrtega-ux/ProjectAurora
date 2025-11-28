@@ -158,6 +158,7 @@ async def handle_chat_message(user_id, user_info, payload):
     """
     community_uuid = payload.get('community_uuid')
     message_text = payload.get('message')
+    reply_to_id = payload.get('reply_to_id') # [NUEVO] Obtener ID de respuesta
 
     if not community_uuid or not message_text:
         return
@@ -185,24 +186,43 @@ async def handle_chat_message(user_id, user_info, payload):
 
                 community_id = comm_row[0]
 
-                # 2. Guardar mensaje en BD
+                # 2. Obtener datos del mensaje original si es una respuesta
+                reply_data = {}
+                if reply_to_id:
+                    parent_query = """
+                        SELECT m.message, u.username
+                        FROM community_messages m
+                        JOIN users u ON m.user_id = u.id
+                        WHERE m.id = %s AND m.community_id = %s
+                    """
+                    await cur.execute(parent_query, (reply_to_id, community_id))
+                    parent_row = await cur.fetchone()
+                    if parent_row:
+                        reply_data = {
+                            'message': parent_row[0],
+                            'sender_username': parent_row[1]
+                        }
+                    else:
+                        reply_to_id = None # Si no existe el padre (borrado?), anulamos la respuesta
+
+                # 3. Guardar mensaje en BD con reply_to_id
                 insert_query = """
-                    INSERT INTO community_messages (community_id, user_id, message, type)
-                    VALUES (%s, %s, %s, 'text')
+                    INSERT INTO community_messages (community_id, user_id, message, reply_to_id, type)
+                    VALUES (%s, %s, %s, %s, 'text')
                 """
-                await cur.execute(insert_query, (community_id, user_id, message_text))
+                await cur.execute(insert_query, (community_id, user_id, message_text, reply_to_id))
                 
                 message_id = cur.lastrowid
                 created_at = datetime.now().isoformat()
 
-                # 3. Obtener lista de miembros para difusión
+                # 4. Obtener lista de miembros para difusión
                 members_query = "SELECT user_id FROM community_members WHERE community_id = %s"
                 await cur.execute(members_query, (community_id,))
                 members = await cur.fetchall()
                 
                 member_ids = set([str(m[0]) for m in members])
 
-        # 4. Difusión a sockets conectados
+        # 5. Difusión a sockets conectados
         response_payload = json.dumps({
             "type": "new_chat_message",
             "payload": {
@@ -214,7 +234,10 @@ async def handle_chat_message(user_id, user_info, payload):
                 "sender_profile_picture": user_info['profile_picture'],
                 "sender_role": user_info['role'],
                 "created_at": created_at,
-                "type": "text"
+                "type": "text",
+                "reply_to_id": reply_to_id,
+                "reply_message": reply_data.get('message'),
+                "reply_sender_username": reply_data.get('sender_username')
             }
         })
 

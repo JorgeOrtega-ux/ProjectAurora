@@ -245,15 +245,18 @@ CREATE TABLE IF NOT EXISTS system_alerts_history (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- [NUEVO] MENSAJES DE CHAT
+-- Se agrega la columna reply_to_id para las respuestas
 CREATE TABLE IF NOT EXISTS community_messages (
     id INT AUTO_INCREMENT PRIMARY KEY,
     community_id INT NOT NULL,
     user_id INT NOT NULL,
+    reply_to_id INT NULL,
     message TEXT NOT NULL,
     type ENUM('text', 'image', 'system') DEFAULT 'text',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (community_id) REFERENCES communities(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (reply_to_id) REFERENCES community_messages(id) ON DELETE SET NULL,
     INDEX (community_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

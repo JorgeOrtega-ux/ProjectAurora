@@ -75,7 +75,17 @@ $initUuid = $activeCommunityUuid ?? '';
                 </div>
 
                 <div class="chat-messages-area">
+                </div>
+
+                <div id="reply-preview-container" class="reply-preview-bar d-none">
+                    <div class="reply-bar-content">
+                        <span class="reply-bar-title">Respondiendo a <strong id="reply-target-user">...</strong></span>
+                        <span class="reply-bar-text" id="reply-target-text">...</span>
                     </div>
+                    <button class="component-icon-button small" id="btn-cancel-reply">
+                        <span class="material-symbols-rounded">close</span>
+                    </button>
+                </div>
 
                 <div class="chat-input-area">
                     <button class="component-icon-button">

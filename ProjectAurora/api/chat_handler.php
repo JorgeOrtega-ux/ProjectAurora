@@ -59,20 +59,23 @@ try {
             throw new Exception("No tienes acceso a este chat.");
         }
 
-        // [NUEVO] Marcar como leído (Actualizar last_read_at)
+        // Marcar como leído (Actualizar last_read_at)
         $stmtRead = $pdo->prepare("UPDATE community_members SET last_read_at = NOW() WHERE community_id = ? AND user_id = ?");
         $stmtRead->execute([$commId, $userId]);
 
-        // 2. Obtener mensajes
-        // [CORRECCIÓN AQUÍ]: Se agregaron alias (AS sender_...) para coincidir con el JS y el Socket
+        // 2. Obtener mensajes (CON DATOS DE RESPUESTA)
         $sql = "
-            SELECT m.id, m.message, m.created_at, m.type,
+            SELECT m.id, m.message, m.created_at, m.type, m.reply_to_id,
                    u.id as sender_id, 
                    u.username as sender_username, 
                    u.profile_picture as sender_profile_picture, 
-                   u.role as sender_role
+                   u.role as sender_role,
+                   p.message as reply_message,
+                   pu.username as reply_sender_username
             FROM community_messages m
             JOIN users u ON m.user_id = u.id
+            LEFT JOIN community_messages p ON m.reply_to_id = p.id
+            LEFT JOIN users pu ON p.user_id = pu.id
             WHERE m.community_id = ?
             ORDER BY m.created_at DESC
             LIMIT $limit

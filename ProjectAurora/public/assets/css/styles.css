@@ -1058,20 +1058,16 @@ a.disabled-link {
     flex-shrink: 0;
 }
 
-/* === [CORRECCIÓN] ESTILOS NOTIF-IMG-CONTAINER === */
 .notif-img-container {
     width: 40px;
     height: 40px;
     border-radius: 50%;
     background-color: #eee;
-    
-    /* Permitir que el borde salga del contenedor */
     overflow: visible !important; 
-    
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative; /* Para el posicionamiento del borde */
+    position: relative; 
 }
 
 .notif-avatar {
@@ -1089,7 +1085,6 @@ a.disabled-link {
     color: #999;
 }
 
-/* Borde del Rol */
 .notif-img-container::before {
     content: '';
     position: absolute;
@@ -1104,7 +1099,6 @@ a.disabled-link {
     transition: border-color 0.2s ease;
 }
 
-/* Colores de Roles */
 .notif-img-container[data-role="user"]::before {
     border-color: #cccccc;
 }
@@ -1123,7 +1117,6 @@ a.disabled-link {
     mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
     -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
 }
-/* === FIN CORRECCIÓN === */
 
 .notif-content {
     display: flex;
@@ -1250,7 +1243,6 @@ a.disabled-link {
     gap: 16px;
 }
 
-/* [MODIFICADO] .user-pfp-container */
 .user-pfp-container {
     width: 56px;
     height: 56px;
@@ -1642,7 +1634,7 @@ a.disabled-link {
     position: relative;
     padding: 12px;
     gap: 12px;
-    border-radius: 12px; /* Si está dentro de general-content */
+    border-radius: 12px;
 }
 
 /* --- SIDEBAR IZQUIERDA --- */
@@ -1760,7 +1752,7 @@ a.disabled-link {
 .chat-main-area {
     flex: 1;
     height: 100%;
-    background-color: #fff; /* Color de fondo tipo whatsapp */
+    background-color: #fff;
     position: relative;
     display: flex;
     border-radius: 12px;
@@ -1866,20 +1858,6 @@ a.disabled-link {
     flex-direction: column;
 }
 
-.messages-placeholder-dev {
-    margin: auto;
-    text-align: center;
-    color: #888;
-    background: rgba(255,255,255,0.8);
-    padding: 20px;
-    border-radius: 12px;
-}
-
-.messages-placeholder-dev .material-symbols-rounded {
-    font-size: 40px;
-    margin-bottom: 10px;
-}
-
 .chat-input-area {
     min-height: 60px;
     border-top: 1px solid #00000020;
@@ -1888,6 +1866,11 @@ a.disabled-link {
     align-items: center;
     gap: 10px;
     flex-shrink: 0;
+    background-color: #fff;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    position: relative;
+    z-index: 2;
 }
 
 .chat-message-input {
@@ -1901,7 +1884,7 @@ a.disabled-link {
     font-size: 15px;
 }
 
-/* Chat Avatars (Roles) - NUEVA SECCIÓN */
+/* Chat Avatars (Roles) */
 .chat-message-avatar {
     width: 28px;
     height: 28px;
@@ -1933,18 +1916,9 @@ a.disabled-link {
     z-index: 2;
 }
 
-.chat-message-avatar[data-role="user"]::before {
-    border-color: #cccccc;
-}
-
-.chat-message-avatar[data-role="moderator"]::before {
-    border-color: #0000FF;
-}
-
-.chat-message-avatar[data-role="administrator"]::before {
-    border-color: #FF0000;
-}
-
+.chat-message-avatar[data-role="user"]::before { border-color: #cccccc; }
+.chat-message-avatar[data-role="moderator"]::before { border-color: #0000FF; }
+.chat-message-avatar[data-role="administrator"]::before { border-color: #FF0000; }
 .chat-message-avatar[data-role="founder"]::before {
     border: none;
     background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
@@ -1972,13 +1946,12 @@ a.disabled-link {
     }
 
     /* Estados para móvil */
-    /* Si hay chat activo, sidebar se oculta (o desplaza) */
     .chat-layout-container.chat-active .chat-sidebar {
         transform: translateX(-100%);
     }
     
     .chat-layout-container.chat-active .chat-main-area {
-        z-index: 15; /* Poner chat encima */
+        z-index: 15;
     }
 
     .mobile-back-btn {
@@ -1987,10 +1960,8 @@ a.disabled-link {
     }
 }
 
-/* Agrega esto en tu archivo styles.css en la sección del Chat Sidebar */
-
 .unread-counter {
-    background-color: #1976d2; /* Azul */
+    background-color: #1976d2; 
     color: #fff;
     font-size: 11px;
     font-weight: 700;
@@ -2012,5 +1983,147 @@ a.disabled-link {
     text-overflow: ellipsis;
     font-size: 13px;
     color: #666;
-    flex: 1; /* Para que ocupe el espacio y deje lugar al contador */
+    flex: 1;
+}
+
+/* =========================================
+   [NUEVO] ESTILOS PARA RESPONDER MENSAJES
+   ========================================= */
+
+/* 1. Botón "More Vert" en el mensaje */
+.message-row {
+    position: relative;
+    /* Para posicionar el menú */
+}
+
+/* El botón oculto por defecto */
+.message-options-btn {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #999;
+    padding: 4px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 4px; /* Para mensajes 'own' */
+    margin-right: 4px; /* Para mensajes 'other' */
+}
+
+/* Mostrar botón en hover del mensaje */
+.message-row:hover .message-options-btn {
+    opacity: 1;
+}
+
+/* En móvil siempre visible si se selecciona (opcional) o dejarlo solo en tap */
+@media (hover: none) {
+    .message-options-btn {
+        opacity: 1; /* En táctil siempre visible */
+        color: #ccc;
+    }
+}
+
+/* 2. Popover de opciones (Menú contextual) */
+.message-options-popover {
+    position: absolute;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    padding: 4px 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    min-width: 120px;
+    top: 20px; /* Ajuste dinámico con JS */
+}
+
+.message-option-item {
+    padding: 8px 16px;
+    font-size: 13px;
+    color: #333;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s;
+}
+
+.message-option-item:hover {
+    background-color: #f5f5fa;
+}
+
+/* 3. Burbuja de respuesta (dentro del mensaje) */
+.message-reply-preview {
+    background-color: rgba(0,0,0,0.05);
+    border-left: 4px solid #1976d2; /* Color de acento */
+    border-radius: 4px;
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    cursor: pointer; /* Click para ir al mensaje original (futuro) */
+}
+
+.reply-preview-user {
+    font-weight: 700;
+    color: #1976d2;
+}
+
+.reply-preview-text {
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 4. Barra de "Respondiendo a..." (encima del input) */
+.reply-preview-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background-color: #f5f5f5;
+    border-top: 1px solid #00000010;
+    border-left: 4px solid #1976d2;
+    animation: slideUpReply 0.2s ease-out;
+    margin-top: auto; /* Empujar hacia abajo si flex container crece */
+}
+
+@keyframes slideUpReply {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.reply-bar-content {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex: 1;
+}
+
+.reply-bar-title {
+    font-size: 12px;
+    color: #1976d2; /* Acento */
+}
+
+.reply-bar-text {
+    font-size: 13px;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Icono pequeño en botón cerrar respuesta */
+.component-icon-button.small {
+    width: 24px;
+    height: 24px;
+}
+.component-icon-button.small span {
+    font-size: 18px;
 }
