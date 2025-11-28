@@ -102,9 +102,16 @@ function appendMessageToUI(msg) {
         ? (window.BASE_PATH || '/ProjectAurora/') + msg.sender_profile_picture 
         : `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.sender_username)}`;
 
+    // [CORRECCIÓN] Usar sender_role para el borde de color
+    const role = msg.sender_role || 'user';
+
     const msgHtml = `
         <div class="message-row ${isMe ? 'message-own' : 'message-other'}" style="display:flex; flex-direction:${isMe ? 'row-reverse' : 'row'}; margin-bottom:12px; gap:10px; align-items:flex-end;">
-            ${!isMe ? `<img src="${avatarUrl}" style="width:28px; height:28px; border-radius:50%; object-fit:cover; margin-bottom:4px;" title="${msg.sender_username}">` : ''}
+            ${!isMe ? `
+                <div class="chat-message-avatar" data-role="${role}" title="${msg.sender_username}">
+                    <img src="${avatarUrl}" alt="${msg.sender_username}">
+                </div>
+            ` : ''}
             
             <div class="message-bubble" style="
                 max-width: 70%;

@@ -1150,3 +1150,47 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-11-28 00:10:58,300 - INFO - Usuario conectado: ID 1 | Rol: founder
 2025-11-28 00:10:59,711 - INFO - connection open
 2025-11-28 00:10:59,717 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 10:48:50,261 - INFO - connection open
+2025-11-28 10:48:50,276 - ERROR - Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\jorge\AppData\Local\Programs\Python\Python313\Lib\asyncio\events.py", line 89, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jorge\AppData\Local\Programs\Python\Python313\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una conexión existente por el host remoto
+2025-11-28 10:48:50,464 - ERROR - Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\jorge\AppData\Local\Programs\Python\Python313\Lib\asyncio\events.py", line 89, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jorge\AppData\Local\Programs\Python\Python313\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una conexión existente por el host remoto
+2025-11-28 10:48:50,468 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 10:49:27,095 - INFO - connection open
+2025-11-28 10:49:27,099 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 10:49:28,818 - INFO - connection open
+2025-11-28 10:49:28,826 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 10:49:29,719 - INFO - connection open
+2025-11-28 10:49:29,726 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 10:50:03,356 - INFO - connection open
+2025-11-28 10:50:03,390 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 10:50:22,591 - INFO - connection open
+2025-11-28 10:50:22,595 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 10:51:21,283 - INFO - connection open
+2025-11-28 10:51:21,292 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 10:51:32,901 - INFO - connection open
+2025-11-28 10:51:32,908 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 10:52:20,847 - INFO - connection open
+2025-11-28 10:52:20,852 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 10:54:08,910 - INFO - connection open
+2025-11-28 10:54:08,924 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 10:57:28,702 - INFO - connection open
+2025-11-28 10:57:28,709 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 10:58:26,618 - INFO - connection open
+2025-11-28 10:58:26,625 - INFO - Usuario conectado: ID 1 | Rol: founder

@@ -60,9 +60,13 @@ try {
         }
 
         // 2. Obtener mensajes
+        // [CORRECCIÓN AQUÍ]: Se agregaron alias (AS sender_...) para coincidir con el JS y el Socket
         $sql = "
             SELECT m.id, m.message, m.created_at, m.type,
-                   u.id as sender_id, u.username, u.profile_picture, u.role
+                   u.id as sender_id, 
+                   u.username as sender_username, 
+                   u.profile_picture as sender_profile_picture, 
+                   u.role as sender_role
             FROM community_messages m
             JOIN users u ON m.user_id = u.id
             WHERE m.community_id = ?
