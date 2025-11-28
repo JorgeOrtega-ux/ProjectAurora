@@ -2518,4 +2518,47 @@ a.disabled-link {
     }
     .viewer-nav-btn.prev { left: 5px; }
     .viewer-nav-btn.next { right: 5px; }
+}/* ... [Resto del archivo existente] ... */
+
+/* =========================================
+   19. COMPONENTES DE CHAT EXTRAS
+   ========================================= */
+
+/* Divisor de Fecha */
+.chat-date-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 20px 0;
+    width: 100%;
+    position: relative;
+}
+
+.chat-date-divider span {
+    background-color: #f0f2f5; /* Color similar al fondo del chat */
+    color: #555;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 50px;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    z-index: 1;
+}
+
+.chat-date-divider::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 1px;
+    background-color: #e0e0e0;
+    top: 50%;
+    z-index: 0;
+}
+
+/* Spinner de carga superior */
+.chat-loading-more {
+    text-align: center;
+    padding: 10px;
+    width: 100%;
 }

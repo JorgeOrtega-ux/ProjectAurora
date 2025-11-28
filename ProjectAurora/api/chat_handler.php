@@ -155,7 +155,7 @@ try {
                 'sender_role' => $userData['role'],
                 'created_at' => date('c'),
                 'type' => $msgType,
-                'status' => 'active', // [NUEVO]
+                'status' => 'active', 
                 'reply_to_id' => $replyToId,
                 'reply_message' => $replyData['message'] ?? null,
                 'reply_sender_username' => $replyData['sender_username'] ?? null,
@@ -176,10 +176,11 @@ try {
             throw $e;
         }
 
-    // --- OBTENER MENSAJES (MODIFICADO PARA STATUS) ---
+    // --- OBTENER MENSAJES (MODIFICADO PARA PAGINACIÓN Y STATUS) ---
     } elseif ($action === 'get_messages') {
         $uuid = $data['community_uuid'] ?? '';
         $limit = isset($data['limit']) ? (int)$data['limit'] : 50;
+        $offset = isset($data['offset']) ? (int)$data['offset'] : 0; // [NUEVO] Offset
         
         $stmtC = $pdo->prepare("SELECT c.id FROM communities c JOIN community_members cm ON c.id = cm.community_id WHERE c.uuid = ? AND cm.user_id = ?");
         $stmtC->execute([$uuid, $userId]);
@@ -187,7 +188,6 @@ try {
 
         if (!$commId) throw new Exception("Acceso denegado");
 
-        // [MODIFICADO] Seleccionar 'status'
         $sql = "
             SELECT m.id, m.message, m.created_at, m.type, m.reply_to_id, m.status,
                    u.id as sender_id, u.username as sender_username, u.profile_picture as sender_profile_picture, u.role as sender_role,
@@ -207,7 +207,8 @@ try {
             LEFT JOIN community_messages p ON m.reply_to_id = p.id
             LEFT JOIN users pu ON p.user_id = pu.id
             WHERE m.community_id = ?
-            ORDER BY m.created_at DESC LIMIT $limit
+            ORDER BY m.created_at DESC 
+            LIMIT $limit OFFSET $offset
         ";
         
         $stmt = $pdo->prepare($sql);
@@ -230,9 +231,13 @@ try {
             unset($msg['attachments_json']);
         }
 
-        echo json_encode(['success' => true, 'messages' => array_reverse($messages)]);
+        echo json_encode([
+            'success' => true, 
+            'messages' => array_reverse($messages),
+            'has_more' => (count($messages) >= $limit) // Bandera para frontend
+        ]);
 
-    // --- [NUEVO] ELIMINAR MENSAJE ---
+    // --- ELIMINAR MENSAJE ---
     } elseif ($action === 'delete_message') {
         $msgId = (int)($data['message_id'] ?? 0);
         if (!$msgId) throw new Exception(translation('global.action_invalid'));
@@ -249,15 +254,12 @@ try {
         $now = new DateTime();
         $diff = $now->diff($created);
         
-        // Si ha pasado más de 1 día (24h)
         if ($diff->days > 0 || $diff->h >= 24) {
             throw new Exception(translation('chat.error.delete_timeout') ?? 'No puedes eliminar mensajes antiguos');
         }
 
-        // Soft delete
         $upd = $pdo->prepare("UPDATE community_messages SET status = 'deleted' WHERE id = ?");
         if ($upd->execute([$msgId])) {
-            // Notificar vía socket
             send_live_notification('community_broadcast', 'message_update', [
                 'community_id' => $msg['community_id'],
                 'message_data' => [
@@ -271,19 +273,17 @@ try {
             throw new Exception(translation('global.error_connection'));
         }
 
-    // --- [NUEVO] REPORTAR MENSAJE ---
+    // --- REPORTAR MENSAJE ---
     } elseif ($action === 'report_message') {
         $msgId = (int)($data['message_id'] ?? 0);
         $reason = trim($data['reason'] ?? 'Spam/Inapropiado');
         
         if (!$msgId) throw new Exception(translation('global.action_invalid'));
 
-        // Verificar existencia
         $stmt = $pdo->prepare("SELECT id FROM community_messages WHERE id = ?");
         $stmt->execute([$msgId]);
         if (!$stmt->fetch()) throw new Exception(translation('global.action_invalid'));
 
-        // Verificar si ya reportó este mensaje
         $check = $pdo->prepare("SELECT id FROM community_message_reports WHERE message_id = ? AND reporter_id = ?");
         $check->execute([$msgId, $userId]);
         if ($check->rowCount() > 0) throw new Exception(translation('chat.error.already_reported') ?? 'Ya has reportado este mensaje');
