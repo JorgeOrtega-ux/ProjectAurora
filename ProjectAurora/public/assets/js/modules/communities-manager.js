@@ -11,7 +11,7 @@ let currentCommunityUuid = null;
 let replyingToMessageId = null;
 let replyingToMessageData = null; // { user, text }
 
-// Estado para archivos [NUEVO]
+// Estado para archivos
 let selectedFiles = []; 
 
 // ==========================================
@@ -23,7 +23,6 @@ function formatChatTime(dateString) {
     const date = new Date(dateString);
     const now = new Date();
     
-    // Verificar si es hoy
     const isToday = date.getDate() === now.getDate() && 
                     date.getMonth() === now.getMonth() && 
                     date.getFullYear() === now.getFullYear();
@@ -53,7 +52,7 @@ function scrollToBottom() {
 }
 
 // ==========================================
-// GESTIÓN DE ADJUNTOS [NUEVO]
+// GESTIÓN DE ADJUNTOS
 // ==========================================
 
 function initAttachmentListeners() {
@@ -66,14 +65,12 @@ function initAttachmentListeners() {
         fileInput.onchange = (e) => {
             const files = Array.from(e.target.files);
             
-            // Validar límite total (existentes + nuevos)
             if (selectedFiles.length + files.length > 4) {
                 if (window.alertManager) window.alertManager.showAlert("Máximo 4 imágenes permitidas por mensaje.", "warning");
                 else alert("Máximo 4 imágenes permitidas.");
                 return;
             }
             
-            // Filtrar solo imágenes por si acaso
             const validImages = files.filter(f => f.type.startsWith('image/'));
             if (validImages.length !== files.length) {
                 if (window.alertManager) window.alertManager.showAlert("Solo se permiten archivos de imagen.", "warning");
@@ -81,7 +78,7 @@ function initAttachmentListeners() {
 
             selectedFiles = [...selectedFiles, ...validImages];
             renderPreview();
-            fileInput.value = ''; // Limpiar para permitir seleccionar el mismo archivo si se borra y se elige de nuevo
+            fileInput.value = ''; 
         };
     }
 }
@@ -111,7 +108,6 @@ function renderPreview() {
         grid.appendChild(div);
     });
     
-    // Listener para borrar individualmente
     grid.querySelectorAll('.preview-remove').forEach(btn => {
         btn.onclick = (e) => {
             const idx = parseInt(e.target.dataset.index);
@@ -127,6 +123,117 @@ function clearAttachments() {
 }
 
 // ==========================================
+// INFO SIDEBAR LOGIC (NUEVO)
+// ==========================================
+
+function toggleGroupInfo() {
+    const sidebar = document.getElementById('chat-info-panel');
+    if (!sidebar) return;
+
+    if (sidebar.classList.contains('d-none')) {
+        // Mostrar
+        sidebar.classList.remove('d-none');
+        setTimeout(() => sidebar.classList.add('active'), 10);
+        
+        if (currentCommunityUuid) {
+            loadCommunityDetails(currentCommunityUuid);
+        }
+    } else {
+        // Ocultar
+        sidebar.classList.remove('active');
+        setTimeout(() => sidebar.classList.add('d-none'), 300);
+    }
+}
+
+async function loadCommunityDetails(uuid) {
+    const nameEl = document.getElementById('info-group-name');
+    const descEl = document.getElementById('info-group-desc');
+    const imgEl = document.getElementById('info-group-img');
+    const membersList = document.getElementById('info-members-list');
+    const filesGrid = document.getElementById('info-files-grid');
+    const countEl = document.getElementById('info-member-count');
+
+    membersList.innerHTML = '<div class="small-spinner" style="margin: 20px auto;"></div>';
+    
+    const res = await postJson('api/communities_handler.php', { 
+        action: 'get_community_details', 
+        uuid: uuid 
+    });
+
+    if (res.success) {
+        const info = res.info;
+        if (nameEl) nameEl.textContent = info.community_name;
+        if (descEl) descEl.textContent = info.description || 'Sin descripción';
+        
+        if (imgEl) {
+            const avatarPath = info.profile_picture ? 
+                (window.BASE_PATH || '/ProjectAurora/') + info.profile_picture : 
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(info.community_name)}`;
+            imgEl.src = avatarPath;
+        }
+        
+        if (countEl) countEl.textContent = `(${res.members.length})`;
+
+        // Miembros
+        if (membersList) {
+            membersList.innerHTML = '';
+            res.members.forEach(m => {
+                const mAvatar = m.profile_picture ? 
+                    (window.BASE_PATH || '/ProjectAurora/') + m.profile_picture : 
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(m.username)}`;
+                
+                const roleLabel = m.role === 'admin' ? 'Administrador' : (m.role === 'moderator' ? 'Moderador' : 'Miembro');
+                
+                membersList.innerHTML += `
+                    <div class="info-member-item">
+                        <img src="${mAvatar}" class="info-member-avatar">
+                        <div class="info-member-details">
+                            <span class="info-member-name">${escapeHtml(m.username)}</span>
+                            <span class="info-member-role">${roleLabel}</span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Archivos con Viewer
+        if (filesGrid) {
+            filesGrid.innerHTML = '';
+            if (res.files.length > 0) {
+                // Preparar array para el viewer
+                const viewerItems = res.files.map(f => {
+                    const src = (window.BASE_PATH || '/ProjectAurora/') + f.file_path;
+                    const pfp = f.profile_picture ? (window.BASE_PATH || '/ProjectAurora/') + f.profile_picture : `https://ui-avatars.com/api/?name=${encodeURIComponent(f.username)}`;
+                    return {
+                        src: src,
+                        type: f.file_type,
+                        user: { name: f.username, avatar: pfp },
+                        date: new Date(f.created_at).toLocaleDateString()
+                    };
+                });
+
+                // Escapar JSON
+                const jsonStr = JSON.stringify(viewerItems).replace(/'/g, "&apos;").replace(/"/g, '&quot;');
+                filesGrid.dataset.mediaItems = jsonStr;
+
+                res.files.forEach((f, idx) => {
+                    const src = (window.BASE_PATH || '/ProjectAurora/') + f.file_path;
+                    filesGrid.innerHTML += `
+                        <img src="${src}" class="info-file-thumb" data-action="view-media" data-index="${idx}">
+                    `;
+                });
+            } else {
+                filesGrid.innerHTML = '<div class="info-no-files">No hay archivos recientes</div>';
+                delete filesGrid.dataset.mediaItems;
+            }
+        }
+
+    } else {
+        if (window.alertManager) window.alertManager.showAlert("Error cargando detalles del grupo", "error");
+    }
+}
+
+// ==========================================
 // RENDERIZADO DE LA LISTA LATERAL (SIDEBAR)
 // ==========================================
 
@@ -137,7 +244,6 @@ function renderChatListItem(comm) {
         
     const isActive = (comm.uuid === window.ACTIVE_COMMUNITY_UUID) ? 'active' : '';
     
-    // Lógica de último mensaje
     const lastMsg = comm.last_message ? escapeHtml(comm.last_message) : (comm.last_message_at ? 'Imagen' : "Haz clic para entrar");
     const time = formatChatTime(comm.last_message_at);
     const unreadCount = parseInt(comm.unread_count || 0);
@@ -196,6 +302,12 @@ function updateChatInterface(comm) {
 
         disableReplyMode();
         clearAttachments();
+        
+        // Recargar info sidebar si está abierto
+        const infoPanel = document.getElementById('chat-info-panel');
+        if (infoPanel && !infoPanel.classList.contains('d-none')) {
+            loadCommunityDetails(comm.uuid);
+        }
 
     } else {
         if (placeholder) placeholder.classList.remove('d-none');
@@ -217,7 +329,6 @@ function enableReplyMode(msgId, senderName, messageText) {
     
     if (container && userEl && textEl) {
         userEl.textContent = senderName;
-        // Si el mensaje es vacío (solo imagen), poner texto placeholder
         textEl.textContent = messageText ? messageText : '📷 [Imagen]';
         container.classList.remove('d-none');
     }
@@ -247,7 +358,6 @@ function appendMessageToUI(msg) {
     const myId = window.USER_ID; 
     const isMe = (parseInt(msg.sender_id) === parseInt(myId));
     
-    // [MODIFICADO] Verificación de mensaje eliminado
     if (msg.status === 'deleted') {
         renderDeletedMessage(container, msg, isMe);
         return;
@@ -262,14 +372,12 @@ function appendMessageToUI(msg) {
 
     const role = msg.sender_role || 'user';
 
-    // Generar HTML de la respuesta citada
     let replyHtml = '';
     if (msg.reply_to_id) {
         let replyText = '';
         const rawText = msg.reply_message ? escapeHtml(msg.reply_message) : '';
         const attachCount = parseInt(msg.reply_attachment_count || 0);
         
-        // [MEJORA UX] Detectar tipo de mensaje respondido
         if (msg.reply_type === 'image') {
             replyText = (attachCount > 1) ? `📷 [${attachCount} Imágenes]` : '📷 [Imagen]';
         } else if (msg.reply_type === 'mixed') {
@@ -288,16 +396,34 @@ function appendMessageToUI(msg) {
         `;
     }
 
-    // [NUEVO] Generar Grid de Imágenes
+    // [MODIFICADO] Grid de Imágenes con Viewer Data
     let attachmentsHtml = '';
     if (msg.attachments && Array.isArray(msg.attachments) && msg.attachments.length > 0) {
         const count = msg.attachments.length;
-        let imgs = '';
-        msg.attachments.forEach(att => {
+        
+        // Preparar JSON para el viewer
+        const viewerItems = msg.attachments.map(att => {
             const src = (window.BASE_PATH || '/ProjectAurora/') + att.path;
-            imgs += `<img src="${src}" onclick="window.open('${src}', '_blank')">`;
+            return {
+                src: src,
+                type: att.type,
+                user: { name: msg.sender_username, avatar: avatarUrl },
+                date: new Date(msg.created_at).toLocaleDateString() + ' ' + timeStr
+            };
         });
-        attachmentsHtml = `<div class="msg-attachments" data-count="${count}">${imgs}</div>`;
+        
+        // Escapar comillas para el atributo HTML
+        const jsonStr = JSON.stringify(viewerItems).replace(/'/g, "&apos;").replace(/"/g, '&quot;');
+
+        let imgs = '';
+        msg.attachments.forEach((att, idx) => {
+            const src = (window.BASE_PATH || '/ProjectAurora/') + att.path;
+            // IMPORTANTE: data-action="view-media" y data-index
+            imgs += `<img src="${src}" data-action="view-media" data-index="${idx}">`;
+        });
+        
+        // Adjuntar data-media-items al contenedor grid
+        attachmentsHtml = `<div class="msg-attachments" data-count="${count}" data-media-items='${jsonStr}'>${imgs}</div>`;
     }
 
     const optionsBtn = `
@@ -306,7 +432,6 @@ function appendMessageToUI(msg) {
         </button>
     `;
 
-    // Renderizado del mensaje
     const msgHtml = `
         <div class="message-row ${isMe ? 'message-own' : 'message-other'}" id="msg-${msg.id}" style="display:flex; flex-direction:${isMe ? 'row-reverse' : 'row'}; margin-bottom:12px; gap:4px; align-items:flex-start;">
             
@@ -431,7 +556,6 @@ async function selectCommunity(uuid) {
     }
 }
 
-// [MODIFICADO] Lógica de envío híbrida
 async function sendMessage() {
     if (!currentCommunityUuid) return;
     
@@ -440,7 +564,6 @@ async function sendMessage() {
     
     if (!text && selectedFiles.length === 0) return;
 
-    // A. Envío con adjuntos (HTTP POST)
     if (selectedFiles.length > 0) {
         const btn = document.getElementById('btn-send-message');
         const originalIcon = btn.innerHTML;
@@ -482,7 +605,6 @@ async function sendMessage() {
         btn.innerHTML = originalIcon;
 
     } else {
-        // B. Envío solo texto (WebSocket - Rápido)
         if (window.socketService && window.socketService.socket && window.socketService.socket.readyState === WebSocket.OPEN) {
             const payload = {
                 type: 'chat_message',
@@ -521,7 +643,6 @@ function handleMobileBack() {
     window.history.pushState({ section: 'main' }, '', window.BASE_PATH);
 }
 
-// [MODIFICADO] showMessagePopover para mostrar Eliminar / Reportar
 function showMessagePopover(btn, msgId, user, text) {
     closeMessagePopover();
 
@@ -583,7 +704,6 @@ function showMessagePopover(btn, msgId, user, text) {
         document.addEventListener('click', closeHandler);
     }, 0);
 
-    // Listeners
     popover.querySelector('[data-action="reply-message"]').addEventListener('click', () => {
         enableReplyMode(msgId, user, text);
         closeMessagePopover();
@@ -665,29 +785,6 @@ async function loadPublicCommunities() {
     }
 }
 
-function renderCommunityCard(comm, isMyList) {
-    const isPrivate = comm.privacy === 'private';
-    const privacyText = isPrivate ? 'Privado' : 'Público';
-    const memberText = comm.member_count + (comm.member_count === 1 ? ' Miembro' : ' Miembros');
-    let buttonHtml = `<button class="component-button primary comm-btn-primary" data-action="join-public-community" data-id="${comm.id}">Unirse</button>`;
-    const bannerSrc = comm.banner_picture ? comm.banner_picture : 'https://picsum.photos/seed/generic/600/200';
-    const avatarSrc = comm.profile_picture ? (window.BASE_PATH || '/ProjectAurora/') + comm.profile_picture : null;
-    const avatarHtml = avatarSrc ? `<img src="${avatarSrc}" class="comm-avatar-img" alt="${comm.community_name}">` : `<div class="comm-avatar-placeholder"><span class="material-symbols-rounded">groups</span></div>`;
-
-    return `
-    <div class="comm-card">
-        <div class="comm-banner" style="background-image: url('${bannerSrc}');"></div>
-        <div class="comm-content">
-            <div class="comm-header-row"><div class="comm-avatar-container">${avatarHtml}</div><div class="comm-actions">${buttonHtml}</div></div>
-            <div class="comm-info">
-                <h3 class="comm-title">${comm.community_name}</h3>
-                <p class="comm-desc">${comm.description || 'Sin descripción disponible.'}</p>
-                <div class="comm-badges"><span class="comm-badge">${memberText}</span><span class="comm-badge">${privacyText}</span></div>
-            </div>
-        </div>
-    </div>`;
-}
-
 function initChatListeners() {
     document.addEventListener('socket-message', (e) => {
         const { type, payload } = e.detail;
@@ -703,7 +800,6 @@ function initChatListeners() {
                 const previewEl = item.querySelector('.chat-item-preview');
                 const timeEl = item.querySelector('.chat-item-time');
                 
-                // Mostrar texto o 'Imagen' si el mensaje está vacío
                 if (previewEl) previewEl.textContent = payload.message ? payload.message : '📷 [Imagen]';
                 if (timeEl) timeEl.textContent = formatChatTime(new Date());
 
@@ -729,14 +825,10 @@ function initChatListeners() {
             }
         }
 
-        // [NUEVO] Manejo de actualización de mensaje (borrado)
         if (type === 'message_update') {
             if (payload.status === 'deleted') {
-                // Buscar el mensaje en el DOM
                 const msgEl = document.getElementById(`msg-${payload.id}`);
                 if (msgEl) {
-                    // Reemplazar contenido con el placeholder de eliminado
-                    const isMe = msgEl.classList.contains('message-own');
                     msgEl.style.opacity = '0.6';
                     msgEl.innerHTML = `
                         <div class="message-bubble" style="
@@ -779,7 +871,6 @@ function initChatListeners() {
 }
 
 function initListeners() {
-    // Listener principal para selección de chat
     document.getElementById('my-communities-list')?.addEventListener('click', (e) => {
         const item = e.target.closest('.chat-item');
         if (item) {
@@ -820,6 +911,16 @@ function initListeners() {
 
         if (e.target.closest('#btn-cancel-reply')) {
             disableReplyMode();
+        }
+        
+        // Listeners para Info Sidebar
+        if (e.target.closest('[data-action="toggle-group-info"]')) {
+            e.preventDefault();
+            toggleGroupInfo();
+        }
+        if (e.target.closest('[data-action="close-group-info"]')) {
+            e.preventDefault();
+            toggleGroupInfo();
         }
     });
 }

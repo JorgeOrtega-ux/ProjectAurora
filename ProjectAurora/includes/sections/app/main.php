@@ -61,14 +61,14 @@ $initUuid = $activeCommunityUuid ?? '';
                             <img id="chat-header-img" src="" alt="" class="chat-avatar-img">
                         </div>
                         
-                        <div class="chat-info">
+                        <div class="chat-info" data-action="toggle-group-info" style="cursor: pointer;">
                             <h3 id="chat-header-title" class="chat-title">Cargando...</h3>
                             <span id="chat-header-status" class="chat-status">haz clic para ver info</span>
                         </div>
                     </div>
                     
                     <div class="chat-header-right">
-                        <button class="component-icon-button" title="Información del grupo">
+                        <button class="component-icon-button" data-action="toggle-group-info" title="Información del grupo">
                             <span class="material-symbols-rounded">info</span>
                         </button>
                     </div>
@@ -109,5 +109,71 @@ $initUuid = $activeCommunityUuid ?? '';
 
         </div>
 
+        <div class="chat-info-sidebar d-none" id="chat-info-panel">
+            <div class="info-sidebar-header">
+                <span class="info-sidebar-title">Info. del grupo</span>
+                <button class="component-icon-button" data-action="close-group-info">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+            
+            <div class="info-sidebar-content">
+                <div class="info-group-profile">
+                    <img id="info-group-img" src="" alt="Grupo" class="info-group-avatar">
+                    <h2 id="info-group-name" class="info-group-name">...</h2>
+                    <p id="info-group-desc" class="info-group-desc">...</p>
+                </div>
+
+                <hr class="component-divider">
+
+                <div class="info-section">
+                    <h3 class="info-section-title">Miembros <span id="info-member-count" style="font-weight:400; color:#666;">(0)</span></h3>
+                    <div id="info-members-list" class="info-members-list">
+                        <div class="small-spinner"></div>
+                    </div>
+                </div>
+
+                <hr class="component-divider">
+
+                <div class="info-section">
+                    <h3 class="info-section-title">Archivos recientes</h3>
+                    <div id="info-files-grid" class="info-files-grid">
+                        </div>
+                </div>
+            </div>
+        </div>
+
     </div>
+
+    <div id="media-viewer-overlay" class="media-viewer d-none">
+        <div class="media-viewer-header">
+            <div class="media-viewer-user">
+                <img id="viewer-user-avatar" src="" alt="">
+                <div class="media-viewer-meta">
+                    <span id="viewer-user-name">Usuario</span>
+                    <span id="viewer-date" style="font-size:12px; color:#ccc;">Fecha</span>
+                </div>
+            </div>
+            
+            <div class="media-viewer-controls">
+                <span id="viewer-counter" class="viewer-counter">1 / 1</span>
+                <button class="component-icon-button viewer-btn" data-action="close-viewer">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="media-viewer-content">
+            <button class="viewer-nav-btn prev" data-action="viewer-prev">
+                <span class="material-symbols-rounded">chevron_left</span>
+            </button>
+            
+            <img id="viewer-main-image" src="" alt="Vista previa">
+            
+            <button class="viewer-nav-btn next" data-action="viewer-next">
+                <span class="material-symbols-rounded">chevron_right</span>
+            </button>
+        </div>
+    </div>
+
 </div>

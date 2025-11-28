@@ -77,9 +77,6 @@ try {
 
     // --- OBTENER MIS COMUNIDADES (LISTA IZQUIERDA) ---
     } elseif ($action === 'get_my_communities') {
-        // [CORRECCIÓN CRÍTICA]: 
-        // 1. Se agregó 'AND user_id != cm.user_id' en el conteo de unread_count para ignorar mensajes propios.
-        // 2. Se mantienen las subconsultas para last_message.
         $sql = "SELECT 
                     c.id, c.uuid, c.community_name, c.description, c.privacy, c.member_count, 
                     c.profile_picture, c.banner_picture, cm.role,
@@ -150,10 +147,9 @@ try {
             throw new Exception(translation('global.action_invalid'));
         }
 
-    // --- OBTENER DETALLES DE UNA COMUNIDAD POR UUID (PARA VALIDAR URL) ---
+    // --- OBTENER DETALLES DE UNA COMUNIDAD POR UUID ---
     } elseif ($action === 'get_community_by_uuid') {
         $uuid = trim($data['uuid'] ?? '');
-        // Solo devolver si el usuario es miembro
         $sql = "SELECT c.id, c.uuid, c.community_name, c.profile_picture, c.banner_picture, cm.role
                 FROM communities c
                 JOIN community_members cm ON c.id = cm.community_id
@@ -167,6 +163,49 @@ try {
         } else {
             echo json_encode(['success' => false, 'message' => 'Comunidad no encontrada o acceso denegado']);
         }
+
+    // --- OBTENER DETALLES COMPLETOS (INFO PANEL) ---
+    } elseif ($action === 'get_community_details') {
+        $uuid = trim($data['uuid'] ?? '');
+        
+        // 1. Validar acceso y obtener ID
+        $stmtC = $pdo->prepare("SELECT c.id, c.community_name, c.description, c.profile_picture, c.access_code, c.member_count 
+                                FROM communities c 
+                                JOIN community_members cm ON c.id = cm.community_id 
+                                WHERE c.uuid = ? AND cm.user_id = ?");
+        $stmtC->execute([$uuid, $userId]);
+        $info = $stmtC->fetch(PDO::FETCH_ASSOC);
+
+        if (!$info) throw new Exception("Acceso denegado o comunidad no encontrada.");
+
+        // 2. Obtener Miembros
+        $sqlMembers = "SELECT u.id, u.username, u.profile_picture, cm.role 
+                       FROM community_members cm 
+                       JOIN users u ON cm.user_id = u.id 
+                       WHERE cm.community_id = ? 
+                       ORDER BY FIELD(cm.role, 'admin', 'moderator', 'member'), u.username ASC";
+        $stmtM = $pdo->prepare($sqlMembers);
+        $stmtM->execute([$info['id']]);
+        $members = $stmtM->fetchAll(PDO::FETCH_ASSOC);
+
+        // 3. Obtener Archivos Recientes (Imágenes) + Info del Uploader
+        $sqlFiles = "SELECT f.file_path, f.file_type, f.created_at, u.username, u.profile_picture 
+                     FROM community_files f
+                     JOIN users u ON f.uploader_id = u.id
+                     JOIN community_message_attachments cma ON f.id = cma.file_id
+                     JOIN community_messages m ON cma.message_id = m.id
+                     WHERE m.community_id = ? AND m.status = 'active' AND f.file_type LIKE 'image/%'
+                     ORDER BY f.created_at DESC LIMIT 12";
+        $stmtF = $pdo->prepare($sqlFiles);
+        $stmtF->execute([$info['id']]);
+        $files = $stmtF->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'success' => true,
+            'info' => $info,
+            'members' => $members,
+            'files' => $files
+        ]);
 
     } else {
         throw new Exception(translation('global.action_invalid'));

@@ -18,6 +18,7 @@ import { initMainController } from './ui/main-controller.js';
 import { initAlertManager } from './ui/alert-manager.js';
 import { initTooltipManager } from './ui/tooltip-manager.js';
 import { initDragController } from './ui/drag-controller.js';
+import { initMediaViewer } from './ui/media-viewer.js'; // [NUEVO]
 
 // [SERVICES]
 import { initSocketService } from './services/socket-service.js';
@@ -29,7 +30,7 @@ import { initAdminUserDetails } from './modules/admin/admin-user-details.js';
 import { initAdminServer } from './modules/admin/admin-server.js';
 import { initAdminBackups } from './modules/admin/admin-backups.js';
 import { initAdminAlerts } from './modules/admin/admin-alerts.js';
-import { initAdminUserEdit } from './modules/admin/admin-user-edit.js'; // [NUEVO]
+import { initAdminUserEdit } from './modules/admin/admin-user-edit.js'; 
 
 /**
  * Manejador de módulos por sección.
@@ -39,8 +40,7 @@ export async function handleModuleLoading() {
     const adminDashboard = document.querySelector('[data-section="admin/dashboard"]');
     const adminUsers = document.querySelector('[data-section="admin/users"]');
     const adminUserDetails = document.querySelector('[data-section^="admin/user-"]'); 
-    // Nota: adminUserDetails detecta user-status, user-manage, user-role y ahora user-edit si empieza por user-
-    // Sin embargo, para evitar conflictos, verificamos específicamente user-edit
+    
     const adminUserEdit = document.querySelector('[data-section="admin/user-edit"]');
     
     const adminServer = document.querySelector('[data-section="admin/server"]');
@@ -55,10 +55,8 @@ export async function handleModuleLoading() {
     if (adminDashboard) initAdminDashboard();
     if (adminUsers) initAdminUsers();
     
-    // user-details maneja status, manage, history, role.
-    // user-edit es un módulo separado.
     if (adminUserDetails && !adminUserEdit) initAdminUserDetails();
-    if (adminUserEdit) initAdminUserEdit(); // [NUEVO]
+    if (adminUserEdit) initAdminUserEdit(); 
 
     if (adminServer) initAdminServer();
     if (adminBackups) initAdminBackups();
@@ -92,6 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         initDragController();
         
         initBannerManager();
+        initMediaViewer(); // [NUEVO] Inicializar visualizador
 
         // Exponer la función de carga
         window.loadDynamicModules = handleModuleLoading;
