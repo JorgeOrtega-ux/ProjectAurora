@@ -258,7 +258,22 @@ function appendMessageToUI(msg) {
     // Generar HTML de la respuesta citada
     let replyHtml = '';
     if (msg.reply_to_id) {
-        const replyText = msg.reply_message ? escapeHtml(msg.reply_message) : '📷 [Imagen]';
+        let replyText = '';
+        const rawText = msg.reply_message ? escapeHtml(msg.reply_message) : '';
+        const attachCount = parseInt(msg.reply_attachment_count || 0);
+        
+        // [MEJORA UX] Detectar tipo de mensaje respondido
+        if (msg.reply_type === 'image') {
+            replyText = (attachCount > 1) ? `📷 [${attachCount} Imágenes]` : '📷 [Imagen]';
+        } else if (msg.reply_type === 'mixed') {
+            // Mensaje mixto: Si hay más de 1 imagen, indicarlo
+            const prefix = (attachCount > 1) ? `📷 [${attachCount}] ` : '📷 ';
+            replyText = prefix + (rawText || '[Imagen]');
+        } else {
+            // Texto normal
+            replyText = rawText || '...';
+        }
+
         const replyUser = msg.reply_sender_username || 'Usuario';
         replyHtml = `
             <div class="message-reply-preview">

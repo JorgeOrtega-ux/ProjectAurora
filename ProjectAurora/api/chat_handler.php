@@ -132,11 +132,21 @@ try {
             // Si es respuesta, obtener datos del padre
             $replyData = [];
             if ($replyToId) {
-                $stmtRep = $pdo->prepare("SELECT m.message, u.username FROM community_messages m JOIN users u ON m.user_id = u.id WHERE m.id = ?");
+                // [MODIFICADO] Obtenemos type y contamos adjuntos
+                $stmtRep = $pdo->prepare("SELECT m.message, m.type, u.username FROM community_messages m JOIN users u ON m.user_id = u.id WHERE m.id = ?");
                 $stmtRep->execute([$replyToId]);
                 $rRow = $stmtRep->fetch(PDO::FETCH_ASSOC);
                 if ($rRow) {
-                    $replyData = ['message' => $rRow['message'], 'sender_username' => $rRow['username']];
+                    $replyData = [
+                        'message' => $rRow['message'], 
+                        'sender_username' => $rRow['username'],
+                        'type' => $rRow['type']
+                    ];
+                    
+                    // Contar adjuntos del mensaje padre
+                    $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM community_message_attachments WHERE message_id = ?");
+                    $stmtCount->execute([$replyToId]);
+                    $replyData['attachment_count'] = (int)$stmtCount->fetchColumn();
                 }
             }
 
@@ -153,12 +163,14 @@ try {
                 'reply_to_id' => $replyToId,
                 'reply_message' => $replyData['message'] ?? null,
                 'reply_sender_username' => $replyData['sender_username'] ?? null,
-                'attachments' => $uploadedFiles // Enviamos los paths para que Python no tenga que consultar
+                'reply_type' => $replyData['type'] ?? null,
+                'reply_attachment_count' => $replyData['attachment_count'] ?? 0, // [NUEVO]
+                'attachments' => $uploadedFiles 
             ];
 
             // Enviar a Python para Broadcast
             send_live_notification('community_broadcast', 'new_chat_message', [
-                'community_id' => $commId, // ID numérico para que Python busque miembros
+                'community_id' => $commId, 
                 'message_data' => $broadcastPayload
             ]);
 
@@ -169,7 +181,7 @@ try {
             throw $e;
         }
 
-    // --- OBTENER MENSAJES (MODIFICADO) ---
+    // --- OBTENER MENSAJES (CORREGIDO PARA GROUP_CONCAT y CONTEO) ---
     } elseif ($action === 'get_messages') {
         $uuid = $data['community_uuid'] ?? '';
         $limit = isset($data['limit']) ? (int)$data['limit'] : 50;
@@ -180,15 +192,17 @@ try {
 
         if (!$commId) throw new Exception("Acceso denegado");
 
-        // Query principal + Subconsulta de adjuntos (GROUP_CONCAT es simple, mejor hacer una segunda query o JSON_ARRAYAGG si MySQL 5.7+)
-        // Usaremos JSON_ARRAYAGG si está disponible, si no, una estrategia compatible. Asumimos MariaDB/MySQL moderno.
-        
+        // [MODIFICADO] Usamos GROUP_CONCAT para compatibilidad y contamos adjuntos de la respuesta (p)
         $sql = "
             SELECT m.id, m.message, m.created_at, m.type, m.reply_to_id,
                    u.id as sender_id, u.username as sender_username, u.profile_picture as sender_profile_picture, u.role as sender_role,
-                   p.message as reply_message, pu.username as reply_sender_username,
+                   p.message as reply_message, p.type as reply_type, pu.username as reply_sender_username,
+                   (SELECT COUNT(*) FROM community_message_attachments WHERE message_id = p.id) as reply_attachment_count,
                    (
-                       SELECT JSON_ARRAYAGG(JSON_OBJECT('path', f.file_path, 'type', f.file_type))
+                       SELECT GROUP_CONCAT(
+                           CONCAT('{\"path\":\"', f.file_path, '\",\"type\":\"', f.file_type, '\"}')
+                           SEPARATOR ','
+                       )
                        FROM community_message_attachments cma
                        JOIN community_files f ON cma.file_id = f.id
                        WHERE cma.message_id = m.id
@@ -208,7 +222,9 @@ try {
         // Decodificar JSON de adjuntos
         foreach ($messages as &$msg) {
             if (!empty($msg['attachments_json'])) {
-                $msg['attachments'] = json_decode($msg['attachments_json'], true);
+                // Envolver en corchetes para hacerlo un array JSON válido
+                $jsonString = '[' . $msg['attachments_json'] . ']';
+                $msg['attachments'] = json_decode($jsonString, true);
             } else {
                 $msg['attachments'] = [];
             }
