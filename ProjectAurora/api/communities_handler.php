@@ -95,11 +95,11 @@ try {
         $communities = $stmtComm->fetchAll(PDO::FETCH_ASSOC);
 
         // 2. Obtener Chats Privados Activos
-        // Buscamos usuarios con los que tengamos mensajes (enviados o recibidos)
+        // [MODIFICADO] Agregado u.role a la selección
         $sqlDMs = "SELECT 
                     'private' as type,
                     u.id, u.uuid, u.username as name, 
-                    u.profile_picture,
+                    u.profile_picture, u.role, 
                     m.message as last_message,
                     m.created_at as last_message_at,
                     (SELECT COUNT(*) FROM private_messages pm WHERE pm.sender_id = u.id AND pm.receiver_id = ? AND pm.is_read = 0) as unread_count
@@ -199,7 +199,7 @@ try {
         $comm = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($comm) {
-            $comm['type'] = 'community'; // Flag explicito
+            $comm['type'] = 'community'; 
             echo json_encode(['success' => true, 'data' => $comm]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Comunidad no encontrada o acceso denegado']);
@@ -208,17 +208,18 @@ try {
     // --- OBTENER DETALLES DE USUARIO (PARA DM) POR UUID ---
     } elseif ($action === 'get_user_chat_by_uuid') {
         $uuid = trim($data['uuid'] ?? '');
-        // Buscar usuario si no soy yo mismo
-        $sql = "SELECT id, uuid, username as community_name, profile_picture FROM users WHERE uuid = ? AND id != ?";
+        // [MODIFICADO] Añadido role a la selección
+        $sql = "SELECT id, uuid, username as community_name, profile_picture, role FROM users WHERE uuid = ? AND id != ?";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$uuid, $userId]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($user) {
-            $user['type'] = 'private'; // Flag explícito para el frontend
-            // Simular campos de comunidad para reutilizar lógica UI
+            $user['type'] = 'private'; 
             $user['banner_picture'] = null; 
-            $user['role'] = 'member';
+            // Ya no forzamos 'role' = 'member', usamos el real del usuario si existe, o member por defecto
+            if(empty($user['role'])) $user['role'] = 'member';
+            
             echo json_encode(['success' => true, 'data' => $user]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Usuario no encontrado']);
@@ -228,7 +229,6 @@ try {
     } elseif ($action === 'get_community_details') {
         $uuid = trim($data['uuid'] ?? '');
         
-        // 1. Validar acceso y obtener ID
         $stmtC = $pdo->prepare("SELECT c.id, c.community_name, c.description, c.profile_picture, c.access_code, c.member_count 
                                 FROM communities c 
                                 JOIN community_members cm ON c.id = cm.community_id 
@@ -238,7 +238,6 @@ try {
 
         if (!$info) throw new Exception("Acceso denegado o comunidad no encontrada.");
 
-        // 2. Obtener Miembros
         $sqlMembers = "SELECT u.id, u.username, u.profile_picture, cm.role 
                        FROM community_members cm 
                        JOIN users u ON cm.user_id = u.id 
@@ -248,7 +247,6 @@ try {
         $stmtM->execute([$info['id']]);
         $members = $stmtM->fetchAll(PDO::FETCH_ASSOC);
 
-        // 3. Obtener Archivos Recientes
         $sqlFiles = "SELECT f.file_path, f.file_type, f.created_at, u.username, u.profile_picture 
                      FROM community_files f
                      JOIN users u ON f.uploader_id = u.id

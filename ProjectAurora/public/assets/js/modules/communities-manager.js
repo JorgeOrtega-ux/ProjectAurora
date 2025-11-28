@@ -28,7 +28,7 @@ function renderChatListItem(item) {
     const isPrivate = (item.type === 'private');
     
     // Avatar logic
-    const avatar = item.profile_picture ? 
+    const avatarSrc = item.profile_picture ? 
         (window.BASE_PATH || '/ProjectAurora/') + item.profile_picture : 
         'https://ui-avatars.com/api/?name=' + encodeURIComponent(item.name);
         
@@ -47,12 +47,17 @@ function renderChatListItem(item) {
 
     const previewStyle = (unreadCount > 0 && isActive === '') ? 'font-weight: 700; color: #000;' : '';
     
-    // Estilo visual: Avatar circular para user, cuadrado redondeado para comunidad
-    const avatarStyle = isPrivate ? 'border-radius: 50%;' : 'border-radius: 12px;';
+    // [MODIFICADO] Nueva estructura para soporte de bordes de rol
+    const role = item.role || 'user'; // Viene del backend ahora
+    const shapeClass = isPrivate ? '' : 'community-shape'; // Redondo para usuarios, cuadrado para comms
 
     return `
     <div class="chat-item ${isActive}" data-action="select-chat" data-uuid="${item.uuid}" data-type="${item.type}">
-        <img src="${avatar}" class="chat-item-avatar" style="${avatarStyle}" alt="Avatar">
+        
+        <div class="chat-item-avatar-wrapper ${shapeClass}" data-role="${role}">
+            <img src="${avatarSrc}" alt="Avatar">
+        </div>
+
         <div class="chat-item-info">
             <div class="chat-item-top">
                 <span class="chat-item-name">${escapeHtml(item.name)}</span>
@@ -114,7 +119,6 @@ async function loadSidebarList() {
     const container = document.getElementById('my-communities-list');
     if (!container) return;
 
-    // Usamos la nueva acción unificada
     const res = await postJson('api/communities_handler.php', { action: 'get_sidebar_list' });
     
     container.innerHTML = ''; 
@@ -123,17 +127,12 @@ async function loadSidebarList() {
         sidebarItems = res.list;
         container.innerHTML = res.list.map(c => renderChatListItem(c)).join('');
     } else {
-        sidebarItems = []; // Asegurar que esté vacío si no hay datos
+        sidebarItems = []; 
         container.innerHTML = `<p style="text-align:center; color:#999; padding:20px;">No tienes chats ni comunidades.</p>`;
     }
 
-    // [CORRECCIÓN CRÍTICA] 
-    // Si hay un UUID activo (cargado por router/loader), intentamos abrir el chat.
-    // Si el chat NO está en sidebarItems (porque es un DM nuevo sin mensajes), pasamos NULL en data.
-    // chat-manager.js tiene lógica para hacer fetch si data es null.
     if (window.ACTIVE_CHAT_UUID) {
         const itemData = sidebarItems.find(c => c.uuid === window.ACTIVE_CHAT_UUID);
-        // Pasamos itemData si existe, o null. openChat se encargará de buscarlo si es null.
         openChat(window.ACTIVE_CHAT_UUID, itemData || null);
     }
 }
@@ -154,24 +153,19 @@ async function loadPublicCommunities() {
 // ==========================================
 
 function initListListeners() {
-    // Click en sidebar item
     document.getElementById('my-communities-list')?.addEventListener('click', (e) => {
         const item = e.target.closest('.chat-item');
         if (item) {
             const uuid = item.dataset.uuid;
-            const type = item.dataset.type; // community o private
+            const type = item.dataset.type; 
             
-            // Pasar datos ya cargados para evitar fetch
             const itemData = sidebarItems.find(c => c.uuid === uuid);
-            
-            // Asegurar que el tipo esté correcto en el objeto
             if(itemData && !itemData.type) itemData.type = type;
             
             openChat(uuid, itemData);
         }
     });
 
-    // Unirse desde explorer (igual)
     document.body.addEventListener('click', async (e) => {
         const joinBtn = e.target.closest('[data-action="join-public-community"]');
         if (joinBtn) {
@@ -184,7 +178,7 @@ function initListListeners() {
                 const card = joinBtn.closest('.comm-card');
                 card.style.opacity = '0';
                 setTimeout(() => card.remove(), 300);
-                loadSidebarList(); // Recargar sidebar
+                loadSidebarList(); 
             } else {
                 if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
                 setButtonLoading(joinBtn, false, 'Unirse');
@@ -192,29 +186,22 @@ function initListListeners() {
         }
     });
 
-    // Escuchar socket para actualizar lista
     document.addEventListener('socket-message', (e) => {
         const { type, payload } = e.detail;
         
-        // Manejar tanto new_chat_message (comunidad) como private_message
         if (type === 'new_chat_message' || type === 'private_message') {
             const targetUuid = payload.target_uuid || payload.community_uuid;
-            
-            // Buscar item en sidebar
             const item = document.querySelector(`.chat-item[data-uuid="${targetUuid}"]`);
             
             if (item) {
-                // Actualizar preview y tiempo
                 const previewEl = item.querySelector('.chat-item-preview');
                 const timeEl = item.querySelector('.chat-item-time');
                 if (previewEl) previewEl.textContent = payload.message ? payload.message : '📷 [Imagen]';
                 if (timeEl) timeEl.textContent = formatChatTime(new Date());
 
-                // Mover al principio
                 const list = document.getElementById('my-communities-list');
                 list.prepend(item);
 
-                // Badge de no leídos (Si no es el chat activo)
                 if (targetUuid !== window.ACTIVE_CHAT_UUID) {
                     if (previewEl) { previewEl.style.fontWeight = '700'; previewEl.style.color = '#000'; }
                     let badge = item.querySelector('.unread-counter');
@@ -227,7 +214,6 @@ function initListListeners() {
                     badge.textContent = parseInt(badge.textContent) + 1;
                 }
             } else {
-                // Si el item no existe (ej: nuevo DM recibido), recargar lista completa
                 loadSidebarList();
             }
         }
