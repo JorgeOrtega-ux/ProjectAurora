@@ -216,7 +216,7 @@ async function loadChatMessages(uuid, type, isInitialLoad = false) {
             container.innerHTML = '';
             processAndRenderBatch(container, messages, true);
             scrollToBottom();
-            container.onscroll = handleChatScroll;
+            // Eliminado: container.onscroll = handleChatScroll; // Se maneja en initChatListeners
         } else {
             const prevHeight = container.scrollHeight;
             processAndRenderBatch(container, messages, false);
@@ -232,6 +232,16 @@ async function loadChatMessages(uuid, type, isInitialLoad = false) {
 
 function handleChatScroll(e) {
     const container = e.target;
+    const header = document.querySelector('.chat-header');
+
+    // [NUEVO] Lógica de sombra
+    if (container.scrollTop > 10) {
+        header?.classList.add('shadow');
+    } else {
+        header?.classList.remove('shadow');
+    }
+
+    // Lógica de paginación existente
     if (container.scrollTop === 0 && hasMoreMessages && !isLoadingMessages) {
         loadChatMessages(currentChatUuid, currentChatType, false);
     }
@@ -641,6 +651,12 @@ function initChatListeners() {
     const sendBtn = document.getElementById('btn-send-message');
     if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } });
     if (sendBtn) sendBtn.addEventListener('click', (e) => { e.preventDefault(); sendMessage(); });
+
+    // [NUEVO] Listener de Scroll para Sombra del Header
+    const messagesArea = document.querySelector('.chat-messages-area');
+    if (messagesArea) {
+        messagesArea.addEventListener('scroll', handleChatScroll);
+    }
 }
 
 function initListeners() {
@@ -675,12 +691,11 @@ function initListeners() {
             document.getElementById('chat-info-panel')?.classList.add('d-none'); 
         }
 
-        // [NUEVO] Listener para eliminar conversación desde el menú contextual
+        // Listener para eliminar conversación desde el menú contextual
         const delChatBtn = e.target.closest('[data-action="delete-chat-conversation"]');
         if (delChatBtn) {
             e.preventDefault();
             const uuid = delChatBtn.dataset.uuid;
-            // Remover el menú primero
             document.querySelector('.chat-popover-menu')?.remove();
             await handleDeleteConversation(uuid);
         }

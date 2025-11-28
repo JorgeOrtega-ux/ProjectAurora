@@ -4,7 +4,9 @@ import { postJson, setButtonLoading } from '../core/utilities.js';
 import { t } from '../core/i18n-manager.js';
 import { openChat } from './chat-manager.js';
 
-let sidebarItems = [];
+let sidebarItems = []; // Lista completa de items descargados
+let currentFilter = 'all'; // Filtro de badge activo
+let currentSearchQuery = ''; // Búsqueda actual
 
 function formatChatTime(dateString) {
     if (!dateString) return '';
@@ -21,7 +23,7 @@ function escapeHtml(text) {
 }
 
 // ==========================================
-// RENDERIZADO DE LA LISTA LATERAL
+// RENDERIZADO DE UN ITEM
 // ==========================================
 
 function renderChatListItem(item) {
@@ -48,7 +50,7 @@ function renderChatListItem(item) {
     const role = item.role || 'user'; 
     const shapeClass = isPrivate ? '' : 'community-shape'; 
 
-    // [NUEVO] Indicadores visuales
+    // Indicadores visuales
     const isPinned = parseInt(item.is_pinned) === 1;
     const isFavorite = parseInt(item.is_favorite) === 1;
     
@@ -96,23 +98,64 @@ function renderChatListItem(item) {
 }
 
 // ==========================================
+// FILTRADO Y RENDERIZADO DE LA LISTA
+// ==========================================
+
+function renderSidebarList() {
+    const container = document.getElementById('my-communities-list');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    // 1. Filtrar
+    const filteredItems = sidebarItems.filter(item => {
+        // A. Filtro por Badge (Pestaña)
+        let passesBadge = true;
+        if (currentFilter === 'unread') {
+            passesBadge = parseInt(item.unread_count) > 0;
+        } else if (currentFilter === 'community') {
+            passesBadge = (item.type === 'community');
+        } else if (currentFilter === 'private') {
+            passesBadge = (item.type === 'private');
+        } else if (currentFilter === 'favorites') {
+            passesBadge = (parseInt(item.is_favorite) === 1);
+        }
+
+        // B. Filtro por Búsqueda (Input) - Se aplica SOBRE el filtro de badge
+        let passesSearch = true;
+        if (currentSearchQuery) {
+            passesSearch = item.name.toLowerCase().includes(currentSearchQuery.toLowerCase());
+        }
+
+        return passesBadge && passesSearch;
+    });
+
+    // 2. Renderizar
+    if (filteredItems.length > 0) {
+        container.innerHTML = filteredItems.map(c => renderChatListItem(c)).join('');
+    } else {
+        let msg = 'No hay chats que mostrar.';
+        if (currentFilter === 'unread') msg = 'No tienes mensajes sin leer.';
+        if (currentFilter === 'favorites') msg = 'No tienes favoritos aún.';
+        if (currentSearchQuery) msg = 'No se encontraron resultados.';
+        
+        container.innerHTML = `<p style="text-align:center; color:#999; padding:20px; font-size:13px;">${msg}</p>`;
+    }
+}
+
+// ==========================================
 // CARGA DE DATOS
 // ==========================================
 
 async function loadSidebarList() {
-    const container = document.getElementById('my-communities-list');
-    if (!container) return;
-
     const res = await postJson('api/communities_handler.php', { action: 'get_sidebar_list' });
     
-    container.innerHTML = ''; 
-
-    if (res.success && res.list.length > 0) {
+    if (res.success) {
         sidebarItems = res.list;
-        container.innerHTML = res.list.map(c => renderChatListItem(c)).join('');
+        renderSidebarList(); // Renderizar aplicando filtros actuales
     } else {
-        sidebarItems = []; 
-        container.innerHTML = `<p style="text-align:center; color:#999; padding:20px;">No tienes chats ni comunidades.</p>`;
+        sidebarItems = [];
+        renderSidebarList();
     }
 
     if (window.ACTIVE_CHAT_UUID) {
@@ -137,13 +180,12 @@ async function loadPublicCommunities() {
 }
 
 // ==========================================
-// [MODIFICADO] GESTIÓN DE MENÚ FLOTANTE CONTEXTUAL
+// GESTIÓN DE MENÚ FLOTANTE CONTEXTUAL
 // ==========================================
 
 function showChatMenu(btn, uuid, type, isPinned, isFav) {
     document.querySelector('.chat-popover-menu')?.remove();
 
-    // Textos dinámicos
     const pinText = isPinned ? 'Desfijar chat' : 'Fijar chat';
     const pinIconStyle = isPinned ? 'color:#1976d2;' : '';
     
@@ -168,13 +210,11 @@ function showChatMenu(btn, uuid, type, isPinned, isFav) {
             </div>
         `;
     } else {
-        // Comunidades: Botón Abandonar con data-action correcto
         specificOptions = `
             <div class="chat-popover-item danger" data-action="leave-community" data-uuid="${uuid}">
                 <span class="material-symbols-rounded">logout</span> Abandonar grupo
             </div>
         `;
-        // [IMPORTANTE] deleteOption se queda vacío para comunidades
     }
 
     const menu = document.createElement('div');
@@ -215,52 +255,28 @@ function showChatMenu(btn, uuid, type, isPinned, isFav) {
     }, 0);
 }
 
-// --- ACCIONES NUEVAS ---
+// --- ACCIONES DE MENÚ ---
 
 async function togglePinChat(uuid, type) {
-    const res = await postJson('api/communities_handler.php', { 
-        action: 'toggle_pin', 
-        uuid, 
-        type 
-    });
-    
-    if (res.success) {
-        loadSidebarList(); // Recargar para reordenar
-    } else {
-        if(window.alertManager) window.alertManager.showAlert(res.message, 'warning');
-    }
+    const res = await postJson('api/communities_handler.php', { action: 'toggle_pin', uuid, type });
+    if (res.success) loadSidebarList(); 
+    else if(window.alertManager) window.alertManager.showAlert(res.message, 'warning');
 }
 
 async function toggleFavChat(uuid, type) {
-    const res = await postJson('api/communities_handler.php', { 
-        action: 'toggle_favorite', 
-        uuid, 
-        type 
-    });
-    
-    if (res.success) {
-        loadSidebarList(); // Recargar para mostrar estrella
-    } else {
-        if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
-    }
+    const res = await postJson('api/communities_handler.php', { action: 'toggle_favorite', uuid, type });
+    if (res.success) loadSidebarList(); 
+    else if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
 }
 
-// [NUEVO] ACCIÓN ABANDONAR COMUNIDAD
 async function leaveCommunity(uuid) {
     if (!confirm('¿Estás seguro de que quieres salir de este grupo?')) return;
-    
-    const res = await postJson('api/communities_handler.php', { 
-        action: 'leave_community', 
-        uuid: uuid 
-    });
-
+    const res = await postJson('api/communities_handler.php', { action: 'leave_community', uuid: uuid });
     if (res.success) {
         if(window.alertManager) window.alertManager.showAlert(res.message, 'success');
-        
         if (window.ACTIVE_CHAT_UUID === uuid) {
              window.ACTIVE_CHAT_UUID = null;
-             if(window.navigateTo) window.navigateTo('main');
-             else window.location.href = window.BASE_PATH + 'main';
+             if(window.navigateTo) window.navigateTo('main'); else window.location.href = window.BASE_PATH + 'main';
         } else {
             loadSidebarList();
         }
@@ -270,7 +286,42 @@ async function leaveCommunity(uuid) {
 }
 
 // ==========================================
-// LISTENERS
+// MANEJO DE FILTROS Y BÚSQUEDA
+// ==========================================
+
+function initSidebarFilters() {
+    const container = document.querySelector('.chat-sidebar-badges');
+    const searchInput = document.getElementById('sidebar-search-input');
+
+    // 1. Listeners para Badges
+    if (container) {
+        container.addEventListener('click', (e) => {
+            const badge = e.target.closest('.sidebar-badge');
+            if (badge) {
+                // Actualizar visual
+                container.querySelectorAll('.sidebar-badge').forEach(b => b.classList.remove('active'));
+                badge.classList.add('active');
+
+                // Actualizar estado
+                currentFilter = badge.dataset.filter || 'all';
+                
+                // Renderizar
+                renderSidebarList();
+            }
+        });
+    }
+
+    // 2. Listener para Input de Búsqueda
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            currentSearchQuery = e.target.value.trim();
+            renderSidebarList();
+        });
+    }
+}
+
+// ==========================================
+// LISTENERS GENERALES
 // ==========================================
 
 function initListListeners() {
@@ -281,7 +332,6 @@ function initListListeners() {
             e.stopPropagation(); 
             const isPinned = chatMenuBtn.dataset.pinned === 'true';
             const isFav = chatMenuBtn.dataset.fav === 'true';
-            
             showChatMenu(chatMenuBtn, chatMenuBtn.dataset.uuid, chatMenuBtn.dataset.type, isPinned, isFav);
             return;
         }
@@ -299,12 +349,12 @@ function initListListeners() {
     });
 
     document.body.addEventListener('click', async (e) => {
+        // Acciones públicas
         const joinBtn = e.target.closest('[data-action="join-public-community"]');
         if (joinBtn) {
             const id = joinBtn.dataset.id;
             setButtonLoading(joinBtn, true);
             const res = await postJson('api/communities_handler.php', { action: 'join_public', community_id: id });
-            
             if (res.success) {
                 if(window.alertManager) window.alertManager.showAlert(res.message, 'success');
                 const card = joinBtn.closest('.comm-card');
@@ -330,11 +380,32 @@ function initListListeners() {
             await toggleFavChat(favAction.dataset.uuid, favAction.dataset.type);
         }
 
-        // [NUEVO] Listener para abandonar comunidad
         const leaveAction = e.target.closest('[data-action="leave-community"]');
         if (leaveAction) {
             document.querySelector('.chat-popover-menu')?.remove();
             await leaveCommunity(leaveAction.dataset.uuid);
+        }
+        
+        // [NUEVO] Acción Eliminar Chat Privado
+        const deleteChatAction = e.target.closest('[data-action="delete-chat-conversation"]');
+        if (deleteChatAction) {
+            e.preventDefault();
+            const uuid = deleteChatAction.dataset.uuid;
+            document.querySelector('.chat-popover-menu')?.remove();
+            
+            if(!confirm('¿Seguro que quieres eliminar este chat? Solo se borrará para ti.')) return;
+            const res = await postJson('api/chat_handler.php', { action: 'delete_conversation', target_uuid: uuid });
+            if(res.success) {
+                if(window.alertManager) window.alertManager.showAlert(res.message, 'success');
+                if (window.ACTIVE_CHAT_UUID === uuid) {
+                     window.ACTIVE_CHAT_UUID = null;
+                     if(window.navigateTo) window.navigateTo('main'); else window.location.href = window.BASE_PATH + 'main';
+                } else {
+                    loadSidebarList();
+                }
+            } else {
+                if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
+            }
         }
     });
 
@@ -342,20 +413,7 @@ function initListListeners() {
         const { type, payload } = e.detail;
         
         if (type === 'new_chat_message' || type === 'private_message') {
-            const targetUuid = payload.target_uuid || payload.community_uuid;
-            const item = document.querySelector(`.chat-item[data-uuid="${targetUuid}"]`);
-            
-            if (item) {
-                const previewEl = item.querySelector('.chat-item-preview');
-                const timeEl = item.querySelector('.chat-item-time');
-                if (previewEl) previewEl.textContent = payload.message ? payload.message : '📷 [Imagen]';
-                if (timeEl) timeEl.textContent = formatChatTime(new Date());
-
-                loadSidebarList();
-
-            } else {
-                loadSidebarList();
-            }
+            loadSidebarList(); // Recargar siempre para actualizar orden
         }
     });
 }
@@ -395,6 +453,7 @@ export function initCommunitiesManager() {
     loadSidebarList(); 
     loadPublicCommunities(); 
     initJoinByCode(); 
+    initSidebarFilters(); // [NUEVO] Inicializar los filtros de sidebar
     
     if (!window.communitiesListenersInit) {
         initListListeners();
