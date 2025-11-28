@@ -38,7 +38,7 @@ $userId = $_SESSION['user_id'];
 
 try {
 
-    // --- UNIRSE POR CÓDIGO (PRIVADO O PÚBLICO) ---
+    // --- UNIRSE POR CÓDIGO ---
     if ($action === 'join_by_code') {
         $code = trim($data['access_code'] ?? '');
         
@@ -46,7 +46,6 @@ try {
             throw new Exception("El código debe tener el formato XXXX-XXXX-XXXX.");
         }
 
-        // Buscar comunidad
         $stmt = $pdo->prepare("SELECT id, community_name, privacy FROM communities WHERE access_code = ?");
         $stmt->execute([$code]);
         $community = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -55,14 +54,12 @@ try {
             throw new Exception("Código de acceso inválido o comunidad no encontrada.");
         }
 
-        // Verificar si ya es miembro
         $stmtCheck = $pdo->prepare("SELECT id FROM community_members WHERE community_id = ? AND user_id = ?");
         $stmtCheck->execute([$community['id'], $userId]);
         if ($stmtCheck->rowCount() > 0) {
             throw new Exception("Ya eres miembro de <strong>" . htmlspecialchars($community['community_name']) . "</strong>.");
         }
 
-        // Transacción para unir
         $pdo->beginTransaction();
         try {
             $stmtInsert = $pdo->prepare("INSERT INTO community_members (community_id, user_id, role) VALUES (?, ?, 'member')");
@@ -78,10 +75,10 @@ try {
             throw new Exception(translation('global.error_connection'));
         }
 
-    // --- OBTENER MIS COMUNIDADES (PÁGINA PRINCIPAL) ---
+    // --- OBTENER MIS COMUNIDADES (LISTA IZQUIERDA) ---
     } elseif ($action === 'get_my_communities') {
-        // [MODIFICADO] Se selecciona c.banner_picture
-        $sql = "SELECT c.id, c.community_name, c.description, c.privacy, c.member_count, c.profile_picture, c.banner_picture, cm.role
+        // [MODIFICADO] Se agregó c.uuid al SELECT para la navegación dinámica
+        $sql = "SELECT c.id, c.uuid, c.community_name, c.description, c.privacy, c.member_count, c.profile_picture, c.banner_picture, cm.role
                 FROM communities c
                 JOIN community_members cm ON c.id = cm.community_id
                 WHERE cm.user_id = ?
@@ -92,10 +89,9 @@ try {
 
         echo json_encode(['success' => true, 'communities' => $communities]);
 
-    // --- OBTENER COMUNIDADES PÚBLICAS (EXPLORAR) ---
+    // --- OBTENER COMUNIDADES PÚBLICAS ---
     } elseif ($action === 'get_public_communities') {
-        // [MODIFICADO] Se selecciona c.banner_picture
-        $sql = "SELECT c.id, c.community_name, c.description, c.member_count, c.profile_picture, c.banner_picture
+        $sql = "SELECT c.id, c.uuid, c.community_name, c.description, c.member_count, c.profile_picture, c.banner_picture
                 FROM communities c
                 WHERE c.privacy = 'public'
                 AND c.id NOT IN (SELECT community_id FROM community_members WHERE user_id = ?)
@@ -106,11 +102,10 @@ try {
 
         echo json_encode(['success' => true, 'communities' => $communities]);
 
-    // --- UNIRSE A PÚBLICA (BOTÓN EN EXPLORAR) ---
+    // --- UNIRSE A PÚBLICA ---
     } elseif ($action === 'join_public') {
         $communityId = (int)($data['community_id'] ?? 0);
         
-        // Verificar que sea pública
         $stmtC = $pdo->prepare("SELECT id, privacy FROM communities WHERE id = ?");
         $stmtC->execute([$communityId]);
         $comm = $stmtC->fetch();
@@ -119,12 +114,10 @@ try {
             throw new Exception(translation('global.action_invalid'));
         }
 
-        // Verificar membresía
         $stmtCheck = $pdo->prepare("SELECT id FROM community_members WHERE community_id = ? AND user_id = ?");
         $stmtCheck->execute([$communityId, $userId]);
         if ($stmtCheck->rowCount() > 0) throw new Exception("Ya eres miembro.");
 
-        // Insertar
         $pdo->beginTransaction();
         $pdo->prepare("INSERT INTO community_members (community_id, user_id) VALUES (?, ?)")->execute([$communityId, $userId]);
         $pdo->prepare("UPDATE communities SET member_count = member_count + 1 WHERE id = ?")->execute([$communityId]);
@@ -132,12 +125,11 @@ try {
 
         echo json_encode(['success' => true, 'message' => 'Te has unido al grupo.']);
 
-    // --- ABANDONAR COMUNIDAD ---
+    // --- ABANDONAR ---
     } elseif ($action === 'leave_community') {
         $communityId = (int)($data['community_id'] ?? 0);
 
         $pdo->beginTransaction();
-        
         $stmtDel = $pdo->prepare("DELETE FROM community_members WHERE community_id = ? AND user_id = ?");
         $stmtDel->execute([$communityId, $userId]);
 
@@ -148,6 +140,24 @@ try {
         } else {
             $pdo->rollBack();
             throw new Exception(translation('global.action_invalid'));
+        }
+
+    // --- OBTENER DETALLES DE UNA COMUNIDAD POR UUID (PARA VALIDAR URL) ---
+    } elseif ($action === 'get_community_by_uuid') {
+        $uuid = trim($data['uuid'] ?? '');
+        // Solo devolver si el usuario es miembro
+        $sql = "SELECT c.id, c.uuid, c.community_name, c.profile_picture, c.banner_picture, cm.role
+                FROM communities c
+                JOIN community_members cm ON c.id = cm.community_id
+                WHERE c.uuid = ? AND cm.user_id = ?";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$uuid, $userId]);
+        $comm = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($comm) {
+            echo json_encode(['success' => true, 'community' => $comm]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Comunidad no encontrada o acceso denegado']);
         }
 
     } else {

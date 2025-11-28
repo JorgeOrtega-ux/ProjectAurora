@@ -25,6 +25,7 @@ $basePath = '/ProjectAurora/';
 $serverConfig = getServerConfig($pdo);
 $isMaintenanceMode = (int)$serverConfig['maintenance_mode'] === 1;
 
+// --- LOGICA DE SESIÓN Y SEGURIDAD (Sin cambios) ---
 if (isset($_SESSION['user_id'])) {
     $currentSessionId = session_id();
     $stmtCheck = $pdo->prepare("SELECT id FROM user_sessions WHERE session_id = ? AND user_id = ?");
@@ -95,6 +96,7 @@ if (isset($_SESSION['user_id'])) {
     } catch (Exception $e) {}
 }
 
+// --- ENRUTAMIENTO ---
 $requestUri = $_SERVER['REQUEST_URI'];
 if (strpos($requestUri, $basePath) === 0) $requestUri = substr($requestUri, strlen($basePath));
 $requestUri = strtok($requestUri, '?');
@@ -108,7 +110,7 @@ if (strpos($requestUri, 'api/') === 0) {
 
 $DEFAULT_SECTION = 'main';
 $allowedSections = [
-    'main', 'login', 'register', 'explorer', 'join-community', // [NUEVO]
+    'main', 'login', 'register', 'explorer', 'join-community',
     'register/additional-data', 'register/verification-account',
     'forgot-password', 'reset-password', 'status-page', 'login/verification-additional',
     'search', 'settings', 'settings/your-profile', 'settings/login-security',
@@ -117,8 +119,16 @@ $allowedSections = [
 ];
 
 $CURRENT_SECTION = empty($requestUri) ? 'main' : $requestUri;
-if (!in_array($CURRENT_SECTION, $allowedSections)) $CURRENT_SECTION = '404';
-if ($CURRENT_SECTION === 'main' && $requestUri !== 'main' && !empty($requestUri)) $CURRENT_SECTION = 'main';
+
+// [NUEVO] Lógica para detectar URL dinámica de comunidad (/c/uuid)
+$activeCommunityUuid = null; // Variable para pasar a main.php
+if (preg_match('/^c\/([a-zA-Z0-9-]+)$/', $requestUri, $matches)) {
+    $CURRENT_SECTION = 'main';
+    $activeCommunityUuid = $matches[1];
+}
+
+if (!in_array($CURRENT_SECTION, $allowedSections) && $CURRENT_SECTION !== 'main') $CURRENT_SECTION = '404';
+if ($CURRENT_SECTION === 'main' && $requestUri !== 'main' && !empty($requestUri) && !$activeCommunityUuid) $CURRENT_SECTION = 'main';
 
 if ($CURRENT_SECTION === 'settings') { header("Location: " . $basePath . "settings/your-profile"); exit; }
 if ($CURRENT_SECTION === 'admin') { header("Location: " . $basePath . "admin/dashboard"); exit; }
@@ -153,7 +163,7 @@ if (strpos($CURRENT_SECTION, 'admin/') === 0) {
     if (!in_array($userRole, $allowedAdminRoles)) $CURRENT_SECTION = '404'; 
 }
 
-$appSections = ['main', 'explorer', 'join-community']; // [NUEVO]
+$appSections = ['main', 'explorer', 'join-community'];
 $systemSections = ['status-page', '404', 'error-missing-data'];
 
 if ($CURRENT_SECTION === 'login/verification-additional') { $SECTION_FILE_NAME = 'auth/login'; } 
