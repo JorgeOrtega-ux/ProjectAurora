@@ -52,6 +52,55 @@ function scrollToBottom() {
 }
 
 // ==========================================
+// RENDERIZADO DE TARJETA DE COMUNIDAD (EXPLORER) - [NUEVA FUNCIÓN]
+// ==========================================
+
+function renderCommunityCard(comm, isJoined) {
+    const avatar = comm.profile_picture ? 
+        (window.BASE_PATH || '/ProjectAurora/') + comm.profile_picture : 
+        'https://ui-avatars.com/api/?name=' + encodeURIComponent(comm.community_name);
+    
+    const bannerStyle = comm.banner_picture ? 
+        `background-image: url('${(window.BASE_PATH || '/ProjectAurora/') + comm.banner_picture}');` : 
+        'background-color: #eee;';
+
+    // Botón de acción (Unirse o Ver)
+    let actionBtn = '';
+    if (isJoined) {
+        actionBtn = `<button class="component-button" disabled>Unido</button>`;
+    } else {
+        actionBtn = `<button class="component-button primary comm-btn-primary" data-action="join-public-community" data-id="${comm.id}">Unirse</button>`;
+    }
+
+    return `
+    <div class="comm-card">
+        <div class="comm-banner" style="${bannerStyle}"></div>
+        <div class="comm-content">
+            <div class="comm-header-row">
+                <div class="comm-avatar-container">
+                    <img src="${avatar}" class="comm-avatar-img" alt="${escapeHtml(comm.community_name)}">
+                </div>
+                <div class="comm-actions">
+                    ${actionBtn}
+                </div>
+            </div>
+            
+            <div class="comm-info">
+                <h3 class="comm-title">${escapeHtml(comm.community_name)}</h3>
+                <div class="comm-badges">
+                    <span class="comm-badge">
+                        <span class="material-symbols-rounded" style="font-size:14px; margin-right:4px;">group</span>
+                        ${comm.member_count} miembros
+                    </span>
+                    <span class="comm-badge">Publico</span>
+                </div>
+                <p class="comm-desc" style="margin-top:8px;">${escapeHtml(comm.description || 'Sin descripción')}</p>
+            </div>
+        </div>
+    </div>`;
+}
+
+// ==========================================
 // GESTIÓN DE ADJUNTOS
 // ==========================================
 
@@ -123,7 +172,7 @@ function clearAttachments() {
 }
 
 // ==========================================
-// INFO SIDEBAR LOGIC (NUEVO)
+// INFO SIDEBAR LOGIC
 // ==========================================
 
 function toggleGroupInfo() {
@@ -153,7 +202,7 @@ async function loadCommunityDetails(uuid) {
     const filesGrid = document.getElementById('info-files-grid');
     const countEl = document.getElementById('info-member-count');
 
-    membersList.innerHTML = '<div class="small-spinner" style="margin: 20px auto;"></div>';
+    if (membersList) membersList.innerHTML = '<div class="small-spinner" style="margin: 20px auto;"></div>';
     
     const res = await postJson('api/communities_handler.php', { 
         action: 'get_community_details', 
@@ -212,9 +261,9 @@ async function loadCommunityDetails(uuid) {
                     };
                 });
 
-                // Escapar JSON
-                const jsonStr = JSON.stringify(viewerItems).replace(/'/g, "&apos;").replace(/"/g, '&quot;');
-                filesGrid.dataset.mediaItems = jsonStr;
+                // [CORRECCIÓN CRÍTICA PARA PROBLEMA 2]
+                // Al asignar dataset via JS, NO escapar comillas HTML. JSON.stringify es suficiente.
+                filesGrid.dataset.mediaItems = JSON.stringify(viewerItems);
 
                 res.files.forEach((f, idx) => {
                     const src = (window.BASE_PATH || '/ProjectAurora/') + f.file_path;
@@ -396,7 +445,7 @@ function appendMessageToUI(msg) {
         `;
     }
 
-    // [MODIFICADO] Grid de Imágenes con Viewer Data
+    // Grid de Imágenes con Viewer Data
     let attachmentsHtml = '';
     if (msg.attachments && Array.isArray(msg.attachments) && msg.attachments.length > 0) {
         const count = msg.attachments.length;
