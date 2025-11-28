@@ -32,6 +32,21 @@ $initType = $activeContextType ?? 'community'; // 'community' | 'private'
                     </button>
                 </div>
             </div>
+
+            <div class="chat-sidebar-search">
+                <div class="sidebar-search-wrapper">
+                    <span class="material-symbols-rounded search-icon">search</span>
+                    <input type="text" placeholder="Buscar..." class="sidebar-search-input">
+                </div>
+            </div>
+
+            <div class="chat-sidebar-badges">
+                <div class="sidebar-badge active">Todos</div>
+                <div class="sidebar-badge">No leídos</div>
+                <div class="sidebar-badge">Comunidades</div>
+                <div class="sidebar-badge">DM</div>
+                <div class="sidebar-badge">Favoritos</div>
+            </div>
             
             <div class="chat-list-wrapper">
                 <div id="my-communities-list" class="chat-list">

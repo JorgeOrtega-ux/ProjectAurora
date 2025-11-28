@@ -1657,6 +1657,7 @@ a.disabled-link {
     align-items: center;
     justify-content: space-between;
     border-bottom: 1px solid #00000020;
+    flex-shrink: 0; 
 }
 
 .chat-sidebar-title {
@@ -1669,6 +1670,84 @@ a.disabled-link {
     display: flex;
     gap: 8px;
 }
+
+/* --- BUSCADOR Y BADGES (SIDEBAR) --- */
+
+/* Contenedor del Buscador */
+.chat-sidebar-search {
+    padding: 12px 16px;
+    border-bottom: 1px solid #00000010;
+}
+
+.sidebar-search-wrapper {
+    display: flex;
+    align-items: center;
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    padding: 0 12px;
+    height: 36px;
+    border: 1px solid transparent;
+}
+
+.sidebar-search-wrapper:focus-within {
+    background-color: #fff;
+    border-color: #00000020;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.sidebar-search-input {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 13px;
+    color: #333;
+    margin-left: 8px;
+}
+
+.sidebar-search-wrapper .search-icon {
+    font-size: 18px;
+    color: #888;
+}
+
+/* Contenedor de Badges (Filtros) */
+.chat-sidebar-badges {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* Exactamente 4 columnas */
+    gap: 8px; /* Espacio entre elementos */
+    padding: 8px 16px;
+    border-bottom: 1px solid #00000010;
+}
+
+.sidebar-badge {
+    background-color: #f0f2f5;
+    color: #666;
+    font-size: 11px; /* Texto pequeño para que quepa */
+    font-weight: 600;
+    border-radius: 50px;
+    text-align: center;
+    padding: 6px 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
+    border: 1px solid transparent;
+}
+
+.sidebar-badge:hover {
+    background-color: #e4e6eb;
+}
+
+.sidebar-badge.active {
+    background-color: #e7f3ff; /* Azul muy claro */
+    color: #1976d2; /* Azul primary */
+    border-color: #1976d220;
+}
+
+/* ------------------------------------- */
 
 .chat-list-wrapper {
     flex: 1;
@@ -2576,50 +2655,13 @@ a.disabled-link {
     }
     .viewer-nav-btn.prev { left: 5px; }
     .viewer-nav-btn.next { right: 5px; }
-}/* ... [Resto del archivo existente] ... */
+}
 
 /* =========================================
    19. COMPONENTES DE CHAT EXTRAS
    ========================================= */
 
 /* Divisor de Fecha */
-.chat-date-divider {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 20px 0;
-    width: 100%;
-    position: relative;
-}
-
-.chat-date-divider span {
-    background-color: #f0f2f5; /* Color similar al fondo del chat */
-    color: #555;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 4px 12px;
-    border-radius: 50px;
-    border: 1px solid #e0e0e0;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-    z-index: 1;
-}
-
-.chat-date-divider::before {
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 1px;
-    background-color: #e0e0e0;
-    top: 50%;
-    z-index: 0;
-}
-
-/* Spinner de carga superior */
-.chat-loading-more {
-    text-align: center;
-    padding: 10px;
-    width: 100%;
-}/* Divisor de Fecha */
 .chat-date-divider {
     display: flex;
     align-items: center;
@@ -2760,20 +2802,20 @@ a.disabled-link {
 }
 .chat-popover-item.danger .material-symbols-rounded {
     color: #d32f2f;
-}/* ESTILOS PARA INDICADORES DE PIN Y FAVORITO */
-.chat-item {
-    position: relative;
-    /* ... resto de estilos chat-item ... */
 }
 
-/* Contenedor de indicadores (arriba a la derecha del item, pero a la izquierda del hover button) */
+/* ESTILOS PARA INDICADORES DE PIN Y FAVORITO */
+.chat-item {
+    position: relative;
+}
+
 .chat-item-indicators {
     position: absolute;
     top: 8px;
     right: 8px;
     display: flex;
     gap: 4px;
-    pointer-events: none; /* No bloquear clics */
+    pointer-events: none;
 }
 
 .icon-indicator {
@@ -2782,16 +2824,14 @@ a.disabled-link {
 }
 
 .icon-indicator.pinned {
-    color: #1976d2; /* Azul */
+    color: #1976d2; 
     transform: rotate(45deg);
 }
 
 .icon-indicator.favorite {
-    color: #fbc02d; /* Amarillo/Dorado */
+    color: #fbc02d; 
 }
 
-/* Ajuste del menú flotante */
 .chat-hover-btn {
-    /* ... estilos existentes ... */
-    z-index: 15; /* Asegurar que esté por encima de indicadores */
+    z-index: 15; 
 }
