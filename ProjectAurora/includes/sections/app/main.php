@@ -75,18 +75,14 @@ $initUuid = $activeCommunityUuid ?? '';
                 </div>
 
                 <div class="chat-messages-area">
-                    <div class="messages-placeholder-dev">
-                        <span class="material-symbols-rounded">engineering</span>
-                        <p>El sistema de chat está en construcción...</p>
                     </div>
-                </div>
 
                 <div class="chat-input-area">
                     <button class="component-icon-button">
                         <span class="material-symbols-rounded">sentiment_satisfied</span>
                     </button>
                     <input type="text" class="chat-message-input" placeholder="Escribe un mensaje...">
-                    <button class="component-icon-button">
+                    <button class="component-icon-button" id="btn-send-message">
                         <span class="material-symbols-rounded">send</span>
                     </button>
                 </div>

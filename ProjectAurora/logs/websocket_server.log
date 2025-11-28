@@ -1042,3 +1042,111 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-11-28 00:02:44,948 - INFO - Usuario 1 desconectado completamente.
 2025-11-28 00:02:45,171 - INFO - connection open
 2025-11-28 00:02:45,193 - INFO - Usuario conectado: ID 1 | Rol: founder | Sesión: r2sf4q96...
+2025-11-28 00:09:31,907 - INFO - ✅ Pool de conexiones a base de datos inicializado (Max 20).
+2025-11-28 00:09:32,403 - INFO - === Servidor Aurora Iniciado (Chat Habilitado) ===
+2025-11-28 00:09:33,012 - INFO - server listening on 0.0.0.0:8080
+2025-11-28 00:09:35,541 - INFO - connection open
+2025-11-28 00:09:35,542 - INFO - connection open
+2025-11-28 00:09:41,759 - INFO - connection open
+2025-11-28 00:09:41,788 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 00:09:46,489 - INFO - connection open
+2025-11-28 00:09:46,495 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:03,857 - INFO - connection open
+2025-11-28 00:10:03,860 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:20,574 - INFO - connection open
+2025-11-28 00:10:20,588 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:39,134 - INFO - connection open
+2025-11-28 00:10:39,140 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:39,941 - INFO - connection open
+2025-11-28 00:10:39,949 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:40,144 - INFO - connection open
+2025-11-28 00:10:40,151 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:40,474 - INFO - connection open
+2025-11-28 00:10:40,484 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:40,761 - INFO - connection open
+2025-11-28 00:10:40,769 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:42,150 - INFO - connection open
+2025-11-28 00:10:42,153 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:42,750 - INFO - connection open
+2025-11-28 00:10:42,755 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:43,157 - INFO - connection open
+2025-11-28 00:10:43,160 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:43,403 - INFO - connection open
+2025-11-28 00:10:43,407 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:43,623 - INFO - connection open
+2025-11-28 00:10:43,626 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:43,810 - INFO - connection open
+2025-11-28 00:10:43,818 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:44,056 - INFO - connection open
+2025-11-28 00:10:44,059 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:44,274 - INFO - connection open
+2025-11-28 00:10:44,277 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:44,435 - INFO - connection open
+2025-11-28 00:10:44,439 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:44,671 - INFO - connection open
+2025-11-28 00:10:44,674 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:44,856 - INFO - connection open
+2025-11-28 00:10:44,859 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:45,045 - INFO - connection open
+2025-11-28 00:10:45,056 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:45,434 - INFO - connection open
+2025-11-28 00:10:45,444 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:45,598 - INFO - connection open
+2025-11-28 00:10:45,607 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:45,934 - INFO - connection open
+2025-11-28 00:10:46,278 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:47,613 - INFO - connection open
+2025-11-28 00:10:47,639 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:47,752 - INFO - connection open
+2025-11-28 00:10:47,756 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:48,239 - INFO - connection open
+2025-11-28 00:10:48,242 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:48,434 - INFO - connection open
+2025-11-28 00:10:48,440 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:48,639 - INFO - connection open
+2025-11-28 00:10:48,642 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:48,842 - INFO - connection open
+2025-11-28 00:10:48,854 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:49,085 - INFO - connection open
+2025-11-28 00:10:49,087 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:49,258 - INFO - connection open
+2025-11-28 00:10:49,261 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:49,407 - INFO - connection open
+2025-11-28 00:10:49,411 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:49,606 - INFO - connection open
+2025-11-28 00:10:49,611 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:49,810 - INFO - connection open
+2025-11-28 00:10:49,816 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:50,160 - INFO - connection open
+2025-11-28 00:10:50,169 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:50,325 - INFO - connection open
+2025-11-28 00:10:50,328 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:50,612 - INFO - connection open
+2025-11-28 00:10:50,620 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:50,754 - INFO - connection open
+2025-11-28 00:10:50,757 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:50,926 - INFO - connection open
+2025-11-28 00:10:50,930 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:51,190 - INFO - connection open
+2025-11-28 00:10:51,194 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:51,343 - INFO - connection open
+2025-11-28 00:10:51,351 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:51,507 - INFO - connection open
+2025-11-28 00:10:51,510 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:51,768 - INFO - connection open
+2025-11-28 00:10:51,772 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:51,975 - INFO - connection open
+2025-11-28 00:10:51,982 - INFO - Usuario conectado: ID 2 | Rol: administrator
+2025-11-28 00:10:53,265 - INFO - connection open
+2025-11-28 00:10:53,724 - INFO - connection open
+2025-11-28 00:10:53,746 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 00:10:55,434 - INFO - connection open
+2025-11-28 00:10:55,441 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 00:10:55,727 - INFO - connection open
+2025-11-28 00:10:55,733 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 00:10:56,302 - INFO - connection open
+2025-11-28 00:10:56,306 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 00:10:58,295 - INFO - connection open
+2025-11-28 00:10:58,300 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 00:10:59,711 - INFO - connection open
+2025-11-28 00:10:59,717 - INFO - Usuario conectado: ID 1 | Rol: founder
