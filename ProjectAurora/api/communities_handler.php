@@ -263,7 +263,6 @@ try {
         $uuid = $data['uuid'] ?? '';
         $communityId = (int)($data['community_id'] ?? 0);
 
-        // [CORRECCIÓN] Resolución de UUID a ID si es necesario
         if ($communityId === 0 && !empty($uuid)) {
             $stmtId = $pdo->prepare("SELECT id FROM communities WHERE uuid = ?");
             $stmtId->execute([$uuid]);
@@ -296,9 +295,37 @@ try {
     // --- OBTENER DETALLES USUARIO (DM) POR UUID ---
     } elseif ($action === 'get_user_chat_by_uuid') {
         $uuid = trim($data['uuid'] ?? '');
-        $sql = "SELECT id, uuid, username as community_name, profile_picture, role FROM users WHERE uuid = ? AND id != ?";
-        $stmt = $pdo->prepare($sql); $stmt->execute([$uuid, $userId]); $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($user) { $user['type'] = 'private'; $user['banner_picture'] = null; if(empty($user['role'])) $user['role'] = 'member'; echo json_encode(['success' => true, 'data' => $user]); }
+        
+        // [MODIFICADO] Incluir privacidad y estado de amistad en la respuesta
+        $sql = "SELECT u.id, u.uuid, u.username as community_name, u.profile_picture, u.role,
+                       COALESCE(up.message_privacy, 'friends') as message_privacy,
+                       (SELECT status FROM friendships f WHERE (f.sender_id = u.id AND f.receiver_id = ?) OR (f.sender_id = ? AND f.receiver_id = u.id)) as friend_status
+                FROM users u 
+                LEFT JOIN user_preferences up ON u.id = up.user_id
+                WHERE u.uuid = ? AND u.id != ?";
+                
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$userId, $userId, $uuid, $userId]); 
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($user) { 
+            $user['type'] = 'private'; 
+            $user['banner_picture'] = null; 
+            if(empty($user['role'])) $user['role'] = 'member'; 
+            
+            // Lógica para determinar si se puede enviar mensaje
+            $privacy = $user['message_privacy'];
+            $status = $user['friend_status'];
+            $user['can_message'] = true;
+
+            if ($privacy === 'nobody') {
+                $user['can_message'] = false;
+            } elseif ($privacy === 'friends' && $status !== 'accepted') {
+                $user['can_message'] = false;
+            }
+            
+            echo json_encode(['success' => true, 'data' => $user]); 
+        }
         else echo json_encode(['success' => false, 'message' => 'Usuario no encontrado']);
 
     // --- OBTENER DETALLES COMPLETOS (INFO PANEL) ---

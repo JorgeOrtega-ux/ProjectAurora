@@ -30,13 +30,30 @@ $renderUserCard = function ($user) use ($currentUserId) {
     $role = $user['role'] ?? 'user';
     $mutualCount = $user['mutual_friends'];
 
+    // [NUEVO] Lógica de Privacidad
+    $privacy = $user['message_privacy'] ?? 'friends';
+    $canMessage = false;
+
+    if ($privacy === 'everyone') {
+        $canMessage = true;
+    } elseif ($privacy === 'friends' && $user['friend_status'] === 'accepted') {
+        $canMessage = true;
+    } elseif ($privacy === 'nobody') {
+        $canMessage = false;
+    }
+
     $actionsHtml = '';
     if ($user['friend_status'] === 'accepted') {
-        // [MODIFICADO] Botón de chat añadido
-        $actionsHtml = '
+        // [MODIFICADO] Solo mostrar botón de chat si está permitido
+        $chatBtnHtml = '';
+        if ($canMessage) {
+            $chatBtnHtml = '
             <button class="btn-add-friend" data-action="send-dm" data-uid="' . $uid . '" style="margin-right:4px;">
                 <span class="material-symbols-rounded" style="font-size:16px;">chat</span>
-            </button>
+            </button>';
+        }
+
+        $actionsHtml = $chatBtnHtml . '
             <button class="btn-add-friend btn-remove-friend" data-uid="' . $uid . '" data-i18n="search.actions.remove">' . translation('search.actions.remove') . '</button>
         ';
     } elseif ($user['friend_status'] === 'pending') {

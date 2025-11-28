@@ -107,6 +107,12 @@ function updateChatInterface(data) {
     const infoBtn = document.getElementById('btn-group-info-toggle');
     const headerInfo = document.getElementById('chat-header-info-clickable');
     
+    // Elementos de entrada para bloquear si es necesario
+    const inputArea = document.querySelector('.chat-input-area');
+    const messageInput = document.querySelector('.chat-message-input');
+    const sendBtn = document.getElementById('btn-send-message');
+    const attachBtn = document.getElementById('btn-attach-file');
+    
     const headerAvatarContainer = document.querySelector('.chat-avatar-container'); 
 
     if (data) {
@@ -149,10 +155,31 @@ function updateChatInterface(data) {
             }
         }
 
+        // Resetear estado de inputs
+        if (inputArea) inputArea.style.display = 'flex';
+        if (messageInput) {
+            messageInput.disabled = false;
+            messageInput.placeholder = 'Escribe un mensaje...';
+        }
+        if (sendBtn) sendBtn.disabled = false;
+        if (attachBtn) attachBtn.disabled = false;
+
         if (isPrivate) {
             if (infoBtn) infoBtn.style.display = 'none';
             if (headerInfo) headerInfo.style.pointerEvents = 'none'; 
             document.getElementById('chat-info-panel').classList.add('d-none'); 
+            
+            // [NUEVO] Bloqueo por privacidad
+            if (data.can_message === false) {
+                if (messageInput) {
+                    messageInput.disabled = true;
+                    messageInput.placeholder = t('chat.error.privacy_placeholder') || 'Este usuario no permite mensajes de desconocidos.';
+                    messageInput.value = '';
+                }
+                if (sendBtn) sendBtn.disabled = true;
+                if (attachBtn) attachBtn.disabled = true;
+            }
+
         } else {
             if (infoBtn) infoBtn.style.display = 'flex';
             if (headerInfo) headerInfo.style.pointerEvents = 'auto';
@@ -216,7 +243,6 @@ async function loadChatMessages(uuid, type, isInitialLoad = false) {
             container.innerHTML = '';
             processAndRenderBatch(container, messages, true);
             scrollToBottom();
-            // Eliminado: container.onscroll = handleChatScroll; // Se maneja en initChatListeners
         } else {
             const prevHeight = container.scrollHeight;
             processAndRenderBatch(container, messages, false);
@@ -234,14 +260,12 @@ function handleChatScroll(e) {
     const container = e.target;
     const header = document.querySelector('.chat-header');
 
-    // [NUEVO] Lógica de sombra
     if (container.scrollTop > 10) {
         header?.classList.add('shadow');
     } else {
         header?.classList.remove('shadow');
     }
 
-    // Lógica de paginación existente
     if (container.scrollTop === 0 && hasMoreMessages && !isLoadingMessages) {
         loadChatMessages(currentChatUuid, currentChatType, false);
     }
@@ -587,7 +611,6 @@ async function handleReportMessage(msgId) {
     }
 }
 
-// [NUEVO] MANEJAR ELIMINAR CONVERSACIÓN COMPLETA
 async function handleDeleteConversation(uuid) {
     if(!confirm('¿Seguro que quieres eliminar este chat? Solo se borrará para ti.')) return;
     
@@ -598,7 +621,6 @@ async function handleDeleteConversation(uuid) {
 
     if(res.success) {
         if(window.alertManager) window.alertManager.showAlert(res.message, 'success');
-        // Redirigir a main para limpiar la vista actual
         if(window.navigateTo) window.navigateTo('main');
         else window.location.href = window.BASE_PATH + 'main';
     } else {
@@ -652,7 +674,6 @@ function initChatListeners() {
     if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } });
     if (sendBtn) sendBtn.addEventListener('click', (e) => { e.preventDefault(); sendMessage(); });
 
-    // [NUEVO] Listener de Scroll para Sombra del Header
     const messagesArea = document.querySelector('.chat-messages-area');
     if (messagesArea) {
         messagesArea.addEventListener('scroll', handleChatScroll);
@@ -691,7 +712,6 @@ function initListeners() {
             document.getElementById('chat-info-panel')?.classList.add('d-none'); 
         }
 
-        // Listener para eliminar conversación desde el menú contextual
         const delChatBtn = e.target.closest('[data-action="delete-chat-conversation"]');
         if (delChatBtn) {
             e.preventDefault();

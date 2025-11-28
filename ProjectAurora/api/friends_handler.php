@@ -55,13 +55,27 @@ try {
 
         if (!$uuid) throw new Exception(translation('admin.error.user_not_exist'));
 
-        // 2. Verificar amistad (Opcional, si solo permites chats entre amigos)
-        $stmtFriend = $pdo->prepare("SELECT status FROM friendships WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)");
-        $stmtFriend->execute([$currentUserId, $targetUid, $targetUid, $currentUserId]);
-        $status = $stmtFriend->fetchColumn();
+        // --- [NUEVO] VALIDACIÓN DE PRIVACIDAD ---
+        $stmtPriv = $pdo->prepare("
+            SELECT COALESCE(up.message_privacy, 'friends') as privacy,
+                   (SELECT status FROM friendships WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)) as status
+            FROM users u
+            LEFT JOIN user_preferences up ON u.id = up.user_id
+            WHERE u.id = ?
+        ");
+        $stmtPriv->execute([$currentUserId, $targetUid, $targetUid, $currentUserId, $targetUid]);
+        $res = $stmtPriv->fetch(PDO::FETCH_ASSOC);
 
-        // Si quieres restringir chats a solo amigos, descomenta esto:
-        // if ($status !== 'accepted') throw new Exception("Solo puedes enviar mensajes a tus amigos.");
+        $privacy = $res['privacy'] ?? 'friends';
+        $status = $res['status'];
+
+        if ($privacy === 'nobody') {
+            throw new Exception("La configuración de privacidad de este usuario impide enviar mensajes.");
+        }
+        if ($privacy === 'friends' && $status !== 'accepted') {
+            throw new Exception("Solo los amigos pueden enviar mensajes a este usuario.");
+        }
+        // ----------------------------------------
 
         // Retornamos el UUID para que el frontend redirija
         echo json_encode(['success' => true, 'uuid' => $uuid]);

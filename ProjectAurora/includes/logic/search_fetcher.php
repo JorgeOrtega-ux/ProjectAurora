@@ -25,9 +25,10 @@ class SearchFetcher {
         $queryLimit = $limit + 1;
 
         try {
-            // [CORRECCIÓN] Se cambió u.avatar por u.profile_picture para coincidir con la BD
+            // [MODIFICADO] Se agregó COALESCE(up.message_privacy, 'friends') y el LEFT JOIN correspondiente
             $sql = "SELECT u.id, u.username, u.profile_picture, u.role, 
                            f.status as friend_status, f.sender_id,
+                           COALESCE(up.message_privacy, 'friends') as message_privacy,
                            (
                                SELECT COUNT(*) 
                                FROM friendships fA 
@@ -38,6 +39,7 @@ class SearchFetcher {
                                AND (fB.sender_id = u.id OR fB.receiver_id = u.id) AND fB.status = 'accepted'
                            ) as mutual_friends
                     FROM users u
+                    LEFT JOIN user_preferences up ON u.id = up.user_id
                     LEFT JOIN friendships f 
                     ON (f.sender_id = ? AND f.receiver_id = u.id) 
                     OR (f.sender_id = u.id AND f.receiver_id = ?)

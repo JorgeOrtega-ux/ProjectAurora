@@ -16,13 +16,16 @@ $currentEmail = $currentUser['email'] ?? 'correo@ejemplo.com';
 $userProfilePic = $currentUser['profile_picture'] ?? null;
 $userRole = $currentUser['role'] ?? 'user';
 
-$stmtPrefs = $pdo->prepare("SELECT usage_intent, language, open_links_in_new_tab FROM user_preferences WHERE user_id = ?");
+// [MODIFICADO] Agregamos message_privacy a la consulta
+$stmtPrefs = $pdo->prepare("SELECT usage_intent, language, open_links_in_new_tab, message_privacy FROM user_preferences WHERE user_id = ?");
 $stmtPrefs->execute([$userId]);
 $prefs = $stmtPrefs->fetch(PDO::FETCH_ASSOC);
 
 $currentUsage = $prefs['usage_intent'] ?? 'personal';
 $currentLang = $prefs['language'] ?? 'en-us';
 $openLinksInNewTab = isset($prefs['open_links_in_new_tab']) ? (int)$prefs['open_links_in_new_tab'] : 1;
+// [NUEVO] Obtener privacidad
+$currentMsgPrivacy = $prefs['message_privacy'] ?? 'friends';
 
 $usageIcons = [
     'personal' => 'person',
@@ -48,6 +51,14 @@ if (empty($userProfilePic) || strpos($userProfilePic, '/default/') !== false) {
     $isDefaultPfp = true;
 }
 $hasCustomPfp = !$isDefaultPfp && ($pfpUrl !== null);
+
+// [NUEVO] Mapa de iconos para privacidad
+$privacyIcons = [
+    'everyone' => 'public',
+    'friends' => 'group',
+    'nobody' => 'lock'
+];
+$currentPrivacyIcon = $privacyIcons[$currentMsgPrivacy];
 ?>
 
 <div class="section-content active" data-section="settings/your-profile">
@@ -255,6 +266,69 @@ $hasCustomPfp = !$isDefaultPfp && ($pfpUrl !== null);
                                     <div class="menu-link <?php echo $isActive; ?>" data-value="<?php echo $opt['val']; ?>">
                                         <div class="menu-link-icon"><span class="material-symbols-rounded"><?php echo $opt['icon']; ?></span></div>
                                         <div class="menu-link-text"><span data-i18n="<?php echo $opt['label_key']; ?>"><?php echo $label; ?></span></div>
+                                        <div class="menu-link-icon"><?php echo $check; ?></div>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="component-divider">
+
+            <div class="component-group-item component-group-item--stacked">
+                <div class="component-card__content">
+                    <div class="component-card__text">
+                        <h2 class="component-card__title" data-i18n="settings.profile.privacy_msg_title">
+                            <?php echo translation('settings.profile.privacy_msg_title'); ?>
+                        </h2>
+                        <p class="component-card__description" data-i18n="settings.profile.privacy_msg_desc">
+                            <?php echo translation('settings.profile.privacy_msg_desc'); ?>
+                        </p>
+                    </div>
+                </div>
+                <div class="component-card__actions">
+                    <div class="trigger-select-wrapper">
+                        <div class="trigger-selector" data-action="toggleModulePrivacySelect">
+                            <div class="trigger-select-icon">
+                                <span class="material-symbols-rounded"><?php echo $currentPrivacyIcon; ?></span>
+                            </div>
+                            <div class="trigger-select-text">
+                                <span data-i18n="settings.profile.privacy_options.<?php echo $currentMsgPrivacy; ?>">
+                                    <?php echo translation("settings.profile.privacy_options.{$currentMsgPrivacy}"); ?>
+                                </span>
+                            </div>
+                            <div class="trigger-select-arrow">
+                                <span class="material-symbols-rounded">arrow_drop_down</span>
+                            </div>
+                        </div>
+
+                        <div class="popover-module popover-module--anchor-width body-title disabled" 
+                             data-module="modulePrivacySelect" 
+                             data-preference-type="message_privacy">
+                            <div class="menu-content">
+                                <div class="menu-list">
+                                    <?php
+                                    $privOptions = [
+                                        ['val' => 'everyone', 'icon' => 'public'],
+                                        ['val' => 'friends', 'icon' => 'group'],
+                                        ['val' => 'nobody', 'icon' => 'lock']
+                                    ];
+                                    foreach ($privOptions as $opt): 
+                                        $isActive = ($currentMsgPrivacy === $opt['val']) ? 'active' : '';
+                                        $check = ($isActive) ? '<span class="material-symbols-rounded">check</span>' : '';
+                                    ?>
+                                    <div class="menu-link <?php echo $isActive; ?>" data-value="<?php echo $opt['val']; ?>">
+                                        <div class="menu-link-icon">
+                                            <span class="material-symbols-rounded"><?php echo $opt['icon']; ?></span>
+                                        </div>
+                                        <div class="menu-link-text">
+                                            <span data-i18n="settings.profile.privacy_options.<?php echo $opt['val']; ?>">
+                                                <?php echo translation("settings.profile.privacy_options.{$opt['val']}"); ?>
+                                            </span>
+                                        </div>
                                         <div class="menu-link-icon"><?php echo $check; ?></div>
                                     </div>
                                     <?php endforeach; ?>

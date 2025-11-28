@@ -44,11 +44,9 @@ $response = ['success' => false, 'message' => translation('global.action_invalid
 $serverConfig = getServerConfig($pdo);
 
 function check_cooldown($pdo, $userId, $type, $daysLimit) {
-    // [MODIFICADO] Permitir que el Staff (Founder/Admin) ignore el cooldown
     if (isset($_SESSION['user_role']) && in_array($_SESSION['user_role'], ['founder', 'administrator'])) {
         return;
     }
-    // ---------------------------------------------------------------------
 
     $stmt = $pdo->prepare("SELECT changed_at FROM user_audit_logs 
                            WHERE user_id = ? AND change_type = ? 
@@ -68,11 +66,9 @@ function check_cooldown($pdo, $userId, $type, $daysLimit) {
     }
 }
 
-// [MODIFICADO] Función audit_log actualizada para incluir performed_by
 function audit_log($pdo, $userId, $type, $oldValue, $newValue) {
     try {
         $ip = get_client_ip();
-        // Insertamos $userId en performed_by porque en settings el usuario se modifica a sí mismo
         $stmt = $pdo->prepare("INSERT INTO user_audit_logs (user_id, performed_by, change_type, old_value, new_value, changed_by_ip, changed_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
         $stmt->execute([$userId, $userId, $type, $oldValue, $newValue, $ip]);
     } catch (Exception $e) {
@@ -159,8 +155,6 @@ try {
         $oldPic = $user['profile_picture'];
         $username = $user['username'];
         
-        // --- [NUEVA PROTECCIÓN] ---
-        // Si ya es default, devolvemos éxito sin hacer nada.
         if ($oldPic && strpos($oldPic, '/default/') !== false) {
             echo json_encode([
                 'success' => true, 
@@ -169,7 +163,6 @@ try {
             ]);
             exit;
         }
-        // --------------------------
         
         $color = get_random_color();
         
@@ -342,6 +335,34 @@ try {
             $_SESSION['user_theme'] = $theme;
             $response = ['success' => true, 'message' => translation('global.save_status')];
         } else throw new Exception(translation('global.error_connection'));
+
+    // [NUEVO] Actualizar Privacidad de Mensajes
+    } elseif ($action === 'update_privacy') {
+        if (checkActionRateLimit($pdo, $userId, 'pref_update_limit', 10, 1)) throw new Exception(translation('auth.errors.too_many_attempts'));
+        logSecurityAction($pdo, $userId, 'pref_update_limit');
+        
+        $privacy = $data['privacy'] ?? 'friends';
+        $allowed = ['everyone', 'friends', 'nobody'];
+        
+        if (!in_array($privacy, $allowed)) throw new Exception(translation('global.action_invalid'));
+        
+        // Obtenemos el valor anterior para el log
+        $stmtOld = $pdo->prepare("SELECT message_privacy FROM user_preferences WHERE user_id = ?");
+        $stmtOld->execute([$userId]);
+        $oldVal = $stmtOld->fetchColumn() ?: 'friends'; // Default si es null
+
+        $sql = "INSERT INTO user_preferences (user_id, message_privacy) VALUES (?, ?) 
+                ON DUPLICATE KEY UPDATE message_privacy = VALUES(message_privacy)";
+                
+        if ($pdo->prepare($sql)->execute([$userId, $privacy])) {
+            // Registrar cambio en auditoría
+            if ($oldVal !== $privacy) {
+                audit_log($pdo, $userId, 'privacy_update', $oldVal, $privacy);
+            }
+            $response = ['success' => true, 'message' => translation('global.save_status')];
+        } else {
+            throw new Exception(translation('global.error_connection'));
+        }
 
     } elseif ($action === 'update_boolean_preference') {
         if (checkActionRateLimit($pdo, $userId, 'pref_update_limit', 10, 1)) throw new Exception(translation('auth.errors.too_many_attempts'));

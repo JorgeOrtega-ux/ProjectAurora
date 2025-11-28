@@ -58,6 +58,29 @@ try {
             $stmtU->execute([$uuid]);
             $targetId = $stmtU->fetchColumn();
             if (!$targetId || $targetId == $userId) throw new Exception("Usuario inválido.");
+
+            // --- [NUEVO] VALIDACIÓN DE PRIVACIDAD ---
+            $stmtPriv = $pdo->prepare("
+                SELECT COALESCE(up.message_privacy, 'friends') as privacy,
+                       (SELECT status FROM friendships WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)) as status
+                FROM users u
+                LEFT JOIN user_preferences up ON u.id = up.user_id
+                WHERE u.id = ?
+            ");
+            $stmtPriv->execute([$userId, $targetId, $targetId, $userId, $targetId]);
+            $res = $stmtPriv->fetch(PDO::FETCH_ASSOC);
+            
+            $privacy = $res['privacy'] ?? 'friends';
+            $status = $res['status']; // 'accepted', 'pending', null
+
+            if ($privacy === 'nobody') {
+                throw new Exception(translation('chat.error.privacy_block') ?? "Privacidad: Usuario no recibe mensajes.");
+            }
+            if ($privacy === 'friends' && $status !== 'accepted') {
+                throw new Exception(translation('chat.error.privacy_block') ?? "Privacidad: Solo amigos.");
+            }
+            // ----------------------------------------
+
         } else {
             $stmtC = $pdo->prepare("SELECT c.id FROM communities c JOIN community_members cm ON c.id = cm.community_id WHERE c.uuid = ? AND cm.user_id = ?");
             $stmtC->execute([$uuid, $userId]);
@@ -190,11 +213,9 @@ try {
             $stmtRead = $pdo->prepare("UPDATE private_messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ? AND is_read = 0");
             $stmtRead->execute([$targetId, $userId]);
 
-            // [MODIFICADO] Filtrar por fecha de limpieza
             $stmtClear = $pdo->prepare("SELECT cleared_at FROM private_chat_clearance WHERE user_id = ? AND partner_id = ?");
             $stmtClear->execute([$userId, $targetId]);
             $clearedAt = $stmtClear->fetchColumn(); 
-            // Si no hay fecha, usamos fecha muy antigua para traer todo
             $clearedAt = $clearedAt ? $clearedAt : '1970-01-01 00:00:00';
 
             $sql = "
@@ -305,7 +326,7 @@ try {
 
         echo json_encode(['success' => true, 'message' => translation('chat.message_deleted')]);
 
-    // --- [NUEVO] ELIMINAR CONVERSACIÓN (SOLO PARA MI) ---
+    // --- ELIMINAR CONVERSACIÓN (SOLO PARA MI) ---
     } elseif ($action === 'delete_conversation') {
         $uuid = $data['target_uuid'] ?? '';
         
@@ -319,7 +340,6 @@ try {
         if (!$partnerId) throw new Exception("Usuario no encontrado.");
 
         // 2. Insertar o actualizar la fecha de limpieza
-        // Usamos ON DUPLICATE KEY UPDATE para actualizar si ya se había borrado antes
         $sql = "INSERT INTO private_chat_clearance (user_id, partner_id, cleared_at) 
                 VALUES (?, ?, NOW()) 
                 ON DUPLICATE KEY UPDATE cleared_at = NOW()";

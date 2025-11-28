@@ -371,6 +371,9 @@ function initPreferencesLogic() {
         } else if (prefType === 'theme') {
             payload.action = 'update_theme';
             payload.theme = value;
+        } else if (prefType === 'message_privacy') { // [NUEVO]
+            payload.action = 'update_privacy';
+            payload.privacy = value;
         }
 
         const res = await postJson('api/settings_handler.php', payload);

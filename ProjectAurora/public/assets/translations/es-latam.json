@@ -167,6 +167,13 @@
             "lang_desc": "Selecciona tu idioma preferido.",
             "new_tab_title": "Abrir los enlaces en una pestaña nueva",
             "new_tab_desc": "En el navegador web, los enlaces siempre se abrirán en una pestaña nueva.",
+            "privacy_msg_title": "¿Quién puede enviarte mensajes?",
+            "privacy_msg_desc": "Controla quién puede iniciar conversaciones privadas contigo.",
+            "privacy_options": {
+                "everyone": "Todos",
+                "friends": "Solo amigos",
+                "nobody": "Nadie"
+            },
             "alt_avatar": "Foto de perfil",
             "alt_no_avatar": "Sin foto de perfil",
             "reset_confirm": "¿Restablecer foto de perfil?",
@@ -346,7 +353,9 @@
         "message_deleted": "Este mensaje ha sido eliminado.",
         "error": {
             "delete_timeout": "No puedes eliminar mensajes antiguos (24h).",
-            "already_reported": "Ya has reportado este mensaje."
+            "already_reported": "Ya has reportado este mensaje.",
+            "privacy_block": "No puedes enviar mensajes a este usuario debido a su configuración de privacidad.",
+            "privacy_placeholder": "Este usuario no permite mensajes de desconocidos."
         },
         "report_success": "Reporte enviado.",
         "report_reason": "Razón del reporte:"
