@@ -256,3 +256,5 @@ CREATE TABLE IF NOT EXISTS community_messages (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX (community_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE community_members ADD COLUMN last_read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;

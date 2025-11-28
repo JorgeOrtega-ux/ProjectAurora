@@ -59,6 +59,10 @@ try {
             throw new Exception("No tienes acceso a este chat.");
         }
 
+        // [NUEVO] Marcar como leído (Actualizar last_read_at)
+        $stmtRead = $pdo->prepare("UPDATE community_members SET last_read_at = NOW() WHERE community_id = ? AND user_id = ?");
+        $stmtRead->execute([$commId, $userId]);
+
         // 2. Obtener mensajes
         // [CORRECCIÓN AQUÍ]: Se agregaron alias (AS sender_...) para coincidir con el JS y el Socket
         $sql = "

@@ -1986,3 +1986,31 @@ a.disabled-link {
         margin-right: 4px;
     }
 }
+
+/* Agrega esto en tu archivo styles.css en la sección del Chat Sidebar */
+
+.unread-counter {
+    background-color: #1976d2; /* Azul */
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+    flex-shrink: 0;
+    margin-left: 8px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.chat-item-preview {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 13px;
+    color: #666;
+    flex: 1; /* Para que ocupe el espacio y deje lugar al contador */
+}

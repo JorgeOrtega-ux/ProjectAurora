@@ -77,12 +77,20 @@ try {
 
     // --- OBTENER MIS COMUNIDADES (LISTA IZQUIERDA) ---
     } elseif ($action === 'get_my_communities') {
-        // [MODIFICADO] Se agregó c.uuid al SELECT para la navegación dinámica
-        $sql = "SELECT c.id, c.uuid, c.community_name, c.description, c.privacy, c.member_count, c.profile_picture, c.banner_picture, cm.role
+        // [CORRECCIÓN CRÍTICA]: 
+        // 1. Se agregó 'AND user_id != cm.user_id' en el conteo de unread_count para ignorar mensajes propios.
+        // 2. Se mantienen las subconsultas para last_message.
+        $sql = "SELECT 
+                    c.id, c.uuid, c.community_name, c.description, c.privacy, c.member_count, 
+                    c.profile_picture, c.banner_picture, cm.role,
+                    (SELECT message FROM community_messages WHERE community_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
+                    (SELECT created_at FROM community_messages WHERE community_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_at,
+                    (SELECT COUNT(*) FROM community_messages WHERE community_id = c.id AND created_at > cm.last_read_at AND user_id != cm.user_id) as unread_count
                 FROM communities c
                 JOIN community_members cm ON c.id = cm.community_id
                 WHERE cm.user_id = ?
-                ORDER BY cm.joined_at DESC";
+                ORDER BY last_message_at DESC";
+        
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$userId]);
         $communities = $stmt->fetchAll(PDO::FETCH_ASSOC);
