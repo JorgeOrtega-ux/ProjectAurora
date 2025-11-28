@@ -1,6 +1,7 @@
 // public/assets/js/modules/communities-manager.js
 
 import { postJson, setButtonLoading } from '../core/utilities.js';
+import { t } from '../core/i18n-manager.js';
 
 let myCommunities = [];
 let currentCommunityId = null; 
@@ -246,6 +247,12 @@ function appendMessageToUI(msg) {
     const myId = window.USER_ID; 
     const isMe = (parseInt(msg.sender_id) === parseInt(myId));
     
+    // [MODIFICADO] Verificación de mensaje eliminado
+    if (msg.status === 'deleted') {
+        renderDeletedMessage(container, msg, isMe);
+        return;
+    }
+
     const date = new Date(msg.created_at);
     const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -266,11 +273,9 @@ function appendMessageToUI(msg) {
         if (msg.reply_type === 'image') {
             replyText = (attachCount > 1) ? `📷 [${attachCount} Imágenes]` : '📷 [Imagen]';
         } else if (msg.reply_type === 'mixed') {
-            // Mensaje mixto: Si hay más de 1 imagen, indicarlo
             const prefix = (attachCount > 1) ? `📷 [${attachCount}] ` : '📷 ';
             replyText = prefix + (rawText || '[Imagen]');
         } else {
-            // Texto normal
             replyText = rawText || '...';
         }
 
@@ -296,14 +301,14 @@ function appendMessageToUI(msg) {
     }
 
     const optionsBtn = `
-        <button class="message-options-btn" data-action="msg-options" data-id="${msg.id}" data-user="${msg.sender_username}" data-text="${escapeHtml(msg.message)}">
+        <button class="message-options-btn" data-action="msg-options" data-id="${msg.id}" data-user="${msg.sender_username}" data-text="${escapeHtml(msg.message)}" data-sender-id="${msg.sender_id}" data-created-at="${msg.created_at}">
             <span class="material-symbols-rounded" style="font-size: 18px;">more_vert</span>
         </button>
     `;
 
     // Renderizado del mensaje
     const msgHtml = `
-        <div class="message-row ${isMe ? 'message-own' : 'message-other'}" style="display:flex; flex-direction:${isMe ? 'row-reverse' : 'row'}; margin-bottom:12px; gap:4px; align-items:flex-start;">
+        <div class="message-row ${isMe ? 'message-own' : 'message-other'}" id="msg-${msg.id}" style="display:flex; flex-direction:${isMe ? 'row-reverse' : 'row'}; margin-bottom:12px; gap:4px; align-items:flex-start;">
             
             ${!isMe ? `
                 <div class="chat-message-avatar" data-role="${role}" title="${msg.sender_username}">
@@ -335,6 +340,27 @@ function appendMessageToUI(msg) {
     `;
 
     container.insertAdjacentHTML('beforeend', msgHtml);
+}
+
+function renderDeletedMessage(container, msg, isMe) {
+    const html = `
+        <div class="message-row ${isMe ? 'message-own' : 'message-other'}" id="msg-${msg.id}" style="display:flex; flex-direction:${isMe ? 'row-reverse' : 'row'}; margin-bottom:12px; gap:4px; align-items:flex-start; opacity: 0.6;">
+             <div class="message-bubble" style="
+                max-width: 70%;
+                padding: 8px 12px;
+                border-radius: 12px;
+                background-color: #f5f5f5;
+                border: 1px solid #e0e0e0;
+                color: #666;
+                font-style: italic;
+                font-size: 13px;
+            ">
+                <span class="material-symbols-rounded" style="font-size: 14px; vertical-align: middle; margin-right: 4px;">block</span>
+                ${t('chat.message_deleted') || 'Este mensaje ha sido eliminado'}
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', html);
 }
 
 async function loadChatMessages(uuid) {
@@ -495,16 +521,48 @@ function handleMobileBack() {
     window.history.pushState({ section: 'main' }, '', window.BASE_PATH);
 }
 
+// [MODIFICADO] showMessagePopover para mostrar Eliminar / Reportar
 function showMessagePopover(btn, msgId, user, text) {
     closeMessagePopover();
+
+    const senderId = btn.dataset.senderId;
+    const createdAt = btn.dataset.createdAt;
+    const isMe = (parseInt(senderId) === parseInt(window.USER_ID));
+    
+    let canDelete = false;
+    if (isMe) {
+        const msgDate = new Date(createdAt);
+        const now = new Date();
+        const diffHours = (now - msgDate) / 1000 / 60 / 60;
+        canDelete = (diffHours < 24);
+    }
+
+    let extraOptions = '';
+    
+    if (isMe && canDelete) {
+        extraOptions = `
+            <div class="message-option-item danger" data-action="delete-message" style="color:#d32f2f;">
+                <span class="material-symbols-rounded" style="font-size: 18px;">delete</span>
+                ${t('chat.actions.delete') || 'Eliminar'}
+            </div>
+        `;
+    } else if (!isMe) {
+        extraOptions = `
+            <div class="message-option-item" data-action="report-message" style="color:#f57c00;">
+                <span class="material-symbols-rounded" style="font-size: 18px;">flag</span>
+                ${t('chat.actions.report') || 'Reportar'}
+            </div>
+        `;
+    }
 
     const popover = document.createElement('div');
     popover.className = 'message-options-popover';
     popover.innerHTML = `
         <div class="message-option-item" data-action="reply-message">
             <span class="material-symbols-rounded" style="font-size: 18px;">reply</span>
-            Responder
+            ${t('chat.actions.reply') || 'Responder'}
         </div>
+        ${extraOptions}
     `;
 
     const rect = btn.getBoundingClientRect();
@@ -525,10 +583,46 @@ function showMessagePopover(btn, msgId, user, text) {
         document.addEventListener('click', closeHandler);
     }, 0);
 
+    // Listeners
     popover.querySelector('[data-action="reply-message"]').addEventListener('click', () => {
         enableReplyMode(msgId, user, text);
         closeMessagePopover();
     });
+
+    const delBtn = popover.querySelector('[data-action="delete-message"]');
+    if (delBtn) {
+        delBtn.addEventListener('click', () => {
+            if (confirm(t('global.are_you_sure'))) {
+                deleteMessage(msgId);
+            }
+            closeMessagePopover();
+        });
+    }
+
+    const repBtn = popover.querySelector('[data-action="report-message"]');
+    if (repBtn) {
+        repBtn.addEventListener('click', () => {
+            const reason = prompt(t('chat.report_reason') || "Razón del reporte:");
+            if (reason) {
+                reportMessage(msgId, reason);
+            }
+            closeMessagePopover();
+        });
+    }
+}
+
+async function deleteMessage(msgId) {
+    const res = await postJson('api/chat_handler.php', { action: 'delete_message', message_id: msgId });
+    if (!res.success && window.alertManager) {
+        window.alertManager.showAlert(res.message, 'error');
+    }
+}
+
+async function reportMessage(msgId, reason) {
+    const res = await postJson('api/chat_handler.php', { action: 'report_message', message_id: msgId, reason: reason });
+    if (window.alertManager) {
+        window.alertManager.showAlert(res.message, res.success ? 'success' : 'error');
+    }
 }
 
 function closeMessagePopover() {
@@ -631,6 +725,34 @@ function initChatListeners() {
                     }
                     let count = parseInt(badge.textContent);
                     badge.textContent = count + 1;
+                }
+            }
+        }
+
+        // [NUEVO] Manejo de actualización de mensaje (borrado)
+        if (type === 'message_update') {
+            if (payload.status === 'deleted') {
+                // Buscar el mensaje en el DOM
+                const msgEl = document.getElementById(`msg-${payload.id}`);
+                if (msgEl) {
+                    // Reemplazar contenido con el placeholder de eliminado
+                    const isMe = msgEl.classList.contains('message-own');
+                    msgEl.style.opacity = '0.6';
+                    msgEl.innerHTML = `
+                        <div class="message-bubble" style="
+                            max-width: 70%;
+                            padding: 8px 12px;
+                            border-radius: 12px;
+                            background-color: #f5f5f5;
+                            border: 1px solid #e0e0e0;
+                            color: #666;
+                            font-style: italic;
+                            font-size: 13px;
+                        ">
+                            <span class="material-symbols-rounded" style="font-size: 14px; vertical-align: middle; margin-right: 4px;">block</span>
+                            ${t('chat.message_deleted') || 'Este mensaje ha sido eliminado'}
+                        </div>
+                    `;
                 }
             }
         }
@@ -739,7 +861,7 @@ export function initCommunitiesManager() {
     loadPublicCommunities(); 
     initJoinByCode(); 
     initChatListeners(); 
-    initAttachmentListeners(); // [NUEVO] Iniciar listeners de archivos
+    initAttachmentListeners(); 
     
     if (!window.communitiesListenersInit) {
         initListeners();

@@ -21,6 +21,7 @@
         "save_status": "Guardar Estado",
         "active": "Activo",
         "deleted": "Cuenta Eliminada",
+        "delete_success": "Eliminado correctamente",
         "alt_avatar": "Foto de perfil",
         "please": "Por favor",
         "are_you_sure": "¿Estás seguro?",
@@ -335,6 +336,20 @@
         "admin_reset_pfp": "Un administrador restableció tu foto de perfil.",
         "admin_update_username": "Un administrador cambió tu nombre de usuario a <strong>{username}</strong>.",
         "admin_update_email": "Un administrador cambió tu correo a <strong>{email}</strong>."
+    },
+    "chat": {
+        "actions": {
+            "reply": "Responder",
+            "delete": "Eliminar",
+            "report": "Reportar"
+        },
+        "message_deleted": "Este mensaje ha sido eliminado.",
+        "error": {
+            "delete_timeout": "No puedes eliminar mensajes antiguos (24h).",
+            "already_reported": "Ya has reportado este mensaje."
+        },
+        "report_success": "Reporte enviado.",
+        "report_reason": "Razón del reporte:"
     },
     "admin": {
         "sidebar": {

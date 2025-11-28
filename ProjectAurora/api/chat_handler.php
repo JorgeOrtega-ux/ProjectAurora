@@ -124,15 +124,12 @@ try {
             $pdo->commit();
 
             // 4. Preparar Payload para Python
-            // Necesitamos los datos del usuario para el frontend
             $stmtUser = $pdo->prepare("SELECT username, profile_picture, role FROM users WHERE id = ?");
             $stmtUser->execute([$userId]);
             $userData = $stmtUser->fetch(PDO::FETCH_ASSOC);
 
-            // Si es respuesta, obtener datos del padre
             $replyData = [];
             if ($replyToId) {
-                // [MODIFICADO] Obtenemos type y contamos adjuntos
                 $stmtRep = $pdo->prepare("SELECT m.message, m.type, u.username FROM community_messages m JOIN users u ON m.user_id = u.id WHERE m.id = ?");
                 $stmtRep->execute([$replyToId]);
                 $rRow = $stmtRep->fetch(PDO::FETCH_ASSOC);
@@ -142,8 +139,6 @@ try {
                         'sender_username' => $rRow['username'],
                         'type' => $rRow['type']
                     ];
-                    
-                    // Contar adjuntos del mensaje padre
                     $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM community_message_attachments WHERE message_id = ?");
                     $stmtCount->execute([$replyToId]);
                     $replyData['attachment_count'] = (int)$stmtCount->fetchColumn();
@@ -158,17 +153,17 @@ try {
                 'sender_username' => $userData['username'],
                 'sender_profile_picture' => $userData['profile_picture'],
                 'sender_role' => $userData['role'],
-                'created_at' => date('c'), // ISO 8601
+                'created_at' => date('c'),
                 'type' => $msgType,
+                'status' => 'active', // [NUEVO]
                 'reply_to_id' => $replyToId,
                 'reply_message' => $replyData['message'] ?? null,
                 'reply_sender_username' => $replyData['sender_username'] ?? null,
                 'reply_type' => $replyData['type'] ?? null,
-                'reply_attachment_count' => $replyData['attachment_count'] ?? 0, // [NUEVO]
+                'reply_attachment_count' => $replyData['attachment_count'] ?? 0,
                 'attachments' => $uploadedFiles 
             ];
 
-            // Enviar a Python para Broadcast
             send_live_notification('community_broadcast', 'new_chat_message', [
                 'community_id' => $commId, 
                 'message_data' => $broadcastPayload
@@ -181,7 +176,7 @@ try {
             throw $e;
         }
 
-    // --- OBTENER MENSAJES (CORREGIDO PARA GROUP_CONCAT y CONTEO) ---
+    // --- OBTENER MENSAJES (MODIFICADO PARA STATUS) ---
     } elseif ($action === 'get_messages') {
         $uuid = $data['community_uuid'] ?? '';
         $limit = isset($data['limit']) ? (int)$data['limit'] : 50;
@@ -192,9 +187,9 @@ try {
 
         if (!$commId) throw new Exception("Acceso denegado");
 
-        // [MODIFICADO] Usamos GROUP_CONCAT para compatibilidad y contamos adjuntos de la respuesta (p)
+        // [MODIFICADO] Seleccionar 'status'
         $sql = "
-            SELECT m.id, m.message, m.created_at, m.type, m.reply_to_id,
+            SELECT m.id, m.message, m.created_at, m.type, m.reply_to_id, m.status,
                    u.id as sender_id, u.username as sender_username, u.profile_picture as sender_profile_picture, u.role as sender_role,
                    p.message as reply_message, p.type as reply_type, pu.username as reply_sender_username,
                    (SELECT COUNT(*) FROM community_message_attachments WHERE message_id = p.id) as reply_attachment_count,
@@ -219,19 +214,86 @@ try {
         $stmt->execute([$commId]);
         $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Decodificar JSON de adjuntos
+        // Procesar eliminados
         foreach ($messages as &$msg) {
-            if (!empty($msg['attachments_json'])) {
-                // Envolver en corchetes para hacerlo un array JSON válido
-                $jsonString = '[' . $msg['attachments_json'] . ']';
-                $msg['attachments'] = json_decode($jsonString, true);
+            if ($msg['status'] === 'deleted') {
+                $msg['message'] = null; // Ocultar texto original
+                $msg['attachments'] = []; // Ocultar adjuntos
             } else {
-                $msg['attachments'] = [];
+                if (!empty($msg['attachments_json'])) {
+                    $jsonString = '[' . $msg['attachments_json'] . ']';
+                    $msg['attachments'] = json_decode($jsonString, true);
+                } else {
+                    $msg['attachments'] = [];
+                }
             }
             unset($msg['attachments_json']);
         }
 
         echo json_encode(['success' => true, 'messages' => array_reverse($messages)]);
+
+    // --- [NUEVO] ELIMINAR MENSAJE ---
+    } elseif ($action === 'delete_message') {
+        $msgId = (int)($data['message_id'] ?? 0);
+        if (!$msgId) throw new Exception(translation('global.action_invalid'));
+
+        // Verificar propiedad y tiempo (< 24h)
+        $stmt = $pdo->prepare("SELECT id, user_id, community_id, created_at FROM community_messages WHERE id = ?");
+        $stmt->execute([$msgId]);
+        $msg = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$msg) throw new Exception(translation('global.action_invalid'));
+        if ($msg['user_id'] != $userId) throw new Exception(translation('admin.error.access_denied'));
+
+        $created = new DateTime($msg['created_at']);
+        $now = new DateTime();
+        $diff = $now->diff($created);
+        
+        // Si ha pasado más de 1 día (24h)
+        if ($diff->days > 0 || $diff->h >= 24) {
+            throw new Exception(translation('chat.error.delete_timeout') ?? 'No puedes eliminar mensajes antiguos');
+        }
+
+        // Soft delete
+        $upd = $pdo->prepare("UPDATE community_messages SET status = 'deleted' WHERE id = ?");
+        if ($upd->execute([$msgId])) {
+            // Notificar vía socket
+            send_live_notification('community_broadcast', 'message_update', [
+                'community_id' => $msg['community_id'],
+                'message_data' => [
+                    'id' => $msgId,
+                    'status' => 'deleted',
+                    'community_id' => $msg['community_id']
+                ]
+            ]);
+            echo json_encode(['success' => true, 'message' => translation('global.delete_success')]);
+        } else {
+            throw new Exception(translation('global.error_connection'));
+        }
+
+    // --- [NUEVO] REPORTAR MENSAJE ---
+    } elseif ($action === 'report_message') {
+        $msgId = (int)($data['message_id'] ?? 0);
+        $reason = trim($data['reason'] ?? 'Spam/Inapropiado');
+        
+        if (!$msgId) throw new Exception(translation('global.action_invalid'));
+
+        // Verificar existencia
+        $stmt = $pdo->prepare("SELECT id FROM community_messages WHERE id = ?");
+        $stmt->execute([$msgId]);
+        if (!$stmt->fetch()) throw new Exception(translation('global.action_invalid'));
+
+        // Verificar si ya reportó este mensaje
+        $check = $pdo->prepare("SELECT id FROM community_message_reports WHERE message_id = ? AND reporter_id = ?");
+        $check->execute([$msgId, $userId]);
+        if ($check->rowCount() > 0) throw new Exception(translation('chat.error.already_reported') ?? 'Ya has reportado este mensaje');
+
+        $ins = $pdo->prepare("INSERT INTO community_message_reports (message_id, reporter_id, reason, created_at) VALUES (?, ?, ?, NOW())");
+        if ($ins->execute([$msgId, $userId, $reason])) {
+            echo json_encode(['success' => true, 'message' => translation('chat.report_success') ?? 'Reporte enviado']);
+        } else {
+            throw new Exception(translation('global.error_connection'));
+        }
 
     } else {
         throw new Exception(translation('global.action_invalid'));

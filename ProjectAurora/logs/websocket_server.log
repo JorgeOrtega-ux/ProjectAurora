@@ -1253,3 +1253,27 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-11-28 11:57:24,824 - INFO - Usuario conectado: ID 1 | Rol: founder
 2025-11-28 12:02:00,668 - INFO - connection open
 2025-11-28 12:02:00,746 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 13:34:26,003 - INFO - connection open
+2025-11-28 13:34:26,017 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 13:42:47,371 - INFO - ✅ Pool de conexiones a base de datos inicializado (Max 20).
+2025-11-28 13:42:47,409 - INFO - === Servidor Aurora Iniciado (Chat Habilitado) ===
+2025-11-28 13:42:48,406 - INFO - server listening on 0.0.0.0:8080
+2025-11-28 13:42:53,416 - INFO - connection open
+2025-11-28 13:43:08,127 - INFO - connection open
+2025-11-28 13:43:08,132 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 13:44:49,393 - INFO - connection open
+2025-11-28 13:44:49,396 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 13:44:53,431 - INFO - connection open
+2025-11-28 13:44:53,501 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-11-28 13:45:37,923 - INFO - connection open
+2025-11-28 13:45:37,928 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 13:45:43,159 - INFO - connection open
+2025-11-28 13:45:43,163 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-11-28 13:45:44,716 - INFO - connection open
+2025-11-28 13:45:44,735 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-11-28 13:45:55,537 - INFO - connection open
+2025-11-28 13:45:55,563 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-11-28 13:45:55,841 - INFO - connection open
+2025-11-28 13:45:55,893 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 13:55:13,634 - INFO - connection open
+2025-11-28 13:55:13,657 - INFO - Usuario conectado: ID 1 | Rol: user

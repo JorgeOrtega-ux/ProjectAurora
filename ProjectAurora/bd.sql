@@ -217,6 +217,7 @@ CREATE TABLE IF NOT EXISTS community_members (
     user_id INT NOT NULL,
     role ENUM('member', 'admin', 'moderator') DEFAULT 'member',
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (community_id) REFERENCES communities(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE KEY unique_membership (community_id, user_id)
@@ -244,15 +245,15 @@ CREATE TABLE IF NOT EXISTS system_alerts_history (
     INDEX (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- [NUEVO] MENSAJES DE CHAT
--- Se agrega la columna reply_to_id para las respuestas
+-- MENSAJES DE CHAT
 CREATE TABLE IF NOT EXISTS community_messages (
     id INT AUTO_INCREMENT PRIMARY KEY,
     community_id INT NOT NULL,
     user_id INT NOT NULL,
     reply_to_id INT NULL,
     message TEXT NOT NULL,
-    type ENUM('text', 'image', 'system') DEFAULT 'text',
+    type ENUM('text', 'image', 'system', 'mixed') DEFAULT 'text',
+    status ENUM('active', 'deleted') DEFAULT 'active', -- [NUEVO] Columna de estado
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (community_id) REFERENCES communities(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -260,7 +261,16 @@ CREATE TABLE IF NOT EXISTS community_messages (
     INDEX (community_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-ALTER TABLE community_members ADD COLUMN last_read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+-- REPORTES DE MENSAJES [NUEVA TABLA]
+CREATE TABLE IF NOT EXISTS community_message_reports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    message_id INT NOT NULL,
+    reporter_id INT NOT NULL,
+    reason TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (message_id) REFERENCES community_messages(id) ON DELETE CASCADE,
+    FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Tabla para almacenar los archivos físicos
 CREATE TABLE IF NOT EXISTS community_files (
@@ -282,6 +292,3 @@ CREATE TABLE IF NOT EXISTS community_message_attachments (
     FOREIGN KEY (message_id) REFERENCES community_messages(id) ON DELETE CASCADE,
     FOREIGN KEY (file_id) REFERENCES community_files(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Modificar tabla de mensajes para soportar tipos mixtos (opcional, pero recomendado)
-ALTER TABLE community_messages MODIFY COLUMN type ENUM('text', 'image', 'system', 'mixed') DEFAULT 'text';

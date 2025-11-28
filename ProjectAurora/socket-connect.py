@@ -235,6 +235,7 @@ async def handle_chat_message(user_id, user_info, payload):
                 "sender_role": user_info['role'],
                 "created_at": created_at,
                 "type": "text",
+                "status": "active",
                 "reply_to_id": reply_to_id,
                 "reply_message": reply_data.get('message'),
                 "reply_sender_username": reply_data.get('sender_username')
@@ -361,13 +362,15 @@ async def handle_php_notification(reader, writer):
         payload_data = full_payload.get('payload', {})
         
         # --- CASO 1: BROADCAST DE COMUNIDAD (Nuevo) ---
-        if target == 'community_broadcast' and msg_type == 'new_chat_message':
+        if target == 'community_broadcast':
             community_id = payload_data.get('community_id')
-            message_data = payload_data.get('message_data') # El JSON listo para el cliente
+            message_data = payload_data.get('message_data') 
             
-            # Construir el mensaje final para el socket
+            # Si es nuevo mensaje o actualizacion (borrado)
+            final_type = msg_type # 'new_chat_message' o 'message_update'
+            
             client_message = json.dumps({
-                "type": "new_chat_message",
+                "type": final_type,
                 "payload": message_data
             })
             
