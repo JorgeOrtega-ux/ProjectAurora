@@ -77,6 +77,11 @@ $initUuid = $activeCommunityUuid ?? '';
                 <div class="chat-messages-area">
                 </div>
 
+                <div id="attachment-preview-area" class="d-none">
+                    <div class="preview-grid" id="preview-grid">
+                        </div>
+                </div>
+
                 <div id="reply-preview-container" class="reply-preview-bar d-none">
                     <div class="reply-bar-content">
                         <span class="reply-bar-title">Respondiendo a <strong id="reply-target-user">...</strong></span>
@@ -88,9 +93,12 @@ $initUuid = $activeCommunityUuid ?? '';
                 </div>
 
                 <div class="chat-input-area">
-                    <button class="component-icon-button">
-                        <span class="material-symbols-rounded">sentiment_satisfied</span>
+                    <input type="file" id="chat-file-input" multiple accept="image/*" style="display: none;">
+                    
+                    <button class="component-icon-button" id="btn-attach-file" title="Adjuntar imágenes (Máx 4)">
+                        <span class="material-symbols-rounded">attach_file</span>
                     </button>
+
                     <input type="text" class="chat-message-input" placeholder="Escribe un mensaje...">
                     <button class="component-icon-button" id="btn-send-message">
                         <span class="material-symbols-rounded">send</span>

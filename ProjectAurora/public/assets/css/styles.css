@@ -2126,4 +2126,77 @@ a.disabled-link {
 }
 .component-icon-button.small span {
     font-size: 18px;
+}/* --- PREVISUALIZACIÓN (Input) --- */
+#attachment-preview-area {
+    padding: 10px 16px;
+    background-color: #f0f2f5;
+    border-top: 1px solid #00000010;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.preview-grid {
+    display: flex;
+    gap: 8px;
+}
+
+.preview-item {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #ddd;
+}
+
+.preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.preview-remove {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+/* --- IMÁGENES DENTRO DEL MENSAJE (Grid) --- */
+.msg-attachments {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 6px;
+    border-radius: 8px;
+    overflow: hidden;
+    width: 100%;
+    max-width: 300px;
+}
+
+/* Lógica de Grid según cantidad */
+.msg-attachments[data-count="1"] { grid-template-columns: 1fr; }
+.msg-attachments[data-count="2"] { grid-template-columns: 1fr 1fr; }
+.msg-attachments[data-count="3"] { 
+    grid-template-columns: 1fr 1fr; 
+    grid-template-rows: 100px 100px;
+}
+.msg-attachments[data-count="3"] img:first-child { grid-column: span 2; } /* Primera imagen grande */
+.msg-attachments[data-count="4"] { grid-template-columns: 1fr 1fr; }
+
+.msg-attachments img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    max-height: 200px; /* Limitar altura */
+    cursor: pointer;
+    background-color: #eee;
 }

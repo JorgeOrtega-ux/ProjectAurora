@@ -10,6 +10,9 @@ let currentCommunityUuid = null;
 let replyingToMessageId = null;
 let replyingToMessageData = null; // { user, text }
 
+// Estado para archivos [NUEVO]
+let selectedFiles = []; 
+
 // ==========================================
 // UTILIDADES DE FORMATO
 // ==========================================
@@ -30,6 +33,7 @@ function formatChatTime(dateString) {
 }
 
 function escapeHtml(text) {
+    if (!text) return '';
     const map = {
         '&': '&amp;',
         '<': '&lt;',
@@ -48,6 +52,80 @@ function scrollToBottom() {
 }
 
 // ==========================================
+// GESTIÓN DE ADJUNTOS [NUEVO]
+// ==========================================
+
+function initAttachmentListeners() {
+    const fileInput = document.getElementById('chat-file-input');
+    const attachBtn = document.getElementById('btn-attach-file');
+    
+    if (attachBtn && fileInput) {
+        attachBtn.onclick = () => fileInput.click();
+        
+        fileInput.onchange = (e) => {
+            const files = Array.from(e.target.files);
+            
+            // Validar límite total (existentes + nuevos)
+            if (selectedFiles.length + files.length > 4) {
+                if (window.alertManager) window.alertManager.showAlert("Máximo 4 imágenes permitidas por mensaje.", "warning");
+                else alert("Máximo 4 imágenes permitidas.");
+                return;
+            }
+            
+            // Filtrar solo imágenes por si acaso
+            const validImages = files.filter(f => f.type.startsWith('image/'));
+            if (validImages.length !== files.length) {
+                if (window.alertManager) window.alertManager.showAlert("Solo se permiten archivos de imagen.", "warning");
+            }
+
+            selectedFiles = [...selectedFiles, ...validImages];
+            renderPreview();
+            fileInput.value = ''; // Limpiar para permitir seleccionar el mismo archivo si se borra y se elige de nuevo
+        };
+    }
+}
+
+function renderPreview() {
+    const container = document.getElementById('attachment-preview-area');
+    const grid = document.getElementById('preview-grid');
+    
+    if (!container || !grid) return;
+
+    if (selectedFiles.length === 0) {
+        container.classList.add('d-none');
+        return;
+    }
+    
+    container.classList.remove('d-none');
+    grid.innerHTML = '';
+    
+    selectedFiles.forEach((file, index) => {
+        const url = URL.createObjectURL(file);
+        const div = document.createElement('div');
+        div.className = 'preview-item';
+        div.innerHTML = `
+            <img src="${url}">
+            <div class="preview-remove" data-index="${index}">✕</div>
+        `;
+        grid.appendChild(div);
+    });
+    
+    // Listener para borrar individualmente
+    grid.querySelectorAll('.preview-remove').forEach(btn => {
+        btn.onclick = (e) => {
+            const idx = parseInt(e.target.dataset.index);
+            selectedFiles.splice(idx, 1);
+            renderPreview();
+        };
+    });
+}
+
+function clearAttachments() {
+    selectedFiles = [];
+    renderPreview();
+}
+
+// ==========================================
 // RENDERIZADO DE LA LISTA LATERAL (SIDEBAR)
 // ==========================================
 
@@ -58,17 +136,15 @@ function renderChatListItem(comm) {
         
     const isActive = (comm.uuid === window.ACTIVE_COMMUNITY_UUID) ? 'active' : '';
     
-    // Lógica de último mensaje y contador
-    const lastMsg = comm.last_message ? escapeHtml(comm.last_message) : "Haz clic para entrar";
+    // Lógica de último mensaje
+    const lastMsg = comm.last_message ? escapeHtml(comm.last_message) : (comm.last_message_at ? 'Imagen' : "Haz clic para entrar");
     const time = formatChatTime(comm.last_message_at);
     const unreadCount = parseInt(comm.unread_count || 0);
     
-    // Punto azul con contador (solo si hay > 0 y no es el chat activo)
     const badgeHtml = (unreadCount > 0 && isActive === '') 
         ? `<div class="unread-counter">${unreadCount > 99 ? '99+' : unreadCount}</div>` 
         : '';
 
-    // Estilo negrita para el texto si no se ha leído
     const previewStyle = (unreadCount > 0 && isActive === '') ? 'font-weight: 700; color: #000;' : '';
 
     return `
@@ -105,7 +181,7 @@ function updateChatInterface(comm) {
         
         const avatarPath = comm.profile_picture ? 
             (window.BASE_PATH || '/ProjectAurora/') + comm.profile_picture : 
-            `https://ui-avatars.com/api/?name=${comm.community_name}`;
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(comm.community_name)}`;
 
         if (img) img.src = avatarPath;
         if (title) title.textContent = comm.community_name;
@@ -117,8 +193,8 @@ function updateChatInterface(comm) {
         const input = document.querySelector('.chat-message-input');
         if (input) input.focus();
 
-        // Limpiar estado de respuesta al cambiar de chat
         disableReplyMode();
+        clearAttachments();
 
     } else {
         if (placeholder) placeholder.classList.remove('d-none');
@@ -126,10 +202,10 @@ function updateChatInterface(comm) {
         const layout = document.querySelector('.chat-layout-container');
         if (layout) layout.classList.remove('chat-active');
         disableReplyMode();
+        clearAttachments();
     }
 }
 
-// [MODIFICADO] Función para habilitar el modo respuesta
 function enableReplyMode(msgId, senderName, messageText) {
     replyingToMessageId = msgId;
     replyingToMessageData = { user: senderName, text: messageText };
@@ -140,16 +216,15 @@ function enableReplyMode(msgId, senderName, messageText) {
     
     if (container && userEl && textEl) {
         userEl.textContent = senderName;
-        textEl.textContent = messageText;
+        // Si el mensaje es vacío (solo imagen), poner texto placeholder
+        textEl.textContent = messageText ? messageText : '📷 [Imagen]';
         container.classList.remove('d-none');
     }
 
-    // Enfocar el input
     const input = document.querySelector('.chat-message-input');
     if (input) input.focus();
 }
 
-// [MODIFICADO] Función para deshabilitar el modo respuesta
 function disableReplyMode() {
     replyingToMessageId = null;
     replyingToMessageData = null;
@@ -159,6 +234,10 @@ function disableReplyMode() {
         container.classList.add('d-none');
     }
 }
+
+// ==========================================
+// RENDERIZADO DE MENSAJES (UI)
+// ==========================================
 
 function appendMessageToUI(msg) {
     const container = document.querySelector('.chat-messages-area');
@@ -176,24 +255,38 @@ function appendMessageToUI(msg) {
 
     const role = msg.sender_role || 'user';
 
-    // [NUEVO] Generar HTML de la respuesta si existe
+    // Generar HTML de la respuesta citada
     let replyHtml = '';
-    if (msg.reply_to_id && msg.reply_message) {
+    if (msg.reply_to_id) {
+        const replyText = msg.reply_message ? escapeHtml(msg.reply_message) : '📷 [Imagen]';
+        const replyUser = msg.reply_sender_username || 'Usuario';
         replyHtml = `
             <div class="message-reply-preview">
-                <span class="reply-preview-user">${escapeHtml(msg.reply_sender_username)}</span>
-                <span class="reply-preview-text">${escapeHtml(msg.reply_message)}</span>
+                <span class="reply-preview-user">${escapeHtml(replyUser)}</span>
+                <span class="reply-preview-text">${replyText}</span>
             </div>
         `;
     }
 
-    // [NUEVO] Botón de opciones
+    // [NUEVO] Generar Grid de Imágenes
+    let attachmentsHtml = '';
+    if (msg.attachments && Array.isArray(msg.attachments) && msg.attachments.length > 0) {
+        const count = msg.attachments.length;
+        let imgs = '';
+        msg.attachments.forEach(att => {
+            const src = (window.BASE_PATH || '/ProjectAurora/') + att.path;
+            imgs += `<img src="${src}" onclick="window.open('${src}', '_blank')">`;
+        });
+        attachmentsHtml = `<div class="msg-attachments" data-count="${count}">${imgs}</div>`;
+    }
+
     const optionsBtn = `
         <button class="message-options-btn" data-action="msg-options" data-id="${msg.id}" data-user="${msg.sender_username}" data-text="${escapeHtml(msg.message)}">
             <span class="material-symbols-rounded" style="font-size: 18px;">more_vert</span>
         </button>
     `;
 
+    // Renderizado del mensaje
     const msgHtml = `
         <div class="message-row ${isMe ? 'message-own' : 'message-other'}" style="display:flex; flex-direction:${isMe ? 'row-reverse' : 'row'}; margin-bottom:12px; gap:4px; align-items:flex-start;">
             
@@ -216,7 +309,9 @@ function appendMessageToUI(msg) {
             ">
                 ${replyHtml} 
                 ${!isMe ? `<div style="font-size:11px; font-weight:700; color:#e91e63; margin-bottom:2px;">${msg.sender_username}</div>` : ''}
-                <div class="message-text" style="word-wrap: break-word; line-height: 1.4;">${escapeHtml(msg.message)}</div>
+                
+                ${attachmentsHtml} ${msg.message ? `<div class="message-text" style="word-wrap: break-word; line-height: 1.4;">${escapeHtml(msg.message)}</div>` : ''}
+                
                 <div class="message-time" style="font-size:10px; color:#999; text-align:right; margin-top:4px;">${timeStr}</div>
             </div>
 
@@ -295,40 +390,80 @@ async function selectCommunity(uuid) {
     }
 }
 
-function sendMessage() {
+// [MODIFICADO] Lógica de envío híbrida
+async function sendMessage() {
     if (!currentCommunityUuid) return;
     
     const input = document.querySelector('.chat-message-input');
     const text = input.value.trim();
     
-    if (!text) return;
+    if (!text && selectedFiles.length === 0) return;
 
-    if (window.socketService && window.socketService.socket && window.socketService.socket.readyState === WebSocket.OPEN) {
+    // A. Envío con adjuntos (HTTP POST)
+    if (selectedFiles.length > 0) {
+        const btn = document.getElementById('btn-send-message');
+        const originalIcon = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-rounded">sync</span>'; 
+
+        const formData = new FormData();
+        formData.append('action', 'send_message');
+        formData.append('community_uuid', currentCommunityUuid);
+        formData.append('message', text);
+        if (replyingToMessageId) formData.append('reply_to_id', replyingToMessageId);
+        formData.append('csrf_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
         
-        // Construir payload
-        const payload = {
-            type: 'chat_message',
-            payload: {
-                community_uuid: currentCommunityUuid,
-                message: text
+        selectedFiles.forEach(file => {
+            formData.append('attachments[]', file);
+        });
+
+        try {
+            const res = await fetch((window.BASE_PATH || '/ProjectAurora/') + 'api/chat_handler.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                input.value = '';
+                clearAttachments();
+                disableReplyMode();
+            } else {
+                if(window.alertManager) window.alertManager.showAlert(data.message || 'Error enviando imágenes', 'error');
+                else alert(data.message);
             }
-        };
-
-        // [MODIFICADO] Adjuntar ID de respuesta si existe
-        if (replyingToMessageId) {
-            payload.payload.reply_to_id = replyingToMessageId;
+        } catch (e) {
+            console.error(e);
+            if(window.alertManager) window.alertManager.showAlert("Error de conexión", 'error');
         }
-
-        window.socketService.socket.send(JSON.stringify(payload));
         
-        input.value = '';
-        input.focus();
-        
-        // Limpiar modo respuesta
-        disableReplyMode();
+        btn.disabled = false;
+        btn.innerHTML = originalIcon;
 
     } else {
-        alert("Sin conexión al servidor de chat.");
+        // B. Envío solo texto (WebSocket - Rápido)
+        if (window.socketService && window.socketService.socket && window.socketService.socket.readyState === WebSocket.OPEN) {
+            const payload = {
+                type: 'chat_message',
+                payload: {
+                    community_uuid: currentCommunityUuid,
+                    message: text
+                }
+            };
+
+            if (replyingToMessageId) {
+                payload.payload.reply_to_id = replyingToMessageId;
+            }
+
+            window.socketService.socket.send(JSON.stringify(payload));
+            
+            input.value = '';
+            input.focus();
+            disableReplyMode();
+
+        } else {
+            alert("Sin conexión al servidor de chat.");
+        }
     }
 }
 
@@ -340,15 +475,12 @@ function handleMobileBack() {
     window.ACTIVE_COMMUNITY_UUID = null;
     currentCommunityUuid = null;
     disableReplyMode();
+    clearAttachments();
     
     window.history.pushState({ section: 'main' }, '', window.BASE_PATH);
 }
 
-// ==========================================
-// [NUEVO] MANEJO DE POPOVER DE OPCIONES
-// ==========================================
 function showMessagePopover(btn, msgId, user, text) {
-    // Cerrar existentes
     closeMessagePopover();
 
     const popover = document.createElement('div');
@@ -360,16 +492,14 @@ function showMessagePopover(btn, msgId, user, text) {
         </div>
     `;
 
-    // Posicionar (Simple: debajo del botón)
     const rect = btn.getBoundingClientRect();
     const scrollTop = window.scrollY || document.documentElement.scrollTop;
     
     popover.style.top = (rect.bottom + scrollTop) + 'px';
-    popover.style.left = (rect.left - 100) + 'px'; // Ajustar a la izquierda
+    popover.style.left = (rect.left - 100) + 'px'; 
 
     document.body.appendChild(popover);
 
-    // Click fuera para cerrar
     setTimeout(() => {
         const closeHandler = (e) => {
             if (!popover.contains(e.target)) {
@@ -380,7 +510,6 @@ function showMessagePopover(btn, msgId, user, text) {
         document.addEventListener('click', closeHandler);
     }, 0);
 
-    // Evento click en opción
     popover.querySelector('[data-action="reply-message"]').addEventListener('click', () => {
         enableReplyMode(msgId, user, text);
         closeMessagePopover();
@@ -464,7 +593,9 @@ function initChatListeners() {
             if (item) {
                 const previewEl = item.querySelector('.chat-item-preview');
                 const timeEl = item.querySelector('.chat-item-time');
-                if (previewEl) previewEl.textContent = payload.message;
+                
+                // Mostrar texto o 'Imagen' si el mensaje está vacío
+                if (previewEl) previewEl.textContent = payload.message ? payload.message : '📷 [Imagen]';
                 if (timeEl) timeEl.textContent = formatChatTime(new Date());
 
                 const list = document.getElementById('my-communities-list');
@@ -511,6 +642,7 @@ function initChatListeners() {
 }
 
 function initListeners() {
+    // Listener principal para selección de chat
     document.getElementById('my-communities-list')?.addEventListener('click', (e) => {
         const item = e.target.closest('.chat-item');
         if (item) {
@@ -540,17 +672,15 @@ function initListeners() {
             }
         }
 
-        // [NUEVO] Listener para botón "More Vert" en mensajes
         const msgOptBtn = e.target.closest('[data-action="msg-options"]');
         if (msgOptBtn) {
-            e.stopPropagation(); // Evitar cierre inmediato
+            e.stopPropagation(); 
             const msgId = msgOptBtn.dataset.id;
             const user = msgOptBtn.dataset.user;
             const text = msgOptBtn.dataset.text;
             showMessagePopover(msgOptBtn, msgId, user, text);
         }
 
-        // [NUEVO] Listener para cancelar respuesta
         if (e.target.closest('#btn-cancel-reply')) {
             disableReplyMode();
         }
@@ -594,6 +724,7 @@ export function initCommunitiesManager() {
     loadPublicCommunities(); 
     initJoinByCode(); 
     initChatListeners(); 
+    initAttachmentListeners(); // [NUEVO] Iniciar listeners de archivos
     
     if (!window.communitiesListenersInit) {
         initListeners();

@@ -261,3 +261,27 @@ CREATE TABLE IF NOT EXISTS community_messages (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE community_members ADD COLUMN last_read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+-- Tabla para almacenar los archivos físicos
+CREATE TABLE IF NOT EXISTS community_files (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    uuid CHAR(36) NOT NULL UNIQUE,
+    uploader_id INT NOT NULL,
+    file_path VARCHAR(255) NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    file_type VARCHAR(50) NOT NULL, -- image/png, etc
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (uploader_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla pivote para unir mensajes con archivos (1 a N)
+CREATE TABLE IF NOT EXISTS community_message_attachments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    message_id INT NOT NULL,
+    file_id INT NOT NULL,
+    FOREIGN KEY (message_id) REFERENCES community_messages(id) ON DELETE CASCADE,
+    FOREIGN KEY (file_id) REFERENCES community_files(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Modificar tabla de mensajes para soportar tipos mixtos (opcional, pero recomendado)
+ALTER TABLE community_messages MODIFY COLUMN type ENUM('text', 'image', 'system', 'mixed') DEFAULT 'text';

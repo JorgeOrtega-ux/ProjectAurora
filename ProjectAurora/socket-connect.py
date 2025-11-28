@@ -332,9 +332,22 @@ async def handle_browser_client(websocket):
         if websocket in admin_sessions:
             admin_sessions.discard(websocket)
 
+# Nueva función helper para obtener miembros de una comunidad
+async def get_community_members(community_id):
+    if not db_pool: return []
+    try:
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute("SELECT user_id FROM community_members WHERE community_id = %s", (community_id,))
+                rows = await cur.fetchall()
+                return [str(r[0]) for r in rows]
+    except Exception as e:
+        logger.error(f"Error fetching community members: {e}")
+        return []
+
 async def handle_php_notification(reader, writer):
     try:
-        data = await reader.read(4096)
+        data = await reader.read(8192) # Aumentar buffer por si el payload es grande
         msg = data.decode()
         if not msg: return
         
@@ -345,15 +358,38 @@ async def handle_php_notification(reader, writer):
 
         target = str(full_payload.get('target_id'))
         msg_type = full_payload.get('type')
-        client_message = json.dumps(full_payload)
+        payload_data = full_payload.get('payload', {})
         
-        if target == 'global':
+        # --- CASO 1: BROADCAST DE COMUNIDAD (Nuevo) ---
+        if target == 'community_broadcast' and msg_type == 'new_chat_message':
+            community_id = payload_data.get('community_id')
+            message_data = payload_data.get('message_data') # El JSON listo para el cliente
+            
+            # Construir el mensaje final para el socket
+            client_message = json.dumps({
+                "type": "new_chat_message",
+                "payload": message_data
+            })
+            
+            # Obtener miembros y enviar
+            member_ids = await get_community_members(community_id)
+            for uid in member_ids:
+                if uid in connected_clients:
+                    for ws in connected_clients[uid].values():
+                        try: await ws.send(client_message)
+                        except: pass
+
+        # --- CASO 2: MENSAJE GLOBAL ---
+        elif target == 'global':
+            client_message = json.dumps(full_payload)
             for uid, sessions in connected_clients.items():
                 for ws in sessions.values():
                     try: await ws.send(client_message)
                     except: pass
 
+        # --- CASO 3: MENSAJE DIRECTO ---
         elif target in connected_clients:
+            client_message = json.dumps(full_payload)
             for ws in connected_clients[target].values():
                 try: await ws.send(client_message)
                 except: pass
