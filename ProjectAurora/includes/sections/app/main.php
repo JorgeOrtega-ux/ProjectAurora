@@ -7,12 +7,13 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-// $activeCommunityUuid viene del router.php si la URL es /c/{uuid}
-$initUuid = $activeCommunityUuid ?? '';
+// Variables inyectadas desde router.php
+$initUuid = $activeContextUuid ?? '';
+$initType = $activeContextType ?? 'community'; // 'community' | 'private'
 ?>
 <script>
-    // Variable global para que el módulo JS sepa qué comunidad abrir al inicio
-    window.ACTIVE_COMMUNITY_UUID = '<?php echo htmlspecialchars($initUuid); ?>';
+    window.ACTIVE_CHAT_UUID = '<?php echo htmlspecialchars($initUuid); ?>';
+    window.ACTIVE_CHAT_TYPE = '<?php echo htmlspecialchars($initType); ?>';
 </script>
 
 <div class="section-content active" data-section="main" style="padding: 0; height: 100%;">
@@ -23,11 +24,11 @@ $initUuid = $activeCommunityUuid ?? '';
             <div class="chat-sidebar-header">
                 <h2 class="chat-sidebar-title">Chats</h2>
                 <div class="chat-sidebar-actions">
-                    <button class="component-icon-button" data-nav="explorer" title="Explorar">
+                    <button class="component-icon-button" data-nav="explorer" title="Explorar comunidades">
                         <span class="material-symbols-rounded">explore</span>
                     </button>
-                    <button class="component-icon-button" data-nav="join-community" title="Unirse con código">
-                        <span class="material-symbols-rounded">add</span>
+                    <button class="component-icon-button" data-nav="search" title="Buscar personas">
+                        <span class="material-symbols-rounded">person_search</span>
                     </button>
                 </div>
             </div>
@@ -45,7 +46,7 @@ $initUuid = $activeCommunityUuid ?? '';
                 <div class="placeholder-content">
                     <span class="material-symbols-rounded placeholder-icon">forum</span>
                     <h3>Project Aurora</h3>
-                    <p>Selecciona una comunidad para comenzar a chatear.</p>
+                    <p>Selecciona un chat para comenzar.</p>
                 </div>
             </div>
 
@@ -61,14 +62,14 @@ $initUuid = $activeCommunityUuid ?? '';
                             <img id="chat-header-img" src="" alt="" class="chat-avatar-img">
                         </div>
                         
-                        <div class="chat-info" data-action="toggle-group-info" style="cursor: pointer;">
+                        <div class="chat-info" id="chat-header-info-clickable" style="cursor: pointer;">
                             <h3 id="chat-header-title" class="chat-title">Cargando...</h3>
-                            <span id="chat-header-status" class="chat-status">haz clic para ver info</span>
+                            <span id="chat-header-status" class="chat-status">...</span>
                         </div>
                     </div>
                     
                     <div class="chat-header-right">
-                        <button class="component-icon-button" data-action="toggle-group-info" title="Información del grupo">
+                        <button class="component-icon-button" id="btn-group-info-toggle" data-action="toggle-group-info" title="Información">
                             <span class="material-symbols-rounded">info</span>
                         </button>
                     </div>

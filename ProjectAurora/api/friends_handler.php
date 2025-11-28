@@ -38,15 +38,37 @@ $currentUserId = $_SESSION['user_id'];
 $response = ['success' => false, 'message' => translation('global.action_invalid')];
 
 try {
-    // [MODIFICADO] profile_picture
     $uSt = $pdo->prepare("SELECT username, profile_picture FROM users WHERE id = ?");
     $uSt->execute([$currentUserId]);
     $currentUserData = $uSt->fetch();
     $myUsername = $currentUserData['username'];
     $myProfilePic = $currentUserData['profile_picture'];
 
-    // --- ENVIAR SOLICITUD ---
-    if ($action === 'send_request') {
+    // --- [NUEVO] INICIAR CHAT ---
+    if ($action === 'start_chat') {
+        $targetUid = (int)($data['target_id'] ?? 0);
+        
+        // 1. Verificar si existe el usuario y obtener su UUID
+        $stmt = $pdo->prepare("SELECT uuid FROM users WHERE id = ?");
+        $stmt->execute([$targetUid]);
+        $uuid = $stmt->fetchColumn();
+
+        if (!$uuid) throw new Exception(translation('admin.error.user_not_exist'));
+
+        // 2. Verificar amistad (Opcional, si solo permites chats entre amigos)
+        $stmtFriend = $pdo->prepare("SELECT status FROM friendships WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)");
+        $stmtFriend->execute([$currentUserId, $targetUid, $targetUid, $currentUserId]);
+        $status = $stmtFriend->fetchColumn();
+
+        // Si quieres restringir chats a solo amigos, descomenta esto:
+        // if ($status !== 'accepted') throw new Exception("Solo puedes enviar mensajes a tus amigos.");
+
+        // Retornamos el UUID para que el frontend redirija
+        echo json_encode(['success' => true, 'uuid' => $uuid]);
+        exit;
+
+    } elseif ($action === 'send_request') {
+        // ... (Lógica original intacta) ...
         if (checkActionRateLimit($pdo, $currentUserId, 'friend_request_limit', 10, 1)) {
             throw new Exception(translation('auth.errors.too_many_attempts'));
         }
@@ -74,12 +96,11 @@ try {
             'message' => $msg,
             'sender_id' => $currentUserId,
             'sender_username' => $myUsername,
-            'sender_profile_picture' => $myProfilePic // [MODIFICADO]
+            'sender_profile_picture' => $myProfilePic 
         ]);
 
         $response = ['success' => true, 'message' => translation('notifications.request_sent')];
 
-    // --- CANCELAR SOLICITUD ---
     } elseif ($action === 'cancel_request') {
         $targetId = (int)($data['target_id'] ?? 0);
 
@@ -100,7 +121,6 @@ try {
             throw new Exception(translation('global.error_connection'));
         }
 
-    // --- ACEPTAR SOLICITUD ---
     } elseif ($action === 'accept_request') {
         $senderId = (int)($data['sender_id'] ?? 0);
 
@@ -128,7 +148,6 @@ try {
             throw new Exception(translation('global.error_connection'));
         }
 
-    // --- RECHAZAR SOLICITUD ---
     } elseif ($action === 'decline_request') {
         $senderId = (int)($data['sender_id'] ?? 0);
 
@@ -143,7 +162,6 @@ try {
 
         $response = ['success' => true, 'message' => translation('notifications.request_declined')];
 
-    // --- ELIMINAR AMIGO ---
     } elseif ($action === 'remove_friend') {
         $friendId = (int)($data['target_id'] ?? 0);
         

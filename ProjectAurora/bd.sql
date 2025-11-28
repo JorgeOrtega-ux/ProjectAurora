@@ -292,3 +292,35 @@ CREATE TABLE IF NOT EXISTS community_message_attachments (
     FOREIGN KEY (message_id) REFERENCES community_messages(id) ON DELETE CASCADE,
     FOREIGN KEY (file_id) REFERENCES community_files(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- bd_update.sql
+-- migration_v2.sql
+
+-- 1. Tabla para Mensajes Privados
+CREATE TABLE IF NOT EXISTS private_messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    sender_id INT NOT NULL,
+    receiver_id INT NOT NULL,
+    message TEXT NOT NULL,
+    type ENUM('text', 'image', 'system', 'mixed') DEFAULT 'text',
+    reply_to_id INT NULL,
+    status ENUM('active', 'deleted') DEFAULT 'active',
+    is_read TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (reply_to_id) REFERENCES private_messages(id) ON DELETE SET NULL,
+    INDEX idx_conversation (sender_id, receiver_id),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2. Tabla Pivote para Archivos en Mensajes Privados
+-- Reutilizamos la tabla community_files para guardar los archivos físicos, 
+-- pero usamos esta nueva tabla para vincularlos a los mensajes privados.
+CREATE TABLE IF NOT EXISTS private_message_attachments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    message_id INT NOT NULL,
+    file_id INT NOT NULL,
+    FOREIGN KEY (message_id) REFERENCES private_messages(id) ON DELETE CASCADE,
+    FOREIGN KEY (file_id) REFERENCES community_files(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

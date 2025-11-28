@@ -120,15 +120,26 @@ $allowedSections = [
 
 $CURRENT_SECTION = empty($requestUri) ? 'main' : $requestUri;
 
-// [NUEVO] Lógica para detectar URL dinámica de comunidad (/c/uuid)
-$activeCommunityUuid = null; // Variable para pasar a main.php
+// [MODIFICADO] Variables de contexto para el Chat (Comunidad o Privado)
+$activeContextUuid = null; 
+$activeContextType = null; // 'community' o 'private'
+
+// 1. Detectar Comunidad (/c/uuid)
 if (preg_match('/^c\/([a-zA-Z0-9-]+)$/', $requestUri, $matches)) {
     $CURRENT_SECTION = 'main';
-    $activeCommunityUuid = $matches[1];
+    $activeContextType = 'community';
+    $activeContextUuid = $matches[1];
+}
+
+// 2. Detectar Chat Directo (/dm/uuid)
+if (preg_match('/^dm\/([a-zA-Z0-9-]+)$/', $requestUri, $matches)) {
+    $CURRENT_SECTION = 'main';
+    $activeContextType = 'private';
+    $activeContextUuid = $matches[1];
 }
 
 if (!in_array($CURRENT_SECTION, $allowedSections) && $CURRENT_SECTION !== 'main') $CURRENT_SECTION = '404';
-if ($CURRENT_SECTION === 'main' && $requestUri !== 'main' && !empty($requestUri) && !$activeCommunityUuid) $CURRENT_SECTION = 'main';
+if ($CURRENT_SECTION === 'main' && $requestUri !== 'main' && !empty($requestUri) && !$activeContextUuid) $CURRENT_SECTION = 'main';
 
 if ($CURRENT_SECTION === 'settings') { header("Location: " . $basePath . "settings/your-profile"); exit; }
 if ($CURRENT_SECTION === 'admin') { header("Location: " . $basePath . "admin/dashboard"); exit; }

@@ -1352,3 +1352,22 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-11-28 14:54:53,421 - INFO - Usuario conectado: ID 1 | Rol: user
 2025-11-28 14:56:58,954 - INFO - connection open
 2025-11-28 14:56:58,960 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 15:24:06,348 - INFO - ✅ Pool de conexiones a base de datos inicializado (Max 20).
+2025-11-28 15:24:06,358 - INFO - === Servidor Aurora Iniciado (Híbrido: Chat + DMs) ===
+2025-11-28 15:24:07,387 - INFO - server listening on 0.0.0.0:8080
+2025-11-28 15:24:11,476 - INFO - connection open
+2025-11-28 15:24:11,477 - INFO - connection open
+2025-11-28 15:24:29,313 - INFO - connection open
+2025-11-28 15:24:29,430 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 15:24:51,153 - INFO - connection open
+2025-11-28 15:24:51,163 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-11-28 15:25:02,290 - INFO - connection open
+2025-11-28 15:25:02,414 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 15:25:19,251 - INFO - connection open
+2025-11-28 15:25:19,260 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 15:25:39,613 - INFO - connection open
+2025-11-28 15:25:39,628 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 15:25:49,514 - INFO - connection open
+2025-11-28 15:25:49,531 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 15:25:51,135 - INFO - connection open
+2025-11-28 15:25:51,142 - INFO - Usuario conectado: ID 1 | Rol: user

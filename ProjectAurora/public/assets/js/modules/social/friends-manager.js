@@ -14,7 +14,13 @@ function updateUIButtons(userId, state) {
     let html = '';
     switch (state) {
         case 'friends':
-            html = `<button class="btn-add-friend btn-remove-friend" data-uid="${userId}">${t('search.actions.remove')}</button>`;
+            // [MODIFICADO] Añadido botón de Mensaje
+            html = `
+                <button class="btn-add-friend" data-action="send-dm" data-uid="${userId}" style="margin-right:4px;">
+                    <span class="material-symbols-rounded" style="font-size:16px;">chat</span>
+                </button>
+                <button class="btn-add-friend btn-remove-friend" data-uid="${userId}">${t('search.actions.remove')}</button>
+            `;
             break;
         case 'request_sent':
             html = `<button class="btn-add-friend btn-cancel-request" data-uid="${userId}">${t('search.actions.cancel')}</button>`;
@@ -33,7 +39,10 @@ function updateUIButtons(userId, state) {
     container.innerHTML = html;
 }
 
-async function sendFriendRequest(targetId, btn) {
+// ... (Funciones sendFriendRequest, cancelRequest, removeFriend, respondRequest se mantienen IGUAL) ...
+// ... Copiar del archivo original o asumir que existen ...
+
+async function sendFriendRequest(targetId, btn) { /* Lógica existente */ 
     setButtonLoading(btn, true);
     try {
         const res = await postJson('api/friends_handler.php', { action: 'send_request', target_id: targetId });
@@ -47,7 +56,7 @@ async function sendFriendRequest(targetId, btn) {
     } catch (e) { setButtonLoading(btn, false); }
 }
 
-async function cancelRequest(targetId, btn) {
+async function cancelRequest(targetId, btn) { /* Lógica existente */ 
     setButtonLoading(btn, true);
     try {
         const res = await postJson('api/friends_handler.php', { action: 'cancel_request', target_id: targetId });
@@ -62,7 +71,7 @@ async function cancelRequest(targetId, btn) {
     } catch (e) { setButtonLoading(btn, false); }
 }
 
-async function removeFriend(targetId, btn) {
+async function removeFriend(targetId, btn) { /* Lógica existente */ 
     setButtonLoading(btn, true);
     try {
         const res = await postJson('api/friends_handler.php', { action: 'remove_friend', target_id: targetId });
@@ -77,16 +86,14 @@ async function removeFriend(targetId, btn) {
     } catch (e) { setButtonLoading(btn, false); }
 }
 
-async function respondRequest(actionType, btn, senderId) {
+async function respondRequest(actionType, btn, senderId) { /* Lógica existente */ 
     const originalContent = btn.innerHTML;
     btn.innerHTML = '<div class="small-spinner"></div>';
     btn.disabled = true;
-
     try {
         const res = await postJson('api/friends_handler.php', { action: actionType, sender_id: senderId });
         if (res.success) {
             triggerNotificationReload(); 
-
             if (actionType === 'accept_request') {
                 if (window.alertManager) window.alertManager.showAlert(t('notifications.now_friends'), 'success');
                 updateUIButtons(senderId, 'friends');
@@ -99,25 +106,30 @@ async function respondRequest(actionType, btn, senderId) {
             btn.disabled = false;
             if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
         }
-    } catch (e) {
-        btn.innerHTML = originalContent;
-        btn.disabled = false;
+    } catch (e) { btn.innerHTML = originalContent; btn.disabled = false; }
+}
+
+// [NUEVO] Función para iniciar chat
+async function startDirectChat(targetUid) {
+    // Solicitar al backend que inicie/verifique chat y nos de el UUID
+    // Usamos el ID numérico (uid del dataset) para buscar, el backend nos devuelve UUID
+    const res = await postJson('api/friends_handler.php', { action: 'start_chat', target_id: targetUid });
+    
+    if (res.success && res.uuid) {
+        // Redirigir al router de DM
+        if(window.navigateTo) window.navigateTo(`dm/${res.uuid}`);
+        else window.location.href = `${window.BASE_PATH}dm/${res.uuid}`;
+    } else {
+        alert(res.message || 'Error iniciando chat');
     }
 }
 
 function initSocketListener() {
     document.addEventListener('socket-message', (e) => {
         const { type, payload } = e.detail;
-
-        if (type === 'friend_request') {
-            updateUIButtons(payload.sender_id, 'request_received');
-        }
-        if (type === 'friend_accepted') {
-            updateUIButtons(payload.accepter_id, 'friends');
-        }
-        if (type === 'request_cancelled' || type === 'request_declined' || type === 'friend_removed') {
-            updateUIButtons(payload.sender_id, 'none');
-        }
+        if (type === 'friend_request') updateUIButtons(payload.sender_id, 'request_received');
+        if (type === 'friend_accepted') updateUIButtons(payload.accepter_id, 'friends');
+        if (type === 'request_cancelled' || type === 'request_declined' || type === 'friend_removed') updateUIButtons(payload.sender_id, 'none');
     });
 }
 
@@ -125,8 +137,16 @@ function initClickListeners() {
     document.body.addEventListener('click', async (e) => {
         const target = e.target;
         
+        // [NUEVO] Listener para botón de mensaje
+        const dmBtn = target.closest('[data-action="send-dm"]');
+        if (dmBtn) {
+            e.preventDefault();
+            await startDirectChat(dmBtn.dataset.uid);
+            return;
+        }
+
         const addBtn = target.closest('.btn-add-friend');
-        if (addBtn && !target.closest('.btn-remove-friend') && !target.closest('.btn-cancel-request') && !addBtn.disabled) {
+        if (addBtn && !target.closest('.btn-remove-friend') && !target.closest('.btn-cancel-request') && !target.closest('[data-action="send-dm"]') && !addBtn.disabled) {
             e.preventDefault();
             await sendFriendRequest(addBtn.dataset.uid, addBtn);
             return; 
@@ -148,19 +168,17 @@ function initClickListeners() {
             return;
         }
 
-        const acceptBtn = target.closest('.btn-accept-request') || target.closest('[data-action="accept-req"]');
+        const acceptBtn = target.closest('.btn-accept-request');
         if (acceptBtn) {
             e.preventDefault();
-            const uid = acceptBtn.dataset.uid || acceptBtn.closest('.notification-item')?.dataset.sid;
-            await respondRequest('accept_request', acceptBtn, uid);
+            await respondRequest('accept_request', acceptBtn, acceptBtn.dataset.uid);
             return;
         }
 
-        const declineBtn = target.closest('.btn-decline-request') || target.closest('[data-action="decline-req"]');
+        const declineBtn = target.closest('.btn-decline-request');
         if (declineBtn) {
             e.preventDefault();
-            const uid = declineBtn.dataset.uid || declineBtn.closest('.notification-item')?.dataset.sid;
-            await respondRequest('decline_request', declineBtn, uid);
+            await respondRequest('decline_request', declineBtn, declineBtn.dataset.uid);
             return;
         }
     });

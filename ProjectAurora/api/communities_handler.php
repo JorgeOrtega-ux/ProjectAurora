@@ -75,24 +75,64 @@ try {
             throw new Exception(translation('global.error_connection'));
         }
 
-    // --- OBTENER MIS COMUNIDADES (LISTA IZQUIERDA) ---
-    } elseif ($action === 'get_my_communities') {
-        $sql = "SELECT 
-                    c.id, c.uuid, c.community_name, c.description, c.privacy, c.member_count, 
-                    c.profile_picture, c.banner_picture, cm.role,
+    // --- OBTENER SIDEBAR LIST (Comunidades + DMs) ---
+    } elseif ($action === 'get_sidebar_list') {
+        
+        // 1. Obtener Comunidades
+        $sqlCommunities = "SELECT 
+                    'community' as type,
+                    c.id, c.uuid, c.community_name as name, 
+                    c.profile_picture, 
                     (SELECT message FROM community_messages WHERE community_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
                     (SELECT created_at FROM community_messages WHERE community_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_at,
                     (SELECT COUNT(*) FROM community_messages WHERE community_id = c.id AND created_at > cm.last_read_at AND user_id != cm.user_id) as unread_count
                 FROM communities c
                 JOIN community_members cm ON c.id = cm.community_id
-                WHERE cm.user_id = ?
-                ORDER BY last_message_at DESC";
+                WHERE cm.user_id = ?";
         
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$userId]);
-        $communities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmtComm = $pdo->prepare($sqlCommunities);
+        $stmtComm->execute([$userId]);
+        $communities = $stmtComm->fetchAll(PDO::FETCH_ASSOC);
 
-        echo json_encode(['success' => true, 'communities' => $communities]);
+        // 2. Obtener Chats Privados Activos
+        // Buscamos usuarios con los que tengamos mensajes (enviados o recibidos)
+        $sqlDMs = "SELECT 
+                    'private' as type,
+                    u.id, u.uuid, u.username as name, 
+                    u.profile_picture,
+                    m.message as last_message,
+                    m.created_at as last_message_at,
+                    (SELECT COUNT(*) FROM private_messages pm WHERE pm.sender_id = u.id AND pm.receiver_id = ? AND pm.is_read = 0) as unread_count
+                   FROM users u
+                   JOIN (
+                       SELECT 
+                           CASE WHEN sender_id = ? THEN receiver_id ELSE sender_id END as partner_id,
+                           message, created_at
+                       FROM private_messages
+                       WHERE id IN (
+                           SELECT MAX(id) 
+                           FROM private_messages 
+                           WHERE sender_id = ? OR receiver_id = ? 
+                           GROUP BY CASE WHEN sender_id = ? THEN receiver_id ELSE sender_id END
+                       )
+                   ) m ON u.id = m.partner_id
+                   WHERE u.account_status = 'active'";
+
+        $stmtDMs = $pdo->prepare($sqlDMs);
+        $stmtDMs->execute([$userId, $userId, $userId, $userId, $userId]);
+        $dms = $stmtDMs->fetchAll(PDO::FETCH_ASSOC);
+
+        // 3. Unificar y Ordenar
+        $fullList = array_merge($communities, $dms);
+        
+        // Ordenar por fecha del último mensaje descendente
+        usort($fullList, function($a, $b) {
+            $t1 = $a['last_message_at'] ? strtotime($a['last_message_at']) : 0;
+            $t2 = $b['last_message_at'] ? strtotime($b['last_message_at']) : 0;
+            return $t2 - $t1;
+        });
+
+        echo json_encode(['success' => true, 'list' => $fullList]);
 
     // --- OBTENER COMUNIDADES PÚBLICAS ---
     } elseif ($action === 'get_public_communities') {
@@ -159,9 +199,29 @@ try {
         $comm = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($comm) {
-            echo json_encode(['success' => true, 'community' => $comm]);
+            $comm['type'] = 'community'; // Flag explicito
+            echo json_encode(['success' => true, 'data' => $comm]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Comunidad no encontrada o acceso denegado']);
+        }
+
+    // --- OBTENER DETALLES DE USUARIO (PARA DM) POR UUID ---
+    } elseif ($action === 'get_user_chat_by_uuid') {
+        $uuid = trim($data['uuid'] ?? '');
+        // Buscar usuario si no soy yo mismo
+        $sql = "SELECT id, uuid, username as community_name, profile_picture FROM users WHERE uuid = ? AND id != ?";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$uuid, $userId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($user) {
+            $user['type'] = 'private'; // Flag explícito para el frontend
+            // Simular campos de comunidad para reutilizar lógica UI
+            $user['banner_picture'] = null; 
+            $user['role'] = 'member';
+            echo json_encode(['success' => true, 'data' => $user]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Usuario no encontrado']);
         }
 
     // --- OBTENER DETALLES COMPLETOS (INFO PANEL) ---
@@ -188,7 +248,7 @@ try {
         $stmtM->execute([$info['id']]);
         $members = $stmtM->fetchAll(PDO::FETCH_ASSOC);
 
-        // 3. Obtener Archivos Recientes (Imágenes) + Info del Uploader
+        // 3. Obtener Archivos Recientes
         $sqlFiles = "SELECT f.file_path, f.file_type, f.created_at, u.username, u.profile_picture 
                      FROM community_files f
                      JOIN users u ON f.uploader_id = u.id

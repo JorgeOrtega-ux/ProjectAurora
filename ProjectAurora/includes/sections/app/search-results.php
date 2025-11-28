@@ -25,7 +25,6 @@ $results = $searchData['results'];
 $hasMore = $searchData['hasMore'];
 
 $renderUserCard = function ($user) use ($currentUserId) {
-    // [CORRECCIÓN] Usar profile_picture que es lo que devuelve la BD y Fetcher
     $avatarPath = !empty($user['profile_picture']) ? '/ProjectAurora/' . $user['profile_picture'] : null;
     $uid = $user['id'];
     $role = $user['role'] ?? 'user';
@@ -33,7 +32,13 @@ $renderUserCard = function ($user) use ($currentUserId) {
 
     $actionsHtml = '';
     if ($user['friend_status'] === 'accepted') {
-        $actionsHtml = '<button class="btn-add-friend btn-remove-friend" data-uid="' . $uid . '" data-i18n="search.actions.remove">' . translation('search.actions.remove') . '</button>';
+        // [MODIFICADO] Botón de chat añadido
+        $actionsHtml = '
+            <button class="btn-add-friend" data-action="send-dm" data-uid="' . $uid . '" style="margin-right:4px;">
+                <span class="material-symbols-rounded" style="font-size:16px;">chat</span>
+            </button>
+            <button class="btn-add-friend btn-remove-friend" data-uid="' . $uid . '" data-i18n="search.actions.remove">' . translation('search.actions.remove') . '</button>
+        ';
     } elseif ($user['friend_status'] === 'pending') {
         if ($user['sender_id'] == $currentUserId) {
             $actionsHtml = '<button class="btn-add-friend btn-cancel-request" data-uid="' . $uid . '" data-i18n="search.actions.cancel">' . translation('search.actions.cancel') . '</button>';

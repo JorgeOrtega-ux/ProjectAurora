@@ -139,28 +139,37 @@ async def verify_token_and_get_session(raw_token):
         return None
 
 async def broadcast_user_status(user_id, status):
-    if not admin_sessions:
-        return
+    # Avisar a admins (dashboards)
     timestamp = datetime.now().isoformat()
-    message = json.dumps({
-        "type": "user_status_change",
-        "payload": {"user_id": user_id, "status": status, "timestamp": timestamp}
-    })
-    dead_sockets = set()
-    for ws in admin_sessions:
-        try: await ws.send(message)
-        except: dead_sockets.add(ws)
-    admin_sessions.difference_update(dead_sockets)
+    if admin_sessions:
+        message = json.dumps({
+            "type": "user_status_change",
+            "payload": {"user_id": user_id, "status": status, "timestamp": timestamp}
+        })
+        dead_sockets = set()
+        for ws in admin_sessions:
+            try: await ws.send(message)
+            except: dead_sockets.add(ws)
+        admin_sessions.difference_update(dead_sockets)
+    
+    # [NUEVO] Avisar a amigos conectados (para actualizar el punto verde en la lista de chats)
+    # TODO: Implementar consulta de amigos conectados para broadcasting eficiente. 
+    # Por ahora, los clientes pueden hacer polling o recibir el evento global si es necesario, 
+    # pero para escalabilidad se recomienda implementar en el futuro 'friend_status_change'.
 
 async def handle_chat_message(user_id, user_info, payload):
     """
-    Maneja el envío de mensajes: Valida membresía, guarda en BD y difunde.
+    Maneja el envío de mensajes: 
+    - Valida contexto (privado o comunidad).
+    - Guarda en la tabla correcta.
+    - Difunde a los destinatarios.
     """
-    community_uuid = payload.get('community_uuid')
+    target_uuid = payload.get('target_uuid') # Puede ser community_uuid o user_uuid
     message_text = payload.get('message')
-    reply_to_id = payload.get('reply_to_id') # [NUEVO] Obtener ID de respuesta
+    context = payload.get('context', 'community') # 'community' o 'private'
+    reply_to_id = payload.get('reply_to_id')
 
-    if not community_uuid or not message_text:
+    if not target_uuid or not message_text:
         return
 
     if not db_pool:
@@ -170,85 +179,154 @@ async def handle_chat_message(user_id, user_info, payload):
     try:
         async with db_pool.acquire() as conn:
             async with conn.cursor() as cur:
-                # 1. Validar que el usuario pertenece a la comunidad y obtener ID
-                check_query = """
-                    SELECT c.id 
-                    FROM communities c
-                    JOIN community_members cm ON c.id = cm.community_id
-                    WHERE c.uuid = %s AND cm.user_id = %s
-                """
-                await cur.execute(check_query, (community_uuid, user_id))
-                comm_row = await cur.fetchone()
+                
+                # --- LÓGICA CHAT PRIVADO ---
+                if context == 'private':
+                    # 1. Obtener ID del receptor
+                    await cur.execute("SELECT id FROM users WHERE uuid = %s", (target_uuid,))
+                    receiver_row = await cur.fetchone()
+                    if not receiver_row:
+                        logger.warning(f"Usuario {user_id} intentó enviar DM a UUID inexistente: {target_uuid}")
+                        return
+                    
+                    receiver_id = str(receiver_row[0])
+                    
+                    if receiver_id == user_id:
+                        return # No auto-mensajes
 
-                if not comm_row:
-                    logger.warning(f"Usuario {user_id} intentó enviar mensaje a {community_uuid} sin permiso.")
-                    return
+                    # 2. Obtener datos del reply si existe
+                    reply_data = {}
+                    if reply_to_id:
+                        parent_query = """
+                            SELECT m.message, u.username
+                            FROM private_messages m
+                            JOIN users u ON m.sender_id = u.id
+                            WHERE m.id = %s
+                        """
+                        await cur.execute(parent_query, (reply_to_id,))
+                        parent_row = await cur.fetchone()
+                        if parent_row:
+                            reply_data = {'message': parent_row[0], 'sender_username': parent_row[1]}
+                        else:
+                            reply_to_id = None
 
-                community_id = comm_row[0]
-
-                # 2. Obtener datos del mensaje original si es una respuesta
-                reply_data = {}
-                if reply_to_id:
-                    parent_query = """
-                        SELECT m.message, u.username
-                        FROM community_messages m
-                        JOIN users u ON m.user_id = u.id
-                        WHERE m.id = %s AND m.community_id = %s
+                    # 3. Insertar en private_messages
+                    insert_query = """
+                        INSERT INTO private_messages (sender_id, receiver_id, message, reply_to_id, type)
+                        VALUES (%s, %s, %s, %s, 'text')
                     """
-                    await cur.execute(parent_query, (reply_to_id, community_id))
-                    parent_row = await cur.fetchone()
-                    if parent_row:
-                        reply_data = {
-                            'message': parent_row[0],
-                            'sender_username': parent_row[1]
+                    await cur.execute(insert_query, (user_id, receiver_id, message_text, reply_to_id))
+                    message_id = cur.lastrowid
+                    created_at = datetime.now().isoformat()
+
+                    # 4. Construir payload
+                    response_payload = json.dumps({
+                        "type": "private_message",
+                        "payload": {
+                            "id": message_id,
+                            "target_uuid": target_uuid, # UUID del que recibe para el remitente / UUID del que envia para el receptor
+                            "context": "private",
+                            "message": message_text,
+                            "sender_id": user_id,
+                            "sender_username": user_info['username'],
+                            "sender_profile_picture": user_info['profile_picture'],
+                            "sender_role": user_info['role'],
+                            "created_at": created_at,
+                            "type": "text",
+                            "status": "active",
+                            "reply_to_id": reply_to_id,
+                            "reply_message": reply_data.get('message'),
+                            "reply_sender_username": reply_data.get('sender_username')
                         }
-                    else:
-                        reply_to_id = None # Si no existe el padre (borrado?), anulamos la respuesta
+                    })
 
-                # 3. Guardar mensaje en BD con reply_to_id
-                insert_query = """
-                    INSERT INTO community_messages (community_id, user_id, message, reply_to_id, type)
-                    VALUES (%s, %s, %s, %s, 'text')
-                """
-                await cur.execute(insert_query, (community_id, user_id, message_text, reply_to_id))
-                
-                message_id = cur.lastrowid
-                created_at = datetime.now().isoformat()
+                    # 5. Enviar al RECEPTOR (si está conectado)
+                    if receiver_id in connected_clients:
+                        for ws in connected_clients[receiver_id].values():
+                            try: await ws.send(response_payload)
+                            except: pass
+                    
+                    # 6. Enviar al REMITENTE (sync entre pestañas/dispositivos)
+                    if user_id in connected_clients:
+                        for ws in connected_clients[user_id].values():
+                            try: await ws.send(response_payload)
+                            except: pass
 
-                # 4. Obtener lista de miembros para difusión
-                members_query = "SELECT user_id FROM community_members WHERE community_id = %s"
-                await cur.execute(members_query, (community_id,))
-                members = await cur.fetchall()
-                
-                member_ids = set([str(m[0]) for m in members])
+                # --- LÓGICA COMUNIDAD ---
+                else:
+                    # 1. Validar membresía y obtener ID
+                    check_query = """
+                        SELECT c.id 
+                        FROM communities c
+                        JOIN community_members cm ON c.id = cm.community_id
+                        WHERE c.uuid = %s AND cm.user_id = %s
+                    """
+                    await cur.execute(check_query, (target_uuid, user_id))
+                    comm_row = await cur.fetchone()
 
-        # 5. Difusión a sockets conectados
-        response_payload = json.dumps({
-            "type": "new_chat_message",
-            "payload": {
-                "id": message_id,
-                "community_uuid": community_uuid,
-                "message": message_text,
-                "sender_id": user_id,
-                "sender_username": user_info['username'],
-                "sender_profile_picture": user_info['profile_picture'],
-                "sender_role": user_info['role'],
-                "created_at": created_at,
-                "type": "text",
-                "status": "active",
-                "reply_to_id": reply_to_id,
-                "reply_message": reply_data.get('message'),
-                "reply_sender_username": reply_data.get('sender_username')
-            }
-        })
+                    if not comm_row:
+                        return
 
-        for connected_uid, sessions in connected_clients.items():
-            if connected_uid in member_ids:
-                for ws in sessions.values():
-                    try:
-                        await ws.send(response_payload)
-                    except:
-                        pass 
+                    community_id = comm_row[0]
+
+                    # 2. Reply data
+                    reply_data = {}
+                    if reply_to_id:
+                        parent_query = """
+                            SELECT m.message, u.username
+                            FROM community_messages m
+                            JOIN users u ON m.user_id = u.id
+                            WHERE m.id = %s AND m.community_id = %s
+                        """
+                        await cur.execute(parent_query, (reply_to_id, community_id))
+                        parent_row = await cur.fetchone()
+                        if parent_row:
+                            reply_data = {'message': parent_row[0], 'sender_username': parent_row[1]}
+                        else:
+                            reply_to_id = None
+
+                    # 3. Insertar
+                    insert_query = """
+                        INSERT INTO community_messages (community_id, user_id, message, reply_to_id, type)
+                        VALUES (%s, %s, %s, %s, 'text')
+                    """
+                    await cur.execute(insert_query, (community_id, user_id, message_text, reply_to_id))
+                    
+                    message_id = cur.lastrowid
+                    created_at = datetime.now().isoformat()
+
+                    # 4. Obtener miembros
+                    members_query = "SELECT user_id FROM community_members WHERE community_id = %s"
+                    await cur.execute(members_query, (community_id,))
+                    members = await cur.fetchall()
+                    member_ids = set([str(m[0]) for m in members])
+
+                    # 5. Broadcast
+                    response_payload = json.dumps({
+                        "type": "new_chat_message",
+                        "payload": {
+                            "id": message_id,
+                            "community_uuid": target_uuid,
+                            "context": "community",
+                            "message": message_text,
+                            "sender_id": user_id,
+                            "sender_username": user_info['username'],
+                            "sender_profile_picture": user_info['profile_picture'],
+                            "sender_role": user_info['role'],
+                            "created_at": created_at,
+                            "type": "text",
+                            "status": "active",
+                            "reply_to_id": reply_to_id,
+                            "reply_message": reply_data.get('message'),
+                            "reply_sender_username": reply_data.get('sender_username')
+                        }
+                    })
+
+                    for connected_uid, sessions in connected_clients.items():
+                        if connected_uid in member_ids:
+                            for ws in sessions.values():
+                                try: await ws.send(response_payload)
+                                except: pass 
 
     except Exception as e:
         logger.error(f"Error procesando mensaje de chat: {e}")
@@ -316,6 +394,7 @@ async def handle_browser_client(websocket):
             # --- CHAT MESSAGE ---
             elif msg_type == 'chat_message':
                 if user_id: 
+                    # El payload ahora incluye 'context' y 'target_uuid'
                     await handle_chat_message(user_id, user_data_cache, data.get('payload', {}))
 
     except websockets.exceptions.ConnectionClosed:
@@ -333,7 +412,6 @@ async def handle_browser_client(websocket):
         if websocket in admin_sessions:
             admin_sessions.discard(websocket)
 
-# Nueva función helper para obtener miembros de una comunidad
 async def get_community_members(community_id):
     if not db_pool: return []
     try:
@@ -348,7 +426,7 @@ async def get_community_members(community_id):
 
 async def handle_php_notification(reader, writer):
     try:
-        data = await reader.read(8192) # Aumentar buffer por si el payload es grande
+        data = await reader.read(8192) 
         msg = data.decode()
         if not msg: return
         
@@ -361,20 +439,37 @@ async def handle_php_notification(reader, writer):
         msg_type = full_payload.get('type')
         payload_data = full_payload.get('payload', {})
         
-        # --- CASO 1: BROADCAST DE COMUNIDAD (Nuevo) ---
-        if target == 'community_broadcast':
+        # --- CASO 1: MENSAJE PRIVADO (Directo) ---
+        if msg_type == 'private_message':
+            # Notificar al receptor (Target)
+            client_message = json.dumps({
+                "type": "private_message",
+                "payload": payload_data.get('message_data')
+            })
+            
+            # Enviar al receptor
+            if target in connected_clients:
+                for ws in connected_clients[target].values():
+                    try: await ws.send(client_message)
+                    except: pass
+            
+            # Enviar al remitente (Sender) para sincronización
+            sender_id = str(payload_data.get('sender_id'))
+            if sender_id and sender_id in connected_clients:
+                for ws in connected_clients[sender_id].values():
+                    try: await ws.send(client_message)
+                    except: pass
+
+        # --- CASO 2: BROADCAST DE COMUNIDAD ---
+        elif target == 'community_broadcast':
             community_id = payload_data.get('community_id')
             message_data = payload_data.get('message_data') 
             
-            # Si es nuevo mensaje o actualizacion (borrado)
-            final_type = msg_type # 'new_chat_message' o 'message_update'
-            
             client_message = json.dumps({
-                "type": final_type,
+                "type": msg_type, # 'new_chat_message' o 'message_update'
                 "payload": message_data
             })
             
-            # Obtener miembros y enviar
             member_ids = await get_community_members(community_id)
             for uid in member_ids:
                 if uid in connected_clients:
@@ -382,7 +477,7 @@ async def handle_php_notification(reader, writer):
                         try: await ws.send(client_message)
                         except: pass
 
-        # --- CASO 2: MENSAJE GLOBAL ---
+        # --- CASO 3: MENSAJE GLOBAL ---
         elif target == 'global':
             client_message = json.dumps(full_payload)
             for uid, sessions in connected_clients.items():
@@ -390,7 +485,7 @@ async def handle_php_notification(reader, writer):
                     try: await ws.send(client_message)
                     except: pass
 
-        # --- CASO 3: MENSAJE DIRECTO ---
+        # --- CASO 4: MENSAJE DIRECTO DE SISTEMA ---
         elif target in connected_clients:
             client_message = json.dumps(full_payload)
             for ws in connected_clients[target].values():
@@ -405,7 +500,7 @@ async def handle_php_notification(reader, writer):
 
 async def main():
     await init_db_pool()
-    logger.info("=== Servidor Aurora Iniciado (Chat Habilitado) ===")
+    logger.info("=== Servidor Aurora Iniciado (Híbrido: Chat + DMs) ===")
     
     ws_server = await websockets.serve(handle_browser_client, "0.0.0.0", 8080)
     php_bridge = await asyncio.start_server(handle_php_notification, "127.0.0.1", 8081)
