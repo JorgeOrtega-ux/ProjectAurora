@@ -11,6 +11,7 @@ import { initNotificationsManager } from './modules/social/notifications-manager
 import { initFriendsManager } from './modules/social/friends-manager.js';
 import { initSettingsManager } from './modules/settings-manager.js';
 import { initCommunitiesManager } from './modules/communities-manager.js'; 
+import { initChatManager } from './modules/chat-manager.js'; // [NUEVO]
 import { initBannerManager } from './modules/banner-manager.js';
 
 // [UI]
@@ -18,7 +19,7 @@ import { initMainController } from './ui/main-controller.js';
 import { initAlertManager } from './ui/alert-manager.js';
 import { initTooltipManager } from './ui/tooltip-manager.js';
 import { initDragController } from './ui/drag-controller.js';
-import { initMediaViewer } from './ui/media-viewer.js'; // [NUEVO]
+import { initMediaViewer } from './ui/media-viewer.js'; 
 
 // [SERVICES]
 import { initSocketService } from './services/socket-service.js';
@@ -65,6 +66,7 @@ export async function handleModuleLoading() {
     // Inicializar lógica de comunidades si estamos en vistas relevantes
     if (joinComm || mainPage || explorerPage) {
         initCommunitiesManager();
+        initChatManager(); // [NUEVO] Inicializar gestor de chat
     }
 }
 
@@ -90,7 +92,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         initDragController();
         
         initBannerManager();
-        initMediaViewer(); // [NUEVO] Inicializar visualizador
+        initMediaViewer(); 
 
         // Exponer la función de carga
         window.loadDynamicModules = handleModuleLoading;
