@@ -177,7 +177,6 @@ function updateChatInterface(data) {
         if (title) title.textContent = name;
         
         if (status) {
-            // Guardamos el texto original en un data-attribute para restaurarlo después del typing
             const defaultText = isPrivate ? 'Chat Directo' : `${data.member_count || 0} miembros`;
             status.textContent = defaultText;
             status.dataset.originalText = defaultText;
@@ -456,13 +455,10 @@ function clearAttachments() {
     renderPreview();
 }
 
-// [NUEVO] Función para enviar evento de typing
 function handleTypingEvent() {
-    // Solo si es chat privado
     if (!currentChatUuid || currentChatType !== 'private') return;
     
     const now = Date.now();
-    // Throttle: solo enviar si pasaron X segundos desde el último
     if (now - lastTypingSent > TYPING_THROTTLE) {
         lastTypingSent = now;
         
@@ -470,7 +466,7 @@ function handleTypingEvent() {
             const payload = {
                 type: 'typing',
                 payload: { 
-                    target_uuid: currentChatUuid // UUID del receptor
+                    target_uuid: currentChatUuid 
                 }
             };
             window.socketService.socket.send(JSON.stringify(payload));
@@ -478,31 +474,26 @@ function handleTypingEvent() {
     }
 }
 
-// [NUEVO] Función para mostrar indicador de typing
 function showTypingIndicator() {
     const status = document.getElementById('chat-header-status');
     if (!status) return;
 
-    // Solo si no está ya animado para no reiniciar animaciones CSS bruscamente
     if (!status.classList.contains('typing-dots')) {
-        status.textContent = ''; // Limpiar texto "Chat Directo"
+        status.textContent = ''; 
         status.classList.add('typing-active', 'typing-dots');
     }
 
-    // Resetear el timeout de limpieza
     clearTimeout(typingTimeout);
     typingTimeout = setTimeout(() => {
         resetHeaderStatus();
     }, TYPING_DISPLAY_TIME);
 }
 
-// [NUEVO] Función para resetear status del header
 function resetHeaderStatus() {
     const status = document.getElementById('chat-header-status');
     if (!status) return;
 
     status.classList.remove('typing-active', 'typing-dots');
-    // Restaurar texto original (guardado en data attribute o por defecto)
     status.textContent = status.dataset.originalText || 'Chat Directo';
 }
 
@@ -512,7 +503,6 @@ async function sendMessage() {
     const text = input.value.trim();
     if (!text && selectedFiles.length === 0) return;
 
-    // Resetear typing localmente al enviar (opcional)
     lastTypingSent = 0;
 
     if (selectedFiles.length > 0) {
@@ -689,8 +679,6 @@ async function handleReportMessage(msgId) {
     }
 }
 
-// [CORRECCIÓN] Eliminada la función duplicada handleDeleteConversation que estaba aquí antes
-
 // ==========================================
 // INICIALIZACIÓN
 // ==========================================
@@ -698,8 +686,19 @@ async function handleReportMessage(msgId) {
 function initChatListeners() {
     document.addEventListener('socket-message', (e) => {
         const { type, payload } = e.detail;
+        const message = e.detail.message; // [NUEVO] Extraer mensaje de error top-level
+
+        // [NUEVO] Manejo de errores operativos (ej: Spam, validaciones)
+        if (type === 'error') {
+            if (window.alertManager) {
+                // Usar 'message' del evento o 'payload.message' si existiera
+                window.alertManager.showAlert(message || payload?.message || "Error desconocido", "error");
+            } else {
+                console.error("Error del servidor:", message);
+            }
+            return;
+        }
         
-        // [NUEVO] Manejo de Typing
         if (type === 'typing') {
             if (currentChatType === 'private' && currentChatId && parseInt(payload.sender_id) === parseInt(currentChatId)) {
                 showTypingIndicator();
@@ -709,7 +708,6 @@ function initChatListeners() {
 
         if (type === 'new_chat_message' || type === 'private_message') {
             
-            // Si llega un mensaje, limpiamos el typing inmediatamente
             if (currentChatType === 'private' && currentChatId && parseInt(payload.sender_id) === parseInt(currentChatId)) {
                 resetHeaderStatus();
                 clearTimeout(typingTimeout);
@@ -743,12 +741,10 @@ function initChatListeners() {
                     scrollToBottom();
                     currentOffset++;
 
-                    // === NUEVO: MARCAR COMO LEÍDO AUTOMÁTICAMENTE ===
-                    // Si el mensaje es para el chat que estoy viendo AHORA MISMO y tengo el foco
                     if (document.hasFocus()) {
                         setTimeout(() => {
                             sendReadSignal();
-                        }, 500); // Pequeño delay para UX
+                        }, 500); 
                     }
                 }
             }
@@ -772,7 +768,6 @@ function initChatListeners() {
     
     if (input) {
         input.addEventListener('keydown', (e) => { 
-            // [NUEVO] Detectar escritura
             handleTypingEvent(); 
             if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } 
         });
@@ -787,15 +782,12 @@ function initChatListeners() {
         messagesArea.addEventListener('scroll', handleChatScroll);
     }
 
-    // === NUEVO: LISTENERS PARA LECTURA ACTIVA ===
-    // Si el usuario vuelve a la pestaña y hay un chat abierto, enviar lectura
     window.addEventListener('focus', () => {
         if (currentChatUuid) {
             sendReadSignal();
         }
     });
     
-    // Si hace clic en el área de chat (por si acaso estaba inactivo)
     document.querySelector('.chat-main-area')?.addEventListener('click', () => {
         if (currentChatUuid) {
             sendReadSignal();
@@ -835,8 +827,6 @@ function initListeners() {
             e.preventDefault(); 
             document.getElementById('chat-info-panel')?.classList.add('d-none'); 
         }
-
-        // [CORRECCIÓN] Eliminado el listener de delete-chat-conversation porque ya está en communities-manager.js
     });
 }
 

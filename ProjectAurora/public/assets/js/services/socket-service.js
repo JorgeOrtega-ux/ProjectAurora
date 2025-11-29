@@ -37,8 +37,9 @@ function connect() {
         try {
             const data = JSON.parse(event.data);
             
-            // [FIX BUCLE INFINITO] Manejar error de autenticación fatal
-            if (data.type === 'auth_error_permanent' || data.type === 'error') {
+            // [CORRECCIÓN] Solo desconectar si es un error de AUTENTICACIÓN permanente.
+            // Se eliminó "|| data.type === 'error'" para que el spam no desconecte.
+            if (data.type === 'auth_error_permanent') {
                 console.error('websocket_client: Auth failed permanently. Stopping reconnection.');
                 shouldReconnect = false;
                 socket.close(); // Cierre limpio
