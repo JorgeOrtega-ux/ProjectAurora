@@ -5,7 +5,7 @@ import { t } from '../core/i18n-manager.js';
 
 // Estado del Chat
 let currentChatUuid = null;
-let currentChatId = null; // [NUEVO] ID numérico para validación precisa
+let currentChatId = null; 
 let currentChatType = 'community';
 let replyingToMessageId = null;
 let replyingToMessageData = null;
@@ -16,6 +16,12 @@ let currentOffset = 0;
 const MESSAGES_PER_PAGE = 50;
 let isLoadingMessages = false;
 let hasMoreMessages = true;
+
+// Estado de Typing (Escribiendo)
+let lastTypingSent = 0;
+let typingTimeout = null;
+const TYPING_THROTTLE = 2000; // Enviar evento máx cada 2s
+const TYPING_DISPLAY_TIME = 3000; // Tiempo que duran los puntitos antes de quitarse
 
 // ==========================================
 // UTILIDADES INTERNAS
@@ -69,7 +75,7 @@ export async function openChat(uuid, chatData = null) {
     }
 
     currentChatUuid = chatData.uuid;
-    currentChatId = chatData.id; // [NUEVO] Guardamos el ID numérico
+    currentChatId = chatData.id; 
     currentChatType = chatData.type || 'community';
     window.ACTIVE_CHAT_UUID = uuid;
     window.ACTIVE_CHAT_TYPE = currentChatType;
@@ -77,6 +83,10 @@ export async function openChat(uuid, chatData = null) {
     currentOffset = 0;
     hasMoreMessages = true;
     isLoadingMessages = false;
+
+    // Resetear typing al cambiar de chat
+    clearTimeout(typingTimeout);
+    resetHeaderStatus(chatData.type === 'private');
 
     document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
     const activeItem = document.querySelector(`.chat-item[data-uuid="${uuid}"]`);
@@ -109,7 +119,6 @@ function updateChatInterface(data) {
     const infoBtn = document.getElementById('btn-group-info-toggle');
     const headerInfo = document.getElementById('chat-header-info-clickable');
     
-    // Elementos de entrada para bloquear si es necesario
     const inputArea = document.querySelector('.chat-input-area');
     const messageInput = document.querySelector('.chat-message-input');
     const sendBtn = document.getElementById('btn-send-message');
@@ -150,14 +159,13 @@ function updateChatInterface(data) {
         if (title) title.textContent = name;
         
         if (status) {
-            if (isPrivate) {
-                status.textContent = 'Chat Directo'; 
-            } else {
-                status.textContent = `${data.member_count || 0} miembros`;
-            }
+            // Guardamos el texto original en un data-attribute para restaurarlo después del typing
+            const defaultText = isPrivate ? 'Chat Directo' : `${data.member_count || 0} miembros`;
+            status.textContent = defaultText;
+            status.dataset.originalText = defaultText;
+            status.classList.remove('typing-active', 'typing-dots');
         }
 
-        // Resetear estado de inputs
         if (inputArea) inputArea.style.display = 'flex';
         if (messageInput) {
             messageInput.disabled = false;
@@ -171,7 +179,6 @@ function updateChatInterface(data) {
             if (headerInfo) headerInfo.style.pointerEvents = 'none'; 
             document.getElementById('chat-info-panel').classList.add('d-none'); 
             
-            // Bloqueo por privacidad
             if (data.can_message === false) {
                 if (messageInput) {
                     messageInput.disabled = true;
@@ -312,7 +319,6 @@ function createMessageHTML(msg) {
 
     const role = msg.sender_role || 'user';
 
-    // Reply Logic
     let replyHtml = '';
     if (msg.reply_to_id) {
         let replyText = '';
@@ -331,7 +337,6 @@ function createMessageHTML(msg) {
         replyHtml = `<div class="message-reply-preview"><span class="reply-preview-user">${escapeHtml(replyUser)}</span><span class="reply-preview-text">${replyText}</span></div>`;
     }
 
-    // Attachments Logic
     let attachmentsHtml = '';
     if (msg.attachments && Array.isArray(msg.attachments) && msg.attachments.length > 0) {
         const count = msg.attachments.length;
@@ -433,11 +438,64 @@ function clearAttachments() {
     renderPreview();
 }
 
+// [NUEVO] Función para enviar evento de typing
+function handleTypingEvent() {
+    // Solo si es chat privado
+    if (!currentChatUuid || currentChatType !== 'private') return;
+    
+    const now = Date.now();
+    // Throttle: solo enviar si pasaron X segundos desde el último
+    if (now - lastTypingSent > TYPING_THROTTLE) {
+        lastTypingSent = now;
+        
+        if (window.socketService && window.socketService.socket && window.socketService.socket.readyState === WebSocket.OPEN) {
+            const payload = {
+                type: 'typing',
+                payload: { 
+                    target_uuid: currentChatUuid // UUID del receptor
+                }
+            };
+            window.socketService.socket.send(JSON.stringify(payload));
+        }
+    }
+}
+
+// [NUEVO] Función para mostrar indicador de typing
+function showTypingIndicator() {
+    const status = document.getElementById('chat-header-status');
+    if (!status) return;
+
+    // Solo si no está ya animado para no reiniciar animaciones CSS bruscamente
+    if (!status.classList.contains('typing-dots')) {
+        status.textContent = ''; // Limpiar texto "Chat Directo"
+        status.classList.add('typing-active', 'typing-dots');
+    }
+
+    // Resetear el timeout de limpieza
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+        resetHeaderStatus();
+    }, TYPING_DISPLAY_TIME);
+}
+
+// [NUEVO] Función para resetear status del header
+function resetHeaderStatus() {
+    const status = document.getElementById('chat-header-status');
+    if (!status) return;
+
+    status.classList.remove('typing-active', 'typing-dots');
+    // Restaurar texto original (guardado en data attribute o por defecto)
+    status.textContent = status.dataset.originalText || 'Chat Directo';
+}
+
 async function sendMessage() {
     if (!currentChatUuid) return;
     const input = document.querySelector('.chat-message-input');
     const text = input.value.trim();
     if (!text && selectedFiles.length === 0) return;
+
+    // Resetear typing localmente al enviar (opcional)
+    lastTypingSent = 0;
 
     if (selectedFiles.length > 0) {
         const btn = document.getElementById('btn-send-message');
@@ -638,32 +696,40 @@ function initChatListeners() {
     document.addEventListener('socket-message', (e) => {
         const { type, payload } = e.detail;
         
+        // [NUEVO] Manejo de Typing
+        if (type === 'typing') {
+            // Validar que el evento viene del usuario con el que estamos hablando
+            // El backend envía { sender_id: ... } en payload
+            if (currentChatType === 'private' && currentChatId && parseInt(payload.sender_id) === parseInt(currentChatId)) {
+                showTypingIndicator();
+            }
+            return;
+        }
+
         if (type === 'new_chat_message' || type === 'private_message') {
             
-            // [NUEVO] Lógica robusta de validación para renderizar el mensaje
+            // Si llega un mensaje, limpiamos el typing inmediatamente
+            if (currentChatType === 'private' && currentChatId && parseInt(payload.sender_id) === parseInt(currentChatId)) {
+                resetHeaderStatus();
+                clearTimeout(typingTimeout);
+            }
+
             let isForCurrentChat = false;
 
-            // 1. Mensaje de Comunidad: Fácil, el UUID de comunidad coincide
             if (currentChatType === 'community' && type === 'new_chat_message') {
                 if (payload.community_uuid === currentChatUuid) {
                     isForCurrentChat = true;
                 }
             } 
-            // 2. Mensaje Privado
             else if (currentChatType === 'private' && type === 'private_message') {
-                // Caso A: Mensaje enviado por mí (eco)
-                // Debo estar en el chat cuyo UUID es el del receptor (target_uuid)
                 if (parseInt(payload.sender_id) === parseInt(window.USER_ID) && payload.target_uuid === currentChatUuid) {
                     isForCurrentChat = true;
                 }
-                // Caso B: Mensaje recibido de otro
-                // El remitente debe ser la persona con la que estoy hablando (currentChatId)
                 else if (currentChatId && parseInt(payload.sender_id) === parseInt(currentChatId)) {
                     isForCurrentChat = true;
                 }
             }
 
-            // Si pasa la validación, inyectamos el mensaje
             if (isForCurrentChat) {
                 const container = document.querySelector('.chat-messages-area');
                 if (container) {
@@ -694,7 +760,18 @@ function initChatListeners() {
 
     const input = document.querySelector('.chat-message-input');
     const sendBtn = document.getElementById('btn-send-message');
-    if (input) input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } });
+    
+    if (input) {
+        input.addEventListener('keydown', (e) => { 
+            // [NUEVO] Detectar escritura
+            handleTypingEvent(); 
+            if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } 
+        });
+        
+        // [NUEVO] También input event para mejor detección
+        input.addEventListener('input', () => handleTypingEvent());
+    }
+    
     if (sendBtn) sendBtn.addEventListener('click', (e) => { e.preventDefault(); sendMessage(); });
 
     const messagesArea = document.querySelector('.chat-messages-area');

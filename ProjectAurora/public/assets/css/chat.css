@@ -1202,3 +1202,30 @@
 .icon-indicator.favorite {
     color: #fbc02d; 
 }
+
+/* =========================================
+   7. INDICADOR DE ESCRIBIENDO (TYPING)
+   ========================================= */
+
+/* Animación de 3 puntos simulada */
+.typing-dots::after {
+    content: '.';
+    animation: typing 1.5s steps(5, end) infinite;
+    font-weight: 700;
+    font-size: 14px;
+    color: #1976d2; /* Color azul para destacar */
+}
+
+@keyframes typing {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60% { content: '...'; }
+    80%, 100% { content: ''; }
+}
+
+/* Color específico para el texto "Escribiendo" si se desea, o solo los puntos */
+.chat-status.typing-active {
+    color: #1976d2 !important;
+    font-weight: 600;
+    transition: color 0.2s;
+}

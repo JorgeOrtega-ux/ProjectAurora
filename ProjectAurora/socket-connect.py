@@ -151,11 +151,39 @@ async def broadcast_user_status(user_id, status):
             try: await ws.send(message)
             except: dead_sockets.add(ws)
         admin_sessions.difference_update(dead_sockets)
-    
-    # [NUEVO] Avisar a amigos conectados (para actualizar el punto verde en la lista de chats)
-    # TODO: Implementar consulta de amigos conectados para broadcasting eficiente. 
-    # Por ahora, los clientes pueden hacer polling o recibir el evento global si es necesario, 
-    # pero para escalabilidad se recomienda implementar en el futuro 'friend_status_change'.
+
+# [NUEVO] MANEJADOR DE TYPING
+async def handle_typing_event(user_id, payload):
+    target_uuid = payload.get('target_uuid')
+    if not target_uuid or not db_pool: return
+
+    try:
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # Resolver UUID a ID para encontrar el socket
+                await cur.execute("SELECT id FROM users WHERE uuid = %s", (target_uuid,))
+                row = await cur.fetchone()
+                if not row: return
+                
+                target_id = str(row[0])
+                
+                # Payload para el receptor
+                response = json.dumps({
+                    "type": "typing",
+                    "payload": {
+                        "sender_id": user_id,
+                        # No necesitamos más datos, solo saber quién escribe
+                    }
+                })
+
+                # Enviar solo al receptor si está conectado
+                if target_id in connected_clients:
+                    for ws in connected_clients[target_id].values():
+                        try: await ws.send(response)
+                        except: pass
+
+    except Exception as e:
+        logger.error(f"Error handling typing event: {e}")
 
 async def handle_chat_message(user_id, user_info, payload):
     """
@@ -426,8 +454,12 @@ async def handle_browser_client(websocket):
             # --- CHAT MESSAGE ---
             elif msg_type == 'chat_message':
                 if user_id: 
-                    # El payload ahora incluye 'context' y 'target_uuid'
                     await handle_chat_message(user_id, user_data_cache, data.get('payload', {}))
+
+            # --- TYPING EVENT (NUEVO) ---
+            elif msg_type == 'typing':
+                if user_id:
+                    await handle_typing_event(user_id, data.get('payload', {}))
 
     except websockets.exceptions.ConnectionClosed:
         pass
@@ -532,7 +564,7 @@ async def handle_php_notification(reader, writer):
 
 async def main():
     await init_db_pool()
-    logger.info("=== Servidor Aurora Iniciado (Híbrido: Chat + DMs) ===")
+    logger.info("=== Servidor Aurora Iniciado (Híbrido: Chat + DMs + Typing) ===")
     
     ws_server = await websockets.serve(handle_browser_client, "0.0.0.0", 8080)
     php_bridge = await asyncio.start_server(handle_php_notification, "127.0.0.1", 8081)

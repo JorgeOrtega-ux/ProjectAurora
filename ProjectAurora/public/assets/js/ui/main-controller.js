@@ -1,4 +1,4 @@
-// assets/js/main-controller.js
+// public/assets/js/ui/main-controller.js
 
 let isAnimating = false;
 let SHOULD_CLOSE_SURFACE_ON_CLICK = true; 
@@ -14,8 +14,7 @@ export function initMainController() {
 
         const target = e.target;
 
-        // --- [NUEVO] LÓGICA GLOBAL DE DROPDOWNS GENÉRICOS ---
-        // Centralizamos la apertura de menús para evitar conflictos entre módulos
+        // --- LÓGICA GLOBAL DE DROPDOWNS GENÉRICOS ---
         const toggleDropdownBtn = target.closest('[data-action="toggle-dropdown"]');
         if (toggleDropdownBtn) {
             e.preventDefault();
@@ -73,12 +72,16 @@ export function initMainController() {
             const action = trigger.dataset.action;
             let targetModuleId = null;
 
+            // Mapeo de acciones a IDs de módulos
             if (action === 'toggleModuleSurface') targetModuleId = 'moduleSurface';
             if (action === 'toggleModuleOptions') targetModuleId = 'moduleOptions';
             if (action === 'toggleModuleNotifications') targetModuleId = 'moduleNotifications';
             if (action === 'toggleModuleUsageSelect') targetModuleId = 'moduleUsageSelect';
             if (action === 'toggleModuleLanguageSelect') targetModuleId = 'moduleLanguageSelect';
             if (action === 'toggleModuleThemeSelect') targetModuleId = 'moduleThemeSelect';
+            
+            // [CORRECCIÓN] Agregado el caso faltante para Privacidad
+            if (action === 'toggleModulePrivacySelect') targetModuleId = 'modulePrivacySelect';
 
             if (action === 'toggle-admin-user-search') {
                 e.preventDefault();
@@ -120,12 +123,12 @@ export function initMainController() {
         if (allowCloseOnClickOutside) {
             const clickedInsideContent = target.closest('.menu-content');
             const clickedInsideTrigger = target.closest('[data-action^="toggleModule"]'); 
-            const clickedInsideGeneric = target.closest('.popover-module'); // [NUEVO]
-            const clickedInsideGenericTrigger = target.closest('[data-action="toggle-dropdown"]'); // [NUEVO]
+            const clickedInsideGeneric = target.closest('.popover-module');
+            const clickedInsideGenericTrigger = target.closest('[data-action="toggle-dropdown"]');
 
             if (!clickedInsideContent && !clickedInsideTrigger && !clickedInsideGeneric && !clickedInsideGenericTrigger) {
                 closeAllModules();
-                closeGenericDropdowns(); // [NUEVO]
+                closeGenericDropdowns();
             }
         }
     });
@@ -134,7 +137,7 @@ export function initMainController() {
     document.addEventListener('keydown', (e) => {
         if (allowCloseOnEsc && e.key === 'Escape') {
             closeAllModules();
-            closeGenericDropdowns(); // [NUEVO]
+            closeGenericDropdowns();
             const adminSearch = document.getElementById('admin-users-search-bar');
             const adminBtn = document.querySelector('[data-action="toggle-admin-user-search"]');
             if (adminSearch && !adminSearch.classList.contains('disabled')) {
@@ -178,7 +181,7 @@ export function initMainController() {
     }
 }
 
-// [NUEVO] Funciones auxiliares para Dropdowns Genéricos
+// Funciones auxiliares para Dropdowns Genéricos
 function toggleGenericDropdown(targetId) {
     const targetEl = document.getElementById(targetId);
     if (targetEl) {
@@ -189,7 +192,6 @@ function toggleGenericDropdown(targetId) {
         
         if (!isCurrentlyOpen) {
             targetEl.classList.remove('disabled');
-            // Opcional: Añadir clase active al trigger si es necesario visualmente
             const trigger = document.querySelector(`[data-target="${targetId}"]`);
             if(trigger) trigger.classList.add('active');
         }
@@ -197,11 +199,9 @@ function toggleGenericDropdown(targetId) {
 }
 
 function closeGenericDropdowns() {
-    // Cierra todos los popover-module que NO son módulos principales (data-module)
     document.querySelectorAll('.popover-module:not([data-module]):not(.disabled)').forEach(el => {
         el.classList.add('disabled');
     });
-    // Quitar estado active de los triggers
     document.querySelectorAll('[data-action="toggle-dropdown"].active').forEach(el => {
         el.classList.remove('active');
     });
@@ -241,7 +241,7 @@ function handleDropdownSelection(optionElement) {
     }
 
     closeAllModules();
-    closeGenericDropdowns(); // [NUEVO] Asegurar que se cierre al seleccionar
+    closeGenericDropdowns(); 
 }
 
 function toggleModule(moduleId) {
@@ -260,7 +260,7 @@ function toggleModule(moduleId) {
         }
     } else {
         closeAllModules(moduleId); 
-        closeGenericDropdowns(); // [NUEVO]
+        closeGenericDropdowns();
         module.classList.remove('disabled');
         module.classList.add('active');
 
