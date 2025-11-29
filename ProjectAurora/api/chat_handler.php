@@ -59,7 +59,7 @@ try {
             $targetId = $stmtU->fetchColumn();
             if (!$targetId || $targetId == $userId) throw new Exception("Usuario inválido.");
 
-            // --- [NUEVO] VALIDACIÓN DE PRIVACIDAD ---
+            // --- [PRIVACIDAD REFORZADA: BLOQUEO EN SERVIDOR] ---
             $stmtPriv = $pdo->prepare("
                 SELECT COALESCE(up.message_privacy, 'friends') as privacy,
                        (SELECT status FROM friendships WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)) as status
@@ -71,7 +71,7 @@ try {
             $res = $stmtPriv->fetch(PDO::FETCH_ASSOC);
             
             $privacy = $res['privacy'] ?? 'friends';
-            $status = $res['status']; // 'accepted', 'pending', null
+            $status = $res['status']; 
 
             if ($privacy === 'nobody') {
                 throw new Exception(translation('chat.error.privacy_block') ?? "Privacidad: Usuario no recibe mensajes.");

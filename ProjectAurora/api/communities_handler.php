@@ -95,6 +95,7 @@ try {
         $communities = $stmtComm->fetchAll(PDO::FETCH_ASSOC);
 
         // 2. Obtener Chats Privados Activos
+        // [CORRECCIÓN] SQL ajustado para incluir privacidad y friend_status con el número correcto de parámetros
         $sqlDMs = "SELECT 
                     'private' as type,
                     u.id, u.uuid, u.username as name, 
@@ -103,8 +104,11 @@ try {
                     COALESCE(pcc.is_favorite, 0) as is_favorite,
                     m.message as last_message,
                     m.created_at as last_message_at,
-                    (SELECT COUNT(*) FROM private_messages pm WHERE pm.sender_id = u.id AND pm.receiver_id = ? AND pm.is_read = 0) as unread_count
+                    (SELECT COUNT(*) FROM private_messages pm WHERE pm.sender_id = u.id AND pm.receiver_id = ? AND pm.is_read = 0) as unread_count,
+                    COALESCE(up.message_privacy, 'friends') as message_privacy,
+                    (SELECT status FROM friendships f WHERE (f.sender_id = u.id AND f.receiver_id = ?) OR (f.sender_id = ? AND f.receiver_id = u.id)) as friend_status
                    FROM users u
+                   LEFT JOIN user_preferences up ON u.id = up.user_id
                    JOIN (
                        SELECT 
                            CASE WHEN sender_id = ? THEN receiver_id ELSE sender_id END as partner_id,
@@ -122,8 +126,39 @@ try {
                    AND (pcc.cleared_at IS NULL OR m.created_at > pcc.cleared_at)";
 
         $stmtDMs = $pdo->prepare($sqlDMs);
-        $stmtDMs->execute([$userId, $userId, $userId, $userId, $userId, $userId]);
+        
+        // [CORRECCIÓN] Array de parámetros (8 placeholders = 8 variables)
+        $params = [
+            $userId, // unread_count receiver
+            $userId, // friend_status receiver
+            $userId, // friend_status sender
+            $userId, // subquery partner_id case
+            $userId, // subquery where sender
+            $userId, // subquery where receiver
+            $userId, // subquery group by case
+            $userId  // pcc join user_id
+        ];
+        
+        $stmtDMs->execute($params);
         $dms = $stmtDMs->fetchAll(PDO::FETCH_ASSOC);
+
+        // Procesar lógica de permisos
+        foreach ($dms as &$dm) {
+            $privacy = $dm['message_privacy'];
+            $status = $dm['friend_status'];
+            $dm['can_message'] = true;
+
+            // Reglas de bloqueo
+            if ($privacy === 'nobody') {
+                $dm['can_message'] = false;
+            } elseif ($privacy === 'friends' && $status !== 'accepted') {
+                $dm['can_message'] = false;
+            }
+            
+            // Limpieza de datos internos
+            unset($dm['message_privacy']);
+            unset($dm['friend_status']);
+        }
 
         // 3. Unificar y Ordenar
         $fullList = array_merge($communities, $dms);
@@ -296,7 +331,6 @@ try {
     } elseif ($action === 'get_user_chat_by_uuid') {
         $uuid = trim($data['uuid'] ?? '');
         
-        // [MODIFICADO] Incluir privacidad y estado de amistad en la respuesta
         $sql = "SELECT u.id, u.uuid, u.username as community_name, u.profile_picture, u.role,
                        COALESCE(up.message_privacy, 'friends') as message_privacy,
                        (SELECT status FROM friendships f WHERE (f.sender_id = u.id AND f.receiver_id = ?) OR (f.sender_id = ? AND f.receiver_id = u.id)) as friend_status
@@ -323,6 +357,9 @@ try {
             } elseif ($privacy === 'friends' && $status !== 'accepted') {
                 $user['can_message'] = false;
             }
+            
+            unset($user['message_privacy']);
+            unset($user['friend_status']);
             
             echo json_encode(['success' => true, 'data' => $user]); 
         }
