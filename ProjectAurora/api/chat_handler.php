@@ -158,7 +158,7 @@ try {
             }
             $pdo->commit();
 
-            // Preparar broadcast - [MODIFICADO] Incluimos 'uuid' del sender para la actualización en tiempo real del frontend
+            // Preparar broadcast
             $stmtUser = $pdo->prepare("SELECT uuid, username, profile_picture, role FROM users WHERE id = ?");
             $stmtUser->execute([$userId]);
             $userData = $stmtUser->fetch(PDO::FETCH_ASSOC);
@@ -169,7 +169,7 @@ try {
                 'context' => $context,
                 'message' => $messageText,
                 'sender_id' => $userId,
-                'sender_uuid' => $userData['uuid'], // [NUEVO] Necesario para UI update
+                'sender_uuid' => $userData['uuid'],
                 'sender_username' => $userData['username'],
                 'sender_profile_picture' => $userData['profile_picture'],
                 'sender_role' => $userData['role'],
@@ -211,6 +211,7 @@ try {
             $targetId = $stmtU->fetchColumn();
             if (!$targetId) throw new Exception("Usuario no encontrado");
 
+            // Marcar como leídos al obtener historial
             $stmtRead = $pdo->prepare("UPDATE private_messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ? AND is_read = 0");
             $stmtRead->execute([$targetId, $userId]);
 
@@ -282,6 +283,46 @@ try {
         }
 
         echo json_encode(['success' => true, 'messages' => array_reverse($messages), 'has_more' => (count($messages) >= $limit)]);
+
+    // --- MARCAR COMO LEÍDO (Real-time) [NUEVO] ---
+    } elseif ($action === 'mark_as_read') {
+        $targetUuid = $data['target_uuid'] ?? ''; // El UUID del que envió los mensajes (el otro usuario)
+        $context = $data['context'] ?? 'private';
+
+        if (empty($targetUuid)) throw new Exception("UUID requerido");
+
+        if ($context === 'private') {
+            // 1. Obtener ID del otro usuario
+            $stmtU = $pdo->prepare("SELECT id FROM users WHERE uuid = ?");
+            $stmtU->execute([$targetUuid]);
+            $senderId = $stmtU->fetchColumn();
+
+            if ($senderId) {
+                // 2. Actualizar DB: Marcar como leídos los mensajes que este usuario me envió
+                $stmtUpd = $pdo->prepare("UPDATE private_messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ? AND is_read = 0");
+                $stmtUpd->execute([$senderId, $userId]);
+                
+                // Si hubo cambios, notificar al remitente (Sender) que sus mensajes fueron leídos
+                if ($stmtUpd->rowCount() > 0) {
+                    send_live_notification($senderId, 'messages_read', [
+                        'reader_id' => $userId, // Yo (quien leyó)
+                        'context'   => 'private'
+                    ]);
+                }
+            }
+        } else {
+            // Lógica para comunidades (actualizar last_read_at)
+            $stmtC = $pdo->prepare("SELECT id FROM communities WHERE uuid = ?");
+            $stmtC->execute([$targetUuid]);
+            $commId = $stmtC->fetchColumn();
+
+            if ($commId) {
+                $pdo->prepare("UPDATE community_members SET last_read_at = NOW() WHERE community_id = ? AND user_id = ?")
+                    ->execute([$commId, $userId]);
+            }
+        }
+
+        echo json_encode(['success' => true]);
 
     // --- ELIMINAR MENSAJE INDIVIDUAL ---
     } elseif ($action === 'delete_message') {

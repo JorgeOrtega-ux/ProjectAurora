@@ -186,8 +186,12 @@ function handleSidebarUpdate(payload) {
             timeEl.textContent = formatChatTime(new Date());
         }
 
-        // B. Actualizar contador si no está activo
-        if (uuid !== window.ACTIVE_CHAT_UUID) {
+        // B. Actualizar contador 
+        // [NUEVO] Solo incrementamos si NO es el chat activo, O si es el chat activo pero la ventana NO tiene foco
+        const isActiveChat = (uuid === window.ACTIVE_CHAT_UUID);
+        const windowHasFocus = document.hasFocus();
+
+        if (!isActiveChat || (isActiveChat && !windowHasFocus)) {
             let badge = existingItem.querySelector('.unread-counter');
             if (!badge) {
                 const infoContainer = existingItem.querySelector('.chat-item-info > div:last-child');
@@ -213,16 +217,18 @@ function handleSidebarUpdate(payload) {
         if (dataItem) {
             dataItem.last_message = messageText;
             dataItem.last_message_at = new Date().toISOString();
-            if (uuid !== window.ACTIVE_CHAT_UUID) {
+            
+            // [NUEVO] Misma lógica de contador para la memoria
+            if (!isActiveChat || (isActiveChat && !windowHasFocus)) {
                 dataItem.unread_count = (parseInt(dataItem.unread_count) || 0) + 1;
             }
+            
             sidebarItems = sidebarItems.filter(i => i.uuid !== uuid);
             sidebarItems.unshift(dataItem);
         }
 
     } else {
         // 2. Si es un chat nuevo que no está en la lista visible, recargamos
-        // No pasamos true aquí para evitar recargar el chat activo si por casualidad coincidiera
         loadSidebarList(false);
     }
 }
@@ -231,7 +237,6 @@ function handleSidebarUpdate(payload) {
 // CARGA DE DATOS
 // ==========================================
 
-// [MODIFICADO] Acepta parámetro para forzar la apertura del chat activo (solo en refresh)
 async function loadSidebarList(shouldOpenActive = false) {
     const res = await postJson('api/communities_handler.php', { action: 'get_sidebar_list' });
     
@@ -255,7 +260,7 @@ async function loadSidebarList(shouldOpenActive = false) {
             }
         }
 
-        // [SOLUCIÓN BUG 1] Solo inicializar el chat si estamos en carga inicial
+        // Solo inicializar el chat si estamos en carga inicial
         if (shouldOpenActive) {
             openChat(window.ACTIVE_CHAT_UUID, itemData || null);
         }
@@ -357,13 +362,13 @@ function showChatMenu(btn, uuid, type, isPinned, isFav) {
 
 async function togglePinChat(uuid, type) {
     const res = await postJson('api/communities_handler.php', { action: 'toggle_pin', uuid, type });
-    if (res.success) loadSidebarList(); // Aquí NO pasamos true, por lo tanto no recarga el chat activo
+    if (res.success) loadSidebarList(); 
     else if(window.alertManager) window.alertManager.showAlert(res.message, 'warning');
 }
 
 async function toggleFavChat(uuid, type) {
     const res = await postJson('api/communities_handler.php', { action: 'toggle_favorite', uuid, type });
-    if (res.success) loadSidebarList(); // Igual aquí
+    if (res.success) loadSidebarList(); 
     else if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
 }
 
@@ -439,6 +444,7 @@ function initListListeners() {
         }
     });
 
+    // [CORRECCIÓN] Añadidos 'return' para evitar propagación de eventos no deseada
     document.body.addEventListener('click', async (e) => {
         const joinBtn = e.target.closest('[data-action="join-public-community"]');
         if (joinBtn) {
@@ -455,24 +461,28 @@ function initListListeners() {
                 if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
                 setButtonLoading(joinBtn, false, 'Unirse');
             }
+            return; // Detener ejecución
         }
 
         const pinAction = e.target.closest('[data-action="toggle-pin-chat"]');
         if (pinAction) {
             document.querySelector('.chat-popover-menu')?.remove();
             await togglePinChat(pinAction.dataset.uuid, pinAction.dataset.type);
+            return; // Detener ejecución
         }
 
         const favAction = e.target.closest('[data-action="toggle-fav-chat"]');
         if (favAction) {
             document.querySelector('.chat-popover-menu')?.remove();
             await toggleFavChat(favAction.dataset.uuid, favAction.dataset.type);
+            return; // Detener ejecución
         }
 
         const leaveAction = e.target.closest('[data-action="leave-community"]');
         if (leaveAction) {
             document.querySelector('.chat-popover-menu')?.remove();
             await leaveCommunity(leaveAction.dataset.uuid);
+            return; // Detener ejecución
         }
         
         const deleteChatAction = e.target.closest('[data-action="delete-chat-conversation"]');
@@ -494,6 +504,7 @@ function initListListeners() {
             } else {
                 if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
             }
+            return; // Detener ejecución
         }
     });
 
@@ -501,8 +512,28 @@ function initListListeners() {
         const { type, payload } = e.detail;
         
         if (type === 'new_chat_message' || type === 'private_message') {
-            // [MODIFICADO] Usar actualización parcial
             handleSidebarUpdate(payload);
+        }
+    });
+
+    // Escuchar evento local para limpiar badge cuando chat-manager marque como leído
+    document.addEventListener('local-chat-read', (e) => {
+        const uuid = e.detail.uuid;
+        const item = document.querySelector(`.chat-item[data-uuid="${uuid}"]`);
+        
+        if (item) {
+            const badge = item.querySelector('.unread-counter');
+            if (badge) badge.remove();
+            
+            const preview = item.querySelector('.chat-item-preview');
+            if (preview) {
+                preview.style.fontWeight = 'normal';
+                preview.style.color = '';
+            }
+            
+            // Actualizar datos en memoria
+            const dataItem = sidebarItems.find(i => i.uuid === uuid);
+            if (dataItem) dataItem.unread_count = 0;
         }
     });
 }
@@ -539,7 +570,6 @@ function initJoinByCode() {
 }
 
 export function initCommunitiesManager() {
-    // [SOLUCIÓN BUG 1] Aquí pasamos true para que SÍ abra el chat en la carga inicial
     loadSidebarList(true); 
     
     loadPublicCommunities(); 

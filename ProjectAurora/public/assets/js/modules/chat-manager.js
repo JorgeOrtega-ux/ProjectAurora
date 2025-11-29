@@ -55,6 +55,24 @@ function scrollToBottom() {
     }
 }
 
+// Enviar señal de lectura al servidor
+async function sendReadSignal() {
+    if (!currentChatUuid) return;
+    
+    // Solo marcamos como leído si la ventana tiene el foco
+    if (!document.hasFocus()) return;
+
+    await postJson('api/chat_handler.php', {
+        action: 'mark_as_read',
+        target_uuid: currentChatUuid,
+        context: currentChatType
+    });
+    
+    // Disparar evento para que communities-manager limpie el badge localmente
+    const event = new CustomEvent('local-chat-read', { detail: { uuid: currentChatUuid } });
+    document.dispatchEvent(event);
+}
+
 // ==========================================
 // LÓGICA PRINCIPAL DE APERTURA (Exportada)
 // ==========================================
@@ -671,22 +689,7 @@ async function handleReportMessage(msgId) {
     }
 }
 
-async function handleDeleteConversation(uuid) {
-    if(!confirm('¿Seguro que quieres eliminar este chat? Solo se borrará para ti.')) return;
-    
-    const res = await postJson('api/chat_handler.php', {
-        action: 'delete_conversation',
-        target_uuid: uuid
-    });
-
-    if(res.success) {
-        if(window.alertManager) window.alertManager.showAlert(res.message, 'success');
-        if(window.navigateTo) window.navigateTo('main');
-        else window.location.href = window.BASE_PATH + 'main';
-    } else {
-        if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
-    }
-}
+// [CORRECCIÓN] Eliminada la función duplicada handleDeleteConversation que estaba aquí antes
 
 // ==========================================
 // INICIALIZACIÓN
@@ -698,8 +701,6 @@ function initChatListeners() {
         
         // [NUEVO] Manejo de Typing
         if (type === 'typing') {
-            // Validar que el evento viene del usuario con el que estamos hablando
-            // El backend envía { sender_id: ... } en payload
             if (currentChatType === 'private' && currentChatId && parseInt(payload.sender_id) === parseInt(currentChatId)) {
                 showTypingIndicator();
             }
@@ -741,6 +742,14 @@ function initChatListeners() {
                     container.insertAdjacentHTML('beforeend', createMessageHTML(payload));
                     scrollToBottom();
                     currentOffset++;
+
+                    // === NUEVO: MARCAR COMO LEÍDO AUTOMÁTICAMENTE ===
+                    // Si el mensaje es para el chat que estoy viendo AHORA MISMO y tengo el foco
+                    if (document.hasFocus()) {
+                        setTimeout(() => {
+                            sendReadSignal();
+                        }, 500); // Pequeño delay para UX
+                    }
                 }
             }
         }
@@ -768,7 +777,6 @@ function initChatListeners() {
             if (e.key === 'Enter') { e.preventDefault(); sendMessage(); } 
         });
         
-        // [NUEVO] También input event para mejor detección
         input.addEventListener('input', () => handleTypingEvent());
     }
     
@@ -778,6 +786,21 @@ function initChatListeners() {
     if (messagesArea) {
         messagesArea.addEventListener('scroll', handleChatScroll);
     }
+
+    // === NUEVO: LISTENERS PARA LECTURA ACTIVA ===
+    // Si el usuario vuelve a la pestaña y hay un chat abierto, enviar lectura
+    window.addEventListener('focus', () => {
+        if (currentChatUuid) {
+            sendReadSignal();
+        }
+    });
+    
+    // Si hace clic en el área de chat (por si acaso estaba inactivo)
+    document.querySelector('.chat-main-area')?.addEventListener('click', () => {
+        if (currentChatUuid) {
+            sendReadSignal();
+        }
+    });
 }
 
 function initListeners() {
@@ -813,13 +836,7 @@ function initListeners() {
             document.getElementById('chat-info-panel')?.classList.add('d-none'); 
         }
 
-        const delChatBtn = e.target.closest('[data-action="delete-chat-conversation"]');
-        if (delChatBtn) {
-            e.preventDefault();
-            const uuid = delChatBtn.dataset.uuid;
-            document.querySelector('.chat-popover-menu')?.remove();
-            await handleDeleteConversation(uuid);
-        }
+        // [CORRECCIÓN] Eliminado el listener de delete-chat-conversation porque ya está en communities-manager.js
     });
 }
 
