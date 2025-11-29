@@ -1724,3 +1724,42 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-11-28 20:11:05,296 - INFO - Usuario conectado: ID 2 | Rol: user
 2025-11-28 20:11:35,279 - INFO - connection open
 2025-11-28 20:11:35,293 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 20:13:12,811 - INFO - connection open
+2025-11-28 20:13:12,825 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 20:14:55,268 - INFO - connection open
+2025-11-28 20:14:55,272 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 20:15:32,226 - INFO - connection open
+2025-11-28 20:15:32,231 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-11-28 20:15:37,553 - INFO - connection open
+2025-11-28 20:15:37,556 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-11-28 20:15:43,741 - INFO - connection open
+2025-11-28 20:15:43,746 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 20:15:47,063 - INFO - connection open
+2025-11-28 20:15:47,082 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-11-28 20:16:25,299 - INFO - ✅ Pool de conexiones a base de datos inicializado (Max 20).
+2025-11-28 20:16:25,308 - INFO - === Servidor Aurora Iniciado (Híbrido: Chat + DMs + Typing) ===
+2025-11-28 20:16:25,697 - INFO - server listening on 0.0.0.0:8080
+2025-11-28 20:16:27,506 - INFO - connection open
+2025-11-28 20:16:27,510 - INFO - connection open
+2025-11-28 20:16:27,512 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-11-28 20:16:27,516 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 20:17:00,334 - INFO - connection open
+2025-11-28 20:17:00,341 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 20:17:24,341 - INFO - connection open
+2025-11-28 20:17:24,346 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 20:17:33,289 - INFO - connection open
+2025-11-28 20:17:33,293 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 20:19:44,708 - INFO - connection open
+2025-11-28 20:19:44,715 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 20:19:52,146 - INFO - connection open
+2025-11-28 20:19:52,150 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-11-28 20:19:58,749 - INFO - connection open
+2025-11-28 20:19:58,759 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 20:19:59,851 - INFO - connection open
+2025-11-28 20:19:59,857 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 20:20:00,844 - INFO - connection open
+2025-11-28 20:20:00,850 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 20:20:04,339 - INFO - connection open
+2025-11-28 20:20:04,341 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 20:20:41,224 - INFO - connection open
+2025-11-28 20:20:41,231 - INFO - Usuario conectado: ID 1 | Rol: user

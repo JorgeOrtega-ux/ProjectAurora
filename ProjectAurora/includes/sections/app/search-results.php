@@ -29,8 +29,11 @@ $renderUserCard = function ($user) use ($currentUserId) {
     $uid = $user['id'];
     $role = $user['role'] ?? 'user';
     $mutualCount = $user['mutual_friends'];
+    
+    // [MODIFICADO] Verificar si está bloqueado
+    $isBlocked = (isset($user['is_blocked_by_me']) && $user['is_blocked_by_me'] > 0);
 
-    // [NUEVO] Lógica de Privacidad
+    // Lógica de Privacidad
     $privacy = $user['message_privacy'] ?? 'friends';
     $canMessage = false;
 
@@ -43,28 +46,43 @@ $renderUserCard = function ($user) use ($currentUserId) {
     }
 
     $actionsHtml = '';
-    if ($user['friend_status'] === 'accepted') {
-        // [MODIFICADO] Solo mostrar botón de chat si está permitido
-        $chatBtnHtml = '';
-        if ($canMessage) {
-            $chatBtnHtml = '
-            <button class="btn-add-friend" data-action="send-dm" data-uid="' . $uid . '" style="margin-right:4px;">
-                <span class="material-symbols-rounded" style="font-size:16px;">chat</span>
-            </button>';
-        }
 
-        $actionsHtml = $chatBtnHtml . '
-            <button class="btn-add-friend btn-remove-friend" data-uid="' . $uid . '" data-i18n="search.actions.remove">' . translation('search.actions.remove') . '</button>
-        ';
-    } elseif ($user['friend_status'] === 'pending') {
-        if ($user['sender_id'] == $currentUserId) {
-            $actionsHtml = '<button class="btn-add-friend btn-cancel-request" data-uid="' . $uid . '" data-i18n="search.actions.cancel">' . translation('search.actions.cancel') . '</button>';
-        } else {
-            $actionsHtml = '<button class="btn-accept-request" data-uid="' . $uid . '" data-i18n="search.actions.accept">' . translation('search.actions.accept') . '</button>
-                            <button class="btn-decline-request" data-uid="' . $uid . '" data-i18n="search.actions.decline">' . translation('search.actions.decline') . '</button>';
-        }
+    if ($isBlocked) {
+        // [NUEVO] Si está bloqueado, mostrar botón de desbloquear
+        $actionsHtml = '
+            <button class="btn-add-friend" data-action="unblock-user" data-uid="' . $uid . '" style="color:#d32f2f; border-color:#ffcdd2; background:#ffebee;">
+                <span class="material-symbols-rounded" style="font-size:16px; margin-right:4px;">lock_open</span> Desbloquear
+            </button>';
     } else {
-        $actionsHtml = '<button class="btn-add-friend" data-uid="' . $uid . '" data-i18n="search.actions.add">' . translation('search.actions.add') . '</button>';
+        // Botón de Bloqueo (Icono Rojo pequeño) para agregar a las otras acciones
+        $blockBtnHtml = '
+            <button class="btn-add-friend btn-remove-friend" data-action="block-user" data-uid="' . $uid . '" title="Bloquear usuario" style="margin-left:4px; padding: 8px 10px;">
+                <span class="material-symbols-rounded" style="font-size:16px;">block</span>
+            </button>';
+
+        if ($user['friend_status'] === 'accepted') {
+            $chatBtnHtml = '';
+            if ($canMessage) {
+                $chatBtnHtml = '
+                <button class="btn-add-friend" data-action="send-dm" data-uid="' . $uid . '" style="margin-right:4px;">
+                    <span class="material-symbols-rounded" style="font-size:16px;">chat</span>
+                </button>';
+            }
+
+            $actionsHtml = $chatBtnHtml . '
+                <button class="btn-add-friend btn-remove-friend" data-uid="' . $uid . '" data-i18n="search.actions.remove">' . translation('search.actions.remove') . '</button>
+                ' . $blockBtnHtml;
+
+        } elseif ($user['friend_status'] === 'pending') {
+            if ($user['sender_id'] == $currentUserId) {
+                $actionsHtml = '<button class="btn-add-friend btn-cancel-request" data-uid="' . $uid . '" data-i18n="search.actions.cancel">' . translation('search.actions.cancel') . '</button>' . $blockBtnHtml;
+            } else {
+                $actionsHtml = '<button class="btn-accept-request" data-uid="' . $uid . '" data-i18n="search.actions.accept">' . translation('search.actions.accept') . '</button>
+                                <button class="btn-decline-request" data-uid="' . $uid . '" data-i18n="search.actions.decline">' . translation('search.actions.decline') . '</button>' . $blockBtnHtml;
+            }
+        } else {
+            $actionsHtml = '<button class="btn-add-friend" data-uid="' . $uid . '" data-i18n="search.actions.add">' . translation('search.actions.add') . '</button>' . $blockBtnHtml;
+        }
     }
 ?>
     <div class="user-card-item">

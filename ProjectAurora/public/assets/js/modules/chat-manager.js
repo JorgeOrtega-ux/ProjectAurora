@@ -17,11 +17,11 @@ const MESSAGES_PER_PAGE = 50;
 let isLoadingMessages = false;
 let hasMoreMessages = true;
 
-// Estado de Typing (Escribiendo)
+// Estado de Typing
 let lastTypingSent = 0;
 let typingTimeout = null;
-const TYPING_THROTTLE = 2000; // Enviar evento máx cada 2s
-const TYPING_DISPLAY_TIME = 3000; // Tiempo que duran los puntitos antes de quitarse
+const TYPING_THROTTLE = 2000;
+const TYPING_DISPLAY_TIME = 3000;
 
 // ==========================================
 // UTILIDADES INTERNAS
@@ -55,11 +55,8 @@ function scrollToBottom() {
     }
 }
 
-// Enviar señal de lectura al servidor
 async function sendReadSignal() {
     if (!currentChatUuid) return;
-    
-    // Solo marcamos como leído si la ventana tiene el foco
     if (!document.hasFocus()) return;
 
     await postJson('api/chat_handler.php', {
@@ -68,7 +65,6 @@ async function sendReadSignal() {
         context: currentChatType
     });
     
-    // Disparar evento para que communities-manager limpie el badge localmente
     const event = new CustomEvent('local-chat-read', { detail: { uuid: currentChatUuid } });
     document.dispatchEvent(event);
 }
@@ -102,7 +98,6 @@ export async function openChat(uuid, chatData = null) {
     hasMoreMessages = true;
     isLoadingMessages = false;
 
-    // Resetear typing al cambiar de chat
     clearTimeout(typingTimeout);
     resetHeaderStatus(chatData.type === 'private');
 
@@ -118,7 +113,6 @@ export async function openChat(uuid, chatData = null) {
     }
 
     updateChatInterface(chatData);
-    
     loadChatMessages(uuid, currentChatType, true);
 
     const prefix = (currentChatType === 'private') ? 'dm' : 'c';
@@ -756,13 +750,9 @@ function showChatMenu(btn, uuid, type, isPinned, isFav) {
     }, 0);
 }
 
+// Lógica de bloqueo desde Chat (usando Handler de communities para obtener ID)
 async function blockUserFromChat(uuid) {
     if (!confirm(t('friends.confirm_block') || '¿Seguro que quieres bloquear a este usuario?')) return;
-    
-    // Necesitamos el ID numérico, pero tenemos UUID. Haremos la llamada directa.
-    // El backend puede resolver UUID -> ID si modificamos la API, 
-    // pero friends_handler espera target_id numérico.
-    // Solución: Usar communities_handler.get_user_chat_by_uuid primero.
     
     const resInfo = await postJson('api/communities_handler.php', { action: 'get_user_chat_by_uuid', uuid: uuid });
     if (resInfo.success) {
@@ -771,7 +761,6 @@ async function blockUserFromChat(uuid) {
         
         if (resBlock.success) {
             if(window.alertManager) window.alertManager.showAlert(resBlock.message, 'success');
-            // Recargar para aplicar cambios visuales (input deshabilitado)
             window.location.reload(); 
         } else {
             if(window.alertManager) window.alertManager.showAlert(resBlock.message, 'error');
@@ -896,7 +885,7 @@ function initChatListeners() {
 function initListeners() {
     document.body.addEventListener('click', async (e) => {
         
-        // [NUEVO] Listener para bloquear
+        // Listener para bloquear desde Chat
         const blockBtn = e.target.closest('[data-action="block-user-chat"]');
         if (blockBtn) {
             e.preventDefault();
@@ -911,7 +900,7 @@ function initListeners() {
             document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
             window.ACTIVE_CHAT_UUID = null;
             currentChatUuid = null;
-            currentChatId = null; // Limpiar ID
+            currentChatId = null; 
             window.history.pushState({ section: 'main' }, '', window.BASE_PATH);
         }
         
