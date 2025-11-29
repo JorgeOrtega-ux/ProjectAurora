@@ -161,6 +161,7 @@ async def handle_chat_message(user_id, user_info, payload):
     """
     Maneja el envío de mensajes: 
     - Valida contexto (privado o comunidad).
+    - [SEGURIDAD] Valida privacidad y amistad antes de enviar.
     - Guarda en la tabla correcta.
     - Difunde a los destinatarios.
     """
@@ -193,6 +194,37 @@ async def handle_chat_message(user_id, user_info, payload):
                     
                     if receiver_id == user_id:
                         return # No auto-mensajes
+
+                    # [SEGURIDAD CRÍTICA] VALIDACIÓN DE PRIVACIDAD
+                    # Verificar si el usuario permite mensajes y el estado de amistad
+                    privacy_query = """
+                        SELECT 
+                            COALESCE(up.message_privacy, 'friends') as privacy,
+                            (SELECT status FROM friendships WHERE (sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s)) as friend_status
+                        FROM users u
+                        LEFT JOIN user_preferences up ON u.id = up.user_id
+                        WHERE u.id = %s
+                    """
+                    # Parámetros: (sender, receiver, receiver, sender) para amistad, (receiver_id) para usuario
+                    await cur.execute(privacy_query, (user_id, receiver_id, receiver_id, user_id, receiver_id))
+                    privacy_row = await cur.fetchone()
+
+                    if privacy_row:
+                        privacy = privacy_row[0]
+                        status = privacy_row[1]
+                        
+                        is_blocked = False
+                        
+                        if privacy == 'nobody':
+                            is_blocked = True
+                        elif privacy == 'friends' and status != 'accepted':
+                            is_blocked = True
+                        
+                        if is_blocked:
+                            logger.warning(f"Bloqueo de seguridad: Usuario {user_id} intentó enviar mensaje a {receiver_id} sin permiso (Privacidad: {privacy}, Estado: {status}).")
+                            return # Detener ejecución silenciosamente (o enviar error al cliente si se desea)
+
+                    # -----------------------------------------------------
 
                     # 2. Obtener datos del reply si existe
                     reply_data = {}
