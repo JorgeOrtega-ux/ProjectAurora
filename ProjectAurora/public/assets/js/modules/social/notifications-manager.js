@@ -31,17 +31,18 @@ function renderNotifications(notifs) {
         
         let actionsHtml = '';
         if (n.type === 'friend_request') {
+            // [CORREGIDO] Se añaden las clases 'btn-accept-request' / 'btn-decline-request'
+            // y el atributo 'data-uid' para que friends-manager.js pueda capturar el clic.
             actionsHtml = `
                 <div class="notif-actions">
-                    <button class="notif-btn accept" data-action="accept-req">${t('search.actions.accept')}</button>
-                    <button class="notif-btn decline" data-action="decline-req">${t('search.actions.decline')}</button>
+                    <button class="notif-btn accept btn-accept-request" data-uid="${n.related_id}">${t('search.actions.accept')}</button>
+                    <button class="notif-btn decline btn-decline-request" data-uid="${n.related_id}">${t('search.actions.decline')}</button>
                 </div>
             `;
         }
 
         const unreadDot = (parseInt(n.is_read) === 0) ? '<div class="unread-dot"></div>' : '';
 
-        // Para admin_alert usamos un estilo ligeramente distinto o el mismo
         html += `
             <div class="notification-item" data-nid="${n.id}" data-sid="${n.related_id}">
                 <div class="notif-left">
@@ -115,10 +116,10 @@ function initSocketListener() {
             loadNotifications();
         }
 
-        // [NUEVO] Escuchar notificaciones de admin
+        // Escuchar notificaciones de admin
         if (type === 'admin_notification') {
-            if (alertMgr) alertMgr.showAlert(payload.message, 'info'); // Mostrar toast
-            loadNotifications(); // Recargar lista
+            if (alertMgr) alertMgr.showAlert(payload.message, 'info');
+            loadNotifications();
         }
     });
     

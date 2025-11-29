@@ -1793,3 +1793,33 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-11-28 20:31:51,761 - INFO - Usuario conectado: ID 1 | Rol: user
 2025-11-28 20:31:53,321 - INFO - connection open
 2025-11-28 20:31:53,329 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-29 09:02:33,900 - INFO - connection open
+2025-11-29 09:02:34,375 - ERROR - Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\jorge\AppData\Local\Programs\Python\Python313\Lib\asyncio\events.py", line 89, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jorge\AppData\Local\Programs\Python\Python313\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una conexión existente por el host remoto
+2025-11-29 09:02:34,912 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-29 09:03:31,537 - INFO - connection open
+2025-11-29 09:03:31,541 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-29 09:04:45,694 - INFO - connection open
+2025-11-29 09:04:45,703 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-29 09:04:54,116 - INFO - connection open
+2025-11-29 09:04:54,121 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-29 09:08:47,448 - INFO - connection open
+2025-11-29 09:08:47,451 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-11-29 09:08:56,103 - INFO - connection open
+2025-11-29 09:08:56,113 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-11-29 09:08:56,174 - INFO - connection open
+2025-11-29 09:08:56,183 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-29 09:09:39,566 - INFO - connection open
+2025-11-29 09:09:39,571 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-11-29 09:09:44,715 - INFO - connection open
+2025-11-29 09:09:44,721 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-11-29 09:10:15,467 - INFO - connection open
+2025-11-29 09:10:15,479 - INFO - Usuario conectado: ID 1 | Rol: user
