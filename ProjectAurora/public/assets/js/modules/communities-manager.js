@@ -4,9 +4,9 @@ import { postJson, setButtonLoading } from '../core/utilities.js';
 import { t } from '../core/i18n-manager.js';
 import { openChat } from './chat-manager.js';
 
-let sidebarItems = []; // Lista completa de items descargados
-let currentFilter = 'all'; // Filtro de badge activo
-let currentSearchQuery = ''; // Búsqueda actual
+let sidebarItems = []; 
+let currentFilter = 'all'; 
+let currentSearchQuery = ''; 
 
 function formatChatTime(dateString) {
     if (!dateString) return '';
@@ -50,23 +50,29 @@ function renderChatListItem(item) {
     const role = item.role || 'user'; 
     const shapeClass = isPrivate ? '' : 'community-shape'; 
 
-    // Indicadores visuales (Pin / Favorito)
     const isPinned = parseInt(item.is_pinned) === 1;
     const isFavorite = parseInt(item.is_favorite) === 1;
     const isBlocked = parseInt(item.is_blocked_by_me) > 0;
     
-    // Iconos en la fila de abajo
     let indicatorsIcons = '';
     if (isFavorite) indicatorsIcons += '<span class="material-symbols-rounded icon-indicator favorite">star</span>';
     if (isPinned) indicatorsIcons += '<span class="material-symbols-rounded icon-indicator pinned">push_pin</span>';
    
-    // Datos extra para el menú
+    // [IMPORTANTE] Pasamos los estados como strings al padre para leerlos en hover
     const pinnedAttr = isPinned ? 'true' : 'false';
     const favAttr = isFavorite ? 'true' : 'false';
     const blockedAttr = isBlocked ? 'true' : 'false';
 
+    // [CAMBIO] Ya NO generamos el <button> aquí. Se inyectará con JS.
     return `
-    <div class="chat-item ${isActive}" id="sidebar-item-${item.uuid}" data-action="select-chat" data-uuid="${item.uuid}" data-type="${item.type}">
+    <div class="chat-item ${isActive}" 
+         id="sidebar-item-${item.uuid}" 
+         data-action="select-chat" 
+         data-uuid="${item.uuid}" 
+         data-type="${item.type}"
+         data-pinned="${pinnedAttr}" 
+         data-fav="${favAttr}" 
+         data-blocked="${blockedAttr}">
         
         <div class="chat-item-avatar-wrapper ${shapeClass}" data-role="${role}">
             <img src="${avatarSrc}" alt="Avatar">
@@ -84,24 +90,11 @@ function renderChatListItem(item) {
                 <div class="chat-item-actions">
                     ${badgeHtml}
                     ${indicatorsIcons}
-                    <button class="chat-hover-btn" 
-                        data-action="open-chat-menu" 
-                        data-uuid="${item.uuid}" 
-                        data-type="${item.type}"
-                        data-pinned="${pinnedAttr}"
-                        data-fav="${favAttr}"
-                        data-blocked="${blockedAttr}">
-                        <span class="material-symbols-rounded">expand_more</span>
-                    </button>
-                </div>
+                    </div>
             </div>
         </div>
     </div>`;
 }
-
-// ==========================================
-// FILTRADO Y RENDERIZADO DE LA LISTA
-// ==========================================
 
 function renderSidebarList() {
     const container = document.getElementById('my-communities-list');
@@ -109,30 +102,19 @@ function renderSidebarList() {
 
     container.innerHTML = '';
 
-    // 1. Filtrar
     const filteredItems = sidebarItems.filter(item => {
-        // A. Filtro por Badge (Pestaña)
         let passesBadge = true;
-        if (currentFilter === 'unread') {
-            passesBadge = parseInt(item.unread_count) > 0;
-        } else if (currentFilter === 'community') {
-            passesBadge = (item.type === 'community');
-        } else if (currentFilter === 'private') {
-            passesBadge = (item.type === 'private');
-        } else if (currentFilter === 'favorites') {
-            passesBadge = (parseInt(item.is_favorite) === 1);
-        }
+        if (currentFilter === 'unread') passesBadge = parseInt(item.unread_count) > 0;
+        else if (currentFilter === 'community') passesBadge = (item.type === 'community');
+        else if (currentFilter === 'private') passesBadge = (item.type === 'private');
+        else if (currentFilter === 'favorites') passesBadge = (parseInt(item.is_favorite) === 1);
 
-        // B. Filtro por Búsqueda (Input) - Se aplica SOBRE el filtro de badge
         let passesSearch = true;
-        if (currentSearchQuery) {
-            passesSearch = item.name.toLowerCase().includes(currentSearchQuery.toLowerCase());
-        }
+        if (currentSearchQuery) passesSearch = item.name.toLowerCase().includes(currentSearchQuery.toLowerCase());
 
         return passesBadge && passesSearch;
     });
 
-    // 2. Renderizar
     if (filteredItems.length > 0) {
         container.innerHTML = filteredItems.map(c => renderChatListItem(c)).join('');
     } else {
@@ -140,23 +122,16 @@ function renderSidebarList() {
         if (currentFilter === 'unread') msg = 'No tienes mensajes sin leer.';
         if (currentFilter === 'favorites') msg = 'No tienes favoritos aún.';
         if (currentSearchQuery) msg = 'No se encontraron resultados.';
-        
         container.innerHTML = `<p style="text-align:center; color:#999; padding:20px; font-size:13px;">${msg}</p>`;
     }
 }
-
-// ==========================================
-// ACTUALIZACIÓN PARCIAL (DOM OPTIMIZADO)
-// ==========================================
 
 function handleSidebarUpdate(payload) {
     const uuid = payload.community_uuid || payload.target_uuid;
     const container = document.getElementById('my-communities-list');
     const existingItem = container.querySelector(`.chat-item[data-uuid="${uuid}"]`);
 
-    // 1. Si el item ya existe en el DOM, lo actualizamos y movemos
     if (existingItem) {
-        // A. Actualizar texto del mensaje
         const previewEl = existingItem.querySelector('.chat-item-preview');
         const timeEl = existingItem.querySelector('.chat-item-time');
         
@@ -165,7 +140,6 @@ function handleSidebarUpdate(payload) {
             messageText = '📷 Imagen';
         }
         
-        // Si es un mensaje de otro en una comunidad, mostrar nombre
         if (payload.context === 'community' && payload.sender_id != window.USER_ID) {
             messageText = `${payload.sender_username}: ${messageText}`;
         } else if (payload.sender_id == window.USER_ID) {
@@ -174,7 +148,6 @@ function handleSidebarUpdate(payload) {
 
         if (previewEl) {
             previewEl.textContent = messageText;
-            // Si el chat NO está activo, poner negrita
             if (uuid !== window.ACTIVE_CHAT_UUID) {
                 previewEl.style.fontWeight = '700';
                 previewEl.style.color = '#000';
@@ -188,15 +161,12 @@ function handleSidebarUpdate(payload) {
             timeEl.textContent = formatChatTime(new Date());
         }
 
-        // B. Actualizar contador 
-        // Solo incrementamos si NO es el chat activo, O si es el chat activo pero la ventana NO tiene foco
         const isActiveChat = (uuid === window.ACTIVE_CHAT_UUID);
         const windowHasFocus = document.hasFocus();
 
         if (!isActiveChat || (isActiveChat && !windowHasFocus)) {
             let badge = existingItem.querySelector('.unread-counter');
             if (!badge) {
-                // Buscamos el contenedor de acciones para insertar el badge al principio
                 const actionsContainer = existingItem.querySelector('.chat-item-actions');
                 if (actionsContainer) {
                     badge = document.createElement('div');
@@ -210,42 +180,32 @@ function handleSidebarUpdate(payload) {
             }
         }
 
-        // C. Mover al principio de la lista (Animación visual simple)
         if (existingItem.style.display !== 'none') {
             container.prepend(existingItem);
         }
 
-        // D. Actualizar array en memoria para búsquedas futuras
         const dataItem = sidebarItems.find(i => i.uuid === uuid);
         if (dataItem) {
             dataItem.last_message = messageText;
             dataItem.last_message_at = new Date().toISOString();
-            
-            // Misma lógica de contador para la memoria
             if (!isActiveChat || (isActiveChat && !windowHasFocus)) {
                 dataItem.unread_count = (parseInt(dataItem.unread_count) || 0) + 1;
             }
-            
             sidebarItems = sidebarItems.filter(i => i.uuid !== uuid);
             sidebarItems.unshift(dataItem);
         }
 
     } else {
-        // 2. Si es un chat nuevo que no está en la lista visible, recargamos
         loadSidebarList(false);
     }
 }
-
-// ==========================================
-// CARGA DE DATOS
-// ==========================================
 
 async function loadSidebarList(shouldOpenActive = false) {
     const res = await postJson('api/communities_handler.php', { action: 'get_sidebar_list' });
     
     if (res.success) {
         sidebarItems = res.list;
-        renderSidebarList(); // Renderizar aplicando filtros actuales
+        renderSidebarList();
     } else {
         sidebarItems = [];
         renderSidebarList();
@@ -253,8 +213,6 @@ async function loadSidebarList(shouldOpenActive = false) {
 
     if (window.ACTIVE_CHAT_UUID) {
         const itemData = sidebarItems.find(c => c.uuid === window.ACTIVE_CHAT_UUID);
-        
-        // Actualizar clase activa visualmente siempre
         if (itemData) {
             const activeEl = document.querySelector(`.chat-item[data-uuid="${window.ACTIVE_CHAT_UUID}"]`);
             if (activeEl) {
@@ -262,8 +220,6 @@ async function loadSidebarList(shouldOpenActive = false) {
                 activeEl.querySelector('.unread-counter')?.remove();
             }
         }
-
-        // Solo inicializar el chat si estamos en carga inicial
         if (shouldOpenActive) {
             openChat(window.ACTIVE_CHAT_UUID, itemData || null);
         }
@@ -286,11 +242,10 @@ async function loadPublicCommunities() {
 }
 
 // ==========================================
-// GESTIÓN DE MENÚ FLOTANTE CONTEXTUAL
+// GESTIÓN DE MENÚ FLOTANTE Y HOVER
 // ==========================================
 
 function showChatMenu(btn, uuid, type, isPinned, isFav, isBlocked) {
-    // Eliminar previos si existen
     document.querySelector('.dynamic-popover')?.remove();
 
     const pinText = isPinned ? 'Desfijar chat' : 'Fijar chat';
@@ -302,12 +257,9 @@ function showChatMenu(btn, uuid, type, isPinned, isFav, isBlocked) {
     let specificOptions = '';
     let deleteOption = '';
 
-    // Helper para generar items estándar del sistema
     const createItem = (action, icon, text, style = '', danger = false) => {
         const textColor = danger ? 'color: #d32f2f;' : '';
         const iconColor = danger ? 'color: #d32f2f;' : 'color: #333;';
-        
-        // Si viene estilo específico para icono (pinned/fav), úsalo
         const finalIconStyle = style ? style : iconColor;
 
         return `
@@ -356,7 +308,6 @@ function showChatMenu(btn, uuid, type, isPinned, isFav, isBlocked) {
     
     menu.style.top = (rect.bottom + scrollTop + 5) + 'px';
     
-    // Posicionamiento inteligente
     if (rect.right + 200 > window.innerWidth) {
         menu.style.right = (window.innerWidth - rect.right) + 'px';
         menu.style.left = 'auto';
@@ -373,14 +324,16 @@ function showChatMenu(btn, uuid, type, isPinned, isFav, isBlocked) {
             if (!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
                 menu.remove();
                 btn.classList.remove('active');
+                // IMPORTANTE: Si el mouse ya no está encima, eliminamos el botón también al cerrar el menú
+                if (!btn.matches(':hover') && !btn.closest('.chat-item:hover')) {
+                    btn.remove();
+                }
                 document.removeEventListener('click', closeHandler);
             }
         };
         document.addEventListener('click', closeHandler);
     }, 0);
 }
-
-// --- ACCIONES DE MENÚ ---
 
 async function togglePinChat(uuid, type) {
     const res = await postJson('api/communities_handler.php', { action: 'toggle_pin', uuid, type });
@@ -444,10 +397,6 @@ async function unblockUserFromChat(uuid) {
     }
 }
 
-// ==========================================
-// MANEJO DE FILTROS Y BÚSQUEDA
-// ==========================================
-
 function initSidebarFilters() {
     const container = document.querySelector('.chat-sidebar-badges');
     const searchInput = document.getElementById('sidebar-search-input');
@@ -473,10 +422,53 @@ function initSidebarFilters() {
 }
 
 // ==========================================
-// LISTENERS GENERALES
+// LISTENERS (HOVER Y CLICS)
 // ==========================================
 
 function initListListeners() {
+    const listContainer = document.getElementById('my-communities-list');
+
+    // [NUEVO] Inyección dinámica del botón al entrar con el mouse
+    listContainer?.addEventListener('mouseover', (e) => {
+        const item = e.target.closest('.chat-item');
+        if (!item) return;
+
+        const actionsDiv = item.querySelector('.chat-item-actions');
+        // Si no existe contenedor o el botón ya está ahí, salimos
+        if (!actionsDiv || actionsDiv.querySelector('.chat-hover-btn')) return;
+
+        const btn = document.createElement('button');
+        btn.className = 'chat-hover-btn';
+        btn.dataset.action = 'open-chat-menu';
+        
+        // Leemos los datos del padre (.chat-item)
+        btn.dataset.uuid = item.dataset.uuid;
+        btn.dataset.type = item.dataset.type;
+        btn.dataset.pinned = item.dataset.pinned;
+        btn.dataset.fav = item.dataset.fav;
+        btn.dataset.blocked = item.dataset.blocked;
+        
+        btn.innerHTML = '<span class="material-symbols-rounded">expand_more</span>';
+        
+        actionsDiv.appendChild(btn);
+    });
+
+    // [NUEVO] Eliminación del botón al salir con el mouse
+    listContainer?.addEventListener('mouseout', (e) => {
+        const item = e.target.closest('.chat-item');
+        if (!item) return;
+
+        // Si nos movemos a un hijo del mismo item (ej: el botón), no hacer nada
+        if (item.contains(e.relatedTarget)) return;
+
+        const btn = item.querySelector('.chat-hover-btn');
+        // Si el botón existe y NO tiene el menú abierto (.active), lo eliminamos
+        if (btn && !btn.classList.contains('active')) {
+            btn.remove();
+        }
+    });
+
+    // --- Clics Generales ---
     document.getElementById('my-communities-list')?.addEventListener('click', (e) => {
         const chatMenuBtn = e.target.closest('[data-action="open-chat-menu"]');
         if (chatMenuBtn) {
@@ -501,6 +493,7 @@ function initListListeners() {
         }
     });
 
+    // Acciones globales (bloqueo, salir, etc.)
     document.body.addEventListener('click', async (e) => {
         const joinBtn = e.target.closest('[data-action="join-public-community"]');
         if (joinBtn) {
