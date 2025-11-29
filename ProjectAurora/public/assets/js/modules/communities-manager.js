@@ -58,12 +58,10 @@ function renderChatListItem(item) {
     if (isFavorite) indicatorsIcons += '<span class="material-symbols-rounded icon-indicator favorite">star</span>';
     if (isPinned) indicatorsIcons += '<span class="material-symbols-rounded icon-indicator pinned">push_pin</span>';
    
-    // [IMPORTANTE] Pasamos los estados como strings al padre para leerlos en hover
     const pinnedAttr = isPinned ? 'true' : 'false';
     const favAttr = isFavorite ? 'true' : 'false';
     const blockedAttr = isBlocked ? 'true' : 'false';
 
-    // [CAMBIO] Ya NO generamos el <button> aquí. Se inyectará con JS.
     return `
     <div class="chat-item ${isActive}" 
          id="sidebar-item-${item.uuid}" 
@@ -303,20 +301,9 @@ function showChatMenu(btn, uuid, type, isPinned, isFav, isBlocked) {
         </div>
     `;
 
-    const rect = btn.getBoundingClientRect();
-    const scrollTop = window.scrollY || document.documentElement.scrollTop;
-    
-    menu.style.top = (rect.bottom + scrollTop + 5) + 'px';
-    
-    if (rect.right + 200 > window.innerWidth) {
-        menu.style.right = (window.innerWidth - rect.right) + 'px';
-        menu.style.left = 'auto';
-    } else {
-        menu.style.left = (rect.left - 150) + 'px';
-        menu.style.right = 'auto';
-    }
-
-    document.body.appendChild(menu);
+    // [CAMBIO IMPORTANTE] Se inyecta dentro del contenedor de acciones
+    const container = btn.parentElement; 
+    container.appendChild(menu);
     btn.classList.add('active'); 
 
     setTimeout(() => {
@@ -324,7 +311,6 @@ function showChatMenu(btn, uuid, type, isPinned, isFav, isBlocked) {
             if (!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
                 menu.remove();
                 btn.classList.remove('active');
-                // IMPORTANTE: Si el mouse ya no está encima, eliminamos el botón también al cerrar el menú
                 if (!btn.matches(':hover') && !btn.closest('.chat-item:hover')) {
                     btn.remove();
                 }
@@ -428,20 +414,18 @@ function initSidebarFilters() {
 function initListListeners() {
     const listContainer = document.getElementById('my-communities-list');
 
-    // [NUEVO] Inyección dinámica del botón al entrar con el mouse
+    // Inyección dinámica del botón al entrar con el mouse
     listContainer?.addEventListener('mouseover', (e) => {
         const item = e.target.closest('.chat-item');
         if (!item) return;
 
         const actionsDiv = item.querySelector('.chat-item-actions');
-        // Si no existe contenedor o el botón ya está ahí, salimos
         if (!actionsDiv || actionsDiv.querySelector('.chat-hover-btn')) return;
 
         const btn = document.createElement('button');
         btn.className = 'chat-hover-btn';
         btn.dataset.action = 'open-chat-menu';
         
-        // Leemos los datos del padre (.chat-item)
         btn.dataset.uuid = item.dataset.uuid;
         btn.dataset.type = item.dataset.type;
         btn.dataset.pinned = item.dataset.pinned;
@@ -453,22 +437,19 @@ function initListListeners() {
         actionsDiv.appendChild(btn);
     });
 
-    // [NUEVO] Eliminación del botón al salir con el mouse
+    // Eliminación del botón al salir con el mouse
     listContainer?.addEventListener('mouseout', (e) => {
         const item = e.target.closest('.chat-item');
         if (!item) return;
 
-        // Si nos movemos a un hijo del mismo item (ej: el botón), no hacer nada
         if (item.contains(e.relatedTarget)) return;
 
         const btn = item.querySelector('.chat-hover-btn');
-        // Si el botón existe y NO tiene el menú abierto (.active), lo eliminamos
         if (btn && !btn.classList.contains('active')) {
             btn.remove();
         }
     });
 
-    // --- Clics Generales ---
     document.getElementById('my-communities-list')?.addEventListener('click', (e) => {
         const chatMenuBtn = e.target.closest('[data-action="open-chat-menu"]');
         if (chatMenuBtn) {
@@ -493,7 +474,6 @@ function initListListeners() {
         }
     });
 
-    // Acciones globales (bloqueo, salir, etc.)
     document.body.addEventListener('click', async (e) => {
         const joinBtn = e.target.closest('[data-action="join-public-community"]');
         if (joinBtn) {
