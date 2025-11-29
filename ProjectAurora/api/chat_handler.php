@@ -158,17 +158,18 @@ try {
             }
             $pdo->commit();
 
-            // Preparar broadcast
-            $stmtUser = $pdo->prepare("SELECT username, profile_picture, role FROM users WHERE id = ?");
+            // Preparar broadcast - [MODIFICADO] Incluimos 'uuid' del sender para la actualización en tiempo real del frontend
+            $stmtUser = $pdo->prepare("SELECT uuid, username, profile_picture, role FROM users WHERE id = ?");
             $stmtUser->execute([$userId]);
             $userData = $stmtUser->fetch(PDO::FETCH_ASSOC);
 
             $broadcastPayload = [
                 'id' => $msgId,
-                'target_uuid' => $uuid,
+                'target_uuid' => $uuid, // UUID destino
                 'context' => $context,
                 'message' => $messageText,
                 'sender_id' => $userId,
+                'sender_uuid' => $userData['uuid'], // [NUEVO] Necesario para UI update
                 'sender_username' => $userData['username'],
                 'sender_profile_picture' => $userData['profile_picture'],
                 'sender_role' => $userData['role'],

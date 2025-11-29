@@ -5,6 +5,7 @@ import { t } from '../core/i18n-manager.js';
 
 // Estado del Chat
 let currentChatUuid = null;
+let currentChatId = null; // [NUEVO] ID numérico para validación precisa
 let currentChatType = 'community';
 let replyingToMessageId = null;
 let replyingToMessageData = null;
@@ -68,6 +69,7 @@ export async function openChat(uuid, chatData = null) {
     }
 
     currentChatUuid = chatData.uuid;
+    currentChatId = chatData.id; // [NUEVO] Guardamos el ID numérico
     currentChatType = chatData.type || 'community';
     window.ACTIVE_CHAT_UUID = uuid;
     window.ACTIVE_CHAT_TYPE = currentChatType;
@@ -169,7 +171,7 @@ function updateChatInterface(data) {
             if (headerInfo) headerInfo.style.pointerEvents = 'none'; 
             document.getElementById('chat-info-panel').classList.add('d-none'); 
             
-            // [NUEVO] Bloqueo por privacidad
+            // Bloqueo por privacidad
             if (data.can_message === false) {
                 if (messageInput) {
                     messageInput.disabled = true;
@@ -637,22 +639,43 @@ function initChatListeners() {
         const { type, payload } = e.detail;
         
         if (type === 'new_chat_message' || type === 'private_message') {
-            const payloadTarget = payload.target_uuid || payload.community_uuid;
             
-            if (payloadTarget === currentChatUuid || (type === 'private_message' && payload.sender_id !== window.USER_ID && payloadTarget !== currentChatUuid)) {
-                 if (payloadTarget === currentChatUuid) {
-                    const container = document.querySelector('.chat-messages-area');
-                    if (container) {
-                        const msgDate = getDateString(payload.created_at);
-                        const lastDiv = container.querySelectorAll('.chat-date-divider span');
-                        let lastDivDate = lastDiv.length > 0 ? lastDiv[lastDiv.length-1].innerText : '';
-                        
-                        if (msgDate !== lastDivDate) container.insertAdjacentHTML('beforeend', createDateDivider(msgDate));
-                        container.insertAdjacentHTML('beforeend', createMessageHTML(payload));
-                        scrollToBottom();
-                        currentOffset++;
-                    }
-                 }
+            // [NUEVO] Lógica robusta de validación para renderizar el mensaje
+            let isForCurrentChat = false;
+
+            // 1. Mensaje de Comunidad: Fácil, el UUID de comunidad coincide
+            if (currentChatType === 'community' && type === 'new_chat_message') {
+                if (payload.community_uuid === currentChatUuid) {
+                    isForCurrentChat = true;
+                }
+            } 
+            // 2. Mensaje Privado
+            else if (currentChatType === 'private' && type === 'private_message') {
+                // Caso A: Mensaje enviado por mí (eco)
+                // Debo estar en el chat cuyo UUID es el del receptor (target_uuid)
+                if (parseInt(payload.sender_id) === parseInt(window.USER_ID) && payload.target_uuid === currentChatUuid) {
+                    isForCurrentChat = true;
+                }
+                // Caso B: Mensaje recibido de otro
+                // El remitente debe ser la persona con la que estoy hablando (currentChatId)
+                else if (currentChatId && parseInt(payload.sender_id) === parseInt(currentChatId)) {
+                    isForCurrentChat = true;
+                }
+            }
+
+            // Si pasa la validación, inyectamos el mensaje
+            if (isForCurrentChat) {
+                const container = document.querySelector('.chat-messages-area');
+                if (container) {
+                    const msgDate = getDateString(payload.created_at);
+                    const lastDiv = container.querySelectorAll('.chat-date-divider span');
+                    let lastDivDate = lastDiv.length > 0 ? lastDiv[lastDiv.length-1].innerText : '';
+                    
+                    if (msgDate !== lastDivDate) container.insertAdjacentHTML('beforeend', createDateDivider(msgDate));
+                    container.insertAdjacentHTML('beforeend', createMessageHTML(payload));
+                    scrollToBottom();
+                    currentOffset++;
+                }
             }
         }
 
@@ -689,6 +712,7 @@ function initListeners() {
             document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
             window.ACTIVE_CHAT_UUID = null;
             currentChatUuid = null;
+            currentChatId = null; // Limpiar ID
             window.history.pushState({ section: 'main' }, '', window.BASE_PATH);
         }
         

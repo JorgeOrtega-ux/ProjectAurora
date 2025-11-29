@@ -67,7 +67,7 @@ function renderChatListItem(item) {
     const favAttr = isFavorite ? 'true' : 'false';
 
     return `
-    <div class="chat-item ${isActive}" data-action="select-chat" data-uuid="${item.uuid}" data-type="${item.type}">
+    <div class="chat-item ${isActive}" id="sidebar-item-${item.uuid}" data-action="select-chat" data-uuid="${item.uuid}" data-type="${item.type}">
         
         <div class="chat-item-avatar-wrapper ${shapeClass}" data-role="${role}">
             <img src="${avatarSrc}" alt="Avatar">
@@ -144,10 +144,95 @@ function renderSidebarList() {
 }
 
 // ==========================================
+// ACTUALIZACIÓN PARCIAL (DOM OPTIMIZADO)
+// ==========================================
+
+function handleSidebarUpdate(payload) {
+    const uuid = payload.community_uuid || payload.target_uuid;
+    const container = document.getElementById('my-communities-list');
+    const existingItem = container.querySelector(`.chat-item[data-uuid="${uuid}"]`);
+
+    // 1. Si el item ya existe en el DOM, lo actualizamos y movemos
+    if (existingItem) {
+        // A. Actualizar texto del mensaje
+        const previewEl = existingItem.querySelector('.chat-item-preview');
+        const timeEl = existingItem.querySelector('.chat-item-time');
+        
+        let messageText = payload.message;
+        if (payload.type === 'image' || (payload.attachments && payload.attachments.length > 0)) {
+            messageText = '📷 Imagen';
+        }
+        
+        // Si es un mensaje de otro en una comunidad, mostrar nombre
+        if (payload.context === 'community' && payload.sender_id != window.USER_ID) {
+            messageText = `${payload.sender_username}: ${messageText}`;
+        } else if (payload.sender_id == window.USER_ID) {
+            messageText = `Tú: ${messageText}`;
+        }
+
+        if (previewEl) {
+            previewEl.textContent = messageText;
+            // Si el chat NO está activo, poner negrita
+            if (uuid !== window.ACTIVE_CHAT_UUID) {
+                previewEl.style.fontWeight = '700';
+                previewEl.style.color = '#000';
+            } else {
+                previewEl.style.fontWeight = 'normal';
+                previewEl.style.color = '';
+            }
+        }
+
+        if (timeEl) {
+            timeEl.textContent = formatChatTime(new Date());
+        }
+
+        // B. Actualizar contador si no está activo
+        if (uuid !== window.ACTIVE_CHAT_UUID) {
+            let badge = existingItem.querySelector('.unread-counter');
+            if (!badge) {
+                const infoContainer = existingItem.querySelector('.chat-item-info > div:last-child');
+                if (infoContainer) {
+                    badge = document.createElement('div');
+                    badge.className = 'unread-counter';
+                    badge.textContent = '1';
+                    infoContainer.appendChild(badge);
+                }
+            } else {
+                let count = parseInt(badge.textContent) || 0;
+                badge.textContent = count + 1 > 99 ? '99+' : count + 1;
+            }
+        }
+
+        // C. Mover al principio de la lista (Animación visual simple)
+        if (existingItem.style.display !== 'none') {
+            container.prepend(existingItem);
+        }
+
+        // D. Actualizar array en memoria para búsquedas futuras
+        const dataItem = sidebarItems.find(i => i.uuid === uuid);
+        if (dataItem) {
+            dataItem.last_message = messageText;
+            dataItem.last_message_at = new Date().toISOString();
+            if (uuid !== window.ACTIVE_CHAT_UUID) {
+                dataItem.unread_count = (parseInt(dataItem.unread_count) || 0) + 1;
+            }
+            sidebarItems = sidebarItems.filter(i => i.uuid !== uuid);
+            sidebarItems.unshift(dataItem);
+        }
+
+    } else {
+        // 2. Si es un chat nuevo que no está en la lista visible, recargamos
+        // No pasamos true aquí para evitar recargar el chat activo si por casualidad coincidiera
+        loadSidebarList(false);
+    }
+}
+
+// ==========================================
 // CARGA DE DATOS
 // ==========================================
 
-async function loadSidebarList() {
+// [MODIFICADO] Acepta parámetro para forzar la apertura del chat activo (solo en refresh)
+async function loadSidebarList(shouldOpenActive = false) {
     const res = await postJson('api/communities_handler.php', { action: 'get_sidebar_list' });
     
     if (res.success) {
@@ -160,7 +245,20 @@ async function loadSidebarList() {
 
     if (window.ACTIVE_CHAT_UUID) {
         const itemData = sidebarItems.find(c => c.uuid === window.ACTIVE_CHAT_UUID);
-        openChat(window.ACTIVE_CHAT_UUID, itemData || null);
+        
+        // Actualizar clase activa visualmente siempre
+        if (itemData) {
+            const activeEl = document.querySelector(`.chat-item[data-uuid="${window.ACTIVE_CHAT_UUID}"]`);
+            if (activeEl) {
+                activeEl.classList.add('active');
+                activeEl.querySelector('.unread-counter')?.remove();
+            }
+        }
+
+        // [SOLUCIÓN BUG 1] Solo inicializar el chat si estamos en carga inicial
+        if (shouldOpenActive) {
+            openChat(window.ACTIVE_CHAT_UUID, itemData || null);
+        }
     }
 }
 
@@ -259,13 +357,13 @@ function showChatMenu(btn, uuid, type, isPinned, isFav) {
 
 async function togglePinChat(uuid, type) {
     const res = await postJson('api/communities_handler.php', { action: 'toggle_pin', uuid, type });
-    if (res.success) loadSidebarList(); 
+    if (res.success) loadSidebarList(); // Aquí NO pasamos true, por lo tanto no recarga el chat activo
     else if(window.alertManager) window.alertManager.showAlert(res.message, 'warning');
 }
 
 async function toggleFavChat(uuid, type) {
     const res = await postJson('api/communities_handler.php', { action: 'toggle_favorite', uuid, type });
-    if (res.success) loadSidebarList(); 
+    if (res.success) loadSidebarList(); // Igual aquí
     else if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
 }
 
@@ -293,25 +391,18 @@ function initSidebarFilters() {
     const container = document.querySelector('.chat-sidebar-badges');
     const searchInput = document.getElementById('sidebar-search-input');
 
-    // 1. Listeners para Badges
     if (container) {
         container.addEventListener('click', (e) => {
             const badge = e.target.closest('.sidebar-badge');
             if (badge) {
-                // Actualizar visual
                 container.querySelectorAll('.sidebar-badge').forEach(b => b.classList.remove('active'));
                 badge.classList.add('active');
-
-                // Actualizar estado
                 currentFilter = badge.dataset.filter || 'all';
-                
-                // Renderizar
                 renderSidebarList();
             }
         });
     }
 
-    // 2. Listener para Input de Búsqueda
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             currentSearchQuery = e.target.value.trim();
@@ -349,7 +440,6 @@ function initListListeners() {
     });
 
     document.body.addEventListener('click', async (e) => {
-        // Acciones públicas
         const joinBtn = e.target.closest('[data-action="join-public-community"]');
         if (joinBtn) {
             const id = joinBtn.dataset.id;
@@ -367,7 +457,6 @@ function initListListeners() {
             }
         }
 
-        // Acciones del menú
         const pinAction = e.target.closest('[data-action="toggle-pin-chat"]');
         if (pinAction) {
             document.querySelector('.chat-popover-menu')?.remove();
@@ -386,7 +475,6 @@ function initListListeners() {
             await leaveCommunity(leaveAction.dataset.uuid);
         }
         
-        // [NUEVO] Acción Eliminar Chat Privado
         const deleteChatAction = e.target.closest('[data-action="delete-chat-conversation"]');
         if (deleteChatAction) {
             e.preventDefault();
@@ -413,7 +501,8 @@ function initListListeners() {
         const { type, payload } = e.detail;
         
         if (type === 'new_chat_message' || type === 'private_message') {
-            loadSidebarList(); // Recargar siempre para actualizar orden
+            // [MODIFICADO] Usar actualización parcial
+            handleSidebarUpdate(payload);
         }
     });
 }
@@ -450,10 +539,12 @@ function initJoinByCode() {
 }
 
 export function initCommunitiesManager() {
-    loadSidebarList(); 
+    // [SOLUCIÓN BUG 1] Aquí pasamos true para que SÍ abra el chat en la carga inicial
+    loadSidebarList(true); 
+    
     loadPublicCommunities(); 
     initJoinByCode(); 
-    initSidebarFilters(); // [NUEVO] Inicializar los filtros de sidebar
+    initSidebarFilters(); 
     
     if (!window.communitiesListenersInit) {
         initListListeners();
