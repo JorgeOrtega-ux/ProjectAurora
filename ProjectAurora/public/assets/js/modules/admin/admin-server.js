@@ -17,7 +17,10 @@ const actionKeyMap = {
     'update-code-resend-cooldown': 'code_resend_cooldown',
     'update-username-cooldown': 'username_cooldown',
     'update-email-cooldown': 'email_cooldown',
-    'update-avatar-max-size': 'profile_picture_max_size' 
+    'update-avatar-max-size': 'profile_picture_max_size',
+    // [NUEVO] Anti-Spam Keys
+    'update-chat-limit-count': 'chat_msg_limit',
+    'update-chat-limit-time': 'chat_time_window'
 };
 
 async function updateConfig(key, value, elementToRevertOnError, silent = false) {

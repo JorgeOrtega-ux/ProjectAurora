@@ -19,7 +19,6 @@ require_once '../includes/logic/i18n_server.php';
 $lang = $_SESSION['user_lang'] ?? detect_browser_language() ?? 'es-latam';
 I18n::load($lang);
 
-// Support both JSON and FormData (POST)
 $contentType = $_SERVER["CONTENT_TYPE"] ?? '';
 if (strpos($contentType, "application/json") !== false) {
     $data = json_decode(file_get_contents('php://input'), true);
@@ -71,10 +70,8 @@ function getDbBinary($binaryName) {
     return $binaryName;
 }
 
-// [MODIFICADO] Función admin_audit_log actualizada para incluir performed_by
 function admin_audit_log($pdo, $targetUserId, $type, $oldVal, $newVal, $adminId) {
     $ip = get_client_ip();
-    // Insertamos $adminId en performed_by
     $stmt = $pdo->prepare("INSERT INTO user_audit_logs (user_id, performed_by, change_type, old_value, new_value, changed_by_ip, changed_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
     $stmt->execute([$targetUserId, $adminId, $type, $oldVal, $newVal, $ip]);
     
@@ -197,8 +194,6 @@ try {
             echo json_encode(['success' => true, 'message' => translation('global.save_status')]);
         } else { throw new Exception(translation('global.error_connection')); }
 
-    // === ACCIONES DE EDICIÓN CON PROTECCIÓN ANTI-REDUNDANCIA ===
-
     } elseif ($action === 'admin_update_profile_picture') {
         $targetId = (int)$data['target_id'] ?? 0;
         if (!$targetId) throw new Exception(translation('global.action_invalid'));
@@ -229,7 +224,6 @@ try {
         if (!move_uploaded_file($file['tmp_name'], $destination)) throw new Exception(translation('global.error_connection'));
 
         $oldPic = $targetData['profile_picture'];
-        // Aquí no hay "redundancia" porque si se subió un archivo nuevo, por definición es nuevo.
         if ($oldPic && file_exists(__DIR__ . '/../public/' . $oldPic) && strpos($oldPic, 'custom/') !== false) {
             @unlink(__DIR__ . '/../public/' . $oldPic);
         }
@@ -237,35 +231,22 @@ try {
         $stmt = $pdo->prepare("UPDATE users SET profile_picture = ? WHERE id = ?");
         if ($stmt->execute([$dbPath, $targetId])) {
             admin_audit_log($pdo, $targetId, 'profile_picture', $oldPic, $dbPath, $currentAdminId);
-            
             $msg = translation('notifications.admin_update_pfp');
             $pdo->prepare("INSERT INTO notifications (user_id, type, message, created_at) VALUES (?, 'admin_alert', ?, NOW())")->execute([$targetId, $msg]);
             send_live_notification($targetId, 'admin_notification', ['message' => $msg]);
-
             echo json_encode(['success' => true, 'message' => translation('global.save_status'), 'path' => $dbPath]);
         } else throw new Exception(translation('global.error_connection'));
 
     } elseif ($action === 'admin_remove_profile_picture') {
         $targetId = (int)$data['target_id'] ?? 0;
         if (!$targetId) throw new Exception(translation('global.action_invalid'));
-        
         $stmt = $pdo->prepare("SELECT username, role, profile_picture FROM users WHERE id = ?");
         $stmt->execute([$targetId]);
         $user = $stmt->fetch();
         if (!$user) throw new Exception(translation('admin.error.user_not_exist'));
-
         if ($user['role'] === 'founder' && $currentAdminId !== $targetId) throw new Exception("No puedes editar al Fundador.");
         
         $oldPic = $user['profile_picture'];
-        
-        // [PROTECCIÓN] Si ya tiene foto por defecto, no hacer nada
-        if ($oldPic && strpos($oldPic, '/default/') !== false && strpos($oldPic, 'ui-avatars') === false) {
-             // Es una foto default local, asumimos que ya está reseteada (o si es ui-avatars podemos querer regenerarla).
-             // Pero para ser estrictos, si ya está en la carpeta 'default', no es necesario cambiarla a menos que queramos refrescar el color.
-             // En este caso, permitiremos regenerarla para cambiar el color, pero si quisiéramos bloquear:
-             // echo json_encode(['success' => true, 'message' => 'Ya tiene foto por defecto', 'path' => $oldPic]); exit;
-        }
-
         $color = get_random_color();
         $uuid = generate_uuid();
         $apiUrl = "https://ui-avatars.com/api/?name={$user['username']}&size=256&background={$color}&color=ffffff&bold=true&length=1";
@@ -274,7 +255,6 @@ try {
         if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
         $destPath = $uploadDir . $newFileName;
         $dbPath = 'assets/uploads/profile_pictures/default/' . $newFileName;
-        
         $imageContent = @file_get_contents($apiUrl);
         if ($imageContent !== false) file_put_contents($destPath, $imageContent);
 
@@ -285,25 +265,16 @@ try {
         $stmt = $pdo->prepare("UPDATE users SET profile_picture = ? WHERE id = ?");
         if ($stmt->execute([$dbPath, $targetId])) {
             admin_audit_log($pdo, $targetId, 'profile_picture', $oldPic, 'default_reset', $currentAdminId);
-            
             $msg = translation('notifications.admin_reset_pfp');
             $pdo->prepare("INSERT INTO notifications (user_id, type, message, created_at) VALUES (?, 'admin_alert', ?, NOW())")->execute([$targetId, $msg]);
             send_live_notification($targetId, 'admin_notification', ['message' => $msg]);
-
             echo json_encode(['success' => true, 'message' => translation('settings.profile.reset'), 'path' => $dbPath]);
         } else throw new Exception(translation('global.error_connection'));
 
     } elseif ($action === 'admin_update_username') {
         $targetId = (int)$data['target_id'] ?? 0;
-        
-        // [NUEVO] Bloqueo de auto-edición para Username
-        if ($targetId === $currentAdminId) {
-            throw new Exception("Usa Configuración para editar tu perfil.");
-        }
-        // ---------------------------------------------
-
+        if ($targetId === $currentAdminId) throw new Exception("Usa Configuración para editar tu perfil.");
         $newUsername = trim($data['username'] ?? '');
-        
         if (empty($newUsername)) throw new Exception("Nombre de usuario vacío");
         if (!preg_match('/^[a-zA-Z0-9_]+$/', $newUsername)) throw new Exception("Formato inválido (letras, números, _)");
 
@@ -312,12 +283,7 @@ try {
         $user = $stmtUser->fetch();
         if (!$user) throw new Exception(translation('admin.error.user_not_exist'));
         if ($user['role'] === 'founder' && $currentAdminId !== $targetId) throw new Exception("No puedes editar al Fundador.");
-
-        // [PROTECCIÓN] Si es el mismo, devolver éxito sin tocar BD ni logs
-        if ($user['username'] === $newUsername) {
-            echo json_encode(['success' => true, 'message' => translation('global.save_status')]);
-            exit;
-        }
+        if ($user['username'] === $newUsername) { echo json_encode(['success' => true, 'message' => translation('global.save_status')]); exit; }
 
         $stmtCheck = $pdo->prepare("SELECT id FROM users WHERE username = ? AND id != ?");
         $stmtCheck->execute([$newUsername, $targetId]);
@@ -326,25 +292,16 @@ try {
         $stmtUpd = $pdo->prepare("UPDATE users SET username = ? WHERE id = ?");
         if ($stmtUpd->execute([$newUsername, $targetId])) {
             admin_audit_log($pdo, $targetId, 'username', $user['username'], $newUsername, $currentAdminId);
-            
             $msg = translation('notifications.admin_update_username', ['username' => htmlspecialchars($newUsername)]);
             $pdo->prepare("INSERT INTO notifications (user_id, type, message, created_at) VALUES (?, 'admin_alert', ?, NOW())")->execute([$targetId, $msg]);
             send_live_notification($targetId, 'admin_notification', ['message' => $msg]);
-
             echo json_encode(['success' => true, 'message' => translation('global.save_status')]);
         } else throw new Exception(translation('global.error_connection'));
 
     } elseif ($action === 'admin_update_email') {
         $targetId = (int)$data['target_id'] ?? 0;
-
-        // [NUEVO] Bloqueo de auto-edición para Email
-        if ($targetId === $currentAdminId) {
-            throw new Exception("Usa Configuración para editar tu perfil.");
-        }
-        // ---------------------------------------------
-
+        if ($targetId === $currentAdminId) throw new Exception("Usa Configuración para editar tu perfil.");
         $newEmail = strtolower(trim($data['email'] ?? ''));
-
         if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) throw new Exception(translation('auth.errors.email_invalid_domain'));
         if (!is_allowed_domain($newEmail, $pdo)) throw new Exception(translation('auth.errors.email_domain_restricted'));
 
@@ -353,12 +310,7 @@ try {
         $user = $stmtUser->fetch();
         if (!$user) throw new Exception(translation('admin.error.user_not_exist'));
         if ($user['role'] === 'founder' && $currentAdminId !== $targetId) throw new Exception("No puedes editar al Fundador.");
-
-        // [PROTECCIÓN] Si es el mismo, devolver éxito sin tocar BD ni logs
-        if ($user['email'] === $newEmail) {
-            echo json_encode(['success' => true, 'message' => translation('global.save_status')]);
-            exit;
-        }
+        if ($user['email'] === $newEmail) { echo json_encode(['success' => true, 'message' => translation('global.save_status')]); exit; }
 
         $stmtCheck = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
         $stmtCheck->execute([$newEmail, $targetId]);
@@ -367,15 +319,12 @@ try {
         $stmtUpd = $pdo->prepare("UPDATE users SET email = ? WHERE id = ?");
         if ($stmtUpd->execute([$newEmail, $targetId])) {
             admin_audit_log($pdo, $targetId, 'email', $user['email'], $newEmail, $currentAdminId);
-            
             $msg = translation('notifications.admin_update_email', ['email' => htmlspecialchars($newEmail)]);
             $pdo->prepare("INSERT INTO notifications (user_id, type, message, created_at) VALUES (?, 'admin_alert', ?, NOW())")->execute([$targetId, $msg]);
             send_live_notification($targetId, 'admin_notification', ['message' => $msg]);
-
             echo json_encode(['success' => true, 'message' => translation('global.save_status')]);
         } else throw new Exception(translation('global.error_connection'));
 
-    // ... (Backup actions remain the same) ...
     } elseif ($action === 'list_backups') {
         $files = array_diff(scandir($backupDir), ['.', '..']); $backups = [];
         foreach ($files as $file) { if (pathinfo($file, PATHINFO_EXTENSION) === 'sql') { $path = $backupDir . '/' . $file; $backups[] = ['filename' => $file, 'size' => formatSize(filesize($path)), 'created_at' => date("Y-m-d H:i:s", filemtime($path)), 'timestamp' => filemtime($path)]; } }
@@ -412,9 +361,16 @@ try {
         exec($command, $output, $returnVar);
         if ($returnVar === 0) { $pdo->exec("DELETE FROM user_sessions"); send_live_notification('global', 'force_logout', ['reason' => 'system_restore']); echo json_encode(['success' => true, 'message' => translation('admin.backups.restore_success')]); } 
         else { $debugCmd = str_replace($pass, '*****', $command); $outStr = implode(" | ", $output); throw new Exception("Error restaurando (Código $returnVar). CMD: $debugCmd. SALIDA: $outStr"); }
+    
     } elseif ($action === 'update_server_config') {
         $key = $data['key'] ?? ''; $value = $data['value'] ?? 0;
-        $allowedKeys = ['maintenance_mode', 'allow_registrations', 'min_password_length', 'max_password_length', 'min_username_length', 'max_username_length', 'max_email_length', 'max_login_attempts', 'lockout_time_minutes', 'code_resend_cooldown', 'username_cooldown', 'email_cooldown', 'profile_picture_max_size', 'allowed_email_domains'];
+        $allowedKeys = [
+            'maintenance_mode', 'allow_registrations', 'min_password_length', 'max_password_length', 
+            'min_username_length', 'max_username_length', 'max_email_length', 'max_login_attempts', 
+            'lockout_time_minutes', 'code_resend_cooldown', 'username_cooldown', 'email_cooldown', 
+            'profile_picture_max_size', 'allowed_email_domains',
+            'chat_msg_limit', 'chat_time_window' // [NUEVO] Anti-Spam
+        ];
         if (!in_array($key, $allowedKeys)) throw new Exception(translation('global.action_invalid'));
         if ($key === 'maintenance_mode') {
             $intVal = (int)$value; $sql = "UPDATE server_config SET maintenance_mode = ? WHERE id = 1";

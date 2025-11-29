@@ -355,7 +355,8 @@
             "delete_timeout": "No puedes eliminar mensajes antiguos (24h).",
             "already_reported": "Ya has reportado este mensaje.",
             "privacy_block": "No puedes enviar mensajes a este usuario debido a su configuración de privacidad.",
-            "privacy_placeholder": "Este usuario no permite mensajes de desconocidos."
+            "privacy_placeholder": "Este usuario no permite mensajes de desconocidos.",
+            "spam_limit": "Estás enviando mensajes demasiado rápido. Límite: {limit} en {seconds}s."
         },
         "report_success": "Reporte enviado.",
         "report_reason": "Razón del reporte:"
@@ -560,7 +561,8 @@
             "reason_required": "Debes especificar una razón.",
             "type_required": "Debes seleccionar un tipo de sanción.",
             "duration_required": "Debes seleccionar una duración.",
-            "alert_active": "Ya hay una alerta activa. Detenla primero."
+            "alert_active": "Ya hay una alerta activa. Detenla primero.",
+            "alert_limit": "Límite de mensajes excedido."
         },
         "success": {
             "ban_applied": "Sanción aplicada correctamente.",
@@ -607,7 +609,11 @@
             "add_domain_btn": "Agregar dominio",
             "domain_placeholder": "Escribe el dominio (ej. miempresa.com)",
             "save_domain": "Guardar cambios",
-            "cancel_domain": "Cancelar"
+            "cancel_domain": "Cancelar",
+            "chatMsgLimitTitle": "Límite de Mensajes Anti-Spam",
+            "chatMsgLimitDesc": "Cantidad máxima de mensajes que un usuario puede enviar en la ventana de tiempo definida (máx. {val}).",
+            "chatTimeWindowTitle": "Ventana de Tiempo Anti-Spam (Segundos)",
+            "chatTimeWindowDesc": "Tiempo en segundos para calcular la frecuencia de mensajes del usuario (máx. {val})."
         }
     },
     "languages": {

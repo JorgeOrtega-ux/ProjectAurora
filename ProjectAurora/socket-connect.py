@@ -73,7 +73,7 @@ connected_clients = {} # { user_id: { session_id: websocket } }
 admin_sessions = set()
 db_pool = None 
 
-# [FIX RATE LIMITING] Control de fuerza bruta
+# Control de fuerza bruta (Auth)
 ip_attempts = {} 
 MAX_AUTH_ATTEMPTS = 5
 ATTEMPT_WINDOW = 60 
@@ -122,7 +122,6 @@ async def verify_token_and_get_session(raw_token):
     try:
         async with db_pool.acquire() as conn:
             async with conn.cursor() as cur:
-                # Obtenemos info extra para el chat (username, pfp)
                 query = """
                     SELECT t.user_id, t.session_id, u.role, u.username, u.profile_picture 
                     FROM ws_auth_tokens t
@@ -139,7 +138,6 @@ async def verify_token_and_get_session(raw_token):
         return None
 
 async def broadcast_user_status(user_id, status):
-    # Avisar a admins (dashboards)
     timestamp = datetime.now().isoformat()
     if admin_sessions:
         message = json.dumps({
@@ -152,7 +150,6 @@ async def broadcast_user_status(user_id, status):
             except: dead_sockets.add(ws)
         admin_sessions.difference_update(dead_sockets)
 
-# [NUEVO] MANEJADOR DE TYPING
 async def handle_typing_event(user_id, payload):
     target_uuid = payload.get('target_uuid')
     if not target_uuid or not db_pool: return
@@ -160,23 +157,19 @@ async def handle_typing_event(user_id, payload):
     try:
         async with db_pool.acquire() as conn:
             async with conn.cursor() as cur:
-                # Resolver UUID a ID para encontrar el socket
                 await cur.execute("SELECT id FROM users WHERE uuid = %s", (target_uuid,))
                 row = await cur.fetchone()
                 if not row: return
                 
                 target_id = str(row[0])
                 
-                # Payload para el receptor
                 response = json.dumps({
                     "type": "typing",
                     "payload": {
                         "sender_id": user_id,
-                        # No necesitamos más datos, solo saber quién escribe
                     }
                 })
 
-                # Enviar solo al receptor si está conectado
                 if target_id in connected_clients:
                     for ws in connected_clients[target_id].values():
                         try: await ws.send(response)
@@ -185,21 +178,59 @@ async def handle_typing_event(user_id, payload):
     except Exception as e:
         logger.error(f"Error handling typing event: {e}")
 
+# [NUEVO] Función Anti-Spam en Python
+async def is_spamming(user_id):
+    if not db_pool: return False
+    try:
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # 1. Obtener Configuración directamente de la BD (Toma las variables)
+                await cur.execute("SELECT chat_msg_limit, chat_time_window FROM server_config WHERE id = 1")
+                config = await cur.fetchone()
+                
+                if not config: return False # Fallback seguro
+                
+                limit = int(config[0]) if config[0] else 5
+                seconds = int(config[1]) if config[1] else 10
+
+                # 2. Contar Mensajes en el intervalo definido por la variable
+                query = """
+                    SELECT 
+                    (SELECT COUNT(*) FROM community_messages WHERE user_id = %s AND created_at > (NOW() - INTERVAL %s SECOND)) +
+                    (SELECT COUNT(*) FROM private_messages WHERE sender_id = %s AND created_at > (NOW() - INTERVAL %s SECOND)) 
+                """
+                await cur.execute(query, (user_id, seconds, user_id, seconds))
+                count_row = await cur.fetchone()
+                
+                count = count_row[0] if count_row else 0
+                
+                return count >= limit
+    except Exception as e:
+        logger.error(f"Error en anti-spam check: {e}")
+        return False
+
 async def handle_chat_message(user_id, user_info, payload):
-    """
-    Maneja el envío de mensajes: 
-    - Valida contexto (privado o comunidad).
-    - [SEGURIDAD] Valida privacidad y amistad antes de enviar.
-    - Guarda en la tabla correcta.
-    - Difunde a los destinatarios.
-    """
-    target_uuid = payload.get('target_uuid') # Puede ser community_uuid o user_uuid
+    target_uuid = payload.get('target_uuid')
     message_text = payload.get('message')
-    context = payload.get('context', 'community') # 'community' o 'private'
+    context = payload.get('context', 'community')
     reply_to_id = payload.get('reply_to_id')
 
     if not target_uuid or not message_text:
         return
+
+    # [NUEVO] Check Anti-Spam antes de procesar
+    # Si devuelve True, enviamos error y salimos SOLO de esta función. NO cerramos el socket.
+    if await is_spamming(user_id):
+        if user_id in connected_clients:
+            err_msg = json.dumps({
+                "type": "error",
+                "message": "Estás enviando mensajes demasiado rápido. Espera un momento."
+            })
+            # Notificar a todos los clientes conectados de este usuario (todas las pestañas)
+            for ws in connected_clients[user_id].values():
+                try: await ws.send(err_msg)
+                except: pass
+        return # IMPORTANTE: Salir de la función para no guardar el mensaje
 
     if not db_pool:
         logger.error("DB Pool no disponible para chat.")
@@ -211,20 +242,17 @@ async def handle_chat_message(user_id, user_info, payload):
                 
                 # --- LÓGICA CHAT PRIVADO ---
                 if context == 'private':
-                    # 1. Obtener ID del receptor
                     await cur.execute("SELECT id FROM users WHERE uuid = %s", (target_uuid,))
                     receiver_row = await cur.fetchone()
                     if not receiver_row:
-                        logger.warning(f"Usuario {user_id} intentó enviar DM a UUID inexistente: {target_uuid}")
                         return
                     
                     receiver_id = str(receiver_row[0])
                     
                     if receiver_id == user_id:
-                        return # No auto-mensajes
+                        return 
 
-                    # [SEGURIDAD CRÍTICA] VALIDACIÓN DE PRIVACIDAD
-                    # Verificar si el usuario permite mensajes y el estado de amistad
+                    # Validación de Privacidad
                     privacy_query = """
                         SELECT 
                             COALESCE(up.message_privacy, 'friends') as privacy,
@@ -233,7 +261,6 @@ async def handle_chat_message(user_id, user_info, payload):
                         LEFT JOIN user_preferences up ON u.id = up.user_id
                         WHERE u.id = %s
                     """
-                    # Parámetros: (sender, receiver, receiver, sender) para amistad, (receiver_id) para usuario
                     await cur.execute(privacy_query, (user_id, receiver_id, receiver_id, user_id, receiver_id))
                     privacy_row = await cur.fetchone()
 
@@ -242,27 +269,15 @@ async def handle_chat_message(user_id, user_info, payload):
                         status = privacy_row[1]
                         
                         is_blocked = False
-                        
-                        if privacy == 'nobody':
-                            is_blocked = True
-                        elif privacy == 'friends' and status != 'accepted':
-                            is_blocked = True
+                        if privacy == 'nobody': is_blocked = True
+                        elif privacy == 'friends' and status != 'accepted': is_blocked = True
                         
                         if is_blocked:
-                            logger.warning(f"Bloqueo de seguridad: Usuario {user_id} intentó enviar mensaje a {receiver_id} sin permiso (Privacidad: {privacy}, Estado: {status}).")
-                            return # Detener ejecución silenciosamente (o enviar error al cliente si se desea)
+                            return 
 
-                    # -----------------------------------------------------
-
-                    # 2. Obtener datos del reply si existe
                     reply_data = {}
                     if reply_to_id:
-                        parent_query = """
-                            SELECT m.message, u.username
-                            FROM private_messages m
-                            JOIN users u ON m.sender_id = u.id
-                            WHERE m.id = %s
-                        """
+                        parent_query = "SELECT m.message, u.username FROM private_messages m JOIN users u ON m.sender_id = u.id WHERE m.id = %s"
                         await cur.execute(parent_query, (reply_to_id,))
                         parent_row = await cur.fetchone()
                         if parent_row:
@@ -270,21 +285,16 @@ async def handle_chat_message(user_id, user_info, payload):
                         else:
                             reply_to_id = None
 
-                    # 3. Insertar en private_messages
-                    insert_query = """
-                        INSERT INTO private_messages (sender_id, receiver_id, message, reply_to_id, type)
-                        VALUES (%s, %s, %s, %s, 'text')
-                    """
+                    insert_query = "INSERT INTO private_messages (sender_id, receiver_id, message, reply_to_id, type) VALUES (%s, %s, %s, %s, 'text')"
                     await cur.execute(insert_query, (user_id, receiver_id, message_text, reply_to_id))
                     message_id = cur.lastrowid
                     created_at = datetime.now().isoformat()
 
-                    # 4. Construir payload
                     response_payload = json.dumps({
                         "type": "private_message",
                         "payload": {
                             "id": message_id,
-                            "target_uuid": target_uuid, # UUID del que recibe para el remitente / UUID del que envia para el receptor
+                            "target_uuid": target_uuid,
                             "context": "private",
                             "message": message_text,
                             "sender_id": user_id,
@@ -300,13 +310,11 @@ async def handle_chat_message(user_id, user_info, payload):
                         }
                     })
 
-                    # 5. Enviar al RECEPTOR (si está conectado)
                     if receiver_id in connected_clients:
                         for ws in connected_clients[receiver_id].values():
                             try: await ws.send(response_payload)
                             except: pass
                     
-                    # 6. Enviar al REMITENTE (sync entre pestañas/dispositivos)
                     if user_id in connected_clients:
                         for ws in connected_clients[user_id].values():
                             try: await ws.send(response_payload)
@@ -314,30 +322,17 @@ async def handle_chat_message(user_id, user_info, payload):
 
                 # --- LÓGICA COMUNIDAD ---
                 else:
-                    # 1. Validar membresía y obtener ID
-                    check_query = """
-                        SELECT c.id 
-                        FROM communities c
-                        JOIN community_members cm ON c.id = cm.community_id
-                        WHERE c.uuid = %s AND cm.user_id = %s
-                    """
+                    check_query = "SELECT c.id FROM communities c JOIN community_members cm ON c.id = cm.community_id WHERE c.uuid = %s AND cm.user_id = %s"
                     await cur.execute(check_query, (target_uuid, user_id))
                     comm_row = await cur.fetchone()
 
-                    if not comm_row:
-                        return
+                    if not comm_row: return
 
                     community_id = comm_row[0]
 
-                    # 2. Reply data
                     reply_data = {}
                     if reply_to_id:
-                        parent_query = """
-                            SELECT m.message, u.username
-                            FROM community_messages m
-                            JOIN users u ON m.user_id = u.id
-                            WHERE m.id = %s AND m.community_id = %s
-                        """
+                        parent_query = "SELECT m.message, u.username FROM community_messages m JOIN users u ON m.user_id = u.id WHERE m.id = %s AND m.community_id = %s"
                         await cur.execute(parent_query, (reply_to_id, community_id))
                         parent_row = await cur.fetchone()
                         if parent_row:
@@ -345,23 +340,17 @@ async def handle_chat_message(user_id, user_info, payload):
                         else:
                             reply_to_id = None
 
-                    # 3. Insertar
-                    insert_query = """
-                        INSERT INTO community_messages (community_id, user_id, message, reply_to_id, type)
-                        VALUES (%s, %s, %s, %s, 'text')
-                    """
+                    insert_query = "INSERT INTO community_messages (community_id, user_id, message, reply_to_id, type) VALUES (%s, %s, %s, %s, 'text')"
                     await cur.execute(insert_query, (community_id, user_id, message_text, reply_to_id))
                     
                     message_id = cur.lastrowid
                     created_at = datetime.now().isoformat()
 
-                    # 4. Obtener miembros
                     members_query = "SELECT user_id FROM community_members WHERE community_id = %s"
                     await cur.execute(members_query, (community_id,))
                     members = await cur.fetchall()
                     member_ids = set([str(m[0]) for m in members])
 
-                    # 5. Broadcast
                     response_payload = json.dumps({
                         "type": "new_chat_message",
                         "payload": {
@@ -409,7 +398,6 @@ async def handle_browser_client(websocket):
 
             if msg_type == 'auth':
                 if not check_rate_limit(remote_ip):
-                    logger.warning(f"IP {remote_ip} bloqueada temporalmente.")
                     await websocket.send(json.dumps({"type": "auth_error_permanent", "msg": "Too many attempts."}))
                     return
 
@@ -451,12 +439,10 @@ async def handle_browser_client(websocket):
                     })
                     await websocket.send(response)
             
-            # --- CHAT MESSAGE ---
             elif msg_type == 'chat_message':
                 if user_id: 
                     await handle_chat_message(user_id, user_data_cache, data.get('payload', {}))
 
-            # --- TYPING EVENT (NUEVO) ---
             elif msg_type == 'typing':
                 if user_id:
                     await handle_typing_event(user_id, data.get('payload', {}))
@@ -503,34 +489,29 @@ async def handle_php_notification(reader, writer):
         msg_type = full_payload.get('type')
         payload_data = full_payload.get('payload', {})
         
-        # --- CASO 1: MENSAJE PRIVADO (Directo) ---
         if msg_type == 'private_message':
-            # Notificar al receptor (Target)
             client_message = json.dumps({
                 "type": "private_message",
                 "payload": payload_data.get('message_data')
             })
             
-            # Enviar al receptor
             if target in connected_clients:
                 for ws in connected_clients[target].values():
                     try: await ws.send(client_message)
                     except: pass
             
-            # Enviar al remitente (Sender) para sincronización
             sender_id = str(payload_data.get('sender_id'))
             if sender_id and sender_id in connected_clients:
                 for ws in connected_clients[sender_id].values():
                     try: await ws.send(client_message)
                     except: pass
 
-        # --- CASO 2: BROADCAST DE COMUNIDAD ---
         elif target == 'community_broadcast':
             community_id = payload_data.get('community_id')
             message_data = payload_data.get('message_data') 
             
             client_message = json.dumps({
-                "type": msg_type, # 'new_chat_message' o 'message_update'
+                "type": msg_type, 
                 "payload": message_data
             })
             
@@ -541,7 +522,6 @@ async def handle_php_notification(reader, writer):
                         try: await ws.send(client_message)
                         except: pass
 
-        # --- CASO 3: MENSAJE GLOBAL ---
         elif target == 'global':
             client_message = json.dumps(full_payload)
             for uid, sessions in connected_clients.items():
@@ -549,7 +529,6 @@ async def handle_php_notification(reader, writer):
                     try: await ws.send(client_message)
                     except: pass
 
-        # --- CASO 4: MENSAJE DIRECTO DE SISTEMA ---
         elif target in connected_clients:
             client_message = json.dumps(full_payload)
             for ws in connected_clients[target].values():

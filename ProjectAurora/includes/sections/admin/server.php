@@ -160,6 +160,10 @@ HTML;
             </div>
             <div class="component-accordion__content">
                 <?php
+                // [NUEVO] Sección Anti-Spam
+                renderStepper('admin.server.chatMsgLimitTitle', 'admin.server.chatMsgLimitDesc', 'update-chat-limit-count', (int)($serverConfig['chat_msg_limit'] ?? 5), 1, 50);
+                renderStepper('admin.server.chatTimeWindowTitle', 'admin.server.chatTimeWindowDesc', 'update-chat-limit-time', (int)($serverConfig['chat_time_window'] ?? 10), 1, 60);
+
                 renderStepper('admin.server.maxLoginAttemptsTitle', 'admin.server.maxLoginAttemptsDesc', 'update-max-login-attempts', (int)$serverConfig['max_login_attempts'], 3, 20);
                 renderStepper('admin.server.lockoutTimeMinutesTitle', 'admin.server.lockoutTimeMinutesDesc', 'update-lockout-time-minutes', (int)$serverConfig['lockout_time_minutes'], 1, 60);
                 renderStepper('admin.server.codeResendCooldownTitle', 'admin.server.codeResendCooldownDesc', 'update-code-resend-cooldown', (int)$serverConfig['code_resend_cooldown'], 30, 300, 5, 15);

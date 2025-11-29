@@ -45,6 +45,20 @@ $userId = $_SESSION['user_id'];
 try {
     // --- ENVIAR MENSAJE ---
     if ($action === 'send_message') {
+        
+        // [NUEVO] Protección Anti-Spam PHP
+        // Esto consulta la BD usando las variables configuradas.
+        if (checkChatSpam($pdo, $userId)) {
+            // Recuperamos la configuración solo para mostrar el mensaje de error detallado
+            $config = getServerConfig($pdo);
+            $limit = $config['chat_msg_limit'];
+            $secs = $config['chat_time_window'];
+            
+            // Lanzamos error. Esto detiene el script PHP y devuelve el error al cliente.
+            // NO cierra ninguna conexión persistente porque PHP es stateless.
+            throw new Exception(translation('chat.error.spam_limit', ['limit' => $limit, 'seconds' => $secs]) ?? "Has enviado demasiados mensajes. Espera unos segundos.");
+        }
+
         $uuid = $data['target_uuid'] ?? $data['community_uuid'] ?? ''; 
         $context = $data['context'] ?? 'community'; 
         $messageText = trim($data['message'] ?? '');
@@ -59,7 +73,6 @@ try {
             $targetId = $stmtU->fetchColumn();
             if (!$targetId || $targetId == $userId) throw new Exception("Usuario inválido.");
 
-            // --- [PRIVACIDAD REFORZADA: BLOQUEO EN SERVIDOR] ---
             $stmtPriv = $pdo->prepare("
                 SELECT COALESCE(up.message_privacy, 'friends') as privacy,
                        (SELECT status FROM friendships WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)) as status
@@ -79,7 +92,6 @@ try {
             if ($privacy === 'friends' && $status !== 'accepted') {
                 throw new Exception(translation('chat.error.privacy_block') ?? "Privacidad: Solo amigos.");
             }
-            // ----------------------------------------
 
         } else {
             $stmtC = $pdo->prepare("SELECT c.id FROM communities c JOIN community_members cm ON c.id = cm.community_id WHERE c.uuid = ? AND cm.user_id = ?");
@@ -158,14 +170,13 @@ try {
             }
             $pdo->commit();
 
-            // Preparar broadcast
             $stmtUser = $pdo->prepare("SELECT uuid, username, profile_picture, role FROM users WHERE id = ?");
             $stmtUser->execute([$userId]);
             $userData = $stmtUser->fetch(PDO::FETCH_ASSOC);
 
             $broadcastPayload = [
                 'id' => $msgId,
-                'target_uuid' => $uuid, // UUID destino
+                'target_uuid' => $uuid,
                 'context' => $context,
                 'message' => $messageText,
                 'sender_id' => $userId,
@@ -196,7 +207,6 @@ try {
             throw $e;
         }
 
-    // --- OBTENER MENSAJES ---
     } elseif ($action === 'get_messages') {
         $uuid = $data['target_uuid'] ?? $data['community_uuid'] ?? '';
         $context = $data['context'] ?? 'community';
@@ -211,7 +221,6 @@ try {
             $targetId = $stmtU->fetchColumn();
             if (!$targetId) throw new Exception("Usuario no encontrado");
 
-            // Marcar como leídos al obtener historial
             $stmtRead = $pdo->prepare("UPDATE private_messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ? AND is_read = 0");
             $stmtRead->execute([$targetId, $userId]);
 
@@ -284,34 +293,29 @@ try {
 
         echo json_encode(['success' => true, 'messages' => array_reverse($messages), 'has_more' => (count($messages) >= $limit)]);
 
-    // --- MARCAR COMO LEÍDO (Real-time) [NUEVO] ---
     } elseif ($action === 'mark_as_read') {
-        $targetUuid = $data['target_uuid'] ?? ''; // El UUID del que envió los mensajes (el otro usuario)
+        $targetUuid = $data['target_uuid'] ?? ''; 
         $context = $data['context'] ?? 'private';
 
         if (empty($targetUuid)) throw new Exception("UUID requerido");
 
         if ($context === 'private') {
-            // 1. Obtener ID del otro usuario
             $stmtU = $pdo->prepare("SELECT id FROM users WHERE uuid = ?");
             $stmtU->execute([$targetUuid]);
             $senderId = $stmtU->fetchColumn();
 
             if ($senderId) {
-                // 2. Actualizar DB: Marcar como leídos los mensajes que este usuario me envió
                 $stmtUpd = $pdo->prepare("UPDATE private_messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ? AND is_read = 0");
                 $stmtUpd->execute([$senderId, $userId]);
                 
-                // Si hubo cambios, notificar al remitente (Sender) que sus mensajes fueron leídos
                 if ($stmtUpd->rowCount() > 0) {
                     send_live_notification($senderId, 'messages_read', [
-                        'reader_id' => $userId, // Yo (quien leyó)
+                        'reader_id' => $userId, 
                         'context'   => 'private'
                     ]);
                 }
             }
         } else {
-            // Lógica para comunidades (actualizar last_read_at)
             $stmtC = $pdo->prepare("SELECT id FROM communities WHERE uuid = ?");
             $stmtC->execute([$targetUuid]);
             $commId = $stmtC->fetchColumn();
@@ -324,7 +328,6 @@ try {
 
         echo json_encode(['success' => true]);
 
-    // --- ELIMINAR MENSAJE INDIVIDUAL ---
     } elseif ($action === 'delete_message') {
         $msgId = (int)($data['message_id'] ?? 0);
         $context = $data['context'] ?? 'community';
@@ -368,20 +371,17 @@ try {
 
         echo json_encode(['success' => true, 'message' => translation('chat.message_deleted')]);
 
-    // --- ELIMINAR CONVERSACIÓN (SOLO PARA MI) ---
     } elseif ($action === 'delete_conversation') {
         $uuid = $data['target_uuid'] ?? '';
         
         if (empty($uuid)) throw new Exception(translation('global.action_invalid'));
 
-        // 1. Obtener ID del partner
         $stmtU = $pdo->prepare("SELECT id FROM users WHERE uuid = ?");
         $stmtU->execute([$uuid]);
         $partnerId = $stmtU->fetchColumn();
 
         if (!$partnerId) throw new Exception("Usuario no encontrado.");
 
-        // 2. Insertar o actualizar la fecha de limpieza
         $sql = "INSERT INTO private_chat_clearance (user_id, partner_id, cleared_at) 
                 VALUES (?, ?, NOW()) 
                 ON DUPLICATE KEY UPDATE cleared_at = NOW()";
@@ -390,7 +390,6 @@ try {
 
         echo json_encode(['success' => true, 'message' => 'Chat eliminado de tu lista.']);
 
-    // --- REPORTAR MENSAJE ---
     } elseif ($action === 'report_message') {
         $msgId = (int)($data['message_id'] ?? 0);
         $reason = trim($data['reason'] ?? '');

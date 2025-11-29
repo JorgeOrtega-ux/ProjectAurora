@@ -34,6 +34,35 @@ function checkLockStatus($pdo, $identifier, $specificAction = null) {
     return ($result['total'] >= $limit);
 }
 
+/**
+ * [NUEVO] Verifica si el usuario está haciendo spam.
+ * Consulta la configuración de la BD para obtener el límite y la ventana de tiempo.
+ * Retorna true si debe ser bloqueado (spam detectado).
+ */
+function checkChatSpam($pdo, $userId) {
+    // 1. Obtener configuración dinámica de la BD
+    $config = getServerConfig($pdo);
+    $limit = (int)($config['chat_msg_limit'] ?? 5);      // Default: 5 mensajes
+    $seconds = (int)($config['chat_time_window'] ?? 10); // Default: 10 segundos
+
+    // 2. Contar mensajes enviados en comunidades + privados dentro de la ventana de tiempo
+    // Usamos los segundos configurados en el INTERVAL
+    $sql = "SELECT 
+            (SELECT COUNT(*) FROM community_messages WHERE user_id = ? AND created_at > (NOW() - INTERVAL ? SECOND)) +
+            (SELECT COUNT(*) FROM private_messages WHERE sender_id = ? AND created_at > (NOW() - INTERVAL ? SECOND)) 
+            as total_recent";
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$userId, $seconds, $userId, $seconds]);
+    $count = (int)$stmt->fetchColumn();
+
+    // 3. Si supera el límite, es spam
+    if ($count >= $limit) {
+        return true; 
+    }
+    return false;
+}
+
 function logFailedAttempt($pdo, $identifier, $actionType) {
     $ip = get_client_ip();
     $sql = "INSERT INTO security_logs (user_identifier, action_type, ip_address, created_at) 
@@ -71,22 +100,15 @@ function logSecurityAction($pdo, $identifier, $actionType) {
 }
 
 function generate_ws_auth_token($pdo, $userId, $sessionId) {
-    // [FIX MULTI-PESTAÑA] No borrar todos los tokens del usuario. 
-    // Solo limpiar los expirados para mantener la tabla limpia.
     $stmtCleanup = $pdo->prepare("DELETE FROM ws_auth_tokens WHERE expires_at < NOW()");
     $stmtCleanup->execute();
 
-    // Generar token criptográficamente seguro
     $rawToken = bin2hex(random_bytes(32)); 
-    
-    // [FIX SEGURIDAD] Hashear el token antes de guardarlo (SHA-256)
     $tokenHash = hash('sha256', $rawToken);
     
-    // Insertar el nuevo token (hash)
     $stmt = $pdo->prepare("INSERT INTO ws_auth_tokens (user_id, session_id, token, expires_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 2 MINUTE))");
     $stmt->execute([$userId, $sessionId, $tokenHash]);
 
-    // Retornar el token crudo al cliente (JS) para que pueda autenticarse
     return $rawToken;
 }
 
@@ -107,7 +129,7 @@ function verify_csrf_token($token) {
 function send_live_notification($targetUserId, $type, $data = []) {
     $host = '127.0.0.1';
     $port = 8081; 
-    $timeout = 2; // [FIX TIMEOUT] 2 segundos máximo de espera
+    $timeout = 2; 
 
     $payload = json_encode([
         'target_id' => (string)$targetUserId, 
@@ -115,16 +137,13 @@ function send_live_notification($targetUserId, $type, $data = []) {
         'payload' => $data
     ]);
 
-    // [FIX FRAGILIDAD] Manejo de errores y timeout en la conexión
     $fp = @fsockopen($host, $port, $errno, $errstr, $timeout); 
     if ($fp) {
-        // Establecer timeout también para la escritura/lectura
         stream_set_timeout($fp, $timeout);
         fwrite($fp, $payload);
         fclose($fp);
         return true;
     }
-    // Si falla (Python apagado), simplemente retorna false sin colgar PHP
     return false; 
 }
 
@@ -152,6 +171,8 @@ function getServerConfig($pdo) {
     try {
         $stmt = $pdo->query("SELECT * FROM server_config WHERE id = 1");
         $config = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // [ACTUALIZADO] Valores por defecto incluyendo las nuevas variables de anti-spam
         if (!$config) {
             return [
                 'maintenance_mode' => 0, 
@@ -167,7 +188,9 @@ function getServerConfig($pdo) {
                 'username_cooldown' => 30, 
                 'email_cooldown' => 12, 
                 'profile_picture_max_size' => 2,
-                'allowed_email_domains' => NULL
+                'allowed_email_domains' => NULL,
+                'chat_msg_limit' => 5, // Límite por defecto
+                'chat_time_window' => 10 // Segundos por defecto
             ];
         }
         return $config;

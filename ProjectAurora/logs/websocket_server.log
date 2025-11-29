@@ -1666,3 +1666,49 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-11-28 19:12:52,691 - INFO - Usuario conectado: ID 2 | Rol: user
 2025-11-28 19:12:57,064 - INFO - connection open
 2025-11-28 19:12:57,100 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 19:13:53,122 - INFO - connection open
+2025-11-28 19:13:53,129 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 19:14:17,673 - INFO - connection open
+2025-11-28 19:14:17,797 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 19:14:22,016 - INFO - connection open
+2025-11-28 19:14:22,023 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 19:24:32,305 - INFO - ✅ Pool de conexiones a base de datos inicializado (Max 20).
+2025-11-28 19:24:32,317 - INFO - === Servidor Aurora Iniciado (Híbrido: Chat + DMs + Typing + Anti-Spam) ===
+2025-11-28 19:24:32,555 - INFO - server listening on 0.0.0.0:8080
+2025-11-28 19:24:32,922 - INFO - connection open
+2025-11-28 19:24:33,413 - INFO - connection open
+2025-11-28 19:24:45,817 - INFO - connection open
+2025-11-28 19:24:45,878 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 19:27:34,188 - INFO - connection open
+2025-11-28 19:27:34,199 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 19:27:39,989 - INFO - connection open
+2025-11-28 19:27:39,993 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 19:27:43,829 - INFO - connection open
+2025-11-28 19:27:43,834 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 19:28:29,156 - INFO - ✅ Pool de conexiones a base de datos inicializado (Max 20).
+2025-11-28 19:28:29,194 - INFO - === Servidor Aurora Iniciado (Híbrido: Chat + DMs + Typing + Anti-Spam) ===
+2025-11-28 19:28:29,396 - INFO - server listening on 0.0.0.0:8080
+2025-11-28 19:28:50,401 - INFO - connection open
+2025-11-28 19:28:50,409 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 19:29:37,619 - INFO - ✅ Pool de conexiones a base de datos inicializado (Max 20).
+2025-11-28 19:29:37,628 - INFO - === Servidor Aurora Iniciado (Híbrido: Chat + DMs + Typing) ===
+2025-11-28 19:29:37,755 - INFO - server listening on 0.0.0.0:8080
+2025-11-28 19:29:39,418 - INFO - connection open
+2025-11-28 19:29:39,423 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 19:30:41,667 - INFO - connection open
+2025-11-28 19:30:41,674 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 19:39:18,819 - INFO - connection open
+2025-11-28 19:39:18,874 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 19:39:41,709 - INFO - connection open
+2025-11-28 19:39:41,718 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-11-28 19:43:58,900 - INFO - ✅ Pool de conexiones a base de datos inicializado (Max 20).
+2025-11-28 19:43:58,937 - INFO - === Servidor Aurora Iniciado (Híbrido: Chat + DMs + Typing) ===
+2025-11-28 19:44:02,674 - INFO - server listening on 0.0.0.0:8080
+2025-11-28 19:44:02,952 - INFO - connection open
+2025-11-28 19:44:08,151 - INFO - connection open
+2025-11-28 19:44:08,157 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-11-28 19:48:01,648 - INFO - ✅ Pool de conexiones a base de datos inicializado (Max 20).
+2025-11-28 19:48:01,686 - INFO - === Servidor Aurora Iniciado (Híbrido: Chat + DMs + Typing) ===
+2025-11-28 19:48:01,912 - INFO - server listening on 0.0.0.0:8080
+2025-11-28 19:48:19,699 - INFO - connection open
+2025-11-28 19:48:19,706 - INFO - Usuario conectado: ID 1 | Rol: user
