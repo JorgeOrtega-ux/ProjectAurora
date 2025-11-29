@@ -187,7 +187,7 @@ function handleSidebarUpdate(payload) {
         }
 
         // B. Actualizar contador 
-        // [NUEVO] Solo incrementamos si NO es el chat activo, O si es el chat activo pero la ventana NO tiene foco
+        // Solo incrementamos si NO es el chat activo, O si es el chat activo pero la ventana NO tiene foco
         const isActiveChat = (uuid === window.ACTIVE_CHAT_UUID);
         const windowHasFocus = document.hasFocus();
 
@@ -218,7 +218,7 @@ function handleSidebarUpdate(payload) {
             dataItem.last_message = messageText;
             dataItem.last_message_at = new Date().toISOString();
             
-            // [NUEVO] Misma lógica de contador para la memoria
+            // Misma lógica de contador para la memoria
             if (!isActiveChat || (isActiveChat && !windowHasFocus)) {
                 dataItem.unread_count = (parseInt(dataItem.unread_count) || 0) + 1;
             }
@@ -299,11 +299,12 @@ function showChatMenu(btn, uuid, type, isPinned, isFav) {
     let deleteOption = '';
 
     if (type === 'private') {
+        // [FIX] Añadidos atributos data-action y data-uuid para que el listener los detecte
         specificOptions = `
-            <div class="chat-popover-item danger">
-                <span class="material-symbols-rounded">block</span> Bloquear
+            <div class="chat-popover-item danger" data-action="block-user-chat" data-uuid="${uuid}">
+                <span class="material-symbols-rounded">block</span> ${t('friends.block_user') || 'Bloquear'}
             </div>
-            <div class="chat-popover-item danger">
+            <div class="chat-popover-item danger" data-action="remove-friend-chat" data-uuid="${uuid}">
                 <span class="material-symbols-rounded">person_remove</span> Eliminar amigo
             </div>
         `;
@@ -388,6 +389,30 @@ async function leaveCommunity(uuid) {
     }
 }
 
+// [NUEVO] Función para bloquear usuario desde el chat (usando UUID de chat)
+async function blockUserFromChat(uuid) {
+    if (!confirm(t('friends.confirm_block') || '¿Seguro que quieres bloquear a este usuario?')) return;
+    
+    // 1. Obtener ID real del usuario usando el UUID del chat
+    const resInfo = await postJson('api/communities_handler.php', { action: 'get_user_chat_by_uuid', uuid: uuid });
+    
+    if (resInfo.success) {
+        const targetId = resInfo.data.id;
+        // 2. Ejecutar bloqueo
+        const resBlock = await postJson('api/friends_handler.php', { action: 'block_user', target_id: targetId });
+        
+        if (resBlock.success) {
+            if(window.alertManager) window.alertManager.showAlert(resBlock.message, 'success');
+            // Recargar para actualizar la interfaz
+            window.location.reload(); 
+        } else {
+            if(window.alertManager) window.alertManager.showAlert(resBlock.message, 'error');
+        }
+    } else {
+        if(window.alertManager) window.alertManager.showAlert("No se pudo identificar al usuario.", 'error');
+    }
+}
+
 // ==========================================
 // MANEJO DE FILTROS Y BÚSQUEDA
 // ==========================================
@@ -444,7 +469,6 @@ function initListListeners() {
         }
     });
 
-    // [CORRECCIÓN] Añadidos 'return' para evitar propagación de eventos no deseada
     document.body.addEventListener('click', async (e) => {
         const joinBtn = e.target.closest('[data-action="join-public-community"]');
         if (joinBtn) {
@@ -462,6 +486,15 @@ function initListListeners() {
                 setButtonLoading(joinBtn, false, 'Unirse');
             }
             return; // Detener ejecución
+        }
+
+        // [FIX] Listener para el botón "Bloquear" del menú flotante
+        const blockBtn = e.target.closest('[data-action="block-user-chat"]');
+        if (blockBtn) {
+            e.preventDefault();
+            document.querySelector('.chat-popover-menu')?.remove();
+            await blockUserFromChat(blockBtn.dataset.uuid);
+            return;
         }
 
         const pinAction = e.target.closest('[data-action="toggle-pin-chat"]');
