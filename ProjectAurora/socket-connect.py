@@ -218,19 +218,17 @@ async def handle_chat_message(user_id, user_info, payload):
     if not target_uuid or not message_text:
         return
 
-    # [NUEVO] Check Anti-Spam antes de procesar
-    # Si devuelve True, enviamos error y salimos SOLO de esta función. NO cerramos el socket.
+    # Check Anti-Spam
     if await is_spamming(user_id):
         if user_id in connected_clients:
             err_msg = json.dumps({
                 "type": "error",
                 "message": "Estás enviando mensajes demasiado rápido. Espera un momento."
             })
-            # Notificar a todos los clientes conectados de este usuario (todas las pestañas)
             for ws in connected_clients[user_id].values():
                 try: await ws.send(err_msg)
                 except: pass
-        return # IMPORTANTE: Salir de la función para no guardar el mensaje
+        return 
 
     if not db_pool:
         logger.error("DB Pool no disponible para chat.")
@@ -251,6 +249,13 @@ async def handle_chat_message(user_id, user_info, payload):
                     
                     if receiver_id == user_id:
                         return 
+
+                    # [NUEVO] VALIDACIÓN DE BLOQUEO EN SOCKET
+                    block_query = "SELECT id FROM user_blocks WHERE (blocker_id = %s AND blocked_id = %s) OR (blocker_id = %s AND blocked_id = %s)"
+                    await cur.execute(block_query, (user_id, receiver_id, receiver_id, user_id))
+                    block_row = await cur.fetchone()
+                    if block_row:
+                        return # Bloqueo detectado, abortar
 
                     # Validación de Privacidad
                     privacy_query = """

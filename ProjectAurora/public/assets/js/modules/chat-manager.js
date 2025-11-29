@@ -680,18 +680,116 @@ async function handleReportMessage(msgId) {
 }
 
 // ==========================================
+// GESTIÓN DE MENÚ FLOTANTE CONTEXTUAL (Modificado)
+// ==========================================
+
+function showChatMenu(btn, uuid, type, isPinned, isFav) {
+    document.querySelector('.chat-popover-menu')?.remove();
+
+    const pinText = isPinned ? 'Desfijar chat' : 'Fijar chat';
+    const pinIconStyle = isPinned ? 'color:#1976d2;' : '';
+    
+    const favText = isFav ? 'Quitar favorito' : 'Marcar favorito';
+    const favIconStyle = isFav ? 'color:#fbc02d;' : '';
+
+    let specificOptions = '';
+    let deleteOption = '';
+
+    if (type === 'private') {
+        // [MODIFICADO] Añadida opción de bloqueo
+        specificOptions = `
+            <div class="chat-popover-item danger" data-action="block-user-chat" data-uuid="${uuid}">
+                <span class="material-symbols-rounded">block</span> ${t('friends.block_user') || 'Bloquear usuario'}
+            </div>
+            <div class="chat-popover-item danger" data-action="remove-friend-chat" data-uuid="${uuid}">
+                <span class="material-symbols-rounded">person_remove</span> Eliminar amigo
+            </div>
+        `;
+        deleteOption = `
+            <div class="chat-popover-item danger" data-action="delete-chat-conversation" data-uuid="${uuid}">
+                <span class="material-symbols-rounded">delete</span> Eliminar chat
+            </div>
+        `;
+    } else {
+        specificOptions = `
+            <div class="chat-popover-item danger" data-action="leave-community" data-uuid="${uuid}">
+                <span class="material-symbols-rounded">logout</span> Abandonar grupo
+            </div>
+        `;
+    }
+
+    const menu = document.createElement('div');
+    menu.className = 'chat-popover-menu';
+    menu.innerHTML = `
+        <div class="chat-popover-item" data-action="toggle-pin-chat" data-uuid="${uuid}" data-type="${type}">
+            <span class="material-symbols-rounded" style="${pinIconStyle}">push_pin</span> ${pinText}
+        </div>
+        <div class="chat-popover-item" data-action="toggle-fav-chat" data-uuid="${uuid}" data-type="${type}">
+            <span class="material-symbols-rounded" style="${favIconStyle}">star</span> ${favText}
+        </div>
+        ${deleteOption}
+        <div class="chat-popover-separator"></div>
+        ${specificOptions}
+    `;
+
+    const rect = btn.getBoundingClientRect();
+    menu.style.top = (rect.bottom + 5) + 'px';
+    
+    if (rect.right + 200 > window.innerWidth) {
+        menu.style.right = (window.innerWidth - rect.right) + 'px';
+    } else {
+        menu.style.left = (rect.left - 150) + 'px';
+    }
+
+    document.body.appendChild(menu);
+    btn.classList.add('active'); 
+
+    setTimeout(() => {
+        const closeHandler = (e) => {
+            if (!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+                menu.remove();
+                btn.classList.remove('active');
+                document.removeEventListener('click', closeHandler);
+            }
+        };
+        document.addEventListener('click', closeHandler);
+    }, 0);
+}
+
+async function blockUserFromChat(uuid) {
+    if (!confirm(t('friends.confirm_block') || '¿Seguro que quieres bloquear a este usuario?')) return;
+    
+    // Necesitamos el ID numérico, pero tenemos UUID. Haremos la llamada directa.
+    // El backend puede resolver UUID -> ID si modificamos la API, 
+    // pero friends_handler espera target_id numérico.
+    // Solución: Usar communities_handler.get_user_chat_by_uuid primero.
+    
+    const resInfo = await postJson('api/communities_handler.php', { action: 'get_user_chat_by_uuid', uuid: uuid });
+    if (resInfo.success) {
+        const targetId = resInfo.data.id;
+        const resBlock = await postJson('api/friends_handler.php', { action: 'block_user', target_id: targetId });
+        
+        if (resBlock.success) {
+            if(window.alertManager) window.alertManager.showAlert(resBlock.message, 'success');
+            // Recargar para aplicar cambios visuales (input deshabilitado)
+            window.location.reload(); 
+        } else {
+            if(window.alertManager) window.alertManager.showAlert(resBlock.message, 'error');
+        }
+    }
+}
+
+// ==========================================
 // INICIALIZACIÓN
 // ==========================================
 
 function initChatListeners() {
     document.addEventListener('socket-message', (e) => {
         const { type, payload } = e.detail;
-        const message = e.detail.message; // [NUEVO] Extraer mensaje de error top-level
+        const message = e.detail.message; 
 
-        // [NUEVO] Manejo de errores operativos (ej: Spam, validaciones)
         if (type === 'error') {
             if (window.alertManager) {
-                // Usar 'message' del evento o 'payload.message' si existiera
                 window.alertManager.showAlert(message || payload?.message || "Error desconocido", "error");
             } else {
                 console.error("Error del servidor:", message);
@@ -798,6 +896,15 @@ function initChatListeners() {
 function initListeners() {
     document.body.addEventListener('click', async (e) => {
         
+        // [NUEVO] Listener para bloquear
+        const blockBtn = e.target.closest('[data-action="block-user-chat"]');
+        if (blockBtn) {
+            e.preventDefault();
+            document.querySelector('.chat-popover-menu')?.remove();
+            await blockUserFromChat(blockBtn.dataset.uuid);
+            return;
+        }
+
         if (e.target.closest('#btn-back-to-list')) {
             const layout = document.querySelector('.chat-layout-container');
             if (layout) layout.classList.remove('chat-active');

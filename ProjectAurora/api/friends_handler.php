@@ -55,7 +55,12 @@ try {
 
         if (!$uuid) throw new Exception(translation('admin.error.user_not_exist'));
 
-        // --- [NUEVO] VALIDACIÓN DE PRIVACIDAD ---
+        // --- VALIDACIÓN DE PRIVACIDAD Y BLOQUEO ---
+        // Verificar bloqueo
+        $stmtBlock = $pdo->prepare("SELECT id FROM user_blocks WHERE (blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?)");
+        $stmtBlock->execute([$currentUserId, $targetUid, $targetUid, $currentUserId]);
+        if ($stmtBlock->rowCount() > 0) throw new Exception(translation('chat.error.privacy_block'));
+
         $stmtPriv = $pdo->prepare("
             SELECT COALESCE(up.message_privacy, 'friends') as privacy,
                    (SELECT status FROM friendships WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)) as status
@@ -82,7 +87,6 @@ try {
         exit;
 
     } elseif ($action === 'send_request') {
-        // ... (Lógica original intacta) ...
         if (checkActionRateLimit($pdo, $currentUserId, 'friend_request_limit', 10, 1)) {
             throw new Exception(translation('auth.errors.too_many_attempts'));
         }
@@ -90,6 +94,11 @@ try {
 
         $targetId = (int)($data['target_id'] ?? 0);
         if ($targetId === 0 || $targetId === $currentUserId) throw new Exception(translation('admin.error.user_not_exist'));
+
+        // [NUEVO] Verificar bloqueo antes de enviar solicitud
+        $stmtBlock = $pdo->prepare("SELECT id FROM user_blocks WHERE (blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?)");
+        $stmtBlock->execute([$currentUserId, $targetId, $targetId, $currentUserId]);
+        if ($stmtBlock->rowCount() > 0) throw new Exception(translation('chat.error.privacy_block'));
 
         $sql = "SELECT id FROM friendships 
                 WHERE (sender_id = ? AND receiver_id = ?) 
@@ -191,6 +200,42 @@ try {
         send_live_notification($friendId, 'friend_removed', ['sender_id' => $currentUserId]);
 
         $response = ['success' => true, 'message' => translation('notifications.friend_removed')];
+
+    // [NUEVO] Acción para bloquear usuario
+    } elseif ($action === 'block_user') {
+        $targetId = (int)($data['target_id'] ?? 0);
+        if ($targetId === 0 || $targetId === $currentUserId) throw new Exception(translation('global.action_invalid'));
+
+        // 1. Insertar en user_blocks
+        $sql = "INSERT INTO user_blocks (blocker_id, blocked_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE created_at = NOW()";
+        $stmt = $pdo->prepare($sql);
+        if ($stmt->execute([$currentUserId, $targetId])) {
+            
+            // 2. Eliminar amistad si existe
+            $sqlDelFriend = "DELETE FROM friendships WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)";
+            $pdo->prepare($sqlDelFriend)->execute([$currentUserId, $targetId, $targetId, $currentUserId]);
+
+            // 3. Eliminar notificaciones pendientes de amistad
+            $pdo->prepare("DELETE FROM notifications WHERE (user_id = ? AND related_id = ?) OR (user_id = ? AND related_id = ?) AND type IN ('friend_request', 'friend_accepted')")
+                ->execute([$currentUserId, $targetId, $targetId, $currentUserId]);
+
+            // Notificar al frontend para refrescar UI (opcional, el bloqueado no recibe notif específica de bloqueo)
+            $response = ['success' => true, 'message' => translation('friends.blocked_success')];
+        } else {
+            throw new Exception(translation('global.error_connection'));
+        }
+
+    // [NUEVO] Acción para desbloquear usuario
+    } elseif ($action === 'unblock_user') {
+        $targetId = (int)($data['target_id'] ?? 0);
+        if ($targetId === 0) throw new Exception(translation('global.action_invalid'));
+
+        $stmt = $pdo->prepare("DELETE FROM user_blocks WHERE blocker_id = ? AND blocked_id = ?");
+        if ($stmt->execute([$currentUserId, $targetId])) {
+            $response = ['success' => true, 'message' => translation('friends.unblocked_success')];
+        } else {
+            throw new Exception(translation('global.error_connection'));
+        }
     }
 
 } catch (Exception $e) {

@@ -339,3 +339,17 @@ INSERT IGNORE INTO communities (uuid, creator_id, community_name, description, a
 ('comm-uuid-003', 1, 'Proyecto Aurora Secret', 'Solo personal autorizado del proyecto.', 'AURO-XH55-99ZZ', 'private', 5, 'https://ui-avatars.com/api/?name=PA&background=000000&color=fff', 'https://picsum.photos/seed/aurora/600/200'),
 ('comm-uuid-004', 1, 'Gaming Latam', 'Torneos y discusiones sobre videojuegos.', 'GAME-PLAY-NOW1', 'public', 890, 'https://ui-avatars.com/api/?name=GL&background=4CAF50&color=fff', 'https://picsum.photos/seed/gaming/600/200'),
 ('comm-uuid-005', 1, 'Club de Lectura VIP', 'Acceso solo con invitación para lectores.','READ-BOOK-CLUB','private',12,'https://ui-avatars.com/api/?name=CL&background=FF9800&color=fff','https://picsum.photos/seed/books/600/200');
+
+
+
+
+
+CREATE TABLE IF NOT EXISTS user_blocks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    blocker_id INT NOT NULL,
+    blocked_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (blocker_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (blocked_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_block (blocker_id, blocked_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

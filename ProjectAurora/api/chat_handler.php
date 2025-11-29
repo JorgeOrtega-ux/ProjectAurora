@@ -46,16 +46,11 @@ try {
     // --- ENVIAR MENSAJE ---
     if ($action === 'send_message') {
         
-        // [NUEVO] Protección Anti-Spam PHP
-        // Esto consulta la BD usando las variables configuradas.
+        // Anti-Spam Check
         if (checkChatSpam($pdo, $userId)) {
-            // Recuperamos la configuración solo para mostrar el mensaje de error detallado
             $config = getServerConfig($pdo);
             $limit = $config['chat_msg_limit'];
             $secs = $config['chat_time_window'];
-            
-            // Lanzamos error. Esto detiene el script PHP y devuelve el error al cliente.
-            // NO cierra ninguna conexión persistente porque PHP es stateless.
             throw new Exception(translation('chat.error.spam_limit', ['limit' => $limit, 'seconds' => $secs]) ?? "Has enviado demasiados mensajes. Espera unos segundos.");
         }
 
@@ -73,6 +68,12 @@ try {
             $targetId = $stmtU->fetchColumn();
             if (!$targetId || $targetId == $userId) throw new Exception("Usuario inválido.");
 
+            // [NUEVO] VERIFICAR BLOQUEOS
+            $stmtBlock = $pdo->prepare("SELECT id FROM user_blocks WHERE (blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?)");
+            $stmtBlock->execute([$userId, $targetId, $targetId, $userId]);
+            if ($stmtBlock->rowCount() > 0) throw new Exception(translation('chat.error.privacy_block'));
+
+            // VERIFICAR PRIVACIDAD
             $stmtPriv = $pdo->prepare("
                 SELECT COALESCE(up.message_privacy, 'friends') as privacy,
                        (SELECT status FROM friendships WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)) as status
@@ -221,6 +222,8 @@ try {
             $targetId = $stmtU->fetchColumn();
             if (!$targetId) throw new Exception("Usuario no encontrado");
 
+            // No bloqueamos la lectura de mensajes anteriores, solo el envío.
+            
             $stmtRead = $pdo->prepare("UPDATE private_messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ? AND is_read = 0");
             $stmtRead->execute([$targetId, $userId]);
 

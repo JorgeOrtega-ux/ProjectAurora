@@ -25,7 +25,7 @@ class SearchFetcher {
         $queryLimit = $limit + 1;
 
         try {
-            // [MODIFICADO] Se agregó COALESCE(up.message_privacy, 'friends') y el LEFT JOIN correspondiente
+            // [MODIFICADO] Excluir usuarios bloqueados en la consulta
             $sql = "SELECT u.id, u.username, u.profile_picture, u.role, 
                            f.status as friend_status, f.sender_id,
                            COALESCE(up.message_privacy, 'friends') as message_privacy,
@@ -46,6 +46,11 @@ class SearchFetcher {
                     WHERE u.username LIKE ? 
                     AND u.id != ? 
                     AND u.account_status = 'active'
+                    AND u.id NOT IN (
+                        SELECT blocked_id FROM user_blocks WHERE blocker_id = ?
+                        UNION
+                        SELECT blocker_id FROM user_blocks WHERE blocked_id = ?
+                    )
                     LIMIT $queryLimit OFFSET $offset";
 
             $stmt = $pdo->prepare($sql);
@@ -55,7 +60,9 @@ class SearchFetcher {
                 $currentUserId, $currentUserId, $currentUserId, // Para subconsulta mutual_friends
                 $currentUserId, $currentUserId,                 // Para JOIN friendships principal
                 '%' . $query . '%',                             // Para LIKE username
-                $currentUserId                                  // Para excluirse a sí mismo
+                $currentUserId,                                 // Para excluirse a sí mismo
+                $currentUserId,                                 // user_blocks (yo bloqueo)
+                $currentUserId                                  // user_blocks (me bloquean)
             ]);
 
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
