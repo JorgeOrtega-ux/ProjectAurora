@@ -69,9 +69,6 @@ $initType = $activeContextType ?? 'community'; // 'community' | 'private'
                 
                 <div class="chat-header">
                     <div class="chat-header-left">
-                        <button class="component-icon-button mobile-back-btn" id="btn-back-to-list">
-                            <span class="material-symbols-rounded">arrow_back</span>
-                        </button>
                         
                         <div class="chat-avatar-container">
                             <img id="chat-header-img" src="" alt="" class="chat-avatar-img">
