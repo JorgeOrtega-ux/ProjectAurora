@@ -53,6 +53,7 @@ function renderChatListItem(item) {
     // Indicadores visuales
     const isPinned = parseInt(item.is_pinned) === 1;
     const isFavorite = parseInt(item.is_favorite) === 1;
+    const isBlocked = parseInt(item.is_blocked_by_me) > 0;
     
     let indicatorsHtml = '';
     if (isPinned || isFavorite) {
@@ -65,6 +66,7 @@ function renderChatListItem(item) {
     // Datos extra para el menú
     const pinnedAttr = isPinned ? 'true' : 'false';
     const favAttr = isFavorite ? 'true' : 'false';
+    const blockedAttr = isBlocked ? 'true' : 'false';
 
     return `
     <div class="chat-item ${isActive}" id="sidebar-item-${item.uuid}" data-action="select-chat" data-uuid="${item.uuid}" data-type="${item.type}">
@@ -91,7 +93,8 @@ function renderChatListItem(item) {
             data-uuid="${item.uuid}" 
             data-type="${item.type}"
             data-pinned="${pinnedAttr}"
-            data-fav="${favAttr}">
+            data-fav="${favAttr}"
+            data-blocked="${blockedAttr}">
             <span class="material-symbols-rounded">expand_more</span>
         </button>
     </div>`;
@@ -286,7 +289,7 @@ async function loadPublicCommunities() {
 // GESTIÓN DE MENÚ FLOTANTE CONTEXTUAL
 // ==========================================
 
-function showChatMenu(btn, uuid, type, isPinned, isFav) {
+function showChatMenu(btn, uuid, type, isPinned, isFav, isBlocked) {
     document.querySelector('.chat-popover-menu')?.remove();
 
     const pinText = isPinned ? 'Desfijar chat' : 'Fijar chat';
@@ -299,15 +302,27 @@ function showChatMenu(btn, uuid, type, isPinned, isFav) {
     let deleteOption = '';
 
     if (type === 'private') {
-        // [FIX] Añadidos atributos data-action y data-uuid para que el listener los detecte
-        specificOptions = `
-            <div class="chat-popover-item danger" data-action="block-user-chat" data-uuid="${uuid}">
-                <span class="material-symbols-rounded">block</span> ${t('friends.block_user') || 'Bloquear'}
-            </div>
-            <div class="chat-popover-item danger" data-action="remove-friend-chat" data-uuid="${uuid}">
-                <span class="material-symbols-rounded">person_remove</span> Eliminar amigo
-            </div>
-        `;
+        // [MODIFICADO] Lógica condicional para Bloquear/Desbloquear
+        if (isBlocked) {
+            specificOptions = `
+                <div class="chat-popover-item danger" data-action="unblock-user-chat" data-uuid="${uuid}">
+                    <span class="material-symbols-rounded">lock_open</span> Desbloquear
+                </div>
+                <div class="chat-popover-item danger" data-action="remove-friend-chat" data-uuid="${uuid}">
+                    <span class="material-symbols-rounded">person_remove</span> Eliminar amigo
+                </div>
+            `;
+        } else {
+            specificOptions = `
+                <div class="chat-popover-item danger" data-action="block-user-chat" data-uuid="${uuid}">
+                    <span class="material-symbols-rounded">block</span> ${t('friends.block_user') || 'Bloquear'}
+                </div>
+                <div class="chat-popover-item danger" data-action="remove-friend-chat" data-uuid="${uuid}">
+                    <span class="material-symbols-rounded">person_remove</span> Eliminar amigo
+                </div>
+            `;
+        }
+        
         deleteOption = `
             <div class="chat-popover-item danger" data-action="delete-chat-conversation" data-uuid="${uuid}">
                 <span class="material-symbols-rounded">delete</span> Eliminar chat
@@ -413,6 +428,22 @@ async function blockUserFromChat(uuid) {
     }
 }
 
+// [NUEVO] Función para desbloquear usuario
+async function unblockUserFromChat(uuid) {
+    const resInfo = await postJson('api/communities_handler.php', { action: 'get_user_chat_by_uuid', uuid: uuid });
+    if (resInfo.success) {
+        const targetId = resInfo.data.id;
+        const resUnblock = await postJson('api/friends_handler.php', { action: 'unblock_user', target_id: targetId });
+        
+        if (resUnblock.success) {
+            if(window.alertManager) window.alertManager.showAlert(resUnblock.message, 'success');
+            window.location.reload(); 
+        } else {
+            if(window.alertManager) window.alertManager.showAlert(resUnblock.message, 'error');
+        }
+    }
+}
+
 // ==========================================
 // MANEJO DE FILTROS Y BÚSQUEDA
 // ==========================================
@@ -453,7 +484,8 @@ function initListListeners() {
             e.stopPropagation(); 
             const isPinned = chatMenuBtn.dataset.pinned === 'true';
             const isFav = chatMenuBtn.dataset.fav === 'true';
-            showChatMenu(chatMenuBtn, chatMenuBtn.dataset.uuid, chatMenuBtn.dataset.type, isPinned, isFav);
+            const isBlocked = chatMenuBtn.dataset.blocked === 'true';
+            showChatMenu(chatMenuBtn, chatMenuBtn.dataset.uuid, chatMenuBtn.dataset.type, isPinned, isFav, isBlocked);
             return;
         }
 
@@ -488,12 +520,21 @@ function initListListeners() {
             return; // Detener ejecución
         }
 
-        // [FIX] Listener para el botón "Bloquear" del menú flotante
+        // [MODIFICADO] Listener para bloquear (desde communities-manager es la fuente de verdad)
         const blockBtn = e.target.closest('[data-action="block-user-chat"]');
         if (blockBtn) {
             e.preventDefault();
             document.querySelector('.chat-popover-menu')?.remove();
             await blockUserFromChat(blockBtn.dataset.uuid);
+            return;
+        }
+
+        // [NUEVO] Listener para desbloquear
+        const unblockBtn = e.target.closest('[data-action="unblock-user-chat"]');
+        if (unblockBtn) {
+            e.preventDefault();
+            document.querySelector('.chat-popover-menu')?.remove();
+            await unblockUserFromChat(unblockBtn.dataset.uuid);
             return;
         }
 

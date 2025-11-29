@@ -85,7 +85,8 @@ try {
                     c.profile_picture, cm.is_pinned, cm.is_favorite,
                     (SELECT message FROM community_messages WHERE community_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
                     (SELECT created_at FROM community_messages WHERE community_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_at,
-                    (SELECT COUNT(*) FROM community_messages WHERE community_id = c.id AND created_at > cm.last_read_at AND user_id != cm.user_id) as unread_count
+                    (SELECT COUNT(*) FROM community_messages WHERE community_id = c.id AND created_at > cm.last_read_at AND user_id != cm.user_id) as unread_count,
+                    0 as is_blocked_by_me
                 FROM communities c
                 JOIN community_members cm ON c.id = cm.community_id
                 WHERE cm.user_id = ?";
@@ -95,7 +96,7 @@ try {
         $communities = $stmtComm->fetchAll(PDO::FETCH_ASSOC);
 
         // 2. Obtener Chats Privados Activos
-        // [CORRECCIÓN] SQL ajustado para incluir privacidad y friend_status con el número correcto de parámetros
+        // [MODIFICADO] Se agrega subquery para is_blocked_by_me
         $sqlDMs = "SELECT 
                     'private' as type,
                     u.id, u.uuid, u.username as name, 
@@ -106,7 +107,8 @@ try {
                     m.created_at as last_message_at,
                     (SELECT COUNT(*) FROM private_messages pm WHERE pm.sender_id = u.id AND pm.receiver_id = ? AND pm.is_read = 0) as unread_count,
                     COALESCE(up.message_privacy, 'friends') as message_privacy,
-                    (SELECT status FROM friendships f WHERE (f.sender_id = u.id AND f.receiver_id = ?) OR (f.sender_id = ? AND f.receiver_id = u.id)) as friend_status
+                    (SELECT status FROM friendships f WHERE (f.sender_id = u.id AND f.receiver_id = ?) OR (f.sender_id = ? AND f.receiver_id = u.id)) as friend_status,
+                    (SELECT COUNT(*) FROM user_blocks WHERE blocker_id = ? AND blocked_id = u.id) as is_blocked_by_me
                    FROM users u
                    LEFT JOIN user_preferences up ON u.id = up.user_id
                    JOIN (
@@ -127,11 +129,12 @@ try {
 
         $stmtDMs = $pdo->prepare($sqlDMs);
         
-        // [CORRECCIÓN] Array de parámetros (8 placeholders = 8 variables)
+        // Parametros ordenados
         $params = [
             $userId, // unread_count receiver
             $userId, // friend_status receiver
             $userId, // friend_status sender
+            $userId, // is_blocked_by_me check
             $userId, // subquery partner_id case
             $userId, // subquery where sender
             $userId, // subquery where receiver
