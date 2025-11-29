@@ -50,19 +50,16 @@ function renderChatListItem(item) {
     const role = item.role || 'user'; 
     const shapeClass = isPrivate ? '' : 'community-shape'; 
 
-    // Indicadores visuales
+    // Indicadores visuales (Pin / Favorito)
     const isPinned = parseInt(item.is_pinned) === 1;
     const isFavorite = parseInt(item.is_favorite) === 1;
     const isBlocked = parseInt(item.is_blocked_by_me) > 0;
     
-    let indicatorsHtml = '';
-    if (isPinned || isFavorite) {
-        indicatorsHtml = '<div class="chat-item-indicators">';
-        if (isFavorite) indicatorsHtml += '<span class="material-symbols-rounded icon-indicator favorite">star</span>';
-        if (isPinned) indicatorsHtml += '<span class="material-symbols-rounded icon-indicator pinned">push_pin</span>';
-        indicatorsHtml += '</div>';
-    }
-
+    // Iconos en la fila de abajo
+    let indicatorsIcons = '';
+    if (isFavorite) indicatorsIcons += '<span class="material-symbols-rounded icon-indicator favorite">star</span>';
+    if (isPinned) indicatorsIcons += '<span class="material-symbols-rounded icon-indicator pinned">push_pin</span>';
+   
     // Datos extra para el menú
     const pinnedAttr = isPinned ? 'true' : 'false';
     const favAttr = isFavorite ? 'true' : 'false';
@@ -80,23 +77,25 @@ function renderChatListItem(item) {
                 <span class="chat-item-name">${escapeHtml(item.name)}</span>
                 <span class="chat-item-time">${time}</span>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center;">
+            
+            <div class="chat-item-bottom">
                 <span class="chat-item-preview" style="${previewStyle}">${lastMsg}</span>
-                ${badgeHtml}
+                
+                <div class="chat-item-actions">
+                    ${badgeHtml}
+                    ${indicatorsIcons}
+                    <button class="chat-hover-btn" 
+                        data-action="open-chat-menu" 
+                        data-uuid="${item.uuid}" 
+                        data-type="${item.type}"
+                        data-pinned="${pinnedAttr}"
+                        data-fav="${favAttr}"
+                        data-blocked="${blockedAttr}">
+                        <span class="material-symbols-rounded">expand_more</span>
+                    </button>
+                </div>
             </div>
         </div>
-
-        ${indicatorsHtml}
-
-        <button class="chat-hover-btn" 
-            data-action="open-chat-menu" 
-            data-uuid="${item.uuid}" 
-            data-type="${item.type}"
-            data-pinned="${pinnedAttr}"
-            data-fav="${favAttr}"
-            data-blocked="${blockedAttr}">
-            <span class="material-symbols-rounded">expand_more</span>
-        </button>
     </div>`;
 }
 
@@ -197,12 +196,13 @@ function handleSidebarUpdate(payload) {
         if (!isActiveChat || (isActiveChat && !windowHasFocus)) {
             let badge = existingItem.querySelector('.unread-counter');
             if (!badge) {
-                const infoContainer = existingItem.querySelector('.chat-item-info > div:last-child');
-                if (infoContainer) {
+                // Buscamos el contenedor de acciones para insertar el badge al principio
+                const actionsContainer = existingItem.querySelector('.chat-item-actions');
+                if (actionsContainer) {
                     badge = document.createElement('div');
                     badge.className = 'unread-counter';
                     badge.textContent = '1';
-                    infoContainer.appendChild(badge);
+                    actionsContainer.prepend(badge);
                 }
             } else {
                 let count = parseInt(badge.textContent) || 0;
@@ -290,7 +290,8 @@ async function loadPublicCommunities() {
 // ==========================================
 
 function showChatMenu(btn, uuid, type, isPinned, isFav, isBlocked) {
-    document.querySelector('.chat-popover-menu')?.remove();
+    // Eliminar previos si existen
+    document.querySelector('.dynamic-popover')?.remove();
 
     const pinText = isPinned ? 'Desfijar chat' : 'Fijar chat';
     const pinIconStyle = isPinned ? 'color:#1976d2;' : '';
@@ -301,62 +302,67 @@ function showChatMenu(btn, uuid, type, isPinned, isFav, isBlocked) {
     let specificOptions = '';
     let deleteOption = '';
 
+    // Helper para generar items estándar del sistema
+    const createItem = (action, icon, text, style = '', danger = false) => {
+        const textColor = danger ? 'color: #d32f2f;' : '';
+        const iconColor = danger ? 'color: #d32f2f;' : 'color: #333;';
+        
+        // Si viene estilo específico para icono (pinned/fav), úsalo
+        const finalIconStyle = style ? style : iconColor;
+
+        return `
+        <div class="menu-link" data-action="${action}" data-uuid="${uuid}" data-type="${type}">
+            <div class="menu-link-icon">
+                <span class="material-symbols-rounded" style="${finalIconStyle}">${icon}</span>
+            </div>
+            <div class="menu-link-text" style="${textColor}">${text}</div>
+        </div>`;
+    };
+
     if (type === 'private') {
-        // [MODIFICADO] Lógica condicional para Bloquear/Desbloquear
         if (isBlocked) {
             specificOptions = `
-                <div class="chat-popover-item danger" data-action="unblock-user-chat" data-uuid="${uuid}">
-                    <span class="material-symbols-rounded">lock_open</span> Desbloquear
-                </div>
-                <div class="chat-popover-item danger" data-action="remove-friend-chat" data-uuid="${uuid}">
-                    <span class="material-symbols-rounded">person_remove</span> Eliminar amigo
-                </div>
+                ${createItem('unblock-user-chat', 'lock_open', 'Desbloquear', '', true)}
+                ${createItem('remove-friend-chat', 'person_remove', 'Eliminar amigo', '', true)}
             `;
         } else {
             specificOptions = `
-                <div class="chat-popover-item danger" data-action="block-user-chat" data-uuid="${uuid}">
-                    <span class="material-symbols-rounded">block</span> ${t('friends.block_user') || 'Bloquear'}
-                </div>
-                <div class="chat-popover-item danger" data-action="remove-friend-chat" data-uuid="${uuid}">
-                    <span class="material-symbols-rounded">person_remove</span> Eliminar amigo
-                </div>
+                ${createItem('block-user-chat', 'block', t('friends.block_user') || 'Bloquear', '', true)}
+                ${createItem('remove-friend-chat', 'person_remove', 'Eliminar amigo', '', true)}
             `;
         }
-        
-        deleteOption = `
-            <div class="chat-popover-item danger" data-action="delete-chat-conversation" data-uuid="${uuid}">
-                <span class="material-symbols-rounded">delete</span> Eliminar chat
-            </div>
-        `;
+        deleteOption = createItem('delete-chat-conversation', 'delete', 'Eliminar chat', '', true);
     } else {
-        specificOptions = `
-            <div class="chat-popover-item danger" data-action="leave-community" data-uuid="${uuid}">
-                <span class="material-symbols-rounded">logout</span> Abandonar grupo
-            </div>
-        `;
+        specificOptions = createItem('leave-community', 'logout', 'Abandonar grupo', '', true);
     }
 
     const menu = document.createElement('div');
-    menu.className = 'chat-popover-menu';
+    menu.className = 'popover-module dynamic-popover body-title active';
+    
     menu.innerHTML = `
-        <div class="chat-popover-item" data-action="toggle-pin-chat" data-uuid="${uuid}" data-type="${type}">
-            <span class="material-symbols-rounded" style="${pinIconStyle}">push_pin</span> ${pinText}
+        <div class="menu-content">
+            <div class="menu-list">
+                ${createItem('toggle-pin-chat', 'push_pin', pinText, pinIconStyle)}
+                ${createItem('toggle-fav-chat', 'star', favText, favIconStyle)}
+                ${deleteOption}
+                <div class="component-divider" style="margin: 4px 0;"></div>
+                ${specificOptions}
+            </div>
         </div>
-        <div class="chat-popover-item" data-action="toggle-fav-chat" data-uuid="${uuid}" data-type="${type}">
-            <span class="material-symbols-rounded" style="${favIconStyle}">star</span> ${favText}
-        </div>
-        ${deleteOption}
-        <div class="chat-popover-separator"></div>
-        ${specificOptions}
     `;
 
     const rect = btn.getBoundingClientRect();
-    menu.style.top = (rect.bottom + 5) + 'px';
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
     
+    menu.style.top = (rect.bottom + scrollTop + 5) + 'px';
+    
+    // Posicionamiento inteligente
     if (rect.right + 200 > window.innerWidth) {
         menu.style.right = (window.innerWidth - rect.right) + 'px';
+        menu.style.left = 'auto';
     } else {
         menu.style.left = (rect.left - 150) + 'px';
+        menu.style.right = 'auto';
     }
 
     document.body.appendChild(menu);
@@ -404,21 +410,16 @@ async function leaveCommunity(uuid) {
     }
 }
 
-// [NUEVO] Función para bloquear usuario desde el chat (usando UUID de chat)
 async function blockUserFromChat(uuid) {
     if (!confirm(t('friends.confirm_block') || '¿Seguro que quieres bloquear a este usuario?')) return;
-    
-    // 1. Obtener ID real del usuario usando el UUID del chat
     const resInfo = await postJson('api/communities_handler.php', { action: 'get_user_chat_by_uuid', uuid: uuid });
     
     if (resInfo.success) {
         const targetId = resInfo.data.id;
-        // 2. Ejecutar bloqueo
         const resBlock = await postJson('api/friends_handler.php', { action: 'block_user', target_id: targetId });
         
         if (resBlock.success) {
             if(window.alertManager) window.alertManager.showAlert(resBlock.message, 'success');
-            // Recargar para actualizar la interfaz
             window.location.reload(); 
         } else {
             if(window.alertManager) window.alertManager.showAlert(resBlock.message, 'error');
@@ -428,7 +429,6 @@ async function blockUserFromChat(uuid) {
     }
 }
 
-// [NUEVO] Función para desbloquear usuario
 async function unblockUserFromChat(uuid) {
     const resInfo = await postJson('api/communities_handler.php', { action: 'get_user_chat_by_uuid', uuid: uuid });
     if (resInfo.success) {
@@ -517,53 +517,51 @@ function initListListeners() {
                 if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
                 setButtonLoading(joinBtn, false, 'Unirse');
             }
-            return; // Detener ejecución
+            return;
         }
 
-        // [MODIFICADO] Listener para bloquear (desde communities-manager es la fuente de verdad)
         const blockBtn = e.target.closest('[data-action="block-user-chat"]');
         if (blockBtn) {
             e.preventDefault();
-            document.querySelector('.chat-popover-menu')?.remove();
+            document.querySelector('.dynamic-popover')?.remove();
             await blockUserFromChat(blockBtn.dataset.uuid);
             return;
         }
 
-        // [NUEVO] Listener para desbloquear
         const unblockBtn = e.target.closest('[data-action="unblock-user-chat"]');
         if (unblockBtn) {
             e.preventDefault();
-            document.querySelector('.chat-popover-menu')?.remove();
+            document.querySelector('.dynamic-popover')?.remove();
             await unblockUserFromChat(unblockBtn.dataset.uuid);
             return;
         }
 
         const pinAction = e.target.closest('[data-action="toggle-pin-chat"]');
         if (pinAction) {
-            document.querySelector('.chat-popover-menu')?.remove();
+            document.querySelector('.dynamic-popover')?.remove();
             await togglePinChat(pinAction.dataset.uuid, pinAction.dataset.type);
-            return; // Detener ejecución
+            return;
         }
 
         const favAction = e.target.closest('[data-action="toggle-fav-chat"]');
         if (favAction) {
-            document.querySelector('.chat-popover-menu')?.remove();
+            document.querySelector('.dynamic-popover')?.remove();
             await toggleFavChat(favAction.dataset.uuid, favAction.dataset.type);
-            return; // Detener ejecución
+            return;
         }
 
         const leaveAction = e.target.closest('[data-action="leave-community"]');
         if (leaveAction) {
-            document.querySelector('.chat-popover-menu')?.remove();
+            document.querySelector('.dynamic-popover')?.remove();
             await leaveCommunity(leaveAction.dataset.uuid);
-            return; // Detener ejecución
+            return;
         }
         
         const deleteChatAction = e.target.closest('[data-action="delete-chat-conversation"]');
         if (deleteChatAction) {
             e.preventDefault();
             const uuid = deleteChatAction.dataset.uuid;
-            document.querySelector('.chat-popover-menu')?.remove();
+            document.querySelector('.dynamic-popover')?.remove();
             
             if(!confirm('¿Seguro que quieres eliminar este chat? Solo se borrará para ti.')) return;
             const res = await postJson('api/chat_handler.php', { action: 'delete_conversation', target_uuid: uuid });
@@ -578,7 +576,7 @@ function initListListeners() {
             } else {
                 if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
             }
-            return; // Detener ejecución
+            return;
         }
     });
 
@@ -590,7 +588,6 @@ function initListListeners() {
         }
     });
 
-    // Escuchar evento local para limpiar badge cuando chat-manager marque como leído
     document.addEventListener('local-chat-read', (e) => {
         const uuid = e.detail.uuid;
         const item = document.querySelector(`.chat-item[data-uuid="${uuid}"]`);
@@ -605,7 +602,6 @@ function initListListeners() {
                 preview.style.color = '';
             }
             
-            // Actualizar datos en memoria
             const dataItem = sidebarItems.find(i => i.uuid === uuid);
             if (dataItem) dataItem.unread_count = 0;
         }
