@@ -1,5 +1,3 @@
-// public/assets/js/modules/chat-manager.js
-
 import { ChatApi, CommunityApi } from '../services/api-service.js';
 import { t } from '../core/i18n-manager.js';
 import * as Renderer from './chat-renderer.js';
@@ -22,7 +20,7 @@ const MESSAGES_PER_PAGE = 50;
 let isLoadingMessages = false;
 let hasMoreMessages = true;
 
-// Estado de UI local (Typing indicators visuals)
+// Estado de UI local
 let typingTimeout = null;
 const TYPING_DISPLAY_TIME = 3000;
 
@@ -33,22 +31,67 @@ let areGlobalActionsInit = false;
 // --- GESTIÓN DE APERTURA DE CHAT ---
 
 export async function openChat(uuid, chatData = null) {
-    const isSameChat = (currentChatUuid === uuid);
-    const isSameChannel = (chatData && chatData.channel_uuid === currentChannelUuid);
+    // ---------------------------------------------------------
+    // ANÁLISIS ULTRA A FONDO PARA EVITAR RECARGAS (FIXED)
+    // ---------------------------------------------------------
     
-    // Si ya tenemos datos, es el mismo chat y tenemos el estado del canal, solo actualizamos UI
-    if (isSameChat && isSameChannel && chatData && chatData.channel_status) {
-        Renderer.updateChatInterface(chatData);
-        return;
+    // 1. ¿Es el mismo UUID principal (Usuario o Comunidad)?
+    const isSameEntity = (currentChatUuid === uuid);
+
+    if (isSameEntity) {
+        // CASO A: Chat Privado
+        // Si estoy en privado y el ID es el mismo, NO RECARGAR.
+        // (En privado no hay canales, así que es suficiente validación).
+        if (currentChatType === 'private') {
+            console.log('🛑 Anti-Reload: Ya estás en este chat privado.');
+            document.querySelector('.chat-message-input')?.focus();
+            return; 
+        }
+
+        // CASO B: Comunidad
+        if (currentChatType === 'community') {
+            // Verificamos si la intención es cambiar de canal.
+            // Si chatData es null, asumimos que se clickeó el icono de la comunidad (mismo canal actual).
+            const targetChannelUuid = (chatData && chatData.channel_uuid) ? chatData.channel_uuid : null;
+
+            // 1. Si no especifican canal (targetChannelUuid es null), significa que clickearon
+            // la comunidad general. Si ya estamos dentro, nos quedamos donde estamos.
+            if (!targetChannelUuid) {
+                console.log('🛑 Anti-Reload: Ya estás en esta comunidad (Canal actual mantenido).');
+                document.querySelector('.chat-message-input')?.focus();
+                return;
+            }
+
+            // 2. Si ESPECIFICAN un canal, validamos si es el mismo que el actual.
+            if (targetChannelUuid === currentChannelUuid) {
+                console.log('🛑 Anti-Reload: Ya estás en este canal específico.');
+                document.querySelector('.chat-message-input')?.focus();
+                return;
+            }
+        }
     }
+    // ---------------------------------------------------------
+
+    // Si pasamos aquí, es un chat nuevo o un canal diferente. Procedemos a cargar.
 
     // Si nos pasan chatData, usamos SU tipo. Si no, usamos el global o fallback.
     let type = (chatData && chatData.type) ? chatData.type : (window.ACTIVE_CHAT_TYPE || 'community');
 
-    // Si no hay datos (recarga) O si es comunidad y falta el estado del canal, forzamos la carga completa.
+    // Si no hay datos (recarga forzada o click desde lista simple) O es comunidad sin estado de canal
     if (!chatData || (type === 'community' && !chatData.channel_status)) {
         let res;
 
+        // Intentamos deducir el tipo si no viene explícito
+        // (Nota: Si venimos de un click de amigo, el type suele ser 'private' implícito en la lógica de UI,
+        // pero aquí aseguramos la carga de datos).
+        
+        // Estrategia de carga: intentamos cargar como si fuera lo que creemos que es.
+        // Si falla y es un error 404, el backend maneja eso.
+        
+        // Pero para ser más precisos: Si el input dice que es 'private' o si no dice nada
+        // y parece un UUID de usuario (esto es difícil de saber solo con el string, así que confiamos en el flujo).
+        
+        // Lógica estándar de fetch:
         if (type === 'private') {
             res = await CommunityApi.getUserChatByUuid(uuid);
             if (res.success) {
@@ -56,18 +99,17 @@ export async function openChat(uuid, chatData = null) {
                 chatData.type = 'private';
             }
         } else {
-            // 1. Obtener info básica de comunidad
+            // Asumimos comunidad por defecto si no es privado
             res = await CommunityApi.getByUuid(uuid);
             
             if (res.success) {
                 chatData = res.data || res.community;
                 chatData.type = 'community';
 
-                // Resolver estado del canal activo al recargar
+                // Resolver canal activo
                 const targetChannelUuid = window.ACTIVE_CHANNEL_UUID || chatData.default_channel_uuid;
                 
                 if (targetChannelUuid) {
-                    // Obtenemos detalles completos para saber el status real del canal
                     const detailsRes = await CommunityApi.getDetails(uuid);
                     if (detailsRes.success && detailsRes.channels) {
                         const activeChannel = detailsRes.channels.find(c => c.uuid === targetChannelUuid);
@@ -75,8 +117,6 @@ export async function openChat(uuid, chatData = null) {
                             chatData.channel_uuid = activeChannel.uuid;
                             chatData.channel_name = activeChannel.name;
                             chatData.channel_status = activeChannel.status; 
-                            
-                            // Sincronizar variable global
                             window.ACTIVE_CHANNEL_UUID = activeChannel.uuid;
                         }
                     }
@@ -85,11 +125,13 @@ export async function openChat(uuid, chatData = null) {
         }
 
         if (!res || !res.success) {
+            console.error("Error cargando chat o chat no existe");
             window.history.pushState({ section: 'main' }, '', window.BASE_PATH);
             return;
         }
     }
 
+    // Actualización de Estado Global
     currentChatUuid = chatData.uuid;
     currentChatId = chatData.id; 
     currentChatType = chatData.type || 'community';
@@ -100,6 +142,7 @@ export async function openChat(uuid, chatData = null) {
     window.ACTIVE_CHAT_TYPE = currentChatType;
     window.ACTIVE_CHANNEL_UUID = currentChannelUuid;
 
+    // Resetear UI
     currentOffset = 0;
     hasMoreMessages = true;
     isLoadingMessages = false;
@@ -111,11 +154,11 @@ export async function openChat(uuid, chatData = null) {
 
     Renderer.updateChatInterface(chatData);
     
-    // Solo cargar mensajes si NO está en mantenimiento
     if (chatData.status !== 'maintenance' && chatData.channel_status !== 'maintenance') {
         loadChatMessages(uuid, currentChatType, true);
     }
 
+    // Actualizar URL
     const prefix = (currentChatType === 'private') ? 'dm' : 'c';
     let newUrl = `${window.BASE_PATH}${prefix}/${uuid}`;
     
@@ -210,7 +253,6 @@ function initAttachmentListeners() {
             
             Renderer.renderAttachmentPreview(selectedFiles, container, grid);
             
-            // Re-asignar listeners de eliminación
             grid.querySelectorAll('.preview-remove').forEach(btn => {
                 btn.onclick = (e) => {
                     selectedFiles.splice(parseInt(e.target.dataset.index), 1);
@@ -240,7 +282,7 @@ function triggerTypingIndicator() {
     }, TYPING_DISPLAY_TIME);
 }
 
-// --- ACCIONES PRINCIPALES (Bridge con ChatActions) ---
+// --- ACCIONES PRINCIPALES ---
 
 async function performSendMessage() {
     if (!currentChatUuid) return;
@@ -250,7 +292,6 @@ async function performSendMessage() {
     
     if (!text && selectedFiles.length === 0) return;
 
-    // Preparar UI si hay archivos (carga)
     let btn = null;
     let originalIcon = '';
     
@@ -270,11 +311,9 @@ async function performSendMessage() {
         channelUuid: (currentChannelUuid && currentChatType === 'community') ? currentChannelUuid : null
     };
 
-    // Llamar a la lógica de acciones
     const result = await ChatActions.sendMessage(params);
 
     if (result.success) {
-        // Limpieza de UI
         input.value = '';
         input.focus();
         clearAttachments();
@@ -283,7 +322,6 @@ async function performSendMessage() {
         if(window.alertManager) window.alertManager.showAlert(result.message || 'Error al enviar', 'error');
     }
 
-    // Restaurar botón si hubo archivos
     if (btn) {
         btn.disabled = false;
         btn.innerHTML = originalIcon;
@@ -303,7 +341,7 @@ function disableReplyMode() {
     Renderer.updateReplyUI(false);
 }
 
-// --- CALLBACKS PARA EL POPUP DE OPCIONES ---
+// --- CALLBACKS & LISTENERS ---
 
 async function onSaveEditMessage(newText, editContainer, contentWrapper, msgUuid) {
     const saveBtn = editContainer.querySelector('[data-action="save-edit-message"]');
@@ -324,9 +362,7 @@ async function onSaveEditMessage(newText, editContainer, contentWrapper, msgUuid
 
 async function onDeleteMessage(msgUuid) {
     const result = await ChatActions.handleDeleteMessage(msgUuid, currentChatType, currentChatUuid);
-    
     if (result.success) {
-        // Opacidad inmediata para feedback visual
         const msgEl = document.getElementById(`msg-${msgUuid}`);
         if (msgEl) msgEl.style.opacity = '0.5';
     } else if (!result.cancelled && result.message) {
@@ -336,15 +372,12 @@ async function onDeleteMessage(msgUuid) {
 
 async function onReportMessage(msgUuid) {
     const result = await ChatActions.handleReportMessage(msgUuid, currentChatType, currentChatUuid);
-    
     if (result.success) {
         if(window.alertManager) window.alertManager.showAlert(t('chat.report_success') || 'Reporte enviado.', 'success');
     } else if (!result.cancelled && result.message) {
         if(window.alertManager) window.alertManager.showAlert(result.message, 'error');
     }
 }
-
-// --- LISTENERS ---
 
 function initSocketListeners() {
     if (areSocketListenersInit) return;
@@ -354,11 +387,7 @@ function initSocketListeners() {
         const message = e.detail.message; 
 
         if (type === 'error') {
-            if (window.alertManager) {
-                window.alertManager.showAlert(message || payload?.message || "Error desconocido", "error");
-            } else {
-                console.error("Error del servidor:", message);
-            }
+            if (window.alertManager) window.alertManager.showAlert(message || payload?.message || "Error desconocido", "error");
             return;
         }
         
@@ -393,9 +422,7 @@ function initSocketListeners() {
                 bubble.style.transition = 'background-color 0.3s';
                 const originalBg = bubble.style.backgroundColor;
                 bubble.style.backgroundColor = '#fff9c4'; 
-                setTimeout(() => {
-                    bubble.style.backgroundColor = originalBg;
-                }, 500);
+                setTimeout(() => { bubble.style.backgroundColor = originalBg; }, 500);
                 
                 const optBtn = msgRow.querySelector('.message-options-btn');
                 if(optBtn) optBtn.dataset.text = newContent;
@@ -404,7 +431,6 @@ function initSocketListeners() {
         }
 
         if (type === 'new_chat_message' || type === 'private_message') {
-            
             if (currentChatType === 'private' && currentChatId && parseInt(payload.sender_id) === parseInt(currentChatId)) {
                 Renderer.resetHeaderStatus();
                 clearTimeout(typingTimeout);
@@ -425,12 +451,8 @@ function initSocketListeners() {
                 }
                 else {
                     const activeUuid = currentChatUuid || window.ACTIVE_CHAT_UUID;
-                    if (payload.sender_uuid && payload.sender_uuid === activeUuid) {
-                         isForCurrentChat = true;
-                    }
-                    else if (currentChatId && parseInt(payload.sender_id) === parseInt(currentChatId)) {
-                        isForCurrentChat = true;
-                    }
+                    if (payload.sender_uuid && payload.sender_uuid === activeUuid) isForCurrentChat = true;
+                    else if (currentChatId && parseInt(payload.sender_id) === parseInt(currentChatId)) isForCurrentChat = true;
                 }
             }
 
@@ -475,18 +497,13 @@ function initDOMListeners() {
             ChatActions.handleTypingEvent(currentChatUuid, currentChatType); 
             if (e.key === 'Enter') { e.preventDefault(); performSendMessage(); } 
         };
-        
         input.oninput = () => ChatActions.handleTypingEvent(currentChatUuid, currentChatType);
     }
     
-    if (sendBtn) {
-        sendBtn.onclick = (e) => { e.preventDefault(); performSendMessage(); };
-    }
+    if (sendBtn) sendBtn.onclick = (e) => { e.preventDefault(); performSendMessage(); };
 
     const messagesArea = document.querySelector('.chat-messages-area');
-    if (messagesArea) {
-        messagesArea.addEventListener('scroll', handleChatScroll);
-    }
+    if (messagesArea) messagesArea.addEventListener('scroll', handleChatScroll);
 
     const mainArea = document.querySelector('.chat-main-area');
     if (mainArea) {
@@ -502,7 +519,6 @@ function initGlobalActionListeners() {
     if (areGlobalActionsInit) return;
 
     document.body.addEventListener('click', async (e) => {
-        
         if (e.target.closest('#btn-back-to-list')) {
             const layout = document.querySelector('.chat-layout-container');
             if (layout) layout.classList.remove('chat-active');
@@ -526,24 +542,12 @@ function initGlobalActionListeners() {
             const createdAt = msgOptBtn.dataset.createdAt;
             
             Renderer.showMessagePopover(
-                msgOptBtn, 
-                uuid, 
-                msgOptBtn.dataset.user, 
-                msgOptBtn.dataset.text,
-                isMe,
-                createdAt,
-                // On Reply
+                msgOptBtn, uuid, msgOptBtn.dataset.user, msgOptBtn.dataset.text, isMe, createdAt,
                 () => enableReplyMode(uuid, msgOptBtn.dataset.user, msgOptBtn.dataset.text), 
-                
-                // On Edit: Habilita UI y pasa callback de guardado
                 () => Renderer.enableEditMessageUI(uuid, msgOptBtn.dataset.text, async (newText, editContainer, contentWrapper) => {
                     await onSaveEditMessage(newText, editContainer, contentWrapper, uuid);
                 }), 
-                
-                // On Delete
                 () => onDeleteMessage(uuid), 
-                
-                // On Report
                 () => onReportMessage(uuid)
             );
         }
@@ -570,17 +574,10 @@ function initGlobalActionListeners() {
 }
 
 export function initChatManager() {
-    // 1. Listeners que dependen del DOM actual (siempre se reinician al cargar main)
     initAttachmentListeners();
     initDOMListeners();
-
-    // 2. Listeners globales de socket (una sola vez)
     initSocketListeners();
-
-    // 3. Listeners globales de acciones (una sola vez)
     initGlobalActionListeners();
-    
-    // Al abrir el chat inicialmente, limpiar attachments si había
     clearAttachments();
     disableReplyMode();
 }

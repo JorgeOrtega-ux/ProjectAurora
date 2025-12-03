@@ -878,3 +878,23 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-12-02 14:42:50,423 - INFO - Usuario conectado: ID 1 | Rol: founder
 2025-12-02 14:42:57,006 - INFO - connection open
 2025-12-02 14:42:57,009 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-12-03 11:32:14,632 - INFO - === Servidor Aurora Iniciado (Modular) ===
+2025-12-03 11:32:14,731 - INFO - ✅ DB Pool inicializado.
+2025-12-03 11:32:14,733 - INFO - ✅ Redis inicializado.
+2025-12-03 11:32:15,502 - INFO - server listening on 0.0.0.0:8080
+2025-12-03 11:32:15,502 - INFO - 🚀 Websocket Server escuchando en 0.0.0.0:8080
+2025-12-03 11:32:15,515 - INFO - 🌉 Bridge PHP escuchando en 127.0.0.1:8081
+2025-12-03 11:32:15,633 - INFO - connection open
+2025-12-03 11:32:15,669 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-03 11:33:47,603 - INFO - connection open
+2025-12-03 11:33:47,632 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-03 11:34:09,410 - INFO - connection open
+2025-12-03 11:34:09,434 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-03 11:34:39,470 - INFO - connection open
+2025-12-03 11:34:39,483 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-03 11:34:51,138 - INFO - connection open
+2025-12-03 11:34:51,168 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-03 11:35:10,813 - INFO - connection open
+2025-12-03 11:35:10,831 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-03 11:35:43,230 - INFO - connection open
+2025-12-03 11:35:43,259 - INFO - Usuario conectado: ID 1 | Rol: founder
