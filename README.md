@@ -1,3 +1,1 @@
 # ProjectAurora
-
-TEST
