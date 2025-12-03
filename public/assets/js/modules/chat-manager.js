@@ -2,6 +2,7 @@ import { ChatApi, CommunityApi } from '../services/api-service.js';
 import { t } from '../core/i18n-manager.js';
 import * as Renderer from './chat-renderer.js';
 import * as ChatActions from './chat-actions.js';
+import * as ChannelsManager from './communities/channels-manager.js';
 
 // Estado del Chat
 let currentChatUuid = null;
@@ -32,7 +33,7 @@ let areGlobalActionsInit = false;
 
 export async function openChat(uuid, chatData = null) {
     // ---------------------------------------------------------
-    // ANÁLISIS ULTRA A FONDO PARA EVITAR RECARGAS (FIXED)
+    // ANÁLISIS ULTRA A FONDO PARA EVITAR RECARGAS
     // ---------------------------------------------------------
     
     // 1. ¿Es el mismo UUID principal (Usuario o Comunidad)?
@@ -40,8 +41,6 @@ export async function openChat(uuid, chatData = null) {
 
     if (isSameEntity) {
         // CASO A: Chat Privado
-        // Si estoy en privado y el ID es el mismo, NO RECARGAR.
-        // (En privado no hay canales, así que es suficiente validación).
         if (currentChatType === 'private') {
             console.log('🛑 Anti-Reload: Ya estás en este chat privado.');
             document.querySelector('.chat-message-input')?.focus();
@@ -50,19 +49,14 @@ export async function openChat(uuid, chatData = null) {
 
         // CASO B: Comunidad
         if (currentChatType === 'community') {
-            // Verificamos si la intención es cambiar de canal.
-            // Si chatData es null, asumimos que se clickeó el icono de la comunidad (mismo canal actual).
             const targetChannelUuid = (chatData && chatData.channel_uuid) ? chatData.channel_uuid : null;
 
-            // 1. Si no especifican canal (targetChannelUuid es null), significa que clickearon
-            // la comunidad general. Si ya estamos dentro, nos quedamos donde estamos.
             if (!targetChannelUuid) {
                 console.log('🛑 Anti-Reload: Ya estás en esta comunidad (Canal actual mantenido).');
                 document.querySelector('.chat-message-input')?.focus();
                 return;
             }
 
-            // 2. Si ESPECIFICAN un canal, validamos si es el mismo que el actual.
             if (targetChannelUuid === currentChannelUuid) {
                 console.log('🛑 Anti-Reload: Ya estás en este canal específico.');
                 document.querySelector('.chat-message-input')?.focus();
@@ -72,26 +66,16 @@ export async function openChat(uuid, chatData = null) {
     }
     // ---------------------------------------------------------
 
-    // Si pasamos aquí, es un chat nuevo o un canal diferente. Procedemos a cargar.
+    // [IMPORTANTE] Si cambiamos de chat o canal, asegurarnos de que el panel móvil se cierre
+    document.getElementById('mobile-channels-panel')?.classList.add('d-none');
 
     // Si nos pasan chatData, usamos SU tipo. Si no, usamos el global o fallback.
     let type = (chatData && chatData.type) ? chatData.type : (window.ACTIVE_CHAT_TYPE || 'community');
 
-    // Si no hay datos (recarga forzada o click desde lista simple) O es comunidad sin estado de canal
+    // Si no hay datos o es comunidad sin estado de canal
     if (!chatData || (type === 'community' && !chatData.channel_status)) {
         let res;
-
-        // Intentamos deducir el tipo si no viene explícito
-        // (Nota: Si venimos de un click de amigo, el type suele ser 'private' implícito en la lógica de UI,
-        // pero aquí aseguramos la carga de datos).
         
-        // Estrategia de carga: intentamos cargar como si fuera lo que creemos que es.
-        // Si falla y es un error 404, el backend maneja eso.
-        
-        // Pero para ser más precisos: Si el input dice que es 'private' o si no dice nada
-        // y parece un UUID de usuario (esto es difícil de saber solo con el string, así que confiamos en el flujo).
-        
-        // Lógica estándar de fetch:
         if (type === 'private') {
             res = await CommunityApi.getUserChatByUuid(uuid);
             if (res.success) {
@@ -99,14 +83,12 @@ export async function openChat(uuid, chatData = null) {
                 chatData.type = 'private';
             }
         } else {
-            // Asumimos comunidad por defecto si no es privado
             res = await CommunityApi.getByUuid(uuid);
             
             if (res.success) {
                 chatData = res.data || res.community;
                 chatData.type = 'community';
 
-                // Resolver canal activo
                 const targetChannelUuid = window.ACTIVE_CHANNEL_UUID || chatData.default_channel_uuid;
                 
                 if (targetChannelUuid) {
@@ -146,6 +128,16 @@ export async function openChat(uuid, chatData = null) {
     currentOffset = 0;
     hasMoreMessages = true;
     isLoadingMessages = false;
+
+    // [NUEVO] Controlar visibilidad del botón de menú móvil
+    const mobileMenuBtn = document.getElementById('btn-mobile-sidebar-toggle');
+    if (mobileMenuBtn) {
+        if (currentChatType === 'community') {
+            mobileMenuBtn.classList.remove('d-none');
+        } else {
+            mobileMenuBtn.classList.add('d-none');
+        }
+    }
 
     clearTimeout(typingTimeout);
     Renderer.resetHeaderStatus(chatData.type === 'private');
@@ -513,14 +505,60 @@ function initDOMListeners() {
             }
         });
     }
+
+    // --- LISTENERS PARA EL PANEL MÓVIL ---
+    const mobileMenuBtn = document.getElementById('btn-mobile-sidebar-toggle');
+    const mobilePanel = document.getElementById('mobile-channels-panel');
+
+    // Botón para ABRIR
+    if (mobileMenuBtn) {
+        mobileMenuBtn.onclick = async () => {
+            if (!mobilePanel) return;
+            mobilePanel.classList.toggle('d-none');
+            
+            if (!mobilePanel.classList.contains('d-none')) {
+                // Si abrimos el panel y estamos en una comunidad, renderizamos los canales
+                if (currentChatType === 'community' && currentChatUuid) {
+                     const listContainer = document.getElementById('mobile-channels-list');
+                     if (listContainer) {
+                         listContainer.innerHTML = '<div class="small-spinner" style="margin:20px auto;"></div>';
+                         // Cargar usando ChannelsManager (usa caché interno si existe)
+                         const res = await ChannelsManager.loadChannels(currentChatUuid);
+                         // Renderizar en el contenedor móvil
+                         ChannelsManager.renderChannelList(listContainer, currentChatUuid, res.channels, res.role);
+                     }
+                } else {
+                     const listContainer = document.getElementById('mobile-channels-list');
+                     if (listContainer) listContainer.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">Esta opción solo está disponible en comunidades.</div>';
+                }
+            }
+        };
+    }
+
+    // Manejo de clic en canal dentro del panel móvil para cerrarlo
+    if (mobilePanel) {
+        mobilePanel.addEventListener('click', (e) => {
+            const item = e.target.closest('.channel-item');
+            if (item) {
+                // Al hacer clic en un canal, cerramos el panel
+                mobilePanel.classList.add('d-none');
+            }
+        });
+    }
+
+    // Listener para ocultar automáticamente el sidebar móvil al redimensionar a PC
+    window.addEventListener('resize', () => {
+        // 992px suele ser el breakpoint 'lg' en Bootstrap/CSS estándar
+        if (window.innerWidth >= 992) {
+            mobilePanel?.classList.add('d-none');
+        }
+    });
 }
 
 function initGlobalActionListeners() {
     if (areGlobalActionsInit) return;
 
-    // --- NUEVO: Listener para limpiar el chat al volver al dashboard ---
     document.addEventListener('reset-chat-view', () => {
-        // 1. Limpiar variables de estado
         currentChatUuid = null;
         currentChatId = null;
         currentChannelUuid = null;
@@ -528,19 +566,20 @@ function initGlobalActionListeners() {
         window.ACTIVE_CHAT_UUID = null;
         window.ACTIVE_CHANNEL_UUID = null;
 
-        // 2. Ocultar la interfaz del chat y mostrar el placeholder de bienvenida
         const chatInterface = document.getElementById('chat-interface');
         const welcomePlaceholder = document.getElementById('chat-placeholder-welcome');
         const selectPlaceholder = document.getElementById('chat-placeholder-select');
         const layout = document.querySelector('.chat-layout-container');
 
-        // Quitar clase activa (para móvil)
         if (layout) layout.classList.remove('chat-active');
 
-        // Gestión de paneles (Desktop)
         if (chatInterface) chatInterface.style.display = 'none'; 
         if (selectPlaceholder) selectPlaceholder.classList.add('d-none');
         if (welcomePlaceholder) welcomePlaceholder.classList.remove('d-none');
+        
+        // Cerrar panel móvil si estaba abierto y ocultar el botón
+        document.getElementById('mobile-channels-panel')?.classList.add('d-none');
+        document.getElementById('btn-mobile-sidebar-toggle')?.classList.add('d-none');
     });
 
     document.body.addEventListener('click', async (e) => {

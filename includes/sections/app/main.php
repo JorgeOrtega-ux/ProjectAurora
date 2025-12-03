@@ -17,7 +17,6 @@ $hideOnCommunity = $isCommunityView ? 'style="display: none !important;"' : '';
 
 // [SOLUCIÓN INSTANTÁNEA]
 // Verificamos en el servidor si el usuario tiene historial para decidir qué placeholder mostrar
-// Esto evita el parpadeo (pop-up) mientras carga el JavaScript.
 $userId = $_SESSION['user_id'];
 $hasHistory = false;
 
@@ -27,8 +26,7 @@ $stmtComm->execute([$userId]);
 if ($stmtComm->fetchColumn()) {
     $hasHistory = true;
 } else {
-    // 2. Si no, verificar si tiene mensajes privados o amigos
-    // (Verificamos amistades porque usualmente implica chat)
+    // 2. Si no, verificar si tiene mensajes privados
     $stmtFriend = $pdo->prepare("SELECT id FROM friendships WHERE sender_id = ? OR receiver_id = ? LIMIT 1");
     $stmtFriend->execute([$userId, $userId]);
     if ($stmtFriend->fetchColumn()) {
@@ -65,12 +63,30 @@ $showSelect  = empty($initUuid) && $hasHistory;
         <div class="popover-module rail-filter-popover disabled" id="rail-filter-menu">
              <div class="menu-content">
                 <div class="menu-list">
-                    <div class="menu-link active" data-action="rail-filter-apply" data-filter="all"><div class="menu-link-text">Todos</div></div>
-                    <div class="menu-link" data-action="rail-filter-apply" data-filter="unread"><div class="menu-link-text">No leídos</div></div>
-                    <div class="menu-link" data-action="rail-filter-apply" data-filter="community"><div class="menu-link-text">Comunidades</div></div>
-                    <div class="menu-link" data-action="rail-filter-apply" data-filter="private"><div class="menu-link-text">DM</div></div>
-                    <div class="menu-link" data-action="rail-filter-apply" data-filter="favorites"><div class="menu-link-text">Favoritos</div></div>
-                    <div class="menu-link" data-action="rail-filter-apply" data-filter="archived"><div class="menu-link-text">Archivados</div></div>
+                    <div class="menu-link active" data-action="rail-filter-apply" data-filter="all">
+                        <span class="material-symbols-rounded">forum</span>
+                        <div class="menu-link-text body-title">Todos</div>
+                    </div>
+                    <div class="menu-link" data-action="rail-filter-apply" data-filter="unread">
+                        <span class="material-symbols-rounded">mark_chat_unread</span>
+                        <div class="menu-link-text body-title">No leídos</div>
+                    </div>
+                    <div class="menu-link" data-action="rail-filter-apply" data-filter="community">
+                        <span class="material-symbols-rounded">groups</span>
+                        <div class="menu-link-text body-title">Comunidades</div>
+                    </div>
+                    <div class="menu-link" data-action="rail-filter-apply" data-filter="private">
+                        <span class="material-symbols-rounded">person</span>
+                        <div class="menu-link-text body-title">DM</div>
+                    </div>
+                    <div class="menu-link" data-action="rail-filter-apply" data-filter="favorites">
+                        <span class="material-symbols-rounded">star</span>
+                        <div class="menu-link-text body-title">Favoritos</div>
+                    </div>
+                    <div class="menu-link" data-action="rail-filter-apply" data-filter="archived">
+                        <span class="material-symbols-rounded">archive</span>
+                        <div class="menu-link-text body-title">Archivados</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -157,12 +173,13 @@ $showSelect  = empty($initUuid) && $hasHistory;
             <div id="chat-interface" class="chat-interface <?php echo empty($initUuid) ? 'd-none' : ''; ?>">
                 <div class="chat-header">
                     <div class="chat-header-left">
-                       <button class="component-icon-button d-none d-lg-block" id="btn-mobile-sidebar-toggle" style="margin-right: 8px; display: none;">
-        <span class="material-symbols-rounded">menu</span>
-    </button>
-    <div class="chat-avatar-container">
-        <img id="chat-header-img" src="" alt="" class="chat-avatar-img">
-    </div>
+                        <button class="component-icon-button mobile-only-btn <?php echo $isCommunityView ? '' : 'd-none'; ?>" id="btn-mobile-sidebar-toggle" style="margin-right: 8px;">
+                            <span class="material-symbols-rounded">menu</span>
+                        </button>
+                        
+                        <div class="chat-avatar-container">
+                            <img id="chat-header-img" src="" alt="" class="chat-avatar-img">
+                        </div>
                         <div class="chat-info" id="chat-header-info-clickable" style="cursor: pointer;">
                             <h3 id="chat-header-title" class="chat-title">Cargando...</h3>
                             <span id="chat-header-status" class="chat-status">...</span>
@@ -173,6 +190,13 @@ $showSelect  = empty($initUuid) && $hasHistory;
                             <span class="material-symbols-rounded">info</span>
                         </button>
                     </div>
+                </div>
+                
+                <div id="mobile-channels-panel" class="mobile-channels-sidebar d-none">
+                    <div class="mobile-channels-header">
+                        <h3 style="margin:0; font-size:14px; color:#666; font-weight:700;">CANALES</h3>
+                    </div>
+                    <div id="mobile-channels-list" class="mobile-channels-list"></div>
                 </div>
 
                 <div class="chat-messages-area"></div>
