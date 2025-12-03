@@ -368,11 +368,18 @@ function initGlobalListeners() {
             return;
         }
 
-        const backBtn = e.target.closest('#btn-sidebar-back');
+     const backBtn = e.target.closest('#btn-sidebar-back');
         if (backBtn) {
-             refreshSidebarList();
+             // [CORRECCIÓN] 1. Primero cambiamos el estado a 'main'
+             currentSidebarView = 'main'; 
+             
+             // 2. Restauramos la cabecera (Título "Chats", Buscador, etc.)
              SidebarRenderer.restoreMainHeader();
-             currentSidebarView = 'main';
+
+             // 3. AHORA sí llamamos al renderizado (ahora pasará el chequeo interno)
+             refreshSidebarList();
+             
+             // 4. Actualizamos la URL
              window.history.pushState({ section: 'main' }, '', window.BASE_PATH);
              return;
         }
@@ -782,6 +789,21 @@ function initJoinByCode() {
 }
 
 export function initCommunitiesManager() {
+    // [FIX] Resetear el estado del sidebar si volvimos a la raíz (main) y no estamos en un chat
+    const path = window.location.pathname;
+    const isChatUrl = path.includes('/c/') || path.includes('/dm/');
+
+    if (!isChatUrl) {
+        console.log("[CommunitiesManager] Vista principal detectada, reseteando estado del sidebar.");
+        currentSidebarView = 'main';
+        currentCommunityUuid = null;
+        window.ACTIVE_CHAT_UUID = null;
+        window.ACTIVE_CHANNEL_UUID = null;
+        
+        // Aseguramos que el header vuelva a decir "Chats" y muestre el buscador
+        SidebarRenderer.restoreMainHeader();
+    }
+
     loadSidebarList(true); 
     
     // [MODIFICADO] Ahora iniciamos la vista del explorador (si existe el contenedor)

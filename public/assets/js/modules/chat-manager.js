@@ -518,6 +518,31 @@ function initDOMListeners() {
 function initGlobalActionListeners() {
     if (areGlobalActionsInit) return;
 
+    // --- NUEVO: Listener para limpiar el chat al volver al dashboard ---
+    document.addEventListener('reset-chat-view', () => {
+        // 1. Limpiar variables de estado
+        currentChatUuid = null;
+        currentChatId = null;
+        currentChannelUuid = null;
+        currentChatData = null;
+        window.ACTIVE_CHAT_UUID = null;
+        window.ACTIVE_CHANNEL_UUID = null;
+
+        // 2. Ocultar la interfaz del chat y mostrar el placeholder de bienvenida
+        const chatInterface = document.getElementById('chat-interface');
+        const welcomePlaceholder = document.getElementById('chat-placeholder-welcome');
+        const selectPlaceholder = document.getElementById('chat-placeholder-select');
+        const layout = document.querySelector('.chat-layout-container');
+
+        // Quitar clase activa (para móvil)
+        if (layout) layout.classList.remove('chat-active');
+
+        // Gestión de paneles (Desktop)
+        if (chatInterface) chatInterface.style.display = 'none'; 
+        if (selectPlaceholder) selectPlaceholder.classList.add('d-none');
+        if (welcomePlaceholder) welcomePlaceholder.classList.remove('d-none');
+    });
+
     document.body.addEventListener('click', async (e) => {
         if (e.target.closest('#btn-back-to-list')) {
             const layout = document.querySelector('.chat-layout-container');

@@ -252,11 +252,9 @@ export function setupCommunityHeader(communityItem) {
             ? `<span class="material-symbols-rounded" style="font-size:16px; color:#1976d2; margin-left:4px;" title="Oficial">verified</span>` 
             : '';
 
+        // [MODIFICADO] Se eliminó el botón #btn-sidebar-back
         titleEl.innerHTML = `
             <div style="display:flex; align-items:center; gap:12px; width:100%;">
-                <button class="component-icon-button" id="btn-sidebar-back" style="width:32px; height:32px; border:none;">
-                    <span class="material-symbols-rounded">arrow_back</span>
-                </button>
                 <div style="display:flex; align-items:center; gap:8px; overflow:hidden;">
                     <img src="${avatarSrc}" style="width:32px; height:32px; border-radius:8px; object-fit:cover; flex-shrink:0;" data-img-type="community">
                     <div style="display:flex; align-items:center; overflow:hidden;">
