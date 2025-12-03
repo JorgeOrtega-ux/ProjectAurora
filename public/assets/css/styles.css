@@ -181,6 +181,9 @@ html {
     color: #999;
     font-weight: 400;
 }
+   .header-button.mobile-search-toggle {
+        display: none;
+    }
 
 @media (max-width: 725px) {
     .header {
@@ -195,6 +198,16 @@ html {
         order: 2;
     }
 
+    .header-button.mobile-search-toggle {
+        display: flex;
+    }
+
+    /* Botón visible en móvil */
+    .mobile-search-toggle {
+        display: flex;
+    }
+
+    /* Buscador oculto por defecto en móvil */
     .header-center {
         position: relative;
         left: auto;
@@ -205,11 +218,23 @@ html {
         margin-top: 8px;
         padding: 0;
         height: auto;
+        display: none; /* [CAMBIO] Oculto por defecto */
+    }
+
+    /* [NUEVO] Solo se muestra si tiene la clase active */
+    .header-center.active {
+        display: flex;
+        animation: slideInSearch 0.2s ease-out forwards;
     }
 
     .search-container {
         width: 100%;
     }
+}
+
+@keyframes slideInSearch {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .header-right {

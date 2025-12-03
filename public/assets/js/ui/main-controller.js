@@ -80,8 +80,28 @@ export function initMainController() {
             if (action === 'toggleModuleLanguageSelect') targetModuleId = 'moduleLanguageSelect';
             if (action === 'toggleModuleThemeSelect') targetModuleId = 'moduleThemeSelect';
             
-            // [CORRECCIÓN] Agregado el caso faltante para Privacidad
             if (action === 'toggleModulePrivacySelect') targetModuleId = 'modulePrivacySelect';
+
+            // [MODIFICADO] Toggle de búsqueda móvil (SIN activar el botón)
+            if (action === 'toggleMobileSearch') {
+                e.preventDefault();
+                const headerCenter = document.querySelector('.header-center');
+                const searchInput = headerCenter ? headerCenter.querySelector('input') : null;
+                
+                if (headerCenter) {
+                    if (headerCenter.classList.contains('active')) {
+                        headerCenter.classList.remove('active');
+                        // [CORRECCIÓN] Ya no tocamos la clase active del trigger
+                    } else {
+                        headerCenter.classList.add('active');
+                        // [CORRECCIÓN] Ya no tocamos la clase active del trigger
+                        if (searchInput) {
+                            setTimeout(() => searchInput.focus(), 50);
+                        }
+                    }
+                }
+                return;
+            }
 
             if (action === 'toggle-admin-user-search') {
                 e.preventDefault();
@@ -125,10 +145,21 @@ export function initMainController() {
             const clickedInsideTrigger = target.closest('[data-action^="toggleModule"]'); 
             const clickedInsideGeneric = target.closest('.popover-module');
             const clickedInsideGenericTrigger = target.closest('[data-action="toggle-dropdown"]');
+            
+            // Excepción para el buscador móvil
+            const clickedInsideSearch = target.closest('.header-center');
+            const clickedInsideSearchTrigger = target.closest('[data-action="toggleMobileSearch"]');
 
-            if (!clickedInsideContent && !clickedInsideTrigger && !clickedInsideGeneric && !clickedInsideGenericTrigger) {
+            if (!clickedInsideContent && !clickedInsideTrigger && !clickedInsideGeneric && !clickedInsideGenericTrigger && !clickedInsideSearch && !clickedInsideSearchTrigger) {
                 closeAllModules();
                 closeGenericDropdowns();
+                
+                // [MODIFICADO] Cerrar buscador móvil si se clickea fuera
+                const activeSearch = document.querySelector('.header-center.active');
+                if (activeSearch) {
+                    activeSearch.classList.remove('active');
+                    // No necesitamos quitar active del botón porque nunca se la pusimos
+                }
             }
         }
     });
@@ -143,6 +174,12 @@ export function initMainController() {
             if (adminSearch && !adminSearch.classList.contains('disabled')) {
                 adminSearch.classList.add('disabled');
                 if(adminBtn) adminBtn.classList.remove('active');
+            }
+            
+            // [MODIFICADO] Cerrar buscador móvil con ESC
+            const activeSearch = document.querySelector('.header-center.active');
+            if (activeSearch) {
+                activeSearch.classList.remove('active');
             }
         }
     });

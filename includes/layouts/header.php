@@ -23,6 +23,12 @@
     <div class="header-right">
         <div class="header-item">
             
+            <div class="header-button mobile-search-toggle"
+                 data-action="toggleMobileSearch"
+                 data-tooltip="Buscar">
+                <span class="material-symbols-rounded">search</span>
+            </div>
+
             <div class="header-button"
                  data-nav="join-community"
                  data-i18n-tooltip="nav.join_community_tooltip"
