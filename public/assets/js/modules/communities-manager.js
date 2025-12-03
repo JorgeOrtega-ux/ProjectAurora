@@ -98,13 +98,19 @@ async function renderCommunityView(uuid) {
     // Delegar al renderizador
     SidebarRenderer.setupCommunityHeader(item);
 
-    const container = document.getElementById('my-communities-list');
-    if (container) {
-        // Si ya estamos viendo esta comunidad, no borramos el contenido para evitar parpadeo
+    // [MODIFICADO] Buscar contenedores de escritorio y móvil
+    const containers = [
+        document.getElementById('my-communities-list'),
+        document.querySelector('.mobile-channels-list')
+    ].filter(el => el); // Filtramos nulos por si alguno no existe
+
+    // Mostrar spinner en todos los contenedores encontrados si están vacíos
+    containers.forEach(container => {
+        // Si ya estamos viendo esta comunidad (tiene items), no borramos para evitar parpadeo
         if (!container.querySelector('.channel-item')) {
              container.innerHTML = '<div class="small-spinner" style="margin: 40px auto;"></div>';
         }
-    }
+    });
 
     let channels = ChannelManager.getCachedChannels(uuid);
     
@@ -114,7 +120,10 @@ async function renderCommunityView(uuid) {
         item.role = data.role; 
     }
     
-    ChannelManager.renderChannelList(container, uuid, channels, item.role);
+    // [MODIFICADO] Renderizar en todos los contenedores
+    containers.forEach(container => {
+        ChannelManager.renderChannelList(container, uuid, channels, item.role);
+    });
 }
 
 // --- LOGICA DE NEGOCIO (UPDATES) DELEGADA A ACTIONS ---
@@ -157,8 +166,8 @@ async function loadSidebarList(shouldOpenActive = false) {
                         openChat(window.ACTIVE_CHAT_UUID, itemData);
                      }
                      setTimeout(() => {
-                         const chEl = document.querySelector(`.channel-item[data-uuid="${targetCh.uuid}"]`);
-                         if(chEl) chEl.classList.add('active');
+                         const selector = `.channel-item[data-uuid="${targetCh.uuid}"]`;
+                         document.querySelectorAll(selector).forEach(chEl => chEl.classList.add('active'));
                      }, 50);
                  }
             } else {
@@ -528,9 +537,10 @@ function initGlobalListeners() {
              setTimeout(() => {
                  const channelUuid = window.ACTIVE_CHANNEL_UUID;
                  if (channelUuid) {
+                     // Marcar activo en todos los contenedores
                      document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
-                     const chEl = document.querySelector(`.channel-item[data-uuid="${channelUuid}"]`);
-                     if(chEl) chEl.classList.add('active');
+                     const selector = `.channel-item[data-uuid="${channelUuid}"]`;
+                     document.querySelectorAll(selector).forEach(el => el.classList.add('active'));
                  }
              }, 50);
         }
@@ -540,11 +550,190 @@ function initGlobalListeners() {
 }
 
 function initDOMListeners() {
-    const listContainer = document.getElementById('my-communities-list');
+    const desktopContainer = document.getElementById('my-communities-list');
+    const mobileContainer = document.querySelector('.mobile-channels-list');
     const sidebarPanel = document.getElementById('chat-sidebar-panel');
 
-    if (listContainer) {
-        listContainer.addEventListener('mouseover', (e) => {
+    // Listener reutilizable para ambos sidebars
+    const handleSidebarClick = async (e) => {
+        // Obtenemos el contenedor que recibió el click (escritorio o móvil)
+        const currentContainer = e.currentTarget;
+
+        // 1. Toggle Categorías
+        const toggleCat = e.target.closest('[data-action="toggle-channel-category"]');
+        if (toggleCat) {
+            e.preventDefault();
+            e.stopPropagation();
+            const group = toggleCat.closest('.channel-category-group');
+            if (group) {
+                group.classList.toggle('expanded');
+                const arrow = toggleCat.querySelector('.category-arrow');
+                if (arrow) {
+                    arrow.style.transform = group.classList.contains('expanded') ? 'rotate(0deg)' : 'rotate(-90deg)';
+                    arrow.style.transition = 'transform 0.2s';
+                }
+            }
+            return;
+        }
+
+        // 2. Chat Menu Options
+        const chatMenuBtn = e.target.closest('[data-action="open-chat-menu"]');
+        if (chatMenuBtn) {
+            e.preventDefault(); e.stopPropagation(); 
+            const isPinned = chatMenuBtn.dataset.pinned === 'true';
+            const isFav = chatMenuBtn.dataset.fav === 'true';
+            const isBlocked = chatMenuBtn.dataset.blocked === 'true';
+            const friendStatus = chatMenuBtn.dataset.friendStatus;
+            const isArchived = chatMenuBtn.dataset.archived === 'true';
+            
+            showChatMenu(chatMenuBtn, chatMenuBtn.dataset.uuid, chatMenuBtn.dataset.type, isPinned, isFav, isBlocked, friendStatus, isArchived);
+            return;
+        }
+
+        // 3. Selección de Canal (FIX para Mobile)
+        const channelItem = e.target.closest('[data-action="select-channel"]');
+        if (channelItem && !e.target.closest('.channel-action-btn')) {
+            const uuid = channelItem.dataset.uuid;
+            const commUuid = channelItem.dataset.community;
+            const channelStatus = channelItem.dataset.status; 
+            
+            const commItem = sidebarItems.find(i => i.uuid === commUuid);
+            
+            const chatData = { 
+                ...commItem, 
+                channel_uuid: uuid, 
+                channel_name: channelItem.querySelector('.channel-name').innerText,
+                channel_status: channelStatus 
+            };
+            
+            // Actualizar clase activa en el contenedor actual
+            if (currentContainer) {
+                currentContainer.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
+                channelItem.classList.add('active');
+            }
+            
+            const badge = channelItem.querySelector('.channel-unread-badge');
+            if (badge) {
+                badge.remove();
+                channelItem.classList.remove('has-unread');
+            }
+            
+            window.ACTIVE_CHANNEL_UUID = uuid;
+            openChat(commUuid, chatData);
+
+            // [NUEVO] Cerrar sidebar móvil automáticamente al seleccionar canal
+            const mobileSidebar = document.querySelector('.mobile-channels-sidebar');
+            if (mobileSidebar && !mobileSidebar.classList.contains('d-none') && window.innerWidth <= 1024) {
+                 mobileSidebar.classList.add('d-none');
+            }
+            return;
+        }
+
+        // 4. Crear Canal
+        const createBtn = e.target.closest('[data-action="create-channel-prompt"]');
+        if (createBtn) {
+            const commUuid = createBtn.dataset.community;
+            const res = await ChannelManager.handleCreateChannel(commUuid);
+            if (res.success) {
+                const item = sidebarItems.find(i => i.uuid === commUuid);
+                // Actualizar TODOS los contenedores
+                [desktopContainer, mobileContainer].forEach(c => {
+                    if (c) ChannelManager.renderChannelList(c, commUuid, res.channels, item.role);
+                });
+            }
+            return;
+        }
+
+        // 5. Eliminar Canal
+        const deleteChBtn = e.target.closest('[data-action="delete-channel"]');
+        if (deleteChBtn) {
+            e.stopPropagation();
+            const chUuid = deleteChBtn.dataset.uuid;
+            const channelItem = deleteChBtn.closest('.channel-item');
+            const commUuid = channelItem.dataset.community;
+            
+            const res = await ChannelManager.handleDeleteChannel(chUuid, commUuid);
+            if (res.success) {
+                const item = sidebarItems.find(i => i.uuid === commUuid);
+                // Actualizar TODOS los contenedores
+                [desktopContainer, mobileContainer].forEach(c => {
+                    if (c) ChannelManager.renderChannelList(c, commUuid, res.channels, item.role);
+                });
+                
+                if (window.ACTIVE_CHANNEL_UUID === chUuid) {
+                    const firstCh = res.channels[0];
+                    if(firstCh) {
+                        const itemData = sidebarItems.find(i => i.uuid === commUuid);
+                        openChat(commUuid, itemData);
+                    }
+                }
+            }
+            return;
+        }
+
+        // 6. Navegación General (Clicks en items de la lista principal)
+        const item = e.target.closest('.chat-item');
+        if (item) {
+            if (e.target.closest('.popover-module') || 
+            (e.target.closest('[data-action]') && e.target.closest('[data-action]') !== item)) {
+                return;
+            }
+
+            const uuid = item.dataset.uuid;
+            const type = item.dataset.type; 
+
+            if (type === 'community') {
+                await renderCommunityView(uuid); // Esto ahora actualizará ambos contenedores
+                
+                const channels = ChannelManager.getCachedChannels(uuid) || [];
+                let targetChannel = null;
+                const itemData = sidebarItems.find(c => c.uuid === uuid);
+                
+                if (window.ACTIVE_CHANNEL_UUID && channels.find(c => c.uuid === window.ACTIVE_CHANNEL_UUID)) {
+                    targetChannel = channels.find(c => c.uuid === window.ACTIVE_CHANNEL_UUID);
+                }
+
+                if (!targetChannel && itemData && itemData.default_channel_uuid) {
+                    targetChannel = channels.find(c => c.uuid === itemData.default_channel_uuid);
+                }
+                
+                if (!targetChannel && channels.length > 0) {
+                    targetChannel = channels.find(c => c.name.toLowerCase() === 'general') || channels[0];
+                }
+                
+                if (itemData && targetChannel) {
+                    itemData.channel_uuid = targetChannel.uuid;
+                    itemData.channel_name = targetChannel.name;
+                    window.ACTIVE_CHANNEL_UUID = targetChannel.uuid;
+                    
+                    if (targetChannel.type !== 'voice') {
+                        openChat(uuid, itemData);
+                    }
+                    
+                    setTimeout(() => {
+                        // Marcar activo en TODOS los contenedores (sincronización visual)
+                        const selector = `.channel-item[data-uuid="${targetChannel.uuid}"]`;
+                        document.querySelectorAll(selector).forEach(chEl => {
+                            chEl.classList.add('active');
+                            const badge = chEl.querySelector('.channel-unread-badge');
+                            if (badge) {
+                                badge.remove();
+                                chEl.classList.remove('has-unread');
+                            }
+                        });
+                    }, 50);
+                }
+
+            } else {
+                const itemData = sidebarItems.find(c => c.uuid === uuid);
+                openChat(uuid, itemData);
+            }
+        }
+    };
+
+    // Asignar listeners al contenedor de ESCRITORIO
+    if (desktopContainer) {
+        desktopContainer.addEventListener('mouseover', (e) => {
             const item = e.target.closest('.chat-item');
             if (!item) return;
             const actionsDiv = item.querySelector('.chat-item-actions');
@@ -566,7 +755,7 @@ function initDOMListeners() {
             actionsDiv.appendChild(btn);
         });
 
-        listContainer.addEventListener('mouseout', (e) => {
+        desktopContainer.addEventListener('mouseout', (e) => {
             const item = e.target.closest('.chat-item');
             if (!item) return;
             if (item.contains(e.relatedTarget)) return;
@@ -574,161 +763,13 @@ function initDOMListeners() {
             if (btn && !btn.classList.contains('active')) btn.remove();
         });
 
-        listContainer.addEventListener('click', async (e) => {
-            
-            // Toggle Categorías
-            const toggleCat = e.target.closest('[data-action="toggle-channel-category"]');
-            if (toggleCat) {
-                e.preventDefault();
-                e.stopPropagation();
-                const group = toggleCat.closest('.channel-category-group');
-                if (group) {
-                    group.classList.toggle('expanded');
-                    const arrow = toggleCat.querySelector('.category-arrow');
-                    if (arrow) {
-                        arrow.style.transform = group.classList.contains('expanded') ? 'rotate(0deg)' : 'rotate(-90deg)';
-                        arrow.style.transition = 'transform 0.2s';
-                    }
-                }
-                return;
-            }
+        // Usamos el handler compartido
+        desktopContainer.addEventListener('click', handleSidebarClick);
+    }
 
-            const chatMenuBtn = e.target.closest('[data-action="open-chat-menu"]');
-            if (chatMenuBtn) {
-                e.preventDefault(); e.stopPropagation(); 
-                const isPinned = chatMenuBtn.dataset.pinned === 'true';
-                const isFav = chatMenuBtn.dataset.fav === 'true';
-                const isBlocked = chatMenuBtn.dataset.blocked === 'true';
-                const friendStatus = chatMenuBtn.dataset.friendStatus;
-                const isArchived = chatMenuBtn.dataset.archived === 'true';
-                
-                showChatMenu(chatMenuBtn, chatMenuBtn.dataset.uuid, chatMenuBtn.dataset.type, isPinned, isFav, isBlocked, friendStatus, isArchived);
-                return;
-            }
-
-            const channelItem = e.target.closest('[data-action="select-channel"]');
-            if (channelItem && !e.target.closest('.channel-action-btn')) {
-                const uuid = channelItem.dataset.uuid;
-                const commUuid = channelItem.dataset.community;
-                const channelStatus = channelItem.dataset.status; 
-                
-                const commItem = sidebarItems.find(i => i.uuid === commUuid);
-                
-                const chatData = { 
-                    ...commItem, 
-                    channel_uuid: uuid, 
-                    channel_name: channelItem.querySelector('.channel-name').innerText,
-                    channel_status: channelStatus 
-                };
-                
-                const parentList = channelItem.parentElement.parentElement;
-                if (parentList) {
-                    parentList.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
-                    channelItem.classList.add('active');
-                }
-                
-                const badge = channelItem.querySelector('.channel-unread-badge');
-                if (badge) {
-                    badge.remove();
-                    channelItem.classList.remove('has-unread');
-                }
-                
-                window.ACTIVE_CHANNEL_UUID = uuid;
-                openChat(commUuid, chatData);
-                return;
-            }
-
-            const createBtn = e.target.closest('[data-action="create-channel-prompt"]');
-            if (createBtn) {
-                const commUuid = createBtn.dataset.community;
-                const res = await ChannelManager.handleCreateChannel(commUuid);
-                if (res.success) {
-                    const item = sidebarItems.find(i => i.uuid === commUuid);
-                    ChannelManager.renderChannelList(listContainer, commUuid, res.channels, item.role);
-                }
-                return;
-            }
-
-            const deleteChBtn = e.target.closest('[data-action="delete-channel"]');
-            if (deleteChBtn) {
-                e.stopPropagation();
-                const chUuid = deleteChBtn.dataset.uuid;
-                const channelItem = deleteChBtn.closest('.channel-item');
-                const commUuid = channelItem.dataset.community;
-                
-                const res = await ChannelManager.handleDeleteChannel(chUuid, commUuid);
-                if (res.success) {
-                    const item = sidebarItems.find(i => i.uuid === commUuid);
-                    ChannelManager.renderChannelList(listContainer, commUuid, res.channels, item.role);
-                    
-                    if (window.ACTIVE_CHANNEL_UUID === chUuid) {
-                        const firstCh = res.channels[0];
-                        if(firstCh) {
-                            const itemData = sidebarItems.find(i => i.uuid === commUuid);
-                            openChat(commUuid, itemData);
-                        }
-                    }
-                }
-                return;
-            }
-
-            const item = e.target.closest('.chat-item');
-            if (item) {
-                if (e.target.closest('.popover-module') || 
-                (e.target.closest('[data-action]') && e.target.closest('[data-action]') !== item)) {
-                    return;
-                }
-
-                const uuid = item.dataset.uuid;
-                const type = item.dataset.type; 
-
-                if (type === 'community') {
-                    await renderCommunityView(uuid);
-                    
-                    const channels = ChannelManager.getCachedChannels(uuid) || [];
-                    let targetChannel = null;
-                    const itemData = sidebarItems.find(c => c.uuid === uuid);
-                    
-                    if (window.ACTIVE_CHANNEL_UUID && channels.find(c => c.uuid === window.ACTIVE_CHANNEL_UUID)) {
-                        targetChannel = channels.find(c => c.uuid === window.ACTIVE_CHANNEL_UUID);
-                    }
-
-                    if (!targetChannel && itemData && itemData.default_channel_uuid) {
-                        targetChannel = channels.find(c => c.uuid === itemData.default_channel_uuid);
-                    }
-                    
-                    if (!targetChannel && channels.length > 0) {
-                        targetChannel = channels.find(c => c.name.toLowerCase() === 'general') || channels[0];
-                    }
-                    
-                    if (itemData && targetChannel) {
-                        itemData.channel_uuid = targetChannel.uuid;
-                        itemData.channel_name = targetChannel.name;
-                        window.ACTIVE_CHANNEL_UUID = targetChannel.uuid;
-                        
-                        if (targetChannel.type !== 'voice') {
-                            openChat(uuid, itemData);
-                        }
-                        
-                        setTimeout(() => {
-                            const chEl = document.querySelector(`.channel-item[data-uuid="${targetChannel.uuid}"]`);
-                            if(chEl) {
-                                chEl.classList.add('active');
-                                const badge = chEl.querySelector('.channel-unread-badge');
-                                if (badge) {
-                                    badge.remove();
-                                    chEl.classList.remove('has-unread');
-                                }
-                            }
-                        }, 50);
-                    }
-
-                } else {
-                    const itemData = sidebarItems.find(c => c.uuid === uuid);
-                    openChat(uuid, itemData);
-                }
-            }
-        });
+    // [MODIFICADO] Asignar listeners al contenedor MÓVIL
+    if (mobileContainer) {
+        mobileContainer.addEventListener('click', handleSidebarClick);
     }
 
     if (sidebarPanel) {
