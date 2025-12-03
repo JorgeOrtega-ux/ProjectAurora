@@ -157,9 +157,12 @@ $showSelect  = empty($initUuid) && $hasHistory;
             <div id="chat-interface" class="chat-interface <?php echo empty($initUuid) ? 'd-none' : ''; ?>">
                 <div class="chat-header">
                     <div class="chat-header-left">
-                        <div class="chat-avatar-container">
-                            <img id="chat-header-img" src="" alt="" class="chat-avatar-img">
-                        </div>
+                       <button class="component-icon-button d-none d-lg-block" id="btn-mobile-sidebar-toggle" style="margin-right: 8px; display: none;">
+        <span class="material-symbols-rounded">menu</span>
+    </button>
+    <div class="chat-avatar-container">
+        <img id="chat-header-img" src="" alt="" class="chat-avatar-img">
+    </div>
                         <div class="chat-info" id="chat-header-info-clickable" style="cursor: pointer;">
                             <h3 id="chat-header-title" class="chat-title">Cargando...</h3>
                             <span id="chat-header-status" class="chat-status">...</span>
