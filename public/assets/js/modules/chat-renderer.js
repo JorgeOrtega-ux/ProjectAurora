@@ -228,7 +228,10 @@ export function appendSingleMessage(container, msg, currentChatType) {
 }
 
 export function updateChatInterface(data) {
-    const placeholder = document.getElementById('chat-placeholder');
+    // CORRECCIÓN: Usar querySelectorAll para obtener todos los placeholders por clase,
+    // ya que en main.php existen 'chat-placeholder-welcome' y 'chat-placeholder-select',
+    // pero no un elemento único con ID 'chat-placeholder'.
+    const placeholders = document.querySelectorAll('.chat-placeholder');
     const interfaceDiv = document.getElementById('chat-interface');
     const img = document.getElementById('chat-header-img');
     const title = document.getElementById('chat-header-title');
@@ -253,7 +256,11 @@ export function updateChatInterface(data) {
     if (inputArea) inputArea.style.display = 'flex';
 
     if (data) {
-        if (placeholder) placeholder.classList.add('d-none');
+        // CORRECCIÓN: Ocultar TODOS los placeholders encontrados
+        if (placeholders.length > 0) {
+            placeholders.forEach(el => el.classList.add('d-none'));
+        }
+        
         if (interfaceDiv) interfaceDiv.classList.remove('d-none');
         
         const isPrivate = (data.type === 'private');
@@ -389,7 +396,19 @@ export function updateChatInterface(data) {
         if (layout) layout.classList.add('chat-active');
 
     } else {
-        if (placeholder) placeholder.classList.remove('d-none');
+        // CORRECCIÓN: Restaurar la visibilidad de los placeholders si no hay datos.
+        // Se intenta mostrar preferentemente el de 'seleccionar chat', o en su defecto todos (fallback)
+        if (placeholders.length > 0) {
+            const selectPlaceholder = document.getElementById('chat-placeholder-select');
+            if (selectPlaceholder) {
+                selectPlaceholder.classList.remove('d-none');
+                // Asegurarse de que el de bienvenida no se solape si existiera
+                const welcomePlaceholder = document.getElementById('chat-placeholder-welcome');
+                if (welcomePlaceholder) welcomePlaceholder.classList.add('d-none');
+            } else {
+                 placeholders.forEach(el => el.classList.remove('d-none'));
+            }
+        }
         if (interfaceDiv) interfaceDiv.classList.add('d-none');
     }
 }
