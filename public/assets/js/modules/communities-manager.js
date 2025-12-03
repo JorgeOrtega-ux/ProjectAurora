@@ -368,22 +368,6 @@ function initGlobalListeners() {
             return;
         }
 
-     const backBtn = e.target.closest('#btn-sidebar-back');
-        if (backBtn) {
-             // [CORRECCIÓN] 1. Primero cambiamos el estado a 'main'
-             currentSidebarView = 'main'; 
-             
-             // 2. Restauramos la cabecera (Título "Chats", Buscador, etc.)
-             SidebarRenderer.restoreMainHeader();
-
-             // 3. AHORA sí llamamos al renderizado (ahora pasará el chequeo interno)
-             refreshSidebarList();
-             
-             // 4. Actualizamos la URL
-             window.history.pushState({ section: 'main' }, '', window.BASE_PATH);
-             return;
-        }
-
         // --- DELEGACIÓN DE ACCIONES A community-actions.js ---
 
         const blockBtn = e.target.closest('[data-action="block-user-chat"]');
