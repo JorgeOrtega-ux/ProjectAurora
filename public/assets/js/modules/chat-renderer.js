@@ -78,9 +78,12 @@ export function createMessageHTML(msg, currentChatType) {
         replyHtml = `<div class="message-reply-preview"><span class="reply-preview-user">${escapeHtml(replyUser)}</span><span class="reply-preview-text">${replyText}</span></div>`;
     }
 
+    // --- NUEVO LÓGICA DE GRID (MOSAICO) ROBUSTO ---
     let attachmentsHtml = '';
     if (msg.attachments && Array.isArray(msg.attachments) && msg.attachments.length > 0) {
-        const count = msg.attachments.length;
+        const totalCount = msg.attachments.length;
+        
+        // Preparamos JSON con TODOS los items para que el visor los vea todos
         const viewerItems = msg.attachments.map(att => ({
             src: (window.BASE_PATH || '/ProjectAurora/') + att.path,
             type: att.type,
@@ -89,12 +92,36 @@ export function createMessageHTML(msg, currentChatType) {
         }));
         const jsonStr = JSON.stringify(viewerItems).replace(/'/g, "&apos;").replace(/"/g, '&quot;');
         
-        let imgs = '';
-        msg.attachments.forEach((att, idx) => {
+        // Decidimos cuántos items mostrar visualmente (Máximo 4)
+        const displayCount = Math.min(totalCount, 4);
+        
+        // Definimos el tipo de grid (1, 2, 3 o 4) para CSS
+        const gridType = displayCount; 
+
+        let itemsHtml = '';
+        
+        for (let i = 0; i < displayCount; i++) {
+            const att = msg.attachments[i];
             const src = (window.BASE_PATH || '/ProjectAurora/') + att.path;
-            imgs += `<img src="${src}" data-action="view-media" data-index="${idx}">`;
-        });
-        attachmentsHtml = `<div class="msg-attachments" data-count="${count}" data-media-items='${jsonStr}'>${imgs}</div>`;
+            
+            // Verificamos si es el último slot Y si hay más imágenes ocultas
+            let overlayHtml = '';
+            // Si estamos en el índice 3 (4ta imagen) y hay más de 4 en total
+            if (i === 3 && totalCount > 4) {
+                const remaining = totalCount - 3; // Muestra +2 si son 5 en total (la 4ta + 1 oculta)
+                overlayHtml = `<div class="more-images-overlay">+${remaining}</div>`;
+            }
+            
+            // [CAMBIO CLAVE] Se añade el evento onerror para manejar imágenes rotas sin romper el grid
+            itemsHtml += `
+                <div class="attachment-item" data-action="view-media" data-index="${i}">
+                    <img src="${src}" loading="lazy" onerror="this.style.display='none'; this.parentElement.classList.add('is-broken');">
+                    ${overlayHtml}
+                </div>
+            `;
+        }
+
+        attachmentsHtml = `<div class="msg-attachments" data-grid="${gridType}" data-media-items='${jsonStr}'>${itemsHtml}</div>`;
     }
 
     const optionsBtn = `<button class="message-options-btn" data-action="msg-options" data-uuid="${msgId}" data-user="${msg.sender_username}" data-text="${escapeHtml(msg.message)}" data-sender-id="${msg.sender_id}" data-created-at="${msg.created_at}"><span class="material-symbols-rounded" style="font-size: 18px;">more_vert</span></button>`;
