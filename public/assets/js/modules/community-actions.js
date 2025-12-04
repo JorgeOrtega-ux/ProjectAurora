@@ -317,3 +317,81 @@ export async function deleteChatConversation(uuid, currentActiveUuid, reloadCall
         if(window.alertManager) window.alertManager.showAlert(res.message, 'error'); 
     }
 }
+
+// --- [NUEVO] MODERACIÓN DE COMUNIDAD (KICK/BAN/MUTE) ---
+
+// Función auxiliar para llamar a la API de comunidades
+async function callModerationApi(payload) {
+    try {
+        const response = await fetch('api/communities_handler.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': window.CSRF_TOKEN || ''
+            },
+            body: JSON.stringify({
+                ...payload,
+                csrf_token: window.CSRF_TOKEN || ''
+            })
+        });
+        return await response.json();
+    } catch (e) {
+        console.error("Moderation API Error:", e);
+        return { success: false, message: 'Error de conexión' };
+    }
+}
+
+export async function kickMember(communityUuid, targetUuid, reloadCallback) {
+    if (!confirm('¿Estás seguro de que quieres EXPULSAR a este usuario de la comunidad?')) return;
+    
+    const res = await callModerationApi({
+        action: 'kick_member',
+        community_uuid: communityUuid,
+        target_uuid: targetUuid
+    });
+
+    if (res.success) {
+        if(window.alertManager) window.alertManager.showAlert(res.message, 'success');
+        if (reloadCallback) reloadCallback();
+    } else {
+        if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
+    }
+}
+
+export async function banMember(communityUuid, targetUuid, reloadCallback) {
+    const reason = prompt("Por favor, ingresa la razón del BANEO:");
+    if (reason === null) return; // Cancelado
+    
+    const res = await callModerationApi({
+        action: 'ban_member',
+        community_uuid: communityUuid,
+        target_uuid: targetUuid,
+        reason: reason
+    });
+
+    if (res.success) {
+        if(window.alertManager) window.alertManager.showAlert(res.message, 'success');
+        if (reloadCallback) reloadCallback();
+    } else {
+        if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
+    }
+}
+
+export async function muteMember(communityUuid, targetUuid, reloadCallback) {
+    const duration = prompt("Minutos de silencio (Mute):", "5");
+    if (duration === null) return; // Cancelado
+    
+    const res = await callModerationApi({
+        action: 'mute_member',
+        community_uuid: communityUuid,
+        target_uuid: targetUuid,
+        duration: duration
+    });
+
+    if (res.success) {
+        if(window.alertManager) window.alertManager.showAlert(res.message, 'success');
+        if (reloadCallback) reloadCallback();
+    } else {
+        if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
+    }
+}

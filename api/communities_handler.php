@@ -55,6 +55,15 @@ try {
             throw new Exception("Código de acceso inválido o comunidad no encontrada.");
         }
 
+        // [NUEVO] Verificar Baneo
+        $stmtBan = $pdo->prepare("SELECT reason FROM community_bans WHERE community_id = ? AND user_id = ?");
+        $stmtBan->execute([$community['id'], $userId]);
+        $banData = $stmtBan->fetch(PDO::FETCH_ASSOC);
+
+        if ($banData) {
+            throw new Exception("No puedes unirte. Estás vetado de esta comunidad. Razón: " . htmlspecialchars($banData['reason']));
+        }
+
         // [NUEVO] Validación de Límite de Miembros
         if ($community['max_members'] > 0 && $community['member_count'] >= $community['max_members']) {
             throw new Exception("La comunidad <strong>" . htmlspecialchars($community['community_name']) . "</strong> está llena.");
@@ -402,6 +411,16 @@ try {
 
     } elseif ($action === 'join_public') {
         $communityId = (int)($data['community_id'] ?? 0);
+
+        // [NUEVO] Verificar Baneo
+        $stmtBan = $pdo->prepare("SELECT reason FROM community_bans WHERE community_id = ? AND user_id = ?");
+        $stmtBan->execute([$communityId, $userId]);
+        $banData = $stmtBan->fetch(PDO::FETCH_ASSOC);
+
+        if ($banData) {
+            throw new Exception("No puedes unirte. Estás vetado de esta comunidad. Razón: " . htmlspecialchars($banData['reason']));
+        }
+
         $stmtCheck = $pdo->prepare("SELECT id FROM community_members WHERE community_id = ? AND user_id = ?");
         $stmtCheck->execute([$communityId, $userId]);
         if ($stmtCheck->rowCount() > 0) throw new Exception("Ya eres miembro.");
@@ -445,6 +464,191 @@ try {
             $pdo->rollBack();
             throw new Exception("No eres miembro de este grupo.");
         }
+
+    // --- ACCIONES DE MODERACIÓN (NUEVO) ---
+
+    } elseif ($action === 'kick_member') {
+        $commUuid = $data['community_uuid'] ?? '';
+        $targetUuid = $data['target_uuid'] ?? '';
+
+        if (empty($commUuid) || empty($targetUuid)) throw new Exception("Datos incompletos.");
+
+        $stmtC = $pdo->prepare("SELECT id FROM communities WHERE uuid = ?");
+        $stmtC->execute([$commUuid]);
+        $commId = $stmtC->fetchColumn();
+        if (!$commId) throw new Exception("Comunidad no encontrada.");
+
+        $stmtU = $pdo->prepare("SELECT id FROM users WHERE uuid = ?");
+        $stmtU->execute([$targetUuid]);
+        $targetId = $stmtU->fetchColumn();
+        if (!$targetId) throw new Exception("Usuario no encontrado.");
+        if ($targetId == $userId) throw new Exception("No te puedes expulsar a ti mismo.");
+
+        // Verificar roles
+        $stmtRoles = $pdo->prepare("SELECT role FROM community_members WHERE community_id = ? AND user_id = ?");
+        
+        // Rol del ejecutor
+        $stmtRoles->execute([$commId, $userId]);
+        $myRole = $stmtRoles->fetchColumn(); // 'admin', 'moderator', 'member'
+
+        if (!in_array($myRole, ['admin', 'moderator'])) throw new Exception("No tienes permisos.");
+
+        // Rol del objetivo
+        $stmtRoles->execute([$commId, $targetId]);
+        $targetRole = $stmtRoles->fetchColumn();
+
+        if (!$targetRole) throw new Exception("El usuario no es miembro.");
+
+        // Jerarquía: Admin > Mod > Member
+        if ($myRole === 'moderator' && in_array($targetRole, ['admin', 'moderator'])) {
+            throw new Exception("No puedes expulsar a un superior o igual.");
+        }
+        if ($myRole === 'admin' && $targetRole === 'admin') {
+             throw new Exception("No puedes expulsar a otro administrador.");
+        }
+
+        $pdo->beginTransaction();
+        $stmtDel = $pdo->prepare("DELETE FROM community_members WHERE community_id = ? AND user_id = ?");
+        $stmtDel->execute([$commId, $targetId]);
+        $pdo->prepare("UPDATE communities SET member_count = GREATEST(0, member_count - 1) WHERE id = ?")->execute([$commId]);
+        $pdo->commit();
+
+        // Notificar desconexión forzada
+        send_live_notification($targetId, 'force_disconnect', ['community_id' => $commId, 'reason' => 'Has sido expulsado.']);
+
+        echo json_encode(['success' => true, 'message' => 'Usuario expulsado.']);
+
+    } elseif ($action === 'ban_member') {
+        $commUuid = $data['community_uuid'] ?? '';
+        $targetUuid = $data['target_uuid'] ?? '';
+        $reason = trim($data['reason'] ?? 'Sin razón especificada');
+
+        if (empty($commUuid) || empty($targetUuid)) throw new Exception("Datos incompletos.");
+
+        $stmtC = $pdo->prepare("SELECT id FROM communities WHERE uuid = ?");
+        $stmtC->execute([$commUuid]);
+        $commId = $stmtC->fetchColumn();
+
+        $stmtU = $pdo->prepare("SELECT id FROM users WHERE uuid = ?");
+        $stmtU->execute([$targetUuid]);
+        $targetId = $stmtU->fetchColumn();
+
+        if (!$commId || !$targetId) throw new Exception("Datos inválidos.");
+        if ($targetId == $userId) throw new Exception("No te puedes banear a ti mismo.");
+
+        // Verificar roles
+        $stmtRoles = $pdo->prepare("SELECT role FROM community_members WHERE community_id = ? AND user_id = ?");
+        
+        $stmtRoles->execute([$commId, $userId]);
+        $myRole = $stmtRoles->fetchColumn();
+
+        if (!in_array($myRole, ['admin', 'moderator'])) throw new Exception("No tienes permisos.");
+
+        $stmtRoles->execute([$commId, $targetId]);
+        $targetRole = $stmtRoles->fetchColumn();
+
+        // Si es miembro actual, verificar jerarquía
+        if ($targetRole) {
+            if ($myRole === 'moderator' && in_array($targetRole, ['admin', 'moderator'])) {
+                throw new Exception("No puedes banear a un superior o igual.");
+            }
+            if ($myRole === 'admin' && $targetRole === 'admin') {
+                throw new Exception("No puedes banear a otro administrador.");
+            }
+        }
+
+        $pdo->beginTransaction();
+        // 1. Eliminar membresía si existe
+        $stmtDel = $pdo->prepare("DELETE FROM community_members WHERE community_id = ? AND user_id = ?");
+        $stmtDel->execute([$commId, $targetId]);
+        if ($stmtDel->rowCount() > 0) {
+            $pdo->prepare("UPDATE communities SET member_count = GREATEST(0, member_count - 1) WHERE id = ?")->execute([$commId]);
+        }
+
+        // 2. Insertar Ban
+        $stmtBan = $pdo->prepare("INSERT INTO community_bans (community_id, user_id, banned_by, reason) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE reason = VALUES(reason)");
+        $stmtBan->execute([$commId, $targetId, $userId, $reason]);
+        
+        $pdo->commit();
+
+        send_live_notification($targetId, 'force_disconnect', ['community_id' => $commId, 'reason' => 'Has sido baneado: ' . $reason]);
+
+        echo json_encode(['success' => true, 'message' => 'Usuario baneado.']);
+
+    } elseif ($action === 'unban_member') {
+        $commUuid = $data['community_uuid'] ?? '';
+        $targetUuid = $data['target_uuid'] ?? '';
+
+        $stmtC = $pdo->prepare("SELECT id FROM communities WHERE uuid = ?");
+        $stmtC->execute([$commUuid]);
+        $commId = $stmtC->fetchColumn();
+
+        $stmtU = $pdo->prepare("SELECT id FROM users WHERE uuid = ?");
+        $stmtU->execute([$targetUuid]);
+        $targetId = $stmtU->fetchColumn();
+
+        if (!$commId || !$targetId) throw new Exception("Error en datos.");
+
+        // Solo admins/mods pueden desbanear
+        $stmtCheck = $pdo->prepare("SELECT role FROM community_members WHERE community_id = ? AND user_id = ?");
+        $stmtCheck->execute([$commId, $userId]);
+        $myRole = $stmtCheck->fetchColumn();
+
+        if (!in_array($myRole, ['admin', 'moderator'])) throw new Exception("No tienes permisos.");
+
+        $pdo->prepare("DELETE FROM community_bans WHERE community_id = ? AND user_id = ?")->execute([$commId, $targetId]);
+
+        echo json_encode(['success' => true, 'message' => 'Usuario desbaneado.']);
+
+    } elseif ($action === 'mute_member') {
+        $commUuid = $data['community_uuid'] ?? '';
+        $targetUuid = $data['target_uuid'] ?? '';
+        $minutes = (int)($data['duration'] ?? 5); // Default 5 mins
+
+        if ($minutes < 1) throw new Exception("Duración inválida.");
+
+        $stmtC = $pdo->prepare("SELECT id FROM communities WHERE uuid = ?");
+        $stmtC->execute([$commUuid]);
+        $commId = $stmtC->fetchColumn();
+
+        $stmtU = $pdo->prepare("SELECT id FROM users WHERE uuid = ?");
+        $stmtU->execute([$targetUuid]);
+        $targetId = $stmtU->fetchColumn();
+
+        if (!$commId || !$targetId) throw new Exception("Error.");
+
+        // Verificar roles
+        $stmtRoles = $pdo->prepare("SELECT role FROM community_members WHERE community_id = ? AND user_id = ?");
+        
+        $stmtRoles->execute([$commId, $userId]);
+        $myRole = $stmtRoles->fetchColumn();
+
+        if (!in_array($myRole, ['admin', 'moderator'])) throw new Exception("No tienes permisos.");
+
+        $stmtRoles->execute([$commId, $targetId]);
+        $targetRole = $stmtRoles->fetchColumn();
+
+        if (!$targetRole) throw new Exception("Usuario no es miembro.");
+
+        if ($myRole === 'moderator' && in_array($targetRole, ['admin', 'moderator'])) {
+            throw new Exception("No puedes silenciar a superiores.");
+        }
+        if ($myRole === 'admin' && $targetRole === 'admin') {
+            throw new Exception("No puedes silenciar a otros admins.");
+        }
+
+        // Calcular timestamp
+        $until = date('Y-m-d H:i:s', strtotime("+$minutes minutes"));
+
+        $pdo->prepare("UPDATE community_members SET muted_until = ? WHERE community_id = ? AND user_id = ?")->execute([$until, $commId, $targetId]);
+
+        // Notificar al usuario (opcionalmente podrías agregar un evento socket 'user_muted')
+        send_live_notification($targetId, 'new_notification', [
+            'type' => 'system',
+            'message' => "Has sido silenciado por $minutes minutos en esta comunidad."
+        ]);
+
+        echo json_encode(['success' => true, 'message' => "Usuario silenciado por $minutes min."]);
 
     } elseif ($action === 'get_community_by_uuid') {
         $uuid = trim($data['uuid'] ?? '');

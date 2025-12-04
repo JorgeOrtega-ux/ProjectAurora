@@ -241,9 +241,24 @@ CREATE TABLE IF NOT EXISTS community_members (
     is_archived TINYINT(1) DEFAULT 0,
     joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    muted_until TIMESTAMP NULL, -- [NUEVO] Para Mute/Timeout
     FOREIGN KEY (community_id) REFERENCES communities(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE KEY unique_membership (community_id, user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- [NUEVO] TABLA DE BANS DE COMUNIDAD
+CREATE TABLE IF NOT EXISTS community_bans (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    community_id INT NOT NULL,
+    user_id INT NOT NULL,
+    banned_by INT NOT NULL,
+    reason TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (community_id) REFERENCES communities(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (banned_by) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_ban (community_id, user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- TABLA DE LECTURA POR CANAL

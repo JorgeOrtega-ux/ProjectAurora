@@ -38,11 +38,30 @@ function connect() {
             const data = JSON.parse(event.data);
             
             // [CORRECCIÓN] Solo desconectar si es un error de AUTENTICACIÓN permanente.
-            // Se eliminó "|| data.type === 'error'" para que el spam no desconecte.
             if (data.type === 'auth_error_permanent') {
                 console.error('websocket_client: Auth failed permanently. Stopping reconnection.');
                 shouldReconnect = false;
                 socket.close(); // Cierre limpio
+                return;
+            }
+
+            // [NUEVO] Manejo de Desconexión Forzada (Kick/Ban)
+            if (data.type === 'force_disconnect') {
+                console.warn('Force disconnect received:', data.payload);
+                if (window.alertManager) {
+                     window.alertManager.showAlert(data.payload.reason || 'Has sido desconectado.', 'error');
+                } else {
+                     alert(data.payload.reason || 'Has sido desconectado.');
+                }
+                
+                // Redirigir al inicio para salir de la vista actual inmediatamente
+                setTimeout(() => {
+                    if (window.BASE_PATH) {
+                        window.location.href = window.BASE_PATH + 'main';
+                    } else {
+                        window.location.reload();
+                    }
+                }, 1500); 
                 return;
             }
 

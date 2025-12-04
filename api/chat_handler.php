@@ -90,12 +90,17 @@ try {
 
         } else {
             // Contexto Comunidad
-            // [MODIFICADO] Consultar estado de la comunidad y rol del usuario
-            $stmtC = $pdo->prepare("SELECT c.id, c.status as comm_status, cm.role FROM communities c JOIN community_members cm ON c.id = cm.community_id WHERE c.uuid = ? AND cm.user_id = ?");
+            // [MODIFICADO] Consultar estado de la comunidad, rol del usuario Y SILENCIO (muted_until)
+            $stmtC = $pdo->prepare("SELECT c.id, c.status as comm_status, cm.role, cm.muted_until FROM communities c JOIN community_members cm ON c.id = cm.community_id WHERE c.uuid = ? AND cm.user_id = ?");
             $stmtC->execute([$uuid, $userId]);
             $commData = $stmtC->fetch(PDO::FETCH_ASSOC);
             
             if (!$commData) throw new Exception("Acceso denegado a la comunidad.");
+            
+            // [NUEVO] Verificar si está silenciado (Mute/Timeout)
+            if (!empty($commData['muted_until']) && strtotime($commData['muted_until']) > time()) {
+                throw new Exception("Estás silenciado en esta comunidad hasta: " . $commData['muted_until']);
+            }
             
             $targetId = $commData['id'];
             $userRole = $commData['role'];

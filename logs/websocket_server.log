@@ -1011,3 +1011,17 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-12-04 00:02:27,980 - INFO - Usuario conectado: ID 1 | Rol: founder
 2025-12-04 00:02:35,347 - INFO - connection open
 2025-12-04 00:02:35,428 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-04 10:50:08,979 - INFO - connection open
+2025-12-04 10:50:09,176 - ERROR - Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\jorge\AppData\Local\Programs\Python\Python313\Lib\asyncio\events.py", line 89, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\jorge\AppData\Local\Programs\Python\Python313\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una conexión existente por el host remoto
+2025-12-04 10:50:09,730 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-04 10:54:27,512 - INFO - connection open
+2025-12-04 10:54:27,518 - INFO - Usuario conectado: ID 1 | Rol: founder

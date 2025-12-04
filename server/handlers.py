@@ -130,6 +130,10 @@ async def handle_bridge_message(msg_json):
              # También al sender si está conectado
              sender_id = str(payload_data.get('sender_id'))
              await connection_manager.send_to_user(sender_id, msg_out)
+        # [NUEVO] Manejo de Desconexión Forzada (Kick/Ban)
+        elif msg_type == 'force_disconnect':
+             msg_out = {"type": "force_disconnect", "payload": payload_data}
+             await connection_manager.send_to_user(target, msg_out)
         else:
              # Default fallback
              await connection_manager.send_to_user(target, full_payload)
