@@ -1,6 +1,4 @@
 <?php
-// api/chat_handler.php
-
 $logDir = __DIR__ . '/../logs';
 $logFile = $logDir . '/chat_error.log';
 if (!file_exists($logDir)) { mkdir($logDir, 0777, true); }
@@ -322,7 +320,7 @@ try {
         echo json_encode(['success' => true, 'message' => 'Enviado']);
         exit;
 
-    // --- [NUEVO] REACCIONES A MENSAJES ---
+    // --- [MODIFICADO] REACCIONES A MENSAJES ---
     } elseif ($action === 'react_message') {
         $msgUuid = $data['message_id'] ?? '';
         $reaction = $data['reaction'] ?? '';
@@ -331,10 +329,10 @@ try {
         // Obtenemos target_uuid para poder buscar en Redis si es necesario
         $targetUuid = $data['target_uuid'] ?? ''; 
 
-        // Validar emojis permitidos
-        $allowedReactions = ['👍', '❤️', '😂', '😮', '😢', '😡'];
+        // [MODIFICADO] Validar claves permitidas (Keys en lugar de Emojis raw)
+        $allowedReactions = ['like', 'love', 'haha', 'wow', 'sad', 'angry'];
         if (empty($msgUuid) || !in_array($reaction, $allowedReactions)) {
-            throw new Exception("Datos de reacción inválidos.");
+            throw new Exception("Reacción no válida.");
         }
 
         $messagesTable = ($context === 'private') ? 'private_messages' : 'community_messages';
@@ -804,6 +802,50 @@ try {
         usort($uniqueMessages, function($a, $b) {
             return strtotime($b['created_at']) - strtotime($a['created_at']);
         });
+
+        // --- INICIO: CARGA DE REACCIONES ---
+        $messageIds = array_column($uniqueMessages, 'id');
+        
+        if (!empty($messageIds)) {
+            $reactionsTable = ($context === 'private') ? 'private_message_reactions' : 'community_message_reactions';
+            $placeholders = implode(',', array_fill(0, count($messageIds), '?'));
+            
+            // Contar reacciones y verificar si el usuario actual reaccionó
+            $sqlReact = "SELECT 
+                            message_id, 
+                            reaction_code, 
+                            COUNT(*) as count,
+                            SUM(CASE WHEN user_id = ? THEN 1 ELSE 0 END) as user_reacted
+                         FROM $reactionsTable 
+                         WHERE message_id IN ($placeholders)
+                         GROUP BY message_id, reaction_code";
+            
+            $params = array_merge([$userId], $messageIds);
+            $stmtReact = $pdo->prepare($sqlReact);
+            $stmtReact->execute($params);
+            $allReactions = $stmtReact->fetchAll(PDO::FETCH_ASSOC);
+            
+            $reactionsByMessage = [];
+            foreach ($allReactions as $r) {
+                $mId = $r['message_id'];
+                if (!isset($reactionsByMessage[$mId])) {
+                    $reactionsByMessage[$mId] = [];
+                }
+                $reactionsByMessage[$mId][$r['reaction_code']] = [
+                    'count' => (int)$r['count'],
+                    'user_reacted' => (bool)$r['user_reacted']
+                ];
+            }
+            
+            foreach ($uniqueMessages as &$msg) {
+                $msg['reactions'] = $reactionsByMessage[$msg['id']] ?? [];
+            }
+        } else {
+            foreach ($uniqueMessages as &$msg) {
+                $msg['reactions'] = [];
+            }
+        }
+        // --- FIN: CARGA DE REACCIONES ---
 
         echo json_encode(['success' => true, 'messages' => array_reverse($uniqueMessages), 'has_more' => (count($dbMessages) >= $limit)]);
         exit;

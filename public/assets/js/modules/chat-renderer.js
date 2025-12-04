@@ -2,6 +2,16 @@
 
 import { t } from '../core/i18n-manager.js';
 
+// --- CONFIGURACIÓN DE ICONOS ---
+const REACTION_ICONS = {
+    'like': '👍',
+    'love': '❤️',
+    'haha': '😂',
+    'wow': '😮',
+    'sad': '😢',
+    'angry': '😡'
+};
+
 // --- HELPERS INTERNOS DE FORMATO ---
 
 function formatChatTime(dateString) {
@@ -25,16 +35,32 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 
-// --- HELPER DE REACCIONES (MODIFICADO) ---
-// Ahora acepta msgUuid y genera botones interactivos en lugar de spans estáticos
+// --- HELPER DE REACCIONES (MODIFICADO PARA USAR KEYS) ---
 function getReactionsHTML(reactions, msgUuid) {
     if (!reactions || Object.keys(reactions).length === 0) return '';
     
     let html = '<div class="reactions-bar">';
-    for (const [emoji, count] of Object.entries(reactions)) {
+    
+    // Iteramos sobre las claves ('like', 'love', etc.)
+    for (const [key, data] of Object.entries(reactions)) {
+        let count = 0;
+        let userReacted = false;
+
+        // Manejar estructura compleja (del GET) o simple (del POST)
+        if (typeof data === 'object' && data !== null) {
+            count = parseInt(data.count) || 0;
+            userReacted = !!data.user_reacted;
+        } else {
+            count = parseInt(data) || 0;
+        }
+
         if (count > 0) {
-            // Se usa <button> con data-action="toggle-reaction" para capturar el click
-            html += `<button class="reaction-bubble" data-action="toggle-reaction" data-uuid="${msgUuid}" data-emoji="${emoji}">
+            const emoji = REACTION_ICONS[key] || '❓';
+            // Añadimos data-reaction-key en lugar de data-emoji
+            // Añadimos clase 'reacted' si el usuario actual reaccionó (opcional para CSS)
+            const activeClass = userReacted ? 'reacted' : '';
+            
+            html += `<button class="reaction-bubble ${activeClass}" data-action="toggle-reaction" data-uuid="${msgUuid}" data-reaction-key="${key}">
                         ${emoji} <span class="reaction-count">${count}</span>
                      </button>`;
         }
@@ -74,8 +100,6 @@ export function createMessageHTML(msg, currentChatType) {
         : `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.sender_username)}`;
 
     const role = msg.sender_role || 'user';
-    
-    // Manejo de tag de editado
     const editedHtml = (msg.is_edited) ? `<small class="edited-tag" style="margin-left:4px; color:#999;">${t('chat.edited_tag') || '(editado)'}</small>` : '';
 
     let replyHtml = '';
@@ -96,7 +120,6 @@ export function createMessageHTML(msg, currentChatType) {
         replyHtml = `<div class="message-reply-preview"><span class="reply-preview-user">${escapeHtml(replyUser)}</span><span class="reply-preview-text">${replyText}</span></div>`;
     }
 
-    // Grid de imágenes
     let attachmentsHtml = '';
     if (msg.attachments && Array.isArray(msg.attachments) && msg.attachments.length > 0) {
         const totalCount = msg.attachments.length;
@@ -129,10 +152,7 @@ export function createMessageHTML(msg, currentChatType) {
         attachmentsHtml = `<div class="msg-attachments" data-grid="${gridType}" data-media-items='${jsonStr}'>${itemsHtml}</div>`;
     }
 
-    // --- REACCIONES (MODIFICADO) ---
-    // Pasamos msgId para que los botones tengan referencia
     const reactionsHtml = getReactionsHTML(msg.reactions, msgId);
-
     const optionsBtn = `<button class="message-options-btn" data-action="msg-options" data-uuid="${msgId}" data-user="${msg.sender_username}" data-text="${escapeHtml(msg.message)}" data-sender-id="${msg.sender_id}" data-created-at="${msg.created_at}"><span class="material-symbols-rounded" style="font-size: 18px;">more_vert</span></button>`;
 
     return `
@@ -156,7 +176,6 @@ export function createMessageHTML(msg, currentChatType) {
 
 // --- MANIPULACIÓN DEL DOM ---
 
-// MODIFICADO: Acepta y usa msgUuid para regenerar la barra correctamente
 export function updateMessageReactions(msgUuid, reactionsData) {
     const msgRow = document.getElementById(`msg-${msgUuid}`);
     if (!msgRow) return;
@@ -164,20 +183,16 @@ export function updateMessageReactions(msgUuid, reactionsData) {
     const bubble = msgRow.querySelector('.message-bubble');
     if (!bubble) return;
 
-    // Buscar si ya existe la barra
     let bar = bubble.querySelector('.reactions-bar');
-    
-    // Generar nuevo HTML pasando msgUuid
     const newHtml = getReactionsHTML(reactionsData, msgUuid);
 
     if (bar) {
         if (!newHtml) {
-            bar.remove(); // Si no hay reacciones, quitar barra
+            bar.remove(); 
         } else {
-            bar.outerHTML = newHtml; // Reemplazar
+            bar.outerHTML = newHtml; 
         }
     } else if (newHtml) {
-        // Insertar al final de la burbuja
         bubble.insertAdjacentHTML('beforeend', newHtml);
     }
 }
@@ -470,17 +485,15 @@ export function updateReplyUI(isReplying, data = null) {
 }
 
 export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, onReply, onEdit, onDelete, onReport, onReact) {
-    // Cerrar cualquier popover existente
     document.querySelector('.message-options-popover')?.remove();
 
-    // Opciones dinámicas
     let editOption = '';
     let extraOptions = '';
 
     if (isMe && createdAt) {
         const msgTime = new Date(createdAt).getTime();
         const now = Date.now();
-        if (now - msgTime < 600000) { // 10 mins
+        if (now - msgTime < 600000) { 
              editOption = `
             <div class="menu-link" data-action="edit-message-mode" data-uuid="${msgUuid}" data-text="${escapeHtml(text)}">
                 <div class="menu-link-icon"><span class="material-symbols-rounded">edit</span></div>
@@ -506,9 +519,20 @@ export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, on
     const popover = document.createElement('div');
     popover.className = 'popover-module message-options-popover active';
     
-    // [NUEVO] Selector de Emojis
-    const emojis = ['👍', '❤️', '😂', '😮', '😢', '😡'];
-    const emojiHtml = emojis.map(e => `<button class="reaction-btn" data-emoji="${e}">${e}</button>`).join('');
+    // [MODIFICADO] Usar Claves para los emojis
+    const reactionMap = [
+        { key: 'like', icon: '👍' },
+        { key: 'love', icon: '❤️' },
+        { key: 'haha', icon: '😂' },
+        { key: 'wow',  icon: '😮' },
+        { key: 'sad',  icon: '😢' },
+        { key: 'angry', icon: '😡' }
+    ];
+    
+    // Generar botones usando data-reaction-key
+    const emojiHtml = reactionMap.map(item => 
+        `<button class="reaction-btn" data-reaction-key="${item.key}">${item.icon}</button>`
+    ).join('');
 
     popover.innerHTML = `
         <div class="menu-content">
@@ -526,14 +550,13 @@ export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, on
         </div>
     `;
     
-    // Posicionamiento
     const rect = btn.getBoundingClientRect();
     const scrollTop = window.scrollY || document.documentElement.scrollTop;
     
     popover.style.position = 'absolute';
     popover.style.top = (rect.bottom + scrollTop) + 'px';
     popover.style.left = (rect.left - 100) + 'px'; 
-    popover.style.width = '240px'; // Un poco más ancho para emojis
+    popover.style.width = '240px'; 
     popover.style.zIndex = '1000'; 
 
     document.body.appendChild(popover);
@@ -548,7 +571,6 @@ export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, on
         document.addEventListener('click', closeHandler);
     }, 0);
 
-    // Asignar acciones
     const replyBtn = popover.querySelector('[data-action="reply-message"]');
     if (replyBtn) replyBtn.addEventListener('click', () => { onReply(); popover.remove(); });
     
@@ -561,11 +583,12 @@ export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, on
     const repBtn = popover.querySelector('[data-action="report-message"]');
     if (repBtn) repBtn.addEventListener('click', () => { onReport(); popover.remove(); });
 
-    // [NUEVO] Listeners de Reacciones
+    // [MODIFICADO] Listener para usar keys
     popover.querySelectorAll('.reaction-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const emoji = e.target.dataset.emoji;
-            if (onReact) onReact(emoji);
+            // Obtener la clave del dataset (asegurar el target correcto)
+            const key = e.currentTarget.dataset.reactionKey;
+            if (onReact) onReact(key);
             popover.remove();
         });
     });
