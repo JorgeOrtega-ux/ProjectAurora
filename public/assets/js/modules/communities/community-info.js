@@ -46,10 +46,23 @@ async function loadGroupDetails(uuid) {
 
     if (res.success) {
         const info = res.info;
-        const avatarSrc = info.profile_picture 
-            ? (window.BASE_PATH || '/ProjectAurora/') + info.profile_picture 
-            : `https://ui-avatars.com/api/?name=${encodeURIComponent(info.community_name)}`;
+        
+        // [CORRECCIÓN] Lógica de URL segura + Fallback System
+        let avatarSrc;
+        if (info.profile_picture) {
+            // Si ya empieza con http, es externa (o un fallback guardado), no añadir BASE_PATH
+            avatarSrc = info.profile_picture.startsWith('http') 
+                ? info.profile_picture 
+                : (window.BASE_PATH || '/ProjectAurora/') + info.profile_picture;
+        } else {
+            avatarSrc = `https://ui-avatars.com/api/?name=${encodeURIComponent(info.community_name)}`;
+        }
+
         els.img.src = avatarSrc;
+        
+        // Habilitar sistema de fallback
+        els.img.setAttribute('data-img-type', (activeType === 'private') ? 'user' : 'community');
+        els.img.removeAttribute('data-has-fallback'); // Reset para permitir reintentos si cambia
         
         // [MODIFICADO] Mostrar nombre y badge verificado si corresponde
         const verifiedIconName = (parseInt(info.is_verified) === 1) 
@@ -99,10 +112,27 @@ function renderGroupMembers(members, container) {
     }
     let html = '';
     members.forEach(m => {
-        const avatar = m.profile_picture ? (window.BASE_PATH || '/ProjectAurora/') + m.profile_picture : `https://ui-avatars.com/api/?name=${encodeURIComponent(m.username)}`;
+        // [CORRECCIÓN] Lógica de URL segura para miembros
+        let avatar;
+        if (m.profile_picture) {
+            avatar = m.profile_picture.startsWith('http')
+                ? m.profile_picture
+                : (window.BASE_PATH || '/ProjectAurora/') + m.profile_picture;
+        } else {
+            avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.username)}`;
+        }
+
         const roleColor = (m.role === 'admin' || m.role === 'founder') ? '#d32f2f' : ((m.role === 'moderator') ? '#1976d2' : '#888');
         const roleText = m.role === 'founder' ? 'Fundador' : (m.role === 'admin' ? 'Admin' : (m.role === 'moderator' ? 'Mod' : 'Miembro'));
-        html += `<div class="info-member-item"><img src="${avatar}" class="info-member-avatar" alt="${m.username}"><div class="info-member-details"><span class="info-member-name">${escapeHtml(m.username)}</span><span class="info-member-role" style="color:${roleColor}; font-size:10px; font-weight:700;">${roleText}</span></div></div>`;
+        
+        // Se añade data-img-type="user" para que funcione el fallback global
+        html += `<div class="info-member-item">
+                    <img src="${avatar}" class="info-member-avatar" alt="${m.username}" data-img-type="user">
+                    <div class="info-member-details">
+                        <span class="info-member-name">${escapeHtml(m.username)}</span>
+                        <span class="info-member-role" style="color:${roleColor}; font-size:10px; font-weight:700;">${roleText}</span>
+                    </div>
+                 </div>`;
     });
     container.innerHTML = html;
 }
