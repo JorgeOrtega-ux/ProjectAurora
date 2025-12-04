@@ -560,6 +560,99 @@ try {
         } else {
             throw new Exception("Error al eliminar.");
         }
+
+    // --- GESTIÓN DE MIEMBROS DE COMUNIDAD (ADMIN) ---
+
+    } elseif ($action === 'get_community_members') {
+        $commId = (int)($data['community_id'] ?? 0);
+        $sql = "SELECT u.id, u.username, u.email, u.profile_picture, cm.role, cm.muted_until 
+                FROM community_members cm 
+                JOIN users u ON cm.user_id = u.id 
+                WHERE cm.community_id = ? 
+                ORDER BY FIELD(cm.role, 'admin', 'moderator', 'member'), u.username ASC";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$commId]);
+        echo json_encode(['success' => true, 'members' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+
+    } elseif ($action === 'get_community_banned_users') {
+        $commId = (int)($data['community_id'] ?? 0);
+        $sql = "SELECT u.id, u.username, u.profile_picture, cb.reason, cb.created_at 
+                FROM community_bans cb 
+                JOIN users u ON cb.user_id = u.id 
+                WHERE cb.community_id = ? 
+                ORDER BY cb.created_at DESC";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$commId]);
+        echo json_encode(['success' => true, 'banned_users' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+
+    } elseif ($action === 'kick_member') {
+        $commId = (int)($data['community_id'] ?? 0);
+        $targetId = (int)($data['user_id'] ?? 0);
+        
+        if ($targetId === $currentAdminId) throw new Exception("No puedes expulsarte a ti mismo desde el panel de admin.");
+
+        $pdo->beginTransaction();
+        $stmtDel = $pdo->prepare("DELETE FROM community_members WHERE community_id = ? AND user_id = ?");
+        $stmtDel->execute([$commId, $targetId]);
+        
+        if ($stmtDel->rowCount() > 0) {
+            $pdo->prepare("UPDATE communities SET member_count = GREATEST(0, member_count - 1) WHERE id = ?")->execute([$commId]);
+            $pdo->commit();
+            send_live_notification($targetId, 'force_disconnect', ['community_id' => $commId, 'reason' => 'Expulsado por administrador del sistema']);
+            echo json_encode(['success' => true, 'message' => "Usuario expulsado."]);
+        } else {
+            $pdo->rollBack();
+            throw new Exception("El usuario no es miembro de esta comunidad.");
+        }
+
+    } elseif ($action === 'ban_member') {
+        $commId = (int)($data['community_id'] ?? 0);
+        $targetId = (int)($data['user_id'] ?? 0);
+        $reason = trim($data['reason'] ?? 'Baneado por administración');
+
+        if ($targetId === $currentAdminId) throw new Exception("No puedes banearte a ti mismo.");
+
+        $pdo->beginTransaction();
+        // Remove membership if exists
+        $stmtDel = $pdo->prepare("DELETE FROM community_members WHERE community_id = ? AND user_id = ?");
+        $stmtDel->execute([$commId, $targetId]);
+        if ($stmtDel->rowCount() > 0) {
+            $pdo->prepare("UPDATE communities SET member_count = GREATEST(0, member_count - 1) WHERE id = ?")->execute([$commId]);
+        }
+
+        // Add ban
+        $stmtBan = $pdo->prepare("INSERT INTO community_bans (community_id, user_id, banned_by, reason, created_at) VALUES (?, ?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE reason = VALUES(reason)");
+        $stmtBan->execute([$commId, $targetId, $currentAdminId, $reason]);
+        
+        $pdo->commit();
+        
+        send_live_notification($targetId, 'force_disconnect', ['community_id' => $commId, 'reason' => "Baneado: $reason"]);
+        echo json_encode(['success' => true, 'message' => "Usuario baneado."]);
+
+    } elseif ($action === 'mute_member') {
+        $commId = (int)($data['community_id'] ?? 0);
+        $targetId = (int)($data['user_id'] ?? 0);
+        $duration = (int)($data['duration'] ?? 15);
+        
+        $until = date('Y-m-d H:i:s', strtotime("+$duration minutes"));
+        $stmt = $pdo->prepare("UPDATE community_members SET muted_until = ? WHERE community_id = ? AND user_id = ?");
+        $stmt->execute([$until, $commId, $targetId]);
+        
+        if ($stmt->rowCount() > 0) {
+            echo json_encode(['success' => true, 'message' => "Usuario silenciado por $duration min."]);
+        } else {
+            throw new Exception("Usuario no encontrado en la comunidad.");
+        }
+
+    } elseif ($action === 'unban_member') {
+        $commId = (int)($data['community_id'] ?? 0);
+        $targetId = (int)($data['user_id'] ?? 0);
+
+        $stmt = $pdo->prepare("DELETE FROM community_bans WHERE community_id = ? AND user_id = ?");
+        $stmt->execute([$commId, $targetId]);
+        
+        echo json_encode(['success' => true, 'message' => "Baneo levantado."]);
+
     }
 
 } catch (Exception $e) {

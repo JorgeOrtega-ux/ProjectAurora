@@ -375,5 +375,24 @@ export const AdminApi = {
         postJson('api/admin_handler.php', { action: 'save_community', ...params }),
 
     deleteCommunity: (id) => 
-        postJson('api/admin_handler.php', { action: 'delete_community', id })
+        postJson('api/admin_handler.php', { action: 'delete_community', id }),
+
+    // [NUEVO] Gestión de Miembros de Comunidad (Admin)
+    getCommunityMembers: (communityId) => 
+        postJson('api/admin_handler.php', { action: 'get_community_members', community_id: communityId }),
+
+    getCommunityBannedUsers: (communityId) => 
+        postJson('api/admin_handler.php', { action: 'get_community_banned_users', community_id: communityId }),
+
+    kickMember: (communityId, userId) => 
+        postJson('api/admin_handler.php', { action: 'kick_member', community_id: communityId, user_id: userId }),
+
+    banMember: (communityId, userId, reason) => 
+        postJson('api/admin_handler.php', { action: 'ban_member', community_id: communityId, user_id: userId, reason }),
+
+    muteMember: (communityId, userId, duration) => 
+        postJson('api/admin_handler.php', { action: 'mute_member', community_id: communityId, user_id: userId, duration }),
+
+    unbanMember: (communityId, userId) => 
+        postJson('api/admin_handler.php', { action: 'unban_member', community_id: communityId, user_id: userId })
 };

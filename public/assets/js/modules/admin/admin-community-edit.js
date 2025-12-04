@@ -6,6 +6,8 @@ import { setButtonLoading } from '../../core/utilities.js';
 
 let currentId = 0;
 let currentChannels = []; // Array local de canales
+let allMembers = []; // Cache local de miembros para filtrado
+let bannedUsers = []; // Cache local de baneados
 
 function toggleAccessCodeVisibility(privacyValue) {
     const wrapper = document.getElementById('wrapper-access-code');
@@ -23,9 +25,13 @@ export function initAdminCommunityEdit() {
     const inputId = document.getElementById('community-target-id');
     currentId = inputId ? parseInt(inputId.value) : 0;
     currentChannels = []; // Resetear canales
+    allMembers = [];
+    bannedUsers = [];
 
     if (currentId > 0) {
         loadData();
+        loadMembers();
+        loadBannedUsers();
     } else {
         generateCode();
         toggleAccessCodeVisibility('public');
@@ -154,6 +160,77 @@ function initListeners() {
         };
     }
 
+    // Buscador de miembros
+    const searchMembersInput = document.getElementById('admin-members-search');
+    if (searchMembersInput) {
+        searchMembersInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = allMembers.filter(m => m.username.toLowerCase().includes(term));
+            renderMembers(filtered);
+        });
+    }
+
+    // Acciones de Miembros (Kick, Ban, Mute)
+    document.getElementById('members-list-container')?.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        const userId = btn.dataset.userId;
+        const action = btn.dataset.action;
+        if (!userId || !action) return;
+
+        if (action === 'kick') {
+            if(!confirm("¿Seguro que deseas expulsar a este usuario?")) return;
+            const res = await AdminApi.kickMember(currentId, userId);
+            if (res.success) {
+                if(window.alertManager) window.alertManager.showAlert("Usuario expulsado", 'success');
+                loadMembers();
+            } else {
+                alert(res.message);
+            }
+        } else if (action === 'ban') {
+            const reason = prompt("Razón del baneo:");
+            if (reason === null) return;
+            const res = await AdminApi.banMember(currentId, userId, reason);
+            if (res.success) {
+                if(window.alertManager) window.alertManager.showAlert("Usuario baneado", 'success');
+                loadMembers();
+                loadBannedUsers();
+            } else {
+                alert(res.message);
+            }
+        } else if (action === 'mute') {
+            const duration = prompt("Duración del silencio (minutos):", "15");
+            if (duration === null) return;
+            const res = await AdminApi.muteMember(currentId, userId, duration);
+            if (res.success) {
+                if(window.alertManager) window.alertManager.showAlert("Usuario silenciado", 'success');
+                // Opcional: recargar si mostramos estado de mute visualmente
+            } else {
+                alert(res.message);
+            }
+        }
+    });
+
+    // Acciones de Baneados (Unban)
+    document.getElementById('banned-list-container')?.addEventListener('click', async (e) => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        const userId = btn.dataset.userId;
+        const action = btn.dataset.action;
+        
+        if (action === 'unban') {
+            if(!confirm("¿Levantar el baneo a este usuario?")) return;
+            const res = await AdminApi.unbanMember(currentId, userId);
+            if (res.success) {
+                if(window.alertManager) window.alertManager.showAlert("Usuario desbaneado", 'success');
+                loadBannedUsers();
+                loadMembers();
+            } else {
+                alert(res.message);
+            }
+        }
+    });
+
     document.getElementById('btn-gen-code').onclick = generateCode;
     document.getElementById('input-comm-pfp').addEventListener('blur', updatePreviews);
     document.getElementById('input-comm-banner').addEventListener('blur', updatePreviews);
@@ -213,6 +290,113 @@ async function loadData() {
         updatePreviews();
     }
 }
+
+// [NUEVO] Cargar lista de miembros
+async function loadMembers() {
+    const container = document.getElementById('members-list-container');
+    if (!container) return;
+    
+    // Spinner inicial si está vacío
+    if(container.children.length === 0) container.innerHTML = '<div class="small-spinner" style="margin: 20px auto;"></div>';
+
+    const res = await AdminApi.getCommunityMembers(currentId);
+    if (res.success) {
+        allMembers = res.members;
+        renderMembers(allMembers);
+    } else {
+        container.innerHTML = `<div style="padding:15px; text-align:center; color:#999;">Error al cargar miembros.</div>`;
+    }
+}
+
+function renderMembers(list) {
+    const container = document.getElementById('members-list-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (list.length === 0) {
+        container.innerHTML = `<div style="padding:15px; text-align:center; color:#999;">No se encontraron miembros.</div>`;
+        return;
+    }
+
+    list.forEach(m => {
+        const row = document.createElement('div');
+        row.style.cssText = `display: flex; align-items: center; padding: 8px 12px; background: #fff; border: 1px solid #eee; border-radius: 8px; gap: 10px;`;
+        
+        const pfp = m.profile_picture || 'assets/uploads/profile_pictures/default/default.png';
+        
+        let roleBadge = '';
+        if (m.role === 'admin') roleBadge = '<span style="font-size:10px; background:#e3f2fd; color:#1565c0; padding:2px 6px; border-radius:4px; margin-left:6px;">ADMIN</span>';
+        if (m.role === 'moderator') roleBadge = '<span style="font-size:10px; background:#e8f5e9; color:#2e7d32; padding:2px 6px; border-radius:4px; margin-left:6px;">MOD</span>';
+
+        row.innerHTML = `
+            <img src="${pfp}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+            <div style="flex: 1;">
+                <div style="font-weight: 600; font-size: 14px; color: #333;">${m.username} ${roleBadge}</div>
+                <div style="font-size: 11px; color: #888;">${m.email || 'Sin email'}</div>
+            </div>
+            <div style="display: flex; gap: 4px;">
+                <button class="component-icon-button small" data-action="mute" data-user-id="${m.id}" title="Silenciar (Mute)" style="width: 28px; height: 28px; color: #f57c00; border: 1px solid #ffe0b2;">
+                    <span class="material-symbols-rounded" style="font-size: 16px;">volume_off</span>
+                </button>
+                <button class="component-icon-button small" data-action="kick" data-user-id="${m.id}" title="Expulsar (Kick)" style="width: 28px; height: 28px; color: #d32f2f; border: 1px solid #ffcdd2;">
+                    <span class="material-symbols-rounded" style="font-size: 16px;">person_remove</span>
+                </button>
+                <button class="component-icon-button small" data-action="ban" data-user-id="${m.id}" title="Banear" style="width: 28px; height: 28px; color: #fff; background-color: #d32f2f; border: none;">
+                    <span class="material-symbols-rounded" style="font-size: 16px;">block</span>
+                </button>
+            </div>
+        `;
+        container.appendChild(row);
+    });
+}
+
+// [NUEVO] Cargar lista de baneados
+async function loadBannedUsers() {
+    const container = document.getElementById('banned-list-container');
+    if (!container) return;
+    
+    // Spinner
+    if(container.children.length === 0) container.innerHTML = '<div class="small-spinner" style="margin: 20px auto;"></div>';
+
+    const res = await AdminApi.getCommunityBannedUsers(currentId);
+    if (res.success) {
+        bannedUsers = res.banned_users;
+        renderBannedUsers(bannedUsers);
+    } else {
+        container.innerHTML = `<div style="padding:15px; text-align:center; color:#999;">Error al cargar baneados.</div>`;
+    }
+}
+
+function renderBannedUsers(list) {
+    const container = document.getElementById('banned-list-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (list.length === 0) {
+        container.innerHTML = `<div style="padding:15px; text-align:center; color:#999;">No hay usuarios baneados.</div>`;
+        return;
+    }
+
+    list.forEach(u => {
+        const row = document.createElement('div');
+        row.style.cssText = `display: flex; align-items: center; padding: 8px 12px; background: #fff0f0; border: 1px solid #ffcdd2; border-radius: 8px; gap: 10px;`;
+        
+        const pfp = u.profile_picture || 'assets/uploads/profile_pictures/default/default.png';
+
+        row.innerHTML = `
+            <img src="${pfp}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; opacity: 0.7;">
+            <div style="flex: 1;">
+                <div style="font-weight: 600; font-size: 14px; color: #c62828;">${u.username}</div>
+                <div style="font-size: 11px; color: #d32f2f;">Razón: ${u.reason || 'Sin razón'}</div>
+            </div>
+            <button class="component-button small" data-action="unban" data-user-id="${u.id}" style="font-size: 11px; padding: 4px 8px; height: auto;">
+                Desbanear
+            </button>
+        `;
+        container.appendChild(row);
+    });
+}
+
 
 function renderChannels() {
     const container = document.getElementById('channels-list-container');

@@ -82,8 +82,9 @@ $pageDesc = $targetId ? 'Modifica los detalles y la apariencia de esta comunidad
                 </div>
 
                 <div class="component-card__actions actions-right" style="flex: 1; max-width: 50%; flex-direction: column; align-items: flex-end; gap: 8px;">
-                    <div style="width: 100%; height: 60px; background: #eee; border-radius: 8px; overflow: hidden; position: relative; border: 1px solid #ddd;">
+                    <div style="width: 100%; height: 60px; background: #eee; border-radius: 8px; overflow: hidden; position: relative; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center;">
                         <img id="preview-banner" src="" style="width:100%; height:100%; object-fit:cover; display:none;" data-img-type="banner" alt="Banner">
+                        <span class="material-symbols-rounded" id="placeholder-banner" style="font-size: 24px; color: #999;">panorama</span>
                     </div>
                     <div class="component-input-wrapper w-100">
                         <input type="text" id="input-comm-banner" class="component-text-input full-width" placeholder="https://ejemplo.com/banner.jpg">
@@ -346,6 +347,49 @@ $pageDesc = $targetId ? 'Modifica los detalles y la apariencia de esta comunidad
                     </div>
                 </div>
             </div>
+            
+            <?php if($targetId > 0): ?>
+            <hr class="component-divider">
+            <div class="component-group-item component-group-item--stacked" id="section-members">
+                <div class="component-card__content">
+                    <div class="component-icon-container" style="background-color: #f3e5f5; border-color: #e1bee7;">
+                        <span class="material-symbols-rounded" style="color: #7b1fa2;">groups</span>
+                    </div>
+                    <div class="component-card__text">
+                        <h2 class="component-card__title">Gestión de Miembros</h2>
+                        <p class="component-card__description">Administra los usuarios actuales de la comunidad (Expulsar, Banear, Silenciar).</p>
+                    </div>
+                </div>
+                
+                <div class="component-card__actions w-100" style="margin-top: 10px;">
+                     <div class="search-container full-width-search" style="border: 1px solid #eee; background: #fafafa;">
+                        <span class="material-symbols-rounded search-icon">search</span>
+                        <input type="text" id="admin-members-search" class="search-input" placeholder="Buscar miembro..." autocomplete="off"> 
+                    </div>
+                </div>
+
+                <div id="members-list-container" class="w-100" style="display:flex; flex-direction:column; gap:8px; margin-top:12px; max-height: 400px; overflow-y: auto;">
+                    <div class="small-spinner" style="margin: 20px auto;"></div>
+                </div>
+            </div>
+
+            <hr class="component-divider">
+            <div class="component-group-item component-group-item--stacked" id="section-banned">
+                <div class="component-card__content">
+                    <div class="component-icon-container" style="background-color: #ffebee; border-color: #ffcdd2;">
+                        <span class="material-symbols-rounded" style="color: #c62828;">block</span>
+                    </div>
+                    <div class="component-card__text">
+                        <h2 class="component-card__title">Usuarios Baneados</h2>
+                        <p class="component-card__description">Lista de usuarios vetados de esta comunidad.</p>
+                    </div>
+                </div>
+
+                <div id="banned-list-container" class="w-100" style="display:flex; flex-direction:column; gap:8px; margin-top:12px; max-height: 300px; overflow-y: auto;">
+                    <div class="small-spinner" style="margin: 20px auto;"></div>
+                </div>
+            </div>
+            <?php endif; ?>
 
         </div>
     </div>
