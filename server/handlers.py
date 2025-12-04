@@ -27,11 +27,12 @@ async def handle_chat_message(user_id, user_info, payload):
         })
         return 
 
-    # 2. Procesar y guardar en Buffer (DB/Redis logic)
-    # db_sync se encarga de la validación de comunidad/canal y del guardado en Redis
+    # 2. Procesar y guardar en Buffer (Validando Mute y Bloqueos)
+    # db_sync ahora valida 'muted_until' usando NOW()
     result = await db_sync.process_chat_message(user_id, user_info, payload)
     
     if not result['success']:
+        # Si está muteado, aquí se envía el mensaje de error al cliente
         if result.get('error'):
             await connection_manager.send_to_user(user_id, {
                 "type": "error", 

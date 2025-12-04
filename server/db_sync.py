@@ -116,7 +116,7 @@ async def is_spamming(user_id):
 # --- CHAT & BUFFER LOGIC ---
 
 async def process_chat_message(user_id, user_info, payload):
-    """Procesa el mensaje, valida permisos y lo encola en Redis."""
+    """Procesa el mensaje, valida permisos (Mute/Bloqueo) y lo encola en Redis."""
     target_uuid = payload.get('target_uuid')
     message_text = payload.get('message')
     context = payload.get('context', 'community')
@@ -139,6 +139,16 @@ async def process_chat_message(user_id, user_info, payload):
                 if not receiver_row: return {'success': False, 'error': 'User not found'}
                 receiver_id = str(receiver_row[0])
                 if receiver_id == user_id: return {'success': False}
+
+                # [NUEVO] Verificar Bloqueos
+                block_query = """
+                    SELECT id FROM user_blocks 
+                    WHERE (blocker_id = %s AND blocked_id = %s) 
+                       OR (blocker_id = %s AND blocked_id = %s)
+                """
+                await cur.execute(block_query, (user_id, receiver_id, receiver_id, user_id))
+                if await cur.fetchone():
+                    return {'success': False, 'error': 'No puedes enviar mensajes a este usuario.'}
 
                 # Resolve Reply
                 reply_data = await _resolve_reply(cur, reply_to_uuid, 'private', user_id, receiver_id)
@@ -164,13 +174,35 @@ async def process_chat_message(user_id, user_info, payload):
 
             # --- COMMUNITY CHAT ---
             else:
-                # Verificar Comunidad
-                check_query = "SELECT c.id, c.status, cm.role FROM communities c JOIN community_members cm ON c.id = cm.community_id WHERE c.uuid = %s AND cm.user_id = %s"
+                # [NUEVO] Verificar Comunidad Y SILENCIO (Muted)
+                # (cm.muted_until > NOW()) devuelve 1 si está silenciado
+                check_query = """
+                    SELECT 
+                        c.id, 
+                        c.status, 
+                        cm.role,
+                        (cm.muted_until IS NOT NULL AND cm.muted_until > NOW()) as is_muted,
+                        cm.muted_until
+                    FROM communities c 
+                    JOIN community_members cm ON c.id = cm.community_id 
+                    WHERE c.uuid = %s AND cm.user_id = %s
+                """
                 await cur.execute(check_query, (target_uuid, user_id))
                 comm_row = await cur.fetchone()
-                if not comm_row: return {'success': False, 'error': 'Access denied'}
                 
-                community_id, comm_status, user_role = str(comm_row[0]), comm_row[1], comm_row[2]
+                if not comm_row: 
+                    return {'success': False, 'error': 'Access denied'}
+                
+                community_id = str(comm_row[0])
+                comm_status = comm_row[1]
+                user_role = comm_row[2]
+                is_muted = comm_row[3]
+                muted_until_str = str(comm_row[4]) if comm_row[4] else ""
+
+                # [VALIDACIÓN MUTE]
+                if is_muted:
+                    return {'success': False, 'error': f'Estás silenciado hasta: {muted_until_str}'}
+
                 is_immune = user_role in ['founder', 'administrator', 'admin', 'moderator']
 
                 if comm_status == 'maintenance' and not is_immune:

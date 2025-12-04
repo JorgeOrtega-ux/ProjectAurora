@@ -1039,3 +1039,38 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-12-04 12:02:19,052 - INFO - Usuario conectado: ID 2 | Rol: user
 2025-12-04 12:03:34,522 - INFO - connection open
 2025-12-04 12:03:34,574 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-04 12:13:36,563 - INFO - connection open
+2025-12-04 12:13:36,619 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-04 12:13:48,020 - INFO - connection open
+2025-12-04 12:13:48,032 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-12-04 12:14:08,141 - INFO - connection open
+2025-12-04 12:14:08,145 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-12-04 12:14:15,655 - INFO - connection open
+2025-12-04 12:14:15,665 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-04 12:14:34,386 - INFO - connection open
+2025-12-04 12:14:34,388 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-12-04 12:14:41,788 - INFO - connection open
+2025-12-04 12:14:41,810 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-04 12:24:50,107 - INFO - connection open
+2025-12-04 12:24:50,136 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-12-04 12:25:25,140 - INFO - connection open
+2025-12-04 12:25:25,144 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-12-04 12:25:55,002 - INFO - connection open
+2025-12-04 12:25:55,019 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-12-04 12:33:41,305 - INFO - connection open
+2025-12-04 12:33:41,315 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-04 12:33:41,578 - INFO - connection open
+2025-12-04 12:33:41,639 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-12-04 12:33:44,232 - INFO - 💾 Flushing 10 msgs from chat:buffer:channel:1
+2025-12-04 12:38:05,608 - INFO - === Servidor Aurora Iniciado (Modular) ===
+2025-12-04 12:38:05,744 - INFO - ✅ DB Pool inicializado.
+2025-12-04 12:38:05,745 - INFO - ✅ Redis inicializado.
+2025-12-04 12:38:07,069 - INFO - server listening on 0.0.0.0:8080
+2025-12-04 12:38:07,070 - INFO - 🚀 Websocket Server escuchando en 0.0.0.0:8080
+2025-12-04 12:38:07,071 - INFO - 🌉 Bridge PHP escuchando en 127.0.0.1:8081
+2025-12-04 12:38:08,579 - INFO - connection open
+2025-12-04 12:38:08,583 - INFO - connection open
+2025-12-04 12:39:23,147 - INFO - connection open
+2025-12-04 12:39:23,158 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-04 12:39:31,459 - INFO - connection open
+2025-12-04 12:39:31,466 - INFO - Usuario conectado: ID 2 | Rol: user
