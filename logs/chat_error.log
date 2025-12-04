@@ -19,3 +19,5 @@
 [04-Dec-2025 14:47:25 America/Matamoros] PHP Warning:  Undefined array key "id" in E:\xampp\htdocs\ProjectAurora\api\chat_handler.php on line 841
 [04-Dec-2025 14:47:36 America/Matamoros] PHP Warning:  Undefined array key "id" in E:\xampp\htdocs\ProjectAurora\api\chat_handler.php on line 841
 [04-Dec-2025 14:52:22 America/Matamoros] PHP Warning:  Undefined array key "id" in E:\xampp\htdocs\ProjectAurora\api\chat_handler.php on line 848
+[04-Dec-2025 15:04:10 America/Matamoros] Chat API Error: Reacción no válida.
+[04-Dec-2025 15:04:11 America/Matamoros] Chat API Error: Reacción no válida.

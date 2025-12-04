@@ -115,8 +115,7 @@ export async function handleReportMessage(msgUuid, context, targetUuid) {
 }
 
 /**
- * [MODIFICADO] Maneja la reacción a un mensaje usando KEYS.
- * Realiza fetch directo y actualiza UI optimista.
+ * [MODIFICADO] Maneja la reacción a un mensaje usando ChatApi.
  */
 export async function handleReactionAction(msgUuid, reactionKey, context, targetUuid) {
     // 1. Feedback Optimista: Actualizar UI antes de que el servidor responda
@@ -126,7 +125,6 @@ export async function handleReactionAction(msgUuid, reactionKey, context, target
     if (msgRow) {
         const bubbles = msgRow.querySelectorAll('.reaction-bubble');
         bubbles.forEach(b => {
-            // [MODIFICADO] Leer KEY del dataset en lugar del texto
             const key = b.dataset.reactionKey;
             const count = parseInt(b.querySelector('.reaction-count').innerText) || 0;
             if (key) {
@@ -146,19 +144,7 @@ export async function handleReactionAction(msgUuid, reactionKey, context, target
 
     // 2. Enviar petición al servidor
     try {
-        const formData = new FormData();
-        formData.append('action', 'react_message');
-        formData.append('message_id', msgUuid);
-        formData.append('reaction', reactionKey); // [IMPORTANTE] Enviamos la clave (ej: 'like')
-        formData.append('context', context);
-        if (targetUuid) formData.append('target_uuid', targetUuid);
-
-        const response = await fetch('api/chat_handler.php', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const data = await response.json();
+        const data = await ChatApi.reactMessage(msgUuid, reactionKey, context, targetUuid);
         
         if (!data.success) {
             console.error("Error al reaccionar:", data.message);

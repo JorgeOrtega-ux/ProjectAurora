@@ -144,6 +144,16 @@ export const ChatApi = {
             reason,
             context,
             target_uuid: targetUuid
+        }),
+
+    // [NUEVO] Método agregado para reacciones
+    reactMessage: (messageId, reaction, context, targetUuid) => 
+        postJson('api/chat_handler.php', { 
+            action: 'react_message', 
+            message_id: messageId, 
+            reaction,
+            context,
+            target_uuid: targetUuid
         })
 };
 
@@ -194,7 +204,7 @@ export const CommunityApi = {
     deleteChannel: (channelUuid) => 
         postJson('api/communities_handler.php', { action: 'delete_channel', channel_uuid: channelUuid }),
 
-    // [NUEVO] Voice Channels
+    // Voice Channels
     joinVoiceChannel: (channelUuid) =>
         postJson('api/communities_handler.php', { action: 'join_voice_channel', channel_uuid: channelUuid }),
 
@@ -377,7 +387,7 @@ export const AdminApi = {
     deleteCommunity: (id) => 
         postJson('api/admin_handler.php', { action: 'delete_community', id }),
 
-    // [NUEVO] Gestión de Miembros de Comunidad (Admin)
+    // Gestión de Miembros de Comunidad (Admin)
     getCommunityMembers: (communityId) => 
         postJson('api/admin_handler.php', { action: 'get_community_members', community_id: communityId }),
 
