@@ -327,6 +327,9 @@ try {
         $msgUuid = $data['message_id'] ?? '';
         $reaction = $data['reaction'] ?? '';
         $context = $data['context'] ?? 'community';
+        
+        // Obtenemos target_uuid para poder buscar en Redis si es necesario
+        $targetUuid = $data['target_uuid'] ?? ''; 
 
         // Validar emojis permitidos
         $allowedReactions = ['👍', '❤️', '😂', '😮', '😢', '😡'];
@@ -337,12 +340,92 @@ try {
         $messagesTable = ($context === 'private') ? 'private_messages' : 'community_messages';
         $reactionsTable = ($context === 'private') ? 'private_message_reactions' : 'community_message_reactions';
 
-        // 1. Obtener ID real del mensaje
+        // 1. Intentar obtener ID real del mensaje en MySQL
         $stmtMsg = $pdo->prepare("SELECT id, community_id FROM $messagesTable WHERE uuid = ?");
         $stmtMsg->execute([$msgUuid]);
         $msgData = $stmtMsg->fetch(PDO::FETCH_ASSOC);
 
-        if (!$msgData) throw new Exception("Mensaje no encontrado.");
+        // ⚠️ LÓGICA DE RESCATE (FLUSH) SI NO ESTÁ EN MYSQL ⚠️
+        if (!$msgData) {
+            if (isset($redis) && $redis) {
+                // El mensaje no está en BD, debe estar en Redis. Hay que encontrarlo y guardarlo AHORA.
+                $foundAndFlushed = false;
+                $redisKeysToSearch = [];
+
+                if ($context === 'private') {
+                    // Reconstruir key de privado
+                    $stmtU = $pdo->prepare("SELECT id FROM users WHERE uuid = ?");
+                    $stmtU->execute([$targetUuid]);
+                    $targetId = $stmtU->fetchColumn();
+                    if ($targetId) {
+                        $min = min($userId, $targetId);
+                        $max = max($userId, $targetId);
+                        $redisKeysToSearch[] = "chat:buffer:private:$min:$max";
+                    }
+                } else {
+                    // En comunidad es más difícil sin channel_id, buscamos en todos los canales de esa comunidad
+                    // (Asumiendo que target_uuid es la comunidad)
+                    $stmtComm = $pdo->prepare("SELECT id FROM communities WHERE uuid = ?");
+                    $stmtComm->execute([$targetUuid]);
+                    $commId = $stmtComm->fetchColumn();
+                    
+                    if ($commId) {
+                        $stmtChans = $pdo->prepare("SELECT id FROM community_channels WHERE community_id = ?");
+                        $stmtChans->execute([$commId]);
+                        $channels = $stmtChans->fetchAll(PDO::FETCH_COLUMN);
+                        foreach ($channels as $cId) {
+                            $redisKeysToSearch[] = "chat:buffer:channel:$cId";
+                        }
+                    }
+                }
+
+                // Buscar el mensaje en las colas candidatas
+                foreach ($redisKeysToSearch as $rKey) {
+                    $list = $redis->lRange($rKey, 0, -1);
+                    foreach ($list as $idx => $jsonMsg) {
+                        $memMsg = json_decode($jsonMsg, true);
+                        if ($memMsg && isset($memMsg['uuid']) && $memMsg['uuid'] === $msgUuid) {
+                            // ¡ENCONTRADO! Guardarlo en MySQL inmediatamente
+                            
+                            // Preparar datos para INSERT
+                            $replyId = null;
+                            if (!empty($memMsg['reply_to_uuid'])) {
+                                $stmtRep = $pdo->prepare("SELECT id FROM $messagesTable WHERE uuid = ?");
+                                $stmtRep->execute([$memMsg['reply_to_uuid']]);
+                                $replyId = $stmtRep->fetchColumn() ?: null;
+                            }
+
+                            if ($context === 'private') {
+                                $sqlIns = "INSERT INTO private_messages (uuid, sender_id, receiver_id, message, type, reply_to_id, reply_to_uuid, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                                $pdo->prepare($sqlIns)->execute([
+                                    $memMsg['uuid'], $memMsg['sender_id'], $memMsg['receiver_id'], 
+                                    $memMsg['message'], $memMsg['type'], $replyId, $memMsg['reply_to_uuid'] ?? null, $memMsg['created_at']
+                                ]);
+                                $msgData = ['id' => $pdo->lastInsertId(), 'community_id' => null];
+                            } else {
+                                $sqlIns = "INSERT INTO community_messages (uuid, community_id, channel_id, user_id, message, type, reply_to_id, reply_to_uuid, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                                $pdo->prepare($sqlIns)->execute([
+                                    $memMsg['uuid'], $memMsg['community_id'], $memMsg['channel_id'], $memMsg['user_id'],
+                                    $memMsg['message'], $memMsg['type'], $replyId, $memMsg['reply_to_uuid'] ?? null, $memMsg['created_at']
+                                ]);
+                                $msgData = ['id' => $pdo->lastInsertId(), 'community_id' => $memMsg['community_id']];
+                            }
+
+                            // Eliminar de Redis para evitar duplicados cuando pase el Worker
+                            $redis->lRem($rKey, $jsonMsg, 1);
+                            $foundAndFlushed = true;
+                            break 2; // Salir de ambos loops
+                        }
+                    }
+                }
+                
+                if (!$foundAndFlushed) throw new Exception("Mensaje no encontrado (ni en BD ni en Redis).");
+            } else {
+                throw new Exception("Mensaje no encontrado.");
+            }
+        }
+        
+        // A PARTIR DE AQUÍ LA LÓGICA ORIGINAL SIGUE IGUAL
         $msgId = $msgData['id'];
 
         // 2. Verificar reacción existente
@@ -363,10 +446,10 @@ try {
             $pdo->prepare("INSERT INTO $reactionsTable (message_id, user_id, reaction_code) VALUES (?, ?, ?)")->execute([$msgId, $userId, $reaction]);
         }
 
-        // 3. Obtener conteos actualizados para notificar a todos
+        // 3. Obtener conteos actualizados
         $stmtCounts = $pdo->prepare("SELECT reaction_code, COUNT(*) as count FROM $reactionsTable WHERE message_id = ? GROUP BY reaction_code");
         $stmtCounts->execute([$msgId]);
-        $counts = $stmtCounts->fetchAll(PDO::FETCH_KEY_PAIR); // ['👍' => 2, '❤️' => 1]
+        $counts = $stmtCounts->fetchAll(PDO::FETCH_KEY_PAIR);
 
         // 4. Notificar vía Socket
         $socketPayload = [
@@ -377,19 +460,15 @@ try {
         ];
 
         if ($context === 'private') {
-            // En privado notificar al otro usuario y a mí mismo
             $stmtRec = $pdo->prepare("SELECT receiver_id, sender_id FROM private_messages WHERE id = ?");
             $stmtRec->execute([$msgId]);
             $recData = $stmtRec->fetch(PDO::FETCH_ASSOC);
-            
-            // Determinar el "otro" ID
             $partnerId = ($recData['sender_id'] == $userId) ? $recData['receiver_id'] : $recData['sender_id'];
             
             send_live_notification($partnerId, 'message_reaction_update', ['message_data' => $socketPayload]);
             send_live_notification($userId, 'message_reaction_update', ['message_data' => $socketPayload]);
 
         } else {
-            // En comunidad broadcast
             $commId = $msgData['community_id'];
             send_live_notification('community_broadcast', 'message_reaction_update', ['message_data' => $socketPayload, 'community_id' => $commId]);
         }

@@ -621,14 +621,23 @@ function initGlobalActionListeners() {
             const isMe = (parseInt(senderId) === parseInt(window.USER_ID));
             const createdAt = msgOptBtn.dataset.createdAt;
             
-            Renderer.showMessagePopover(
+          Renderer.showMessagePopover(
                 msgOptBtn, uuid, msgOptBtn.dataset.user, msgOptBtn.dataset.text, isMe, createdAt,
+                // 1. Responder
                 () => enableReplyMode(uuid, msgOptBtn.dataset.user, msgOptBtn.dataset.text), 
+                // 2. Editar
                 () => Renderer.enableEditMessageUI(uuid, msgOptBtn.dataset.text, async (newText, editContainer, contentWrapper) => {
                     await onSaveEditMessage(newText, editContainer, contentWrapper, uuid);
                 }), 
+                // 3. Eliminar
                 () => onDeleteMessage(uuid), 
-                () => onReportMessage(uuid)
+                // 4. Reportar
+                () => onReportMessage(uuid),
+                
+                // 🔴 AQUÍ ESTABA EL ERROR: FALTABA ESTE ÚLTIMO ARGUMENTO (onReact) 🔴
+                (emoji) => {
+                    ChatActions.handleReactionAction(uuid, emoji, currentChatType, currentChatUuid);
+                }
             );
         }
 
