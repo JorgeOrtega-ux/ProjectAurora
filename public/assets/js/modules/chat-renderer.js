@@ -25,6 +25,20 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 
+// --- HELPER DE REACCIONES ---
+function getReactionsHTML(reactions) {
+    if (!reactions || Object.keys(reactions).length === 0) return '';
+    
+    let html = '<div class="reactions-bar">';
+    for (const [emoji, count] of Object.entries(reactions)) {
+        if (count > 0) {
+            html += `<span class="reaction-bubble">${emoji} <span class="reaction-count">${count}</span></span>`;
+        }
+    }
+    html += '</div>';
+    return html;
+}
+
 // --- GENERADORES DE HTML ---
 
 export function createDateDivider(dateStr) {
@@ -78,12 +92,10 @@ export function createMessageHTML(msg, currentChatType) {
         replyHtml = `<div class="message-reply-preview"><span class="reply-preview-user">${escapeHtml(replyUser)}</span><span class="reply-preview-text">${replyText}</span></div>`;
     }
 
-    // --- NUEVO LÓGICA DE GRID (MOSAICO) ROBUSTO ---
+    // Grid de imágenes
     let attachmentsHtml = '';
     if (msg.attachments && Array.isArray(msg.attachments) && msg.attachments.length > 0) {
         const totalCount = msg.attachments.length;
-        
-        // Preparamos JSON con TODOS los items para que el visor los vea todos
         const viewerItems = msg.attachments.map(att => ({
             src: (window.BASE_PATH || '/ProjectAurora/') + att.path,
             type: att.type,
@@ -91,28 +103,18 @@ export function createMessageHTML(msg, currentChatType) {
             date: getDateString(msg.created_at) + ' ' + timeStr
         }));
         const jsonStr = JSON.stringify(viewerItems).replace(/'/g, "&apos;").replace(/"/g, '&quot;');
-        
-        // Decidimos cuántos items mostrar visualmente (Máximo 4)
         const displayCount = Math.min(totalCount, 4);
-        
-        // Definimos el tipo de grid (1, 2, 3 o 4) para CSS
         const gridType = displayCount; 
 
         let itemsHtml = '';
-        
         for (let i = 0; i < displayCount; i++) {
             const att = msg.attachments[i];
             const src = (window.BASE_PATH || '/ProjectAurora/') + att.path;
-            
-            // Verificamos si es el último slot Y si hay más imágenes ocultas
             let overlayHtml = '';
-            // Si estamos en el índice 3 (4ta imagen) y hay más de 4 en total
             if (i === 3 && totalCount > 4) {
-                const remaining = totalCount - 3; // Muestra +2 si son 5 en total (la 4ta + 1 oculta)
+                const remaining = totalCount - 3; 
                 overlayHtml = `<div class="more-images-overlay">+${remaining}</div>`;
             }
-            
-            // [CAMBIO CLAVE] Se añade el evento onerror para manejar imágenes rotas sin romper el grid
             itemsHtml += `
                 <div class="attachment-item" data-action="view-media" data-index="${i}">
                     <img src="${src}" loading="lazy" onerror="this.style.display='none'; this.parentElement.classList.add('is-broken');">
@@ -120,9 +122,14 @@ export function createMessageHTML(msg, currentChatType) {
                 </div>
             `;
         }
-
         attachmentsHtml = `<div class="msg-attachments" data-grid="${gridType}" data-media-items='${jsonStr}'>${itemsHtml}</div>`;
     }
+
+    // --- REACCIONES (NUEVO) ---
+    // Se asume que msg.reactions puede venir como objeto {'👍': 1}
+    // Si no viene, se renderiza vacío pero el contenedor debe existir para updates futuros si se desea, 
+    // o se inyecta dinámicamente. Aquí usamos inyección condicional en getReactionsHTML.
+    const reactionsHtml = getReactionsHTML(msg.reactions);
 
     const optionsBtn = `<button class="message-options-btn" data-action="msg-options" data-uuid="${msgId}" data-user="${msg.sender_username}" data-text="${escapeHtml(msg.message)}" data-sender-id="${msg.sender_id}" data-created-at="${msg.created_at}"><span class="material-symbols-rounded" style="font-size: 18px;">more_vert</span></button>`;
 
@@ -139,13 +146,38 @@ export function createMessageHTML(msg, currentChatType) {
                         ${timeStr} ${editedHtml}
                     </div>
                 </div>
-            </div>
+                ${reactionsHtml} </div>
             ${optionsBtn} 
         </div>
     `;
 }
 
 // --- MANIPULACIÓN DEL DOM ---
+
+export function updateMessageReactions(msgUuid, reactionsData) {
+    const msgRow = document.getElementById(`msg-${msgUuid}`);
+    if (!msgRow) return;
+
+    const bubble = msgRow.querySelector('.message-bubble');
+    if (!bubble) return;
+
+    // Buscar si ya existe la barra
+    let bar = bubble.querySelector('.reactions-bar');
+    
+    // Generar nuevo HTML
+    const newHtml = getReactionsHTML(reactionsData);
+
+    if (bar) {
+        if (!newHtml) {
+            bar.remove(); // Si no hay reacciones, quitar barra
+        } else {
+            bar.outerHTML = newHtml; // Reemplazar
+        }
+    } else if (newHtml) {
+        // Insertar al final de la burbuja
+        bubble.insertAdjacentHTML('beforeend', newHtml);
+    }
+}
 
 export function scrollToBottom() {
     const container = document.querySelector('.chat-messages-area');
@@ -241,8 +273,6 @@ export function processAndRenderBatch(container, messages, isAppend, currentChat
 
 export function appendSingleMessage(container, msg, currentChatType) {
     if (!container) return;
-    
-    // Verificar fecha
     const msgDate = getDateString(msg.created_at);
     const lastDiv = container.querySelectorAll('.chat-date-divider span');
     let lastDivDate = lastDiv.length > 0 ? lastDiv[lastDiv.length-1].innerText : '';
@@ -250,14 +280,10 @@ export function appendSingleMessage(container, msg, currentChatType) {
     if (msgDate !== lastDivDate) {
         container.insertAdjacentHTML('beforeend', createDateDivider(msgDate));
     }
-    
     container.insertAdjacentHTML('beforeend', createMessageHTML(msg, currentChatType));
 }
 
 export function updateChatInterface(data) {
-    // CORRECCIÓN: Usar querySelectorAll para obtener todos los placeholders por clase,
-    // ya que en main.php existen 'chat-placeholder-welcome' y 'chat-placeholder-select',
-    // pero no un elemento único con ID 'chat-placeholder'.
     const placeholders = document.querySelectorAll('.chat-placeholder');
     const interfaceDiv = document.getElementById('chat-interface');
     const img = document.getElementById('chat-header-img');
@@ -271,23 +297,16 @@ export function updateChatInterface(data) {
     const sendBtn = document.getElementById('btn-send-message');
     const attachBtn = document.getElementById('btn-attach-file');
     const messagesArea = document.querySelector('.chat-messages-area');
-    
     const headerAvatarContainer = document.querySelector('.chat-avatar-container'); 
 
-    // Limpiar estado previo de mantenimiento
     const maintenanceEl = document.getElementById('maintenance-overlay');
     if (maintenanceEl) maintenanceEl.remove();
     
-    // Restaurar visibilidad por defecto
     if (messagesArea) messagesArea.style.display = 'flex';
     if (inputArea) inputArea.style.display = 'flex';
 
     if (data) {
-        // CORRECCIÓN: Ocultar TODOS los placeholders encontrados
-        if (placeholders.length > 0) {
-            placeholders.forEach(el => el.classList.add('d-none'));
-        }
-        
+        if (placeholders.length > 0) placeholders.forEach(el => el.classList.add('d-none'));
         if (interfaceDiv) interfaceDiv.classList.remove('d-none');
         
         const isPrivate = (data.type === 'private');
@@ -296,9 +315,7 @@ export function updateChatInterface(data) {
 
         let avatarPath;
         if (pic) {
-            avatarPath = pic.startsWith('http') 
-                ? pic 
-                : (window.BASE_PATH || '/ProjectAurora/') + pic;
+            avatarPath = pic.startsWith('http') ? pic : (window.BASE_PATH || '/ProjectAurora/') + pic;
         } else {
             avatarPath = `https://ui-avatars.com/api/?name=${encodeURIComponent(communityName)}`;
         }
@@ -312,7 +329,6 @@ export function updateChatInterface(data) {
         
         if (headerAvatarContainer) {
             headerAvatarContainer.removeAttribute('data-role');
-            
             if (isPrivate && data.role) {
                 headerAvatarContainer.setAttribute('data-role', data.role);
                 headerAvatarContainer.classList.add('notif-img-container'); 
@@ -327,7 +343,6 @@ export function updateChatInterface(data) {
             const verifiedBadge = (!isPrivate && parseInt(data.is_verified) === 1) 
                 ? `<span class="material-symbols-rounded" style="font-size:18px; color:#1976d2; margin-left:6px; vertical-align: bottom;" title="Oficial">verified</span>` 
                 : '';
-
             if (!isPrivate && data.channel_name) {
                 title.innerHTML = `# ${escapeHtml(data.channel_name)} ${verifiedBadge}`;
             } else {
@@ -340,19 +355,13 @@ export function updateChatInterface(data) {
             if (isPrivate) {
                 defaultText = 'Chat Directo';
             } else {
-                if (data.channel_name) {
-                    defaultText = communityName; 
-                } else {
-                    defaultText = `${data.member_count || 0} miembros`;
-                }
+                defaultText = data.channel_name ? communityName : `${data.member_count || 0} miembros`;
             }
-            
             status.textContent = defaultText;
             status.dataset.originalText = defaultText;
             status.classList.remove('typing-active', 'typing-dots');
         }
 
-        // --- LÓGICA DE MANTENIMIENTO ---
         const isCommMaintenance = (data.status === 'maintenance');
         const isChannelMaintenance = (data.channel_status === 'maintenance');
 
@@ -360,19 +369,15 @@ export function updateChatInterface(data) {
             if (messagesArea) messagesArea.style.display = 'none';
             if (inputArea) inputArea.style.display = 'none';
 
-            let maintTitle = '';
-            let maintDesc = '';
-            let maintIcon = 'engineering';
-
+            let maintTitle = '', maintDesc = '', maintIcon = 'engineering';
             if (isCommMaintenance) {
                 maintTitle = t('status.maintenance_title') || 'Comunidad en Mantenimiento';
-                maintDesc = t('status.community_maintenance_msg') || 'Esta comunidad se encuentra en mantenimiento. Intenta más tarde.';
+                maintDesc = t('status.community_maintenance_msg') || 'Esta comunidad se encuentra en mantenimiento.';
             } else {
                 maintTitle = t('status.channel_maintenance_title') || 'Canal en Mantenimiento';
-                maintDesc = t('status.channel_maintenance_msg') || 'Este canal no se encuentra habilitado por el momento. Intenta más tarde.';
+                maintDesc = t('status.channel_maintenance_msg') || 'Este canal no se encuentra habilitado.';
                 maintIcon = 'cloud_off';
             }
-
             const maintHtml = `
                 <div id="maintenance-overlay" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; color:#666;">
                     <div style="width:80px; height:80px; background:#fff3e0; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
@@ -382,7 +387,6 @@ export function updateChatInterface(data) {
                     <p style="max-width:300px;">${maintDesc}</p>
                 </div>
             `;
-            
             interfaceDiv.insertAdjacentHTML('beforeend', maintHtml);
             if (infoBtn) infoBtn.style.display = 'flex'; 
             return; 
@@ -391,9 +395,7 @@ export function updateChatInterface(data) {
         if (inputArea) inputArea.style.display = 'flex';
         if (messageInput) {
             messageInput.disabled = false;
-            const phText = (!isPrivate && data.channel_name) 
-                ? `Enviar mensaje a #${data.channel_name}` 
-                : 'Escribe un mensaje...';
+            const phText = (!isPrivate && data.channel_name) ? `Enviar mensaje a #${data.channel_name}` : 'Escribe un mensaje...';
             messageInput.placeholder = phText;
         }
         if (sendBtn) sendBtn.disabled = false;
@@ -418,18 +420,13 @@ export function updateChatInterface(data) {
                 if (attachBtn) attachBtn.disabled = true;
             }
         }
-
         const layout = document.querySelector('.chat-layout-container');
         if (layout) layout.classList.add('chat-active');
-
     } else {
-        // CORRECCIÓN: Restaurar la visibilidad de los placeholders si no hay datos.
-        // Se intenta mostrar preferentemente el de 'seleccionar chat', o en su defecto todos (fallback)
         if (placeholders.length > 0) {
             const selectPlaceholder = document.getElementById('chat-placeholder-select');
             if (selectPlaceholder) {
                 selectPlaceholder.classList.remove('d-none');
-                // Asegurarse de que el de bienvenida no se solape si existiera
                 const welcomePlaceholder = document.getElementById('chat-placeholder-welcome');
                 if (welcomePlaceholder) welcomePlaceholder.classList.add('d-none');
             } else {
@@ -442,14 +439,12 @@ export function updateChatInterface(data) {
 
 export function renderAttachmentPreview(selectedFiles, container, grid) {
     if (!container || !grid) return;
-
     if (selectedFiles.length === 0) {
         container.classList.add('d-none');
         return;
     }
     container.classList.remove('d-none');
     grid.innerHTML = '';
-    
     selectedFiles.forEach((file, index) => {
         const url = URL.createObjectURL(file);
         const div = document.createElement('div');
@@ -462,7 +457,6 @@ export function renderAttachmentPreview(selectedFiles, container, grid) {
 export function updateReplyUI(isReplying, data = null) {
     const container = document.getElementById('reply-preview-container');
     if (!container) return;
-
     if (isReplying && data) {
         document.getElementById('reply-target-user').textContent = data.user;
         document.getElementById('reply-target-text').textContent = data.text || '📷 [Imagen]';
@@ -472,7 +466,7 @@ export function updateReplyUI(isReplying, data = null) {
     }
 }
 
-export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, onReply, onEdit, onDelete, onReport) {
+export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, onReply, onEdit, onDelete, onReport, onReact) {
     // Cerrar cualquier popover existente
     document.querySelector('.message-options-popover')?.remove();
 
@@ -509,8 +503,15 @@ export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, on
     const popover = document.createElement('div');
     popover.className = 'popover-module message-options-popover active';
     
+    // [NUEVO] Selector de Emojis
+    const emojis = ['👍', '❤️', '😂', '😮', '😢', '😡'];
+    const emojiHtml = emojis.map(e => `<button class="reaction-btn" data-emoji="${e}">${e}</button>`).join('');
+
     popover.innerHTML = `
         <div class="menu-content">
+            <div class="reaction-picker-container" style="padding: 8px 12px; display: flex; gap: 6px; border-bottom: 1px solid #eee;">
+                ${emojiHtml}
+            </div>
             <div class="menu-list">
                 <div class="menu-link" data-action="reply-message">
                     <div class="menu-link-icon"><span class="material-symbols-rounded">reply</span></div>
@@ -529,7 +530,7 @@ export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, on
     popover.style.position = 'absolute';
     popover.style.top = (rect.bottom + scrollTop) + 'px';
     popover.style.left = (rect.left - 100) + 'px'; 
-    popover.style.width = '180px'; 
+    popover.style.width = '240px'; // Un poco más ancho para emojis
     popover.style.zIndex = '1000'; 
 
     document.body.appendChild(popover);
@@ -556,6 +557,15 @@ export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, on
 
     const repBtn = popover.querySelector('[data-action="report-message"]');
     if (repBtn) repBtn.addEventListener('click', () => { onReport(); popover.remove(); });
+
+    // [NUEVO] Listeners de Reacciones
+    popover.querySelectorAll('.reaction-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const emoji = e.target.dataset.emoji;
+            if (onReact) onReact(emoji);
+            popover.remove();
+        });
+    });
 }
 
 export function enableEditMessageUI(msgUuid, currentText, onSave) {
@@ -565,8 +575,6 @@ export function enableEditMessageUI(msgUuid, currentText, onSave) {
     const bubble = msgRow.querySelector('.message-bubble');
     const contentWrapper = msgRow.querySelector('.message-content-wrapper');
     if (!contentWrapper) return;
-
-    const originalHtml = contentWrapper.innerHTML;
     
     const editContainer = document.createElement('div');
     editContainer.className = 'edit-message-container';

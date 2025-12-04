@@ -408,3 +408,29 @@ INSERT IGNORE INTO communities (uuid, community_name, community_type, access_cod
 ('comm-uuid-003', 'Municipio de San Pedro', 'municipality', 'SPGG-CITY-2025', 'public', 45, 0, 'active', 'https://ui-avatars.com/api/?name=SP&background=333333&color=fff', 'https://placehold.co/600x200/333333/ffffff?text=San+Pedro+Garza+Garcia', 1),
 ('comm-uuid-004', 'Municipio de Monterrey', 'municipality', 'MTY-CIUD-2025', 'public', 200, 0, 'active', 'https://ui-avatars.com/api/?name=MTY&background=1E88E5&color=fff', 'https://placehold.co/600x200/1E88E5/ffffff?text=Monterrey', 1),
 ('comm-uuid-005', 'Project Aurora Staff', 'other', 'AURO-XH55-99ZZ', 'private', 5, 10, 'active', 'https://ui-avatars.com/api/?name=PA&background=000000&color=fff', 'https://placehold.co/600x200/000000/ffffff?text=Project+Aurora', 1);
+
+-- ==========================================
+-- 8. SISTEMA DE REACCIONES (NUEVO)
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS community_message_reactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    message_id INT NOT NULL,
+    user_id INT NOT NULL,
+    reaction_code VARCHAR(50) NOT NULL COMMENT 'Emojis: 👍, ❤️, 😂, 😮, 😢, 😡',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (message_id) REFERENCES community_messages(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_comm_reaction (message_id, user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS private_message_reactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    message_id INT NOT NULL,
+    user_id INT NOT NULL,
+    reaction_code VARCHAR(50) NOT NULL COMMENT 'Emojis: 👍, ❤️, 😂, 😮, 😢, 😡',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (message_id) REFERENCES private_messages(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_priv_reaction (message_id, user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

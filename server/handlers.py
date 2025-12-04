@@ -105,36 +105,50 @@ async def handle_bridge_message(msg_json):
     if msg_type in ['new_chat_message', 'private_message']:
         await db_sync.trigger_buffer_check(msg_type, payload_data, target)
 
-    # Routing de Broadcast
+    # Routing de Broadcast Global
     if target == 'global':
         await connection_manager.broadcast_global(full_payload)
+    
+    # Routing de Broadcast Comunidad
     elif target == 'community_broadcast':
         community_id = payload_data.get('community_id')
         msg_out = {"type": msg_type, "payload": payload_data.get('message_data')}
+        
+        # Obtenemos miembros para broadcast
         member_ids = await db_sync.get_community_members(community_id)
         await connection_manager.broadcast_to_list(member_ids, msg_out)
+        
     else:
         # Mensaje directo a usuario o evento específico
-        # Adaptación para formatos específicos
         if msg_type == 'voice_channel_update':
             community_id = payload_data.get('community_id')
             msg_out = {"type": msg_type, "payload": payload_data}
             member_ids = await db_sync.get_community_members(community_id)
             await connection_manager.broadcast_to_list(member_ids, msg_out)
+            
         elif msg_type == 'message_edited':
-             # Caso especial edit
              msg_out = {"type": "message_edited", "payload": payload_data.get('message_data')}
              await connection_manager.send_to_user(target, msg_out)
+             
         elif msg_type == 'private_message':
              msg_out = {"type": "private_message", "payload": payload_data.get('message_data')}
              await connection_manager.send_to_user(target, msg_out)
-             # También al sender si está conectado
+             # También al sender si está conectado (aunque PHP ya lo intenta, por seguridad)
              sender_id = str(payload_data.get('sender_id'))
-             await connection_manager.send_to_user(sender_id, msg_out)
+             if sender_id and sender_id != target:
+                 await connection_manager.send_to_user(sender_id, msg_out)
+
+        # [NUEVO] Manejo de Reacciones en tiempo real
+        elif msg_type == 'message_reaction_update':
+             # Payload esperado: { message_uuid, reactions: {...}, actor_id, context }
+             msg_out = {"type": "message_reaction_update", "payload": payload_data.get('message_data')}
+             await connection_manager.send_to_user(target, msg_out)
+
         # [NUEVO] Manejo de Desconexión Forzada (Kick/Ban)
         elif msg_type == 'force_disconnect':
              msg_out = {"type": "force_disconnect", "payload": payload_data}
              await connection_manager.send_to_user(target, msg_out)
+             
         else:
              # Default fallback
              await connection_manager.send_to_user(target, full_payload)

@@ -2,6 +2,7 @@
 
 import { ChatApi } from '../services/api-service.js';
 import { t } from '../core/i18n-manager.js';
+import { updateMessageReactions } from './chat-renderer.js';
 
 // Variables para control de throttling
 let lastTypingSent = 0;
@@ -24,7 +25,7 @@ export async function sendReadSignal(chatUuid, chatType, channelUuid = null) {
 /**
  * Maneja la lógica de envío de mensajes.
  * Decide si usar HTTP (FormData) si hay archivos, o WebSockets si es solo texto.
- * * @param {Object} params - { targetUuid, context, message, replyToUuid, channelUuid, attachments }
+ * @param {Object} params - { targetUuid, context, message, replyToUuid, channelUuid, attachments }
  * @returns {Promise<Object>} - { success: boolean, message: string }
  */
 export async function sendMessage(params) {
@@ -144,5 +145,71 @@ export async function handleReportMessage(msgUuid, context, targetUuid) {
     } catch (e) {
         console.error(e);
         return { success: false, message: t('global.error_connection') };
+    }
+}
+
+/**
+ * [NUEVO] Maneja la reacción a un mensaje.
+ * Realiza fetch directo y actualiza UI optimista.
+ */
+export async function handleReactionAction(msgUuid, emoji, context, targetUuid) {
+    // 1. Feedback Optimista: Actualizar UI antes de que el servidor responda
+    // Necesitamos obtener las reacciones actuales del DOM para sumar +1 temporalmente
+    const msgRow = document.getElementById(`msg-${msgUuid}`);
+    let currentReactions = {};
+    
+    if (msgRow) {
+        const bubbles = msgRow.querySelectorAll('.reaction-bubble');
+        bubbles.forEach(b => {
+            // Extraer texto (ej: "👍 2")
+            const text = b.textContent.trim();
+            const parts = text.split(' ');
+            if (parts.length >= 2) {
+                const em = parts[0];
+                const count = parseInt(parts[1]) || 0;
+                currentReactions[em] = count;
+            }
+        });
+
+        // Lógica simple optimista: Sumamos 1 (asumimos que no estaba, el servidor corregirá el toggle real)
+        if (currentReactions[emoji]) {
+            currentReactions[emoji]++;
+        } else {
+            currentReactions[emoji] = 1;
+        }
+        
+        // Actualizamos visualmente usando la función importada del renderer
+        updateMessageReactions(msgUuid, currentReactions);
+    }
+
+    // 2. Enviar petición al servidor
+    try {
+        const formData = new FormData();
+        formData.append('action', 'react_message');
+        formData.append('message_id', msgUuid);
+        formData.append('reaction', emoji);
+        formData.append('context', context);
+        if (targetUuid) formData.append('target_uuid', targetUuid);
+
+        // Usamos fetch directo para asegurar funcionalidad sin modificar api-service.js
+        const response = await fetch('api/chat_handler.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            // Revertir si falla (recargar página o notificar)
+            console.error("Error al reaccionar:", data.message);
+            // Podríamos disparar un evento para refrescar mensajes si falla
+        } else {
+            // El socket se encargará de poner la cantidad correcta final
+        }
+        return data;
+
+    } catch (e) {
+        console.error("Error de conexión al reaccionar", e);
+        return { success: false };
     }
 }

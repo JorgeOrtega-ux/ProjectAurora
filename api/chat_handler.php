@@ -322,6 +322,81 @@ try {
         echo json_encode(['success' => true, 'message' => 'Enviado']);
         exit;
 
+    // --- [NUEVO] REACCIONES A MENSAJES ---
+    } elseif ($action === 'react_message') {
+        $msgUuid = $data['message_id'] ?? '';
+        $reaction = $data['reaction'] ?? '';
+        $context = $data['context'] ?? 'community';
+
+        // Validar emojis permitidos
+        $allowedReactions = ['👍', '❤️', '😂', '😮', '😢', '😡'];
+        if (empty($msgUuid) || !in_array($reaction, $allowedReactions)) {
+            throw new Exception("Datos de reacción inválidos.");
+        }
+
+        $messagesTable = ($context === 'private') ? 'private_messages' : 'community_messages';
+        $reactionsTable = ($context === 'private') ? 'private_message_reactions' : 'community_message_reactions';
+
+        // 1. Obtener ID real del mensaje
+        $stmtMsg = $pdo->prepare("SELECT id, community_id FROM $messagesTable WHERE uuid = ?");
+        $stmtMsg->execute([$msgUuid]);
+        $msgData = $stmtMsg->fetch(PDO::FETCH_ASSOC);
+
+        if (!$msgData) throw new Exception("Mensaje no encontrado.");
+        $msgId = $msgData['id'];
+
+        // 2. Verificar reacción existente
+        $stmtCheck = $pdo->prepare("SELECT id, reaction_code FROM $reactionsTable WHERE message_id = ? AND user_id = ?");
+        $stmtCheck->execute([$msgId, $userId]);
+        $existing = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+        if ($existing) {
+            if ($existing['reaction_code'] === $reaction) {
+                // TOGGLE OFF: Si es la misma, se borra
+                $pdo->prepare("DELETE FROM $reactionsTable WHERE id = ?")->execute([$existing['id']]);
+            } else {
+                // CAMBIAR: Si es diferente, se actualiza
+                $pdo->prepare("UPDATE $reactionsTable SET reaction_code = ?, created_at = NOW() WHERE id = ?")->execute([$reaction, $existing['id']]);
+            }
+        } else {
+            // NUEVA: Insertar
+            $pdo->prepare("INSERT INTO $reactionsTable (message_id, user_id, reaction_code) VALUES (?, ?, ?)")->execute([$msgId, $userId, $reaction]);
+        }
+
+        // 3. Obtener conteos actualizados para notificar a todos
+        $stmtCounts = $pdo->prepare("SELECT reaction_code, COUNT(*) as count FROM $reactionsTable WHERE message_id = ? GROUP BY reaction_code");
+        $stmtCounts->execute([$msgId]);
+        $counts = $stmtCounts->fetchAll(PDO::FETCH_KEY_PAIR); // ['👍' => 2, '❤️' => 1]
+
+        // 4. Notificar vía Socket
+        $socketPayload = [
+            'message_uuid' => $msgUuid,
+            'reactions' => $counts,
+            'actor_id' => $userId,
+            'context' => $context
+        ];
+
+        if ($context === 'private') {
+            // En privado notificar al otro usuario y a mí mismo
+            $stmtRec = $pdo->prepare("SELECT receiver_id, sender_id FROM private_messages WHERE id = ?");
+            $stmtRec->execute([$msgId]);
+            $recData = $stmtRec->fetch(PDO::FETCH_ASSOC);
+            
+            // Determinar el "otro" ID
+            $partnerId = ($recData['sender_id'] == $userId) ? $recData['receiver_id'] : $recData['sender_id'];
+            
+            send_live_notification($partnerId, 'message_reaction_update', ['message_data' => $socketPayload]);
+            send_live_notification($userId, 'message_reaction_update', ['message_data' => $socketPayload]);
+
+        } else {
+            // En comunidad broadcast
+            $commId = $msgData['community_id'];
+            send_live_notification('community_broadcast', 'message_reaction_update', ['message_data' => $socketPayload, 'community_id' => $commId]);
+        }
+
+        echo json_encode(['success' => true, 'reactions' => $counts]);
+        exit;
+
     // --- [NUEVO] EDITAR MENSAJE (CON CORRECCIÓN DE BUG "Column Not Found") ---
     } elseif ($action === 'edit_message') {
         $msgUuid = $data['message_id'] ?? '';

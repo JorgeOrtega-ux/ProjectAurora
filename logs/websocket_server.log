@@ -1088,3 +1088,16 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-12-04 12:59:02,931 - INFO - Usuario conectado: ID 1 | Rol: founder
 2025-12-04 12:59:14,320 - INFO - connection open
 2025-12-04 12:59:14,326 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-12-04 14:07:48,314 - INFO - === Servidor Aurora Iniciado (Modular) ===
+2025-12-04 14:07:48,345 - INFO - ✅ DB Pool inicializado.
+2025-12-04 14:07:48,348 - INFO - ✅ Redis inicializado.
+2025-12-04 14:07:48,565 - INFO - server listening on 0.0.0.0:8080
+2025-12-04 14:07:48,566 - INFO - 🚀 Websocket Server escuchando en 0.0.0.0:8080
+2025-12-04 14:07:48,566 - INFO - 🌉 Bridge PHP escuchando en 127.0.0.1:8081
+2025-12-04 14:07:49,125 - INFO - connection open
+2025-12-04 14:07:49,526 - INFO - connection open
+2025-12-04 14:07:54,790 - INFO - connection open
+2025-12-04 14:07:54,810 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-04 14:07:58,120 - INFO - connection open
+2025-12-04 14:07:58,128 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-12-04 14:09:17,780 - INFO - 💾 Flushing 10 msgs from chat:buffer:channel:1
