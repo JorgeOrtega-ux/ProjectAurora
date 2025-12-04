@@ -190,9 +190,14 @@ function initListeners() {
         } else if (action === 'ban') {
             const reason = prompt("Razón del baneo:");
             if (reason === null) return;
-            const res = await AdminApi.banMember(currentId, userId, reason);
+            
+            // [MODIFICADO] Solicitar duración
+            const duration = prompt("Duración (12h, 1d, 3d, 1w, o vacío para permanente):", "");
+            if (duration === null) return; // Cancelar
+            
+            const res = await AdminApi.banMember(currentId, userId, reason, duration);
             if (res.success) {
-                if(window.alertManager) window.alertManager.showAlert("Usuario baneado", 'success');
+                if(window.alertManager) window.alertManager.showAlert("Usuario sancionado", 'success');
                 loadMembers();
                 loadBannedUsers();
             } else {

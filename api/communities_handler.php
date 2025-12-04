@@ -55,13 +55,34 @@ try {
             throw new Exception("Código de acceso inválido o comunidad no encontrada.");
         }
 
-        // [NUEVO] Verificar Baneo
-        $stmtBan = $pdo->prepare("SELECT reason FROM community_bans WHERE community_id = ? AND user_id = ?");
+        // [MODIFICADO] Verificar Baneo y Expiración
+        $stmtBan = $pdo->prepare("SELECT reason, expires_at FROM community_bans WHERE community_id = ? AND user_id = ?");
         $stmtBan->execute([$community['id'], $userId]);
         $banData = $stmtBan->fetch(PDO::FETCH_ASSOC);
 
         if ($banData) {
-            throw new Exception("No puedes unirte. Estás vetado de esta comunidad. Razón: " . htmlspecialchars($banData['reason']));
+            $isBanned = true;
+            $msg = "No puedes unirte. ";
+            
+            if ($banData['expires_at']) {
+                $expires = new DateTime($banData['expires_at']);
+                $now = new DateTime();
+                
+                if ($now > $expires) {
+                    // La suspensión ya expiró, borramos el registro y permitimos entrar
+                    $pdo->prepare("DELETE FROM community_bans WHERE community_id = ? AND user_id = ?")->execute([$community['id'], $userId]);
+                    $isBanned = false;
+                } else {
+                    $msg .= "Estás suspendido hasta el " . $expires->format('d/m/Y H:i') . ". Razón: " . htmlspecialchars($banData['reason']);
+                }
+            } else {
+                // Es un baneo permanente
+                $msg .= "Estás vetado permanentemente. Razón: " . htmlspecialchars($banData['reason']);
+            }
+
+            if ($isBanned) {
+                throw new Exception($msg);
+            }
         }
 
         // [NUEVO] Validación de Límite de Miembros
@@ -412,13 +433,32 @@ try {
     } elseif ($action === 'join_public') {
         $communityId = (int)($data['community_id'] ?? 0);
 
-        // [NUEVO] Verificar Baneo
-        $stmtBan = $pdo->prepare("SELECT reason FROM community_bans WHERE community_id = ? AND user_id = ?");
+        // [MODIFICADO] Verificar Baneo y Expiración
+        $stmtBan = $pdo->prepare("SELECT reason, expires_at FROM community_bans WHERE community_id = ? AND user_id = ?");
         $stmtBan->execute([$communityId, $userId]);
         $banData = $stmtBan->fetch(PDO::FETCH_ASSOC);
 
         if ($banData) {
-            throw new Exception("No puedes unirte. Estás vetado de esta comunidad. Razón: " . htmlspecialchars($banData['reason']));
+            $isBanned = true;
+            $msg = "No puedes unirte. ";
+            
+            if ($banData['expires_at']) {
+                $expires = new DateTime($banData['expires_at']);
+                $now = new DateTime();
+                
+                if ($now > $expires) {
+                    $pdo->prepare("DELETE FROM community_bans WHERE community_id = ? AND user_id = ?")->execute([$communityId, $userId]);
+                    $isBanned = false;
+                } else {
+                    $msg .= "Estás suspendido hasta el " . $expires->format('d/m/Y H:i') . ". Razón: " . htmlspecialchars($banData['reason']);
+                }
+            } else {
+                $msg .= "Estás vetado permanentemente. Razón: " . htmlspecialchars($banData['reason']);
+            }
+
+            if ($isBanned) {
+                throw new Exception($msg);
+            }
         }
 
         $stmtCheck = $pdo->prepare("SELECT id FROM community_members WHERE community_id = ? AND user_id = ?");
@@ -522,6 +562,8 @@ try {
         $commUuid = $data['community_uuid'] ?? '';
         $targetUuid = $data['target_uuid'] ?? '';
         $reason = trim($data['reason'] ?? 'Sin razón especificada');
+        // [MODIFICADO] Recibir duración
+        $duration = $data['duration'] ?? 'permanent'; // 'permanent', '12h', '1d', '3d', '1w'
 
         if (empty($commUuid) || empty($targetUuid)) throw new Exception("Datos incompletos.");
 
@@ -557,6 +599,21 @@ try {
             }
         }
 
+        // [MODIFICADO] Cálculo de expiración
+        $expiresAt = null;
+        $modifiers = [
+            '12h' => '+12 hours',
+            '1d'  => '+1 day',
+            '3d'  => '+3 days',
+            '1w'  => '+1 week'
+        ];
+        
+        if ($duration !== 'permanent' && isset($modifiers[$duration])) {
+            $expiresAt = date('Y-m-d H:i:s', strtotime($modifiers[$duration]));
+        } else {
+            $expiresAt = null; // Permanente
+        }
+
         $pdo->beginTransaction();
         // 1. Eliminar membresía si existe
         $stmtDel = $pdo->prepare("DELETE FROM community_members WHERE community_id = ? AND user_id = ?");
@@ -565,15 +622,16 @@ try {
             $pdo->prepare("UPDATE communities SET member_count = GREATEST(0, member_count - 1) WHERE id = ?")->execute([$commId]);
         }
 
-        // 2. Insertar Ban
-        $stmtBan = $pdo->prepare("INSERT INTO community_bans (community_id, user_id, banned_by, reason) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE reason = VALUES(reason)");
-        $stmtBan->execute([$commId, $targetId, $userId, $reason]);
+        // 2. Insertar Ban con expiración
+        $stmtBan = $pdo->prepare("INSERT INTO community_bans (community_id, user_id, banned_by, reason, expires_at) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE reason = VALUES(reason), expires_at = VALUES(expires_at)");
+        $stmtBan->execute([$commId, $targetId, $userId, $reason, $expiresAt]);
         
         $pdo->commit();
 
-        send_live_notification($targetId, 'force_disconnect', ['community_id' => $commId, 'reason' => 'Has sido baneado: ' . $reason]);
+        $banMsg = $expiresAt ? "Suspendido hasta " . date('d/m H:i', strtotime($expiresAt)) : "Baneado permanentemente";
+        send_live_notification($targetId, 'force_disconnect', ['community_id' => $commId, 'reason' => "$banMsg: $reason"]);
 
-        echo json_encode(['success' => true, 'message' => 'Usuario baneado.']);
+        echo json_encode(['success' => true, 'message' => 'Usuario sancionado correctamente.']);
 
     } elseif ($action === 'unban_member') {
         $commUuid = $data['community_uuid'] ?? '';

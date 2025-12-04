@@ -254,6 +254,7 @@ CREATE TABLE IF NOT EXISTS community_bans (
     user_id INT NOT NULL,
     banned_by INT NOT NULL,
     reason TEXT NOT NULL,
+    expires_at TIMESTAMP NULL DEFAULT NULL, -- [MODIFICADO] NULL = Permanente, FECHA = Temporal
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (community_id) REFERENCES communities(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,

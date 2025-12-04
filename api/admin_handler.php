@@ -609,8 +609,25 @@ try {
         $commId = (int)($data['community_id'] ?? 0);
         $targetId = (int)($data['user_id'] ?? 0);
         $reason = trim($data['reason'] ?? 'Baneado por administración');
+        // [MODIFICADO] Recibir duración
+        $duration = $data['duration'] ?? 'permanent'; // 'permanent', '12h', '1d', '3d', '1w'
 
         if ($targetId === $currentAdminId) throw new Exception("No puedes banearte a ti mismo.");
+
+        // [MODIFICADO] Cálculo de expiración
+        $expiresAt = null;
+        $modifiers = [
+            '12h' => '+12 hours',
+            '1d'  => '+1 day',
+            '3d'  => '+3 days',
+            '1w'  => '+1 week'
+        ];
+        
+        if ($duration !== 'permanent' && isset($modifiers[$duration])) {
+            $expiresAt = date('Y-m-d H:i:s', strtotime($modifiers[$duration]));
+        } else {
+            $expiresAt = null; // Permanente
+        }
 
         $pdo->beginTransaction();
         // Remove membership if exists
@@ -621,13 +638,15 @@ try {
         }
 
         // Add ban
-        $stmtBan = $pdo->prepare("INSERT INTO community_bans (community_id, user_id, banned_by, reason, created_at) VALUES (?, ?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE reason = VALUES(reason)");
-        $stmtBan->execute([$commId, $targetId, $currentAdminId, $reason]);
+        $stmtBan = $pdo->prepare("INSERT INTO community_bans (community_id, user_id, banned_by, reason, expires_at, created_at) VALUES (?, ?, ?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE reason = VALUES(reason), expires_at = VALUES(expires_at)");
+        $stmtBan->execute([$commId, $targetId, $currentAdminId, $reason, $expiresAt]);
         
         $pdo->commit();
         
-        send_live_notification($targetId, 'force_disconnect', ['community_id' => $commId, 'reason' => "Baneado: $reason"]);
-        echo json_encode(['success' => true, 'message' => "Usuario baneado."]);
+        $banMsg = $expiresAt ? "Suspendido hasta " . date('d/m H:i', strtotime($expiresAt)) : "Baneado permanentemente";
+        send_live_notification($targetId, 'force_disconnect', ['community_id' => $commId, 'reason' => "$banMsg: $reason"]);
+        
+        echo json_encode(['success' => true, 'message' => "Usuario sancionado."]);
 
     } elseif ($action === 'mute_member') {
         $commId = (int)($data['community_id'] ?? 0);

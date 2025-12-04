@@ -361,13 +361,25 @@ export async function kickMember(communityUuid, targetUuid, reloadCallback) {
 export async function banMember(communityUuid, targetUuid, reloadCallback) {
     const reason = prompt("Por favor, ingresa la razón del BANEO:");
     if (reason === null) return; // Cancelado
-    
-    const res = await callModerationApi({
+
+    // [MODIFICADO] Preguntar duración
+    const duration = prompt("Duración de la suspensión? (Opciones: 12h, 1d, 3d, 1w)\nDeja vacío para PERMANENTE.", "");
+    if (duration === null) return; // Cancelado
+
+    const payload = {
         action: 'ban_member',
         community_uuid: communityUuid,
         target_uuid: targetUuid,
         reason: reason
-    });
+    };
+
+    if (duration && duration.trim() !== '') {
+        payload.duration = duration.trim();
+    } else {
+        payload.duration = 'permanent';
+    }
+    
+    const res = await callModerationApi(payload);
 
     if (res.success) {
         if(window.alertManager) window.alertManager.showAlert(res.message, 'success');
