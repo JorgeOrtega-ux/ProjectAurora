@@ -1893,4 +1893,19 @@
     0% { transform: scale(0); opacity: 0; }
     80% { transform: scale(1.1); opacity: 1; }
     100% { transform: scale(1); opacity: 1; }
+}.reaction-bubble {
+    cursor: pointer;
+    /* Reset básico de botón si usas <button> */
+    background: #f0f2f5; 
+    border: 1px solid transparent;
+    border-radius: 12px;
+    padding: 2px 6px;
+    margin-right: 4px;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+}
+.reaction-bubble:hover {
+    background: #e4e6eb;
+    border-color: #d0d2d6;
 }

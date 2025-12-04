@@ -25,14 +25,18 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 
-// --- HELPER DE REACCIONES ---
-function getReactionsHTML(reactions) {
+// --- HELPER DE REACCIONES (MODIFICADO) ---
+// Ahora acepta msgUuid y genera botones interactivos en lugar de spans estáticos
+function getReactionsHTML(reactions, msgUuid) {
     if (!reactions || Object.keys(reactions).length === 0) return '';
     
     let html = '<div class="reactions-bar">';
     for (const [emoji, count] of Object.entries(reactions)) {
         if (count > 0) {
-            html += `<span class="reaction-bubble">${emoji} <span class="reaction-count">${count}</span></span>`;
+            // Se usa <button> con data-action="toggle-reaction" para capturar el click
+            html += `<button class="reaction-bubble" data-action="toggle-reaction" data-uuid="${msgUuid}" data-emoji="${emoji}">
+                        ${emoji} <span class="reaction-count">${count}</span>
+                     </button>`;
         }
     }
     html += '</div>';
@@ -125,11 +129,9 @@ export function createMessageHTML(msg, currentChatType) {
         attachmentsHtml = `<div class="msg-attachments" data-grid="${gridType}" data-media-items='${jsonStr}'>${itemsHtml}</div>`;
     }
 
-    // --- REACCIONES (NUEVO) ---
-    // Se asume que msg.reactions puede venir como objeto {'👍': 1}
-    // Si no viene, se renderiza vacío pero el contenedor debe existir para updates futuros si se desea, 
-    // o se inyecta dinámicamente. Aquí usamos inyección condicional en getReactionsHTML.
-    const reactionsHtml = getReactionsHTML(msg.reactions);
+    // --- REACCIONES (MODIFICADO) ---
+    // Pasamos msgId para que los botones tengan referencia
+    const reactionsHtml = getReactionsHTML(msg.reactions, msgId);
 
     const optionsBtn = `<button class="message-options-btn" data-action="msg-options" data-uuid="${msgId}" data-user="${msg.sender_username}" data-text="${escapeHtml(msg.message)}" data-sender-id="${msg.sender_id}" data-created-at="${msg.created_at}"><span class="material-symbols-rounded" style="font-size: 18px;">more_vert</span></button>`;
 
@@ -154,6 +156,7 @@ export function createMessageHTML(msg, currentChatType) {
 
 // --- MANIPULACIÓN DEL DOM ---
 
+// MODIFICADO: Acepta y usa msgUuid para regenerar la barra correctamente
 export function updateMessageReactions(msgUuid, reactionsData) {
     const msgRow = document.getElementById(`msg-${msgUuid}`);
     if (!msgRow) return;
@@ -164,8 +167,8 @@ export function updateMessageReactions(msgUuid, reactionsData) {
     // Buscar si ya existe la barra
     let bar = bubble.querySelector('.reactions-bar');
     
-    // Generar nuevo HTML
-    const newHtml = getReactionsHTML(reactionsData);
+    // Generar nuevo HTML pasando msgUuid
+    const newHtml = getReactionsHTML(reactionsData, msgUuid);
 
     if (bar) {
         if (!newHtml) {

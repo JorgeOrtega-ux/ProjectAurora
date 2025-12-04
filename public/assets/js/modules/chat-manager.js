@@ -1,3 +1,5 @@
+// public/assets/js/modules/chat-manager.js
+
 import { ChatApi, CommunityApi } from '../services/api-service.js';
 import { t } from '../core/i18n-manager.js';
 import * as Renderer from './chat-renderer.js';
@@ -595,6 +597,20 @@ function initGlobalActionListeners() {
             
             document.dispatchEvent(new CustomEvent('reset-chat-view'));
             window.history.pushState({ section: 'main' }, '', window.BASE_PATH);
+        }
+        
+        // --- [NUEVO] MANEJO DE CLIC EN REACCIÓN (TOGGLE) ---
+        const reactionBtn = e.target.closest('[data-action="toggle-reaction"]');
+        if (reactionBtn) {
+            e.stopPropagation();
+            e.preventDefault();
+            const msgUuid = reactionBtn.dataset.uuid;
+            const emoji = reactionBtn.dataset.emoji;
+            
+            // Llamada a la acción de toggle reacción
+            // Se usa el contexto actual global (currentChatType, currentChatUuid)
+            ChatActions.handleReactionAction(msgUuid, emoji, currentChatType, currentChatUuid);
+            return;
         }
         
         const msgOptBtn = e.target.closest('[data-action="msg-options"]');
