@@ -5,6 +5,9 @@ if (!file_exists($logDir)) { mkdir($logDir, 0777, true); }
 ini_set('log_errors', TRUE);
 ini_set('error_log', $logFile);
 
+// [RECOMENDADO] Desactivar impresión de errores en la salida para no romper JSON
+ini_set('display_errors', 0); 
+
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 header('Content-Type: application/json');
@@ -51,7 +54,6 @@ try {
         }
 
         $uuid = $data['target_uuid'] ?? $data['community_uuid'] ?? ''; 
-        // [NUEVO] Recibir channel_uuid para contextos de comunidad
         $channelUuid = $data['channel_uuid'] ?? null;
         
         $context = $data['context'] ?? 'community'; 
@@ -88,14 +90,12 @@ try {
 
         } else {
             // Contexto Comunidad
-            // [MODIFICADO] Consultar estado de la comunidad, rol del usuario Y SILENCIO (muted_until)
             $stmtC = $pdo->prepare("SELECT c.id, c.status as comm_status, cm.role, cm.muted_until FROM communities c JOIN community_members cm ON c.id = cm.community_id WHERE c.uuid = ? AND cm.user_id = ?");
             $stmtC->execute([$uuid, $userId]);
             $commData = $stmtC->fetch(PDO::FETCH_ASSOC);
             
             if (!$commData) throw new Exception("Acceso denegado a la comunidad.");
             
-            // [NUEVO] Verificar si está silenciado (Mute/Timeout)
             if (!empty($commData['muted_until']) && strtotime($commData['muted_until']) > time()) {
                 throw new Exception("Estás silenciado en esta comunidad hasta: " . $commData['muted_until']);
             }
@@ -104,15 +104,12 @@ try {
             $userRole = $commData['role'];
             $isImmune = in_array($userRole, ['founder', 'administrator', 'admin', 'moderator']);
 
-            // [SEGURIDAD] Validar Mantenimiento de Comunidad
             if ($commData['comm_status'] === 'maintenance' && !$isImmune) {
                 throw new Exception(translation('status.community_maintenance_msg') ?? 'Comunidad en mantenimiento.');
             }
 
-            // [NUEVO] Validar y resolver Canal
             if (empty($channelUuid)) throw new Exception("Canal requerido.");
             
-            // [MODIFICADO] Consultar estado del canal
             $stmtCh = $pdo->prepare("SELECT id, status FROM community_channels WHERE uuid = ? AND community_id = ?");
             $stmtCh->execute([$channelUuid, $targetId]);
             $chanData = $stmtCh->fetch(PDO::FETCH_ASSOC);
@@ -121,13 +118,12 @@ try {
             
             $channelId = $chanData['id'];
 
-            // [SEGURIDAD] Validar Mantenimiento de Canal
             if ($chanData['status'] === 'maintenance' && !$isImmune) {
                 throw new Exception(translation('status.channel_maintenance_msg') ?? 'Canal en mantenimiento.');
             }
         }
 
-        // Lógica de Respuesta (Reply)
+        // Reply Logic
         $reply_data = [];
         if ($replyToUuid) {
             $table = ($context === 'private') ? 'private_messages' : 'community_messages';
@@ -145,7 +141,6 @@ try {
                     'type' => $parent_row['type']
                 ];
             } elseif (isset($redis) && $redis) {
-                // Buscar en Redis usando la nueva estructura de claves
                 $searchRedisKey = ($context === 'private') 
                     ? "chat:buffer:private:".min($userId, $targetId).":".max($userId, $targetId) 
                     : "chat:buffer:channel:$channelId"; 
@@ -165,7 +160,7 @@ try {
             }
         }
 
-        // Subida de archivos
+        // Archivos
         $uploadedFiles = [];
         if (isset($_FILES['attachments']) && !empty($_FILES['attachments']['name'][0])) {
             $files = $_FILES['attachments'];
@@ -207,7 +202,7 @@ try {
         $stmtUser->execute([$userId]);
         $userData = $stmtUser->fetch(PDO::FETCH_ASSOC);
 
-        // --- CONSTRUCCIÓN DEL PAYLOAD ---
+        // Payload
         $messagePayload = [
             'id' => null, 
             'uuid' => $messageUuid,
@@ -228,12 +223,8 @@ try {
             'reply_message' => $reply_data['message'] ?? null,
             'reply_sender_username' => $reply_data['sender_username'] ?? null,
             'reply_type' => $reply_data['type'] ?? null,
-            
-            // Identificadores para JS
             'community_uuid' => ($context === 'community') ? $uuid : null,
             'channel_uuid' => $channelUuid, 
-            
-            // Campos para Worker Python/DB
             'community_id' => ($context === 'community') ? $targetId : null,
             'channel_id' => ($context === 'community') ? $channelId : null, 
             'user_id' => ($context === 'community') ? $userId : null,
@@ -251,7 +242,6 @@ try {
             }
         }
 
-        // Usar Redis solo si NO es el primer mensaje
         if (isset($redis) && $redis && !$isFirstMessage) {
             try {
                 if ($context === 'private') {
@@ -270,7 +260,6 @@ try {
         }
 
         if (!$savedToRedis) {
-            // FALLBACK / PRIMER MENSAJE: Guardar directo en MySQL
             if ($context === 'private') {
                 $replyToId = null;
                 if ($replyToUuid) {
@@ -303,7 +292,6 @@ try {
             $messagePayload['id'] = $msgDbId; 
         }
         
-        // NOTIFICACIÓN SOCKET
         $socketType = ($context === 'private') ? 'private_message' : 'new_chat_message';
         $socketTarget = ($context === 'private') ? $targetId : 'community_broadcast';
         
@@ -311,25 +299,18 @@ try {
         if ($context === 'community') $extraData['community_id'] = $targetId;
         if ($context === 'private') $extraData['sender_id'] = $userId;
 
-        $sent = send_live_notification($socketTarget, $socketType, $extraData);
+        send_live_notification($socketTarget, $socketType, $extraData);
         
-        if (!$sent) {
-            error_log("Fallo al contactar Socket Bridge (8081).");
-        }
-
         echo json_encode(['success' => true, 'message' => 'Enviado']);
         exit;
 
-    // --- [MODIFICADO] REACCIONES A MENSAJES ---
+    // --- REACCIONES ---
     } elseif ($action === 'react_message') {
         $msgUuid = $data['message_id'] ?? '';
         $reaction = $data['reaction'] ?? '';
         $context = $data['context'] ?? 'community';
-        
-        // Obtenemos target_uuid para poder buscar en Redis si es necesario
         $targetUuid = $data['target_uuid'] ?? ''; 
 
-        // [MODIFICADO] Validar claves permitidas (Keys en lugar de Emojis raw)
         $allowedReactions = ['like', 'love', 'haha', 'wow', 'sad', 'angry'];
         if (empty($msgUuid) || !in_array($reaction, $allowedReactions)) {
             throw new Exception("Reacción no válida.");
@@ -338,20 +319,23 @@ try {
         $messagesTable = ($context === 'private') ? 'private_messages' : 'community_messages';
         $reactionsTable = ($context === 'private') ? 'private_message_reactions' : 'community_message_reactions';
 
-        // 1. Intentar obtener ID real del mensaje en MySQL
-        $stmtMsg = $pdo->prepare("SELECT id, community_id FROM $messagesTable WHERE uuid = ?");
+        // 1. Obtener ID real
+        $selectFields = "id";
+        if ($context === 'community') {
+            $selectFields .= ", community_id";
+        }
+
+        $stmtMsg = $pdo->prepare("SELECT $selectFields FROM $messagesTable WHERE uuid = ?");
         $stmtMsg->execute([$msgUuid]);
         $msgData = $stmtMsg->fetch(PDO::FETCH_ASSOC);
 
-        // ⚠️ LÓGICA DE RESCATE (FLUSH) SI NO ESTÁ EN MYSQL ⚠️
+        // Rescue from Redis if not in DB
         if (!$msgData) {
             if (isset($redis) && $redis) {
-                // El mensaje no está en BD, debe estar en Redis. Hay que encontrarlo y guardarlo AHORA.
                 $foundAndFlushed = false;
                 $redisKeysToSearch = [];
 
                 if ($context === 'private') {
-                    // Reconstruir key de privado
                     $stmtU = $pdo->prepare("SELECT id FROM users WHERE uuid = ?");
                     $stmtU->execute([$targetUuid]);
                     $targetId = $stmtU->fetchColumn();
@@ -361,12 +345,9 @@ try {
                         $redisKeysToSearch[] = "chat:buffer:private:$min:$max";
                     }
                 } else {
-                    // En comunidad es más difícil sin channel_id, buscamos en todos los canales de esa comunidad
-                    // (Asumiendo que target_uuid es la comunidad)
                     $stmtComm = $pdo->prepare("SELECT id FROM communities WHERE uuid = ?");
                     $stmtComm->execute([$targetUuid]);
                     $commId = $stmtComm->fetchColumn();
-                    
                     if ($commId) {
                         $stmtChans = $pdo->prepare("SELECT id FROM community_channels WHERE community_id = ?");
                         $stmtChans->execute([$commId]);
@@ -377,15 +358,11 @@ try {
                     }
                 }
 
-                // Buscar el mensaje en las colas candidatas
                 foreach ($redisKeysToSearch as $rKey) {
                     $list = $redis->lRange($rKey, 0, -1);
                     foreach ($list as $idx => $jsonMsg) {
                         $memMsg = json_decode($jsonMsg, true);
                         if ($memMsg && isset($memMsg['uuid']) && $memMsg['uuid'] === $msgUuid) {
-                            // ¡ENCONTRADO! Guardarlo en MySQL inmediatamente
-                            
-                            // Preparar datos para INSERT
                             $replyId = null;
                             if (!empty($memMsg['reply_to_uuid'])) {
                                 $stmtRep = $pdo->prepare("SELECT id FROM $messagesTable WHERE uuid = ?");
@@ -409,10 +386,9 @@ try {
                                 $msgData = ['id' => $pdo->lastInsertId(), 'community_id' => $memMsg['community_id']];
                             }
 
-                            // Eliminar de Redis para evitar duplicados cuando pase el Worker
                             $redis->lRem($rKey, $jsonMsg, 1);
                             $foundAndFlushed = true;
-                            break 2; // Salir de ambos loops
+                            break 2; 
                         }
                     }
                 }
@@ -423,33 +399,27 @@ try {
             }
         }
         
-        // A PARTIR DE AQUÍ LA LÓGICA ORIGINAL SIGUE IGUAL
         $msgId = $msgData['id'];
 
-        // 2. Verificar reacción existente
+        // 2. Toggle/Update Reaction
         $stmtCheck = $pdo->prepare("SELECT id, reaction_code FROM $reactionsTable WHERE message_id = ? AND user_id = ?");
         $stmtCheck->execute([$msgId, $userId]);
         $existing = $stmtCheck->fetch(PDO::FETCH_ASSOC);
 
         if ($existing) {
             if ($existing['reaction_code'] === $reaction) {
-                // TOGGLE OFF: Si es la misma, se borra
                 $pdo->prepare("DELETE FROM $reactionsTable WHERE id = ?")->execute([$existing['id']]);
             } else {
-                // CAMBIAR: Si es diferente, se actualiza
                 $pdo->prepare("UPDATE $reactionsTable SET reaction_code = ?, created_at = NOW() WHERE id = ?")->execute([$reaction, $existing['id']]);
             }
         } else {
-            // NUEVA: Insertar
             $pdo->prepare("INSERT INTO $reactionsTable (message_id, user_id, reaction_code) VALUES (?, ?, ?)")->execute([$msgId, $userId, $reaction]);
         }
 
-        // 3. Obtener conteos actualizados
         $stmtCounts = $pdo->prepare("SELECT reaction_code, COUNT(*) as count FROM $reactionsTable WHERE message_id = ? GROUP BY reaction_code");
         $stmtCounts->execute([$msgId]);
         $counts = $stmtCounts->fetchAll(PDO::FETCH_KEY_PAIR);
 
-        // 4. Notificar vía Socket
         $socketPayload = [
             'message_uuid' => $msgUuid,
             'reactions' => $counts,
@@ -474,13 +444,11 @@ try {
         echo json_encode(['success' => true, 'reactions' => $counts]);
         exit;
 
-    // --- [NUEVO] EDITAR MENSAJE (CON CORRECCIÓN DE BUG "Column Not Found") ---
+    // --- EDITAR MENSAJE ---
     } elseif ($action === 'edit_message') {
         $msgUuid = $data['message_id'] ?? '';
         $newContent = trim($data['new_content'] ?? '');
         $context = $data['context'] ?? 'community';
-        
-        // Inputs auxiliares para encontrar claves en Redis
         $targetUuid = $data['target_uuid'] ?? $data['community_uuid'] ?? '';
         $channelUuid = $data['channel_uuid'] ?? null;
 
@@ -488,10 +456,7 @@ try {
 
         $table = ($context === 'private') ? 'private_messages' : 'community_messages';
         $userCol = ($context === 'private') ? 'sender_id' : 'user_id';
-
-        // 1. Intentar actualizar en MySQL primero (Persistencia)
         
-        // [FIX] Construir SELECT dinámico porque 'community_id' y 'channel_id' NO existen en private_messages
         $selectFields = "id, created_at";
         if ($context === 'community') {
             $selectFields .= ", community_id, channel_id";
@@ -506,20 +471,16 @@ try {
         $extraSocketData = [];
 
         if ($dbMsg) {
-            // Validar tiempo (10 mins = 600 seg)
             $created = strtotime($dbMsg['created_at']);
             if (time() - $created > 600) {
                 throw new Exception(translation('chat.error.edit_timeout') ?? "Tiempo de edición expirado (10 min).");
             }
 
-            // Actualizar MySQL
             $stmtUpd = $pdo->prepare("UPDATE $table SET message = ?, is_edited = 1, edited_at = NOW() WHERE id = ?");
             $stmtUpd->execute([$newContent, $dbMsg['id']]);
             $updatedInDb = true;
 
-            // Preparar datos para socket
             if ($context === 'private') {
-                // Necesitamos el receiver_id
                 $stmtRec = $pdo->prepare("SELECT receiver_id FROM private_messages WHERE id = ?");
                 $stmtRec->execute([$dbMsg['id']]);
                 $receiverId = $stmtRec->fetchColumn();
@@ -530,58 +491,44 @@ try {
             }
 
         } else {
-            // 2. No está en DB, buscar en Redis (Buffer)
             if (isset($redis) && $redis) {
                 $redisKey = '';
-                
                 if ($context === 'private') {
-                    // Resolver ID del otro usuario para formar la key
                     $stmtU = $pdo->prepare("SELECT id FROM users WHERE uuid = ?");
                     $stmtU->execute([$targetUuid]);
                     $targetId = $stmtU->fetchColumn();
-                    
                     if ($targetId) {
                         $min = min($userId, $targetId);
                         $max = max($userId, $targetId);
                         $redisKey = "chat:buffer:private:$min:$max";
                     }
                 } else {
-                    // Resolver channel ID
                     $channelId = null;
                     if ($channelUuid) {
                         $stmtCh = $pdo->prepare("SELECT id FROM community_channels WHERE uuid = ?");
                         $stmtCh->execute([$channelUuid]);
                         $channelId = $stmtCh->fetchColumn();
                     }
-                    
                     if ($channelId) {
                         $redisKey = "chat:buffer:channel:$channelId";
                     }
                 }
 
                 if ($redisKey) {
-                    // Buscar y actualizar atómicamente en la lista
                     $list = $redis->lRange($redisKey, 0, -1);
                     foreach ($list as $index => $json) {
                         $msgObj = json_decode($json, true);
-                        
                         if ($msgObj['uuid'] === $msgUuid && (int)$msgObj['sender_id'] === (int)$userId) {
-                            // Validar tiempo en Redis
                             $created = strtotime($msgObj['created_at']);
                             if (time() - $created > 600) {
                                 throw new Exception(translation('chat.error.edit_timeout') ?? "Tiempo de edición expirado.");
                             }
-
-                            // Actualizar objeto
                             $msgObj['message'] = $newContent;
                             $msgObj['is_edited'] = true;
                             $msgObj['edited_at'] = date('c');
-
-                            // Guardar de nuevo en la posición exacta
                             $redis->lSet($redisKey, $index, json_encode($msgObj));
-                            $updatedInDb = true; // Marcamos éxito para enviar socket
+                            $updatedInDb = true; 
 
-                            // Preparar datos socket desde el objeto Redis
                             if ($context === 'private') {
                                 $targetSocketId = $msgObj['receiver_id'];
                             } else {
@@ -596,7 +543,6 @@ try {
         }
 
         if ($updatedInDb) {
-            // Enviar evento socket 'message_edited'
             $socketPayload = [
                 'uuid' => $msgUuid,
                 'new_content' => $newContent,
@@ -612,8 +558,6 @@ try {
             }
 
             send_live_notification($targetSocketId, 'message_edited', $socketData);
-            
-            // Si es privado, notificar también al remitente (yo) para actualizar UI instantáneamente
             if ($context === 'private') {
                  send_live_notification($userId, 'message_edited', $socketData);
             }
@@ -624,11 +568,11 @@ try {
         }
         exit;
 
-    // --- OBTENER MENSAJES (MERGE REDIS + MYSQL) ---
+    // --- GET MESSAGES ---
     } elseif ($action === 'get_messages') {
         $uuid = $data['target_uuid'] ?? $data['community_uuid'] ?? '';
         $context = $data['context'] ?? 'community';
-        $channelUuid = $data['channel_uuid'] ?? null; // [NUEVO]
+        $channelUuid = $data['channel_uuid'] ?? null; 
 
         $limit = isset($data['limit']) ? (int)$data['limit'] : 50;
         $offset = isset($data['offset']) ? (int)$data['offset'] : 0;
@@ -653,21 +597,17 @@ try {
             }
 
         } else {
-            // Contexto Comunidad
             $stmtC = $pdo->prepare("SELECT c.id FROM communities c JOIN community_members cm ON c.id = cm.community_id WHERE c.uuid = ? AND cm.user_id = ?");
             $stmtC->execute([$uuid, $userId]);
             $targetId = $stmtC->fetchColumn();
             if (!$targetId) throw new Exception("Acceso denegado");
 
-            // [NUEVO] Resolver Channel ID Y SU ESTADO
             $channelData = null;
             if (!empty($channelUuid)) {
                 $stmtCh = $pdo->prepare("SELECT id, status FROM community_channels WHERE uuid = ? AND community_id = ?");
                 $stmtCh->execute([$channelUuid, $targetId]);
                 $channelData = $stmtCh->fetch(PDO::FETCH_ASSOC);
             }
-            
-            // Fallback al canal general si no hay UUID
             if (!$channelData && $context === 'community') {
                  $stmtDef = $pdo->prepare("SELECT id, status FROM community_channels WHERE community_id = ? ORDER BY created_at ASC LIMIT 1");
                  $stmtDef->execute([$targetId]);
@@ -678,29 +618,22 @@ try {
 
             $channelId = $channelData['id'];
             $channelStatus = $channelData['status'];
-
-            // [BLOQUEO DE SEGURIDAD PARA MANTENIMIENTO]
-            // Verificamos si el canal está en mantenimiento y si el usuario NO es admin/founder/moderator
             
             $stmtRole = $pdo->prepare("SELECT role FROM community_members WHERE community_id = ? AND user_id = ?");
             $stmtRole->execute([$targetId, $userId]);
-            $memberRole = $stmtRole->fetchColumn(); // 'member', 'admin', 'moderator'
+            $memberRole = $stmtRole->fetchColumn(); 
 
             if ($channelStatus === 'maintenance' && !in_array($memberRole, ['founder', 'administrator', 'admin', 'moderator'])) {
-                // Devolvemos lista vacía o error, dependiendo de tu preferencia.
-                // Para que la UI no rompa, devolvemos éxito pero sin mensajes.
                 echo json_encode(['success' => true, 'messages' => [], 'has_more' => false]);
                 exit;
             }
 
-            // [MODIFICADO] Marcar como leído en la tabla de canales Específica
             $sqlMarkRead = "INSERT INTO community_channel_reads (user_id, community_id, channel_id, last_read_at) 
                             VALUES (?, ?, ?, NOW()) 
                             ON DUPLICATE KEY UPDATE last_read_at = NOW()";
             $pdo->prepare($sqlMarkRead)->execute([$userId, $targetId, $channelId]);
             
             if (isset($redis) && $redis) {
-                // [MODIFICADO] Key por canal
                 $redisKey = "chat:buffer:channel:$channelId";
             }
         }
@@ -718,7 +651,7 @@ try {
             } catch (Exception $e) { error_log("Redis Read Error: " . $e->getMessage()); }
         }
 
-        // 2. MySQL (Ahora incluye is_edited)
+        // 2. MySQL
         $sqlMessages = [];
         if ($context === 'private') {
             $stmtClear = $pdo->prepare("SELECT cleared_at FROM private_chat_clearance WHERE user_id = ? AND partner_id = ?");
@@ -744,7 +677,6 @@ try {
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$userId, $targetId, $targetId, $userId, $clearedAt]);
         } else {
-            // [MODIFICADO] Filtrar por channel_id
             $sql = "
                 SELECT m.id, m.uuid, m.message, m.created_at, m.type, m.reply_to_id, m.reply_to_uuid, m.status, m.user_id as sender_id,
                        m.is_edited, m.edited_at,
@@ -777,7 +709,6 @@ try {
                     $msg['attachments'] = [];
                 }
             }
-            // Casting is_edited to bool for consistency
             $msg['is_edited'] = (bool)$msg['is_edited'];
             unset($msg['attachments_json']);
         }
@@ -803,14 +734,16 @@ try {
             return strtotime($b['created_at']) - strtotime($a['created_at']);
         });
 
-        // --- INICIO: CARGA DE REACCIONES ---
+        // --- CARGA DE REACCIONES (CORREGIDA) ---
         $messageIds = array_column($uniqueMessages, 'id');
         
-        if (!empty($messageIds)) {
+        // Filtrar IDs nulos o vacíos antes de la consulta
+        $validMessageIds = array_filter($messageIds, fn($id) => !empty($id));
+        
+        if (!empty($validMessageIds)) {
             $reactionsTable = ($context === 'private') ? 'private_message_reactions' : 'community_message_reactions';
-            $placeholders = implode(',', array_fill(0, count($messageIds), '?'));
+            $placeholders = implode(',', array_fill(0, count($validMessageIds), '?'));
             
-            // Contar reacciones y verificar si el usuario actual reaccionó
             $sqlReact = "SELECT 
                             message_id, 
                             reaction_code, 
@@ -820,7 +753,7 @@ try {
                          WHERE message_id IN ($placeholders)
                          GROUP BY message_id, reaction_code";
             
-            $params = array_merge([$userId], $messageIds);
+            $params = array_merge([$userId], $validMessageIds);
             $stmtReact = $pdo->prepare($sqlReact);
             $stmtReact->execute($params);
             $allReactions = $stmtReact->fetchAll(PDO::FETCH_ASSOC);
@@ -837,15 +770,20 @@ try {
                 ];
             }
             
+            // [CORRECCIÓN APLICADA AQUÍ: Validar existencia de clave ID]
             foreach ($uniqueMessages as &$msg) {
-                $msg['reactions'] = $reactionsByMessage[$msg['id']] ?? [];
+                $msgId = $msg['id'] ?? null;
+                if ($msgId && isset($reactionsByMessage[$msgId])) {
+                    $msg['reactions'] = $reactionsByMessage[$msgId];
+                } else {
+                    $msg['reactions'] = [];
+                }
             }
         } else {
             foreach ($uniqueMessages as &$msg) {
                 $msg['reactions'] = [];
             }
         }
-        // --- FIN: CARGA DE REACCIONES ---
 
         echo json_encode(['success' => true, 'messages' => array_reverse($uniqueMessages), 'has_more' => (count($dbMessages) >= $limit)]);
         exit;
@@ -853,7 +791,7 @@ try {
     } elseif ($action === 'mark_as_read') {
         $targetUuid = $data['target_uuid'] ?? ''; 
         $context = $data['context'] ?? 'private';
-        $channelUuid = $data['channel_uuid'] ?? null; // [NUEVO]
+        $channelUuid = $data['channel_uuid'] ?? null; 
 
         if (empty($targetUuid)) throw new Exception("UUID requerido");
         
@@ -873,7 +811,6 @@ try {
             $stmtC->execute([$targetUuid]);
             $commId = $stmtC->fetchColumn();
             
-            // [MODIFICADO] Guardar por Canal
             if ($commId && $channelUuid) {
                 $stmtCh = $pdo->prepare("SELECT id FROM community_channels WHERE uuid = ?");
                 $stmtCh->execute([$channelUuid]);
@@ -931,7 +868,6 @@ try {
         
         if (!$partnerId) throw new Exception("Usuario no encontrado.");
 
-        // --- INICIO: EMERGENCY FLUSH (REDIS -> MYSQL) ---
         if (isset($redis) && $redis) {
             $minId = min($userId, $partnerId);
             $maxId = max($userId, $partnerId);
@@ -1002,7 +938,6 @@ try {
                 error_log("Emergency Flush Error: " . $e->getMessage());
             }
         }
-        // --- FIN: EMERGENCY FLUSH ---
 
         $sql = "INSERT INTO private_chat_clearance (user_id, partner_id, cleared_at) VALUES (?, ?, NOW()) ON DUPLICATE KEY UPDATE cleared_at = NOW()";
         $stmt = $pdo->prepare($sql);
@@ -1037,7 +972,8 @@ try {
         exit;
     }
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    error_log("Chat API Error: " . $e->getMessage());
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 ?>
