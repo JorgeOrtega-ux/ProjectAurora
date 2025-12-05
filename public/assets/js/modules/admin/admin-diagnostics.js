@@ -1,7 +1,7 @@
 // public/assets/js/modules/admin/admin-diagnostics.js
 
-import { ApiService } from '../../services/api-service.js';
-import { AlertManager } from '../../ui/alert-manager.js';
+import { AdminApi } from '../../services/api-service.js';
+import { showAlert } from '../../ui/alert-manager.js';
 
 export function init() {
     console.log('Admin Diagnostics Module Initialized');
@@ -33,9 +33,7 @@ async function loadRedisStatus() {
     const contentArea = document.getElementById('redis-content-area');
 
     try {
-        const response = await ApiService.post('admin_handler.php', {
-            action: 'get_redis_status'
-        });
+        const response = await AdminApi.getRedisStatus();
 
         if (response.success && response.connected) {
             // Conexión exitosa
@@ -116,18 +114,16 @@ async function confirmClearRedis() {
     }
 
     try {
-        const response = await ApiService.post('admin_handler.php', {
-            action: 'clear_redis'
-        });
+        const response = await AdminApi.clearRedis();
 
         if (response.success) {
-            AlertManager.show('success', `Memoria limpiada: ${response.count} colas eliminadas.`);
+            showAlert(`Memoria limpiada: ${response.count} colas eliminadas.`, 'success');
             loadRedisStatus(); // Recargar la vista
         } else {
-            AlertManager.show('error', response.message || 'Error al limpiar Redis');
+            showAlert(response.message || 'Error al limpiar Redis', 'error');
         }
     } catch (error) {
-        AlertManager.show('error', 'Error de red al intentar limpiar Redis.');
+        showAlert('Error de red al intentar limpiar Redis.', 'error');
     }
 }
 
@@ -149,9 +145,7 @@ async function testBridgeConnection() {
     resultContainer.style.display = 'none';
 
     try {
-        const response = await ApiService.post('admin_handler.php', {
-            action: 'test_bridge'
-        });
+        const response = await AdminApi.testBridge();
 
         resultContainer.style.display = 'block';
         
@@ -163,7 +157,7 @@ async function testBridgeConnection() {
             msg.textContent = response.message; // Mensaje del servidor
             hint.textContent = '💡 Si tienes el chat abierto en otra pestaña, deberías ver una notificación global ahora mismo.';
             
-            AlertManager.show('success', 'Prueba de puente exitosa');
+            showAlert('Prueba de puente exitosa', 'success');
         } else {
             throw new Error(response.message);
         }
@@ -177,7 +171,7 @@ async function testBridgeConnection() {
         msg.textContent = error.message || 'No se pudo conectar al socket.';
         hint.textContent = '💡 Verifica que socket-connect.py esté ejecutándose en el puerto 8081.';
         
-        AlertManager.show('error', 'Falló la prueba del puente');
+        showAlert('Falló la prueba del puente', 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;
