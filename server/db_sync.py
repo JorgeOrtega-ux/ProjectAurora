@@ -159,6 +159,33 @@ async def process_chat_message(user_id, user_info, payload):
                 if await cur.fetchone():
                     return {'success': False, 'error': 'No puedes enviar mensajes a este usuario.'}
 
+                # =================================================================================
+                # [CORRECCIÓN CRÍTICA] INICIO - Validar Amistad y Privacidad (Igual que en PHP)
+                # =================================================================================
+                privacy_query = """
+                    SELECT 
+                        COALESCE(up.message_privacy, 'friends') as privacy, 
+                        (SELECT status FROM friendships WHERE (sender_id = %s AND receiver_id = %s) OR (sender_id = %s AND receiver_id = %s)) as status 
+                    FROM users u 
+                    LEFT JOIN user_preferences up ON u.id = up.user_id 
+                    WHERE u.id = %s
+                """
+                # Params: user_id (Yo), receiver_id (El), receiver_id (El), user_id (Yo), receiver_id (Target para preferences)
+                await cur.execute(privacy_query, (user_id, receiver_id, receiver_id, user_id, receiver_id))
+                priv_row = await cur.fetchone()
+                
+                privacy_setting = priv_row[0] if priv_row else 'friends'
+                friend_status = priv_row[1] # Puede ser None, 'pending', 'accepted'
+
+                if privacy_setting == 'nobody':
+                     return {'success': False, 'error': 'Este usuario no acepta mensajes privados.'}
+                
+                if privacy_setting == 'friends' and friend_status != 'accepted':
+                     return {'success': False, 'error': 'Solo amigos pueden enviar mensajes a este usuario.'}
+                # =================================================================================
+                # [CORRECCIÓN CRÍTICA] FIN
+                # =================================================================================
+
                 # Resolve Reply
                 reply_data = await _resolve_reply(cur, reply_to_uuid, 'private', user_id, receiver_id)
 
