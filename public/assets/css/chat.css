@@ -1812,30 +1812,56 @@
    8. SISTEMA DE REACCIONES (NUEVO)
    ========================================= */
 
-/* Barra contenedora de reacciones en el mensaje */
-.reactions-bar {
+/* [MODIFICADO] WRAPPER PARA BURBUJA + REACCIONES */
+.message-content-group {
+    display: flex;
+    flex-direction: column;
+    max-width: 70%;
+    position: relative;
+}
+
+/* Alineación según quién envía */
+.message-own .message-content-group {
+    align-items: flex-end; /* Reacciones a la derecha */
+}
+.message-other .message-content-group {
+    align-items: flex-start; /* Reacciones a la izquierda */
+}
+
+/* Forzar que la burbuja ocupe el ancho del grupo */
+.message-content-group .message-bubble {
+    max-width: 100%;
+}
+
+/* CONTENEDOR DE REACCIONES (FLOTANTE) */
+.message-reactions-container {
+    z-index: 5;
+    display: flex;
+    margin-top: 4px;
+    pointer-events: none; /* Para no bloquear clics en huecos */
+    padding: 0 4px;
+}
+
+/* Ajustes a la barra interna */
+.message-reactions-container .reactions-bar {
+    pointer-events: auto; /* Reactivar clics en botones */
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
-    margin-top: 4px;
-    /* Opción: Flotando ligeramente fuera de la burbuja o dentro */
-    position: relative; 
-    z-index: 2;
 }
 
-/* La burbuja individual de reacción (ej: 👍 2) */
+/* Ajuste visual a las burbujas de reacción para que resalten */
 .reaction-bubble {
-    background-color: #f0f2f5;
-    border: 1px solid #fff;
+    background-color: #ffffff; /* Blanco para contrastar */
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    padding: 2px 8px;
     border-radius: 12px;
-    padding: 2px 6px;
+    margin-right: 0; /* Controlado por gap del padre */
     font-size: 11px;
-    color: #555;
     display: inline-flex;
     align-items: center;
-    gap: 3px;
     cursor: pointer;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     user-select: none;
     animation: popIn 0.3s ease-out;
@@ -1846,15 +1872,16 @@
     background-color: #e4e6eb;
 }
 
-/* Ajuste para mensajes propios (fondo oscuro o diferente) */
+/* Modificar colores si es 'own' */
 .message-own .reaction-bubble {
-    background-color: #eefdec; /* Un verde muy pálido para combinar */
-    border-color: #dcf8c6;
+    background-color: #f0fdf4; /* Verde muy claro */
+    border-color: #bbf7d0;
 }
 
 .reaction-count {
     font-weight: 600;
     color: #333;
+    margin-left: 4px;
 }
 
 /* Selector de Reacciones (Dentro del Popover) */
@@ -1893,19 +1920,12 @@
     0% { transform: scale(0); opacity: 0; }
     80% { transform: scale(1.1); opacity: 1; }
     100% { transform: scale(1); opacity: 1; }
-}.reaction-bubble {
-    cursor: pointer;
-    /* Reset básico de botón si usas <button> */
-    background: #f0f2f5; 
-    border: 1px solid transparent;
-    border-radius: 12px;
-    padding: 2px 6px;
-    margin-right: 4px;
-    font-size: 12px;
-    display: inline-flex;
-    align-items: center;
 }
-.reaction-bubble:hover {
-    background: #e4e6eb;
-    border-color: #d0d2d6;
+
+/* Estado activo del botón de reacción en el popover */
+.reaction-btn.active {
+    background-color: #e3f2fd; /* Azul claro */
+    border: 1px solid #90caf9; /* Borde azul suave */
+    border-radius: 8px; /* Opcional: hacerlo un poco más cuadrado si quieres */
+    transform: scale(1.1);
 }

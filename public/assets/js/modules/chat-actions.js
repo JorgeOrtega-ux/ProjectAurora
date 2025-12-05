@@ -117,37 +117,79 @@ export async function handleReportMessage(msgUuid, context, targetUuid) {
 /**
  * [MODIFICADO] Maneja la reacción a un mensaje usando ChatApi.
  */
+/**
+ * [MODIFICADO] Maneja la reacción a un mensaje con lógica de Toggle/Switch.
+ */
 export async function handleReactionAction(msgUuid, reactionKey, context, targetUuid) {
-    // 1. Feedback Optimista: Actualizar UI antes de que el servidor responda
+    // 1. Feedback Optimista: Calcular el nuevo estado antes de que responda el servidor
     const msgRow = document.getElementById(`msg-${msgUuid}`);
-    let currentReactions = {};
     
     if (msgRow) {
+        let currentReactions = {};
+        let previousUserReactionKey = null;
+        
         const bubbles = msgRow.querySelectorAll('.reaction-bubble');
         bubbles.forEach(b => {
             const key = b.dataset.reactionKey;
             const count = parseInt(b.querySelector('.reaction-count').innerText) || 0;
+            const isReactedByMe = b.classList.contains('reacted'); // Detectar si yo le di clic
+
             if (key) {
-                currentReactions[key] = count;
+                if (isReactedByMe) {
+                    previousUserReactionKey = key; // Guardamos cuál era mi reacción anterior
+                }
+                // Guardamos el estado completo para el renderizador
+                currentReactions[key] = {
+                    count: count,
+                    user_reacted: isReactedByMe
+                };
             }
         });
 
-        // Lógica simple optimista: Sumamos 1
-        if (currentReactions[reactionKey]) {
-            currentReactions[reactionKey]++;
+        // APLICAR LÓGICA DE INTERCAMBIO (TOGGLE/SWITCH)
+        if (previousUserReactionKey === reactionKey) {
+            // CASO A: Clic en la misma reacción -> QUITAR (Toggle Off)
+            if (currentReactions[reactionKey]) {
+                currentReactions[reactionKey].count = Math.max(0, currentReactions[reactionKey].count - 1);
+                currentReactions[reactionKey].user_reacted = false;
+                
+                // Si llega a 0, la eliminamos del objeto para que no se renderice
+                if (currentReactions[reactionKey].count === 0) {
+                    delete currentReactions[reactionKey];
+                }
+            }
         } else {
-            currentReactions[reactionKey] = 1;
+            // CASO B: Cambio de reacción o Nueva reacción
+            
+            // 1. Si tenía una reacción vieja diferente, la quitamos
+            if (previousUserReactionKey && currentReactions[previousUserReactionKey]) {
+                currentReactions[previousUserReactionKey].count = Math.max(0, currentReactions[previousUserReactionKey].count - 1);
+                currentReactions[previousUserReactionKey].user_reacted = false;
+                
+                if (currentReactions[previousUserReactionKey].count === 0) {
+                    delete currentReactions[previousUserReactionKey];
+                }
+            }
+
+            // 2. Añadimos la nueva reacción
+            if (!currentReactions[reactionKey]) {
+                currentReactions[reactionKey] = { count: 0, user_reacted: false };
+            }
+            currentReactions[reactionKey].count++;
+            currentReactions[reactionKey].user_reacted = true;
         }
         
+        // Actualizar la UI inmediatamente
         updateMessageReactions(msgUuid, currentReactions);
     }
 
-    // 2. Enviar petición al servidor
+    // 2. Enviar petición al servidor (que hará la validación final en BD)
     try {
         const data = await ChatApi.reactMessage(msgUuid, reactionKey, context, targetUuid);
         
         if (!data.success) {
             console.error("Error al reaccionar:", data.message);
+            // Opcional: Aquí podrías revertir la UI si falla, recargando los mensajes
         }
         return data;
 

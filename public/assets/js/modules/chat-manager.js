@@ -605,7 +605,8 @@ function initGlobalActionListeners() {
             e.stopPropagation();
             e.preventDefault();
             const msgUuid = reactionBtn.dataset.uuid;
-            const emoji = reactionBtn.dataset.emoji;
+            // CORRECCIÓN: Usar dataset.reactionKey en vez de dataset.emoji
+            const emoji = reactionBtn.dataset.reactionKey;
             
             // Llamada a la acción de toggle reacción
             // Se usa el contexto actual global (currentChatType, currentChatUuid)
@@ -613,7 +614,7 @@ function initGlobalActionListeners() {
             return;
         }
         
-        const msgOptBtn = e.target.closest('[data-action="msg-options"]');
+      const msgOptBtn = e.target.closest('[data-action="msg-options"]');
         if (msgOptBtn) { 
             e.stopPropagation();
             const uuid = msgOptBtn.dataset.uuid;
@@ -621,8 +622,20 @@ function initGlobalActionListeners() {
             const isMe = (parseInt(senderId) === parseInt(window.USER_ID));
             const createdAt = msgOptBtn.dataset.createdAt;
             
-          Renderer.showMessagePopover(
-                msgOptBtn, uuid, msgOptBtn.dataset.user, msgOptBtn.dataset.text, isMe, createdAt,
+            // --- [NUEVO] DETECTAR REACCIÓN ACTUAL ---
+            let currentReaction = null;
+            const msgRow = document.getElementById(`msg-${uuid}`);
+            if (msgRow) {
+                // Buscamos si hay una burbuja con la clase 'reacted'
+                const activeBubble = msgRow.querySelector('.reaction-bubble.reacted');
+                if (activeBubble) {
+                    currentReaction = activeBubble.dataset.reactionKey;
+                }
+            }
+
+            // Pasamos 'currentReaction' como nuevo argumento
+            Renderer.showMessagePopover(
+                msgOptBtn, uuid, msgOptBtn.dataset.user, msgOptBtn.dataset.text, isMe, createdAt, currentReaction,
                 // 1. Responder
                 () => enableReplyMode(uuid, msgOptBtn.dataset.user, msgOptBtn.dataset.text), 
                 // 2. Editar
@@ -633,8 +646,7 @@ function initGlobalActionListeners() {
                 () => onDeleteMessage(uuid), 
                 // 4. Reportar
                 () => onReportMessage(uuid),
-                
-                // 🔴 AQUÍ ESTABA EL ERROR: FALTABA ESTE ÚLTIMO ARGUMENTO (onReact) 🔴
+                // 5. Reaccionar
                 (emoji) => {
                     ChatActions.handleReactionAction(uuid, emoji, currentChatType, currentChatUuid);
                 }

@@ -57,7 +57,7 @@ function getReactionsHTML(reactions, msgUuid) {
         if (count > 0) {
             const emoji = REACTION_ICONS[key] || '❓';
             // Añadimos data-reaction-key en lugar de data-emoji
-            // Añadimos clase 'reacted' si el usuario actual reaccionó (opcional para CSS)
+            // Añadimos clase 'reacted' si el usuario actual reaccionó
             const activeClass = userReacted ? 'reacted' : '';
             
             html += `<button class="reaction-bubble ${activeClass}" data-action="toggle-reaction" data-uuid="${msgUuid}" data-reaction-key="${key}">
@@ -155,20 +155,29 @@ export function createMessageHTML(msg, currentChatType) {
     const reactionsHtml = getReactionsHTML(msg.reactions, msgId);
     const optionsBtn = `<button class="message-options-btn" data-action="msg-options" data-uuid="${msgId}" data-user="${msg.sender_username}" data-text="${escapeHtml(msg.message)}" data-sender-id="${msg.sender_id}" data-created-at="${msg.created_at}"><span class="material-symbols-rounded" style="font-size: 18px;">more_vert</span></button>`;
 
+    // --- ESTRUCTURA CON GRUPO Y REACCIONES AFUERA ---
     return `
         <div class="message-row ${isMe ? 'message-own' : 'message-other'}" id="msg-${msgId}">
             ${!isMe ? `<div class="chat-message-avatar" data-role="${role}" title="${msg.sender_username}"><img src="${avatarUrl}" alt="${msg.sender_username}" data-img-type="user"></div>` : ''}
-            <div class="message-bubble">
-                ${replyHtml} 
-                ${!isMe && currentChatType === 'community' ? `<div style="font-size:11px; font-weight:700; color:#e91e63; margin-bottom:2px;">${msg.sender_username}</div>` : ''}
-                ${attachmentsHtml} 
-                <div class="message-content-wrapper">
-                    ${msg.message ? `<div class="message-text">${escapeHtml(msg.message)}</div>` : ''}
-                    <div class="message-time">
-                        ${timeStr} ${editedHtml}
+            
+            <div class="message-content-group">
+                <div class="message-bubble">
+                    ${replyHtml} 
+                    ${!isMe && currentChatType === 'community' ? `<div style="font-size:11px; font-weight:700; color:#e91e63; margin-bottom:2px;">${msg.sender_username}</div>` : ''}
+                    ${attachmentsHtml} 
+                    <div class="message-content-wrapper">
+                        ${msg.message ? `<div class="message-text">${escapeHtml(msg.message)}</div>` : ''}
+                        <div class="message-time">
+                            ${timeStr} ${editedHtml}
+                        </div>
                     </div>
                 </div>
-                ${reactionsHtml} </div>
+                
+                <div class="message-reactions-container">
+                    ${reactionsHtml}
+                </div>
+            </div>
+
             ${optionsBtn} 
         </div>
     `;
@@ -180,21 +189,13 @@ export function updateMessageReactions(msgUuid, reactionsData) {
     const msgRow = document.getElementById(`msg-${msgUuid}`);
     if (!msgRow) return;
 
-    const bubble = msgRow.querySelector('.message-bubble');
-    if (!bubble) return;
+    // Buscar el contenedor externo de reacciones
+    const container = msgRow.querySelector('.message-reactions-container');
+    if (!container) return;
 
-    let bar = bubble.querySelector('.reactions-bar');
+    // Actualizar el HTML completo dentro del contenedor
     const newHtml = getReactionsHTML(reactionsData, msgUuid);
-
-    if (bar) {
-        if (!newHtml) {
-            bar.remove(); 
-        } else {
-            bar.outerHTML = newHtml; 
-        }
-    } else if (newHtml) {
-        bubble.insertAdjacentHTML('beforeend', newHtml);
-    }
+    container.innerHTML = newHtml;
 }
 
 export function scrollToBottom() {
@@ -484,7 +485,8 @@ export function updateReplyUI(isReplying, data = null) {
     }
 }
 
-export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, onReply, onEdit, onDelete, onReport, onReact) {
+// --- [MODIFICADO] AHORA ACEPTA currentReaction Y APLICA CLASE active ---
+export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, currentReaction, onReply, onEdit, onDelete, onReport, onReact) {
     document.querySelector('.message-options-popover')?.remove();
 
     let editOption = '';
@@ -529,10 +531,11 @@ export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, on
         { key: 'angry', icon: '😡' }
     ];
     
-    // Generar botones usando data-reaction-key
-    const emojiHtml = reactionMap.map(item => 
-        `<button class="reaction-btn" data-reaction-key="${item.key}">${item.icon}</button>`
-    ).join('');
+    // Generar botones usando data-reaction-key y añadir clase 'active' si corresponde
+    const emojiHtml = reactionMap.map(item => {
+        const activeClass = (item.key === currentReaction) ? 'active' : '';
+        return `<button class="reaction-btn ${activeClass}" data-reaction-key="${item.key}">${item.icon}</button>`;
+    }).join('');
 
     popover.innerHTML = `
         <div class="menu-content">
@@ -583,7 +586,7 @@ export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, on
     const repBtn = popover.querySelector('[data-action="report-message"]');
     if (repBtn) repBtn.addEventListener('click', () => { onReport(); popover.remove(); });
 
-    // [MODIFICADO] Listener para usar keys
+    // Listener para usar keys
     popover.querySelectorAll('.reaction-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             // Obtener la clave del dataset (asegurar el target correcto)
