@@ -13,7 +13,16 @@ logger = logging.getLogger(__name__)
 db_pool = None 
 redis_client = None
 
-# [ELIMINADO] active_flushes = set() -> Ya no se usa, reemplazado por Redis Lock
+# Script Lua para obtener y eliminar mensajes atómicamente
+# KEYS[1] = redis_key
+# ARGV[1] = límite de mensajes (ej. 10)
+LUA_POP_TRIM = """
+local items = redis.call('LRANGE', KEYS[1], 0, ARGV[1]-1)
+if #items > 0 then
+    redis.call('LTRIM', KEYS[1], ARGV[1], -1)
+end
+return items
+"""
 
 DB_CONFIG = {
     'user': os.getenv('DB_USER'),
@@ -309,12 +318,12 @@ async def _resolve_reply(cur, reply_uuid, context, user_id=None, receiver_id=Non
             except: continue
     return {}
 
-# --- FLUSH LOGIC (CORREGIDO: DISTRIBUTED LOCK) ---
+# --- FLUSH LOGIC (CORREGIDO: LUA SCRIPT ATÓMICO) ---
 
 async def _check_flush(redis_key, context):
     """
-    Verifica si el buffer está lleno y dispara el flush.
-    Ya no usa active_flushes (local), delega la concurrencia a flush_chat_buffer (Redis Lock).
+    Verifica el tamaño y dispara el flush.
+    La concurrencia ahora se maneja de forma segura gracias a Lua.
     """
     try:
         size = await redis_client.llen(redis_key)
@@ -325,28 +334,18 @@ async def _check_flush(redis_key, context):
 
 async def flush_chat_buffer(redis_key, context):
     """
-    Vuelca el buffer de Redis a MySQL usando un BLOQUEO DISTRIBUIDO (Redis SET NX).
-    Esto garantiza que solo un worker procese y recorte la lista a la vez, evitando pérdida de datos.
+    Vuelca el buffer a MySQL usando un Script de Lua para atomicidad total.
+    Elimina la necesidad de bloqueos distribuidos (Locks) propensos a errores.
     """
     if not db_pool or not redis_client: return
 
-    # Definir llave de bloqueo única para este canal/chat
-    lock_key = f"lock:{redis_key}"
-    
-    # INTENTAR ADQUIRIR BLOQUEO (Atomicidad Global)
-    # nx=True: Solo si no existe. ex=30: Expira en 30s si el proceso muere.
-    acquired = await redis_client.set(lock_key, "LOCKED", nx=True, ex=30)
-    
-    if not acquired:
-        # Si otro worker ya tiene el lock, salimos silenciosamente.
-        return
-
     try:
-        # 1. Obtener mensajes (Peek)
-        messages = await redis_client.lrange(redis_key, 0, 9)
-        
-        # Verificar nuevamente si hay suficientes mensajes (por si otro worker limpió justo antes del lock)
-        if not messages or len(messages) < 10:
+        # 1. EJECUCIÓN ATÓMICA (LUA): Leer y Cortar
+        # KEYS[1] = redis_key, ARGV[1] = 10 (límite de mensajes)
+        # Esto garantiza que nadie más lea ni borre ESTOS mensajes específicos.
+        messages = await redis_client.eval(LUA_POP_TRIM, 1, redis_key, 10)
+
+        if not messages:
             return
 
         logger.info(f"💾 Flushing {len(messages)} msgs from {redis_key}")
@@ -366,11 +365,14 @@ async def flush_chat_buffer(redis_key, context):
                         reply_to_id = None
                         
                         table = 'private_messages' if context == 'private' else 'community_messages'
+                        
+                        # Resolver ID de respuesta si existe
                         if reply_to_uuid:
                             await cur.execute(f"SELECT id FROM {table} WHERE uuid = %s", (reply_to_uuid,))
                             row = await cur.fetchone()
                             if row: reply_to_id = row[0]
 
+                        # Inserción
                         if context == 'private':
                             await cur.execute("""
                                 INSERT IGNORE INTO private_messages (uuid, sender_id, receiver_id, message, type, reply_to_id, reply_to_uuid, created_at, is_edited) 
@@ -383,26 +385,25 @@ async def flush_chat_buffer(redis_key, context):
                             """, (uuid_val, msg['community_id'], msg['channel_id'], msg['user_id'], text, type_val, reply_to_id, reply_to_uuid, created_at))
                     
                     await conn.commit()
-                    
-                    # 2. Recorte Seguro (Trim)
-                    # Al tener el lock de Redis, garantizamos que NADIE más ha hecho trim ni modificado la cabeza
-                    await redis_client.ltrim(redis_key, 10, -1)
+                    # Ya no necesitamos hacer LTRIM aquí, Lua ya lo hizo.
                     
                 except Exception as e:
                     await conn.rollback()
                     logger.error(f"Flush DB Error: {e}")
-                    # NOTA: No hacemos ltrim si falla la DB, para reintentar luego.
+                    
+                    # [CRÍTICO] ROLLBACK A REDIS
+                    # Si falla la BD, devolvemos los mensajes a Redis para no perderlos.
+                    # Usamos LPUSH en orden inverso para que queden en el orden correcto al principio de la lista.
+                    if messages:
+                        logger.warning(f"⚠️ Restaurando {len(messages)} mensajes a Redis debido a error en DB.")
+                        for msg in reversed(messages):
+                            await redis_client.lpush(redis_key, msg)
 
     except Exception as e:
         logger.error(f"Flush General Error: {e}")
-    finally:
-        # LIBERAR EL BLOQUEO
-        await redis_client.delete(lock_key)
-            
-        # Revisión recursiva: Si mientras procesábamos llegaron más mensajes
+        # Intento recursivo si queda carga pendiente (opcional)
         try:
-            current_len = await redis_client.llen(redis_key)
-            if current_len >= 10:
+            if await redis_client.llen(redis_key) >= 10:
                 asyncio.create_task(flush_chat_buffer(redis_key, context))
         except: pass
 
