@@ -1155,3 +1155,7 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-12-05 10:58:02,617 - INFO - Usuario conectado: ID 1 | Rol: user
 2025-12-05 10:58:41,782 - INFO - connection open
 2025-12-05 10:58:41,793 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-12-05 11:06:18,861 - INFO - connection open
+2025-12-05 11:06:18,880 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-12-05 11:06:24,517 - INFO - connection open
+2025-12-05 11:06:24,520 - INFO - Usuario conectado: ID 1 | Rol: user
