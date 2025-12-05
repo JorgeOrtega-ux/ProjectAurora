@@ -111,16 +111,29 @@ try {
         
         if ($file['size'] > $maxSize) throw new Exception(translation('settings.profile.error_size', ['size' => $maxMB]));
         
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        // [SECURITY PATCH] Lista blanca estricta de MIMEs
+        $allowedMimes = [
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/webp' => 'webp',
+            'image/gif'  => 'gif'
+        ];
+        
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $mimeType = $finfo->file($file['tmp_name']);
-        if (!in_array($mimeType, $allowedTypes)) throw new Exception(translation('settings.profile.error_format'));
+        
+        // [SECURITY FIX] Validamos MIME y obtenemos extensión segura
+        if (!array_key_exists($mimeType, $allowedMimes)) {
+            throw new Exception(translation('settings.profile.error_format'));
+        }
         
         $uploadDir = __DIR__ . '/../public/assets/uploads/profile_pictures/custom/';
         if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'png';
         
-        $newFileName = generate_uuid() . '.' . $extension;
+        // Asignación forzosa de la extensión basada en el MIME real
+        $safeExtension = $allowedMimes[$mimeType];
+        
+        $newFileName = generate_uuid() . '.' . $safeExtension;
         
         $destination = $uploadDir . $newFileName;
         $dbPath = 'assets/uploads/profile_pictures/custom/' . $newFileName;

@@ -216,8 +216,26 @@ try {
         $file = $_FILES['profile_picture'];
         $uploadDir = __DIR__ . '/../public/assets/uploads/profile_pictures/custom/';
         if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION) ?: 'png';
-        $newFileName = generate_uuid() . '.' . $extension;
+
+        // [SECURITY PATCH] Lista blanca estricta para Admin Upload
+        $allowedMimes = [
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/webp' => 'webp',
+            'image/gif'  => 'gif'
+        ];
+
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->file($file['tmp_name']);
+
+        if (!array_key_exists($mimeType, $allowedMimes)) {
+            throw new Exception(translation('settings.profile.error_format'));
+        }
+
+        // Asignación forzosa de la extensión
+        $safeExtension = $allowedMimes[$mimeType];
+        $newFileName = generate_uuid() . '.' . $safeExtension;
+        
         $destination = $uploadDir . $newFileName;
         $dbPath = 'assets/uploads/profile_pictures/custom/' . $newFileName;
 

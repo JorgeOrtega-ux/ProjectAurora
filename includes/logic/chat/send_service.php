@@ -149,15 +149,28 @@ class ChatSendService {
             $uploadDir = __DIR__ . '/../../../public/assets/uploads/chat/';
             if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
 
+            // [SECURITY PATCH] Mapa de extensiones seguras
+            $allowedMimes = [
+                'image/jpeg' => 'jpg',
+                'image/png'  => 'png',
+                'image/gif'  => 'gif',
+                'image/webp' => 'webp'
+            ];
+
             for ($i = 0; $i < $count; $i++) {
                 if ($f['error'][$i] === UPLOAD_ERR_OK) {
                     $tmpName = $f['tmp_name'][$i];
                     $name = basename($f['name'][$i]);
+                    
                     $finfo = new finfo(FILEINFO_MIME_TYPE);
                     $mime = $finfo->file($tmpName);
-                    if (!str_starts_with($mime, 'image/')) continue;
-                    $ext = pathinfo($name, PATHINFO_EXTENSION) ?: 'png';
-                    $newFileName = generate_uuid() . '.' . $ext;
+                    
+                    // [SECURITY FIX] Validamos MIME y forzamos extensión segura
+                    if (!array_key_exists($mime, $allowedMimes)) continue;
+                    
+                    $safeExt = $allowedMimes[$mime];
+                    $newFileName = generate_uuid() . '.' . $safeExt;
+                    
                     $targetPath = $uploadDir . $newFileName;
                     $dbPath = 'assets/uploads/chat/' . $newFileName;
 
