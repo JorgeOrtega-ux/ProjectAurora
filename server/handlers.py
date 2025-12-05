@@ -5,7 +5,15 @@ import db_sync
 import connection_manager
 
 logger = logging.getLogger(__name__)
-BRIDGE_SECRET = os.getenv('BRIDGE_SECRET', 'default_secret')
+
+# [SEGURIDAD] Eliminado valor por defecto 'default_secret'.
+BRIDGE_SECRET = os.getenv('BRIDGE_SECRET')
+
+# [SEGURIDAD] Validación estricta al iniciar el módulo.
+# Si no hay secreto o es el inseguro, el servidor fallará intencionalmente.
+if not BRIDGE_SECRET or BRIDGE_SECRET == 'default_secret':
+    logger.critical("⛔ SEGURIDAD: BRIDGE_SECRET no está configurado o es inseguro.")
+    raise ValueError("CRITICAL: BRIDGE_SECRET must be set in .env with a secure value.")
 
 async def handle_auth(token):
     """Verifica token y devuelve datos del usuario o None."""

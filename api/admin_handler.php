@@ -804,7 +804,14 @@ try {
         if (!$fp) {
             throw new Exception("No se pudo conectar a $host:$port. Código: $errno - $errstr");
         } else {
-            $bridgeSecret = $_ENV['BRIDGE_SECRET'] ?? getenv('BRIDGE_SECRET') ?? 'default_secret';
+            // [SEGURIDAD] Obtener secreto sin valor por defecto inseguro
+            $bridgeSecret = $_ENV['BRIDGE_SECRET'] ?? getenv('BRIDGE_SECRET');
+
+            // [SEGURIDAD] Validación estricta
+            if (empty($bridgeSecret) || $bridgeSecret === 'default_secret') {
+                fclose($fp);
+                throw new Exception("Error de Seguridad: BRIDGE_SECRET no está configurado correctamente en el servidor.");
+            }
 
             // Enviar payload de prueba
             $testPayload = json_encode([
