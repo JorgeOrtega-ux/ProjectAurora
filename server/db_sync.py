@@ -13,8 +13,7 @@ logger = logging.getLogger(__name__)
 db_pool = None 
 redis_client = None
 
-# [FIX] Conjunto para controlar bloqueos de concurrencia y evitar Race Conditions
-active_flushes = set()
+# [ELIMINADO] active_flushes = set() -> Ya no se usa, reemplazado por Redis Lock
 
 DB_CONFIG = {
     'user': os.getenv('DB_USER'),
@@ -310,16 +309,14 @@ async def _resolve_reply(cur, reply_uuid, context, user_id=None, receiver_id=Non
             except: continue
     return {}
 
+# --- FLUSH LOGIC (CORREGIDO: DISTRIBUTED LOCK) ---
+
 async def _check_flush(redis_key, context):
     """
     Verifica si el buffer está lleno y dispara el flush.
-    [FIX] Usa active_flushes para evitar tareas duplicadas inútiles.
+    Ya no usa active_flushes (local), delega la concurrencia a flush_chat_buffer (Redis Lock).
     """
     try:
-        # Optimización: No crear tarea si ya se está procesando esa key
-        if redis_key in active_flushes:
-            return
-
         size = await redis_client.llen(redis_key)
         if size >= 10:
             asyncio.create_task(flush_chat_buffer(redis_key, context))
@@ -328,22 +325,29 @@ async def _check_flush(redis_key, context):
 
 async def flush_chat_buffer(redis_key, context):
     """
-    Vuelca el buffer de Redis a MySQL de forma atómica respecto a la tarea.
-    [FIX] Implementación de Mutex para evitar Race Condition en ltrim.
+    Vuelca el buffer de Redis a MySQL usando un BLOQUEO DISTRIBUIDO (Redis SET NX).
+    Esto garantiza que solo un worker procese y recorte la lista a la vez, evitando pérdida de datos.
     """
     if not db_pool or not redis_client: return
 
-    # [FIX] Mecanismo de bloqueo
-    if redis_key in active_flushes:
-        logger.debug(f"⚠️ Flush saltado para {redis_key}, ya hay uno en progreso.")
-        return
+    # Definir llave de bloqueo única para este canal/chat
+    lock_key = f"lock:{redis_key}"
     
-    active_flushes.add(redis_key)
+    # INTENTAR ADQUIRIR BLOQUEO (Atomicidad Global)
+    # nx=True: Solo si no existe. ex=30: Expira en 30s si el proceso muere.
+    acquired = await redis_client.set(lock_key, "LOCKED", nx=True, ex=30)
+    
+    if not acquired:
+        # Si otro worker ya tiene el lock, salimos silenciosamente.
+        return
 
     try:
-        # 1. Obtener mensajes
+        # 1. Obtener mensajes (Peek)
         messages = await redis_client.lrange(redis_key, 0, 9)
-        if not messages: return
+        
+        # Verificar nuevamente si hay suficientes mensajes (por si otro worker limpió justo antes del lock)
+        if not messages or len(messages) < 10:
+            return
 
         logger.info(f"💾 Flushing {len(messages)} msgs from {redis_key}")
         
@@ -380,9 +384,8 @@ async def flush_chat_buffer(redis_key, context):
                     
                     await conn.commit()
                     
-                    # 2. Recorte Seguro
-                    # Ahora es seguro hacer ltrim porque garantizamos que nadie más 
-                    # ha modificado la cabeza de la lista mientras procesábamos.
+                    # 2. Recorte Seguro (Trim)
+                    # Al tener el lock de Redis, garantizamos que NADIE más ha hecho trim ni modificado la cabeza
                     await redis_client.ltrim(redis_key, 10, -1)
                     
                 except Exception as e:
@@ -393,9 +396,8 @@ async def flush_chat_buffer(redis_key, context):
     except Exception as e:
         logger.error(f"Flush General Error: {e}")
     finally:
-        # [FIX] Liberar bloqueo siempre
-        if redis_key in active_flushes:
-            active_flushes.remove(redis_key)
+        # LIBERAR EL BLOQUEO
+        await redis_client.delete(lock_key)
             
         # Revisión recursiva: Si mientras procesábamos llegaron más mensajes
         try:
