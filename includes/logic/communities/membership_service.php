@@ -101,9 +101,10 @@ class MembershipService {
     }
 
     public static function getPublicCommunities($pdo, $userId) {
-        $sql = "SELECT c.id, c.uuid, c.community_name, c.community_type, c.is_verified, c.member_count, c.profile_picture, c.banner_picture
+        // [MODIFICADO] Se añade 'c.privacy' y se ajusta el WHERE para incluir privadas
+        $sql = "SELECT c.id, c.uuid, c.community_name, c.community_type, c.is_verified, c.member_count, c.profile_picture, c.banner_picture, c.privacy
                 FROM communities c
-                WHERE c.privacy = 'public'
+                WHERE (c.privacy = 'public' OR c.privacy = 'private')
                 AND c.id NOT IN (SELECT community_id FROM community_members WHERE user_id = ?)
                 ORDER BY c.member_count DESC LIMIT 20";
         $stmt = $pdo->prepare($sql);

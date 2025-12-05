@@ -1,5 +1,8 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
+
+// [MODIFICADO] Capturamos el nombre de la comunidad si viene en la URL
+$requestedCommunity = isset($_GET['community']) ? htmlspecialchars($_GET['community']) : null;
 ?>
 <div class="section-content active" data-section="join-community">
     <div class="component-wrapper">
@@ -31,10 +34,16 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                            style="letter-spacing: 2px; text-transform: uppercase; font-weight: 600;">
                 </div>
 
-                <div class="component-card__actions">
+                <div class="component-card__actions" style="flex-direction: column; align-items: flex-end;">
                     <button type="button" class="component-button primary" data-action="submit-join-community">
                         Unirse
                     </button>
+                    
+                    <?php if ($requestedCommunity): ?>
+                        <span style="display:block; margin-top:12px; font-size:0.85rem; color:#666; text-align:right;">
+                            Solicitar acceso a <strong><?php echo $requestedCommunity; ?></strong> (por ahora sin función)
+                        </span>
+                    <?php endif; ?>
                 </div>
 
             </div>
