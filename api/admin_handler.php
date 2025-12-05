@@ -1,6 +1,7 @@
 <?php
 // api/admin_handler.php
 
+// Setup inicial
 $logDir = __DIR__ . '/../logs';
 $logFile = $logDir . '/admin_actions.log';
 if (!file_exists($logDir)) { mkdir($logDir, 0777, true); }
@@ -12,9 +13,18 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 header('Content-Type: application/json');
 date_default_timezone_set('America/Matamoros');
 
+// Inclusiones de Configuración
 require_once '../config/core/database.php';
 require_once '../config/helpers/utilities.php';
 require_once '../includes/logic/i18n_server.php';
+
+// Inclusiones de Servicios Admin
+require_once '../includes/logic/admin/dashboard_service.php';
+require_once '../includes/logic/admin/users_service.php';
+require_once '../includes/logic/admin/communities_service.php';
+require_once '../includes/logic/admin/moderation_service.php';
+require_once '../includes/logic/admin/backups_service.php';
+require_once '../includes/logic/admin/system_service.php';
 
 $lang = $_SESSION['user_lang'] ?? detect_browser_language() ?? 'es-latam';
 I18n::load($lang);
@@ -42,794 +52,87 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['user_role'], ['founder'
 }
 
 $currentAdminId = $_SESSION['user_id'];
+$currentAdminRole = $_SESSION['user_role'];
 $backupDir = __DIR__ . '/../backups';
 if (!file_exists($backupDir)) { mkdir($backupDir, 0777, true); }
 
-function formatSize($bytes) {
-    if ($bytes >= 1073741824) return number_format($bytes / 1073741824, 2) . ' GB';
-    if ($bytes >= 1048576) return number_format($bytes / 1048576, 2) . ' MB';
-    if ($bytes >= 1024) return number_format($bytes / 1024, 2) . ' KB';
-    return $bytes . ' bytes';
-}
-
-function getDbBinary($binaryName) {
-    $customPath = $_ENV['DB_BIN_PATH'] ?? getenv('DB_BIN_PATH');
-    if (!empty($customPath)) {
-        $customPath = rtrim(str_replace('\\', '/', $customPath), '/');
-        $binary = $customPath . '/' . $binaryName;
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            if (!str_ends_with(strtolower($binary), '.exe')) {
-                $binary .= '.exe';
-            }
-        }
-        if (!file_exists($binary)) {
-            throw new Exception("El archivo no existe: $binary");
-        }
-        return '"' . $binary . '"'; 
-    }
-    return $binaryName;
-}
-
-function admin_audit_log($pdo, $targetUserId, $type, $oldVal, $newVal, $adminId) {
-    $ip = get_client_ip();
-    $stmt = $pdo->prepare("INSERT INTO user_audit_logs (user_id, performed_by, change_type, old_value, new_value, changed_by_ip, changed_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
-    $stmt->execute([$targetUserId, $adminId, $type, $oldVal, $newVal, $ip]);
-    
-    global $logFile;
-    $msg = sprintf(
-        "[%s] Admin(ID:%d) changed %s for User(ID:%d). Old: %s -> New: %s",
-        date('Y-m-d H:i:s'), $adminId, $type, $targetUserId, $oldVal, $newVal
-    );
-    file_put_contents($logFile, $msg . PHP_EOL, FILE_APPEND);
-}
-
 try {
+    $response = ['success' => false, 'message' => translation('global.action_invalid')];
 
+    // --- DASHBOARD ---
     if ($action === 'get_dashboard_stats') {
-        $stmtTotal = $pdo->query("SELECT COUNT(*) FROM users WHERE account_status != 'deleted'");
-        $totalUsers = $stmtTotal->fetchColumn();
-        $stmtOnline = $pdo->query("SELECT COUNT(DISTINCT user_id) FROM user_sessions WHERE last_activity > (NOW() - INTERVAL 5 MINUTE)");
-        $onlineUsers = $stmtOnline->fetchColumn();
-        $stmtNew = $pdo->query("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CURDATE()");
-        $newUsersToday = $stmtNew->fetchColumn();
-        $stmtSessions = $pdo->query("SELECT COUNT(*) FROM user_sessions");
-        $activeSessions = $stmtSessions->fetchColumn();
-        echo json_encode(['success' => true, 'stats' => ['total_users' => $totalUsers, 'online_users' => $onlineUsers, 'new_users_today' => $newUsersToday, 'active_sessions' => $activeSessions]]);
-
+        $response = get_dashboard_stats($pdo);
     } elseif ($action === 'get_alert_status') {
-        $stmt = $pdo->query("SELECT type, instance_id, meta_data FROM system_alerts_history WHERE status = 'active' ORDER BY id DESC LIMIT 1");
-        $activeAlert = $stmt->fetch(PDO::FETCH_ASSOC);
-        echo json_encode(['success' => true, 'active_alert' => $activeAlert]);
-
+        $response = get_alert_status($pdo);
     } elseif ($action === 'activate_alert') {
-        $type = $data['type'] ?? '';
-        $metaData = $data['meta_data'] ?? []; 
-        if (empty($type)) throw new Exception(translation('global.action_invalid'));
-        $stmtCheck = $pdo->query("SELECT id FROM system_alerts_history WHERE status = 'active' LIMIT 1");
-        if ($stmtCheck->rowCount() > 0) throw new Exception(translation('admin.error.alert_active'));
-        $instanceId = generate_uuid(); 
-        $metaDataJson = json_encode($metaData);
-        $stmt = $pdo->prepare("INSERT INTO system_alerts_history (type, instance_id, status, admin_id, meta_data, started_at) VALUES (?, ?, 'active', ?, ?, NOW())");
-        if ($stmt->execute([$type, $instanceId, $currentAdminId, $metaDataJson])) {
-            send_live_notification('global', 'system_alert_update', ['status' => 'active', 'type' => $type, 'instance_id' => $instanceId, 'meta_data' => $metaData]);
-            echo json_encode(['success' => true, 'message' => translation('admin.alerts.success_emit')]);
-        } else throw new Exception(translation('global.error_connection'));
-
+        $response = activate_alert($pdo, $currentAdminId, $data['type'] ?? '', $data['meta_data'] ?? []);
     } elseif ($action === 'stop_alert') {
-        $stmt = $pdo->prepare("UPDATE system_alerts_history SET status = 'stopped', stopped_at = NOW() WHERE status = 'active'");
-        $stmt->execute();
-        if ($stmt->rowCount() > 0) {
-            send_live_notification('global', 'system_alert_update', ['status' => 'inactive']);
-            echo json_encode(['success' => true, 'message' => translation('admin.alerts.success_stop')]);
-        } else echo json_encode(['success' => true, 'message' => 'No había alertas activas.']);
-
-    } elseif ($action === 'get_user_details') {
-        $targetId = $data['target_id'] ?? 0;
-        $stmt = $pdo->prepare("SELECT id, username, email, profile_picture, role, account_status, suspension_reason, suspension_end_date, deletion_type, deletion_reason, admin_comments FROM users WHERE id = ?");
-        $stmt->execute([$targetId]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$user) throw new Exception(translation('admin.error.user_not_found'));
-        $daysRemaining = 0;
-        if ($user['account_status'] === 'suspended' && $user['suspension_end_date']) {
-            $end = new DateTime($user['suspension_end_date']); $now = new DateTime();
-            if ($end > $now) $daysRemaining = $now->diff($end)->days + 1; 
-        }
-        $sqlHistory = "SELECT 'suspension' as log_type, s.started_at as event_date, s.reason as reason, s.duration_days, s.ends_at, s.lifted_at, u_admin.username as admin_name, u_lifter.username as lifter_name FROM user_suspension_logs s LEFT JOIN users u_admin ON s.admin_id = u_admin.id LEFT JOIN users u_lifter ON s.lifted_by = u_lifter.id WHERE s.user_id = ? ORDER BY s.started_at DESC";
-        $stmtLogs = $pdo->prepare($sqlHistory); $stmtLogs->execute([$targetId]); $history = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);
-        echo json_encode(['success' => true, 'user' => $user, 'days_remaining' => $daysRemaining, 'history' => $history]);
-
-    } elseif ($action === 'update_user_status') {
-        $targetId = (int)$data['target_id'] ?? 0; $newStatus = $data['status'] ?? 'suspended'; $reason = $data['reason'] ?? null; $durationInput = $data['duration_days'] ?? 0;
-        if ($targetId === $currentAdminId) throw new Exception(translation('admin.error.self_sanction'));
-        $stmtCheck = $pdo->prepare("SELECT account_status FROM users WHERE id = ?"); $stmtCheck->execute([$targetId]);
-        if (!$stmtCheck->fetch()) throw new Exception(translation('admin.error.user_not_exist'));
-        $suspensionEnd = null; $finalReason = null; $dbDuration = 0;
-        if ($newStatus === 'suspended') {
-            if (empty($reason)) throw new Exception(translation('admin.error.reason_required'));
-            $finalReason = $reason;
-            if ($durationInput === 'permanent') { $suspensionEnd = null; $dbDuration = -1; } 
-            else { $days = (int)$durationInput; if ($days < 1) throw new Exception(translation('global.action_invalid')); $suspensionEnd = date('Y-m-d H:i:s', strtotime("+$days days")); $dbDuration = $days; }
-            $stmtLog = $pdo->prepare("INSERT INTO user_suspension_logs (user_id, admin_id, reason, duration_days, ends_at) VALUES (?, ?, ?, ?, ?)");
-            $stmtLog->execute([$targetId, $currentAdminId, $finalReason, $dbDuration, $suspensionEnd]);
-        } else {
-            $stmtFindLog = $pdo->prepare("SELECT id FROM user_suspension_logs WHERE user_id = ? AND lifted_at IS NULL ORDER BY id DESC LIMIT 1"); $stmtFindLog->execute([$targetId]); $activeLogId = $stmtFindLog->fetchColumn();
-            if ($activeLogId) { $stmtUpdateLog = $pdo->prepare("UPDATE user_suspension_logs SET lifted_by = ?, lifted_at = NOW() WHERE id = ?"); $stmtUpdateLog->execute([$currentAdminId, $activeLogId]); }
-        }
-        $sql = "UPDATE users SET account_status = ?, suspension_reason = ?, suspension_end_date = ?, deletion_type = NULL, deletion_reason = NULL, admin_comments = NULL WHERE id = ?";
-        $pdo->prepare($sql)->execute([$newStatus, $finalReason, $suspensionEnd, $targetId]);
-        if ($newStatus === 'suspended') { $pdo->prepare("DELETE FROM user_sessions WHERE user_id = ?")->execute([$targetId]); send_live_notification($targetId, 'force_logout', ['reason' => 'suspended']); }
-        echo json_encode(['success' => true, 'message' => ($newStatus === 'active') ? translation('admin.success.ban_lifted') : translation('admin.success.ban_applied')]);
-
-    } elseif ($action === 'update_user_general') {
-        $targetId = (int)$data['target_id'] ?? 0; $newStatus = $data['status'] ?? 'active';
-        if ($targetId === $currentAdminId) throw new Exception(translation('admin.error.self_sanction'));
-        if ($newStatus === 'deleted') {
-            $delType = $data['deletion_type'] ?? 'admin_decision'; $delReason = $data['deletion_reason'] ?? null; $adminComments = $data['admin_comments'] ?? null;
-            if (empty($adminComments)) throw new Exception(translation('admin.error.reason_required'));
-            $sql = "UPDATE users SET account_status = 'deleted', deletion_type = ?, deletion_reason = ?, admin_comments = ?, suspension_reason = NULL, suspension_end_date = NULL WHERE id = ?";
-            $pdo->prepare($sql)->execute([$delType, $delReason, $adminComments, $targetId]);
-            $pdo->prepare("DELETE FROM user_sessions WHERE user_id = ?")->execute([$targetId]);
-            send_live_notification($targetId, 'force_logout', ['reason' => 'deleted']);
-            echo json_encode(['success' => true, 'message' => translation('admin.success.account_deleted')]);
-        } elseif ($newStatus === 'active') {
-            $pdo->prepare("UPDATE users SET account_status = 'active' WHERE id = ?")->execute([$targetId]);
-            echo json_encode(['success' => true, 'message' => translation('global.save_status')]);
-        }
-
-    } elseif ($action === 'update_user_role') {
-        $targetId = (int)$data['target_id'] ?? 0; $newRole = $data['role'] ?? 'user';
-        $currentAdminRole = $_SESSION['user_role']; 
-        if ($targetId === $currentAdminId) throw new Exception("No puedes cambiar tu propio rol.");
-        $allowedRoles = ['user', 'moderator', 'administrator']; if (!in_array($newRole, $allowedRoles)) throw new Exception(translation('global.action_invalid'));
-        $stmtTarget = $pdo->prepare("SELECT role FROM users WHERE id = ?"); $stmtTarget->execute([$targetId]); $oldRole = $stmtTarget->fetchColumn();
-        if ($oldRole === 'founder') throw new Exception("No tienes permisos para modificar a un Fundador.");
-        if ($newRole === 'founder') throw new Exception("No se puede asignar el rol de Fundador.");
-        if ($currentAdminRole === 'administrator') { if ($oldRole === 'administrator') throw new Exception("No tienes permisos para modificar a otro Administrador."); if ($newRole === 'administrator') throw new Exception("Solo el Fundador puede asignar el rol de Administrador."); }
-        if ($oldRole === $newRole) throw new Exception("El usuario ya tiene ese rol.");
-        $sql = "UPDATE users SET role = ? WHERE id = ?"; $stmt = $pdo->prepare($sql);
-        if ($stmt->execute([$newRole, $targetId])) {
-            $ip = get_client_ip(); $stmtAudit = $pdo->prepare("INSERT INTO user_role_logs (user_id, admin_id, old_role, new_role, ip_address, changed_at) VALUES (?, ?, ?, ?, ?, NOW())");
-            $stmtAudit->execute([$targetId, $currentAdminId, $oldRole, $newRole, $ip]);
-            send_live_notification($targetId, 'force_logout', ['reason' => 'role_change']);
-            echo json_encode(['success' => true, 'message' => translation('global.save_status')]);
-        } else { throw new Exception(translation('global.error_connection')); }
-
-    } elseif ($action === 'admin_update_profile_picture') {
-        $targetId = (int)$data['target_id'] ?? 0;
-        if (!$targetId) throw new Exception(translation('global.action_invalid'));
-        if ($targetId === $currentAdminId) throw new Exception("Usa Configuración para editar tu perfil.");
-
-        $stmtTarget = $pdo->prepare("SELECT role, profile_picture FROM users WHERE id = ?"); 
-        $stmtTarget->execute([$targetId]); 
-        $targetData = $stmtTarget->fetch();
-        if (!$targetData) throw new Exception(translation('admin.error.user_not_exist'));
-        
-        $targetRole = $targetData['role'];
-        $currentRole = $_SESSION['user_role'];
-        if ($targetRole === 'founder') throw new Exception("No puedes editar al Fundador.");
-        if ($currentRole === 'administrator' && $targetRole === 'administrator') throw new Exception("No puedes editar a otro Administrador.");
-
-        if (!isset($_FILES['profile_picture']) || $_FILES['profile_picture']['error'] !== UPLOAD_ERR_OK) {
-            throw new Exception(translation('settings.profile.error_format'));
-        }
-        
-        $file = $_FILES['profile_picture'];
-        $uploadDir = __DIR__ . '/../public/assets/uploads/profile_pictures/custom/';
-        if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
-
-        // [SECURITY PATCH] Lista blanca estricta para Admin Upload
-        $allowedMimes = [
-            'image/jpeg' => 'jpg',
-            'image/png'  => 'png',
-            'image/webp' => 'webp',
-            'image/gif'  => 'gif'
-        ];
-
-        $finfo = new finfo(FILEINFO_MIME_TYPE);
-        $mimeType = $finfo->file($file['tmp_name']);
-
-        if (!array_key_exists($mimeType, $allowedMimes)) {
-            throw new Exception(translation('settings.profile.error_format'));
-        }
-
-        // Asignación forzosa de la extensión
-        $safeExtension = $allowedMimes[$mimeType];
-        $newFileName = generate_uuid() . '.' . $safeExtension;
-        
-        $destination = $uploadDir . $newFileName;
-        $dbPath = 'assets/uploads/profile_pictures/custom/' . $newFileName;
-
-        if (!move_uploaded_file($file['tmp_name'], $destination)) throw new Exception(translation('global.error_connection'));
-
-        $oldPic = $targetData['profile_picture'];
-        if ($oldPic && file_exists(__DIR__ . '/../public/' . $oldPic) && strpos($oldPic, 'custom/') !== false) {
-            @unlink(__DIR__ . '/../public/' . $oldPic);
-        }
-
-        $stmt = $pdo->prepare("UPDATE users SET profile_picture = ? WHERE id = ?");
-        if ($stmt->execute([$dbPath, $targetId])) {
-            admin_audit_log($pdo, $targetId, 'profile_picture', $oldPic, $dbPath, $currentAdminId);
-            $msg = translation('notifications.admin_update_pfp');
-            $pdo->prepare("INSERT INTO notifications (user_id, type, message, created_at) VALUES (?, 'admin_alert', ?, NOW())")->execute([$targetId, $msg]);
-            send_live_notification($targetId, 'admin_notification', ['message' => $msg]);
-            echo json_encode(['success' => true, 'message' => translation('global.save_status'), 'path' => $dbPath]);
-        } else throw new Exception(translation('global.error_connection'));
-
-    } elseif ($action === 'admin_remove_profile_picture') {
-        $targetId = (int)$data['target_id'] ?? 0;
-        if (!$targetId) throw new Exception(translation('global.action_invalid'));
-        $stmt = $pdo->prepare("SELECT username, role, profile_picture FROM users WHERE id = ?");
-        $stmt->execute([$targetId]);
-        $user = $stmt->fetch();
-        if (!$user) throw new Exception(translation('admin.error.user_not_exist'));
-        if ($user['role'] === 'founder' && $currentAdminId !== $targetId) throw new Exception("No puedes editar al Fundador.");
-        
-        $oldPic = $user['profile_picture'];
-        $color = get_random_color();
-        $uuid = generate_uuid();
-        $apiUrl = "https://ui-avatars.com/api/?name={$user['username']}&size=256&background={$color}&color=ffffff&bold=true&length=1";
-        $newFileName = $uuid . '.png';
-        $uploadDir = __DIR__ . '/../public/assets/uploads/profile_pictures/default/';
-        if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
-        $destPath = $uploadDir . $newFileName;
-        $dbPath = 'assets/uploads/profile_pictures/default/' . $newFileName;
-        $imageContent = @file_get_contents($apiUrl);
-        if ($imageContent !== false) file_put_contents($destPath, $imageContent);
-
-        if ($oldPic && file_exists(__DIR__ . '/../public/' . $oldPic) && strpos($oldPic, 'custom/') !== false) {
-            @unlink(__DIR__ . '/../public/' . $oldPic);
-        }
-
-        $stmt = $pdo->prepare("UPDATE users SET profile_picture = ? WHERE id = ?");
-        if ($stmt->execute([$dbPath, $targetId])) {
-            admin_audit_log($pdo, $targetId, 'profile_picture', $oldPic, 'default_reset', $currentAdminId);
-            $msg = translation('notifications.admin_reset_pfp');
-            $pdo->prepare("INSERT INTO notifications (user_id, type, message, created_at) VALUES (?, 'admin_alert', ?, NOW())")->execute([$targetId, $msg]);
-            send_live_notification($targetId, 'admin_notification', ['message' => $msg]);
-            echo json_encode(['success' => true, 'message' => translation('settings.profile.reset'), 'path' => $dbPath]);
-        } else throw new Exception(translation('global.error_connection'));
-
-    } elseif ($action === 'admin_update_username') {
-        $targetId = (int)$data['target_id'] ?? 0;
-        if ($targetId === $currentAdminId) throw new Exception("Usa Configuración para editar tu perfil.");
-        $newUsername = trim($data['username'] ?? '');
-        if (empty($newUsername)) throw new Exception("Nombre de usuario vacío");
-        if (!preg_match('/^[a-zA-Z0-9_]+$/', $newUsername)) throw new Exception("Formato inválido (letras, números, _)");
-
-        $stmtUser = $pdo->prepare("SELECT username, role FROM users WHERE id = ?");
-        $stmtUser->execute([$targetId]);
-        $user = $stmtUser->fetch();
-        if (!$user) throw new Exception(translation('admin.error.user_not_exist'));
-        if ($user['role'] === 'founder' && $currentAdminId !== $targetId) throw new Exception("No puedes editar al Fundador.");
-        if ($user['username'] === $newUsername) { echo json_encode(['success' => true, 'message' => translation('global.save_status')]); exit; }
-
-        $stmtCheck = $pdo->prepare("SELECT id FROM users WHERE username = ? AND id != ?");
-        $stmtCheck->execute([$newUsername, $targetId]);
-        if ($stmtCheck->rowCount() > 0) throw new Exception(translation('settings.username.taken'));
-
-        $stmtUpd = $pdo->prepare("UPDATE users SET username = ? WHERE id = ?");
-        if ($stmtUpd->execute([$newUsername, $targetId])) {
-            admin_audit_log($pdo, $targetId, 'username', $user['username'], $newUsername, $currentAdminId);
-            $msg = translation('notifications.admin_update_username', ['username' => htmlspecialchars($newUsername)]);
-            $pdo->prepare("INSERT INTO notifications (user_id, type, message, created_at) VALUES (?, 'admin_alert', ?, NOW())")->execute([$targetId, $msg]);
-            send_live_notification($targetId, 'admin_notification', ['message' => $msg]);
-            echo json_encode(['success' => true, 'message' => translation('global.save_status')]);
-        } else throw new Exception(translation('global.error_connection'));
-
-    } elseif ($action === 'admin_update_email') {
-        $targetId = (int)$data['target_id'] ?? 0;
-        if ($targetId === $currentAdminId) throw new Exception("Usa Configuración para editar tu perfil.");
-        $newEmail = strtolower(trim($data['email'] ?? ''));
-        if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) throw new Exception(translation('auth.errors.email_invalid_domain'));
-        if (!is_allowed_domain($newEmail, $pdo)) throw new Exception(translation('auth.errors.email_domain_restricted'));
-
-        $stmtUser = $pdo->prepare("SELECT email, role FROM users WHERE id = ?");
-        $stmtUser->execute([$targetId]);
-        $user = $stmtUser->fetch();
-        if (!$user) throw new Exception(translation('admin.error.user_not_exist'));
-        if ($user['role'] === 'founder' && $currentAdminId !== $targetId) throw new Exception("No puedes editar al Fundador.");
-        if ($user['email'] === $newEmail) { echo json_encode(['success' => true, 'message' => translation('global.save_status')]); exit; }
-
-        $stmtCheck = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
-        $stmtCheck->execute([$newEmail, $targetId]);
-        if ($stmtCheck->rowCount() > 0) throw new Exception(translation('auth.errors.email_exists'));
-
-        $stmtUpd = $pdo->prepare("UPDATE users SET email = ? WHERE id = ?");
-        if ($stmtUpd->execute([$newEmail, $targetId])) {
-            admin_audit_log($pdo, $targetId, 'email', $user['email'], $newEmail, $currentAdminId);
-            $msg = translation('notifications.admin_update_email', ['email' => htmlspecialchars($newEmail)]);
-            $pdo->prepare("INSERT INTO notifications (user_id, type, message, created_at) VALUES (?, 'admin_alert', ?, NOW())")->execute([$targetId, $msg]);
-            send_live_notification($targetId, 'admin_notification', ['message' => $msg]);
-            echo json_encode(['success' => true, 'message' => translation('global.save_status')]);
-        } else throw new Exception(translation('global.error_connection'));
-
-    } elseif ($action === 'list_backups') {
-        $files = array_diff(scandir($backupDir), ['.', '..']); $backups = [];
-        foreach ($files as $file) { if (pathinfo($file, PATHINFO_EXTENSION) === 'sql') { $path = $backupDir . '/' . $file; $backups[] = ['filename' => $file, 'size' => formatSize(filesize($path)), 'created_at' => date("Y-m-d H:i:s", filemtime($path)), 'timestamp' => filemtime($path)]; } }
-        usort($backups, function($a, $b) { return $b['timestamp'] - $a['timestamp']; });
-        echo json_encode(['success' => true, 'backups' => $backups]);
-
-    } elseif ($action === 'create_backup') {
-        if (!is_writable($backupDir)) throw new Exception("Permiso denegado en carpeta 'backups'.");
-        
-        $host = $_ENV['DB_HOST'] ?? 'localhost'; 
-        $db = $_ENV['DB_NAME'] ?? 'project_aurora_db'; 
-        $user = $_ENV['DB_USER'] ?? 'root'; 
-        $pass = $_ENV['DB_PASS'] ?? '';
-        
-        $filename = 'backup_' . date('Y-m-d_H-i-s') . '.sql'; 
-        $filepath = $backupDir . '/' . $filename;
-
-        // [SEGURIDAD] 1. Crear archivo temporal seguro para credenciales
-        $tempCreds = tempnam(sys_get_temp_dir(), 'mycnf');
-        if (!$tempCreds) throw new Exception("Error interno: No se pudo crear archivo temporal de seguridad.");
-        
-        // [SEGURIDAD] 2. Restringir permisos: Solo el dueño (el script PHP) puede leerlo (0600)
-        chmod($tempCreds, 0600); 
-
-        // [SEGURIDAD] 3. Escribir credenciales en formato MySQL config
-        // Esto evita pasar la contraseña por CLI donde es visible
-        $confContent = "[client]\nuser=\"$user\"\npassword=\"$pass\"\nhost=\"$host\"\n";
-        if (file_put_contents($tempCreds, $confContent) === false) {
-            @unlink($tempCreds);
-            throw new Exception("Error al escribir configuración segura.");
-        }
-
-        try { 
-            $mysqldump = getDbBinary('mysqldump'); 
-        } catch (Exception $e) { 
-            @unlink($tempCreds);
-            throw $e; 
-        }
-
-        // [SEGURIDAD] 4. Usar --defaults-extra-file en lugar de -u -p
-        // Nota: --defaults-extra-file debe ser la primera opción
-        $command = "$mysqldump --defaults-extra-file=\"$tempCreds\" --opt $db > \"$filepath\" 2>&1";
-        
-        exec($command, $output, $returnVar);
-
-        // [SEGURIDAD] 5. Eliminar archivo de credenciales inmediatamente
-        @unlink($tempCreds);
-
-        if ($returnVar === 0 && file_exists($filepath) && filesize($filepath) > 0) {
-            echo json_encode(['success' => true, 'message' => translation('admin.backups.created_success')]);
-        } else { 
-            if (file_exists($filepath)) @unlink($filepath); 
-            $outStr = implode(" | ", $output); 
-            // No incluimos el comando en el error para no revelar rutas internas
-            throw new Exception("Error al generar respaldo (Código $returnVar). Detalles en log."); 
-        }
-
-    } elseif ($action === 'delete_backup') {
-        $filename = $data['filename'] ?? '';
-        if (empty($filename) || strpos($filename, '/') !== false || strpos($filename, '\\') !== false) throw new Exception(translation('global.action_invalid'));
-        $filepath = $backupDir . '/' . $filename;
-        if (file_exists($filepath)) { if (@unlink($filepath)) echo json_encode(['success' => true, 'message' => translation('admin.backups.delete_success')]); else throw new Exception("Error al eliminar archivo."); } 
-        else throw new Exception("Archivo no encontrado.");
-
-    } elseif ($action === 'restore_backup') {
-        $filename = $data['filename'] ?? '';
-        // Validación estricta del nombre de archivo para evitar Directory Traversal
-        if (empty($filename) || strpos($filename, '/') !== false || strpos($filename, '\\') !== false) {
-            throw new Exception(translation('global.action_invalid'));
-        }
-        
-        $filepath = $backupDir . '/' . $filename;
-        if (!file_exists($filepath)) throw new Exception("Archivo no encontrado.");
-        
-        $host = $_ENV['DB_HOST'] ?? 'localhost'; 
-        $db = $_ENV['DB_NAME'] ?? 'project_aurora_db'; 
-        $user = $_ENV['DB_USER'] ?? 'root'; 
-        $pass = $_ENV['DB_PASS'] ?? '';
-
-        // [SEGURIDAD] Implementación idéntica de archivo seguro
-        $tempCreds = tempnam(sys_get_temp_dir(), 'mycnf_restore');
-        if (!$tempCreds) throw new Exception("Error al iniciar restauración segura.");
-        chmod($tempCreds, 0600);
-        
-        $confContent = "[client]\nuser=\"$user\"\npassword=\"$pass\"\nhost=\"$host\"\n";
-        file_put_contents($tempCreds, $confContent);
-
-        try { 
-            $mysql = getDbBinary('mysql'); 
-        } catch (Exception $e) { 
-            @unlink($tempCreds);
-            throw $e; 
-        }
-
-        // Usar --defaults-extra-file para la importación
-        $command = "$mysql --defaults-extra-file=\"$tempCreds\" $db < \"$filepath\" 2>&1";
-        
-        exec($command, $output, $returnVar);
-        
-        // Limpieza inmediata
-        @unlink($tempCreds);
-
-        if ($returnVar === 0) { 
-            $pdo->exec("DELETE FROM user_sessions"); 
-            send_live_notification('global', 'force_logout', ['reason' => 'system_restore']); 
-            echo json_encode(['success' => true, 'message' => translation('admin.backups.restore_success')]); 
-        } else { 
-            $outStr = implode(" | ", $output); 
-            throw new Exception("Error restaurando base de datos. Verifique logs."); 
-        }
+        $response = stop_alert($pdo);
     
+    // --- USUARIOS ---
+    } elseif ($action === 'get_user_details') {
+        $response = get_user_details($pdo, $data['target_id'] ?? 0);
+    } elseif ($action === 'update_user_status') {
+        $response = update_user_status($pdo, $currentAdminId, (int)($data['target_id']??0), $data['status']??'', $data['reason']??null, $data['duration_days']??0);
+    } elseif ($action === 'update_user_general') {
+        $response = update_user_general($pdo, $currentAdminId, (int)($data['target_id']??0), $data['status']??'active', $data);
+    } elseif ($action === 'update_user_role') {
+        $response = update_user_role($pdo, $currentAdminId, $currentAdminRole, (int)($data['target_id']??0), $data['role']??'user');
+    } elseif ($action === 'admin_update_profile_picture') {
+        $response = admin_update_profile_picture($pdo, $currentAdminId, $currentAdminRole, (int)($data['target_id']??0), $_FILES);
+    } elseif ($action === 'admin_remove_profile_picture') {
+        $response = admin_remove_profile_picture($pdo, $currentAdminId, (int)($data['target_id']??0));
+    } elseif ($action === 'admin_update_username') {
+        $response = admin_update_username($pdo, $currentAdminId, (int)($data['target_id']??0), $data['username']??'');
+    } elseif ($action === 'admin_update_email') {
+        $response = admin_update_email($pdo, $currentAdminId, (int)($data['target_id']??0), $data['email']??'');
+
+    // --- BACKUPS ---
+    } elseif ($action === 'list_backups') {
+        $response = list_backups($backupDir);
+    } elseif ($action === 'create_backup') {
+        $response = create_backup($backupDir);
+    } elseif ($action === 'delete_backup') {
+        $response = delete_backup($backupDir, $data['filename'] ?? '');
+    } elseif ($action === 'restore_backup') {
+        $response = restore_backup($pdo, $backupDir, $data['filename'] ?? '');
+
+    // --- SYSTEM ---
     } elseif ($action === 'update_server_config') {
-        $key = $data['key'] ?? ''; $value = $data['value'] ?? 0;
-        $allowedKeys = [
-            'maintenance_mode', 'allow_registrations', 'min_password_length', 'max_password_length', 
-            'min_username_length', 'max_username_length', 'max_email_length', 'max_login_attempts', 
-            'lockout_time_minutes', 'code_resend_cooldown', 'username_cooldown', 'email_cooldown', 
-            'profile_picture_max_size', 'allowed_email_domains',
-            'chat_msg_limit', 'chat_time_window' 
-        ];
-        if (!in_array($key, $allowedKeys)) throw new Exception(translation('global.action_invalid'));
-        if ($key === 'maintenance_mode') {
-            $intVal = (int)$value; $sql = "UPDATE server_config SET maintenance_mode = ? WHERE id = 1";
-            $pdo->prepare($sql)->execute([$intVal === 1 ? 1 : 0]);
-            if ($intVal === 1) $pdo->exec("UPDATE server_config SET allow_registrations = 0 WHERE id = 1");
-            send_live_notification('global', 'system_status_update', ['maintenance' => ($intVal === 1)]);
-        } elseif ($key === 'allow_registrations') {
-            $intVal = (int)$value; $curr = getServerConfig($pdo);
-            if ($intVal === 1 && (int)$curr['maintenance_mode'] === 1) throw new Exception("No puedes activar registros durante el mantenimiento.");
-            $pdo->prepare("UPDATE server_config SET allow_registrations = ? WHERE id = 1")->execute([$intVal === 1 ? 1 : 0]);
-        } else {
-            $sql = "UPDATE server_config SET $key = ? WHERE id = 1";
-            if ($key === 'allowed_email_domains') $finalVal = (!empty($value) && is_array($value)) ? json_encode($value) : NULL; else $finalVal = (int)$value;
-            $pdo->prepare($sql)->execute([$finalVal]);
-        }
-        echo json_encode(['success' => true, 'message' => translation('global.save_status')]);
-
-    // --- GESTIÓN DE COMUNIDADES ---
-    } elseif ($action === 'list_communities') {
-        $q = trim($data['q'] ?? '');
-        $sql = "SELECT id, uuid, community_name, community_type, privacy, member_count, profile_picture, is_verified FROM communities";
-        $params = [];
-        
-        if (!empty($q)) {
-            $sql .= " WHERE community_name LIKE ? OR access_code LIKE ?";
-            $params[] = "%$q%";
-            $params[] = "%$q%";
-        }
-        
-        $sql .= " ORDER BY created_at DESC LIMIT 50";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-        $communities = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        echo json_encode(['success' => true, 'communities' => $communities]);
-
-    } elseif ($action === 'get_admin_community_details') {
-        $id = (int)($data['id'] ?? 0);
-        
-        $stmt = $pdo->prepare("SELECT * FROM communities WHERE id = ?");
-        $stmt->execute([$id]);
-        $community = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if ($community) {
-            $stmtCh = $pdo->prepare("SELECT * FROM community_channels WHERE community_id = ? ORDER BY created_at ASC");
-            $stmtCh->execute([$id]);
-            $community['channels'] = $stmtCh->fetchAll(PDO::FETCH_ASSOC);
-
-            echo json_encode(['success' => true, 'community' => $community]);
-        } else {
-            throw new Exception("Comunidad no encontrada");
-        }
-
-    } elseif ($action === 'save_community') {
-        $id = (int)($data['id'] ?? 0);
-        $name = trim($data['name'] ?? '');
-        $type = $data['community_type'] ?? 'other';
-        $allowedTypes = ['municipality', 'university', 'other'];
-        if (!in_array($type, $allowedTypes)) $type = 'other';
-
-        $privacy = $data['privacy'] ?? 'public';
-        $code = trim($data['access_code'] ?? '');
-        $pfp = trim($data['profile_picture'] ?? '');
-        $banner = trim($data['banner_picture'] ?? '');
-        
-        $isVerified = isset($data['is_verified']) && $data['is_verified'] ? 1 : 0;
-        $maxMembers = (int)($data['max_members'] ?? 0);
-        $commStatus = $data['status'] ?? 'active';
-        if (!in_array($commStatus, ['active', 'maintenance'])) $commStatus = 'active';
-        
-        $channelsRaw = $data['channels'] ?? []; 
-
-        if (empty($name) || empty($code)) throw new Exception("Nombre y Código de acceso son obligatorios.");
-        if (!in_array($privacy, ['public', 'private'])) throw new Exception("Privacidad inválida.");
-
-        $stmtCheck = $pdo->prepare("SELECT id FROM communities WHERE access_code = ? AND id != ?");
-        $stmtCheck->execute([$code, $id]);
-        if ($stmtCheck->rowCount() > 0) throw new Exception("El código de acceso ya está en uso.");
-
-        $pdo->beginTransaction(); 
-
-        try {
-            if ($id === 0) {
-                // CREAR
-                $uuid = generate_uuid();
-                $sql = "INSERT INTO communities (uuid, community_name, community_type, access_code, privacy, profile_picture, banner_picture, is_verified, max_members, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-                $pdo->prepare($sql)->execute([$uuid, $name, $type, $code, $privacy, $pfp, $banner, $isVerified, $maxMembers, $commStatus]);
-                $id = $pdo->lastInsertId(); 
-                $msg = "Comunidad creada correctamente.";
-                
-                if (empty($channelsRaw)) {
-                    $channelsRaw[] = ['id' => 0, 'name' => 'General', 'type' => 'text', 'is_default' => true, 'status' => 'active'];
-                }
-            } else {
-                // EDITAR
-                $sql = "UPDATE communities SET community_name=?, community_type=?, access_code=?, privacy=?, profile_picture=?, banner_picture=?, is_verified=?, max_members=?, status=? WHERE id=?";
-                $pdo->prepare($sql)->execute([$name, $type, $code, $privacy, $pfp, $banner, $isVerified, $maxMembers, $commStatus, $id]);
-                $msg = "Comunidad actualizada correctamente.";
-            }
-
-            // --- PROCESAR CANALES ---
-            $stmtCurrentIds = $pdo->prepare("SELECT id FROM community_channels WHERE community_id = ?");
-            $stmtCurrentIds->execute([$id]);
-            $existingIds = $stmtCurrentIds->fetchAll(PDO::FETCH_COLUMN);
-
-            $submittedIds = [];
-            $newDefaultChannelId = null; 
-
-            foreach ($channelsRaw as $ch) {
-                $chId = (int)($ch['id'] ?? 0);
-                $chName = trim($ch['name'] ?? 'Canal');
-                $chType = $ch['type'] ?? 'text';
-                
-                if ($chType !== 'text' && $chType !== 'voice') {
-                    $chType = 'text';
-                }
-
-                $maxUsers = isset($ch['max_users']) ? (int)$ch['max_users'] : 0;
-                $chStatus = $ch['status'] ?? 'active';
-                if (!in_array($chStatus, ['active', 'maintenance'])) $chStatus = 'active';
-
-                $isDefault = isset($ch['is_default']) && $ch['is_default'] === true;
-                
-                if (empty($chName)) continue;
-
-                if ($chId > 0 && in_array($chId, $existingIds)) {
-                    // UPDATE
-                    $stmtUpdCh = $pdo->prepare("UPDATE community_channels SET name = ?, type = ?, max_users = ?, status = ? WHERE id = ? AND community_id = ?");
-                    $stmtUpdCh->execute([$chName, $chType, $maxUsers, $chStatus, $chId, $id]);
-                    $submittedIds[] = $chId;
-                    
-                    if ($isDefault) $newDefaultChannelId = $chId;
-
-                } else {
-                    // INSERT
-                    $chUuid = generate_uuid();
-                    $stmtInsCh = $pdo->prepare("INSERT INTO community_channels (uuid, community_id, name, type, max_users, status, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
-                    $stmtInsCh->execute([$chUuid, $id, $chName, $chType, $maxUsers, $chStatus]);
-                    $newId = $pdo->lastInsertId();
-                    
-                    if ($isDefault) $newDefaultChannelId = $newId;
-                }
-            }
-
-            // Eliminar canales
-            $toDelete = array_diff($existingIds, $submittedIds);
-            if (!empty($toDelete)) {
-                $placeholders = implode(',', array_fill(0, count($toDelete), '?'));
-                $stmtDelCh = $pdo->prepare("DELETE FROM community_channels WHERE id IN ($placeholders) AND community_id = ?");
-                $params = array_merge($toDelete, [$id]);
-                $stmtDelCh->execute($params);
-            }
-
-            if ($newDefaultChannelId) {
-                $pdo->prepare("UPDATE communities SET default_channel_id = ? WHERE id = ?")->execute([$newDefaultChannelId, $id]);
-            } else {
-                $stmtFirst = $pdo->prepare("SELECT id FROM community_channels WHERE community_id = ? ORDER BY created_at ASC LIMIT 1");
-                $stmtFirst->execute([$id]);
-                $firstId = $stmtFirst->fetchColumn();
-                if ($firstId) {
-                    $pdo->prepare("UPDATE communities SET default_channel_id = ? WHERE id = ?")->execute([$firstId, $id]);
-                }
-            }
-
-            $pdo->commit();
-            echo json_encode(['success' => true, 'message' => $msg]);
-
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            throw $e;
-        }
-
-    } elseif ($action === 'delete_community') {
-        $id = (int)($data['id'] ?? 0);
-        $stmt = $pdo->prepare("DELETE FROM communities WHERE id = ?");
-        if ($stmt->execute([$id])) {
-            echo json_encode(['success' => true, 'message' => "Comunidad eliminada."]);
-        } else {
-            throw new Exception("Error al eliminar.");
-        }
-
-    } elseif ($action === 'get_community_members') {
-        $commId = (int)($data['community_id'] ?? 0);
-        $sql = "SELECT u.id, u.username, u.email, u.profile_picture, cm.role, cm.muted_until 
-                FROM community_members cm 
-                JOIN users u ON cm.user_id = u.id 
-                WHERE cm.community_id = ? 
-                ORDER BY FIELD(cm.role, 'admin', 'moderator', 'member'), u.username ASC";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$commId]);
-        echo json_encode(['success' => true, 'members' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
-
-    } elseif ($action === 'get_community_banned_users') {
-        $commId = (int)($data['community_id'] ?? 0);
-        $sql = "SELECT u.id, u.username, u.profile_picture, cb.reason, cb.created_at 
-                FROM community_bans cb 
-                JOIN users u ON cb.user_id = u.id 
-                WHERE cb.community_id = ? 
-                ORDER BY cb.created_at DESC";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$commId]);
-        echo json_encode(['success' => true, 'banned_users' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
-
-    } elseif ($action === 'kick_member') {
-        $commId = (int)($data['community_id'] ?? 0);
-        $targetId = (int)($data['user_id'] ?? 0);
-        
-        if ($targetId === $currentAdminId) throw new Exception("No puedes expulsarte a ti mismo desde el panel de admin.");
-
-        $pdo->beginTransaction();
-        $stmtDel = $pdo->prepare("DELETE FROM community_members WHERE community_id = ? AND user_id = ?");
-        $stmtDel->execute([$commId, $targetId]);
-        
-        if ($stmtDel->rowCount() > 0) {
-            $pdo->prepare("UPDATE communities SET member_count = GREATEST(0, member_count - 1) WHERE id = ?")->execute([$commId]);
-            $pdo->commit();
-            send_live_notification($targetId, 'force_disconnect', ['community_id' => $commId, 'reason' => 'Expulsado por administrador del sistema']);
-            echo json_encode(['success' => true, 'message' => "Usuario expulsado."]);
-        } else {
-            $pdo->rollBack();
-            throw new Exception("El usuario no es miembro de esta comunidad.");
-        }
-
-    } elseif ($action === 'ban_member') {
-        $commId = (int)($data['community_id'] ?? 0);
-        $targetId = (int)($data['user_id'] ?? 0);
-        $reason = trim($data['reason'] ?? 'Baneado por administración');
-        $duration = $data['duration'] ?? 'permanent'; 
-
-        if ($targetId === $currentAdminId) throw new Exception("No puedes banearte a ti mismo.");
-
-        $expiresAt = null;
-        $modifiers = [
-            '12h' => '+12 hours',
-            '1d'  => '+1 day',
-            '3d'  => '+3 days',
-            '1w'  => '+1 week'
-        ];
-        
-        if ($duration !== 'permanent' && isset($modifiers[$duration])) {
-            $expiresAt = date('Y-m-d H:i:s', strtotime($modifiers[$duration]));
-        } else {
-            $expiresAt = null;
-        }
-
-        $pdo->beginTransaction();
-        $stmtDel = $pdo->prepare("DELETE FROM community_members WHERE community_id = ? AND user_id = ?");
-        $stmtDel->execute([$commId, $targetId]);
-        if ($stmtDel->rowCount() > 0) {
-            $pdo->prepare("UPDATE communities SET member_count = GREATEST(0, member_count - 1) WHERE id = ?")->execute([$commId]);
-        }
-
-        $stmtBan = $pdo->prepare("INSERT INTO community_bans (community_id, user_id, banned_by, reason, expires_at, created_at) VALUES (?, ?, ?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE reason = VALUES(reason), expires_at = VALUES(expires_at)");
-        $stmtBan->execute([$commId, $targetId, $currentAdminId, $reason, $expiresAt]);
-        
-        $pdo->commit();
-        
-        $banMsg = $expiresAt ? "Suspendido hasta " . date('d/m H:i', strtotime($expiresAt)) : "Baneado permanentemente";
-        send_live_notification($targetId, 'force_disconnect', ['community_id' => $commId, 'reason' => "$banMsg: $reason"]);
-        
-        echo json_encode(['success' => true, 'message' => "Usuario sancionado."]);
-
-    } elseif ($action === 'mute_member') {
-        $commId = (int)($data['community_id'] ?? 0);
-        $targetId = (int)($data['user_id'] ?? 0);
-        $duration = (int)($data['duration'] ?? 15);
-        
-        $until = date('Y-m-d H:i:s', strtotime("+$duration minutes"));
-        $stmt = $pdo->prepare("UPDATE community_members SET muted_until = ? WHERE community_id = ? AND user_id = ?");
-        $stmt->execute([$until, $commId, $targetId]);
-        
-        if ($stmt->rowCount() > 0) {
-            echo json_encode(['success' => true, 'message' => "Usuario silenciado por $duration min."]);
-        } else {
-            throw new Exception("Usuario no encontrado en la comunidad.");
-        }
-
-    } elseif ($action === 'unban_member') {
-        $commId = (int)($data['community_id'] ?? 0);
-        $targetId = (int)($data['user_id'] ?? 0);
-
-        $stmt = $pdo->prepare("DELETE FROM community_bans WHERE community_id = ? AND user_id = ?");
-        $stmt->execute([$commId, $targetId]);
-        
-        echo json_encode(['success' => true, 'message' => "Baneo levantado."]);
-
-    // --- NUEVAS HERRAMIENTAS DE DIAGNÓSTICO ---
+        $response = update_server_config($pdo, $data['key'] ?? '', $data['value'] ?? 0);
     } elseif ($action === 'get_redis_status') {
-        // Verificar extensión y variable global $redis (definida en database.php)
-        global $redis;
-        $status = ['connected' => false, 'msg' => '', 'keys' => []];
-
-        if (!class_exists('Redis')) {
-            $status['msg'] = "Extensión 'Redis' no instalada en PHP.";
-        } elseif (!isset($redis) || $redis === null) {
-            $status['msg'] = "Variable \$redis no inicializada (Revisar database.php).";
-        } else {
-            try {
-                $pong = $redis->ping();
-                if ($pong) {
-                    $status['connected'] = true;
-                    $status['msg'] = "Conectado";
-                    
-                    // Obtener claves actuales
-                    $keys = $redis->keys('chat:buffer:*');
-                    $resultKeys = [];
-                    foreach ($keys as $key) {
-                        $len = $redis->lLen($key);
-                        $content = $redis->lRange($key, 0, 4); // Preview de primeros 5
-                        $resultKeys[] = ['key' => $key, 'count' => $len, 'preview' => $content];
-                    }
-                    $status['keys'] = $resultKeys;
-                }
-            } catch (Exception $e) {
-                $status['msg'] = "Excepción de Conexión: " . $e->getMessage();
-            }
-        }
-        echo json_encode(array_merge(['success' => true], $status));
-
+        $response = get_redis_status();
     } elseif ($action === 'clear_redis') {
-        global $redis;
-        if (!isset($redis) || !$redis) throw new Exception("Redis no disponible.");
-        
-        $keys = $redis->keys('chat:buffer:*');
-        $count = 0;
-        foreach ($keys as $key) {
-            $redis->del($key);
-            $count++;
-        }
-        echo json_encode(['success' => true, 'count' => $count]);
-
+        $response = clear_redis();
     } elseif ($action === 'test_bridge') {
-        $host = '127.0.0.1';
-        $port = 8081;
-        $timeout = 5;
-        
-        $fp = @fsockopen($host, $port, $errno, $errstr, $timeout);
-        
-        if (!$fp) {
-            throw new Exception("No se pudo conectar a $host:$port. Código: $errno - $errstr");
-        } else {
-            // [SEGURIDAD] Obtener secreto sin valor por defecto inseguro
-            $bridgeSecret = $_ENV['BRIDGE_SECRET'] ?? getenv('BRIDGE_SECRET');
+        $response = test_bridge();
 
-            // [SEGURIDAD] Validación estricta
-            if (empty($bridgeSecret) || $bridgeSecret === 'default_secret') {
-                fclose($fp);
-                throw new Exception("Error de Seguridad: BRIDGE_SECRET no está configurado correctamente en el servidor.");
-            }
+    // --- COMUNIDADES ---
+    } elseif ($action === 'list_communities') {
+        $response = list_communities($pdo, $data['q'] ?? '');
+    } elseif ($action === 'get_admin_community_details') {
+        $response = get_admin_community_details($pdo, (int)($data['id'] ?? 0));
+    } elseif ($action === 'save_community') {
+        $response = save_community($pdo, $data);
+    } elseif ($action === 'delete_community') {
+        $response = delete_community($pdo, (int)($data['id'] ?? 0));
 
-            // Enviar payload de prueba
-            $testPayload = json_encode([
-                'auth_token' => $bridgeSecret,
-                'target_id' => 'global',
-                'type' => 'admin_notification', 
-                'payload' => ['message' => '🔔 TEST DE PUENTE EXITOSO (Desde Panel Admin) 🔔']
-            ]);
-            
-            fwrite($fp, $testPayload);
-            fclose($fp);
-            
-            echo json_encode([
-                'success' => true, 
-                'message' => 'El socket aceptó la conexión y el payload fue enviado con autenticación.'
-            ]);
-        }
+    // --- MODERACIÓN ---
+    } elseif ($action === 'get_community_members') {
+        $response = get_community_members($pdo, (int)($data['community_id'] ?? 0));
+    } elseif ($action === 'get_community_banned_users') {
+        $response = get_community_banned_users($pdo, (int)($data['community_id'] ?? 0));
+    } elseif ($action === 'kick_member') {
+        $response = kick_member($pdo, $currentAdminId, (int)($data['community_id'] ?? 0), (int)($data['user_id'] ?? 0));
+    } elseif ($action === 'ban_member') {
+        $response = ban_member($pdo, $currentAdminId, (int)($data['community_id'] ?? 0), (int)($data['user_id'] ?? 0), $data['reason'] ?? null, $data['duration'] ?? null);
+    } elseif ($action === 'mute_member') {
+        $response = mute_member($pdo, (int)($data['community_id'] ?? 0), (int)($data['user_id'] ?? 0), $data['duration'] ?? null);
+    } elseif ($action === 'unban_member') {
+        $response = unban_member($pdo, (int)($data['community_id'] ?? 0), (int)($data['user_id'] ?? 0));
     }
+
+    echo json_encode($response);
 
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
