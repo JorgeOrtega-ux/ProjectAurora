@@ -1,4 +1,4 @@
-// assets/js/app-init.js
+// public/assets/js/app-init.js
 
 // [CORE]
 import { initUrlManager } from './core/url-manager.js';
@@ -36,6 +36,9 @@ import { initAdminUserEdit } from './modules/admin/admin-user-edit.js';
 import { initAdminCommunities } from './modules/admin/admin-communities.js';
 import { initAdminCommunityEdit } from './modules/admin/admin-community-edit.js';
 
+// [NUEVO] Importar el módulo de diagnóstico
+import { init as initAdminDiagnostics } from './modules/admin/admin-diagnostics.js';
+
 /**
  * Manejador de módulos por sección.
  */
@@ -53,6 +56,9 @@ export async function handleModuleLoading() {
     
     const adminCommunities = document.querySelector('[data-section="admin/communities"]');
     const adminCommEdit = document.querySelector('[data-section="admin/community-edit"]');
+
+    // [NUEVO] Selector para diagnósticos
+    const adminDiagnostics = document.querySelector('[data-section="admin/diagnostics"]');
 
     // Secciones de comunidad
     const joinComm = document.querySelector('[data-section="join-community"]');
@@ -72,6 +78,11 @@ export async function handleModuleLoading() {
     if (adminCommunities) initAdminCommunities();
     if (adminCommEdit) initAdminCommunityEdit();
 
+    // [NUEVO] Inicializar diagnósticos si estamos en esa sección
+    if (adminDiagnostics) {
+        initAdminDiagnostics();
+    }
+
     // Inicializar lógica de comunidades si estamos en vistas relevantes
     if (joinComm || mainPage || explorerPage) {
         initCommunitiesManager();
@@ -81,9 +92,6 @@ export async function handleModuleLoading() {
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        // [MODIFICADO] El sistema de fallback de imágenes ahora está en index.php (inline)
-        // para ejecutarse antes que cualquier renderizado.
-
         await initI18n();
         initThemeManager(); 
         initUrlManager();
