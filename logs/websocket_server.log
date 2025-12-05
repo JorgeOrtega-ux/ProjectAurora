@@ -1640,3 +1640,13 @@ Traceback (most recent call last):
 AttributeError: module 'handlers' has no attribute 'handle_voice_disconnect'
 2025-12-05 13:15:16,165 - INFO - connection open
 2025-12-05 13:15:16,199 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-05 13:41:13,574 - INFO - === Servidor Aurora Iniciado (Modular) ===
+2025-12-05 13:41:13,613 - INFO - ✅ DB Pool inicializado.
+2025-12-05 13:41:13,614 - INFO - ✅ Redis inicializado.
+2025-12-05 13:41:13,785 - INFO - server listening on 0.0.0.0:8080
+2025-12-05 13:41:13,785 - INFO - 🚀 Websocket Server escuchando en 0.0.0.0:8080
+2025-12-05 13:41:13,786 - INFO - 🌉 Bridge PHP escuchando en 127.0.0.1:8081
+2025-12-05 13:41:14,384 - INFO - connection open
+2025-12-05 13:41:15,401 - INFO - connection open
+2025-12-05 13:41:27,938 - INFO - connection open
+2025-12-05 13:41:27,964 - INFO - Usuario conectado: ID 1 | Rol: founder

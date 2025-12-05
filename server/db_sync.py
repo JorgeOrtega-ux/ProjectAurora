@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 db_pool = None 
 redis_client = None
 
+# [FIX] Conjunto para controlar bloqueos de concurrencia y evitar Race Conditions
+active_flushes = set()
+
 DB_CONFIG = {
     'user': os.getenv('DB_USER'),
     'password': os.getenv('DB_PASS'),
@@ -159,9 +162,7 @@ async def process_chat_message(user_id, user_info, payload):
                 if await cur.fetchone():
                     return {'success': False, 'error': 'No puedes enviar mensajes a este usuario.'}
 
-                # =================================================================================
-                # [CORRECCIÓN CRÍTICA] INICIO - Validar Amistad y Privacidad (Igual que en PHP)
-                # =================================================================================
+                # Validar Amistad y Privacidad
                 privacy_query = """
                     SELECT 
                         COALESCE(up.message_privacy, 'friends') as privacy, 
@@ -170,21 +171,17 @@ async def process_chat_message(user_id, user_info, payload):
                     LEFT JOIN user_preferences up ON u.id = up.user_id 
                     WHERE u.id = %s
                 """
-                # Params: user_id (Yo), receiver_id (El), receiver_id (El), user_id (Yo), receiver_id (Target para preferences)
                 await cur.execute(privacy_query, (user_id, receiver_id, receiver_id, user_id, receiver_id))
                 priv_row = await cur.fetchone()
                 
                 privacy_setting = priv_row[0] if priv_row else 'friends'
-                friend_status = priv_row[1] # Puede ser None, 'pending', 'accepted'
+                friend_status = priv_row[1] 
 
                 if privacy_setting == 'nobody':
                      return {'success': False, 'error': 'Este usuario no acepta mensajes privados.'}
                 
                 if privacy_setting == 'friends' and friend_status != 'accepted':
                      return {'success': False, 'error': 'Solo amigos pueden enviar mensajes a este usuario.'}
-                # =================================================================================
-                # [CORRECCIÓN CRÍTICA] FIN
-                # =================================================================================
 
                 # Resolve Reply
                 reply_data = await _resolve_reply(cur, reply_to_uuid, 'private', user_id, receiver_id)
@@ -210,8 +207,6 @@ async def process_chat_message(user_id, user_info, payload):
 
             # --- COMMUNITY CHAT ---
             else:
-                # [NUEVO] Verificar Comunidad Y SILENCIO (Muted)
-                # (cm.muted_until > NOW()) devuelve 1 si está silenciado
                 check_query = """
                     SELECT 
                         c.id, 
@@ -235,7 +230,6 @@ async def process_chat_message(user_id, user_info, payload):
                 is_muted = comm_row[3]
                 muted_until_str = str(comm_row[4]) if comm_row[4] else ""
 
-                # [VALIDACIÓN MUTE]
                 if is_muted:
                     return {'success': False, 'error': f'Estás silenciado hasta: {muted_until_str}'}
 
@@ -317,54 +311,98 @@ async def _resolve_reply(cur, reply_uuid, context, user_id=None, receiver_id=Non
     return {}
 
 async def _check_flush(redis_key, context):
+    """
+    Verifica si el buffer está lleno y dispara el flush.
+    [FIX] Usa active_flushes para evitar tareas duplicadas inútiles.
+    """
     try:
+        # Optimización: No crear tarea si ya se está procesando esa key
+        if redis_key in active_flushes:
+            return
+
         size = await redis_client.llen(redis_key)
         if size >= 10:
             asyncio.create_task(flush_chat_buffer(redis_key, context))
-    except: pass
+    except Exception as e:
+        logger.error(f"Error checking flush: {e}")
 
 async def flush_chat_buffer(redis_key, context):
+    """
+    Vuelca el buffer de Redis a MySQL de forma atómica respecto a la tarea.
+    [FIX] Implementación de Mutex para evitar Race Condition en ltrim.
+    """
     if not db_pool or not redis_client: return
-    messages = await redis_client.lrange(redis_key, 0, 9)
-    if not messages: return
 
-    logger.info(f"💾 Flushing {len(messages)} msgs from {redis_key}")
+    # [FIX] Mecanismo de bloqueo
+    if redis_key in active_flushes:
+        logger.debug(f"⚠️ Flush saltado para {redis_key}, ya hay uno en progreso.")
+        return
     
-    async with db_pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            try:
-                await conn.begin()
-                for json_msg in messages:
-                    msg = json.loads(json_msg)
-                    uuid_val = msg['uuid']
-                    text = msg['message']
-                    type_val = msg['type']
-                    created_at = msg['created_at']
-                    reply_to_uuid = msg.get('reply_to_uuid')
-                    reply_to_id = None
-                    
-                    table = 'private_messages' if context == 'private' else 'community_messages'
-                    if reply_to_uuid:
-                        await cur.execute(f"SELECT id FROM {table} WHERE uuid = %s", (reply_to_uuid,))
-                        row = await cur.fetchone()
-                        if row: reply_to_id = row[0]
+    active_flushes.add(redis_key)
 
-                    if context == 'private':
-                        await cur.execute("""
-                            INSERT IGNORE INTO private_messages (uuid, sender_id, receiver_id, message, type, reply_to_id, reply_to_uuid, created_at, is_edited) 
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0)
-                        """, (uuid_val, msg['sender_id'], msg['receiver_id'], text, type_val, reply_to_id, reply_to_uuid, created_at))
-                    else:
-                        await cur.execute("""
-                            INSERT IGNORE INTO community_messages (uuid, community_id, channel_id, user_id, message, type, reply_to_id, reply_to_uuid, created_at, is_edited) 
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 0)
-                        """, (uuid_val, msg['community_id'], msg['channel_id'], msg['user_id'], text, type_val, reply_to_id, reply_to_uuid, created_at))
-                
-                await conn.commit()
-                await redis_client.ltrim(redis_key, 10, -1)
-            except Exception as e:
-                await conn.rollback()
-                logger.error(f"Flush Error: {e}")
+    try:
+        # 1. Obtener mensajes
+        messages = await redis_client.lrange(redis_key, 0, 9)
+        if not messages: return
+
+        logger.info(f"💾 Flushing {len(messages)} msgs from {redis_key}")
+        
+        async with db_pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                try:
+                    await conn.begin()
+                    for json_msg in messages:
+                        msg = json.loads(json_msg)
+                        
+                        uuid_val = msg['uuid']
+                        text = msg['message']
+                        type_val = msg['type']
+                        created_at = msg['created_at']
+                        reply_to_uuid = msg.get('reply_to_uuid')
+                        reply_to_id = None
+                        
+                        table = 'private_messages' if context == 'private' else 'community_messages'
+                        if reply_to_uuid:
+                            await cur.execute(f"SELECT id FROM {table} WHERE uuid = %s", (reply_to_uuid,))
+                            row = await cur.fetchone()
+                            if row: reply_to_id = row[0]
+
+                        if context == 'private':
+                            await cur.execute("""
+                                INSERT IGNORE INTO private_messages (uuid, sender_id, receiver_id, message, type, reply_to_id, reply_to_uuid, created_at, is_edited) 
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0)
+                            """, (uuid_val, msg['sender_id'], msg['receiver_id'], text, type_val, reply_to_id, reply_to_uuid, created_at))
+                        else:
+                            await cur.execute("""
+                                INSERT IGNORE INTO community_messages (uuid, community_id, channel_id, user_id, message, type, reply_to_id, reply_to_uuid, created_at, is_edited) 
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 0)
+                            """, (uuid_val, msg['community_id'], msg['channel_id'], msg['user_id'], text, type_val, reply_to_id, reply_to_uuid, created_at))
+                    
+                    await conn.commit()
+                    
+                    # 2. Recorte Seguro
+                    # Ahora es seguro hacer ltrim porque garantizamos que nadie más 
+                    # ha modificado la cabeza de la lista mientras procesábamos.
+                    await redis_client.ltrim(redis_key, 10, -1)
+                    
+                except Exception as e:
+                    await conn.rollback()
+                    logger.error(f"Flush DB Error: {e}")
+                    # NOTA: No hacemos ltrim si falla la DB, para reintentar luego.
+
+    except Exception as e:
+        logger.error(f"Flush General Error: {e}")
+    finally:
+        # [FIX] Liberar bloqueo siempre
+        if redis_key in active_flushes:
+            active_flushes.remove(redis_key)
+            
+        # Revisión recursiva: Si mientras procesábamos llegaron más mensajes
+        try:
+            current_len = await redis_client.llen(redis_key)
+            if current_len >= 10:
+                asyncio.create_task(flush_chat_buffer(redis_key, context))
+        except: pass
 
 # --- VOICE LOGIC ---
 
