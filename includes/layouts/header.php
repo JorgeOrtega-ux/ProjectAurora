@@ -33,7 +33,7 @@
                  data-nav="join-community"
                  data-i18n-tooltip="nav.join_community_tooltip"
                  data-tooltip="Unirse con código">
-                <span class="material-symbols-rounded">vpn_key</span>
+                <span class="material-symbols-rounded">add</span>
             </div>
 
             <div class="header-button"
@@ -54,7 +54,6 @@
                 <?php
                 if (isset($_SESSION['user_profile_picture']) && !empty($_SESSION['user_profile_picture'])) {
                     $pfpUrl = $basePath . $_SESSION['user_profile_picture'];
-                    // [MODIFICADO] Added data-img-type="user"
                     echo '<img src="' . htmlspecialchars($pfpUrl) . '" alt="' . translation('header.alt_profile') . '" class="profile-img" data-img-type="user">';
                 } else {
                     echo '<span class="material-symbols-rounded">person</span>';
