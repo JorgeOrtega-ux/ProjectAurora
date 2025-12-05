@@ -96,6 +96,10 @@ export function createMessageHTML(msg, currentChatType) {
         : `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.sender_username)}`;
 
     const role = msg.sender_role || 'user';
+    
+    // [FIX DE SEGURIDAD] Escapar variables antes de usarlas en atributos HTML
+    const safeUsername = escapeHtml(msg.sender_username);
+
     const editedHtml = (msg.is_edited) ? `<small class="edited-tag" style="margin-left:4px; color:#999;">${t('chat.edited_tag') || '(editado)'}</small>` : '';
 
     let replyHtml = '';
@@ -149,16 +153,18 @@ export function createMessageHTML(msg, currentChatType) {
     }
 
     const reactionsHtml = getReactionsHTML(msg.reactions, msgId);
-    const optionsBtn = `<button class="message-options-btn" data-action="msg-options" data-uuid="${msgId}" data-user="${msg.sender_username}" data-text="${escapeHtml(msg.message)}" data-sender-id="${msg.sender_id}" data-created-at="${msg.created_at}"><span class="material-symbols-rounded" style="font-size: 18px;">more_vert</span></button>`;
+    
+    // [FIX DE SEGURIDAD] Uso de safeUsername en data-user
+    const optionsBtn = `<button class="message-options-btn" data-action="msg-options" data-uuid="${msgId}" data-user="${safeUsername}" data-text="${escapeHtml(msg.message)}" data-sender-id="${msg.sender_id}" data-created-at="${msg.created_at}"><span class="material-symbols-rounded" style="font-size: 18px;">more_vert</span></button>`;
 
     return `
         <div class="message-row ${isMe ? 'message-own' : 'message-other'}" id="msg-${msgId}">
-            ${!isMe ? `<div class="chat-message-avatar" data-role="${role}" title="${msg.sender_username}"><img src="${avatarUrl}" alt="${msg.sender_username}" data-img-type="user"></div>` : ''}
+            ${!isMe ? `<div class="chat-message-avatar" data-role="${role}" title="${safeUsername}"><img src="${avatarUrl}" alt="${safeUsername}" data-img-type="user"></div>` : ''}
             
             <div class="message-content-group">
                 <div class="message-bubble">
                     ${replyHtml} 
-                    ${!isMe && currentChatType === 'community' ? `<div style="font-size:11px; font-weight:700; color:#e91e63; margin-bottom:2px;">${msg.sender_username}</div>` : ''}
+                    ${!isMe && currentChatType === 'community' ? `<div style="font-size:11px; font-weight:700; color:#e91e63; margin-bottom:2px;">${safeUsername}</div>` : ''}
                     ${attachmentsHtml} 
                     <div class="message-content-wrapper">
                         ${msg.message ? `<div class="message-text">${escapeHtml(msg.message)}</div>` : ''}

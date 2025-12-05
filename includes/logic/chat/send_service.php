@@ -16,7 +16,12 @@ class ChatSendService {
         $channelUuid = $data['channel_uuid'] ?? null;
         
         $context = $data['context'] ?? 'community'; 
-        $messageText = trim($data['message'] ?? '');
+        
+        // [FIX DE SEGURIDAD] Sanitización de entrada (Stored XSS Prevention)
+        // Convertimos caracteres especiales a entidades HTML para neutralizar scripts
+        $rawMessage = trim($data['message'] ?? '');
+        $messageText = htmlspecialchars($rawMessage, ENT_QUOTES, 'UTF-8');
+        
         $replyToUuid = !empty($data['reply_to_uuid']) ? $data['reply_to_uuid'] : null;
         
         if (empty($uuid)) throw new Exception("UUID destino requerido");
