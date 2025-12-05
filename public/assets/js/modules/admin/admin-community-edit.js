@@ -74,7 +74,7 @@ function initListeners() {
         }
     });
 
-    // Dropdown Tipo de Canal
+    // Dropdown Tipo de Canal (SIMPLIFICADO: Siempre texto)
     document.body.addEventListener('click', (e) => {
         const opt = e.target.closest('[data-action="select-channel-type"]');
         if (opt) {
@@ -82,13 +82,10 @@ function initListeners() {
             const label = opt.dataset.label;
             document.getElementById('new-channel-type').value = val;
             document.getElementById('new-channel-type-text').textContent = label;
-
+            
+            // [MODIFICADO] Eliminada lógica de mostrar maxUsersWrapper para voz
             const maxUsersWrapper = document.getElementById('wrapper-max-users');
-            if (val === 'voice') {
-                maxUsersWrapper.classList.remove('d-none');
-            } else {
-                maxUsersWrapper.classList.add('d-none');
-            }
+            if(maxUsersWrapper) maxUsersWrapper.classList.add('d-none');
         }
     });
 
@@ -133,21 +130,16 @@ function initListeners() {
         }
     });
 
-    // Agregar Canal
+    // Agregar Canal (SIMPLIFICADO)
     const btnAddChannel = document.getElementById('btn-add-channel');
     if (btnAddChannel) {
         btnAddChannel.onclick = () => {
             const nameInput = document.getElementById('new-channel-name');
-            const typeInput = document.getElementById('new-channel-type');
-            const maxUsersInput = document.getElementById('new-channel-max-users');
-            
             const name = nameInput.value.trim();
-            const type = typeInput.value;
-            let maxUsers = 0;
-
-            if (type === 'voice') {
-                maxUsers = parseInt(maxUsersInput.value) || 0;
-            }
+            
+            // [MODIFICADO] Forzar siempre texto y 0 usuarios
+            const type = 'text';
+            const maxUsers = 0;
 
             if (!name) return alert("El nombre del canal es obligatorio.");
             
@@ -155,7 +147,7 @@ function initListeners() {
             currentChannels.push({ id: 0, name: name, type: type, max_users: maxUsers, status: 'active', is_default: false });
             
             nameInput.value = '';
-            if (maxUsersInput) maxUsersInput.value = '';
+            // El input maxUsers ya no se usa ni se limpia
             renderChannels();
         };
     }
@@ -279,7 +271,7 @@ async function loadData() {
             currentChannels = c.channels.map(ch => ({
                 id: ch.id,
                 name: ch.name,
-                type: ch.type,
+                type: ch.type, // Se mantiene el tipo original por si acaso, pero visualmente será texto
                 max_users: ch.max_users,
                 status: ch.status || 'active', // Cargar estado del canal
                 is_default: (parseInt(ch.id) === parseInt(c.default_channel_id))
@@ -402,7 +394,6 @@ function renderBannedUsers(list) {
     });
 }
 
-
 function renderChannels() {
     const container = document.getElementById('channels-list-container');
     if (!container) return;
@@ -410,11 +401,12 @@ function renderChannels() {
     container.innerHTML = '';
 
     currentChannels.forEach((ch, index) => {
-        const icon = (ch.type === 'voice') ? 'mic' : 'tag';
+        // [MODIFICADO] Siempre icono de texto, sin lógica de voz
+        const icon = 'tag';
         const isDefault = ch.is_default === true;
         
-        const extraInfo = (ch.type === 'voice') ? ` (Max: ${ch.max_users || '∞'})` : '';
-        const typeLabel = (ch.type === 'voice') ? 'Voz' : 'Texto';
+        const extraInfo = ''; 
+        const typeLabel = 'Texto';
 
         const defaultIcon = isDefault ? 'radio_button_checked' : 'radio_button_unchecked';
         const defaultColor = isDefault ? '#1976d2' : '#999';

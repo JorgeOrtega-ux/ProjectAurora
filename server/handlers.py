@@ -71,18 +71,7 @@ async def handle_typing_event(user_id, payload):
         }
         await connection_manager.send_to_user(target_id, response)
 
-async def handle_voice_disconnect(user_id):
-    """Lógica para limpiar usuarios de canales de voz al desconectarse."""
-    update_data = await db_sync.remove_user_from_voice_channels(user_id)
-    
-    if update_data:
-        # Si hubo cambios, notificar a la comunidad
-        response = {
-            "type": "voice_channel_update",
-            "payload": update_data
-        }
-        member_ids = await db_sync.get_community_members(update_data['community_id'])
-        await connection_manager.broadcast_to_list(member_ids, response)
+# [MODIFICADO] Eliminada función handle_voice_disconnect
 
 # --- PHP BRIDGE HANDLER ---
 async def handle_bridge_message(msg_json):
@@ -120,13 +109,9 @@ async def handle_bridge_message(msg_json):
         
     else:
         # Mensaje directo a usuario o evento específico
-        if msg_type == 'voice_channel_update':
-            community_id = payload_data.get('community_id')
-            msg_out = {"type": msg_type, "payload": payload_data}
-            member_ids = await db_sync.get_community_members(community_id)
-            await connection_manager.broadcast_to_list(member_ids, msg_out)
-            
-        elif msg_type == 'message_edited':
+        # [MODIFICADO] Eliminado bloque de voice_channel_update
+
+        if msg_type == 'message_edited':
              msg_out = {"type": "message_edited", "payload": payload_data.get('message_data')}
              await connection_manager.send_to_user(target, msg_out)
              

@@ -327,18 +327,10 @@ $pageDesc = $targetId ? 'Modifica los detalles y la apariencia de esta comunidad
                                                 <div class="menu-link-icon"><span class="material-symbols-rounded">tag</span></div>
                                                 <div class="menu-link-text">Texto</div>
                                             </div>
-                                            <div class="menu-link" data-action="select-channel-type" data-value="voice" data-label="Voz">
-                                                <div class="menu-link-icon"><span class="material-symbols-rounded">mic</span></div>
-                                                <div class="menu-link-text">Voz</div>
                                             </div>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-
-                        <div id="wrapper-max-users" class="d-none" style="width: 80px;">
-                             <input type="number" id="new-channel-max-users" class="component-text-input" placeholder="Max" min="0" title="0 para ilimitado" style="background: #fff; text-align: center;">
                         </div>
 
                         <button class="component-button primary" id="btn-add-channel" style="width: 40px; padding: 0;">

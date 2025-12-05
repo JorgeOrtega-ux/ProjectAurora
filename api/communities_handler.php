@@ -870,16 +870,13 @@ try {
     } elseif ($action === 'create_channel') {
         $communityUuid = $data['community_uuid'] ?? '';
         $name = trim($data['name'] ?? '');
-        $type = $data['type'] ?? 'text';
-        $maxUsers = isset($data['max_users']) ? (int)$data['max_users'] : 0;
+        
+        // [MODIFICADO] Forzar a 'text' y 0 usuarios
+        $type = 'text';
+        $maxUsers = 0;
 
         if (empty($communityUuid) || empty($name)) throw new Exception("Faltan datos.");
         
-        // Validación de tipo: Solo 'text' o 'voice'
-        if ($type !== 'text' && $type !== 'voice') {
-            $type = 'text';
-        }
-
         $stmt = $pdo->prepare("SELECT c.id, cm.role FROM communities c JOIN community_members cm ON c.id = cm.community_id WHERE c.uuid = ? AND cm.user_id = ?");
         $stmt->execute([$communityUuid, $userId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -927,96 +924,7 @@ try {
             throw new Exception("Error al eliminar.");
         }
 
-    // --- [NUEVO] JOIN VOICE CHANNEL ---
-    } elseif ($action === 'join_voice_channel') {
-        $channelUuid = $data['channel_uuid'] ?? '';
-        if (empty($channelUuid)) throw new Exception("UUID de canal requerido.");
-
-        // Obtener info del canal y verificar acceso a la comunidad
-        $stmt = $pdo->prepare("
-            SELECT cc.id, cc.community_id, cc.type, cc.max_users, cc.status
-            FROM community_channels cc 
-            JOIN community_members cm ON cc.community_id = cm.community_id 
-            WHERE cc.uuid = ? AND cm.user_id = ?
-        ");
-        $stmt->execute([$channelUuid, $userId]);
-        $channel = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$channel) throw new Exception("Canal no encontrado o sin acceso.");
-        
-        // [NUEVO] Verificar Mantenimiento
-        if ($channel['status'] === 'maintenance') {
-            throw new Exception("El canal está en mantenimiento.");
-        }
-
-        if ($channel['type'] !== 'voice') throw new Exception("No es un canal de voz.");
-
-        $channelId = $channel['id'];
-        $commId = $channel['community_id'];
-        $maxUsers = (int)$channel['max_users'];
-
-        if (isset($redis) && $redis) {
-            $key = "voice_channel:$channelId:users";
-            
-            // Verificar límite si max_users > 0
-            if ($maxUsers > 0) {
-                $currentCount = $redis->sCard($key);
-                // Si el usuario ya está, no cuenta como extra
-                $isMember = $redis->sIsMember($key, $userId);
-                if (!$isMember && $currentCount >= $maxUsers) {
-                    throw new Exception("El canal de voz está lleno.");
-                }
-            }
-
-            // Registrar usuario
-            $redis->sAdd($key, $userId);
-            
-            // Obtener lista actual para enviarla (opcional, para UI)
-            $members = $redis->sMembers($key); // Array de IDs
-
-            // Notificar a la comunidad
-            $payload = [
-                'community_id' => $commId,
-                'channel_uuid' => $channelUuid,
-                'current_users' => $members
-            ];
-            
-            send_live_notification('community_broadcast', 'voice_channel_update', $payload);
-            
-            echo json_encode(['success' => true, 'message' => 'Unido al canal de voz', 'members' => $members]);
-        } else {
-            throw new Exception("Servicio de voz no disponible (Redis).");
-        }
-
-    // --- [NUEVO] LEAVE VOICE CHANNEL ---
-    } elseif ($action === 'leave_voice_channel') {
-        $channelUuid = $data['channel_uuid'] ?? '';
-        if (empty($channelUuid)) throw new Exception("UUID de canal requerido.");
-
-        // Obtener info básica para la notificación (necesitamos community_id)
-        $stmt = $pdo->prepare("SELECT id, community_id FROM community_channels WHERE uuid = ?");
-        $stmt->execute([$channelUuid]);
-        $channel = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($channel) {
-            $channelId = $channel['id'];
-            $commId = $channel['community_id'];
-
-            if (isset($redis) && $redis) {
-                $key = "voice_channel:$channelId:users";
-                $redis->sRem($key, $userId);
-                $members = $redis->sMembers($key);
-
-                $payload = [
-                    'community_id' => $commId,
-                    'channel_uuid' => $channelUuid,
-                    'current_users' => $members
-                ];
-                send_live_notification('community_broadcast', 'voice_channel_update', $payload);
-            }
-        }
-        
-        echo json_encode(['success' => true, 'message' => 'Desconectado del canal de voz']);
+    // [ELIMINADO] Acciones de join/leave voice channel
 
     } else {
         throw new Exception(translation('global.action_invalid'));

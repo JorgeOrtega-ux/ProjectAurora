@@ -218,15 +218,15 @@ CREATE TABLE IF NOT EXISTS communities (
     INDEX (access_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- TABLA DE CANALES (MODIFICADA PARA SOPORTE DE VOZ Y MANTENIMIENTO)
+-- TABLA DE CANALES (MODIFICADA: ELIMINADO 'voice' DEL ENUM)
 CREATE TABLE IF NOT EXISTS community_channels (
     id INT AUTO_INCREMENT PRIMARY KEY,
     uuid CHAR(36) NOT NULL UNIQUE,
     community_id INT NOT NULL,
     name VARCHAR(50) NOT NULL,
-    type ENUM('text', 'voice') DEFAULT 'text', 
+    type ENUM('text') DEFAULT 'text', -- [MODIFICADO] Solo 'text' permitido
     max_users INT DEFAULT 0,                   
-    status ENUM('active', 'maintenance') DEFAULT 'active', -- [NUEVO] Estado del canal
+    status ENUM('active', 'maintenance') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (community_id) REFERENCES communities(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
