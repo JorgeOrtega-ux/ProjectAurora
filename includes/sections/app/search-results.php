@@ -30,6 +30,7 @@ $timeWindow = 1; // Minutos
 $rateLimitExceeded = checkActionRateLimit($pdo, $currentUserId, 'search_users', $searchLimit, $timeWindow);
 
 $results = [];
+$communityResults = []; // [NUEVO] Inicializamos array de comunidades
 $hasMore = false;
 
 if ($rateLimitExceeded) {
@@ -49,15 +50,58 @@ if ($rateLimitExceeded) {
         logSecurityAction($pdo, $currentUserId, 'search_users');
     }
 
+    // 1. Buscar Usuarios
     $searchData = SearchFetcher::searchUsers($pdo, $currentUserId, $q, $offset, $limit);
     $results = $searchData['results'];
     $hasMore = $searchData['hasMore'];
+
+    // 2. [NUEVO] Buscar Comunidades (Solo en la primera página/offset 0)
+    if ($offset === 0 && !empty($q)) {
+        // Buscamos hasta 3 comunidades relevantes
+        $communityResults = SearchFetcher::searchCommunities($pdo, $q, 3);
+    }
 }
 // ---------------------------------
 
+// [NUEVO] Función para renderizar tarjeta de comunidad
+$renderCommunityCard = function ($community) {
+    // Ajusta la ruta de la imagen según tu estructura (URL completa o relativa)
+    $avatarPath = !empty($community['profile_picture']) ? $community['profile_picture'] : null;
+    $uuid = $community['uuid'];
+    $members = $community['member_count'];
+    $privacyIcon = ($community['privacy'] === 'private') ? 'lock' : 'public';
+    
+    // Botón para ver comunidad
+    $actionsHtml = '
+        <button class="btn-add-friend" data-action="view-community" data-uuid="' . $uuid . '" style="background-color: var(--primary-color); color: white; border: none;">
+            Ver
+        </button>';
+?>
+    <div class="user-card-item community-result-item" style="border-left: 3px solid var(--accent-color, #6c5ce7);">
+        <div class="user-info-group">
+            <div class="user-pfp-container">
+                <?php if ($avatarPath): ?>
+                    <img src="<?php echo htmlspecialchars($avatarPath); ?>" alt="Community" data-img-type="community">
+                <?php else: ?>
+                    <span class="material-symbols-rounded default-avatar" style="background-color: #f0f2f5; color: #666;">groups</span>
+                <?php endif; ?>
+            </div>
+            <div class="user-details">
+                <span class="user-name"><?php echo htmlspecialchars($community['community_name']); ?></span>
+                <span class="user-meta-text" style="font-size: 12px; color: #888; display: flex; align-items: center; gap: 4px;">
+                    <span class="material-symbols-rounded" style="font-size: 14px;"><?php echo $privacyIcon; ?></span>
+                    <span><?php echo $members; ?> miembros</span>
+                </span>
+            </div>
+        </div>
+        <div class="user-action-group">
+            <?php echo $actionsHtml; ?>
+        </div>
+    </div>
+<?php
+};
+
 $renderUserCard = function ($user) use ($currentUserId) {
-    // ... (El código de renderizado de tarjeta se mantiene IGUAL, no necesitas cambiarlo) ...
-    // ... (Copia la función $renderUserCard original aquí para mantener el contexto) ...
     $avatarPath = !empty($user['profile_picture']) ? '/ProjectAurora/' . $user['profile_picture'] : null;
     $uid = $user['id'];
     $role = $user['role'] ?? 'user';
@@ -129,11 +173,23 @@ $renderUserCard = function ($user) use ($currentUserId) {
 };
 
 if ($isAjaxPartial) {
+    // [MODIFICADO] Lógica AJAX para renderizar primero comunidades
+    if (!empty($communityResults)) {
+        echo '<div class="results-subtitle" style="padding: 10px 15px; font-weight: 600; font-size: 0.85em; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">Comunidades</div>';
+        foreach ($communityResults as $comm) {
+            $renderCommunityCard($comm);
+        }
+        if (!empty($results)) {
+             echo '<div class="results-subtitle" style="padding: 15px 15px 10px; font-weight: 600; font-size: 0.85em; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">Personas</div>';
+        }
+    }
+
     if (!empty($results)) {
         foreach ($results as $user) {
             $renderUserCard($user);
         }
     }
+
     if ($hasMore) {
         echo '<div id="ajax-has-more-flag" style="display:none;"></div>';
     }
@@ -192,15 +248,30 @@ if ($isAjaxPartial) {
                     <span class="material-symbols-rounded">search</span>
                     <p data-i18n="search.empty_state"><?php echo translation('search.empty_state'); ?></p>
                 </div>
-            <?php elseif (count($results) === 0 && $offset === 0): ?>
+            <?php elseif (count($results) === 0 && count($communityResults) === 0 && $offset === 0): ?>
                 <div class="search-empty-state">
-                    <span class="material-symbols-rounded">person_off</span>
+                    <span class="material-symbols-rounded">search_off</span>
                     <p><span data-i18n="search.no_results"><?php echo translation('search.no_results'); ?></span> "<strong><?php echo htmlspecialchars($q); ?></strong>".</p>
                 </div>
             <?php else: ?>
 
                 <div class="results-list" id="search-results-list">
                     <?php
+                    // [MODIFICADO] Renderizado inicial HTML (no AJAX)
+                    
+                    // 1. Renderizar Comunidades
+                    if (!empty($communityResults)) {
+                        echo '<div class="results-subtitle" style="padding: 10px 15px; font-weight: 600; font-size: 0.85em; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">Comunidades</div>';
+                        foreach ($communityResults as $comm) {
+                            $renderCommunityCard($comm);
+                        }
+                        // Separador si hay usuarios
+                        if (!empty($results)) {
+                            echo '<div class="results-subtitle" style="padding: 15px 15px 10px; font-weight: 600; font-size: 0.85em; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">Personas</div>';
+                        }
+                    }
+
+                    // 2. Renderizar Usuarios
                     foreach ($results as $user) {
                         $renderUserCard($user);
                     }

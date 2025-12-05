@@ -4,15 +4,10 @@
 class SearchFetcher {
 
     /**
-     * Busca usuarios y calcula el estado de amistad y amigos en común.
-     * @param PDO $pdo Conexión a la base de datos.
-     * @param int $currentUserId ID del usuario que realiza la búsqueda.
-     * @param string $query Término de búsqueda.
-     * @param int $offset Desplazamiento para paginación.
-     * @param int $limit Límite de resultados.
-     * @return array ['results' => array, 'hasMore' => bool]
+     * Busca usuarios (Código existente)
      */
     public static function searchUsers($pdo, $currentUserId, $query, $offset = 0, $limit = 5) {
+        // ... (MANTÉN TU CÓDIGO EXISTENTE DE searchUsers AQUÍ) ...
         $results = [];
         $hasMore = false;
         
@@ -23,10 +18,6 @@ class SearchFetcher {
         $queryLimit = $limit + 1;
 
         try {
-            // [MODIFICADO] 
-            // 1. Se agrega campo 'is_blocked_by_me'
-            // 2. Se elimina la exclusión de usuarios que YO bloqueé.
-            // 3. Se mantiene la exclusión de usuarios que ME bloquearon a mí.
             $sql = "SELECT u.id, u.username, u.profile_picture, u.role, 
                            f.status as friend_status, f.sender_id,
                            COALESCE(up.message_privacy, 'friends') as message_privacy,
@@ -56,12 +47,12 @@ class SearchFetcher {
             $stmt = $pdo->prepare($sql);
             
             $stmt->execute([
-                $currentUserId, $currentUserId, $currentUserId, // mutual_friends
-                $currentUserId,                                 // is_blocked_by_me
-                $currentUserId, $currentUserId,                 // join friendships
-                '%' . $query . '%',                             // like username
-                $currentUserId,                                 // id != self
-                $currentUserId                                  // not in (ellos me bloquearon)
+                $currentUserId, $currentUserId, $currentUserId, 
+                $currentUserId,                                 
+                $currentUserId, $currentUserId,                 
+                '%' . $query . '%',                             
+                $currentUserId,                                 
+                $currentUserId                                  
             ]);
 
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -80,6 +71,37 @@ class SearchFetcher {
             'results' => $results,
             'hasMore' => $hasMore
         ];
+    }
+
+    /**
+     * [NUEVO] Busca comunidades públicas por nombre
+     */
+    public static function searchCommunities($pdo, $query, $limit = 3) {
+        if (trim($query) === '') {
+            return [];
+        }
+
+        try {
+            // Buscamos comunidades activas y públicas
+            $sql = "SELECT id, uuid, community_name, profile_picture, member_count, privacy 
+                    FROM communities 
+                    WHERE community_name LIKE ? 
+                    AND status = 'active'
+                    AND privacy = 'public'
+                    LIMIT ?";
+            
+            $stmt = $pdo->prepare($sql);
+            // Usamos bindValue para asegurar que el límite se trate como entero
+            $stmt->bindValue(1, '%' . $query . '%');
+            $stmt->bindValue(2, (int)$limit, PDO::PARAM_INT);
+            $stmt->execute();
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        } catch (PDOException $e) {
+            error_log("Error en SearchFetcher (Communities): " . $e->getMessage());
+            return [];
+        }
     }
 }
 ?>
