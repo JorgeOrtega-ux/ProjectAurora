@@ -1159,3 +1159,75 @@ ConnectionResetError: [WinError 10054] Se ha forzado la interrupción de una con
 2025-12-05 11:06:18,880 - INFO - Usuario conectado: ID 1 | Rol: user
 2025-12-05 11:06:24,517 - INFO - connection open
 2025-12-05 11:06:24,520 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-12-05 11:09:00,381 - INFO - connection open
+2025-12-05 11:09:00,397 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-12-05 11:09:12,086 - INFO - connection open
+2025-12-05 11:09:12,091 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-12-05 11:34:26,181 - INFO - === Servidor Aurora Iniciado (Modular) ===
+2025-12-05 11:34:26,301 - INFO - ✅ DB Pool inicializado.
+2025-12-05 11:34:26,302 - INFO - ✅ Redis inicializado.
+2025-12-05 11:34:28,931 - INFO - server listening on 0.0.0.0:8080
+2025-12-05 11:34:28,931 - INFO - 🚀 Websocket Server escuchando en 0.0.0.0:8080
+2025-12-05 11:34:28,932 - INFO - 🌉 Bridge PHP escuchando en 127.0.0.1:8081
+2025-12-05 11:34:29,434 - INFO - connection open
+2025-12-05 11:34:34,488 - INFO - connection open
+2025-12-05 11:34:35,786 - INFO - connection open
+2025-12-05 11:34:35,792 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-12-05 11:34:42,326 - ERROR - connection handler failed
+Traceback (most recent call last):
+  File "C:\Users\jorge\AppData\Local\Programs\Python\Python313\Lib\site-packages\websockets\asyncio\server.py", line 376, in conn_handler
+    await self.handler(connection)
+  File "E:\xampp\htdocs\ProjectAurora\server\event_router.py", line 102, in handle_client_connection
+    await handlers.handle_voice_disconnect(user_id)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'handlers' has no attribute 'handle_voice_disconnect'
+2025-12-05 11:34:42,429 - INFO - connection open
+2025-12-05 11:34:42,435 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-12-05 11:34:50,352 - ERROR - connection handler failed
+Traceback (most recent call last):
+  File "C:\Users\jorge\AppData\Local\Programs\Python\Python313\Lib\site-packages\websockets\asyncio\server.py", line 376, in conn_handler
+    await self.handler(connection)
+  File "E:\xampp\htdocs\ProjectAurora\server\event_router.py", line 102, in handle_client_connection
+    await handlers.handle_voice_disconnect(user_id)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'handlers' has no attribute 'handle_voice_disconnect'
+2025-12-05 11:34:50,469 - INFO - connection open
+2025-12-05 11:34:50,479 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-12-05 11:34:53,461 - ERROR - connection handler failed
+Traceback (most recent call last):
+  File "C:\Users\jorge\AppData\Local\Programs\Python\Python313\Lib\site-packages\websockets\asyncio\server.py", line 376, in conn_handler
+    await self.handler(connection)
+  File "E:\xampp\htdocs\ProjectAurora\server\event_router.py", line 102, in handle_client_connection
+    await handlers.handle_voice_disconnect(user_id)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'handlers' has no attribute 'handle_voice_disconnect'
+2025-12-05 11:34:53,534 - INFO - connection open
+2025-12-05 11:34:53,545 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-12-05 11:34:58,949 - ERROR - connection handler failed
+Traceback (most recent call last):
+  File "C:\Users\jorge\AppData\Local\Programs\Python\Python313\Lib\site-packages\websockets\asyncio\server.py", line 376, in conn_handler
+    await self.handler(connection)
+  File "E:\xampp\htdocs\ProjectAurora\server\event_router.py", line 102, in handle_client_connection
+    await handlers.handle_voice_disconnect(user_id)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'handlers' has no attribute 'handle_voice_disconnect'
+2025-12-05 11:34:59,033 - INFO - connection open
+2025-12-05 11:34:59,036 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-12-05 11:35:05,633 - ERROR - connection handler failed
+Traceback (most recent call last):
+  File "C:\Users\jorge\AppData\Local\Programs\Python\Python313\Lib\site-packages\websockets\asyncio\server.py", line 376, in conn_handler
+    await self.handler(connection)
+  File "E:\xampp\htdocs\ProjectAurora\server\event_router.py", line 102, in handle_client_connection
+    await handlers.handle_voice_disconnect(user_id)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'handlers' has no attribute 'handle_voice_disconnect'
+2025-12-05 11:35:05,832 - INFO - connection open
+2025-12-05 11:35:05,838 - INFO - Usuario conectado: ID 1 | Rol: user
+2025-12-05 11:36:33,128 - ERROR - connection handler failed
+Traceback (most recent call last):
+  File "C:\Users\jorge\AppData\Local\Programs\Python\Python313\Lib\site-packages\websockets\asyncio\server.py", line 376, in conn_handler
+    await self.handler(connection)
+  File "E:\xampp\htdocs\ProjectAurora\server\event_router.py", line 102, in handle_client_connection
+    await handlers.handle_voice_disconnect(user_id)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'handlers' has no attribute 'handle_voice_disconnect'

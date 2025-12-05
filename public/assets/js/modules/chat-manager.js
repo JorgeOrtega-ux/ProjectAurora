@@ -281,6 +281,12 @@ function triggerTypingIndicator() {
 async function performSendMessage() {
     if (!currentChatUuid) return;
     
+    // [NUEVO] Guardia: Bloquear envío si la cuenta está eliminada
+    if (currentChatType === 'private' && currentChatData?.account_status === 'deleted') {
+        if(window.alertManager) window.alertManager.showAlert("No puedes enviar mensajes a este usuario.", 'error');
+        return;
+    }
+
     const input = document.querySelector('.chat-message-input');
     const text = input.value.trim();
     
@@ -599,17 +605,13 @@ function initGlobalActionListeners() {
             window.history.pushState({ section: 'main' }, '', window.BASE_PATH);
         }
         
-        // --- [NUEVO] MANEJO DE CLIC EN REACCIÓN (TOGGLE) ---
+        // --- MANEJO DE CLIC EN REACCIÓN (TOGGLE) ---
         const reactionBtn = e.target.closest('[data-action="toggle-reaction"]');
         if (reactionBtn) {
             e.stopPropagation();
             e.preventDefault();
             const msgUuid = reactionBtn.dataset.uuid;
-            // CORRECCIÓN: Usar dataset.reactionKey en vez de dataset.emoji
             const emoji = reactionBtn.dataset.reactionKey;
-            
-            // Llamada a la acción de toggle reacción
-            // Se usa el contexto actual global (currentChatType, currentChatUuid)
             ChatActions.handleReactionAction(msgUuid, emoji, currentChatType, currentChatUuid);
             return;
         }
@@ -622,31 +624,23 @@ function initGlobalActionListeners() {
             const isMe = (parseInt(senderId) === parseInt(window.USER_ID));
             const createdAt = msgOptBtn.dataset.createdAt;
             
-            // --- [NUEVO] DETECTAR REACCIÓN ACTUAL ---
             let currentReaction = null;
             const msgRow = document.getElementById(`msg-${uuid}`);
             if (msgRow) {
-                // Buscamos si hay una burbuja con la clase 'reacted'
                 const activeBubble = msgRow.querySelector('.reaction-bubble.reacted');
                 if (activeBubble) {
                     currentReaction = activeBubble.dataset.reactionKey;
                 }
             }
 
-            // Pasamos 'currentReaction' como nuevo argumento
             Renderer.showMessagePopover(
                 msgOptBtn, uuid, msgOptBtn.dataset.user, msgOptBtn.dataset.text, isMe, createdAt, currentReaction,
-                // 1. Responder
                 () => enableReplyMode(uuid, msgOptBtn.dataset.user, msgOptBtn.dataset.text), 
-                // 2. Editar
                 () => Renderer.enableEditMessageUI(uuid, msgOptBtn.dataset.text, async (newText, editContainer, contentWrapper) => {
                     await onSaveEditMessage(newText, editContainer, contentWrapper, uuid);
                 }), 
-                // 3. Eliminar
                 () => onDeleteMessage(uuid), 
-                // 4. Reportar
                 () => onReportMessage(uuid),
-                // 5. Reaccionar
                 (emoji) => {
                     ChatActions.handleReactionAction(uuid, emoji, currentChatType, currentChatUuid);
                 }

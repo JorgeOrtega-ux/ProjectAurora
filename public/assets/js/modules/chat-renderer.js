@@ -35,18 +35,16 @@ function escapeHtml(text) {
     return text.replace(/[&<>"']/g, function(m) { return map[m]; });
 }
 
-// --- HELPER DE REACCIONES (MODIFICADO PARA USAR KEYS) ---
+// --- HELPER DE REACCIONES ---
 function getReactionsHTML(reactions, msgUuid) {
     if (!reactions || Object.keys(reactions).length === 0) return '';
     
     let html = '<div class="reactions-bar">';
     
-    // Iteramos sobre las claves ('like', 'love', etc.)
     for (const [key, data] of Object.entries(reactions)) {
         let count = 0;
         let userReacted = false;
 
-        // Manejar estructura compleja (del GET) o simple (del POST)
         if (typeof data === 'object' && data !== null) {
             count = parseInt(data.count) || 0;
             userReacted = !!data.user_reacted;
@@ -56,8 +54,6 @@ function getReactionsHTML(reactions, msgUuid) {
 
         if (count > 0) {
             const emoji = REACTION_ICONS[key] || '❓';
-            // Añadimos data-reaction-key en lugar de data-emoji
-            // Añadimos clase 'reacted' si el usuario actual reaccionó
             const activeClass = userReacted ? 'reacted' : '';
             
             html += `<button class="reaction-bubble ${activeClass}" data-action="toggle-reaction" data-uuid="${msgUuid}" data-reaction-key="${key}">
@@ -155,7 +151,6 @@ export function createMessageHTML(msg, currentChatType) {
     const reactionsHtml = getReactionsHTML(msg.reactions, msgId);
     const optionsBtn = `<button class="message-options-btn" data-action="msg-options" data-uuid="${msgId}" data-user="${msg.sender_username}" data-text="${escapeHtml(msg.message)}" data-sender-id="${msg.sender_id}" data-created-at="${msg.created_at}"><span class="material-symbols-rounded" style="font-size: 18px;">more_vert</span></button>`;
 
-    // --- ESTRUCTURA CON GRUPO Y REACCIONES AFUERA ---
     return `
         <div class="message-row ${isMe ? 'message-own' : 'message-other'}" id="msg-${msgId}">
             ${!isMe ? `<div class="chat-message-avatar" data-role="${role}" title="${msg.sender_username}"><img src="${avatarUrl}" alt="${msg.sender_username}" data-img-type="user"></div>` : ''}
@@ -189,11 +184,9 @@ export function updateMessageReactions(msgUuid, reactionsData) {
     const msgRow = document.getElementById(`msg-${msgUuid}`);
     if (!msgRow) return;
 
-    // Buscar el contenedor externo de reacciones
     const container = msgRow.querySelector('.message-reactions-container');
     if (!container) return;
 
-    // Actualizar el HTML completo dentro del contenedor
     const newHtml = getReactionsHTML(reactionsData, msgUuid);
     container.innerHTML = newHtml;
 }
@@ -228,7 +221,21 @@ export function renderEmptyChatState(container, chatData, chatType) {
     
     let html = '';
 
-    if (chatType === 'community') {
+    // [NUEVO] Estado "Ghost" si la cuenta está eliminada (Private)
+    if (chatType === 'private' && chatData.account_status === 'deleted') {
+         html = `
+            <div class="chat-empty-state private-empty">
+                <div class="chat-empty-avatar" style="opacity: 0.5; filter: grayscale(100%);">
+                    <img src="https://ui-avatars.com/api/?name=X&background=e0e0e0&color=999" alt="Deleted">
+                </div>
+                <div class="chat-empty-text">
+                    <h3 style="color:#777;">Usuario no disponible</h3>
+                    <p>Esta cuenta ha sido eliminada.</p>
+                </div>
+            </div>
+        `;
+    } 
+    else if (chatType === 'community') {
         const channelName = chatData.channel_name || 'General';
         html = `
             <div class="chat-empty-state community-welcome">
@@ -318,8 +325,9 @@ export function updateChatInterface(data) {
     const messagesArea = document.querySelector('.chat-messages-area');
     const headerAvatarContainer = document.querySelector('.chat-avatar-container'); 
 
-    const maintenanceEl = document.getElementById('maintenance-overlay');
-    if (maintenanceEl) maintenanceEl.remove();
+    // Limpiar overlays previos (mantenimiento o deleted)
+    const overlayEl = document.getElementById('status-overlay');
+    if (overlayEl) overlayEl.remove();
     
     if (messagesArea) messagesArea.style.display = 'flex';
     if (inputArea) inputArea.style.display = 'flex';
@@ -381,32 +389,65 @@ export function updateChatInterface(data) {
             status.classList.remove('typing-active', 'typing-dots');
         }
 
+        // [MODIFICADO] Lógica unificada para estados especiales (Deleted, Mantenimiento)
+        const isDeleted = (isPrivate && data.account_status === 'deleted');
         const isCommMaintenance = (data.status === 'maintenance');
         const isChannelMaintenance = (data.channel_status === 'maintenance');
 
-        if (isCommMaintenance || isChannelMaintenance) {
-            if (messagesArea) messagesArea.style.display = 'none';
-            if (inputArea) inputArea.style.display = 'none';
+        if (isDeleted || isCommMaintenance || isChannelMaintenance) {
+            if (inputArea) inputArea.style.display = 'none'; // Siempre ocultar input
 
-            let maintTitle = '', maintDesc = '', maintIcon = 'engineering';
-            if (isCommMaintenance) {
-                maintTitle = t('status.maintenance_title') || 'Comunidad en Mantenimiento';
-                maintDesc = t('status.community_maintenance_msg') || 'Esta comunidad se encuentra en mantenimiento.';
+            // Solo ocultar mensajes si es mantenimiento (si es deleted, mostramos historial)
+            if (!isDeleted && messagesArea) messagesArea.style.display = 'none';
+
+            let overlayTitle = '', overlayDesc = '', overlayIcon = 'engineering';
+            
+            if (isDeleted) {
+                // MODIFICACIONES DE HEADER PARA DELETED
+                if (title) title.innerHTML = t('chat.user_deleted_title') || 'Usuario Eliminado';
+                if (status) status.textContent = t('chat.user_deleted_status') || 'Cuenta no disponible';
+                if (img) {
+                    img.src = `https://ui-avatars.com/api/?name=X&background=e0e0e0&color=999`;
+                }
+
+                overlayIcon = 'no_accounts';
+                overlayTitle = ''; // Sin título grande, solo banner
+                overlayDesc = t('chat.user_deleted_banner') || 'Este usuario ha eliminado su cuenta. No es posible responder.';
+            } 
+            else if (isCommMaintenance) {
+                overlayTitle = t('status.maintenance_title') || 'Comunidad en Mantenimiento';
+                overlayDesc = t('status.community_maintenance_msg') || 'Esta comunidad se encuentra en mantenimiento.';
             } else {
-                maintTitle = t('status.channel_maintenance_title') || 'Canal en Mantenimiento';
-                maintDesc = t('status.channel_maintenance_msg') || 'Este canal no se encuentra habilitado.';
-                maintIcon = 'cloud_off';
+                overlayTitle = t('status.channel_maintenance_title') || 'Canal en Mantenimiento';
+                overlayDesc = t('status.channel_maintenance_msg') || 'Este canal no se encuentra habilitado.';
+                overlayIcon = 'cloud_off';
             }
-            const maintHtml = `
-                <div id="maintenance-overlay" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; color:#666;">
-                    <div style="width:80px; height:80px; background:#fff3e0; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
-                        <span class="material-symbols-rounded" style="font-size:40px; color:#f57c00;">${maintIcon}</span>
+
+            // Renderizar Overlay/Banner
+            let overlayHtml = '';
+            if (isDeleted) {
+                // Estilo Banner discreto al fondo
+                overlayHtml = `
+                    <div id="status-overlay" style="padding: 15px; background: #f8f9fa; border-top: 1px solid #eee; text-align: center; color: #666; font-size: 13px;">
+                        <span class="material-symbols-rounded" style="vertical-align: bottom; font-size: 18px; margin-right: 5px;">${overlayIcon}</span>
+                        ${overlayDesc}
                     </div>
-                    <h2 style="font-size:20px; margin-bottom:8px; color:#333;">${maintTitle}</h2>
-                    <p style="max-width:300px;">${maintDesc}</p>
-                </div>
-            `;
-            interfaceDiv.insertAdjacentHTML('beforeend', maintHtml);
+                `;
+                interfaceDiv.insertAdjacentHTML('beforeend', overlayHtml);
+            } else {
+                // Estilo Pantalla Completa (Mantenimiento)
+                overlayHtml = `
+                    <div id="status-overlay" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; color:#666;">
+                        <div style="width:80px; height:80px; background:#fff3e0; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+                            <span class="material-symbols-rounded" style="font-size:40px; color:#f57c00;">${overlayIcon}</span>
+                        </div>
+                        <h2 style="font-size:20px; margin-bottom:8px; color:#333;">${overlayTitle}</h2>
+                        <p style="max-width:300px;">${overlayDesc}</p>
+                    </div>
+                `;
+                interfaceDiv.insertAdjacentHTML('beforeend', overlayHtml);
+            }
+
             if (infoBtn) infoBtn.style.display = 'flex'; 
             return; 
         }
@@ -485,7 +526,6 @@ export function updateReplyUI(isReplying, data = null) {
     }
 }
 
-// --- [MODIFICADO] AHORA ACEPTA currentReaction Y APLICA CLASE active ---
 export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, currentReaction, onReply, onEdit, onDelete, onReport, onReact) {
     document.querySelector('.message-options-popover')?.remove();
 
@@ -521,7 +561,6 @@ export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, cu
     const popover = document.createElement('div');
     popover.className = 'popover-module message-options-popover active';
     
-    // [MODIFICADO] Usar Claves para los emojis
     const reactionMap = [
         { key: 'like', icon: '👍' },
         { key: 'love', icon: '❤️' },
@@ -531,7 +570,6 @@ export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, cu
         { key: 'angry', icon: '😡' }
     ];
     
-    // Generar botones usando data-reaction-key y añadir clase 'active' si corresponde
     const emojiHtml = reactionMap.map(item => {
         const activeClass = (item.key === currentReaction) ? 'active' : '';
         return `<button class="reaction-btn ${activeClass}" data-reaction-key="${item.key}">${item.icon}</button>`;
@@ -586,10 +624,8 @@ export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, cu
     const repBtn = popover.querySelector('[data-action="report-message"]');
     if (repBtn) repBtn.addEventListener('click', () => { onReport(); popover.remove(); });
 
-    // Listener para usar keys
     popover.querySelectorAll('.reaction-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            // Obtener la clave del dataset (asegurar el target correcto)
             const key = e.currentTarget.dataset.reactionKey;
             if (onReact) onReact(key);
             popover.remove();

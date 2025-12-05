@@ -134,11 +134,20 @@ async def process_chat_message(user_id, user_info, payload):
             
             # --- PRIVATE CHAT ---
             if context == 'private':
-                await cur.execute("SELECT id FROM users WHERE uuid = %s", (target_uuid,))
+                # [MODIFICADO] Verificar 'account_status' para "Conversación Congelada"
+                await cur.execute("SELECT id, account_status FROM users WHERE uuid = %s", (target_uuid,))
                 receiver_row = await cur.fetchone()
+                
                 if not receiver_row: return {'success': False, 'error': 'User not found'}
+                
                 receiver_id = str(receiver_row[0])
+                account_status = receiver_row[1]
+
                 if receiver_id == user_id: return {'success': False}
+
+                # [VALIDACIÓN] Si la cuenta no está activa, bloquear
+                if account_status != 'active':
+                    return {'success': False, 'error': 'Este usuario ya no está disponible.'}
 
                 # [NUEVO] Verificar Bloqueos
                 block_query = """

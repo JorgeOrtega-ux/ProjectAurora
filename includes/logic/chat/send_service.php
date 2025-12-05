@@ -26,10 +26,20 @@ class ChatSendService {
 
         // --- 2. Validación de Contexto (Privado vs Comunidad) ---
         if ($context === 'private') {
-            $stmtU = $pdo->prepare("SELECT id FROM users WHERE uuid = ?");
+            // [MODIFICADO] Obtenemos también account_status para validar "Conversación Congelada"
+            $stmtU = $pdo->prepare("SELECT id, account_status FROM users WHERE uuid = ?");
             $stmtU->execute([$uuid]);
-            $targetId = $stmtU->fetchColumn();
-            if (!$targetId || $targetId == $userId) throw new Exception("Usuario inválido.");
+            $targetUser = $stmtU->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$targetUser) throw new Exception("Usuario no encontrado.");
+            
+            $targetId = $targetUser['id'];
+            
+            // [NUEVO] Validación de estado de cuenta
+            if ($targetId == $userId) throw new Exception("No puedes enviarte mensajes a ti mismo.");
+            if ($targetUser['account_status'] !== 'active') {
+                throw new Exception("Este usuario ya no está disponible.");
+            }
 
             // Validaciones de Bloqueo
             $stmtBlock = $pdo->prepare("SELECT id FROM user_blocks WHERE (blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?)");

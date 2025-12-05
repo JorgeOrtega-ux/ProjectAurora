@@ -3,6 +3,26 @@
 
 class ChatActionsService {
 
+    // Helper privado para verificar si la cuenta destino sigue activa en chats privados
+    private static function ensurePartnerActive($pdo, $userId, $messageId, $table = 'private_messages') {
+        // En DMs, el 'partner' es el otro ID que no es el mío.
+        $stmt = $pdo->prepare("SELECT sender_id, receiver_id FROM $table WHERE id = ?");
+        $stmt->execute([$messageId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row) {
+            $partnerId = ($row['sender_id'] == $userId) ? $row['receiver_id'] : $row['sender_id'];
+            
+            $stmtUser = $pdo->prepare("SELECT account_status FROM users WHERE id = ?");
+            $stmtUser->execute([$partnerId]);
+            $status = $stmtUser->fetchColumn();
+
+            if ($status !== 'active') {
+                throw new Exception("Acción no permitida: La cuenta del usuario no está disponible.");
+            }
+        }
+    }
+
     public static function reactMessage($pdo, $redis, $userId, $data) {
         $msgUuid = $data['message_id'] ?? '';
         $reaction = $data['reaction'] ?? '';
@@ -99,6 +119,11 @@ class ChatActionsService {
         
         $msgId = $msgData['id'];
 
+        // [NUEVO] Congelar interacción si el usuario no existe (Solo Privado)
+        if ($context === 'private') {
+            self::ensurePartnerActive($pdo, $userId, $msgId, 'private_messages');
+        }
+
         // 2. Toggle/Update Reaction
         $stmtCheck = $pdo->prepare("SELECT id, reaction_code FROM $reactionsTable WHERE message_id = ? AND user_id = ?");
         $stmtCheck->execute([$msgId, $userId]);
@@ -168,6 +193,11 @@ class ChatActionsService {
         $extraSocketData = [];
 
         if ($dbMsg) {
+            // [NUEVO] Congelar interacción si el usuario no existe (Solo Privado)
+            if ($context === 'private') {
+                self::ensurePartnerActive($pdo, $userId, $dbMsg['id'], 'private_messages');
+            }
+
             $created = strtotime($dbMsg['created_at']);
             if (time() - $created > 600) {
                 throw new Exception(translation('chat.error.edit_timeout') ?? "Tiempo de edición expirado (10 min).");
@@ -315,6 +345,12 @@ class ChatActionsService {
         $msg = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$msg) throw new Exception("El mensaje no se puede eliminar (aún no guardado en base de datos).");
         if ($msg['status'] === 'deleted') throw new Exception("Ya eliminado.");
+        
+        // [NUEVO] Congelar interacción (borrado) si el usuario no existe (Solo Privado)
+        if ($context === 'private') {
+            self::ensurePartnerActive($pdo, $userId, $msg['id'], 'private_messages');
+        }
+
         $msgTime = strtotime($msg['created_at']);
         if (time() - $msgTime > (24 * 3600)) throw new Exception(translation('chat.error.delete_timeout') ?? 'Tiempo expirado');
         $pdo->prepare("UPDATE $table SET status = 'deleted', message = '', type = 'text' WHERE id = ?")->execute([$msg['id']]);
@@ -345,6 +381,12 @@ class ChatActionsService {
         $stmtCheck->execute([$msgUuid]);
         $msgId = $stmtCheck->fetchColumn();
         if (!$msgId) throw new Exception("Mensaje no encontrado o aún en proceso de guardado.");
+
+        // [NUEVO] Congelar interacción (reporte) si el usuario no existe (Solo Privado)
+        if ($context === 'private') {
+            self::ensurePartnerActive($pdo, $userId, $msgId, 'private_messages');
+        }
+
         if ($context === 'private') {
             $stmtRep = $pdo->prepare("SELECT id FROM private_message_reports WHERE message_id = ? AND reporter_id = ?");
             $stmtRep->execute([$msgId, $userId]);
