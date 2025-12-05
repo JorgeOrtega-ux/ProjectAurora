@@ -351,14 +351,54 @@ try {
 
     } elseif ($action === 'create_backup') {
         if (!is_writable($backupDir)) throw new Exception("Permiso denegado en carpeta 'backups'.");
-        $host = $_ENV['DB_HOST'] ?? 'localhost'; $db = $_ENV['DB_NAME'] ?? 'project_aurora_db'; $user = $_ENV['DB_USER'] ?? 'root'; $pass = $_ENV['DB_PASS'] ?? '';
-        $filename = 'backup_' . date('Y-m-d_H-i-s') . '.sql'; $filepath = $backupDir . '/' . $filename;
-        $passArg = !empty($pass) ? "-p\"$pass\"" : "";
-        try { $mysqldump = getDbBinary('mysqldump'); } catch (Exception $e) { throw $e; }
-        $command = "$mysqldump --opt -h $host -u $user $passArg $db > \"$filepath\" 2>&1";
+        
+        $host = $_ENV['DB_HOST'] ?? 'localhost'; 
+        $db = $_ENV['DB_NAME'] ?? 'project_aurora_db'; 
+        $user = $_ENV['DB_USER'] ?? 'root'; 
+        $pass = $_ENV['DB_PASS'] ?? '';
+        
+        $filename = 'backup_' . date('Y-m-d_H-i-s') . '.sql'; 
+        $filepath = $backupDir . '/' . $filename;
+
+        // [SEGURIDAD] 1. Crear archivo temporal seguro para credenciales
+        $tempCreds = tempnam(sys_get_temp_dir(), 'mycnf');
+        if (!$tempCreds) throw new Exception("Error interno: No se pudo crear archivo temporal de seguridad.");
+        
+        // [SEGURIDAD] 2. Restringir permisos: Solo el dueño (el script PHP) puede leerlo (0600)
+        chmod($tempCreds, 0600); 
+
+        // [SEGURIDAD] 3. Escribir credenciales en formato MySQL config
+        // Esto evita pasar la contraseña por CLI donde es visible
+        $confContent = "[client]\nuser=\"$user\"\npassword=\"$pass\"\nhost=\"$host\"\n";
+        if (file_put_contents($tempCreds, $confContent) === false) {
+            @unlink($tempCreds);
+            throw new Exception("Error al escribir configuración segura.");
+        }
+
+        try { 
+            $mysqldump = getDbBinary('mysqldump'); 
+        } catch (Exception $e) { 
+            @unlink($tempCreds);
+            throw $e; 
+        }
+
+        // [SEGURIDAD] 4. Usar --defaults-extra-file en lugar de -u -p
+        // Nota: --defaults-extra-file debe ser la primera opción
+        $command = "$mysqldump --defaults-extra-file=\"$tempCreds\" --opt $db > \"$filepath\" 2>&1";
+        
         exec($command, $output, $returnVar);
-        if ($returnVar === 0 && file_exists($filepath) && filesize($filepath) > 0) echo json_encode(['success' => true, 'message' => translation('admin.backups.created_success')]);
-        else { if (file_exists($filepath)) @unlink($filepath); $debugCmd = str_replace($pass, '*****', $command); $outStr = implode(" | ", $output); throw new Exception("Error (Código $returnVar). CMD: $debugCmd. SALIDA: $outStr"); }
+
+        // [SEGURIDAD] 5. Eliminar archivo de credenciales inmediatamente
+        @unlink($tempCreds);
+
+        if ($returnVar === 0 && file_exists($filepath) && filesize($filepath) > 0) {
+            echo json_encode(['success' => true, 'message' => translation('admin.backups.created_success')]);
+        } else { 
+            if (file_exists($filepath)) @unlink($filepath); 
+            $outStr = implode(" | ", $output); 
+            // No incluimos el comando en el error para no revelar rutas internas
+            throw new Exception("Error al generar respaldo (Código $returnVar). Detalles en log."); 
+        }
 
     } elseif ($action === 'delete_backup') {
         $filename = $data['filename'] ?? '';
@@ -369,16 +409,50 @@ try {
 
     } elseif ($action === 'restore_backup') {
         $filename = $data['filename'] ?? '';
-        if (empty($filename) || strpos($filename, '/') !== false || strpos($filename, '\\') !== false) throw new Exception(translation('global.action_invalid'));
+        // Validación estricta del nombre de archivo para evitar Directory Traversal
+        if (empty($filename) || strpos($filename, '/') !== false || strpos($filename, '\\') !== false) {
+            throw new Exception(translation('global.action_invalid'));
+        }
+        
         $filepath = $backupDir . '/' . $filename;
         if (!file_exists($filepath)) throw new Exception("Archivo no encontrado.");
-        $host = $_ENV['DB_HOST'] ?? 'localhost'; $db = $_ENV['DB_NAME'] ?? 'project_aurora_db'; $user = $_ENV['DB_USER'] ?? 'root'; $pass = $_ENV['DB_PASS'] ?? '';
-        $passArg = !empty($pass) ? "-p\"$pass\"" : "";
-        try { $mysql = getDbBinary('mysql'); } catch (Exception $e) { throw $e; }
-        $command = "$mysql -h $host -u $user $passArg $db < \"$filepath\" 2>&1";
+        
+        $host = $_ENV['DB_HOST'] ?? 'localhost'; 
+        $db = $_ENV['DB_NAME'] ?? 'project_aurora_db'; 
+        $user = $_ENV['DB_USER'] ?? 'root'; 
+        $pass = $_ENV['DB_PASS'] ?? '';
+
+        // [SEGURIDAD] Implementación idéntica de archivo seguro
+        $tempCreds = tempnam(sys_get_temp_dir(), 'mycnf_restore');
+        if (!$tempCreds) throw new Exception("Error al iniciar restauración segura.");
+        chmod($tempCreds, 0600);
+        
+        $confContent = "[client]\nuser=\"$user\"\npassword=\"$pass\"\nhost=\"$host\"\n";
+        file_put_contents($tempCreds, $confContent);
+
+        try { 
+            $mysql = getDbBinary('mysql'); 
+        } catch (Exception $e) { 
+            @unlink($tempCreds);
+            throw $e; 
+        }
+
+        // Usar --defaults-extra-file para la importación
+        $command = "$mysql --defaults-extra-file=\"$tempCreds\" $db < \"$filepath\" 2>&1";
+        
         exec($command, $output, $returnVar);
-        if ($returnVar === 0) { $pdo->exec("DELETE FROM user_sessions"); send_live_notification('global', 'force_logout', ['reason' => 'system_restore']); echo json_encode(['success' => true, 'message' => translation('admin.backups.restore_success')]); } 
-        else { $debugCmd = str_replace($pass, '*****', $command); $outStr = implode(" | ", $output); throw new Exception("Error restaurando (Código $returnVar). CMD: $debugCmd. SALIDA: $outStr"); }
+        
+        // Limpieza inmediata
+        @unlink($tempCreds);
+
+        if ($returnVar === 0) { 
+            $pdo->exec("DELETE FROM user_sessions"); 
+            send_live_notification('global', 'force_logout', ['reason' => 'system_restore']); 
+            echo json_encode(['success' => true, 'message' => translation('admin.backups.restore_success')]); 
+        } else { 
+            $outStr = implode(" | ", $output); 
+            throw new Exception("Error restaurando base de datos. Verifique logs."); 
+        }
     
     } elseif ($action === 'update_server_config') {
         $key = $data['key'] ?? ''; $value = $data['value'] ?? 0;
