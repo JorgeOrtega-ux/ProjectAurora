@@ -1,15 +1,17 @@
 // public/assets/js/modules/admin/admin-diagnostics.js
-
 import { AdminApi } from '../../services/api-service.js';
 import { showAlert } from '../../ui/alert-manager.js';
 
 export function init() {
     console.log('Admin Diagnostics Module Initialized');
     
-    // Cargar estado inicial de Redis
+    // 1. Inicializar lógica de acordeones (CON FIX DE INTERFERENCIA)
+    setupAccordionBehavior();
+
+    // 2. Cargar estado inicial de Redis
     loadRedisStatus();
 
-    // Event Listeners
+    // 3. Event Listeners de Botones
     const btnClear = document.getElementById('btn-clear-redis');
     if (btnClear) {
         btnClear.addEventListener('click', confirmClearRedis);
@@ -19,6 +21,41 @@ export function init() {
     if (btnTestBridge) {
         btnTestBridge.addEventListener('click', testBridgeConnection);
     }
+}
+
+/**
+ * Configura el comportamiento de los acordeones
+ * IMPORTANTE: Usa stopPropagation para evitar conflicto con admin-server.js
+ */
+function setupAccordionBehavior() {
+    const container = document.querySelector('.section-content[data-section="admin/diagnostics"]');
+    if (!container) return;
+
+    // Usamos 'click' en el contenedor específico de esta sección
+    container.addEventListener('click', (e) => {
+        // Buscar si el click fue en un header de acordeón
+        const header = e.target.closest('[data-action="toggle-accordion"]');
+        
+        if (header) {
+            // [CRÍTICO] Detener propagación para que admin-server.js no reciba el evento
+            // y cause un "doble toggle" (abrir y cerrar instantáneamente).
+            e.stopPropagation();
+            e.preventDefault();
+
+            const currentAccordion = header.closest('.component-accordion');
+            if (currentAccordion) {
+                // Cerrar otros acordeones abiertos dentro de este contenedor
+                const allActive = container.querySelectorAll('.component-accordion.active');
+                allActive.forEach(acc => {
+                    if (acc !== currentAccordion) {
+                        acc.classList.remove('active');
+                    }
+                });
+                // Alternar el actual
+                currentAccordion.classList.toggle('active');
+            }
+        }
+    });
 }
 
 /**
@@ -36,22 +73,19 @@ async function loadRedisStatus() {
         const response = await AdminApi.getRedisStatus();
 
         if (response.success && response.connected) {
-            // Conexión exitosa
             indicator.innerHTML = `
                 <span class="status-dot dot-green"></span> 
                 <span style="font-weight: 600; color: #2e7d32;">Conectado y Operativo</span>
             `;
             
-            // Mostrar contenido, ocultar error
-            contentArea.style.display = 'block';
-            errorBox.style.display = 'none';
+            if (contentArea) contentArea.style.display = 'block';
+            if (errorBox) errorBox.style.display = 'none';
 
-            // Renderizar claves
             const keys = response.keys || [];
-            countSpan.textContent = keys.length;
+            if (countSpan) countSpan.textContent = keys.length;
 
             if (keys.length > 0) {
-                btnClear.style.display = 'inline-flex';
+                if (btnClear) btnClear.style.display = 'inline-flex';
                 let html = '';
                 
                 keys.forEach(item => {
@@ -65,12 +99,12 @@ async function loadRedisStatus() {
                                 return '[Error decodificando mensaje]';
                             }
                         }).join('\n');
-                        previewHtml = `<div class="code-block">${previewText}</div>`;
+                        previewHtml = `<div class="code-block">${escapeHtml(previewText)}</div>`;
                     }
 
                     html += `
                         <div class="redis-item">
-                            <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:600;">
+                            <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:600; margin-bottom:4px;">
                                 <span style="color:#333;">${escapeHtml(item.key)}</span>
                                 <span class="component-badge component-badge--neutral">${item.count} msgs</span>
                             </div>
@@ -78,47 +112,44 @@ async function loadRedisStatus() {
                         </div>
                     `;
                 });
-                listContainer.innerHTML = html;
+                if (listContainer) listContainer.innerHTML = html;
             } else {
-                btnClear.style.display = 'none';
-                listContainer.innerHTML = `
-                    <p style="text-align:center; color:#999; font-size:13px; padding:20px;">
-                        El buffer está vacío. Todos los mensajes han sido procesados a MySQL.
-                    </p>
+                if (btnClear) btnClear.style.display = 'none';
+                if (listContainer) listContainer.innerHTML = `
+                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px; color:#999;">
+                        <span class="material-symbols-rounded" style="font-size:32px; margin-bottom:10px; color:#ddd;">inbox</span>
+                        <p style="font-size:13px; margin:0;">El buffer está vacío.</p>
+                    </div>
                 `;
             }
 
         } else {
-            // Redis no conectado o error controlado
             throw new Error(response.msg || 'Error desconocido de Redis');
         }
 
     } catch (error) {
         console.error('Redis status error:', error);
-        indicator.innerHTML = `
+        if (indicator) indicator.innerHTML = `
             <span class="status-dot dot-red"></span> 
             <span style="font-weight: 600; color: #c62828;">Error de Conexión</span>
         `;
-        contentArea.style.display = 'none';
-        errorBox.style.display = 'block';
-        document.getElementById('redis-error-msg').textContent = error.message;
+        if (errorBox) {
+            errorBox.style.display = 'block';
+            const msgEl = document.getElementById('redis-error-msg');
+            if (msgEl) msgEl.textContent = error.message;
+        }
     }
 }
 
-/**
- * Confirmar y ejecutar limpieza de Redis
- */
 async function confirmClearRedis() {
     if (!confirm('¿Seguro que quieres eliminar TODOS los mensajes en memoria (Redis)? Esta acción no se puede deshacer.')) {
         return;
     }
-
     try {
         const response = await AdminApi.clearRedis();
-
         if (response.success) {
             showAlert(`Memoria limpiada: ${response.count} colas eliminadas.`, 'success');
-            loadRedisStatus(); // Recargar la vista
+            loadRedisStatus();
         } else {
             showAlert(response.message || 'Error al limpiar Redis', 'error');
         }
@@ -127,9 +158,6 @@ async function confirmClearRedis() {
     }
 }
 
-/**
- * Ejecutar prueba del puente Socket
- */
 async function testBridgeConnection() {
     const btn = document.getElementById('btn-test-bridge');
     const resultContainer = document.getElementById('bridge-result-container');
@@ -137,8 +165,8 @@ async function testBridgeConnection() {
     const title = document.getElementById('bridge-result-title');
     const msg = document.getElementById('bridge-result-msg');
     const hint = document.getElementById('bridge-result-hint');
+    const icon = document.getElementById('bridge-icon');
 
-    // Estado Loading
     const originalText = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<span class="material-symbols-rounded loader-spin">sync</span> Probando...';
@@ -146,17 +174,17 @@ async function testBridgeConnection() {
 
     try {
         const response = await AdminApi.testBridge();
-
         resultContainer.style.display = 'block';
         
         if (response.success) {
             resultBox.style.backgroundColor = '#e8f5e9';
             resultBox.style.borderColor = '#c8e6c9';
             resultBox.style.color = '#2e7d32';
-            title.textContent = 'Señal Enviada Correctamente';
-            msg.textContent = response.message; // Mensaje del servidor
-            hint.textContent = '💡 Si tienes el chat abierto en otra pestaña, deberías ver una notificación global ahora mismo.';
+            if(icon) icon.textContent = 'check_circle';
             
+            title.textContent = 'Señal Enviada Correctamente';
+            msg.textContent = response.message; 
+            hint.textContent = '💡 Deberías ver una notificación global ahora mismo.';
             showAlert('Prueba de puente exitosa', 'success');
         } else {
             throw new Error(response.message);
@@ -167,10 +195,11 @@ async function testBridgeConnection() {
         resultBox.style.backgroundColor = '#ffebee';
         resultBox.style.borderColor = '#ffcdd2';
         resultBox.style.color = '#c62828';
+        if(icon) icon.textContent = 'error';
+
         title.textContent = 'Error de Conexión';
         msg.textContent = error.message || 'No se pudo conectar al socket.';
         hint.textContent = '💡 Verifica que socket-connect.py esté ejecutándose en el puerto 8081.';
-        
         showAlert('Falló la prueba del puente', 'error');
     } finally {
         btn.disabled = false;
@@ -178,15 +207,7 @@ async function testBridgeConnection() {
     }
 }
 
-/**
- * Utilidad para escapar HTML y prevenir inyección en la vista previa
- */
 function escapeHtml(text) {
     if (!text) return text;
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
