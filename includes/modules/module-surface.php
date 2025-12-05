@@ -152,6 +152,16 @@ $canSeeAdmin = in_array($userRole, ['founder', 'administrator']);
                     </div>
                 </div>
 
+                <div class="menu-link <?php echo ($CURRENT_SECTION === 'admin/diagnostics') ? 'active' : ''; ?>"
+                    data-nav="admin/diagnostics">
+                    <div class="menu-link-icon">
+                        <span class="material-symbols-rounded">build</span>
+                    </div>
+                    <div class="menu-link-text">
+                        <span>Diagnóstico</span>
+                    </div>
+                </div>
+
             </div>
 
         </div>

@@ -1,0 +1,123 @@
+<?php
+// includes/sections/admin/diagnostics.php
+if (session_status() === PHP_SESSION_NONE) session_start();
+?>
+
+<div class="section-content active" data-section="admin/diagnostics">
+
+    <div class="component-header-card" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+        <div>
+            <h1 class="component-page-title">Herramientas de Diagnóstico</h1>
+            <p class="component-page-description">Utilidades del sistema para monitorización de Redis y WebSockets.</p>
+        </div>
+        </div>
+
+    <div class="component-wrapper full-width">
+        <div class="tools-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 100%;">
+
+            <div class="component-card component-card--column">
+                <div class="component-card__content w-100" style="border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 10px;">
+                    <div class="component-icon-container" style="background-color: #e3f2fd;">
+                        <span class="material-symbols-rounded" style="color:#1565c0">dns</span>
+                    </div>
+                    <div class="component-card__text">
+                        <h2 class="component-card__title">Estado de Redis</h2>
+                        <div style="margin-top: 5px; font-size: 14px;" id="redis-status-indicator">
+                            <span class="status-dot" style="background-color: #ccc; box-shadow: none;"></span> 
+                            <span style="color: #666;">Verificando conexión...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="w-100" id="redis-content-area">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <h3 style="font-size:14px; margin:0;">Colas en Memoria (<span id="redis-count">0</span>)</h3>
+                        <button type="button" id="btn-clear-redis" class="component-button danger" style="height: 32px; font-size: 12px; display: none;">
+                            <span class="material-symbols-rounded" style="font-size:16px; margin-right:4px;">delete_sweep</span> Limpiar Todo
+                        </button>
+                    </div>
+
+                    <div id="redis-keys-list" style="max-height: 400px; overflow-y: auto; background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 10px; min-height: 100px;">
+                        <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
+                            <div class="loader-spinner"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="redis-error-box" class="error-box w-100" style="display: none; background: #ffebee; color: #c62828; padding: 15px; border-radius: 8px; border: 1px solid #ffcdd2;">
+                    <strong>Error de Redis:</strong> <span id="redis-error-msg"></span>
+                </div>
+            </div>
+
+            <div class="component-card component-card--column">
+                <div class="component-card__content w-100" style="border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 10px;">
+                    <div class="component-icon-container" style="background-color: #fff3e0;">
+                        <span class="material-symbols-rounded" style="color:#f57c00">hub</span>
+                    </div>
+                    <div class="component-card__text">
+                        <h2 class="component-card__title">Puente PHP -> Python</h2>
+                        <p class="component-card__description">Prueba la comunicación interna TCP.</p>
+                    </div>
+                </div>
+
+                <div class="w-100">
+                    <p style="font-size:13px; color:#666; margin-bottom:15px;">
+                        Esta herramienta intenta abrir una conexión TCP al puerto <strong>8081</strong> (local) y enviar una notificación global de prueba con el Token de Seguridad.
+                    </p>
+
+                    <button type="button" id="btn-test-bridge" class="component-button primary w-100">
+                        <span class="material-symbols-rounded" style="margin-right: 8px;">send</span> Enviar Señal de Prueba
+                    </button>
+
+                    <div id="bridge-result-container" style="margin-top: 20px; display: none;">
+                        <div id="bridge-result-box" style="padding: 15px; border-radius: 8px; border: 1px solid transparent;">
+                            <strong style="font-size:15px;" id="bridge-result-title"></strong>
+                            <p style="margin: 5px 0 10px 0; font-size:13px;" id="bridge-result-msg"></p>
+                            <small style="display:block; border-top:1px solid rgba(0,0,0,0.1); padding-top:5px;" id="bridge-result-hint">
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    
+    <style>
+        /* Estilos inline mínimos requeridos para cosas específicas de esta vista que no están en global */
+        .status-dot {
+            height: 12px; width: 12px; border-radius: 50%; display: inline-block; margin-right: 6px;
+        }
+        .dot-green { background-color: #4caf50; box-shadow: 0 0 0 2px #e8f5e9; }
+        .dot-red { background-color: #f44336; box-shadow: 0 0 0 2px #ffebee; }
+        
+        .redis-item {
+            border-bottom: 1px solid #eee;
+            padding: 10px 0;
+        }
+        .redis-item:last-child { border-bottom: none; }
+        
+        .code-block {
+            background: #212121;
+            color: #a5d6a7;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            margin-top: 5px;
+            white-space: pre-wrap;
+        }
+        
+        /* Loader simple si no existe en components.css */
+        .loader-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</div>

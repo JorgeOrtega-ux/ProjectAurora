@@ -82,6 +82,9 @@ $fileMap = [
     // [AGREGADO] Rutas de Comunidades que faltaban
     'admin/communities'    => 'admin/communities',
     'admin/community-edit' => 'admin/community-edit',
+
+    // [NUEVO] Ruta de Diagnóstico
+    'admin/diagnostics'    => 'admin/diagnostics',
     
     // System
     'status-page' => 'system/status-page',

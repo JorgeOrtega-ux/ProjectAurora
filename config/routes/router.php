@@ -147,7 +147,8 @@ $allowedSections = [
     'admin/user-role',
     'admin/communities', 'admin/community-edit',
     'admin/backups',
-    'admin/server'
+    'admin/server',
+    'admin/diagnostics' // [NUEVO] Sección permitida
 ];
 
 $CURRENT_SECTION = empty($requestUri) ? 'main' : $requestUri;

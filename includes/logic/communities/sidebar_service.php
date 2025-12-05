@@ -153,6 +153,29 @@ class SidebarService {
                             $realFav = $statusData ? (int)$statusData['is_favorite'] : 0;
                             $realArchived = $statusData ? (int)$statusData['is_archived'] : 0;
 
+                            // [CORRECCIÓN] Validar privacidad para chats fantasmas de Redis
+                            // -------------------------------------------------------------
+                            $stmtPriv = $pdo->prepare("
+                                SELECT COALESCE(up.message_privacy, 'friends') as privacy,
+                                       (SELECT status FROM friendships WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)) as status
+                                FROM users u
+                                LEFT JOIN user_preferences up ON u.id = up.user_id
+                                WHERE u.id = ?
+                            ");
+                            $stmtPriv->execute([$userId, $partnerId, $partnerId, $userId, $partnerId]);
+                            $resPriv = $stmtPriv->fetch(PDO::FETCH_ASSOC);
+
+                            $privacy = $resPriv['privacy'] ?? 'friends';
+                            $status = $resPriv['status'];
+                            $canMessage = true;
+
+                            if ($privacy === 'nobody') {
+                                $canMessage = false;
+                            } elseif ($privacy === 'friends' && $status !== 'accepted') {
+                                $canMessage = false;
+                            }
+                            // -------------------------------------------------------------
+
                             $newChat = [
                                 'type' => 'private',
                                 'id' => $uData['id'],
@@ -166,7 +189,7 @@ class SidebarService {
                                 'last_message' => $previewMsg,
                                 'last_message_at' => $redisTimestamp,
                                 'unread_count' => ($msgData['sender_id'] != $userId) ? 1 : 0,
-                                'can_message' => true,
+                                'can_message' => $canMessage, // [MODIFICADO] Usar la variable calculada
                                 'is_blocked_by_me' => 0
                             ];
                             $fullList[] = $newChat;
@@ -191,3 +214,4 @@ class SidebarService {
         return $fullList;
     }
 }
+?>

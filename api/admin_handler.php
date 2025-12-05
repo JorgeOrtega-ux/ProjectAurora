@@ -391,7 +391,6 @@ try {
     // --- GESTIÓN DE COMUNIDADES ---
     } elseif ($action === 'list_communities') {
         $q = trim($data['q'] ?? '');
-        // [MODIFICADO] Se agregó is_verified al SELECT
         $sql = "SELECT id, uuid, community_name, community_type, privacy, member_count, profile_picture, is_verified FROM communities";
         $params = [];
         
@@ -437,10 +436,7 @@ try {
         $pfp = trim($data['profile_picture'] ?? '');
         $banner = trim($data['banner_picture'] ?? '');
         
-        // [MODIFICADO] Capturar estado de verificación
         $isVerified = isset($data['is_verified']) && $data['is_verified'] ? 1 : 0;
-        
-        // [NUEVO] Capturar max_members y status de comunidad
         $maxMembers = (int)($data['max_members'] ?? 0);
         $commStatus = $data['status'] ?? 'active';
         if (!in_array($commStatus, ['active', 'maintenance'])) $commStatus = 'active';
@@ -460,7 +456,6 @@ try {
             if ($id === 0) {
                 // CREAR
                 $uuid = generate_uuid();
-                // [MODIFICADO] Insertar is_verified, max_members, status
                 $sql = "INSERT INTO communities (uuid, community_name, community_type, access_code, privacy, profile_picture, banner_picture, is_verified, max_members, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
                 $pdo->prepare($sql)->execute([$uuid, $name, $type, $code, $privacy, $pfp, $banner, $isVerified, $maxMembers, $commStatus]);
                 $id = $pdo->lastInsertId(); 
@@ -471,7 +466,6 @@ try {
                 }
             } else {
                 // EDITAR
-                // [MODIFICADO] Actualizar is_verified, max_members, status
                 $sql = "UPDATE communities SET community_name=?, community_type=?, access_code=?, privacy=?, profile_picture=?, banner_picture=?, is_verified=?, max_members=?, status=? WHERE id=?";
                 $pdo->prepare($sql)->execute([$name, $type, $code, $privacy, $pfp, $banner, $isVerified, $maxMembers, $commStatus, $id]);
                 $msg = "Comunidad actualizada correctamente.";
@@ -495,7 +489,6 @@ try {
                 }
 
                 $maxUsers = isset($ch['max_users']) ? (int)$ch['max_users'] : 0;
-                // [NUEVO] Capturar status del canal
                 $chStatus = $ch['status'] ?? 'active';
                 if (!in_array($chStatus, ['active', 'maintenance'])) $chStatus = 'active';
 
@@ -505,7 +498,6 @@ try {
 
                 if ($chId > 0 && in_array($chId, $existingIds)) {
                     // UPDATE
-                    // [MODIFICADO] Actualizar status
                     $stmtUpdCh = $pdo->prepare("UPDATE community_channels SET name = ?, type = ?, max_users = ?, status = ? WHERE id = ? AND community_id = ?");
                     $stmtUpdCh->execute([$chName, $chType, $maxUsers, $chStatus, $chId, $id]);
                     $submittedIds[] = $chId;
@@ -514,7 +506,6 @@ try {
 
                 } else {
                     // INSERT
-                    // [MODIFICADO] Insertar status
                     $chUuid = generate_uuid();
                     $stmtInsCh = $pdo->prepare("INSERT INTO community_channels (uuid, community_id, name, type, max_users, status, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
                     $stmtInsCh->execute([$chUuid, $id, $chName, $chType, $maxUsers, $chStatus]);
@@ -560,8 +551,6 @@ try {
         } else {
             throw new Exception("Error al eliminar.");
         }
-
-    // --- GESTIÓN DE MIEMBROS DE COMUNIDAD (ADMIN) ---
 
     } elseif ($action === 'get_community_members') {
         $commId = (int)($data['community_id'] ?? 0);
@@ -609,12 +598,10 @@ try {
         $commId = (int)($data['community_id'] ?? 0);
         $targetId = (int)($data['user_id'] ?? 0);
         $reason = trim($data['reason'] ?? 'Baneado por administración');
-        // [MODIFICADO] Recibir duración
-        $duration = $data['duration'] ?? 'permanent'; // 'permanent', '12h', '1d', '3d', '1w'
+        $duration = $data['duration'] ?? 'permanent'; 
 
         if ($targetId === $currentAdminId) throw new Exception("No puedes banearte a ti mismo.");
 
-        // [MODIFICADO] Cálculo de expiración
         $expiresAt = null;
         $modifiers = [
             '12h' => '+12 hours',
@@ -626,18 +613,16 @@ try {
         if ($duration !== 'permanent' && isset($modifiers[$duration])) {
             $expiresAt = date('Y-m-d H:i:s', strtotime($modifiers[$duration]));
         } else {
-            $expiresAt = null; // Permanente
+            $expiresAt = null;
         }
 
         $pdo->beginTransaction();
-        // Remove membership if exists
         $stmtDel = $pdo->prepare("DELETE FROM community_members WHERE community_id = ? AND user_id = ?");
         $stmtDel->execute([$commId, $targetId]);
         if ($stmtDel->rowCount() > 0) {
             $pdo->prepare("UPDATE communities SET member_count = GREATEST(0, member_count - 1) WHERE id = ?")->execute([$commId]);
         }
 
-        // Add ban
         $stmtBan = $pdo->prepare("INSERT INTO community_bans (community_id, user_id, banned_by, reason, expires_at, created_at) VALUES (?, ?, ?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE reason = VALUES(reason), expires_at = VALUES(expires_at)");
         $stmtBan->execute([$commId, $targetId, $currentAdminId, $reason, $expiresAt]);
         
@@ -672,6 +657,79 @@ try {
         
         echo json_encode(['success' => true, 'message' => "Baneo levantado."]);
 
+    // --- NUEVAS HERRAMIENTAS DE DIAGNÓSTICO ---
+    } elseif ($action === 'get_redis_status') {
+        // Verificar extensión y variable global $redis (definida en database.php)
+        global $redis;
+        $status = ['connected' => false, 'msg' => '', 'keys' => []];
+
+        if (!class_exists('Redis')) {
+            $status['msg'] = "Extensión 'Redis' no instalada en PHP.";
+        } elseif (!isset($redis) || $redis === null) {
+            $status['msg'] = "Variable \$redis no inicializada (Revisar database.php).";
+        } else {
+            try {
+                $pong = $redis->ping();
+                if ($pong) {
+                    $status['connected'] = true;
+                    $status['msg'] = "Conectado";
+                    
+                    // Obtener claves actuales
+                    $keys = $redis->keys('chat:buffer:*');
+                    $resultKeys = [];
+                    foreach ($keys as $key) {
+                        $len = $redis->lLen($key);
+                        $content = $redis->lRange($key, 0, 4); // Preview de primeros 5
+                        $resultKeys[] = ['key' => $key, 'count' => $len, 'preview' => $content];
+                    }
+                    $status['keys'] = $resultKeys;
+                }
+            } catch (Exception $e) {
+                $status['msg'] = "Excepción de Conexión: " . $e->getMessage();
+            }
+        }
+        echo json_encode(array_merge(['success' => true], $status));
+
+    } elseif ($action === 'clear_redis') {
+        global $redis;
+        if (!isset($redis) || !$redis) throw new Exception("Redis no disponible.");
+        
+        $keys = $redis->keys('chat:buffer:*');
+        $count = 0;
+        foreach ($keys as $key) {
+            $redis->del($key);
+            $count++;
+        }
+        echo json_encode(['success' => true, 'count' => $count]);
+
+    } elseif ($action === 'test_bridge') {
+        $host = '127.0.0.1';
+        $port = 8081;
+        $timeout = 5;
+        
+        $fp = @fsockopen($host, $port, $errno, $errstr, $timeout);
+        
+        if (!$fp) {
+            throw new Exception("No se pudo conectar a $host:$port. Código: $errno - $errstr");
+        } else {
+            $bridgeSecret = $_ENV['BRIDGE_SECRET'] ?? getenv('BRIDGE_SECRET') ?? 'default_secret';
+
+            // Enviar payload de prueba
+            $testPayload = json_encode([
+                'auth_token' => $bridgeSecret,
+                'target_id' => 'global',
+                'type' => 'admin_notification', 
+                'payload' => ['message' => '🔔 TEST DE PUENTE EXITOSO (Desde Panel Admin) 🔔']
+            ]);
+            
+            fwrite($fp, $testPayload);
+            fclose($fp);
+            
+            echo json_encode([
+                'success' => true, 
+                'message' => 'El socket aceptó la conexión y el payload fue enviado con autenticación.'
+            ]);
+        }
     }
 
 } catch (Exception $e) {
