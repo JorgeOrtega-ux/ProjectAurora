@@ -271,7 +271,7 @@
 }
 .component-toolbar__group { display: flex; gap: 8px; align-items: center; }
 .component-toolbar__separator { width: 1px; height: 24px; background: #ddd; margin: 0 4px; }
-.component-toolbar__right { margin-left: auto; }
+.component-toolbar__right { margin-left: auto; display: flex; }
 
 .component-icon-button {
     background: transparent; border: 1px solid #00000020; border-radius: 8px;

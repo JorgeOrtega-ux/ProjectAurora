@@ -274,7 +274,7 @@ html {
     position: absolute;
     top: -6px;
     right: -6px;
-    background-color: #ff0000;
+    background-color: #000000;
     color: #ffffff;
     font-size: 10px;
     font-weight: 700;
@@ -1200,7 +1200,7 @@ a.disabled-link {
 .unread-dot {
     width: 10px;
     height: 10px;
-    background-color: #1a73e8;
+    background-color: #000000;
     border-radius: 50%;
     margin-left: auto;
     margin-top: 6px;

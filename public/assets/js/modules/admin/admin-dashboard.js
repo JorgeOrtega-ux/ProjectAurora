@@ -14,15 +14,29 @@ async function fetchStats() {
 }
 
 function updateUI(stats) {
+    // Referencias a elementos existentes
     const elTotal = document.getElementById('stat-total-users');
     const elOnline = document.getElementById('stat-online-users');
     const elNew = document.getElementById('stat-new-users');
     const elSessions = document.getElementById('stat-active-sessions');
+    
+    // Referencias a elementos NUEVOS
+    const elCommunities = document.getElementById('stat-total-communities');
+    const elMessages = document.getElementById('stat-messages-today');
+    const elReports = document.getElementById('stat-pending-reports');
+    const elFiles = document.getElementById('stat-total-files');
 
+    // Actualizar texto
     if (elTotal) elTotal.textContent = stats.total_users;
     if (elOnline && elOnline.textContent === '...') elOnline.textContent = stats.online_users;
     if (elNew) elNew.textContent = '+' + stats.new_users_today;
     if (elSessions) elSessions.textContent = stats.active_sessions;
+
+    // Actualizar nuevos elementos
+    if (elCommunities) elCommunities.textContent = stats.total_communities;
+    if (elMessages) elMessages.textContent = stats.messages_today;
+    if (elReports) elReports.textContent = stats.pending_reports;
+    if (elFiles) elFiles.textContent = stats.total_files;
 }
 
 function initSocketListener() {

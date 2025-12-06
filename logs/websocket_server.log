@@ -2652,3 +2652,49 @@ Traceback (most recent call last):
 AttributeError: module 'handlers' has no attribute 'handle_voice_disconnect'
 2025-12-06 00:35:31,308 - INFO - connection open
 2025-12-06 00:35:31,313 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 00:42:17,923 - INFO - === Servidor Aurora Iniciado (Modular) ===
+2025-12-06 00:42:17,963 - INFO - ✅ DB Pool inicializado.
+2025-12-06 00:42:17,964 - INFO - ✅ Redis inicializado.
+2025-12-06 00:42:19,447 - INFO - server listening on 0.0.0.0:8080
+2025-12-06 00:42:19,448 - INFO - 🚀 Websocket Server escuchando en 0.0.0.0:8080
+2025-12-06 00:42:19,473 - INFO - 🌉 Bridge PHP escuchando en 127.0.0.1:8081
+2025-12-06 00:42:20,144 - INFO - connection open
+2025-12-06 00:42:20,146 - INFO - connection open
+2025-12-06 00:42:27,929 - INFO - connection open
+2025-12-06 00:42:27,934 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 00:43:17,977 - INFO - connection open
+2025-12-06 00:43:17,990 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 00:44:03,864 - INFO - connection open
+2025-12-06 00:44:03,911 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 00:45:39,418 - INFO - connection open
+2025-12-06 00:45:39,439 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 00:46:21,279 - INFO - connection open
+2025-12-06 00:46:21,308 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 00:46:23,027 - INFO - connection open
+2025-12-06 00:46:23,045 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 00:54:07,866 - INFO - connection open
+2025-12-06 00:54:07,878 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 00:54:10,907 - INFO - connection open
+2025-12-06 00:54:10,968 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 00:55:53,011 - INFO - connection open
+2025-12-06 00:55:53,020 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 00:59:17,511 - INFO - connection open
+2025-12-06 00:59:17,529 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 00:59:48,455 - INFO - connection open
+2025-12-06 00:59:48,508 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-12-06 00:59:52,885 - INFO - connection open
+2025-12-06 00:59:52,896 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-12-06 01:00:05,244 - INFO - 💾 Flushing 10 msgs from chat:buffer:private:1:2
+2025-12-06 01:00:12,041 - INFO - connection open
+2025-12-06 01:00:12,051 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 01:00:20,601 - INFO - connection open
+2025-12-06 01:00:20,604 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 01:00:21,550 - INFO - connection open
+2025-12-06 01:00:21,600 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 01:00:26,979 - INFO - connection open
+2025-12-06 01:00:26,983 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 01:00:37,070 - INFO - connection open
+2025-12-06 01:00:37,077 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 01:00:40,654 - INFO - 💾 Flushing 10 msgs from chat:buffer:private:1:2
+2025-12-06 01:00:45,514 - INFO - connection open
+2025-12-06 01:00:45,517 - INFO - Usuario conectado: ID 1 | Rol: founder

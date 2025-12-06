@@ -2,23 +2,53 @@
 // includes/logic/admin/dashboard_service.php
 
 function get_dashboard_stats($pdo) {
+    // 1. Usuarios Totales
     $stmtTotal = $pdo->query("SELECT COUNT(*) FROM users WHERE account_status != 'deleted'");
     $totalUsers = $stmtTotal->fetchColumn();
     
+    // 2. Usuarios Online (Actividad reciente en 5 min)
     $stmtOnline = $pdo->query("SELECT COUNT(DISTINCT user_id) FROM user_sessions WHERE last_activity > (NOW() - INTERVAL 5 MINUTE)");
     $onlineUsers = $stmtOnline->fetchColumn();
     
+    // 3. Nuevos usuarios hoy
     $stmtNew = $pdo->query("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CURDATE()");
     $newUsersToday = $stmtNew->fetchColumn();
     
+    // 4. Sesiones Activas totales
     $stmtSessions = $pdo->query("SELECT COUNT(*) FROM user_sessions");
     $activeSessions = $stmtSessions->fetchColumn();
+
+    // 5. [NUEVO] Comunidades Totales
+    $stmtComm = $pdo->query("SELECT COUNT(*) FROM communities");
+    $totalCommunities = $stmtComm->fetchColumn();
+
+    // 6. [NUEVO] Mensajes Hoy (Comunidad + Privados)
+    $stmtMsgs = $pdo->query("
+        SELECT 
+            (SELECT COUNT(*) FROM community_messages WHERE DATE(created_at) = CURDATE()) + 
+            (SELECT COUNT(*) FROM private_messages WHERE DATE(created_at) = CURDATE())
+    ");
+    $messagesToday = $stmtMsgs->fetchColumn();
+
+    // 7. [NUEVO] Reportes (Total en la tabla)
+    // Nota: Si implementas estados (resuelto/pendiente), añade el WHERE aquí.
+    $stmtReports = $pdo->query("SELECT COUNT(*) FROM community_message_reports");
+    $pendingReports = $stmtReports->fetchColumn();
+
+    // 8. [NUEVO] Archivos Totales
+    $stmtFiles = $pdo->query("SELECT COUNT(*) FROM community_files");
+    $totalFiles = $stmtFiles->fetchColumn();
     
     return ['success' => true, 'stats' => [
         'total_users' => $totalUsers, 
         'online_users' => $onlineUsers, 
         'new_users_today' => $newUsersToday, 
-        'active_sessions' => $activeSessions
+        'active_sessions' => $activeSessions,
+        // Nuevos campos
+        'total_communities' => $totalCommunities,
+        'messages_today' => $messagesToday,
+        'pending_reports' => $pendingReports,
+        'total_files' => $totalFiles
     ]];
 }
 

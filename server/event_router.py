@@ -99,6 +99,6 @@ async def handle_client_connection(websocket):
     finally:
         # Limpieza
         if user_id:
-            await handlers.handle_voice_disconnect(user_id)
+            # [CORREGIDO] Eliminada llamada a handle_voice_disconnect porque ya no existe en handlers.py
             if session_id:
                 await connection_manager.remove_client(user_id, session_id, websocket)

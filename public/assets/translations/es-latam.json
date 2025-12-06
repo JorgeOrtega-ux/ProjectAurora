@@ -411,7 +411,11 @@
             "total_users": "Usuarios Totales",
             "online_users": "Usuarios en Línea",
             "active_sessions": "Sesiones Activas",
-            "new_users_today": "Nuevos hoy"
+            "new_users_today": "Nuevos hoy",
+            "total_communities": "Comunidades",
+            "messages_today": "Mensajes Hoy",
+            "pending_reports": "Reportes Pendientes",
+            "total_files": "Archivos"
         },
         "dashboard_title": "Dashboard Administrativo",
         "dashboard_desc": "Bienvenido al panel de control.",

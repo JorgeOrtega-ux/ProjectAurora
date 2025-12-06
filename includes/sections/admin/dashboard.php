@@ -78,6 +78,54 @@ if (!in_array($role, ['founder', 'administrator'])) {
                 </div>
             </div>
 
+            <div class="component-card component-card--column">
+                <div class="component-card__content" style="width:100%; gap:16px;">
+                    <div class="component-icon-container" style="background-color: #e8eaf6; border-color: #c5cae9;">
+                        <span class="material-symbols-rounded" style="color: #3949ab;">apartment</span>
+                    </div>
+                    <div class="component-card__text">
+                        <span class="dashboard-stat-label" data-i18n="admin.dashboard.total_communities">Comunidades</span>
+                        <h2 class="dashboard-stat-value" id="stat-total-communities">...</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="component-card component-card--column">
+                <div class="component-card__content" style="width:100%; gap:16px;">
+                    <div class="component-icon-container" style="background-color: #e0f7fa; border-color: #b2ebf2;">
+                        <span class="material-symbols-rounded" style="color: #00acc1;">forum</span>
+                    </div>
+                    <div class="component-card__text">
+                        <span class="dashboard-stat-label" data-i18n="admin.dashboard.messages_today">Mensajes Hoy</span>
+                        <h2 class="dashboard-stat-value" id="stat-messages-today">...</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="component-card component-card--column">
+                <div class="component-card__content" style="width:100%; gap:16px;">
+                    <div class="component-icon-container" style="background-color: #fce4ec; border-color: #f8bbd0;">
+                        <span class="material-symbols-rounded" style="color: #d81b60;">report</span>
+                    </div>
+                    <div class="component-card__text">
+                        <span class="dashboard-stat-label" data-i18n="admin.dashboard.pending_reports">Reportes</span>
+                        <h2 class="dashboard-stat-value" id="stat-pending-reports" style="color: #d81b60;">...</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="component-card component-card--column">
+                <div class="component-card__content" style="width:100%; gap:16px;">
+                    <div class="component-icon-container" style="background-color: #eceff1; border-color: #cfd8dc;">
+                        <span class="material-symbols-rounded" style="color: #546e7a;">folder_zip</span>
+                    </div>
+                    <div class="component-card__text">
+                        <span class="dashboard-stat-label" data-i18n="admin.dashboard.total_files">Archivos</span>
+                        <h2 class="dashboard-stat-value" id="stat-total-files">...</h2>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
     </div>

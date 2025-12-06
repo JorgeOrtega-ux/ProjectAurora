@@ -5,9 +5,8 @@ class ChannelsService {
 
     public static function createChannel($pdo, $userId, $communityUuid, $name) {
         $name = trim($name ?? '');
-        // Forzar a 'text' y 0 usuarios por ahora
+        // Forzar a 'text'
         $type = 'text';
-        $maxUsers = 0;
 
         if (empty($communityUuid) || empty($name)) throw new Exception("Faltan datos.");
         
@@ -22,9 +21,10 @@ class ChannelsService {
 
         $newUuid = generate_uuid();
         
-        $stmtIns = $pdo->prepare("INSERT INTO community_channels (uuid, community_id, name, type, max_users, status) VALUES (?, ?, ?, ?, ?, 'active')");
+        // [CORREGIDO] Eliminada columna 'max_users'
+        $stmtIns = $pdo->prepare("INSERT INTO community_channels (uuid, community_id, name, type, status) VALUES (?, ?, ?, ?, 'active')");
         
-        if ($stmtIns->execute([$newUuid, $row['id'], $name, $type, $maxUsers])) {
+        if ($stmtIns->execute([$newUuid, $row['id'], $name, $type])) {
             return [
                 'success' => true, 
                 'message' => "Canal creado.", 
@@ -32,7 +32,6 @@ class ChannelsService {
                     'uuid' => $newUuid, 
                     'name' => $name, 
                     'type' => $type, 
-                    'max_users' => $maxUsers, 
                     'status' => 'active', 
                     'unread_count' => 0
                 ]
