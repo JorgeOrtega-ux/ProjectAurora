@@ -1,4 +1,5 @@
 <?php
+// includes/sections/app/main.php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -64,27 +65,39 @@ $showSelect  = empty($initUuid) && $hasHistory;
             <div class="menu-content">
                 <div class="menu-list">
                     <div class="menu-link active" data-action="rail-filter-apply" data-filter="all">
-                        <span class="material-symbols-rounded">forum</span>
+                        <div class="menu-link-icon">
+                            <span class="material-symbols-rounded">forum</span>
+                        </div>
                         <div class="menu-link-text body-title">Todos</div>
                     </div>
                     <div class="menu-link" data-action="rail-filter-apply" data-filter="unread">
-                        <span class="material-symbols-rounded">mark_chat_unread</span>
+                        <div class="menu-link-icon">
+                            <span class="material-symbols-rounded">mark_chat_unread</span>
+                        </div>
                         <div class="menu-link-text body-title">No leídos</div>
                     </div>
                     <div class="menu-link" data-action="rail-filter-apply" data-filter="community">
-                        <span class="material-symbols-rounded">groups</span>
+                        <div class="menu-link-icon">
+                            <span class="material-symbols-rounded">groups</span>
+                        </div>
                         <div class="menu-link-text body-title">Comunidades</div>
                     </div>
                     <div class="menu-link" data-action="rail-filter-apply" data-filter="private">
-                        <span class="material-symbols-rounded">person</span>
+                        <div class="menu-link-icon">
+                            <span class="material-symbols-rounded">person</span>
+                        </div>
                         <div class="menu-link-text body-title">DM</div>
                     </div>
                     <div class="menu-link" data-action="rail-filter-apply" data-filter="favorites">
-                        <span class="material-symbols-rounded">star</span>
+                        <div class="menu-link-icon">
+                            <span class="material-symbols-rounded">star</span>
+                        </div>
                         <div class="menu-link-text body-title">Favoritos</div>
                     </div>
                     <div class="menu-link" data-action="rail-filter-apply" data-filter="archived">
-                        <span class="material-symbols-rounded">archive</span>
+                        <div class="menu-link-icon">
+                            <span class="material-symbols-rounded">archive</span>
+                        </div>
                         <div class="menu-link-text body-title">Archivados</div>
                     </div>
                 </div>
