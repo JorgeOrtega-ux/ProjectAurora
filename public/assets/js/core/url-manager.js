@@ -1,6 +1,7 @@
 // public/assets/js/core/url-manager.js
 
 import { closeAllModules } from '../ui/main-controller.js';
+import { TimerManager } from './timer-manager.js'; // [NUEVO IMPORT]
 
 // ... (resto de imports y variables igual) ...
 const allowedSections = [
@@ -125,6 +126,15 @@ function getSectionFromUrl() {
 async function showSection(sectionName, pushState = true) {
     isNavigating = true;
     console.log("[UrlManager] Cargando sección:", sectionName);
+
+    // [NUEVO] FASE DE LIMPIEZA (TEARDOWN / UNMOUNT) --------------------------
+    // 1. Matar todos los timers activos globalmente
+    TimerManager.clearAll();
+
+    // 2. Avisar a todos los módulos que deben limpiar sus listeners y variables
+    console.log("[UrlManager] Emitiendo evento de limpieza (app:navigation-start)...");
+    document.dispatchEvent(new CustomEvent('app:navigation-start'));
+    // -------------------------------------------------------------------------
 
     const container = document.querySelector('[data-container="main-section"]');
     const loader = document.querySelector('.loader-wrapper');

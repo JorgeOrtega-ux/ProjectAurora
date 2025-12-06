@@ -383,8 +383,6 @@ function removeTextarea() {
     }
 }
 
-// public/assets/js/modules/chat-manager.js
-
 function checkAndUpdateExpanded() {
     const input = document.getElementById('chat-message-input');
     const measure = document.getElementById('measure');
@@ -783,29 +781,22 @@ function initGlobalActionListeners() {
     if (areGlobalActionsInit) return;
 
     document.addEventListener('reset-chat-view', () => {
-        currentChatUuid = null;
-        currentChatId = null;
-        currentChannelUuid = null;
-        currentChatData = null;
-        window.ACTIVE_CHAT_UUID = null;
-        window.ACTIVE_CHANNEL_UUID = null;
-
+        resetChatState(); // Usar nuestra nueva función centralizada
+        
+        // UI Extra que también se limpia en resetChatState, pero se mantiene aquí para la vista visual
         const chatInterface = document.getElementById('chat-interface');
         const welcomePlaceholder = document.getElementById('chat-placeholder-welcome');
         const selectPlaceholder = document.getElementById('chat-placeholder-select');
         const layout = document.querySelector('.chat-layout-container');
 
         if (layout) layout.classList.remove('chat-active');
-
         if (chatInterface) chatInterface.style.display = 'none'; 
         if (selectPlaceholder) selectPlaceholder.classList.add('d-none');
         if (welcomePlaceholder) welcomePlaceholder.classList.remove('d-none');
         
-        // Cerrar panel móvil si estaba abierto y ocultar el botón
+        // Cerrar panel móvil
         document.getElementById('mobile-channels-panel')?.classList.add('d-none');
         document.getElementById('btn-mobile-sidebar-toggle')?.classList.add('d-none');
-        
-        clearInput(); // Resetear pill input
     });
 
     document.body.addEventListener('click', async (e) => {
@@ -813,12 +804,8 @@ function initGlobalActionListeners() {
             const layout = document.querySelector('.chat-layout-container');
             if (layout) layout.classList.remove('chat-active');
             
-            window.ACTIVE_CHAT_UUID = null;
-            window.ACTIVE_CHANNEL_UUID = null; 
-            currentChatUuid = null;
-            currentChannelUuid = null; 
-            currentChatId = null; 
-            
+            // Usar resetChatState aquí también
+            resetChatState();
             document.dispatchEvent(new CustomEvent('reset-chat-view'));
             window.history.pushState({ section: 'main' }, '', window.BASE_PATH);
         }
@@ -886,12 +873,47 @@ function initGlobalActionListeners() {
     areGlobalActionsInit = true;
 }
 
+// [NUEVO] Función de Reset Total del Estado
+function resetChatState() {
+    console.log("[ChatManager] Reseteando estado crítico...");
+
+    // 1. Limpiar Identidad del Chat
+    currentChatUuid = null;
+    currentChatId = null;
+    currentChannelUuid = null;
+    // currentChatType = 'community'; // Opcional: reiniciar a default o dejar el último
+    currentChatData = null;
+    window.ACTIVE_CHAT_UUID = null;
+    window.ACTIVE_CHANNEL_UUID = null;
+
+    // 2. Limpiar Interacciones Pendientes
+    replyingToMessageUuid = null;
+    replyingToMessageData = null;
+    selectedFiles = [];
+    isExpanded = false;
+
+    // 3. Limpiar Timers Locales
+    if (typingTimeout) {
+        clearTimeout(typingTimeout);
+        typingTimeout = null;
+    }
+
+    // 4. Limpiar UI Input
+    clearInput();
+}
+
 export function initChatManager() {
     initAttachmentListeners();
     initDOMListeners();
     initSocketListeners();
     initGlobalActionListeners();
+    
     clearAttachments();
     disableReplyMode();
-    updateSendButtonState(); // Inicializar estado del botón
+    updateSendButtonState(); 
+
+    // [NUEVO] Escuchar el evento de navegación del orquestador
+    document.addEventListener('app:navigation-start', () => {
+        resetChatState();
+    });
 }
