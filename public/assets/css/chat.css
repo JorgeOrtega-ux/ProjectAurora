@@ -2048,13 +2048,29 @@ cubic-bezier(0.2, 0.8, 0.2, 1);
     opacity: 0.4;
 }
 
+/* --- MODIFICACIÓN BOTÓN ENVIAR --- */
+
 .chat-pill-box .chat-pill-send {
-    background-color: #f3f4f6;
-    margin-left: auto; /* Empujar a la derecha */
+    background-color: #f3f4f6; /* Gris claro por defecto (Inactivo) */
+    margin-left: auto;         /* Empujar a la derecha */
+    color: #9ca3af;            /* Icono gris cuando está inactivo */
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.chat-pill-box .chat-pill-send:hover:not(:disabled) {
-    background-color: #e5e7eb;
+/* Estado ACTIVO: Cuando hay texto o archivos (Botón habilitado) */
+.chat-pill-box .chat-pill-send:not(:disabled) {
+    background-color: #000000; /* Fondo Negro */
+    color: #ffffff;            /* Icono Blanco */
+    opacity: 1;                /* Asegurar opacidad total */
+    transform: scale(1);       /* Escala base */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sutil sombra */
+}
+
+/* Hover en estado ACTIVO */
+.chat-pill-box .chat-pill-send:not(:disabled):hover {
+    background-color: #222222; /* Negro ligeramente más claro al pasar el mouse */
+    transform: scale(1.05);    /* Pequeño efecto de zoom */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* Estilo para el input de texto normal (una sola línea) */
