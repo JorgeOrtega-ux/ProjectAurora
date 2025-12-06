@@ -201,47 +201,48 @@ $showSelect  = empty($initUuid) && $hasHistory;
 
                 <div class="chat-messages-area"></div>
 
-                <div id="attachment-preview-area" class="d-none">
-                    <div class="preview-grid" id="preview-grid"></div>
-                </div>
+                <div class="chat-input-area" style="background: transparent; border: none; padding: 0 16px 16px 16px;">
+                    <div class="chat-pill-measure" id="measure" style="visibility: hidden; position: absolute; white-space: nowrap; font-size: 1rem; font-family: inherit;"></div>
+                    
+                    <input type="file" id="chat-file-input" multiple accept="image/*" style="display: none;">
 
-                <div id="reply-preview-container" class="reply-preview-bar d-none">
-                    <div class="reply-bar-content">
-                        <span class="reply-bar-title">Respondiendo a <strong id="reply-target-user">...</strong></span>
-                        <span class="reply-bar-text" id="reply-target-text">...</span>
+                    <div class="chat-pill-container" style="width: 100%; max-width: 100%;">
+                        <div class="chat-pill-box" id="pill">
+                            
+                            <div id="reply-preview-container" class="reply-preview-bar d-none">
+                                <div class="reply-bar-content">
+                                    <span class="reply-bar-title">Respondiendo a <strong id="reply-target-user">...</strong></span>
+                                    <span class="reply-bar-text" id="reply-target-text">...</span>
+                                </div>
+                                <button class="component-icon-button small" id="btn-cancel-reply">
+                                    <span class="material-symbols-rounded">close</span>
+                                </button>
+                            </div>
+
+                            <div id="attachment-preview-area" class="d-none">
+                                <div class="preview-grid" id="preview-grid"></div>
+                            </div>
+
+                            <div class="chat-pill-controls">
+                                <button class="chat-pill-btn" id="btn-attach-file" title="Adjuntar imágenes (Máx 4)">
+                                    <svg viewBox="0 0 24 24">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                </button>
+
+                                <input type="text" class="chat-pill-input chat-message-input" id="chat-message-input" placeholder="Escribe un mensaje..." autocomplete="off">
+
+                                <button class="chat-pill-btn chat-pill-send" id="btn-send-message" disabled>
+                                    <svg viewBox="0 0 24 24">
+                                        <line x1="12" y1="19" x2="12" y2="5"></line>
+                                        <polyline points="5 12 12 5 19 12"></polyline>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <button class="component-icon-button small" id="btn-cancel-reply">
-                        <span class="material-symbols-rounded">close</span>
-                    </button>
                 </div>
-
-               <div class="chat-input-area" style="background: transparent; border: none; padding: 0 16px 16px 16px;">
-    <div class="chat-pill-measure" id="measure" style="visibility: hidden; position: absolute; white-space: nowrap; font-size: 1rem; font-family: inherit;"></div>
-    
-    <input type="file" id="chat-file-input" multiple accept="image/*" style="display: none;">
-
-    <div class="chat-pill-container" style="width: 100%; max-width: 100%;">
-        <div class="chat-pill-box" id="pill">
-            <div class="chat-pill-controls">
-                <button class="chat-pill-btn" id="btn-attach-file" title="Adjuntar imágenes (Máx 4)">
-                    <svg viewBox="0 0 24 24">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                </button>
-
-                <input type="text" class="chat-pill-input chat-message-input" id="chat-message-input" placeholder="Escribe un mensaje..." autocomplete="off">
-
-                <button class="chat-pill-btn chat-pill-send" id="btn-send-message" disabled>
-                    <svg viewBox="0 0 24 24">
-                        <line x1="12" y1="19" x2="12" y2="5"></line>
-                        <polyline points="5 12 12 5 19 12"></polyline>
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
             </div>
         </div>
 
