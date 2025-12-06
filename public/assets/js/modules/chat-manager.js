@@ -383,23 +383,38 @@ function removeTextarea() {
     }
 }
 
+// public/assets/js/modules/chat-manager.js
+
 function checkAndUpdateExpanded() {
     const input = document.getElementById('chat-message-input');
     const measure = document.getElementById('measure');
+    const pillBox = document.querySelector('.chat-pill-box'); // El contenedor padre
     
     if (!input || !measure) return;
 
+    // 1. [FIX] Sincronización NUCLEAR de estilos
+    // Copiamos todas las propiedades tipográficas críticas al fantasma
+    const style = window.getComputedStyle(input);
+    measure.style.fontFamily = style.fontFamily;
+    measure.style.fontSize = style.fontSize;
+    measure.style.fontWeight = style.fontWeight;
+    measure.style.letterSpacing = style.letterSpacing;
+    measure.style.padding = style.padding; // Para considerar el padding interno
+    measure.style.border = style.border;   // Para considerar bordes
+    measure.style.boxSizing = "border-box";
+    
+    // 2. [FIX CRÍTICO] Manejo de espacios
+    // Los inputs preservan espacios múltiples, el HTML normal no.
+    // 'pre' asegura que "hola     mundo" mida lo mismo en ambos lados.
+    measure.style.whiteSpace = "pre"; 
+
+    // Obtener el texto actual
     let text = "";
     if (isExpanded) {
         const textarea = document.getElementById('expandedTextarea');
         text = textarea ? textarea.value : "";
     } else {
         text = input.value;
-    }
-
-    // Si no está expandido, guardamos el ancho disponible original
-    if (!isExpanded) {
-        savedAvailableWidth = input.offsetWidth;
     }
 
     if (text.length === 0) {
@@ -412,14 +427,33 @@ function checkAndUpdateExpanded() {
         return;
     }
 
+    // Actualizar texto del medidor
     measure.textContent = text;
-    const textWidth = measure.offsetWidth;
     
-    // Usar ancho guardado si ya estamos expandidos (porque el input está oculto)
-    const availableWidth = isExpanded ? savedAvailableWidth : input.offsetWidth;
+    // Medir ancho del texto ocupado
+    const textWidth = measure.getBoundingClientRect().width;
+
+    // 3. [FIX] Cálculo robusto del espacio disponible
+    // En lugar de usar savedAvailableWidth (que falla al redimensionar),
+    // calculamos el ancho del contenedor menos el espacio reservado para botones.
+    // Asumimos ~90px para botones (Adjuntar + Emoji + Enviar + Gaps). 
+    // Puedes ajustar el '90' según tu CSS exacto.
+    let availableWidth;
     
-    // Umbral de tolerancia para el padding/íconos
-    const threshold = availableWidth - 20; 
+    if (!isExpanded && input.offsetWidth > 0) {
+        // Si el input es visible, usamos su ancho real
+        availableWidth = input.offsetWidth;
+    } else if (pillBox) {
+        // Si está expandido (input oculto), usamos el ancho del padre menos los botones
+        availableWidth = pillBox.offsetWidth - 90; 
+    } else {
+        // Fallback de seguridad
+        availableWidth = 300; 
+    }
+
+    // Umbral de tolerancia
+    // Restamos un poco más (10px) para evitar que el texto toque el borde antes de expandir
+    const threshold = availableWidth - 10; 
 
     if (textWidth > threshold) {
         // EXPANDIR
@@ -430,17 +464,16 @@ function checkAndUpdateExpanded() {
         }
     } else {
         // CONTRAER
-        if (isExpanded) {
+        // Histéresis: Solo contraemos si sobra espacio (ej. 20px) para evitar parpadeos
+        if (isExpanded && textWidth < (threshold - 20)) {
             isExpanded = false;
             removeTextarea();
             input.style.display = '';
             input.focus();
-            // Restaurar cursor al final
             input.setSelectionRange(text.length, text.length);
         }
     }
 }
-
 
 // --- ACCIONES PRINCIPALES ---
 
