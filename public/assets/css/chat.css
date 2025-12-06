@@ -651,10 +651,11 @@
     border: 1px solid transparent;
 }
 
-/* Estilo para mensajes propios */
+/* Estilo para mensajes propios [MODIFICADO: AHORA NEGRO] */
 .message-own .message-bubble {
-    background-color: #dcf8c6;
-    border-color: #dcf8c6;
+    background-color: #000000;
+    border-color: #000000;
+    color: #ffffff; /* Texto blanco para contraste */
 }
 
 /* Estilo para mensajes de otros */
@@ -1907,10 +1908,10 @@
     background-color: #e4e6eb;
 }
 
-/* Modificar colores si es 'own' */
+/* [MODIFICADO] Modificar colores si es 'own' (Ajustado para burbuja negra) */
 .message-own .reaction-bubble {
-    background-color: #f0fdf4; /* Verde muy claro */
-    border-color: #bbf7d0;
+    background-color: #f5f5f5; /* Gris claro neutro */
+    border-color: #000000;     /* Borde negro para combinar */
 }
 
 .reaction-count {
@@ -1959,8 +1960,8 @@
 
 /* Estado activo del botón de reacción en el popover */
 .reaction-btn.active {
-    background-color: #e3f2fd; /* Azul claro */
-    border: 1px solid #90caf9; /* Borde azul suave */
+    background-color: #f0f0f0; /* Azul claro */
+    border: 1px solid #000000; /* Borde azul suave */
     border-radius: 8px; /* Opcional: hacerlo un poco más cuadrado si quieres */
     transform: scale(1.1);
 }

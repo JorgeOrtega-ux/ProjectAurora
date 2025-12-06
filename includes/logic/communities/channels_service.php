@@ -16,7 +16,9 @@ class ChannelsService {
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$row) throw new Exception("Comunidad no encontrada.");
-        if (!in_array($row['role'], ['admin', 'moderator'])) throw new Exception("No tienes permisos para crear canales.");
+        
+        // [MODIFICADO] Eliminado 'moderator' de la lista
+        if (!in_array($row['role'], ['admin'])) throw new Exception("No tienes permisos para crear canales.");
 
         $newUuid = generate_uuid();
         
@@ -53,7 +55,9 @@ class ChannelsService {
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$row) throw new Exception("Canal no encontrado o sin permisos.");
-        if (!in_array($row['role'], ['admin', 'moderator'])) throw new Exception("No tienes permisos.");
+        
+        // [MODIFICADO] Eliminado 'moderator' de la lista
+        if (!in_array($row['role'], ['admin'])) throw new Exception("No tienes permisos.");
 
         $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM community_channels WHERE community_id = ?");
         $stmtCount->execute([$row['community_id']]);

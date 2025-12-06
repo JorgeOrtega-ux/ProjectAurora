@@ -565,7 +565,8 @@ export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, cu
     }
 
     const popover = document.createElement('div');
-    popover.className = 'popover-module message-options-popover active';
+    // [MODIFICADO] Añadida la clase body-title
+    popover.className = 'popover-module message-options-popover body-title active';
     
     const reactionMap = [
         { key: 'like', icon: '👍' },

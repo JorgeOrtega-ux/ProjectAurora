@@ -24,7 +24,8 @@ class ModerationService {
         $stmtRoles->execute([$commId, $userId]);
         $myRole = $stmtRoles->fetchColumn(); // 'admin', 'moderator', 'member'
 
-        if (!in_array($myRole, ['admin', 'moderator'])) throw new Exception("No tienes permisos.");
+        // [MODIFICADO] Eliminado 'moderator' de la lista de permitidos
+        if (!in_array($myRole, ['admin'])) throw new Exception("No tienes permisos.");
 
         // Rol del objetivo
         $stmtRoles->execute([$commId, $targetId]);
@@ -32,10 +33,8 @@ class ModerationService {
 
         if (!$targetRole) throw new Exception("El usuario no es miembro.");
 
-        // Jerarquía: Admin > Mod > Member
-        if ($myRole === 'moderator' && in_array($targetRole, ['admin', 'moderator'])) {
-            throw new Exception("No puedes expulsar a un superior o igual.");
-        }
+        // Jerarquía: Admin > Member (Moderator ahora es tratado como Member funcionalmente)
+        // [MODIFICADO] Limpiada la lógica de jerarquía de moderadores
         if ($myRole === 'admin' && $targetRole === 'admin') {
              throw new Exception("No puedes expulsar a otro administrador.");
         }
@@ -77,16 +76,15 @@ class ModerationService {
         $stmtRoles->execute([$commId, $userId]);
         $myRole = $stmtRoles->fetchColumn();
 
-        if (!in_array($myRole, ['admin', 'moderator'])) throw new Exception("No tienes permisos.");
+        // [MODIFICADO] Eliminado 'moderator'
+        if (!in_array($myRole, ['admin'])) throw new Exception("No tienes permisos.");
 
         $stmtRoles->execute([$commId, $targetId]);
         $targetRole = $stmtRoles->fetchColumn();
 
         // Si es miembro actual, verificar jerarquía
         if ($targetRole) {
-            if ($myRole === 'moderator' && in_array($targetRole, ['admin', 'moderator'])) {
-                throw new Exception("No puedes banear a un superior o igual.");
-            }
+            // [MODIFICADO] Limpiada la lógica de jerarquía de moderadores
             if ($myRole === 'admin' && $targetRole === 'admin') {
                 throw new Exception("No puedes banear a otro administrador.");
             }
@@ -146,7 +144,8 @@ class ModerationService {
         $stmtCheck->execute([$commId, $userId]);
         $myRole = $stmtCheck->fetchColumn();
 
-        if (!in_array($myRole, ['admin', 'moderator'])) throw new Exception("No tienes permisos.");
+        // [MODIFICADO] Eliminado 'moderator'
+        if (!in_array($myRole, ['admin'])) throw new Exception("No tienes permisos.");
 
         $pdo->prepare("DELETE FROM community_bans WHERE community_id = ? AND user_id = ?")->execute([$commId, $targetId]);
 
@@ -173,16 +172,15 @@ class ModerationService {
         $stmtRoles->execute([$commId, $userId]);
         $myRole = $stmtRoles->fetchColumn();
 
-        if (!in_array($myRole, ['admin', 'moderator'])) throw new Exception("No tienes permisos.");
+        // [MODIFICADO] Eliminado 'moderator'
+        if (!in_array($myRole, ['admin'])) throw new Exception("No tienes permisos.");
 
         $stmtRoles->execute([$commId, $targetId]);
         $targetRole = $stmtRoles->fetchColumn();
 
         if (!$targetRole) throw new Exception("Usuario no es miembro.");
 
-        if ($myRole === 'moderator' && in_array($targetRole, ['admin', 'moderator'])) {
-            throw new Exception("No puedes silenciar a superiores.");
-        }
+        // [MODIFICADO] Limpiada lógica de moderador
         if ($myRole === 'admin' && $targetRole === 'admin') {
             throw new Exception("No puedes silenciar a otros admins.");
         }

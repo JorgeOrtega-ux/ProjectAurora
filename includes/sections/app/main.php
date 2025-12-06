@@ -9,8 +9,8 @@ if (!isset($_SESSION['user_id'])) {
 
 // Variables inyectadas desde router.php
 $initUuid = $activeContextUuid ?? '';
-$initType = $activeContextType ?? 'community'; 
-$initChannel = $activeChannelUuid ?? ''; 
+$initType = $activeContextType ?? 'community';
+$initChannel = $activeChannelUuid ?? '';
 
 $isCommunityView = (!empty($initUuid) && $initType === 'community');
 $hideOnCommunity = $isCommunityView ? 'style="display: none !important;"' : '';
@@ -45,9 +45,9 @@ $showSelect  = empty($initUuid) && $hasHistory;
 </script>
 
 <div class="section-content active" data-section="main" style="padding: 0; height: 100%;">
-    
+
     <div class="chat-layout-container">
-        
+
         <div class="chat-rail d-none" id="chat-rail-panel">
             <div class="rail-group-top">
                 <div class="rail-item" data-action="toggle-rail-filter" id="rail-filter-trigger">
@@ -61,7 +61,7 @@ $showSelect  = empty($initUuid) && $hasHistory;
         </div>
 
         <div class="popover-module rail-filter-popover disabled" id="rail-filter-menu">
-             <div class="menu-content">
+            <div class="menu-content">
                 <div class="menu-list">
                     <div class="menu-link active" data-action="rail-filter-apply" data-filter="all">
                         <span class="material-symbols-rounded">forum</span>
@@ -90,7 +90,7 @@ $showSelect  = empty($initUuid) && $hasHistory;
                 </div>
             </div>
         </div>
-        
+
         <div class="chat-sidebar" id="chat-sidebar-panel">
             <div class="chat-sidebar-header">
                 <h2 class="chat-sidebar-title">
@@ -132,7 +132,7 @@ $showSelect  = empty($initUuid) && $hasHistory;
                 <div class="sidebar-badge" data-filter="favorites">Favoritos</div>
                 <div class="sidebar-badge" data-filter="archived">Archivados</div>
             </div>
-            
+
             <div class="chat-list-wrapper">
                 <div id="my-communities-list" class="chat-list">
                     <div class="small-spinner" style="margin: 20px auto;"></div>
@@ -141,7 +141,7 @@ $showSelect  = empty($initUuid) && $hasHistory;
         </div>
 
         <div class="chat-main-area" id="chat-main-panel">
-            
+
             <div id="chat-placeholder-welcome" class="chat-placeholder <?php echo $showWelcome ? '' : 'd-none'; ?>">
                 <div class="placeholder-content">
                     <span class="material-symbols-rounded placeholder-icon" style="color: #1976d2;">public</span>
@@ -176,7 +176,7 @@ $showSelect  = empty($initUuid) && $hasHistory;
                         <button class="component-icon-button mobile-only-btn <?php echo $isCommunityView ? '' : 'd-none'; ?>" id="btn-mobile-sidebar-toggle" style="margin-right: 8px;">
                             <span class="material-symbols-rounded">menu</span>
                         </button>
-                        
+
                         <div class="chat-avatar-container">
                             <img id="chat-header-img" src="" alt="" class="chat-avatar-img">
                         </div>
@@ -191,7 +191,7 @@ $showSelect  = empty($initUuid) && $hasHistory;
                         </button>
                     </div>
                 </div>
-                
+
                 <div id="mobile-channels-panel" class="mobile-channels-sidebar d-none">
                     <div class="mobile-channels-header">
                         <h3 style="margin:0; font-size:14px; color:#666; font-weight:700;">CANALES</h3>
@@ -199,31 +199,31 @@ $showSelect  = empty($initUuid) && $hasHistory;
                     <div id="mobile-channels-list" class="mobile-channels-list"></div>
                 </div>
 
-                <div class="chat-messages-area"></div>
+                <div class="chat-messages-area overflow-y"></div>
 
                 <div class="chat-input-area" style="background: transparent; border: none; padding: 0 16px 16px 16px;">
                     <div class="chat-pill-measure" id="measure" style="visibility: hidden; position: absolute; white-space: nowrap; font-size: 1rem; font-family: inherit;"></div>
-                    
+
                     <input type="file" id="chat-file-input" multiple accept="image/*" style="display: none;">
 
                     <div class="chat-pill-container" style="width: 100%; max-width: 100%;">
                         <div class="chat-pill-box" id="pill">
-                            
-                            <div id="reply-preview-container" class="reply-preview-bar d-none">
-    
-    <div class="reply-bar-icon">
-        <span class="material-symbols-rounded">reply</span>
-    </div>
 
-    <div class="reply-bar-content">
-        <span class="reply-bar-title">Respondiendo a <strong id="reply-target-user">...</strong></span>
-        <span class="reply-bar-text" id="reply-target-text">...</span>
-    </div>
-    
-    <button class="component-icon-button small" id="btn-cancel-reply">
-        <span class="material-symbols-rounded">close</span>
-    </button>
-</div>
+                            <div id="reply-preview-container" class="reply-preview-bar d-none">
+
+                                <div class="reply-bar-icon">
+                                    <span class="material-symbols-rounded">reply</span>
+                                </div>
+
+                                <div class="reply-bar-content">
+                                    <span class="reply-bar-title">Respondiendo a <strong id="reply-target-user">...</strong></span>
+                                    <span class="reply-bar-text" id="reply-target-text">...</span>
+                                </div>
+
+                                <button class="component-icon-button small" id="btn-cancel-reply">
+                                    <span class="material-symbols-rounded">close</span>
+                                </button>
+                            </div>
 
                             <div id="attachment-preview-area" class="d-none">
                                 <div class="preview-grid" id="preview-grid"></div>
@@ -253,7 +253,7 @@ $showSelect  = empty($initUuid) && $hasHistory;
         </div>
 
         <div class="chat-info-sidebar d-none" id="chat-info-panel">
-             <div class="info-sidebar-header">
+            <div class="info-sidebar-header">
                 <span class="info-sidebar-title">Info. del grupo</span>
                 <button class="component-icon-button" data-action="close-group-info">
                     <span class="material-symbols-rounded">close</span>
