@@ -819,26 +819,15 @@ function initJoinByCode() {
             const commName = reqBtn.dataset.communityName;
             setButtonLoading(reqBtn, true);
 
-            // Fetch directo para asegurar funcionalidad sin modificar api-service.js
             try {
-                const response = await fetch('api/communities_handler.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-Token': window.CSRF_TOKEN || ''
-                    },
-                    body: JSON.stringify({
-                        action: 'request_access',
-                        community_name: commName,
-                        csrf_token: window.CSRF_TOKEN || ''
-                    })
-                });
-                const res = await response.json();
+                // Usamos la API centralizada que maneja el CSRF automáticamente
+                const res = await CommunityApi.requestAccess(commName);
 
                 if (res.success) {
                     if (window.alertManager) window.alertManager.showAlert(res.message, 'success');
                     reqBtn.textContent = 'Solicitud Enviada';
-                    reqBtn.classList.replace('secondary', 'success'); // Asumiendo estilo 'success'
+                    reqBtn.classList.remove('secondary'); 
+                    reqBtn.classList.add('success'); 
                     reqBtn.disabled = true;
                 } else {
                     if (window.alertManager) window.alertManager.showAlert(res.message, 'error');

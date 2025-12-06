@@ -181,6 +181,10 @@ export const CommunityApi = {
     joinPublic: (communityId) => 
         postJson('api/communities_handler.php', { action: 'join_public', community_id: communityId }),
 
+    // [NUEVO] Método añadido para solicitar acceso
+    requestAccess: (communityName) => 
+        postJson('api/communities_handler.php', { action: 'request_access', community_name: communityName }),
+
     leaveCommunity: (uuid) => 
         postJson('api/communities_handler.php', { action: 'leave_community', uuid }),
 
