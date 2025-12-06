@@ -330,8 +330,9 @@ function createTextarea(text) {
 
     removeTextarea(); // Limpiar previo si existe
 
+    // [ACTUALIZADO] Usar nueva clase chat-pill-textarea-container
     const container = document.createElement('div');
-    container.className = 'textarea-container';
+    container.className = 'chat-pill-textarea-container';
 
     const textarea = document.createElement('textarea');
     textarea.id = 'expandedTextarea';
@@ -341,7 +342,8 @@ function createTextarea(text) {
 
     container.appendChild(textarea);
     
-    const controls = pill.querySelector('.controls');
+    // [ACTUALIZADO] Usar nueva clase chat-pill-controls
+    const controls = pill.querySelector('.chat-pill-controls');
     if (controls) {
         pill.insertBefore(container, controls);
     } else {
@@ -375,7 +377,8 @@ function createTextarea(text) {
 function removeTextarea() {
     const pill = document.getElementById('pill');
     if (pill) {
-        const container = pill.querySelector('.textarea-container');
+        // [ACTUALIZADO] Buscar por la nueva clase
+        const container = pill.querySelector('.chat-pill-textarea-container');
         if (container) container.remove();
     }
 }
