@@ -27,6 +27,10 @@ let hasMoreMessages = true;
 let typingTimeout = null;
 const TYPING_DISPLAY_TIME = 3000;
 
+// Estado del Input Pill (Expansión)
+let isExpanded = false;
+let savedAvailableWidth = 0;
+
 // Banderas de Inicialización Global
 let areSocketListenersInit = false;
 let areGlobalActionsInit = false;
@@ -45,7 +49,7 @@ export async function openChat(uuid, chatData = null) {
         // CASO A: Chat Privado
         if (currentChatType === 'private') {
             console.log('🛑 Anti-Reload: Ya estás en este chat privado.');
-            document.querySelector('.chat-message-input')?.focus();
+            focusInput();
             return; 
         }
 
@@ -55,13 +59,13 @@ export async function openChat(uuid, chatData = null) {
 
             if (!targetChannelUuid) {
                 console.log('🛑 Anti-Reload: Ya estás en esta comunidad (Canal actual mantenido).');
-                document.querySelector('.chat-message-input')?.focus();
+                focusInput();
                 return;
             }
 
             if (targetChannelUuid === currentChannelUuid) {
                 console.log('🛑 Anti-Reload: Ya estás en este canal específico.');
-                document.querySelector('.chat-message-input')?.focus();
+                focusInput();
                 return;
             }
         }
@@ -255,6 +259,7 @@ function initAttachmentListeners() {
             });
             
             fileInput.value = ''; 
+            updateSendButtonState(); // Actualizar botón al adjuntar
         };
     }
 }
@@ -276,30 +281,191 @@ function triggerTypingIndicator() {
     }, TYPING_DISPLAY_TIME);
 }
 
+// --- LÓGICA DE PILL INPUT (EXPANSIÓN) ---
+
+function getInputValue() {
+    const input = document.getElementById('chat-message-input');
+    const textarea = document.getElementById('expandedTextarea');
+    if (isExpanded && textarea) {
+        return textarea.value;
+    }
+    return input ? input.value : '';
+}
+
+function clearInput() {
+    const input = document.getElementById('chat-message-input');
+    if (input) {
+        input.value = '';
+        input.style.display = '';
+    }
+    
+    // Si estaba expandido, colapsar
+    isExpanded = false;
+    removeTextarea();
+    updateSendButtonState();
+}
+
+function focusInput() {
+    const input = document.getElementById('chat-message-input');
+    const textarea = document.getElementById('expandedTextarea');
+    if (isExpanded && textarea) {
+        textarea.focus();
+    } else if (input) {
+        input.focus();
+    }
+}
+
+function updateSendButtonState() {
+    const btn = document.getElementById('btn-send-message');
+    const text = getInputValue().trim();
+    if (btn) {
+        // Habilitar si hay texto O hay archivos adjuntos
+        btn.disabled = (!text && selectedFiles.length === 0);
+    }
+}
+
+function createTextarea(text) {
+    const pill = document.getElementById('pill');
+    if (!pill) return;
+
+    removeTextarea(); // Limpiar previo si existe
+
+    const container = document.createElement('div');
+    container.className = 'textarea-container';
+
+    const textarea = document.createElement('textarea');
+    textarea.id = 'expandedTextarea';
+    textarea.placeholder = 'Escribe un mensaje...';
+    textarea.value = text;
+    textarea.rows = 3;
+
+    container.appendChild(textarea);
+    
+    const controls = pill.querySelector('.controls');
+    if (controls) {
+        pill.insertBefore(container, controls);
+    } else {
+        pill.appendChild(container);
+    }
+
+    setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(text.length, text.length);
+    }, 0);
+
+    // Listeners para el textarea dinámico
+    textarea.addEventListener('input', (e) => {
+        const input = document.getElementById('chat-message-input');
+        if (input) input.value = e.target.value; // Sync inverso
+        
+        updateSendButtonState();
+        checkAndUpdateExpanded();
+        ChatActions.handleTypingEvent(currentChatUuid, currentChatType);
+    });
+
+    textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            performSendMessage();
+        }
+        ChatActions.handleTypingEvent(currentChatUuid, currentChatType);
+    });
+}
+
+function removeTextarea() {
+    const pill = document.getElementById('pill');
+    if (pill) {
+        const container = pill.querySelector('.textarea-container');
+        if (container) container.remove();
+    }
+}
+
+function checkAndUpdateExpanded() {
+    const input = document.getElementById('chat-message-input');
+    const measure = document.getElementById('measure');
+    
+    if (!input || !measure) return;
+
+    let text = "";
+    if (isExpanded) {
+        const textarea = document.getElementById('expandedTextarea');
+        text = textarea ? textarea.value : "";
+    } else {
+        text = input.value;
+    }
+
+    // Si no está expandido, guardamos el ancho disponible original
+    if (!isExpanded) {
+        savedAvailableWidth = input.offsetWidth;
+    }
+
+    if (text.length === 0) {
+        if (isExpanded) {
+            isExpanded = false;
+            removeTextarea();
+            input.style.display = '';
+            input.focus();
+        }
+        return;
+    }
+
+    measure.textContent = text;
+    const textWidth = measure.offsetWidth;
+    
+    // Usar ancho guardado si ya estamos expandidos (porque el input está oculto)
+    const availableWidth = isExpanded ? savedAvailableWidth : input.offsetWidth;
+    
+    // Umbral de tolerancia para el padding/íconos
+    const threshold = availableWidth - 20; 
+
+    if (textWidth > threshold) {
+        // EXPANDIR
+        if (!isExpanded) {
+            isExpanded = true;
+            createTextarea(text);
+            input.style.display = 'none';
+        }
+    } else {
+        // CONTRAER
+        if (isExpanded) {
+            isExpanded = false;
+            removeTextarea();
+            input.style.display = '';
+            input.focus();
+            // Restaurar cursor al final
+            input.setSelectionRange(text.length, text.length);
+        }
+    }
+}
+
+
 // --- ACCIONES PRINCIPALES ---
 
 async function performSendMessage() {
     if (!currentChatUuid) return;
     
-    // [NUEVO] Guardia: Bloquear envío si la cuenta está eliminada
+    // Guardia: Bloquear si cuenta eliminada
     if (currentChatType === 'private' && currentChatData?.account_status === 'deleted') {
         if(window.alertManager) window.alertManager.showAlert("No puedes enviar mensajes a este usuario.", 'error');
         return;
     }
 
-    const input = document.querySelector('.chat-message-input');
-    const text = input.value.trim();
+    const text = getInputValue().trim();
     
     if (!text && selectedFiles.length === 0) return;
 
     let btn = null;
-    let originalIcon = '';
+    let originalContent = '';
     
+    // Si hay archivos, mostrar estado de carga
     if (selectedFiles.length > 0) {
         btn = document.getElementById('btn-send-message');
-        originalIcon = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<span class="material-symbols-rounded">sync</span>'; 
+        if(btn) {
+            originalContent = btn.innerHTML;
+            btn.disabled = true;
+            // Usar icono de sync o spinner
+            btn.innerHTML = '<span class="material-symbols-rounded" style="animation: spin 1s linear infinite; font-size: 20px;">sync</span>'; 
+        }
     }
 
     const params = {
@@ -314,25 +480,28 @@ async function performSendMessage() {
     const result = await ChatActions.sendMessage(params);
 
     if (result.success) {
-        input.value = '';
-        input.focus();
+        clearInput(); // Esto resetea el pill y el input
         clearAttachments();
         disableReplyMode();
+        focusInput();
     } else {
         if(window.alertManager) window.alertManager.showAlert(result.message || 'Error al enviar', 'error');
     }
 
     if (btn) {
         btn.disabled = false;
-        btn.innerHTML = originalIcon;
+        btn.innerHTML = originalContent;
     }
+    
+    // Re-evaluar estado del botón (debería quedar disabled si se limpió todo)
+    updateSendButtonState();
 }
 
 function enableReplyMode(msgUuid, senderName, messageText) {
     replyingToMessageUuid = msgUuid; 
     replyingToMessageData = { user: senderName, text: messageText };
     Renderer.updateReplyUI(true, replyingToMessageData);
-    document.querySelector('.chat-message-input')?.focus();
+    focusInput();
 }
 
 function disableReplyMode() {
@@ -489,15 +658,26 @@ function initSocketListeners() {
 }
 
 function initDOMListeners() {
-    const input = document.querySelector('.chat-message-input');
+    const input = document.getElementById('chat-message-input');
     const sendBtn = document.getElementById('btn-send-message');
     
     if (input) {
         input.onkeydown = (e) => { 
+            // Manejar Enter solo si NO está expandido (el textarea maneja su propio enter)
+            // O si preferimos unificar, el input es type="text" así que enter siempre envía
+            if (e.key === 'Enter') { 
+                e.preventDefault(); 
+                performSendMessage(); 
+            } 
             ChatActions.handleTypingEvent(currentChatUuid, currentChatType); 
-            if (e.key === 'Enter') { e.preventDefault(); performSendMessage(); } 
         };
-        input.oninput = () => ChatActions.handleTypingEvent(currentChatUuid, currentChatType);
+
+        // Lógica de Pill Input
+        input.addEventListener('input', () => {
+            updateSendButtonState();
+            checkAndUpdateExpanded();
+            ChatActions.handleTypingEvent(currentChatUuid, currentChatType);
+        });
     }
     
     if (sendBtn) sendBtn.onclick = (e) => { e.preventDefault(); performSendMessage(); };
@@ -588,6 +768,8 @@ function initGlobalActionListeners() {
         // Cerrar panel móvil si estaba abierto y ocultar el botón
         document.getElementById('mobile-channels-panel')?.classList.add('d-none');
         document.getElementById('btn-mobile-sidebar-toggle')?.classList.add('d-none');
+        
+        clearInput(); // Resetear pill input
     });
 
     document.body.addEventListener('click', async (e) => {
@@ -675,4 +857,5 @@ export function initChatManager() {
     initGlobalActionListeners();
     clearAttachments();
     disableReplyMode();
+    updateSendButtonState(); // Inicializar estado del botón
 }

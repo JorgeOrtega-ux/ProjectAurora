@@ -215,15 +215,32 @@ $showSelect  = empty($initUuid) && $hasHistory;
                     </button>
                 </div>
 
-                <div class="chat-input-area">
+                <div class="chat-input-area" style="background: transparent; border: none; padding: 0 16px 16px 16px;">
+                    <div class="measure" id="measure" style="visibility: hidden; position: absolute; white-space: nowrap; font-size: 1rem; font-family: inherit;"></div>
+                    
                     <input type="file" id="chat-file-input" multiple accept="image/*" style="display: none;">
-                    <button class="component-icon-button" id="btn-attach-file" title="Adjuntar imágenes (Máx 4)">
-                        <span class="material-symbols-rounded">attach_file</span>
-                    </button>
-                    <input type="text" class="chat-message-input" placeholder="Escribe un mensaje...">
-                    <button class="component-icon-button" id="btn-send-message">
-                        <span class="material-symbols-rounded">send</span>
-                    </button>
+
+                    <div class="pill-container" style="width: 100%; max-width: 100%;">
+                        <div class="pill" id="pill">
+                            <div class="controls">
+                                <button class="btn" id="btn-attach-file" title="Adjuntar imágenes (Máx 4)">
+                                    <svg viewBox="0 0 24 24">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                </button>
+
+                                <input type="text" class="input-text chat-message-input" id="chat-message-input" placeholder="Escribe un mensaje..." autocomplete="off">
+
+                                <button class="btn btn-send" id="btn-send-message" disabled>
+                                    <svg viewBox="0 0 24 24">
+                                        <line x1="12" y1="19" x2="12" y2="5"></line>
+                                        <polyline points="5 12 12 5 19 12"></polyline>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

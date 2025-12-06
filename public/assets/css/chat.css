@@ -402,6 +402,10 @@
     flex-direction: column;
 }
 
+/* NOTA: .chat-input-area ha sido modificado en el HTML para usar el Pill Input.
+   Los estilos básicos se mantienen aquí para compatibilidad, pero muchos
+   se sobrescriben inline en el nuevo diseño.
+*/
 .chat-input-area {
     min-height: 60px;
     border-top: 1px solid #00000020;
@@ -415,17 +419,6 @@
     border-bottom-right-radius: 12px;
     position: relative;
     z-index: 2;
-}
-
-.chat-message-input {
-    flex: 1;
-    height: 40px;
-    border-radius: 8px;
-    border: 1px solid #00000020;
-    padding: 0 12px;
-    background-color: #fff;
-    outline: none;
-    font-size: 15px;
 }
 
 /* Chat Avatars Mensajes */
@@ -1928,4 +1921,143 @@
     border: 1px solid #90caf9; /* Borde azul suave */
     border-radius: 8px; /* Opcional: hacerlo un poco más cuadrado si quieres */
     transform: scale(1.1);
+}
+
+/* =========================================
+   9. PILL INPUT COMPONENT (NUEVO)
+   ========================================= */
+
+.pill-container {
+    width: 100%;
+    max-width: 100%; 
+    margin: 0 auto;
+}
+
+.pill {
+    background: white;
+    border-radius: 24px; /* Forma de píldora redondeada */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); 
+    border: 1px solid #e0e0e0;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.pill:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    border-color: #d1d5db;
+}
+
+.textarea-container {
+    padding: 12px 16px 4px 16px;
+    animation: expandDown 0.2s ease-out;
+}
+
+@keyframes expandDown {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.textarea-container textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 15px;
+    color: #333;
+    resize: none;
+    max-height: 160px;
+    font-family: inherit;
+    line-height: 1.5;
+    display: block;
+}
+
+.textarea-container textarea::placeholder {
+    color: #9ca3af;
+}
+
+.pill .controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    min-height: 50px;
+}
+
+/* Botones internos del Pill */
+.pill .btn {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    transition: all 0.2s;
+}
+
+.pill .btn:hover:not(:disabled) {
+    background-color: #f3f4f6;
+    color: #333;
+    transform: scale(1.05);
+}
+
+.pill .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+.pill .btn-send {
+    background-color: #f3f4f6;
+    margin-left: auto; /* Empujar a la derecha */
+}
+
+.pill .btn-send:hover:not(:disabled) {
+    background-color: #e5e7eb;
+}
+
+/* Estilo para el input de texto normal (una sola línea) */
+.pill .input-text {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 15px;
+    color: #333;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-family: inherit;
+    padding: 0 8px;
+    height: 100%;
+}
+
+.pill .input-text::placeholder {
+    color: #9ca3af;
+}
+
+/* Elemento oculto para medición de texto */
+.measure {
+    position: absolute;
+    visibility: hidden;
+    white-space: nowrap;
+    font-size: 15px;
+    font-family: inherit;
+    pointer-events: none;
+}
+
+/* SVG icons fixes */
+.pill svg {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
