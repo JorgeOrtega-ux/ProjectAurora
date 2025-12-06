@@ -35,6 +35,7 @@ import { initAdminUserEdit } from './modules/admin/admin-user-edit.js';
 
 import { initAdminCommunities } from './modules/admin/admin-communities.js';
 import { initAdminCommunityEdit } from './modules/admin/admin-community-edit.js';
+import { initAdminCommunityRequests } from './modules/admin/admin-community-requests.js';
 
 // [NUEVO] Importar el módulo de diagnóstico
 import { init as initAdminDiagnostics } from './modules/admin/admin-diagnostics.js';
@@ -56,6 +57,7 @@ export async function handleModuleLoading() {
     
     const adminCommunities = document.querySelector('[data-section="admin/communities"]');
     const adminCommEdit = document.querySelector('[data-section="admin/community-edit"]');
+    const adminCommRequests = document.querySelector('[data-section="admin/community-requests"]');
 
     // [NUEVO] Selector para diagnósticos
     const adminDiagnostics = document.querySelector('[data-section="admin/diagnostics"]');
@@ -77,6 +79,7 @@ export async function handleModuleLoading() {
 
     if (adminCommunities) initAdminCommunities();
     if (adminCommEdit) initAdminCommunityEdit();
+    if (adminCommRequests) initAdminCommunityRequests();
 
     // [NUEVO] Inicializar diagnósticos si estamos en esa sección
     if (adminDiagnostics) {

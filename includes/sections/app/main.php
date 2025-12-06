@@ -210,14 +210,20 @@ $showSelect  = empty($initUuid) && $hasHistory;
                         <div class="chat-pill-box" id="pill">
                             
                             <div id="reply-preview-container" class="reply-preview-bar d-none">
-                                <div class="reply-bar-content">
-                                    <span class="reply-bar-title">Respondiendo a <strong id="reply-target-user">...</strong></span>
-                                    <span class="reply-bar-text" id="reply-target-text">...</span>
-                                </div>
-                                <button class="component-icon-button small" id="btn-cancel-reply">
-                                    <span class="material-symbols-rounded">close</span>
-                                </button>
-                            </div>
+    
+    <div class="reply-bar-icon">
+        <span class="material-symbols-rounded">reply</span>
+    </div>
+
+    <div class="reply-bar-content">
+        <span class="reply-bar-title">Respondiendo a <strong id="reply-target-user">...</strong></span>
+        <span class="reply-bar-text" id="reply-target-text">...</span>
+    </div>
+    
+    <button class="component-icon-button small" id="btn-cancel-reply">
+        <span class="material-symbols-rounded">close</span>
+    </button>
+</div>
 
                             <div id="attachment-preview-area" class="d-none">
                                 <div class="preview-grid" id="preview-grid"></div>

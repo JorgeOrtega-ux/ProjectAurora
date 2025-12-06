@@ -27,6 +27,7 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
             </div>
             <div class="component-toolbar__right">
                 <button class="component-icon-button" id="btn-view-requests" 
+                        data-nav="admin/community-requests"
                         data-tooltip="Solicitudes de Unión"
                         style="margin-right: 8px; position: relative;">
                     <span class="material-symbols-rounded">person_add</span>
@@ -60,25 +61,6 @@ $basePath = isset($GLOBALS['basePath']) ? $GLOBALS['basePath'] : '/ProjectAurora
             <div class="small-spinner" style="margin: 20px auto;"></div>
         </div>
 
-    </div>
-
-    <div id="requests-modal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
-        <div class="modal-content" style="background: var(--bg-card); width: 90%; max-width: 800px; border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 85vh; display: flex; flex-direction: column;">
-            
-            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 style="margin: 0; font-size: 1.25rem;">Solicitudes de Ingreso</h2>
-                <button id="close-requests-modal" style="background: none; border: none; cursor: pointer; color: var(--text-secondary);">
-                    <span class="material-symbols-rounded">close</span>
-                </button>
-            </div>
-            
-            <div class="modal-body" style="flex: 1; overflow-y: auto;">
-                <div id="requests-list-container">
-                    <div class="small-spinner" style="margin: 20px auto;"></div>
-                </div>
-            </div>
-
-        </div>
     </div>
 
 </div>
