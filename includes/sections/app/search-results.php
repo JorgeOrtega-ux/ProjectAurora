@@ -23,7 +23,6 @@ if ($isAjaxPartial) {
 }
 
 // --- [SEGURIDAD] RATE LIMITING ---
-// Definimos un límite: Máximo 15 búsquedas por minuto por usuario.
 $searchLimit = 15;
 $timeWindow = 1; // Minutos
 
@@ -34,9 +33,7 @@ $communityResults = [];
 $hasMore = false;
 
 if ($rateLimitExceeded) {
-    // Si excede el límite, no ejecutamos la búsqueda
     if ($isAjaxPartial) {
-        // Respuesta simple para AJAX que detiene la carga infinita
         echo '<div class="search-empty-state" style="padding: 20px; color: #d32f2f;">
                 <span class="material-symbols-rounded" style="font-size:32px; margin-bottom:8px;">warning</span>
                 <p>' . translation('auth.errors.too_many_attempts') . '</p>
@@ -44,7 +41,6 @@ if ($rateLimitExceeded) {
         exit;
     }
 } else {
-    // Si está dentro del límite, registramos la acción y buscamos
     if (!empty($q)) {
         logSecurityAction($pdo, $currentUserId, 'search_users');
     }
@@ -54,14 +50,13 @@ if ($rateLimitExceeded) {
     $results = $searchData['results'];
     $hasMore = $searchData['hasMore'];
 
-    // 2. [MODIFICADO] Buscar Comunidades (Pasamos $currentUserId)
+    // 2. Buscar Comunidades
     if ($offset === 0 && !empty($q)) {
         $communityResults = SearchFetcher::searchCommunities($pdo, $q, $currentUserId, 3);
     }
 }
-// ---------------------------------
 
-// [MODIFICADO] Función para renderizar tarjeta de comunidad con botones dinámicos
+// Renderizar tarjeta de comunidad
 $renderCommunityCard = function ($community) {
     $avatarPath = !empty($community['profile_picture']) ? $community['profile_picture'] : null;
     $uuid = $community['uuid'];
@@ -69,29 +64,31 @@ $renderCommunityCard = function ($community) {
     $privacyIcon = ($community['privacy'] === 'private') ? 'lock' : 'public';
     $isJoined = isset($community['is_member']) && $community['is_member'] > 0;
     
-    // Lógica de botones
+    // Estilos base para el botón (ya que quitamos la clase global)
+    $baseBtnStyle = "padding: 6px 12px; border-radius: 6px; font-weight: 500; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s;";
+    
     $actionsHtml = '';
     
     if ($isJoined) {
-        // Si ya es miembro: Botón Ver y Botón Salir (icono)
+        // Botones: Ver y Salir
         $actionsHtml = '
-        <button class="btn-add-friend" data-action="view-community" data-uuid="' . $uuid . '" style="background-color: var(--primary-color); color: white; border: none; margin-right:4px;">
+        <button class="btn-community-action" data-action="view-community" data-uuid="' . $uuid . '" style="' . $baseBtnStyle . ' background-color: var(--primary-color); color: white; border: none; margin-right:4px;">
             Ver
         </button>
-        <button class="btn-add-friend btn-remove-friend" data-action="leave-community-search" data-id="' . $community['id'] . '" data-uuid="' . $uuid . '" title="Salir de la comunidad">
+        <button class="btn-community-action" data-action="leave-community-search" data-id="' . $community['id'] . '" data-uuid="' . $uuid . '" title="Salir de la comunidad" style="' . $baseBtnStyle . ' background-color: #ffebee; color: #d32f2f; border: 1px solid #ffcdd2;">
             <span class="material-symbols-rounded" style="font-size:16px;">logout</span>
         </button>';
     } else {
-        // Si no es miembro
         if ($community['privacy'] === 'public') {
+            // Unirse Pública
             $actionsHtml = '
-            <button class="btn-add-friend" data-action="join-public-community-search" data-id="' . $community['id'] . '" style="background-color: var(--accent-color, #6c5ce7); color: white; border: none;">
+            <button class="btn-community-action" data-action="join-public-community-search" data-id="' . $community['id'] . '" style="' . $baseBtnStyle . ' background-color: var(--accent-color, #6c5ce7); color: white; border: none;">
                 Unirse
             </button>';
         } else {
-            // Privada -> Redirigir a join-community
+            // Unirse Privada
             $actionsHtml = '
-            <button class="btn-add-friend" data-action="join-private-community-search" data-name="' . htmlspecialchars($community['community_name']) . '" style="background-color: #555; color: white; border: none;">
+            <button class="btn-community-action" data-action="join-private-community-search" data-name="' . htmlspecialchars($community['community_name']) . '" style="' . $baseBtnStyle . ' background-color: #555; color: white; border: none;">
                 <span class="material-symbols-rounded" style="font-size:14px; margin-right:4px;">vpn_key</span> Unirse
             </button>';
         }
@@ -125,7 +122,7 @@ $renderCommunityCard = function ($community) {
 };
 
 $renderUserCard = function ($user) use ($currentUserId) {
-    // (Código de usuario original sin cambios...)
+    // Lógica de usuarios original
     $avatarPath = !empty($user['profile_picture']) ? '/ProjectAurora/' . $user['profile_picture'] : null;
     $uid = $user['id'];
     $role = $user['role'] ?? 'user';
@@ -197,6 +194,7 @@ $renderUserCard = function ($user) use ($currentUserId) {
 };
 
 if ($isAjaxPartial) {
+    // Renderizado para respuesta AJAX
     if (!empty($communityResults)) {
         echo '<div class="results-subtitle" style="padding: 10px 15px; font-weight: 600; font-size: 0.85em; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">Comunidades</div>';
         foreach ($communityResults as $comm) {
@@ -216,112 +214,7 @@ if ($isAjaxPartial) {
     if ($hasMore) {
         echo '<div id="ajax-has-more-flag" style="display:none;"></div>';
     }
-    // Añadimos script de listeners para los nuevos botones
-    ?>
-    <script>
-    (function(){
-        if(window.translateDocument) window.translateDocument(document.getElementById("search-results-list"));
-        
-        // Listeners delegados para acciones de comunidad en búsqueda
-        const list = document.getElementById("search-results-list");
-        if(list && !list.dataset.commListeners){
-            list.dataset.commListeners = "true";
-            
-            list.addEventListener('click', async (e) => {
-                // JOIN PUBLIC
-                const joinBtn = e.target.closest('[data-action="join-public-community-search"]');
-                if (joinBtn) {
-                    e.preventDefault();
-                    joinBtn.disabled = true;
-                    joinBtn.innerHTML = '<span class="material-symbols-rounded spinning" style="font-size:16px;">sync</span>';
-                    
-                    try {
-                        const csrf = window.CSRF_TOKEN || '';
-                        const id = joinBtn.dataset.id;
-                        const response = await fetch('api/communities_handler.php', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
-                            body: JSON.stringify({action: 'join_public', community_id: id, csrf_token: csrf})
-                        });
-                        const res = await response.json();
-                        
-                        if(res.success){
-                            if(window.alertManager) window.alertManager.showAlert(res.message, 'success');
-                            // Recargar la búsqueda o cambiar botón visualmente
-                            // Opción rápida: cambiar texto y estilo
-                            joinBtn.innerText = 'Unido';
-                            joinBtn.style.backgroundColor = 'var(--success-color, #2ecc71)';
-                            document.dispatchEvent(new CustomEvent('refresh-sidebar-request'));
-                        } else {
-                            if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
-                            joinBtn.disabled = false;
-                            joinBtn.innerText = 'Unirse';
-                        }
-                    } catch(err){
-                        console.error(err);
-                        joinBtn.disabled = false;
-                        joinBtn.innerText = 'Error';
-                    }
-                }
-
-                // LEAVE COMMUNITY
-                const leaveBtn = e.target.closest('[data-action="leave-community-search"]');
-                if (leaveBtn) {
-                    e.preventDefault();
-                    if(!confirm("¿Estás seguro de que quieres salir de esta comunidad?")) return;
-                    
-                    try {
-                        const csrf = window.CSRF_TOKEN || '';
-                        const id = leaveBtn.dataset.id;
-                        const uuid = leaveBtn.dataset.uuid;
-                        
-                        const response = await fetch('api/communities_handler.php', {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
-                            body: JSON.stringify({action: 'leave_community', community_id: id, uuid: uuid, csrf_token: csrf})
-                        });
-                        const res = await response.json();
-                        
-                        if(res.success){
-                            if(window.alertManager) window.alertManager.showAlert(res.message, 'info');
-                            document.dispatchEvent(new CustomEvent('refresh-sidebar-request'));
-                            // Eliminar la tarjeta o cambiar botón
-                            const card = leaveBtn.closest('.community-result-item');
-                            if(card) card.remove();
-                        } else {
-                            if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
-                        }
-                    } catch(err){ console.error(err); }
-                }
-
-                // JOIN PRIVATE
-                const privateBtn = e.target.closest('[data-action="join-private-community-search"]');
-                if (privateBtn) {
-                    e.preventDefault();
-                    const name = privateBtn.dataset.name;
-                    if(window.navigateTo) {
-                        window.navigateTo('join-community?community=' + encodeURIComponent(name));
-                    } else {
-                        window.location.href = 'join-community?community=' + encodeURIComponent(name);
-                    }
-                }
-
-                // VIEW
-                const viewBtn = e.target.closest('[data-action="view-community"]');
-                if (viewBtn) {
-                    e.preventDefault();
-                    const uuid = viewBtn.dataset.uuid;
-                    if(window.loadCommunity) {
-                        window.loadCommunity(uuid);
-                    } else if(window.navigateTo) {
-                        window.navigateTo('community?uuid=' + uuid); // O la ruta que maneje tu app
-                    }
-                }
-            });
-        }
-    })();
-    </script>
-    <?php
+    // NOTA: Se ha eliminado el bloque <script> que no se ejecutaba correctamente.
     exit;
 }
 ?>
@@ -371,8 +264,6 @@ if ($isAjaxPartial) {
                 <div class="results-list" id="search-results-list">
                     <?php
                     // Renderizado inicial HTML (no AJAX)
-                    
-                    // 1. Renderizar Comunidades
                     if (!empty($communityResults)) {
                         echo '<div class="results-subtitle" style="padding: 10px 15px; font-weight: 600; font-size: 0.85em; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">Comunidades</div>';
                         foreach ($communityResults as $comm) {
@@ -383,7 +274,6 @@ if ($isAjaxPartial) {
                         }
                     }
 
-                    // 2. Renderizar Usuarios
                     foreach ($results as $user) {
                         $renderUserCard($user);
                     }

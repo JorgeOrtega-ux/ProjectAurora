@@ -407,3 +407,112 @@ export async function muteMember(communityUuid, targetUuid, reloadCallback) {
         if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
     }
 }
+
+// --- GESTOR GLOBAL DE EVENTOS DE COMUNIDAD PARA BÚSQUEDA ---
+// Se auto-ejecuta al importar el módulo para escuchar clics en todo el documento.
+(function initSearchListeners() {
+    // Evitar doble inicialización
+    if (window.hasInitSearchCommunityListeners) return;
+    window.hasInitSearchCommunityListeners = true;
+
+    document.addEventListener('click', async (e) => {
+        // Solo nos interesa si el clic fue en (o dentro de) un botón de nuestras clases
+        
+        // 1. UNIRSE A COMUNIDAD PÚBLICA
+        const joinBtn = e.target.closest('[data-action="join-public-community-search"]');
+        if (joinBtn) {
+            e.preventDefault();
+            joinBtn.disabled = true;
+            const originalText = joinBtn.innerText;
+            joinBtn.innerHTML = '<span class="material-symbols-rounded spinning" style="font-size:16px;">sync</span>';
+            
+            try {
+                const response = await fetch('api/communities_handler.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || ''},
+                    body: JSON.stringify({
+                        action: 'join_public', 
+                        community_id: joinBtn.dataset.id, 
+                        csrf_token: window.CSRF_TOKEN || ''
+                    })
+                });
+                const res = await response.json();
+                
+                if(res.success){
+                    if(window.alertManager) window.alertManager.showAlert(res.message, 'success');
+                    // Cambiar visualmente el botón a "Unido"
+                    joinBtn.innerText = 'Unido';
+                    joinBtn.style.backgroundColor = 'var(--success-color, #2ecc71)';
+                    // Actualizar sidebar si es necesario
+                    document.dispatchEvent(new CustomEvent('refresh-sidebar-request'));
+                } else {
+                    if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
+                    joinBtn.disabled = false;
+                    joinBtn.innerText = originalText;
+                }
+            } catch(err){
+                console.error(err);
+                joinBtn.disabled = false;
+                joinBtn.innerText = 'Error';
+            }
+            return;
+        }
+
+        // 2. SALIR DE COMUNIDAD (Desde búsqueda)
+        const leaveBtn = e.target.closest('[data-action="leave-community-search"]');
+        if (leaveBtn) {
+            e.preventDefault();
+            if(!confirm("¿Estás seguro de que quieres salir de esta comunidad?")) return;
+            
+            try {
+                const response = await fetch('api/communities_handler.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || ''},
+                    body: JSON.stringify({
+                        action: 'leave_community', 
+                        community_id: leaveBtn.dataset.id, 
+                        uuid: leaveBtn.dataset.uuid, 
+                        csrf_token: window.CSRF_TOKEN || ''
+                    })
+                });
+                const res = await response.json();
+                
+                if(res.success){
+                    if(window.alertManager) window.alertManager.showAlert(res.message, 'info');
+                    document.dispatchEvent(new CustomEvent('refresh-sidebar-request'));
+                    // Eliminar la tarjeta visualmente (o reducir opacidad)
+                    const card = leaveBtn.closest('.community-result-item');
+                    if(card) card.style.opacity = '0.5'; 
+                } else {
+                    if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
+                }
+            } catch(err){ console.error(err); }
+            return;
+        }
+
+        // 3. UNIRSE A COMUNIDAD PRIVADA
+        const privateBtn = e.target.closest('[data-action="join-private-community-search"]');
+        if (privateBtn) {
+            e.preventDefault();
+            const name = privateBtn.dataset.name;
+            if(window.navigateTo) {
+                window.navigateTo('join-community?community=' + encodeURIComponent(name));
+            } else {
+                window.location.href = 'join-community?community=' + encodeURIComponent(name);
+            }
+            return;
+        }
+
+        // 4. VER COMUNIDAD
+        const viewBtn = e.target.closest('[data-action="view-community"]');
+        if (viewBtn) {
+            e.preventDefault();
+            const uuid = viewBtn.dataset.uuid;
+            if(window.loadCommunity) {
+                window.loadCommunity(uuid);
+            } else if(window.navigateTo) {
+                window.navigateTo('community?uuid=' + uuid);
+            }
+        }
+    });
+})();
