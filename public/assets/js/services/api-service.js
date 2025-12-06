@@ -181,7 +181,6 @@ export const CommunityApi = {
     joinPublic: (communityId) => 
         postJson('api/communities_handler.php', { action: 'join_public', community_id: communityId }),
 
-    // [NUEVO] Método añadido para solicitar acceso
     requestAccess: (communityName) => 
         postJson('api/communities_handler.php', { action: 'request_access', community_name: communityName }),
 
@@ -406,7 +405,7 @@ export const AdminApi = {
     unbanMember: (communityId, userId) => 
         postJson('api/admin_handler.php', { action: 'unban_member', community_id: communityId, user_id: userId }),
 
-    // [NUEVO] Métodos de Diagnóstico
+    // Diagnósticos
     getRedisStatus: () => 
         postJson('api/admin_handler.php', { action: 'get_redis_status' }),
 
@@ -414,5 +413,16 @@ export const AdminApi = {
         postJson('api/admin_handler.php', { action: 'clear_redis' }),
 
     testBridge: () => 
-        postJson('api/admin_handler.php', { action: 'test_bridge' })
+        postJson('api/admin_handler.php', { action: 'test_bridge' }),
+
+    // [NUEVO] Gestión de solicitudes de ingreso
+    getJoinRequests: () => 
+        postJson('api/communities_handler.php', { action: 'get_join_requests' }),
+
+    resolveJoinRequest: (requestId, decision) => 
+        postJson('api/communities_handler.php', { 
+            action: 'resolve_join_request', 
+            request_id: requestId, 
+            decision: decision 
+        })
 };

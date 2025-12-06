@@ -27,7 +27,7 @@ function initListeners() {
         }
     });
 
-    // [NUEVO] Listeners para Modal de Solicitudes
+    // Listeners para Modal de Solicitudes
     const btnRequests = document.getElementById('btn-view-requests');
     const modal = document.getElementById('requests-modal');
     const closeBtn = document.getElementById('close-requests-modal');
@@ -150,13 +150,8 @@ async function loadJoinRequests() {
     container.innerHTML = '<div class="small-spinner" style="margin: 20px auto;"></div>';
 
     try {
-        // Fetch directo para no modificar api-service.js aún
-        const response = await fetch('api/communities_handler.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || '' },
-            body: JSON.stringify({ action: 'get_join_requests', csrf_token: window.CSRF_TOKEN || '' })
-        });
-        const res = await response.json();
+        // [CORREGIDO] Usar AdminApi para asegurar la ruta correcta
+        const res = await AdminApi.getJoinRequests();
 
         if (res.success) {
             renderRequestsTable(res.requests);
@@ -236,17 +231,8 @@ async function resolveRequest(reqId, decision) {
     if (row) row.style.opacity = '0.5';
 
     try {
-        const response = await fetch('api/communities_handler.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || '' },
-            body: JSON.stringify({ 
-                action: 'resolve_join_request', 
-                request_id: reqId, 
-                decision: decision,
-                csrf_token: window.CSRF_TOKEN || '' 
-            })
-        });
-        const res = await response.json();
+        // [CORREGIDO] Usar AdminApi
+        const res = await AdminApi.resolveJoinRequest(reqId, decision);
 
         if (res.success) {
             if (row) row.remove();
