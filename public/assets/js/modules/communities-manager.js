@@ -784,33 +784,72 @@ function initDOMListeners() {
 
 function initJoinByCode() {
     const btn = document.querySelector('[data-action="submit-join-community"]');
-    if (!btn) return;
-    
-    const input = document.querySelector('[data-input="community-code"]');
-    if(input) {
-        input.addEventListener('input', (e) => {
-            let v = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-            if (v.length > 12) v = v.slice(0, 12);
-            const parts = [];
-            if (v.length > 0) parts.push(v.slice(0, 4));
-            if (v.length > 4) parts.push(v.slice(4, 8));
-            if (v.length > 8) parts.push(v.slice(8, 12));
-            e.target.value = parts.join('-');
-        });
+    if (btn) {
+        const input = document.querySelector('[data-input="community-code"]');
+        if(input) {
+            input.addEventListener('input', (e) => {
+                let v = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                if (v.length > 12) v = v.slice(0, 12);
+                const parts = [];
+                if (v.length > 0) parts.push(v.slice(0, 4));
+                if (v.length > 4) parts.push(v.slice(4, 8));
+                if (v.length > 8) parts.push(v.slice(8, 12));
+                e.target.value = parts.join('-');
+            });
+        }
+
+        btn.onclick = async () => {
+            if (input.value.length < 14) return alert('Código incompleto.');
+            setButtonLoading(btn, true);
+            const res = await CommunityApi.joinByCode(input.value);
+            if (res.success) {
+                if(window.alertManager) window.alertManager.showAlert(res.message, 'success');
+                if(window.navigateTo) window.navigateTo('main'); else window.location.href = window.BASE_PATH + 'main';
+            } else {
+                if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
+                setButtonLoading(btn, false, 'Unirse');
+            }
+        };
     }
 
-    btn.onclick = async () => {
-        if (input.value.length < 14) return alert('Código incompleto.');
-        setButtonLoading(btn, true);
-        const res = await CommunityApi.joinByCode(input.value);
-        if (res.success) {
-            if(window.alertManager) window.alertManager.showAlert(res.message, 'success');
-            if(window.navigateTo) window.navigateTo('main'); else window.location.href = window.BASE_PATH + 'main';
-        } else {
-            if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
-            setButtonLoading(btn, false, 'Unirse');
-        }
-    };
+    // [NUEVO] Listener para solicitar acceso
+    const reqBtn = document.querySelector('[data-action="request-access"]');
+    if (reqBtn) {
+        reqBtn.addEventListener('click', async () => {
+            const commName = reqBtn.dataset.communityName;
+            setButtonLoading(reqBtn, true);
+
+            // Fetch directo para asegurar funcionalidad sin modificar api-service.js
+            try {
+                const response = await fetch('api/communities_handler.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': window.CSRF_TOKEN || ''
+                    },
+                    body: JSON.stringify({
+                        action: 'request_access',
+                        community_name: commName,
+                        csrf_token: window.CSRF_TOKEN || ''
+                    })
+                });
+                const res = await response.json();
+
+                if (res.success) {
+                    if (window.alertManager) window.alertManager.showAlert(res.message, 'success');
+                    reqBtn.textContent = 'Solicitud Enviada';
+                    reqBtn.classList.replace('secondary', 'success'); // Asumiendo estilo 'success'
+                    reqBtn.disabled = true;
+                } else {
+                    if (window.alertManager) window.alertManager.showAlert(res.message, 'error');
+                    setButtonLoading(reqBtn, false, 'Solicitar Acceso');
+                }
+            } catch (e) {
+                console.error(e);
+                setButtonLoading(reqBtn, false, 'Error');
+            }
+        });
+    }
 }
 
 export function initCommunitiesManager() {

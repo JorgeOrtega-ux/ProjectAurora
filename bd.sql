@@ -262,6 +262,19 @@ CREATE TABLE IF NOT EXISTS community_bans (
     UNIQUE KEY unique_ban (community_id, user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- [NUEVO] TABLA DE SOLICITUDES DE UNIÓN
+CREATE TABLE IF NOT EXISTS community_join_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    community_id INT NOT NULL,
+    status ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (community_id) REFERENCES communities(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_request (user_id, community_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- TABLA DE LECTURA POR CANAL
 CREATE TABLE IF NOT EXISTS community_channel_reads (
     id INT AUTO_INCREMENT PRIMARY KEY,

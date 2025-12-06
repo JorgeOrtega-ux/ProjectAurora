@@ -114,6 +114,66 @@ class MembershipService {
         return ['success' => true, 'communities' => $communities];
     }
 
+    // [NUEVO] Método para solicitar acceso
+    public static function requestAccess($pdo, $userId, $uuid = '', $name = '') {
+        $communityId = 0;
+        $communityName = '';
+
+        if (!empty($uuid)) {
+            $stmt = $pdo->prepare("SELECT id, community_name FROM communities WHERE uuid = ?");
+            $stmt->execute([$uuid]);
+            $res = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($res) {
+                $communityId = $res['id'];
+                $communityName = $res['community_name'];
+            }
+        } elseif (!empty($name)) {
+            $stmt = $pdo->prepare("SELECT id, community_name FROM communities WHERE community_name = ?");
+            $stmt->execute([$name]);
+            $res = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($res) {
+                $communityId = $res['id'];
+                $communityName = $res['community_name'];
+            }
+        }
+
+        if (!$communityId) {
+            throw new Exception("Comunidad no encontrada.");
+        }
+
+        // Verificar si ya es miembro
+        $stmtCheckMember = $pdo->prepare("SELECT id FROM community_members WHERE community_id = ? AND user_id = ?");
+        $stmtCheckMember->execute([$communityId, $userId]);
+        if ($stmtCheckMember->rowCount() > 0) {
+            throw new Exception("Ya eres miembro de esta comunidad.");
+        }
+
+        // Verificar si ya tiene solicitud pendiente
+        $stmtCheckReq = $pdo->prepare("SELECT id, status FROM community_join_requests WHERE community_id = ? AND user_id = ?");
+        $stmtCheckReq->execute([$communityId, $userId]);
+        $existingReq = $stmtCheckReq->fetch(PDO::FETCH_ASSOC);
+
+        if ($existingReq) {
+            if ($existingReq['status'] === 'pending') {
+                throw new Exception("Ya tienes una solicitud pendiente para esta comunidad.");
+            } elseif ($existingReq['status'] === 'rejected') {
+                // Opcional: Permitir reintentar después de cierto tiempo, o bloquear.
+                // Aquí permitiremos reenviar actualizando el estado.
+                $pdo->prepare("UPDATE community_join_requests SET status = 'pending', created_at = NOW() WHERE id = ?")->execute([$existingReq['id']]);
+                return ['success' => true, 'message' => "Solicitud reenviada correctamente."];
+            }
+            // Si estaba accepted, ya debería haber saltado el check de miembro, pero por si acaso.
+        }
+
+        // Crear solicitud
+        $stmtInsert = $pdo->prepare("INSERT INTO community_join_requests (user_id, community_id, status) VALUES (?, ?, 'pending')");
+        if ($stmtInsert->execute([$userId, $communityId])) {
+            return ['success' => true, 'message' => "Solicitud enviada a <strong>" . htmlspecialchars($communityName) . "</strong>."];
+        } else {
+            throw new Exception("Error al enviar la solicitud.");
+        }
+    }
+
     // Helper privado para verificar baneos
     private static function checkBan($pdo, $userId, $communityId) {
         $stmtBan = $pdo->prepare("SELECT reason, expires_at FROM community_bans WHERE community_id = ? AND user_id = ?");

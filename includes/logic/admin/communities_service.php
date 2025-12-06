@@ -163,4 +163,78 @@ function delete_community($pdo, $id) {
         throw new Exception("Error al eliminar.");
     }
 }
+
+// [NUEVO] Obtener solicitudes de unión pendientes
+function get_join_requests($pdo) {
+    // Se hace JOIN con users y communities para mostrar info relevante
+    $sql = "SELECT r.id, r.user_id, r.community_id, r.created_at, 
+                   u.username, u.profile_picture as user_picture, u.uuid as user_uuid,
+                   c.community_name, c.profile_picture as community_picture
+            FROM community_join_requests r
+            JOIN users u ON r.user_id = u.id
+            JOIN communities c ON r.community_id = c.id
+            WHERE r.status = 'pending'
+            ORDER BY r.created_at ASC";
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
+    $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    return ['success' => true, 'requests' => $requests];
+}
+
+// [NUEVO] Resolver solicitud (Aceptar/Rechazar)
+function resolve_join_request($pdo, $requestId, $decision, $adminId) {
+    $requestId = (int)$requestId;
+    
+    $stmtReq = $pdo->prepare("SELECT user_id, community_id, status FROM community_join_requests WHERE id = ?");
+    $stmtReq->execute([$requestId]);
+    $request = $stmtReq->fetch(PDO::FETCH_ASSOC);
+
+    if (!$request) {
+        throw new Exception("Solicitud no encontrada.");
+    }
+
+    if ($request['status'] !== 'pending') {
+        throw new Exception("Esta solicitud ya fue procesada.");
+    }
+
+    $pdo->beginTransaction();
+    try {
+        if ($decision === 'accept') {
+            // 1. Cambiar estado a accepted
+            $stmtUpd = $pdo->prepare("UPDATE community_join_requests SET status = 'accepted' WHERE id = ?");
+            $stmtUpd->execute([$requestId]);
+
+            // 2. Insertar en community_members (verificar si ya existe por si acaso)
+            $stmtCheck = $pdo->prepare("SELECT id FROM community_members WHERE community_id = ? AND user_id = ?");
+            $stmtCheck->execute([$request['community_id'], $request['user_id']]);
+            
+            if ($stmtCheck->rowCount() == 0) {
+                $stmtIns = $pdo->prepare("INSERT INTO community_members (community_id, user_id, role, joined_at) VALUES (?, ?, 'member', NOW())");
+                $stmtIns->execute([$request['community_id'], $request['user_id']]);
+
+                // 3. Incrementar contador
+                $pdo->prepare("UPDATE communities SET member_count = member_count + 1 WHERE id = ?")->execute([$request['community_id']]);
+            }
+            
+            $msg = "Solicitud aceptada. Usuario añadido.";
+
+        } elseif ($decision === 'reject') {
+            // Rechazar
+            $stmtUpd = $pdo->prepare("UPDATE community_join_requests SET status = 'rejected' WHERE id = ?");
+            $stmtUpd->execute([$requestId]);
+            $msg = "Solicitud rechazada.";
+        } else {
+            throw new Exception("Decisión inválida.");
+        }
+
+        $pdo->commit();
+        return ['success' => true, 'message' => $msg];
+
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+}
 ?>

@@ -40,9 +40,17 @@ $requestedCommunity = isset($_GET['community']) ? htmlspecialchars($_GET['commun
                     </button>
                     
                     <?php if ($requestedCommunity): ?>
-                        <span style="display:block; margin-top:12px; font-size:0.85rem; color:#666; text-align:right;">
-                            Solicitar acceso a <strong><?php echo $requestedCommunity; ?></strong> (por ahora sin función)
-                        </span>
+                        <div style="margin-top:20px; padding-top:15px; border-top:1px solid #eee; width:100%; display:flex; flex-direction:column; align-items:flex-end;">
+                            <p style="font-size:0.9rem; color:#444; margin-bottom:10px; text-align:right;">
+                                ¿Estás intentando entrar a <strong><?php echo $requestedCommunity; ?></strong>?
+                            </p>
+                            <button type="button" 
+                                    class="component-button secondary" 
+                                    data-action="request-access" 
+                                    data-community-name="<?php echo $requestedCommunity; ?>">
+                                Solicitar Acceso
+                            </button>
+                        </div>
                     <?php endif; ?>
                 </div>
 

@@ -23,6 +23,8 @@ require_once '../includes/logic/communities/channels_service.php';
 require_once '../includes/logic/communities/preferences_service.php';
 require_once '../includes/logic/communities/membership_service.php';
 require_once '../includes/logic/communities/details_service.php';
+// [NUEVO] Importamos el servicio de admin para gestión de solicitudes
+require_once '../includes/logic/admin/communities_service.php';
 
 $lang = $_SESSION['user_lang'] ?? detect_browser_language() ?? 'es-latam';
 I18n::load($lang);
@@ -62,6 +64,27 @@ try {
 
         case 'get_public_communities':
             echo json_encode(MembershipService::getPublicCommunities($pdo, $userId));
+            break;
+
+        // [NUEVO] Solicitud de acceso
+        case 'request_access':
+            // Se puede enviar 'community_uuid' o el nombre (dependiendo de la implementación del front)
+            // Asumiremos que el front resuelve el UUID o enviamos el nombre para buscar.
+            $commUuid = $data['community_uuid'] ?? '';
+            $commName = $data['community_name'] ?? '';
+            echo json_encode(MembershipService::requestAccess($pdo, $userId, $commUuid, $commName));
+            break;
+
+        // --- SOLICITUDES (ADMIN) ---
+        case 'get_join_requests':
+            // Opcional: pasar community_id si se quiere filtrar
+            echo json_encode(get_join_requests($pdo));
+            break;
+
+        case 'resolve_join_request':
+            $reqId = $data['request_id'] ?? 0;
+            $decision = $data['decision'] ?? ''; // 'accept' or 'reject'
+            echo json_encode(resolve_join_request($pdo, $reqId, $decision, $userId));
             break;
 
 
