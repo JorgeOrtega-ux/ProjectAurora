@@ -183,11 +183,17 @@ function get_join_requests($pdo) {
     return ['success' => true, 'requests' => $requests];
 }
 
-// [NUEVO] Resolver solicitud (Aceptar/Rechazar)
+// [NUEVO] Resolver solicitud (Aceptar/Rechazar) con notificaciones
 function resolve_join_request($pdo, $requestId, $decision, $adminId) {
     $requestId = (int)$requestId;
     
-    $stmtReq = $pdo->prepare("SELECT user_id, community_id, status FROM community_join_requests WHERE id = ?");
+    // Obtenemos también la información de la comunidad para la notificación
+    $stmtReq = $pdo->prepare("
+        SELECT r.user_id, r.community_id, r.status, c.community_name, c.uuid as community_uuid 
+        FROM community_join_requests r
+        JOIN communities c ON r.community_id = c.id
+        WHERE r.id = ?
+    ");
     $stmtReq->execute([$requestId]);
     $request = $stmtReq->fetch(PDO::FETCH_ASSOC);
 
@@ -201,6 +207,10 @@ function resolve_join_request($pdo, $requestId, $decision, $adminId) {
 
     $pdo->beginTransaction();
     try {
+        $msg = "";
+        $notifMessage = "";
+        $notifType = "system";
+
         if ($decision === 'accept') {
             // 1. Cambiar estado a accepted
             $stmtUpd = $pdo->prepare("UPDATE community_join_requests SET status = 'accepted' WHERE id = ?");
@@ -219,17 +229,34 @@ function resolve_join_request($pdo, $requestId, $decision, $adminId) {
             }
             
             $msg = "Solicitud aceptada. Usuario añadido.";
+            $notifMessage = "Tu solicitud para unirte a '{$request['community_name']}' ha sido aceptada.";
 
         } elseif ($decision === 'reject') {
             // Rechazar
             $stmtUpd = $pdo->prepare("UPDATE community_join_requests SET status = 'rejected' WHERE id = ?");
             $stmtUpd->execute([$requestId]);
             $msg = "Solicitud rechazada.";
+            $notifMessage = "Tu solicitud para unirte a '{$request['community_name']}' ha sido rechazada.";
         } else {
             throw new Exception("Decisión inválida.");
         }
 
+        // 4. Crear Notificación Persistente en BD
+        $stmtNotif = $pdo->prepare("INSERT INTO notifications (user_id, type, related_id, message, created_at) VALUES (?, ?, ?, ?, NOW())");
+        $stmtNotif->execute([$request['user_id'], $notifType, $request['community_id'], $notifMessage]);
+
         $pdo->commit();
+
+        // 5. Enviar Notificación en Vivo (Socket)
+        if (function_exists('send_live_notification')) {
+            send_live_notification($request['user_id'], 'join_request_resolved', [
+                'status' => $decision, // 'accept' o 'reject'
+                'community_uuid' => $request['community_uuid'],
+                'community_name' => $request['community_name'],
+                'message' => $notifMessage
+            ]);
+        }
+
         return ['success' => true, 'message' => $msg];
 
     } catch (Exception $e) {

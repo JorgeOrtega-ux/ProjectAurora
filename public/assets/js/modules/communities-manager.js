@@ -474,6 +474,21 @@ function initGlobalListeners() {
             const updatedList = await Actions.handleSidebarUpdate(payload, sidebarItems, refreshUI);
             sidebarItems = updatedList;
         }
+
+        // [NUEVO] Manejar resolución de solicitud de unión
+        if (type === 'join_request_resolved') {
+            // Mostrar alerta visual
+            const alertType = payload.status === 'accept' ? 'success' : 'info';
+            if (window.alertManager) {
+                window.alertManager.showAlert(payload.message, alertType);
+            }
+
+            // Si fue aceptada, recargar la lista de chats (Sidebar) para que aparezca la comunidad
+            if (payload.status === 'accept') {
+                console.log('Solicitud aceptada, recargando sidebar...');
+                loadSidebarList(); 
+            }
+        }
     });
 
     document.addEventListener('local-chat-read', (e) => {

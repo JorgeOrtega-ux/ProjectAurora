@@ -120,6 +120,11 @@ function initSocketListener() {
             if (alertMgr) alertMgr.showAlert(payload.message, 'info');
             loadNotifications();
         }
+
+        // [NUEVO] Recargar notificaciones si se resuelve una solicitud
+        if (type === 'join_request_resolved') {
+            loadNotifications();
+        }
     });
     
     document.addEventListener('reload-notifications', () => {

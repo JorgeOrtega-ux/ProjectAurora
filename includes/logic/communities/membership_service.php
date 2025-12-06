@@ -148,24 +148,25 @@ class MembershipService {
             throw new Exception("Ya eres miembro de esta comunidad.");
         }
 
-        // Verificar si ya tiene solicitud pendiente
+        // Verificar si ya tiene solicitud existente (pending, rejected, accepted)
         $stmtCheckReq = $pdo->prepare("SELECT id, status FROM community_join_requests WHERE community_id = ? AND user_id = ?");
         $stmtCheckReq->execute([$communityId, $userId]);
         $existingReq = $stmtCheckReq->fetch(PDO::FETCH_ASSOC);
 
         if ($existingReq) {
+            // Si ya está pendiente, avisar al usuario
             if ($existingReq['status'] === 'pending') {
                 throw new Exception("Ya tienes una solicitud pendiente para esta comunidad.");
-            } elseif ($existingReq['status'] === 'rejected') {
-                // Opcional: Permitir reintentar después de cierto tiempo, o bloquear.
-                // Aquí permitiremos reenviar actualizando el estado.
+            } else {
+                // Si está 'rejected' o 'accepted' (y el usuario ya no es miembro, verificado arriba),
+                // RECICLAMOS el registro actualizándolo a 'pending'.
+                // Esto evita el error de duplicado por UNIQUE KEY.
                 $pdo->prepare("UPDATE community_join_requests SET status = 'pending', created_at = NOW() WHERE id = ?")->execute([$existingReq['id']]);
-                return ['success' => true, 'message' => "Solicitud reenviada correctamente."];
+                return ['success' => true, 'message' => "Solicitud enviada a <strong>" . htmlspecialchars($communityName) . "</strong>."];
             }
-            // Si estaba accepted, ya debería haber saltado el check de miembro, pero por si acaso.
         }
 
-        // Crear solicitud
+        // Crear solicitud nueva (solo si no existe registro previo)
         $stmtInsert = $pdo->prepare("INSERT INTO community_join_requests (user_id, community_id, status) VALUES (?, ?, 'pending')");
         if ($stmtInsert->execute([$userId, $communityId])) {
             return ['success' => true, 'message' => "Solicitud enviada a <strong>" . htmlspecialchars($communityName) . "</strong>."];
