@@ -8,6 +8,13 @@ export function initMainController() {
     const allowCloseOnEsc = true;
     const allowCloseOnClickOutside = true;
 
+    // [NUEVO] Listener de seguridad para navegación
+    document.addEventListener('app:navigation-start', () => {
+        // Forzar desbloqueo de la UI al cambiar de página
+        isAnimating = false;
+        closeAllModules(null, false); // Cerrar módulos sin animación para limpiar
+    });
+
     // --- 1. EVENT LISTENER DE CLICS ---
     document.body.addEventListener('click', async (e) => {
         if (isAnimating) return;

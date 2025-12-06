@@ -345,6 +345,11 @@ function initGlobalListeners() {
         loadSidebarList();
     });
 
+    // [IMPORTANTE] Escuchar el evento de navegación para resetear estado
+    document.addEventListener('app:navigation-start', () => {
+        resetCommunitiesState();
+    });
+
     document.body.addEventListener('click', async (e) => {
         
         // Join Voice Channel
@@ -856,17 +861,34 @@ function initJoinByCode() {
     }
 }
 
+// [NUEVO] Función de Reset para Navegación
+function resetCommunitiesState() {
+    console.log("[CommunitiesManager] Reseteando estado por navegación...");
+    
+    // 1. Restaurar Filtros y Búsqueda (Memoria limpia)
+    currentFilter = 'all'; 
+    currentSearchQuery = ''; 
+    
+    // 2. Restaurar Vista (Volver a la lista principal)
+    currentSidebarView = 'main';
+    currentCommunityUuid = null;
+    
+    // 3. Limpiar selección activa (Opcional: puedes querer mantener sidebarItems por caché)
+    // sidebarItems = []; // Descomentar si prefieres recargar SIEMPRE desde cero la lista
+    
+    // 4. Asegurarse de que no haya canales activos "colgados" en memoria global
+    // Nota: El ChatManager ya limpia window.ACTIVE_CHAT_UUID, pero por seguridad:
+    window.ACTIVE_CHANNEL_UUID = null;
+}
+
 export function initCommunitiesManager() {
     // [FIX] Resetear el estado del sidebar si volvimos a la raíz (main) y no estamos en un chat
+    // Esto maneja el caso de carga inicial directa o refresh
     const path = window.location.pathname;
     const isChatUrl = path.includes('/c/') || path.includes('/dm/');
 
     if (!isChatUrl) {
-        console.log("[CommunitiesManager] Vista principal detectada, reseteando estado del sidebar.");
-        currentSidebarView = 'main';
-        currentCommunityUuid = null;
-        window.ACTIVE_CHAT_UUID = null;
-        window.ACTIVE_CHANNEL_UUID = null;
+        resetCommunitiesState(); // Usamos la nueva función centralizada
         
         // Aseguramos que el header vuelva a decir "Chats" y muestre el buscador
         SidebarRenderer.restoreMainHeader();
