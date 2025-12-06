@@ -190,9 +190,11 @@ $showSelect  = empty($initUuid) && $hasHistory;
                             <span class="material-symbols-rounded">menu</span>
                         </button>
 
-                        <div class="chat-avatar-container">
+                        <div class="chat-avatar-container" style="position: relative; overflow: visible;">
                             <img id="chat-header-img" src="" alt="" class="chat-avatar-img">
+                            <span id="chat-header-status-dot" class="user-status-dot d-none"></span>
                         </div>
+
                         <div class="chat-info" id="chat-header-info-clickable" style="cursor: pointer;">
                             <h3 id="chat-header-title" class="chat-title">Cargando...</h3>
                             <span id="chat-header-status" class="chat-status">...</span>

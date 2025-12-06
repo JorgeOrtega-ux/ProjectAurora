@@ -97,7 +97,6 @@ export function createMessageHTML(msg, currentChatType) {
 
     const role = msg.sender_role || 'user';
     
-    // [FIX DE SEGURIDAD] Escapar variables antes de usarlas en atributos HTML
     const safeUsername = escapeHtml(msg.sender_username);
 
     const editedHtml = (msg.is_edited) ? `<small class="edited-tag" style="margin-left:4px; color:#999;">${t('chat.edited_tag') || '(editado)'}</small>` : '';
@@ -154,7 +153,6 @@ export function createMessageHTML(msg, currentChatType) {
 
     const reactionsHtml = getReactionsHTML(msg.reactions, msgId);
     
-    // [FIX DE SEGURIDAD] Uso de safeUsername en data-user
     const optionsBtn = `<button class="message-options-btn" data-action="msg-options" data-uuid="${msgId}" data-user="${safeUsername}" data-text="${escapeHtml(msg.message)}" data-sender-id="${msg.sender_id}" data-created-at="${msg.created_at}"><span class="material-symbols-rounded" style="font-size: 18px;">more_vert</span></button>`;
 
     return `
@@ -227,7 +225,6 @@ export function renderEmptyChatState(container, chatData, chatType) {
     
     let html = '';
 
-    // [NUEVO] Estado "Ghost" si la cuenta está eliminada (Private)
     if (chatType === 'private' && chatData.account_status === 'deleted') {
          html = `
             <div class="chat-empty-state private-empty">
@@ -324,6 +321,9 @@ export function updateChatInterface(data) {
     const infoBtn = document.getElementById('btn-group-info-toggle');
     const headerInfo = document.getElementById('chat-header-info-clickable');
     
+    // [MODIFICADO] Elemento del puntito en el header
+    const statusDot = document.getElementById('chat-header-status-dot');
+
     const inputArea = document.querySelector('.chat-input-area');
     const messageInput = document.querySelector('.chat-message-input');
     const sendBtn = document.getElementById('btn-send-message');
@@ -358,6 +358,28 @@ export function updateChatInterface(data) {
             img.src = avatarPath;
             img.style.borderRadius = isPrivate ? '50%' : '12px'; 
             img.setAttribute('data-img-type', isPrivate ? 'user' : 'community');
+        }
+        
+        // [MODIFICADO] Lógica del puntito en el header
+        if (statusDot) {
+            statusDot.className = 'user-status-dot d-none'; // Resetear clases
+            if (isPrivate) {
+                // Aquí usamos 'online' si el usuario está conectado. 
+                // Asumimos que data.status o data.is_online viene del backend.
+                // Si data.status es 'online' o 'active', mostramos verde.
+                const userStatus = data.status || 'offline'; 
+                
+                if (userStatus === 'online' || userStatus === 'active') {
+                    statusDot.classList.remove('d-none');
+                    statusDot.classList.add('online');
+                } else if (userStatus === 'busy') {
+                    statusDot.classList.remove('d-none');
+                    statusDot.classList.add('busy');
+                } else {
+                    // Offline por defecto oculto o gris, como prefieras.
+                    // statusDot.classList.remove('d-none'); // Descomentar para ver puntito gris
+                }
+            }
         }
         
         if (headerAvatarContainer) {
@@ -395,29 +417,24 @@ export function updateChatInterface(data) {
             status.classList.remove('typing-active', 'typing-dots');
         }
 
-        // [MODIFICADO] Lógica unificada para estados especiales (Deleted, Mantenimiento)
         const isDeleted = (isPrivate && data.account_status === 'deleted');
         const isCommMaintenance = (data.status === 'maintenance');
         const isChannelMaintenance = (data.channel_status === 'maintenance');
 
         if (isDeleted || isCommMaintenance || isChannelMaintenance) {
-            if (inputArea) inputArea.style.display = 'none'; // Siempre ocultar input
-
-            // Solo ocultar mensajes si es mantenimiento (si es deleted, mostramos historial)
+            if (inputArea) inputArea.style.display = 'none'; 
             if (!isDeleted && messagesArea) messagesArea.style.display = 'none';
 
             let overlayTitle = '', overlayDesc = '', overlayIcon = 'engineering';
             
             if (isDeleted) {
-                // MODIFICACIONES DE HEADER PARA DELETED
                 if (title) title.innerHTML = t('chat.user_deleted_title') || 'Usuario Eliminado';
                 if (status) status.textContent = t('chat.user_deleted_status') || 'Cuenta no disponible';
-                if (img) {
-                    img.src = `https://ui-avatars.com/api/?name=X&background=e0e0e0&color=999`;
-                }
+                if (img) img.src = `https://ui-avatars.com/api/?name=X&background=e0e0e0&color=999`;
+                if (statusDot) statusDot.classList.add('d-none'); // Ocultar puntito si está eliminado
 
                 overlayIcon = 'no_accounts';
-                overlayTitle = ''; // Sin título grande, solo banner
+                overlayTitle = ''; 
                 overlayDesc = t('chat.user_deleted_banner') || 'Este usuario ha eliminado su cuenta. No es posible responder.';
             } 
             else if (isCommMaintenance) {
@@ -429,10 +446,8 @@ export function updateChatInterface(data) {
                 overlayIcon = 'cloud_off';
             }
 
-            // Renderizar Overlay/Banner
             let overlayHtml = '';
             if (isDeleted) {
-                // Estilo Banner discreto al fondo
                 overlayHtml = `
                     <div id="status-overlay" style="padding: 15px; background: #f8f9fa; border-top: 1px solid #eee; text-align: center; color: #666; font-size: 13px;">
                         <span class="material-symbols-rounded" style="vertical-align: bottom; font-size: 18px; margin-right: 5px;">${overlayIcon}</span>
@@ -441,7 +456,6 @@ export function updateChatInterface(data) {
                 `;
                 interfaceDiv.insertAdjacentHTML('beforeend', overlayHtml);
             } else {
-                // Estilo Pantalla Completa (Mantenimiento)
                 overlayHtml = `
                     <div id="status-overlay" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; color:#666;">
                         <div style="width:80px; height:80px; background:#fff3e0; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
@@ -565,7 +579,6 @@ export function showMessagePopover(btn, msgUuid, user, text, isMe, createdAt, cu
     }
 
     const popover = document.createElement('div');
-    // [MODIFICADO] Añadida la clase body-title
     popover.className = 'popover-module message-options-popover body-title active';
     
     const reactionMap = [

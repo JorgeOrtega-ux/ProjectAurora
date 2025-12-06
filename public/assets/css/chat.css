@@ -2111,4 +2111,46 @@ cubic-bezier(0.2, 0.8, 0.2, 1);
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
+}/* =========================================
+   INDICADOR DE ESTADO (PUNTITO)
+   ========================================= */
+.user-status-dot {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    background-color: #bdbdbd; /* Gris por defecto (Offline/Invisible) */
+    border: 2px solid #ffffff; /* Borde blanco para separar del avatar */
+    border-radius: 50%;
+    z-index: 10;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    transition: background-color 0.2s ease;
+}
+
+/* Estado: En línea */
+.user-status-dot.online {
+    background-color: #2e7d32; /* Verde */
+}
+
+/* Estado: Ocupado / No molestar */
+.user-status-dot.busy {
+    background-color: #c62828; /* Rojo */
+}
+
+/* Estado: Ausente */
+.user-status-dot.away {
+    background-color: #f57f17; /* Naranja */
+}
+
+/* Ajuste específico para el Header del Chat */
+.chat-header-left .chat-avatar-container {
+    position: relative; /* Necesario para que el puntito se posicione respecto a esto */
+    overflow: visible;  /* Permitir que el puntito se vea si sobresale un poco */
+}
+
+/* Ajuste específico para la Lista de Chats */
+.chat-item-avatar-wrapper {
+    position: relative; 
+    overflow: visible !important; /* Sobrescribir el overflow hidden para ver el punto */
 }

@@ -2706,3 +2706,19 @@ AttributeError: module 'handlers' has no attribute 'handle_voice_disconnect'
 2025-12-06 01:03:39,483 - INFO - Usuario conectado: ID 1 | Rol: founder
 2025-12-06 01:14:15,762 - INFO - connection open
 2025-12-06 01:14:15,770 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 01:20:11,702 - INFO - connection open
+2025-12-06 01:20:11,719 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 01:21:30,953 - INFO - connection open
+2025-12-06 01:21:30,983 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 01:21:45,742 - INFO - connection open
+2025-12-06 01:21:45,756 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 01:21:48,612 - INFO - connection open
+2025-12-06 01:21:48,636 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 01:22:48,293 - INFO - connection open
+2025-12-06 01:22:48,362 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 01:23:08,590 - INFO - connection open
+2025-12-06 01:23:08,622 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 01:23:39,620 - INFO - connection open
+2025-12-06 01:23:39,642 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 01:24:43,717 - INFO - connection open
+2025-12-06 01:24:43,736 - INFO - Usuario conectado: ID 1 | Rol: founder
