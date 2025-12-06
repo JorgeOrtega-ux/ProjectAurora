@@ -179,7 +179,8 @@ class ChatActionsService {
         $table = ($context === 'private') ? 'private_messages' : 'community_messages';
         $userCol = ($context === 'private') ? 'sender_id' : 'user_id';
         
-        $selectFields = "id, created_at";
+        // [MODIFICADO] Agregar edit_count a los campos seleccionados
+        $selectFields = "id, created_at, edit_count";
         if ($context === 'community') {
             $selectFields .= ", community_id, channel_id";
         }
@@ -199,11 +200,18 @@ class ChatActionsService {
             }
 
             $created = strtotime($dbMsg['created_at']);
-            if (time() - $created > 600) {
-                throw new Exception(translation('chat.error.edit_timeout') ?? "Tiempo de edición expirado (10 min).");
+            // [MODIFICADO] Tiempo límite de 15 minutos (900 segundos)
+            if (time() - $created > 900) {
+                throw new Exception(translation('chat.error.edit_timeout') ?? "Tiempo de edición expirado (15 min).");
             }
 
-            $stmtUpd = $pdo->prepare("UPDATE $table SET message = ?, is_edited = 1, edited_at = NOW() WHERE id = ?");
+            // [MODIFICADO] Validar máximo 3 ediciones
+            if ($dbMsg['edit_count'] >= 3) {
+                throw new Exception("Límite de ediciones alcanzado (máximo 3).");
+            }
+
+            // [MODIFICADO] Incrementar edit_count
+            $stmtUpd = $pdo->prepare("UPDATE $table SET message = ?, is_edited = 1, edit_count = edit_count + 1, edited_at = NOW() WHERE id = ?");
             $stmtUpd->execute([$newContent, $dbMsg['id']]);
             $updatedInDb = true;
 
@@ -247,12 +255,23 @@ class ChatActionsService {
                         $msgObj = json_decode($json, true);
                         if ($msgObj['uuid'] === $msgUuid && (int)$msgObj['sender_id'] === (int)$userId) {
                             $created = strtotime($msgObj['created_at']);
-                            if (time() - $created > 600) {
+                            // [MODIFICADO] Tiempo límite de 15 minutos (900 segundos)
+                            if (time() - $created > 900) {
                                 throw new Exception(translation('chat.error.edit_timeout') ?? "Tiempo de edición expirado.");
                             }
+                            
+                            // [MODIFICADO] Validar máximo 3 ediciones (asumiendo 0 si no existe)
+                            $currentEdits = $msgObj['edit_count'] ?? 0;
+                            if ($currentEdits >= 3) {
+                                throw new Exception("Límite de ediciones alcanzado (máximo 3).");
+                            }
+
                             $msgObj['message'] = $newContent;
                             $msgObj['is_edited'] = true;
+                            // [MODIFICADO] Incrementar conteo en Redis
+                            $msgObj['edit_count'] = $currentEdits + 1;
                             $msgObj['edited_at'] = date('c');
+                            
                             $redis->lSet($redisKey, $index, json_encode($msgObj));
                             $updatedInDb = true; 
 

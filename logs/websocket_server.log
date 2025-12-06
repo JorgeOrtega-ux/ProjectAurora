@@ -2698,3 +2698,11 @@ AttributeError: module 'handlers' has no attribute 'handle_voice_disconnect'
 2025-12-06 01:00:40,654 - INFO - 💾 Flushing 10 msgs from chat:buffer:private:1:2
 2025-12-06 01:00:45,514 - INFO - connection open
 2025-12-06 01:00:45,517 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 01:03:26,129 - INFO - connection open
+2025-12-06 01:03:26,181 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-12-06 01:03:31,410 - INFO - connection open
+2025-12-06 01:03:31,414 - INFO - Usuario conectado: ID 2 | Rol: user
+2025-12-06 01:03:39,480 - INFO - connection open
+2025-12-06 01:03:39,483 - INFO - Usuario conectado: ID 1 | Rol: founder
+2025-12-06 01:14:15,762 - INFO - connection open
+2025-12-06 01:14:15,770 - INFO - Usuario conectado: ID 1 | Rol: founder
