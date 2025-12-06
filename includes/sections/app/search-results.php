@@ -30,7 +30,7 @@ $timeWindow = 1; // Minutos
 $rateLimitExceeded = checkActionRateLimit($pdo, $currentUserId, 'search_users', $searchLimit, $timeWindow);
 
 $results = [];
-$communityResults = []; // [NUEVO] Inicializamos array de comunidades
+$communityResults = []; 
 $hasMore = false;
 
 if ($rateLimitExceeded) {
@@ -45,7 +45,6 @@ if ($rateLimitExceeded) {
     }
 } else {
     // Si está dentro del límite, registramos la acción y buscamos
-    // Solo registramos si hay una query real para no llenar logs con cargas vacías
     if (!empty($q)) {
         logSecurityAction($pdo, $currentUserId, 'search_users');
     }
@@ -55,27 +54,48 @@ if ($rateLimitExceeded) {
     $results = $searchData['results'];
     $hasMore = $searchData['hasMore'];
 
-    // 2. [NUEVO] Buscar Comunidades (Solo en la primera página/offset 0)
+    // 2. [MODIFICADO] Buscar Comunidades (Pasamos $currentUserId)
     if ($offset === 0 && !empty($q)) {
-        // Buscamos hasta 3 comunidades relevantes
-        $communityResults = SearchFetcher::searchCommunities($pdo, $q, 3);
+        $communityResults = SearchFetcher::searchCommunities($pdo, $q, $currentUserId, 3);
     }
 }
 // ---------------------------------
 
-// [NUEVO] Función para renderizar tarjeta de comunidad
+// [MODIFICADO] Función para renderizar tarjeta de comunidad con botones dinámicos
 $renderCommunityCard = function ($community) {
-    // Ajusta la ruta de la imagen según tu estructura (URL completa o relativa)
     $avatarPath = !empty($community['profile_picture']) ? $community['profile_picture'] : null;
     $uuid = $community['uuid'];
     $members = $community['member_count'];
     $privacyIcon = ($community['privacy'] === 'private') ? 'lock' : 'public';
+    $isJoined = isset($community['is_member']) && $community['is_member'] > 0;
     
-    // Botón para ver comunidad
-    $actionsHtml = '
-        <button class="btn-add-friend" data-action="view-community" data-uuid="' . $uuid . '" style="background-color: var(--primary-color); color: white; border: none;">
+    // Lógica de botones
+    $actionsHtml = '';
+    
+    if ($isJoined) {
+        // Si ya es miembro: Botón Ver y Botón Salir (icono)
+        $actionsHtml = '
+        <button class="btn-add-friend" data-action="view-community" data-uuid="' . $uuid . '" style="background-color: var(--primary-color); color: white; border: none; margin-right:4px;">
             Ver
+        </button>
+        <button class="btn-add-friend btn-remove-friend" data-action="leave-community-search" data-id="' . $community['id'] . '" data-uuid="' . $uuid . '" title="Salir de la comunidad">
+            <span class="material-symbols-rounded" style="font-size:16px;">logout</span>
         </button>';
+    } else {
+        // Si no es miembro
+        if ($community['privacy'] === 'public') {
+            $actionsHtml = '
+            <button class="btn-add-friend" data-action="join-public-community-search" data-id="' . $community['id'] . '" style="background-color: var(--accent-color, #6c5ce7); color: white; border: none;">
+                Unirse
+            </button>';
+        } else {
+            // Privada -> Redirigir a join-community
+            $actionsHtml = '
+            <button class="btn-add-friend" data-action="join-private-community-search" data-name="' . htmlspecialchars($community['community_name']) . '" style="background-color: #555; color: white; border: none;">
+                <span class="material-symbols-rounded" style="font-size:14px; margin-right:4px;">vpn_key</span> Unirse
+            </button>';
+        }
+    }
 ?>
     <div class="user-card-item community-result-item" style="border-left: 3px solid var(--accent-color, #6c5ce7);">
         <div class="user-info-group">
@@ -91,6 +111,9 @@ $renderCommunityCard = function ($community) {
                 <span class="user-meta-text" style="font-size: 12px; color: #888; display: flex; align-items: center; gap: 4px;">
                     <span class="material-symbols-rounded" style="font-size: 14px;"><?php echo $privacyIcon; ?></span>
                     <span><?php echo $members; ?> miembros</span>
+                    <?php if ($isJoined): ?>
+                        <span style="color: var(--success-color, #2ecc71); font-weight:600; margin-left:4px;">• Unido</span>
+                    <?php endif; ?>
                 </span>
             </div>
         </div>
@@ -102,6 +125,7 @@ $renderCommunityCard = function ($community) {
 };
 
 $renderUserCard = function ($user) use ($currentUserId) {
+    // (Código de usuario original sin cambios...)
     $avatarPath = !empty($user['profile_picture']) ? '/ProjectAurora/' . $user['profile_picture'] : null;
     $uid = $user['id'];
     $role = $user['role'] ?? 'user';
@@ -173,7 +197,6 @@ $renderUserCard = function ($user) use ($currentUserId) {
 };
 
 if ($isAjaxPartial) {
-    // [MODIFICADO] Lógica AJAX para renderizar primero comunidades
     if (!empty($communityResults)) {
         echo '<div class="results-subtitle" style="padding: 10px 15px; font-weight: 600; font-size: 0.85em; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">Comunidades</div>';
         foreach ($communityResults as $comm) {
@@ -193,7 +216,112 @@ if ($isAjaxPartial) {
     if ($hasMore) {
         echo '<div id="ajax-has-more-flag" style="display:none;"></div>';
     }
-    echo '<script>if(window.translateDocument) window.translateDocument(document.getElementById("search-results-list"));</script>';
+    // Añadimos script de listeners para los nuevos botones
+    ?>
+    <script>
+    (function(){
+        if(window.translateDocument) window.translateDocument(document.getElementById("search-results-list"));
+        
+        // Listeners delegados para acciones de comunidad en búsqueda
+        const list = document.getElementById("search-results-list");
+        if(list && !list.dataset.commListeners){
+            list.dataset.commListeners = "true";
+            
+            list.addEventListener('click', async (e) => {
+                // JOIN PUBLIC
+                const joinBtn = e.target.closest('[data-action="join-public-community-search"]');
+                if (joinBtn) {
+                    e.preventDefault();
+                    joinBtn.disabled = true;
+                    joinBtn.innerHTML = '<span class="material-symbols-rounded spinning" style="font-size:16px;">sync</span>';
+                    
+                    try {
+                        const csrf = window.CSRF_TOKEN || '';
+                        const id = joinBtn.dataset.id;
+                        const response = await fetch('api/communities_handler.php', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+                            body: JSON.stringify({action: 'join_public', community_id: id, csrf_token: csrf})
+                        });
+                        const res = await response.json();
+                        
+                        if(res.success){
+                            if(window.alertManager) window.alertManager.showAlert(res.message, 'success');
+                            // Recargar la búsqueda o cambiar botón visualmente
+                            // Opción rápida: cambiar texto y estilo
+                            joinBtn.innerText = 'Unido';
+                            joinBtn.style.backgroundColor = 'var(--success-color, #2ecc71)';
+                            document.dispatchEvent(new CustomEvent('refresh-sidebar-request'));
+                        } else {
+                            if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
+                            joinBtn.disabled = false;
+                            joinBtn.innerText = 'Unirse';
+                        }
+                    } catch(err){
+                        console.error(err);
+                        joinBtn.disabled = false;
+                        joinBtn.innerText = 'Error';
+                    }
+                }
+
+                // LEAVE COMMUNITY
+                const leaveBtn = e.target.closest('[data-action="leave-community-search"]');
+                if (leaveBtn) {
+                    e.preventDefault();
+                    if(!confirm("¿Estás seguro de que quieres salir de esta comunidad?")) return;
+                    
+                    try {
+                        const csrf = window.CSRF_TOKEN || '';
+                        const id = leaveBtn.dataset.id;
+                        const uuid = leaveBtn.dataset.uuid;
+                        
+                        const response = await fetch('api/communities_handler.php', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+                            body: JSON.stringify({action: 'leave_community', community_id: id, uuid: uuid, csrf_token: csrf})
+                        });
+                        const res = await response.json();
+                        
+                        if(res.success){
+                            if(window.alertManager) window.alertManager.showAlert(res.message, 'info');
+                            document.dispatchEvent(new CustomEvent('refresh-sidebar-request'));
+                            // Eliminar la tarjeta o cambiar botón
+                            const card = leaveBtn.closest('.community-result-item');
+                            if(card) card.remove();
+                        } else {
+                            if(window.alertManager) window.alertManager.showAlert(res.message, 'error');
+                        }
+                    } catch(err){ console.error(err); }
+                }
+
+                // JOIN PRIVATE
+                const privateBtn = e.target.closest('[data-action="join-private-community-search"]');
+                if (privateBtn) {
+                    e.preventDefault();
+                    const name = privateBtn.dataset.name;
+                    if(window.navigateTo) {
+                        window.navigateTo('join-community?community=' + encodeURIComponent(name));
+                    } else {
+                        window.location.href = 'join-community?community=' + encodeURIComponent(name);
+                    }
+                }
+
+                // VIEW
+                const viewBtn = e.target.closest('[data-action="view-community"]');
+                if (viewBtn) {
+                    e.preventDefault();
+                    const uuid = viewBtn.dataset.uuid;
+                    if(window.loadCommunity) {
+                        window.loadCommunity(uuid);
+                    } else if(window.navigateTo) {
+                        window.navigateTo('community?uuid=' + uuid); // O la ruta que maneje tu app
+                    }
+                }
+            });
+        }
+    })();
+    </script>
+    <?php
     exit;
 }
 ?>
@@ -212,24 +340,7 @@ if ($isAjaxPartial) {
                     <?php echo empty($q) ? translation('global.search') : '"' . htmlspecialchars($q) . '"'; ?>
                 </span>
             </div>
-            <div class="component-toolbar__right">
-                <div style="position: relative;">
-                    <button class="component-icon-button" data-action="toggle-dropdown" data-target="dropdown-search-filter">
-                        <span class="material-symbols-rounded">filter_list</span>
-                    </button>
-                    <div class="popover-module popover-module--anchor-left disabled" id="dropdown-search-filter" style="width: 200px; right: 0; left: auto; top: calc(100% + 8px);">
-                        <div class="menu-content">
-                            <div class="menu-list">
-                                <div class="menu-link active">
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div>
-                                    <div class="menu-link-text">Relevancia</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
-        </div>
     </div>
 
     <div class="section-center-wrapper section-with-toolbar" style="justify-content: flex-start; align-items: center; flex-direction: column;">
@@ -248,16 +359,18 @@ if ($isAjaxPartial) {
                     <span class="material-symbols-rounded">search</span>
                     <p data-i18n="search.empty_state"><?php echo translation('search.empty_state'); ?></p>
                 </div>
+
             <?php elseif (count($results) === 0 && count($communityResults) === 0 && $offset === 0): ?>
                 <div class="search-empty-state">
                     <span class="material-symbols-rounded">search_off</span>
                     <p><span data-i18n="search.no_results"><?php echo translation('search.no_results'); ?></span> "<strong><?php echo htmlspecialchars($q); ?></strong>".</p>
                 </div>
+
             <?php else: ?>
 
                 <div class="results-list" id="search-results-list">
                     <?php
-                    // [MODIFICADO] Renderizado inicial HTML (no AJAX)
+                    // Renderizado inicial HTML (no AJAX)
                     
                     // 1. Renderizar Comunidades
                     if (!empty($communityResults)) {
@@ -265,7 +378,6 @@ if ($isAjaxPartial) {
                         foreach ($communityResults as $comm) {
                             $renderCommunityCard($comm);
                         }
-                        // Separador si hay usuarios
                         if (!empty($results)) {
                             echo '<div class="results-subtitle" style="padding: 15px 15px 10px; font-weight: 600; font-size: 0.85em; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">Personas</div>';
                         }

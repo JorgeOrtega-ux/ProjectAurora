@@ -7,7 +7,6 @@ class SearchFetcher {
      * Busca usuarios (Código existente)
      */
     public static function searchUsers($pdo, $currentUserId, $query, $offset = 0, $limit = 5) {
-        // ... (MANTÉN TU CÓDIGO EXISTENTE DE searchUsers AQUÍ) ...
         $results = [];
         $hasMore = false;
         
@@ -74,26 +73,30 @@ class SearchFetcher {
     }
 
     /**
-     * [NUEVO] Busca comunidades públicas por nombre
+     * [MODIFICADO] Busca comunidades públicas y privadas por nombre
+     * Ahora retorna también si el usuario es miembro.
      */
-    public static function searchCommunities($pdo, $query, $limit = 3) {
+    public static function searchCommunities($pdo, $query, $currentUserId, $limit = 3) {
         if (trim($query) === '') {
             return [];
         }
 
         try {
-            // Buscamos comunidades activas y públicas
-            $sql = "SELECT id, uuid, community_name, profile_picture, member_count, privacy 
-                    FROM communities 
-                    WHERE community_name LIKE ? 
-                    AND status = 'active'
-                    AND privacy = 'public'
+            // Buscamos comunidades activas (públicas o privadas)
+            // Añadimos subconsulta para is_member
+            $sql = "SELECT c.id, c.uuid, c.community_name, c.profile_picture, c.member_count, c.privacy,
+                           (SELECT COUNT(*) FROM community_members cm WHERE cm.community_id = c.id AND cm.user_id = ?) as is_member
+                    FROM communities c 
+                    WHERE c.community_name LIKE ? 
+                    AND c.status = 'active'
+                    AND (c.privacy = 'public' OR c.privacy = 'private')
                     LIMIT ?";
             
             $stmt = $pdo->prepare($sql);
-            // Usamos bindValue para asegurar que el límite se trate como entero
-            $stmt->bindValue(1, '%' . $query . '%');
-            $stmt->bindValue(2, (int)$limit, PDO::PARAM_INT);
+            
+            $stmt->bindValue(1, $currentUserId, PDO::PARAM_INT);
+            $stmt->bindValue(2, '%' . $query . '%');
+            $stmt->bindValue(3, (int)$limit, PDO::PARAM_INT);
             $stmt->execute();
 
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
