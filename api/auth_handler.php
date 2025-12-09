@@ -3,7 +3,7 @@
 // UBICACIÓN: Raíz del proyecto /api/ (fuera de public)
 
 header('Content-Type: application/json');
-require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/db.php'; //
 
 // --- FUNCIONES AUXILIARES ---
 
@@ -116,11 +116,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($stmt->rowCount() > 0) {
                 sendJsonResponse('error', "Usuario en uso.");
             } else {
+                
+                // --- MODIFICACIÓN: Limpiar códigos anteriores ---
+                // Eliminamos cualquier código previo de activación para este email
+                // antes de generar uno nuevo.
+                $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation'")->execute([$email]);
+                // ------------------------------------------------
+                
                 $code = generate_verification_code();
                 $passwordHash = password_hash($password, PASSWORD_DEFAULT);
                 $payload = json_encode(['username' => $username, 'email' => $email, 'password' => $passwordHash]);
 
-                // CORRECCIÓN TIMEZONE: Usamos DATE_ADD(NOW()...) en SQL, no PHP date()
+                // Insertamos el nuevo código
                 $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
                 
                 if ($stmt->execute([$email, 'account_activation', $code, $payload])) {
@@ -145,7 +152,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = $_SESSION['pending_verification_email'];
 
         // A. VALIDACIÓN DE TIEMPO (Rate Limit)
-        // Verificamos si existe un código creado en los últimos 60 segundos USANDO LA HORA DE LA BD
         $checkStmt = $pdo->prepare("SELECT created_at FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation' AND created_at > (NOW() - INTERVAL 60 SECOND) ORDER BY id DESC LIMIT 1");
         $checkStmt->execute([$email]);
         
@@ -164,7 +170,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($lastRow) {
             $payload = $lastRow['payload'];
             
-            // Insertar con NOW() + 15 MIN para evitar drift de PHP
+            // Opcional: También podrías limpiar el anterior aquí si quieres que el botón "reenviar" invalide el previo.
+            // Por ahora, solo insertamos el nuevo.
             $stmtInsert = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
             
             if ($stmtInsert->execute([$email, 'account_activation', $newCode, $payload])) {
@@ -196,7 +203,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($insertUser->execute([$payload['username'], $payload['email'], $payload['password'], $uuid])) {
                     $newId = $pdo->lastInsertId();
                     
-                    // Limpieza
+                    // Limpieza final
                     $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ?")->execute([$emailIdentifier]);
 
                     // Avatar Random
