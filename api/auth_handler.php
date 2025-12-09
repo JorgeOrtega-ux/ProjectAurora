@@ -50,6 +50,34 @@ function generate_verification_code() {
     return str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
 }
 
+// --- FUNCIÓN DE VALIDACIÓN DE DOMINIO Y PREFIJO ---
+function validateEmailRequirements($email) {
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return "Formato de correo electrónico inválido.";
+    }
+
+    // Separar prefijo y dominio
+    // Usamos strrpos por si el prefijo contiene puntos o caracteres especiales, aunque el @ separa el dominio final
+    $atPos = strrpos($email, '@');
+    if ($atPos === false) return "Correo inválido.";
+
+    $prefix = substr($email, 0, $atPos);
+    $domain = strtolower(substr($email, $atPos + 1));
+
+    // 1. Validar longitud del prefijo (4 caracteres antes del @)
+    if (strlen($prefix) < 4) {
+        return "El correo debe tener al menos 4 caracteres antes del @.";
+    }
+
+    // 2. Validar dominios permitidos
+    $allowedDomains = ['gmail.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'yahoo.com'];
+    if (!in_array($domain, $allowedDomains)) {
+        return "Dominio no permitido. Use: " . implode(', ', $allowedDomains) . ".";
+    }
+
+    return true; // Pasa validación
+}
+
 // --- LÓGICA DE AUTENTICACIÓN (POST) ---
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -69,6 +97,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password = $input['password'] ?? '';
 
         if ($email && $password) {
+            
+            // 1. Validaciones estrictas de correo
+            $emailValidation = validateEmailRequirements($email);
+            if ($emailValidation !== true) {
+                sendJsonResponse('error', $emailValidation);
+            }
+
+            // 2. Validación estricta de contraseña
+            if (strlen($password) < 8) {
+                sendJsonResponse('error', "La contraseña debe tener al menos 8 caracteres.");
+            }
+
+            // 3. Verificar existencia en BD
             $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
             $stmt->execute([$email]);
             if ($stmt->rowCount() > 0) {
@@ -98,6 +139,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password = $_SESSION['temp_register']['password'];
 
         if ($username) {
+            
+            // 1. Validación estricta de nombre de usuario
+            if (strlen($username) < 6) {
+                sendJsonResponse('error', "El nombre de usuario debe tener al menos 6 caracteres.");
+            }
+
             $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
             $stmt->execute([$username]);
 

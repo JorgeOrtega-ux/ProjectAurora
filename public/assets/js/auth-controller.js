@@ -1,6 +1,7 @@
 /**
  * AuthController.js
  * Lógica asíncrona para autenticación (Login, Registro, Verify) sin recargar la página en errores.
+ * Validaciones estrictas añadidas.
  */
 
 // Función para mostrar errores en la interfaz
@@ -30,16 +31,15 @@ const showError = (message) => {
         alertBox.textContent = message;
         alertBox.style.display = 'block';
         
-        // Efecto visual de "sacudida" o resalte opcional
+        // Efecto visual de "sacudida"
         alertBox.animate([
             { transform: 'translateX(0)' },
             { transform: 'translateX(-5px)' },
             { transform: 'translateX(5px)' },
             { transform: 'translateX(0)' }
         ], { duration: 300 });
-    } else {
-        alert(message); // Fallback
-    }
+    } 
+    // SE ELIMINÓ EL FALLBACK: else { alert(message); }
 };
 
 // Función asíncrona para enviar datos
@@ -74,7 +74,7 @@ const submitAuthData = async (data) => {
             buttons.forEach(btn => {
                 btn.disabled = false;
                 btn.style.opacity = '1';
-                btn.textContent = 'Continuar'; // O el texto original si lo guardas antes
+                btn.textContent = 'Continuar'; 
             });
         }
 
@@ -106,7 +106,7 @@ const setupAuthListeners = () => {
             }
         }
 
-        // B) REGISTRO PASO 1
+        // B) REGISTRO PASO 1 (Validaciones Estrictas)
         if (e.target && e.target.id === 'btn-register-step-1') {
             e.preventDefault();
             const email = document.getElementById('email');
@@ -114,20 +114,63 @@ const setupAuthListeners = () => {
             const action = document.getElementById('register-action-1'); 
 
             if(email && password && action && email.value && password.value) {
-                submitAuthData({ action: action.value, email: email.value, password: password.value });
+                
+                const emailVal = email.value.trim();
+                const passVal = password.value;
+                const allowedDomains = ['gmail.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'yahoo.com'];
+
+                // 1. Validar formato básico y separación
+                if (!emailVal.includes('@')) {
+                    showError("Formato de correo inválido.");
+                    return;
+                }
+
+                // Obtener dominio y prefijo
+                const lastAtPos = emailVal.lastIndexOf('@');
+                const localPart = emailVal.substring(0, lastAtPos);
+                const domainPart = emailVal.substring(lastAtPos + 1).toLowerCase();
+
+                // 2. Validar 4 caracteres antes del @
+                if (localPart.length < 4) {
+                    showError("El correo debe tener al menos 4 caracteres antes del @.");
+                    return;
+                }
+
+                // 3. Validar Dominios permitidos
+                if (!allowedDomains.includes(domainPart)) {
+                    showError("Dominio no permitido. Use: gmail, outlook, hotmail, icloud o yahoo.");
+                    return;
+                }
+
+                // 4. Validar contraseña (mínimo 8 caracteres)
+                if (passVal.length < 8) {
+                    showError("La contraseña debe tener al menos 8 caracteres.");
+                    return;
+                }
+
+                // Todo OK -> Enviar
+                submitAuthData({ action: action.value, email: emailVal, password: passVal });
             } else {
                 showError("Por favor completa todos los campos.");
             }
         }
 
-        // C) REGISTRO PASO 2
+        // C) REGISTRO PASO 2 (Validación Usuario)
         if (e.target && e.target.id === 'btn-register-step-2') {
             e.preventDefault();
             const username = document.getElementById('username');
             const action = document.getElementById('register-action-2'); 
 
             if(username && action && username.value) {
-                submitAuthData({ action: action.value, username: username.value });
+                const userVal = username.value.trim();
+
+                // 1. Validar longitud de usuario (mínimo 6)
+                if (userVal.length < 6) {
+                    showError("El nombre de usuario debe tener al menos 6 caracteres.");
+                    return;
+                }
+
+                submitAuthData({ action: action.value, username: userVal });
             } else {
                 showError("Por favor escribe un nombre de usuario.");
             }
@@ -163,6 +206,6 @@ const setupAuthListeners = () => {
 };
 
 export const initAuthController = () => {
-    console.log('AuthController: Inicializado (Modo Asíncrono).');
+    console.log('AuthController: Inicializado (Modo Asíncrono - Validaciones Estrictas).');
     setupAuthListeners();
 };
