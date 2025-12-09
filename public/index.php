@@ -40,8 +40,8 @@
                                     <span class="material-symbols-rounded">search</span>
                                 </div>
 
-                                <div class="header-button" data-action="toggleModuleProfile">
-                                    <span class="material-symbols-rounded">more_vert</span>
+                                <div class="header-button profile-button" data-action="toggleModuleProfile">
+                                    
                                 </div>
                             </div>
                             <div class="module-content module-profile disabled" data-module="moduleProfile">
