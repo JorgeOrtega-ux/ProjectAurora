@@ -42,3 +42,14 @@ CREATE TABLE IF NOT EXISTS verification_codes (
     INDEX (identifier),
     INDEX (code)
 );
+
+-- Tabla para tokens de restablecimiento de contraseña
+CREATE TABLE IF NOT EXISTS password_resets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(100) NOT NULL,
+    token VARCHAR(255) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX (token),
+    FOREIGN KEY (email) REFERENCES users(email) ON DELETE CASCADE
+);
