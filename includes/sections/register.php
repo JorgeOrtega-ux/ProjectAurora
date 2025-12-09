@@ -1,17 +1,53 @@
 <?php
-// Detectar la sub-ruta actual
+// includes/sections/register.php
+
+// 1. Detección de sub-ruta actual
 $requestUri = $_SERVER['REQUEST_URI'];
 $isStep2 = strpos($requestUri, 'register/aditional-data') !== false;
 $isStep3 = strpos($requestUri, 'register/verify') !== false;
+
+// 2. Verificación de datos de sesión previos (State Check)
+$hasDataForStep2 = isset($_SESSION['temp_register']) && !empty($_SESSION['temp_register']);
+$hasDataForStep3 = isset($_SESSION['pending_verification_email']) && !empty($_SESSION['pending_verification_email']);
+
+// 3. Determinar si hay un acceso inválido (Salto de pasos)
+$invalidAccess = false;
+$errorTitle = "";
+$errorMessage = "";
+
+if ($isStep2 && !$hasDataForStep2) {
+    $invalidAccess = true;
+    $errorTitle = "Faltan datos previos";
+    $errorMessage = "No has completado el registro de credenciales (correo y contraseña). No puedes saltar pasos.";
+} elseif ($isStep3 && !$hasDataForStep3) {
+    $invalidAccess = true;
+    $errorTitle = "Código no enviado";
+    $errorMessage = "No hay un proceso de verificación activo. Debes completar el registro primero.";
+}
 ?>
 
 <div class="auth-wrapper">
     <div class="auth-card">
         
-        <?php if ($isStep3): ?>
+        <?php if ($invalidAccess): ?>
+            <div class="auth-header">
+                <span class="material-symbols-rounded" style="font-size: 48px; color: #d32f2f; margin-bottom: 10px;">history_toggle_off</span>
+                <h1 style="color: #d32f2f;"><?php echo $errorTitle; ?></h1>
+                <p><?php echo $errorMessage; ?></p>
+            </div>
+
+            <div class="alert error" style="margin-top: 20px;">
+                Por favor, inicia el proceso desde el principio para asegurar la creación de tu cuenta.
+            </div>
+
+            <a href="<?php echo $basePath; ?>register" class="btn-primary" style="display: block; text-decoration: none; line-height: 55px; margin-top: 20px;">
+                Volver al inicio del registro
+            </a>
+
+        <?php elseif ($isStep3): ?>
             <div class="auth-header">
                 <h1>Verificación</h1>
-                <p>Hemos enviado un código a tu correo.</p>
+                <p>Hemos enviado un código a <strong><?php echo htmlspecialchars($_SESSION['pending_verification_email']); ?></strong>.</p>
             </div>
 
             <input type="hidden" id="verify-action" name="action" value="verify_code">
@@ -27,6 +63,7 @@ $isStep3 = strpos($requestUri, 'register/verify') !== false;
 
             <div class="auth-footer">
                 <p>¿No recibiste el código? <a href="#">Reenviar</a></p>
+                <p style="margin-top: 8px;"><a href="<?php echo $basePath; ?>register" style="font-size: 12px; color: #999;">Cancelar registro</a></p>
             </div>
 
         <?php elseif ($isStep2): ?>
@@ -47,7 +84,7 @@ $isStep3 = strpos($requestUri, 'register/verify') !== false;
             <button type="button" id="btn-register-step-2" class="btn-primary">Enviar Código</button>
             
             <div class="auth-footer">
-                <p><a href="<?php echo $basePath; ?>register">Volver</a></p>
+                <p><a href="<?php echo $basePath; ?>register">Volver (Editar correo)</a></p>
             </div>
 
         <?php else: ?>
@@ -77,7 +114,7 @@ $isStep3 = strpos($requestUri, 'register/verify') !== false;
             </div>
         <?php endif; ?>
 
-        <?php if (isset($_SESSION['error'])): ?>
+        <?php if (isset($_SESSION['error']) && !$invalidAccess): ?>
             <div class="alert error" style="margin-top: 16px; margin-bottom: 0;">
                 <?php 
                     echo $_SESSION['error']; 
