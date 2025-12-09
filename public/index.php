@@ -44,7 +44,7 @@ $appRoutes = ['main', 'explorer'];
 $validRoutes = array_merge($appRoutes, $guestRoutes);
 
 if (!in_array($currentSection, $validRoutes)) {
-    $currentSection = '404'; // O login si prefieres
+    $currentSection = '404'; 
 }
 ?>
 <!DOCTYPE html>
@@ -56,14 +56,30 @@ if (!in_array($currentSection, $validRoutes)) {
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded">
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/styles.css">
     <title>ProjectAurora</title>
+    
+    <?php 
+    // ESTILO EXTRA PARA CENTRAR LOGIN/REGISTER
+    // Como ahora están dentro del layout general, forzamos el centrado visualmente.
+    if (!$isLoggedIn): 
+    ?>
+    <style>
+        [data-container="main-section"] {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+        }
+    </style>
+    <?php endif; ?>
 </head>
 
 <body>
 
-<?php if ($isLoggedIn): ?>
     <div class="page-wrapper">
         <div class="main-content">
             <div class="general-content">
+                
+                <?php if ($isLoggedIn): ?>
                 <div class="general-content-top">
                     <div class="header">
                         <div class="header-left">
@@ -123,8 +139,11 @@ if (!in_array($currentSection, $validRoutes)) {
                         </div>
                     </div>
                 </div>
+                <?php endif; ?>
                 
                 <div class="general-content-bottom">
+                    
+                    <?php if ($isLoggedIn): ?>
                     <div class="module-content module-surface disabled" data-module="moduleSurface">
                         <div class="menu-content">
                             <div class="menu-content-top">
@@ -151,6 +170,7 @@ if (!in_array($currentSection, $validRoutes)) {
                             <div class="menu-content-bottom"></div>
                         </div>
                     </div>
+                    <?php endif; ?>
 
                     <div class="general-content-scrolleable" data-container="main-section">
                         <?php
@@ -163,17 +183,8 @@ if (!in_array($currentSection, $validRoutes)) {
             </div>
         </div>
     </div>
+    
     <script type="module" src="<?php echo $basePath; ?>assets/js/app-init.js"></script>
-
-<?php else: ?>
-    <div class="page-wrapper auth-mode">
-        <?php
-        // Cargar Login o Register según corresponda
-        $file = __DIR__ . '/../includes/sections/' . $currentSection . '.php';
-        if (file_exists($file)) { include $file; }
-        ?>
-    </div>
-<?php endif; ?>
 
 </body>
 </html>

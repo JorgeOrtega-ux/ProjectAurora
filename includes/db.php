@@ -43,9 +43,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             // Crear usuario
             $hash = password_hash($password, PASSWORD_DEFAULT);
             $stmt = $pdo->prepare("INSERT INTO users (username, email, password) VALUES (?, ?, ?)");
+            
             if ($stmt->execute([$username, $email, $hash])) {
-                $success = "Cuenta creada. Ahora puedes iniciar sesión.";
-                // Opcional: Auto-login
+                // --- AUTO-LOGIN TRAS REGISTRO ---
+                $newUserId = $pdo->lastInsertId();
+                $_SESSION['user_id'] = $newUserId;
+                $_SESSION['username'] = $username;
+
+                // Redirigir a la página principal
+                // Usamos un fallback por si $basePath no está definido en este contexto
+                $redirect = isset($basePath) ? $basePath : '/ProjectAurora/';
+                header("Location: " . $redirect);
+                exit;
             } else {
                 $error = "Error al registrar.";
             }
@@ -68,7 +77,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // Login Exitoso
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
-        header("Location: " . $basePath); // Recargar en la home
+        
+        $redirect = isset($basePath) ? $basePath : '/ProjectAurora/';
+        header("Location: " . $redirect); // Recargar en la home
         exit;
     } else {
         $error = "Credenciales incorrectas.";
@@ -78,7 +89,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 // 3. LOGOUT
 if (isset($_GET['logout'])) {
     session_destroy();
-    header("Location: " . $basePath . "login");
+    $redirect = isset($basePath) ? $basePath : '/ProjectAurora/';
+    header("Location: " . $redirect . "login");
     exit;
 }
 ?>
