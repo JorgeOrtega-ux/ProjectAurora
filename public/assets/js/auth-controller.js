@@ -79,7 +79,7 @@ const processAuthAction = async (actionType, data) => {
             case 'verify_code':
                 result = await AuthService.verifyCode(data.code);
                 break;
-        case 'request_password_reset':
+            case 'request_password_reset':
                 result = await AuthService.requestPasswordReset(data.email);
                 // Lógica especial para mostrar el link simulado
                 if (result.status === 'success' && result.data && result.data.debug_link) {
@@ -197,21 +197,63 @@ const setupAuthListeners = () => {
             }
         }
 
-        // E) LOGOUT (Delegación de eventos usando closest para detectar el div o sus hijos)
+        // E) LOGOUT (Delegación de eventos usando closest)
         const logoutBtn = e.target.closest('#btn-logout');
         if (logoutBtn) {
             e.preventDefault(); 
             AuthService.logout();
+        }
+
+        // F) SOLICITUD DE RECUPERACIÓN (NUEVO - Corrige el error)
+        if (e.target && e.target.id === 'btn-recover-request') {
+            e.preventDefault();
+            const email = document.getElementById('recover-email');
+
+            if(email && email.value) {
+                processAuthAction('request_password_reset', { email: email.value.trim() });
+            } else {
+                showError("Por favor ingresa tu correo electrónico.");
+            }
+        }
+
+        // G) GUARDAR NUEVA CONTRASEÑA (NUEVO - Para el paso final)
+        if (e.target && e.target.id === 'btn-recover-reset') {
+            e.preventDefault();
+            const pass1 = document.getElementById('new-password');
+            const pass2 = document.getElementById('confirm-password');
+            const token = document.getElementById('reset-token');
+
+            if(pass1 && pass2 && token && pass1.value && pass2.value) {
+                if (pass1.value !== pass2.value) {
+                    showError("Las contraseñas no coinciden.");
+                    return;
+                }
+                if (pass1.value.length < 8) {
+                    showError("La contraseña debe tener al menos 8 caracteres.");
+                    return;
+                }
+                processAuthAction('reset_password', { 
+                    token: token.value, 
+                    password: pass1.value 
+                });
+            } else {
+                showError("Por favor completa todos los campos.");
+            }
         }
     });
 
     // Soporte ENTER
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
-            const btns = ['btn-login', 'btn-register-step-1', 'btn-register-step-2', 'btn-verify'];
+            // Se agregaron los botones de recuperación a la lista
+            const btns = ['btn-login', 'btn-register-step-1', 'btn-register-step-2', 'btn-verify', 'btn-recover-request', 'btn-recover-reset'];
             for(let id of btns){
                 const btn = document.getElementById(id);
-                if(btn && !btn.disabled) { btn.click(); break; }
+                // Verificación extra para asegurar que el botón está visible en el DOM
+                if(btn && !btn.disabled && document.body.contains(btn)) { 
+                    btn.click(); 
+                    break; 
+                }
             }
         }
     });
