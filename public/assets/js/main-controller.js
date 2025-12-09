@@ -1,5 +1,6 @@
 /**
  * MainController.js
+ * Encargado de la lógica de UI (Menús, Buscador, Interacción visual).
  */
 
 // ==========================================
@@ -7,26 +8,6 @@
 // ==========================================
 let allowMultipleModules = false; 
 let closeOnEsc = true;            
-
-// Función auxiliar para enviar datos como si fuera un formulario (Form Submission)
-const submitAuthData = (data) => {
-    const form = document.createElement('form');
-    form.method = 'POST';
-    // AQUÍ ESTÁ EL CAMBIO: Apuntamos al nuevo handler de la API
-    form.action = window.BASE_PATH + 'api/auth_handler.php'; 
-    form.style.display = 'none';
-
-    for (const [key, value] of Object.entries(data)) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = key;
-        input.value = value;
-        form.appendChild(input);
-    }
-
-    document.body.appendChild(form);
-    form.submit();
-};
 
 const toggleModuleState = (moduleElement) => {
     if (!moduleElement) return;
@@ -95,55 +76,9 @@ const setupEventListeners = () => {
                  mod.classList.add('disabled');
             }
         });
-
-        // ============================================================
-        //  LÓGICA DE AUTH MULTI-STEP
-        // ============================================================
-        
-        // A) LOGIN
-        if (e.target && e.target.id === 'btn-login') {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const action = document.getElementById('login-action').value;
-
-            if(email && password) submitAuthData({ action, email, password });
-            else alert("Por favor completa todos los campos.");
-        }
-
-        // B) REGISTRO PASO 1 (Email + Pass)
-        if (e.target && e.target.id === 'btn-register-step-1') {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const action = document.getElementById('register-action-1').value; // 'register_step_1'
-
-            if(email && password) submitAuthData({ action, email, password });
-            else alert("Por favor completa todos los campos.");
-        }
-
-        // C) REGISTRO PASO 2 (Username)
-        if (e.target && e.target.id === 'btn-register-step-2') {
-            e.preventDefault();
-            const username = document.getElementById('username').value;
-            const action = document.getElementById('register-action-2').value; // 'register_step_2'
-
-            if(username) submitAuthData({ action, username });
-            else alert("Por favor escribe un nombre de usuario.");
-        }
-
-        // D) VERIFICACIÓN (Code)
-        if (e.target && e.target.id === 'btn-verify') {
-            e.preventDefault();
-            const code = document.getElementById('code').value;
-            const action = document.getElementById('verify-action').value; // 'verify_code'
-
-            if(code) submitAuthData({ action, code });
-            else alert("Por favor ingresa el código.");
-        }
     });
 
-    // 4. Cerrar con tecla Escape y Enter support
+    // 4. Cerrar con tecla Escape
     if (closeOnEsc) {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
@@ -152,19 +87,11 @@ const setupEventListeners = () => {
                     headerCenter.classList.remove('active');
                 }
             }
-            if (e.key === 'Enter') {
-                // Trigger simple para el botón principal presente
-                const btns = ['btn-login', 'btn-register-step-1', 'btn-register-step-2', 'btn-verify'];
-                for(let id of btns){
-                    const btn = document.getElementById(id);
-                    if(btn) { btn.click(); break; }
-                }
-            }
         });
     }
 };
 
 export const initMainController = () => {
-    console.log('MainController: Inicializando...');
+    console.log('MainController: Inicializando UI...');
     setupEventListeners();
 };

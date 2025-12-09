@@ -1,10 +1,22 @@
 <?php
 // public/api/auth_handler.php
 
-// 1. Incluir conexión a BD (ajusta la ruta según tu estructura)
+// Asegurar que la respuesta sea siempre JSON
+header('Content-Type: application/json');
+
 require_once __DIR__ . '/../../includes/db.php';
 
-// --- FUNCIONES AUXILIARES (Movidas desde db.php) ---
+// --- FUNCIONES AUXILIARES ---
+
+function sendJsonResponse($status, $message, $redirectUrl = null, $data = []) {
+    echo json_encode([
+        'status' => $status,
+        'message' => $message,
+        'redirect' => $redirectUrl,
+        'data' => $data
+    ]);
+    exit;
+}
 
 function logUserAccess($pdo, $userId) {
     try {
@@ -36,49 +48,48 @@ function generate_verification_code() {
     return str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
 }
 
-// Función auxiliar para redirigir con error
-function redirectWithError($url, $message) {
-    $_SESSION['error'] = $message;
-    header("Location: " . $url);
-    exit;
-}
-
 // --- LÓGICA DE AUTENTICACIÓN (POST) ---
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
-    // Guardamos la URL de origen para redirigir en caso de error
-    $referer = $_SERVER['HTTP_REFERER'] ?? $basePath . 'login';
+    // Leer datos (Soporta tanto Form Data como JSON Raw)
+    $input = $_POST;
+    if (empty($input)) {
+        $json = json_decode(file_get_contents('php://input'), true);
+        if ($json) $input = $json;
+    }
 
-    // --- ETAPA 1: VALIDAR CORREO Y CONTRASEÑA ---
-    if ($_POST['action'] === 'register_step_1') {
-        $email = trim($_POST['email']);
-        $password = $_POST['password'];
+    $action = $input['action'] ?? '';
+
+    // --- ETAPA 1: REGISTRO - VALIDAR CORREO Y CONTRASEÑA ---
+    if ($action === 'register_step_1') {
+        $email = trim($input['email'] ?? '');
+        $password = $input['password'] ?? '';
 
         if ($email && $password) {
             $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
             $stmt->execute([$email]);
             if ($stmt->rowCount() > 0) {
-                redirectWithError($referer, "El correo electrónico ya está registrado.");
+                sendJsonResponse('error', "El correo electrónico ya está registrado.");
             } else {
                 $_SESSION['temp_register'] = [
                     'email' => $email,
                     'password' => $password
                 ];
-                header("Location: " . $basePath . "register/aditional-data");
-                exit;
+                // Éxito: JS redirigirá al siguiente paso
+                sendJsonResponse('success', "Datos válidos", $basePath . "register/aditional-data");
             }
         } else {
-            redirectWithError($referer, "Correo y contraseña requeridos.");
+            sendJsonResponse('error', "Correo y contraseña requeridos.");
         }
     }
 
-    // --- ETAPA 2: VALIDAR USUARIO ---
-    if ($_POST['action'] === 'register_step_2') {
-        $username = trim($_POST['username']);
+    // --- ETAPA 2: REGISTRO - VALIDAR USUARIO ---
+    if ($action === 'register_step_2') {
+        $username = trim($input['username'] ?? '');
         
         if (!isset($_SESSION['temp_register'])) {
-            redirectWithError($basePath . "register", "Sesión expirada. Vuelve a empezar.");
+            sendJsonResponse('error', "Sesión expirada. Vuelve a empezar.", $basePath . "register");
         }
 
         $email = $_SESSION['temp_register']['email'];
@@ -89,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt->execute([$username]);
 
             if ($stmt->rowCount() > 0) {
-                redirectWithError($referer, "El nombre de usuario ya está en uso.");
+                sendJsonResponse('error', "El nombre de usuario ya está en uso.");
             } else {
                 $code = generate_verification_code();
                 $passwordHash = password_hash($password, PASSWORD_DEFAULT);
@@ -106,20 +117,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if ($stmt->execute([$email, 'account_activation', $code, $payload, $expiresAt])) {
                     $_SESSION['pending_verification_email'] = $email;
                     unset($_SESSION['temp_register']);
-                    header("Location: " . $basePath . "register/verify");
-                    exit;
+                    // Éxito: JS redirigirá a verificar
+                    sendJsonResponse('success', "Código enviado", $basePath . "register/verify");
                 } else {
-                    redirectWithError($referer, "Error al generar código de verificación.");
+                    sendJsonResponse('error', "Error al generar código de verificación.");
                 }
             }
         } else {
-            redirectWithError($referer, "Nombre de usuario requerido.");
+            sendJsonResponse('error', "Nombre de usuario requerido.");
         }
     }
 
     // --- ETAPA 3: VERIFICAR CÓDIGO ---
-    if ($_POST['action'] === 'verify_code') {
-        $code = trim($_POST['code']);
+    if ($action === 'verify_code') {
+        $code = trim($input['code'] ?? '');
         $emailIdentifier = $_SESSION['pending_verification_email'] ?? null;
 
         if ($code && $emailIdentifier) {
@@ -143,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $delStmt = $pdo->prepare("DELETE FROM verification_codes WHERE id = ?");
                     $delStmt->execute([$verificationRow['id']]);
 
-                    // Generar Avatar
+                    // Generar Avatar (Opcional, fallo silencioso)
                     try {
                         $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($finalUsername) . "&background=random&color=fff&size=128";
                         $imageData = @file_get_contents($avatarUrl);
@@ -163,23 +174,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     logUserAccess($pdo, $newUserId);
                     session_write_close();
 
-                    header("Location: " . $basePath);
-                    exit;
+                    // Éxito Total: JS redirigirá al home
+                    sendJsonResponse('success', "Cuenta creada exitosamente", $basePath);
                 } else {
-                    redirectWithError($referer, "Error crítico al crear la cuenta.");
+                    sendJsonResponse('error', "Error crítico al crear la cuenta.");
                 }
             } else {
-                redirectWithError($referer, "Código inválido o expirado.");
+                sendJsonResponse('error', "Código inválido o expirado.");
             }
         } else {
-            redirectWithError($referer, "Código requerido.");
+            sendJsonResponse('error', "Código requerido.");
         }
     }
 
     // --- LOGIN ---
-    if ($_POST['action'] === 'login') {
-        $email = trim($_POST['email']);
-        $password = $_POST['password'];
+    if ($action === 'login') {
+        $email = trim($input['email'] ?? '');
+        $password = $input['password'] ?? '';
 
         $stmt = $pdo->prepare("SELECT id, username, password, uuid, role FROM users WHERE email = ?");
         $stmt->execute([$email]);
@@ -193,15 +204,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             logUserAccess($pdo, $user['id']);
             
             session_write_close();
-            header("Location: " . $basePath);
-            exit;
+            // Éxito: JS redirigirá al home
+            sendJsonResponse('success', "Bienvenido", $basePath);
         } else {
-            redirectWithError($referer, "Credenciales incorrectas.");
+            sendJsonResponse('error', "Credenciales incorrectas.");
         }
     }
+    
+    // Si no coincide ninguna acción
+    sendJsonResponse('error', "Acción no válida.");
 }
 
-// 3. LOGOUT (GET)
+// 3. LOGOUT (GET) - Esto sigue siendo una petición normal de navegador
 if (isset($_GET['logout'])) {
     session_destroy();
     header("Location: " . $basePath . "login");

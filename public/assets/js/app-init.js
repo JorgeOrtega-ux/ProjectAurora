@@ -1,10 +1,14 @@
 import { initMainController } from './main-controller.js';
-import { initUrlManager } from './url-manager.js'; // Importar router
+import { initUrlManager } from './url-manager.js'; 
+import { initAuthController } from './auth-controller.js'; // Importar nuevo controlador
 
 const App = {
     init: () => {
         // Inicializar UI (Menús, buscador)
         initMainController();
+        
+        // Inicializar Lógica de Autenticación (Login, Registro)
+        initAuthController();
         
         // Inicializar SPA Router
         initUrlManager();
