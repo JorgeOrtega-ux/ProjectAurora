@@ -12,7 +12,8 @@ let closeOnEsc = true;
 const submitAuthData = (data) => {
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = window.location.href; // Se envía a la URL actual
+    // AQUÍ ESTÁ EL CAMBIO: Apuntamos al nuevo handler de la API
+    form.action = window.BASE_PATH + 'api/auth_handler.php'; 
     form.style.display = 'none';
 
     for (const [key, value] of Object.entries(data)) {

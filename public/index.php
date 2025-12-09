@@ -1,74 +1,8 @@
 <?php
-// --- CONFIGURACIÓN DE RUTAS (ROUTER) ---
-$basePath = '/ProjectAurora/'; 
+// public/index.php
 
-// INCLUIR CONEXIÓN Y LOGIC DE AUTH
-require_once __DIR__ . '/../includes/db.php';
-
-// 1. Obtener la URL solicitada
-$requestUri = $_SERVER['REQUEST_URI'];
-
-// 2. Limpiar la URL
-if (strpos($requestUri, $basePath) === 0) {
-    $path = substr($requestUri, strlen($basePath));
-} else {
-    $path = $requestUri;
-}
-$path = strtok($path, '?');
-$currentSection = rtrim($path, '/');
-if ($currentSection === '') { $currentSection = 'main'; }
-
-// --- CONTROL DE SESIÓN ---
-$isLoggedIn = isset($_SESSION['user_id']);
-
-// >>> LOGICA DE REFRESCO DE SESIÓN <<<
-if ($isLoggedIn) {
-    try {
-        $stmt = $pdo->prepare("SELECT role, username, uuid FROM users WHERE id = ?");
-        $stmt->execute([$_SESSION['user_id']]);
-        $freshUser = $stmt->fetch();
-
-        if ($freshUser) {
-            $_SESSION['role'] = $freshUser['role'];
-            $_SESSION['username'] = $freshUser['username'];
-            $_SESSION['uuid'] = $freshUser['uuid'];
-        } else {
-            session_destroy();
-            header("Location: " . $basePath . "login");
-            exit;
-        }
-    } catch (Exception $e) {}
-}
-
-// Rutas permitidas para invitados (Whitelisting)
-// NOTA: Incluimos register y sus sub-rutas, ahora incluyendo verify
-$guestRoutes = ['login', 'register', 'register/aditional-data', 'register/verify'];
-
-// Lógica de Redirección Forzada
-if (!$isLoggedIn) {
-    if (!in_array($currentSection, $guestRoutes)) {
-        header("Location: " . $basePath . "login");
-        exit;
-    }
-} else {
-    if (in_array($currentSection, $guestRoutes)) {
-        header("Location: " . $basePath);
-        exit;
-    }
-}
-
-// Definir rutas válidas del sistema (APP)
-$appRoutes = ['main', 'explorer'];
-$validRoutes = array_merge($appRoutes, $guestRoutes);
-
-// Manejo de 404
-if (!in_array($currentSection, $validRoutes)) {
-    $currentSection = '404'; 
-}
-
-// --- OBTENER ROL ---
-$userRole = ($isLoggedIn && isset($_SESSION['role'])) ? $_SESSION['role'] : 'user';
-
+// Incluimos el router que prepara todo el entorno ($currentSection, $isLoggedIn, etc.)
+require_once __DIR__ . '/../includes/router.php';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -175,14 +109,14 @@ $userRole = ($isLoggedIn && isset($_SESSION['role'])) ? $_SESSION['role'] : 'use
                                                 <span>Configuración</span>
                                             </div>
                                         </div>
-                                        <a href="?logout=true" class="menu-link">
-                                            <div class="menu-link-icon">
-                                                <span class="material-symbols-rounded">logout</span>
-                                            </div>
-                                            <div class="menu-link-text">
-                                                <span>Cerrar sesión</span>
-                                            </div>
-                                        </a>
+                                       <a href="<?php echo $basePath; ?>api/auth_handler.php?logout=true" class="menu-link">
+    <div class="menu-link-icon">
+        <span class="material-symbols-rounded">logout</span>
+    </div>
+    <div class="menu-link-text">
+        <span>Cerrar sesión</span>
+    </div>
+</a>
                                     </div>
                                 </div>
                             </div>
@@ -224,17 +158,19 @@ $userRole = ($isLoggedIn && isset($_SESSION['role'])) ? $_SESSION['role'] : 'use
 
                     <div class="general-content-scrolleable" data-container="main-section">
                         <?php
-                        // --- ENRUTAMIENTO MANUAL PARA ARCHIVOS FÍSICOS ---
-                        // Mapeamos rutas complejas a archivos simples en /includes/sections/
+                        // CARGA DINÁMICA DE CONTENIDO
+                        // Usamos la variable $currentSection que calculó el router.php
                         
-                        // Si la ruta es cualquiera de las fases de registro, incluimos register.php
                         if ($currentSection === 'register' || $currentSection === 'register/aditional-data' || $currentSection === 'register/verify') {
                             include __DIR__ . '/../includes/sections/register.php';
                         } 
                         else {
                             $file = __DIR__ . '/../includes/sections/' . $currentSection . '.php';
-                            if (file_exists($file)) { include $file; } 
-                            else { include __DIR__ . '/../includes/sections/404.php'; }
+                            if (file_exists($file)) { 
+                                include $file; 
+                            } else { 
+                                include __DIR__ . '/../includes/sections/404.php'; 
+                            }
                         }
                         ?>
                     </div>

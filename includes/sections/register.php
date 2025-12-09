@@ -77,9 +77,12 @@ $isStep3 = strpos($requestUri, 'register/verify') !== false;
             </div>
         <?php endif; ?>
 
-        <?php if (!empty($error)): ?>
+        <?php if (isset($_SESSION['error'])): ?>
             <div class="alert error" style="margin-top: 16px; margin-bottom: 0;">
-                <?php echo $error; ?>
+                <?php 
+                    echo $_SESSION['error']; 
+                    unset($_SESSION['error']); 
+                ?>
             </div>
         <?php endif; ?>
 
