@@ -1,3 +1,5 @@
+import { ContentService } from './api-services.js';
+
 export function initUrlManager() {
     console.log("SPA Router: Iniciado");
 
@@ -56,8 +58,6 @@ async function loadContent(section) {
     if (!container) return;
 
     // --- PASO 1: LIMPIEZA INMEDIATA ---
-    // Borramos el contenido actual y ponemos el spinner.
-    // Esto asegura que "no se muestre la sección" mientras carga.
     container.innerHTML = `
         <div class="loader-container">
             <div class="spinner"></div>
@@ -65,21 +65,15 @@ async function loadContent(section) {
     `;
 
     try {
-        // --- PASO 2: PARALELISMO (Fetch + Delay) ---
-        // Lanzamos la petición Y el temporizador al mismo tiempo.
-        // Promise.all espera a que AMBOS terminen.
-        const [response] = await Promise.all([
-            fetch(`${window.BASE_PATH}loader.php?section=${section}`),
-            new Promise(resolve => setTimeout(resolve, 200)) // Espera mínima de 200ms
+        // --- PASO 2: PARALELISMO (Service + Delay) ---
+        // Usamos ContentService en lugar de fetch directo
+        const [htmlContent] = await Promise.all([
+            ContentService.fetchSection(section),
+            new Promise(resolve => setTimeout(resolve, 200)) // Espera mínima visual
         ]);
         
-        if (!response.ok) throw new Error('Error de red');
-        
-        const html = await response.text();
-        
         // --- PASO 3: INYECCIÓN ---
-        // Solo llegamos aquí cuando pasaron los 200ms Y el servidor respondió.
-        container.innerHTML = html;
+        container.innerHTML = htmlContent;
         container.scrollTop = 0; 
 
     } catch (error) {

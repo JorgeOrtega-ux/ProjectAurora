@@ -1,15 +1,14 @@
 /**
  * AuthController.js
- * Lógica asíncrona para autenticación (Login, Registro, Verify) sin recargar la página en errores.
- * Validaciones estrictas añadidas.
+ * Lógica de UI para autenticación utilizando AuthService.
  */
+
+import { AuthService } from './api-services.js';
 
 // Función para mostrar errores en la interfaz
 const showError = (message) => {
-    // Busca si ya existe una alerta
     let alertBox = document.querySelector('.alert.error');
     
-    // Si no existe, crearla dinámicamente dentro de .auth-card
     if (!alertBox) {
         const authCard = document.querySelector('.auth-card');
         if (authCard) {
@@ -17,7 +16,6 @@ const showError = (message) => {
             alertBox.className = 'alert error';
             alertBox.style.marginTop = '16px';
             alertBox.style.marginBottom = '0';
-            // Insertar antes del footer o al final del form
             const footer = authCard.querySelector('.auth-footer');
             if (footer) {
                 authCard.insertBefore(alertBox, footer);
@@ -31,7 +29,6 @@ const showError = (message) => {
         alertBox.textContent = message;
         alertBox.style.display = 'block';
         
-        // Efecto visual de "sacudida"
         alertBox.animate([
             { transform: 'translateX(0)' },
             { transform: 'translateX(-5px)' },
@@ -39,12 +36,25 @@ const showError = (message) => {
             { transform: 'translateX(0)' }
         ], { duration: 300 });
     } 
-    // SE ELIMINÓ EL FALLBACK: else { alert(message); }
 };
 
-// Función asíncrona para enviar datos
-const submitAuthData = async (data) => {
-    // Deshabilitar botones para evitar doble envío
+// Función auxiliar para manejar la respuesta del servicio
+const handleAuthResponse = (result, buttons) => {
+    if (result.status === 'success') {
+        window.location.href = result.redirect;
+    } else {
+        showError(result.message || 'Ocurrió un error desconocido.');
+        buttons.forEach(btn => {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.textContent = 'Continuar'; 
+        });
+    }
+};
+
+// Función asíncrona genérica para procesar formularios
+const processAuthAction = async (actionType, data) => {
+    // 1. UI: Bloquear botones
     const buttons = document.querySelectorAll('.btn-primary');
     buttons.forEach(btn => {
         btn.disabled = true; 
@@ -53,34 +63,32 @@ const submitAuthData = async (data) => {
     });
 
     try {
-        const formData = new FormData();
-        for (const [key, value] of Object.entries(data)) {
-            formData.append(key, value);
+        let result;
+
+        // 2. Lógica: Llamar al servicio correspondiente
+        switch (actionType) {
+            case 'login':
+                result = await AuthService.login(data.email, data.password);
+                break;
+            case 'register_step_1':
+                result = await AuthService.registerStep1(data.email, data.password);
+                break;
+            case 'register_step_2':
+                result = await AuthService.registerStep2(data.username);
+                break;
+            case 'verify_code':
+                result = await AuthService.verifyCode(data.code);
+                break;
+            default:
+                throw new Error('Acción no reconocida');
         }
 
-        const response = await fetch(window.BASE_PATH + 'api/auth_handler.php', {
-            method: 'POST',
-            body: formData
-        });
-
-        const result = await response.json();
-
-        if (result.status === 'success') {
-            // ÉXITO: Redirigir a donde diga el backend
-            window.location.href = result.redirect;
-        } else {
-            // ERROR: Mostrar mensaje y reactivar botones
-            showError(result.message || 'Ocurrió un error desconocido.');
-            buttons.forEach(btn => {
-                btn.disabled = false;
-                btn.style.opacity = '1';
-                btn.textContent = 'Continuar'; 
-            });
-        }
+        // 3. UI: Manejar respuesta
+        handleAuthResponse(result, buttons);
 
     } catch (error) {
-        console.error("Error de red:", error);
-        showError("Error de conexión con el servidor.");
+        console.error("Error en AuthController:", error);
+        showError("Error de conexión local.");
         buttons.forEach(btn => {
             btn.disabled = false;
             btn.style.opacity = '1';
@@ -97,80 +105,59 @@ const setupAuthListeners = () => {
             e.preventDefault();
             const email = document.getElementById('email');
             const password = document.getElementById('password');
-            const action = document.getElementById('login-action');
 
-            if(email && password && action && email.value && password.value) {
-                submitAuthData({ action: action.value, email: email.value, password: password.value });
+            if(email && password && email.value && password.value) {
+                processAuthAction('login', { email: email.value, password: password.value });
             } else {
                 showError("Por favor completa todos los campos.");
             }
         }
 
-        // B) REGISTRO PASO 1 (Validaciones Estrictas)
+        // B) REGISTRO PASO 1
         if (e.target && e.target.id === 'btn-register-step-1') {
             e.preventDefault();
             const email = document.getElementById('email');
             const password = document.getElementById('password');
-            const action = document.getElementById('register-action-1'); 
 
-            if(email && password && action && email.value && password.value) {
-                
+            if(email && password && email.value && password.value) {
                 const emailVal = email.value.trim();
                 const passVal = password.value;
                 const allowedDomains = ['gmail.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'yahoo.com'];
 
-                // 1. Validar formato básico y separación
                 if (!emailVal.includes('@')) {
-                    showError("Formato de correo inválido.");
-                    return;
+                    showError("Formato de correo inválido."); return;
                 }
-
-                // Obtener dominio y prefijo
                 const lastAtPos = emailVal.lastIndexOf('@');
                 const localPart = emailVal.substring(0, lastAtPos);
                 const domainPart = emailVal.substring(lastAtPos + 1).toLowerCase();
 
-                // 2. Validar 4 caracteres antes del @
                 if (localPart.length < 4) {
-                    showError("El correo debe tener al menos 4 caracteres antes del @.");
-                    return;
+                    showError("El correo debe tener al menos 4 caracteres antes del @."); return;
                 }
-
-                // 3. Validar Dominios permitidos
                 if (!allowedDomains.includes(domainPart)) {
-                    showError("Dominio no permitido. Use: gmail, outlook, hotmail, icloud o yahoo.");
-                    return;
+                    showError("Dominio no permitido. Use: gmail, outlook, hotmail, icloud o yahoo."); return;
                 }
-
-                // 4. Validar contraseña (mínimo 8 caracteres)
                 if (passVal.length < 8) {
-                    showError("La contraseña debe tener al menos 8 caracteres.");
-                    return;
+                    showError("La contraseña debe tener al menos 8 caracteres."); return;
                 }
 
-                // Todo OK -> Enviar
-                submitAuthData({ action: action.value, email: emailVal, password: passVal });
+                processAuthAction('register_step_1', { email: emailVal, password: passVal });
             } else {
                 showError("Por favor completa todos los campos.");
             }
         }
 
-        // C) REGISTRO PASO 2 (Validación Usuario)
+        // C) REGISTRO PASO 2
         if (e.target && e.target.id === 'btn-register-step-2') {
             e.preventDefault();
             const username = document.getElementById('username');
-            const action = document.getElementById('register-action-2'); 
 
-            if(username && action && username.value) {
+            if(username && username.value) {
                 const userVal = username.value.trim();
-
-                // 1. Validar longitud de usuario (mínimo 6)
                 if (userVal.length < 6) {
-                    showError("El nombre de usuario debe tener al menos 6 caracteres.");
-                    return;
+                    showError("El nombre de usuario debe tener al menos 6 caracteres."); return;
                 }
-
-                submitAuthData({ action: action.value, username: userVal });
+                processAuthAction('register_step_2', { username: userVal });
             } else {
                 showError("Por favor escribe un nombre de usuario.");
             }
@@ -180,10 +167,9 @@ const setupAuthListeners = () => {
         if (e.target && e.target.id === 'btn-verify') {
             e.preventDefault();
             const code = document.getElementById('code');
-            const action = document.getElementById('verify-action');
 
-            if(code && action && code.value) {
-                submitAuthData({ action: action.value, code: code.value });
+            if(code && code.value) {
+                processAuthAction('verify_code', { code: code.value });
             } else {
                 showError("Por favor ingresa el código.");
             }
@@ -196,16 +182,13 @@ const setupAuthListeners = () => {
             const btns = ['btn-login', 'btn-register-step-1', 'btn-register-step-2', 'btn-verify'];
             for(let id of btns){
                 const btn = document.getElementById(id);
-                if(btn && !btn.disabled) { 
-                    btn.click(); 
-                    break; 
-                }
+                if(btn && !btn.disabled) { btn.click(); break; }
             }
         }
     });
 };
 
 export const initAuthController = () => {
-    console.log('AuthController: Inicializado (Modo Asíncrono - Validaciones Estrictas).');
+    console.log('AuthController: Inicializado (vía ApiService).');
     setupAuthListeners();
 };
