@@ -100,8 +100,17 @@ export const AuthService = {
         });
     },
     
-    logout: () => {
-        window.location.href = BASE_PATH + 'api/auth_handler.php?logout=true';
+    // MODIFICADO: Logout ahora es async y usa postRequest
+    logout: async () => {
+        const result = await postRequest('api/auth_handler.php', { 
+            action: 'logout' 
+        });
+        
+        if (result.status === 'success') {
+            window.location.href = result.redirect;
+        } else {
+            console.error("Error al cerrar sesión:", result.message);
+        }
     }
 };
 

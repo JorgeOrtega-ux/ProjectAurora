@@ -98,14 +98,16 @@ require_once __DIR__ . '/../includes/router.php';
                                                 <span>Configuración</span>
                                             </div>
                                         </div>
-                                       <a href="<?php echo $basePath; ?>api/auth_handler.php?logout=true" class="menu-link">
+                                        
+                                        <div class="menu-link" id="btn-logout">
                                             <div class="menu-link-icon">
                                                 <span class="material-symbols-rounded">logout</span>
                                             </div>
                                             <div class="menu-link-text">
                                                 <span>Cerrar sesión</span>
                                             </div>
-                                        </a>
+                                        </div>
+                                        
                                     </div>
                                 </div>
                             </div>

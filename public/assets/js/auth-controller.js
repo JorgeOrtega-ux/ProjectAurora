@@ -174,6 +174,13 @@ const setupAuthListeners = () => {
                 showError("Por favor ingresa el código.");
             }
         }
+
+        // E) LOGOUT (Delegación de eventos usando closest para detectar el div o sus hijos)
+        const logoutBtn = e.target.closest('#btn-logout');
+        if (logoutBtn) {
+            e.preventDefault(); 
+            AuthService.logout();
+        }
     });
 
     // Soporte ENTER

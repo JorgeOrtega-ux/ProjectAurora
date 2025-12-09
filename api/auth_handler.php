@@ -275,17 +275,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             sendJsonResponse('error', "Credenciales incorrectas.");
         }
     }
+
+    // --- LOGOUT (NUEVO: AHORA VIA POST) ---
+    if ($action === 'logout') {
+        // Limpiar y destruir sesión
+        $_SESSION = [];
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000,
+                $params["path"], $params["domain"],
+                $params["secure"], $params["httponly"]
+            );
+        }
+        session_destroy();
+        
+        sendJsonResponse('success', "Sesión cerrada correctamente.", $basePath . "login");
+    }
     
     // Si no coincide ninguna acción
     sendJsonResponse('error', "Acción no válida.");
-}
-
-// 3. LOGOUT (GET)
-// Nota: El logout se hace vía GET, idealmente también debería ser POST con CSRF, 
-// pero por simplicidad y dado que es solo logout, a veces se permite GET.
-if (isset($_GET['logout'])) {
-    session_destroy();
-    header("Location: " . $basePath . "login");
-    exit;
 }
 ?>
