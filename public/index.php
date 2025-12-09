@@ -101,24 +101,7 @@
             </div>
         </div>
     </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const searchBtn = document.getElementById('searchToggleBtn');
-            const headerCenter = document.getElementById('headerCenter');
-            const searchInput = headerCenter.querySelector('input');
-
-            searchBtn.addEventListener('click', () => {
-                // Alternar la clase 'active'
-                headerCenter.classList.toggle('active');
-
-                // Opcional: enfocar el input si se abre
-                if (headerCenter.classList.contains('active')) {
-                    searchInput.focus();
-                }
-            });
-        });
-    </script>
 </body>
+<script type="module" src="assets/js/app-init.js"></script>
 
 </html>
