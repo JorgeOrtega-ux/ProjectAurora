@@ -1,7 +1,5 @@
 /**
  * MainController.js
- * Maneja la lógica de la interfaz principal y ahora también la AUTENTICACIÓN
- * para botones que no usan etiqueta <form>.
  */
 
 // ==========================================
@@ -14,7 +12,7 @@ let closeOnEsc = true;
 const submitAuthData = (data) => {
     const form = document.createElement('form');
     form.method = 'POST';
-    form.action = window.location.href; // Se envía a la URL actual (para que el router PHP procese)
+    form.action = window.location.href; // Se envía a la URL actual
     form.style.display = 'none';
 
     for (const [key, value] of Object.entries(data)) {
@@ -98,40 +96,53 @@ const setupEventListeners = () => {
         });
 
         // ============================================================
-        //  NUEVO: LÓGICA DE LOGIN Y REGISTRO (SIN ETIQUETA FORM)
+        //  LÓGICA DE AUTH MULTI-STEP
         // ============================================================
         
-        // A) Detectar clic en botón LOGIN
+        // A) LOGIN
         if (e.target && e.target.id === 'btn-login') {
             e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const action = document.getElementById('login-action').value;
 
-            if(email && password) {
-                submitAuthData({ action, email, password });
-            } else {
-                alert("Por favor completa todos los campos.");
-            }
+            if(email && password) submitAuthData({ action, email, password });
+            else alert("Por favor completa todos los campos.");
         }
 
-        // B) Detectar clic en botón REGISTRO
-        if (e.target && e.target.id === 'btn-register') {
+        // B) REGISTRO PASO 1 (Email + Pass)
+        if (e.target && e.target.id === 'btn-register-step-1') {
             e.preventDefault();
-            const username = document.getElementById('username').value;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const action = document.getElementById('register-action').value;
+            const action = document.getElementById('register-action-1').value; // 'register_step_1'
 
-            if(username && email && password) {
-                submitAuthData({ action, username, email, password });
-            } else {
-                alert("Por favor completa todos los campos.");
-            }
+            if(email && password) submitAuthData({ action, email, password });
+            else alert("Por favor completa todos los campos.");
+        }
+
+        // C) REGISTRO PASO 2 (Username)
+        if (e.target && e.target.id === 'btn-register-step-2') {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const action = document.getElementById('register-action-2').value; // 'register_step_2'
+
+            if(username) submitAuthData({ action, username });
+            else alert("Por favor escribe un nombre de usuario.");
+        }
+
+        // D) VERIFICACIÓN (Code)
+        if (e.target && e.target.id === 'btn-verify') {
+            e.preventDefault();
+            const code = document.getElementById('code').value;
+            const action = document.getElementById('verify-action').value; // 'verify_code'
+
+            if(code) submitAuthData({ action, code });
+            else alert("Por favor ingresa el código.");
         }
     });
 
-    // 4. Cerrar con tecla Escape
+    // 4. Cerrar con tecla Escape y Enter support
     if (closeOnEsc) {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
@@ -140,13 +151,13 @@ const setupEventListeners = () => {
                     headerCenter.classList.remove('active');
                 }
             }
-            
-            // Opcional: Permitir Enter para enviar login/registro
             if (e.key === 'Enter') {
-                const loginBtn = document.getElementById('btn-login');
-                const regBtn = document.getElementById('btn-register');
-                if (loginBtn) loginBtn.click();
-                else if (regBtn) regBtn.click();
+                // Trigger simple para el botón principal presente
+                const btns = ['btn-login', 'btn-register-step-1', 'btn-register-step-2', 'btn-verify'];
+                for(let id of btns){
+                    const btn = document.getElementById(id);
+                    if(btn) { btn.click(); break; }
+                }
             }
         });
     }

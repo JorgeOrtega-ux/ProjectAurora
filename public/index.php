@@ -21,8 +21,7 @@ if ($currentSection === '') { $currentSection = 'main'; }
 // --- CONTROL DE SESIÓN ---
 $isLoggedIn = isset($_SESSION['user_id']);
 
-// >>> LOGICA DE REFRESCO DE SESIÓN (NUEVO) <<<
-// Esto asegura que si cambias el rol en la BD, se actualice al recargar la página.
+// >>> LOGICA DE REFRESCO DE SESIÓN <<<
 if ($isLoggedIn) {
     try {
         $stmt = $pdo->prepare("SELECT role, username, uuid FROM users WHERE id = ?");
@@ -30,24 +29,20 @@ if ($isLoggedIn) {
         $freshUser = $stmt->fetch();
 
         if ($freshUser) {
-            // Actualizamos la sesión con los datos frescos de la BD
             $_SESSION['role'] = $freshUser['role'];
             $_SESSION['username'] = $freshUser['username'];
             $_SESSION['uuid'] = $freshUser['uuid'];
         } else {
-            // Si el usuario ya no existe en la BD (fue borrado), cerramos sesión.
             session_destroy();
             header("Location: " . $basePath . "login");
             exit;
         }
-    } catch (Exception $e) {
-        // En caso de error de conexión, no hacemos nada (mantenemos la sesión vieja)
-    }
+    } catch (Exception $e) {}
 }
-// >>> FIN LOGICA DE REFRESCO <<<
 
-// Rutas permitidas para invitados
-$guestRoutes = ['login', 'register'];
+// Rutas permitidas para invitados (Whitelisting)
+// NOTA: Incluimos register y sus sub-rutas, y verification-account
+$guestRoutes = ['login', 'register', 'register/aditional-data', 'verification-account'];
 
 // Lógica de Redirección Forzada
 if (!$isLoggedIn) {
@@ -66,12 +61,12 @@ if (!$isLoggedIn) {
 $appRoutes = ['main', 'explorer'];
 $validRoutes = array_merge($appRoutes, $guestRoutes);
 
+// Manejo de 404
 if (!in_array($currentSection, $validRoutes)) {
     $currentSection = '404'; 
 }
 
-// --- OBTENER ROL PARA DATA ATTRIBUTE ---
-// Ahora esto usará el rol recién actualizado
+// --- OBTENER ROL ---
 $userRole = ($isLoggedIn && isset($_SESSION['role'])) ? $_SESSION['role'] : 'user';
 
 ?>
@@ -99,7 +94,7 @@ $userRole = ($isLoggedIn && isset($_SESSION['role'])) ? $_SESSION['role'] : 'use
 
 <body>
 
-    <div class="page-wrapper">
+    <div class="page-wrapper <?php echo (!$isLoggedIn) ? 'auth-mode' : ''; ?>">
         <div class="main-content">
             <div class="general-content">
                 
@@ -229,9 +224,20 @@ $userRole = ($isLoggedIn && isset($_SESSION['role'])) ? $_SESSION['role'] : 'use
 
                     <div class="general-content-scrolleable" data-container="main-section">
                         <?php
-                        $file = __DIR__ . '/../includes/sections/' . $currentSection . '.php';
-                        if (file_exists($file)) { include $file; } 
-                        else { include __DIR__ . '/../includes/sections/404.php'; }
+                        // --- ENRUTAMIENTO MANUAL PARA ARCHIVOS FÍSICOS ---
+                        // Mapeamos rutas complejas a archivos simples en /includes/sections/
+                        
+                        if ($currentSection === 'register' || $currentSection === 'register/aditional-data') {
+                            include __DIR__ . '/../includes/sections/register.php';
+                        } 
+                        elseif ($currentSection === 'verification-account') {
+                            include __DIR__ . '/../includes/sections/verification-account.php';
+                        } 
+                        else {
+                            $file = __DIR__ . '/../includes/sections/' . $currentSection . '.php';
+                            if (file_exists($file)) { include $file; } 
+                            else { include __DIR__ . '/../includes/sections/404.php'; }
+                        }
                         ?>
                     </div>
                 </div>

@@ -29,3 +29,16 @@ CREATE TABLE access_logs (
     access_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- 6. Crear la tabla de códigos de verificación (NUEVO)
+CREATE TABLE IF NOT EXISTS verification_codes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    identifier VARCHAR(255) NOT NULL, 
+    code_type VARCHAR(50) NOT NULL,   
+    code VARCHAR(64) NOT NULL,        
+    payload JSON NULL,                
+    expires_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX (identifier),
+    INDEX (code)
+);
