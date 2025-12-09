@@ -26,13 +26,11 @@ $guestRoutes = ['login', 'register'];
 
 // Lógica de Redirección Forzada
 if (!$isLoggedIn) {
-    // Si no está logueado y trata de entrar a algo que no es login/register, mandar al login
     if (!in_array($currentSection, $guestRoutes)) {
         header("Location: " . $basePath . "login");
         exit;
     }
 } else {
-    // Si SI está logueado y trata de entrar al login, mandar al main
     if (in_array($currentSection, $guestRoutes)) {
         header("Location: " . $basePath);
         exit;
@@ -57,11 +55,7 @@ if (!in_array($currentSection, $validRoutes)) {
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/styles.css">
     <title>ProjectAurora</title>
     
-    <?php 
-    // ESTILO EXTRA PARA CENTRAR LOGIN/REGISTER
-    // Como ahora están dentro del layout general, forzamos el centrado visualmente.
-    if (!$isLoggedIn): 
-    ?>
+    <?php if (!$isLoggedIn): ?>
     <style>
         [data-container="main-section"] {
             display: flex;
@@ -108,10 +102,29 @@ if (!in_array($currentSection, $validRoutes)) {
                                 </div>
 
                                 <div class="header-button profile-button" data-action="toggleModuleProfile">
-                                    <span style="font-weight:bold; color:#555;">
-                                        <?php echo strtoupper(substr($_SESSION['username'], 0, 1)); ?>
-                                    </span>
+                                    <?php 
+                                    // Verificar si tenemos UUID y si el archivo existe
+                                    $hasAvatar = false;
+                                    if (isset($_SESSION['uuid'])) {
+                                        $avatarRelPath = 'assets/uploads/profile_pictures/' . $_SESSION['uuid'] . '.png';
+                                        $avatarFullPath = __DIR__ . '/' . $avatarRelPath;
+                                        if (file_exists($avatarFullPath)) {
+                                            $hasAvatar = true;
+                                        }
+                                    }
+                                    ?>
+
+                                    <?php if ($hasAvatar): ?>
+                                        <img src="<?php echo $basePath . $avatarRelPath; ?>" 
+                                             alt="Perfil" 
+                                             style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+                                    <?php else: ?>
+                                        <span style="font-weight:bold; color:#555;">
+                                            <?php echo strtoupper(substr($_SESSION['username'], 0, 1)); ?>
+                                        </span>
+                                    <?php endif; ?>
                                 </div>
+
                             </div>
                             
                             <div class="module-content module-profile disabled" data-module="moduleProfile">
