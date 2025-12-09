@@ -449,7 +449,6 @@ html {
 
 .auth-card p {
     color: #666;
-    margin-bottom: 32px;
     font-size: 15px;
 }
 
@@ -508,11 +507,9 @@ html {
 .forgot-password {
     display: block;
     text-align: right;
-    margin-top: -10px;
-    margin-bottom: 24px;
+    margin: 12px 0;
     font-size: 14px;
 }
-
 .forgot-password a {
     color: #666;
     text-decoration: none;
@@ -521,6 +518,18 @@ html {
 .forgot-password a:hover {
     color: #000;
     text-decoration: underline;
+}/* Wrapper para el encabezado (h1 + p) */
+.auth-header {
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* Espaciado interno solicitado */
+    margin-bottom: 12px; /* Espaciado externo solicitado */
+}
+
+/* Resetear márgenes de los hijos para que el gap funcione correctamente */
+.auth-header h1,
+.auth-header p {
+    margin: 0;
 }
 
 .btn-primary {
@@ -542,7 +551,7 @@ html {
 }
 
 .auth-footer {
-    margin-top: 32px;
+    margin-top: 12px;
     font-size: 14px;
     color: #666;
 }
@@ -575,4 +584,14 @@ html {
     background-color: #e8f5e9;
     color: #2e7d32;
     border: 1px solid #c8e6c9;
+}/* Nuevo contenedor para grupos de formulario */
+.form-groups-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* Espaciado solicitado */
+}
+
+/* Eliminar el margen inferior individual de los grupos dentro del wrapper */
+.form-groups-wrapper .form-group {
+    margin-bottom: 0;
 }
