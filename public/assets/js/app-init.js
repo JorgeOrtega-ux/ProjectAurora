@@ -1,15 +1,18 @@
 import { initMainController } from './main-controller.js';
+import { initUrlManager } from './url-manager.js'; // Importar router
 
 const App = {
     init: () => {
-        // Inicializar controladores
+        // Inicializar UI (Menús, buscador)
         initMainController();
+        
+        // Inicializar SPA Router
+        initUrlManager();
         
         console.log('App: Inicializada completamente.');
     }
 };
 
-// Ejecutar cuando el DOM esté cargado
 document.addEventListener('DOMContentLoaded', () => {
     App.init();
 });
