@@ -276,6 +276,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    if ($action === 'request_password_reset') {
+        $email = trim($input['email'] ?? '');
+        
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            sendJsonResponse('error', "Correo inválido.");
+        }
+
+        // Verificar si existe el usuario
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        
+        if ($stmt->rowCount() > 0) {
+            // Generar Token seguro (Hexadecimal de 64 caracteres)
+            $token = bin2hex(random_bytes(32));
+            $expiresAt = date('Y-m-d H:i:s', strtotime('+1 hour')); // Expira en 1 hora
+
+            // Limpiar tokens viejos de este email y guardar el nuevo
+            $pdo->prepare("DELETE FROM password_resets WHERE email = ?")->execute([$email]);
+            
+            $ins = $pdo->prepare("INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)");
+            if ($ins->execute([$email, $token, $expiresAt])) {
+                
+                // SIMULACIÓN DE ENVÍO DE CORREO
+                // En producción, aquí usarías mail() o PHPMailer.
+                // Devolvemos el link directamente como pediste para la prueba.
+                
+                // Construir URL completa: http://dominio/ProjectAurora/recover-password/[token]
+                $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+                $host = $_SERVER['HTTP_HOST'];
+                $resetLink = $protocol . "://" . $host . $basePath . "recover-password/" . $token;
+
+                sendJsonResponse('success', "Enlace generado (Simulación)", null, ['debug_link' => $resetLink]);
+            } else {
+                sendJsonResponse('error', "Error al generar el token.");
+            }
+        } else {
+            // Por seguridad, no decimos si el correo existe o no, pero simulamos éxito.
+            // Para tu desarrollo, puedes devolver success o error según prefieras.
+            sendJsonResponse('error', "El correo no está registrado en nuestra base de datos.");
+        }
+    }
+
+    // --- RESTABLECER CONTRASEÑA (Paso 2) ---
+    if ($action === 'reset_password') {
+        $token = $input['token'] ?? '';
+        $newPassword = $input['password'] ?? '';
+
+        if (empty($token) || empty($newPassword)) {
+            sendJsonResponse('error', "Datos incompletos.");
+        }
+
+        if (strlen($newPassword) < 8) {
+            sendJsonResponse('error', "La contraseña debe tener al menos 8 caracteres.");
+        }
+
+        // Validar Token
+        $stmt = $pdo->prepare("SELECT email FROM password_resets WHERE token = ? AND expires_at > NOW() LIMIT 1");
+        $stmt->execute([$token]);
+        $resetRequest = $stmt->fetch();
+
+        if ($resetRequest) {
+            $email = $resetRequest['email'];
+            $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
+
+            // Actualizar usuario
+            $upd = $pdo->prepare("UPDATE users SET password = ? WHERE email = ?");
+            if ($upd->execute([$newHash, $email])) {
+                
+                // Borrar el token usado
+                $pdo->prepare("DELETE FROM password_resets WHERE token = ?")->execute([$token]);
+
+                sendJsonResponse('success', "Contraseña actualizada correctamente.", $basePath . "login");
+            } else {
+                sendJsonResponse('error', "Error al actualizar la base de datos.");
+            }
+        } else {
+            sendJsonResponse('error', "El enlace es inválido o ha expirado.");
+        }
+    }
+
     // --- LOGOUT (NUEVO: AHORA VIA POST) ---
     if ($action === 'logout') {
         // Limpiar y destruir sesión

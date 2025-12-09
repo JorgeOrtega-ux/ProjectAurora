@@ -19,10 +19,9 @@
             </div>
         </div>
 
-        <div class="forgot-password">
-            <a href="#">¿Olvidaste tu contraseña?</a>
+       <div class="forgot-password">
+            <a href="<?php echo $basePath; ?>recover-password">¿Olvidaste tu contraseña?</a>
         </div>
-
         <button type="button" id="btn-login" class="btn-primary">Continuar</button>
 
         <?php if (isset($_SESSION['error'])): ?>

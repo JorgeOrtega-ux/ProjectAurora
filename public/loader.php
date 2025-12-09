@@ -11,7 +11,8 @@ if (!isset($_SESSION['user_id'])) {
 $sections = [
     'main'     => '../includes/sections/main.php',
     'explorer' => '../includes/sections/explorer.php',
-    '404'      => '../includes/sections/404.php'
+    '404'      => '../includes/sections/404.php',
+    'recover-password' => '../includes/sections/recover-password.php'
 ];
 
 $section = $_GET['section'] ?? 'main';

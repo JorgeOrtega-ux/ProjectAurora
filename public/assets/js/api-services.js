@@ -99,6 +99,23 @@ export const AuthService = {
             code 
         });
     },
+
+    // NUEVO: Solicitar reset
+    requestPasswordReset: (email) => {
+        return postRequest('api/auth_handler.php', { 
+            action: 'request_password_reset', 
+            email 
+        });
+    },
+
+    // NUEVO: Ejecutar cambio
+    resetPassword: (token, password) => {
+        return postRequest('api/auth_handler.php', { 
+            action: 'reset_password', 
+            token,
+            password 
+        });
+    },
     
     // MODIFICADO: Logout ahora es async y usa postRequest
     logout: async () => {

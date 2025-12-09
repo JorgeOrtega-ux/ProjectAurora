@@ -1,7 +1,7 @@
 <?php
 /**
  * includes/router.php
- * Encargado de la lógica de enrutamiento y seguridad.
+ * Lógica de enrutamiento y seguridad actualizada.
  */
 
 // 1. Configuración Básica
@@ -24,15 +24,24 @@ if (strpos($requestUri, $basePath) === 0) {
 $path = strtok($path, '?');
 $currentSection = rtrim($path, '/');
 
-// --- NUEVO: INTERCEPTAR RUTAS DE API ---
-// Si la URL comienza con "api/", servimos el archivo desde la raíz y detenemos la ejecución.
+// --- INTERCEPTAR RUTAS DE API ---
 if (strpos($currentSection, 'api/') === 0) {
-    // Construir la ruta al archivo fuera de public (ej: ../api/auth_handler.php)
     $apiTarget = __DIR__ . '/../' . $currentSection;
-    
     if (file_exists($apiTarget)) {
         require_once $apiTarget;
-        exit; // Detenemos aquí para que no cargue el HTML del index
+        exit;
+    }
+}
+
+// --- NUEVO: Lógica para Recuperar Contraseña con Token ---
+// Detectar si la URL es tipo recover-password/[token]
+$resetToken = null;
+if (strpos($currentSection, 'recover-password/') === 0) {
+    $parts = explode('/', $currentSection);
+    // $parts[0] es 'recover-password', $parts[1] es el token
+    if (isset($parts[1]) && !empty($parts[1])) {
+        $resetToken = $parts[1]; // Guardamos el token para usarlo en la vista
+        $currentSection = 'recover-password-reset'; // Forzamos la sección de reseteo
     }
 }
 
@@ -44,7 +53,7 @@ if ($currentSection === '') {
 // 4. Estado de la Sesión
 $isLoggedIn = isset($_SESSION['user_id']);
 
-// 5. Refresco de Sesión (Seguridad)
+// 5. Refresco de Sesión
 if ($isLoggedIn) {
     try {
         $stmt = $pdo->prepare("SELECT role, username, uuid FROM users WHERE id = ?");
@@ -63,8 +72,16 @@ if ($isLoggedIn) {
     } catch (Exception $e) {}
 }
 
-// 6. Definición de Rutas (Whitelisting)
-$guestRoutes = ['login', 'register', 'register/aditional-data', 'register/verify'];
+// 6. Whitelisting (Rutas Permitidas)
+// Agregamos 'recover-password' y 'recover-password-reset' a rutas de invitados
+$guestRoutes = [
+    'login', 
+    'register', 
+    'register/aditional-data', 
+    'register/verify', 
+    'recover-password',        // Paso 1: Pedir correo
+    'recover-password-reset'   // Paso 2: Poner nueva contraseña
+];
 $appRoutes = ['main', 'explorer'];
 
 $validRoutes = array_merge($appRoutes, $guestRoutes);

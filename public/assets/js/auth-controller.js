@@ -79,6 +79,28 @@ const processAuthAction = async (actionType, data) => {
             case 'verify_code':
                 result = await AuthService.verifyCode(data.code);
                 break;
+        case 'request_password_reset':
+                result = await AuthService.requestPasswordReset(data.email);
+                // Lógica especial para mostrar el link simulado
+                if (result.status === 'success' && result.data && result.data.debug_link) {
+                    const simResult = document.getElementById('simulation-result');
+                    if(simResult) {
+                        simResult.style.display = 'block';
+                        simResult.innerHTML = `<strong>¡Simulación!</strong><br>Abre este link:<br><a href="${result.data.debug_link}">${result.data.debug_link}</a>`;
+                    }
+                    // No redirigimos automáticamente para que el usuario vea el link
+                    buttons.forEach(btn => {
+                        btn.disabled = false;
+                        btn.textContent = 'Enviado';
+                    });
+                    return; // Salimos para no ejecutar handleAuthResponse estándar
+                }
+                break;
+
+            case 'reset_password':
+                result = await AuthService.resetPassword(data.token, data.password);
+                break;
+                
             default:
                 throw new Error('Acción no reconocida');
         }
