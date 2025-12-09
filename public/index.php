@@ -41,8 +41,8 @@ if ($isLoggedIn) {
 }
 
 // Rutas permitidas para invitados (Whitelisting)
-// NOTA: Incluimos register y sus sub-rutas, y verification-account
-$guestRoutes = ['login', 'register', 'register/aditional-data', 'verification-account'];
+// NOTA: Incluimos register y sus sub-rutas, ahora incluyendo verify
+$guestRoutes = ['login', 'register', 'register/aditional-data', 'register/verify'];
 
 // Lógica de Redirección Forzada
 if (!$isLoggedIn) {
@@ -227,11 +227,9 @@ $userRole = ($isLoggedIn && isset($_SESSION['role'])) ? $_SESSION['role'] : 'use
                         // --- ENRUTAMIENTO MANUAL PARA ARCHIVOS FÍSICOS ---
                         // Mapeamos rutas complejas a archivos simples en /includes/sections/
                         
-                        if ($currentSection === 'register' || $currentSection === 'register/aditional-data') {
+                        // Si la ruta es cualquiera de las fases de registro, incluimos register.php
+                        if ($currentSection === 'register' || $currentSection === 'register/aditional-data' || $currentSection === 'register/verify') {
                             include __DIR__ . '/../includes/sections/register.php';
-                        } 
-                        elseif ($currentSection === 'verification-account') {
-                            include __DIR__ . '/../includes/sections/verification-account.php';
                         } 
                         else {
                             $file = __DIR__ . '/../includes/sections/' . $currentSection . '.php';

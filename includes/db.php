@@ -131,7 +131,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $_SESSION['pending_verification_email'] = $email;
                     unset($_SESSION['temp_register']);
 
-                    header("Location: " . $basePath . "verification-account");
+                    // >>> CAMBIO AQUÍ: Redirigir a la nueva sub-ruta integrada <<<
+                    header("Location: " . $basePath . "register/verify");
                     exit;
 
                 } else {
