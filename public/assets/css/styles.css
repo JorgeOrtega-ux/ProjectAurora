@@ -177,13 +177,8 @@ html {
     background-color: #f5f5fa;
 }
 
-/* Ocultar el botón toggle por defecto en pantallas grandes */
-.search-toggle-btn {
-    display: none;
-}
-
 /* =========================================
-   4. MEDIA QUERIES
+   4. MEDIA QUERIES (MODIFICADO)
    ========================================= */
 
 @media (max-width: 725px) {
@@ -200,24 +195,17 @@ html {
         order: 2;
     }
 
-    .search-toggle-btn {
-        display: flex;
-    }
-
+    /* Modificado: Header center baja y siempre está visible */
     .header-center {
-        display: none;
+        display: flex; /* Siempre visible */
         order: 3;
-        flex: 0 0 100%;
+        flex: 0 0 100%; /* Ocupa todo el ancho */
         padding: 8px 0 0 0;
         width: 100%;
     }
 
     .search-wrapper {
         max-width: 100%;
-    }
-
-    .header-center.active {
-        display: flex;
     }
 }
 
@@ -416,7 +404,7 @@ html {
 }
 
 /* =========================================
-   6. ESTILOS DE AUTENTICACIÓN (REDISEÑO)
+   6. ESTILOS DE AUTENTICACIÓN
    ========================================= */
 .auth-wrapper {
     width: 100%;
@@ -427,9 +415,8 @@ html {
     background: #ffffff;
     padding: 32px;
     border-radius: 16px;
-    /* REDISEÑO: Eliminamos shadow y agregamos un borde sutil si se desea, o lo dejamos limpio */
     box-shadow: none; 
-    border: 1px solid transparent; /* Opcional: border: 1px solid #eee; */
+    border: 1px solid transparent;
     text-align: center;
 }
 
@@ -451,16 +438,15 @@ html {
     text-align: left;
 }
 
-/* Input Styles */
 .form-group input {
     width: 100%;
-    padding: 24px 16px 8px 16px; /* Padding superior para el label */
+    padding: 24px 16px 8px 16px; 
     border: 1px solid #00000020;
     border-radius: 8px;
     font-size: 16px;
     background-color: #fff;
     transition: all 0.2s ease;
-    height: 55px; /* Altura fija para consistencia */
+    height: 55px; 
 }
 
 .form-group input:focus {
@@ -469,7 +455,6 @@ html {
     background-color: #fff;
 }
 
-/* Label Styles (Initial State) */
 .form-group label {
     position: absolute;
     top: 50%;
@@ -477,13 +462,11 @@ html {
     transform: translateY(-50%);
     font-size: 16px;
     color: #888;
-    pointer-events: none; /* Permite clicks a través del label hacia el input */
+    pointer-events: none;
     transition: all 0.2s ease;
     background-color: transparent;
 }
 
-/* Label Styles (Active State: Focus or Has Content) */
-/* Usamos :not(:placeholder-shown) para detectar si hay texto (requiere placeholder=" " en HTML) */
 .form-group input:focus + label,
 .form-group input:not(:placeholder-shown) + label {
     top: 12px;
@@ -510,15 +493,15 @@ html {
 .forgot-password a:hover {
     color: #000;
     text-decoration: underline;
-}/* Wrapper para el encabezado (h1 + p) */
+}
+
 .auth-header {
     display: flex;
     flex-direction: column;
-    gap: 8px; /* Espaciado interno solicitado */
-    margin-bottom: 12px; /* Espaciado externo solicitado */
+    gap: 8px;
+    margin-bottom: 12px;
 }
 
-/* Resetear márgenes de los hijos para que el gap funcione correctamente */
 .auth-header h1,
 .auth-header p {
     margin: 0;
@@ -576,14 +559,14 @@ html {
     background-color: #e8f5e9;
     color: #2e7d32;
     border: 1px solid #c8e6c9;
-}/* Nuevo contenedor para grupos de formulario */
+}
+
 .form-groups-wrapper {
     display: flex;
     flex-direction: column;
-    gap: 8px; /* Espaciado solicitado */
+    gap: 8px;
 }
 
-/* Eliminar el margen inferior individual de los grupos dentro del wrapper */
 .form-groups-wrapper .form-group {
     margin-bottom: 0;
 }

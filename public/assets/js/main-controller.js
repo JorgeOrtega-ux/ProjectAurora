@@ -53,19 +53,7 @@ const setupEventListeners = () => {
     });
 
     // 2. Configuración del Buscador
-    const searchBtn = document.getElementById('searchToggleBtn');
-    const headerCenter = document.getElementById('headerCenter');
-    
-    if (searchBtn && headerCenter) {
-        const searchInput = headerCenter.querySelector('input');
-        searchBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            headerCenter.classList.toggle('active');
-            if (headerCenter.classList.contains('active') && searchInput) {
-                searchInput.focus();
-            }
-        });
-    }
+    // (Código del botón toggle eliminado porque el botón ya no existe en el HTML)
 
     // 3. Cerrar módulos al hacer clic fuera
     document.addEventListener('click', (e) => {
@@ -83,9 +71,7 @@ const setupEventListeners = () => {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeAllActiveModules();
-                if (headerCenter && headerCenter.classList.contains('active')) {
-                    headerCenter.classList.remove('active');
-                }
+                // Eliminada la referencia a headerCenter.active
             }
         });
     }

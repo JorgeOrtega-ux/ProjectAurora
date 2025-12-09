@@ -8,7 +8,6 @@
 $basePath = '/ProjectAurora/'; 
 
 // 2. Conexión a BD y Sesión
-// (db.php inicia la sesión y conecta a la base de datos)
 require_once __DIR__ . '/db.php';
 
 // 3. Análisis de la URL
@@ -25,6 +24,18 @@ if (strpos($requestUri, $basePath) === 0) {
 $path = strtok($path, '?');
 $currentSection = rtrim($path, '/');
 
+// --- NUEVO: INTERCEPTAR RUTAS DE API ---
+// Si la URL comienza con "api/", servimos el archivo desde la raíz y detenemos la ejecución.
+if (strpos($currentSection, 'api/') === 0) {
+    // Construir la ruta al archivo fuera de public (ej: ../api/auth_handler.php)
+    $apiTarget = __DIR__ . '/../' . $currentSection;
+    
+    if (file_exists($apiTarget)) {
+        require_once $apiTarget;
+        exit; // Detenemos aquí para que no cargue el HTML del index
+    }
+}
+
 // Si está vacío, es la home
 if ($currentSection === '') { 
     $currentSection = 'main'; 
@@ -34,7 +45,6 @@ if ($currentSection === '') {
 $isLoggedIn = isset($_SESSION['user_id']);
 
 // 5. Refresco de Sesión (Seguridad)
-// Verifica que el usuario siga existiendo y actualiza su rol/datos
 if ($isLoggedIn) {
     try {
         $stmt = $pdo->prepare("SELECT role, username, uuid FROM users WHERE id = ?");
@@ -46,34 +56,26 @@ if ($isLoggedIn) {
             $_SESSION['username'] = $freshUser['username'];
             $_SESSION['uuid'] = $freshUser['uuid'];
         } else {
-            // Si el usuario fue borrado de la BD, cerrar sesión forzosamente
             session_destroy();
             header("Location: " . $basePath . "login");
             exit;
         }
-    } catch (Exception $e) {
-        // Error silencioso en producción
-    }
+    } catch (Exception $e) {}
 }
 
 // 6. Definición de Rutas (Whitelisting)
 $guestRoutes = ['login', 'register', 'register/aditional-data', 'register/verify'];
 $appRoutes = ['main', 'explorer'];
 
-// Todas las rutas válidas conocidas por el sistema
 $validRoutes = array_merge($appRoutes, $guestRoutes);
 
-// 7. Middleware de Autenticación (Redirecciones)
+// 7. Middleware de Autenticación
 if (!$isLoggedIn) {
-    // USUARIO NO LOGUEADO:
-    // Si intenta acceder a algo que NO es ruta de invitado, mandar al login
     if (!in_array($currentSection, $guestRoutes)) {
         header("Location: " . $basePath . "login");
         exit;
     }
 } else {
-    // USUARIO LOGUEADO:
-    // Si intenta acceder a login o registro, mandar al home
     if (in_array($currentSection, $guestRoutes)) {
         header("Location: " . $basePath);
         exit;
@@ -81,7 +83,6 @@ if (!$isLoggedIn) {
 }
 
 // 8. Manejo de Error 404
-// Si la sección no existe en la lista de rutas válidas, forzar 404
 if (!in_array($currentSection, $validRoutes)) {
     $currentSection = '404'; 
 }

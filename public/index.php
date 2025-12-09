@@ -56,10 +56,6 @@ require_once __DIR__ . '/../includes/router.php';
 
                         <div class="header-right">
                             <div class="header-item">
-                                <div class="header-button search-toggle-btn" id="searchToggleBtn">
-                                    <span class="material-symbols-rounded">search</span>
-                                </div>
-
                                 <div class="header-button profile-button" 
                                      data-action="toggleModuleProfile"
                                      data-role="<?php echo htmlspecialchars($userRole); ?>">
@@ -91,16 +87,6 @@ require_once __DIR__ . '/../includes/router.php';
                             <div class="module-content module-profile disabled" data-module="moduleProfile">
                                 <div class="menu-content">
                                     <div class="menu-list">
-                                        <div class="menu-link" style="cursor: default;">
-                                            <div class="menu-link-icon">
-                                                <span class="material-symbols-rounded">badge</span>
-                                            </div>
-                                            <div class="menu-link-text">
-                                                <span style="text-transform: capitalize;"><?php echo $_SESSION['role'] ?? 'User'; ?></span>
-                                            </div>
-                                        </div>
-                                        <div style="width:100%; height:1px; background:#00000010; margin: 4px 0;"></div>
-
                                         <div class="menu-link">
                                             <div class="menu-link-icon">
                                                 <span class="material-symbols-rounded">settings</span>
@@ -110,13 +96,13 @@ require_once __DIR__ . '/../includes/router.php';
                                             </div>
                                         </div>
                                        <a href="<?php echo $basePath; ?>api/auth_handler.php?logout=true" class="menu-link">
-    <div class="menu-link-icon">
-        <span class="material-symbols-rounded">logout</span>
-    </div>
-    <div class="menu-link-text">
-        <span>Cerrar sesión</span>
-    </div>
-</a>
+                                            <div class="menu-link-icon">
+                                                <span class="material-symbols-rounded">logout</span>
+                                            </div>
+                                            <div class="menu-link-text">
+                                                <span>Cerrar sesión</span>
+                                            </div>
+                                        </a>
                                     </div>
                                 </div>
                             </div>
@@ -159,8 +145,6 @@ require_once __DIR__ . '/../includes/router.php';
                     <div class="general-content-scrolleable" data-container="main-section">
                         <?php
                         // CARGA DINÁMICA DE CONTENIDO
-                        // Usamos la variable $currentSection que calculó el router.php
-                        
                         if ($currentSection === 'register' || $currentSection === 'register/aditional-data' || $currentSection === 'register/verify') {
                             include __DIR__ . '/../includes/sections/register.php';
                         } 

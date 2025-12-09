@@ -1,10 +1,12 @@
 <?php
-// public/api/auth_handler.php
+// api/auth_handler.php
+// UBICACIÓN: Raíz del proyecto /api/ (fuera de public)
 
 // Asegurar que la respuesta sea siempre JSON
 header('Content-Type: application/json');
 
-require_once __DIR__ . '/../../includes/db.php';
+// Ajuste de ruta: Ahora bajamos un nivel para entrar a includes (../includes)
+require_once __DIR__ . '/../includes/db.php';
 
 // --- FUNCIONES AUXILIARES ---
 
@@ -159,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($finalUsername) . "&background=random&color=fff&size=128";
                         $imageData = @file_get_contents($avatarUrl);
                         if ($imageData) {
-                            $targetDir = __DIR__ . '/../assets/uploads/profile_pictures/';
+                            $targetDir = __DIR__ . '/../public/assets/uploads/profile_pictures/'; // Ajuste de ruta para guardar en public
                             if (!is_dir($targetDir)) { @mkdir($targetDir, 0777, true); }
                             @file_put_contents($targetDir . $uuid . '.png', $imageData);
                         }
@@ -215,7 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     sendJsonResponse('error', "Acción no válida.");
 }
 
-// 3. LOGOUT (GET) - Esto sigue siendo una petición normal de navegador
+// 3. LOGOUT (GET)
 if (isset($_GET['logout'])) {
     session_destroy();
     header("Location: " . $basePath . "login");
