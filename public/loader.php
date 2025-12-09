@@ -1,4 +1,12 @@
 <?php
+session_start();
+
+// SEGURIDAD: Si no hay sesión, denegar acceso.
+if (!isset($_SESSION['user_id'])) {
+    http_response_code(403);
+    die("Acceso denegado");
+}
+
 // Mapeo de rutas permitidas a archivos físicos
 $sections = [
     'main'     => '../includes/sections/main.php',
@@ -8,7 +16,6 @@ $sections = [
 
 $section = $_GET['section'] ?? 'main';
 
-// Si la sección no existe en el mapa, mostrar 404
 if (!array_key_exists($section, $sections)) {
     $section = '404';
 }
