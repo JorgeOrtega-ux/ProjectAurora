@@ -78,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 // Guardar en sesión temporalmente
                 $_SESSION['temp_register'] = [
                     'email' => $email,
-                    'password' => $password // Guardamos raw para hashear al final o hashear ahora. Mejor hashear al final.
+                    'password' => $password
                 ];
                 // Redirigir a Etapa 2
                 header("Location: " . $basePath . "register/aditional-data");
@@ -122,23 +122,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 ]);
 
                 // Insertar en verification_codes
-                // Expiración: 15 minutos desde ahora
                 $expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
 
                 $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, ?, ?, ?, ?)");
                 
                 if ($stmt->execute([$email, 'account_activation', $code, $payload, $expiresAt])) {
                     
-                    // "Enviar" código (simulado por ahora, como pediste)
-                    // Puedes hacer un error_log($code) para verlo en consola si quieres probar.
-                    
-                    // Guardar el identificador en sesión para saber qué verificar en el paso 3
                     $_SESSION['pending_verification_email'] = $email;
-
-                    // Limpiar datos temporales sensibles
                     unset($_SESSION['temp_register']);
 
-                    // Redirigir a Etapa 3
                     header("Location: " . $basePath . "verification-account");
                     exit;
 
@@ -176,23 +168,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 
                 if ($insertUser->execute([$finalUsername, $finalEmail, $finalPassHash, $uuid])) {
                     
+                    // IMPORTANTE: Capturar ID INMEDIATAMENTE
+                    $newUserId = $pdo->lastInsertId();
+
                     // Borrar el código usado
                     $delStmt = $pdo->prepare("DELETE FROM verification_codes WHERE id = ?");
                     $delStmt->execute([$verificationRow['id']]);
 
-                    // --- GENERAR AVATAR (Copiado de lógica original) ---
+                    // --- GENERAR AVATAR (Con supresión de errores para no romper headers) ---
                     try {
                         $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($finalUsername) . "&background=random&color=fff&size=128";
                         $imageData = @file_get_contents($avatarUrl);
                         if ($imageData) {
                             $targetDir = __DIR__ . '/../public/assets/uploads/profile_pictures/';
-                            if (!is_dir($targetDir)) { mkdir($targetDir, 0777, true); }
-                            file_put_contents($targetDir . $uuid . '.png', $imageData);
+                            if (!is_dir($targetDir)) { @mkdir($targetDir, 0777, true); }
+                            @file_put_contents($targetDir . $uuid . '.png', $imageData);
                         }
                     } catch (Exception $e) {}
 
                     // --- AUTO-LOGIN ---
-                    $newUserId = $pdo->lastInsertId();
                     $_SESSION['user_id'] = $newUserId;
                     $_SESSION['username'] = $finalUsername;
                     $_SESSION['uuid'] = $uuid; 
@@ -201,6 +195,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     unset($_SESSION['pending_verification_email']);
 
                     logUserAccess($pdo, $newUserId);
+
+                    // IMPORTANTE: Forzar guardado de sesión antes de redirigir
+                    session_write_close();
 
                     header("Location: " . $basePath);
                     exit;
@@ -217,7 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
     }
 
-    // --- LOGIN (Sin cambios mayores) ---
+    // --- LOGIN ---
     if ($_POST['action'] === 'login') {
         $email = trim($_POST['email']);
         $password = $_POST['password'];
@@ -232,6 +229,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $_SESSION['uuid'] = $user['uuid']; 
             $_SESSION['role'] = $user['role'];
             logUserAccess($pdo, $user['id']);
+            
+            // También recomendable aquí, aunque menos crítico si no hay inserciones previas
+            session_write_close();
+            
             header("Location: " . $basePath);
             exit;
         } else {
