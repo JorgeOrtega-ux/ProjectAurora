@@ -44,6 +44,26 @@ $validRoutes = array_merge($appRoutes, $guestRoutes);
 if (!in_array($currentSection, $validRoutes)) {
     $currentSection = '404'; 
 }
+
+// --- CONFIGURACIÓN DE COLORES DE ROL ---
+$roleBorderColor = '#00000020'; // Default (gris claro) para usuarios normales o fallback
+if ($isLoggedIn && isset($_SESSION['role'])) {
+    switch ($_SESSION['role']) {
+        case 'founder':
+            $roleBorderColor = '#FFD700'; // Dorado
+            break;
+        case 'administrator':
+            $roleBorderColor = '#FF4444'; // Rojo
+            break;
+        case 'moderator':
+            $roleBorderColor = '#33B5E5'; // Azul
+            break;
+        case 'user':
+        default:
+            $roleBorderColor = '#00000020'; // El borde por defecto
+            break;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -101,7 +121,10 @@ if (!in_array($currentSection, $validRoutes)) {
                                     <span class="material-symbols-rounded">search</span>
                                 </div>
 
-                                <div class="header-button profile-button" data-action="toggleModuleProfile">
+                                <div class="header-button profile-button" 
+                                     data-action="toggleModuleProfile"
+                                     style="border: 2px solid <?php echo $roleBorderColor; ?>;">
+                                     
                                     <?php 
                                     // Verificar si tenemos UUID y si el archivo existe
                                     $hasAvatar = false;
@@ -117,7 +140,7 @@ if (!in_array($currentSection, $validRoutes)) {
                                     <?php if ($hasAvatar): ?>
                                         <img src="<?php echo $basePath . $avatarRelPath; ?>" 
                                              alt="Perfil" 
-                                             style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">
+                                             style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                                     <?php else: ?>
                                         <span style="font-weight:bold; color:#555;">
                                             <?php echo strtoupper(substr($_SESSION['username'], 0, 1)); ?>
@@ -130,6 +153,16 @@ if (!in_array($currentSection, $validRoutes)) {
                             <div class="module-content module-profile disabled" data-module="moduleProfile">
                                 <div class="menu-content">
                                     <div class="menu-list">
+                                        <div class="menu-link" style="cursor: default;">
+                                            <div class="menu-link-icon">
+                                                <span class="material-symbols-rounded">badge</span>
+                                            </div>
+                                            <div class="menu-link-text">
+                                                <span style="text-transform: capitalize;"><?php echo $_SESSION['role'] ?? 'User'; ?></span>
+                                            </div>
+                                        </div>
+                                        <div style="width:100%; height:1px; background:#00000010; margin: 4px 0;"></div>
+
                                         <div class="menu-link">
                                             <div class="menu-link-icon">
                                                 <span class="material-symbols-rounded">settings</span>

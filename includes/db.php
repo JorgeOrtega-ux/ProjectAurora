@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $uuid = generate_uuid();
             $hash = password_hash($password, PASSWORD_DEFAULT);
 
-            // Insertar usuario
+            // Insertar usuario (role por defecto es 'user' en base de datos)
             $stmt = $pdo->prepare("INSERT INTO users (username, email, password, uuid) VALUES (?, ?, ?, ?)");
             
             if ($stmt->execute([$username, $email, $hash, $uuid])) {
@@ -106,7 +106,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $newUserId = $pdo->lastInsertId();
                 $_SESSION['user_id'] = $newUserId;
                 $_SESSION['username'] = $username;
-                $_SESSION['uuid'] = $uuid; // Guardamos UUID en sesión para buscar la foto
+                $_SESSION['uuid'] = $uuid; 
+                $_SESSION['role'] = 'user'; // Asignamos rol por defecto a la sesión actual
 
                 logUserAccess($pdo, $newUserId);
 
@@ -127,15 +128,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $email = trim($_POST['email']);
     $password = $_POST['password'];
 
-    // Recuperamos también el UUID
-    $stmt = $pdo->prepare("SELECT id, username, password, uuid FROM users WHERE email = ?");
+    // Recuperamos también el UUID y el ROLE
+    $stmt = $pdo->prepare("SELECT id, username, password, uuid, role FROM users WHERE email = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password'])) {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
-        $_SESSION['uuid'] = $user['uuid']; // Guardar UUID en sesión
+        $_SESSION['uuid'] = $user['uuid']; 
+        $_SESSION['role'] = $user['role']; // Guardamos el rol en la sesión
         
         logUserAccess($pdo, $user['id']);
         
