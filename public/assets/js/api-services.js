@@ -12,8 +12,18 @@ const BASE_PATH = window.BASE_PATH || '/ProjectAurora/';
 async function postRequest(endpoint, data) {
     try {
         const formData = new FormData();
+        
+        // 1. Inyectar Datos Originales
         for (const [key, value] of Object.entries(data)) {
             formData.append(key, value);
+        }
+
+        // 2. Inyectar Token CSRF Automáticamente
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        if (csrfMeta) {
+            formData.append('csrf_token', csrfMeta.getAttribute('content'));
+        } else {
+            console.warn('Advertencia: No se encontró meta tag CSRF.');
         }
 
         const response = await fetch(BASE_PATH + endpoint, {
@@ -49,7 +59,6 @@ async function getRequest(endpoint, params = {}) {
         // Detectar si esperamos JSON o Texto (HTML) basado en el endpoint
         if (endpoint.includes('.php')) {
             // Asumimos texto/html para el loader, o json para api si fuera GET
-            // En tu caso el loader devuelve HTML.
             return await response.text();
         }
         

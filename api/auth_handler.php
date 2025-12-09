@@ -57,7 +57,6 @@ function validateEmailRequirements($email) {
     }
 
     // Separar prefijo y dominio
-    // Usamos strrpos por si el prefijo contiene puntos o caracteres especiales, aunque el @ separa el dominio final
     $atPos = strrpos($email, '@');
     if ($atPos === false) return "Correo inválido.";
 
@@ -88,6 +87,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $json = json_decode(file_get_contents('php://input'), true);
         if ($json) $input = $json;
     }
+
+    // ==========================================
+    // SEGURIDAD: VERIFICACIÓN CSRF
+    // ==========================================
+    // Obtenemos el token enviado (de POST o body JSON)
+    $incomingToken = $input['csrf_token'] ?? '';
+    
+    // Obtenemos el token de sesión (generado en includes/db.php)
+    $sessionToken = $_SESSION['csrf_token'] ?? '';
+
+    // Usamos hash_equals para evitar ataques de tiempo
+    if (empty($incomingToken) || empty($sessionToken) || !hash_equals($sessionToken, $incomingToken)) {
+        sendJsonResponse('error', 'Error de seguridad: Token de sesión inválido (CSRF). Recarga la página.');
+    }
+    // ==========================================
+    // FIN SEGURIDAD CSRF
+    // ==========================================
 
     $action = $input['action'] ?? '';
 
@@ -265,6 +281,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // 3. LOGOUT (GET)
+// Nota: El logout se hace vía GET, idealmente también debería ser POST con CSRF, 
+// pero por simplicidad y dado que es solo logout, a veces se permite GET.
 if (isset($_GET['logout'])) {
     session_destroy();
     header("Location: " . $basePath . "login");

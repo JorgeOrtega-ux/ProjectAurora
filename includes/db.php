@@ -1,6 +1,17 @@
 <?php
 // includes/db.php
-session_start();
+// UBICACIÓN: Raíz del proyecto /includes/
+
+// 1. Iniciar sesión siempre para tener acceso a $_SESSION
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// 2. Generación del Token CSRF (Si no existe, creamos uno)
+if (empty($_SESSION['csrf_token'])) {
+    // bin2hex(random_bytes(32)) genera un string aleatorio seguro de 64 caracteres
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 
 // CONFIGURACIÓN DE BASE DE DATOS
 $host = 'localhost';
