@@ -15,16 +15,20 @@
             <input type="hidden" name="action" value="login">
             
             <div class="form-group">
-                <label>Correo Electrónico</label>
-                <input type="email" name="email" required placeholder="ejemplo@correo.com">
+                <input type="email" name="email" id="email" required placeholder=" ">
+                <label for="email">Correo Electrónico</label>
             </div>
 
             <div class="form-group">
-                <label>Contraseña</label>
-                <input type="password" name="password" required placeholder="******">
+                <input type="password" name="password" id="password" required placeholder=" ">
+                <label for="password">Contraseña</label>
             </div>
 
-            <button type="submit" class="btn-primary">Entrar</button>
+            <div class="forgot-password">
+                <a href="#">¿Olvidaste tu contraseña?</a>
+            </div>
+
+            <button type="submit" class="btn-primary">Continuar</button>
         </form>
 
         <div class="auth-footer">

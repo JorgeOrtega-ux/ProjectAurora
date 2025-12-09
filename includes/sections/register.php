@@ -11,18 +11,18 @@
             <input type="hidden" name="action" value="register">
             
             <div class="form-group">
-                <label>Nombre de Usuario</label>
-                <input type="text" name="username" required placeholder="Usuario123">
+                <input type="text" name="username" id="username" required placeholder=" ">
+                <label for="username">Nombre de Usuario</label>
             </div>
 
             <div class="form-group">
-                <label>Correo Electrónico</label>
-                <input type="email" name="email" required placeholder="ejemplo@correo.com">
+                <input type="email" name="email" id="email" required placeholder=" ">
+                <label for="email">Correo Electrónico</label>
             </div>
 
             <div class="form-group">
-                <label>Contraseña</label>
-                <input type="password" name="password" required placeholder="******">
+                <input type="password" name="password" id="password" required placeholder=" ">
+                <label for="password">Contraseña</label>
             </div>
 
             <button type="submit" class="btn-primary">Registrarse</button>
