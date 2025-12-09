@@ -3,7 +3,7 @@
 // UBICACIÓN: Raíz del proyecto /api/ (fuera de public)
 
 header('Content-Type: application/json');
-require_once __DIR__ . '/../includes/db.php'; //
+require_once __DIR__ . '/../includes/db.php'; 
 
 // --- FUNCIONES AUXILIARES ---
 
@@ -17,12 +17,16 @@ function sendJsonResponse($status, $message, $redirectUrl = null, $data = []) {
     exit;
 }
 
+function getClientIP() {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN';
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) $ip = $_SERVER['HTTP_CLIENT_IP'];
+    elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) $ip = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
+    return $ip;
+}
+
 function logUserAccess($pdo, $userId) {
     try {
-        $ip = $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN';
-        if (!empty($_SERVER['HTTP_CLIENT_IP'])) $ip = $_SERVER['HTTP_CLIENT_IP'];
-        elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) $ip = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
-        
+        $ip = getClientIP();
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'UNKNOWN';
         $stmt = $pdo->prepare("INSERT INTO access_logs (user_id, ip_address, user_agent) VALUES (?, ?, ?)");
         $stmt->execute([$userId, $ip, $userAgent]);
@@ -54,6 +58,64 @@ function validateEmailRequirements($email) {
     if (!in_array($domain, $allowedDomains)) return "Dominio no permitido. Use: " . implode(', ', $allowedDomains) . ".";
     
     return true;
+}
+
+// --- NUEVAS FUNCIONES DE SEGURIDAD (RATE LIMITING) ---
+
+/**
+ * Registra un evento de seguridad (fallo o acción sensible)
+ */
+function logSecurityEvent($pdo, $identifier, $actionType) {
+    try {
+        $ip = getClientIP();
+        // Recortar identifier si es muy largo por seguridad
+        $identifier = substr($identifier, 0, 250);
+        
+        $stmt = $pdo->prepare("INSERT INTO security_logs (user_identifier, action_type, ip_address, created_at) VALUES (?, ?, ?, NOW())");
+        $stmt->execute([$identifier, $actionType, $ip]);
+    } catch (Exception $e) {
+        // Fallo silencioso para no romper el flujo principal si falla el log
+        error_log("Error logging security event: " . $e->getMessage());
+    }
+}
+
+/**
+ * Verifica si se ha superado el límite de intentos.
+ * Detiene la ejecución si se excede el límite.
+ * * @param PDO $pdo Conexión a BD
+ * @param string $identifier Identificador (Email, IP, etc.)
+ * @param string $actionType Tipo de acción ('login_fail', etc.)
+ * @param int $limit Número máximo de intentos permitidos
+ * @param int $minutes Ventana de tiempo en minutos
+ * @param bool $checkByIp Si es true, ignora el identifier y cuenta por IP (para ataques distribuidos o anónimos)
+ */
+function checkRateLimit($pdo, $identifier, $actionType, $limit, $minutes, $checkByIp = false) {
+    $ip = getClientIP();
+    
+    // Consulta dinámica dependiendo si chequeamos por IP o por Identificador
+    if ($checkByIp) {
+        $sql = "SELECT COUNT(*) FROM security_logs WHERE ip_address = ? AND action_type = ? AND created_at > (NOW() - INTERVAL ? MINUTE)";
+        $params = [$ip, $actionType, $minutes];
+    } else {
+        // Chequeo híbrido: Bloqueamos si la IP falla mucho O si el usuario específico falla mucho
+        $sql = "SELECT COUNT(*) FROM security_logs WHERE (user_identifier = ? OR ip_address = ?) AND action_type = ? AND created_at > (NOW() - INTERVAL ? MINUTE)";
+        $params = [$identifier, $ip, $actionType, $minutes];
+    }
+
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $count = $stmt->fetchColumn();
+
+        if ($count >= $limit) {
+            // Mensaje genérico de seguridad
+            sendJsonResponse('error', "Demasiados intentos. Por seguridad, espera $minutes minutos antes de intentar nuevamente.");
+        }
+    } catch (Exception $e) {
+        // En caso de error de BD, permitir paso (fail-open) o bloquear (fail-close). 
+        // Por usabilidad, permitimos paso pero logueamos error.
+        error_log("Rate Limit Check Error: " . $e->getMessage());
+    }
 }
 
 // --- LÓGICA PRINCIPAL ---
@@ -117,11 +179,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 sendJsonResponse('error', "Usuario en uso.");
             } else {
                 
-                // --- MODIFICACIÓN: Limpiar códigos anteriores ---
-                // Eliminamos cualquier código previo de activación para este email
-                // antes de generar uno nuevo.
+                // Limpiar códigos anteriores
                 $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation'")->execute([$email]);
-                // ------------------------------------------------
                 
                 $code = generate_verification_code();
                 $passwordHash = password_hash($password, PASSWORD_DEFAULT);
@@ -151,7 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $email = $_SESSION['pending_verification_email'];
 
-        // A. VALIDACIÓN DE TIEMPO (Rate Limit)
+        // A. VALIDACIÓN DE TIEMPO (Rate Limit simple de reenvío)
         $checkStmt = $pdo->prepare("SELECT created_at FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation' AND created_at > (NOW() - INTERVAL 60 SECOND) ORDER BY id DESC LIMIT 1");
         $checkStmt->execute([$email]);
         
@@ -169,9 +228,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($lastRow) {
             $payload = $lastRow['payload'];
-            
-            // Opcional: También podrías limpiar el anterior aquí si quieres que el botón "reenviar" invalide el previo.
-            // Por ahora, solo insertamos el nuevo.
             $stmtInsert = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
             
             if ($stmtInsert->execute([$email, 'account_activation', $newCode, $payload])) {
@@ -190,12 +246,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $emailIdentifier = $_SESSION['pending_verification_email'] ?? null;
 
         if ($code && $emailIdentifier) {
-            // Comparamos expires_at con NOW() de la base de datos
+            
+            // [SEGURIDAD] Rate Limit: Máximo 5 intentos fallidos en 15 minutos
+            checkRateLimit($pdo, $emailIdentifier, 'verify_fail', 5, 15);
+
+            // Comparamos expires_at con NOW()
             $stmt = $pdo->prepare("SELECT * FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'account_activation' AND expires_at > NOW() ORDER BY id DESC LIMIT 1");
             $stmt->execute([$emailIdentifier, $code]);
             $row = $stmt->fetch();
 
             if ($row) {
+                // ÉXITO
                 $payload = json_decode($row['payload'], true);
                 $uuid = generate_uuid();
 
@@ -229,6 +290,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     sendJsonResponse('error', "Error al crear usuario.");
                 }
             } else {
+                // [SEGURIDAD] Registrar fallo
+                logSecurityEvent($pdo, $emailIdentifier, 'verify_fail');
                 sendJsonResponse('error', "Código inválido o expirado.");
             }
         } else {
@@ -241,11 +304,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = trim($input['email'] ?? '');
         $password = $input['password'] ?? '';
 
+        // [SEGURIDAD] Rate Limit: Máximo 5 fallos en 15 minutos para este email o IP
+        checkRateLimit($pdo, $email, 'login_fail', 5, 15);
+
         $stmt = $pdo->prepare("SELECT id, username, password, uuid, role FROM users WHERE email = ?");
         $stmt->execute([$email]);
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
+            // ÉXITO
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['uuid'] = $user['uuid'];
@@ -253,6 +320,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             logUserAccess($pdo, $user['id']);
             sendJsonResponse('success', "Bienvenido", $basePath);
         } else {
+            // [SEGURIDAD] Registrar fallo
+            logSecurityEvent($pdo, $email, 'login_fail');
             sendJsonResponse('error', "Credenciales incorrectas.");
         }
     }
@@ -260,6 +329,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 6. RECUPERAR PASSWORD (SOLICITUD)
     if ($action === 'request_password_reset') {
         $email = trim($input['email'] ?? '');
+        
+        // [SEGURIDAD] Rate Limit: Máximo 3 intentos de solicitud en 1 hora POR IP.
+        // Usamos $checkByIp = true porque queremos evitar spam masivo desde una fuente.
+        checkRateLimit($pdo, $email, 'recovery_request', 3, 60, true);
+
+        // [SEGURIDAD] Registramos el intento inmediatamente (sea exitoso o no) para contar hacia el límite
+        logSecurityEvent($pdo, $email, 'recovery_request');
+
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) sendJsonResponse('error', "Correo inválido.");
 
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
@@ -267,7 +344,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if ($stmt->rowCount() > 0) {
             
-            // A. RATE LIMIT SQL (Recuperación)
+            // A. RATE LIMIT SQL (Recuperación - Evitar flood de correos al mismo usuario)
+            // Esto es aparte del bloqueo de IP, es para no spamear al dueño de la cuenta.
             $checkLimit = $pdo->prepare("SELECT id FROM password_resets WHERE email = ? AND created_at > (NOW() - INTERVAL 60 SECOND)");
             $checkLimit->execute([$email]);
             if ($checkLimit->rowCount() > 0) {
@@ -289,7 +367,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 sendJsonResponse('error', "Error al generar token.");
             }
         } else {
-            // Seguridad silenciosa
+            // Seguridad silenciosa (Evita enumeración de usuarios)
+            // Respondemos éxito falso, pero el Rate Limit (arriba) ya contó el "intento" por IP.
             sendJsonResponse('error', "Si el correo existe, se enviará un enlace.");
         }
     }
