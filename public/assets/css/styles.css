@@ -98,7 +98,6 @@ html {
     flex: 0 0 auto;
 }
 
-/* MODIFICADO: Se quitó position absolute y se agregó flex: 1 */
 .header-center {
     position: relative;
     display: flex;
@@ -106,14 +105,15 @@ html {
     align-items: center;
     padding: 0 16px;
     height: 100%;
-    flex: 1; /* Ocupa el espacio disponible */
+    flex: 1;
     z-index: 0;
+    transition: all 0.3s ease;
+    /* Transición suave opcional */
 }
 
-/* MODIFICADO: Se ajustó para usar max-width */
 .search-wrapper {
     width: 100%;
-    max-width: 500px; /* Limita el ancho pero permite encogerse */
+    max-width: 500px;
 }
 
 .search-container {
@@ -178,10 +178,19 @@ html {
     background-color: #f5f5fa;
 }
 
-@media (max-width: 725px) { /* O la medida que estés usando, ej. 625px */
+/* Ocultar el botón toggle por defecto en pantallas grandes */
+.search-toggle-btn {
+    display: none;
+}
+
+/* =========================================
+   4. MEDIA QUERIES
+   ========================================= */
+
+@media (max-width: 725px) {
     .header {
         gap: 0;
-        justify-content: space-between; /* Asegura que se separen */
+        justify-content: space-between;
     }
 
     .header-left {
@@ -192,43 +201,138 @@ html {
         order: 2;
     }
 
-    /* AGREGA ESTO: */
+    /* Mostrar el botón toggle en móvil */
+    .search-toggle-btn {
+        display: flex;
+    }
+
+    /* Ocultar y reordenar el centro por defecto */
     .header-center {
-        order: 3;       /* 3 es mayor que 1 y 2, así que va al final */
-        flex: 0 0 100%; /* Fuerza que baje a una nueva línea ocupando todo el ancho */
-        padding-top: 8px; /* Un poco de aire */
-        padding-left: 0;
-        padding-right: 0;
+        display: none;
+        /* Desactivado por defecto */
+        order: 3;
+        flex: 0 0 100%;
+        padding: 8px 0 0 0;
+        width: 100%;
     }
 
     .search-wrapper {
         max-width: 100%;
     }
-}
-/* NUEVO: Comportamiento para pantallas menores a 625px */
-@media (max-width: 625px) {
-    .header-center {
-        order: 3;       /* Baja el buscador al final */
-        flex: 0 0 100%; /* Fuerza que ocupe toda la línea */
-        padding: 8px 0 0 0; /* Espacio superior para separarlo de los botones */
-    }
-    
-    /* Opcional: Asegurar que los botones laterales queden extremos */
-    .header {
-        justify-content: space-between;
+
+    /* Estado ACTIVO: se muestra al hacer clic en el botón */
+    .header-center.active {
+        display: flex;
     }
 }
 
-.test {
-    height: 40px;
-    width: auto;
-    font-weight: 500;
-    padding: 0 16px;
+/* =========================================
+   5. NAVEGACIÓN Y MENÚS (POPOVERS/SIDEBAR)
+   ========================================= */
+.module-content.module-surface {
+    position: absolute;
+    height: 100%;
+    padding: 8px;
+    top: 0;
+    left: 0;
+    z-index: 998;
+}
+
+.module-surface .menu-content {
+    width: 280px;
+    height: 100%;
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px #00000020;
+}
+
+.module-content.module-profile {
+    position: absolute;
+    height: auto;
+    top: calc(100% + 5px);
+    right: 0;
+    z-index: 998;
+}
+
+.module-profile .menu-content {
+    width: 280px;
+    height: auto;
+    padding: 8px;
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px #00000020;
+}
+
+.menu-content-top {
+    flex: 0 0 auto;
     display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+}
+
+.menu-content-bottom {
+    flex: 1 1 auto;
+    position: relative;
+    overflow-y: auto;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+}
+
+
+
+.menu-list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: auto;
+    gap: 4px;
+    user-select: none;
+}
+
+.menu-link {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: row;
+    width: 100%;
+    height: 40px;
+    position: relative;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+}
+
+.menu-link:hover,
+.menu-link.active {
+    background-color: #f5f5fa;
+}
+
+.menu-link-icon {
+    display: flex;
+    flex: 0 0 auto;
     justify-content: center;
     align-items: center;
-    background-color: #000;
-    color: #fff;
-    text-align: center;
-    border-radius: 8px;
+    width: 45px;
+    height: 100%;
+}
+
+.menu-link-text {
+    display: block;
+    flex: 1 1 auto;
+    text-align: start;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    align-self: center;
+}
+
+
+.active {
+    display: flex;
+}
+
+.disabled {
+    display: none;
 }
