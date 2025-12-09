@@ -98,23 +98,22 @@ html {
     flex: 0 0 auto;
 }
 
+/* MODIFICADO: Se quitó position absolute y se agregó flex: 1 */
 .header-center {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
+    position: relative;
     display: flex;
     justify-content: center;
     align-items: center;
     padding: 0 16px;
     height: 100%;
-    width: auto;
+    flex: 1; /* Ocupa el espacio disponible */
     z-index: 0;
 }
 
+/* MODIFICADO: Se ajustó para usar max-width */
 .search-wrapper {
     width: 100%;
-    width: 500px;
-    max-width: 100%;
+    max-width: 500px; /* Limita el ancho pero permite encogerse */
 }
 
 .search-container {
@@ -179,9 +178,10 @@ html {
     background-color: #f5f5fa;
 }
 
-@media (max-width: 725px) {
+@media (max-width: 725px) { /* O la medida que estés usando, ej. 625px */
     .header {
         gap: 0;
+        justify-content: space-between; /* Asegura que se separen */
     }
 
     .header-left {
@@ -191,10 +191,33 @@ html {
     .header-right {
         order: 2;
     }
+
+    /* AGREGA ESTO: */
+    .header-center {
+        order: 3;       /* 3 es mayor que 1 y 2, así que va al final */
+        flex: 0 0 100%; /* Fuerza que baje a una nueva línea ocupando todo el ancho */
+        padding-top: 8px; /* Un poco de aire */
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .search-wrapper {
+        max-width: 100%;
+    }
 }
-
-
-
+/* NUEVO: Comportamiento para pantallas menores a 625px */
+@media (max-width: 625px) {
+    .header-center {
+        order: 3;       /* Baja el buscador al final */
+        flex: 0 0 100%; /* Fuerza que ocupe toda la línea */
+        padding: 8px 0 0 0; /* Espacio superior para separarlo de los botones */
+    }
+    
+    /* Opcional: Asegurar que los botones laterales queden extremos */
+    .header {
+        justify-content: space-between;
+    }
+}
 
 .test {
     height: 40px;
@@ -207,6 +230,5 @@ html {
     background-color: #000;
     color: #fff;
     text-align: center;
-
     border-radius: 8px;
 }
