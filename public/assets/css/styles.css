@@ -108,7 +108,6 @@ html {
     flex: 1;
     z-index: 0;
     transition: all 0.3s ease;
-    /* Transición suave opcional */
 }
 
 .search-wrapper {
@@ -201,15 +200,12 @@ html {
         order: 2;
     }
 
-    /* Mostrar el botón toggle en móvil */
     .search-toggle-btn {
         display: flex;
     }
 
-    /* Ocultar y reordenar el centro por defecto */
     .header-center {
         display: none;
-        /* Desactivado por defecto */
         order: 3;
         flex: 0 0 100%;
         padding: 8px 0 0 0;
@@ -220,7 +216,6 @@ html {
         max-width: 100%;
     }
 
-    /* Estado ACTIVO: se muestra al hacer clic en el botón */
     .header-center.active {
         display: flex;
     }
@@ -280,8 +275,6 @@ html {
     flex-direction: column;
 }
 
-
-
 .menu-list {
     display: flex;
     flex-direction: column;
@@ -328,7 +321,6 @@ html {
     align-self: center;
 }
 
-
 .active {
     display: flex;
 }
@@ -336,6 +328,8 @@ html {
 .disabled {
     display: none;
 }
+
+/* --- ESTILOS DE BOTÓN DE PERFIL Y ROLES (Personalizado) --- */
 
 .header-button.profile-button {
     position: relative;
@@ -351,7 +345,54 @@ html {
     align-items: center;
 }
 
-/* ... al final de styles.css ... */
+.profile-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    position: relative;
+    z-index: 1;
+    border-radius: 50%;
+}
+
+.header-button.profile-button::before {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border: 2px solid transparent;
+    transition: border-color 0.2s ease;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.header-button.profile-button[data-role="user"]::before {
+    border-color: #cccccc;
+}
+
+.header-button.profile-button[data-role="moderator"]::before {
+    border-color: #0000FF;
+}
+
+.header-button.profile-button[data-role="administrator"]::before {
+    border-color: #FF0000;
+}
+
+.header-button.profile-button[data-role="founder"]::before {
+    border: none;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+}
+
+/* --- FIN ESTILOS DE PERFIL --- */
 
 /* Spinner de Carga */
 .loader-container {
@@ -360,21 +401,23 @@ html {
     align-items: center;
     width: 100%;
     height: 100%;
-    min-height: 300px; /* Altura mínima para que no se vea aplastado */
+    min-height: 300px;
 }
 
 .spinner {
     width: 40px;
     height: 40px;
     border: 4px solid rgba(0, 0, 0, 0.1);
-    border-left-color: #000000; /* Color del spinner */
+    border-left-color: #000000;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
     to { transform: rotate(360deg); }
-}/* =========================================
+}
+
+/* =========================================
    6. ESTILOS DE AUTENTICACIÓN
    ========================================= */
 .page-wrapper.auth-mode {

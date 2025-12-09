@@ -21,6 +21,31 @@ if ($currentSection === '') { $currentSection = 'main'; }
 // --- CONTROL DE SESIÓN ---
 $isLoggedIn = isset($_SESSION['user_id']);
 
+// >>> LOGICA DE REFRESCO DE SESIÓN (NUEVO) <<<
+// Esto asegura que si cambias el rol en la BD, se actualice al recargar la página.
+if ($isLoggedIn) {
+    try {
+        $stmt = $pdo->prepare("SELECT role, username, uuid FROM users WHERE id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        $freshUser = $stmt->fetch();
+
+        if ($freshUser) {
+            // Actualizamos la sesión con los datos frescos de la BD
+            $_SESSION['role'] = $freshUser['role'];
+            $_SESSION['username'] = $freshUser['username'];
+            $_SESSION['uuid'] = $freshUser['uuid'];
+        } else {
+            // Si el usuario ya no existe en la BD (fue borrado), cerramos sesión.
+            session_destroy();
+            header("Location: " . $basePath . "login");
+            exit;
+        }
+    } catch (Exception $e) {
+        // En caso de error de conexión, no hacemos nada (mantenemos la sesión vieja)
+    }
+}
+// >>> FIN LOGICA DE REFRESCO <<<
+
 // Rutas permitidas para invitados
 $guestRoutes = ['login', 'register'];
 
@@ -45,25 +70,10 @@ if (!in_array($currentSection, $validRoutes)) {
     $currentSection = '404'; 
 }
 
-// --- CONFIGURACIÓN DE COLORES DE ROL ---
-$roleBorderColor = '#00000020'; // Default (gris claro) para usuarios normales o fallback
-if ($isLoggedIn && isset($_SESSION['role'])) {
-    switch ($_SESSION['role']) {
-        case 'founder':
-            $roleBorderColor = '#FFD700'; // Dorado
-            break;
-        case 'administrator':
-            $roleBorderColor = '#FF4444'; // Rojo
-            break;
-        case 'moderator':
-            $roleBorderColor = '#33B5E5'; // Azul
-            break;
-        case 'user':
-        default:
-            $roleBorderColor = '#00000020'; // El borde por defecto
-            break;
-    }
-}
+// --- OBTENER ROL PARA DATA ATTRIBUTE ---
+// Ahora esto usará el rol recién actualizado
+$userRole = ($isLoggedIn && isset($_SESSION['role'])) ? $_SESSION['role'] : 'user';
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -123,10 +133,9 @@ if ($isLoggedIn && isset($_SESSION['role'])) {
 
                                 <div class="header-button profile-button" 
                                      data-action="toggleModuleProfile"
-                                     style="border: 2px solid <?php echo $roleBorderColor; ?>;">
+                                     data-role="<?php echo htmlspecialchars($userRole); ?>">
                                      
                                     <?php 
-                                    // Verificar si tenemos UUID y si el archivo existe
                                     $hasAvatar = false;
                                     if (isset($_SESSION['uuid'])) {
                                         $avatarRelPath = 'assets/uploads/profile_pictures/' . $_SESSION['uuid'] . '.png';
@@ -140,9 +149,9 @@ if ($isLoggedIn && isset($_SESSION['role'])) {
                                     <?php if ($hasAvatar): ?>
                                         <img src="<?php echo $basePath . $avatarRelPath; ?>" 
                                              alt="Perfil" 
-                                             style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                                             class="profile-img">
                                     <?php else: ?>
-                                        <span style="font-weight:bold; color:#555;">
+                                        <span style="font-weight:bold; color:#555; position: relative; z-index: 1;">
                                             <?php echo strtoupper(substr($_SESSION['username'], 0, 1)); ?>
                                         </span>
                                     <?php endif; ?>
