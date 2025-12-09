@@ -5,11 +5,7 @@
             <p>Únete a Project Aurora</p>
         </div>
 
-        <?php if (!empty($error)): ?>
-            <div class="alert error"><?php echo $error; ?></div>
-        <?php endif; ?>
-
-        <input type="hidden" name="action" value="register">
+        <input type="hidden" id="register-action" name="action" value="register">
         
         <div class="form-groups-wrapper">
             <div class="form-group">
@@ -28,7 +24,13 @@
             </div>
         </div>
 
-        <button type="submit" class="btn-primary">Registrarse</button>
+        <button type="button" id="btn-register" class="btn-primary">Registrarse</button>
+
+        <?php if (!empty($error)): ?>
+            <div class="alert error" style="margin-top: 16px; margin-bottom: 0;">
+                <?php echo $error; ?>
+            </div>
+        <?php endif; ?>
 
         <div class="auth-footer">
             <p>¿Ya tienes cuenta? <a href="<?php echo $basePath; ?>login">Inicia sesión</a></p>
