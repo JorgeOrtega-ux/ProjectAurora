@@ -5,6 +5,9 @@
 
 import { AuthService } from './api-services.js';
 
+// Variable global para el intervalo del timer
+let countdownInterval;
+
 // Función para mostrar errores en la interfaz
 const showError = (message) => {
     let alertBox = document.querySelector('.alert.error');
@@ -52,6 +55,41 @@ const handleAuthResponse = (result, buttons) => {
     }
 };
 
+/**
+ * Función para manejar el temporizador de reenvío (60s)
+ * @param {string} timerElementId - ID del elemento span que muestra el contador
+ * @param {string} buttonElementId - ID del enlace/botón que se debe deshabilitar/habilitar
+ */
+const startTimer = (timerElementId, buttonElementId) => {
+    const timerDisplay = document.getElementById(timerElementId);
+    const button = document.getElementById(buttonElementId);
+
+    if (!timerDisplay || !button) return;
+
+    let timeLeft = 60;
+    
+    // UI Inicial del timer
+    button.style.pointerEvents = 'none';
+    button.style.color = '#999';
+    timerDisplay.textContent = `(${timeLeft})`;
+
+    // Limpiar intervalo previo si existe
+    if (countdownInterval) clearInterval(countdownInterval);
+
+    countdownInterval = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = `(${timeLeft})`;
+
+        if (timeLeft <= 0) {
+            clearInterval(countdownInterval);
+            timerDisplay.textContent = ''; // Borrar (0)
+            button.style.pointerEvents = 'auto';
+            button.style.color = '#000'; // Color activo
+            button.style.textDecoration = 'underline';
+        }
+    }, 1000);
+};
+
 // Función asíncrona genérica para procesar formularios
 const processAuthAction = async (actionType, data) => {
     // 1. UI: Bloquear botones
@@ -79,21 +117,49 @@ const processAuthAction = async (actionType, data) => {
             case 'verify_code':
                 result = await AuthService.verifyCode(data.code);
                 break;
+                
+            case 'resend_verification_code':
+                result = await AuthService.resendVerificationCode();
+                if (result.status === 'success') {
+                    // Reiniciar timer
+                    startTimer('register-timer', 'btn-resend-code');
+                    // Resetear botones UI manual porque no recarga página
+                    buttons.forEach(btn => {
+                        btn.disabled = false;
+                        btn.style.opacity = '1';
+                        btn.textContent = 'Verificar y Crear Cuenta'; 
+                    });
+                    // Mostrar mensaje flotante nativo o simple
+                    alert('Código reenviado correctamente: ' + (result.message.replace('Código reenviado: ', '') || 'Revisa tu correo'));
+                    return; 
+                }
+                break;
+
             case 'request_password_reset':
                 result = await AuthService.requestPasswordReset(data.email);
-                // Lógica especial para mostrar el link simulado
-                if (result.status === 'success' && result.data && result.data.debug_link) {
-                    const simResult = document.getElementById('simulation-result');
-                    if(simResult) {
-                        simResult.style.display = 'block';
-                        simResult.innerHTML = `<strong>¡Simulación!</strong><br>Abre este link:<br><a href="${result.data.debug_link}">${result.data.debug_link}</a>`;
+                
+                if (result.status === 'success') {
+                    // Mostrar contenedor de reenvío
+                    const resendContainer = document.getElementById('resend-container');
+                    if(resendContainer) {
+                        resendContainer.style.display = 'block';
+                        startTimer('recover-timer', 'btn-resend-link');
                     }
-                    // No redirigimos automáticamente para que el usuario vea el link
+
+                    // Lógica para mostrar el link simulado
+                    if (result.data && result.data.debug_link) {
+                        const simResult = document.getElementById('simulation-result');
+                        if(simResult) {
+                            simResult.style.display = 'block';
+                            simResult.innerHTML = `<strong>¡Simulación!</strong><br>Abre este link:<br><a href="${result.data.debug_link}">${result.data.debug_link}</a>`;
+                        }
+                    }
+                    // No redirigimos automáticamente
                     buttons.forEach(btn => {
                         btn.disabled = false;
                         btn.textContent = 'Enviado';
                     });
-                    return; // Salimos para no ejecutar handleAuthResponse estándar
+                    return; 
                 }
                 break;
 
@@ -120,6 +186,11 @@ const processAuthAction = async (actionType, data) => {
 };
 
 const setupAuthListeners = () => {
+    // Inicializar timer si estamos en la vista de verificación al cargar
+    if(document.getElementById('register-timer')) {
+        startTimer('register-timer', 'btn-resend-code');
+    }
+
     document.addEventListener('click', (e) => {
         
         // A) LOGIN
@@ -197,6 +268,14 @@ const setupAuthListeners = () => {
             }
         }
 
+        // D-2) REENVIAR CÓDIGO (NUEVO)
+        // Usamos closest porque el span del timer está dentro del <a>
+        const resendBtn = e.target.closest('#btn-resend-code');
+        if (resendBtn) {
+            e.preventDefault();
+            processAuthAction('resend_verification_code', {});
+        }
+
         // E) LOGOUT (Delegación de eventos usando closest)
         const logoutBtn = e.target.closest('#btn-logout');
         if (logoutBtn) {
@@ -204,7 +283,7 @@ const setupAuthListeners = () => {
             AuthService.logout();
         }
 
-        // F) SOLICITUD DE RECUPERACIÓN (NUEVO - Corrige el error)
+        // F) SOLICITUD DE RECUPERACIÓN
         if (e.target && e.target.id === 'btn-recover-request') {
             e.preventDefault();
             const email = document.getElementById('recover-email');
@@ -216,7 +295,18 @@ const setupAuthListeners = () => {
             }
         }
 
-        // G) GUARDAR NUEVA CONTRASEÑA (NUEVO - Para el paso final)
+        // F-2) REENVIAR ENLACE RECUPERACIÓN (NUEVO)
+        const resendLinkBtn = e.target.closest('#btn-resend-link');
+        if (resendLinkBtn) {
+            e.preventDefault();
+            const email = document.getElementById('recover-email');
+            if(email && email.value) {
+                // Reutilizamos la acción request_password_reset para reenviar
+                processAuthAction('request_password_reset', { email: email.value.trim() });
+            }
+        }
+
+        // G) GUARDAR NUEVA CONTRASEÑA
         if (e.target && e.target.id === 'btn-recover-reset') {
             e.preventDefault();
             const pass1 = document.getElementById('new-password');

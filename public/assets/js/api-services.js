@@ -99,8 +99,15 @@ export const AuthService = {
             code 
         });
     },
+    
+    // NUEVO: Reenviar código de verificación
+    resendVerificationCode: () => {
+        return postRequest('api/auth_handler.php', {
+            action: 'resend_verification_code'
+        });
+    },
 
-    // NUEVO: Solicitar reset
+    // NUEVO: Solicitar reset (usado también para reenviar enlace)
     requestPasswordReset: (email) => {
         return postRequest('api/auth_handler.php', { 
             action: 'request_password_reset', 

@@ -61,8 +61,13 @@ if ($isStep2 && !$hasDataForStep2) {
 
             <button type="button" id="btn-verify" class="btn-primary">Verificar y Crear Cuenta</button>
 
+            <div style="margin-top: 15px; font-size: 14px; color: #666;">
+                <a href="#" id="btn-resend-code" style="color: #999; pointer-events: none; text-decoration: none;">
+                    Reenviar código de verificación <span id="register-timer">(60)</span>
+                </a>
+            </div>
+
             <div class="auth-footer">
-                <p>¿No recibiste el código? <a href="#">Reenviar</a></p>
                 <p style="margin-top: 8px;"><a href="<?php echo $basePath; ?>register" style="font-size: 12px; color: #999;">Cancelar registro</a></p>
             </div>
 
