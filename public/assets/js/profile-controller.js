@@ -17,8 +17,18 @@ const toggleEditMode = (section, isEditing) => {
         if(actionsView) { actionsView.classList.remove('active'); actionsView.classList.add('disabled'); }
         if(editState) { editState.classList.remove('disabled'); editState.classList.add('active'); }
         if(actionsEdit) { actionsEdit.classList.remove('disabled'); actionsEdit.classList.add('active'); }
+        
         const input = section.querySelector('input');
-        if(input) input.focus();
+        if(input) {
+            // [CORRECCIÓN CURSOR]: 
+            // Guardamos el valor, lo vaciamos y lo restauramos.
+            // Esto obliga al navegador a poner el cursor al final del texto.
+            const val = input.value;
+            input.value = '';
+            input.value = val;
+            
+            input.focus();
+        }
     } else {
         if(editState) { editState.classList.remove('active'); editState.classList.add('disabled'); }
         if(actionsEdit) { actionsEdit.classList.remove('active'); actionsEdit.classList.add('disabled'); }
@@ -27,7 +37,7 @@ const toggleEditMode = (section, isEditing) => {
     }
 };
 
-/* --- LÓGICA UI PARA DROPDOWNS (NUEVO) --- */
+/* --- LÓGICA UI PARA DROPDOWNS --- */
 const setupDropdownUI = () => {
     document.addEventListener('click', (e) => {
         // 1. Manejar apertura/cierre
@@ -59,26 +69,22 @@ const setupDropdownUI = () => {
             
             if (wrapper) {
                 const triggerText = wrapper.querySelector('.trigger-select-text');
-                const triggerIcon = wrapper.querySelector('.trigger-select-icon'); // Buscar el icono del trigger
+                const triggerIcon = wrapper.querySelector('.trigger-select-icon');
 
                 const linkText = link.querySelector('.menu-link-text');
-                const linkIcon = link.querySelector('.menu-link-icon span'); // Buscar el icono dentro de la opción
+                const linkIcon = link.querySelector('.menu-link-icon span');
 
-                // Actualizar texto y también el icono
                 if(triggerText && linkText) {
                     triggerText.textContent = linkText.textContent;
                 }
                 
-                // LÓGICA DE ICONO: Si existe el icono en la opción y en el trigger, lo actualizamos
                 if(triggerIcon && linkIcon) {
                     triggerIcon.textContent = linkIcon.textContent;
                 }
 
-                // Actualizar estado activo en la lista
                 menu.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
                 link.classList.add('active');
 
-                // Cerrar
                 menu.classList.remove('active');
                 wrapper.querySelector('.trigger-selector').classList.remove('active');
             }
@@ -111,7 +117,9 @@ const handleProfileSave = async (sectionType) => {
 
         if (result.status === 'success') {
             const display = document.querySelector(`[data-element="${sectionType}-display-text"]`);
-            if (display) display.innerText = (sectionType === 'username') ? '@' + currentUsername : currentEmail;
+            
+            // [CORRECCIÓN ARROBA]: Quitamos el '@' manual aquí para que no se agregue al guardar
+            if (display) display.innerText = (sectionType === 'username') ? currentUsername : currentEmail;
             
             const section = document.querySelector(`[data-component="${sectionType}-section"]`);
             toggleEditMode(section, false);
@@ -253,7 +261,6 @@ const setupProfileListeners = () => {
     const pfpSection = document.querySelector('[data-component="profile-picture-section"]');
     if (pfpSection) setupProfilePictureLogic(pfpSection);
     
-    // Iniciar UI de los dropdowns nuevos
     setupDropdownUI();
 };
 

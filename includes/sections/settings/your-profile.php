@@ -105,9 +105,9 @@ if (!empty($currentUser['uuid'])) {
                     <div class="component-card__text">
                         <h2 class="component-card__title">Nombre de usuario</h2>
                         
-                        <div class="active" data-state="username-view-state" style="margin-top: 4px;">
-                            <span class="component-badge" data-element="username-display-text">
-                                @<?php echo htmlspecialchars($currentUser['username']); ?>
+                        <div class="active" data-state="username-view-state">
+                            <span style="font-size: 13px; color: #333;" data-element="username-display-text">
+                                <?php echo htmlspecialchars($currentUser['username']); ?>
                             </span>
                         </div>
                         
@@ -142,7 +142,7 @@ if (!empty($currentUser['uuid'])) {
                     <div class="component-card__text">
                         <h2 class="component-card__title">Correo electrónico</h2>
                         
-                        <div class="active" data-state="email-view-state" style="margin-top: 4px;">
+                        <div class="active" data-state="email-view-state">
                             <span style="font-size: 13px; color: #333;" data-element="email-display-text">
                                 <?php echo htmlspecialchars($currentUser['email']); ?>
                             </span>
