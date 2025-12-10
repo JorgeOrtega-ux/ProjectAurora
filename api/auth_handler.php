@@ -3,6 +3,28 @@
 
 header('Content-Type: application/json');
 require_once __DIR__ . '/../includes/db.php'; 
+require_once __DIR__ . '/../includes/i18n.php'; // <--- Cargar I18N
+
+// 1. CARGAR TRADUCCIONES PARA LA API
+// Necesitamos saber el idioma. Como no pasamos por router.php, hacemos la lógica aquí.
+if (session_status() === PHP_SESSION_NONE) session_start();
+$userId = $_SESSION['user_id'] ?? 0;
+$lang = null;
+
+if ($userId) {
+    // Si hay usuario logueado, intentar sacar preferencia de DB (rápido)
+    try {
+        $stmt = $pdo->prepare("SELECT language FROM user_preferences WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        $lang = $stmt->fetchColumn();
+    } catch(Exception $e){}
+}
+
+if (!$lang) {
+    $lang = detect_browser_language(); // Función ahora en i18n.php
+}
+
+load_translations($lang);
 
 // ==========================================
 // CONFIGURACIÓN DE RUTAS DE AVATARES
@@ -58,16 +80,16 @@ function generate_verification_code() {
 }
 
 function validateEmailRequirements($email) {
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) return "Formato inválido.";
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) return __('api.error.email_format');
     $atPos = strrpos($email, '@');
-    if ($atPos === false) return "Correo inválido.";
+    if ($atPos === false) return __('api.error.email_format');
     
     $prefix = substr($email, 0, $atPos);
     $domain = strtolower(substr($email, $atPos + 1));
     
-    if (strlen($prefix) < 4) return "El correo debe tener al menos 4 caracteres antes del @.";
+    if (strlen($prefix) < 4) return __('api.error.email_format'); // Mensaje genérico para simplificar o crear clave especifica
     $allowedDomains = ['gmail.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'yahoo.com'];
-    if (!in_array($domain, $allowedDomains)) return "Dominio no permitido. Use: " . implode(', ', $allowedDomains) . ".";
+    if (!in_array($domain, $allowedDomains)) return __('api.error.email_domain');
     
     return true;
 }
@@ -83,49 +105,10 @@ function ensureDefaultAvatarExists($uuid, $username) {
                 @file_put_contents($targetFile, $imgContent);
                 return true;
             }
-        } catch (Exception $e) {
-            error_log("Error generando avatar default: " . $e->getMessage());
-        }
+        } catch (Exception $e) { }
         return false;
     }
     return true; 
-}
-
-/**
- * Detecta el idioma del navegador y lo mapea a los soportados.
- */
-function detectBrowserLanguage() {
-    // Lista de idiomas soportados por la aplicación (definidos en UI)
-    $supported = [
-        'es-419' => ['es', 'es-mx', 'es-ar', 'es-co', 'es-cl', 'es-pe', 'es-ve', 'es-ec', 'es-gt', 'es-cu', 'es-bo', 'es-do', 'es-hn', 'es-py', 'es-sv', 'es-ni', 'es-cr', 'es-pr', 'es-uy', 'es-pa'],
-        'en-US'  => ['en', 'en-us', 'en-ca'],
-        'en-GB'  => ['en-gb', 'en-au', 'en-nz'],
-        'fr-FR'  => ['fr', 'fr-fr', 'fr-ca', 'fr-be', 'fr-ch'],
-        'pt-BR'  => ['pt', 'pt-br', 'pt-pt']
-    ];
-
-    $fallback = 'en-US';
-    
-    if (!isset($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
-        return $fallback;
-    }
-
-    // Ejemplo header: es-MX,es;q=0.9,en;q=0.8
-    $userLangs = explode(',', strtolower($_SERVER['HTTP_ACCEPT_LANGUAGE']));
-    
-    foreach ($userLangs as $langStr) {
-        // Limpiar calidad (q=0.9)
-        $langCode = trim(explode(';', $langStr)[0]);
-        
-        // 1. Búsqueda exacta inversa (Buscar si el código del user está en algún array de soportados)
-        foreach ($supported as $key => $variants) {
-            if ($key === $langCode || in_array($langCode, $variants)) {
-                return $key;
-            }
-        }
-    }
-    
-    return $fallback;
 }
 
 // --- SEGURIDAD (RATE LIMITING) ---
@@ -136,9 +119,7 @@ function logSecurityEvent($pdo, $identifier, $actionType) {
         $identifier = substr($identifier, 0, 250);
         $stmt = $pdo->prepare("INSERT INTO security_logs (user_identifier, action_type, ip_address, created_at) VALUES (?, ?, ?, NOW())");
         $stmt->execute([$identifier, $actionType, $ip]);
-    } catch (Exception $e) {
-        error_log("Error logging security event: " . $e->getMessage());
-    }
+    } catch (Exception $e) {}
 }
 
 function checkRateLimit($pdo, $identifier, $actionType, $limit, $minutes, $checkByIp = false) {
@@ -158,11 +139,9 @@ function checkRateLimit($pdo, $identifier, $actionType, $limit, $minutes, $check
         $count = $stmt->fetchColumn();
 
         if ($count >= $limit) {
-            sendJsonResponse('error', "Demasiados intentos. Por seguridad, espera $minutes minutos antes de intentar nuevamente.");
+            sendJsonResponse('error', __('api.error.rate_limit'));
         }
-    } catch (Exception $e) {
-        error_log("Rate Limit Check Error: " . $e->getMessage());
-    }
+    } catch (Exception $e) {}
 }
 
 // ==========================================
@@ -180,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $incomingToken = $input['csrf_token'] ?? '';
     $sessionToken = $_SESSION['csrf_token'] ?? '';
     if (empty($incomingToken) || empty($sessionToken) || !hash_equals($sessionToken, $incomingToken)) {
-        sendJsonResponse('error', 'Sesión inválida (CSRF). Recarga la página.');
+        sendJsonResponse('error', __('api.error.csrf'));
     }
 
     $action = $input['action'] ?? '';
@@ -193,18 +172,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($email && $password) {
             $val = validateEmailRequirements($email);
             if ($val !== true) sendJsonResponse('error', $val);
-            if (strlen($password) < 8) sendJsonResponse('error', "La contraseña debe tener 8+ caracteres.");
+            if (strlen($password) < 8) sendJsonResponse('error', __('api.error.password_short'));
 
             $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
             $stmt->execute([$email]);
             if ($stmt->rowCount() > 0) {
-                sendJsonResponse('error', "El correo ya está registrado.");
+                sendJsonResponse('error', __('api.error.email_exists'));
             } else {
                 $_SESSION['temp_register'] = ['email' => $email, 'password' => $password];
-                sendJsonResponse('success', "Datos válidos", $basePath . "register/aditional-data");
+                sendJsonResponse('success', __('api.success.valid_data'), $basePath . "register/aditional-data");
             }
         } else {
-            sendJsonResponse('error', "Faltan datos.");
+            sendJsonResponse('error', __('api.error.missing_data'));
         }
     }
 
@@ -213,19 +192,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $username = trim($input['username'] ?? '');
         
         if (!isset($_SESSION['temp_register'])) {
-            sendJsonResponse('error', "Sesión expirada.", $basePath . "register");
+            sendJsonResponse('error', __('api.error.session_expired'), $basePath . "register");
         }
         $email = $_SESSION['temp_register']['email'];
         $password = $_SESSION['temp_register']['password'];
 
         if ($username) {
-            if (strlen($username) < 6) sendJsonResponse('error', "Usuario muy corto (min 6).");
+            if (strlen($username) < 6) sendJsonResponse('error', __('api.error.username_short'));
 
             $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
             $stmt->execute([$username]);
 
             if ($stmt->rowCount() > 0) {
-                sendJsonResponse('error', "Usuario en uso.");
+                sendJsonResponse('error', __('api.error.username_exists'));
             } else {
                 $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation'")->execute([$email]);
                 
@@ -238,20 +217,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($stmt->execute([$email, 'account_activation', $code, $payload])) {
                     $_SESSION['pending_verification_email'] = $email;
                     unset($_SESSION['temp_register']);
-                    sendJsonResponse('success', "Código enviado", $basePath . "register/verify");
+                    sendJsonResponse('success', __('api.success.code_sent'), $basePath . "register/verify");
                 } else {
-                    sendJsonResponse('error', "Error BD.");
+                    sendJsonResponse('error', __('api.error.db_error'));
                 }
             }
         } else {
-            sendJsonResponse('error', "Nombre de usuario requerido.");
+            sendJsonResponse('error', __('api.error.missing_data'));
         }
     }
 
     // 3. REENVIAR CÓDIGO
     if ($action === 'resend_verification_code') {
         if (!isset($_SESSION['pending_verification_email'])) {
-            sendJsonResponse('error', "Sin sesión de verificación.");
+            sendJsonResponse('error', __('api.error.missing_data'));
         }
 
         $email = $_SESSION['pending_verification_email'];
@@ -259,7 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $checkStmt->execute([$email]);
         
         if ($checkStmt->rowCount() > 0) {
-            sendJsonResponse('error', "Debes esperar 60 segundos antes de reenviar.");
+            sendJsonResponse('error', __('api.error.wait_resend'));
         }
 
         $newCode = generate_verification_code();
@@ -271,12 +250,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $payload = $lastRow['payload'];
             $stmtInsert = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
             if ($stmtInsert->execute([$email, 'account_activation', $newCode, $payload])) {
-                sendJsonResponse('success', "Código reenviado: " . $newCode);
+                sendJsonResponse('success', __('api.success.code_resent') . $newCode);
             } else {
-                sendJsonResponse('error', "Error al guardar.");
+                sendJsonResponse('error', __('api.error.db_error'));
             }
         } else {
-            sendJsonResponse('error', "Error de sesión. Regístrate de nuevo.", $basePath . "register");
+            sendJsonResponse('error', __('api.error.session_expired'), $basePath . "register");
         }
     }
 
@@ -301,12 +280,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $newId = $pdo->lastInsertId();
                     $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ?")->execute([$emailIdentifier]);
 
-                    // Generar avatar default
                     ensureDefaultAvatarExists($uuid, $payload['username']);
 
-                    // [NUEVO] CREAR PREFERENCIAS DE USUARIO
-                    // Detectar idioma del navegador del request actual
-                    $detectedLang = detectBrowserLanguage();
+                    // USAR IDIOMA DETECTADO EN EL HANDLER O EL DE I18N
+                    $detectedLang = detect_browser_language(); // Usamos la de i18n
                     $stmtPref = $pdo->prepare("INSERT INTO user_preferences (user_id, language, open_links_new_tab) VALUES (?, ?, 1)");
                     $stmtPref->execute([$newId, $detectedLang]);
 
@@ -317,16 +294,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     unset($_SESSION['pending_verification_email']);
                     logUserAccess($pdo, $newId);
                     
-                    sendJsonResponse('success', "Cuenta creada.", $basePath);
+                    sendJsonResponse('success', __('api.success.account_created'), $basePath);
                 } else {
-                    sendJsonResponse('error', "Error al crear usuario.");
+                    sendJsonResponse('error', __('api.error.db_error'));
                 }
             } else {
                 logSecurityEvent($pdo, $emailIdentifier, 'verify_fail');
-                sendJsonResponse('error', "Código inválido o expirado.");
+                sendJsonResponse('error', __('api.error.invalid_code'));
             }
         } else {
-            sendJsonResponse('error', "Ingresa el código.");
+            sendJsonResponse('error', __('api.error.missing_data'));
         }
     }
 
@@ -347,23 +324,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['uuid'] = $user['uuid'];
             $_SESSION['role'] = $user['role'];
             logUserAccess($pdo, $user['id']);
-            sendJsonResponse('success', "Bienvenido", $basePath);
+            sendJsonResponse('success', __('api.success.welcome'), $basePath);
         } else {
             logSecurityEvent($pdo, $email, 'login_fail');
-            sendJsonResponse('error', "Credenciales incorrectas.");
+            sendJsonResponse('error', __('api.error.credentials'));
         }
     }
 
-    // 6. ACTUALIZAR PERFIL (Datos Básicos)
+    // 6. ACTUALIZAR PERFIL
     if ($action === 'update_profile') {
-        if (!isset($_SESSION['user_id'])) sendJsonResponse('error', "No autenticado.");
+        if (!isset($_SESSION['user_id'])) sendJsonResponse('error', __('api.error.no_auth'));
 
         $userId = $_SESSION['user_id'];
         $newUsername = trim($input['username'] ?? '');
         $newEmail = trim($input['email'] ?? '');
 
-        if (empty($newUsername) || empty($newEmail)) sendJsonResponse('error', "Campos requeridos.");
-        if (strlen($newUsername) < 6) sendJsonResponse('error', "Usuario: mín. 6 caracteres.");
+        if (empty($newUsername) || empty($newEmail)) sendJsonResponse('error', __('api.error.missing_data'));
+        if (strlen($newUsername) < 6) sendJsonResponse('error', __('api.error.username_short'));
 
         $emailVal = validateEmailRequirements($newEmail);
         if ($emailVal !== true) sendJsonResponse('error', $emailVal);
@@ -372,47 +349,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmtCheck->execute([$newUsername, $newEmail, $userId]);
         
         if ($stmtCheck->rowCount() > 0) {
-            sendJsonResponse('error', "El nombre de usuario o correo ya está en uso.");
+            sendJsonResponse('error', __('api.error.username_exists'));
         }
 
         $updateStmt = $pdo->prepare("UPDATE users SET username = ?, email = ? WHERE id = ?");
         if ($updateStmt->execute([$newUsername, $newEmail, $userId])) {
             $_SESSION['username'] = $newUsername;
-            sendJsonResponse('success', "Perfil actualizado.", null, ['username' => $newUsername, 'email' => $newEmail]);
+            sendJsonResponse('success', __('api.success.profile_updated'), null, ['username' => $newUsername, 'email' => $newEmail]);
         } else {
-            sendJsonResponse('error', "Error al guardar cambios.");
+            sendJsonResponse('error', __('api.error.db_error'));
         }
     }
 
-    // 6.1 [NUEVO] ACTUALIZAR PREFERENCIAS
+    // 6.1 ACTUALIZAR PREFERENCIAS
     if ($action === 'update_preferences') {
-        if (!isset($_SESSION['user_id'])) sendJsonResponse('error', "No autenticado.");
+        if (!isset($_SESSION['user_id'])) sendJsonResponse('error', __('api.error.no_auth'));
         $userId = $_SESSION['user_id'];
         
-        // Recibir datos, si no vienen, no se actualizan
         $language = $input['language'] ?? null;
         $openLinks = isset($input['open_links_new_tab']) ? (int)$input['open_links_new_tab'] : null;
 
-        // Construcción dinámica del query
         $fields = [];
         $params = [];
 
         if ($language) {
             $allowedLangs = ['es-419', 'en-US', 'en-GB', 'fr-FR', 'pt-BR'];
             if (!in_array($language, $allowedLangs)) {
-                sendJsonResponse('error', "Idioma no soportado.");
+                // Silencioso o error
+            } else {
+                $fields[] = "language = ?";
+                $params[] = $language;
             }
-            $fields[] = "language = ?";
-            $params[] = $language;
         }
 
         if ($openLinks !== null) {
             $fields[] = "open_links_new_tab = ?";
-            $params[] = $openLinks; // 1 o 0
+            $params[] = $openLinks; 
         }
 
         if (empty($fields)) {
-            sendJsonResponse('success', "Nada que actualizar.");
+            sendJsonResponse('success', "OK"); 
         }
 
         $params[] = $userId;
@@ -421,21 +397,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $stmt = $pdo->prepare($sql);
             if ($stmt->execute($params)) {
-                sendJsonResponse('success', "Preferencias guardadas.");
+                sendJsonResponse('success', __('api.success.preferences_saved'));
             } else {
-                sendJsonResponse('error', "Error al guardar preferencias.");
+                sendJsonResponse('error', __('api.error.db_error'));
             }
         } catch (Exception $e) {
-            sendJsonResponse('error', "Error DB: " . $e->getMessage());
+            sendJsonResponse('error', __('api.error.db_error'));
         }
     }
 
-    // 7. SUBIR FOTO DE PERFIL
+    // 7. SUBIR FOTO
     if ($action === 'upload_profile_picture') {
-        if (!isset($_SESSION['user_id'])) sendJsonResponse('error', "No autenticado.");
+        if (!isset($_SESSION['user_id'])) sendJsonResponse('error', __('api.error.no_auth'));
         
         if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
-             sendJsonResponse('error', "Error al subir la imagen.");
+             sendJsonResponse('error', __('error.load_content'));
         }
 
         $file = $_FILES['image'];
@@ -445,11 +421,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $mime = $finfo->file($file['tmp_name']);
         
         if (!in_array($mime, $allowedTypes)) {
-            sendJsonResponse('error', "Formato inválido (solo JPG, PNG, WEBP).");
+            sendJsonResponse('error', __('api.error.upload_format'));
         }
         
         if ($file['size'] > 2 * 1024 * 1024) {
-            sendJsonResponse('error', "La imagen pesa más de 2MB.");
+            sendJsonResponse('error', __('api.error.upload_size'));
         }
 
         $uuid = $_SESSION['uuid'];
@@ -463,32 +439,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $uploadSuccess = false;
-
         if ($src) {
             imagepng($src, $targetFile, 9);
             imagedestroy($src);
             $uploadSuccess = true;
         } else {
-             if(move_uploaded_file($file['tmp_name'], $targetFile)) {
-                $uploadSuccess = true;
-             }
+             if(move_uploaded_file($file['tmp_name'], $targetFile)) $uploadSuccess = true;
         }
 
         if ($uploadSuccess) {
             $defaultFile = DIR_DEFAULT . $uuid . '.png';
-            if (file_exists($defaultFile)) {
-                unlink($defaultFile);
-            }
+            if (file_exists($defaultFile)) unlink($defaultFile);
             $url = $basePath . URL_BASE_AVATARS . 'custom/' . $uuid . '.png?v=' . time();
-            sendJsonResponse('success', "Foto actualizada.", null, ['url' => $url]);
+            sendJsonResponse('success', __('api.success.photo_updated'), null, ['url' => $url]);
         } else {
-            sendJsonResponse('error', "Error al procesar imagen.");
+            sendJsonResponse('error', __('api.error.db_error'));
         }
     }
 
-    // 8. ELIMINAR FOTO DE PERFIL
+    // 8. ELIMINAR FOTO
     if ($action === 'delete_profile_picture') {
-         if (!isset($_SESSION['user_id'])) sendJsonResponse('error', "No autenticado.");
+         if (!isset($_SESSION['user_id'])) sendJsonResponse('error', __('api.error.no_auth'));
          $uuid = $_SESSION['uuid'];
          $username = $_SESSION['username'];
          
@@ -501,7 +472,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          ensureDefaultAvatarExists($uuid, $username);
 
          $defaultUrl = $basePath . URL_BASE_AVATARS . 'default/' . $uuid . '.png?v=' . time();
-         sendJsonResponse('success', "Foto eliminada.", null, ['url' => $defaultUrl]);
+         sendJsonResponse('success', __('api.success.photo_deleted'), null, ['url' => $defaultUrl]);
     }
 
     // 9. PASSWORD RESET
@@ -510,7 +481,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         checkRateLimit($pdo, $email, 'recovery_request', 3, 60, true);
         logSecurityEvent($pdo, $email, 'recovery_request');
 
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) sendJsonResponse('error', "Correo inválido.");
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) sendJsonResponse('error', __('api.error.email_format'));
 
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
@@ -519,24 +490,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $checkLimit = $pdo->prepare("SELECT id FROM password_resets WHERE email = ? AND created_at > (NOW() - INTERVAL 60 SECOND)");
             $checkLimit->execute([$email]);
             if ($checkLimit->rowCount() > 0) {
-                sendJsonResponse('error', "Espera 60s para otro enlace.");
+                sendJsonResponse('error', __('api.error.wait_resend'));
             }
 
             $token = bin2hex(random_bytes(32));
             $pdo->prepare("DELETE FROM password_resets WHERE email = ?")->execute([$email]);
             $ins = $pdo->prepare("INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 1 HOUR))");
             if ($ins->execute([$email, $token])) {
-                sendJsonResponse('success', "Enlace generado (backend).");
+                sendJsonResponse('success', __('api.success.link_generated'));
             }
         } else {
-            sendJsonResponse('error', "Si existe, se enviará.");
+            sendJsonResponse('error', __('api.success.link_generated')); // Seguridad: no revelar si existe
         }
     }
 
     if ($action === 'reset_password') {
         $token = $input['token'] ?? '';
         $newPass = $input['password'] ?? '';
-        if (strlen($newPass) < 8) sendJsonResponse('error', "Mínimo 8 caracteres.");
+        if (strlen($newPass) < 8) sendJsonResponse('error', __('api.error.password_short'));
 
         $stmt = $pdo->prepare("SELECT email FROM password_resets WHERE token = ? AND expires_at > NOW() LIMIT 1");
         $stmt->execute([$token]);
@@ -546,9 +517,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $hash = password_hash($newPass, PASSWORD_DEFAULT);
             $pdo->prepare("UPDATE users SET password = ? WHERE email = ?")->execute([$hash, $req['email']]);
             $pdo->prepare("DELETE FROM password_resets WHERE token = ?")->execute([$token]);
-            sendJsonResponse('success', "Contraseña actualizada.", $basePath . "login");
+            sendJsonResponse('success', __('api.success.password_updated'), $basePath . "login");
         } else {
-            sendJsonResponse('error', "Token inválido.");
+            sendJsonResponse('error', __('api.error.invalid_code'));
         }
     }
 
@@ -559,9 +530,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             setcookie(session_name(), '', time() - 42000, $params["path"], $params["domain"], $params["secure"], $params["httponly"]);
         }
         session_destroy();
-        sendJsonResponse('success', "Sesión cerrada.", $basePath . "login");
+        sendJsonResponse('success', __('api.success.logout'), $basePath . "login");
     }
 
-    sendJsonResponse('error', "Acción no válida.");
+    sendJsonResponse('error', "Action invalid");
 }
 ?>

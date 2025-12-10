@@ -5,10 +5,8 @@
 
 import { AuthService } from './api-services.js';
 
-// Variable global para el intervalo del timer
 let countdownInterval;
 
-// Función para mostrar errores en la interfaz
 const showError = (message) => {
     let alertBox = document.querySelector('.alert.error');
     
@@ -41,25 +39,20 @@ const showError = (message) => {
     } 
 };
 
-// Función auxiliar para manejar la respuesta del servicio
 const handleAuthResponse = (result, buttons) => {
     if (result.status === 'success') {
         window.location.href = result.redirect;
     } else {
-        showError(result.message || 'Ocurrió un error desconocido.');
+        // Usa el mensaje del backend si existe, sino un genérico traducido
+        showError(result.message || window.t('global.error'));
         buttons.forEach(btn => {
             btn.disabled = false;
             btn.style.opacity = '1';
-            btn.textContent = 'Continuar'; 
+            btn.textContent = window.t('global.continue'); 
         });
     }
 };
 
-/**
- * Función para manejar el temporizador de reenvío (60s)
- * @param {string} timerElementId - ID del elemento span que muestra el contador
- * @param {string} buttonElementId - ID del enlace/botón que se debe deshabilitar/habilitar
- */
 const startTimer = (timerElementId, buttonElementId) => {
     const timerDisplay = document.getElementById(timerElementId);
     const button = document.getElementById(buttonElementId);
@@ -68,12 +61,10 @@ const startTimer = (timerElementId, buttonElementId) => {
 
     let timeLeft = 60;
     
-    // UI Inicial del timer
     button.style.pointerEvents = 'none';
     button.style.color = '#999';
     timerDisplay.textContent = `(${timeLeft})`;
 
-    // Limpiar intervalo previo si existe
     if (countdownInterval) clearInterval(countdownInterval);
 
     countdownInterval = setInterval(() => {
@@ -82,28 +73,25 @@ const startTimer = (timerElementId, buttonElementId) => {
 
         if (timeLeft <= 0) {
             clearInterval(countdownInterval);
-            timerDisplay.textContent = ''; // Borrar (0)
+            timerDisplay.textContent = ''; 
             button.style.pointerEvents = 'auto';
-            button.style.color = '#000'; // Color activo
+            button.style.color = '#000'; 
             button.style.textDecoration = 'underline';
         }
     }, 1000);
 };
 
-// Función asíncrona genérica para procesar formularios
 const processAuthAction = async (actionType, data) => {
-    // 1. UI: Bloquear botones
     const buttons = document.querySelectorAll('.btn-primary');
     buttons.forEach(btn => {
         btn.disabled = true; 
         btn.style.opacity = '0.7';
-        btn.textContent = 'Procesando...';
+        btn.textContent = window.t('global.processing');
     });
 
     try {
         let result;
 
-        // 2. Lógica: Llamar al servicio correspondiente
         switch (actionType) {
             case 'login':
                 result = await AuthService.login(data.email, data.password);
@@ -121,16 +109,14 @@ const processAuthAction = async (actionType, data) => {
             case 'resend_verification_code':
                 result = await AuthService.resendVerificationCode();
                 if (result.status === 'success') {
-                    // Reiniciar timer
                     startTimer('register-timer', 'btn-resend-code');
-                    // Resetear botones UI manual porque no recarga página
                     buttons.forEach(btn => {
                         btn.disabled = false;
                         btn.style.opacity = '1';
-                        btn.textContent = 'Verificar y Crear Cuenta'; 
+                        btn.textContent = window.t('auth.register.verify_button'); 
                     });
-                    // Mostrar mensaje flotante nativo o simple
-                    alert('Código reenviado correctamente: ' + (result.message.replace('Código reenviado: ', '') || 'Revisa tu correo'));
+                    // Mensaje flotante simple, usa la respuesta del back que ya viene traducida si usaste el handler nuevo
+                    alert(result.message);
                     return; 
                 }
                 break;
@@ -139,19 +125,14 @@ const processAuthAction = async (actionType, data) => {
                 result = await AuthService.requestPasswordReset(data.email);
                 
                 if (result.status === 'success') {
-                    // Mostrar contenedor de reenvío
                     const resendContainer = document.getElementById('resend-container');
                     if(resendContainer) {
                         resendContainer.style.display = 'block';
                         startTimer('recover-timer', 'btn-resend-link');
                     }
-
-                    // [CLEANUP] Eliminada lógica de simulación de link (Backdoor removido)
-                    
-                    // No redirigimos automáticamente
                     buttons.forEach(btn => {
                         btn.disabled = false;
-                        btn.textContent = 'Enviado';
+                        btn.textContent = window.t('api.success.code_sent'); // O "Enviado"
                     });
                     return; 
                 }
@@ -165,22 +146,20 @@ const processAuthAction = async (actionType, data) => {
                 throw new Error('Acción no reconocida');
         }
 
-        // 3. UI: Manejar respuesta
         handleAuthResponse(result, buttons);
 
     } catch (error) {
         console.error("Error en AuthController:", error);
-        showError("Error de conexión local.");
+        showError(window.t('js.error.connection'));
         buttons.forEach(btn => {
             btn.disabled = false;
             btn.style.opacity = '1';
-            btn.textContent = 'Reintentar';
+            btn.textContent = window.t('global.retry');
         });
     }
 };
 
 const setupAuthListeners = () => {
-    // Inicializar timer si estamos en la vista de verificación al cargar
     if(document.getElementById('register-timer')) {
         startTimer('register-timer', 'btn-resend-code');
     }
@@ -196,7 +175,7 @@ const setupAuthListeners = () => {
             if(email && password && email.value && password.value) {
                 processAuthAction('login', { email: email.value, password: password.value });
             } else {
-                showError("Por favor completa todos los campos.");
+                showError(window.t('js.error.complete_fields'));
             }
         }
 
@@ -212,25 +191,25 @@ const setupAuthListeners = () => {
                 const allowedDomains = ['gmail.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'yahoo.com'];
 
                 if (!emailVal.includes('@')) {
-                    showError("Formato de correo inválido."); return;
+                    showError(window.t('api.error.email_format')); return;
                 }
                 const lastAtPos = emailVal.lastIndexOf('@');
                 const localPart = emailVal.substring(0, lastAtPos);
                 const domainPart = emailVal.substring(lastAtPos + 1).toLowerCase();
 
                 if (localPart.length < 4) {
-                    showError("El correo debe tener al menos 4 caracteres antes del @."); return;
+                    showError(window.t('api.error.email_format')); return; 
                 }
                 if (!allowedDomains.includes(domainPart)) {
-                    showError("Dominio no permitido. Use: gmail, outlook, hotmail, icloud o yahoo."); return;
+                    showError(window.t('api.error.email_domain')); return;
                 }
                 if (passVal.length < 8) {
-                    showError("La contraseña debe tener al menos 8 caracteres."); return;
+                    showError(window.t('api.error.password_short')); return;
                 }
 
                 processAuthAction('register_step_1', { email: emailVal, password: passVal });
             } else {
-                showError("Por favor completa todos los campos.");
+                showError(window.t('js.error.complete_fields'));
             }
         }
 
@@ -242,11 +221,11 @@ const setupAuthListeners = () => {
             if(username && username.value) {
                 const userVal = username.value.trim();
                 if (userVal.length < 6) {
-                    showError("El nombre de usuario debe tener al menos 6 caracteres."); return;
+                    showError(window.t('api.error.username_short')); return;
                 }
                 processAuthAction('register_step_2', { username: userVal });
             } else {
-                showError("Por favor escribe un nombre de usuario.");
+                showError(window.t('js.error.complete_fields')); // "Por favor escribe un nombre de usuario"
             }
         }
 
@@ -258,19 +237,18 @@ const setupAuthListeners = () => {
             if(code && code.value) {
                 processAuthAction('verify_code', { code: code.value });
             } else {
-                showError("Por favor ingresa el código.");
+                showError(window.t('js.error.complete_fields'));
             }
         }
 
-        // D-2) REENVIAR CÓDIGO (NUEVO)
-        // Usamos closest porque el span del timer está dentro del <a>
+        // D-2) REENVIAR CÓDIGO
         const resendBtn = e.target.closest('#btn-resend-code');
         if (resendBtn) {
             e.preventDefault();
             processAuthAction('resend_verification_code', {});
         }
 
-        // E) LOGOUT (Delegación de eventos usando closest)
+        // E) LOGOUT
         const logoutBtn = e.target.closest('#btn-logout');
         if (logoutBtn) {
             e.preventDefault(); 
@@ -285,17 +263,16 @@ const setupAuthListeners = () => {
             if(email && email.value) {
                 processAuthAction('request_password_reset', { email: email.value.trim() });
             } else {
-                showError("Por favor ingresa tu correo electrónico.");
+                showError(window.t('js.error.complete_fields'));
             }
         }
 
-        // F-2) REENVIAR ENLACE RECUPERACIÓN (NUEVO)
+        // F-2) REENVIAR ENLACE RECUPERACIÓN
         const resendLinkBtn = e.target.closest('#btn-resend-link');
         if (resendLinkBtn) {
             e.preventDefault();
             const email = document.getElementById('recover-email');
             if(email && email.value) {
-                // Reutilizamos la acción request_password_reset para reenviar
                 processAuthAction('request_password_reset', { email: email.value.trim() });
             }
         }
@@ -309,11 +286,11 @@ const setupAuthListeners = () => {
 
             if(pass1 && pass2 && token && pass1.value && pass2.value) {
                 if (pass1.value !== pass2.value) {
-                    showError("Las contraseñas no coinciden.");
+                    showError(window.t('js.error.pass_mismatch'));
                     return;
                 }
                 if (pass1.value.length < 8) {
-                    showError("La contraseña debe tener al menos 8 caracteres.");
+                    showError(window.t('api.error.password_short'));
                     return;
                 }
                 processAuthAction('reset_password', { 
@@ -321,19 +298,16 @@ const setupAuthListeners = () => {
                     password: pass1.value 
                 });
             } else {
-                showError("Por favor completa todos los campos.");
+                showError(window.t('js.error.complete_fields'));
             }
         }
     });
 
-    // Soporte ENTER
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
-            // Se agregaron los botones de recuperación a la lista
             const btns = ['btn-login', 'btn-register-step-1', 'btn-register-step-2', 'btn-verify', 'btn-recover-request', 'btn-recover-reset'];
             for(let id of btns){
                 const btn = document.getElementById(id);
-                // Verificación extra para asegurar que el botón está visible en el DOM
                 if(btn && !btn.disabled && document.body.contains(btn)) { 
                     btn.click(); 
                     break; 

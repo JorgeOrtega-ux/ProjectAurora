@@ -10,7 +10,6 @@ $userId = $_SESSION['user_id'] ?? 0;
 
 if ($userId) {
     try {
-        // [MODIFICADO] JOIN con user_preferences
         $stmt = $pdo->prepare("
             SELECT u.username, u.email, u.role, u.uuid, 
                    p.language, p.open_links_new_tab 
@@ -22,7 +21,6 @@ if ($userId) {
         $userDB = $stmt->fetch();
         if ($userDB) {
             $currentUser = $userDB;
-            // Fallback si la preferencia es nula por algún error de integridad
             if (empty($currentUser['language'])) $currentUser['language'] = 'en-US';
             if (!isset($currentUser['open_links_new_tab'])) $currentUser['open_links_new_tab'] = 1; 
         }
@@ -30,7 +28,6 @@ if ($userId) {
 }
 
 if (empty($currentUser)) {
-    // Fallback visual si falla todo
     $currentUser = [
         'username' => $_SESSION['username'] ?? 'Usuario',
         'email'    => 'No disponible',
@@ -61,7 +58,7 @@ if (!empty($currentUser['uuid'])) {
     $finalAvatarSrc = ''; 
 }
 
-// 3. MAPA DE IDIOMAS (Para mostrar el texto correcto en el dropdown)
+// 3. MAPA DE IDIOMAS
 $languagesMap = [
     'es-419' => ['label' => 'Español (Latinoamérica)', 'icon' => 'language'],
     'en-US'  => ['label' => 'English (US)', 'icon' => 'translate'],
@@ -70,18 +67,16 @@ $languagesMap = [
     'pt-BR'  => ['label' => 'Português (Brasil)', 'icon' => 'public'],
 ];
 
-// Obtener datos del idioma actual para pintar el selector
 $currentLangCode = $currentUser['language'];
 $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
-
 ?>
 
 <div class="section-content active" data-section="settings/your-profile">
     <div class="component-wrapper">
 
         <div class="component-header-card">
-            <h1 class="component-page-title">Tu Perfil</h1>
-            <p class="component-page-description">Gestiona tu identidad y preferencias personales.</p>
+            <h1 class="component-page-title"><?= __('settings.profile.title') ?></h1>
+            <p class="component-page-description"><?= __('settings.profile.desc') ?></p>
         </div>
 
         <div class="component-card component-card--grouped">
@@ -97,8 +92,8 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                         </div>
                     </div>
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Foto de Perfil</h2>
-                        <p class="component-card__description">Visible para todos.</p>
+                        <h2 class="component-card__title"><?= __('settings.profile.photo_title') ?></h2>
+                        <p class="component-card__description"><?= __('settings.profile.photo_desc') ?></p>
                     </div>
                 </div>
                 
@@ -113,12 +108,12 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                         </button>
                         <button type="button" class="component-button primary" data-action="profile-picture-upload-trigger">
                             <span class="material-symbols-rounded">upload</span> 
-                            <span data-element="upload-btn-text"><?php echo $hasCustomAvatar ? 'Cambiar' : 'Subir foto'; ?></span>
+                            <span data-element="upload-btn-text"><?php echo $hasCustomAvatar ? __('settings.profile.change_btn') : __('settings.profile.upload_btn'); ?></span>
                         </button>
                     </div>
                     <div class="disabled" data-state="profile-picture-actions-preview">
-                        <button type="button" class="component-button" data-action="profile-picture-cancel-trigger">Cancelar</button>
-                        <button type="button" class="component-button primary" data-action="profile-picture-save-trigger-btn">Guardar</button>
+                        <button type="button" class="component-button" data-action="profile-picture-cancel-trigger"><?= __('global.cancel') ?></button>
+                        <button type="button" class="component-button primary" data-action="profile-picture-save-trigger-btn"><?= __('global.save') ?></button>
                     </div>
                 </div>
             </div>
@@ -128,7 +123,7 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
             <div class="component-group-item" data-component="username-section">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Nombre de usuario</h2>
+                        <h2 class="component-card__title"><?= __('settings.profile.username_title') ?></h2>
                         
                         <div class="active" data-state="username-view-state">
                             <span style="font-size: 13px; color: #333;" data-element="username-display-text">
@@ -145,8 +140,8 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                             </div>
 
                             <div class="component-card__actions disabled" data-state="username-actions-edit" style="margin: 0;">
-                                <button type="button" class="component-button" data-action="username-cancel-trigger">Cancelar</button>
-                                <button type="button" class="component-button primary" data-action="username-save-trigger-btn">Guardar</button>
+                                <button type="button" class="component-button" data-action="username-cancel-trigger"><?= __('global.cancel') ?></button>
+                                <button type="button" class="component-button primary" data-action="username-save-trigger-btn"><?= __('global.save') ?></button>
                             </div>
 
                         </div>
@@ -155,7 +150,7 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                 
                 <div class="component-card__actions actions-right">
                     <div class="active" data-state="username-actions-view">
-                        <button type="button" class="component-button" data-action="username-edit-trigger">Editar</button>
+                        <button type="button" class="component-button" data-action="username-edit-trigger"><?= __('global.edit') ?></button>
                     </div>
                 </div>
             </div>
@@ -165,7 +160,7 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
             <div class="component-group-item" data-component="email-section">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Correo electrónico</h2>
+                        <h2 class="component-card__title"><?= __('settings.profile.email_title') ?></h2>
                         
                         <div class="active" data-state="email-view-state">
                             <span style="font-size: 13px; color: #333;" data-element="email-display-text">
@@ -182,8 +177,8 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                             </div>
 
                             <div class="component-card__actions disabled" data-state="email-actions-edit" style="margin: 0;">
-                                <button type="button" class="component-button" data-action="email-cancel-trigger">Cancelar</button>
-                                <button type="button" class="component-button primary" data-action="email-save-trigger-btn">Guardar</button>
+                                <button type="button" class="component-button" data-action="email-cancel-trigger"><?= __('global.cancel') ?></button>
+                                <button type="button" class="component-button primary" data-action="email-save-trigger-btn"><?= __('global.save') ?></button>
                             </div>
 
                         </div>
@@ -192,7 +187,7 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
 
                 <div class="component-card__actions actions-right">
                     <div class="active" data-state="email-actions-view">
-                        <button type="button" class="component-button" data-action="email-edit-trigger">Editar</button>
+                        <button type="button" class="component-button" data-action="email-edit-trigger"><?= __('global.edit') ?></button>
                     </div>
                 </div>
             </div>
@@ -204,8 +199,8 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Idioma</h2>
-                        <p class="component-card__description">Selecciona el idioma de la interfaz.</p>
+                        <h2 class="component-card__title"><?= __('settings.profile.language_title') ?></h2>
+                        <p class="component-card__description"><?= __('settings.profile.language_desc') ?></p>
                     </div>
                 </div>
                 <div class="component-card__actions">
@@ -237,8 +232,8 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
             <div class="component-group-item">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Abrir enlaces en pestaña nueva</h2>
-                        <p class="component-card__description">Los enlaces externos se abrirán en otra ventana.</p>
+                        <h2 class="component-card__title"><?= __('settings.profile.links_title') ?></h2>
+                        <p class="component-card__description"><?= __('settings.profile.links_desc') ?></p>
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">

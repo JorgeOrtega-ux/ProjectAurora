@@ -1,12 +1,11 @@
 <?php
 // public/index.php
-
 require_once __DIR__ . '/../includes/router.php';
 
 $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
 ?>
 <!DOCTYPE html>
-<html lang="es">
+<html lang="<?php echo isset($userLang) ? $userLang : 'es'; ?>">
 
 <head>
     <meta charset="UTF-8">
@@ -15,12 +14,19 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
 
     <script>
         window.BASE_PATH = '<?php echo $basePath; ?>';
+        // INYECCIÓN DE TRADUCCIONES AL FRONTEND (Sin fetch adicional)
+        window.TRANSLATIONS = <?php echo json_encode($GLOBALS['AURORA_TRANSLATIONS']); ?>;
+        
+        // Helper simple de JS global
+        window.t = function(key) {
+            return window.TRANSLATIONS[key] || key;
+        };
     </script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded">
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/styles.css">
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/components.css">
 
-    <title>ProjectAurora</title>
+    <title><?php echo __('app.name'); ?></title>
 
     <?php if (!$isLoggedIn): ?>
         <style>
@@ -56,7 +62,7 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
                                             <span class="material-symbols-rounded">search</span>
                                         </div>
                                         <div class="search-input">
-                                            <input type="text" placeholder="Buscar...">
+                                            <input type="text" placeholder="<?php echo __('global.search_placeholder'); ?>">
                                         </div>
                                     </div>
                                 </div>
@@ -69,18 +75,13 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
                                         data-role="<?php echo htmlspecialchars($userRole); ?>">
 
                                         <?php
-                                        // --- LÓGICA DE HEADER UNIFICADA ---
                                         $hasImage = false;
                                         $avatarSrc = '';
-
                                         if (isset($_SESSION['uuid'])) {
                                             $uuid = $_SESSION['uuid'];
-
-                                            // Nuevas rutas unificadas
                                             $relCustom  = 'assets/uploads/avatars/custom/' . $uuid . '.png';
                                             $relDefault = 'assets/uploads/avatars/default/' . $uuid . '.png';
 
-                                            // Comprobación física
                                             if (file_exists(__DIR__ . '/' . $relCustom)) {
                                                 $avatarSrc = $basePath . $relCustom . '?v=' . microtime(true);
                                                 $hasImage = true;
@@ -92,9 +93,7 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
                                         ?>
 
                                         <?php if ($hasImage): ?>
-                                            <img src="<?php echo $avatarSrc; ?>"
-                                                alt="Perfil"
-                                                class="profile-img">
+                                            <img src="<?php echo $avatarSrc; ?>" alt="Perfil" class="profile-img">
                                         <?php else: ?>
                                             <span style="font-weight:bold; color:#555; position: relative; z-index: 1;">
                                                 <?php echo strtoupper(substr($_SESSION['username'], 0, 1)); ?>
@@ -112,7 +111,7 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
                                                     <span class="material-symbols-rounded">settings</span>
                                                 </div>
                                                 <div class="menu-link-text">
-                                                    <span>Configuración</span>
+                                                    <span><?php echo __('menu.settings'); ?></span>
                                                 </div>
                                             </div>
 
@@ -121,7 +120,7 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
                                                     <span class="material-symbols-rounded">logout</span>
                                                 </div>
                                                 <div class="menu-link-text">
-                                                    <span>Cerrar sesión</span>
+                                                    <span><?php echo __('menu.logout'); ?></span>
                                                 </div>
                                             </div>
 
@@ -146,7 +145,7 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
                                                 <span class="material-symbols-rounded">home</span>
                                             </div>
                                             <div class="menu-link-text">
-                                                <span>Página principal</span>
+                                                <span><?php echo __('menu.home'); ?></span>
                                             </div>
                                         </div>
 
@@ -155,7 +154,7 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
                                                 <span class="material-symbols-rounded">explore</span>
                                             </div>
                                             <div class="menu-link-text">
-                                                <span>Explorar colecciones</span>
+                                                <span><?php echo __('menu.explore'); ?></span>
                                             </div>
                                         </div>
                                     </div>
@@ -166,7 +165,7 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
                                                 <span class="material-symbols-rounded">arrow_back</span>
                                             </div>
                                             <div class="menu-link-text">
-                                                <span>Volver al inicio</span>
+                                                <span><?php echo __('global.back_home'); ?></span>
                                             </div>
                                         </div>
 
@@ -175,7 +174,7 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
                                                 <span class="material-symbols-rounded">account_circle</span>
                                             </div>
                                             <div class="menu-link-text">
-                                                <span>Tu perfil</span>
+                                                <span><?php echo __('menu.profile'); ?></span>
                                             </div>
                                         </div>
 
@@ -184,7 +183,7 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
                                                 <span class="material-symbols-rounded">lock</span>
                                             </div>
                                             <div class="menu-link-text">
-                                                <span>Inicio de sesión y seguridad</span>
+                                                <span><?php echo __('menu.security'); ?></span>
                                             </div>
                                         </div>
 
@@ -193,7 +192,7 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
                                                 <span class="material-symbols-rounded">accessibility_new</span>
                                             </div>
                                             <div class="menu-link-text">
-                                                <span>Accesibilidad</span>
+                                                <span><?php echo __('menu.accessibility'); ?></span>
                                             </div>
                                         </div>
                                     </div>

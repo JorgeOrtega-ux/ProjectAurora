@@ -33,16 +33,14 @@ const toggleEditMode = (section, isEditing) => {
     }
 };
 
-/* --- LÓGICA UI PARA DROPDOWNS (Y GUARDADO DE IDIOMA) --- */
+/* --- LÓGICA UI PARA DROPDOWNS --- */
 const setupDropdownUI = () => {
     document.addEventListener('click', (e) => {
-        // 1. Manejar apertura/cierre
         if (e.target.closest('[data-action="toggle-dropdown"]')) {
             const trigger = e.target.closest('[data-action="toggle-dropdown"]');
             const wrapper = trigger.closest('.trigger-select-wrapper');
             const menu = wrapper.querySelector('.popover-module');
             
-            // Cerrar otros
             document.querySelectorAll('.popover-module.active').forEach(el => {
                 if (el !== menu) el.classList.remove('active');
             });
@@ -56,20 +54,18 @@ const setupDropdownUI = () => {
             return;
         }
 
-        // 2. Manejar selección (Visual + Guardado)
         if (e.target.closest('.menu-link')) {
             const link = e.target.closest('.menu-link');
             const menu = link.closest('.popover-module');
             const wrapper = link.closest('.trigger-select-wrapper');
             
             if (wrapper) {
-                // Actualizar UI
                 const triggerText = wrapper.querySelector('.trigger-select-text');
                 const triggerIcon = wrapper.querySelector('.trigger-select-icon');
 
                 const linkText = link.querySelector('.menu-link-text');
                 const linkIcon = link.querySelector('.menu-link-icon span');
-                const newValue = link.dataset.value; // Valor técnico (ej: es-419)
+                const newValue = link.dataset.value;
 
                 if(triggerText && linkText) triggerText.textContent = linkText.textContent;
                 if(triggerIcon && linkIcon) triggerIcon.textContent = linkIcon.textContent;
@@ -80,17 +76,16 @@ const setupDropdownUI = () => {
                 menu.classList.remove('active');
                 wrapper.querySelector('.trigger-selector').classList.remove('active');
                 
-                // [NUEVO] LOGICA DE GUARDADO AUTOMATICO (Si es el selector de idioma)
                 if (wrapper.dataset.pref === 'language') {
                     console.log("Guardando idioma:", newValue);
                     AuthService.updatePreferences({ language: newValue }).then(res => {
-                        if(res.status !== 'success') alert("Error al guardar preferencia de idioma.");
+                        if(res.status !== 'success') alert(window.t('global.error'));
+                        else window.location.reload(); // Recargar para aplicar idioma
                     });
                 }
             }
         }
 
-        // 3. Cerrar al hacer clic fuera
         if (!e.target.closest('.trigger-select-wrapper')) {
             document.querySelectorAll('.popover-module.active').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.trigger-selector.active').forEach(el => el.classList.remove('active'));
@@ -109,7 +104,8 @@ const handleProfileSave = async (sectionType) => {
     
     const btn = document.querySelector(`[data-action="${sectionType}-save-trigger-btn"]`);
     const originalText = btn.innerText;
-    btn.disabled = true; btn.innerText = "...";
+    btn.disabled = true; 
+    btn.innerText = window.t('global.processing');
 
     try {
         const result = await AuthService.updateProfile(currentUsername, currentEmail);
@@ -121,11 +117,11 @@ const handleProfileSave = async (sectionType) => {
             const section = document.querySelector(`[data-component="${sectionType}-section"]`);
             toggleEditMode(section, false);
         } else {
-            alert(result.message || "Error al actualizar.");
+            alert(result.message || window.t('global.error'));
         }
     } catch (error) {
         console.error(error);
-        alert("Error de conexión.");
+        alert(window.t('js.error.connection'));
     } finally {
         btn.disabled = false; btn.innerText = originalText;
     }
@@ -170,7 +166,8 @@ const setupProfilePictureLogic = (pfpSection) => {
 
             const btn = e.target.closest('button');
             const txt = btn.innerText;
-            btn.innerText = "Guardando..."; btn.disabled = true;
+            btn.innerText = window.t('global.processing'); 
+            btn.disabled = true;
 
             AuthService.uploadProfilePicture(file).then(res => {
                 if(res.status === 'success') {
@@ -180,7 +177,7 @@ const setupProfilePictureLogic = (pfpSection) => {
                     if(headerImg) headerImg.src = originalSrc;
                     pfpSection.dataset.hasCustom = "true";
                     btnDelete.style.display = "flex";
-                    btnUploadText.innerText = "Cambiar";
+                    btnUploadText.innerText = window.t('settings.profile.change_btn');
                     actionsPreview.classList.remove('active'); actionsPreview.classList.add('disabled');
                     actionsDefault.classList.remove('disabled'); actionsDefault.classList.add('active');
                     fileInput.value = '';
@@ -189,14 +186,14 @@ const setupProfilePictureLogic = (pfpSection) => {
                 }
             }).catch(err => {
                 console.error(err);
-                alert("Error de red");
+                alert(window.t('js.error.connection'));
             }).finally(() => {
                 btn.innerText = txt; btn.disabled = false;
             });
         }
 
         if (e.target.closest('[data-action="profile-picture-remove-trigger"]')) {
-            if(!confirm("¿Eliminar foto de perfil actual?")) return;
+            if(!confirm(window.t('global.delete') + "?")) return; // Fallback simple
             btnDelete.disabled = true;
             AuthService.deleteProfilePicture().then(res => {
                 if(res.status === 'success') {
@@ -206,7 +203,7 @@ const setupProfilePictureLogic = (pfpSection) => {
                     if(headerImg) headerImg.src = originalSrc;
                     pfpSection.dataset.hasCustom = "false";
                     btnDelete.style.display = "none";
-                    btnUploadText.innerText = "Subir foto";
+                    btnUploadText.innerText = window.t('settings.profile.upload_btn');
                 } else {
                     alert(res.message);
                 }
@@ -222,28 +219,24 @@ const setupProfilePictureLogic = (pfpSection) => {
     });
 };
 
-/* --- LÓGICA DE PREFERENCIAS (Toggle Links) --- */
+/* --- LÓGICA DE PREFERENCIAS --- */
 const setupPreferencesLogic = () => {
-    // Escuchar cambios en el toggle de enlaces
     const linksToggle = document.getElementById('pref-links-new-tab');
     if (linksToggle) {
         linksToggle.addEventListener('change', (e) => {
             const isChecked = e.target.checked ? 1 : 0;
-            console.log("Guardando preferencia enlaces:", isChecked);
-            
-            // Feedback visual opcional: deshabilitar temporalmente
             e.target.disabled = true;
             
             AuthService.updatePreferences({ open_links_new_tab: isChecked })
                 .then(res => {
                     if (res.status !== 'success') {
-                        e.target.checked = !e.target.checked; // Revertir
-                        alert("Error al guardar configuración.");
+                        e.target.checked = !e.target.checked; 
+                        alert(window.t('global.error'));
                     }
                 })
                 .catch(err => {
                     e.target.checked = !e.target.checked;
-                    alert("Error de conexión");
+                    alert(window.t('js.error.connection'));
                 })
                 .finally(() => {
                     e.target.disabled = false;
@@ -285,7 +278,7 @@ const setupProfileListeners = () => {
     if (pfpSection) setupProfilePictureLogic(pfpSection);
     
     setupDropdownUI();
-    setupPreferencesLogic(); // Iniciar listener de toggle
+    setupPreferencesLogic();
 };
 
 export const initProfileController = () => {
