@@ -62,14 +62,21 @@ const setupDropdownUI = () => {
             
             if (wrapper) {
                 const triggerText = wrapper.querySelector('.trigger-select-text');
-                const triggerIcon = wrapper.querySelector('.trigger-select-icon');
+                const triggerIcon = wrapper.querySelector('.trigger-select-icon'); // El icono del trigger
 
                 const linkText = link.querySelector('.menu-link-text');
-                const linkIcon = link.querySelector('.menu-link-icon span');
+                const linkIcon = link.querySelector('.menu-link-icon span'); // Icono dentro de la opción
                 const newValue = link.dataset.value;
 
                 if(triggerText && linkText) triggerText.textContent = linkText.textContent;
-                if(triggerIcon && linkIcon) triggerIcon.textContent = linkIcon.textContent;
+                
+                // NOTA: Para el idioma, forzamos icono fijo (language), pero para el tema queremos cambiarlo.
+                // Si es tema, actualizamos el icono del trigger con el seleccionado.
+                if(wrapper.dataset.pref === 'theme' && triggerIcon && linkIcon) {
+                     triggerIcon.textContent = linkIcon.textContent;
+                }
+                // Si es idioma, el HTML está fijo a 'language', así que esto no lo romperá si el HTML no tiene la clase adecuada, 
+                // pero por seguridad, como pediste icono fijo para idioma, lo dejamos así.
 
                 menu.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
                 link.classList.add('active');
@@ -77,11 +84,19 @@ const setupDropdownUI = () => {
                 menu.classList.remove('active');
                 wrapper.querySelector('.trigger-selector').classList.remove('active');
                 
+                // --- LÓGICA DE GUARDADO ---
                 if (wrapper.dataset.pref === 'language') {
-                    // Actualización silenciosa o con reload
                     SettingsService.updatePreferences({ language: newValue }).then(res => {
                         if(res.status !== 'success') Toast.error(window.t('global.error'));
                         else window.location.reload(); 
+                    });
+                }
+
+                if (wrapper.dataset.pref === 'theme') {
+                    SettingsService.updatePreferences({ theme: newValue }).then(res => {
+                        if(res.status === 'success') Toast.success(res.message);
+                        else Toast.error(res.message || window.t('global.error'));
+                        // Aquí no recargamos, solo guardamos.
                     });
                 }
             }
@@ -226,30 +241,43 @@ const setupProfilePictureLogic = (pfpSection) => {
 
 /* --- LÓGICA DE PREFERENCIAS --- */
 const setupPreferencesLogic = () => {
-    const linksToggle = document.getElementById('pref-links-new-tab');
-    if (linksToggle) {
-        linksToggle.addEventListener('change', (e) => {
-            const isChecked = e.target.checked ? 1 : 0;
-            e.target.disabled = true;
-            
-            SettingsService.updatePreferences({ open_links_new_tab: isChecked })
-                .then(res => {
-                    if (res.status === 'success') {
-                        Toast.success(res.message);
-                    } else {
-                        e.target.checked = !e.target.checked; 
-                        Toast.error(window.t('global.error'));
-                    }
-                })
-                .catch(err => {
-                    e.target.checked = !e.target.checked;
-                    Toast.error(window.t('js.error.connection'));
-                })
-                .finally(() => {
-                    e.target.disabled = false;
-                });
-        });
-    }
+    
+    // Función genérica para manejar toggles
+    const handleToggle = (elementId, fieldName) => {
+        const toggle = document.getElementById(elementId);
+        if (toggle) {
+            toggle.addEventListener('change', (e) => {
+                const isChecked = e.target.checked ? 1 : 0;
+                e.target.disabled = true;
+                
+                const payload = {};
+                payload[fieldName] = isChecked;
+
+                SettingsService.updatePreferences(payload)
+                    .then(res => {
+                        if (res.status === 'success') {
+                            Toast.success(res.message);
+                        } else {
+                            e.target.checked = !e.target.checked; 
+                            Toast.error(res.message || window.t('global.error'));
+                        }
+                    })
+                    .catch(err => {
+                        e.target.checked = !e.target.checked;
+                        Toast.error(window.t('js.error.connection'));
+                    })
+                    .finally(() => {
+                        e.target.disabled = false;
+                    });
+            });
+        }
+    };
+
+    // 1. Abrir enlaces en pestaña nueva (Perfil)
+    handleToggle('pref-links-new-tab', 'open_links_new_tab');
+
+    // 2. Alertas Extendidas (Accesibilidad)
+    handleToggle('pref-extended-alerts', 'extended_alerts');
 };
 
 const setupProfileListeners = () => {

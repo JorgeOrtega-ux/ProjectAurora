@@ -98,6 +98,13 @@
 
     "settings.accessibility.title": "Accesibilidad",
     "settings.accessibility.desc": "Ajusta la apariencia y comportamiento de la aplicación.",
+    "settings.accessibility.theme_title": "Tema de la aplicación",
+    "settings.accessibility.theme_desc": "Selecciona tu preferencia de apariencia.",
+    "settings.accessibility.theme_system": "Sincronizar con el sistema",
+    "settings.accessibility.theme_light": "Tema claro",
+    "settings.accessibility.theme_dark": "Tema oscuro",
+    "settings.accessibility.alerts_title": "Duración de alertas",
+    "settings.accessibility.alerts_desc": "Aumentar el tiempo de permanencia de las notificaciones.",
 
     "explorer.title": "Explorar Colecciones",
     "explorer.desc": "Descubre nuevo contenido aquí.",

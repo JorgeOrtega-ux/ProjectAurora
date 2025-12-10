@@ -49,8 +49,7 @@ if (!empty($currentUser['uuid'])) {
     $uuid = $currentUser['uuid'];
     $relCustom  = 'assets/uploads/avatars/custom/' . $uuid . '.png';
     $relDefault = 'assets/uploads/avatars/default/' . $uuid . '.png';
-    // Esta ruta ya estaba bien (sube 3 niveles hasta public), pero verifiquemos:
-    // includes/sections/settings/ -> sube 3 -> Raiz -> public. CORRECTO.
+    
     $absCustom  = __DIR__ . '/../../../public/' . $relCustom;
 
     if (file_exists($absCustom)) {
@@ -200,7 +199,6 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
         </div>
 
         <div class="component-card component-card--grouped">
-
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
                     <div class="component-card__text">
@@ -211,7 +209,7 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                 <div class="component-card__actions">
                     <div class="trigger-select-wrapper" data-ui-type="dropdown" data-align="left" data-pref="language">
                         <div class="trigger-selector" data-action="toggle-dropdown">
-                            <span class="material-symbols-rounded trigger-select-icon"><?php echo $currentLangData['icon']; ?></span>
+                            <span class="material-symbols-rounded trigger-select-icon">language</span>
                             <span class="trigger-select-text"><?php echo $currentLangData['label']; ?></span>
                             <span class="material-symbols-rounded">expand_more</span>
                         </div>
@@ -221,7 +219,7 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                                     <div class="menu-link body-text <?php echo ($code === $currentLangCode) ? 'active' : ''; ?>"
                                         data-value="<?php echo $code; ?>">
                                         <div class="menu-link-icon">
-                                            <span class="material-symbols-rounded"><?php echo $data['icon']; ?></span>
+                                            <span class="material-symbols-rounded">language</span>
                                         </div>
                                         <div class="menu-link-text"><?php echo $data['label']; ?></div>
                                     </div>
@@ -231,9 +229,9 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                     </div>
                 </div>
             </div>
+        </div>
 
-            <hr class="component-divider">
-
+        <div class="component-card component-card--grouped">
             <div class="component-group-item">
                 <div class="component-card__content">
                     <div class="component-card__text">
@@ -249,7 +247,6 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                     </label>
                 </div>
             </div>
-
         </div>
 
     </div>

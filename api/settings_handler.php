@@ -138,10 +138,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // ... (Mantener el código existente de profile, update_preferences, etc. aquí abajo) ...
     // --- A) ACTUALIZAR PERFIL ---
     if ($action === 'update_profile') {
-        // ... (código existente igual) ...
         $newUsername = trim($input['username'] ?? '');
         $newEmail = trim($input['email'] ?? '');
         if (empty($newUsername) || empty($newEmail)) sendJsonResponse('error', __('api.error.missing_data'));
@@ -161,13 +159,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             sendJsonResponse('error', __('api.error.db_error'));
         }
     }
-    // --- B) ACTUALIZAR PREFERENCIAS ---
+
+    // --- B) ACTUALIZAR PREFERENCIAS (MODIFICADO) ---
     if ($action === 'update_preferences') {
-        // ... (código existente igual) ...
         $language = $input['language'] ?? null;
         $openLinks = isset($input['open_links_new_tab']) ? (int)$input['open_links_new_tab'] : null;
+        $theme = $input['theme'] ?? null;
+        $extendedAlerts = isset($input['extended_alerts']) ? (int)$input['extended_alerts'] : null;
+
         $fields = [];
         $params = [];
+
+        // 1. Language
         if ($language) {
             $allowedLangs = ['es-419', 'en-US', 'en-GB', 'fr-FR', 'pt-BR'];
             if (in_array($language, $allowedLangs)) {
@@ -175,15 +178,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $params[] = $language;
             }
         }
+        // 2. Open Links in New Tab
         if ($openLinks !== null) {
             $fields[] = "open_links_new_tab = ?";
             $params[] = $openLinks; 
         }
-        if (empty($fields)) {
-            sendJsonResponse('success', "OK"); 
+        // 3. Theme (NUEVO)
+        if ($theme) {
+            $allowedThemes = ['system', 'light', 'dark'];
+            if (in_array($theme, $allowedThemes)) {
+                $fields[] = "theme = ?";
+                $params[] = $theme;
+            }
         }
+        // 4. Extended Alerts (NUEVO)
+        if ($extendedAlerts !== null) {
+            $fields[] = "extended_alerts = ?";
+            $params[] = $extendedAlerts;
+        }
+
+        if (empty($fields)) {
+            sendJsonResponse('success', "OK (Sin cambios)"); 
+        }
+        
         $params[] = $userId;
         $sql = "UPDATE user_preferences SET " . implode(', ', $fields) . " WHERE user_id = ?";
+        
         try {
             $stmt = $pdo->prepare($sql);
             if ($stmt->execute($params)) {
@@ -195,9 +215,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             sendJsonResponse('error', __('api.error.db_error'));
         }
     }
+
     // --- C) SUBIR FOTO ---
     if ($action === 'upload_profile_picture') {
-        // ... (código existente igual, asegúrate de mantenerlo)
          if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
              sendJsonResponse('error', __('error.load_content'));
         }
@@ -238,7 +258,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     // --- D) DELETE PHOTO ---
     if ($action === 'delete_profile_picture') {
-         // ... (código existente igual)
          $uuid = $_SESSION['uuid'];
          $username = $_SESSION['username'];
          $customFile = DIR_CUSTOM . $uuid . '.png';
@@ -251,7 +270,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     // --- E) UPDATE PASSWORD ---
     if ($action === 'update_password') {
-        // ... (código existente igual)
         $currentPass = $input['current_password'] ?? '';
         $newPass     = $input['new_password'] ?? '';
         if (empty($currentPass) || empty($newPass)) {

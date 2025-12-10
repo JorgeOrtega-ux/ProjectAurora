@@ -65,11 +65,14 @@ CREATE TABLE security_logs (
     INDEX idx_security_identifier_action (user_identifier, action_type, created_at)
 );
 
--- 9. [NUEVO] Tabla de Preferencias de Usuario
+-- 9. [MODIFICADO] Tabla de Preferencias de Usuario
+-- Se agregaron 'theme' y 'extended_alerts'
 CREATE TABLE user_preferences (
     user_id INT PRIMARY KEY,
     language VARCHAR(10) DEFAULT 'en-US', -- Idioma de la interfaz
     open_links_new_tab BOOLEAN DEFAULT TRUE, -- Por defecto activado
+    theme VARCHAR(20) DEFAULT 'system', -- system, light, dark
+    extended_alerts BOOLEAN DEFAULT FALSE, -- Por defecto desactivado
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
