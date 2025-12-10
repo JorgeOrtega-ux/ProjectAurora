@@ -104,27 +104,33 @@ if (!empty($currentUser['uuid'])) {
                 <div class="component-card__content">
                     <div class="component-card__text">
                         <h2 class="component-card__title">Nombre de usuario</h2>
+                        
                         <div class="active" data-state="username-view-state" style="margin-top: 4px;">
                             <span class="component-badge" data-element="username-display-text">
                                 @<?php echo htmlspecialchars($currentUser['username']); ?>
                             </span>
                         </div>
-                        <div class="disabled w-100" data-state="username-edit-state" style="margin-top: 8px;">
-                            <div class="component-input-wrapper">
+                        
+                        <div class="disabled w-100 input-group-responsive" data-state="username-edit-state">
+                            
+                            <div class="component-input-wrapper" style="flex: 1;">
                                 <input type="text" class="component-text-input" 
                                        value="<?php echo htmlspecialchars($currentUser['username']); ?>" 
                                        data-element="username-input">
                             </div>
+
+                            <div class="component-card__actions disabled" data-state="username-actions-edit" style="margin: 0;">
+                                <button type="button" class="component-button" data-action="username-cancel-trigger">Cancelar</button>
+                                <button type="button" class="component-button primary" data-action="username-save-trigger-btn">Guardar</button>
+                            </div>
+
                         </div>
                     </div>
                 </div>
+                
                 <div class="component-card__actions actions-right">
                     <div class="active" data-state="username-actions-view">
                         <button type="button" class="component-button" data-action="username-edit-trigger">Editar</button>
-                    </div>
-                    <div class="disabled" data-state="username-actions-edit">
-                        <button type="button" class="component-button" data-action="username-cancel-trigger">Cancelar</button>
-                        <button type="button" class="component-button primary" data-action="username-save-trigger-btn">Guardar</button>
                     </div>
                 </div>
             </div>
@@ -135,27 +141,33 @@ if (!empty($currentUser['uuid'])) {
                 <div class="component-card__content">
                     <div class="component-card__text">
                         <h2 class="component-card__title">Correo electrónico</h2>
+                        
                         <div class="active" data-state="email-view-state" style="margin-top: 4px;">
                             <span style="font-size: 13px; color: #333;" data-element="email-display-text">
                                 <?php echo htmlspecialchars($currentUser['email']); ?>
                             </span>
                         </div>
-                        <div class="disabled w-100" data-state="email-edit-state" style="margin-top: 8px;">
-                            <div class="component-input-wrapper">
+
+                        <div class="disabled w-100 input-group-responsive" data-state="email-edit-state">
+                            
+                            <div class="component-input-wrapper" style="flex: 1;">
                                 <input type="email" class="component-text-input" 
                                        value="<?php echo htmlspecialchars($currentUser['email']); ?>" 
                                        data-element="email-input">
                             </div>
+
+                            <div class="component-card__actions disabled" data-state="email-actions-edit" style="margin: 0;">
+                                <button type="button" class="component-button" data-action="email-cancel-trigger">Cancelar</button>
+                                <button type="button" class="component-button primary" data-action="email-save-trigger-btn">Guardar</button>
+                            </div>
+
                         </div>
                     </div>
                 </div>
+
                 <div class="component-card__actions actions-right">
                     <div class="active" data-state="email-actions-view">
                         <button type="button" class="component-button" data-action="email-edit-trigger">Editar</button>
-                    </div>
-                    <div class="disabled" data-state="email-actions-edit">
-                        <button type="button" class="component-button" data-action="email-cancel-trigger">Cancelar</button>
-                        <button type="button" class="component-button primary" data-action="email-save-trigger-btn">Guardar</button>
                     </div>
                 </div>
             </div>
@@ -174,19 +186,29 @@ if (!empty($currentUser['uuid'])) {
                 <div class="component-card__actions">
                     <div class="trigger-select-wrapper" data-ui-type="dropdown" data-align="left">
                         <div class="trigger-selector" data-action="toggle-dropdown">
+                            <span class="material-symbols-rounded trigger-select-icon">language</span>
                             <span class="trigger-select-text">Español (Latinoamérica)</span>
                             <span class="material-symbols-rounded">expand_more</span>
                         </div>
                         <div class="popover-module">
                             <div class="menu-list">
                                 <div class="menu-link active">
-                                    <div class="menu-link-text" style="padding: 0 12px;">Español (Latinoamérica)</div>
+                                    <div class="menu-link-icon">
+                                        <span class="material-symbols-rounded">language</span>
+                                    </div>
+                                    <div class="menu-link-text">Español (Latinoamérica)</div>
                                 </div>
                                 <div class="menu-link">
-                                    <div class="menu-link-text" style="padding: 0 12px;">English (US)</div>
+                                    <div class="menu-link-icon">
+                                        <span class="material-symbols-rounded">translate</span>
+                                    </div>
+                                    <div class="menu-link-text">English (US)</div>
                                 </div>
                                 <div class="menu-link">
-                                    <div class="menu-link-text" style="padding: 0 12px;">Português (Brasil)</div>
+                                    <div class="menu-link-icon">
+                                        <span class="material-symbols-rounded">public</span>
+                                    </div>
+                                    <div class="menu-link-text">Português (Brasil)</div>
                                 </div>
                             </div>
                         </div>
@@ -206,19 +228,29 @@ if (!empty($currentUser['uuid'])) {
                 <div class="component-card__actions">
                     <div class="trigger-select-wrapper" data-ui-type="dropdown" data-align="left">
                         <div class="trigger-selector" data-action="toggle-dropdown">
+                            <span class="material-symbols-rounded trigger-select-icon">person</span>
                             <span class="trigger-select-text">Uso Personal</span>
                             <span class="material-symbols-rounded">expand_more</span>
                         </div>
                         <div class="popover-module">
                             <div class="menu-list">
                                 <div class="menu-link active">
-                                    <div class="menu-link-text" style="padding: 0 12px;">Uso Personal</div>
+                                    <div class="menu-link-icon">
+                                        <span class="material-symbols-rounded">person</span>
+                                    </div>
+                                    <div class="menu-link-text">Uso Personal</div>
                                 </div>
                                 <div class="menu-link">
-                                    <div class="menu-link-text" style="padding: 0 12px;">Trabajo / Equipo</div>
+                                    <div class="menu-link-icon">
+                                        <span class="material-symbols-rounded">groups</span>
+                                    </div>
+                                    <div class="menu-link-text">Trabajo / Equipo</div>
                                 </div>
                                 <div class="menu-link">
-                                    <div class="menu-link-text" style="padding: 0 12px;">Educación</div>
+                                    <div class="menu-link-icon">
+                                        <span class="material-symbols-rounded">school</span>
+                                    </div>
+                                    <div class="menu-link-text">Educación</div>
                                 </div>
                             </div>
                         </div>

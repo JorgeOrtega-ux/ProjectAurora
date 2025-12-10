@@ -59,11 +59,19 @@ const setupDropdownUI = () => {
             
             if (wrapper) {
                 const triggerText = wrapper.querySelector('.trigger-select-text');
+                const triggerIcon = wrapper.querySelector('.trigger-select-icon'); // Buscar el icono del trigger
+
                 const linkText = link.querySelector('.menu-link-text');
-                
-                // Actualizar texto
+                const linkIcon = link.querySelector('.menu-link-icon span'); // Buscar el icono dentro de la opción
+
+                // Actualizar texto y también el icono
                 if(triggerText && linkText) {
                     triggerText.textContent = linkText.textContent;
+                }
+                
+                // LÓGICA DE ICONO: Si existe el icono en la opción y en el trigger, lo actualizamos
+                if(triggerIcon && linkIcon) {
+                    triggerIcon.textContent = linkIcon.textContent;
                 }
 
                 // Actualizar estado activo en la lista
