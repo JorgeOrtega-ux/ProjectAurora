@@ -29,7 +29,6 @@ if (!isset($_SESSION['temp_2fa_user_id'])) {
         <button type="button" id="btn-verify-2fa-login" class="btn-primary">Verificar</button>
 
         <div class="auth-footer">
-            <p><a href="<?php echo $basePath; ?>login" onclick="<?php session_destroy(); ?>">Volver al inicio de sesión</a></p>
-        </div>
+<p><a href="<?php echo $basePath; ?>login" class="text-link">Volver al inicio de sesión</a></p>        </div>
     </div>
 </div>
