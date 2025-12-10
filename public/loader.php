@@ -1,5 +1,9 @@
 <?php
-session_start();
+// public/loader.php
+
+// MODIFICACIÓN: Usamos db.php para iniciar sesión con la configuración correcta (60 días)
+// Esto evita que la configuración de la cookie se pierda al navegar.
+require_once __DIR__ . '/../includes/db.php';
 
 // SEGURIDAD: Si no hay sesión, denegar acceso.
 if (!isset($_SESSION['user_id'])) {

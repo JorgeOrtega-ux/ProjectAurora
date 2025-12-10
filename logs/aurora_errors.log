@@ -1,0 +1,10 @@
+[10-Dec-2025 11:40:41 America/Mexico_City] PHP Fatal error:  Uncaught Error: Call to undefined function __() in E:\xampp\htdocs\ProjectAurora\includes\sections\settings\your-profile.php:78
+Stack trace:
+#0 E:\xampp\htdocs\ProjectAurora\public\loader.php(33): include()
+#1 {main}
+  thrown in E:\xampp\htdocs\ProjectAurora\includes\sections\settings\your-profile.php on line 78
+[10-Dec-2025 11:40:50 America/Mexico_City] PHP Fatal error:  Uncaught Error: Call to undefined function __() in E:\xampp\htdocs\ProjectAurora\includes\sections\settings\your-profile.php:78
+Stack trace:
+#0 E:\xampp\htdocs\ProjectAurora\public\loader.php(33): include()
+#1 {main}
+  thrown in E:\xampp\htdocs\ProjectAurora\includes\sections\settings\your-profile.php on line 78

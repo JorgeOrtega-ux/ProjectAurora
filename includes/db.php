@@ -12,22 +12,40 @@ $logFile = $logDir . '/aurora_errors.log';
 
 // Crear la carpeta de logs si no existe
 if (!file_exists($logDir)) {
-    // 0755 permite lectura/escritura al propietario y lectura a otros (seguro en la mayoría de hostings)
+    // 0755 permite lectura/escritura al propietario y lectura a otros
     @mkdir($logDir, 0755, true);
 }
 
 // Directivas de PHP para ocultar errores al usuario y guardarlos en el archivo
-ini_set('display_errors', 0);           // CRÍTICO: No mostrar nada en pantalla (HTML/JSON)
-ini_set('display_startup_errors', 0);   // CRÍTICO: No mostrar errores de inicio de PHP
+ini_set('display_errors', 0);           // CRÍTICO: No mostrar nada en pantalla
+ini_set('display_startup_errors', 0);   // CRÍTICO: No mostrar errores de inicio
 ini_set('log_errors', 1);               // Activar el guardado de logs
 ini_set('error_log', $logFile);         // Definir dónde se guardan
-error_reporting(E_ALL);                 // Reportar TODOS los errores al log (Warnings, Notices, Fatal)
+error_reporting(E_ALL);                 // Reportar TODOS los errores al log
 
 // ==============================================================================
 // 2. INICIO DE SESIÓN Y ENTORNO
 // ==============================================================================
 
 if (session_status() === PHP_SESSION_NONE) {
+    // ---------------------------------------------------------
+    // MODIFICACIÓN: Configuración de sesión para 60 días
+    // ---------------------------------------------------------
+    $lifetime = 60 * 60 * 24 * 60; // 60 días en segundos
+
+    // Establecer la duración de la cookie de sesión
+    session_set_cookie_params([
+        'lifetime' => $lifetime,
+        'path' => '/',
+        'domain' => '', // Dejar vacío para el dominio actual
+        'secure' => true, // IMPORTANTE: Cambia a false si estás probando en localhost sin https
+        'httponly' => true, // Previene acceso a la cookie vía JS
+        'samesite' => 'Strict' // Protección CSRF adicional
+    ]);
+
+    // Opcional: Aumentar el tiempo de vida de la sesión en el servidor
+    ini_set('session.gc_maxlifetime', $lifetime);
+
     session_start();
 }
 
@@ -58,7 +76,7 @@ if (empty($_SESSION['csrf_token'])) {
 }
 
 // ==============================================================================
-// 4. CONEXIÓN A BASE DE DATOS (CON LOGGING SEGURO)
+// 4. CONEXIÓN A BASE DE DATOS
 // ==============================================================================
 
 $host = getenv('DB_HOST');
@@ -88,16 +106,11 @@ try {
         $offset = date('P'); 
         $pdo->exec("SET time_zone = '$offset';");
     } catch (Exception $e) {
-        // Warning silencioso al log
         error_log("[DB Warning] No se pudo sincronizar zona horaria: " . $e->getMessage());
     }
 
 } catch (\PDOException $e) {
-    // 1. Escribir el error real (usuario, contraseña fallida, ip) SOLO en el archivo log
     error_log("[DB Connection Error] " . $e->getMessage());
-    
-    // 2. Detener la ejecución con un mensaje limpio para el usuario
-    // Usamos http_response_code 500 para indicar error de servidor sin dar detalles
     http_response_code(500); 
     die("El servicio no está disponible momentáneamente. Por favor intente más tarde.");
 }
