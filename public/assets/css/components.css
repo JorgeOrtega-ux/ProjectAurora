@@ -95,7 +95,7 @@
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    background-color: #f5f5f5;
+    background-color: #f5f5fa;
     position: relative;
     display: flex;
     align-items: center;
@@ -513,4 +513,20 @@
 @media (max-width: 600px) {
     #toast-container { left: 16px; right: 16px; bottom: 16px; }
     .toast { width: 100%; max-width: 100%; min-width: 0; }
+}
+
+/* =========================================
+   MODIFICADORES ESPECÍFICOS (Solicitud)
+   ========================================= */
+
+/* Modificador para el contenedor del icono (ej. candado) */
+.component-card__profile-picture.component-card__profile-picture--bordered {
+    background-color: transparent;
+    border: 1px solid #00000020;
+    border-radius: 8px;
+}
+
+/* Modificador para forzar alineación a la derecha en modo stacked */
+.component-group-item--stacked .component-card__actions.actions-force-end {
+    justify-content: flex-end !important;
 }

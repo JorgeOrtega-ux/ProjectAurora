@@ -14,7 +14,7 @@
             <div class="component-group-item" data-component="password-update-section">
                 
                 <div class="component-card__content">
-                    <div class="component-card__profile-picture" style="background:transparent;">
+                    <div class="component-card__profile-picture component-card__profile-picture--bordered">
                         <span class="material-symbols-rounded" style="font-size: 32px; color: #000;">lock</span>
                     </div>
 
@@ -38,7 +38,7 @@
                                placeholder="<?= __('settings.security.current_pass_ph') ?>">
                     </div>
 
-                    <div class="component-card__actions actions-right">
+                    <div class="component-card__actions actions-right actions-force-end">
                         <button type="button" class="component-button" data-action="pass-cancel-flow"><?= __('global.cancel') ?></button>
                         <button type="button" class="component-button primary" data-action="pass-go-step-2"><?= __('global.continue') ?></button>
                     </div>
@@ -58,7 +58,7 @@
                                placeholder="<?= __('settings.security.repeat_pass_ph') ?>">
                     </div>
 
-                    <div class="component-card__actions actions-right">
+                    <div class="component-card__actions actions-right actions-force-end">
                         <button type="button" class="component-button" data-action="pass-cancel-flow"><?= __('global.cancel') ?></button>
                         <button type="button" class="component-button primary" data-action="pass-submit-final"><?= __('global.continue') ?></button>
                     </div>
