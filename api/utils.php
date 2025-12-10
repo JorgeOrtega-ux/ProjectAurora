@@ -116,7 +116,45 @@ function checkRateLimit($pdo, $identifier, $actionType, $limit, $minutes, $check
 }
 
 // ==========================================
-// 5. FUNCIONES DE AVATAR
+// 5. NUEVO: FUNCIONES DE HISTORIAL Y LÍMITES DE PERFIL
+// ==========================================
+
+/**
+ * Registra un cambio en la tabla user_profile_history.
+ */
+function logProfileChange($pdo, $userId, $type, $oldValue, $newValue) {
+    try {
+        $stmt = $pdo->prepare("INSERT INTO user_profile_history (user_id, change_type, old_value, new_value) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$userId, $type, $oldValue, $newValue]);
+    } catch (Exception $e) {
+        // Fallo silencioso para no romper el flujo principal si el log falla, pero idealmente debería registrarse en error_log
+        error_log("Error logging profile change: " . $e->getMessage());
+    }
+}
+
+/**
+ * Verifica si el usuario ha excedido el límite de cambios para un tipo específico en un periodo de tiempo.
+ * Retorna true si PUEDE hacer el cambio, false si está bloqueado.
+ */
+function checkProfileChangeLimit($pdo, $userId, $type, $daysInterval, $maxChanges) {
+    try {
+        // Construimos la query para intervalo. Si es 1 día, usamos DAY, si son 12, también.
+        // SQL Injection safe porque pasamos parámetros o hardcodeamos strings controlados en el código que llama.
+        $sql = "SELECT COUNT(*) FROM user_profile_history WHERE user_id = ? AND change_type = ? AND created_at > (NOW() - INTERVAL $daysInterval DAY)";
+        
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$userId, $type]);
+        $count = $stmt->fetchColumn();
+
+        return ($count < $maxChanges);
+    } catch (Exception $e) {
+        error_log("Error check limits: " . $e->getMessage());
+        return false; // Por seguridad, si falla la BD, bloqueamos.
+    }
+}
+
+// ==========================================
+// 6. FUNCIONES DE AVATAR
 // ==========================================
 
 function ensureDefaultAvatarExists($uuid, $username) {

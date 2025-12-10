@@ -65,8 +65,7 @@ CREATE TABLE security_logs (
     INDEX idx_security_identifier_action (user_identifier, action_type, created_at)
 );
 
--- 9. [MODIFICADO] Tabla de Preferencias de Usuario
--- Se agregaron 'theme' y 'extended_alerts'
+-- 9. Tabla de Preferencias de Usuario
 CREATE TABLE user_preferences (
     user_id INT PRIMARY KEY,
     language VARCHAR(10) DEFAULT 'en-US', -- Idioma de la interfaz
@@ -77,6 +76,17 @@ CREATE TABLE user_preferences (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- 10. NUEVA TABLA: Historial de cambios de perfil
+CREATE TABLE user_profile_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    change_type VARCHAR(20) NOT NULL, -- 'username', 'email', 'avatar'
+    old_value TEXT NULL,
+    new_value TEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_history_check (user_id, change_type, created_at)
+);
 
 ALTER TABLE users 
 ADD COLUMN two_factor_secret VARCHAR(255) NULL DEFAULT NULL,

@@ -138,29 +138,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // --- A) ACTUALIZAR PERFIL ---
+    // --- A) ACTUALIZAR PERFIL (Usuario y Correo) ---
     if ($action === 'update_profile') {
         $newUsername = trim($input['username'] ?? '');
         $newEmail = trim($input['email'] ?? '');
+        
         if (empty($newUsername) || empty($newEmail)) sendJsonResponse('error', __('api.error.missing_data'));
         if (strlen($newUsername) < 6) sendJsonResponse('error', __('api.error.username_short'));
+        
         $emailVal = validateEmailRequirements($newEmail);
         if ($emailVal !== true) sendJsonResponse('error', $emailVal);
+
+        // 1. Obtener datos actuales para comparar y guardar historial
+        $stmtCurrent = $pdo->prepare("SELECT username, email FROM users WHERE id = ?");
+        $stmtCurrent->execute([$userId]);
+        $currentUserData = $stmtCurrent->fetch();
+        
+        if (!$currentUserData) sendJsonResponse('error', __('api.error.db_error'));
+
+        $oldUsername = $currentUserData['username'];
+        $oldEmail = $currentUserData['email'];
+        
+        $usernameChanged = ($oldUsername !== $newUsername);
+        $emailChanged = ($oldEmail !== $newEmail);
+
+        if (!$usernameChanged && !$emailChanged) {
+            sendJsonResponse('success', __('api.success.profile_updated'), null, ['username' => $newUsername, 'email' => $newEmail]);
+        }
+
+        // 2. Verificar Límites (1 cambio cada 12 días)
+        if ($usernameChanged) {
+            if (!checkProfileChangeLimit($pdo, $userId, 'username', 12, 1)) {
+                sendJsonResponse('error', __('api.error.limit_username'));
+            }
+        }
+        if ($emailChanged) {
+             if (!checkProfileChangeLimit($pdo, $userId, 'email', 12, 1)) {
+                sendJsonResponse('error', __('api.error.limit_email'));
+            }
+        }
+
+        // 3. Verificar unicidad
         $stmtCheck = $pdo->prepare("SELECT id FROM users WHERE (username = ? OR email = ?) AND id != ?");
         $stmtCheck->execute([$newUsername, $newEmail, $userId]);
         if ($stmtCheck->rowCount() > 0) {
             sendJsonResponse('error', __('api.error.username_exists'));
         }
+
+        // 4. Actualizar
         $updateStmt = $pdo->prepare("UPDATE users SET username = ?, email = ? WHERE id = ?");
         if ($updateStmt->execute([$newUsername, $newEmail, $userId])) {
-            $_SESSION['username'] = $newUsername;
+            
+            // 5. Loguear cambios
+            if ($usernameChanged) {
+                logProfileChange($pdo, $userId, 'username', $oldUsername, $newUsername);
+                $_SESSION['username'] = $newUsername;
+            }
+            if ($emailChanged) {
+                logProfileChange($pdo, $userId, 'email', $oldEmail, $newEmail);
+            }
+
             sendJsonResponse('success', __('api.success.profile_updated'), null, ['username' => $newUsername, 'email' => $newEmail]);
         } else {
             sendJsonResponse('error', __('api.error.db_error'));
         }
     }
 
-    // --- B) ACTUALIZAR PREFERENCIAS (MODIFICADO) ---
+    // --- B) ACTUALIZAR PREFERENCIAS ---
     if ($action === 'update_preferences') {
         $language = $input['language'] ?? null;
         $openLinks = isset($input['open_links_new_tab']) ? (int)$input['open_links_new_tab'] : null;
@@ -170,7 +214,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fields = [];
         $params = [];
 
-        // 1. Language
         if ($language) {
             $allowedLangs = ['es-419', 'en-US', 'en-GB', 'fr-FR', 'pt-BR'];
             if (in_array($language, $allowedLangs)) {
@@ -178,12 +221,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $params[] = $language;
             }
         }
-        // 2. Open Links in New Tab
         if ($openLinks !== null) {
             $fields[] = "open_links_new_tab = ?";
             $params[] = $openLinks; 
         }
-        // 3. Theme (NUEVO)
         if ($theme) {
             $allowedThemes = ['system', 'light', 'dark'];
             if (in_array($theme, $allowedThemes)) {
@@ -191,7 +232,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $params[] = $theme;
             }
         }
-        // 4. Extended Alerts (NUEVO)
         if ($extendedAlerts !== null) {
             $fields[] = "extended_alerts = ?";
             $params[] = $extendedAlerts;
@@ -218,7 +258,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // --- C) SUBIR FOTO ---
     if ($action === 'upload_profile_picture') {
-         if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
+        // 1. Verificar Límite: Máximo 3 cambios en 1 día (24 horas)
+        // NOTA: Si el usuario borra la foto, eso cuenta como otro tipo de acción, aquí solo validamos 'upload'.
+        // Pero si el usuario cambia una foto personalizada por otra personalizada, cuenta aquí.
+        if (!checkProfileChangeLimit($pdo, $userId, 'avatar', 1, 3)) {
+            sendJsonResponse('error', __('api.error.limit_avatar'));
+        }
+
+        if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
              sendJsonResponse('error', __('error.load_content'));
         }
         $file = $_FILES['image'];
@@ -231,8 +278,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($file['size'] > 2 * 1024 * 1024) {
             sendJsonResponse('error', __('api.error.upload_size'));
         }
+        
         $uuid = $_SESSION['uuid'];
         $targetFile = DIR_CUSTOM . $uuid . '.png';
+        
+        // Determinar valor antiguo (si existía foto custom)
+        $oldValue = file_exists($targetFile) ? 'Custom Avatar (Overwritten)' : 'Default Avatar';
+
         $src = null;
         switch ($mime) {
             case 'image/jpeg': $src = imagecreatefromjpeg($file['tmp_name']); break;
@@ -247,27 +299,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
              if(move_uploaded_file($file['tmp_name'], $targetFile)) $uploadSuccess = true;
         }
+        
         if ($uploadSuccess) {
+            // Eliminar versión default si existía (limpieza)
             $defaultFile = DIR_DEFAULT . $uuid . '.png';
             if (file_exists($defaultFile)) unlink($defaultFile);
+            
             $url = $basePath . URL_BASE_AVATARS . 'custom/' . $uuid . '.png?v=' . time();
+
+            // 2. Loguear cambio
+            logProfileChange($pdo, $userId, 'avatar', $oldValue, 'New Custom Avatar');
+
             sendJsonResponse('success', __('api.success.photo_updated'), null, ['url' => $url]);
         } else {
             sendJsonResponse('error', __('api.error.db_error'));
         }
     }
+
     // --- D) DELETE PHOTO ---
     if ($action === 'delete_profile_picture') {
+         // NOTA: La regla dice "si se alcanzó el límite... permitir eliminarla". 
+         // Por lo tanto, NO llamamos a checkProfileChangeLimit aquí. Siempre se permite borrar.
+         
          $uuid = $_SESSION['uuid'];
          $username = $_SESSION['username'];
          $customFile = DIR_CUSTOM . $uuid . '.png';
-         if (file_exists($customFile)) unlink($customFile);
+         
+         $wasCustom = false;
+         if (file_exists($customFile)) {
+             unlink($customFile);
+             $wasCustom = true;
+         }
+         
          $defaultFile = DIR_DEFAULT . $uuid . '.png';
          if (file_exists($defaultFile)) unlink($defaultFile);
+         
          ensureDefaultAvatarExists($uuid, $username);
+         
+         // Loguear el cambio
+         if ($wasCustom) {
+            logProfileChange($pdo, $userId, 'avatar', 'Custom Avatar', 'Default Avatar');
+         }
+
          $defaultUrl = $basePath . URL_BASE_AVATARS . 'default/' . $uuid . '.png?v=' . time();
          sendJsonResponse('success', __('api.success.photo_deleted'), null, ['url' => $defaultUrl]);
     }
+
     // --- E) UPDATE PASSWORD ---
     if ($action === 'update_password') {
         $currentPass = $input['current_password'] ?? '';

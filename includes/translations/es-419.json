@@ -131,6 +131,10 @@
     "api.error.upload_size": "La imagen pesa más de 2MB.",
     "api.error.current_password_invalid": "La contraseña actual no es correcta.",
     
+    "api.error.limit_avatar": "Has alcanzado el límite de 3 cambios de foto por día.",
+    "api.error.limit_username": "Solo puedes cambiar tu usuario una vez cada 12 días.",
+    "api.error.limit_email": "Solo puedes cambiar tu correo una vez cada 12 días.",
+    
     "api.success.valid_data": "Datos válidos",
     "api.success.code_sent": "Código enviado",
     "api.success.code_resent": "Código reenviado: ",
