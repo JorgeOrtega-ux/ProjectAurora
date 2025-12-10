@@ -1,8 +1,26 @@
 <?php
 // public/index.php
 
-// CORRECCIÓN DE RUTA: Apuntar a la nueva ubicación en config/routers
+// 1. Cargar el Router (Configuración y Sesión)
 require_once __DIR__ . '/../config/routers/router.php';
+
+// 2. Definir el mapa de rutas FÍSICAS (Igual que en loader.php)
+// Esto conecta la URL "virtual" con el archivo PHP real.
+$sectionMap = [
+    'main'     => __DIR__ . '/../includes/sections/app/main.php',
+    'explorer' => __DIR__ . '/../includes/sections/app/explorer.php',
+    '404'      => __DIR__ . '/../includes/sections/system/404.php',
+    
+    // Rutas de Settings
+    'settings/your-profile'       => __DIR__ . '/../includes/sections/settings/your-profile.php',
+    'settings/login-and-security' => __DIR__ . '/../includes/sections/settings/login-security.php',
+    'settings/accessibility'      => __DIR__ . '/../includes/sections/settings/accessibility.php',
+    
+    // Rutas de Registro
+    'register'                => __DIR__ . '/../includes/sections/auth/register.php',
+    'register/aditional-data' => __DIR__ . '/../includes/sections/auth/register.php',
+    'register/verify'         => __DIR__ . '/../includes/sections/auth/register.php',
+];
 
 $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
 ?>
@@ -16,7 +34,6 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
 
     <script>
         window.BASE_PATH = '<?php echo $basePath; ?>';
-        // INYECCIÓN DE TRADUCCIONES AL FRONTEND
         window.TRANSLATIONS = <?php echo json_encode($GLOBALS['AURORA_TRANSLATIONS']); ?>;
         
         window.t = function(key) {
@@ -206,25 +223,28 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
 
                     <div class="general-content-scrolleable" data-container="main-section">
                         <?php
-                        if ($currentSection === 'register' || $currentSection === 'register/aditional-data' || $currentSection === 'register/verify') {
-                            include __DIR__ . '/../includes/sections/register.php';
-                        } elseif (strpos($currentSection, 'settings/') === 0) {
-                            $file = __DIR__ . '/../includes/sections/' . $currentSection . '.php';
-                            if ($currentSection === 'settings/login-and-security') {
-                                $file = __DIR__ . '/../includes/sections/settings/login-security.php';
-                            }
-                            if (file_exists($file)) {
-                                include $file;
-                            } else {
-                                include __DIR__ . '/../includes/sections/404.php';
-                            }
+                        // LÓGICA DE CARGA CORREGIDA
+                        // Usamos el mapa $sectionMap definido arriba.
+                        
+                        $fileToLoad = $sectionMap['404']; // Por defecto 404
+                        
+                        if (array_key_exists($currentSection, $sectionMap)) {
+                            $fileToLoad = $sectionMap[$currentSection];
                         } else {
-                            $file = __DIR__ . '/../includes/sections/' . $currentSection . '.php';
-                            if (file_exists($file)) {
-                                include $file;
-                            } else {
-                                include __DIR__ . '/../includes/sections/404.php';
+                            // Fallback para intentar cargar archivos genéricos si no están en el mapa
+                            // pero con cuidado de no romper las rutas nuevas
+                            $potentialFile = __DIR__ . '/../includes/sections/' . $currentSection . '.php';
+                            if (file_exists($potentialFile)) {
+                                $fileToLoad = $potentialFile;
                             }
+                        }
+
+                        // Verificar existencia física final
+                        if (file_exists($fileToLoad)) {
+                            include $fileToLoad;
+                        } else {
+                            // Si falla incluso el 404 del mapa
+                            echo "<h1>Error 404 Crítico</h1><p>No se encuentra el archivo solicitado ni la página de error.</p>";
                         }
                         ?>
                     </div>

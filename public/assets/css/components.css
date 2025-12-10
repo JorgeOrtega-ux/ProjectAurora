@@ -322,6 +322,7 @@
     position: absolute;
 }
 
+/* 1. Modificar el Slider (fondo) para que el color cambie suavemente */
 .component-toggle-slider {
     position: absolute;
     cursor: pointer;
@@ -332,8 +333,12 @@
     background-color: #e0e0e0;
     border-radius: 34px;
     border: 1px solid #00000010;
+    
+    /* --- LÍNEA NUEVA --- */
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
+/* 2. Modificar el círculo (:before) para que se deslice suavemente */
 .component-toggle-slider:before {
     position: absolute;
     content: "";
@@ -344,6 +349,9 @@
     background-color: white;
     border-radius: 50%;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+
+    /* --- LÍNEA NUEVA --- */
+    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
 .component-toggle-switch input:checked + .component-toggle-slider {

@@ -4,7 +4,7 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 // CORRECCIÓN: Ajuste de ruta para llegar a config/database/db.php desde includes/sections/settings/
-require_once __DIR__ . '/../../../config/database/db.php'; 
+require_once __DIR__ . '/../../../config/database/db.php';
 
 // 1. Obtener datos frescos (Usuario + Preferencias)
 $currentUser = [];
@@ -24,9 +24,10 @@ if ($userId) {
         if ($userDB) {
             $currentUser = $userDB;
             if (empty($currentUser['language'])) $currentUser['language'] = 'en-US';
-            if (!isset($currentUser['open_links_new_tab'])) $currentUser['open_links_new_tab'] = 1; 
+            if (!isset($currentUser['open_links_new_tab'])) $currentUser['open_links_new_tab'] = 1;
         }
-    } catch (Exception $e) {}
+    } catch (Exception $e) {
+    }
 }
 
 if (empty($currentUser)) {
@@ -51,7 +52,7 @@ if (!empty($currentUser['uuid'])) {
     // Esta ruta ya estaba bien (sube 3 niveles hasta public), pero verifiquemos:
     // includes/sections/settings/ -> sube 3 -> Raiz -> public. CORRECTO.
     $absCustom  = __DIR__ . '/../../../public/' . $relCustom;
-    
+
     if (file_exists($absCustom)) {
         $hasCustomAvatar = true;
         $finalAvatarSrc = (isset($basePath) ? $basePath : '/ProjectAurora/') . $relCustom . '?v=' . microtime(true);
@@ -59,7 +60,7 @@ if (!empty($currentUser['uuid'])) {
         $finalAvatarSrc = (isset($basePath) ? $basePath : '/ProjectAurora/') . $relDefault . '?v=' . microtime(true);
     }
 } else {
-    $finalAvatarSrc = ''; 
+    $finalAvatarSrc = '';
 }
 
 // 3. MAPA DE IDIOMAS
@@ -88,11 +89,11 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
             <div class="component-group-item" data-component="profile-picture-section" data-has-custom="<?php echo $hasCustomAvatar ? 'true' : 'false'; ?>">
                 <div class="component-card__content">
                     <div class="component-card__profile-picture" data-role="<?php echo htmlspecialchars($currentUser['role']); ?>">
-                        <img src="<?php echo htmlspecialchars($finalAvatarSrc); ?>" 
-                             class="component-card__avatar-image" 
-                             data-element="profile-picture-preview-image">
+                        <img src="<?php echo htmlspecialchars($finalAvatarSrc); ?>"
+                            class="component-card__avatar-image"
+                            data-element="profile-picture-preview-image">
                         <div class="component-card__avatar-overlay" data-action="trigger-profile-picture-upload">
-                            <span class="material-symbols-rounded">edit</span>
+                            <span class="material-symbols-rounded">photo_camera</span>
                         </div>
                     </div>
                     <div class="component-card__text">
@@ -100,18 +101,18 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                         <p class="component-card__description"><?= __('settings.profile.photo_desc') ?></p>
                     </div>
                 </div>
-                
+
                 <input type="file" accept="image/png, image/jpeg, image/webp" hidden data-element="profile-picture-upload-input">
 
                 <div class="component-card__actions actions-right">
                     <div class="active" data-state="profile-picture-actions-default">
-                        <button type="button" class="component-button danger" 
-                                data-action="profile-picture-remove-trigger"
-                                style="<?php echo $hasCustomAvatar ? '' : 'display:none;'; ?>">
+                        <button type="button" class="component-button danger"
+                            data-action="profile-picture-remove-trigger"
+                            style="<?php echo $hasCustomAvatar ? '' : 'display:none;'; ?>">
                             <span class="material-symbols-rounded">delete</span>
                         </button>
                         <button type="button" class="component-button primary" data-action="profile-picture-upload-trigger">
-                            <span class="material-symbols-rounded">upload</span> 
+                            <span class="material-symbols-rounded">upload</span>
                             <span data-element="upload-btn-text"><?php echo $hasCustomAvatar ? __('settings.profile.change_btn') : __('settings.profile.upload_btn'); ?></span>
                         </button>
                     </div>
@@ -128,19 +129,19 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                 <div class="component-card__content">
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= __('settings.profile.username_title') ?></h2>
-                        
+
                         <div class="active" data-state="username-view-state">
                             <span style="font-size: 13px; color: #333;" data-element="username-display-text">
                                 <?php echo htmlspecialchars($currentUser['username']); ?>
                             </span>
                         </div>
-                        
+
                         <div class="disabled w-100 input-group-responsive" data-state="username-edit-state">
-                            
+
                             <div class="component-input-wrapper" style="flex: 1;">
-                                <input type="text" class="component-text-input" 
-                                       value="<?php echo htmlspecialchars($currentUser['username']); ?>" 
-                                       data-element="username-input">
+                                <input type="text" class="component-text-input"
+                                    value="<?php echo htmlspecialchars($currentUser['username']); ?>"
+                                    data-element="username-input">
                             </div>
 
                             <div class="component-card__actions disabled" data-state="username-actions-edit" style="margin: 0;">
@@ -151,7 +152,7 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="component-card__actions actions-right">
                     <div class="active" data-state="username-actions-view">
                         <button type="button" class="component-button" data-action="username-edit-trigger"><?= __('global.edit') ?></button>
@@ -165,7 +166,7 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                 <div class="component-card__content">
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= __('settings.profile.email_title') ?></h2>
-                        
+
                         <div class="active" data-state="email-view-state">
                             <span style="font-size: 13px; color: #333;" data-element="email-display-text">
                                 <?php echo htmlspecialchars($currentUser['email']); ?>
@@ -173,11 +174,11 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                         </div>
 
                         <div class="disabled w-100 input-group-responsive" data-state="email-edit-state">
-                            
+
                             <div class="component-input-wrapper" style="flex: 1;">
-                                <input type="email" class="component-text-input" 
-                                       value="<?php echo htmlspecialchars($currentUser['email']); ?>" 
-                                       data-element="email-input">
+                                <input type="email" class="component-text-input"
+                                    value="<?php echo htmlspecialchars($currentUser['email']); ?>"
+                                    data-element="email-input">
                             </div>
 
                             <div class="component-card__actions disabled" data-state="email-actions-edit" style="margin: 0;">
@@ -199,7 +200,7 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
         </div>
 
         <div class="component-card component-card--grouped">
-            
+
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
                     <div class="component-card__text">
@@ -217,8 +218,8 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                         <div class="popover-module">
                             <div class="menu-list">
                                 <?php foreach ($languagesMap as $code => $data): ?>
-                                    <div class="menu-link body-text <?php echo ($code === $currentLangCode) ? 'active' : ''; ?>" 
-                                         data-value="<?php echo $code; ?>">
+                                    <div class="menu-link body-text <?php echo ($code === $currentLangCode) ? 'active' : ''; ?>"
+                                        data-value="<?php echo $code; ?>">
                                         <div class="menu-link-icon">
                                             <span class="material-symbols-rounded"><?php echo $data['icon']; ?></span>
                                         </div>
@@ -242,8 +243,8 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                 </div>
                 <div class="component-card__actions actions-right">
                     <label class="component-toggle-switch">
-                        <input type="checkbox" id="pref-links-new-tab" 
-                               <?php echo ($currentUser['open_links_new_tab'] == 1) ? 'checked' : ''; ?>>
+                        <input type="checkbox" id="pref-links-new-tab"
+                            <?php echo ($currentUser['open_links_new_tab'] == 1) ? 'checked' : ''; ?>>
                         <span class="component-toggle-slider"></span>
                     </label>
                 </div>
