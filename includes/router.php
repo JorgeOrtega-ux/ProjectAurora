@@ -33,15 +33,20 @@ if (strpos($currentSection, 'api/') === 0) {
     }
 }
 
-// --- NUEVO: Lógica para Recuperar Contraseña con Token ---
-// Detectar si la URL es tipo recover-password/[token]
+// --- REDIRECCIÓN DE SETTINGS ---
+// Si se entra a /settings, redirigir a /settings/your-profile
+if ($currentSection === 'settings') {
+    header("Location: " . $basePath . "settings/your-profile");
+    exit;
+}
+
+// --- Lógica para Recuperar Contraseña con Token ---
 $resetToken = null;
 if (strpos($currentSection, 'recover-password/') === 0) {
     $parts = explode('/', $currentSection);
-    // $parts[0] es 'recover-password', $parts[1] es el token
     if (isset($parts[1]) && !empty($parts[1])) {
-        $resetToken = $parts[1]; // Guardamos el token para usarlo en la vista
-        $currentSection = 'recover-password-reset'; // Forzamos la sección de reseteo
+        $resetToken = $parts[1]; 
+        $currentSection = 'recover-password-reset'; 
     }
 }
 
@@ -73,16 +78,23 @@ if ($isLoggedIn) {
 }
 
 // 6. Whitelisting (Rutas Permitidas)
-// Agregamos 'recover-password' y 'recover-password-reset' a rutas de invitados
 $guestRoutes = [
     'login', 
     'register', 
     'register/aditional-data', 
     'register/verify', 
-    'recover-password',        // Paso 1: Pedir correo
-    'recover-password-reset'   // Paso 2: Poner nueva contraseña
+    'recover-password',        
+    'recover-password-reset'   
 ];
-$appRoutes = ['main', 'explorer'];
+
+// Agregamos las rutas de settings a la app
+$appRoutes = [
+    'main', 
+    'explorer',
+    'settings/your-profile',
+    'settings/login-and-security',
+    'settings/accessibility'
+];
 
 $validRoutes = array_merge($appRoutes, $guestRoutes);
 

@@ -3,6 +3,9 @@
 
 // Incluimos el router que prepara todo el entorno ($currentSection, $isLoggedIn, etc.)
 require_once __DIR__ . '/../includes/router.php';
+
+// Detectar si estamos en una sección de configuración para mostrar el menú correcto inicialmente
+$isSettingsSection = (strpos($currentSection, 'settings/') === 0);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -90,7 +93,7 @@ require_once __DIR__ . '/../includes/router.php';
                             <div class="module-content module-profile disabled" data-module="moduleProfile">
                                 <div class="menu-content">
                                     <div class="menu-list">
-                                        <div class="menu-link">
+                                        <div class="menu-link" data-nav="settings/your-profile">
                                             <div class="menu-link-icon">
                                                 <span class="material-symbols-rounded">settings</span>
                                             </div>
@@ -122,7 +125,8 @@ require_once __DIR__ . '/../includes/router.php';
                     <div class="module-content module-surface disabled" data-module="moduleSurface">
                         <div class="menu-content">
                             <div class="menu-content-top">
-                                <div class="menu-list">
+                                
+                                <div id="nav-main" class="menu-list <?php echo $isSettingsSection ? 'disabled' : ''; ?>">
                                     <div class="menu-link <?php echo ($currentSection === 'main') ? 'active' : ''; ?>" data-nav="main">
                                         <div class="menu-link-icon">
                                             <span class="material-symbols-rounded">home</span>
@@ -141,6 +145,45 @@ require_once __DIR__ . '/../includes/router.php';
                                         </div>
                                     </div>
                                 </div>
+
+                                <div id="nav-settings" class="menu-list <?php echo !$isSettingsSection ? 'disabled' : ''; ?>">
+                                    <div class="menu-link" data-nav="main" style="border-bottom: 1px solid #eee; margin-bottom: 8px;">
+                                        <div class="menu-link-icon">
+                                            <span class="material-symbols-rounded">arrow_back</span>
+                                        </div>
+                                        <div class="menu-link-text">
+                                            <span>Volver al inicio</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="menu-link <?php echo ($currentSection === 'settings/your-profile') ? 'active' : ''; ?>" data-nav="settings/your-profile">
+                                        <div class="menu-link-icon">
+                                            <span class="material-symbols-rounded">account_circle</span>
+                                        </div>
+                                        <div class="menu-link-text">
+                                            <span>Tu perfil</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="menu-link <?php echo ($currentSection === 'settings/login-and-security') ? 'active' : ''; ?>" data-nav="settings/login-and-security">
+                                        <div class="menu-link-icon">
+                                            <span class="material-symbols-rounded">lock</span>
+                                        </div>
+                                        <div class="menu-link-text">
+                                            <span>Inicio de sesión y seguridad</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="menu-link <?php echo ($currentSection === 'settings/accessibility') ? 'active' : ''; ?>" data-nav="settings/accessibility">
+                                        <div class="menu-link-icon">
+                                            <span class="material-symbols-rounded">accessibility_new</span>
+                                        </div>
+                                        <div class="menu-link-text">
+                                            <span>Accesibilidad</span>
+                                        </div>
+                                    </div>
+                                </div>
+
                             </div>
                             <div class="menu-content-bottom"></div>
                         </div>
@@ -153,6 +196,23 @@ require_once __DIR__ . '/../includes/router.php';
                         if ($currentSection === 'register' || $currentSection === 'register/aditional-data' || $currentSection === 'register/verify') {
                             include __DIR__ . '/../includes/sections/register.php';
                         } 
+                        // Verificación especial para carpetas anidadas como 'settings/xxx'
+                        elseif (strpos($currentSection, 'settings/') === 0) {
+                            // Mapeamos manualmente o usamos el array del loader.php
+                            // Para consistencia con index simple, lo incluimos basado en ruta si existe
+                            $file = __DIR__ . '/../includes/sections/' . $currentSection . '.php';
+                            
+                            // Ajuste para el nombre de archivo de login-and-security vs login-security
+                            if ($currentSection === 'settings/login-and-security') {
+                                $file = __DIR__ . '/../includes/sections/settings/login-security.php';
+                            }
+                            
+                            if (file_exists($file)) {
+                                include $file;
+                            } else {
+                                include __DIR__ . '/../includes/sections/404.php';
+                            }
+                        }
                         else {
                             $file = __DIR__ . '/../includes/sections/' . $currentSection . '.php';
                             if (file_exists($file)) { 
