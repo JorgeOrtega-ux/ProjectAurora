@@ -3,10 +3,12 @@
  * Maneja la lógica de la sección de perfil (Datos, Foto y Preferencias).
  */
 
-import { AuthService } from './api-services.js';
+// CAMBIO AQUÍ: Importamos SettingsService en lugar de AuthService
+import { SettingsService } from './api-services.js';
 
 /* --- UTILIDADES --- */
 const toggleEditMode = (section, isEditing) => {
+    // ... (El código de esta función sigue igual) ...
     const viewState = section.querySelector('[data-state$="-view-state"]');
     const editState = section.querySelector('[data-state$="-edit-state"]');
     const actionsView = section.querySelector('[data-state$="-actions-view"]');
@@ -78,9 +80,10 @@ const setupDropdownUI = () => {
                 
                 if (wrapper.dataset.pref === 'language') {
                     console.log("Guardando idioma:", newValue);
-                    AuthService.updatePreferences({ language: newValue }).then(res => {
+                    // CAMBIO AQUÍ: Usamos SettingsService
+                    SettingsService.updatePreferences({ language: newValue }).then(res => {
                         if(res.status !== 'success') alert(window.t('global.error'));
-                        else window.location.reload(); // Recargar para aplicar idioma
+                        else window.location.reload(); 
                     });
                 }
             }
@@ -108,7 +111,8 @@ const handleProfileSave = async (sectionType) => {
     btn.innerText = window.t('global.processing');
 
     try {
-        const result = await AuthService.updateProfile(currentUsername, currentEmail);
+        // CAMBIO AQUÍ: Usamos SettingsService
+        const result = await SettingsService.updateProfile(currentUsername, currentEmail);
 
         if (result.status === 'success') {
             const display = document.querySelector(`[data-element="${sectionType}-display-text"]`);
@@ -169,7 +173,8 @@ const setupProfilePictureLogic = (pfpSection) => {
             btn.innerText = window.t('global.processing'); 
             btn.disabled = true;
 
-            AuthService.uploadProfilePicture(file).then(res => {
+            // CAMBIO AQUÍ: Usamos SettingsService
+            SettingsService.uploadProfilePicture(file).then(res => {
                 if(res.status === 'success') {
                     originalSrc = res.data.url;
                     previewImg.src = originalSrc;
@@ -193,9 +198,10 @@ const setupProfilePictureLogic = (pfpSection) => {
         }
 
         if (e.target.closest('[data-action="profile-picture-remove-trigger"]')) {
-            if(!confirm(window.t('global.delete') + "?")) return; // Fallback simple
+            if(!confirm(window.t('global.delete') + "?")) return; 
             btnDelete.disabled = true;
-            AuthService.deleteProfilePicture().then(res => {
+            // CAMBIO AQUÍ: Usamos SettingsService
+            SettingsService.deleteProfilePicture().then(res => {
                 if(res.status === 'success') {
                     originalSrc = res.data.url;
                     previewImg.src = originalSrc;
@@ -227,7 +233,8 @@ const setupPreferencesLogic = () => {
             const isChecked = e.target.checked ? 1 : 0;
             e.target.disabled = true;
             
-            AuthService.updatePreferences({ open_links_new_tab: isChecked })
+            // CAMBIO AQUÍ: Usamos SettingsService
+            SettingsService.updatePreferences({ open_links_new_tab: isChecked })
                 .then(res => {
                     if (res.status !== 'success') {
                         e.target.checked = !e.target.checked; 

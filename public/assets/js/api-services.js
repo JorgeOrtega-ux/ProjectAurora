@@ -6,7 +6,7 @@
 const BASE_PATH = window.BASE_PATH || '/ProjectAurora/';
 
 /**
- * Función genérica para enviar datos POST (Auth, Forms)
+ * Función genérica para enviar datos POST
  */
 async function postRequest(endpoint, data) {
     try {
@@ -51,6 +51,9 @@ async function getRequest(endpoint, params = {}) {
     }
 }
 
+// -------------------------------------------------------------------
+// 1. AUTH SERVICE: Solo autenticación (Login, Registro, Recuperación)
+// -------------------------------------------------------------------
 export const AuthService = {
     login: (email, password) => postRequest('api/auth_handler.php', { action: 'login', email, password }),
     registerStep1: (email, password) => postRequest('api/auth_handler.php', { action: 'register_step_1', email, password }),
@@ -59,32 +62,34 @@ export const AuthService = {
     resendVerificationCode: () => postRequest('api/auth_handler.php', { action: 'resend_verification_code' }),
     requestPasswordReset: (email) => postRequest('api/auth_handler.php', { action: 'request_password_reset', email }),
     resetPassword: (token, password) => postRequest('api/auth_handler.php', { action: 'reset_password', token, password }),
+    logout: async () => {
+        const result = await postRequest('api/auth_handler.php', { action: 'logout' });
+        if (result.status === 'success') window.location.href = result.redirect;
+    }
+};
+
+// -------------------------------------------------------------------
+// 2. SETTINGS SERVICE: Gestión de usuario y preferencias
+// -------------------------------------------------------------------
+export const SettingsService = {
+    updateProfile: (username, email) => postRequest('api/settings_handler.php', { action: 'update_profile', username, email }),
     
-    updateProfile: (username, email) => postRequest('api/auth_handler.php', { action: 'update_profile', username, email }),
-    
-    // [NUEVO] Actualizar Preferencias
-    updatePreferences: (data) => postRequest('api/auth_handler.php', { 
+    updatePreferences: (data) => postRequest('api/settings_handler.php', { 
         action: 'update_preferences', 
         ...data 
     }),
     
-    // --- MÉTODOS DE IMAGEN ---
     uploadProfilePicture: (file) => {
-        return postRequest('api/auth_handler.php', {
+        return postRequest('api/settings_handler.php', {
             action: 'upload_profile_picture',
             image: file
         });
     },
 
     deleteProfilePicture: () => {
-        return postRequest('api/auth_handler.php', {
+        return postRequest('api/settings_handler.php', {
             action: 'delete_profile_picture'
         });
-    },
-
-    logout: async () => {
-        const result = await postRequest('api/auth_handler.php', { action: 'logout' });
-        if (result.status === 'success') window.location.href = result.redirect;
     }
 };
 

@@ -3,7 +3,6 @@
 
 header('Content-Type: application/json');
 
-// CORRECCIÓN: Rutas actualizadas a la nueva estructura config/
 require_once __DIR__ . '/../config/database/db.php'; 
 require_once __DIR__ . '/../config/helpers/i18n.php'; 
 
@@ -29,7 +28,7 @@ load_translations($lang);
 // ==========================================
 // CONFIGURACIÓN DE RUTAS DE AVATARES
 // ==========================================
-// Esto está bien, api/ está al mismo nivel que public/
+// Necesario para generar el avatar por defecto al registrarse
 define('UPLOAD_BASE_DIR', __DIR__ . '/../public/assets/uploads/avatars/');
 define('DIR_CUSTOM', UPLOAD_BASE_DIR . 'custom/');
 define('DIR_DEFAULT', UPLOAD_BASE_DIR . 'default/');
@@ -164,6 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $action = $input['action'] ?? '';
 
+    // --- 1. REGISTRO PASO 1 ---
     if ($action === 'register_step_1') {
         $email = trim($input['email'] ?? '');
         $password = $input['password'] ?? '';
@@ -186,6 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // --- 2. REGISTRO PASO 2 ---
     if ($action === 'register_step_2') {
         $username = trim($input['username'] ?? '');
         
@@ -225,6 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // --- 3. REENVIAR CÓDIGO ---
     if ($action === 'resend_verification_code') {
         if (!isset($_SESSION['pending_verification_email'])) {
             sendJsonResponse('error', __('api.error.missing_data'));
@@ -256,6 +258,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // --- 4. VERIFICAR CÓDIGO Y CREAR CUENTA ---
     if ($action === 'verify_code') {
         $code = trim($input['code'] ?? '');
         $emailIdentifier = $_SESSION['pending_verification_email'] ?? null;
@@ -302,6 +305,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // --- 5. LOGIN ---
     if ($action === 'login') {
         $email = trim($input['email'] ?? '');
         $password = $input['password'] ?? '';
@@ -325,144 +329,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    if ($action === 'update_profile') {
-        if (!isset($_SESSION['user_id'])) sendJsonResponse('error', __('api.error.no_auth'));
-
-        $userId = $_SESSION['user_id'];
-        $newUsername = trim($input['username'] ?? '');
-        $newEmail = trim($input['email'] ?? '');
-
-        if (empty($newUsername) || empty($newEmail)) sendJsonResponse('error', __('api.error.missing_data'));
-        if (strlen($newUsername) < 6) sendJsonResponse('error', __('api.error.username_short'));
-
-        $emailVal = validateEmailRequirements($newEmail);
-        if ($emailVal !== true) sendJsonResponse('error', $emailVal);
-
-        $stmtCheck = $pdo->prepare("SELECT id FROM users WHERE (username = ? OR email = ?) AND id != ?");
-        $stmtCheck->execute([$newUsername, $newEmail, $userId]);
-        
-        if ($stmtCheck->rowCount() > 0) {
-            sendJsonResponse('error', __('api.error.username_exists'));
-        }
-
-        $updateStmt = $pdo->prepare("UPDATE users SET username = ?, email = ? WHERE id = ?");
-        if ($updateStmt->execute([$newUsername, $newEmail, $userId])) {
-            $_SESSION['username'] = $newUsername;
-            sendJsonResponse('success', __('api.success.profile_updated'), null, ['username' => $newUsername, 'email' => $newEmail]);
-        } else {
-            sendJsonResponse('error', __('api.error.db_error'));
-        }
-    }
-
-    if ($action === 'update_preferences') {
-        if (!isset($_SESSION['user_id'])) sendJsonResponse('error', __('api.error.no_auth'));
-        $userId = $_SESSION['user_id'];
-        
-        $language = $input['language'] ?? null;
-        $openLinks = isset($input['open_links_new_tab']) ? (int)$input['open_links_new_tab'] : null;
-
-        $fields = [];
-        $params = [];
-
-        if ($language) {
-            $allowedLangs = ['es-419', 'en-US', 'en-GB', 'fr-FR', 'pt-BR'];
-            if (in_array($language, $allowedLangs)) {
-                $fields[] = "language = ?";
-                $params[] = $language;
-            }
-        }
-
-        if ($openLinks !== null) {
-            $fields[] = "open_links_new_tab = ?";
-            $params[] = $openLinks; 
-        }
-
-        if (empty($fields)) {
-            sendJsonResponse('success', "OK"); 
-        }
-
-        $params[] = $userId;
-        $sql = "UPDATE user_preferences SET " . implode(', ', $fields) . " WHERE user_id = ?";
-        
-        try {
-            $stmt = $pdo->prepare($sql);
-            if ($stmt->execute($params)) {
-                sendJsonResponse('success', __('api.success.preferences_saved'));
-            } else {
-                sendJsonResponse('error', __('api.error.db_error'));
-            }
-        } catch (Exception $e) {
-            sendJsonResponse('error', __('api.error.db_error'));
-        }
-    }
-
-    if ($action === 'upload_profile_picture') {
-        if (!isset($_SESSION['user_id'])) sendJsonResponse('error', __('api.error.no_auth'));
-        
-        if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
-             sendJsonResponse('error', __('error.load_content'));
-        }
-
-        $file = $_FILES['image'];
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-        
-        $finfo = new finfo(FILEINFO_MIME_TYPE);
-        $mime = $finfo->file($file['tmp_name']);
-        
-        if (!in_array($mime, $allowedTypes)) {
-            sendJsonResponse('error', __('api.error.upload_format'));
-        }
-        
-        if ($file['size'] > 2 * 1024 * 1024) {
-            sendJsonResponse('error', __('api.error.upload_size'));
-        }
-
-        $uuid = $_SESSION['uuid'];
-        $targetFile = DIR_CUSTOM . $uuid . '.png';
-        $src = null;
-
-        switch ($mime) {
-            case 'image/jpeg': $src = imagecreatefromjpeg($file['tmp_name']); break;
-            case 'image/png':  $src = imagecreatefrompng($file['tmp_name']); break;
-            case 'image/webp': $src = imagecreatefromwebp($file['tmp_name']); break;
-        }
-
-        $uploadSuccess = false;
-        if ($src) {
-            imagepng($src, $targetFile, 9);
-            imagedestroy($src);
-            $uploadSuccess = true;
-        } else {
-             if(move_uploaded_file($file['tmp_name'], $targetFile)) $uploadSuccess = true;
-        }
-
-        if ($uploadSuccess) {
-            $defaultFile = DIR_DEFAULT . $uuid . '.png';
-            if (file_exists($defaultFile)) unlink($defaultFile);
-            $url = $basePath . URL_BASE_AVATARS . 'custom/' . $uuid . '.png?v=' . time();
-            sendJsonResponse('success', __('api.success.photo_updated'), null, ['url' => $url]);
-        } else {
-            sendJsonResponse('error', __('api.error.db_error'));
-        }
-    }
-
-    if ($action === 'delete_profile_picture') {
-         if (!isset($_SESSION['user_id'])) sendJsonResponse('error', __('api.error.no_auth'));
-         $uuid = $_SESSION['uuid'];
-         $username = $_SESSION['username'];
-         
-         $customFile = DIR_CUSTOM . $uuid . '.png';
-         if (file_exists($customFile)) unlink($customFile);
-         
-         $defaultFile = DIR_DEFAULT . $uuid . '.png';
-         if (file_exists($defaultFile)) unlink($defaultFile);
-
-         ensureDefaultAvatarExists($uuid, $username);
-
-         $defaultUrl = $basePath . URL_BASE_AVATARS . 'default/' . $uuid . '.png?v=' . time();
-         sendJsonResponse('success', __('api.success.photo_deleted'), null, ['url' => $defaultUrl]);
-    }
-
+    // --- 6. RECUPERAR CONTRASEÑA (SOLICITUD) ---
     if ($action === 'request_password_reset') {
         $email = trim($input['email'] ?? '');
         checkRateLimit($pdo, $email, 'recovery_request', 3, 60, true);
@@ -484,13 +351,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare("DELETE FROM password_resets WHERE email = ?")->execute([$email]);
             $ins = $pdo->prepare("INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 1 HOUR))");
             if ($ins->execute([$email, $token])) {
+                // En un caso real aquí se envía el correo
                 sendJsonResponse('success', __('api.success.link_generated'));
             }
         } else {
+            // Mensaje genérico por seguridad
             sendJsonResponse('error', __('api.success.link_generated')); 
         }
     }
 
+    // --- 7. RESETEAR CONTRASEÑA ---
     if ($action === 'reset_password') {
         $token = $input['token'] ?? '';
         $newPass = $input['password'] ?? '';
@@ -510,6 +380,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // --- 8. LOGOUT ---
     if ($action === 'logout') {
         $_SESSION = [];
         if (ini_get("session.use_cookies")) {
@@ -520,6 +391,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         sendJsonResponse('success', __('api.success.logout'), $basePath . "login");
     }
 
-    sendJsonResponse('error', "Action invalid");
+    sendJsonResponse('error', "Action invalid (Auth Handler)");
 }
 ?>
