@@ -1,58 +1,50 @@
 <?php
-// includes/db.php
-// UBICACIÓN: Raíz del proyecto /includes/
+// config/database/db.php
 
 // ==============================================================================
-// 1. CONFIGURACIÓN DE LOGS Y MANEJO DE ERRORES (SISTEMA DE LOGS)
+// 1. CONFIGURACIÓN DE LOGS
 // ==============================================================================
 
-// Definir ruta del archivo de log (Raíz del proyecto /logs/aurora_errors.log)
-$logDir = __DIR__ . '/../logs';
+// CORRECCIÓN: Subir dos niveles para llegar a la carpeta logs en la raíz
+$logDir = __DIR__ . '/../../logs';
 $logFile = $logDir . '/aurora_errors.log';
 
-// Crear la carpeta de logs si no existe
 if (!file_exists($logDir)) {
-    // 0755 permite lectura/escritura al propietario y lectura a otros
     @mkdir($logDir, 0755, true);
 }
 
-// Directivas de PHP para ocultar errores al usuario y guardarlos en el archivo
-ini_set('display_errors', 0);           // CRÍTICO: No mostrar nada en pantalla
-ini_set('display_startup_errors', 0);   // CRÍTICO: No mostrar errores de inicio
-ini_set('log_errors', 1);               // Activar el guardado de logs
-ini_set('error_log', $logFile);         // Definir dónde se guardan
-error_reporting(E_ALL);                 // Reportar TODOS los errores al log
+ini_set('display_errors', 0);           
+ini_set('display_startup_errors', 0);   
+ini_set('log_errors', 1);               
+ini_set('error_log', $logFile);         
+error_reporting(E_ALL);                 
 
 // ==============================================================================
 // 2. INICIO DE SESIÓN Y ENTORNO
 // ==============================================================================
 
 if (session_status() === PHP_SESSION_NONE) {
-    // ---------------------------------------------------------
-    // MODIFICACIÓN: Configuración de sesión para 60 días
-    // ---------------------------------------------------------
-    $lifetime = 60 * 60 * 24 * 60; // 60 días en segundos
+    $lifetime = 60 * 60 * 24 * 60; 
 
-    // Establecer la duración de la cookie de sesión
     session_set_cookie_params([
         'lifetime' => $lifetime,
         'path' => '/',
-        'domain' => '', // Dejar vacío para el dominio actual
-        'secure' => true, // IMPORTANTE: Cambia a false si estás probando en localhost sin https
-        'httponly' => true, // Previene acceso a la cookie vía JS
-        'samesite' => 'Strict' // Protección CSRF adicional
+        'domain' => '', 
+        'secure' => true, // Pon false si es localhost sin https
+        'httponly' => true, 
+        'samesite' => 'Strict' 
     ]);
 
-    // Opcional: Aumentar el tiempo de vida de la sesión en el servidor
     ini_set('session.gc_maxlifetime', $lifetime);
-
     session_start();
 }
 
 date_default_timezone_set('America/Mexico_City'); 
 
 // --- CARGADOR DE .ENV ---
-$envFile = __DIR__ . '/../.env';
+// CORRECCIÓN: Subir dos niveles para llegar al .env en la raíz
+$envFile = __DIR__ . '/../../.env';
+
 if (file_exists($envFile)) {
     $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
@@ -70,7 +62,6 @@ if (file_exists($envFile)) {
     }
 }
 
-// 3. Generación del Token CSRF
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -86,10 +77,8 @@ $pass = getenv('DB_PASS');
 $charset = 'utf8mb4';
 
 if (!$host || !$db || !$user) {
-    // Registramos el error técnico en el log
     error_log("[CRITICAL CONFIG] Faltan variables de entorno para la BD en .env");
-    // Mensaje genérico al usuario
-    die("Error de configuración del sistema. Contacte al administrador.");
+    die("Error de configuración del sistema.");
 }
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
@@ -101,7 +90,6 @@ $options = [
 
 try {
     $pdo = new PDO($dsn, $user, $pass, $options);
-    
     try {
         $offset = date('P'); 
         $pdo->exec("SET time_zone = '$offset';");
@@ -112,7 +100,7 @@ try {
 } catch (\PDOException $e) {
     error_log("[DB Connection Error] " . $e->getMessage());
     http_response_code(500); 
-    die("El servicio no está disponible momentáneamente. Por favor intente más tarde.");
+    die("El servicio no está disponible momentáneamente.");
 }
 
 $basePath = '/ProjectAurora/'; 

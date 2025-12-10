@@ -1,12 +1,13 @@
 <?php
 /**
- * includes/router.php
+ * config/routers/router.php
  */
 
 $basePath = '/ProjectAurora/'; 
 
-require_once __DIR__ . '/db.php';
-require_once __DIR__ . '/i18n.php'; // <--- IMPORTANTE
+// CORRECCIÓN: Rutas relativas desde config/routers/ hacia config/database y config/helpers
+require_once __DIR__ . '/../database/db.php';
+require_once __DIR__ . '/../helpers/i18n.php'; 
 
 // 1. Lógica de Autenticación y Sesión
 $isLoggedIn = isset($_SESSION['user_id']);
@@ -39,14 +40,12 @@ if ($isLoggedIn) {
 
 // 2. Determinar Idioma a Cargar
 if ($userLang) {
-    // Si el usuario tiene preferencia guardada
     load_translations($userLang);
 } else {
-    // Si es invitado o no tiene preferencia, detectar navegador
     load_translations(detect_browser_language());
 }
 
-// 3. Análisis de URL y Rutas (Igual que antes)
+// 3. Análisis de URL y Rutas
 $requestUri = $_SERVER['REQUEST_URI'];
 if (strpos($requestUri, $basePath) === 0) {
     $path = substr($requestUri, strlen($basePath));
@@ -58,7 +57,8 @@ $currentSection = rtrim($path, '/');
 
 // Interceptar API
 if (strpos($currentSection, 'api/') === 0) {
-    $apiTarget = __DIR__ . '/../' . $currentSection;
+    // CORRECCIÓN: Subir dos niveles para llegar a la raíz (config/routers/ -> config/ -> raiz/)
+    $apiTarget = __DIR__ . '/../../' . $currentSection;
     if (file_exists($apiTarget)) {
         require_once $apiTarget;
         exit;
@@ -84,6 +84,7 @@ if ($currentSection === '') {
 }
 
 $guestRoutes = ['login', 'register', 'register/aditional-data', 'register/verify', 'recover-password', 'recover-password-reset'];
+// Ajustar nombres de rutas internas si cambiaste nombres de archivo, pero los keys del loader parecen iguales.
 $appRoutes = ['main', 'explorer', 'settings/your-profile', 'settings/login-and-security', 'settings/accessibility'];
 $validRoutes = array_merge($appRoutes, $guestRoutes);
 

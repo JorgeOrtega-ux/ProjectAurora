@@ -1,6 +1,8 @@
 <?php
 // public/index.php
-require_once __DIR__ . '/../includes/router.php';
+
+// CORRECCIÓN DE RUTA: Apuntar a la nueva ubicación en config/routers
+require_once __DIR__ . '/../config/routers/router.php';
 
 $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
 ?>
@@ -14,10 +16,9 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
 
     <script>
         window.BASE_PATH = '<?php echo $basePath; ?>';
-        // INYECCIÓN DE TRADUCCIONES AL FRONTEND (Sin fetch adicional)
+        // INYECCIÓN DE TRADUCCIONES AL FRONTEND
         window.TRANSLATIONS = <?php echo json_encode($GLOBALS['AURORA_TRANSLATIONS']); ?>;
         
-        // Helper simple de JS global
         window.t = function(key) {
             return window.TRANSLATIONS[key] || key;
         };

@@ -2,7 +2,9 @@
 // includes/sections/settings/your-profile.php
 
 if (session_status() === PHP_SESSION_NONE) session_start();
-require_once __DIR__ . '/../../db.php'; 
+
+// CORRECCIÓN: Ajuste de ruta para llegar a config/database/db.php desde includes/sections/settings/
+require_once __DIR__ . '/../../../config/database/db.php'; 
 
 // 1. Obtener datos frescos (Usuario + Preferencias)
 $currentUser = [];
@@ -46,6 +48,8 @@ if (!empty($currentUser['uuid'])) {
     $uuid = $currentUser['uuid'];
     $relCustom  = 'assets/uploads/avatars/custom/' . $uuid . '.png';
     $relDefault = 'assets/uploads/avatars/default/' . $uuid . '.png';
+    // Esta ruta ya estaba bien (sube 3 niveles hasta public), pero verifiquemos:
+    // includes/sections/settings/ -> sube 3 -> Raiz -> public. CORRECTO.
     $absCustom  = __DIR__ . '/../../../public/' . $relCustom;
     
     if (file_exists($absCustom)) {

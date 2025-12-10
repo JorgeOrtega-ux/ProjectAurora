@@ -2,17 +2,17 @@
 // api/auth_handler.php
 
 header('Content-Type: application/json');
-require_once __DIR__ . '/../includes/db.php'; 
-require_once __DIR__ . '/../includes/i18n.php'; // <--- Cargar I18N
+
+// CORRECCIÓN: Rutas actualizadas a la nueva estructura config/
+require_once __DIR__ . '/../config/database/db.php'; 
+require_once __DIR__ . '/../config/helpers/i18n.php'; 
 
 // 1. CARGAR TRADUCCIONES PARA LA API
-// Necesitamos saber el idioma. Como no pasamos por router.php, hacemos la lógica aquí.
 if (session_status() === PHP_SESSION_NONE) session_start();
 $userId = $_SESSION['user_id'] ?? 0;
 $lang = null;
 
 if ($userId) {
-    // Si hay usuario logueado, intentar sacar preferencia de DB (rápido)
     try {
         $stmt = $pdo->prepare("SELECT language FROM user_preferences WHERE user_id = ?");
         $stmt->execute([$userId]);
@@ -21,7 +21,7 @@ if ($userId) {
 }
 
 if (!$lang) {
-    $lang = detect_browser_language(); // Función ahora en i18n.php
+    $lang = detect_browser_language(); 
 }
 
 load_translations($lang);
@@ -29,6 +29,7 @@ load_translations($lang);
 // ==========================================
 // CONFIGURACIÓN DE RUTAS DE AVATARES
 // ==========================================
+// Esto está bien, api/ está al mismo nivel que public/
 define('UPLOAD_BASE_DIR', __DIR__ . '/../public/assets/uploads/avatars/');
 define('DIR_CUSTOM', UPLOAD_BASE_DIR . 'custom/');
 define('DIR_DEFAULT', UPLOAD_BASE_DIR . 'default/');
@@ -87,7 +88,7 @@ function validateEmailRequirements($email) {
     $prefix = substr($email, 0, $atPos);
     $domain = strtolower(substr($email, $atPos + 1));
     
-    if (strlen($prefix) < 4) return __('api.error.email_format'); // Mensaje genérico para simplificar o crear clave especifica
+    if (strlen($prefix) < 4) return __('api.error.email_format'); 
     $allowedDomains = ['gmail.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'yahoo.com'];
     if (!in_array($domain, $allowedDomains)) return __('api.error.email_domain');
     
@@ -155,7 +156,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($json) $input = $json;
     }
 
-    // VERIFICACIÓN CSRF
     $incomingToken = $input['csrf_token'] ?? '';
     $sessionToken = $_SESSION['csrf_token'] ?? '';
     if (empty($incomingToken) || empty($sessionToken) || !hash_equals($sessionToken, $incomingToken)) {
@@ -164,7 +164,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $action = $input['action'] ?? '';
 
-    // 1. REGISTRO PASO 1
     if ($action === 'register_step_1') {
         $email = trim($input['email'] ?? '');
         $password = $input['password'] ?? '';
@@ -187,7 +186,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 2. REGISTRO PASO 2
     if ($action === 'register_step_2') {
         $username = trim($input['username'] ?? '');
         
@@ -227,7 +225,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 3. REENVIAR CÓDIGO
     if ($action === 'resend_verification_code') {
         if (!isset($_SESSION['pending_verification_email'])) {
             sendJsonResponse('error', __('api.error.missing_data'));
@@ -259,7 +256,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 4. VERIFICAR CÓDIGO (REGISTRO FINAL)
     if ($action === 'verify_code') {
         $code = trim($input['code'] ?? '');
         $emailIdentifier = $_SESSION['pending_verification_email'] ?? null;
@@ -282,8 +278,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     ensureDefaultAvatarExists($uuid, $payload['username']);
 
-                    // USAR IDIOMA DETECTADO EN EL HANDLER O EL DE I18N
-                    $detectedLang = detect_browser_language(); // Usamos la de i18n
+                    $detectedLang = detect_browser_language(); 
                     $stmtPref = $pdo->prepare("INSERT INTO user_preferences (user_id, language, open_links_new_tab) VALUES (?, ?, 1)");
                     $stmtPref->execute([$newId, $detectedLang]);
 
@@ -307,7 +302,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 5. LOGIN
     if ($action === 'login') {
         $email = trim($input['email'] ?? '');
         $password = $input['password'] ?? '';
@@ -331,7 +325,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 6. ACTUALIZAR PERFIL
     if ($action === 'update_profile') {
         if (!isset($_SESSION['user_id'])) sendJsonResponse('error', __('api.error.no_auth'));
 
@@ -361,7 +354,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 6.1 ACTUALIZAR PREFERENCIAS
     if ($action === 'update_preferences') {
         if (!isset($_SESSION['user_id'])) sendJsonResponse('error', __('api.error.no_auth'));
         $userId = $_SESSION['user_id'];
@@ -374,9 +366,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($language) {
             $allowedLangs = ['es-419', 'en-US', 'en-GB', 'fr-FR', 'pt-BR'];
-            if (!in_array($language, $allowedLangs)) {
-                // Silencioso o error
-            } else {
+            if (in_array($language, $allowedLangs)) {
                 $fields[] = "language = ?";
                 $params[] = $language;
             }
@@ -406,7 +396,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 7. SUBIR FOTO
     if ($action === 'upload_profile_picture') {
         if (!isset($_SESSION['user_id'])) sendJsonResponse('error', __('api.error.no_auth'));
         
@@ -457,7 +446,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 8. ELIMINAR FOTO
     if ($action === 'delete_profile_picture') {
          if (!isset($_SESSION['user_id'])) sendJsonResponse('error', __('api.error.no_auth'));
          $uuid = $_SESSION['uuid'];
@@ -475,7 +463,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          sendJsonResponse('success', __('api.success.photo_deleted'), null, ['url' => $defaultUrl]);
     }
 
-    // 9. PASSWORD RESET
     if ($action === 'request_password_reset') {
         $email = trim($input['email'] ?? '');
         checkRateLimit($pdo, $email, 'recovery_request', 3, 60, true);
@@ -500,7 +487,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 sendJsonResponse('success', __('api.success.link_generated'));
             }
         } else {
-            sendJsonResponse('error', __('api.success.link_generated')); // Seguridad: no revelar si existe
+            sendJsonResponse('error', __('api.success.link_generated')); 
         }
     }
 
