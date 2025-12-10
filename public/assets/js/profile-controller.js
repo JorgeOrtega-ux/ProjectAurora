@@ -3,12 +3,11 @@
  * Maneja la lógica de la sección de perfil (Datos, Foto y Preferencias).
  */
 
-// CAMBIO AQUÍ: Importamos SettingsService en lugar de AuthService
 import { SettingsService } from './api-services.js';
+import { Toast } from './toast-service.js';
 
 /* --- UTILIDADES --- */
 const toggleEditMode = (section, isEditing) => {
-    // ... (El código de esta función sigue igual) ...
     const viewState = section.querySelector('[data-state$="-view-state"]');
     const editState = section.querySelector('[data-state$="-edit-state"]');
     const actionsView = section.querySelector('[data-state$="-actions-view"]');
@@ -79,10 +78,9 @@ const setupDropdownUI = () => {
                 wrapper.querySelector('.trigger-selector').classList.remove('active');
                 
                 if (wrapper.dataset.pref === 'language') {
-                    console.log("Guardando idioma:", newValue);
-                    // CAMBIO AQUÍ: Usamos SettingsService
+                    // Actualización silenciosa o con reload
                     SettingsService.updatePreferences({ language: newValue }).then(res => {
-                        if(res.status !== 'success') alert(window.t('global.error'));
+                        if(res.status !== 'success') Toast.error(window.t('global.error'));
                         else window.location.reload(); 
                     });
                 }
@@ -111,21 +109,21 @@ const handleProfileSave = async (sectionType) => {
     btn.innerText = window.t('global.processing');
 
     try {
-        // CAMBIO AQUÍ: Usamos SettingsService
         const result = await SettingsService.updateProfile(currentUsername, currentEmail);
 
         if (result.status === 'success') {
+            Toast.success(result.message);
             const display = document.querySelector(`[data-element="${sectionType}-display-text"]`);
             if (display) display.innerText = (sectionType === 'username') ? currentUsername : currentEmail;
             
             const section = document.querySelector(`[data-component="${sectionType}-section"]`);
             toggleEditMode(section, false);
         } else {
-            alert(result.message || window.t('global.error'));
+            Toast.error(result.message || window.t('global.error'));
         }
     } catch (error) {
         console.error(error);
-        alert(window.t('js.error.connection'));
+        Toast.error(window.t('js.error.connection'));
     } finally {
         btn.disabled = false; btn.innerText = originalText;
     }
@@ -173,9 +171,9 @@ const setupProfilePictureLogic = (pfpSection) => {
             btn.innerText = window.t('global.processing'); 
             btn.disabled = true;
 
-            // CAMBIO AQUÍ: Usamos SettingsService
             SettingsService.uploadProfilePicture(file).then(res => {
                 if(res.status === 'success') {
+                    Toast.success(res.message);
                     originalSrc = res.data.url;
                     previewImg.src = originalSrc;
                     const headerImg = document.querySelector('.profile-img');
@@ -187,11 +185,11 @@ const setupProfilePictureLogic = (pfpSection) => {
                     actionsDefault.classList.remove('disabled'); actionsDefault.classList.add('active');
                     fileInput.value = '';
                 } else {
-                    alert(res.message);
+                    Toast.error(res.message);
                 }
             }).catch(err => {
                 console.error(err);
-                alert(window.t('js.error.connection'));
+                Toast.error(window.t('js.error.connection'));
             }).finally(() => {
                 btn.innerText = txt; btn.disabled = false;
             });
@@ -200,9 +198,10 @@ const setupProfilePictureLogic = (pfpSection) => {
         if (e.target.closest('[data-action="profile-picture-remove-trigger"]')) {
             if(!confirm(window.t('global.delete') + "?")) return; 
             btnDelete.disabled = true;
-            // CAMBIO AQUÍ: Usamos SettingsService
+
             SettingsService.deleteProfilePicture().then(res => {
                 if(res.status === 'success') {
+                    Toast.success(res.message);
                     originalSrc = res.data.url;
                     previewImg.src = originalSrc;
                     const headerImg = document.querySelector('.profile-img');
@@ -211,7 +210,7 @@ const setupProfilePictureLogic = (pfpSection) => {
                     btnDelete.style.display = "none";
                     btnUploadText.innerText = window.t('settings.profile.upload_btn');
                 } else {
-                    alert(res.message);
+                    Toast.error(res.message);
                 }
             }).finally(() => {
                 btnDelete.disabled = false;
@@ -233,17 +232,18 @@ const setupPreferencesLogic = () => {
             const isChecked = e.target.checked ? 1 : 0;
             e.target.disabled = true;
             
-            // CAMBIO AQUÍ: Usamos SettingsService
             SettingsService.updatePreferences({ open_links_new_tab: isChecked })
                 .then(res => {
-                    if (res.status !== 'success') {
+                    if (res.status === 'success') {
+                        Toast.success(res.message);
+                    } else {
                         e.target.checked = !e.target.checked; 
-                        alert(window.t('global.error'));
+                        Toast.error(window.t('global.error'));
                     }
                 })
                 .catch(err => {
                     e.target.checked = !e.target.checked;
-                    alert(window.t('js.error.connection'));
+                    Toast.error(window.t('js.error.connection'));
                 })
                 .finally(() => {
                     e.target.disabled = false;

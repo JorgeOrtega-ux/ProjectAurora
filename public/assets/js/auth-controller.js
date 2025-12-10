@@ -1,47 +1,27 @@
 /**
  * AuthController.js
  * Lógica de UI para autenticación utilizando AuthService.
+ * Actualizado con sistema de Toasts.
  */
 
 import { AuthService } from './api-services.js';
+import { Toast } from './toast-service.js';
 
 let countdownInterval;
 
+// Reemplazamos la antigua lógica que insertaba HTML con el sistema Toast
 const showError = (message) => {
-    let alertBox = document.querySelector('.alert.error');
-    
-    if (!alertBox) {
-        const authCard = document.querySelector('.auth-card');
-        if (authCard) {
-            alertBox = document.createElement('div');
-            alertBox.className = 'alert error';
-            alertBox.style.marginTop = '16px';
-            alertBox.style.marginBottom = '0';
-            const footer = authCard.querySelector('.auth-footer');
-            if (footer) {
-                authCard.insertBefore(alertBox, footer);
-            } else {
-                authCard.appendChild(alertBox);
-            }
-        }
-    }
-
-    if (alertBox) {
-        alertBox.textContent = message;
-        alertBox.style.display = 'block';
-        
-        alertBox.animate([
-            { transform: 'translateX(0)' },
-            { transform: 'translateX(-5px)' },
-            { transform: 'translateX(5px)' },
-            { transform: 'translateX(0)' }
-        ], { duration: 300 });
-    } 
+    Toast.error(message);
 };
 
 const handleAuthResponse = (result, buttons) => {
     if (result.status === 'success') {
-        window.location.href = result.redirect;
+        // Si hay redirección, la seguimos. Si es solo éxito (ej. datos guardados), mostramos toast.
+        if (result.redirect) {
+            window.location.href = result.redirect;
+        } else {
+            Toast.success(result.message || window.t('api.success.valid_data'));
+        }
     } else {
         // Usa el mensaje del backend si existe, sino un genérico traducido
         showError(result.message || window.t('global.error'));
@@ -115,8 +95,8 @@ const processAuthAction = async (actionType, data) => {
                         btn.style.opacity = '1';
                         btn.textContent = window.t('auth.register.verify_button'); 
                     });
-                    // Mensaje flotante simple, usa la respuesta del back que ya viene traducida si usaste el handler nuevo
-                    alert(result.message);
+                    // REEMPLAZADO: alert por Toast
+                    Toast.success(result.message);
                     return; 
                 }
                 break;
@@ -132,8 +112,10 @@ const processAuthAction = async (actionType, data) => {
                     }
                     buttons.forEach(btn => {
                         btn.disabled = false;
-                        btn.textContent = window.t('api.success.code_sent'); // O "Enviado"
+                        btn.textContent = window.t('api.success.code_sent'); 
                     });
+                    // Agregamos feedback visual extra
+                    Toast.success(result.message || window.t('api.success.link_generated'));
                     return; 
                 }
                 break;
@@ -160,6 +142,10 @@ const processAuthAction = async (actionType, data) => {
 };
 
 const setupAuthListeners = () => {
+    // Limpiamos alertas antiguas si existieran (opcional, por limpieza DOM)
+    const oldAlerts = document.querySelectorAll('.alert.error, .alert.success');
+    oldAlerts.forEach(el => el.style.display = 'none');
+
     if(document.getElementById('register-timer')) {
         startTimer('register-timer', 'btn-resend-code');
     }
@@ -225,7 +211,7 @@ const setupAuthListeners = () => {
                 }
                 processAuthAction('register_step_2', { username: userVal });
             } else {
-                showError(window.t('js.error.complete_fields')); // "Por favor escribe un nombre de usuario"
+                showError(window.t('js.error.complete_fields')); 
             }
         }
 
@@ -318,6 +304,6 @@ const setupAuthListeners = () => {
 };
 
 export const initAuthController = () => {
-    console.log('AuthController: Inicializado (vía ApiService).');
+    console.log('AuthController: Inicializado (vía ApiService + Toasts).');
     setupAuthListeners();
 };
