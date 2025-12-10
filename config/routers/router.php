@@ -104,7 +104,7 @@ $guestRoutes = [
     'register/verify', 
     'recover-password', 
     'recover-password-reset',
-    'auth/2fa-challenge' // IMPORTANTE: Permitir acceso para verificar el código
+    '2fa-challenge' // CORREGIDO: Actualizado para coincidir con routes.php
 ];
 
 // Comprobación de estado intermedio (2FA Pendiente)
@@ -114,8 +114,8 @@ if (!$isLoggedIn) {
     // Si no está logueado:
     
     // Caso especial: Está intentando validar 2FA y tiene la sesión temporal
-    if ($currentSection === 'auth/2fa-challenge' && $is2faPending) {
-        // Permitir acceso
+    if ($currentSection === '2fa-challenge' && $is2faPending) {
+        // Permitir acceso (CORREGIDO: nombre de sección actualizado)
     } 
     // Caso normal: Si intenta ir a una ruta que no es de guest, mandar a login
     elseif (!in_array($currentSection, $guestRoutes)) {

@@ -37,7 +37,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $action = $input['action'] ?? '';
 
-    // ... (Mantener register_step_1, register_step_2, verify_code, resend_verification_code, request_password_reset, reset_password IGUALES QUE EL ORIGINAL) ...
     // --- 1. REGISTRO PASO 1 ---
     if ($action === 'register_step_1') {
         $email = trim($input['email'] ?? '');
@@ -173,7 +172,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($user['two_factor_enabled'] == 1) {
                 $_SESSION['temp_2fa_user_id'] = $user['id']; // Sesión parcial
                 // Redirigir a la pantalla de desafío 2FA
-                sendJsonResponse('success', '2FA Required', $basePath . 'auth/2fa-challenge');
+                // CORREGIDO: Redirección sin el prefijo 'auth/'
+                sendJsonResponse('success', '2FA Required', $basePath . '2fa-challenge');
             } else {
                 // Login normal
                 $_SESSION['user_id'] = $user['id'];
@@ -240,7 +240,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // ... (Mantener recover-password, reset-password, logout IGUALES QUE ORIGINAL) ...
     // --- 6. RECUPERAR CONTRASEÑA (SOLICITUD) ---
     if ($action === 'request_password_reset') {
         $email = trim($input['email'] ?? '');

@@ -17,8 +17,8 @@ return [
     'register/aditional-data' => __DIR__ . '/../includes/sections/auth/register.php',
     'register/verify'         => __DIR__ . '/../includes/sections/auth/register.php',
     
-    // Pantalla de desafío 2FA
-    'auth/2fa-challenge'      => __DIR__ . '/../includes/sections/auth/2fa-challenge.php',
+    // Pantalla de desafío 2FA (CORREGIDO: llave simplificada)
+    '2fa-challenge'      => __DIR__ . '/../includes/sections/auth/2fa-challenge.php',
 
     // --- Rutas de Configuración (Settings) ---
     'settings/your-profile'       => __DIR__ . '/../includes/sections/settings/your-profile.php',
