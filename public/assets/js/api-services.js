@@ -14,8 +14,6 @@ async function postRequest(endpoint, data) {
         
         // 1. Inyectar Datos
         for (const [key, value] of Object.entries(data)) {
-            // Si es un archivo, append directo, si es objeto/array, stringify? 
-            // Para este caso simple, append funciona para File y strings.
             formData.append(key, value);
         }
 
@@ -64,9 +62,14 @@ export const AuthService = {
     
     updateProfile: (username, email) => postRequest('api/auth_handler.php', { action: 'update_profile', username, email }),
     
+    // [NUEVO] Actualizar Preferencias
+    updatePreferences: (data) => postRequest('api/auth_handler.php', { 
+        action: 'update_preferences', 
+        ...data 
+    }),
+    
     // --- MÉTODOS DE IMAGEN ---
     uploadProfilePicture: (file) => {
-        // Al pasar 'file' (objeto File) al postRequest, FormData lo maneja correctamente como binario
         return postRequest('api/auth_handler.php', {
             action: 'upload_profile_picture',
             image: file

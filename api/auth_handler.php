@@ -7,15 +7,11 @@ require_once __DIR__ . '/../includes/db.php';
 // ==========================================
 // CONFIGURACIÓN DE RUTAS DE AVATARES
 // ==========================================
-// Definimos las rutas base para no tener confusiones
 define('UPLOAD_BASE_DIR', __DIR__ . '/../public/assets/uploads/avatars/');
 define('DIR_CUSTOM', UPLOAD_BASE_DIR . 'custom/');
 define('DIR_DEFAULT', UPLOAD_BASE_DIR . 'default/');
-
-// URL base relativa para el navegador
 define('URL_BASE_AVATARS', 'assets/uploads/avatars/');
 
-// Asegurar que existan las carpetas al cargar el script
 if (!is_dir(DIR_CUSTOM)) @mkdir(DIR_CUSTOM, 0755, true);
 if (!is_dir(DIR_DEFAULT)) @mkdir(DIR_DEFAULT, 0755, true);
 
@@ -76,26 +72,13 @@ function validateEmailRequirements($email) {
     return true;
 }
 
-/**
- * Garantiza que exista un avatar por defecto.
- * [CORREGIDO]: Generamos el color en PHP para que sea realmente aleatorio siempre.
- */
 function ensureDefaultAvatarExists($uuid, $username) {
     $targetFile = DIR_DEFAULT . $uuid . '.png';
-
-    // Si NO existe, lo creamos (descargamos)
     if (!file_exists($targetFile)) {
         try {
-            // Generar un color HEX aleatorio oscuro/medio para buen contraste con blanco
-            // mt_rand(0, 0xFFFFFF) genera un número, dechex lo convierte a hex.
-            // str_pad asegura que tenga 6 caracteres (ej: 0033ff)
             $randomColor = str_pad(dechex(mt_rand(0, 0xFFFFFF)), 6, '0', STR_PAD_LEFT);
-
-            // Pasamos el color explícito a la API en lugar de 'random'
             $url = "https://ui-avatars.com/api/?name=" . urlencode($username) . "&background=" . $randomColor . "&color=fff&size=128&format=png";
-            
             $imgContent = @file_get_contents($url);
-            
             if ($imgContent) {
                 @file_put_contents($targetFile, $imgContent);
                 return true;
@@ -106,6 +89,43 @@ function ensureDefaultAvatarExists($uuid, $username) {
         return false;
     }
     return true; 
+}
+
+/**
+ * Detecta el idioma del navegador y lo mapea a los soportados.
+ */
+function detectBrowserLanguage() {
+    // Lista de idiomas soportados por la aplicación (definidos en UI)
+    $supported = [
+        'es-419' => ['es', 'es-mx', 'es-ar', 'es-co', 'es-cl', 'es-pe', 'es-ve', 'es-ec', 'es-gt', 'es-cu', 'es-bo', 'es-do', 'es-hn', 'es-py', 'es-sv', 'es-ni', 'es-cr', 'es-pr', 'es-uy', 'es-pa'],
+        'en-US'  => ['en', 'en-us', 'en-ca'],
+        'en-GB'  => ['en-gb', 'en-au', 'en-nz'],
+        'fr-FR'  => ['fr', 'fr-fr', 'fr-ca', 'fr-be', 'fr-ch'],
+        'pt-BR'  => ['pt', 'pt-br', 'pt-pt']
+    ];
+
+    $fallback = 'en-US';
+    
+    if (!isset($_SERVER['HTTP_ACCEPT_LANGUAGE'])) {
+        return $fallback;
+    }
+
+    // Ejemplo header: es-MX,es;q=0.9,en;q=0.8
+    $userLangs = explode(',', strtolower($_SERVER['HTTP_ACCEPT_LANGUAGE']));
+    
+    foreach ($userLangs as $langStr) {
+        // Limpiar calidad (q=0.9)
+        $langCode = trim(explode(';', $langStr)[0]);
+        
+        // 1. Búsqueda exacta inversa (Buscar si el código del user está en algún array de soportados)
+        foreach ($supported as $key => $variants) {
+            if ($key === $langCode || in_array($langCode, $variants)) {
+                return $key;
+            }
+        }
+    }
+    
+    return $fallback;
 }
 
 // --- SEGURIDAD (RATE LIMITING) ---
@@ -260,7 +280,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 4. VERIFICAR CÓDIGO
+    // 4. VERIFICAR CÓDIGO (REGISTRO FINAL)
     if ($action === 'verify_code') {
         $code = trim($input['code'] ?? '');
         $emailIdentifier = $_SESSION['pending_verification_email'] ?? null;
@@ -281,8 +301,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $newId = $pdo->lastInsertId();
                     $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ?")->execute([$emailIdentifier]);
 
-                    // Generar avatar default con color aleatorio
+                    // Generar avatar default
                     ensureDefaultAvatarExists($uuid, $payload['username']);
+
+                    // [NUEVO] CREAR PREFERENCIAS DE USUARIO
+                    // Detectar idioma del navegador del request actual
+                    $detectedLang = detectBrowserLanguage();
+                    $stmtPref = $pdo->prepare("INSERT INTO user_preferences (user_id, language, open_links_new_tab) VALUES (?, ?, 1)");
+                    $stmtPref->execute([$newId, $detectedLang]);
 
                     $_SESSION['user_id'] = $newId;
                     $_SESSION['username'] = $payload['username'];
@@ -328,7 +354,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 6. ACTUALIZAR PERFIL
+    // 6. ACTUALIZAR PERFIL (Datos Básicos)
     if ($action === 'update_profile') {
         if (!isset($_SESSION['user_id'])) sendJsonResponse('error', "No autenticado.");
 
@@ -358,7 +384,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 7. SUBIR FOTO DE PERFIL (A la carpeta CUSTOM)
+    // 6.1 [NUEVO] ACTUALIZAR PREFERENCIAS
+    if ($action === 'update_preferences') {
+        if (!isset($_SESSION['user_id'])) sendJsonResponse('error', "No autenticado.");
+        $userId = $_SESSION['user_id'];
+        
+        // Recibir datos, si no vienen, no se actualizan
+        $language = $input['language'] ?? null;
+        $openLinks = isset($input['open_links_new_tab']) ? (int)$input['open_links_new_tab'] : null;
+
+        // Construcción dinámica del query
+        $fields = [];
+        $params = [];
+
+        if ($language) {
+            $allowedLangs = ['es-419', 'en-US', 'en-GB', 'fr-FR', 'pt-BR'];
+            if (!in_array($language, $allowedLangs)) {
+                sendJsonResponse('error', "Idioma no soportado.");
+            }
+            $fields[] = "language = ?";
+            $params[] = $language;
+        }
+
+        if ($openLinks !== null) {
+            $fields[] = "open_links_new_tab = ?";
+            $params[] = $openLinks; // 1 o 0
+        }
+
+        if (empty($fields)) {
+            sendJsonResponse('success', "Nada que actualizar.");
+        }
+
+        $params[] = $userId;
+        $sql = "UPDATE user_preferences SET " . implode(', ', $fields) . " WHERE user_id = ?";
+        
+        try {
+            $stmt = $pdo->prepare($sql);
+            if ($stmt->execute($params)) {
+                sendJsonResponse('success', "Preferencias guardadas.");
+            } else {
+                sendJsonResponse('error', "Error al guardar preferencias.");
+            }
+        } catch (Exception $e) {
+            sendJsonResponse('error', "Error DB: " . $e->getMessage());
+        }
+    }
+
+    // 7. SUBIR FOTO DE PERFIL
     if ($action === 'upload_profile_picture') {
         if (!isset($_SESSION['user_id'])) sendJsonResponse('error', "No autenticado.");
         
@@ -381,7 +453,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $uuid = $_SESSION['uuid'];
-        $targetFile = DIR_CUSTOM . $uuid . '.png'; // Ruta CUSTOM
+        $targetFile = DIR_CUSTOM . $uuid . '.png';
         $src = null;
 
         switch ($mime) {
@@ -403,13 +475,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($uploadSuccess) {
-            // [CORRECCIÓN 1]: Borrar avatar default si existe
             $defaultFile = DIR_DEFAULT . $uuid . '.png';
             if (file_exists($defaultFile)) {
                 unlink($defaultFile);
             }
-
-            // Devolver URL CUSTOM con timestamp
             $url = $basePath . URL_BASE_AVATARS . 'custom/' . $uuid . '.png?v=' . time();
             sendJsonResponse('success', "Foto actualizada.", null, ['url' => $url]);
         } else {
@@ -423,24 +492,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          $uuid = $_SESSION['uuid'];
          $username = $_SESSION['username'];
          
-         // 1. Borrar de CUSTOM (si existe)
          $customFile = DIR_CUSTOM . $uuid . '.png';
-         if (file_exists($customFile)) {
-             unlink($customFile);
-         }
+         if (file_exists($customFile)) unlink($customFile);
          
-         // 2. Borrar de DEFAULT (IMPORTANTE: para obligar a regenerar color)
          $defaultFile = DIR_DEFAULT . $uuid . '.png';
-         if (file_exists($defaultFile)) {
-             unlink($defaultFile);
-         }
+         if (file_exists($defaultFile)) unlink($defaultFile);
 
-         // 3. Crear nuevo DEFAULT (Ahora se generará con color aleatorio gracias a ensureDefaultAvatarExists modificado)
          ensureDefaultAvatarExists($uuid, $username);
 
-         // 4. Devolver URL de DEFAULT con timestamp
          $defaultUrl = $basePath . URL_BASE_AVATARS . 'default/' . $uuid . '.png?v=' . time();
-         
          sendJsonResponse('success', "Foto eliminada.", null, ['url' => $defaultUrl]);
     }
 

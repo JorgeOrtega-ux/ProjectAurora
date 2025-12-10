@@ -4,29 +4,40 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../../db.php'; 
 
-// 1. Obtener datos frescos
+// 1. Obtener datos frescos (Usuario + Preferencias)
 $currentUser = [];
 $userId = $_SESSION['user_id'] ?? 0;
 
 if ($userId) {
     try {
-        $stmt = $pdo->prepare("SELECT username, email, role, uuid FROM users WHERE id = ?");
+        // [MODIFICADO] JOIN con user_preferences
+        $stmt = $pdo->prepare("
+            SELECT u.username, u.email, u.role, u.uuid, 
+                   p.language, p.open_links_new_tab 
+            FROM users u 
+            LEFT JOIN user_preferences p ON u.id = p.user_id 
+            WHERE u.id = ?
+        ");
         $stmt->execute([$userId]);
         $userDB = $stmt->fetch();
         if ($userDB) {
             $currentUser = $userDB;
-            $currentUser['language'] = 'es-419';
+            // Fallback si la preferencia es nula por algún error de integridad
+            if (empty($currentUser['language'])) $currentUser['language'] = 'en-US';
+            if (!isset($currentUser['open_links_new_tab'])) $currentUser['open_links_new_tab'] = 1; 
         }
     } catch (Exception $e) {}
 }
 
 if (empty($currentUser)) {
+    // Fallback visual si falla todo
     $currentUser = [
         'username' => $_SESSION['username'] ?? 'Usuario',
         'email'    => 'No disponible',
         'role'     => $_SESSION['role'] ?? 'user',
         'uuid'     => $_SESSION['uuid'] ?? '',
-        'language' => 'es-419'
+        'language' => 'en-US',
+        'open_links_new_tab' => 1
     ];
 }
 
@@ -49,6 +60,20 @@ if (!empty($currentUser['uuid'])) {
 } else {
     $finalAvatarSrc = ''; 
 }
+
+// 3. MAPA DE IDIOMAS (Para mostrar el texto correcto en el dropdown)
+$languagesMap = [
+    'es-419' => ['label' => 'Español (Latinoamérica)', 'icon' => 'language'],
+    'en-US'  => ['label' => 'English (US)', 'icon' => 'translate'],
+    'en-GB'  => ['label' => 'English (UK)', 'icon' => 'translate'],
+    'fr-FR'  => ['label' => 'Français (France)', 'icon' => 'language_french'],
+    'pt-BR'  => ['label' => 'Português (Brasil)', 'icon' => 'public'],
+];
+
+// Obtener datos del idioma actual para pintar el selector
+$currentLangCode = $currentUser['language'];
+$currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
+
 ?>
 
 <div class="section-content active" data-section="settings/your-profile">
@@ -184,86 +209,23 @@ if (!empty($currentUser['uuid'])) {
                     </div>
                 </div>
                 <div class="component-card__actions">
-                    <div class="trigger-select-wrapper" data-ui-type="dropdown" data-align="left">
+                    <div class="trigger-select-wrapper" data-ui-type="dropdown" data-align="left" data-pref="language">
                         <div class="trigger-selector" data-action="toggle-dropdown">
-                            <span class="material-symbols-rounded trigger-select-icon">language</span>
-                            <span class="trigger-select-text">Español (Latinoamérica)</span>
+                            <span class="material-symbols-rounded trigger-select-icon"><?php echo $currentLangData['icon']; ?></span>
+                            <span class="trigger-select-text"><?php echo $currentLangData['label']; ?></span>
                             <span class="material-symbols-rounded">expand_more</span>
                         </div>
                         <div class="popover-module">
                             <div class="menu-list">
-                                <div class="menu-link body-text active">
-                                    <div class="menu-link-icon">
-                                        <span class="material-symbols-rounded">language</span>
+                                <?php foreach ($languagesMap as $code => $data): ?>
+                                    <div class="menu-link body-text <?php echo ($code === $currentLangCode) ? 'active' : ''; ?>" 
+                                         data-value="<?php echo $code; ?>">
+                                        <div class="menu-link-icon">
+                                            <span class="material-symbols-rounded"><?php echo $data['icon']; ?></span>
+                                        </div>
+                                        <div class="menu-link-text"><?php echo $data['label']; ?></div>
                                     </div>
-                                    <div class="menu-link-text">Español (Latinoamérica)</div>
-                                </div>
-                                <div class="menu-link body-text">
-                                    <div class="menu-link-icon">
-                                        <span class="material-symbols-rounded">translate</span>
-                                    </div>
-                                    <div class="menu-link-text">English (US)</div>
-                                </div>
-                                <div class="menu-link body-text">
-                                    <div class="menu-link-icon">
-                                        <span class="material-symbols-rounded">translate</span>
-                                    </div>
-                                    <div class="menu-link-text">English (UK)</div>
-                                </div>
-                                <div class="menu-link body-text">
-                                    <div class="menu-link-icon">
-                                        <span class="material-symbols-rounded">language_french</span>
-                                    </div>
-                                    <div class="menu-link-text">Français (France)</div>
-                                </div>
-                                <div class="menu-link body-text">
-                                    <div class="menu-link-icon">
-                                        <span class="material-symbols-rounded">public</span>
-                                    </div>
-                                    <div class="menu-link-text">Português (Brasil)</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <hr class="component-divider">
-
-            <div class="component-group-item component-group-item--stacked">
-                <div class="component-card__content">
-                    <div class="component-card__text">
-                        <h2 class="component-card__title">¿Para qué usarás esta web?</h2>
-                        <p class="component-card__description">Nos ayuda a personalizar tu experiencia.</p>
-                    </div>
-                </div>
-                <div class="component-card__actions">
-                    <div class="trigger-select-wrapper" data-ui-type="dropdown" data-align="left">
-                        <div class="trigger-selector" data-action="toggle-dropdown">
-                            <span class="material-symbols-rounded trigger-select-icon">person</span>
-                            <span class="trigger-select-text">Uso Personal</span>
-                            <span class="material-symbols-rounded">expand_more</span>
-                        </div>
-                        <div class="popover-module">
-                            <div class="menu-list">
-                                <div class="menu-link body-text active">
-                                    <div class="menu-link-icon">
-                                        <span class="material-symbols-rounded">person</span>
-                                    </div>
-                                    <div class="menu-link-text">Uso Personal</div>
-                                </div>
-                                <div class="menu-link body-text">
-                                    <div class="menu-link-icon">
-                                        <span class="material-symbols-rounded">groups</span>
-                                    </div>
-                                    <div class="menu-link-text">Trabajo / Equipo</div>
-                                </div>
-                                <div class="menu-link body-text">
-                                    <div class="menu-link-icon">
-                                        <span class="material-symbols-rounded">school</span>
-                                    </div>
-                                    <div class="menu-link-text">Educación</div>
-                                </div>
+                                <?php endforeach; ?>
                             </div>
                         </div>
                     </div>
@@ -281,7 +243,8 @@ if (!empty($currentUser['uuid'])) {
                 </div>
                 <div class="component-card__actions actions-right">
                     <label class="component-toggle-switch">
-                        <input type="checkbox" checked>
+                        <input type="checkbox" id="pref-links-new-tab" 
+                               <?php echo ($currentUser['open_links_new_tab'] == 1) ? 'checked' : ''; ?>>
                         <span class="component-toggle-slider"></span>
                     </label>
                 </div>

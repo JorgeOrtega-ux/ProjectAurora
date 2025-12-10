@@ -54,16 +54,22 @@ CREATE TABLE IF NOT EXISTS password_resets (
     FOREIGN KEY (email) REFERENCES users(email) ON DELETE CASCADE
 );
 
--- 8. [NUEVO] Tabla de Seguridad (Rate Limiting)
--- Registra intentos fallidos o acciones sensibles para bloquear ataques de fuerza bruta.
+-- 8. Tabla de Seguridad (Rate Limiting)
 CREATE TABLE security_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_identifier VARCHAR(255) NOT NULL, -- Puede ser Email, Username o IP
-    action_type VARCHAR(50) NOT NULL,      -- Ej: 'login_fail', 'verify_fail', 'recovery_request'
-    ip_address VARCHAR(45) NOT NULL,       -- Siempre registramos la IP
+    user_identifier VARCHAR(255) NOT NULL,
+    action_type VARCHAR(50) NOT NULL,
+    ip_address VARCHAR(45) NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    
-    -- Índices para búsqueda rápida (CRÍTICO PARA RENDIMIENTO)
     INDEX idx_security_ip_action (ip_address, action_type, created_at),
     INDEX idx_security_identifier_action (user_identifier, action_type, created_at)
+);
+
+-- 9. [NUEVO] Tabla de Preferencias de Usuario
+CREATE TABLE user_preferences (
+    user_id INT PRIMARY KEY,
+    language VARCHAR(10) DEFAULT 'en-US', -- Idioma de la interfaz
+    open_links_new_tab BOOLEAN DEFAULT TRUE, -- Por defecto activado
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

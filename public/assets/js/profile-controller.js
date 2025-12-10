@@ -1,6 +1,6 @@
 /**
  * ProfileController.js
- * Maneja la lógica de la sección de perfil (Datos y Foto).
+ * Maneja la lógica de la sección de perfil (Datos, Foto y Preferencias).
  */
 
 import { AuthService } from './api-services.js';
@@ -20,13 +20,9 @@ const toggleEditMode = (section, isEditing) => {
         
         const input = section.querySelector('input');
         if(input) {
-            // [CORRECCIÓN CURSOR]: 
-            // Guardamos el valor, lo vaciamos y lo restauramos.
-            // Esto obliga al navegador a poner el cursor al final del texto.
             const val = input.value;
             input.value = '';
             input.value = val;
-            
             input.focus();
         }
     } else {
@@ -37,7 +33,7 @@ const toggleEditMode = (section, isEditing) => {
     }
 };
 
-/* --- LÓGICA UI PARA DROPDOWNS --- */
+/* --- LÓGICA UI PARA DROPDOWNS (Y GUARDADO DE IDIOMA) --- */
 const setupDropdownUI = () => {
     document.addEventListener('click', (e) => {
         // 1. Manejar apertura/cierre
@@ -46,7 +42,7 @@ const setupDropdownUI = () => {
             const wrapper = trigger.closest('.trigger-select-wrapper');
             const menu = wrapper.querySelector('.popover-module');
             
-            // Cerrar otros abiertos
+            // Cerrar otros
             document.querySelectorAll('.popover-module.active').forEach(el => {
                 if (el !== menu) el.classList.remove('active');
             });
@@ -54,39 +50,43 @@ const setupDropdownUI = () => {
                 if (el !== trigger) el.classList.remove('active');
             });
 
-            // Toggle actual
             trigger.classList.toggle('active');
             menu.classList.toggle('active');
             e.stopPropagation();
             return;
         }
 
-        // 2. Manejar selección (Solo visual)
+        // 2. Manejar selección (Visual + Guardado)
         if (e.target.closest('.menu-link')) {
             const link = e.target.closest('.menu-link');
             const menu = link.closest('.popover-module');
             const wrapper = link.closest('.trigger-select-wrapper');
             
             if (wrapper) {
+                // Actualizar UI
                 const triggerText = wrapper.querySelector('.trigger-select-text');
                 const triggerIcon = wrapper.querySelector('.trigger-select-icon');
 
                 const linkText = link.querySelector('.menu-link-text');
                 const linkIcon = link.querySelector('.menu-link-icon span');
+                const newValue = link.dataset.value; // Valor técnico (ej: es-419)
 
-                if(triggerText && linkText) {
-                    triggerText.textContent = linkText.textContent;
-                }
-                
-                if(triggerIcon && linkIcon) {
-                    triggerIcon.textContent = linkIcon.textContent;
-                }
+                if(triggerText && linkText) triggerText.textContent = linkText.textContent;
+                if(triggerIcon && linkIcon) triggerIcon.textContent = linkIcon.textContent;
 
                 menu.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
                 link.classList.add('active');
 
                 menu.classList.remove('active');
                 wrapper.querySelector('.trigger-selector').classList.remove('active');
+                
+                // [NUEVO] LOGICA DE GUARDADO AUTOMATICO (Si es el selector de idioma)
+                if (wrapper.dataset.pref === 'language') {
+                    console.log("Guardando idioma:", newValue);
+                    AuthService.updatePreferences({ language: newValue }).then(res => {
+                        if(res.status !== 'success') alert("Error al guardar preferencia de idioma.");
+                    });
+                }
             }
         }
 
@@ -107,7 +107,6 @@ const handleProfileSave = async (sectionType) => {
     const currentUsername = usernameInput.value.trim();
     const currentEmail = emailInput.value.trim();
     
-    // UI Loading
     const btn = document.querySelector(`[data-action="${sectionType}-save-trigger-btn"]`);
     const originalText = btn.innerText;
     btn.disabled = true; btn.innerText = "...";
@@ -117,8 +116,6 @@ const handleProfileSave = async (sectionType) => {
 
         if (result.status === 'success') {
             const display = document.querySelector(`[data-element="${sectionType}-display-text"]`);
-            
-            // [CORRECCIÓN ARROBA]: Quitamos el '@' manual aquí para que no se agregue al guardar
             if (display) display.innerText = (sectionType === 'username') ? currentUsername : currentEmail;
             
             const section = document.querySelector(`[data-component="${sectionType}-section"]`);
@@ -144,7 +141,6 @@ const setupProfilePictureLogic = (pfpSection) => {
     const btnUploadText = pfpSection.querySelector('[data-element="upload-btn-text"]');
     
     let originalSrc = previewImg.src;
-
     const triggerUpload = () => fileInput.click();
     
     fileInput.addEventListener('change', (e) => {
@@ -180,14 +176,11 @@ const setupProfilePictureLogic = (pfpSection) => {
                 if(res.status === 'success') {
                     originalSrc = res.data.url;
                     previewImg.src = originalSrc;
-                    
                     const headerImg = document.querySelector('.profile-img');
                     if(headerImg) headerImg.src = originalSrc;
-
                     pfpSection.dataset.hasCustom = "true";
                     btnDelete.style.display = "flex";
                     btnUploadText.innerText = "Cambiar";
-
                     actionsPreview.classList.remove('active'); actionsPreview.classList.add('disabled');
                     actionsDefault.classList.remove('disabled'); actionsDefault.classList.add('active');
                     fileInput.value = '';
@@ -229,6 +222,36 @@ const setupProfilePictureLogic = (pfpSection) => {
     });
 };
 
+/* --- LÓGICA DE PREFERENCIAS (Toggle Links) --- */
+const setupPreferencesLogic = () => {
+    // Escuchar cambios en el toggle de enlaces
+    const linksToggle = document.getElementById('pref-links-new-tab');
+    if (linksToggle) {
+        linksToggle.addEventListener('change', (e) => {
+            const isChecked = e.target.checked ? 1 : 0;
+            console.log("Guardando preferencia enlaces:", isChecked);
+            
+            // Feedback visual opcional: deshabilitar temporalmente
+            e.target.disabled = true;
+            
+            AuthService.updatePreferences({ open_links_new_tab: isChecked })
+                .then(res => {
+                    if (res.status !== 'success') {
+                        e.target.checked = !e.target.checked; // Revertir
+                        alert("Error al guardar configuración.");
+                    }
+                })
+                .catch(err => {
+                    e.target.checked = !e.target.checked;
+                    alert("Error de conexión");
+                })
+                .finally(() => {
+                    e.target.disabled = false;
+                });
+        });
+    }
+};
+
 const setupProfileListeners = () => {
     document.addEventListener('click', (e) => {
         const target = e.target;
@@ -262,6 +285,7 @@ const setupProfileListeners = () => {
     if (pfpSection) setupProfilePictureLogic(pfpSection);
     
     setupDropdownUI();
+    setupPreferencesLogic(); // Iniciar listener de toggle
 };
 
 export const initProfileController = () => {
