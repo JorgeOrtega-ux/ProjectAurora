@@ -273,7 +273,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $img = @file_get_contents($url);
                         if ($img) {
                             $dir = __DIR__ . '/../public/assets/uploads/profile_pictures/';
-                            if (!is_dir($dir)) @mkdir($dir, 0777, true);
+                            // CORRECCIÓN DE SEGURIDAD: Permisos 0755 en lugar de 0777
+                            if (!is_dir($dir)) @mkdir($dir, 0755, true);
                             @file_put_contents($dir . $uuid . '.png', $img);
                         }
                     } catch (Exception $e) {}
