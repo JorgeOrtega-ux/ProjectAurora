@@ -30,6 +30,29 @@ const closeAllActiveModules = (exceptModule = null) => {
     });
 };
 
+/* --- NUEVO: LÓGICA DE SOMBRA AL SCROLL --- */
+const setupScrollEffects = () => {
+    // 1. Identificar el contenedor que hace scroll y el header
+    const scrollContainer = document.querySelector('.general-content-scrolleable');
+    const topHeader = document.querySelector('.general-content-top');
+
+    // 2. Validación de seguridad por si los elementos no existen
+    if (scrollContainer && topHeader) {
+        // 3. Agregar el listener
+        scrollContainer.addEventListener('scroll', () => {
+            // Si el scroll vertical es mayor a 0, agregamos la sombra
+            if (scrollContainer.scrollTop > 0) {
+                if (!topHeader.classList.contains('shadow')) {
+                    topHeader.classList.add('shadow');
+                }
+            } else {
+                // Si estamos arriba del todo, quitamos la sombra
+                topHeader.classList.remove('shadow');
+            }
+        });
+    }
+};
+
 const setupEventListeners = () => {
     // 1. Configuración de Módulos (Surface y Profile)
     const moduleTriggers = [
@@ -52,10 +75,7 @@ const setupEventListeners = () => {
         }
     });
 
-    // 2. Configuración del Buscador
-    // (Código del botón toggle eliminado porque el botón ya no existe en el HTML)
-
-    // 3. Cerrar módulos al hacer clic fuera
+    // 2. Cerrar módulos al hacer clic fuera
     document.addEventListener('click', (e) => {
         const modules = document.querySelectorAll('.module-content.active');
         modules.forEach(mod => {
@@ -66,12 +86,11 @@ const setupEventListeners = () => {
         });
     });
 
-    // 4. Cerrar con tecla Escape
+    // 3. Cerrar con tecla Escape
     if (closeOnEsc) {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeAllActiveModules();
-                // Eliminada la referencia a headerCenter.active
             }
         });
     }
@@ -80,4 +99,7 @@ const setupEventListeners = () => {
 export const initMainController = () => {
     console.log('MainController: Inicializando UI...');
     setupEventListeners();
+    
+    // Inicializar efecto de scroll
+    setupScrollEffects();
 };

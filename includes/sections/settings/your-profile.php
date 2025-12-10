@@ -192,19 +192,31 @@ if (!empty($currentUser['uuid'])) {
                         </div>
                         <div class="popover-module">
                             <div class="menu-list">
-                                <div class="menu-link active">
+                                <div class="menu-link body-text active">
                                     <div class="menu-link-icon">
                                         <span class="material-symbols-rounded">language</span>
                                     </div>
                                     <div class="menu-link-text">Español (Latinoamérica)</div>
                                 </div>
-                                <div class="menu-link">
+                                <div class="menu-link body-text">
                                     <div class="menu-link-icon">
                                         <span class="material-symbols-rounded">translate</span>
                                     </div>
                                     <div class="menu-link-text">English (US)</div>
                                 </div>
-                                <div class="menu-link">
+                                <div class="menu-link body-text">
+                                    <div class="menu-link-icon">
+                                        <span class="material-symbols-rounded">translate</span>
+                                    </div>
+                                    <div class="menu-link-text">English (UK)</div>
+                                </div>
+                                <div class="menu-link body-text">
+                                    <div class="menu-link-icon">
+                                        <span class="material-symbols-rounded">language_french</span>
+                                    </div>
+                                    <div class="menu-link-text">Français (France)</div>
+                                </div>
+                                <div class="menu-link body-text">
                                     <div class="menu-link-icon">
                                         <span class="material-symbols-rounded">public</span>
                                     </div>
@@ -234,19 +246,19 @@ if (!empty($currentUser['uuid'])) {
                         </div>
                         <div class="popover-module">
                             <div class="menu-list">
-                                <div class="menu-link active">
+                                <div class="menu-link body-text active">
                                     <div class="menu-link-icon">
                                         <span class="material-symbols-rounded">person</span>
                                     </div>
                                     <div class="menu-link-text">Uso Personal</div>
                                 </div>
-                                <div class="menu-link">
+                                <div class="menu-link body-text">
                                     <div class="menu-link-icon">
                                         <span class="material-symbols-rounded">groups</span>
                                     </div>
                                     <div class="menu-link-text">Trabajo / Equipo</div>
                                 </div>
-                                <div class="menu-link">
+                                <div class="menu-link body-text">
                                     <div class="menu-link-icon">
                                         <span class="material-symbols-rounded">school</span>
                                     </div>
