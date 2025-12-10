@@ -604,4 +604,9 @@ html {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
  }
+
+ .general-content:has(.module-surface.active) .general-content-top {
+        box-shadow: none !important;
+        border-bottom: 1px solid #00000020; /* Opcional: Si quieres mantener la línea divisoria sutil */
+    }
 }
