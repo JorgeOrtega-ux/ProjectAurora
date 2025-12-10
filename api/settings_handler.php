@@ -6,6 +6,8 @@ header('Content-Type: application/json');
 // Cargar configuración y helpers
 require_once __DIR__ . '/../config/database/db.php'; 
 require_once __DIR__ . '/../config/helpers/i18n.php'; 
+// IMPORTANTE: Incluir utilidades compartidas
+require_once __DIR__ . '/utils.php';
 
 // Iniciar sesión si no está iniciada
 if (session_status() === PHP_SESSION_NONE) session_start();
@@ -34,64 +36,6 @@ if (!$lang) {
     $lang = detect_browser_language(); 
 }
 load_translations($lang);
-
-// ---------------------------------------------------------
-// 3. CONFIGURACIÓN DE RUTAS DE AVATARES
-// ---------------------------------------------------------
-$basePath = '/ProjectAurora/'; // Asegúrate que coincida con tu configuración global
-define('UPLOAD_BASE_DIR', __DIR__ . '/../public/assets/uploads/avatars/');
-define('DIR_CUSTOM', UPLOAD_BASE_DIR . 'custom/');
-define('DIR_DEFAULT', UPLOAD_BASE_DIR . 'default/');
-define('URL_BASE_AVATARS', 'assets/uploads/avatars/');
-
-if (!is_dir(DIR_CUSTOM)) @mkdir(DIR_CUSTOM, 0755, true);
-if (!is_dir(DIR_DEFAULT)) @mkdir(DIR_DEFAULT, 0755, true);
-
-// ---------------------------------------------------------
-// 4. FUNCIONES AUXILIARES (Necesarias para este handler)
-// ---------------------------------------------------------
-
-function sendJsonResponse($status, $message, $redirectUrl = null, $data = []) {
-    echo json_encode([
-        'status' => $status,
-        'message' => $message,
-        'redirect' => $redirectUrl,
-        'data' => $data
-    ]);
-    exit;
-}
-
-function validateEmailRequirements($email) {
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) return __('api.error.email_format');
-    $atPos = strrpos($email, '@');
-    if ($atPos === false) return __('api.error.email_format');
-    
-    $prefix = substr($email, 0, $atPos);
-    $domain = strtolower(substr($email, $atPos + 1));
-    
-    if (strlen($prefix) < 4) return __('api.error.email_format'); 
-    $allowedDomains = ['gmail.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'yahoo.com'];
-    if (!in_array($domain, $allowedDomains)) return __('api.error.email_domain');
-    
-    return true;
-}
-
-function ensureDefaultAvatarExists($uuid, $username) {
-    $targetFile = DIR_DEFAULT . $uuid . '.png';
-    if (!file_exists($targetFile)) {
-        try {
-            $randomColor = str_pad(dechex(mt_rand(0, 0xFFFFFF)), 6, '0', STR_PAD_LEFT);
-            $url = "https://ui-avatars.com/api/?name=" . urlencode($username) . "&background=" . $randomColor . "&color=fff&size=128&format=png";
-            $imgContent = @file_get_contents($url);
-            if ($imgContent) {
-                @file_put_contents($targetFile, $imgContent);
-                return true;
-            }
-        } catch (Exception $e) { }
-        return false;
-    }
-    return true; 
-}
 
 // ---------------------------------------------------------
 // 5. LÓGICA PRINCIPAL (HANDLERS)
@@ -202,6 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $uuid = $_SESSION['uuid'];
+        // DIR_CUSTOM ahora viene de utils.php
         $targetFile = DIR_CUSTOM . $uuid . '.png';
         $src = null;
 
@@ -237,13 +182,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          $uuid = $_SESSION['uuid'];
          $username = $_SESSION['username'];
          
+         // Constantes desde utils.php
          $customFile = DIR_CUSTOM . $uuid . '.png';
          if (file_exists($customFile)) unlink($customFile);
          
          $defaultFile = DIR_DEFAULT . $uuid . '.png';
          if (file_exists($defaultFile)) unlink($defaultFile);
 
-         // Regenerar avatar por defecto
+         // Regenerar avatar por defecto (función desde utils.php)
          ensureDefaultAvatarExists($uuid, $username);
 
          $defaultUrl = $basePath . URL_BASE_AVATARS . 'default/' . $uuid . '.png?v=' . time();

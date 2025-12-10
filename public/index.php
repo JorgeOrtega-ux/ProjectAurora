@@ -4,23 +4,9 @@
 // 1. Cargar el Router (Configuración y Sesión)
 require_once __DIR__ . '/../config/routers/router.php';
 
-// 2. Definir el mapa de rutas FÍSICAS (Igual que en loader.php)
-// Esto conecta la URL "virtual" con el archivo PHP real.
-$sectionMap = [
-    'main'     => __DIR__ . '/../includes/sections/app/main.php',
-    'explorer' => __DIR__ . '/../includes/sections/app/explorer.php',
-    '404'      => __DIR__ . '/../includes/sections/system/404.php',
-    
-    // Rutas de Settings
-    'settings/your-profile'       => __DIR__ . '/../includes/sections/settings/your-profile.php',
-    'settings/login-and-security' => __DIR__ . '/../includes/sections/settings/login-security.php',
-    'settings/accessibility'      => __DIR__ . '/../includes/sections/settings/accessibility.php',
-    
-    // Rutas de Registro
-    'register'                => __DIR__ . '/../includes/sections/auth/register.php',
-    'register/aditional-data' => __DIR__ . '/../includes/sections/auth/register.php',
-    'register/verify'         => __DIR__ . '/../includes/sections/auth/register.php',
-];
+// 2. Definir el mapa de rutas FÍSICAS
+// MODIFICADO: Ahora cargamos el mapa desde un archivo central de configuración
+$sectionMap = require __DIR__ . '/../config/routes.php';
 
 $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
 ?>
@@ -223,27 +209,17 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
 
                     <div class="general-content-scrolleable" data-container="main-section">
                         <?php
-                        // LÓGICA DE CARGA CORREGIDA
-                        // Usamos el mapa $sectionMap definido arriba.
-                        
-                        $fileToLoad = $sectionMap['404']; // Por defecto 404
+                        // LÓGICA DE CARGA
+                        $fileToLoad = $sectionMap['404']; 
                         
                         if (array_key_exists($currentSection, $sectionMap)) {
                             $fileToLoad = $sectionMap[$currentSection];
-                        } else {
-                            // Fallback para intentar cargar archivos genéricos si no están en el mapa
-                            // pero con cuidado de no romper las rutas nuevas
-                            $potentialFile = __DIR__ . '/../includes/sections/' . $currentSection . '.php';
-                            if (file_exists($potentialFile)) {
-                                $fileToLoad = $potentialFile;
-                            }
-                        }
+                        } 
 
                         // Verificar existencia física final
                         if (file_exists($fileToLoad)) {
                             include $fileToLoad;
                         } else {
-                            // Si falla incluso el 404 del mapa
                             echo "<h1>Error 404 Crítico</h1><p>No se encuentra el archivo solicitado ni la página de error.</p>";
                         }
                         ?>
