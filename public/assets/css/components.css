@@ -1,3 +1,5 @@
+/* public/assets/css/components.css */
+
 .component-wrapper {
      width: 100%;
      max-width: 700px;
@@ -150,7 +152,6 @@
      justify-content: center;
      color: #fff;
      opacity: 0;
-     transition: opacity 0.2s;
      cursor: pointer;
      border-radius: 50%;
      z-index: 3;
@@ -185,7 +186,6 @@
      align-items: center;
      justify-content: center;
      gap: 6px;
-     transition: all 0.2s ease;
      white-space: nowrap;
  }
 
@@ -250,14 +250,38 @@
  @media (max-width: 600px) {
      .component-group-item {
          flex-direction: column;
-         align-items: flex-start;
-         gap: 12px;
+         align-items: stretch; 
+         /* FIX CRÍTICO: Eliminamos el gap del contenedor padre para evitar el espacio fantasma 
+            cuando las acciones están ocultas. El espaciado se manejará en los hijos. */
+         gap: 0;
      }
 
+     /* Acciones Generales (Contenedor) */
      .component-card__actions {
          width: 100%;
-         justify-content: flex-end;
-         margin-top: 4px;
+         justify-content: space-between;
+         margin-top: 0; /* Sin margen por defecto */
+     }
+
+     /* LÓGICA DE ESPACIADO PROFESIONAL:
+        Aplicamos el margen SOLO al hijo visible (.active) que es descendiente directo del grupo.
+        Así, si el hijo se oculta (display: none), el margen desaparece y el gap total es 0.
+     */
+     .component-group-item > .component-card__actions > .active {
+         margin-top: 12px; /* Aquí vive el espaciado de 12px */
+         width: 100%;
+         display: flex;
+         gap: 8px;
+     }
+
+     /* LÓGICA DE BOTONES 100% / 50%:
+        Usamos flex: 1 para que los botones crezcan y ocupen todo el espacio disponible.
+        1 botón = 100%, 2 botones = 50% cada uno.
+     */
+     .component-card__actions .component-button {
+         flex: 1;
+         width: 100%; 
+         justify-content: center;
      }
 
      .component-input-wrapper {
@@ -268,9 +292,21 @@
          width: 100%;
          max-width: 100%;
      }
+     
+     /* Ajuste para el modo edición (Input + Botones Guardar/Cancelar) */
+     .input-group-responsive.active {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    
+    /* Espaciado interno específico para cuando estás editando (entre input y botones) */
+    .input-group-responsive .component-card__actions {
+        width: 100%;
+        margin-top: 8px; 
+    }
  }
 
-/* --- NUEVOS COMPONENTES UI --- */
+/* --- NUEVOS COMPONENTES UI (TOGGLES Y SELECTS) --- */
 
 /* Toggles Switch */
 .component-toggle-switch {
@@ -295,7 +331,6 @@
     right: 0;
     bottom: 0;
     background-color: #e0e0e0;
-    transition: .3s cubic-bezier(0.2, 0.8, 0.2, 1);
     border-radius: 34px;
     border: 1px solid #00000010;
 }
@@ -308,7 +343,6 @@
     left: 2px;
     bottom: 2px;
     background-color: white;
-    transition: .3s cubic-bezier(0.2, 0.8, 0.2, 1);
     border-radius: 50%;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
@@ -340,7 +374,6 @@
     border-radius: 8px;
     background-color: #ffffff;
     cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
     user-select: none;
     gap: 8px;
 }
@@ -386,7 +419,6 @@
     padding: 6px;
     display: none;
     flex-direction: column;
-    animation: fadeInScale 0.15s ease-out;
 }
 
 .trigger-select-wrapper[data-align="left"] .popover-module {
@@ -396,11 +428,6 @@
 
 .popover-module.active {
     display: flex;
-}
-
-@keyframes fadeInScale {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
 }
 
 /* Layout Stacked */
@@ -422,40 +449,3 @@
     align-items: center;
     margin-top: 8px;
 }
-
-@media (max-width: 600px) {
-     .component-group-item {
-         flex-direction: column;
-         /* CAMBIO CLAVE: De 'flex-start' a 'stretch' para que ocupen todo el ancho */
-         align-items: stretch; 
-         gap: 12px;
-     }
-
-     .component-card__actions {
-         width: 100%;
-         justify-content: flex-end;
-         margin-top: 4px;
-     }
-
-     /* Input Wrapper en móvil */
-     .component-input-wrapper {
-         width: 100%;
-     }
-
-     .trigger-select-wrapper {
-         width: 100%;
-         max-width: 100%;
-     }
-     
-     /* Lógica para apilar input y botones en modo edición */
-     .input-group-responsive.active {
-        flex-direction: column !important;
-        align-items: stretch !important; /* Estirar botones e input */
-    }
-    
-    .input-group-responsive .component-card__actions {
-        width: 100%;
-        justify-content: flex-end; 
-        margin-top: 4px;
-    }
- }
