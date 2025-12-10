@@ -1,4 +1,4 @@
 <div class="component-header-card">
-    <h1>Accesibilidad</h1>
-    <p>Ajusta la apariencia y comportamiento de la aplicación.</p>
+    <h1><?= __('settings.accessibility.title') ?></h1>
+    <p><?= __('settings.accessibility.desc') ?></p>
 </div>

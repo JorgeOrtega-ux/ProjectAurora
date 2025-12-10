@@ -17,12 +17,12 @@ $errorMessage = "";
 
 if ($isStep2 && !$hasDataForStep2) {
     $invalidAccess = true;
-    $errorTitle = "Faltan datos previos";
-    $errorMessage = "No has completado el registro de credenciales (correo y contraseña). No puedes saltar pasos.";
+    $errorTitle = __('auth.register.error_missing_data');
+    $errorMessage = __('auth.register.error_missing_data_desc');
 } elseif ($isStep3 && !$hasDataForStep3) {
     $invalidAccess = true;
-    $errorTitle = "Código no enviado";
-    $errorMessage = "No hay un proceso de verificación activo. Debes completar el registro primero.";
+    $errorTitle = __('auth.register.error_no_verify');
+    $errorMessage = __('auth.register.error_no_verify_desc');
 }
 ?>
 
@@ -41,13 +41,13 @@ if ($isStep2 && !$hasDataForStep2) {
             </div>
 
             <a href="<?php echo $basePath; ?>register" class="btn-primary" style="display: block; text-decoration: none; line-height: 55px; margin-top: 20px;">
-                Volver al inicio del registro
+                <?= __('auth.register.back_start') ?>
             </a>
 
         <?php elseif ($isStep3): ?>
             <div class="auth-header">
-                <h1>Verificación</h1>
-                <p>Hemos enviado un código a <strong><?php echo htmlspecialchars($_SESSION['pending_verification_email']); ?></strong>.</p>
+                <h1><?= __('auth.register.title_verify') ?></h1>
+                <p><?= __('auth.register.subtitle_verify') ?> <strong><?php echo htmlspecialchars($_SESSION['pending_verification_email']); ?></strong>.</p>
             </div>
 
             <input type="hidden" id="verify-action" name="action" value="verify_code">
@@ -55,26 +55,26 @@ if ($isStep2 && !$hasDataForStep2) {
             <div class="form-groups-wrapper">
                 <div class="form-group">
                     <input type="text" name="code" id="code" required placeholder=" " maxlength="6" style="letter-spacing: 4px; font-weight: bold; text-align: center;">
-                    <label for="code" style="left: 50%; transform: translateX(-50%) translateY(-50%);">Código de 6 dígitos</label>
+                    <label for="code" style="left: 50%; transform: translateX(-50%) translateY(-50%);"><?= __('auth.register.code_label') ?></label>
                 </div>
             </div>
 
-            <button type="button" id="btn-verify" class="btn-primary">Verificar y Crear Cuenta</button>
+            <button type="button" id="btn-verify" class="btn-primary"><?= __('auth.register.verify_button') ?></button>
 
             <div style="margin-top: 15px; font-size: 14px; color: #666;">
                 <a href="#" id="btn-resend-code" style="color: #999; pointer-events: none; text-decoration: none;">
-                    Reenviar código de verificación <span id="register-timer">(60)</span>
+                    <?= __('auth.register.resend_link') ?> <span id="register-timer">(60)</span>
                 </a>
             </div>
 
             <div class="auth-footer">
-                <p style="margin-top: 8px;"><a href="<?php echo $basePath; ?>register" style="font-size: 12px; color: #999;">Cancelar registro</a></p>
+                <p style="margin-top: 8px;"><a href="<?php echo $basePath; ?>register" style="font-size: 12px; color: #999;"><?= __('auth.register.cancel') ?></a></p>
             </div>
 
         <?php elseif ($isStep2): ?>
             <div class="auth-header">
-                <h1>Casi terminamos</h1>
-                <p>Paso 2: Elige tu identidad</p>
+                <h1><?= __('auth.register.title_step2') ?></h1>
+                <p><?= __('auth.register.subtitle_step2') ?></p>
             </div>
 
             <input type="hidden" id="register-action-2" name="action" value="register_step_2">
@@ -82,20 +82,20 @@ if ($isStep2 && !$hasDataForStep2) {
             <div class="form-groups-wrapper">
                 <div class="form-group">
                     <input type="text" name="username" id="username" required placeholder=" ">
-                    <label for="username">Nombre de Usuario</label>
+                    <label for="username"><?= __('auth.register.username') ?></label>
                 </div>
             </div>
 
-            <button type="button" id="btn-register-step-2" class="btn-primary">Enviar Código</button>
+            <button type="button" id="btn-register-step-2" class="btn-primary"><?= __('auth.register.send_code') ?></button>
             
             <div class="auth-footer">
-                <p><a href="<?php echo $basePath; ?>register">Volver (Editar correo)</a></p>
+                <p><a href="<?php echo $basePath; ?>register"><?= __('auth.register.back_edit') ?></a></p>
             </div>
 
         <?php else: ?>
             <div class="auth-header">
-                <h1>Crear Cuenta</h1>
-                <p>Paso 1: Credenciales básicas</p>
+                <h1><?= __('auth.register.title_step1') ?></h1>
+                <p><?= __('auth.register.subtitle_step1') ?></p>
             </div>
 
             <input type="hidden" id="register-action-1" name="action" value="register_step_1">
@@ -103,19 +103,19 @@ if ($isStep2 && !$hasDataForStep2) {
             <div class="form-groups-wrapper">
                 <div class="form-group">
                     <input type="email" name="email" id="email" required placeholder=" ">
-                    <label for="email">Correo Electrónico</label>
+                    <label for="email"><?= __('auth.email') ?></label>
                 </div>
 
                 <div class="form-group">
                     <input type="password" name="password" id="password" required placeholder=" ">
-                    <label for="password">Contraseña</label>
+                    <label for="password"><?= __('auth.password') ?></label>
                 </div>
             </div>
 
-            <button type="button" id="btn-register-step-1" class="btn-primary">Continuar</button>
+            <button type="button" id="btn-register-step-1" class="btn-primary"><?= __('auth.login_button') ?></button>
 
             <div class="auth-footer">
-                <p>¿Ya tienes cuenta? <a href="<?php echo $basePath; ?>login">Inicia sesión</a></p>
+                <p><?= __('auth.register.has_account') ?></p>
             </div>
         <?php endif; ?>
 

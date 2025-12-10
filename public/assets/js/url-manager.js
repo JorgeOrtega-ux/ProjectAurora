@@ -122,8 +122,8 @@ async function loadContent(section) {
         container.innerHTML = `
             <div style="text-align:center; padding: 40px; color: #d32f2f;">
                 <span class="material-symbols-rounded" style="font-size: 48px;">error</span>
-                <p>No se pudo cargar el contenido.</p>
-                <button onclick="location.reload()" style="margin-top:10px; padding:8px 16px; cursor:pointer; border:1px solid #ccc; background:#fff; border-radius:4px;">Reintentar</button>
+                <p>${window.t('error.load_content')}</p>
+                <button onclick="location.reload()" style="margin-top:10px; padding:8px 16px; cursor:pointer; border:1px solid #ccc; background:#fff; border-radius:4px;">${window.t('global.retry')}</button>
             </div>
         `;
     }

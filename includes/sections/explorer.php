@@ -1,4 +1,4 @@
 <div class="component-header-card">
-    <h1>Explorar Colecciones</h1>
-    <p>Descubre nuevo contenido aquí.</p>
+    <h1><?= __('explorer.title') ?></h1>
+    <p><?= __('explorer.desc') ?></p>
 </div>

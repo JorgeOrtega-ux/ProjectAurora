@@ -8,3 +8,13 @@ Stack trace:
 #0 E:\xampp\htdocs\ProjectAurora\public\loader.php(33): include()
 #1 {main}
   thrown in E:\xampp\htdocs\ProjectAurora\includes\sections\settings\your-profile.php on line 78
+[10-Dec-2025 12:09:47 America/Mexico_City] PHP Fatal error:  Uncaught Error: Call to undefined function __() in E:\xampp\htdocs\ProjectAurora\includes\sections\settings\login-security.php:2
+Stack trace:
+#0 E:\xampp\htdocs\ProjectAurora\public\loader.php(37): include()
+#1 {main}
+  thrown in E:\xampp\htdocs\ProjectAurora\includes\sections\settings\login-security.php on line 2
+[10-Dec-2025 12:09:51 America/Mexico_City] PHP Fatal error:  Uncaught Error: Call to undefined function __() in E:\xampp\htdocs\ProjectAurora\includes\sections\main.php:2
+Stack trace:
+#0 E:\xampp\htdocs\ProjectAurora\public\loader.php(37): include()
+#1 {main}
+  thrown in E:\xampp\htdocs\ProjectAurora\includes\sections\main.php on line 2

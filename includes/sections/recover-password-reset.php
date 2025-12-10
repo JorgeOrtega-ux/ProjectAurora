@@ -9,7 +9,6 @@ if (!isset($resetToken) || empty($resetToken)) {
 
 // 2. Validar contra la Base de Datos (Seguridad)
 // Verificamos si el token existe Y si no ha expirado.
-// Si ya fue usado, no existirá porque la API lo borra al cambiar la contraseña.
 $isValidToken = false;
 
 try {
@@ -21,7 +20,6 @@ try {
         $isValidToken = true;
     }
 } catch (Exception $e) {
-    // En caso de error de BD, asumimos inválido por seguridad
     $isValidToken = false;
 }
 ?>
@@ -31,8 +29,8 @@ try {
         
         <?php if ($isValidToken): ?>
             <div class="auth-header">
-                <h1>Nueva Contraseña</h1>
-                <p>Crea una contraseña segura para tu cuenta.</p>
+                <h1><?= __('auth.reset.title') ?></h1>
+                <p><?= __('auth.reset.subtitle') ?></p>
             </div>
             
             <input type="hidden" id="reset-token" value="<?php echo htmlspecialchars($resetToken); ?>">
@@ -40,37 +38,37 @@ try {
             <div class="form-groups-wrapper">
                 <div class="form-group">
                     <input type="password" id="new-password" required placeholder=" ">
-                    <label for="new-password">Nueva contraseña</label>
+                    <label for="new-password"><?= __('auth.reset.new_password') ?></label>
                 </div>
                  <div class="form-group">
                     <input type="password" id="confirm-password" required placeholder=" ">
-                    <label for="confirm-password">Confirmar contraseña</label>
+                    <label for="confirm-password"><?= __('auth.reset.confirm_password') ?></label>
                 </div>
             </div>
 
-            <button type="button" id="btn-recover-reset" class="btn-primary">Cambiar Contraseña</button>
+            <button type="button" id="btn-recover-reset" class="btn-primary"><?= __('auth.reset.button') ?></button>
 
             <div class="auth-footer">
-                <p><a href="<?php echo $basePath; ?>login">Cancelar</a></p>
+                <p><a href="<?php echo $basePath; ?>login"><?= __('global.cancel') ?></a></p>
             </div>
 
         <?php else: ?>
             <div class="auth-header">
                 <span class="material-symbols-rounded" style="font-size: 48px; color: #d32f2f; margin-bottom: 10px;">link_off</span>
-                <h1 style="color: #d32f2f;">Enlace no válido</h1>
-                <p>Este enlace de recuperación ya fue utilizado o ha expirado.</p>
+                <h1 style="color: #d32f2f;"><?= __('auth.reset.invalid_title') ?></h1>
+                <p><?= __('auth.reset.invalid_desc') ?></p>
             </div>
 
             <div class="alert error" style="margin-top: 20px;">
-                Por seguridad, los enlaces tienen un tiempo límite de validez y son de un solo uso.
+                <?= __('auth.reset.security_note') ?>
             </div>
 
             <a href="<?php echo $basePath; ?>recover-password" class="btn-primary" style="display: block; text-decoration: none; line-height: 55px; margin-top: 20px; color: #fff;">
-                Solicitar uno nuevo
+                <?= __('auth.reset.request_new') ?>
             </a>
 
             <div class="auth-footer">
-                <p><a href="<?php echo $basePath; ?>login">Volver al inicio</a></p>
+                <p><a href="<?php echo $basePath; ?>login"><?= __('auth.recover.back_login') ?></a></p>
             </div>
         <?php endif; ?>
 

@@ -1,4 +1,4 @@
 <div class="component-header-card">
-    <h1>Página Principal</h1>
-    <p>Bienvenido a Project Aurora.</p>
+    <h1><?= __('main.title') ?></h1>
+    <p><?= __('main.desc') ?></p>
 </div>
