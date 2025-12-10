@@ -1,7 +1,7 @@
 /**
  * AuthController.js
  * Lógica de UI para autenticación utilizando AuthService.
- * Actualizado con sistema de Toasts.
+ * Actualizado con sistema de Toasts y soporte para 2FA.
  */
 
 import { AuthService } from './api-services.js';
@@ -59,6 +59,20 @@ const startTimer = (timerElementId, buttonElementId) => {
             button.style.textDecoration = 'underline';
         }
     }, 1000);
+};
+
+// --- NUEVA FUNCIÓN: Verificar Login con 2FA ---
+const verify2faLogin = async (code) => {
+    const formData = new FormData();
+    formData.append('action', 'verify_2fa_login');
+    formData.append('code', code);
+    // Necesitamos el token CSRF que está en el meta tag del HTML
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    formData.append('csrf_token', csrfToken);
+    
+    // Hacemos la petición manualmente o extendiendo AuthService, aquí directo para no tocar api-services si no quieres
+    const res = await fetch(window.BASE_PATH + 'api/auth_handler.php', { method: 'POST', body: formData });
+    return await res.json();
 };
 
 const processAuthAction = async (actionType, data) => {
@@ -122,6 +136,11 @@ const processAuthAction = async (actionType, data) => {
 
             case 'reset_password':
                 result = await AuthService.resetPassword(data.token, data.password);
+                break;
+
+            // --- NUEVO CASO: VERIFICACIÓN 2FA ---
+            case 'verify_2fa_login':
+                result = await verify2faLogin(data.code);
                 break;
                 
             default:
@@ -287,11 +306,23 @@ const setupAuthListeners = () => {
                 showError(window.t('js.error.complete_fields'));
             }
         }
+
+        // --- NUEVO LISTENER: BOTÓN VERIFICAR 2FA (LOGIN) ---
+        if (e.target && e.target.id === 'btn-verify-2fa-login') {
+            e.preventDefault();
+            const codeInput = document.getElementById('2fa-code-input');
+            if(codeInput && codeInput.value) {
+                processAuthAction('verify_2fa_login', { code: codeInput.value });
+            } else {
+                showError(window.t('js.error.complete_fields'));
+            }
+        }
     });
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
-            const btns = ['btn-login', 'btn-register-step-1', 'btn-register-step-2', 'btn-verify', 'btn-recover-request', 'btn-recover-reset'];
+            // Agregamos 'btn-verify-2fa-login' a la lista de botones que reaccionan al Enter
+            const btns = ['btn-login', 'btn-register-step-1', 'btn-register-step-2', 'btn-verify', 'btn-recover-request', 'btn-recover-reset', 'btn-verify-2fa-login'];
             for(let id of btns){
                 const btn = document.getElementById(id);
                 if(btn && !btn.disabled && document.body.contains(btn)) { 

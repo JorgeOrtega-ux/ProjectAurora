@@ -1,15 +1,10 @@
 <?php
 /**
  * config/routers/router.php
- * Encargado de:
- * 1. Iniciar sesión y validar autenticación.
- * 2. Determinar la sección actual basada en la URL.
- * 3. Gestionar redirecciones de seguridad (Guest vs User).
  */
 
 $basePath = '/ProjectAurora/'; 
 
-// Rutas relativas desde config/routers/
 require_once __DIR__ . '/../database/db.php';
 require_once __DIR__ . '/../helpers/i18n.php'; 
 
@@ -19,9 +14,9 @@ require_once __DIR__ . '/../helpers/i18n.php';
 $isLoggedIn = isset($_SESSION['user_id']);
 $userLang = null;
 
+// Lógica para usuarios logueados completamente
 if ($isLoggedIn) {
     try {
-        // Obtener rol y preferencias actualizadas
         $stmt = $pdo->prepare("
             SELECT u.role, u.username, u.uuid, p.language 
             FROM users u
@@ -37,7 +32,6 @@ if ($isLoggedIn) {
             $_SESSION['uuid'] = $freshUser['uuid'];
             $userLang = $freshUser['language']; 
         } else {
-            // Si el usuario no existe en BD (borrado), forzar logout
             session_destroy();
             header("Location: " . $basePath . "login");
             exit;
@@ -59,19 +53,15 @@ if ($userLang) {
 // ==========================================
 $requestUri = $_SERVER['REQUEST_URI'];
 
-// Limpiar base path de la URI
 if (strpos($requestUri, $basePath) === 0) {
     $path = substr($requestUri, strlen($basePath));
 } else {
     $path = $requestUri;
 }
 
-// Limpiar query params (?id=1...) y slashes finales
 $path = strtok($path, '?');
 $currentSection = rtrim($path, '/');
 
-// --- A) Interceptar llamadas a la API ---
-// Permite acceder a /ProjectAurora/api/auth_handler.php aunque estemos en modo rewrite
 if (strpos($currentSection, 'api/') === 0) {
     $apiTarget = __DIR__ . '/../../' . $currentSection;
     if (file_exists($apiTarget)) {
@@ -80,26 +70,21 @@ if (strpos($currentSection, 'api/') === 0) {
     }
 }
 
-// --- B) Manejo de casos especiales de URL ---
-
-// Redirección amigable: /settings -> /settings/your-profile
+// Redirecciones
 if ($currentSection === 'settings') {
     header("Location: " . $basePath . "settings/your-profile");
     exit;
 }
 
-// Manejo de token de recuperación de contraseña (ej. recover-password/TOKEN123)
 $resetToken = null;
 if (strpos($currentSection, 'recover-password/') === 0) {
     $parts = explode('/', $currentSection);
     if (isset($parts[1]) && !empty($parts[1])) {
         $resetToken = $parts[1]; 
-        // Cambiamos la sección lógica para que cargue la vista de reset
         $currentSection = 'recover-password-reset'; 
     }
 }
 
-// Página de inicio por defecto
 if ($currentSection === '') { 
     $currentSection = 'main'; 
 }
@@ -108,42 +93,47 @@ if ($currentSection === '') {
 // 4. VALIDACIÓN DE RUTAS Y SEGURIDAD
 // ==========================================
 
-// Cargar el mapa maestro de rutas (Centralización)
 $routes = require __DIR__ . '/../routes.php';
 $validRoutes = array_keys($routes); 
-// Nota: Asegúrate de agregar 'recover-password-reset' a tu config/routes.php si no está.
 
-// Definir política de acceso: ¿Qué rutas son para invitados?
+// Rutas permitidas para GUEST (sin sesión completa)
 $guestRoutes = [
     'login', 
     'register', 
     'register/aditional-data', 
     'register/verify', 
     'recover-password', 
-    'recover-password-reset'
+    'recover-password-reset',
+    'auth/2fa-challenge' // IMPORTANTE: Permitir acceso para verificar el código
 ];
 
+// Comprobación de estado intermedio (2FA Pendiente)
+$is2faPending = isset($_SESSION['temp_2fa_user_id']);
+
 if (!$isLoggedIn) {
-    // USUARIO NO LOGUEADO:
-    // Solo puede ver rutas de invitado. Si intenta ver otra, mandar a login.
-    if (!in_array($currentSection, $guestRoutes)) {
+    // Si no está logueado:
+    
+    // Caso especial: Está intentando validar 2FA y tiene la sesión temporal
+    if ($currentSection === 'auth/2fa-challenge' && $is2faPending) {
+        // Permitir acceso
+    } 
+    // Caso normal: Si intenta ir a una ruta que no es de guest, mandar a login
+    elseif (!in_array($currentSection, $guestRoutes)) {
         header("Location: " . $basePath . "login");
         exit;
     }
 } else {
-    // USUARIO LOGUEADO:
-    // No debería ver login/registro. Si intenta entrar, mandar al home.
+    // Si YA está logueado:
+    // No debe ver login, register ni el challenge de 2fa.
     if (in_array($currentSection, $guestRoutes)) {
         header("Location: " . $basePath);
         exit;
     }
 }
 
-// Si la sección no existe en nuestro mapa de rutas, es un 404
 if (!in_array($currentSection, $validRoutes)) {
     $currentSection = '404'; 
 }
 
-// Variable auxiliar para la vista
 $userRole = ($isLoggedIn && isset($_SESSION['role'])) ? $_SESSION['role'] : 'user';
 ?>
