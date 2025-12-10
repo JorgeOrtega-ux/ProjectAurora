@@ -30,86 +30,26 @@ if (empty($currentUser)) {
     ];
 }
 
-// 2. LÓGICA DE AVATAR (NUEVA ESTRUCTURA UNIFICADA)
+// 2. LÓGICA DE AVATAR
 $hasCustomAvatar = false;
 $finalAvatarSrc = '';
 
 if (!empty($currentUser['uuid'])) {
     $uuid = $currentUser['uuid'];
-    
-    // Definir rutas relativas (para HTML) y absolutas (para PHP file_exists)
     $relCustom  = 'assets/uploads/avatars/custom/' . $uuid . '.png';
     $relDefault = 'assets/uploads/avatars/default/' . $uuid . '.png';
-    
     $absCustom  = __DIR__ . '/../../../public/' . $relCustom;
-    $absDefault = __DIR__ . '/../../../public/' . $relDefault;
-
-    // Verificar si existe CUSTOM
+    
     if (file_exists($absCustom)) {
         $hasCustomAvatar = true;
-        // Usamos microtime para cache-busting fuerte
         $finalAvatarSrc = (isset($basePath) ? $basePath : '/ProjectAurora/') . $relCustom . '?v=' . microtime(true);
     } else {
-        // Usamos DEFAULT (se garantiza que exista por AuthHandler)
         $finalAvatarSrc = (isset($basePath) ? $basePath : '/ProjectAurora/') . $relDefault . '?v=' . microtime(true);
     }
 } else {
     $finalAvatarSrc = ''; 
 }
 ?>
-
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
-<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-
-<style>
-    /* Estilos base */
-    .component-wrapper { width: 100%; max-width: 700px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
-    .component-header-card, .component-card { border: 1px solid #00000020; border-radius: 12px; padding: 24px; background-color: #ffffff; }
-    .component-header-card { text-align: center; }
-    .component-page-title { font-size: 24px; font-weight: 700; margin: 0 0 8px 0; color: #000; }
-    .component-page-description { font-size: 15px; color: #666; margin: 0; }
-    .component-card--grouped { display: flex; flex-direction: column; padding: 0; gap: 0; overflow: hidden; }
-    .component-group-item { display: flex; flex-direction: row; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 24px; background-color: transparent; gap: 16px; }
-    .component-divider { border: 0; border-top: 1px solid #00000015; width: 100%; margin: 0; }
-    .component-card__content { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 20px; }
-    .component-card__text { display: flex; flex-direction: column; gap: 4px; width: 100%; }
-    .component-card__title { font-size: 15px; font-weight: 600; margin: 0; color: #000; }
-    .component-card__description { font-size: 14px; color: #666; margin: 0; line-height: 1.4; }
-    
-    /* PFP Styles */
-    .component-card__profile-picture { width: 56px; height: 56px; border-radius: 50%; background-color: #f5f5f5; position: relative; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; }
-    .component-card__profile-picture::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; border-radius: 50%; border: 2px solid transparent; pointer-events: none; z-index: 2; }
-    .component-card__profile-picture[data-role="user"]::before { border-color: #cccccc; }
-    .component-card__profile-picture[data-role="moderator"]::before { border-color: #0000FF; }
-    .component-card__profile-picture[data-role="administrator"]::before { border-color: #FF0000; }
-    .component-card__profile-picture[data-role="founder"]::before { border: none; background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0); }
-    .component-card__avatar-image { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-    .component-card__avatar-overlay { position: absolute; inset: 0; background-color: rgba(0, 0, 0, 0.4); display: flex; align-items: center; justify-content: center; color: #fff; opacity: 0; transition: opacity 0.2s; cursor: pointer; border-radius: 50%; z-index: 3; }
-    .component-card__profile-picture:hover .component-card__avatar-overlay { opacity: 1; }
-
-    /* Buttons */
-    .component-card__actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-    .component-card__actions.actions-right { justify-content: flex-end; }
-    .component-button { height: 36px; padding: 0 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; background: transparent; border: 1px solid #00000020; color: #000; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s ease; white-space: nowrap; }
-    .component-button:hover { background-color: #f5f5fa; }
-    .component-button.primary { background-color: #000; color: #fff; border: none; }
-    .component-button.primary:hover { background-color: #333; }
-    .component-button.danger { border-color: #ffcdd2; color: #d32f2f; }
-    .component-button.danger:hover { background-color: #ffebee; }
-    .component-text-input { width: 100%; height: 36px; padding: 0 12px; border: 1px solid #00000020; border-radius: 8px; font-size: 14px; outline: none; background: transparent; color: #000; }
-    .component-input-wrapper { width: 100%; min-width: 200px; }
-    
-    .active { display: flex !important; }
-    .disabled { display: none !important; }
-    .material-symbols-rounded { font-size: 20px; }
-    .component-badge { font-size: 13px; font-weight: 500; color: #333; }
-    
-    @media (max-width: 600px) {
-        .component-group-item { flex-direction: column; align-items: flex-start; gap: 12px; }
-        .component-card__actions { width: 100%; justify-content: flex-end; margin-top: 4px; }
-        .component-input-wrapper { width: 100%; }
-    }
-</style>
 
 <div class="section-content active" data-section="settings/your-profile">
     <div class="component-wrapper">
@@ -140,20 +80,17 @@ if (!empty($currentUser['uuid'])) {
                 <input type="file" accept="image/png, image/jpeg, image/webp" hidden data-element="profile-picture-upload-input">
 
                 <div class="component-card__actions actions-right">
-                    
                     <div class="active" data-state="profile-picture-actions-default">
                         <button type="button" class="component-button danger" 
                                 data-action="profile-picture-remove-trigger"
                                 style="<?php echo $hasCustomAvatar ? '' : 'display:none;'; ?>">
                             <span class="material-symbols-rounded">delete</span>
                         </button>
-                        
                         <button type="button" class="component-button primary" data-action="profile-picture-upload-trigger">
                             <span class="material-symbols-rounded">upload</span> 
                             <span data-element="upload-btn-text"><?php echo $hasCustomAvatar ? 'Cambiar' : 'Subir foto'; ?></span>
                         </button>
                     </div>
-
                     <div class="disabled" data-state="profile-picture-actions-preview">
                         <button type="button" class="component-button" data-action="profile-picture-cancel-trigger">Cancelar</button>
                         <button type="button" class="component-button primary" data-action="profile-picture-save-trigger-btn">Guardar</button>
@@ -226,14 +163,86 @@ if (!empty($currentUser['uuid'])) {
         </div>
 
         <div class="component-card component-card--grouped">
-            <div class="component-group-item">
+            
+            <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
                     <div class="component-card__text">
                         <h2 class="component-card__title">Idioma</h2>
-                        <p class="component-card__description">Español (Latinoamérica)</p>
+                        <p class="component-card__description">Selecciona el idioma de la interfaz.</p>
+                    </div>
+                </div>
+                <div class="component-card__actions">
+                    <div class="trigger-select-wrapper" data-ui-type="dropdown" data-align="left">
+                        <div class="trigger-selector" data-action="toggle-dropdown">
+                            <span class="trigger-select-text">Español (Latinoamérica)</span>
+                            <span class="material-symbols-rounded">expand_more</span>
+                        </div>
+                        <div class="popover-module">
+                            <div class="menu-list">
+                                <div class="menu-link active">
+                                    <div class="menu-link-text" style="padding: 0 12px;">Español (Latinoamérica)</div>
+                                </div>
+                                <div class="menu-link">
+                                    <div class="menu-link-text" style="padding: 0 12px;">English (US)</div>
+                                </div>
+                                <div class="menu-link">
+                                    <div class="menu-link-text" style="padding: 0 12px;">Português (Brasil)</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <hr class="component-divider">
+
+            <div class="component-group-item component-group-item--stacked">
+                <div class="component-card__content">
+                    <div class="component-card__text">
+                        <h2 class="component-card__title">¿Para qué usarás esta web?</h2>
+                        <p class="component-card__description">Nos ayuda a personalizar tu experiencia.</p>
+                    </div>
+                </div>
+                <div class="component-card__actions">
+                    <div class="trigger-select-wrapper" data-ui-type="dropdown" data-align="left">
+                        <div class="trigger-selector" data-action="toggle-dropdown">
+                            <span class="trigger-select-text">Uso Personal</span>
+                            <span class="material-symbols-rounded">expand_more</span>
+                        </div>
+                        <div class="popover-module">
+                            <div class="menu-list">
+                                <div class="menu-link active">
+                                    <div class="menu-link-text" style="padding: 0 12px;">Uso Personal</div>
+                                </div>
+                                <div class="menu-link">
+                                    <div class="menu-link-text" style="padding: 0 12px;">Trabajo / Equipo</div>
+                                </div>
+                                <div class="menu-link">
+                                    <div class="menu-link-text" style="padding: 0 12px;">Educación</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="component-divider">
+
+            <div class="component-group-item">
+                <div class="component-card__content">
+                    <div class="component-card__text">
+                        <h2 class="component-card__title">Abrir enlaces en pestaña nueva</h2>
+                        <p class="component-card__description">Los enlaces externos se abrirán en otra ventana.</p>
+                    </div>
+                </div>
+                <div class="component-card__actions actions-right">
+                    <label class="component-toggle-switch">
+                        <input type="checkbox" checked>
+                        <span class="component-toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
         </div>
 
     </div>

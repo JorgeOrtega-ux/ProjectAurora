@@ -27,6 +27,63 @@ const toggleEditMode = (section, isEditing) => {
     }
 };
 
+/* --- LÓGICA UI PARA DROPDOWNS (NUEVO) --- */
+const setupDropdownUI = () => {
+    document.addEventListener('click', (e) => {
+        // 1. Manejar apertura/cierre
+        if (e.target.closest('[data-action="toggle-dropdown"]')) {
+            const trigger = e.target.closest('[data-action="toggle-dropdown"]');
+            const wrapper = trigger.closest('.trigger-select-wrapper');
+            const menu = wrapper.querySelector('.popover-module');
+            
+            // Cerrar otros abiertos
+            document.querySelectorAll('.popover-module.active').forEach(el => {
+                if (el !== menu) el.classList.remove('active');
+            });
+            document.querySelectorAll('.trigger-selector.active').forEach(el => {
+                if (el !== trigger) el.classList.remove('active');
+            });
+
+            // Toggle actual
+            trigger.classList.toggle('active');
+            menu.classList.toggle('active');
+            e.stopPropagation();
+            return;
+        }
+
+        // 2. Manejar selección (Solo visual)
+        if (e.target.closest('.menu-link')) {
+            const link = e.target.closest('.menu-link');
+            const menu = link.closest('.popover-module');
+            const wrapper = link.closest('.trigger-select-wrapper');
+            
+            if (wrapper) {
+                const triggerText = wrapper.querySelector('.trigger-select-text');
+                const linkText = link.querySelector('.menu-link-text');
+                
+                // Actualizar texto
+                if(triggerText && linkText) {
+                    triggerText.textContent = linkText.textContent;
+                }
+
+                // Actualizar estado activo en la lista
+                menu.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+
+                // Cerrar
+                menu.classList.remove('active');
+                wrapper.querySelector('.trigger-selector').classList.remove('active');
+            }
+        }
+
+        // 3. Cerrar al hacer clic fuera
+        if (!e.target.closest('.trigger-select-wrapper')) {
+            document.querySelectorAll('.popover-module.active').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.trigger-selector.active').forEach(el => el.classList.remove('active'));
+        }
+    });
+};
+
 /* --- LÓGICA DE ACTUALIZACIÓN DE DATOS (TEXTO) --- */
 const handleProfileSave = async (sectionType) => {
     const usernameInput = document.querySelector('[data-element="username-input"]');
@@ -70,20 +127,16 @@ const setupProfilePictureLogic = (pfpSection) => {
     const btnDelete = pfpSection.querySelector('[data-action="profile-picture-remove-trigger"]');
     const btnUploadText = pfpSection.querySelector('[data-element="upload-btn-text"]');
     
-    // Guardar src original para cancelar
     let originalSrc = previewImg.src;
 
-    // 1. Trigger Input
     const triggerUpload = () => fileInput.click();
     
-    // 2. Al seleccionar archivo (Previsualización)
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = (evt) => {
-                previewImg.src = evt.target.result; // Mostrar preview local
-                // Cambiar botones a modo "Guardar/Cancelar"
+                previewImg.src = evt.target.result; 
                 actionsDefault.classList.remove('active'); actionsDefault.classList.add('disabled');
                 actionsPreview.classList.remove('disabled'); actionsPreview.classList.add('active');
             };
@@ -91,16 +144,14 @@ const setupProfilePictureLogic = (pfpSection) => {
         }
     });
 
-    // 3. Cancelar subida
     pfpSection.addEventListener('click', (e) => {
         if (e.target.closest('[data-action="profile-picture-cancel-trigger"]')) {
-            previewImg.src = originalSrc; // Restaurar
-            fileInput.value = ''; // Limpiar input
+            previewImg.src = originalSrc; 
+            fileInput.value = ''; 
             actionsPreview.classList.remove('active'); actionsPreview.classList.add('disabled');
             actionsDefault.classList.remove('disabled'); actionsDefault.classList.add('active');
         }
 
-        // 4. Guardar subida (API)
         if (e.target.closest('[data-action="profile-picture-save-trigger-btn"]')) {
             const file = fileInput.files[0];
             if(!file) return;
@@ -111,20 +162,16 @@ const setupProfilePictureLogic = (pfpSection) => {
 
             AuthService.uploadProfilePicture(file).then(res => {
                 if(res.status === 'success') {
-                    // Actualizar referencia original con la nueva URL (con timestamp)
                     originalSrc = res.data.url;
                     previewImg.src = originalSrc;
                     
-                    // Actualizar header global
                     const headerImg = document.querySelector('.profile-img');
                     if(headerImg) headerImg.src = originalSrc;
 
-                    // Actualizar estado UI (Mostrar botón Eliminar, cambiar texto a "Cambiar")
                     pfpSection.dataset.hasCustom = "true";
                     btnDelete.style.display = "flex";
                     btnUploadText.innerText = "Cambiar";
 
-                    // Volver a default
                     actionsPreview.classList.remove('active'); actionsPreview.classList.add('disabled');
                     actionsDefault.classList.remove('disabled'); actionsDefault.classList.add('active');
                     fileInput.value = '';
@@ -139,24 +186,15 @@ const setupProfilePictureLogic = (pfpSection) => {
             });
         }
 
-        // 5. Eliminar foto (API)
         if (e.target.closest('[data-action="profile-picture-remove-trigger"]')) {
             if(!confirm("¿Eliminar foto de perfil actual?")) return;
-
-            // Bloquear UI momentáneamente
             btnDelete.disabled = true;
-
             AuthService.deleteProfilePicture().then(res => {
                 if(res.status === 'success') {
-                    // La URL que viene es la de DEFAULT
                     originalSrc = res.data.url;
                     previewImg.src = originalSrc;
-                    
                     const headerImg = document.querySelector('.profile-img');
                     if(headerImg) headerImg.src = originalSrc;
-
-                    // Actualizar estado UI
-                    // Al ser falso, ocultamos botón eliminar y ponemos "Subir foto"
                     pfpSection.dataset.hasCustom = "false";
                     btnDelete.style.display = "none";
                     btnUploadText.innerText = "Subir foto";
@@ -168,7 +206,6 @@ const setupProfilePictureLogic = (pfpSection) => {
             });
         }
         
-        // Delegación para trigger
         if (e.target.closest('[data-action="trigger-profile-picture-upload"]') || 
             e.target.closest('[data-action="profile-picture-upload-trigger"]')) {
             triggerUpload();
@@ -179,10 +216,8 @@ const setupProfilePictureLogic = (pfpSection) => {
 const setupProfileListeners = () => {
     document.addEventListener('click', (e) => {
         const target = e.target;
-
-        // Delegación genérica para editar textos (username/email)
         if (target.matches('[data-action$="-edit-trigger"]')) {
-            const type = target.dataset.action.split('-')[0]; // username o email
+            const type = target.dataset.action.split('-')[0]; 
             const section = target.closest(`[data-component="${type}-section"]`);
             if(section) {
                 const input = section.querySelector('input');
@@ -193,7 +228,6 @@ const setupProfileListeners = () => {
 
         if (target.matches('[data-action$="-cancel-trigger"]')) {
             const type = target.dataset.action.split('-')[0];
-            // Ignorar el de pfp que se maneja aparte
             if(type !== 'profile') {
                 const section = target.closest(`[data-component="${type}-section"]`);
                 const input = section.querySelector('input');
@@ -208,9 +242,11 @@ const setupProfileListeners = () => {
         }
     });
 
-    // Iniciar lógica específica de PFP si existe la sección
     const pfpSection = document.querySelector('[data-component="profile-picture-section"]');
     if (pfpSection) setupProfilePictureLogic(pfpSection);
+    
+    // Iniciar UI de los dropdowns nuevos
+    setupDropdownUI();
 };
 
 export const initProfileController = () => {
