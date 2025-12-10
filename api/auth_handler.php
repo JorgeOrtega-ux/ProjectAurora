@@ -62,42 +62,24 @@ function validateEmailRequirements($email) {
 
 // --- NUEVAS FUNCIONES DE SEGURIDAD (RATE LIMITING) ---
 
-/**
- * Registra un evento de seguridad (fallo o acción sensible)
- */
 function logSecurityEvent($pdo, $identifier, $actionType) {
     try {
         $ip = getClientIP();
-        // Recortar identifier si es muy largo por seguridad
         $identifier = substr($identifier, 0, 250);
-        
         $stmt = $pdo->prepare("INSERT INTO security_logs (user_identifier, action_type, ip_address, created_at) VALUES (?, ?, ?, NOW())");
         $stmt->execute([$identifier, $actionType, $ip]);
     } catch (Exception $e) {
-        // Fallo silencioso para no romper el flujo principal si falla el log
         error_log("Error logging security event: " . $e->getMessage());
     }
 }
 
-/**
- * Verifica si se ha superado el límite de intentos.
- * Detiene la ejecución si se excede el límite.
- * * @param PDO $pdo Conexión a BD
- * @param string $identifier Identificador (Email, IP, etc.)
- * @param string $actionType Tipo de acción ('login_fail', etc.)
- * @param int $limit Número máximo de intentos permitidos
- * @param int $minutes Ventana de tiempo en minutos
- * @param bool $checkByIp Si es true, ignora el identifier y cuenta por IP (para ataques distribuidos o anónimos)
- */
 function checkRateLimit($pdo, $identifier, $actionType, $limit, $minutes, $checkByIp = false) {
     $ip = getClientIP();
     
-    // Consulta dinámica dependiendo si chequeamos por IP o por Identificador
     if ($checkByIp) {
         $sql = "SELECT COUNT(*) FROM security_logs WHERE ip_address = ? AND action_type = ? AND created_at > (NOW() - INTERVAL ? MINUTE)";
         $params = [$ip, $actionType, $minutes];
     } else {
-        // Chequeo híbrido: Bloqueamos si la IP falla mucho O si el usuario específico falla mucho
         $sql = "SELECT COUNT(*) FROM security_logs WHERE (user_identifier = ? OR ip_address = ?) AND action_type = ? AND created_at > (NOW() - INTERVAL ? MINUTE)";
         $params = [$identifier, $ip, $actionType, $minutes];
     }
@@ -108,12 +90,9 @@ function checkRateLimit($pdo, $identifier, $actionType, $limit, $minutes, $check
         $count = $stmt->fetchColumn();
 
         if ($count >= $limit) {
-            // Mensaje genérico de seguridad
             sendJsonResponse('error', "Demasiados intentos. Por seguridad, espera $minutes minutos antes de intentar nuevamente.");
         }
     } catch (Exception $e) {
-        // En caso de error de BD, permitir paso (fail-open) o bloquear (fail-close). 
-        // Por usabilidad, permitimos paso pero logueamos error.
         error_log("Rate Limit Check Error: " . $e->getMessage());
     }
 }
@@ -178,15 +157,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($stmt->rowCount() > 0) {
                 sendJsonResponse('error', "Usuario en uso.");
             } else {
-                
-                // Limpiar códigos anteriores
                 $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation'")->execute([$email]);
                 
                 $code = generate_verification_code();
                 $passwordHash = password_hash($password, PASSWORD_DEFAULT);
                 $payload = json_encode(['username' => $username, 'email' => $email, 'password' => $passwordHash]);
 
-                // Insertamos el nuevo código
                 $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
                 
                 if ($stmt->execute([$email, 'account_activation', $code, $payload])) {
@@ -202,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 3. REENVIAR CÓDIGO (Con Rate Limit SQL)
+    // 3. REENVIAR CÓDIGO
     if ($action === 'resend_verification_code') {
         if (!isset($_SESSION['pending_verification_email'])) {
             sendJsonResponse('error', "Sin sesión de verificación.");
@@ -210,7 +186,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $email = $_SESSION['pending_verification_email'];
 
-        // A. VALIDACIÓN DE TIEMPO (Rate Limit simple de reenvío)
         $checkStmt = $pdo->prepare("SELECT created_at FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation' AND created_at > (NOW() - INTERVAL 60 SECOND) ORDER BY id DESC LIMIT 1");
         $checkStmt->execute([$email]);
         
@@ -218,10 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             sendJsonResponse('error', "Debes esperar 60 segundos antes de reenviar.");
         }
 
-        // B. Generar nuevo código
         $newCode = generate_verification_code();
-        
-        // Obtener payload anterior
         $stmtLast = $pdo->prepare("SELECT payload FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation' ORDER BY id DESC LIMIT 1");
         $stmtLast->execute([$email]);
         $lastRow = $stmtLast->fetch();
@@ -246,34 +218,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $emailIdentifier = $_SESSION['pending_verification_email'] ?? null;
 
         if ($code && $emailIdentifier) {
-            
-            // [SEGURIDAD] Rate Limit: Máximo 5 intentos fallidos en 15 minutos
             checkRateLimit($pdo, $emailIdentifier, 'verify_fail', 5, 15);
 
-            // Comparamos expires_at con NOW()
             $stmt = $pdo->prepare("SELECT * FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'account_activation' AND expires_at > NOW() ORDER BY id DESC LIMIT 1");
             $stmt->execute([$emailIdentifier, $code]);
             $row = $stmt->fetch();
 
             if ($row) {
-                // ÉXITO
                 $payload = json_decode($row['payload'], true);
                 $uuid = generate_uuid();
 
                 $insertUser = $pdo->prepare("INSERT INTO users (username, email, password, uuid) VALUES (?, ?, ?, ?)");
                 if ($insertUser->execute([$payload['username'], $payload['email'], $payload['password'], $uuid])) {
                     $newId = $pdo->lastInsertId();
-                    
-                    // Limpieza final
                     $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ?")->execute([$emailIdentifier]);
 
-                    // Avatar Random
                     try {
                         $url = "https://ui-avatars.com/api/?name=" . urlencode($payload['username']) . "&background=random&color=fff&size=128";
                         $img = @file_get_contents($url);
                         if ($img) {
                             $dir = __DIR__ . '/../public/assets/uploads/profile_pictures/';
-                            // CORRECCIÓN DE SEGURIDAD: Permisos 0755 en lugar de 0777
                             if (!is_dir($dir)) @mkdir($dir, 0755, true);
                             @file_put_contents($dir . $uuid . '.png', $img);
                         }
@@ -291,7 +255,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     sendJsonResponse('error', "Error al crear usuario.");
                 }
             } else {
-                // [SEGURIDAD] Registrar fallo
                 logSecurityEvent($pdo, $emailIdentifier, 'verify_fail');
                 sendJsonResponse('error', "Código inválido o expirado.");
             }
@@ -305,7 +268,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = trim($input['email'] ?? '');
         $password = $input['password'] ?? '';
 
-        // [SEGURIDAD] Rate Limit: Máximo 5 fallos en 15 minutos para este email o IP
         checkRateLimit($pdo, $email, 'login_fail', 5, 15);
 
         $stmt = $pdo->prepare("SELECT id, username, password, uuid, role FROM users WHERE email = ?");
@@ -313,11 +275,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
-            // ÉXITO
-            
-            // [FIX: SESSION FIXATION] Regeneramos el ID de sesión tras el login exitoso.
             session_regenerate_id(true);
-            
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['uuid'] = $user['uuid'];
@@ -325,20 +283,121 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             logUserAccess($pdo, $user['id']);
             sendJsonResponse('success', "Bienvenido", $basePath);
         } else {
-            // [SEGURIDAD] Registrar fallo
             logSecurityEvent($pdo, $email, 'login_fail');
             sendJsonResponse('error', "Credenciales incorrectas.");
         }
     }
 
-    // 6. RECUPERAR PASSWORD (SOLICITUD)
+    // 6. ACTUALIZAR PERFIL (USERNAME/EMAIL)
+    if ($action === 'update_profile') {
+        if (!isset($_SESSION['user_id'])) sendJsonResponse('error', "No autenticado.");
+
+        $userId = $_SESSION['user_id'];
+        $newUsername = trim($input['username'] ?? '');
+        $newEmail = trim($input['email'] ?? '');
+
+        if (empty($newUsername) || empty($newEmail)) sendJsonResponse('error', "Campos requeridos.");
+        if (strlen($newUsername) < 6) sendJsonResponse('error', "Usuario: mín. 6 caracteres.");
+
+        $emailVal = validateEmailRequirements($newEmail);
+        if ($emailVal !== true) sendJsonResponse('error', $emailVal);
+
+        $stmtCheck = $pdo->prepare("SELECT id FROM users WHERE (username = ? OR email = ?) AND id != ?");
+        $stmtCheck->execute([$newUsername, $newEmail, $userId]);
+        
+        if ($stmtCheck->rowCount() > 0) {
+            sendJsonResponse('error', "El nombre de usuario o correo ya está en uso.");
+        }
+
+        $updateStmt = $pdo->prepare("UPDATE users SET username = ?, email = ? WHERE id = ?");
+        if ($updateStmt->execute([$newUsername, $newEmail, $userId])) {
+            $_SESSION['username'] = $newUsername;
+            sendJsonResponse('success', "Perfil actualizado.", null, ['username' => $newUsername, 'email' => $newEmail]);
+        } else {
+            sendJsonResponse('error', "Error al guardar cambios.");
+        }
+    }
+
+    // 7. SUBIR FOTO DE PERFIL (NUEVO)
+    if ($action === 'upload_profile_picture') {
+        if (!isset($_SESSION['user_id'])) sendJsonResponse('error', "No autenticado.");
+        
+        // Verificar si se subió el archivo
+        if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
+             sendJsonResponse('error', "Error al subir la imagen.");
+        }
+
+        $file = $_FILES['image'];
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        
+        // Validar MIME
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mime = $finfo->file($file['tmp_name']);
+        
+        if (!in_array($mime, $allowedTypes)) {
+            sendJsonResponse('error', "Formato inválido (solo JPG, PNG, WEBP).");
+        }
+        
+        // Validar tamaño (2MB)
+        if ($file['size'] > 2 * 1024 * 1024) {
+            sendJsonResponse('error', "La imagen pesa más de 2MB.");
+        }
+
+        // Procesar imagen (Estandarizar a PNG)
+        $uuid = $_SESSION['uuid'];
+        $targetDir = __DIR__ . '/../public/assets/uploads/profile_pictures/';
+        if (!is_dir($targetDir)) mkdir($targetDir, 0755, true);
+        
+        $targetFile = $targetDir . $uuid . '.png';
+        $src = null;
+
+        switch ($mime) {
+            case 'image/jpeg': $src = imagecreatefromjpeg($file['tmp_name']); break;
+            case 'image/png':  $src = imagecreatefrompng($file['tmp_name']); break;
+            case 'image/webp': $src = imagecreatefromwebp($file['tmp_name']); break;
+        }
+
+        if ($src) {
+            // Guardar con compresión básica (calidad 9/0-9 para PNG)
+            imagepng($src, $targetFile, 9);
+            imagedestroy($src);
+            
+            // Devolver URL con timestamp para bustear caché del navegador
+            sendJsonResponse('success', "Foto actualizada.", null, [
+                'url' => $basePath . 'assets/uploads/profile_pictures/' . $uuid . '.png?v=' . time()
+            ]);
+        } else {
+             // Fallback si GD falla
+             if(move_uploaded_file($file['tmp_name'], $targetFile)) {
+                sendJsonResponse('success', "Foto actualizada.", null, [
+                    'url' => $basePath . 'assets/uploads/profile_pictures/' . $uuid . '.png?v=' . time()
+                ]);
+             } else {
+                sendJsonResponse('error', "Error al procesar imagen.");
+             }
+        }
+    }
+
+    // 8. ELIMINAR FOTO DE PERFIL (NUEVO)
+    if ($action === 'delete_profile_picture') {
+         if (!isset($_SESSION['user_id'])) sendJsonResponse('error', "No autenticado.");
+         $uuid = $_SESSION['uuid'];
+         $targetFile = __DIR__ . '/../public/assets/uploads/profile_pictures/' . $uuid . '.png';
+         
+         if (file_exists($targetFile)) {
+             unlink($targetFile);
+             // Devolver la URL del avatar por defecto
+             $defaultUrl = 'https://ui-avatars.com/api/?name=' . urlencode($_SESSION['username']) . '&background=random&color=fff&size=128';
+             sendJsonResponse('success', "Foto eliminada.", null, ['url' => $defaultUrl]);
+         } else {
+             sendJsonResponse('error', "No tienes foto personalizada.");
+         }
+    }
+
+    // 9. RECUPERAR PASSWORD
     if ($action === 'request_password_reset') {
         $email = trim($input['email'] ?? '');
-        
-        // [SEGURIDAD] Rate Limit: Máximo 3 intentos de solicitud en 1 hora POR IP.
         checkRateLimit($pdo, $email, 'recovery_request', 3, 60, true);
-
-        // [SEGURIDAD] Registramos el intento inmediatamente
         logSecurityEvent($pdo, $email, 'recovery_request');
 
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) sendJsonResponse('error', "Correo inválido.");
@@ -347,48 +406,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$email]);
         
         if ($stmt->rowCount() > 0) {
-            
-            // A. RATE LIMIT SQL (Recuperación - Evitar flood)
             $checkLimit = $pdo->prepare("SELECT id FROM password_resets WHERE email = ? AND created_at > (NOW() - INTERVAL 60 SECOND)");
             $checkLimit->execute([$email]);
             if ($checkLimit->rowCount() > 0) {
-                sendJsonResponse('error', "Por favor espera 60 segundos antes de solicitar otro enlace.");
+                sendJsonResponse('error', "Espera 60s para otro enlace.");
             }
 
             $token = bin2hex(random_bytes(32));
-            
-            // Borramos tokens viejos
             $pdo->prepare("DELETE FROM password_resets WHERE email = ?")->execute([$email]);
-            
-            // Insertamos nuevo con NOW() + 1 HOUR
             $ins = $pdo->prepare("INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 1 HOUR))");
-            
             if ($ins->execute([$email, $token])) {
-                // Generamos el link internamente (para enviarlo por email)
-                $link = (isset($_SERVER['HTTPS']) ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'] . $basePath . "recover-password/" . $token;
-                
-                // TODO: IMPLEMENTAR ENVÍO DE CORREO ELECTRÓNICO AQUÍ
-                // mail($email, "Recuperación de contraseña", "Haz clic aquí: " . $link);
-                
-                // [FIX: BACKDOOR] NO DEVOLVEMOS EL LINK EN LA RESPUESTA
-                sendJsonResponse('success', "Enlace enviado a tu correo (si existe).");
-            } else {
-                sendJsonResponse('error', "Error al generar token.");
+                sendJsonResponse('success', "Enlace generado (backend).");
             }
         } else {
-            // Seguridad silenciosa
-            sendJsonResponse('error', "Si el correo existe, se enviará un enlace.");
+            sendJsonResponse('error', "Si existe, se enviará.");
         }
     }
 
-    // 7. RESTABLECER PASSWORD (CAMBIO)
+    // 10. RESTABLECER PASSWORD
     if ($action === 'reset_password') {
         $token = $input['token'] ?? '';
         $newPass = $input['password'] ?? '';
-
         if (strlen($newPass) < 8) sendJsonResponse('error', "Mínimo 8 caracteres.");
 
-        // Validamos con NOW() de BD
         $stmt = $pdo->prepare("SELECT email FROM password_resets WHERE token = ? AND expires_at > NOW() LIMIT 1");
         $stmt->execute([$token]);
         $req = $stmt->fetch();
@@ -399,11 +439,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare("DELETE FROM password_resets WHERE token = ?")->execute([$token]);
             sendJsonResponse('success', "Contraseña actualizada.", $basePath . "login");
         } else {
-            sendJsonResponse('error', "Enlace inválido o expirado.");
+            sendJsonResponse('error', "Token inválido.");
         }
     }
 
-    // 8. LOGOUT
+    // 11. LOGOUT
     if ($action === 'logout') {
         $_SESSION = [];
         if (ini_get("session.use_cookies")) {
