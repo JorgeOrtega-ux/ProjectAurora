@@ -196,9 +196,9 @@ html {
     }
 
     .header-center {
-        display: flex; 
+        display: flex;
         order: 3;
-        flex: 0 0 100%; 
+        flex: 0 0 100%;
         padding: 8px 0 0 0;
         width: 100%;
     }
@@ -305,6 +305,7 @@ html {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    font-size: 14px;
     align-self: center;
 }
 
@@ -410,7 +411,7 @@ html {
     background: #ffffff;
     padding: 32px;
     border-radius: 16px;
-    box-shadow: none; 
+    box-shadow: none;
     border: 1px solid transparent;
     text-align: center;
 }
@@ -435,13 +436,13 @@ html {
 
 .form-group input {
     width: 100%;
-    padding: 24px 16px 8px 16px; 
+    padding: 24px 16px 8px 16px;
     border: 1px solid #00000020;
     border-radius: 8px;
     font-size: 16px;
     background-color: #fff;
     /* transition eliminada */
-    height: 55px; 
+    height: 55px;
 }
 
 .form-group input:focus {
@@ -462,8 +463,8 @@ html {
     background-color: transparent;
 }
 
-.form-group input:focus + label,
-.form-group input:not(:placeholder-shown) + label {
+.form-group input:focus+label,
+.form-group input:not(:placeholder-shown)+label {
     top: 12px;
     left: 16px;
     font-size: 12px;
@@ -480,6 +481,7 @@ html {
     margin: 12px 0;
     font-size: 14px;
 }
+
 .forgot-password a {
     color: #666;
     text-decoration: none;
@@ -564,4 +566,9 @@ html {
 
 .form-groups-wrapper .form-group {
     margin-bottom: 0;
+}
+
+.body-text {
+    font-weight: 500;
+    line-height: 1.25rem;
 }

@@ -101,16 +101,15 @@
      align-items: center;
      justify-content: center;
      flex-shrink: 0;
-     overflow: hidden;
  }
 
  .component-card__profile-picture::before {
      content: '';
      position: absolute;
-     top: 0;
-     left: 0;
-     right: 0;
-     bottom: 0;
+     top: -4px;
+     left: -4px;
+     right: -4px;
+     bottom: -4px;
      border-radius: 50%;
      border: 2px solid transparent;
      pointer-events: none;
@@ -359,8 +358,7 @@
 /* Trigger Select */
 .trigger-select-wrapper {
     position: relative;
-    min-width: 200px;
-    max-width: 300px; 
+    width: 285px;
 }
 
 .trigger-selector {
@@ -379,18 +377,15 @@
 }
 
 .trigger-selector:hover {
-    background-color: #f5f5fa;
-    border-color: #00000040;
+    border-color: #000000;
 }
 
 .trigger-selector.active {
     border-color: #000;
-    background-color: #f5f5fa;
 }
 
 /* Icono en el selector */
 .trigger-select-icon {
-    color: #555;
     flex-shrink: 0;
 }
 
@@ -398,7 +393,6 @@
     flex: 1;
     font-size: 14px;
     font-weight: 500;
-    color: #333;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -414,7 +408,7 @@
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-    border: 1px solid #00000010;
+    border: 1px solid #00000020;
     z-index: 1000;
     padding: 6px;
     display: none;
@@ -447,5 +441,7 @@
 .input-group-responsive {
     gap: 8px;
     align-items: center;
-    margin-top: 8px;
+    margin-top: 2px;
 }
+
+

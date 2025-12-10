@@ -104,7 +104,7 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
 
                                 </div>
 
-                                <div class="module-content module-profile disabled" data-module="moduleProfile">
+                                <div class="module-content module-profile body-text disabled" data-module="moduleProfile">
                                     <div class="menu-content">
                                         <div class="menu-list">
                                             <div class="menu-link" data-nav="settings/your-profile">
@@ -136,7 +136,7 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
                 <div class="general-content-bottom">
 
                     <?php if ($isLoggedIn): ?>
-                        <div class="module-content module-surface disabled" data-module="moduleSurface">
+                        <div class="module-content module-surface body-text disabled" data-module="moduleSurface">
                             <div class="menu-content">
                                 <div class="menu-content-top">
 
