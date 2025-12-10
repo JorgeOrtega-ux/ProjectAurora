@@ -1,6 +1,6 @@
 <?php
 // api/auth_handler.php
-// UBICACIÓN: Raíz del proyecto /api/ (fuera de public)
+// UBICACIÓN: Raíz del proyecto /api/
 
 header('Content-Type: application/json');
 require_once __DIR__ . '/../includes/db.php'; 
@@ -60,7 +60,7 @@ function validateEmailRequirements($email) {
     return true;
 }
 
-// --- NUEVAS FUNCIONES DE SEGURIDAD (RATE LIMITING) ---
+// --- SEGURIDAD (RATE LIMITING) ---
 
 function logSecurityEvent($pdo, $identifier, $actionType) {
     try {
@@ -138,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 2. REGISTRO PASO 2 (Envío inicial)
+    // 2. REGISTRO PASO 2
     if ($action === 'register_step_2') {
         $username = trim($input['username'] ?? '');
         
@@ -233,11 +233,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $newId = $pdo->lastInsertId();
                     $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ?")->execute([$emailIdentifier]);
 
+                    // --- ESTRATEGIA: GUARDAR DEFAULT EN UPLOADS/DEFAULT_AVATARS ---
                     try {
                         $url = "https://ui-avatars.com/api/?name=" . urlencode($payload['username']) . "&background=random&color=fff&size=128";
                         $img = @file_get_contents($url);
                         if ($img) {
-                            $dir = __DIR__ . '/../public/assets/uploads/profile_pictures/';
+                            // Ruta ajustada dentro de uploads
+                            $dir = __DIR__ . '/../public/assets/uploads/default_avatars/';
                             if (!is_dir($dir)) @mkdir($dir, 0755, true);
                             @file_put_contents($dir . $uuid . '.png', $img);
                         }
@@ -288,7 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 6. ACTUALIZAR PERFIL (USERNAME/EMAIL)
+    // 6. ACTUALIZAR PERFIL
     if ($action === 'update_profile') {
         if (!isset($_SESSION['user_id'])) sendJsonResponse('error', "No autenticado.");
 
@@ -318,11 +320,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 7. SUBIR FOTO DE PERFIL (NUEVO)
+    // 7. SUBIR FOTO DE PERFIL
     if ($action === 'upload_profile_picture') {
         if (!isset($_SESSION['user_id'])) sendJsonResponse('error', "No autenticado.");
         
-        // Verificar si se subió el archivo
         if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
              sendJsonResponse('error', "Error al subir la imagen.");
         }
@@ -330,7 +331,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $file = $_FILES['image'];
         $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
         
-        // Validar MIME
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $mime = $finfo->file($file['tmp_name']);
         
@@ -338,13 +338,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             sendJsonResponse('error', "Formato inválido (solo JPG, PNG, WEBP).");
         }
         
-        // Validar tamaño (2MB)
         if ($file['size'] > 2 * 1024 * 1024) {
             sendJsonResponse('error', "La imagen pesa más de 2MB.");
         }
 
-        // Procesar imagen (Estandarizar a PNG)
         $uuid = $_SESSION['uuid'];
+        // CARPETA DE SUBIDAS (profile_pictures)
         $targetDir = __DIR__ . '/../public/assets/uploads/profile_pictures/';
         if (!is_dir($targetDir)) mkdir($targetDir, 0755, true);
         
@@ -358,16 +357,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($src) {
-            // Guardar con compresión básica (calidad 9/0-9 para PNG)
             imagepng($src, $targetFile, 9);
             imagedestroy($src);
             
-            // Devolver URL con timestamp para bustear caché del navegador
             sendJsonResponse('success', "Foto actualizada.", null, [
                 'url' => $basePath . 'assets/uploads/profile_pictures/' . $uuid . '.png?v=' . time()
             ]);
         } else {
-             // Fallback si GD falla
              if(move_uploaded_file($file['tmp_name'], $targetFile)) {
                 sendJsonResponse('success', "Foto actualizada.", null, [
                     'url' => $basePath . 'assets/uploads/profile_pictures/' . $uuid . '.png?v=' . time()
@@ -378,23 +374,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 8. ELIMINAR FOTO DE PERFIL (NUEVO)
+    // 8. ELIMINAR FOTO DE PERFIL (SOLUCIÓN DEL BUG)
     if ($action === 'delete_profile_picture') {
          if (!isset($_SESSION['user_id'])) sendJsonResponse('error', "No autenticado.");
          $uuid = $_SESSION['uuid'];
+         
+         // Borramos SOLO de la carpeta de SUBIDAS (profile_pictures)
          $targetFile = __DIR__ . '/../public/assets/uploads/profile_pictures/' . $uuid . '.png';
          
          if (file_exists($targetFile)) {
              unlink($targetFile);
-             // Devolver la URL del avatar por defecto
-             $defaultUrl = 'https://ui-avatars.com/api/?name=' . urlencode($_SESSION['username']) . '&background=random&color=fff&size=128';
+             
+             // Devolvemos la URL de la carpeta DEFAULT (que está dentro de uploads/default_avatars)
+             $defaultUrl = $basePath . 'assets/uploads/default_avatars/' . $uuid . '.png?v=' . time();
+             
              sendJsonResponse('success', "Foto eliminada.", null, ['url' => $defaultUrl]);
          } else {
              sendJsonResponse('error', "No tienes foto personalizada.");
          }
     }
 
-    // 9. RECUPERAR PASSWORD
+    // 9. PASSWORD RESET
     if ($action === 'request_password_reset') {
         $email = trim($input['email'] ?? '');
         checkRateLimit($pdo, $email, 'recovery_request', 3, 60, true);
@@ -423,7 +423,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 10. RESTABLECER PASSWORD
     if ($action === 'reset_password') {
         $token = $input['token'] ?? '';
         $newPass = $input['password'] ?? '';
@@ -443,7 +442,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 11. LOGOUT
     if ($action === 'logout') {
         $_SESSION = [];
         if (ini_get("session.use_cookies")) {

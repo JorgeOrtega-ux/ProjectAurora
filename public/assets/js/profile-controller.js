@@ -131,7 +131,10 @@ const setupProfilePictureLogic = (pfpSection) => {
                 } else {
                     alert(res.message);
                 }
-            }).catch(err => alert("Error de red")).finally(() => {
+            }).catch(err => {
+                console.error(err);
+                alert("Error de red");
+            }).finally(() => {
                 btn.innerText = txt; btn.disabled = false;
             });
         }
@@ -140,8 +143,12 @@ const setupProfilePictureLogic = (pfpSection) => {
         if (e.target.closest('[data-action="profile-picture-remove-trigger"]')) {
             if(!confirm("¿Eliminar foto de perfil actual?")) return;
 
+            // Bloquear UI momentáneamente
+            btnDelete.disabled = true;
+
             AuthService.deleteProfilePicture().then(res => {
                 if(res.status === 'success') {
+                    // La URL que viene es la de DEFAULT
                     originalSrc = res.data.url;
                     previewImg.src = originalSrc;
                     
@@ -149,12 +156,15 @@ const setupProfilePictureLogic = (pfpSection) => {
                     if(headerImg) headerImg.src = originalSrc;
 
                     // Actualizar estado UI
+                    // Al ser falso, ocultamos botón eliminar y ponemos "Subir foto"
                     pfpSection.dataset.hasCustom = "false";
                     btnDelete.style.display = "none";
                     btnUploadText.innerText = "Subir foto";
                 } else {
                     alert(res.message);
                 }
+            }).finally(() => {
+                btnDelete.disabled = false;
             });
         }
         

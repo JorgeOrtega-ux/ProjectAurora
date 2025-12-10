@@ -67,18 +67,30 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
                                      data-role="<?php echo htmlspecialchars($userRole); ?>">
                                      
                                     <?php 
-                                    $hasAvatar = false;
+                                    // --- LÓGICA DE HEADER ACTUALIZADA ---
+                                    $hasImage = false;
+                                    $avatarSrc = '';
+
                                     if (isset($_SESSION['uuid'])) {
-                                        $avatarRelPath = 'assets/uploads/profile_pictures/' . $_SESSION['uuid'] . '.png';
-                                        $avatarFullPath = __DIR__ . '/' . $avatarRelPath;
-                                        if (file_exists($avatarFullPath)) {
-                                            $hasAvatar = true;
+                                        $uuid = $_SESSION['uuid'];
+                                        
+                                        // 1. Rutas relativas
+                                        $customRel  = 'assets/uploads/profile_pictures/' . $uuid . '.png';
+                                        $defaultRel = 'assets/uploads/default_avatars/' . $uuid . '.png'; // Nueva ruta
+
+                                        // 2. Comprobación física (Prioridad: Custom > Default)
+                                        if (file_exists(__DIR__ . '/' . $customRel)) {
+                                            $avatarSrc = $basePath . $customRel . '?v=' . time();
+                                            $hasImage = true;
+                                        } elseif (file_exists(__DIR__ . '/' . $defaultRel)) {
+                                            $avatarSrc = $basePath . $defaultRel . '?v=' . time();
+                                            $hasImage = true;
                                         }
                                     }
                                     ?>
 
-                                    <?php if ($hasAvatar): ?>
-                                        <img src="<?php echo $basePath . $avatarRelPath; ?>" 
+                                    <?php if ($hasImage): ?>
+                                        <img src="<?php echo $avatarSrc; ?>" 
                                              alt="Perfil" 
                                              class="profile-img">
                                     <?php else: ?>
@@ -198,11 +210,8 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
                         } 
                         // Verificación especial para carpetas anidadas como 'settings/xxx'
                         elseif (strpos($currentSection, 'settings/') === 0) {
-                            // Mapeamos manualmente o usamos el array del loader.php
-                            // Para consistencia con index simple, lo incluimos basado en ruta si existe
                             $file = __DIR__ . '/../includes/sections/' . $currentSection . '.php';
                             
-                            // Ajuste para el nombre de archivo de login-and-security vs login-security
                             if ($currentSection === 'settings/login-and-security') {
                                 $file = __DIR__ . '/../includes/sections/settings/login-security.php';
                             }
