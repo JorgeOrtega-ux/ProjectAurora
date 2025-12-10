@@ -1,11 +1,27 @@
 <?php
 // api/auth_handler.php
-// UBICACIÓN: Raíz del proyecto /api/
 
 header('Content-Type: application/json');
 require_once __DIR__ . '/../includes/db.php'; 
 
-// --- FUNCIONES AUXILIARES ---
+// ==========================================
+// CONFIGURACIÓN DE RUTAS DE AVATARES
+// ==========================================
+// Definimos las rutas base para no tener confusiones
+define('UPLOAD_BASE_DIR', __DIR__ . '/../public/assets/uploads/avatars/');
+define('DIR_CUSTOM', UPLOAD_BASE_DIR . 'custom/');
+define('DIR_DEFAULT', UPLOAD_BASE_DIR . 'default/');
+
+// URL base relativa para el navegador
+define('URL_BASE_AVATARS', 'assets/uploads/avatars/');
+
+// Asegurar que existan las carpetas al cargar el script
+if (!is_dir(DIR_CUSTOM)) @mkdir(DIR_CUSTOM, 0755, true);
+if (!is_dir(DIR_DEFAULT)) @mkdir(DIR_DEFAULT, 0755, true);
+
+// ==========================================
+// FUNCIONES AUXILIARES
+// ==========================================
 
 function sendJsonResponse($status, $message, $redirectUrl = null, $data = []) {
     echo json_encode([
@@ -60,6 +76,32 @@ function validateEmailRequirements($email) {
     return true;
 }
 
+/**
+ * Garantiza que exista un avatar por defecto (letras) en la carpeta local.
+ * Si no existe, lo descarga de UI Avatars.
+ */
+function ensureDefaultAvatarExists($uuid, $username) {
+    $targetFile = DIR_DEFAULT . $uuid . '.png';
+
+    // Si NO existe, lo creamos (descargamos)
+    if (!file_exists($targetFile)) {
+        try {
+            // Pedimos 'background=random' para que nos dé un color aleatorio
+            $url = "https://ui-avatars.com/api/?name=" . urlencode($username) . "&background=random&color=fff&size=128&format=png";
+            $imgContent = @file_get_contents($url);
+            
+            if ($imgContent) {
+                @file_put_contents($targetFile, $imgContent);
+                return true;
+            }
+        } catch (Exception $e) {
+            error_log("Error generando avatar default: " . $e->getMessage());
+        }
+        return false;
+    }
+    return true; 
+}
+
 // --- SEGURIDAD (RATE LIMITING) ---
 
 function logSecurityEvent($pdo, $identifier, $actionType) {
@@ -97,7 +139,9 @@ function checkRateLimit($pdo, $identifier, $actionType, $limit, $minutes, $check
     }
 }
 
-// --- LÓGICA PRINCIPAL ---
+// ==========================================
+// LÓGICA PRINCIPAL
+// ==========================================
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input = $_POST;
@@ -185,7 +229,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $email = $_SESSION['pending_verification_email'];
-
         $checkStmt = $pdo->prepare("SELECT created_at FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation' AND created_at > (NOW() - INTERVAL 60 SECOND) ORDER BY id DESC LIMIT 1");
         $checkStmt->execute([$email]);
         
@@ -201,7 +244,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($lastRow) {
             $payload = $lastRow['payload'];
             $stmtInsert = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
-            
             if ($stmtInsert->execute([$email, 'account_activation', $newCode, $payload])) {
                 sendJsonResponse('success', "Código reenviado: " . $newCode);
             } else {
@@ -233,17 +275,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $newId = $pdo->lastInsertId();
                     $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ?")->execute([$emailIdentifier]);
 
-                    // --- ESTRATEGIA: GUARDAR DEFAULT EN UPLOADS/DEFAULT_AVATARS ---
-                    try {
-                        $url = "https://ui-avatars.com/api/?name=" . urlencode($payload['username']) . "&background=random&color=fff&size=128";
-                        $img = @file_get_contents($url);
-                        if ($img) {
-                            // Ruta ajustada dentro de uploads
-                            $dir = __DIR__ . '/../public/assets/uploads/default_avatars/';
-                            if (!is_dir($dir)) @mkdir($dir, 0755, true);
-                            @file_put_contents($dir . $uuid . '.png', $img);
-                        }
-                    } catch (Exception $e) {}
+                    // Generar avatar default en la carpeta correcta
+                    ensureDefaultAvatarExists($uuid, $payload['username']);
 
                     $_SESSION['user_id'] = $newId;
                     $_SESSION['username'] = $payload['username'];
@@ -269,7 +302,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'login') {
         $email = trim($input['email'] ?? '');
         $password = $input['password'] ?? '';
-
         checkRateLimit($pdo, $email, 'login_fail', 5, 15);
 
         $stmt = $pdo->prepare("SELECT id, username, password, uuid, role FROM users WHERE email = ?");
@@ -320,7 +352,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 7. SUBIR FOTO DE PERFIL
+    // 7. SUBIR FOTO DE PERFIL (A la carpeta CUSTOM)
     if ($action === 'upload_profile_picture') {
         if (!isset($_SESSION['user_id'])) sendJsonResponse('error', "No autenticado.");
         
@@ -343,11 +375,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $uuid = $_SESSION['uuid'];
-        // CARPETA DE SUBIDAS (profile_pictures)
-        $targetDir = __DIR__ . '/../public/assets/uploads/profile_pictures/';
-        if (!is_dir($targetDir)) mkdir($targetDir, 0755, true);
-        
-        $targetFile = $targetDir . $uuid . '.png';
+        $targetFile = DIR_CUSTOM . $uuid . '.png'; // Ruta CUSTOM
         $src = null;
 
         switch ($mime) {
@@ -360,38 +388,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             imagepng($src, $targetFile, 9);
             imagedestroy($src);
             
-            sendJsonResponse('success', "Foto actualizada.", null, [
-                'url' => $basePath . 'assets/uploads/profile_pictures/' . $uuid . '.png?v=' . time()
-            ]);
+            // Devolver URL CUSTOM con timestamp
+            $url = $basePath . URL_BASE_AVATARS . 'custom/' . $uuid . '.png?v=' . time();
+            sendJsonResponse('success', "Foto actualizada.", null, ['url' => $url]);
         } else {
              if(move_uploaded_file($file['tmp_name'], $targetFile)) {
-                sendJsonResponse('success', "Foto actualizada.", null, [
-                    'url' => $basePath . 'assets/uploads/profile_pictures/' . $uuid . '.png?v=' . time()
-                ]);
+                $url = $basePath . URL_BASE_AVATARS . 'custom/' . $uuid . '.png?v=' . time();
+                sendJsonResponse('success', "Foto actualizada.", null, ['url' => $url]);
              } else {
                 sendJsonResponse('error', "Error al procesar imagen.");
              }
         }
     }
 
-    // 8. ELIMINAR FOTO DE PERFIL (SOLUCIÓN DEL BUG)
+    // 8. ELIMINAR FOTO DE PERFIL
     if ($action === 'delete_profile_picture') {
          if (!isset($_SESSION['user_id'])) sendJsonResponse('error', "No autenticado.");
          $uuid = $_SESSION['uuid'];
+         $username = $_SESSION['username'];
          
-         // Borramos SOLO de la carpeta de SUBIDAS (profile_pictures)
-         $targetFile = __DIR__ . '/../public/assets/uploads/profile_pictures/' . $uuid . '.png';
-         
-         if (file_exists($targetFile)) {
-             unlink($targetFile);
-             
-             // Devolvemos la URL de la carpeta DEFAULT (que está dentro de uploads/default_avatars)
-             $defaultUrl = $basePath . 'assets/uploads/default_avatars/' . $uuid . '.png?v=' . time();
-             
-             sendJsonResponse('success', "Foto eliminada.", null, ['url' => $defaultUrl]);
-         } else {
-             sendJsonResponse('error', "No tienes foto personalizada.");
+         // 1. Borrar de CUSTOM (si existe)
+         $customFile = DIR_CUSTOM . $uuid . '.png';
+         if (file_exists($customFile)) {
+             unlink($customFile);
          }
+         
+         // 2. Borrar de DEFAULT (IMPORTANTE: para obligar a regenerar color)
+         $defaultFile = DIR_DEFAULT . $uuid . '.png';
+         if (file_exists($defaultFile)) {
+             unlink($defaultFile);
+         }
+
+         // 3. Crear nuevo DEFAULT (ahora saldrá con color nuevo)
+         ensureDefaultAvatarExists($uuid, $username);
+
+         // 4. Devolver URL de DEFAULT con timestamp
+         $defaultUrl = $basePath . URL_BASE_AVATARS . 'default/' . $uuid . '.png?v=' . time();
+         
+         sendJsonResponse('success', "Foto eliminada.", null, ['url' => $defaultUrl]);
     }
 
     // 9. PASSWORD RESET

@@ -1,10 +1,8 @@
 <?php
 // public/index.php
 
-// Incluimos el router que prepara todo el entorno ($currentSection, $isLoggedIn, etc.)
 require_once __DIR__ . '/../includes/router.php';
 
-// Detectar si estamos en una sección de configuración para mostrar el menú correcto inicialmente
 $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
 ?>
 <!DOCTYPE html>
@@ -12,7 +10,6 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
     <meta name="csrf-token" content="<?php echo $_SESSION['csrf_token']; ?>">
 
     <script>window.BASE_PATH = '<?php echo $basePath; ?>';</script>
@@ -67,23 +64,23 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
                                      data-role="<?php echo htmlspecialchars($userRole); ?>">
                                      
                                     <?php 
-                                    // --- LÓGICA DE HEADER ACTUALIZADA ---
+                                    // --- LÓGICA DE HEADER UNIFICADA ---
                                     $hasImage = false;
                                     $avatarSrc = '';
 
                                     if (isset($_SESSION['uuid'])) {
                                         $uuid = $_SESSION['uuid'];
                                         
-                                        // 1. Rutas relativas
-                                        $customRel  = 'assets/uploads/profile_pictures/' . $uuid . '.png';
-                                        $defaultRel = 'assets/uploads/default_avatars/' . $uuid . '.png'; // Nueva ruta
+                                        // Nuevas rutas unificadas
+                                        $relCustom  = 'assets/uploads/avatars/custom/' . $uuid . '.png';
+                                        $relDefault = 'assets/uploads/avatars/default/' . $uuid . '.png';
 
-                                        // 2. Comprobación física (Prioridad: Custom > Default)
-                                        if (file_exists(__DIR__ . '/' . $customRel)) {
-                                            $avatarSrc = $basePath . $customRel . '?v=' . time();
+                                        // Comprobación física
+                                        if (file_exists(__DIR__ . '/' . $relCustom)) {
+                                            $avatarSrc = $basePath . $relCustom . '?v=' . microtime(true);
                                             $hasImage = true;
-                                        } elseif (file_exists(__DIR__ . '/' . $defaultRel)) {
-                                            $avatarSrc = $basePath . $defaultRel . '?v=' . time();
+                                        } elseif (file_exists(__DIR__ . '/' . $relDefault)) {
+                                            $avatarSrc = $basePath . $relDefault . '?v=' . microtime(true);
                                             $hasImage = true;
                                         }
                                     }
@@ -204,31 +201,19 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
 
                     <div class="general-content-scrolleable" data-container="main-section">
                         <?php
-                        // CARGA DINÁMICA DE CONTENIDO
                         if ($currentSection === 'register' || $currentSection === 'register/aditional-data' || $currentSection === 'register/verify') {
                             include __DIR__ . '/../includes/sections/register.php';
                         } 
-                        // Verificación especial para carpetas anidadas como 'settings/xxx'
                         elseif (strpos($currentSection, 'settings/') === 0) {
                             $file = __DIR__ . '/../includes/sections/' . $currentSection . '.php';
-                            
                             if ($currentSection === 'settings/login-and-security') {
                                 $file = __DIR__ . '/../includes/sections/settings/login-security.php';
                             }
-                            
-                            if (file_exists($file)) {
-                                include $file;
-                            } else {
-                                include __DIR__ . '/../includes/sections/404.php';
-                            }
+                            if (file_exists($file)) { include $file; } else { include __DIR__ . '/../includes/sections/404.php'; }
                         }
                         else {
                             $file = __DIR__ . '/../includes/sections/' . $currentSection . '.php';
-                            if (file_exists($file)) { 
-                                include $file; 
-                            } else { 
-                                include __DIR__ . '/../includes/sections/404.php'; 
-                            }
+                            if (file_exists($file)) { include $file; } else { include __DIR__ . '/../includes/sections/404.php'; }
                         }
                         ?>
                     </div>

@@ -16,13 +16,11 @@ if ($userId) {
         if ($userDB) {
             $currentUser = $userDB;
             $currentUser['language'] = 'es-419';
-            $currentUser['open_new_tab'] = 1;
         }
     } catch (Exception $e) {}
 }
 
 if (empty($currentUser)) {
-    // Fallback
     $currentUser = [
         'username' => $_SESSION['username'] ?? 'Usuario',
         'email'    => 'No disponible',
@@ -32,40 +30,32 @@ if (empty($currentUser)) {
     ];
 }
 
-// 2. LÓGICA DE AVATAR (ESTRATEGIA 2 CARPETAS DENTRO DE UPLOADS)
+// 2. LÓGICA DE AVATAR (NUEVA ESTRUCTURA UNIFICADA)
 $hasCustomAvatar = false;
 $finalAvatarSrc = '';
 
 if (!empty($currentUser['uuid'])) {
     $uuid = $currentUser['uuid'];
     
-    // Rutas relativas para el navegador
-    $relUploadPath  = 'assets/uploads/profile_pictures/' . $uuid . '.png';
-    $relDefaultPath = 'assets/uploads/default_avatars/' . $uuid . '.png';
+    // Definir rutas relativas (para HTML) y absolutas (para PHP file_exists)
+    $relCustom  = 'assets/uploads/avatars/custom/' . $uuid . '.png';
+    $relDefault = 'assets/uploads/avatars/default/' . $uuid . '.png';
     
-    // Rutas físicas para comprobación
-    $absUploadPath  = __DIR__ . '/../../../public/' . $relUploadPath;
-    $absDefaultPath = __DIR__ . '/../../../public/' . $relDefaultPath;
+    $absCustom  = __DIR__ . '/../../../public/' . $relCustom;
+    $absDefault = __DIR__ . '/../../../public/' . $relDefault;
 
-    // Verificar si existe en UPLOADS/PROFILE_PICTURES (Prioridad)
-    if (file_exists($absUploadPath)) {
+    // Verificar si existe CUSTOM
+    if (file_exists($absCustom)) {
         $hasCustomAvatar = true;
-        $finalAvatarSrc = (isset($basePath) ? $basePath : '/ProjectAurora/') . $relUploadPath . '?v=' . time();
+        // Usamos microtime para cache-busting fuerte
+        $finalAvatarSrc = (isset($basePath) ? $basePath : '/ProjectAurora/') . $relCustom . '?v=' . microtime(true);
     } else {
-        // Si no está subida, usamos la DEFAULT (si existe en default_avatars)
-        if (file_exists($absDefaultPath)) {
-            $finalAvatarSrc = (isset($basePath) ? $basePath : '/ProjectAurora/') . $relDefaultPath . '?v=' . time();
-        } else {
-            // Fallback extremo (UI Avatars directo)
-            $finalAvatarSrc = 'https://ui-avatars.com/api/?name=' . urlencode($currentUser['username']) . '&background=random&color=fff&size=128';
-        }
+        // Usamos DEFAULT (se garantiza que exista por AuthHandler)
+        $finalAvatarSrc = (isset($basePath) ? $basePath : '/ProjectAurora/') . $relDefault . '?v=' . microtime(true);
     }
 } else {
-    $finalAvatarSrc = 'https://ui-avatars.com/api/?name=User&background=random&color=fff';
+    $finalAvatarSrc = ''; 
 }
-
-$langLabels = ['es-419' => 'Español (Latinoamérica)'];
-$currentLangLabel = $langLabels['es-419'];
 ?>
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" />
@@ -95,8 +85,6 @@ $currentLangLabel = $langLabels['es-419'];
     .component-card__profile-picture[data-role="administrator"]::before { border-color: #FF0000; }
     .component-card__profile-picture[data-role="founder"]::before { border: none; background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0); }
     .component-card__avatar-image { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-    
-    /* Hover Overlay */
     .component-card__avatar-overlay { position: absolute; inset: 0; background-color: rgba(0, 0, 0, 0.4); display: flex; align-items: center; justify-content: center; color: #fff; opacity: 0; transition: opacity 0.2s; cursor: pointer; border-radius: 50%; z-index: 3; }
     .component-card__profile-picture:hover .component-card__avatar-overlay { opacity: 1; }
 
