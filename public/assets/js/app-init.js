@@ -1,7 +1,8 @@
 import { initMainController } from './main-controller.js';
 import { initUrlManager } from './url-manager.js'; 
 import { initAuthController } from './auth-controller.js';
-import { initProfileController } from './profile-controller.js'; // Importar nuevo controlador
+import { initProfileController } from './profile-controller.js'; 
+import { initSecurityController } from './security-controller.js'; // Importar nuevo controlador
 
 const App = {
     init: () => {
@@ -13,6 +14,9 @@ const App = {
         
         // Inicializar Lógica de Perfil (Edición de datos)
         initProfileController();
+        
+        // Inicializar Lógica de Seguridad (Contraseña)
+        initSecurityController();
         
         // Inicializar SPA Router
         initUrlManager();

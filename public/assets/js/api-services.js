@@ -90,6 +90,14 @@ export const SettingsService = {
         return postRequest('api/settings_handler.php', {
             action: 'delete_profile_picture'
         });
+    },
+
+    updatePassword: (currentPassword, newPassword) => {
+        return postRequest('api/settings_handler.php', {
+            action: 'update_password',
+            current_password: currentPassword,
+            new_password: newPassword
+        });
     }
 };
 

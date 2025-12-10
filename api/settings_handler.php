@@ -195,6 +195,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          $defaultUrl = $basePath . URL_BASE_AVATARS . 'default/' . $uuid . '.png?v=' . time();
          sendJsonResponse('success', __('api.success.photo_deleted'), null, ['url' => $defaultUrl]);
     }
+    
+    // --- E) ACTUALIZAR CONTRASEÑA ---
+    if ($action === 'update_password') {
+        $currentPass = $input['current_password'] ?? '';
+        $newPass     = $input['new_password'] ?? '';
+
+        if (empty($currentPass) || empty($newPass)) {
+            sendJsonResponse('error', __('api.error.missing_data'));
+        }
+        
+        if (strlen($newPass) < 8) {
+            sendJsonResponse('error', __('api.error.password_short'));
+        }
+
+        // Obtener la contraseña actual de BD
+        $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $storedHash = $stmt->fetchColumn();
+
+        if (!password_verify($currentPass, $storedHash)) {
+            // Por seguridad, usamos rate limiting aquí también
+            checkRateLimit($pdo, "uid_".$userId, 'pass_change_fail', 5, 15);
+            logSecurityEvent($pdo, "uid_".$userId, 'pass_change_fail');
+            sendJsonResponse('error', __('api.error.current_password_invalid'));
+        }
+
+        $newHash = password_hash($newPass, PASSWORD_DEFAULT);
+        $update = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+        
+        if ($update->execute([$newHash, $userId])) {
+            logSecurityEvent($pdo, "uid_".$userId, 'pass_change_success');
+            sendJsonResponse('success', __('api.success.password_updated'));
+        } else {
+            sendJsonResponse('error', __('api.error.db_error'));
+        }
+    }
 
     sendJsonResponse('error', "Action invalid (Settings Handler)");
 }

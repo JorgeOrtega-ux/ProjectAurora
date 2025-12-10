@@ -431,6 +431,22 @@
     margin-top: 2px;
 }
 
+/* --- CLASES NUEVAS PARA EL DISEÑO STACKED --- */
+
+/* Utilidad para forzar ancho completo */
+.w-100 {
+    width: 100% !important;
+}
+
+/* Contenedor específico para etapas de formularios (ej. password) */
+.component-stage-form {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    width: 100%;
+}
+
 /* =========================================
    TOAST NOTIFICATIONS (Alertas)
    ========================================= */
@@ -438,11 +454,11 @@
     position: fixed;
     bottom: 24px;
     left: 24px;
-    z-index: 10000; /* Por encima de todo */
+    z-index: 10000;
     display: flex;
-    flex-direction: column-reverse; /* Nuevos abajo, pero apilados hacia arriba */
+    flex-direction: column-reverse;
     gap: 12px;
-    pointer-events: none; /* Permitir clicks a través del contenedor vacío */
+    pointer-events: none;
 }
 
 .toast {
@@ -456,7 +472,7 @@
     border-radius: 12px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     border: 1px solid #00000010;
-    pointer-events: auto; /* Reactivar clicks para el toast */
+    pointer-events: auto;
     animation: toast-slide-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
     transform: translateX(-100%);
     opacity: 0;
@@ -466,7 +482,6 @@
     animation: toast-fade-out 0.3s ease forwards;
 }
 
-/* Iconos de Toast */
 .toast-icon {
     display: flex;
     align-items: center;
@@ -481,50 +496,21 @@
     flex: 1;
 }
 
-/* Variantes */
-.toast.success .toast-icon {
-    color: #2e7d32;
-}
-
-.toast.error .toast-icon {
-    color: #d32f2f;
-}
-
-.toast.info .toast-icon {
-    color: #0277bd;
-}
+.toast.success .toast-icon { color: #2e7d32; }
+.toast.error .toast-icon { color: #d32f2f; }
+.toast.info .toast-icon { color: #0277bd; }
 
 @keyframes toast-slide-in {
-    0% {
-        transform: translateX(-50px);
-        opacity: 0;
-    }
-    100% {
-        transform: translateX(0);
-        opacity: 1;
-    }
+    0% { transform: translateX(-50px); opacity: 0; }
+    100% { transform: translateX(0); opacity: 1; }
 }
 
 @keyframes toast-fade-out {
-    0% {
-        transform: scale(1);
-        opacity: 1;
-    }
-    100% {
-        transform: scale(0.9);
-        opacity: 0;
-    }
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0.9); opacity: 0; }
 }
 
 @media (max-width: 600px) {
-    #toast-container {
-        left: 16px;
-        right: 16px;
-        bottom: 16px;
-    }
-    .toast {
-        width: 100%;
-        max-width: 100%;
-        min-width: 0;
-    }
+    #toast-container { left: 16px; right: 16px; bottom: 16px; }
+    .toast { width: 100%; max-width: 100%; min-width: 0; }
 }
