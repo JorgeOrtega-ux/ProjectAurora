@@ -146,14 +146,8 @@ const processAuthAction = async (actionType, data) => {
                         startTimer('recover-timer', 'btn-resend-link');
                     }
 
-                    // Lógica para mostrar el link simulado
-                    if (result.data && result.data.debug_link) {
-                        const simResult = document.getElementById('simulation-result');
-                        if(simResult) {
-                            simResult.style.display = 'block';
-                            simResult.innerHTML = `<strong>¡Simulación!</strong><br>Abre este link:<br><a href="${result.data.debug_link}">${result.data.debug_link}</a>`;
-                        }
-                    }
+                    // [CLEANUP] Eliminada lógica de simulación de link (Backdoor removido)
+                    
                     // No redirigimos automáticamente
                     buttons.forEach(btn => {
                         btn.disabled = false;

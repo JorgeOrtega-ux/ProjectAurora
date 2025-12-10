@@ -313,6 +313,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($user && password_verify($password, $user['password'])) {
             // ÉXITO
+            
+            // [FIX: SESSION FIXATION] Regeneramos el ID de sesión tras el login exitoso.
+            session_regenerate_id(true);
+            
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['uuid'] = $user['uuid'];
@@ -331,10 +335,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = trim($input['email'] ?? '');
         
         // [SEGURIDAD] Rate Limit: Máximo 3 intentos de solicitud en 1 hora POR IP.
-        // Usamos $checkByIp = true porque queremos evitar spam masivo desde una fuente.
         checkRateLimit($pdo, $email, 'recovery_request', 3, 60, true);
 
-        // [SEGURIDAD] Registramos el intento inmediatamente (sea exitoso o no) para contar hacia el límite
+        // [SEGURIDAD] Registramos el intento inmediatamente
         logSecurityEvent($pdo, $email, 'recovery_request');
 
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) sendJsonResponse('error', "Correo inválido.");
@@ -344,8 +347,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if ($stmt->rowCount() > 0) {
             
-            // A. RATE LIMIT SQL (Recuperación - Evitar flood de correos al mismo usuario)
-            // Esto es aparte del bloqueo de IP, es para no spamear al dueño de la cuenta.
+            // A. RATE LIMIT SQL (Recuperación - Evitar flood)
             $checkLimit = $pdo->prepare("SELECT id FROM password_resets WHERE email = ? AND created_at > (NOW() - INTERVAL 60 SECOND)");
             $checkLimit->execute([$email]);
             if ($checkLimit->rowCount() > 0) {
@@ -361,14 +363,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ins = $pdo->prepare("INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 1 HOUR))");
             
             if ($ins->execute([$email, $token])) {
+                // Generamos el link internamente (para enviarlo por email)
                 $link = (isset($_SERVER['HTTPS']) ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'] . $basePath . "recover-password/" . $token;
-                sendJsonResponse('success', "Enlace generado", null, ['debug_link' => $link]);
+                
+                // TODO: IMPLEMENTAR ENVÍO DE CORREO ELECTRÓNICO AQUÍ
+                // mail($email, "Recuperación de contraseña", "Haz clic aquí: " . $link);
+                
+                // [FIX: BACKDOOR] NO DEVOLVEMOS EL LINK EN LA RESPUESTA
+                sendJsonResponse('success', "Enlace enviado a tu correo (si existe).");
             } else {
                 sendJsonResponse('error', "Error al generar token.");
             }
         } else {
-            // Seguridad silenciosa (Evita enumeración de usuarios)
-            // Respondemos éxito falso, pero el Rate Limit (arriba) ya contó el "intento" por IP.
+            // Seguridad silenciosa
             sendJsonResponse('error', "Si el correo existe, se enviará un enlace.");
         }
     }
