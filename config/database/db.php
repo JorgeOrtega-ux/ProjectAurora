@@ -30,7 +30,7 @@ if (session_status() === PHP_SESSION_NONE) {
         'lifetime' => $lifetime,
         'path' => '/',
         'domain' => '', 
-        'secure' => true, // Pon false si es localhost sin https
+        'secure' => false, // Pon false si es localhost sin https
         'httponly' => true, 
         'samesite' => 'Strict' 
     ]);
