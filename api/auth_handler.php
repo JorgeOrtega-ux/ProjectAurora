@@ -77,8 +77,8 @@ function validateEmailRequirements($email) {
 }
 
 /**
- * Garantiza que exista un avatar por defecto (letras) en la carpeta local.
- * Si no existe, lo descarga de UI Avatars.
+ * Garantiza que exista un avatar por defecto.
+ * [CORREGIDO]: Generamos el color en PHP para que sea realmente aleatorio siempre.
  */
 function ensureDefaultAvatarExists($uuid, $username) {
     $targetFile = DIR_DEFAULT . $uuid . '.png';
@@ -86,8 +86,14 @@ function ensureDefaultAvatarExists($uuid, $username) {
     // Si NO existe, lo creamos (descargamos)
     if (!file_exists($targetFile)) {
         try {
-            // Pedimos 'background=random' para que nos dé un color aleatorio
-            $url = "https://ui-avatars.com/api/?name=" . urlencode($username) . "&background=random&color=fff&size=128&format=png";
+            // Generar un color HEX aleatorio oscuro/medio para buen contraste con blanco
+            // mt_rand(0, 0xFFFFFF) genera un número, dechex lo convierte a hex.
+            // str_pad asegura que tenga 6 caracteres (ej: 0033ff)
+            $randomColor = str_pad(dechex(mt_rand(0, 0xFFFFFF)), 6, '0', STR_PAD_LEFT);
+
+            // Pasamos el color explícito a la API en lugar de 'random'
+            $url = "https://ui-avatars.com/api/?name=" . urlencode($username) . "&background=" . $randomColor . "&color=fff&size=128&format=png";
+            
             $imgContent = @file_get_contents($url);
             
             if ($imgContent) {
@@ -275,7 +281,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $newId = $pdo->lastInsertId();
                     $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ?")->execute([$emailIdentifier]);
 
-                    // Generar avatar default en la carpeta correcta
+                    // Generar avatar default con color aleatorio
                     ensureDefaultAvatarExists($uuid, $payload['username']);
 
                     $_SESSION['user_id'] = $newId;
@@ -384,20 +390,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             case 'image/webp': $src = imagecreatefromwebp($file['tmp_name']); break;
         }
 
+        $uploadSuccess = false;
+
         if ($src) {
             imagepng($src, $targetFile, 9);
             imagedestroy($src);
-            
+            $uploadSuccess = true;
+        } else {
+             if(move_uploaded_file($file['tmp_name'], $targetFile)) {
+                $uploadSuccess = true;
+             }
+        }
+
+        if ($uploadSuccess) {
+            // [CORRECCIÓN 1]: Borrar avatar default si existe
+            $defaultFile = DIR_DEFAULT . $uuid . '.png';
+            if (file_exists($defaultFile)) {
+                unlink($defaultFile);
+            }
+
             // Devolver URL CUSTOM con timestamp
             $url = $basePath . URL_BASE_AVATARS . 'custom/' . $uuid . '.png?v=' . time();
             sendJsonResponse('success', "Foto actualizada.", null, ['url' => $url]);
         } else {
-             if(move_uploaded_file($file['tmp_name'], $targetFile)) {
-                $url = $basePath . URL_BASE_AVATARS . 'custom/' . $uuid . '.png?v=' . time();
-                sendJsonResponse('success', "Foto actualizada.", null, ['url' => $url]);
-             } else {
-                sendJsonResponse('error', "Error al procesar imagen.");
-             }
+            sendJsonResponse('error', "Error al procesar imagen.");
         }
     }
 
@@ -419,7 +435,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              unlink($defaultFile);
          }
 
-         // 3. Crear nuevo DEFAULT (ahora saldrá con color nuevo)
+         // 3. Crear nuevo DEFAULT (Ahora se generará con color aleatorio gracias a ensureDefaultAvatarExists modificado)
          ensureDefaultAvatarExists($uuid, $username);
 
          // 4. Devolver URL de DEFAULT con timestamp

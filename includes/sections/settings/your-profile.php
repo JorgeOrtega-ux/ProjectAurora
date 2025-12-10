@@ -63,7 +63,6 @@ if (!empty($currentUser['uuid'])) {
 
 <style>
     /* Estilos base */
-    .component-wrapper * { box-sizing: border-box; font-family: "Roboto Condensed", sans-serif; }
     .component-wrapper { width: 100%; max-width: 700px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
     .component-header-card, .component-card { border: 1px solid #00000020; border-radius: 12px; padding: 24px; background-color: #ffffff; }
     .component-header-card { text-align: center; }
