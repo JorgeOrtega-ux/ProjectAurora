@@ -530,3 +530,98 @@
 .component-group-item--stacked .component-card__actions.actions-force-end {
     justify-content: flex-end !important;
 }
+
+/* =========================================
+   2FA & WIZARD STYLES (New)
+   ========================================= */
+
+/* Wizard Containers */
+.wizard-step-container {
+    align-items: center !important; 
+    text-align: center;
+}
+
+.wizard-step-container.active {
+    display: flex !important;
+}
+
+/* Icon Containers */
+.wizard-icon-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.wizard-icon-container .material-symbols-rounded {
+    font-size: 48px;
+}
+.wizard-icon-container.success { color: #2e7d32; }
+
+/* Utilities */
+.text-center {
+    text-align: center;
+}
+
+.centered-actions {
+    justify-content: center !important;
+    width: 100%;
+}
+
+.input-small-center {
+    max-width: 200px;
+    margin: 0 auto;
+}
+
+.text-center-input {
+    text-align: center;
+    letter-spacing: 4px;
+    font-weight: 600;
+}
+
+/* QR Code Area */
+.qr-display-area {
+    margin: 20px 0;
+    padding: 16px;
+    border: 1px solid #00000015;
+    border-radius: 12px;
+    background-color: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.wizard-manual-entry {
+    margin-bottom: 16px;
+}
+
+.wizard-manual-entry p {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+.wizard-manual-entry strong {
+    font-family: monospace;
+    font-size: 16px;
+    color: #000;
+    background: #f5f5fa;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+/* Backup Codes Grid */
+.backup-codes-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    background-color: #f5f5fa;
+    padding: 20px;
+    border-radius: 12px;
+    font-family: monospace;
+    font-weight: 600;
+    font-size: 16px;
+    color: #333;
+    width: 100%;
+    margin-bottom: 20px;
+    border: 1px solid #00000010;
+}
