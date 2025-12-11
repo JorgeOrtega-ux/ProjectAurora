@@ -31,7 +31,7 @@ export const initTooltipService = () => {
 
         // Actualizar contenido
         textEl.textContent = text;
-        
+
         if (shortcut) {
             shortcutEl.style.display = 'block';
             shortcutEl.innerHTML = `<kbd>${shortcut}</kbd>`;
@@ -77,25 +77,33 @@ export const initTooltipService = () => {
         }
     };
 
-    // 2. Delegación de eventos (permite que funcione en elementos creados dinámicamente)
-    document.addEventListener('mouseenter', (e) => {
-        const target = e.target.closest('[data-tooltip]');
-        if (target) {
-            showTooltip(target);
-        }
-    }, true); 
+    // 2. Delegación de eventos (CORREGIDO)
+    // Se agregan validaciones para evitar el error "closest is not a function"
 
-    document.addEventListener('mouseleave', (e) => {
-        const target = e.target.closest('[data-tooltip]');
-        if (target) {
-            hideTooltip();
+    document.addEventListener('mouseenter', (e) => {
+        // Validamos que e.target exista y tenga la función closest
+        if (e.target && typeof e.target.closest === 'function') {
+            const target = e.target.closest('[data-tooltip]');
+            if (target) {
+                showTooltip(target);
+            }
         }
     }, true);
-    
+
+    document.addEventListener('mouseleave', (e) => {
+        // Validamos que e.target exista y tenga la función closest
+        if (e.target && typeof e.target.closest === 'function') {
+            const target = e.target.closest('[data-tooltip]');
+            if (target) {
+                hideTooltip();
+            }
+        }
+    }, true);
+
     // Ocultar al hacer click (UX: para que no estorbe la acción)
-     document.addEventListener('click', (e) => {
-         hideTooltip();
-     });
-     
+    document.addEventListener('click', (e) => {
+        hideTooltip();
+    });
+
     console.log('TooltipService: Inicializado.');
 };
