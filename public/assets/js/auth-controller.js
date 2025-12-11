@@ -1,7 +1,7 @@
 /**
  * AuthController.js
  * Lógica de UI para autenticación utilizando AuthService.
- * Actualizado con sistema de Toasts y soporte para 2FA.
+ * Actualizado con sistema de Toasts, soporte para 2FA y Vistas de Recuperación.
  */
 
 import { AuthService } from './api-services.js';
@@ -16,19 +16,21 @@ const showError = (message) => {
 
 const handleAuthResponse = (result, buttons) => {
     if (result.status === 'success') {
-        // Si hay redirección, la seguimos. Si es solo éxito (ej. datos guardados), mostramos toast.
+        // Si hay redirección, la seguimos.
         if (result.redirect) {
             window.location.href = result.redirect;
         } else {
             Toast.success(result.message || window.t('api.success.valid_data'));
         }
     } else {
-        // Usa el mensaje del backend si existe, sino un genérico traducido
         showError(result.message || window.t('global.error'));
         buttons.forEach(btn => {
             btn.disabled = false;
             btn.style.opacity = '1';
-            btn.textContent = window.t('global.continue'); 
+            // Restauramos texto según el botón
+            if(btn.id === 'btn-verify-backup') btn.textContent = "Usar código de recuperación";
+            else if(btn.id === 'btn-verify-totp' || btn.id === 'btn-verify-2fa-login') btn.textContent = "Verificar";
+            else btn.textContent = window.t('global.continue'); 
         });
     }
 };
@@ -70,16 +72,17 @@ const verify2faLogin = async (code) => {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
     formData.append('csrf_token', csrfToken);
     
-    // Hacemos la petición manualmente o extendiendo AuthService, aquí directo para no tocar api-services si no quieres
     const res = await fetch(window.BASE_PATH + 'api/auth_handler.php', { method: 'POST', body: formData });
     return await res.json();
 };
 
 const processAuthAction = async (actionType, data) => {
+    // Seleccionamos todos los botones primarios para bloquearlos
     const buttons = document.querySelectorAll('.btn-primary');
     buttons.forEach(btn => {
         btn.disabled = true; 
         btn.style.opacity = '0.7';
+        btn.dataset.originalText = btn.textContent; // Guardar texto original
         btn.textContent = window.t('global.processing');
     });
 
@@ -109,7 +112,6 @@ const processAuthAction = async (actionType, data) => {
                         btn.style.opacity = '1';
                         btn.textContent = window.t('auth.register.verify_button'); 
                     });
-                    // REEMPLAZADO: alert por Toast
                     Toast.success(result.message);
                     return; 
                 }
@@ -128,7 +130,6 @@ const processAuthAction = async (actionType, data) => {
                         btn.disabled = false;
                         btn.textContent = window.t('api.success.code_sent'); 
                     });
-                    // Agregamos feedback visual extra
                     Toast.success(result.message || window.t('api.success.link_generated'));
                     return; 
                 }
@@ -138,7 +139,7 @@ const processAuthAction = async (actionType, data) => {
                 result = await AuthService.resetPassword(data.token, data.password);
                 break;
 
-            // --- NUEVO CASO: VERIFICACIÓN 2FA ---
+            // VERIFICACIÓN 2FA (Funciona tanto para App como para Backup Codes, el backend lo maneja igual)
             case 'verify_2fa_login':
                 result = await verify2faLogin(data.code);
                 break;
@@ -155,18 +156,40 @@ const processAuthAction = async (actionType, data) => {
         buttons.forEach(btn => {
             btn.disabled = false;
             btn.style.opacity = '1';
-            btn.textContent = window.t('global.retry');
+            btn.textContent = btn.dataset.originalText || window.t('global.retry');
         });
     }
 };
 
 const setupAuthListeners = () => {
-    // Limpiamos alertas antiguas si existieran (opcional, por limpieza DOM)
+    // Limpieza opcional
     const oldAlerts = document.querySelectorAll('.alert.error, .alert.success');
     oldAlerts.forEach(el => el.style.display = 'none');
 
     if(document.getElementById('register-timer')) {
         startTimer('register-timer', 'btn-resend-code');
+    }
+
+    /* --- LÓGICA DE TOGGLE 2FA (NUEVO) --- */
+    const viewTotp = document.getElementById('view-totp');
+    const viewBackup = document.getElementById('view-backup');
+    
+    if (viewTotp && viewBackup) {
+        // Ir a Backup
+        document.getElementById('trigger-show-backup')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            viewTotp.style.display = 'none';
+            viewBackup.style.display = 'block';
+            document.getElementById('2fa-backup-input')?.focus();
+        });
+
+        // Volver a App
+        document.getElementById('trigger-show-totp')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            viewBackup.style.display = 'none';
+            viewTotp.style.display = 'block';
+            document.getElementById('2fa-code-input')?.focus();
+        });
     }
 
     document.addEventListener('click', (e) => {
@@ -234,7 +257,7 @@ const setupAuthListeners = () => {
             }
         }
 
-        // D) VERIFICACIÓN
+        // D) VERIFICACIÓN EMAIL
         if (e.target && e.target.id === 'btn-verify') {
             e.preventDefault();
             const code = document.getElementById('code');
@@ -307,8 +330,8 @@ const setupAuthListeners = () => {
             }
         }
 
-        // --- NUEVO LISTENER: BOTÓN VERIFICAR 2FA (LOGIN) ---
-        if (e.target && e.target.id === 'btn-verify-2fa-login') {
+        // --- H) VERIFICAR 2FA (APP) ---
+        if (e.target && (e.target.id === 'btn-verify-totp' || e.target.id === 'btn-verify-2fa-login')) {
             e.preventDefault();
             const codeInput = document.getElementById('2fa-code-input');
             if(codeInput && codeInput.value) {
@@ -317,15 +340,40 @@ const setupAuthListeners = () => {
                 showError(window.t('js.error.complete_fields'));
             }
         }
+
+        // --- I) VERIFICAR 2FA (BACKUP) - NUEVO ---
+        if (e.target && e.target.id === 'btn-verify-backup') {
+            e.preventDefault();
+            const backupInput = document.getElementById('2fa-backup-input');
+            if(backupInput && backupInput.value) {
+                // Enviamos el backup code al mismo endpoint; el backend los revisa ambos
+                processAuthAction('verify_2fa_login', { code: backupInput.value.trim() });
+            } else {
+                showError(window.t('js.error.complete_fields'));
+            }
+        }
     });
 
+    // Soporte para tecla Enter
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
-            // Agregamos 'btn-verify-2fa-login' a la lista de botones que reaccionan al Enter
-            const btns = ['btn-login', 'btn-register-step-1', 'btn-register-step-2', 'btn-verify', 'btn-recover-request', 'btn-recover-reset', 'btn-verify-2fa-login'];
+            const btns = [
+                'btn-login', 'btn-register-step-1', 'btn-register-step-2', 
+                'btn-verify', 'btn-recover-request', 'btn-recover-reset'
+            ];
+            
+            // Añadir botones de 2FA condicionalmente según visibilidad
+            const viewBackup = document.getElementById('view-backup');
+            if(viewBackup && viewBackup.style.display !== 'none') {
+                btns.push('btn-verify-backup');
+            } else {
+                btns.push('btn-verify-totp');
+                btns.push('btn-verify-2fa-login'); // Soporte legacy
+            }
+
             for(let id of btns){
                 const btn = document.getElementById(id);
-                if(btn && !btn.disabled && document.body.contains(btn)) { 
+                if(btn && !btn.disabled && document.body.contains(btn) && btn.offsetParent !== null) { 
                     btn.click(); 
                     break; 
                 }
