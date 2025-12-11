@@ -57,8 +57,8 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
                         Abre tu app (Google Authenticator, Authy) y escanea este código.
                     </p>
                     
-                    <div style="margin: 20px 0; border: 1px solid #eee; padding: 10px; border-radius: 8px;">
-                        <img id="qr-image" src="" alt="QR Code" style="width: 200px; height: 200px;">
+                    <div style="margin: 20px 0; border: 1px solid #eee; padding: 10px; border-radius: 8px; display: flex; justify-content: center;">
+                        <div id="qr-code-container"></div>
                     </div>
 
                     <p style="font-size: 13px; color: #666; margin-bottom: 15px;">

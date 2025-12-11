@@ -199,10 +199,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['temp_2fa_secret'] = $secret; 
 
         $username = $_SESSION['username'];
-        $qrCodeUrl = $ga->getQRCodeGoogleUrl('ProjectAurora (' . $username . ')', $secret);
+        
+        // MODIFICADO: Generamos la URI raw en lugar de llamar a Google Charts.
+        // Formato estándar: otpauth://totp/Issuer:Account?secret=...&issuer=...
+        $otpUri = "otpauth://totp/ProjectAurora:" . $username . "?secret=" . $secret . "&issuer=ProjectAurora";
 
         sendJsonResponse('success', 'OK', null, [
-            'qr_url' => $qrCodeUrl,
+            'otp_uri' => $otpUri, // Enviamos URI en vez de URL de imagen
             'secret' => $secret
         ]);
     }

@@ -160,7 +160,35 @@ const handle2faSetupStart = async () => {
             const step2 = document.getElementById('step-2-qr');
             step2.classList.remove('disabled');
             step2.classList.add('active');
-            document.getElementById('qr-image').src = result.data.qr_url;
+            
+            // MODIFICADO: Generar QR personalizado con qr-code-styling
+            const qrContainer = document.getElementById('qr-code-container');
+            qrContainer.innerHTML = ''; // Limpiar previo
+            
+            const qrCode = new QRCodeStyling({
+                width: 200,
+                height: 200,
+                type: "svg",
+                data: result.data.otp_uri,
+                image: "", // Puedes añadir una URL de logo aquí si quieres
+                dotsOptions: {
+                    color: "#000000",
+                    type: "rounded" // Puntos redondos
+                },
+                backgroundOptions: {
+                    color: "transparent", // Fondo transparente
+                },
+                imageOptions: {
+                    crossOrigin: "anonymous",
+                    margin: 5
+                },
+                cornersSquareOptions: {
+                    type: "extra-rounded" // Esquinas muy redondas
+                }
+            });
+
+            qrCode.append(qrContainer);
+
             document.getElementById('secret-text').innerText = result.data.secret;
         } else {
             Toast.error(result.message);
