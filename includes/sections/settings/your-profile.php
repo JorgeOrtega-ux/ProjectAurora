@@ -136,10 +136,8 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                     </div>
                 </div>
 
-                <div class="component-card__actions actions-right">
-                    <div class="active" data-state="username-actions-view">
-                        <button type="button" class="component-button" data-action="username-edit-trigger" data-lang-key="global.edit"><?= __('global.edit') ?></button>
-                    </div>
+                <div class="component-card__actions actions-right active" data-state="username-actions-view">
+                    <button type="button" class="component-button" data-action="username-edit-trigger" data-lang-key="global.edit"><?= __('global.edit') ?></button>
                 </div>
             </div>
 
@@ -170,10 +168,8 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                     </div>
                 </div>
 
-                <div class="component-card__actions actions-right">
-                    <div class="active" data-state="email-actions-view">
-                        <button type="button" class="component-button" data-action="email-edit-trigger" data-lang-key="global.edit"><?= __('global.edit') ?></button>
-                    </div>
+                <div class="component-card__actions actions-right active" data-state="email-actions-view">
+                    <button type="button" class="component-button" data-action="email-edit-trigger" data-lang-key="global.edit"><?= __('global.edit') ?></button>
                 </div>
             </div>
 
