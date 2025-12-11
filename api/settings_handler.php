@@ -178,14 +178,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 2FA
+    // 2FA - INICIALIZAR (Paso 1: Generar QR)
     if ($action === 'init_2fa') {
         $password = $input['current_password'] ?? '';
+        
+        // [SEGURIDAD] Rate Limit para evitar fuerza bruta de contraseña en este paso
+        // 5 intentos cada 15 minutos.
+        checkRateLimit($pdo, "uid_".$userId, '2fa_init_fail', 5, 15);
+
         $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $storedHash = $stmt->fetchColumn();
 
         if (!password_verify($password, $storedHash)) {
+             logSecurityEvent($pdo, "uid_".$userId, '2fa_init_fail');
              sendJsonResponse('error', __('api.error.current_password_invalid'));
         }
 
@@ -201,9 +207,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
     }
 
+    // 2FA - ACTIVAR (Paso 2: Verificar código)
     if ($action === 'enable_2fa') {
         $code = trim($input['code'] ?? '');
         $secret = $_SESSION['temp_2fa_secret'] ?? null;
+
+        // [SEGURIDAD] Rate Limit para evitar fuerza bruta en el setup
+        checkRateLimit($pdo, "uid_".$userId, '2fa_setup_fail', 5, 10);
 
         if (!$secret || empty($code)) {
             sendJsonResponse('error', __('api.error.missing_data'));
@@ -230,6 +240,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 sendJsonResponse('error', __('api.error.db_error'));
             }
         } else {
+            // [SEGURIDAD] Registrar fallo
+            logSecurityEvent($pdo, "uid_".$userId, '2fa_setup_fail');
             sendJsonResponse('error', __('api.error.invalid_code'));
         }
     }
