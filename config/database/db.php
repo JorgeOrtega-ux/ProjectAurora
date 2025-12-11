@@ -5,7 +5,6 @@
 // 1. CONFIGURACIÓN DE LOGS
 // ==============================================================================
 
-// CORRECCIÓN: Subir dos niveles para llegar a la carpeta logs en la raíz
 $logDir = __DIR__ . '/../../logs';
 $logFile = $logDir . '/aurora_errors.log';
 
@@ -26,11 +25,19 @@ error_reporting(E_ALL);
 if (session_status() === PHP_SESSION_NONE) {
     $lifetime = 60 * 60 * 24 * 60; 
 
+    // DETECCIÓN ROBUSTA DE HTTPS (Universal)
+    // Cubre: Standard, Cloudflare, Proxies, Port 443, etc.
+    $isSecure = (
+        (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443)
+        || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+    );
+
     session_set_cookie_params([
         'lifetime' => $lifetime,
         'path' => '/',
         'domain' => '', 
-        'secure' => false, // Pon false si es localhost sin https
+        'secure' => $isSecure, 
         'httponly' => true, 
         'samesite' => 'Strict' 
     ]);
@@ -42,7 +49,6 @@ if (session_status() === PHP_SESSION_NONE) {
 date_default_timezone_set('America/Mexico_City'); 
 
 // --- CARGADOR DE .ENV ---
-// CORRECCIÓN: Subir dos niveles para llegar al .env en la raíz
 $envFile = __DIR__ . '/../../.env';
 
 if (file_exists($envFile)) {
