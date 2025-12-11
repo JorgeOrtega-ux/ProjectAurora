@@ -92,6 +92,14 @@ export const SettingsService = {
         });
     },
 
+    // NUEVO: Verificar contraseña sin cambiarla
+    verifyPassword: (password) => {
+        return postRequest('api/settings_handler.php', {
+            action: 'verify_current_password',
+            password: password
+        });
+    },
+
     updatePassword: (currentPassword, newPassword) => {
         return postRequest('api/settings_handler.php', {
             action: 'update_password',

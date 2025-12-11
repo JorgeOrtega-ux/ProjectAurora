@@ -37,21 +37,50 @@ const goToStage1 = (container) => {
     }, 100);
 };
 
-const goToStage2 = (container) => {
+// MODIFICADO: Verificar contraseña ANTES de avanzar
+const goToStage2 = async (container, triggerBtn) => {
     const inputCurrent = container.querySelector('#current-password-input');
     if (!inputCurrent || !inputCurrent.value) {
         Toast.error(window.t('js.error.complete_fields'));
         return;
     }
-    currentPasswordBuffer = inputCurrent.value;
-    const stage1 = container.querySelector('[data-state="password-stage-1"]');
-    const stage2 = container.querySelector('[data-state="password-stage-2"]');
-    if(stage1) { stage1.classList.remove('active'); stage1.classList.add('disabled'); }
-    if(stage2) { stage2.classList.remove('disabled'); stage2.classList.add('active'); }
-    setTimeout(() => {
-        const inputNew = container.querySelector('#new-password-input');
-        if(inputNew) inputNew.focus();
-    }, 100);
+
+    // Bloquear UI
+    const originalText = triggerBtn.innerText;
+    triggerBtn.disabled = true;
+    triggerBtn.innerText = window.t('global.processing');
+    inputCurrent.disabled = true;
+
+    try {
+        // Verificar en backend
+        const result = await SettingsService.verifyPassword(inputCurrent.value);
+        
+        if (result.status === 'success') {
+            // Guardar en buffer y avanzar
+            currentPasswordBuffer = inputCurrent.value;
+            
+            const stage1 = container.querySelector('[data-state="password-stage-1"]');
+            const stage2 = container.querySelector('[data-state="password-stage-2"]');
+            
+            if(stage1) { stage1.classList.remove('active'); stage1.classList.add('disabled'); }
+            if(stage2) { stage2.classList.remove('disabled'); stage2.classList.add('active'); }
+            
+            setTimeout(() => {
+                const inputNew = container.querySelector('#new-password-input');
+                if(inputNew) inputNew.focus();
+            }, 100);
+        } else {
+            Toast.error(result.message || window.t('api.error.current_password_invalid'));
+        }
+    } catch (error) {
+        console.error(error);
+        Toast.error(window.t('js.error.connection'));
+    } finally {
+        // Desbloquear UI
+        triggerBtn.disabled = false;
+        triggerBtn.innerText = originalText;
+        inputCurrent.disabled = false;
+    }
 };
 
 const submitPasswordChange = async (container) => {
@@ -359,7 +388,11 @@ const setupSecurityListeners = () => {
         if (container) {
             if (e.target.closest('[data-action="pass-start-flow"]')) goToStage1(container);
             if (e.target.closest('[data-action="pass-cancel-flow"]')) resetFlow(container);
-            if (e.target.closest('[data-action="pass-go-step-2"]')) goToStage2(container);
+            
+            // MODIFICADO: Pasamos el botón clickeado para controlar estado
+            const step2Btn = e.target.closest('[data-action="pass-go-step-2"]');
+            if (step2Btn) goToStage2(container, step2Btn);
+            
             if (e.target.closest('[data-action="pass-submit-final"]')) submitPasswordChange(container);
         }
 

@@ -46,6 +46,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ga = new PHPGangsta_GoogleAuthenticator();
 
     // ==========================================
+    // NUEVO: VERIFICAR CONTRASEÑA ACTUAL (SIN CAMBIAR)
+    // ==========================================
+    if ($action === 'verify_current_password') {
+        $password = $input['password'] ?? '';
+        
+        // Rate Limit suave para evitar fuerza bruta en este endpoint
+        checkRateLimit($pdo, "uid_".$userId, 'pass_verify_check', 10, 5);
+
+        if (empty($password)) {
+            sendJsonResponse('error', __('api.error.missing_data'));
+        }
+
+        $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $storedHash = $stmt->fetchColumn();
+
+        if (password_verify($password, $storedHash)) {
+            sendJsonResponse('success', 'Password OK');
+        } else {
+            sendJsonResponse('error', __('api.error.current_password_invalid'));
+        }
+    }
+
+    // ==========================================
     // ELIMINAR CUENTA
     // ==========================================
     if ($action === 'delete_account') {
