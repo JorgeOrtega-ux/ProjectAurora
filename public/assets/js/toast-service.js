@@ -18,10 +18,16 @@ export const Toast = {
      * Muestra un toast.
      * @param {string} message - El mensaje a mostrar.
      * @param {string} type - 'success', 'error', 'info'.
-     * @param {number} duration - Tiempo en ms (default 4000).
+     * @param {number} duration - Tiempo en ms (base).
      */
     show: (message, type = 'info', duration = 4000) => {
         const container = createContainerIfNeeded();
+        
+        // MODIFICADO: Verificar preferencia de alertas extendidas
+        // Si el usuario tiene 'extended_alerts' activado, aumentamos considerablemente la duración (ej. 10s)
+        if (window.USER_PREFS && window.USER_PREFS.extended_alerts === 1) {
+            duration = 10000;
+        }
         
         // Configuración de iconos según tipo
         let iconName = 'info';

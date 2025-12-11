@@ -17,8 +17,10 @@ $userLang = null;
 // Lógica para usuarios logueados completamente
 if ($isLoggedIn) {
     try {
+        // MODIFICADO: Agregamos p.theme y p.extended_alerts a la consulta
         $stmt = $pdo->prepare("
-            SELECT u.role, u.username, u.uuid, p.language 
+            SELECT u.role, u.username, u.uuid, 
+                   p.language, p.theme, p.extended_alerts 
             FROM users u
             LEFT JOIN user_preferences p ON u.id = p.user_id
             WHERE u.id = ?
@@ -30,6 +32,11 @@ if ($isLoggedIn) {
             $_SESSION['role'] = $freshUser['role'];
             $_SESSION['username'] = $freshUser['username'];
             $_SESSION['uuid'] = $freshUser['uuid'];
+            
+            // Guardamos preferencias en sesión para uso rápido en index.php
+            $_SESSION['theme'] = $freshUser['theme'] ?? 'system';
+            $_SESSION['extended_alerts'] = $freshUser['extended_alerts'] ?? 0;
+            
             $userLang = $freshUser['language']; 
         } else {
             session_destroy();
@@ -104,7 +111,7 @@ $guestRoutes = [
     'register/verify', 
     'recover-password', 
     'recover-password-reset',
-    '2fa-challenge' // CORREGIDO: Actualizado para coincidir con routes.php
+    '2fa-challenge'
 ];
 
 // Comprobación de estado intermedio (2FA Pendiente)
@@ -115,7 +122,7 @@ if (!$isLoggedIn) {
     
     // Caso especial: Está intentando validar 2FA y tiene la sesión temporal
     if ($currentSection === '2fa-challenge' && $is2faPending) {
-        // Permitir acceso (CORREGIDO: nombre de sección actualizado)
+        // Permitir acceso
     } 
     // Caso normal: Si intenta ir a una ruta que no es de guest, mandar a login
     elseif (!in_array($currentSection, $guestRoutes)) {

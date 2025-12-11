@@ -1,6 +1,7 @@
 /**
  * MainController.js
  * Encargado de la lógica de UI (Menús, Buscador, Interacción visual).
+ * ACTUALIZADO: Manejo de temas (Light/Dark/System).
  */
 
 // ==========================================
@@ -32,21 +33,16 @@ const closeAllActiveModules = (exceptModule = null) => {
 
 /* --- NUEVO: LÓGICA DE SOMBRA AL SCROLL --- */
 const setupScrollEffects = () => {
-    // 1. Identificar el contenedor que hace scroll y el header
     const scrollContainer = document.querySelector('.general-content-scrolleable');
     const topHeader = document.querySelector('.general-content-top');
 
-    // 2. Validación de seguridad por si los elementos no existen
     if (scrollContainer && topHeader) {
-        // 3. Agregar el listener
         scrollContainer.addEventListener('scroll', () => {
-            // Si el scroll vertical es mayor a 0, agregamos la sombra
             if (scrollContainer.scrollTop > 0) {
                 if (!topHeader.classList.contains('shadow')) {
                     topHeader.classList.add('shadow');
                 }
             } else {
-                // Si estamos arriba del todo, quitamos la sombra
                 topHeader.classList.remove('shadow');
             }
         });
@@ -96,10 +92,44 @@ const setupEventListeners = () => {
     }
 };
 
+/* --- NUEVO: LÓGICA DE TEMAS --- */
+export const applyAppTheme = (themePreference) => {
+    const html = document.documentElement;
+    // Eliminamos clases previas
+    html.classList.remove('light-theme', 'dark-theme', 'system-theme-pending');
+
+    if (themePreference === 'system') {
+        // Checar preferencia del SO
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        html.classList.add(systemDark ? 'dark-theme' : 'light-theme');
+    } else if (themePreference === 'dark') {
+        html.classList.add('dark-theme');
+    } else {
+        // Por defecto light
+        html.classList.add('light-theme');
+    }
+};
+
+// Listener para cambios en el SO si está en modo system
+const setupSystemThemeListener = () => {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+        // Solo actualizar si la preferencia del usuario es 'system'
+        if (window.USER_PREFS && window.USER_PREFS.theme === 'system') {
+            applyAppTheme('system');
+        }
+    });
+};
+
+const initTheme = () => {
+    if (window.USER_PREFS && window.USER_PREFS.theme) {
+        applyAppTheme(window.USER_PREFS.theme);
+    }
+    setupSystemThemeListener();
+};
+
 export const initMainController = () => {
     console.log('MainController: Inicializando UI...');
     setupEventListeners();
-    
-    // Inicializar efecto de scroll
     setupScrollEffects();
+    initTheme(); // Inicializar tema
 };

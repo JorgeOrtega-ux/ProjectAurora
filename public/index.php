@@ -5,13 +5,28 @@
 require_once __DIR__ . '/../config/routers/router.php';
 
 // 2. Definir el mapa de rutas FÍSICAS
-// MODIFICADO: Ahora cargamos el mapa desde un archivo central de configuración
 $sectionMap = require __DIR__ . '/../config/routes.php';
 
 $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
+
+// --- MODIFICADO: Lógica Inicial del Tema ---
+$initialThemeClass = 'light-theme'; // Default fallback
+$userThemePref = isset($_SESSION['theme']) ? $_SESSION['theme'] : 'system';
+$userExtendedAlerts = isset($_SESSION['extended_alerts']) ? (int)$_SESSION['extended_alerts'] : 0;
+
+if ($userThemePref === 'dark') {
+    $initialThemeClass = 'dark-theme';
+} elseif ($userThemePref === 'light') {
+    $initialThemeClass = 'light-theme';
+} else {
+    // Si es system, PHP no sabe la preferencia del OS, así que dejamos una por defecto
+    // y JS lo corregirá inmediatamente, o usamos un script inline pequeño.
+    // Dejaremos 'light-theme' como base, pero agregamos 'system-theme' para que JS sepa.
+    $initialThemeClass = 'light-theme system-theme-pending';
+}
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo isset($userLang) ? $userLang : 'es'; ?>">
+<html lang="<?php echo isset($userLang) ? $userLang : 'es'; ?>" class="<?php echo $initialThemeClass; ?>">
 
 <head>
     <meta charset="UTF-8">
@@ -22,6 +37,12 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
         window.BASE_PATH = '<?php echo $basePath; ?>';
         window.TRANSLATIONS = <?php echo json_encode($GLOBALS['AURORA_TRANSLATIONS']); ?>;
         
+        // MODIFICADO: Pasamos las preferencias al frontend
+        window.USER_PREFS = {
+            theme: '<?php echo $userThemePref; ?>',
+            extended_alerts: <?php echo $userExtendedAlerts; ?>
+        };
+
         window.t = function(key) {
             return window.TRANSLATIONS[key] || key;
         };

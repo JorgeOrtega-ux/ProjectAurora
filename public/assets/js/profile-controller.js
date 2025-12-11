@@ -5,6 +5,7 @@
 
 import { SettingsService } from './api-services.js';
 import { Toast } from './toast-service.js';
+import { applyAppTheme } from './main-controller.js'; // IMPORTANTE: Importamos para aplicar cambios en tiempo real
 
 /* --- UTILIDADES --- */
 const toggleEditMode = (section, isEditing) => {
@@ -62,21 +63,17 @@ const setupDropdownUI = () => {
             
             if (wrapper) {
                 const triggerText = wrapper.querySelector('.trigger-select-text');
-                const triggerIcon = wrapper.querySelector('.trigger-select-icon'); // El icono del trigger
+                const triggerIcon = wrapper.querySelector('.trigger-select-icon');
 
                 const linkText = link.querySelector('.menu-link-text');
-                const linkIcon = link.querySelector('.menu-link-icon span'); // Icono dentro de la opción
+                const linkIcon = link.querySelector('.menu-link-icon span'); 
                 const newValue = link.dataset.value;
 
                 if(triggerText && linkText) triggerText.textContent = linkText.textContent;
                 
-                // NOTA: Para el idioma, forzamos icono fijo (language), pero para el tema queremos cambiarlo.
-                // Si es tema, actualizamos el icono del trigger con el seleccionado.
                 if(wrapper.dataset.pref === 'theme' && triggerIcon && linkIcon) {
                      triggerIcon.textContent = linkIcon.textContent;
                 }
-                // Si es idioma, el HTML está fijo a 'language', así que esto no lo romperá si el HTML no tiene la clase adecuada, 
-                // pero por seguridad, como pediste icono fijo para idioma, lo dejamos así.
 
                 menu.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
                 link.classList.add('active');
@@ -93,10 +90,16 @@ const setupDropdownUI = () => {
                 }
 
                 if (wrapper.dataset.pref === 'theme') {
+                    // MODIFICADO: Aplicar tema inmediatamente y guardar
                     SettingsService.updatePreferences({ theme: newValue }).then(res => {
-                        if(res.status === 'success') Toast.success(res.message);
+                        if(res.status === 'success') {
+                            Toast.success(res.message);
+                            
+                            // Actualizar preferencia global y aplicar visualmente
+                            if(window.USER_PREFS) window.USER_PREFS.theme = newValue;
+                            applyAppTheme(newValue);
+                        }
                         else Toast.error(res.message || window.t('global.error'));
-                        // Aquí no recargamos, solo guardamos.
                     });
                 }
             }
@@ -257,6 +260,10 @@ const setupPreferencesLogic = () => {
                     .then(res => {
                         if (res.status === 'success') {
                             Toast.success(res.message);
+                            // MODIFICADO: Actualizar variable global en tiempo real
+                            if (window.USER_PREFS) {
+                                window.USER_PREFS[fieldName] = isChecked;
+                            }
                         } else {
                             e.target.checked = !e.target.checked; 
                             Toast.error(res.message || window.t('global.error'));
