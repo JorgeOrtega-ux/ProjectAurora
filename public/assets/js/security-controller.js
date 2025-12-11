@@ -231,7 +231,7 @@ const handle2faDisable = async () => {
     const passwordInput = document.getElementById('disable-2fa-password');
     const btn = document.getElementById('btn-disable-2fa');
     if(!passwordInput.value) { Toast.error(window.t('js.error.complete_fields')); return; }
-    if(!confirm("¿Seguro que quieres desactivar la protección 2FA?")) return;
+    if(!confirm(window.t('js.confirm.disable_2fa'))) return;
     btn.disabled = true;
     try {
         const result = await TwoFactorService.disable(passwordInput.value);
@@ -261,20 +261,22 @@ const loadDevices = async () => {
         }
     } catch (e) {
         console.error(e);
-        container.innerHTML = '<div class="alert error">Error cargando dispositivos.</div>';
+        container.innerHTML = `<div class="alert error">${window.t('js.error.load_devices')}</div>`;
     }
 };
 
 const renderDevicesList = (container, sessions) => {
     if (sessions.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:#666;">No hay sesiones activas.</p>';
+        container.innerHTML = `<p style="text-align:center; color:#666;">${window.t('settings.devices.no_active')}</p>`;
         return;
     }
     
     let html = '';
+    const thisDeviceText = window.t('settings.devices.this_device');
+    
     sessions.forEach(session => {
         const highlightClass = session.is_current ? 'style="background-color: #f0f9ff; border-color: #b3e5fc;"' : '';
-        const badge = session.is_current ? '<span class="component-badge" style="color: #0277bd; background:#e1f5fe; padding:2px 8px; border-radius:4px;">Este dispositivo</span>' : '';
+        const badge = session.is_current ? `<span class="component-badge" style="color: #0277bd; background:#e1f5fe; padding:2px 8px; border-radius:4px;">${thisDeviceText}</span>` : '';
         
         const deleteBtn = !session.is_current 
             ? `<button class="component-button danger" data-action="revoke-single" data-id="${session.id}">
@@ -313,7 +315,7 @@ const renderDevicesList = (container, sessions) => {
 };
 
 const handleRevokeSingle = async (sessionId, btn) => {
-    if(!confirm("¿Cerrar sesión en este dispositivo?")) return;
+    if(!confirm(window.t('js.confirm.revoke_session'))) return;
     
     btn.disabled = true;
     try {
@@ -332,7 +334,7 @@ const handleRevokeSingle = async (sessionId, btn) => {
 };
 
 const handleRevokeAll = async () => {
-    const password = prompt("Para confirmar, ingresa tu contraseña actual:");
+    const password = prompt(window.t('js.prompt.pass_confirm'));
     if (!password) return;
     
     try {
@@ -380,7 +382,7 @@ const setupDeleteAccountLogic = () => {
             return;
         }
 
-        if (!confirm("ADVERTENCIA FINAL: ¿Estás seguro? Esta acción no se puede deshacer.")) return;
+        if (!confirm(window.t('js.confirm.delete_account'))) return;
 
         btn.disabled = true;
         btn.innerText = window.t('global.processing');
@@ -397,13 +399,13 @@ const setupDeleteAccountLogic = () => {
             } else {
                 Toast.error(result.message);
                 btn.disabled = false;
-                btn.innerText = "Eliminar permanentemente";
+                btn.innerText = window.t('settings.security.delete_btn_final');
             }
         } catch (error) {
             console.error(error);
             Toast.error(window.t('js.error.connection'));
             btn.disabled = false;
-            btn.innerText = "Eliminar permanentemente";
+            btn.innerText = window.t('settings.security.delete_btn_final');
         }
     });
 };

@@ -14,7 +14,7 @@
 
         <div style="margin-bottom: 16px;">
              <button class="component-button" data-nav="settings/login-and-security">
-                <span class="material-symbols-rounded">arrow_back</span> Volver
+                <span class="material-symbols-rounded">arrow_back</span> <?= __('global.back') ?>
              </button>
         </div>
 
@@ -29,13 +29,13 @@
             <div class="component-group-item" style="background-color: #ffebee;">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title" style="color: #d32f2f;">Cerrar sesión en todos los demás dispositivos</h2>
-                        <p class="component-card__description">Solo mantendrá activa la sesión actual.</p>
+                        <h2 class="component-card__title" style="color: #d32f2f;"><?= __('settings.devices.logout_others_title') ?></h2>
+                        <p class="component-card__description"><?= __('settings.devices.logout_others_desc') ?></p>
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">
                     <button class="component-button danger" data-action="revoke-all">
-                        Cerrar todo
+                        <?= __('global.close_all') ?>
                     </button>
                 </div>
             </div>

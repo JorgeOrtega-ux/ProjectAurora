@@ -15,27 +15,17 @@ if (!function_exists('format_date_with_keys')) {
         
         $day  = date('j', $ts);
         $year = date('Y', $ts);
-        
-        // Obtenemos el nombre del mes en inglés (lowercase) para usarlo como parte de la clave
-        // Ejemplo: "january", "february"...
         $monthNameEng = strtolower(date('F', $ts));
         
-        // Clave de traducción del mes (ej: global.month.december)
         $monthKey = "global.month." . $monthNameEng;
-        
-        // Claves de conectores
         $keyDe  = "global.date_de";
         $keyDel = "global.date_del";
 
-        // Estructura según idioma
         $shortLang = substr($langCode, 0, 2);
 
         if ($shortLang === 'en') {
-            // Formato Inglés: [Month] [Day], [Year]
-            // Usamos __($monthKey) para que si no hay traducción, salga "global.month.december" (o lo que tengas en el json inglés)
             return __($monthKey) . " " . $day . ", " . $year;
         } else {
-            // Formato Español/Default: [Day] [de] [Month] [del] [Year]
             return $day . " " . __($keyDe) . " " . __($monthKey) . " " . __($keyDel) . " " . $year;
         }
     }
@@ -60,7 +50,6 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
         if (!empty($userRow['created_at'])) {
             $dateStr = format_date_with_keys($userRow['created_at'], $currentLang);
             
-            // Construimos el mensaje concatenando traducciones y la fecha procesada
             $deleteAccountMsg = __("settings.security.delete_msg_part1") . " " . $dateStr . " " . __("settings.security.delete_msg_part2");
         }
     }
@@ -146,12 +135,12 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
                     </div>
 
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Autenticación de dos pasos (2FA)</h2>
+                        <h2 class="component-card__title"><?= __('settings.security.2fa_title') ?></h2>
                         <p class="component-card__description">
                             <?php if ($is2faEnabled): ?>
-                                Tu cuenta está protegida.
+                                <?= __('settings.security.2fa_on') ?>
                             <?php else: ?>
-                                Añade una capa extra de seguridad a tu cuenta.
+                                <?= __('settings.security.2fa_off') ?>
                             <?php endif; ?>
                         </p>
                     </div>
@@ -160,11 +149,11 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
                 <div class="component-card__actions actions-right">
                     <?php if ($is2faEnabled): ?>
                         <button type="button" class="component-button danger" data-nav="settings/2fa-setup">
-                            Desactivar
+                            <?= __('settings.security.2fa_btn_off') ?>
                         </button>
                     <?php else: ?>
                         <button type="button" class="component-button primary" data-nav="settings/2fa-setup">
-                            Activar 2FA
+                            <?= __('settings.security.2fa_btn_on') ?>
                         </button>
                     <?php endif; ?>
                 </div>
@@ -197,7 +186,7 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
             <div class="component-group-item">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title" style="color: #d32f2f;">Eliminar cuenta</h2>
+                        <h2 class="component-card__title" style="color: #d32f2f;"><?= __('settings.security.delete_title') ?></h2>
                         <p class="component-card__description">
                             <?php echo htmlspecialchars($deleteAccountMsg); ?>
                         </p>
@@ -206,7 +195,7 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
 
                 <div class="component-card__actions actions-right">
                     <button type="button" class="component-button danger" data-nav="settings/delete-account">
-                        Eliminar cuenta
+                        <?= __('settings.security.delete_title') ?>
                     </button>
                 </div>
             </div>

@@ -19,7 +19,7 @@ function verify_current_password_check($pdo, $userId, $password) {
     $storedHash = $stmt->fetchColumn();
 
     if (password_verify($password, $storedHash)) {
-        return ['status' => 'success', 'message' => 'Password OK'];
+        return ['status' => 'success', 'message' => 'Password OK']; // Mensaje interno, no requiere traducción
     } else {
         return ['status' => 'error', 'message' => __('api.error.current_password_invalid')];
     }
@@ -64,7 +64,7 @@ function delete_user_account($pdo, $userId, $password) {
             }
             session_destroy();
 
-            return ['status' => 'success', 'message' => 'Tu cuenta ha sido eliminada correctamente.', 'redirect' => $basePath . 'login'];
+            return ['status' => 'success', 'message' => __('api.success.account_deleted'), 'redirect' => $basePath . 'login'];
         } else {
             return ['status' => 'error', 'message' => __('api.error.db_error')];
         }
@@ -102,7 +102,7 @@ function get_active_sessions_list($pdo, $userId) {
 function revoke_single_session($pdo, $userId, $sessionDbId) {
     $stmt = $pdo->prepare("DELETE FROM active_sessions WHERE id = ? AND user_id = ?");
     if ($stmt->execute([$sessionDbId, $userId])) {
-        return ['status' => 'success', 'message' => 'Sesión cerrada exitosamente.'];
+        return ['status' => 'success', 'message' => __('api.success.session_closed')];
     } else {
         return ['status' => 'error', 'message' => __('api.error.db_error')];
     }
@@ -120,7 +120,7 @@ function revoke_all_sessions($pdo, $userId, $password) {
     $stmt = $pdo->prepare("DELETE FROM active_sessions WHERE user_id = ? AND session_id != ?");
     
     if ($stmt->execute([$userId, $currentSessionId])) {
-        return ['status' => 'success', 'message' => 'Todas las demás sesiones han sido cerradas.'];
+        return ['status' => 'success', 'message' => __('api.success.all_sessions_closed')];
     } else {
         return ['status' => 'error', 'message' => __('api.error.db_error')];
     }
@@ -178,7 +178,7 @@ function enable_2fa_confirm($pdo, $userId, $code) {
             unset($_SESSION['temp_2fa_secret']);
             logSecurityEvent($pdo, "uid_".$userId, '2fa_enabled');
             
-            return ['status' => 'success', 'message' => '2FA Activado Correctamente', 'data' => [
+            return ['status' => 'success', 'message' => __('api.success.2fa_enabled'), 'data' => [
                 'recovery_codes' => $recoveryCodes
             ]];
         } else {
@@ -202,7 +202,7 @@ function disable_2fa($pdo, $userId, $password) {
     $stmt = $pdo->prepare("UPDATE users SET two_factor_secret = NULL, two_factor_enabled = 0, two_factor_recovery_codes = NULL WHERE id = ?");
     if ($stmt->execute([$userId])) {
         logSecurityEvent($pdo, "uid_".$userId, '2fa_disabled');
-        return ['status' => 'success', 'message' => 'Autenticación en dos pasos desactivada.'];
+        return ['status' => 'success', 'message' => __('api.success.2fa_disabled')];
     } else {
         return ['status' => 'error', 'message' => __('api.error.db_error')];
     }

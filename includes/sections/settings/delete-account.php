@@ -47,41 +47,41 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
     <div class="component-wrapper">
         
         <div class="component-header-card" style="border-color: #ffcdd2; background-color: #ffebee;">
-            <h1 class="component-page-title" style="color: #d32f2f;">Eliminar cuenta</h1>
-            <p class="component-page-description" style="color: #b71c1c;">Esta acción es irreversible. Por favor lee cuidadosamente.</p>
+            <h1 class="component-page-title" style="color: #d32f2f;"><?= __('settings.security.delete_title') ?></h1>
+            <p class="component-page-description" style="color: #b71c1c;"><?= __('settings.security.delete_desc') ?></p>
         </div>
         
         <div style="margin-bottom: 16px;">
              <button class="component-button" data-nav="settings/login-and-security">
-                <span class="material-symbols-rounded">arrow_back</span> Volver
+                <span class="material-symbols-rounded">arrow_back</span> <?= __('global.back') ?>
              </button>
         </div>
 
         <div class="component-card">
             
-            <h2 class="component-card__title" style="margin-bottom: 12px;">¿Qué sucederá?</h2>
+            <h2 class="component-card__title" style="margin-bottom: 12px;"><?= __('settings.security.delete_what_happens') ?></h2>
             <ul style="margin-bottom: 24px; padding-left: 20px; font-size: 14px; color: #555; line-height: 1.6;">
-                <li>Tu perfil, fotos, archivos y configuraciones serán <strong>eliminados permanentemente</strong>.</li>
-                <li>No podrás recuperar el acceso a tu cuenta una vez confirmes.</li>
-                <li>Se cerrará la sesión en todos los dispositivos donde hayas ingresado.</li>
-                <li><strong>No podrás volver a crear una cuenta nueva con este mismo correo electrónico.</strong></li>
+                <li><?= __('settings.security.delete_warning_1') ?></li>
+                <li><?= __('settings.security.delete_warning_2') ?></li>
+                <li><?= __('settings.security.delete_warning_3') ?></li>
+                <li><?= __('settings.security.delete_warning_4') ?></li>
             </ul>
 
-            <h2 class="component-card__title" style="margin-bottom: 12px;">Confirmación de Seguridad</h2>
+            <h2 class="component-card__title" style="margin-bottom: 12px;"><?= __('settings.security.delete_confirm_security') ?></h2>
             
             <p class="component-card__description" style="margin-bottom: 16px;">
                 <?php echo htmlspecialchars($deleteAccountMsg); ?>
             </p>
 
             <div class="component-input-wrapper" style="margin-bottom: 24px;">
-                <input type="password" id="delete-account-password" class="component-text-input" placeholder="Ingresa tu contraseña actual para continuar">
+                <input type="password" id="delete-account-password" class="component-text-input" placeholder="<?= __('settings.security.current_pass_ph') ?>">
             </div>
 
             <div class="component-group-item" style="border: 1px solid #eee; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Entiendo las consecuencias</h2>
-                        <p class="component-card__description">Confirmo que he leído lo anterior y deseo proceder.</p>
+                        <h2 class="component-card__title"><?= __('settings.security.delete_understand') ?></h2>
+                        <p class="component-card__description"><?= __('settings.security.delete_understand_desc') ?></p>
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">
@@ -93,9 +93,9 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
             </div>
 
             <div class="component-card__actions actions-right">
-                 <button class="component-button" data-nav="settings/login-and-security">Cancelar</button>
+                 <button class="component-button" data-nav="settings/login-and-security"><?= __('global.cancel') ?></button>
                  <button class="component-button danger" id="btn-final-delete-account" disabled style="opacity: 0.5; cursor: not-allowed;">
-                    Eliminar permanentemente
+                    <?= __('settings.security.delete_btn_final') ?>
                 </button>
             </div>
 
