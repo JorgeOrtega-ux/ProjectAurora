@@ -26,6 +26,12 @@
     "menu.profile": "Tu perfil",
     "menu.security": "Inicio de sesión y seguridad",
     "menu.accessibility": "Accesibilidad",
+    "menu.admin_panel": "Panel de Administración",
+
+    "admin.users.title": "Gestionar Usuarios",
+    "admin.users.desc": "Administra las cuentas, roles y estados de los usuarios.",
+    "admin.server.title": "Configuración del Servidor",
+    "admin.server.desc": "Variables de entorno y estado del sistema.",
 
     "auth.login.title": "Iniciar Sesión",
     "auth.login.subtitle": "Bienvenido de nuevo a Project Aurora",

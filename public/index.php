@@ -7,22 +7,21 @@ require_once __DIR__ . '/../config/routers/router.php';
 // 2. Definir el mapa de rutas FÍSICAS
 $sectionMap = require __DIR__ . '/../config/routes.php';
 
+// Lógica de detección de sección
 $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
+$isAdminSection = (strpos($currentSection, 'admin/') === 0); // NUEVO
 
 // --- MODIFICADO: LÓGICA DE AVATAR CENTRALIZADA ---
-// Calculamos esto AQUÍ una sola vez para compartir la variable $globalAvatarSrc
 $globalAvatarSrc = '';
 $hasImage = false;
 
 if (isset($_SESSION['uuid'])) {
     $uuid = $_SESSION['uuid'];
-    // Usamos time() en lugar de microtime para cache busting
     $cacheBuster = '?v=' . time(); 
     
     $relCustom  = 'assets/uploads/avatars/custom/' . $uuid . '.png';
     $relDefault = 'assets/uploads/avatars/default/' . $uuid . '.png';
 
-    // Nota: __DIR__ es public/
     if (file_exists(__DIR__ . '/' . $relCustom)) {
         $globalAvatarSrc = $basePath . $relCustom . $cacheBuster;
         $hasImage = true;
@@ -31,10 +30,9 @@ if (isset($_SESSION['uuid'])) {
         $hasImage = true;
     }
 }
-// ---------------------------------------------
 
-// --- MODIFICADO: Lógica Inicial del Tema ---
-$initialThemeClass = 'light-theme'; // Default fallback
+// --- LÓGICA DE TEMA ---
+$initialThemeClass = 'light-theme';
 $userThemePref = isset($_SESSION['theme']) ? $_SESSION['theme'] : 'system';
 $userExtendedAlerts = isset($_SESSION['extended_alerts']) ? (int)$_SESSION['extended_alerts'] : 0;
 
@@ -58,7 +56,6 @@ if ($userThemePref === 'dark') {
         window.BASE_PATH = '<?php echo $basePath; ?>';
         window.TRANSLATIONS = <?php echo json_encode($GLOBALS['AURORA_TRANSLATIONS']); ?>;
         
-        // MODIFICADO: Pasamos las preferencias al frontend
         window.USER_PREFS = {
             theme: '<?php echo $userThemePref; ?>',
             extended_alerts: <?php echo $userExtendedAlerts; ?>
@@ -148,6 +145,19 @@ if ($userThemePref === 'dark') {
                                             <div class="drag-handle"></div>
                                         </div>
                                         <div class="menu-list">
+                                            
+                                            <?php if (in_array($_SESSION['role'], ['founder', 'administrator'])): ?>
+                                                <div class="menu-link" data-nav="admin/users">
+                                                    <div class="menu-link-icon">
+                                                        <span class="material-symbols-rounded">admin_panel_settings</span>
+                                                    </div>
+                                                    <div class="menu-link-text">
+                                                        <span data-lang-key="menu.admin_panel"><?php echo __('menu.admin_panel'); ?></span>
+                                                    </div>
+                                                </div>
+                                                <hr class="component-divider" style="margin: 4px 0;">
+                                            <?php endif; ?>
+                                            
                                             <div class="menu-link" data-nav="settings/your-profile">
                                                 <div class="menu-link-icon">
                                                     <span class="material-symbols-rounded">settings</span>
@@ -181,7 +191,7 @@ if ($userThemePref === 'dark') {
                             <div class="menu-content">
                                 <div class="menu-content-top">
 
-                                    <div id="nav-main" class="menu-list <?php echo $isSettingsSection ? 'disabled' : ''; ?>">
+                                    <div id="nav-main" class="menu-list <?php echo ($isSettingsSection || $isAdminSection) ? 'disabled' : ''; ?>">
                                         <div class="menu-link <?php echo ($currentSection === 'main') ? 'active' : ''; ?>" data-nav="main">
                                             <div class="menu-link-icon">
                                                 <span class="material-symbols-rounded">home</span>
@@ -239,6 +249,39 @@ if ($userThemePref === 'dark') {
                                         </div>
                                     </div>
 
+                                    <div id="nav-admin" class="menu-list <?php echo !$isAdminSection ? 'disabled' : ''; ?>">
+                                        <div class="menu-link menu-link-back" data-nav="main">
+                                            <div class="menu-link-icon">
+                                                <span class="material-symbols-rounded">arrow_back</span>
+                                            </div>
+                                            <div class="menu-link-text">
+                                                <span data-lang-key="global.back_home"><?php echo __('global.back_home'); ?></span>
+                                            </div>
+                                        </div>
+
+                                        <div style="padding: 8px 12px; font-size: 12px; color: #666; font-weight: bold; text-transform: uppercase;">
+                                            <span data-lang-key="menu.admin_panel"><?php echo __('menu.admin_panel'); ?></span>
+                                        </div>
+
+                                        <div class="menu-link <?php echo ($currentSection === 'admin/users') ? 'active' : ''; ?>" data-nav="admin/users">
+                                            <div class="menu-link-icon">
+                                                <span class="material-symbols-rounded">group</span>
+                                            </div>
+                                            <div class="menu-link-text">
+                                                <span data-lang-key="admin.users.title"><?php echo __('admin.users.title'); ?></span>
+                                            </div>
+                                        </div>
+
+                                        <div class="menu-link <?php echo ($currentSection === 'admin/server') ? 'active' : ''; ?>" data-nav="admin/server">
+                                            <div class="menu-link-icon">
+                                                <span class="material-symbols-rounded">dns</span>
+                                            </div>
+                                            <div class="menu-link-text">
+                                                <span data-lang-key="admin.server.title"><?php echo __('admin.server.title'); ?></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                 </div>
                                 <div class="menu-content-bottom"></div>
                             </div>
@@ -247,14 +290,12 @@ if ($userThemePref === 'dark') {
 
                     <div class="general-content-scrolleable overflow-y" data-container="main-section">
                         <?php
-                        // LÓGICA DE CARGA
                         $fileToLoad = $sectionMap['404']; 
                         
                         if (array_key_exists($currentSection, $sectionMap)) {
                             $fileToLoad = $sectionMap[$currentSection];
                         } 
 
-                        // Verificar existencia física final
                         if (file_exists($fileToLoad)) {
                             include $fileToLoad;
                         } else {

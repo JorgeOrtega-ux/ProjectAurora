@@ -104,6 +104,12 @@ if ($currentSection === 'settings') {
     exit;
 }
 
+// Redirección base de Admin
+if ($currentSection === 'admin') {
+    header("Location: " . $basePath . "admin/users");
+    exit;
+}
+
 $resetToken = null;
 if (strpos($currentSection, 'recover-password/') === 0) {
     $parts = explode('/', $currentSection);
@@ -148,6 +154,18 @@ if (!$isLoggedIn) {
     if (in_array($currentSection, $guestRoutes)) {
         header("Location: " . $basePath);
         exit;
+    }
+}
+
+// NUEVO: Validación de Seguridad para rutas /admin
+// Si intenta entrar a admin/ algo y no es founder/admin -> 404
+if (strpos($currentSection, 'admin/') === 0) {
+    $allowedRoles = ['founder', 'administrator'];
+    $userRole = $_SESSION['role'] ?? 'user';
+    
+    if (!in_array($userRole, $allowedRoles)) {
+        // Enmascaramos la existencia de la ruta mostrando 404
+        $currentSection = '404';
     }
 }
 

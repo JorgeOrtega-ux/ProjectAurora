@@ -11,8 +11,6 @@ export function initUrlManager() {
             const section = link.dataset.nav;
 
             // --- PASO 1: CERRAR MÓDULOS (UI FEEDBACK) ---
-            // Movemos esto al principio para que el menú SIEMPRE se cierre al hacer clic,
-            // sin importar si recargamos la página o no.
             
             // Cerrar menú de perfil si está abierto
             const profileMenu = document.querySelector('.module-profile');
@@ -39,8 +37,6 @@ export function initUrlManager() {
             currentPath = currentPath.replace(/\/$/, '').trim();
             if (currentPath === '') currentPath = 'main';
 
-            // Si ya estamos en la sección solicitada, DETENEMOS AQUÍ.
-            // Como ya cerramos los menús arriba, la UX es correcta.
             if (section === currentPath) {
                 return; 
             }
@@ -76,23 +72,36 @@ export function navigateTo(section) {
 function updateSidebarContext(section) {
     const navMain = document.getElementById('nav-main');
     const navSettings = document.getElementById('nav-settings');
+    const navAdmin = document.getElementById('nav-admin'); // NUEVO: Referencia al menú admin
+
+    // Funciones helper para limpiar código
+    const activate = (el) => {
+        if (el) {
+            el.classList.remove('disabled');
+            el.classList.add('active');
+        }
+    };
     
-    if (!navMain || !navSettings) return;
+    const deactivate = (el) => {
+        if (el) {
+            el.classList.remove('active');
+            el.classList.add('disabled');
+        }
+    };
 
-    const isSettings = section.startsWith('settings/');
+    // 1. Resetear todos a estado desactivado
+    deactivate(navMain);
+    deactivate(navSettings);
+    deactivate(navAdmin);
 
-    if (isSettings) {
-        navMain.classList.remove('active');
-        navMain.classList.add('disabled');
-        
-        navSettings.classList.remove('disabled');
-        navSettings.classList.add('active');
+    // 2. Activar el correcto según la sección
+    if (section.startsWith('settings/')) {
+        activate(navSettings);
+    } else if (section.startsWith('admin/')) {
+        activate(navAdmin);
     } else {
-        navSettings.classList.remove('active');
-        navSettings.classList.add('disabled');
-        
-        navMain.classList.remove('disabled');
-        navMain.classList.add('active');
+        // Por defecto (main, explorer, etc) mostramos el menú principal
+        activate(navMain);
     }
 }
 
