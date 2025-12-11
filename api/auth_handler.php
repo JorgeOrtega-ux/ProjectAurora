@@ -289,6 +289,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     // --- 7. RESETEAR CONTRASEÑA ---
     if ($action === 'reset_password') {
+        // [SEGURIDAD] Limitamos intentos por IP para evitar fuerza bruta de tokens
+        checkRateLimit($pdo, null, 'reset_token_try_ip', 10, 60, true);
+
         $token = $input['token'] ?? '';
         $newPass = $input['password'] ?? '';
         if (strlen($newPass) < 8) sendJsonResponse('error', __('api.error.password_short'));
@@ -301,6 +304,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare("DELETE FROM password_resets WHERE token = ?")->execute([$token]);
             sendJsonResponse('success', __('api.success.password_updated'), $basePath . "login");
         } else {
+            // [CORRECCIÓN] Registramos el fallo para que checkRateLimit funcione
+            logSecurityEvent($pdo, 'system', 'reset_token_try_ip');
             sendJsonResponse('error', __('api.error.invalid_code'));
         }
     }
