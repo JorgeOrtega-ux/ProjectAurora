@@ -21,8 +21,11 @@ return [
     // --- Rutas de Configuración (Settings) ---
     'settings/your-profile'       => __DIR__ . '/../includes/sections/settings/your-profile.php',
     'settings/login-and-security' => __DIR__ . '/../includes/sections/settings/login-security.php',
-    'settings/devices'            => __DIR__ . '/../includes/sections/settings/devices.php', // NUEVA RUTA
+    'settings/devices'            => __DIR__ . '/../includes/sections/settings/devices.php',
     'settings/accessibility'      => __DIR__ . '/../includes/sections/settings/accessibility.php',
     'settings/2fa-setup'          => __DIR__ . '/../includes/sections/settings/2fa-setup.php',
+    
+    // NUEVA RUTA
+    'settings/delete-account'     => __DIR__ . '/../includes/sections/settings/delete-account.php',
 ];
 ?>

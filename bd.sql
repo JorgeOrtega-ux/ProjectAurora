@@ -1,3 +1,5 @@
+-- bd.sql
+
 -- 1. Eliminar la base de datos previa si existe (Reinicio total)
 DROP DATABASE IF EXISTS project_aurora_db;
 
@@ -9,7 +11,7 @@ COLLATE utf8mb4_unicode_ci;
 -- 3. Seleccionar la base de datos para usarla
 USE project_aurora_db;
 
--- 4. Crear la tabla de usuarios
+-- 4. Crear la tabla de usuarios (MODIFICADO: account_status)
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -17,6 +19,10 @@ CREATE TABLE users (
     password VARCHAR(255) NOT NULL,
     role ENUM('user', 'moderator', 'administrator', 'founder') DEFAULT 'user',
     uuid VARCHAR(36) NOT NULL,
+    account_status ENUM('active', 'deleted', 'suspended') DEFAULT 'active', -- NUEVO CAMPO
+    two_factor_secret VARCHAR(255) NULL DEFAULT NULL,
+    two_factor_enabled TINYINT(1) DEFAULT 0,
+    two_factor_recovery_codes TEXT NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -68,19 +74,19 @@ CREATE TABLE security_logs (
 -- 9. Tabla de Preferencias de Usuario
 CREATE TABLE user_preferences (
     user_id INT PRIMARY KEY,
-    language VARCHAR(10) DEFAULT 'en-US', -- Idioma de la interfaz
-    open_links_new_tab BOOLEAN DEFAULT TRUE, -- Por defecto activado
-    theme VARCHAR(20) DEFAULT 'system', -- system, light, dark
-    extended_alerts BOOLEAN DEFAULT FALSE, -- Por defecto desactivado
+    language VARCHAR(10) DEFAULT 'en-US',
+    open_links_new_tab BOOLEAN DEFAULT TRUE,
+    theme VARCHAR(20) DEFAULT 'system',
+    extended_alerts BOOLEAN DEFAULT FALSE,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- 10. NUEVA TABLA: Historial de cambios de perfil
+-- 10. Tabla Historial de cambios de perfil
 CREATE TABLE user_profile_history (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    change_type VARCHAR(20) NOT NULL, -- 'username', 'email', 'avatar'
+    change_type VARCHAR(20) NOT NULL,
     old_value TEXT NULL,
     new_value TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -88,16 +94,11 @@ CREATE TABLE user_profile_history (
     INDEX idx_history_check (user_id, change_type, created_at)
 );
 
-ALTER TABLE users 
-ADD COLUMN two_factor_secret VARCHAR(255) NULL DEFAULT NULL,
-ADD COLUMN two_factor_enabled TINYINT(1) DEFAULT 0,
-ADD COLUMN two_factor_recovery_codes TEXT NULL DEFAULT NULL;
-
--- 11. NUEVA TABLA: Sesiones Activas
+-- 11. Tabla Sesiones Activas
 CREATE TABLE IF NOT EXISTS active_sessions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    session_id VARCHAR(255) NOT NULL, -- El ID de sesión de PHP
+    session_id VARCHAR(255) NOT NULL,
     ip_address VARCHAR(45) NULL,
     user_agent TEXT NULL,
     last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

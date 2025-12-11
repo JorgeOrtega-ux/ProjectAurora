@@ -1,7 +1,7 @@
 /**
  * SecurityController.js
  * Maneja la lógica de la sección "Login & Security" y el asistente 2FA.
- * AHORA TAMBIÉN MANEJA LA SECCIÓN DE DISPOSITIVOS.
+ * AHORA TAMBIÉN MANEJA LA SECCIÓN DE DISPOSITIVOS Y ELIMINACIÓN DE CUENTA.
  */
 
 import { SettingsService } from './api-services.js';
@@ -186,12 +186,12 @@ const handle2faDisable = async () => {
 };
 
 /* ==================================================
-   NUEVO: LÓGICA DE DISPOSITIVOS
+   LÓGICA DE DISPOSITIVOS
    ================================================== */
    
 const loadDevices = async () => {
     const container = document.getElementById('devices-list-container');
-    if (!container) return; // No estamos en la página correcta
+    if (!container) return; 
     
     container.innerHTML = '<div class="loader-container"><div class="spinner"></div></div>';
     
@@ -216,11 +216,9 @@ const renderDevicesList = (container, sessions) => {
     
     let html = '';
     sessions.forEach(session => {
-        // Marcado especial para la sesión actual
         const highlightClass = session.is_current ? 'style="background-color: #f0f9ff; border-color: #b3e5fc;"' : '';
         const badge = session.is_current ? '<span class="component-badge" style="color: #0277bd; background:#e1f5fe; padding:2px 8px; border-radius:4px;">Este dispositivo</span>' : '';
         
-        // Botón de eliminar (desactivado para la sesión actual)
         const deleteBtn = !session.is_current 
             ? `<button class="component-button danger" data-action="revoke-single" data-id="${session.id}">
                  <span class="material-symbols-rounded">logout</span>
@@ -250,7 +248,6 @@ const renderDevicesList = (container, sessions) => {
         `;
     });
     
-    // Quitar el último HR
     if (html.endsWith('<hr class="component-divider" style="margin:0;">')) {
         html = html.substring(0, html.length - 46);
     }
@@ -266,7 +263,6 @@ const handleRevokeSingle = async (sessionId, btn) => {
         const result = await SettingsService.revokeSession(sessionId);
         if (result.status === 'success') {
             Toast.success(result.message);
-            // Recargar la lista
             loadDevices();
         } else {
             Toast.error(result.message);
@@ -295,9 +291,70 @@ const handleRevokeAll = async () => {
     }
 };
 
+/* ==================================================
+   NUEVO: LÓGICA DE ELIMINACIÓN DE CUENTA
+   ================================================== */
+const setupDeleteAccountLogic = () => {
+    const toggle = document.getElementById('confirm-delete-account');
+    const btn = document.getElementById('btn-final-delete-account');
+    const inputPass = document.getElementById('delete-account-password');
+
+    if (!toggle || !btn) return;
+
+    // Listener para el toggle que habilita el botón
+    toggle.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            btn.style.cursor = 'pointer';
+        } else {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+        }
+    });
+
+    // Listener para el botón eliminar
+    btn.addEventListener('click', async () => {
+        const pass = inputPass.value;
+        if (!pass) {
+            Toast.error(window.t('js.error.complete_fields'));
+            inputPass.focus();
+            return;
+        }
+
+        if (!confirm("ADVERTENCIA FINAL: ¿Estás seguro? Esta acción no se puede deshacer.")) return;
+
+        btn.disabled = true;
+        btn.innerText = window.t('global.processing');
+
+        try {
+            const result = await SettingsService.deleteAccount(pass);
+            if (result.status === 'success') {
+                Toast.success(result.message);
+                // Si la API devuelve redirección, la seguimos, si no, recargamos (logout)
+                setTimeout(() => {
+                    if (result.redirect) window.location.href = result.redirect;
+                    else window.location.reload();
+                }, 1500);
+            } else {
+                Toast.error(result.message);
+                btn.disabled = false;
+                btn.innerText = "Eliminar permanentemente";
+            }
+        } catch (error) {
+            console.error(error);
+            Toast.error(window.t('js.error.connection'));
+            btn.disabled = false;
+            btn.innerText = "Eliminar permanentemente";
+        }
+    });
+};
+
+
 const setupSecurityListeners = () => {
     document.addEventListener('click', (e) => {
-        // Password Flow (Existente)
+        // Password Flow
         const container = e.target.closest('[data-component="password-update-section"]');
         if (container) {
             if (e.target.closest('[data-action="pass-start-flow"]')) goToStage1(container);
@@ -306,12 +363,12 @@ const setupSecurityListeners = () => {
             if (e.target.closest('[data-action="pass-submit-final"]')) submitPasswordChange(container);
         }
 
-        // 2FA Flow (Existente)
+        // 2FA Flow
         if (e.target.id === 'btn-start-2fa-setup') handle2faSetupStart();
         if (e.target.id === 'btn-verify-2fa-setup') handle2faVerify();
         if (e.target.id === 'btn-disable-2fa') handle2faDisable();
         
-        // Devices Flow (NUEVO)
+        // Devices Flow
         const revokeBtn = e.target.closest('[data-action="revoke-single"]');
         if (revokeBtn) {
             handleRevokeSingle(revokeBtn.dataset.id, revokeBtn);
@@ -325,6 +382,11 @@ const setupSecurityListeners = () => {
     // Si entramos a la sección de dispositivos, cargar la lista
     if (document.getElementById('devices-list-container')) {
         loadDevices();
+    }
+
+    // Inicializar lógica de eliminación si estamos en esa sección
+    if (document.getElementById('confirm-delete-account')) {
+        setupDeleteAccountLogic();
     }
 };
 

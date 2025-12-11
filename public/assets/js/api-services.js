@@ -100,7 +100,7 @@ export const SettingsService = {
         });
     },
 
-    // --- NUEVOS MÉTODOS PARA DISPOSITIVOS ---
+    // --- MÉTODOS PARA DISPOSITIVOS ---
     getActiveSessions: () => {
         return postRequest('api/settings_handler.php', {
             action: 'get_active_sessions'
@@ -117,6 +117,14 @@ export const SettingsService = {
     revokeAllSessions: (password) => {
         return postRequest('api/settings_handler.php', {
             action: 'revoke_all_sessions',
+            password: password
+        });
+    },
+
+    // --- NUEVO: ELIMINAR CUENTA ---
+    deleteAccount: (password) => {
+        return postRequest('api/settings_handler.php', {
+            action: 'delete_account',
             password: password
         });
     }

@@ -128,6 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($row) {
                 $payload = json_decode($row['payload'], true);
                 $uuid = generate_uuid();
+                // NOTA: Se crea como active por defecto en la BD
                 $insertUser = $pdo->prepare("INSERT INTO users (username, email, password, uuid) VALUES (?, ?, ?, ?)");
                 if ($insertUser->execute([$payload['username'], $payload['email'], $payload['password'], $uuid])) {
                     $newId = $pdo->lastInsertId();
@@ -142,9 +143,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['role'] = 'user';
                     unset($_SESSION['pending_verification_email']);
                     
-                    // Registro de sesión y acceso
                     logUserAccess($pdo, $newId);
-                    registerActiveSession($pdo, $newId); // NUEVO
+                    registerActiveSession($pdo, $newId); 
 
                     sendJsonResponse('success', __('api.success.account_created'), $basePath);
                 } else {
@@ -159,17 +159,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // --- 5. LOGIN MODIFICADO PARA 2FA Y SESIONES ---
+    // --- 5. LOGIN MODIFICADO PARA STATUS DE CUENTA ---
     if ($action === 'login') {
         $email = trim($input['email'] ?? '');
         $password = $input['password'] ?? '';
         checkRateLimit($pdo, $email, 'login_fail', 5, 15);
 
-        $stmt = $pdo->prepare("SELECT id, username, password, uuid, role, two_factor_enabled FROM users WHERE email = ?");
+        // Agregamos account_status a la consulta
+        $stmt = $pdo->prepare("SELECT id, username, password, uuid, role, two_factor_enabled, account_status FROM users WHERE email = ?");
         $stmt->execute([$email]);
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password'])) {
+            
+            // --- NUEVO: CHECK DE STATUS ---
+            if ($user['account_status'] === 'deleted') {
+                logSecurityEvent($pdo, $email, 'login_deleted_attempt');
+                sendJsonResponse('error', "Esta cuenta ha sido eliminada permanentemente.");
+            }
+            if ($user['account_status'] === 'suspended') {
+                sendJsonResponse('error', "Cuenta suspendida. Contacta a soporte.");
+            }
+
             session_regenerate_id(true);
 
             if ($user['two_factor_enabled'] == 1) {
@@ -182,7 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['role'] = $user['role'];
                 
                 logUserAccess($pdo, $user['id']);
-                registerActiveSession($pdo, $user['id']); // NUEVO: Registrar en BD
+                registerActiveSession($pdo, $user['id']); 
 
                 sendJsonResponse('success', __('api.success.welcome'), $basePath);
             }
@@ -232,7 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             unset($_SESSION['temp_2fa_user_id']);
 
             logUserAccess($pdo, $user['id']);
-            registerActiveSession($pdo, $user['id']); // NUEVO: Registrar en BD
+            registerActiveSession($pdo, $user['id']); 
 
             sendJsonResponse('success', __('api.success.welcome'), $basePath);
         } else {
@@ -247,9 +258,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         checkRateLimit($pdo, $email, 'recovery_request', 3, 60, true);
         logSecurityEvent($pdo, $email, 'recovery_request');
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) sendJsonResponse('error', __('api.error.email_format'));
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+        
+        // MODIFICADO: No permitir recuperar si está deleted
+        $stmt = $pdo->prepare("SELECT id, account_status FROM users WHERE email = ?");
         $stmt->execute([$email]);
+        
         if ($stmt->rowCount() > 0) {
+            $u = $stmt->fetch();
+            if ($u['account_status'] === 'deleted') {
+                // Por seguridad, actuamos como si se envió (o damos error explicito si prefieres)
+                // Aquí damos error explícito para ser consistentes con el login
+                sendJsonResponse('error', "Esta cuenta ha sido eliminada permanentemente.");
+            }
+
             $checkLimit = $pdo->prepare("SELECT id FROM password_resets WHERE email = ? AND created_at > (NOW() - INTERVAL 60 SECOND)");
             $checkLimit->execute([$email]);
             if ($checkLimit->rowCount() > 0) {
@@ -262,6 +283,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 sendJsonResponse('success', __('api.success.link_generated'));
             }
         } else {
+            // Seguridad por oscuridad: decimos que se envió aunque no exista
             sendJsonResponse('error', __('api.success.link_generated')); 
         }
     }
@@ -284,7 +306,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     // --- 8. LOGOUT ---
     if ($action === 'logout') {
-        // NUEVO: Eliminar de active_sessions antes de destruir la sesión PHP
         if (isset($_SESSION['user_id'])) {
              $sid = session_id();
              $pdo->prepare("DELETE FROM active_sessions WHERE session_id = ?")->execute([$sid]);

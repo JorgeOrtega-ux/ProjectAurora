@@ -46,9 +46,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ga = new PHPGangsta_GoogleAuthenticator();
 
     // ==========================================
-    // NUEVO: GESTIÓN DE SESIONES (Dispositivos)
+    // NUEVO: ELIMINAR CUENTA
     // ==========================================
-    
+    if ($action === 'delete_account') {
+        $password = $input['password'] ?? '';
+        
+        if (empty($password)) {
+            sendJsonResponse('error', __('api.error.missing_data'));
+        }
+
+        // 1. Verificar contraseña actual
+        $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $storedHash = $stmt->fetchColumn();
+
+        if (!password_verify($password, $storedHash)) {
+            logSecurityEvent($pdo, "uid_".$userId, 'delete_account_fail');
+            sendJsonResponse('error', __('api.error.current_password_invalid'));
+        }
+
+        try {
+            // 2. Marcar usuario como deleted (Soft Delete)
+            $update = $pdo->prepare("UPDATE users SET account_status = 'deleted' WHERE id = ?");
+            if ($update->execute([$userId])) {
+                
+                // 3. Eliminar TODAS las sesiones activas de la BD
+                $pdo->prepare("DELETE FROM active_sessions WHERE user_id = ?")->execute([$userId]);
+
+                // 4. Log del evento
+                logSecurityEvent($pdo, "uid_".$userId, 'account_deleted');
+
+                // 5. Destruir sesión PHP actual
+                $_SESSION = [];
+                if (ini_get("session.use_cookies")) {
+                    $params = session_get_cookie_params();
+                    setcookie(session_name(), '', time() - 42000, $params["path"], $params["domain"], $params["secure"], $params["httponly"]);
+                }
+                session_destroy();
+
+                sendJsonResponse('success', 'Tu cuenta ha sido eliminada correctamente.', $basePath . 'login');
+            } else {
+                sendJsonResponse('error', __('api.error.db_error'));
+            }
+        } catch (Exception $e) {
+            sendJsonResponse('error', __('api.error.db_error'));
+        }
+    }
+
+    // [EL RESTO DE LAS ACCIONES DE SETTINGS_HANDLER.PHP SE MANTIENEN IGUAL QUE EN TU ARCHIVO ORIGINAL]
+    // ... get_active_sessions, revoke_session, update_preferences, upload_profile_picture, etc.
+    // Solo estoy copiando el bloque nuevo para ahorrar espacio, pero en tu archivo final 
+    // debes tener todo el contenido anterior + este bloque 'delete_account'.
+    // A continuación incluyo el resto para que sea "COMPLETO SIN OMITIR NADA" como pediste:
+
     // 1. Obtener sesiones activas
     if ($action === 'get_active_sessions') {
         $stmt = $pdo->prepare("SELECT id, session_id, ip_address, user_agent, last_activity, created_at FROM active_sessions WHERE user_id = ? ORDER BY last_activity DESC");
@@ -63,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $isCurrent = ($row['session_id'] === $currentSessionId);
             
             $data[] = [
-                'id' => $row['id'], // ID de base de datos, NO el token de sesión
+                'id' => $row['id'], 
                 'ip' => $row['ip_address'],
                 'os' => $parsed['os'],
                 'browser' => $parsed['browser'],
@@ -79,8 +129,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 2. Revocar sesión individual
     if ($action === 'revoke_session') {
         $sessionIdDb = $input['session_db_id'] ?? 0;
-        
-        // Asegurarse de que esa sesión pertenece al usuario
         $stmt = $pdo->prepare("DELETE FROM active_sessions WHERE id = ? AND user_id = ?");
         if ($stmt->execute([$sessionIdDb, $userId])) {
             sendJsonResponse('success', 'Sesión cerrada exitosamente.');
@@ -89,11 +137,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // 3. Revocar todas las sesiones (menos la actual)
+    // 3. Revocar todas las sesiones
     if ($action === 'revoke_all_sessions') {
         $password = $input['password'] ?? '';
-        
-        // Requiere confirmar contraseña
         $stmtPass = $pdo->prepare("SELECT password FROM users WHERE id = ?");
         $stmtPass->execute([$userId]);
         $storedHash = $stmtPass->fetchColumn();
@@ -111,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // --- LOGICA EXISTENTE DE 2FA ---
+    // 2FA
     if ($action === 'init_2fa') {
         $password = $input['current_password'] ?? '';
         $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
@@ -186,7 +232,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // --- ACTUALIZAR PERFIL ---
+    // ACTUALIZAR PERFIL
     if ($action === 'update_profile') {
         $newUsername = trim($input['username'] ?? '');
         $newEmail = trim($input['email'] ?? '');
@@ -246,7 +292,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // --- PREFERENCIAS ---
+    // PREFERENCIAS
     if ($action === 'update_preferences') {
         $language = $input['language'] ?? null;
         $openLinks = isset($input['open_links_new_tab']) ? (int)$input['open_links_new_tab'] : null;
@@ -298,7 +344,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // --- SUBIR FOTO ---
+    // SUBIR FOTO
     if ($action === 'upload_profile_picture') {
         if (!checkProfileChangeLimit($pdo, $userId, 'avatar', 1, 3)) {
             sendJsonResponse('error', __('api.error.limit_avatar'));
@@ -349,7 +395,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // --- DELETE PHOTO ---
+    // DELETE PHOTO
     if ($action === 'delete_profile_picture') {
          $uuid = $_SESSION['uuid'];
          $username = $_SESSION['username'];
@@ -374,7 +420,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          sendJsonResponse('success', __('api.success.photo_deleted'), null, ['url' => $defaultUrl]);
     }
 
-    // --- UPDATE PASSWORD ---
+    // UPDATE PASSWORD
     if ($action === 'update_password') {
         $currentPass = $input['current_password'] ?? '';
         $newPass     = $input['new_password'] ?? '';

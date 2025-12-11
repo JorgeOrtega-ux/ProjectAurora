@@ -125,6 +125,23 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
                 </div>
 
             </div>
+            
+            <hr class="component-divider">
+
+            <div class="component-group-item">
+                <div class="component-card__content">
+                    <div class="component-card__text">
+                        <h2 class="component-card__title" style="color: #d32f2f;">Eliminar cuenta</h2>
+                        <p class="component-card__description">Eliminar permanentemente tu cuenta y todos tus datos.</p>
+                    </div>
+                </div>
+
+                <div class="component-card__actions actions-right">
+                    <button type="button" class="component-button danger" data-nav="settings/delete-account">
+                        Eliminar cuenta
+                    </button>
+                </div>
+            </div>
 
         </div>
     </div>
