@@ -17,60 +17,6 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
 
         <div class="component-card component-card--grouped">
 
-            <div class="component-group-item">
-                <div class="component-card__content">
-                    <div class="component-card__profile-picture component-card__profile-picture--bordered">
-                        <span class="material-symbols-rounded" style="font-size: 32px; color: #000;">devices</span>
-                    </div>
-
-                    <div class="component-card__text">
-                        <h2 class="component-card__title"><?= __('settings.security.devices_title') ?></h2>
-                        <p class="component-card__description"><?= __('settings.security.devices_desc') ?></p>
-                    </div>
-                </div>
-
-                <div class="component-card__actions actions-right">
-                    <button type="button" class="component-button" data-nav="settings/devices">
-                        <?= __('settings.security.btn_manage') ?>
-                    </button>
-                </div>
-            </div>
-
-            <hr class="component-divider">
-
-            <div class="component-group-item">
-                <div class="component-card__content">
-                    <div class="component-card__profile-picture component-card__profile-picture--bordered">
-                        <span class="material-symbols-rounded" style="font-size: 32px; color: #000;">shield</span>
-                    </div>
-
-                    <div class="component-card__text">
-                        <h2 class="component-card__title">Autenticación de dos pasos (2FA)</h2>
-                        <p class="component-card__description">
-                            <?php if ($is2faEnabled): ?>
-                                <span style="color: green; font-weight: bold;">Activado.</span> Tu cuenta está protegida.
-                            <?php else: ?>
-                                Añade una capa extra de seguridad a tu cuenta.
-                            <?php endif; ?>
-                        </p>
-                    </div>
-                </div>
-
-                <div class="component-card__actions actions-right">
-                    <?php if ($is2faEnabled): ?>
-                        <button type="button" class="component-button danger" data-nav="settings/2fa-setup">
-                            Desactivar
-                        </button>
-                    <?php else: ?>
-                        <button type="button" class="component-button primary" data-nav="settings/2fa-setup">
-                            Activar 2FA
-                        </button>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <hr class="component-divider">
-
             <div class="component-group-item" data-component="password-update-section">
                 
                 <div class="component-card__content">
@@ -130,6 +76,61 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
 
             <div class="component-group-item">
                 <div class="component-card__content">
+                    <div class="component-card__profile-picture component-card__profile-picture--bordered">
+                        <span class="material-symbols-rounded" style="font-size: 32px; color: #000;">shield</span>
+                    </div>
+
+                    <div class="component-card__text">
+                        <h2 class="component-card__title">Autenticación de dos pasos (2FA)</h2>
+                        <p class="component-card__description">
+                            <?php if ($is2faEnabled): ?>
+                                <span style="color: green; font-weight: bold;">Activado.</span> Tu cuenta está protegida.
+                            <?php else: ?>
+                                Añade una capa extra de seguridad a tu cuenta.
+                            <?php endif; ?>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="component-card__actions actions-right">
+                    <?php if ($is2faEnabled): ?>
+                        <button type="button" class="component-button danger" data-nav="settings/2fa-setup">
+                            Desactivar
+                        </button>
+                    <?php else: ?>
+                        <button type="button" class="component-button primary" data-nav="settings/2fa-setup">
+                            Activar 2FA
+                        </button>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="component-card component-card--grouped">
+            <div class="component-group-item">
+                <div class="component-card__content">
+                    <div class="component-card__profile-picture component-card__profile-picture--bordered">
+                        <span class="material-symbols-rounded" style="font-size: 32px; color: #000;">devices</span>
+                    </div>
+
+                    <div class="component-card__text">
+                        <h2 class="component-card__title"><?= __('settings.security.devices_title') ?></h2>
+                        <p class="component-card__description"><?= __('settings.security.devices_desc') ?></p>
+                    </div>
+                </div>
+
+                <div class="component-card__actions actions-right">
+                    <button type="button" class="component-button" data-nav="settings/devices">
+                        <?= __('settings.security.btn_manage') ?>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="component-card component-card--grouped">
+            <div class="component-group-item">
+                <div class="component-card__content">
                     <div class="component-card__text">
                         <h2 class="component-card__title" style="color: #d32f2f;">Eliminar cuenta</h2>
                         <p class="component-card__description">Eliminar permanentemente tu cuenta y todos tus datos.</p>
@@ -142,7 +143,7 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
                     </button>
                 </div>
             </div>
-
         </div>
+
     </div>
 </div>
