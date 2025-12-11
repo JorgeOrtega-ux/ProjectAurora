@@ -161,5 +161,20 @@
 
     "js.error.connection": "Error de conexión.",
     "js.error.complete_fields": "Por favor completa todos los campos.",
-    "js.error.pass_mismatch": "Las contraseñas no coinciden."
+    "js.error.pass_mismatch": "Las contraseñas no coinciden.",
+
+    "global.date_de": "de",
+    "global.date_del": "del",
+    "global.month.january": "enero",
+    "global.month.february": "febrero",
+    "global.month.march": "marzo",
+    "global.month.april": "abril",
+    "global.month.may": "mayo",
+    "global.month.june": "junio",
+    "global.month.july": "julio",
+    "global.month.august": "agosto",
+    "global.month.september": "septiembre",
+    "global.month.october": "octubre",
+    "global.month.november": "noviembre",
+    "global.month.december": "diciembre"
 }

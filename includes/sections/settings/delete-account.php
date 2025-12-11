@@ -1,5 +1,47 @@
 <?php
 // includes/sections/settings/delete-account.php
+
+if (session_status() === PHP_SESSION_NONE) session_start();
+require_once __DIR__ . '/../../../config/database/db.php';
+
+// Detectar idioma activo
+$currentLang = isset($langToLoad) ? $langToLoad : (isset($_SESSION['language']) ? $_SESSION['language'] : 'es-419');
+
+// --- HELPER PARA FECHAS BASADO EN CLAVES DE TRADUCCIÓN ---
+if (!function_exists('format_date_with_keys')) {
+    function format_date_with_keys($dateString, $langCode) {
+        if (!$dateString) return '';
+        $ts = strtotime($dateString);
+        
+        $day  = date('j', $ts);
+        $year = date('Y', $ts);
+        $monthNameEng = strtolower(date('F', $ts));
+        $monthKey = "global.month." . $monthNameEng;
+        $keyDe  = "global.date_de";
+        $keyDel = "global.date_del";
+
+        $shortLang = substr($langCode, 0, 2);
+
+        if ($shortLang === 'en') {
+            return __($monthKey) . " " . $day . ", " . $year;
+        } else {
+            return $day . " " . __($keyDe) . " " . __($monthKey) . " " . __($keyDel) . " " . $year;
+        }
+    }
+}
+
+// Obtener fecha de creación y formatear mensaje
+$deleteAccountMsg = "";
+if (isset($pdo) && isset($_SESSION['user_id'])) {
+    $stmt = $pdo->prepare("SELECT created_at FROM users WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $createdDate = $stmt->fetchColumn();
+    
+    if ($createdDate) {
+        $dateStr = format_date_with_keys($createdDate, $currentLang);
+        $deleteAccountMsg = __("settings.security.delete_msg_part1") . " " . $dateStr . " " . __("settings.security.delete_msg_part2");
+    }
+}
 ?>
 <div class="section-content active" data-section="settings/delete-account">
     <div class="component-wrapper">
@@ -26,6 +68,11 @@
             </ul>
 
             <h2 class="component-card__title" style="margin-bottom: 12px;">Confirmación de Seguridad</h2>
+            
+            <p class="component-card__description" style="margin-bottom: 16px;">
+                <?php echo htmlspecialchars($deleteAccountMsg); ?>
+            </p>
+
             <div class="component-input-wrapper" style="margin-bottom: 24px;">
                 <input type="password" id="delete-account-password" class="component-text-input" placeholder="Ingresa tu contraseña actual para continuar">
             </div>

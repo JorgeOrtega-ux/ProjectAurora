@@ -282,11 +282,17 @@ html {
     cursor: pointer;
     text-decoration: none;
     color: inherit;
+    border: 1px solid transparent; /* Preparar para bordes */
 }
 
 .menu-link:hover,
 .menu-link.active {
     background-color: #f5f5fa;
+}
+
+/* NUEVA CLASE PARA EL BOTÓN DE REGRESO */
+.menu-link.menu-link-back {
+    border: 1px solid #00000020;
 }
 
 .menu-link-icon {

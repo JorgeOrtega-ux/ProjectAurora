@@ -2,37 +2,55 @@
 // includes/sections/settings/login-security.php
 
 if (session_status() === PHP_SESSION_NONE) session_start();
-// Aseguramos la conexión a la BD por si este archivo se carga en un contexto diferente
 require_once __DIR__ . '/../../../config/database/db.php';
 
-// --- HELPER DE FECHAS (FORMATO SOLICITADO) ---
-if (!function_exists('format_date_es')) {
-    function format_date_es($dateString) {
+// Detectar idioma
+$currentLang = isset($langToLoad) ? $langToLoad : (isset($_SESSION['language']) ? $_SESSION['language'] : 'es-419');
+
+// --- HELPER PARA FECHAS BASADO EN CLAVES DE TRADUCCIÓN ---
+if (!function_exists('format_date_with_keys')) {
+    function format_date_with_keys($dateString, $langCode) {
         if (!$dateString) return '';
-        $timestamp = strtotime($dateString);
-        // Array de meses en español
-        $months = [
-            "enero", "febrero", "marzo", "abril", "mayo", "junio", 
-            "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-        ];
-        $day = date('j', $timestamp);
-        $monthIndex = date('n', $timestamp) - 1;
-        $year = date('Y', $timestamp);
+        $ts = strtotime($dateString);
         
-        // Formato solicitado: "24 octubre del 2025"
-        return "$day " . $months[$monthIndex] . " del $year";
+        $day  = date('j', $ts);
+        $year = date('Y', $ts);
+        
+        // Obtenemos el nombre del mes en inglés (lowercase) para usarlo como parte de la clave
+        // Ejemplo: "january", "february"...
+        $monthNameEng = strtolower(date('F', $ts));
+        
+        // Clave de traducción del mes (ej: global.month.december)
+        $monthKey = "global.month." . $monthNameEng;
+        
+        // Claves de conectores
+        $keyDe  = "global.date_de";
+        $keyDel = "global.date_del";
+
+        // Estructura según idioma
+        $shortLang = substr($langCode, 0, 2);
+
+        if ($shortLang === 'en') {
+            // Formato Inglés: [Month] [Day], [Year]
+            // Usamos __($monthKey) para que si no hay traducción, salga "global.month.december" (o lo que tengas en el json inglés)
+            return __($monthKey) . " " . $day . ", " . $year;
+        } else {
+            // Formato Español/Default: [Day] [de] [Month] [del] [Year]
+            return $day . " " . __($keyDe) . " " . __($monthKey) . " " . __($keyDel) . " " . $year;
+        }
     }
 }
 
 // --- LÓGICA DE DATOS ---
 $is2faEnabled = false;
-$passMsg = __("settings.security.pass_never"); // Valor por defecto traducido
+$passMsg = __("settings.security.pass_never"); 
 $accountCreatedText = "";
+$deleteAccountMsg = "";
 
 if (isset($pdo) && isset($_SESSION['user_id'])) {
     $userId = $_SESSION['user_id'];
 
-    // 1. Obtener datos del usuario (2FA y Fecha de Creación)
+    // 1. Datos de usuario
     $stmt = $pdo->prepare("SELECT two_factor_enabled, created_at FROM users WHERE id = ?");
     $stmt->execute([$userId]);
     $userRow = $stmt->fetch();
@@ -40,20 +58,20 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
     if ($userRow) {
         $is2faEnabled = (bool)$userRow['two_factor_enabled'];
         if (!empty($userRow['created_at'])) {
-            $accountCreatedText = format_date_es($userRow['created_at']);
+            $dateStr = format_date_with_keys($userRow['created_at'], $currentLang);
+            
+            // Construimos el mensaje concatenando traducciones y la fecha procesada
+            $deleteAccountMsg = __("settings.security.delete_msg_part1") . " " . $dateStr . " " . __("settings.security.delete_msg_part2");
         }
     }
 
-    // 2. Obtener fecha del último cambio de contraseña desde security_logs
-    // Buscamos el evento 'pass_change_success' más reciente para este usuario
+    // 2. Última contraseña
     $stmtLog = $pdo->prepare("SELECT created_at FROM security_logs WHERE user_identifier = ? AND action_type = 'pass_change_success' ORDER BY id DESC LIMIT 1");
-    // Nota: El identificador en logs suele ser "uid_" + ID
     $stmtLog->execute(["uid_" . $userId]);
     $logRow = $stmtLog->fetch();
 
     if ($logRow && !empty($logRow['created_at'])) {
-        $lastDate = format_date_es($logRow['created_at']);
-        // Concatenamos la traducción con la fecha
+        $lastDate = format_date_with_keys($logRow['created_at'], $currentLang);
         $passMsg = __("settings.security.pass_updated_prefix") . " " . $lastDate;
     }
 }
@@ -181,11 +199,7 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
                     <div class="component-card__text">
                         <h2 class="component-card__title" style="color: #d32f2f;">Eliminar cuenta</h2>
                         <p class="component-card__description">
-                            <?php 
-                                echo __("settings.security.delete_msg_part1") . " " . 
-                                     htmlspecialchars($accountCreatedText) . " " . 
-                                     __("settings.security.delete_msg_part2"); 
-                            ?>
+                            <?php echo htmlspecialchars($deleteAccountMsg); ?>
                         </p>
                     </div>
                 </div>

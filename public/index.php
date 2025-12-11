@@ -199,7 +199,7 @@ if ($userThemePref === 'dark') {
                                     </div>
 
                                     <div id="nav-settings" class="menu-list <?php echo !$isSettingsSection ? 'disabled' : ''; ?>">
-                                        <div class="menu-link" data-nav="main" style="border-bottom: 1px solid #eee; margin-bottom: 8px;">
+                                        <div class="menu-link menu-link-back" data-nav="main">
                                             <div class="menu-link-icon">
                                                 <span class="material-symbols-rounded">arrow_back</span>
                                             </div>
