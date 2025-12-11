@@ -749,3 +749,8 @@ html {
     border-radius: 0 2px 0 0;
     transform: translateY(-50%) rotate(45deg);
 }
+
+.disabled-interactive {
+    pointer-events: none;
+    opacity: 0.5;
+}
