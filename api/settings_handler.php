@@ -6,7 +6,6 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../config/database/db.php'; 
 require_once __DIR__ . '/../config/helpers/i18n.php'; 
 require_once __DIR__ . '/utils.php';
-// Incluimos la librería de Google Authenticator que subiste
 require_once __DIR__ . '/../GoogleAuthenticator.php';
 
 if (session_status() === PHP_SESSION_NONE) session_start();
@@ -18,7 +17,6 @@ if (!isset($_SESSION['user_id'])) {
 
 $userId = $_SESSION['user_id'];
 
-// Cargar idioma
 $lang = null;
 try {
     $stmt = $pdo->prepare("SELECT language FROM user_preferences WHERE user_id = ?");
@@ -47,13 +45,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $input['action'] ?? '';
     $ga = new PHPGangsta_GoogleAuthenticator();
 
-    // ---------------------------------------------------
-    // INICIAR CONFIGURACIÓN 2FA (Paso 1: Generar QR)
-    // ---------------------------------------------------
-    if ($action === 'init_2fa') {
-        // Verificar contraseña actual antes de empezar
-        $password = $input['current_password'] ?? '';
+    // ==========================================
+    // NUEVO: GESTIÓN DE SESIONES (Dispositivos)
+    // ==========================================
+    
+    // 1. Obtener sesiones activas
+    if ($action === 'get_active_sessions') {
+        $stmt = $pdo->prepare("SELECT id, session_id, ip_address, user_agent, last_activity, created_at FROM active_sessions WHERE user_id = ? ORDER BY last_activity DESC");
+        $stmt->execute([$userId]);
+        $rows = $stmt->fetchAll();
         
+        $currentSessionId = session_id();
+        $data = [];
+        
+        foreach ($rows as $row) {
+            $parsed = parseUserAgentSimple($row['user_agent']);
+            $isCurrent = ($row['session_id'] === $currentSessionId);
+            
+            $data[] = [
+                'id' => $row['id'], // ID de base de datos, NO el token de sesión
+                'ip' => $row['ip_address'],
+                'os' => $parsed['os'],
+                'browser' => $parsed['browser'],
+                'icon' => $parsed['icon'],
+                'last_activity' => $row['last_activity'],
+                'is_current' => $isCurrent
+            ];
+        }
+        
+        sendJsonResponse('success', 'OK', null, $data);
+    }
+
+    // 2. Revocar sesión individual
+    if ($action === 'revoke_session') {
+        $sessionIdDb = $input['session_db_id'] ?? 0;
+        
+        // Asegurarse de que esa sesión pertenece al usuario
+        $stmt = $pdo->prepare("DELETE FROM active_sessions WHERE id = ? AND user_id = ?");
+        if ($stmt->execute([$sessionIdDb, $userId])) {
+            sendJsonResponse('success', 'Sesión cerrada exitosamente.');
+        } else {
+            sendJsonResponse('error', __('api.error.db_error'));
+        }
+    }
+
+    // 3. Revocar todas las sesiones (menos la actual)
+    if ($action === 'revoke_all_sessions') {
+        $password = $input['password'] ?? '';
+        
+        // Requiere confirmar contraseña
+        $stmtPass = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+        $stmtPass->execute([$userId]);
+        $storedHash = $stmtPass->fetchColumn();
+        if (!password_verify($password, $storedHash)) {
+            sendJsonResponse('error', __('api.error.current_password_invalid'));
+        }
+
+        $currentSessionId = session_id();
+        $stmt = $pdo->prepare("DELETE FROM active_sessions WHERE user_id = ? AND session_id != ?");
+        
+        if ($stmt->execute([$userId, $currentSessionId])) {
+            sendJsonResponse('success', 'Todas las demás sesiones han sido cerradas.');
+        } else {
+            sendJsonResponse('error', __('api.error.db_error'));
+        }
+    }
+
+    // --- LOGICA EXISTENTE DE 2FA ---
+    if ($action === 'init_2fa') {
+        $password = $input['current_password'] ?? '';
         $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $storedHash = $stmt->fetchColumn();
@@ -62,9 +122,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              sendJsonResponse('error', __('api.error.current_password_invalid'));
         }
 
-        // Generar nuevo secreto
         $secret = $ga->createSecret();
-        $_SESSION['temp_2fa_secret'] = $secret; // Guardar temporalmente
+        $_SESSION['temp_2fa_secret'] = $secret; 
 
         $username = $_SESSION['username'];
         $qrCodeUrl = $ga->getQRCodeGoogleUrl('ProjectAurora (' . $username . ')', $secret);
@@ -75,9 +134,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
     }
 
-    // ---------------------------------------------------
-    // ACTIVAR 2FA (Paso 2: Verificar código y guardar)
-    // ---------------------------------------------------
     if ($action === 'enable_2fa') {
         $code = trim($input['code'] ?? '');
         $secret = $_SESSION['temp_2fa_secret'] ?? null;
@@ -86,18 +142,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             sendJsonResponse('error', __('api.error.missing_data'));
         }
 
-        // Validar el código ingresado contra el secreto temporal
-        $checkResult = $ga->verifyCode($secret, $code, 1); // 1 = tolerancia de 30s
+        $checkResult = $ga->verifyCode($secret, $code, 1);
         
         if ($checkResult) {
-            // Generar códigos de recuperación
             $recoveryCodes = [];
             for ($i = 0; $i < 8; $i++) {
                 $recoveryCodes[] = bin2hex(random_bytes(4)) . '-' . bin2hex(random_bytes(4));
             }
             $recoveryCodesJson = json_encode($recoveryCodes);
 
-            // Guardar en BD
             $stmt = $pdo->prepare("UPDATE users SET two_factor_secret = ?, two_factor_enabled = 1, two_factor_recovery_codes = ? WHERE id = ?");
             if ($stmt->execute([$secret, $recoveryCodesJson, $userId])) {
                 unset($_SESSION['temp_2fa_secret']);
@@ -114,13 +167,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // ---------------------------------------------------
-    // DESACTIVAR 2FA
-    // ---------------------------------------------------
     if ($action === 'disable_2fa') {
         $password = $input['current_password'] ?? '';
-
-        // Validar contraseña de nuevo por seguridad
         $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $storedHash = $stmt->fetchColumn();
@@ -138,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // --- A) ACTUALIZAR PERFIL (Usuario y Correo) ---
+    // --- ACTUALIZAR PERFIL ---
     if ($action === 'update_profile') {
         $newUsername = trim($input['username'] ?? '');
         $newEmail = trim($input['email'] ?? '');
@@ -149,7 +197,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $emailVal = validateEmailRequirements($newEmail);
         if ($emailVal !== true) sendJsonResponse('error', $emailVal);
 
-        // 1. Obtener datos actuales para comparar y guardar historial
         $stmtCurrent = $pdo->prepare("SELECT username, email FROM users WHERE id = ?");
         $stmtCurrent->execute([$userId]);
         $currentUserData = $stmtCurrent->fetch();
@@ -166,7 +213,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             sendJsonResponse('success', __('api.success.profile_updated'), null, ['username' => $newUsername, 'email' => $newEmail]);
         }
 
-        // 2. Verificar Límites (1 cambio cada 12 días)
         if ($usernameChanged) {
             if (!checkProfileChangeLimit($pdo, $userId, 'username', 12, 1)) {
                 sendJsonResponse('error', __('api.error.limit_username'));
@@ -178,18 +224,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // 3. Verificar unicidad
         $stmtCheck = $pdo->prepare("SELECT id FROM users WHERE (username = ? OR email = ?) AND id != ?");
         $stmtCheck->execute([$newUsername, $newEmail, $userId]);
         if ($stmtCheck->rowCount() > 0) {
             sendJsonResponse('error', __('api.error.username_exists'));
         }
 
-        // 4. Actualizar
         $updateStmt = $pdo->prepare("UPDATE users SET username = ?, email = ? WHERE id = ?");
         if ($updateStmt->execute([$newUsername, $newEmail, $userId])) {
-            
-            // 5. Loguear cambios
             if ($usernameChanged) {
                 logProfileChange($pdo, $userId, 'username', $oldUsername, $newUsername);
                 $_SESSION['username'] = $newUsername;
@@ -204,7 +246,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // --- B) ACTUALIZAR PREFERENCIAS ---
+    // --- PREFERENCIAS ---
     if ($action === 'update_preferences') {
         $language = $input['language'] ?? null;
         $openLinks = isset($input['open_links_new_tab']) ? (int)$input['open_links_new_tab'] : null;
@@ -256,11 +298,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // --- C) SUBIR FOTO ---
+    // --- SUBIR FOTO ---
     if ($action === 'upload_profile_picture') {
-        // 1. Verificar Límite: Máximo 3 cambios en 1 día (24 horas)
-        // NOTA: Si el usuario borra la foto, eso cuenta como otro tipo de acción, aquí solo validamos 'upload'.
-        // Pero si el usuario cambia una foto personalizada por otra personalizada, cuenta aquí.
         if (!checkProfileChangeLimit($pdo, $userId, 'avatar', 1, 3)) {
             sendJsonResponse('error', __('api.error.limit_avatar'));
         }
@@ -281,8 +320,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $uuid = $_SESSION['uuid'];
         $targetFile = DIR_CUSTOM . $uuid . '.png';
-        
-        // Determinar valor antiguo (si existía foto custom)
         $oldValue = file_exists($targetFile) ? 'Custom Avatar (Overwritten)' : 'Default Avatar';
 
         $src = null;
@@ -301,26 +338,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         if ($uploadSuccess) {
-            // Eliminar versión default si existía (limpieza)
             $defaultFile = DIR_DEFAULT . $uuid . '.png';
             if (file_exists($defaultFile)) unlink($defaultFile);
             
             $url = $basePath . URL_BASE_AVATARS . 'custom/' . $uuid . '.png?v=' . time();
-
-            // 2. Loguear cambio
             logProfileChange($pdo, $userId, 'avatar', $oldValue, 'New Custom Avatar');
-
             sendJsonResponse('success', __('api.success.photo_updated'), null, ['url' => $url]);
         } else {
             sendJsonResponse('error', __('api.error.db_error'));
         }
     }
 
-    // --- D) DELETE PHOTO ---
+    // --- DELETE PHOTO ---
     if ($action === 'delete_profile_picture') {
-         // NOTA: La regla dice "si se alcanzó el límite... permitir eliminarla". 
-         // Por lo tanto, NO llamamos a checkProfileChangeLimit aquí. Siempre se permite borrar.
-         
          $uuid = $_SESSION['uuid'];
          $username = $_SESSION['username'];
          $customFile = DIR_CUSTOM . $uuid . '.png';
@@ -336,7 +366,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          
          ensureDefaultAvatarExists($uuid, $username);
          
-         // Loguear el cambio
          if ($wasCustom) {
             logProfileChange($pdo, $userId, 'avatar', 'Custom Avatar', 'Default Avatar');
          }
@@ -345,7 +374,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
          sendJsonResponse('success', __('api.success.photo_deleted'), null, ['url' => $defaultUrl]);
     }
 
-    // --- E) UPDATE PASSWORD ---
+    // --- UPDATE PASSWORD ---
     if ($action === 'update_password') {
         $currentPass = $input['current_password'] ?? '';
         $newPass     = $input['new_password'] ?? '';

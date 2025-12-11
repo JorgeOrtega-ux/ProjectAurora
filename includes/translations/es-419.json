@@ -89,12 +89,18 @@
 
     "settings.security.title": "Inicio de sesión y seguridad",
     "settings.security.desc": "Gestiona tu contraseña y métodos de acceso.",
+    "settings.security.devices_title": "Tus Dispositivos",
+    "settings.security.devices_desc": "Administra dónde has iniciado sesión.",
+    "settings.security.btn_manage": "Administrar",
     "settings.security.pass_title": "Actualizar Contraseña",
     "settings.security.pass_desc": "Asegúrate de usar una contraseña larga y aleatoria.",
     "settings.security.btn_update": "Actualizar",
     "settings.security.current_pass_ph": "Ingresa tu contraseña actual",
     "settings.security.new_pass_ph": "Ingresa la nueva contraseña",
     "settings.security.repeat_pass_ph": "Repetir la nueva contraseña",
+
+    "settings.devices.title": "Dispositivos con sesión activa",
+    "settings.devices.desc": "Estos son los dispositivos que han accedido a tu cuenta recientemente.",
 
     "settings.accessibility.title": "Accesibilidad",
     "settings.accessibility.desc": "Ajusta la apariencia y comportamiento de la aplicación.",

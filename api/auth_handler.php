@@ -4,11 +4,11 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../config/database/db.php'; 
 require_once __DIR__ . '/../config/helpers/i18n.php'; 
 require_once __DIR__ . '/utils.php';
-require_once __DIR__ . '/../GoogleAuthenticator.php'; // IMPORTANTE
+require_once __DIR__ . '/../GoogleAuthenticator.php'; 
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 $userId = $_SESSION['user_id'] ?? 0;
-// ... (lógica de carga de idioma se mantiene igual) ...
+
 $lang = null;
 if ($userId) {
     try {
@@ -141,7 +141,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['uuid'] = $uuid;
                     $_SESSION['role'] = 'user';
                     unset($_SESSION['pending_verification_email']);
+                    
+                    // Registro de sesión y acceso
                     logUserAccess($pdo, $newId);
+                    registerActiveSession($pdo, $newId); // NUEVO
+
                     sendJsonResponse('success', __('api.success.account_created'), $basePath);
                 } else {
                     sendJsonResponse('error', __('api.error.db_error'));
@@ -155,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // --- 5. LOGIN MODIFICADO PARA 2FA ---
+    // --- 5. LOGIN MODIFICADO PARA 2FA Y SESIONES ---
     if ($action === 'login') {
         $email = trim($input['email'] ?? '');
         $password = $input['password'] ?? '';
@@ -168,19 +172,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user && password_verify($password, $user['password'])) {
             session_regenerate_id(true);
 
-            // VERIFICAR SI TIENE 2FA ACTIVADO
             if ($user['two_factor_enabled'] == 1) {
-                $_SESSION['temp_2fa_user_id'] = $user['id']; // Sesión parcial
-                // Redirigir a la pantalla de desafío 2FA
-                // CORREGIDO: Redirección sin el prefijo 'auth/'
+                $_SESSION['temp_2fa_user_id'] = $user['id']; 
                 sendJsonResponse('success', '2FA Required', $basePath . '2fa-challenge');
             } else {
-                // Login normal
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['uuid'] = $user['uuid'];
                 $_SESSION['role'] = $user['role'];
+                
                 logUserAccess($pdo, $user['id']);
+                registerActiveSession($pdo, $user['id']); // NUEVO: Registrar en BD
+
                 sendJsonResponse('success', __('api.success.welcome'), $basePath);
             }
         } else {
@@ -189,7 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // --- NUEVO: VALIDAR EL DESAFÍO 2FA AL LOGUEARSE ---
+    // --- 5.1 VERIFICAR 2FA LOGIN ---
     if ($action === 'verify_2fa_login') {
         $code = trim($input['code'] ?? '');
         
@@ -200,7 +203,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $userId = $_SESSION['temp_2fa_user_id'];
         checkRateLimit($pdo, "uid_".$userId, '2fa_verify_fail', 5, 15);
 
-        // Obtener secreto y códigos de backup
         $stmt = $pdo->prepare("SELECT id, username, uuid, role, two_factor_secret, two_factor_recovery_codes FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $user = $stmt->fetch();
@@ -210,14 +212,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ga = new PHPGangsta_GoogleAuthenticator();
         $isValid = $ga->verifyCode($user['two_factor_secret'], $code, 1);
 
-        // Si falla el código TOTP, revisar códigos de recuperación
         $usedBackupCode = false;
         if (!$isValid && !empty($user['two_factor_recovery_codes'])) {
             $backupCodes = json_decode($user['two_factor_recovery_codes'], true);
             if (in_array($code, $backupCodes)) {
                 $isValid = true;
                 $usedBackupCode = true;
-                // Eliminar el código usado
                 $backupCodes = array_diff($backupCodes, [$code]);
                 $stmtUpdate = $pdo->prepare("UPDATE users SET two_factor_recovery_codes = ? WHERE id = ?");
                 $stmtUpdate->execute([json_encode(array_values($backupCodes)), $userId]);
@@ -225,14 +225,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($isValid) {
-            // Promocionar a sesión completa
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['uuid'] = $user['uuid'];
             $_SESSION['role'] = $user['role'];
-            unset($_SESSION['temp_2fa_user_id']); // Limpiar sesión temporal
+            unset($_SESSION['temp_2fa_user_id']);
 
             logUserAccess($pdo, $user['id']);
+            registerActiveSession($pdo, $user['id']); // NUEVO: Registrar en BD
+
             sendJsonResponse('success', __('api.success.welcome'), $basePath);
         } else {
             logSecurityEvent($pdo, "uid_".$userId, '2fa_verify_fail');
@@ -240,7 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // --- 6. RECUPERAR CONTRASEÑA (SOLICITUD) ---
+    // --- 6. RECUPERAR CONTRASEÑA ---
     if ($action === 'request_password_reset') {
         $email = trim($input['email'] ?? '');
         checkRateLimit($pdo, $email, 'recovery_request', 3, 60, true);
@@ -283,6 +284,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     // --- 8. LOGOUT ---
     if ($action === 'logout') {
+        // NUEVO: Eliminar de active_sessions antes de destruir la sesión PHP
+        if (isset($_SESSION['user_id'])) {
+             $sid = session_id();
+             $pdo->prepare("DELETE FROM active_sessions WHERE session_id = ?")->execute([$sid]);
+        }
+
         $_SESSION = [];
         if (ini_get("session.use_cookies")) {
             $params = session_get_cookie_params();

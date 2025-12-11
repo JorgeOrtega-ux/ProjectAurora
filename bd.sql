@@ -92,3 +92,16 @@ ALTER TABLE users
 ADD COLUMN two_factor_secret VARCHAR(255) NULL DEFAULT NULL,
 ADD COLUMN two_factor_enabled TINYINT(1) DEFAULT 0,
 ADD COLUMN two_factor_recovery_codes TEXT NULL DEFAULT NULL;
+
+-- 11. NUEVA TABLA: Sesiones Activas
+CREATE TABLE IF NOT EXISTS active_sessions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    session_id VARCHAR(255) NOT NULL, -- El ID de sesión de PHP
+    ip_address VARCHAR(45) NULL,
+    user_agent TEXT NULL,
+    last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_session_lookup (session_id)
+);

@@ -17,7 +17,29 @@ $userLang = null;
 // Lógica para usuarios logueados completamente
 if ($isLoggedIn) {
     try {
-        // MODIFICADO: Agregamos p.theme y p.extended_alerts a la consulta
+        // --- VALIDACIÓN DE SESIÓN ACTIVA (Dispositivos) ---
+        // Verificamos si la sesión actual existe en la tabla active_sessions.
+        // Si no existe, significa que fue revocada remotamente.
+        $currentSessionId = session_id();
+        $stmtSession = $pdo->prepare("SELECT id FROM active_sessions WHERE session_id = ? AND user_id = ?");
+        $stmtSession->execute([$currentSessionId, $_SESSION['user_id']]);
+        
+        if ($stmtSession->rowCount() === 0) {
+            // Sesión no válida o revocada -> Cerrar sesión forzosamente
+            $_SESSION = [];
+            if (ini_get("session.use_cookies")) {
+                $params = session_get_cookie_params();
+                setcookie(session_name(), '', time() - 42000, $params["path"], $params["domain"], $params["secure"], $params["httponly"]);
+            }
+            session_destroy();
+            header("Location: " . $basePath . "login?reason=session_revoked");
+            exit;
+        } else {
+            // Actualizar 'last_activity' para mantenerla viva en la lista
+            $pdo->prepare("UPDATE active_sessions SET last_activity = NOW() WHERE session_id = ?")->execute([$currentSessionId]);
+        }
+
+        // --- CARGA DE DATOS DE USUARIO ---
         $stmt = $pdo->prepare("
             SELECT u.role, u.username, u.uuid, 
                    p.language, p.theme, p.extended_alerts 
@@ -33,7 +55,6 @@ if ($isLoggedIn) {
             $_SESSION['username'] = $freshUser['username'];
             $_SESSION['uuid'] = $freshUser['uuid'];
             
-            // Guardamos preferencias en sesión para uso rápido en index.php
             $_SESSION['theme'] = $freshUser['theme'] ?? 'system';
             $_SESSION['extended_alerts'] = $freshUser['extended_alerts'] ?? 0;
             
@@ -103,7 +124,6 @@ if ($currentSection === '') {
 $routes = require __DIR__ . '/../routes.php';
 $validRoutes = array_keys($routes); 
 
-// Rutas permitidas para GUEST (sin sesión completa)
 $guestRoutes = [
     'login', 
     'register', 
@@ -114,24 +134,17 @@ $guestRoutes = [
     '2fa-challenge'
 ];
 
-// Comprobación de estado intermedio (2FA Pendiente)
 $is2faPending = isset($_SESSION['temp_2fa_user_id']);
 
 if (!$isLoggedIn) {
-    // Si no está logueado:
-    
-    // Caso especial: Está intentando validar 2FA y tiene la sesión temporal
     if ($currentSection === '2fa-challenge' && $is2faPending) {
         // Permitir acceso
     } 
-    // Caso normal: Si intenta ir a una ruta que no es de guest, mandar a login
     elseif (!in_array($currentSection, $guestRoutes)) {
         header("Location: " . $basePath . "login");
         exit;
     }
 } else {
-    // Si YA está logueado:
-    // No debe ver login, register ni el challenge de 2fa.
     if (in_array($currentSection, $guestRoutes)) {
         header("Location: " . $basePath);
         exit;

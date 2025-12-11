@@ -98,6 +98,27 @@ export const SettingsService = {
             current_password: currentPassword,
             new_password: newPassword
         });
+    },
+
+    // --- NUEVOS MÉTODOS PARA DISPOSITIVOS ---
+    getActiveSessions: () => {
+        return postRequest('api/settings_handler.php', {
+            action: 'get_active_sessions'
+        });
+    },
+    
+    revokeSession: (sessionDbId) => {
+        return postRequest('api/settings_handler.php', {
+            action: 'revoke_session',
+            session_db_id: sessionDbId
+        });
+    },
+
+    revokeAllSessions: (password) => {
+        return postRequest('api/settings_handler.php', {
+            action: 'revoke_all_sessions',
+            password: password
+        });
     }
 };
 

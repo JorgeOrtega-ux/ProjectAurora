@@ -1,6 +1,5 @@
 <?php
 // includes/sections/settings/login-security.php
-// Obtener estado actual del 2FA
 $is2faEnabled = false;
 if (isset($pdo) && isset($_SESSION['user_id'])) {
     $stmt = $pdo->prepare("SELECT two_factor_enabled FROM users WHERE id = ?");
@@ -17,6 +16,27 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
         </div>
 
         <div class="component-card component-card--grouped">
+
+            <div class="component-group-item">
+                <div class="component-card__content">
+                    <div class="component-card__profile-picture component-card__profile-picture--bordered">
+                        <span class="material-symbols-rounded" style="font-size: 32px; color: #000;">devices</span>
+                    </div>
+
+                    <div class="component-card__text">
+                        <h2 class="component-card__title"><?= __('settings.security.devices_title') ?></h2>
+                        <p class="component-card__description"><?= __('settings.security.devices_desc') ?></p>
+                    </div>
+                </div>
+
+                <div class="component-card__actions actions-right">
+                    <button type="button" class="component-button" data-nav="settings/devices">
+                        <?= __('settings.security.btn_manage') ?>
+                    </button>
+                </div>
+            </div>
+
+            <hr class="component-divider">
 
             <div class="component-group-item">
                 <div class="component-card__content">

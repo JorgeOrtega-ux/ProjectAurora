@@ -4,13 +4,11 @@
 // ==========================================
 // 1. CONFIGURACIÓN COMPARTIDA (Directorios)
 // ==========================================
-// Definimos las rutas relativas a la carpeta API
 define('UPLOAD_BASE_DIR', __DIR__ . '/../public/assets/uploads/avatars/');
 define('DIR_CUSTOM', UPLOAD_BASE_DIR . 'custom/');
 define('DIR_DEFAULT', UPLOAD_BASE_DIR . 'default/');
 define('URL_BASE_AVATARS', 'assets/uploads/avatars/');
 
-// Asegurar que existan los directorios
 if (!is_dir(DIR_CUSTOM)) @mkdir(DIR_CUSTOM, 0755, true);
 if (!is_dir(DIR_DEFAULT)) @mkdir(DIR_DEFAULT, 0755, true);
 
@@ -40,7 +38,6 @@ function getClientIP() {
 // ==========================================
 
 function validateEmailRequirements($email) {
-    // Verificar formato básico
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) return __('api.error.email_format');
     
     $atPos = strrpos($email, '@');
@@ -49,10 +46,8 @@ function validateEmailRequirements($email) {
     $prefix = substr($email, 0, $atPos);
     $domain = strtolower(substr($email, $atPos + 1));
     
-    // Verificar longitud mínima del usuario (ej. a@b.c es muy corto)
     if (strlen($prefix) < 4) return __('api.error.email_format'); 
     
-    // Lista blanca de dominios permitidos
     $allowedDomains = ['gmail.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'yahoo.com'];
     if (!in_array($domain, $allowedDomains)) return __('api.error.email_domain');
     
@@ -82,6 +77,48 @@ function logUserAccess($pdo, $userId) {
         $stmt = $pdo->prepare("INSERT INTO access_logs (user_id, ip_address, user_agent) VALUES (?, ?, ?)");
         $stmt->execute([$userId, $ip, $userAgent]);
     } catch (Exception $e) { }
+}
+
+/**
+ * Registra la sesión actual en la base de datos para gestión de dispositivos.
+ */
+function registerActiveSession($pdo, $userId) {
+    try {
+        $sessionId = session_id();
+        $ip = getClientIP();
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'UNKNOWN';
+
+        // Primero limpiamos si hubiera una sesión con el mismo ID para evitar duplicados
+        $pdo->prepare("DELETE FROM active_sessions WHERE session_id = ?")->execute([$sessionId]);
+
+        $stmt = $pdo->prepare("INSERT INTO active_sessions (user_id, session_id, ip_address, user_agent) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$userId, $sessionId, $ip, $userAgent]);
+    } catch (Exception $e) { }
+}
+
+/**
+ * Parsea el User Agent para mostrar algo legible en la UI
+ */
+function parseUserAgentSimple($ua) {
+    $browser = 'Navegador desconocido';
+    $os = 'Sistema desconocido';
+    $icon = 'device_unknown'; 
+
+    // Detectar SO
+    if (preg_match('/windows|win32/i', $ua)) { $os = 'Windows'; $icon = 'desktop_windows'; }
+    elseif (preg_match('/macintosh|mac os x/i', $ua)) { $os = 'macOS'; $icon = 'laptop_mac'; }
+    elseif (preg_match('/linux/i', $ua)) { $os = 'Linux'; $icon = 'terminal'; }
+    elseif (preg_match('/android/i', $ua)) { $os = 'Android'; $icon = 'phone_android'; }
+    elseif (preg_match('/iphone|ipad|ipod/i', $ua)) { $os = 'iOS'; $icon = 'phone_iphone'; }
+
+    // Detectar Navegador
+    if (preg_match('/MSIE|Trident/i', $ua)) $browser = 'Internet Explorer';
+    elseif (preg_match('/Firefox/i', $ua)) $browser = 'Firefox';
+    elseif (preg_match('/Chrome/i', $ua)) $browser = 'Chrome';
+    elseif (preg_match('/Safari/i', $ua)) $browser = 'Safari';
+    elseif (preg_match('/Edge/i', $ua)) $browser = 'Edge';
+
+    return ['os' => $os, 'browser' => $browser, 'icon' => $icon];
 }
 
 function logSecurityEvent($pdo, $identifier, $actionType) {
@@ -116,46 +153,27 @@ function checkRateLimit($pdo, $identifier, $actionType, $limit, $minutes, $check
 }
 
 // ==========================================
-// 5. NUEVO: FUNCIONES DE HISTORIAL Y LÍMITES DE PERFIL
+// 5. FUNCIONES DE PERFIL Y AVATAR
 // ==========================================
 
-/**
- * Registra un cambio en la tabla user_profile_history.
- */
 function logProfileChange($pdo, $userId, $type, $oldValue, $newValue) {
     try {
         $stmt = $pdo->prepare("INSERT INTO user_profile_history (user_id, change_type, old_value, new_value) VALUES (?, ?, ?, ?)");
         $stmt->execute([$userId, $type, $oldValue, $newValue]);
-    } catch (Exception $e) {
-        // Fallo silencioso para no romper el flujo principal si el log falla, pero idealmente debería registrarse en error_log
-        error_log("Error logging profile change: " . $e->getMessage());
-    }
+    } catch (Exception $e) { }
 }
 
-/**
- * Verifica si el usuario ha excedido el límite de cambios para un tipo específico en un periodo de tiempo.
- * Retorna true si PUEDE hacer el cambio, false si está bloqueado.
- */
 function checkProfileChangeLimit($pdo, $userId, $type, $daysInterval, $maxChanges) {
     try {
-        // Construimos la query para intervalo. Si es 1 día, usamos DAY, si son 12, también.
-        // SQL Injection safe porque pasamos parámetros o hardcodeamos strings controlados en el código que llama.
         $sql = "SELECT COUNT(*) FROM user_profile_history WHERE user_id = ? AND change_type = ? AND created_at > (NOW() - INTERVAL $daysInterval DAY)";
-        
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$userId, $type]);
         $count = $stmt->fetchColumn();
-
         return ($count < $maxChanges);
     } catch (Exception $e) {
-        error_log("Error check limits: " . $e->getMessage());
-        return false; // Por seguridad, si falla la BD, bloqueamos.
+        return false;
     }
 }
-
-// ==========================================
-// 6. FUNCIONES DE AVATAR
-// ==========================================
 
 function ensureDefaultAvatarExists($uuid, $username) {
     $targetFile = DIR_DEFAULT . $uuid . '.png';
