@@ -442,7 +442,7 @@ html {
     font-size: 15px;
 }
 
-/* --- FLOATING LABELS (CORREGIDO) --- */
+/* --- FLOATING LABELS --- */
 .form-group {
     position: relative;
     margin-bottom: 20px;
@@ -457,7 +457,6 @@ html {
     font-size: 16px;
     background-color: #fff;
     height: 55px;
-    /* TRANSICIÓN AÑADIDA PARA EL BORDE */
     transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
@@ -476,7 +475,6 @@ html {
     color: #888;
     pointer-events: none;
     background-color: transparent;
-    /* TRANSICIÓN AÑADIDA PARA LA ANIMACIÓN DEL TEXTO */
     transition: all 0.2s ease-out;
 }
 
@@ -605,44 +603,79 @@ html {
 }
 
 @media (max-width: 465px) {
- .module-content.module-surface {
-    width: 100%;
-    padding: 0;
- }
-
- .module-surface .menu-content {
-    width: 100%;
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
- }
-
- .general-content:has(.module-surface.active) .general-content-top {
-        box-shadow: none !important;
-        border-bottom: 1px solid #00000020; /* Opcional: Si quieres mantener la línea divisoria sutil */
+    .module-content.module-surface {
+        width: 100%;
+        padding: 0;
     }
 
+    .module-surface .menu-content {
+        width: 100%;
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+    }
+
+    .general-content:has(.module-surface.active) .general-content-top {
+        box-shadow: none !important;
+        border-bottom: 1px solid #00000020;
+    }
+
+    /* --- LÓGICA DE ANIMACIÓN MOBILE PROFILE (BOTTOM SHEET) --- */
 
     .module-content.module-profile {
         width: 100%;
         height: 100%;
         position: fixed;
         top: 0;
+        left: 0; 
+        display: flex !important; /* Forzamos flex para que no se oculte con display:none */
         justify-content: center;
         align-items: flex-end;
-        background-color: #00000080;
+        background-color: rgba(0, 0, 0, 0.5); /* Fondo oscuro transparente */
+        z-index: 2000;
+        
+        /* Transición para el fondo (fade in/out) */
+        transition: visibility 0.3s, opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        
+        /* Estado por defecto oculto pero presente en DOM */
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
     }
 
+    /* Estado visible (active) */
+    .module-content.module-profile.active {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+    }
+
+    /* El contenido del menú (la tarjeta blanca) */
     .module-profile .menu-content {
         width: 100%;
         border-bottom-left-radius: 0;
         border-bottom-right-radius: 0;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        
+        /* Posición inicial (fuera de pantalla hacia abajo) */
+        transform: translateY(100%);
+        /* Transición suave de deslizamiento */
+        transition: transform 0.3s cubic-bezier(0.1, 0.7, 0.1, 1);
+        will-change: transform;
     }
 
-        .pill-container {
+    /* Cuando el padre está activo, el contenido sube a su posición natural */
+    .module-content.module-profile.active .menu-content {
+        transform: translateY(0);
+    }
+
+    /* Pill container (zona de arrastre) */
+    .pill-container {
         display: flex;
         justify-content: center;
         width: 100%;
-        padding-botttom:8px;
+        padding: 8px 0;
+        padding-top: 0;
         flex-shrink: 0;
         touch-action: none;
         cursor: grab;
