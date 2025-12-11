@@ -251,7 +251,9 @@ const setupPreferencesLogic = () => {
         if (toggle) {
             toggle.addEventListener('change', (e) => {
                 const isChecked = e.target.checked ? 1 : 0;
-                e.target.disabled = true;
+                
+                // NOTA: NO deshabilitamos el input aquí para cumplir con el requisito de "Sin Debounce".
+                // Dejamos que el usuario haga clic libremente, el backend se encarga de silenciar ráfagas.
                 
                 const payload = {};
                 payload[fieldName] = isChecked;
@@ -260,21 +262,28 @@ const setupPreferencesLogic = () => {
                     .then(res => {
                         if (res.status === 'success') {
                             Toast.success(res.message);
-                            // MODIFICADO: Actualizar variable global en tiempo real
+                            // Actualizar variable global en tiempo real
                             if (window.USER_PREFS) {
                                 window.USER_PREFS[fieldName] = isChecked;
                             }
                         } else {
+                            // Revertir visualmente si hubo error (Ej. Spam block)
                             e.target.checked = !e.target.checked; 
                             Toast.error(res.message || window.t('global.error'));
+                            
+                            // Si el error fue por Rate Limit, bloqueamos visualmente por unos segundos para educar al usuario
+                            // El mensaje "espera unos minutos" suele venir del backend en este caso
+                            if (res.message && (res.message.toLowerCase().includes('espera') || res.message.toLowerCase().includes('wait'))) {
+                                e.target.disabled = true;
+                                setTimeout(() => {
+                                    e.target.disabled = false;
+                                }, 5000); 
+                            }
                         }
                     })
                     .catch(err => {
                         e.target.checked = !e.target.checked;
                         Toast.error(window.t('js.error.connection'));
-                    })
-                    .finally(() => {
-                        e.target.disabled = false;
                     });
             });
         }

@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ga = new PHPGangsta_GoogleAuthenticator();
 
     // ==========================================
-    // NUEVO: ELIMINAR CUENTA
+    // ELIMINAR CUENTA
     // ==========================================
     if ($action === 'delete_account') {
         $password = $input['password'] ?? '';
@@ -92,12 +92,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             sendJsonResponse('error', __('api.error.db_error'));
         }
     }
-
-    // [EL RESTO DE LAS ACCIONES DE SETTINGS_HANDLER.PHP SE MANTIENEN IGUAL QUE EN TU ARCHIVO ORIGINAL]
-    // ... get_active_sessions, revoke_session, update_preferences, upload_profile_picture, etc.
-    // Solo estoy copiando el bloque nuevo para ahorrar espacio, pero en tu archivo final 
-    // debes tener todo el contenido anterior + este bloque 'delete_account'.
-    // A continuación incluyo el resto para que sea "COMPLETO SIN OMITIR NADA" como pediste:
 
     // 1. Obtener sesiones activas
     if ($action === 'get_active_sessions') {
@@ -292,12 +286,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // PREFERENCIAS
+    // PREFERENCIAS (MODIFICADO: ANTI-SPAM LOGIC)
     if ($action === 'update_preferences') {
         $language = $input['language'] ?? null;
         $openLinks = isset($input['open_links_new_tab']) ? (int)$input['open_links_new_tab'] : null;
         $theme = $input['theme'] ?? null;
         $extendedAlerts = isset($input['extended_alerts']) ? (int)$input['extended_alerts'] : null;
+
+        // --- ANTI-SPAM LOGIC START ---
+        $spamIdentifier = "uid_" . $userId;
+
+        // 1. Verificar si ya está bloqueado (Silencio Táctico)
+        // Solo lectura rápida. Si encuentra el registro de bloqueo reciente, aborta sin escribir nada.
+        $stmtBlock = $pdo->prepare("SELECT id FROM security_logs WHERE user_identifier = ? AND action_type = 'pref_spam_blocked' AND created_at > (NOW() - INTERVAL 1 MINUTE) LIMIT 1");
+        $stmtBlock->execute([$spamIdentifier]);
+        if ($stmtBlock->fetch()) {
+            http_response_code(429); // Too Many Requests
+            sendJsonResponse('error', __('api.error.rate_limit'));
+        }
+
+        // 2. Contar actualizaciones legítimas en el último minuto
+        $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM security_logs WHERE user_identifier = ? AND action_type = 'pref_update' AND created_at > (NOW() - INTERVAL 1 MINUTE)");
+        $stmtCount->execute([$spamIdentifier]);
+        $count = $stmtCount->fetchColumn();
+
+        // 3. Decisión
+        if ($count >= 5) {
+            // Caso B: Gatillo de Bloqueo (Primer registro de spam en esta ráfaga)
+            logSecurityEvent($pdo, $spamIdentifier, 'pref_spam_blocked');
+            http_response_code(429);
+            sendJsonResponse('error', __('api.error.rate_limit'));
+        }
+        // --- ANTI-SPAM LOGIC END ---
 
         $fields = [];
         $params = [];
@@ -335,6 +355,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $stmt = $pdo->prepare($sql);
             if ($stmt->execute($params)) {
+                // Caso A: Registro de Éxito (Consume 1 intento)
+                logSecurityEvent($pdo, $spamIdentifier, 'pref_update');
                 sendJsonResponse('success', __('api.success.preferences_saved'));
             } else {
                 sendJsonResponse('error', __('api.error.db_error'));
