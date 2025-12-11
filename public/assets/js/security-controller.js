@@ -295,7 +295,7 @@ const renderDevicesList = (container, sessions) => {
                         ${session.os} - ${session.browser} ${badge}
                     </h2>
                     <p class="component-card__description">
-                        IP: ${session.ip} • Última vez: ${session.last_activity}
+                        IP: ${session.ip} • ${window.t('settings.devices.last_activity')}: ${session.last_activity}
                     </p>
                 </div>
             </div>

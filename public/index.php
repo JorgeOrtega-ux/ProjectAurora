@@ -132,7 +132,7 @@ if ($userThemePref === 'dark') {
                                         data-lang-tooltip="menu.profile">
 
                                         <?php if ($hasImage): ?>
-                                            <img src="<?php echo $globalAvatarSrc; ?>" alt="Perfil" class="profile-img">
+                                            <img src="<?php echo $globalAvatarSrc; ?>" alt="<?php echo __('menu.profile'); ?>" class="profile-img">
                                         <?php else: ?>
                                             <span style="font-weight:bold; color:#555; position: relative; z-index: 1;">
                                                 <?php echo strtoupper(substr($_SESSION['username'], 0, 1)); ?>
@@ -245,7 +245,7 @@ if ($userThemePref === 'dark') {
                         </div>
                     <?php endif; ?>
 
-                    <div class="general-content-scrolleable" data-container="main-section">
+                    <div class="general-content-scrolleable overflow-y" data-container="main-section">
                         <?php
                         // LÓGICA DE CARGA
                         $fileToLoad = $sectionMap['404']; 

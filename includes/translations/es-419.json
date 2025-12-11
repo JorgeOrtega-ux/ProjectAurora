@@ -156,6 +156,7 @@
     "settings.devices.logout_others_desc": "Solo mantendrá activa la sesión actual.",
     "settings.devices.no_active": "No hay sesiones activas.",
     "settings.devices.this_device": "Este dispositivo",
+    "settings.devices.last_activity": "Última vez",
 
     "settings.accessibility.title": "Accesibilidad",
     "settings.accessibility.desc": "Ajusta la apariencia y comportamiento de la aplicación.",
