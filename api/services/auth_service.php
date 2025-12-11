@@ -21,10 +21,10 @@ function handle_login($pdo, $email, $password) {
         // --- CHECK DE STATUS ---
         if ($user['account_status'] === 'deleted') {
             logSecurityEvent($pdo, $email, 'login_deleted_attempt');
-            return ['status' => 'error', 'message' => "Esta cuenta ha sido eliminada permanentemente."];
+            return ['status' => 'error', 'message' => __('api.error.account_deleted_permanent')];
         }
         if ($user['account_status'] === 'suspended') {
-            return ['status' => 'error', 'message' => "Cuenta suspendida. Contacta a soporte."];
+            return ['status' => 'error', 'message' => __('api.error.account_suspended_support')];
         }
 
         session_regenerate_id(true);
@@ -250,7 +250,7 @@ function handle_request_password_reset($pdo, $email) {
     if ($stmt->rowCount() > 0) {
         $u = $stmt->fetch();
         if ($u['account_status'] === 'deleted') {
-            return ['status' => 'error', 'message' => "Esta cuenta ha sido eliminada permanentemente."];
+            return ['status' => 'error', 'message' => __('api.error.account_deleted_permanent')];
         }
 
         $checkLimit = $pdo->prepare("SELECT id FROM password_resets WHERE email = ? AND created_at > (NOW() - INTERVAL 60 SECOND)");

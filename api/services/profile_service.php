@@ -117,7 +117,7 @@ function update_preferences($pdo, $userId, $input) {
     }
 
     if (empty($fields)) {
-        return ['status' => 'success', 'message' => "OK (Sin cambios)"]; 
+        return ['status' => 'success', 'message' => __('api.success.no_changes')]; 
     }
     
     $params[] = $userId;

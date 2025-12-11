@@ -17,6 +17,7 @@
     "global.loading": "Cargando...",
     "global.close_all": "Cerrar todo",
     "global.back": "Volver",
+    "global.ok": "OK",
     
     "menu.settings": "Configuración",
     "menu.logout": "Cerrar sesión",
@@ -196,7 +197,9 @@
     "api.error.limit_email": "Solo puedes cambiar tu correo una vez cada 12 días.",
     "api.error.account_deleted": "Esta cuenta ha sido eliminada permanentemente.",
     "api.error.account_suspended": "Cuenta suspendida. Contacta a soporte.",
-    
+    "api.error.account_deleted_permanent": "Esta cuenta ha sido eliminada permanentemente.",
+    "api.error.account_suspended_support": "Cuenta suspendida. Contacta a soporte.",
+
     "api.success.valid_data": "Datos válidos",
     "api.success.code_sent": "Código enviado",
     "api.success.code_resent": "Código reenviado: ",
@@ -214,6 +217,8 @@
     "api.success.all_sessions_closed": "Todas las demás sesiones han sido cerradas.",
     "api.success.2fa_enabled": "2FA Activado Correctamente",
     "api.success.2fa_disabled": "Autenticación en dos pasos desactivada.",
+    "api.success.no_changes": "OK (Sin cambios)",
+    "api.success.password_ok": "Contraseña Correcta",
 
     "js.error.connection": "Error de conexión.",
     "js.error.complete_fields": "Por favor completa todos los campos.",
@@ -237,5 +242,15 @@
     "global.month.september": "septiembre",
     "global.month.october": "octubre",
     "global.month.november": "noviembre",
-    "global.month.december": "diciembre"
+    "global.month.december": "diciembre",
+    
+    "global.unknown_browser": "Navegador desconocido",
+    "global.unknown_system": "Sistema desconocido",
+    "global.access_denied": "Acceso denegado",
+    "global.section_not_found_title": "Sección no encontrada",
+    "global.section_not_found_desc": "El archivo para la sección solicitada no se encuentra.",
+    "global.critical_error_404": "Error 404 Crítico",
+    "global.critical_error_404_desc": "No se encuentra el archivo solicitado ni la página de error.",
+    "global.default_user": "Usuario",
+    "global.not_available": "No disponible"
 }

@@ -24,7 +24,7 @@ load_translations($langToLoad);
 // SEGURIDAD: Si no hay sesión, denegar acceso.
 if (!isset($_SESSION['user_id'])) {
     http_response_code(403);
-    die("Acceso denegado");
+    die(__('global.access_denied'));
 }
 
 // Mapeo de rutas permitidas a archivos físicos
@@ -40,10 +40,9 @@ if (!array_key_exists($section, $sections)) {
 $file = $sections[$section];
 
 // Verificación simple de existencia antes de incluir
-// Nota: Como las rutas en config/routes.php son absolutas (__DIR__), no necesitamos concatenar nada extra.
 if (file_exists($file)) {
     include $file;
 } else {
-    echo '<div class="component-header-card"><h1>Sección no encontrada</h1><p>El archivo para la sección ' . htmlspecialchars($section) . ' no se encuentra.</p></div>';
+    echo '<div class="component-header-card"><h1>' . __('global.section_not_found_title') . '</h1><p>' . __('global.section_not_found_desc') . '</p></div>';
 }
 ?>

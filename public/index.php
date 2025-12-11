@@ -258,7 +258,7 @@ if ($userThemePref === 'dark') {
                         if (file_exists($fileToLoad)) {
                             include $fileToLoad;
                         } else {
-                            echo "<h1>Error 404 Crítico</h1><p>No se encuentra el archivo solicitado ni la página de error.</p>";
+                            echo "<h1>" . __('global.critical_error_404') . "</h1><p>" . __('global.critical_error_404_desc') . "</p>";
                         }
                         ?>
                     </div>

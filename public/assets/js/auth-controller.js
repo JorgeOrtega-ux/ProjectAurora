@@ -28,8 +28,8 @@ const handleAuthResponse = (result, buttons) => {
             btn.disabled = false;
             btn.style.opacity = '1';
             // Restauramos texto según el botón
-            if(btn.id === 'btn-verify-backup') btn.textContent = "Usar código de recuperación";
-            else if(btn.id === 'btn-verify-totp' || btn.id === 'btn-verify-2fa-login') btn.textContent = "Verificar";
+            if(btn.id === 'btn-verify-backup') btn.textContent = window.t('auth.2fa.use_backup_btn');
+            else if(btn.id === 'btn-verify-totp' || btn.id === 'btn-verify-2fa-login') btn.textContent = window.t('global.verify');
             else btn.textContent = window.t('global.continue'); 
         });
     }

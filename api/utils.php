@@ -100,8 +100,8 @@ function registerActiveSession($pdo, $userId) {
  * Parsea el User Agent para mostrar algo legible en la UI
  */
 function parseUserAgentSimple($ua) {
-    $browser = 'Navegador desconocido';
-    $os = 'Sistema desconocido';
+    $browser = __('global.unknown_browser');
+    $os = __('global.unknown_system');
     $icon = 'device_unknown'; 
 
     // Detectar SO

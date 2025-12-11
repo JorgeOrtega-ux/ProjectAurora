@@ -19,7 +19,7 @@ function verify_current_password_check($pdo, $userId, $password) {
     $storedHash = $stmt->fetchColumn();
 
     if (password_verify($password, $storedHash)) {
-        return ['status' => 'success', 'message' => 'Password OK']; // Mensaje interno, no requiere traducción
+        return ['status' => 'success', 'message' => __('api.success.password_ok')];
     } else {
         return ['status' => 'error', 'message' => __('api.error.current_password_invalid')];
     }
@@ -96,7 +96,7 @@ function get_active_sessions_list($pdo, $userId) {
         ];
     }
     
-    return ['status' => 'success', 'message' => 'OK', 'data' => $data];
+    return ['status' => 'success', 'message' => __('global.ok'), 'data' => $data];
 }
 
 function revoke_single_session($pdo, $userId, $sessionDbId) {

@@ -22,8 +22,8 @@ if ($userId) {
 
 if (empty($currentUser)) {
     $currentUser = [
-        'username' => $_SESSION['username'] ?? 'Usuario',
-        'email'    => 'No disponible',
+        'username' => $_SESSION['username'] ?? __('global.default_user'),
+        'email'    => __('global.not_available'),
         'role'     => $_SESSION['role'] ?? 'user',
         'uuid'     => $_SESSION['uuid'] ?? '',
         'language' => 'en-US',
