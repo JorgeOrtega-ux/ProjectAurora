@@ -54,7 +54,7 @@ html {
     border-bottom: 1px solid #00000020;
     z-index: 999;
     position: relative;
-    /* transition eliminada */
+    transition: box-shadow 0.3s ease;
 }
 
 .general-content-top.shadow {
@@ -107,7 +107,6 @@ html {
     height: 100%;
     flex: 1;
     z-index: 0;
-    /* transition eliminada */
 }
 
 .search-wrapper {
@@ -171,6 +170,7 @@ html {
     outline: none;
     user-select: none;
     position: relative;
+    transition: background-color 0.2s ease;
 }
 
 .header-button:hover {
@@ -283,6 +283,7 @@ html {
     text-decoration: none;
     color: inherit;
     border: 1px solid transparent; /* Preparar para bordes */
+    transition: background-color 0.2s ease;
 }
 
 .menu-link:hover,
@@ -358,7 +359,6 @@ html {
     right: -4px;
     bottom: -4px;
     border: 2px solid transparent;
-    /* transition eliminada */
     pointer-events: none;
     z-index: 2;
 }
@@ -402,7 +402,7 @@ html {
     border: 4px solid rgba(0, 0, 0, 0.1);
     border-left-color: #000000; /* Color de la parte que gira */
     border-radius: 50%;
-    animation: spin 1s linear infinite; /* Esta es la línea clave que faltaba */
+    animation: spin 1s linear infinite; 
 }
 
 @keyframes spin {
@@ -442,7 +442,7 @@ html {
     font-size: 15px;
 }
 
-/* --- FLOATING LABELS --- */
+/* --- FLOATING LABELS (CORREGIDO) --- */
 .form-group {
     position: relative;
     margin-bottom: 20px;
@@ -456,8 +456,9 @@ html {
     border-radius: 8px;
     font-size: 16px;
     background-color: #fff;
-    /* transition eliminada */
     height: 55px;
+    /* TRANSICIÓN AÑADIDA PARA EL BORDE */
+    transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .form-group input:focus {
@@ -474,8 +475,9 @@ html {
     font-size: 16px;
     color: #888;
     pointer-events: none;
-    /* transition eliminada */
     background-color: transparent;
+    /* TRANSICIÓN AÑADIDA PARA LA ANIMACIÓN DEL TEXTO */
+    transition: all 0.2s ease-out;
 }
 
 .form-group input:focus+label,
@@ -530,7 +532,7 @@ html {
     font-size: 16px;
     font-weight: 600;
     cursor: pointer;
-    /* transition eliminada */
+    transition: background-color 0.2s ease;
 }
 
 .btn-primary:hover {
