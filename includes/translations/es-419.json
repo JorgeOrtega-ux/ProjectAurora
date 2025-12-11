@@ -89,9 +89,9 @@
     "auth.2fa.have_device": "Tengo mi dispositivo (Usar App)",
     "auth.2fa.required": "Se requiere verificación 2FA",
 
-    "error.404.title": "404",
-    "error.404.subtitle": "Página no encontrada",
-    "error.404.text": "Lo sentimos, no pudimos encontrar la sección que buscas.",
+    "error.404.title": "¡Ups! Página no encontrada.",
+    "error.404.subtitle": "404",
+    "error.404.text": "No pudimos encontrar la página que buscas. Es posible que se haya movido o ya no exista.",
     "error.section_construction": "Sección en construcción",
     "error.file_not_found": "El archivo no existe.",
     "error.load_content": "No se pudo cargar el contenido.",

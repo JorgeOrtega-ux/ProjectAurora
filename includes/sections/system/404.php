@@ -1,16 +1,15 @@
-<div class="auth-wrapper">
-    <div class="auth-card">
-        <div class="auth-header">
-            <h1 style="font-size: 48px; margin-bottom: 0;"><?= __('error.404.title') ?></h1>
-            <p><?= __('error.404.subtitle') ?></p>
-        </div>
-        
-        <div class="alert error" style="margin: 20px 0;">
-            <?= __('error.404.text') ?>
-        </div>
+<div class="error-page-container">
+    
+    <div class="error-badge"><?= __('error.404.subtitle') ?></div>
+    
+    <h1 class="error-heading"><?= __('error.404.title') ?></h1>
+    
+    <p class="error-subheading">
+        <?= __('error.404.text') ?>
+    </p>
 
-        <div class="auth-footer">
-            <p><a href="<?php echo $basePath; ?>" class="btn-primary" style="display:inline-block; padding: 10px 20px; color: white; text-decoration: none;"><?= __('global.back_home') ?></a></p>
-        </div>
-    </div>
+    <a href="<?php echo $basePath; ?>" class="component-button primary" style="width: auto; display: inline-flex; height: 44px; padding: 0 24px; font-size: 15px;">
+        <?= __('global.back_home') ?>
+    </a>
+
 </div>
