@@ -51,6 +51,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'delete_account') {
         $password = $input['password'] ?? '';
         
+        // [SEGURIDAD] Rate Limit preventivo: 5 intentos cada 30 min por usuario
+        checkRateLimit($pdo, "uid_".$userId, 'delete_account_fail', 5, 30);
+
         if (empty($password)) {
             sendJsonResponse('error', __('api.error.missing_data'));
         }
@@ -297,7 +300,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $spamIdentifier = "uid_" . $userId;
 
         // 1. Verificar si ya está bloqueado (Silencio Táctico)
-        // Solo lectura rápida. Si encuentra el registro de bloqueo reciente, aborta sin escribir nada.
         $stmtBlock = $pdo->prepare("SELECT id FROM security_logs WHERE user_identifier = ? AND action_type = 'pref_spam_blocked' AND created_at > (NOW() - INTERVAL 1 MINUTE) LIMIT 1");
         $stmtBlock->execute([$spamIdentifier]);
         if ($stmtBlock->fetch()) {
@@ -312,7 +314,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // 3. Decisión
         if ($count >= 5) {
-            // Caso B: Gatillo de Bloqueo (Primer registro de spam en esta ráfaga)
+            // Caso B: Gatillo de Bloqueo
             logSecurityEvent($pdo, $spamIdentifier, 'pref_spam_blocked');
             http_response_code(429);
             sendJsonResponse('error', __('api.error.rate_limit'));
@@ -355,7 +357,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $stmt = $pdo->prepare($sql);
             if ($stmt->execute($params)) {
-                // Caso A: Registro de Éxito (Consume 1 intento)
+                // Caso A: Registro de Éxito
                 logSecurityEvent($pdo, $spamIdentifier, 'pref_update');
                 sendJsonResponse('success', __('api.success.preferences_saved'));
             } else {
@@ -446,6 +448,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'update_password') {
         $currentPass = $input['current_password'] ?? '';
         $newPass     = $input['new_password'] ?? '';
+        
+        // [SEGURIDAD] Rate Limit preventivo: 5 intentos cada 15 min
+        checkRateLimit($pdo, "uid_".$userId, 'pass_change_fail', 5, 15);
+
         if (empty($currentPass) || empty($newPass)) {
             sendJsonResponse('error', __('api.error.missing_data'));
         }
@@ -456,7 +462,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$userId]);
         $storedHash = $stmt->fetchColumn();
         if (!password_verify($currentPass, $storedHash)) {
-            checkRateLimit($pdo, "uid_".$userId, 'pass_change_fail', 5, 15);
+            // Solo logueamos, el rate limit ya fue verificado arriba
             logSecurityEvent($pdo, "uid_".$userId, 'pass_change_fail');
             sendJsonResponse('error', __('api.error.current_password_invalid'));
         }
