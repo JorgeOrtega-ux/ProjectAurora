@@ -328,7 +328,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // PREFERENCIAS (MODIFICADO: ANTI-SPAM LOGIC)
+    // PREFERENCIAS (MODIFICADO: ANTI-SPAM LOGIC + RETORNO DE TRADUCCIONES)
     if ($action === 'update_preferences') {
         $language = $input['language'] ?? null;
         $openLinks = isset($input['open_links_new_tab']) ? (int)$input['open_links_new_tab'] : null;
@@ -362,13 +362,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $fields = [];
         $params = [];
+        $allowedLangs = ['es-419', 'en-US', 'en-GB', 'fr-FR', 'pt-BR'];
 
-        if ($language) {
-            $allowedLangs = ['es-419', 'en-US', 'en-GB', 'fr-FR', 'pt-BR'];
-            if (in_array($language, $allowedLangs)) {
-                $fields[] = "language = ?";
-                $params[] = $language;
-            }
+        if ($language && in_array($language, $allowedLangs)) {
+            $fields[] = "language = ?";
+            $params[] = $language;
         }
         if ($openLinks !== null) {
             $fields[] = "open_links_new_tab = ?";
@@ -398,7 +396,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($stmt->execute($params)) {
                 // Caso A: Registro de Éxito
                 logSecurityEvent($pdo, $spamIdentifier, 'pref_update');
-                sendJsonResponse('success', __('api.success.preferences_saved'));
+                
+                // --- NUEVO: SI CAMBIÓ EL IDIOMA, DEVOLVEMOS LAS NUEVAS TRADUCCIONES ---
+                $responseData = null;
+                if ($language && in_array($language, $allowedLangs)) {
+                    load_translations($language); // Cargar el nuevo idioma en PHP
+                    // Devolver todo el diccionario al cliente
+                    $responseData = ['translations' => $GLOBALS['AURORA_TRANSLATIONS']];
+                }
+
+                sendJsonResponse('success', __('api.success.preferences_saved'), null, $responseData);
             } else {
                 sendJsonResponse('error', __('api.error.db_error'));
             }

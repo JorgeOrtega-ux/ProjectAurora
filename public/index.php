@@ -81,7 +81,8 @@ if ($userThemePref === 'dark') {
                             <div class="header-left">
                                 <div class="header-button" 
                                      data-action="toggleModuleSurface"
-                                     data-tooltip="<?php echo __('global.menu'); ?>">
+                                     data-tooltip="<?php echo __('global.menu'); ?>"
+                                     data-lang-tooltip="global.menu">
                                     <span class="material-symbols-rounded">menu</span>
                                 </div>
                             </div>
@@ -93,7 +94,9 @@ if ($userThemePref === 'dark') {
                                             <span class="material-symbols-rounded">search</span>
                                         </div>
                                         <div class="search-input">
-                                            <input type="text" placeholder="<?php echo __('global.search_placeholder'); ?>">
+                                            <input type="text" 
+                                                   placeholder="<?php echo __('global.search_placeholder'); ?>"
+                                                   data-lang-placeholder="global.search_placeholder">
                                         </div>
                                     </div>
                                 </div>
@@ -104,7 +107,8 @@ if ($userThemePref === 'dark') {
                                     <div class="header-button profile-button"
                                         data-action="toggleModuleProfile"
                                         data-role="<?php echo htmlspecialchars($userRole); ?>"
-                                        data-tooltip="<?php echo __('menu.profile'); ?>">
+                                        data-tooltip="<?php echo __('menu.profile'); ?>"
+                                        data-lang-tooltip="menu.profile">
 
                                         <?php
                                         $hasImage = false;
@@ -146,7 +150,7 @@ if ($userThemePref === 'dark') {
                                                     <span class="material-symbols-rounded">settings</span>
                                                 </div>
                                                 <div class="menu-link-text">
-                                                    <span><?php echo __('menu.settings'); ?></span>
+                                                    <span data-lang-key="menu.settings"><?php echo __('menu.settings'); ?></span>
                                                 </div>
                                             </div>
 
@@ -155,7 +159,7 @@ if ($userThemePref === 'dark') {
                                                     <span class="material-symbols-rounded">logout</span>
                                                 </div>
                                                 <div class="menu-link-text">
-                                                    <span><?php echo __('menu.logout'); ?></span>
+                                                    <span data-lang-key="menu.logout"><?php echo __('menu.logout'); ?></span>
                                                 </div>
                                             </div>
 
@@ -180,7 +184,7 @@ if ($userThemePref === 'dark') {
                                                 <span class="material-symbols-rounded">home</span>
                                             </div>
                                             <div class="menu-link-text">
-                                                <span><?php echo __('menu.home'); ?></span>
+                                                <span data-lang-key="menu.home"><?php echo __('menu.home'); ?></span>
                                             </div>
                                         </div>
 
@@ -189,7 +193,7 @@ if ($userThemePref === 'dark') {
                                                 <span class="material-symbols-rounded">explore</span>
                                             </div>
                                             <div class="menu-link-text">
-                                                <span><?php echo __('menu.explore'); ?></span>
+                                                <span data-lang-key="menu.explore"><?php echo __('menu.explore'); ?></span>
                                             </div>
                                         </div>
                                     </div>
@@ -200,7 +204,7 @@ if ($userThemePref === 'dark') {
                                                 <span class="material-symbols-rounded">arrow_back</span>
                                             </div>
                                             <div class="menu-link-text">
-                                                <span><?php echo __('global.back_home'); ?></span>
+                                                <span data-lang-key="global.back_home"><?php echo __('global.back_home'); ?></span>
                                             </div>
                                         </div>
 
@@ -209,7 +213,7 @@ if ($userThemePref === 'dark') {
                                                 <span class="material-symbols-rounded">account_circle</span>
                                             </div>
                                             <div class="menu-link-text">
-                                                <span><?php echo __('menu.profile'); ?></span>
+                                                <span data-lang-key="menu.profile"><?php echo __('menu.profile'); ?></span>
                                             </div>
                                         </div>
 
@@ -218,7 +222,7 @@ if ($userThemePref === 'dark') {
                                                 <span class="material-symbols-rounded">lock</span>
                                             </div>
                                             <div class="menu-link-text">
-                                                <span><?php echo __('menu.security'); ?></span>
+                                                <span data-lang-key="menu.security"><?php echo __('menu.security'); ?></span>
                                             </div>
                                         </div>
 
@@ -227,7 +231,7 @@ if ($userThemePref === 'dark') {
                                                 <span class="material-symbols-rounded">accessibility_new</span>
                                             </div>
                                             <div class="menu-link-text">
-                                                <span><?php echo __('menu.accessibility'); ?></span>
+                                                <span data-lang-key="menu.accessibility"><?php echo __('menu.accessibility'); ?></span>
                                             </div>
                                         </div>
                                     </div>

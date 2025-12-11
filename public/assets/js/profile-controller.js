@@ -6,6 +6,7 @@
 import { SettingsService } from './api-services.js';
 import { Toast } from './toast-service.js';
 import { applyAppTheme } from './main-controller.js'; // IMPORTANTE: Importamos para aplicar cambios en tiempo real
+import { navigateTo } from './url-manager.js';
 
 /* --- UTILIDADES --- */
 const toggleEditMode = (section, isEditing) => {
@@ -35,6 +36,33 @@ const toggleEditMode = (section, isEditing) => {
     }
 };
 
+/* --- NUEVO: FUNCIÓN MÁGICA DE ACTUALIZACIÓN DE TEXTOS --- */
+const updateLanguageTexts = () => {
+    // 1. Elementos con texto directo (span, div, p, h1...)
+    document.querySelectorAll('[data-lang-key]').forEach(el => {
+        const key = el.dataset.langKey;
+        if (window.t(key)) {
+            el.textContent = window.t(key);
+        }
+    });
+
+    // 2. Elementos con placeholder (inputs)
+    document.querySelectorAll('[data-lang-placeholder]').forEach(el => {
+        const key = el.dataset.langPlaceholder;
+        if (window.t(key)) {
+            el.placeholder = window.t(key);
+        }
+    });
+    
+    // 3. Elementos con tooltip (botones)
+    document.querySelectorAll('[data-lang-tooltip]').forEach(el => {
+        const key = el.dataset.langTooltip;
+        if (window.t(key)) {
+            el.dataset.tooltip = window.t(key);
+        }
+    });
+};
+
 /* --- LÓGICA UI PARA DROPDOWNS --- */
 const setupDropdownUI = () => {
     document.addEventListener('click', (e) => {
@@ -43,6 +71,9 @@ const setupDropdownUI = () => {
             const wrapper = trigger.closest('.trigger-select-wrapper');
             const menu = wrapper.querySelector('.popover-module');
             
+            // Si está bloqueado por guardado anterior, no abrir
+            if (wrapper.classList.contains('disabled-interactive')) return;
+
             document.querySelectorAll('.popover-module.active').forEach(el => {
                 if (el !== menu) el.classList.remove('active');
             });
@@ -62,6 +93,7 @@ const setupDropdownUI = () => {
             const wrapper = link.closest('.trigger-select-wrapper');
             
             if (wrapper) {
+                // A) UI: Seleccionar visualmente
                 const triggerText = wrapper.querySelector('.trigger-select-text');
                 const triggerIcon = wrapper.querySelector('.trigger-select-icon');
 
@@ -81,26 +113,59 @@ const setupDropdownUI = () => {
                 menu.classList.remove('active');
                 wrapper.querySelector('.trigger-selector').classList.remove('active');
                 
-                // --- LÓGICA DE GUARDADO ---
+                // B) LÓGICA: Guardar con bloqueo
+                
+                // Bloqueamos el trigger para evitar spam clicks
+                wrapper.classList.add('disabled-interactive');
+                wrapper.style.opacity = '0.7';
+
                 if (wrapper.dataset.pref === 'language') {
-                    SettingsService.updatePreferences({ language: newValue }).then(res => {
-                        if(res.status !== 'success') Toast.error(window.t('global.error'));
-                        else window.location.reload(); 
-                    });
+                    SettingsService.updatePreferences({ language: newValue })
+                        .then(res => {
+                            if(res.status === 'success') {
+                                Toast.success(res.message);
+                                
+                                // Actualizamos el diccionario global
+                                if (res.data && res.data.translations) {
+                                    window.TRANSLATIONS = res.data.translations;
+                                }
+                                
+                                // Actualizamos el DOM instantáneamente
+                                updateLanguageTexts();
+                                
+                                // Opcional: Recargar el contenido SPA para actualizar textos que vengan desde PHP (placeholders fijos)
+                                // const currentPath = location.pathname.replace(window.BASE_PATH, '') || 'main';
+                                // navigateTo(currentPath);
+                            } else {
+                                Toast.error(res.message || window.t('global.error'));
+                            }
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            Toast.error(window.t('js.error.connection'));
+                        })
+                        .finally(() => {
+                            // Desbloqueamos
+                            wrapper.classList.remove('disabled-interactive');
+                            wrapper.style.opacity = '1';
+                        });
                 }
 
                 if (wrapper.dataset.pref === 'theme') {
-                    // MODIFICADO: Aplicar tema inmediatamente y guardar
-                    SettingsService.updatePreferences({ theme: newValue }).then(res => {
-                        if(res.status === 'success') {
-                            Toast.success(res.message);
-                            
-                            // Actualizar preferencia global y aplicar visualmente
-                            if(window.USER_PREFS) window.USER_PREFS.theme = newValue;
-                            applyAppTheme(newValue);
-                        }
-                        else Toast.error(res.message || window.t('global.error'));
-                    });
+                    SettingsService.updatePreferences({ theme: newValue })
+                        .then(res => {
+                            if(res.status === 'success') {
+                                Toast.success(res.message);
+                                if(window.USER_PREFS) window.USER_PREFS.theme = newValue;
+                                applyAppTheme(newValue);
+                            } else {
+                                Toast.error(res.message || window.t('global.error'));
+                            }
+                        })
+                        .finally(() => {
+                            wrapper.classList.remove('disabled-interactive');
+                            wrapper.style.opacity = '1';
+                        });
                 }
             }
         }
@@ -199,6 +264,10 @@ const setupProfilePictureLogic = (pfpSection) => {
                     pfpSection.dataset.hasCustom = "true";
                     btnDelete.style.display = "flex";
                     btnUploadText.innerText = window.t('settings.profile.change_btn');
+                    
+                    // Actualizar texto si cambio idioma
+                    btnUploadText.dataset.langKey = 'settings.profile.change_btn';
+                    
                     actionsPreview.classList.remove('active'); actionsPreview.classList.add('disabled');
                     actionsDefault.classList.remove('disabled'); actionsDefault.classList.add('active');
                     fileInput.value = '';
@@ -227,6 +296,10 @@ const setupProfilePictureLogic = (pfpSection) => {
                     pfpSection.dataset.hasCustom = "false";
                     btnDelete.style.display = "none";
                     btnUploadText.innerText = window.t('settings.profile.upload_btn');
+                    
+                    // Actualizar texto si cambio idioma
+                    btnUploadText.dataset.langKey = 'settings.profile.upload_btn';
+
                 } else {
                     Toast.error(res.message);
                 }
@@ -242,19 +315,26 @@ const setupProfilePictureLogic = (pfpSection) => {
     });
 };
 
-/* --- LÓGICA DE PREFERENCIAS --- */
+/* --- LÓGICA DE PREFERENCIAS (CHECKBOXES) --- */
 const setupPreferencesLogic = () => {
     
-    // Función genérica para manejar toggles
+    // Función genérica para manejar toggles con bloqueo visual
     const handleToggle = (elementId, fieldName) => {
         const toggle = document.getElementById(elementId);
         if (toggle) {
             toggle.addEventListener('change', (e) => {
                 const isChecked = e.target.checked ? 1 : 0;
                 
-                // NOTA: NO deshabilitamos el input aquí para cumplir con el requisito de "Sin Debounce".
-                // Dejamos que el usuario haga clic libremente, el backend se encarga de silenciar ráfagas.
+                // 1. Bloqueo visual del contenedor (para que se vea gris/desactivado)
+                const wrapper = e.target.closest('.component-toggle-switch');
+                if (wrapper) {
+                    wrapper.classList.add('disabled-interactive');
+                    wrapper.style.opacity = '0.7';
+                }
                 
+                // 2. Bloqueo del input real
+                e.target.disabled = true;
+
                 const payload = {};
                 payload[fieldName] = isChecked;
 
@@ -262,37 +342,42 @@ const setupPreferencesLogic = () => {
                     .then(res => {
                         if (res.status === 'success') {
                             Toast.success(res.message);
-                            // Actualizar variable global en tiempo real
                             if (window.USER_PREFS) {
                                 window.USER_PREFS[fieldName] = isChecked;
                             }
                         } else {
-                            // Revertir visualmente si hubo error (Ej. Spam block)
                             e.target.checked = !e.target.checked; 
                             Toast.error(res.message || window.t('global.error'));
                             
-                            // Si el error fue por Rate Limit, bloqueamos visualmente por unos segundos para educar al usuario
-                            // El mensaje "espera unos minutos" suele venir del backend en este caso
                             if (res.message && (res.message.toLowerCase().includes('espera') || res.message.toLowerCase().includes('wait'))) {
-                                e.target.disabled = true;
-                                setTimeout(() => {
+                                setTimeout(() => { 
                                     e.target.disabled = false;
-                                }, 5000); 
+                                    if(wrapper) {
+                                        wrapper.classList.remove('disabled-interactive');
+                                        wrapper.style.opacity = '1';
+                                    }
+                                }, 5000);
+                                return; // Salimos para no desbloquear inmediatamente abajo
                             }
                         }
                     })
                     .catch(err => {
                         e.target.checked = !e.target.checked;
                         Toast.error(window.t('js.error.connection'));
+                    })
+                    .finally(() => {
+                        // Desbloqueo final
+                        e.target.disabled = false;
+                        if (wrapper) {
+                            wrapper.classList.remove('disabled-interactive');
+                            wrapper.style.opacity = '1';
+                        }
                     });
             });
         }
     };
 
-    // 1. Abrir enlaces en pestaña nueva (Perfil)
     handleToggle('pref-links-new-tab', 'open_links_new_tab');
-
-    // 2. Alertas Extendidas (Accesibilidad)
     handleToggle('pref-extended-alerts', 'extended_alerts');
 };
 
