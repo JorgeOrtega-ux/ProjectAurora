@@ -9,6 +9,30 @@ $sectionMap = require __DIR__ . '/../config/routes.php';
 
 $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
 
+// --- MODIFICADO: LÓGICA DE AVATAR CENTRALIZADA ---
+// Calculamos esto AQUÍ una sola vez para compartir la variable $globalAvatarSrc
+$globalAvatarSrc = '';
+$hasImage = false;
+
+if (isset($_SESSION['uuid'])) {
+    $uuid = $_SESSION['uuid'];
+    // Usamos time() en lugar de microtime para cache busting
+    $cacheBuster = '?v=' . time(); 
+    
+    $relCustom  = 'assets/uploads/avatars/custom/' . $uuid . '.png';
+    $relDefault = 'assets/uploads/avatars/default/' . $uuid . '.png';
+
+    // Nota: __DIR__ es public/
+    if (file_exists(__DIR__ . '/' . $relCustom)) {
+        $globalAvatarSrc = $basePath . $relCustom . $cacheBuster;
+        $hasImage = true;
+    } elseif (file_exists(__DIR__ . '/' . $relDefault)) {
+        $globalAvatarSrc = $basePath . $relDefault . $cacheBuster;
+        $hasImage = true;
+    }
+}
+// ---------------------------------------------
+
 // --- MODIFICADO: Lógica Inicial del Tema ---
 $initialThemeClass = 'light-theme'; // Default fallback
 $userThemePref = isset($_SESSION['theme']) ? $_SESSION['theme'] : 'system';
@@ -19,9 +43,6 @@ if ($userThemePref === 'dark') {
 } elseif ($userThemePref === 'light') {
     $initialThemeClass = 'light-theme';
 } else {
-    // Si es system, PHP no sabe la preferencia del OS, así que dejamos una por defecto
-    // y JS lo corregirá inmediatamente, o usamos un script inline pequeño.
-    // Dejaremos 'light-theme' como base, pero agregamos 'system-theme' para que JS sepa.
     $initialThemeClass = 'light-theme system-theme-pending';
 }
 ?>
@@ -110,26 +131,8 @@ if ($userThemePref === 'dark') {
                                         data-tooltip="<?php echo __('menu.profile'); ?>"
                                         data-lang-tooltip="menu.profile">
 
-                                        <?php
-                                        $hasImage = false;
-                                        $avatarSrc = '';
-                                        if (isset($_SESSION['uuid'])) {
-                                            $uuid = $_SESSION['uuid'];
-                                            $relCustom  = 'assets/uploads/avatars/custom/' . $uuid . '.png';
-                                            $relDefault = 'assets/uploads/avatars/default/' . $uuid . '.png';
-
-                                            if (file_exists(__DIR__ . '/' . $relCustom)) {
-                                                $avatarSrc = $basePath . $relCustom . '?v=' . microtime(true);
-                                                $hasImage = true;
-                                            } elseif (file_exists(__DIR__ . '/' . $relDefault)) {
-                                                $avatarSrc = $basePath . $relDefault . '?v=' . microtime(true);
-                                                $hasImage = true;
-                                            }
-                                        }
-                                        ?>
-
                                         <?php if ($hasImage): ?>
-                                            <img src="<?php echo $avatarSrc; ?>" alt="Perfil" class="profile-img">
+                                            <img src="<?php echo $globalAvatarSrc; ?>" alt="Perfil" class="profile-img">
                                         <?php else: ?>
                                             <span style="font-weight:bold; color:#555; position: relative; z-index: 1;">
                                                 <?php echo strtoupper(substr($_SESSION['username'], 0, 1)); ?>

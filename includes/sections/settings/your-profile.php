@@ -31,21 +31,29 @@ if (empty($currentUser)) {
     ];
 }
 
-$hasCustomAvatar = false;
+// --- MODIFICADO: LÓGICA DE AVATAR OPTIMIZADA ---
+// Usamos la variable global calculada en index.php si existe para evitar doble carga
 $finalAvatarSrc = '';
+$hasCustomAvatar = false;
 
 if (!empty($currentUser['uuid'])) {
     $uuid = $currentUser['uuid'];
-    $relCustom  = 'assets/uploads/avatars/custom/' . $uuid . '.png';
-    $relDefault = 'assets/uploads/avatars/default/' . $uuid . '.png';
-    $absCustom  = __DIR__ . '/../../../public/' . $relCustom;
+    // Chequeo físico para saber si hay custom (para el botón borrar)
+    $absCustom  = __DIR__ . '/../../../public/assets/uploads/avatars/custom/' . $uuid . '.png';
 
     if (file_exists($absCustom)) {
         $hasCustomAvatar = true;
-        $finalAvatarSrc = (isset($basePath) ? $basePath : '/ProjectAurora/') . $relCustom . '?v=' . microtime(true);
-    } else {
-        $finalAvatarSrc = (isset($basePath) ? $basePath : '/ProjectAurora/') . $relDefault . '?v=' . microtime(true);
     }
+}
+
+// Asignación de la fuente de la imagen
+if (isset($globalAvatarSrc) && !empty($globalAvatarSrc)) {
+    // Usamos la misma URL exacta que el header (compartida desde index.php)
+    $finalAvatarSrc = $globalAvatarSrc;
+} else {
+    // Fallback de seguridad
+    $relDefault = 'assets/uploads/avatars/default/' . ($currentUser['uuid'] ?? 'default') . '.png';
+    $finalAvatarSrc = (isset($basePath) ? $basePath : '/ProjectAurora/') . $relDefault . '?v=' . time();
 }
 
 $languagesMap = [

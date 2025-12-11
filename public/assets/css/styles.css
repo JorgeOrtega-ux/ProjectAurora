@@ -642,8 +642,7 @@ html {
         display: flex;
         justify-content: center;
         width: 100%;
-        padding: 8px 0;
-        padding-bottom: 0;
+        padding-botttom:8px;
         flex-shrink: 0;
         touch-action: none;
         cursor: grab;

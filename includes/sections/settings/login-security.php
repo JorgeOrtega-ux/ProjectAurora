@@ -149,7 +149,7 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
                         <h2 class="component-card__title">Autenticación de dos pasos (2FA)</h2>
                         <p class="component-card__description">
                             <?php if ($is2faEnabled): ?>
-                                <span style="color: green; font-weight: bold;">Activado.</span> Tu cuenta está protegida.
+                                Tu cuenta está protegida.
                             <?php else: ?>
                                 Añade una capa extra de seguridad a tu cuenta.
                             <?php endif; ?>
