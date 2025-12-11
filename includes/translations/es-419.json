@@ -98,6 +98,11 @@
     "settings.security.current_pass_ph": "Ingresa tu contraseña actual",
     "settings.security.new_pass_ph": "Ingresa la nueva contraseña",
     "settings.security.repeat_pass_ph": "Repetir la nueva contraseña",
+    
+    "settings.security.pass_never": "Nunca has actualizado tu contraseña",
+    "settings.security.pass_updated_prefix": "Última actualización:",
+    "settings.security.delete_msg_part1": "Eliminar permanentemente tu cuenta creada el",
+    "settings.security.delete_msg_part2": "y todos tus datos.",
 
     "settings.devices.title": "Dispositivos con sesión activa",
     "settings.devices.desc": "Estos son los dispositivos que han accedido a tu cuenta recientemente.",

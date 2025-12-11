@@ -1,10 +1,61 @@
 <?php
 // includes/sections/settings/login-security.php
+
+if (session_status() === PHP_SESSION_NONE) session_start();
+// Aseguramos la conexión a la BD por si este archivo se carga en un contexto diferente
+require_once __DIR__ . '/../../../config/database/db.php';
+
+// --- HELPER DE FECHAS (FORMATO SOLICITADO) ---
+if (!function_exists('format_date_es')) {
+    function format_date_es($dateString) {
+        if (!$dateString) return '';
+        $timestamp = strtotime($dateString);
+        // Array de meses en español
+        $months = [
+            "enero", "febrero", "marzo", "abril", "mayo", "junio", 
+            "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+        ];
+        $day = date('j', $timestamp);
+        $monthIndex = date('n', $timestamp) - 1;
+        $year = date('Y', $timestamp);
+        
+        // Formato solicitado: "24 octubre del 2025"
+        return "$day " . $months[$monthIndex] . " del $year";
+    }
+}
+
+// --- LÓGICA DE DATOS ---
 $is2faEnabled = false;
+$passMsg = __("settings.security.pass_never"); // Valor por defecto traducido
+$accountCreatedText = "";
+
 if (isset($pdo) && isset($_SESSION['user_id'])) {
-    $stmt = $pdo->prepare("SELECT two_factor_enabled FROM users WHERE id = ?");
-    $stmt->execute([$_SESSION['user_id']]);
-    $is2faEnabled = (bool)$stmt->fetchColumn();
+    $userId = $_SESSION['user_id'];
+
+    // 1. Obtener datos del usuario (2FA y Fecha de Creación)
+    $stmt = $pdo->prepare("SELECT two_factor_enabled, created_at FROM users WHERE id = ?");
+    $stmt->execute([$userId]);
+    $userRow = $stmt->fetch();
+    
+    if ($userRow) {
+        $is2faEnabled = (bool)$userRow['two_factor_enabled'];
+        if (!empty($userRow['created_at'])) {
+            $accountCreatedText = format_date_es($userRow['created_at']);
+        }
+    }
+
+    // 2. Obtener fecha del último cambio de contraseña desde security_logs
+    // Buscamos el evento 'pass_change_success' más reciente para este usuario
+    $stmtLog = $pdo->prepare("SELECT created_at FROM security_logs WHERE user_identifier = ? AND action_type = 'pass_change_success' ORDER BY id DESC LIMIT 1");
+    // Nota: El identificador en logs suele ser "uid_" + ID
+    $stmtLog->execute(["uid_" . $userId]);
+    $logRow = $stmtLog->fetch();
+
+    if ($logRow && !empty($logRow['created_at'])) {
+        $lastDate = format_date_es($logRow['created_at']);
+        // Concatenamos la traducción con la fecha
+        $passMsg = __("settings.security.pass_updated_prefix") . " " . $lastDate;
+    }
 }
 ?>
 <div class="section-content active" data-section="settings/login-and-security">
@@ -26,7 +77,7 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
 
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= __('settings.security.pass_title') ?></h2>
-                        <p class="component-card__description"><?= __('settings.security.pass_desc') ?></p>
+                        <p class="component-card__description" style="color: #666;"><?php echo htmlspecialchars($passMsg); ?></p>
                     </div>
                 </div>
 
@@ -37,7 +88,6 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
                 </div>
 
                 <div class="disabled w-100 component-stage-form" data-state="password-stage-1">
-                    
                     <div class="component-input-wrapper">
                         <input type="password" class="component-text-input" 
                                id="current-password-input"
@@ -51,13 +101,11 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
                 </div>
 
                 <div class="disabled w-100 component-stage-form" data-state="password-stage-2">
-                    
                     <div class="component-input-wrapper">
                         <input type="password" class="component-text-input" 
                                id="new-password-input"
                                placeholder="<?= __('settings.security.new_pass_ph') ?>">
                     </div>
-
                     <div class="component-input-wrapper">
                         <input type="password" class="component-text-input" 
                                id="repeat-password-input"
@@ -69,7 +117,6 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
                         <button type="button" class="component-button primary" data-action="pass-submit-final"><?= __('global.continue') ?></button>
                     </div>
                 </div>
-
             </div>
             
             <hr class="component-divider">
@@ -133,7 +180,13 @@ if (isset($pdo) && isset($_SESSION['user_id'])) {
                 <div class="component-card__content">
                     <div class="component-card__text">
                         <h2 class="component-card__title" style="color: #d32f2f;">Eliminar cuenta</h2>
-                        <p class="component-card__description">Eliminar permanentemente tu cuenta y todos tus datos.</p>
+                        <p class="component-card__description">
+                            <?php 
+                                echo __("settings.security.delete_msg_part1") . " " . 
+                                     htmlspecialchars($accountCreatedText) . " " . 
+                                     __("settings.security.delete_msg_part2"); 
+                            ?>
+                        </p>
                     </div>
                 </div>
 
