@@ -2,7 +2,8 @@ import { initMainController } from './main-controller.js';
 import { initUrlManager } from './url-manager.js'; 
 import { initAuthController } from './auth-controller.js';
 import { initProfileController } from './profile-controller.js'; 
-import { initSecurityController } from './security-controller.js'; // Importar nuevo controlador
+import { initSecurityController } from './security-controller.js'; 
+import { initTooltipService } from './tooltip-service.js'; // Importar servicio de tooltips
 
 const App = {
     init: () => {
@@ -20,6 +21,9 @@ const App = {
         
         // Inicializar SPA Router
         initUrlManager();
+        
+        // Inicializar Tooltips
+        initTooltipService();
         
         console.log('App: Inicializada completamente.');
     }

@@ -26,6 +26,9 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
             return window.TRANSLATIONS[key] || key;
         };
     </script>
+    
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded">
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/styles.css">
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/components.css">
@@ -54,7 +57,9 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
                     <div class="general-content-top">
                         <div class="header">
                             <div class="header-left">
-                                <div class="header-button" data-action="toggleModuleSurface">
+                                <div class="header-button" 
+                                     data-action="toggleModuleSurface"
+                                     data-tooltip="<?php echo __('global.menu'); ?>">
                                     <span class="material-symbols-rounded">menu</span>
                                 </div>
                             </div>
@@ -76,7 +81,8 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
                                 <div class="header-item">
                                     <div class="header-button profile-button"
                                         data-action="toggleModuleProfile"
-                                        data-role="<?php echo htmlspecialchars($userRole); ?>">
+                                        data-role="<?php echo htmlspecialchars($userRole); ?>"
+                                        data-tooltip="<?php echo __('menu.profile'); ?>">
 
                                         <?php
                                         $hasImage = false;
