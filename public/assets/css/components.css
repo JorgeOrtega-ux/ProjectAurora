@@ -250,17 +250,17 @@
 @media (max-width: 600px) {
     .component-group-item {
         flex-direction: column;
-        align-items: stretch; 
+        align-items: stretch;
         gap: 8px;
     }
 
     .component-card__actions {
         width: 100%;
         justify-content: space-between;
-        margin-top: 0; 
+        margin-top: 0;
     }
 
-    .component-group-item > .component-card__actions > .active {
+    .component-group-item>.component-card__actions>.active {
         width: 100%;
         display: flex;
         gap: 8px;
@@ -268,7 +268,7 @@
 
     .component-card__actions .component-button {
         flex: 1;
-        width: 100%; 
+        width: 100%;
         justify-content: center;
     }
 
@@ -280,16 +280,16 @@
         width: 100%;
         max-width: 100%;
     }
-    
+
     .input-group-responsive.active {
-       flex-direction: column !important;
-       align-items: stretch !important;
-   }
-   
-   .input-group-responsive .component-card__actions {
-       width: 100%;
-       margin-top: 8px; 
-   }
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .input-group-responsive .component-card__actions {
+        width: 100%;
+        margin-top: 8px;
+    }
 }
 
 /* --- NUEVOS COMPONENTES UI (TOGGLES Y SELECTS) --- */
@@ -331,16 +331,16 @@
     bottom: 2px;
     background-color: white;
     border-radius: 50%;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
-.component-toggle-switch input:checked + .component-toggle-slider {
+.component-toggle-switch input:checked+.component-toggle-slider {
     background-color: #000;
     border-color: #000;
 }
 
-.component-toggle-switch input:checked + .component-toggle-slider:before {
+.component-toggle-switch input:checked+.component-toggle-slider:before {
     transform: translateX(20px);
 }
 
@@ -390,12 +390,12 @@
 .popover-module {
     position: absolute;
     top: calc(100% + 6px);
-    right: 0; 
+    right: 0;
     width: 100%;
     min-width: 220px;
     background: #fff;
     border-radius: 12px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
     z-index: 1000;
     padding: 6px;
     display: none;
@@ -420,7 +420,7 @@
 
 .component-group-item--stacked .component-card__actions {
     width: 100%;
-    justify-content: flex-start !important; 
+    justify-content: flex-start !important;
     margin-top: 0;
 }
 
@@ -496,23 +496,54 @@
     flex: 1;
 }
 
-.toast.success .toast-icon { color: #2e7d32; }
-.toast.error .toast-icon { color: #d32f2f; }
-.toast.info .toast-icon { color: #0277bd; }
+.toast.success .toast-icon {
+    color: #2e7d32;
+}
+
+.toast.error .toast-icon {
+    color: #d32f2f;
+}
+
+.toast.info .toast-icon {
+    color: #0277bd;
+}
 
 @keyframes toast-slide-in {
-    0% { transform: translateX(-50px); opacity: 0; }
-    100% { transform: translateX(0); opacity: 1; }
+    0% {
+        transform: translateX(-50px);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
 }
 
 @keyframes toast-fade-out {
-    0% { transform: scale(1); opacity: 1; }
-    100% { transform: scale(0.9); opacity: 0; }
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(0.9);
+        opacity: 0;
+    }
 }
 
 @media (max-width: 600px) {
-    #toast-container { left: 16px; right: 16px; bottom: 16px; }
-    .toast { width: 100%; max-width: 100%; min-width: 0; }
+    #toast-container {
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+    }
+
+    .toast {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
 }
 
 /* =========================================
@@ -537,7 +568,7 @@
 
 /* Wizard Containers */
 .wizard-step-container {
-    align-items: center !important; 
+    align-items: center !important;
     text-align: center;
 }
 
@@ -552,10 +583,14 @@
     align-items: center;
     margin-bottom: 12px;
 }
+
 .wizard-icon-container .material-symbols-rounded {
     font-size: 48px;
 }
-.wizard-icon-container.success { color: #2e7d32; }
+
+.wizard-icon-container.success {
+    color: #2e7d32;
+}
 
 /* Utilities */
 .text-center {
@@ -698,27 +733,82 @@
     outline: none;
 }
 
+/* --- NUEVOS ESTILOS PARA TOOLBAR WRAPPER --- */
+.toolbar-wrapper {
+    width: 400px;
+    height: auto;
+
+
+    /* Stick to top logic */
+    position: sticky;
+    top: 16px;
+    /* Espacio desde arriba */
+    z-index: 500;
+    /* Asegura que flote sobre el contenido normal */
+    margin: 0 auto;
+    /* Aesthetics */
+    border-radius: 8px;
+    /* Pill shape */
+
+    /* Sombra para profundidad */
+
+    /* Layout interno (por si agregas botones) */
+    display: flex;
+    align-items: center;
+
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* Ajuste para que la toolbar original se comporte bien dentro del wrapper */
+.toolbar-wrapper .toolbar {
+    width: 100%;
+    margin: 0;
+    position: relative;
+    top: 0;
+}
+
+.toolbar-secondary {
+    width: 100%;
+    height: 45px;
+    background-color: #fff;
+    top: calc(100% + 5px);
+    border-radius: 12px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    display: flex;
+    position: absolute;
+    align-items: center;
+    padding: 8px;
+    animation: slideDown 0.2s ease-out forwards;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.toolbar-btn-active {
+    background-color: #f0f0f0 !important;
+    border-color: #00000040 !important;
+}
+
 /* =========================================
    FLOATING TOOLBAR (Actualizado)
    ========================================= */
 .toolbar {
-    width: 70%;
-    height: 45px;
-    background-color: #fff;
-    border: 1px solid #00000020;
-    
-    /* Stick to top logic */
-    position: sticky;
-    top: 16px; /* Espacio desde arriba */
-    z-index: 500; /* Asegura que flote sobre el contenido normal */
-    margin: 0 auto;
-    /* Aesthetics */
-    border-radius: 8px; /* Pill shape */
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08); /* Sombra para profundidad */
-    
-    /* Layout interno (por si agregas botones) */
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
+    flex-direction: row;
+    padding: 8px;
+            background-color: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
 }

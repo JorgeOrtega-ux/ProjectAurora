@@ -18,8 +18,8 @@
             gap: 12px;
             padding: 16px;
             background: #fff;
-            border: 2px solid #000;
-            border-radius: 16px;
+            border: 1px solid #00000020;
+            border-radius: 12px;
             width: 100%;
         }
 
@@ -81,7 +81,7 @@
             align-items: center;
             height: 36px;
             padding: 0 16px;
-            border: 1.5px solid #000;
+            border: 1.5px solid #00000020;
             border-radius: 999px;
             background-color: #fff;
             font-size: 13px;
@@ -90,49 +90,7 @@
             white-space: nowrap;
         }
 
-        /* --- NUEVOS ESTILOS PARA TOOLBAR WRAPPER --- */
-        .toolbar-wrapper {
-            position: sticky;
-            top: 16px;
-            z-index: 500;
-            width: 300px;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            transition: all 0.3s ease;
-        }
-
-        /* Ajuste para que la toolbar original se comporte bien dentro del wrapper */
-        .toolbar-wrapper .toolbar {
-            width: 100%;
-            margin: 0;
-            position: relative;
-            top: 0;
-        }
-
-        .toolbar-secondary {
-            width: 100%;
-            height: 45px;
-            background-color: #fff;
-            border: 1px solid #00000020;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            display: flex;
-            align-items: center;
-            padding: 0 12px;
-            animation: slideDown 0.2s ease-out forwards;
-        }
-
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .toolbar-btn-active {
-            background-color: #f0f0f0 !important;
-            border-color: #00000040 !important;
-        }
+        
     </style>
 
     <div class="component-wrapper">
