@@ -854,4 +854,6 @@ html {
     .error-heading {
         font-size: 36px;
     }
+}.form-groups-wrapper + .btn-primary {
+    margin-top: 24px;
 }

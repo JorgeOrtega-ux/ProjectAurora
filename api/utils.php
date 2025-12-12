@@ -37,7 +37,11 @@ function getClientIP() {
 // 3. FUNCIONES DE VALIDACIÓN Y FORMATO
 // ==========================================
 
-function validateEmailRequirements($email) {
+/**
+ * Valida requisitos de email. 
+ * CORRECCIÓN APLICADA: Acepta $allowedDomains dinámico.
+ */
+function validateEmailRequirements($email, $allowedDomains = []) {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) return __('api.error.email_format');
     
     $atPos = strrpos($email, '@');
@@ -48,8 +52,18 @@ function validateEmailRequirements($email) {
     
     if (strlen($prefix) < 4) return __('api.error.email_format'); 
     
-    $allowedDomains = ['gmail.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'yahoo.com'];
-    if (!in_array($domain, $allowedDomains)) return __('api.error.email_domain');
+    // --- INICIO CORRECCIÓN ---
+    // Si la lista no está vacía, validamos que el dominio exista en ella.
+    if (!empty($allowedDomains)) {
+        // Aseguramos que la lista de comparación esté en minúsculas
+        $normalizedAllowed = array_map('strtolower', $allowedDomains);
+        
+        if (!in_array($domain, $normalizedAllowed)) {
+            return __('api.error.email_domain');
+        }
+    }
+    // Si la lista está vacía ($allowedDomains = []), permitimos cualquier dominio
+    // --- FIN CORRECCIÓN ---
     
     return true;
 }

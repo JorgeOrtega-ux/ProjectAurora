@@ -102,11 +102,12 @@ function handle_register_step_1($pdo, $email, $password) {
     
     // Obtener lista de dominios permitidos
     $allowedDomainsStr = $config['allowed_email_domains'] ?? '';
+    
     // Si la cadena no está vacía, parsearla. Si está vacía, permitimos todo.
     $allowedDomains = [];
     if (!empty(trim($allowedDomainsStr))) {
         $allowedDomains = array_map('trim', explode(',', $allowedDomainsStr));
-        // Limpiamos elementos vacíos por si acaso "gmail.com, "
+        // Limpiamos elementos vacíos
         $allowedDomains = array_filter($allowedDomains);
     }
 
@@ -125,18 +126,12 @@ function handle_register_step_1($pdo, $email, $password) {
         if (strlen($email) > $maxEmail) {
             return ['status' => 'error', 'message' => __('api.error.email_format') . " (Max $maxEmail chars)"];
         }
-        $val = validateEmailRequirements($email);
-        if ($val !== true) return ['status' => 'error', 'message' => $val];
         
-        // VALIDACIÓN DE DOMINIOS (Backend)
-        // Solo si hay una lista configurada
-        if (!empty($allowedDomains)) {
-            $parts = explode('@', $email);
-            $domain = end($parts); // obtener el último elemento
-            if (!in_array(strtolower($domain), array_map('strtolower', $allowedDomains))) {
-                 return ['status' => 'error', 'message' => __('api.error.email_domain')];
-            }
-        }
+        // CORRECCIÓN APLICADA: Pasamos $allowedDomains a la función de validación
+        // Ahora utils.php usará esta lista en lugar de la hardcoded
+        $val = validateEmailRequirements($email, $allowedDomains);
+        
+        if ($val !== true) return ['status' => 'error', 'message' => $val];
         
         // Validaciones de Password
         if (strlen($password) < $minPass) {
