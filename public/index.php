@@ -44,6 +44,25 @@ if ($userThemePref === 'dark') {
 } else {
     $initialThemeClass = 'light-theme system-theme-pending';
 }
+
+// --- SEGURIDAD: FILTRADO DE CONFIGURACIÓN PÚBLICA ---
+// Solo exponemos claves seguras necesarias para la UI (validaciones frontend).
+// Ocultamos límites de seguridad internos (max_login, lockout, dominios, etc.)
+$publicConfigKeys = [
+    'maintenance_mode',
+    'allow_registrations',
+    'min_password_length',
+    'max_password_length',
+    'min_username_length',
+    'max_username_length',
+    'max_email_length',
+    'profile_picture_max_size'
+];
+
+$rawConfig = $GLOBALS['SERVER_CONFIG'] ?? [];
+// Intersectamos para quedarnos solo con las claves permitidas
+$safePublicConfig = array_intersect_key($rawConfig, array_flip($publicConfigKeys));
+
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo isset($userLang) ? $userLang : 'es'; ?>" class="<?php echo $initialThemeClass; ?>">
@@ -57,8 +76,8 @@ if ($userThemePref === 'dark') {
         window.BASE_PATH = '<?php echo $basePath; ?>';
         window.TRANSLATIONS = <?php echo json_encode($GLOBALS['AURORA_TRANSLATIONS']); ?>;
         
-        // INYECCIÓN DE CONFIGURACIÓN DEL SERVIDOR
-        window.SERVER_CONFIG = <?php echo json_encode($GLOBALS['SERVER_CONFIG'] ?? []); ?>;
+        // INYECCIÓN DE CONFIGURACIÓN DEL SERVIDOR (FILTRADA)
+        window.SERVER_CONFIG = <?php echo json_encode($safePublicConfig); ?>;
         
         window.USER_PREFS = {
             theme: '<?php echo $userThemePref; ?>',

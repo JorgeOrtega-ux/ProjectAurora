@@ -54,16 +54,37 @@ function validateEmailRequirements($email) {
     return true;
 }
 
+/**
+ * Genera un UUID v4 seguro criptográficamente.
+ * Se reemplazó mt_rand() por random_int() para evitar predicción.
+ */
 function generate_uuid() {
-    return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-        mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
-        mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000,
-        mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
-    );
+    try {
+        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff),
+            random_int(0, 0x0fff) | 0x4000, random_int(0, 0x3fff) | 0x8000,
+            random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff)
+        );
+    } catch (Exception $e) {
+        // Fallback en caso extremo de fallo del CSPRNG (poco probable)
+        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+            mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000,
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+        );
+    }
 }
 
+/**
+ * Genera un código numérico de 6 dígitos seguro.
+ * Se reemplazó mt_rand() por random_int().
+ */
 function generate_verification_code() {
-    return str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
+    try {
+        return str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    } catch (Exception $e) {
+        return str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
+    }
 }
 
 // ==========================================
@@ -179,7 +200,14 @@ function ensureDefaultAvatarExists($uuid, $username) {
     $targetFile = DIR_DEFAULT . $uuid . '.png';
     if (!file_exists($targetFile)) {
         try {
-            $randomColor = str_pad(dechex(mt_rand(0, 0xFFFFFF)), 6, '0', STR_PAD_LEFT);
+            // También actualizamos la generación de color para usar random_int por consistencia
+            try {
+                $randColorDec = random_int(0, 0xFFFFFF);
+            } catch (Exception $e) {
+                $randColorDec = mt_rand(0, 0xFFFFFF);
+            }
+            $randomColor = str_pad(dechex($randColorDec), 6, '0', STR_PAD_LEFT);
+            
             $url = "https://ui-avatars.com/api/?name=" . urlencode($username) . "&background=" . $randomColor . "&color=fff&size=128&format=png";
             $imgContent = @file_get_contents($url);
             if ($imgContent) {

@@ -116,6 +116,19 @@
         let selectedUserId = null; 
 
         /* =========================================
+           SEGURIDAD: PREVENCIÓN DE XSS
+           ========================================= */
+        const escapeHtml = (unsafe) => {
+            if (typeof unsafe !== 'string') return unsafe;
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        };
+
+        /* =========================================
            LÓGICA DE UI Y TOOLBARS
            ========================================= */
 
@@ -259,7 +272,12 @@
             const timestamp = new Date().getTime(); 
 
             users.forEach(u => {
-                const initial = u.username.charAt(0).toUpperCase();
+                // SANITIZACIÓN DE DATOS (XSS FIX)
+                const safeUsername = escapeHtml(u.username);
+                const safeEmail = escapeHtml(u.email);
+                const safeRole = escapeHtml(u.role);
+
+                const initial = safeUsername.charAt(0).toUpperCase();
                 const dateObj = new Date(u.created_at);
                 const dateStr = !isNaN(dateObj) ? dateObj.toLocaleDateString() : '—';
                 const avatarSrc = basePath + u.avatar_url + '?v=' + timestamp;
@@ -276,13 +294,13 @@
 
                 html += `
                 <div class="component-entity-card" data-id="${u.id}">
-                    <div class="component-entity-avatar ${borderClass}" title="Rol: ${u.role}">
-                        <img src="${avatarSrc}" alt="${u.username}" onerror="this.style.display='none'; this.parentNode.innerText='${initial}';">
+                    <div class="component-entity-avatar ${borderClass}" title="Rol: ${safeRole}">
+                        <img src="${avatarSrc}" alt="${safeUsername}" onerror="this.style.display='none'; this.parentNode.innerText='${initial}';">
                     </div>
                     
-                    <div class="component-pill" title="Email">${u.email}</div>
-                    <div class="component-pill">${u.username}</div>
-                    <div class="component-pill" style="text-transform:capitalize;">${u.role}</div>
+                    <div class="component-pill" title="Email">${safeEmail}</div>
+                    <div class="component-pill">${safeUsername}</div>
+                    <div class="component-pill" style="text-transform:capitalize;">${safeRole}</div>
                     <div class="component-pill ${statusClass}">${statusText}</div>
                     
                     <div class="component-pill">
