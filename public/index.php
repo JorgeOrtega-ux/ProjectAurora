@@ -406,7 +406,7 @@ if ($userThemePref === 'dark') {
         </div>
     </div>
 
-    <script type="module" src="<?php echo $basePath; ?>assets/js/app-init.js"></script>
+    <script type="module" src="<?php echo $basePath; ?>assets/js/core/app-init.js"></script>
 
 </body>
 
