@@ -69,8 +69,26 @@
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">
-                    <div class="component-input-wrapper" style="width: 100px;">
-                        <input type="number" id="min-pass-len" class="component-text-input" style="text-align: center;" min="1">
+                    <div class="component-input-wrapper" style="width: 260px;">
+                        <div class="component-counter-control">
+                            <div class="counter-group left">
+                                <button type="button" class="counter-btn" onclick="adjustCounter('min-pass-len', -10)">
+                                    <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
+                                </button>
+                                <button type="button" class="counter-btn" onclick="adjustCounter('min-pass-len', -1)">
+                                    <span class="material-symbols-rounded">keyboard_arrow_left</span>
+                                </button>
+                            </div>
+                            <input type="number" id="min-pass-len" class="counter-input" min="1">
+                            <div class="counter-group right">
+                                <button type="button" class="counter-btn" onclick="adjustCounter('min-pass-len', 1)">
+                                    <span class="material-symbols-rounded">keyboard_arrow_right</span>
+                                </button>
+                                <button type="button" class="counter-btn" onclick="adjustCounter('min-pass-len', 10)">
+                                    <span class="material-symbols-rounded">keyboard_double_arrow_right</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -88,8 +106,26 @@
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">
-                    <div class="component-input-wrapper" style="width: 100px;">
-                        <input type="number" id="max-pass-len" class="component-text-input" style="text-align: center;" min="1">
+                    <div class="component-input-wrapper" style="width: 260px;">
+                        <div class="component-counter-control">
+                            <div class="counter-group left">
+                                <button type="button" class="counter-btn" onclick="adjustCounter('max-pass-len', -10)">
+                                    <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
+                                </button>
+                                <button type="button" class="counter-btn" onclick="adjustCounter('max-pass-len', -1)">
+                                    <span class="material-symbols-rounded">keyboard_arrow_left</span>
+                                </button>
+                            </div>
+                            <input type="number" id="max-pass-len" class="counter-input" min="1">
+                            <div class="counter-group right">
+                                <button type="button" class="counter-btn" onclick="adjustCounter('max-pass-len', 1)">
+                                    <span class="material-symbols-rounded">keyboard_arrow_right</span>
+                                </button>
+                                <button type="button" class="counter-btn" onclick="adjustCounter('max-pass-len', 10)">
+                                    <span class="material-symbols-rounded">keyboard_double_arrow_right</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -107,8 +143,26 @@
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">
-                    <div class="component-input-wrapper" style="width: 100px;">
-                        <input type="number" id="min-user-len" class="component-text-input" style="text-align: center;" min="1">
+                    <div class="component-input-wrapper" style="width: 260px;">
+                        <div class="component-counter-control">
+                            <div class="counter-group left">
+                                <button type="button" class="counter-btn" onclick="adjustCounter('min-user-len', -10)">
+                                    <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
+                                </button>
+                                <button type="button" class="counter-btn" onclick="adjustCounter('min-user-len', -1)">
+                                    <span class="material-symbols-rounded">keyboard_arrow_left</span>
+                                </button>
+                            </div>
+                            <input type="number" id="min-user-len" class="counter-input" min="1">
+                            <div class="counter-group right">
+                                <button type="button" class="counter-btn" onclick="adjustCounter('min-user-len', 1)">
+                                    <span class="material-symbols-rounded">keyboard_arrow_right</span>
+                                </button>
+                                <button type="button" class="counter-btn" onclick="adjustCounter('min-user-len', 10)">
+                                    <span class="material-symbols-rounded">keyboard_double_arrow_right</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -126,8 +180,26 @@
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">
-                    <div class="component-input-wrapper" style="width: 100px;">
-                        <input type="number" id="max-user-len" class="component-text-input" style="text-align: center;" min="1">
+                    <div class="component-input-wrapper" style="width: 260px;">
+                        <div class="component-counter-control">
+                            <div class="counter-group left">
+                                <button type="button" class="counter-btn" onclick="adjustCounter('max-user-len', -10)">
+                                    <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
+                                </button>
+                                <button type="button" class="counter-btn" onclick="adjustCounter('max-user-len', -1)">
+                                    <span class="material-symbols-rounded">keyboard_arrow_left</span>
+                                </button>
+                            </div>
+                            <input type="number" id="max-user-len" class="counter-input" min="1">
+                            <div class="counter-group right">
+                                <button type="button" class="counter-btn" onclick="adjustCounter('max-user-len', 1)">
+                                    <span class="material-symbols-rounded">keyboard_arrow_right</span>
+                                </button>
+                                <button type="button" class="counter-btn" onclick="adjustCounter('max-user-len', 10)">
+                                    <span class="material-symbols-rounded">keyboard_double_arrow_right</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -145,8 +217,26 @@
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">
-                    <div class="component-input-wrapper" style="width: 100px;">
-                        <input type="number" id="max-email-len" class="component-text-input" style="text-align: center;" min="1">
+                    <div class="component-input-wrapper" style="width: 260px;">
+                        <div class="component-counter-control">
+                            <div class="counter-group left">
+                                <button type="button" class="counter-btn" onclick="adjustCounter('max-email-len', -10)">
+                                    <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
+                                </button>
+                                <button type="button" class="counter-btn" onclick="adjustCounter('max-email-len', -1)">
+                                    <span class="material-symbols-rounded">keyboard_arrow_left</span>
+                                </button>
+                            </div>
+                            <input type="number" id="max-email-len" class="counter-input" min="1">
+                            <div class="counter-group right">
+                                <button type="button" class="counter-btn" onclick="adjustCounter('max-email-len', 1)">
+                                    <span class="material-symbols-rounded">keyboard_arrow_right</span>
+                                </button>
+                                <button type="button" class="counter-btn" onclick="adjustCounter('max-email-len', 10)">
+                                    <span class="material-symbols-rounded">keyboard_double_arrow_right</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -162,6 +252,25 @@
     
     <script>
     (function(){
+        // Función global (dentro del scope de la página) para ajustar contadores
+        window.adjustCounter = function(id, amount) {
+            const input = document.getElementById(id);
+            if(!input) return;
+            
+            let val = parseInt(input.value) || 0;
+            // Obtener límites del atributo HTML, por defecto 1 y 9999 si no existen
+            let min = parseInt(input.getAttribute('min')) || 0;
+            let max = parseInt(input.getAttribute('max')) || 9999;
+            
+            val += amount;
+            
+            // Validar límites
+            if(val < min) val = min;
+            if(val > max) val = max;
+            
+            input.value = val;
+        };
+
         const maintToggle = document.getElementById('admin-maintenance-toggle');
         const regToggle = document.getElementById('admin-registration-toggle');
         
