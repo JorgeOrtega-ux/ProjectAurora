@@ -14,18 +14,13 @@ require_once __DIR__ . '/../helpers/i18n.php';
 $isLoggedIn = isset($_SESSION['user_id']);
 $userLang = null;
 
-// Lógica para usuarios logueados completamente
 if ($isLoggedIn) {
     try {
-        // --- VALIDACIÓN DE SESIÓN ACTIVA (Dispositivos) ---
-        // Verificamos si la sesión actual existe en la tabla active_sessions.
-        // Si no existe, significa que fue revocada remotamente.
         $currentSessionId = session_id();
         $stmtSession = $pdo->prepare("SELECT id FROM active_sessions WHERE session_id = ? AND user_id = ?");
         $stmtSession->execute([$currentSessionId, $_SESSION['user_id']]);
         
         if ($stmtSession->rowCount() === 0) {
-            // Sesión no válida o revocada -> Cerrar sesión forzosamente
             $_SESSION = [];
             if (ini_get("session.use_cookies")) {
                 $params = session_get_cookie_params();
@@ -35,11 +30,9 @@ if ($isLoggedIn) {
             header("Location: " . $basePath . "login?reason=session_revoked");
             exit;
         } else {
-            // Actualizar 'last_activity' para mantenerla viva en la lista
             $pdo->prepare("UPDATE active_sessions SET last_activity = NOW() WHERE session_id = ?")->execute([$currentSessionId]);
         }
 
-        // --- CARGA DE DATOS DE USUARIO ---
         $stmt = $pdo->prepare("
             SELECT u.role, u.username, u.uuid, 
                    p.language, p.theme, p.extended_alerts 
@@ -98,13 +91,11 @@ if (strpos($currentSection, 'api/') === 0) {
     }
 }
 
-// Redirecciones
 if ($currentSection === 'settings') {
     header("Location: " . $basePath . "settings/your-profile");
     exit;
 }
 
-// Redirección base de Admin
 if ($currentSection === 'admin') {
     header("Location: " . $basePath . "admin/users");
     exit;
@@ -130,6 +121,7 @@ if ($currentSection === '') {
 $routes = require __DIR__ . '/../routes.php';
 $validRoutes = array_keys($routes); 
 
+// MODIFICADO: Agregamos 'account-status' a las rutas permitidas para invitados
 $guestRoutes = [
     'login', 
     'register', 
@@ -137,7 +129,8 @@ $guestRoutes = [
     'register/verify', 
     'recover-password', 
     'recover-password-reset',
-    '2fa-challenge'
+    '2fa-challenge',
+    'account-status' // <-- NUEVO
 ];
 
 $is2faPending = isset($_SESSION['temp_2fa_user_id']);
@@ -151,20 +144,23 @@ if (!$isLoggedIn) {
         exit;
     }
 } else {
+    // Si ya está logueado, evitar que entre a login/register
     if (in_array($currentSection, $guestRoutes)) {
-        header("Location: " . $basePath);
-        exit;
+        // Excepción: account-status podría verse estando logueado si acaba de ser baneado en tiempo real, 
+        // pero generalmente el login cierra sesión. Dejamos que el router redirija a main si intenta entrar a login.
+        if ($currentSection !== 'account-status') {
+             header("Location: " . $basePath);
+             exit;
+        }
     }
 }
 
-// NUEVO: Validación de Seguridad para rutas /admin
-// Si intenta entrar a admin/ algo y no es founder/admin -> 404
+// Validación de roles admin
 if (strpos($currentSection, 'admin/') === 0) {
     $allowedRoles = ['founder', 'administrator'];
     $userRole = $_SESSION['role'] ?? 'user';
     
     if (!in_array($userRole, $allowedRoles)) {
-        // Enmascaramos la existencia de la ruta mostrando 404
         $currentSection = '404';
     }
 }

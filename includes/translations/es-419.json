@@ -19,6 +19,12 @@
     "global.back": "Volver",
     "global.ok": "OK",
     
+    "auth.status.deleted_title": "Cuenta Eliminada",
+    "auth.status.deleted_desc": "Esta cuenta ha sido eliminada permanentemente por solicitud del usuario.",
+    "auth.status.suspended_title": "Cuenta Suspendida",
+    "auth.status.suspended_desc": "El acceso a esta cuenta ha sido restringido debido a una violación de los términos de servicio.",
+    "auth.status.contact_support": "Contactar Soporte",
+
     "menu.settings": "Configuración",
     "menu.logout": "Cerrar sesión",
     "menu.home": "Página principal",

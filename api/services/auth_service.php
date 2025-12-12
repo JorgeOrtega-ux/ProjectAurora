@@ -18,13 +18,21 @@ function handle_login($pdo, $email, $password) {
 
     if ($user && password_verify($password, $user['password'])) {
         
-        // --- CHECK DE STATUS ---
+        // --- CHECK DE STATUS MODIFICADO ---
         if ($user['account_status'] === 'deleted') {
             logSecurityEvent($pdo, $email, 'login_deleted_attempt');
-            return ['status' => 'error', 'message' => __('api.error.account_deleted_permanent')];
+            // MODIFICADO: Devolver redirección en lugar de error simple
+            return [
+                'status' => 'error', 
+                'redirect' => $basePath . 'account-status?type=deleted'
+            ];
         }
         if ($user['account_status'] === 'suspended') {
-            return ['status' => 'error', 'message' => __('api.error.account_suspended_support')];
+            // MODIFICADO: Devolver redirección
+            return [
+                'status' => 'error', 
+                'redirect' => $basePath . 'account-status?type=suspended'
+            ];
         }
 
         session_regenerate_id(true);

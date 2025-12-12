@@ -15,13 +15,15 @@ const showError = (message) => {
 };
 
 const handleAuthResponse = (result, buttons) => {
+    // MODIFICADO: Verificación prioritaria de redirección.
+    // Esto permite que el backend envíe redirecciones incluso si el status es 'error' (ej. cuenta suspendida)
+    if (result.redirect) {
+        window.location.href = result.redirect;
+        return;
+    }
+
     if (result.status === 'success') {
-        // Si hay redirección, la seguimos.
-        if (result.redirect) {
-            window.location.href = result.redirect;
-        } else {
-            Toast.success(result.message || window.t('api.success.valid_data'));
-        }
+        Toast.success(result.message || window.t('api.success.valid_data'));
     } else {
         showError(result.message || window.t('global.error'));
         buttons.forEach(btn => {

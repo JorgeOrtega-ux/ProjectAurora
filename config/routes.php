@@ -17,6 +17,9 @@ return [
     'register/verify'         => __DIR__ . '/../includes/sections/auth/register.php',
     
     '2fa-challenge'      => __DIR__ . '/../includes/sections/auth/2fa-challenge.php',
+    
+    // NUEVA RUTA: Estado de cuenta (Suspendida/Eliminada)
+    'account-status'     => __DIR__ . '/../includes/sections/auth/account-status.php',
 
     // --- Rutas de Configuración (Settings) ---
     'settings/your-profile'       => __DIR__ . '/../includes/sections/settings/your-profile.php',
@@ -26,7 +29,7 @@ return [
     'settings/2fa-setup'          => __DIR__ . '/../includes/sections/settings/2fa-setup.php',
     'settings/delete-account'     => __DIR__ . '/../includes/sections/settings/delete-account.php',
 
-    // --- NUEVAS RUTAS: Panel de Administración ---
+    // --- Rutas de Administración ---
     'admin/users'  => __DIR__ . '/../includes/sections/admin/users.php',
     'admin/server' => __DIR__ . '/../includes/sections/admin/server.php',
 ];
