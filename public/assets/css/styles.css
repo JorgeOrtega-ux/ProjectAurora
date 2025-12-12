@@ -496,7 +496,7 @@ html {
 .forgot-password {
     display: block;
     text-align: right;
-    margin: 12px 0;
+    margin: 8px 0; /* AJUSTADO: 12px -> 8px para estandarización */
     font-size: 14px;
 }
 
@@ -541,7 +541,7 @@ html {
 }
 
 .auth-footer {
-    margin-top: 12px;
+    margin-top: 8px; /* AJUSTADO: 12px -> 8px para estandarización */
     font-size: 14px;
     color: #666;
 }
@@ -580,6 +580,7 @@ html {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    margin-bottom: 8px; /* AGREGADO: Garantiza separación de 8px */
 }
 
 .form-groups-wrapper .form-group {
@@ -854,6 +855,4 @@ html {
     .error-heading {
         font-size: 36px;
     }
-}.form-groups-wrapper + .btn-primary {
-    margin-top: 24px;
 }

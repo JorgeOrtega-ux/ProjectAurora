@@ -39,7 +39,7 @@ function getClientIP() {
 
 /**
  * Valida requisitos de email. 
- * CORRECCIÓN APLICADA: Acepta $allowedDomains dinámico.
+ * Acepta $allowedDomains dinámico.
  */
 function validateEmailRequirements($email, $allowedDomains = []) {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) return __('api.error.email_format');
@@ -52,53 +52,38 @@ function validateEmailRequirements($email, $allowedDomains = []) {
     
     if (strlen($prefix) < 4) return __('api.error.email_format'); 
     
-    // --- INICIO CORRECCIÓN ---
-    // Si la lista no está vacía, validamos que el dominio exista en ella.
+    // Validación de dominios permitidos
     if (!empty($allowedDomains)) {
-        // Aseguramos que la lista de comparación esté en minúsculas
         $normalizedAllowed = array_map('strtolower', $allowedDomains);
-        
         if (!in_array($domain, $normalizedAllowed)) {
             return __('api.error.email_domain');
         }
     }
-    // Si la lista está vacía ($allowedDomains = []), permitimos cualquier dominio
-    // --- FIN CORRECCIÓN ---
     
     return true;
 }
 
 /**
  * Genera un UUID v4 seguro criptográficamente.
- * Se reemplazó mt_rand() por random_int() para evitar predicción.
+ * CORRECCIÓN: Se eliminó el fallback a mt_rand(). Si random_int() falla,
+ * debe lanzarse la excepción para no comprometer la seguridad.
  */
 function generate_uuid() {
-    try {
-        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff),
-            random_int(0, 0x0fff) | 0x4000, random_int(0, 0x3fff) | 0x8000,
-            random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff)
-        );
-    } catch (Exception $e) {
-        // Fallback en caso extremo de fallo del CSPRNG (poco probable)
-        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
-            mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000,
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
-        );
-    }
+    // Si el sistema no tiene suficiente entropía, lanzará una Exception.
+    // Esto es el comportamiento deseado en seguridad (Fail Secure).
+    return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+        random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff),
+        random_int(0, 0x0fff) | 0x4000, random_int(0, 0x3fff) | 0x8000,
+        random_int(0, 0xffff), random_int(0, 0xffff), random_int(0, 0xffff)
+    );
 }
 
 /**
  * Genera un código numérico de 6 dígitos seguro.
- * Se reemplazó mt_rand() por random_int().
+ * CORRECCIÓN: Se eliminó el fallback a mt_rand().
  */
 function generate_verification_code() {
-    try {
-        return str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-    } catch (Exception $e) {
-        return str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
-    }
+    return str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 }
 
 // ==========================================
@@ -123,7 +108,6 @@ function registerActiveSession($pdo, $userId) {
         $ip = getClientIP();
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'UNKNOWN';
 
-        // Primero limpiamos si hubiera una sesión con el mismo ID para evitar duplicados
         $pdo->prepare("DELETE FROM active_sessions WHERE session_id = ?")->execute([$sessionId]);
 
         $stmt = $pdo->prepare("INSERT INTO active_sessions (user_id, session_id, ip_address, user_agent) VALUES (?, ?, ?, ?)");
@@ -139,14 +123,12 @@ function parseUserAgentSimple($ua) {
     $os = __('global.unknown_system');
     $icon = 'device_unknown'; 
 
-    // Detectar SO
     if (preg_match('/windows|win32/i', $ua)) { $os = 'Windows'; $icon = 'desktop_windows'; }
     elseif (preg_match('/macintosh|mac os x/i', $ua)) { $os = 'macOS'; $icon = 'laptop_mac'; }
     elseif (preg_match('/linux/i', $ua)) { $os = 'Linux'; $icon = 'terminal'; }
     elseif (preg_match('/android/i', $ua)) { $os = 'Android'; $icon = 'phone_android'; }
     elseif (preg_match('/iphone|ipad|ipod/i', $ua)) { $os = 'iOS'; $icon = 'phone_iphone'; }
 
-    // Detectar Navegador
     if (preg_match('/MSIE|Trident/i', $ua)) $browser = 'Internet Explorer';
     elseif (preg_match('/Firefox/i', $ua)) $browser = 'Firefox';
     elseif (preg_match('/Chrome/i', $ua)) $browser = 'Chrome';
@@ -214,12 +196,8 @@ function ensureDefaultAvatarExists($uuid, $username) {
     $targetFile = DIR_DEFAULT . $uuid . '.png';
     if (!file_exists($targetFile)) {
         try {
-            // También actualizamos la generación de color para usar random_int por consistencia
-            try {
-                $randColorDec = random_int(0, 0xFFFFFF);
-            } catch (Exception $e) {
-                $randColorDec = mt_rand(0, 0xFFFFFF);
-            }
+            // CORRECCIÓN: Uso exclusivo de random_int()
+            $randColorDec = random_int(0, 0xFFFFFF);
             $randomColor = str_pad(dechex($randColorDec), 6, '0', STR_PAD_LEFT);
             
             $url = "https://ui-avatars.com/api/?name=" . urlencode($username) . "&background=" . $randomColor . "&color=fff&size=128&format=png";
