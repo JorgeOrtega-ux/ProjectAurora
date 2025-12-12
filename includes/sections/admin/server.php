@@ -1,9 +1,18 @@
 <?php
 // includes/sections/admin/server.php
-// Refactorizado para mostrar configuración de servidor y nuevos límites avanzados
 ?>
 <div class="section-content active" data-section="admin/server">
     <div class="component-wrapper">
+        
+        <div class="component-toolbar-wrapper" style="width: 100%; position: sticky; top: 16px; z-index: 100;">
+            <div class="component-toolbar" style="justify-content: flex-end;">
+                 <button class="component-button primary" id="btn-save-limits">
+                    <span class="material-symbols-rounded">save</span>
+                    <?= __('global.save') ?>
+                 </button>
+            </div>
+        </div>
+
         <div class="component-header-card">
             <h1 class="component-page-title" data-lang-key="admin.server.title"><?= __('admin.server.title') ?></h1>
             <p class="component-page-description" data-lang-key="admin.server.desc"><?= __('admin.server.desc') ?></p>
@@ -420,14 +429,8 @@
                     </div>
                 </div>
             </div>
-
-            <div class="component-group-item" style="background-color: #f5f5fa; justify-content: flex-end;">
-                 <button class="component-button primary" id="btn-save-limits" style="width: 100%; justify-content: center;">
-                    <?= __('global.save') ?>
-                 </button>
+            
             </div>
-
-        </div>
     </div>
     
     <script>
