@@ -53,6 +53,9 @@
     "admin.server.limits_title": "Límites de Seguridad",
     "admin.server.limits_desc": "Configura longitudes mínimas y máximas para contraseñas, usuarios y correos.",
     
+    "admin.server.domains_title": "Dominios Permitidos",
+    "admin.server.domains_desc": "Lista de dominios separados por comas. Si está vacío, permite todos.",
+
     "admin.server.security_limits_title": "Límites Avanzados y Cooldowns",
     "admin.server.security_limits_desc": "Controla los intentos de acceso y tiempos de espera para acciones sensibles.",
     "admin.server.max_login_title": "Intentos de Login",

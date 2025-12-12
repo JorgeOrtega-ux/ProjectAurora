@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS active_sessions (
     INDEX idx_session_lookup (session_id)
 );
 
--- 12. Configuración del Servidor (ACTUALIZADA)
+-- 12. Configuración del Servidor (ACTUALIZADA con dominios)
 CREATE TABLE IF NOT EXISTS server_config (
     id INT PRIMARY KEY,
     maintenance_mode BOOLEAN DEFAULT 0,
@@ -117,18 +117,19 @@ CREATE TABLE IF NOT EXISTS server_config (
     min_username_length INT DEFAULT 6,
     max_username_length INT DEFAULT 32,
     max_email_length INT DEFAULT 255,
-    -- Nuevas columnas agregadas
+    -- Nuevas columnas
     max_login_attempts INT DEFAULT 5,
     lockout_time_minutes INT DEFAULT 5,
     code_resend_cooldown INT DEFAULT 60,
     username_cooldown INT DEFAULT 30,
     email_cooldown INT DEFAULT 12,
     profile_picture_max_size INT DEFAULT 2,
+    allowed_email_domains TEXT DEFAULT NULL, -- Nueva columna para dominios
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Configuración inicial por defecto con los nuevos valores
+-- Configuración inicial por defecto
 INSERT IGNORE INTO server_config 
-(id, maintenance_mode, allow_registrations, min_password_length, max_password_length, min_username_length, max_username_length, max_email_length, max_login_attempts, lockout_time_minutes, code_resend_cooldown, username_cooldown, email_cooldown, profile_picture_max_size) 
+(id, maintenance_mode, allow_registrations, min_password_length, max_password_length, min_username_length, max_username_length, max_email_length, max_login_attempts, lockout_time_minutes, code_resend_cooldown, username_cooldown, email_cooldown, profile_picture_max_size, allowed_email_domains) 
 VALUES 
-(1, 0, 1, 8, 72, 6, 32, 255, 5, 5, 60, 30, 12, 2);
+(1, 0, 1, 8, 72, 6, 32, 255, 5, 5, 60, 30, 12, 2, 'gmail.com,outlook.com,hotmail.com,icloud.com,yahoo.com');

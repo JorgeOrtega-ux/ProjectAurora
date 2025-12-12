@@ -58,6 +58,23 @@
 
         <div class="component-card component-card--grouped">
             
+            <div class="component-group-item" style="flex-direction: column; align-items: flex-start;">
+                <div class="component-card__content" style="width: 100%; margin-bottom: 15px;">
+                    <div class="component-card__profile-picture component-card__profile-picture--bordered">
+                        <span class="material-symbols-rounded" style="color: #2e7d32;">domain_verification</span>
+                    </div>
+                    <div class="component-card__text">
+                        <h2 class="component-card__title"><?= __('admin.server.domains_title') ?></h2>
+                        <p class="component-card__description"><?= __('admin.server.domains_desc') ?></p>
+                    </div>
+                </div>
+                <div style="width: 100%;">
+                    <textarea id="allowed-domains" class="component-input" rows="3" placeholder="gmail.com, outlook.com..."></textarea>
+                </div>
+            </div>
+
+            <hr class="component-divider">
+
             <div class="component-group-item">
                 <div class="component-card__content">
                     <div class="component-card__profile-picture component-card__profile-picture--bordered">
@@ -443,6 +460,7 @@
         const minUser = document.getElementById('min-user-len');
         const maxUser = document.getElementById('max-user-len');
         const maxEmail = document.getElementById('max-email-len');
+        const allowedDomains = document.getElementById('allowed-domains'); // NUEVO
         
         // Nuevos inputs
         const maxLogin = document.getElementById('max-login-attempts');
@@ -477,6 +495,7 @@
                         if(minUser) minUser.value = res.data.min_username_length;
                         if(maxUser) maxUser.value = res.data.max_username_length;
                         if(maxEmail) maxEmail.value = res.data.max_email_length;
+                        if(allowedDomains) allowedDomains.value = res.data.allowed_email_domains || ''; // Cargar dominios
 
                         // Nuevos
                         if(maxLogin) maxLogin.value = res.data.max_login_attempts;
@@ -505,6 +524,7 @@
                 formData.append('min_username_length', minUser.value);
                 formData.append('max_username_length', maxUser.value);
                 formData.append('max_email_length', maxEmail.value);
+                formData.append('allowed_email_domains', allowedDomains.value); // Guardar dominios
 
                 // Nuevos valores
                 formData.append('max_login_attempts', maxLogin.value);

@@ -99,6 +99,16 @@ function handle_register_step_1($pdo, $email, $password) {
     $minPass = $config['min_password_length'] ?? 8;
     $maxPass = $config['max_password_length'] ?? 72;
     $maxEmail = $config['max_email_length'] ?? 255;
+    
+    // Obtener lista de dominios permitidos
+    $allowedDomainsStr = $config['allowed_email_domains'] ?? '';
+    // Si la cadena no está vacía, parsearla. Si está vacía, permitimos todo.
+    $allowedDomains = [];
+    if (!empty(trim($allowedDomainsStr))) {
+        $allowedDomains = array_map('trim', explode(',', $allowedDomainsStr));
+        // Limpiamos elementos vacíos por si acaso "gmail.com, "
+        $allowedDomains = array_filter($allowedDomains);
+    }
 
     // --- LOGICA DE REGISTRO CERRADO ---
     if ($allowed == 0) {
@@ -117,6 +127,16 @@ function handle_register_step_1($pdo, $email, $password) {
         }
         $val = validateEmailRequirements($email);
         if ($val !== true) return ['status' => 'error', 'message' => $val];
+        
+        // VALIDACIÓN DE DOMINIOS (Backend)
+        // Solo si hay una lista configurada
+        if (!empty($allowedDomains)) {
+            $parts = explode('@', $email);
+            $domain = end($parts); // obtener el último elemento
+            if (!in_array(strtolower($domain), array_map('strtolower', $allowedDomains))) {
+                 return ['status' => 'error', 'message' => __('api.error.email_domain')];
+            }
+        }
         
         // Validaciones de Password
         if (strlen($password) < $minPass) {

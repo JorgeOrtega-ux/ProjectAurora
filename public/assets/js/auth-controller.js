@@ -158,6 +158,13 @@ const setupAuthListeners = () => {
     const minPass = config.min_password_length || 8;
     const minUser = config.min_username_length || 6;
     const maxEmail = config.max_email_length || 255;
+    
+    // Configuración dinámica de dominios
+    let allowedDomains = [];
+    if(config.allowed_email_domains && config.allowed_email_domains.trim() !== "") {
+        allowedDomains = config.allowed_email_domains.split(',').map(d => d.trim().toLowerCase());
+    }
+    // Si la lista está vacía, se permiten todos (la validación de JS lo ignorará)
 
     const oldAlerts = document.querySelectorAll('.alert.error, .alert.success');
     oldAlerts.forEach(el => el.style.display = 'none');
@@ -210,8 +217,7 @@ const setupAuthListeners = () => {
             if(email && password && email.value && password.value) {
                 const emailVal = email.value.trim();
                 const passVal = password.value;
-                const allowedDomains = ['gmail.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'yahoo.com'];
-
+                
                 if (!emailVal.includes('@')) {
                     showError(window.t('api.error.email_format')); return;
                 }
@@ -222,9 +228,14 @@ const setupAuthListeners = () => {
                 if (localPart.length < 4) {
                     showError(window.t('api.error.email_format')); return; 
                 }
-                if (!allowedDomains.includes(domainPart)) {
-                    showError(window.t('api.error.email_domain')); return;
+                
+                // VALIDACIÓN DINÁMICA DE DOMINIOS
+                if (allowedDomains.length > 0) {
+                    if (!allowedDomains.includes(domainPart)) {
+                        showError(window.t('api.error.email_domain')); return;
+                    }
                 }
+                
                 if (emailVal.length > maxEmail) {
                     showError(window.t('api.error.email_format') + ` (Max ${maxEmail})`); return;
                 }

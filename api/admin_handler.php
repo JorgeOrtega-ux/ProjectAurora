@@ -51,7 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = $stmt->fetch();
             if(!$data) {
                 // Si no existe, crear por defecto (Valores actualizados)
-                $pdo->exec("INSERT INTO server_config (id, maintenance_mode, allow_registrations, min_password_length, max_password_length, min_username_length, max_username_length, max_email_length, max_login_attempts, lockout_time_minutes, code_resend_cooldown, username_cooldown, email_cooldown, profile_picture_max_size) VALUES (1, 0, 1, 8, 72, 6, 32, 255, 5, 5, 60, 30, 12, 2)");
+                $defaultDomains = 'gmail.com,outlook.com,hotmail.com,icloud.com,yahoo.com';
+                $pdo->exec("INSERT INTO server_config (id, maintenance_mode, allow_registrations, min_password_length, max_password_length, min_username_length, max_username_length, max_email_length, max_login_attempts, lockout_time_minutes, code_resend_cooldown, username_cooldown, email_cooldown, profile_picture_max_size, allowed_email_domains) VALUES (1, 0, 1, 8, 72, 6, 32, 255, 5, 5, 60, 30, 12, 2, '$defaultDomains')");
                 $data = [
                     'maintenance_mode' => 0, 
                     'allow_registrations' => 1,
@@ -65,7 +66,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'code_resend_cooldown' => 60,
                     'username_cooldown' => 30,
                     'email_cooldown' => 12,
-                    'profile_picture_max_size' => 2
+                    'profile_picture_max_size' => 2,
+                    'allowed_email_domains' => $defaultDomains
                 ];
             }
             sendJsonResponse('success', 'OK', null, $data);
@@ -92,6 +94,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $userCooldown = isset($input['username_cooldown']) ? (int)$input['username_cooldown'] : 30;
         $emailCooldown = isset($input['email_cooldown']) ? (int)$input['email_cooldown'] : 12;
         $profilePicSize = isset($input['profile_picture_max_size']) ? (int)$input['profile_picture_max_size'] : 2;
+        
+        // Dominios
+        $allowedDomains = isset($input['allowed_email_domains']) ? trim($input['allowed_email_domains']) : '';
 
         // Validaciones lógicas básicas
         if ($minPass < 1) $minPass = 1;
@@ -122,14 +127,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     code_resend_cooldown = ?,
                     username_cooldown = ?,
                     email_cooldown = ?,
-                    profile_picture_max_size = ?
+                    profile_picture_max_size = ?,
+                    allowed_email_domains = ?
                     WHERE id = 1";
 
             $stmt = $pdo->prepare($sql);
             if ($stmt->execute([
                 $maintenance, $registrations, 
                 $minPass, $maxPass, $minUser, $maxUser, $maxEmail,
-                $maxLoginAttempts, $lockoutTime, $codeResend, $userCooldown, $emailCooldown, $profilePicSize
+                $maxLoginAttempts, $lockoutTime, $codeResend, $userCooldown, $emailCooldown, $profilePicSize,
+                $allowedDomains
             ])) {
                 logSecurityEvent($pdo, "uid_".$userId, "server_config_update");
                 sendJsonResponse('success', __('api.success.preferences_saved'));
