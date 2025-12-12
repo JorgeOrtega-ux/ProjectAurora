@@ -146,7 +146,15 @@ function handle_register_step_1($pdo, $email, $password) {
         if ($stmt->rowCount() > 0) {
             return ['status' => 'error', 'message' => __('api.error.email_exists')];
         } else {
-            $_SESSION['temp_register'] = ['email' => $email, 'password' => $password];
+            // =================================================================
+            // CORRECCIÓN DE SEGURIDAD
+            // Hasheamos la contraseña AHORA para no guardarla en texto plano en la sesión.
+            // =================================================================
+            $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+            
+            // Guardamos el hash en lugar del texto plano
+            $_SESSION['temp_register'] = ['email' => $email, 'password_hash' => $passwordHash];
+            
             return ['status' => 'success', 'message' => __('api.success.valid_data'), 'redirect' => $basePath . "register/aditional-data"];
         }
     } else {
@@ -162,7 +170,19 @@ function handle_register_step_2($pdo, $username) {
     }
 
     $email = $_SESSION['temp_register']['email'];
-    $password = $_SESSION['temp_register']['password'];
+    
+    // =================================================================
+    // CORRECCIÓN DE SEGURIDAD
+    // Recuperamos el hash generado en el paso 1.
+    // =================================================================
+    if (isset($_SESSION['temp_register']['password_hash'])) {
+        $passwordHash = $_SESSION['temp_register']['password_hash'];
+    } elseif (isset($_SESSION['temp_register']['password'])) {
+        // Fallback de compatibilidad por si quedó una sesión antigua activa
+        $passwordHash = password_hash($_SESSION['temp_register']['password'], PASSWORD_DEFAULT);
+    } else {
+        return ['status' => 'error', 'message' => __('api.error.session_expired'), 'redirect' => $basePath . "register"];
+    }
 
     // Configuración de límites
     global $SERVER_CONFIG;
@@ -186,7 +206,8 @@ function handle_register_step_2($pdo, $username) {
         } else {
             $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation'")->execute([$email]);
             $code = generate_verification_code();
-            $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+            
+            // Usamos el hash directamente, no volvemos a hashear
             $payload = json_encode(['username' => $username, 'email' => $email, 'password' => $passwordHash]);
             
             $stmt = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
