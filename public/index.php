@@ -10,11 +10,12 @@ $sectionMap = require __DIR__ . '/../config/routes.php';
 // Lógica de detección de sección
 $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
 $isAdminSection = (strpos($currentSection, 'admin/') === 0);
-$isHelpSection = (strpos($currentSection, 'help/') === 0); // NUEVO
+$isHelpSection = (strpos($currentSection, 'help/') === 0);
 
-// --- LÓGICA DE AVATAR ---
+// --- LÓGICA DE AVATAR MODIFICADA ---
+// Objetivo: Generar siempre una URL para la imagen. 
+// Si el archivo no existe, el navegador mostrará su placeholder nativo (imagen rota).
 $globalAvatarSrc = '';
-$hasImage = false;
 
 if (isset($_SESSION['uuid'])) {
     $uuid = $_SESSION['uuid'];
@@ -23,12 +24,14 @@ if (isset($_SESSION['uuid'])) {
     $relCustom  = 'assets/uploads/avatars/custom/' . $uuid . '.png';
     $relDefault = 'assets/uploads/avatars/default/' . $uuid . '.png';
 
+    // 1. Prioridad: Avatar personalizado
     if (file_exists(__DIR__ . '/' . $relCustom)) {
         $globalAvatarSrc = $basePath . $relCustom . $cacheBuster;
-        $hasImage = true;
-    } elseif (file_exists(__DIR__ . '/' . $relDefault)) {
+    } 
+    // 2. Fallback: Avatar por defecto
+    // Asignamos la ruta aunque el archivo no exista físicamente, para forzar el placeholder del navegador.
+    else {
         $globalAvatarSrc = $basePath . $relDefault . $cacheBuster;
-        $hasImage = true;
     }
 }
 
@@ -46,8 +49,6 @@ if ($userThemePref === 'dark') {
 }
 
 // --- SEGURIDAD: FILTRADO DE CONFIGURACIÓN PÚBLICA ---
-// Solo exponemos claves seguras necesarias para la UI (validaciones frontend).
-// Ocultamos límites de seguridad internos (max_login, lockout, dominios, etc.)
 $publicConfigKeys = [
     'maintenance_mode',
     'allow_registrations',
@@ -60,7 +61,6 @@ $publicConfigKeys = [
 ];
 
 $rawConfig = $GLOBALS['SERVER_CONFIG'] ?? [];
-// Intersectamos para quedarnos solo con las claves permitidas
 $safePublicConfig = array_intersect_key($rawConfig, array_flip($publicConfigKeys));
 
 ?>
@@ -84,7 +84,7 @@ $safePublicConfig = array_intersect_key($rawConfig, array_flip($publicConfigKeys
             extended_alerts: <?php echo $userExtendedAlerts; ?>
         };
 
-        // Función de traducción mejorada para soportar argumentos (%s)
+        // Función de traducción mejorada
         window.t = function(key, ...args) {
             let text = window.TRANSLATIONS[key] || key;
             if (args.length > 0) {
@@ -106,8 +106,6 @@ $safePublicConfig = array_intersect_key($rawConfig, array_flip($publicConfigKeys
     <title><?php echo __('app.name'); ?></title>
 
     <?php 
-    // MOSTRAR HEADER SIEMPRE QUE NO SEA MAINTENANCE (Incluso si no está logueado para ver ayuda)
-    // MODIFICADO: Permitir estructura completa en Help incluso sin login
     $showFullLayout = ($isLoggedIn || $isHelpSection) && $currentSection !== 'maintenance';
     
     if (!$showFullLayout): ?>
@@ -164,12 +162,10 @@ $safePublicConfig = array_intersect_key($rawConfig, array_flip($publicConfigKeys
                                         data-tooltip="<?php echo __('menu.profile'); ?>"
                                         data-lang-tooltip="menu.profile">
 
-                                        <?php if ($hasImage): ?>
+                                        <?php if ($isLoggedIn): ?>
                                             <img src="<?php echo $globalAvatarSrc; ?>" alt="<?php echo __('menu.profile'); ?>" class="profile-img">
                                         <?php else: ?>
-                                            <span style="font-weight:bold; color:#555; position: relative; z-index: 1;">
-                                                <?php echo $isLoggedIn ? strtoupper(substr($_SESSION['username'], 0, 1)) : '?'; ?>
-                                            </span>
+                                            <span style="font-weight:bold; color:#555; position: relative; z-index: 1;">?</span>
                                         <?php endif; ?>
                                     </div>
 

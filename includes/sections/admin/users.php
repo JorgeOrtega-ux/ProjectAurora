@@ -277,7 +277,9 @@
                 const safeEmail = escapeHtml(u.email);
                 const safeRole = escapeHtml(u.role);
 
+                // Aunque ya no lo usemos para el fallback, la dejamos por si acaso
                 const initial = safeUsername.charAt(0).toUpperCase();
+                
                 const dateObj = new Date(u.created_at);
                 const dateStr = !isNaN(dateObj) ? dateObj.toLocaleDateString() : '—';
                 const avatarSrc = basePath + u.avatar_url + '?v=' + timestamp;
@@ -295,7 +297,7 @@
                 html += `
                 <div class="component-entity-card" data-id="${u.id}">
                     <div class="component-entity-avatar ${borderClass}" title="Rol: ${safeRole}">
-                        <img src="${avatarSrc}" alt="${safeUsername}" onerror="this.style.display='none'; this.parentNode.innerText='${initial}';">
+                        <img src="${avatarSrc}" alt="${safeUsername}">
                     </div>
                     
                     <div class="component-pill" title="Email">${safeEmail}</div>
