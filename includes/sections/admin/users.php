@@ -26,8 +26,8 @@
         /* Avatar Base (Contenedor) */
         .user-avatar-circle {
             position: relative;
-            width: 40px;
-            height: 40px;
+            width: 35px;
+            height: 35px;
             background-color: #f5f5fa; /* Fondo por si falla imagen */
             color: #555;
             border-radius: 50%;
@@ -97,18 +97,24 @@
         
         <div class="toolbar-wrapper">
             <div class="toolbar">
-                <button class="component-button" id="btn-toggle-search" style="border:none;">
+                <button class="header-button" id="btn-toggle-search"">
                     <span class="material-symbols-rounded">search</span>
                 </button>
                 <div style="width: 1px; height: 20px; background: #eee;"></div>
-                <button class="component-button" style="border:none;">
+                <button class="header-button">
                     <span class="material-symbols-rounded">filter_list</span>
                 </button>
             </div>
             
             <div class="toolbar-secondary" id="toolbar-search-container" style="display: none;">
-                <span class="material-symbols-rounded" style="color: #999; margin-right: 8px;">search</span>
-                <input type="text" id="user-search-input" class="component-text-input" placeholder="Buscar usuario..." style="border: none; padding: 0; height: 100%;">
+                <div class="search-container" style="width: 100%;">
+                    <div class="search-icon">
+                        <span class="material-symbols-rounded">search</span>
+                    </div>
+                    <div class="search-input">
+                        <input type="text" id="user-search-input" placeholder="Buscar..." data-lang-placeholder="global.search_placeholder">
+                    </div>
+                </div>
             </div>
         </div>
 
