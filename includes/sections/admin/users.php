@@ -50,7 +50,7 @@
             right: -4px;
             bottom: -4px;
             border-radius: 50%;
-            border: 3px solid transparent; /* Grosor del borde */
+            border: 2px solid transparent; /* Grosor del borde */
             pointer-events: none;
             z-index: 2;
         }
@@ -104,6 +104,9 @@
         }
     </style>
 
+
+    <div class="component-wrapper">
+        
     <div class="toolbar">
         <button class="component-button" style="border:none;">
             <span class="material-symbols-rounded">filter_list</span>
@@ -114,8 +117,6 @@
             Crear
         </button>
     </div>
-
-    <div class="component-wrapper">
         <div class="component-header-card">
             <h1 class="component-page-title" data-lang-key="admin.users.title"><?= __('admin.users.title') ?></h1>
             <p class="component-page-description" data-lang-key="admin.users.desc"><?= __('admin.users.desc') ?></p>
