@@ -116,18 +116,9 @@
     z-index: 2;
 }
 
-.component-card__profile-picture[data-role="user"]::before {
-    border-color: #cccccc;
-}
-
-.component-card__profile-picture[data-role="moderator"]::before {
-    border-color: #0000FF;
-}
-
-.component-card__profile-picture[data-role="administrator"]::before {
-    border-color: #FF0000;
-}
-
+.component-card__profile-picture[data-role="user"]::before { border-color: #cccccc; }
+.component-card__profile-picture[data-role="moderator"]::before { border-color: #0000FF; }
+.component-card__profile-picture[data-role="administrator"]::before { border-color: #FF0000; }
 .component-card__profile-picture[data-role="founder"]::before {
     border: none;
     background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
@@ -294,7 +285,6 @@
 
 /* --- NUEVOS COMPONENTES UI (TOGGLES Y SELECTS) --- */
 
-/* Toggles Switch */
 .component-toggle-switch {
     position: relative;
     display: inline-block;
@@ -344,7 +334,6 @@
     transform: translateX(20px);
 }
 
-/* Trigger Select */
 .trigger-select-wrapper {
     position: relative;
     width: 285px;
@@ -386,7 +375,6 @@
     text-overflow: ellipsis;
 }
 
-/* Popover Dropdown */
 .popover-module {
     position: absolute;
     top: calc(100% + 6px);
@@ -411,7 +399,6 @@
     display: flex;
 }
 
-/* Layout Stacked */
 .component-group-item--stacked {
     flex-direction: column !important;
     align-items: flex-start !important;
@@ -424,21 +411,16 @@
     margin-top: 0;
 }
 
-/* Input + Actions Responsive */
 .input-group-responsive {
     gap: 8px;
     align-items: center;
     margin-top: 2px;
 }
 
-/* --- CLASES NUEVAS PARA EL DISEÑO STACKED --- */
-
-/* Utilidad para forzar ancho completo */
 .w-100 {
     width: 100% !important;
 }
 
-/* Contenedor específico para etapas de formularios (ej. password) */
 .component-stage-form {
     display: flex;
     flex-direction: column;
@@ -546,18 +528,12 @@
     }
 }
 
-/* =========================================
-   MODIFICADORES ESPECÍFICOS (Solicitud)
-   ========================================= */
-
-/* Modificador para el contenedor del icono (ej. candado) */
 .component-card__profile-picture.component-card__profile-picture--bordered {
     background-color: transparent;
     border: 1px solid #00000020;
     border-radius: 8px;
 }
 
-/* Modificador para forzar alineación a la derecha en modo stacked */
 .component-group-item--stacked .component-card__actions.actions-force-end {
     justify-content: flex-end !important;
 }
@@ -566,7 +542,6 @@
    2FA & WIZARD STYLES (New)
    ========================================= */
 
-/* Wizard Containers */
 .wizard-step-container {
     align-items: center !important;
     text-align: center;
@@ -576,7 +551,6 @@
     display: flex !important;
 }
 
-/* Icon Containers */
 .wizard-icon-container {
     display: flex;
     justify-content: center;
@@ -592,7 +566,6 @@
     color: #2e7d32;
 }
 
-/* Utilities */
 .text-center {
     text-align: center;
 }
@@ -613,7 +586,6 @@
     font-weight: 600;
 }
 
-/* QR Code Area */
 .qr-display-area {
     margin: 20px 0;
     padding: 16px;
@@ -644,7 +616,6 @@
     border-radius: 4px;
 }
 
-/* Backup Codes Grid */
 .backup-codes-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -661,9 +632,6 @@
     border: 1px solid #00000010;
 }
 
-/* =========================================
-   COUNTER CONTROL (Custom Number Input)
-   ========================================= */
 .component-counter-control {
     display: flex;
     align-items: center;
@@ -733,8 +701,12 @@
     outline: none;
 }
 
-/* --- NUEVOS ESTILOS PARA TOOLBAR WRAPPER --- */
-.toolbar-wrapper {
+/* =========================================
+   COMPONENTES MODULARES (Toolbars & Entity Cards)
+   ========================================= */
+
+/* --- TOOLBAR WRAPPER --- */
+.component-toolbar-wrapper {
     width: 465px;
     height: auto;
     position: sticky;
@@ -749,17 +721,23 @@
     gap: 8px;
 }
 
-.toolbar-wrapper .toolbar {
+/* --- TOOLBAR --- */
+.component-toolbar {
+    display: flex;
+    flex-direction: row;
+    padding: 8px;
+    background-color: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
     width: 100%;
-    margin: 0;
-    position: relative;
-    top: 0;
+    gap: 8px;
+    align-items: center;
 }
 
-.toolbar-secondary {
+.component-toolbar-secondary {
     width: 100%;
-    height: auto; /* Permite que el contenido crezca */
-    min-height: 56px; /* Altura mínima para el buscador */
+    height: auto;
+    min-height: 56px;
     background-color: #fff;
     top: calc(100% + 5px);
     border-radius: 12px;
@@ -767,7 +745,7 @@
     display: flex;
     position: absolute;
     align-items: center;
-    padding: 8px; /* Padding interno */
+    padding: 8px;
     animation: slideDown 0.2s ease-out forwards;
 }
 
@@ -776,7 +754,6 @@
         opacity: 0;
         transform: translateY(-10px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
@@ -788,15 +765,136 @@
     border-color: #00000040 !important;
 }
 
-/* =========================================
-   FLOATING TOOLBAR (Actualizado)
-   ========================================= */
-.toolbar {
+/* --- FILTER WRAPPERS --- */
+.component-filter-wrapper {
+    position: relative;
     display: flex;
-    flex-direction: row;
-    padding: 8px;
-    background-color: #fff;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    border-radius: 12px;
-    gap: 8px; /* Agregado para separar los botones */
+    align-items: center;
 }
+
+.component-filter-popover {
+    top: calc(100% + 8px); 
+    right: 0;
+    left: auto;
+    width: 240px;
+}
+
+.menu-link .check-icon {
+    margin-left: auto; 
+    color: #000;
+    font-weight: bold;
+}
+
+/* --- DATA LIST GRID (Listas de datos) --- */
+.component-list-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+/* --- ENTITY CARD (Tarjeta Genérica de Entidad) --- */
+.component-entity-card {
+    display: flex;
+    flex-wrap: wrap;       
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: #fff;
+    border: 1px solid #00000020;
+    border-radius: 12px;
+    width: 100%;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.component-entity-card:hover {
+    border-color: #00000040;
+}
+
+.component-entity-card.active {
+    border-color: #000;
+}
+
+.component-entity-card * {
+    user-select: none;
+}
+
+.component-entity-card .component-pill {
+    user-select: text; 
+}
+
+/* --- AVATAR (Dentro de Entity Card) --- */
+.component-entity-avatar {
+    position: relative;
+    width: 35px;
+    height: 35px;
+    background-color: #f5f5fa;
+    color: #555;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px; 
+    font-weight: 700;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    user-select: none;
+}
+
+.component-entity-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+    position: relative;
+    z-index: 1;
+}
+
+.component-entity-avatar::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Variantes de Borde para Avatar */
+.component-avatar-border-default::before { border-color: #cccccc; }
+.component-avatar-border-blue::before { border-color: #0000FF; }
+.component-avatar-border-red::before { border-color: #FF0000; }
+.component-avatar-border-rainbow::before {
+    border: none;
+    background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
+    mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #fff 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #fff 0);
+}
+
+/* --- PILL (Píldora de Datos) --- */
+.component-pill {
+    display: inline-flex;
+    align-items: center;
+    height: 36px;
+    padding: 0 16px;
+    border: 1.5px solid #00000020;
+    border-radius: 999px;
+    background-color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    color: #000;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.component-pill.pill-primary { background-color: #e3f2fd; color: #0d47a1; border-color: transparent; }
+.component-pill.pill-danger { background-color: #ffebee; color: #b71c1c; border-color: transparent; }
+.component-pill.pill-warning { background-color: #fff3e0; color: #e65100; border-color: transparent; }
