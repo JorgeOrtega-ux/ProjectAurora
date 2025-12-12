@@ -3,7 +3,7 @@
 
 /**
  * Servicio de Administración
- * Maneja estadísticas del dashboard y configuración del servidor.
+ * Maneja estadísticas del dashboard, configuración del servidor y gestión de usuarios.
  */
 
 function get_dashboard_stats($pdo) {
@@ -43,7 +43,6 @@ function get_server_config_data($pdo) {
         $data = $stmt->fetch();
         
         if(!$data) {
-            // Si no existe, crear por defecto (Valores actualizados según bd.sql)
             $defaultDomains = 'gmail.com,outlook.com,hotmail.com,icloud.com,yahoo.com';
             $sql = "INSERT INTO server_config (id, maintenance_mode, allow_registrations, min_password_length, max_password_length, min_username_length, max_username_length, max_email_length, max_login_attempts, lockout_time_minutes, code_resend_cooldown, username_cooldown, email_cooldown, profile_picture_max_size, allowed_email_domains) VALUES (1, 0, 1, 8, 72, 6, 32, 255, 5, 5, 60, 30, 12, 2, '$defaultDomains')";
             $pdo->exec($sql);
@@ -72,35 +71,26 @@ function get_server_config_data($pdo) {
 }
 
 function update_server_configuration($pdo, $userId, $input) {
-    // Recibir valores existentes
     $maintenance = isset($input['maintenance_mode']) ? (int)$input['maintenance_mode'] : 0;
     $registrations = isset($input['allow_registrations']) ? (int)$input['allow_registrations'] : 1;
-    
     $minPass = isset($input['min_password_length']) ? (int)$input['min_password_length'] : 8;
     $maxPass = isset($input['max_password_length']) ? (int)$input['max_password_length'] : 72;
     $minUser = isset($input['min_username_length']) ? (int)$input['min_username_length'] : 6;
     $maxUser = isset($input['max_username_length']) ? (int)$input['max_username_length'] : 32;
     $maxEmail = isset($input['max_email_length']) ? (int)$input['max_email_length'] : 255;
-
-    // Recibir NUEVOS valores
     $maxLoginAttempts = isset($input['max_login_attempts']) ? (int)$input['max_login_attempts'] : 5;
     $lockoutTime = isset($input['lockout_time_minutes']) ? (int)$input['lockout_time_minutes'] : 5;
     $codeResend = isset($input['code_resend_cooldown']) ? (int)$input['code_resend_cooldown'] : 60;
     $userCooldown = isset($input['username_cooldown']) ? (int)$input['username_cooldown'] : 30;
     $emailCooldown = isset($input['email_cooldown']) ? (int)$input['email_cooldown'] : 12;
     $profilePicSize = isset($input['profile_picture_max_size']) ? (int)$input['profile_picture_max_size'] : 2;
-    
-    // Dominios
     $allowedDomains = isset($input['allowed_email_domains']) ? trim($input['allowed_email_domains']) : '';
 
-    // Validaciones lógicas básicas
     if ($minPass < 1) $minPass = 1;
     if ($maxPass < $minPass) $maxPass = $minPass;
     if ($minUser < 1) $minUser = 1;
     if ($maxUser < $minUser) $maxUser = $minUser;
     if ($maxEmail < 5) $maxEmail = 5;
-
-    // Validaciones para nuevos valores
     if ($maxLoginAttempts < 1) $maxLoginAttempts = 1;
     if ($lockoutTime < 1) $lockoutTime = 1;
     if ($codeResend < 0) $codeResend = 0;
@@ -138,6 +128,34 @@ function update_server_configuration($pdo, $userId, $input) {
         } else {
             return ['status' => 'error', 'message' => __('api.error.db_error')];
         }
+    } catch (Exception $e) {
+        return ['status' => 'error', 'message' => __('api.error.db_error')];
+    }
+}
+
+function get_all_users_list($pdo) {
+    try {
+        $sql = "SELECT id, username, email, uuid, account_status, created_at, role FROM users ORDER BY created_at DESC";
+        $stmt = $pdo->query($sql);
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($users as &$user) {
+            $uuid = $user['uuid'];
+            $customPath = DIR_CUSTOM . $uuid . '.png';
+            $defaultPath = DIR_DEFAULT . $uuid . '.png';
+            
+            $url = URL_BASE_AVATARS . 'default/' . $uuid . '.png';
+
+            if (file_exists($customPath)) {
+                $url = URL_BASE_AVATARS . 'custom/' . $uuid . '.png';
+            } elseif (file_exists($defaultPath)) {
+                $url = URL_BASE_AVATARS . 'default/' . $uuid . '.png';
+            }
+            
+            $user['avatar_url'] = $url;
+        }
+        
+        return ['status' => 'success', 'message' => 'OK', 'data' => $users];
     } catch (Exception $e) {
         return ['status' => 'error', 'message' => __('api.error.db_error')];
     }

@@ -6,7 +6,7 @@ require_once __DIR__ . '/../config/database/db.php';
 require_once __DIR__ . '/../config/helpers/i18n.php'; 
 require_once __DIR__ . '/utils.php';
 
-// Cargar el nuevo servicio
+// Cargar el servicio
 require_once __DIR__ . '/services/admin_service.php';
 
 if (session_status() === PHP_SESSION_NONE) session_start();
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $input['action'] ?? '';
     $response = ['status' => 'error', 'message' => 'Action invalid (Admin Handler)'];
     
-    // 6. Dispatcher usando AdminService
+    // 6. Dispatcher
     switch ($action) {
         case 'get_dashboard_stats':
             $response = get_dashboard_stats($pdo);
@@ -65,6 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         case 'update_server_config':
             $response = update_server_configuration($pdo, $userId, $input);
+            break;
+
+        case 'get_users_list': // NUEVO
+            $response = get_all_users_list($pdo);
             break;
     }
     
