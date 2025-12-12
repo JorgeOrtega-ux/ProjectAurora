@@ -72,7 +72,8 @@ export function navigateTo(section) {
 function updateSidebarContext(section) {
     const navMain = document.getElementById('nav-main');
     const navSettings = document.getElementById('nav-settings');
-    const navAdmin = document.getElementById('nav-admin'); // NUEVO: Referencia al menú admin
+    const navAdmin = document.getElementById('nav-admin');
+    const navHelp = document.getElementById('nav-help'); // NUEVO
 
     // Funciones helper para limpiar código
     const activate = (el) => {
@@ -93,12 +94,15 @@ function updateSidebarContext(section) {
     deactivate(navMain);
     deactivate(navSettings);
     deactivate(navAdmin);
+    deactivate(navHelp);
 
     // 2. Activar el correcto según la sección
     if (section.startsWith('settings/')) {
         activate(navSettings);
     } else if (section.startsWith('admin/')) {
         activate(navAdmin);
+    } else if (section.startsWith('help/')) { // NUEVA LOGICA
+        activate(navHelp);
     } else {
         // Por defecto (main, explorer, etc) mostramos el menú principal
         activate(navMain);

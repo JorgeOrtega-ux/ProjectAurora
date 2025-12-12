@@ -100,8 +100,9 @@ if (strpos($currentSection, 'api/') === 0) {
 }
 
 if ($currentSection === 'settings') { header("Location: " . $basePath . "settings/your-profile"); exit; }
-// MODIFICADO: Redirigir admin raíz al dashboard
 if ($currentSection === 'admin') { header("Location: " . $basePath . "admin/dashboard"); exit; }
+// Redirigir help raíz a privacidad
+if ($currentSection === 'help') { header("Location: " . $basePath . "help/privacy"); exit; }
 
 $resetToken = null;
 if (strpos($currentSection, 'recover-password/') === 0) {
@@ -150,15 +151,20 @@ $validRoutes = array_keys($routes);
 $guestRoutes = ['login', 'register', 'register/aditional-data', 'register/verify', 'recover-password', 'recover-password-reset', '2fa-challenge', 'account-status', 'maintenance'];
 
 $is2faPending = isset($_SESSION['temp_2fa_user_id']);
+$isHelpSection = (strpos($currentSection, 'help/') === 0);
 
 if (!$isLoggedIn) {
+    // MODIFICADO: Permitir rutas de Ayuda sin sesión
     if ($currentSection === '2fa-challenge' && $is2faPending) {
         // Permitir
+    } elseif ($isHelpSection) {
+        // Permitir Help
     } elseif (!in_array($currentSection, $guestRoutes)) {
         header("Location: " . $basePath . "login");
         exit;
     }
 } else {
+    // Si está logueado, no dejar entrar a login/register
     if (in_array($currentSection, ['login', 'register'])) {
          header("Location: " . $basePath);
          exit;

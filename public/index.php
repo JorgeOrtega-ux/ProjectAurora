@@ -10,6 +10,7 @@ $sectionMap = require __DIR__ . '/../config/routes.php';
 // Lógica de detección de sección
 $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
 $isAdminSection = (strpos($currentSection, 'admin/') === 0);
+$isHelpSection = (strpos($currentSection, 'help/') === 0); // NUEVO
 
 // --- LÓGICA DE AVATAR ---
 $globalAvatarSrc = '';
@@ -50,7 +51,7 @@ if ($userThemePref === 'dark') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="<?php echo $_SESSION['csrf_token']; ?>">
+    <meta name="csrf-token" content="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
 
     <script>
         window.BASE_PATH = '<?php echo $basePath; ?>';
@@ -86,7 +87,11 @@ if ($userThemePref === 'dark') {
     <title><?php echo __('app.name'); ?></title>
 
     <?php 
-    if (!$isLoggedIn || $currentSection === 'maintenance'): ?>
+    // MOSTRAR HEADER SIEMPRE QUE NO SEA MAINTENANCE (Incluso si no está logueado para ver ayuda)
+    // MODIFICADO: Permitir estructura completa en Help incluso sin login
+    $showFullLayout = ($isLoggedIn || $isHelpSection) && $currentSection !== 'maintenance';
+    
+    if (!$showFullLayout): ?>
         <style>
             [data-container="main-section"] {
                 display: flex;
@@ -105,7 +110,7 @@ if ($userThemePref === 'dark') {
             <div class="general-content">
 
                 <?php 
-                if ($isLoggedIn && $currentSection !== 'maintenance'): ?>
+                if ($showFullLayout): ?>
                     <div class="general-content-top">
                         <div class="header">
                             <div class="header-left">
@@ -144,7 +149,7 @@ if ($userThemePref === 'dark') {
                                             <img src="<?php echo $globalAvatarSrc; ?>" alt="<?php echo __('menu.profile'); ?>" class="profile-img">
                                         <?php else: ?>
                                             <span style="font-weight:bold; color:#555; position: relative; z-index: 1;">
-                                                <?php echo strtoupper(substr($_SESSION['username'], 0, 1)); ?>
+                                                <?php echo $isLoggedIn ? strtoupper(substr($_SESSION['username'], 0, 1)) : '?'; ?>
                                             </span>
                                         <?php endif; ?>
                                     </div>
@@ -158,35 +163,55 @@ if ($userThemePref === 'dark') {
                                         </div>
                                         <div class="menu-list">
                                             
-                                            <?php if (in_array($_SESSION['role'], ['founder', 'administrator'])): ?>
-                                                <div class="menu-link" data-nav="admin/dashboard">
+                                            <?php if ($isLoggedIn): ?>
+                                                <?php if (in_array($_SESSION['role'], ['founder', 'administrator'])): ?>
+                                                    <div class="menu-link" data-nav="admin/dashboard">
+                                                        <div class="menu-link-icon">
+                                                            <span class="material-symbols-rounded">admin_panel_settings</span>
+                                                        </div>
+                                                        <div class="menu-link-text">
+                                                            <span data-lang-key="menu.admin_panel"><?php echo __('menu.admin_panel'); ?></span>
+                                                        </div>
+                                                    </div>
+                                                    <hr class="component-divider" style="margin: 4px 0;">
+                                                <?php endif; ?>
+                                                
+                                                <div class="menu-link" data-nav="settings/your-profile">
                                                     <div class="menu-link-icon">
-                                                        <span class="material-symbols-rounded">admin_panel_settings</span>
+                                                        <span class="material-symbols-rounded">settings</span>
                                                     </div>
                                                     <div class="menu-link-text">
-                                                        <span data-lang-key="menu.admin_panel"><?php echo __('menu.admin_panel'); ?></span>
+                                                        <span data-lang-key="menu.settings"><?php echo __('menu.settings'); ?></span>
                                                     </div>
                                                 </div>
-                                                <hr class="component-divider" style="margin: 4px 0;">
-                                            <?php endif; ?>
-                                            
-                                            <div class="menu-link" data-nav="settings/your-profile">
-                                                <div class="menu-link-icon">
-                                                    <span class="material-symbols-rounded">settings</span>
-                                                </div>
-                                                <div class="menu-link-text">
-                                                    <span data-lang-key="menu.settings"><?php echo __('menu.settings'); ?></span>
-                                                </div>
-                                            </div>
 
-                                            <div class="menu-link" id="btn-logout">
-                                                <div class="menu-link-icon">
-                                                    <span class="material-symbols-rounded">logout</span>
+                                                <div class="menu-link" data-nav="help/privacy">
+                                                    <div class="menu-link-icon">
+                                                        <span class="material-symbols-rounded">help</span>
+                                                    </div>
+                                                    <div class="menu-link-text">
+                                                        <span data-lang-key="menu.help"><?php echo __('menu.help'); ?></span>
+                                                    </div>
                                                 </div>
-                                                <div class="menu-link-text">
-                                                    <span data-lang-key="menu.logout"><?php echo __('menu.logout'); ?></span>
+
+                                                <div class="menu-link" id="btn-logout">
+                                                    <div class="menu-link-icon">
+                                                        <span class="material-symbols-rounded">logout</span>
+                                                    </div>
+                                                    <div class="menu-link-text">
+                                                        <span data-lang-key="menu.logout"><?php echo __('menu.logout'); ?></span>
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            <?php else: ?>
+                                                <div class="menu-link" onclick="window.location.href='<?php echo $basePath; ?>login'">
+                                                    <div class="menu-link-icon">
+                                                        <span class="material-symbols-rounded">login</span>
+                                                    </div>
+                                                    <div class="menu-link-text">
+                                                        <span><?php echo __('auth.login.title'); ?></span>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
 
                                         </div>
                                     </div>
@@ -199,12 +224,12 @@ if ($userThemePref === 'dark') {
                 <div class="general-content-bottom">
 
                     <?php 
-                    if ($isLoggedIn && $currentSection !== 'maintenance'): ?>
+                    if ($showFullLayout): ?>
                         <div class="module-content module-surface body-text disabled" data-module="moduleSurface">
                             <div class="menu-content">
                                 <div class="menu-content-top">
 
-                                    <div id="nav-main" class="menu-list <?php echo ($isSettingsSection || $isAdminSection) ? 'disabled' : ''; ?>">
+                                    <div id="nav-main" class="menu-list <?php echo ($isSettingsSection || $isAdminSection || $isHelpSection) ? 'disabled' : ''; ?>">
                                         <div class="menu-link <?php echo ($currentSection === 'main') ? 'active' : ''; ?>" data-nav="main">
                                             <div class="menu-link-icon">
                                                 <span class="material-symbols-rounded">home</span>
@@ -258,6 +283,57 @@ if ($userThemePref === 'dark') {
                                             </div>
                                             <div class="menu-link-text">
                                                 <span data-lang-key="menu.accessibility"><?php echo __('menu.accessibility'); ?></span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div id="nav-help" class="menu-list <?php echo !$isHelpSection ? 'disabled' : ''; ?>">
+                                        <div class="menu-link menu-link-back" data-nav="main">
+                                            <div class="menu-link-icon">
+                                                <span class="material-symbols-rounded">arrow_back</span>
+                                            </div>
+                                            <div class="menu-link-text">
+                                                <span data-lang-key="global.back_home"><?php echo __('global.back_home'); ?></span>
+                                            </div>
+                                        </div>
+
+                                        <div style="padding: 8px 12px; font-size: 12px; color: #666; font-weight: bold; text-transform: uppercase;">
+                                            <span data-lang-key="menu.help"><?php echo __('menu.help'); ?></span>
+                                        </div>
+
+                                        <div class="menu-link <?php echo ($currentSection === 'help/privacy') ? 'active' : ''; ?>" data-nav="help/privacy">
+                                            <div class="menu-link-icon">
+                                                <span class="material-symbols-rounded">privacy_tip</span>
+                                            </div>
+                                            <div class="menu-link-text">
+                                                <span data-lang-key="help.privacy.title"><?php echo __('help.privacy.title'); ?></span>
+                                            </div>
+                                        </div>
+
+                                        <div class="menu-link <?php echo ($currentSection === 'help/terms') ? 'active' : ''; ?>" data-nav="help/terms">
+                                            <div class="menu-link-icon">
+                                                <span class="material-symbols-rounded">gavel</span>
+                                            </div>
+                                            <div class="menu-link-text">
+                                                <span data-lang-key="help.terms.title"><?php echo __('help.terms.title'); ?></span>
+                                            </div>
+                                        </div>
+
+                                        <div class="menu-link <?php echo ($currentSection === 'help/cookies') ? 'active' : ''; ?>" data-nav="help/cookies">
+                                            <div class="menu-link-icon">
+                                                <span class="material-symbols-rounded">cookie</span>
+                                            </div>
+                                            <div class="menu-link-text">
+                                                <span data-lang-key="help.cookies.title"><?php echo __('help.cookies.title'); ?></span>
+                                            </div>
+                                        </div>
+
+                                        <div class="menu-link <?php echo ($currentSection === 'help/feedback') ? 'active' : ''; ?>" data-nav="help/feedback">
+                                            <div class="menu-link-icon">
+                                                <span class="material-symbols-rounded">feedback</span>
+                                            </div>
+                                            <div class="menu-link-text">
+                                                <span data-lang-key="help.feedback.title"><?php echo __('help.feedback.title'); ?></span>
                                             </div>
                                         </div>
                                     </div>

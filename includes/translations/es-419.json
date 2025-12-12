@@ -41,6 +41,16 @@
     "menu.security": "Inicio de sesión y seguridad",
     "menu.accessibility": "Accesibilidad",
     "menu.admin_panel": "Panel de Administración",
+    "menu.help": "Ayuda y comentarios",
+
+    "help.privacy.title": "Política de Privacidad",
+    "help.privacy.desc": "Cómo tratamos tus datos personales.",
+    "help.terms.title": "Términos y Condiciones",
+    "help.terms.desc": "Reglas de uso de la plataforma.",
+    "help.cookies.title": "Política de Cookies",
+    "help.cookies.desc": "Información sobre el uso de cookies.",
+    "help.feedback.title": "Enviar Comentarios",
+    "help.feedback.desc": "Danos tu opinión o reporta un problema.",
 
     "admin.dashboard.title": "Dashboard",
     "admin.dashboard.desc": "Visión general del estado del sistema y métricas clave.",

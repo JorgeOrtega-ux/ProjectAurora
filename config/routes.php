@@ -28,8 +28,14 @@ return [
     'settings/2fa-setup'          => __DIR__ . '/../includes/sections/settings/2fa-setup.php',
     'settings/delete-account'     => __DIR__ . '/../includes/sections/settings/delete-account.php',
 
+    // --- Rutas de Ayuda (NUEVO) ---
+    'help/privacy'  => __DIR__ . '/../includes/sections/help/privacy.php',
+    'help/terms'    => __DIR__ . '/../includes/sections/help/terms.php',
+    'help/cookies'  => __DIR__ . '/../includes/sections/help/cookies.php',
+    'help/feedback' => __DIR__ . '/../includes/sections/help/feedback.php',
+
     // --- Rutas de Administración ---
-    'admin/dashboard' => __DIR__ . '/../includes/sections/admin/dashboard.php', // NUEVA RUTA
+    'admin/dashboard' => __DIR__ . '/../includes/sections/admin/dashboard.php',
     'admin/users'     => __DIR__ . '/../includes/sections/admin/users.php',
     'admin/server'    => __DIR__ . '/../includes/sections/admin/server.php',
 ];
