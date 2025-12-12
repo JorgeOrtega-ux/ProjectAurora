@@ -38,10 +38,9 @@
             font-weight: 700;
             flex-shrink: 0;
             text-transform: uppercase;
-            /* SIN BORDE DIRECTO AQUÍ, usaremos ::before */
         }
 
-        /* Pseudo-elemento para el borde (IGUAL QUE EN HEADER) */
+        /* Pseudo-elemento para el borde */
         .user-avatar-circle::before {
             content: '';
             position: absolute;
@@ -63,24 +62,13 @@
             border-radius: 50%;
             display: block;
             position: relative;
-            z-index: 1; /* Debajo del borde */
+            z-index: 1; 
         }
 
-        /* SISTEMA DE COLORES DE ROL (Aplicado al ::before) */
-        
-        .role-border-user::before {
-            border-color: #cccccc;
-        }
-
-        .role-border-moderator::before {
-            border-color: #0000FF;
-        }
-
-        .role-border-admin::before {
-            border-color: #FF0000;
-        }
-
-        /* Fundador: Rainbow Gradient */
+        /* SISTEMA DE COLORES DE ROL */
+        .role-border-user::before { border-color: #cccccc; }
+        .role-border-moderator::before { border-color: #0000FF; }
+        .role-border-admin::before { border-color: #FF0000; }
         .role-border-founder::before {
             border: none;
             background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
@@ -88,7 +76,6 @@
             -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #fff 0);
         }
 
-        /* Píldoras de datos */
         .user-pill {
             display: inline-flex;
             align-items: center;
@@ -102,21 +89,71 @@
             color: #000;
             white-space: nowrap;
         }
-    </style>
 
+        /* --- NUEVOS ESTILOS PARA TOOLBAR WRAPPER --- */
+        .toolbar-wrapper {
+            position: sticky;
+            top: 16px;
+            z-index: 500;
+            width: 300px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        /* Ajuste para que la toolbar original se comporte bien dentro del wrapper */
+        .toolbar-wrapper .toolbar {
+            width: 100%;
+            margin: 0;
+            position: relative;
+            top: 0;
+        }
+
+        .toolbar-secondary {
+            width: 100%;
+            height: 45px;
+            background-color: #fff;
+            border: 1px solid #00000020;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            animation: slideDown 0.2s ease-out forwards;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .toolbar-btn-active {
+            background-color: #f0f0f0 !important;
+            border-color: #00000040 !important;
+        }
+    </style>
 
     <div class="component-wrapper">
         
-    <div class="toolbar">
-        <button class="component-button" style="border:none;">
-            <span class="material-symbols-rounded">filter_list</span>
-        </button>
-        <div style="width: 1px; height: 20px; background: #eee;"></div>
-        <button class="component-button" style="border:none;">
-            <span class="material-symbols-rounded">add</span>
-            Crear
-        </button>
-    </div>
+        <div class="toolbar-wrapper">
+            <div class="toolbar">
+                <button class="component-button" id="btn-toggle-search" style="border:none;">
+                    <span class="material-symbols-rounded">search</span>
+                </button>
+                <div style="width: 1px; height: 20px; background: #eee;"></div>
+                <button class="component-button" style="border:none;">
+                    <span class="material-symbols-rounded">filter_list</span>
+                </button>
+            </div>
+            
+            <div class="toolbar-secondary" id="toolbar-search-container" style="display: none;">
+                <span class="material-symbols-rounded" style="color: #999; margin-right: 8px;">search</span>
+                <input type="text" id="user-search-input" class="component-text-input" placeholder="Buscar usuario..." style="border: none; padding: 0; height: 100%;">
+            </div>
+        </div>
+
         <div class="component-header-card">
             <h1 class="component-page-title" data-lang-key="admin.users.title"><?= __('admin.users.title') ?></h1>
             <p class="component-page-description" data-lang-key="admin.users.desc"><?= __('admin.users.desc') ?></p>
@@ -131,6 +168,28 @@
 
     <script>
     (function(){
+        /* --- LÓGICA DE TOOLBAR --- */
+        const btnSearch = document.getElementById('btn-toggle-search');
+        const searchContainer = document.getElementById('toolbar-search-container');
+        const searchInput = document.getElementById('user-search-input');
+
+        if(btnSearch && searchContainer) {
+            btnSearch.addEventListener('click', () => {
+                const isHidden = (searchContainer.style.display === 'none');
+                
+                if(isHidden) {
+                    searchContainer.style.display = 'flex';
+                    btnSearch.classList.add('toolbar-btn-active');
+                    if(searchInput) setTimeout(() => searchInput.focus(), 50);
+                } else {
+                    searchContainer.style.display = 'none';
+                    btnSearch.classList.remove('toolbar-btn-active');
+                    if(searchInput) searchInput.value = ''; // Opcional: limpiar al cerrar
+                }
+            });
+        }
+
+        /* --- LÓGICA DE CARGA DE USUARIOS (Existente) --- */
         const container = document.getElementById('users-list-container');
         const csrf = document.querySelector('meta[name="csrf-token"]').content;
         const basePath = window.BASE_PATH || '/ProjectAurora/';
@@ -174,7 +233,6 @@
                 if(u.account_status === 'suspended') statusText = 'Suspendido';
                 if(u.account_status === 'deleted') statusText = 'Eliminado';
 
-                // Asignación de clases de rol
                 let roleBorderClass = 'role-border-user';
                 if(u.role === 'administrator') roleBorderClass = 'role-border-admin';
                 else if (u.role === 'moderator') roleBorderClass = 'role-border-moderator';
