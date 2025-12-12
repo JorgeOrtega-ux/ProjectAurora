@@ -47,11 +47,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if ($action === 'get_server_config') {
         try {
-            $stmt = $pdo->query("SELECT maintenance_mode, allow_registrations FROM server_config WHERE id=1");
+            $stmt = $pdo->query("SELECT * FROM server_config WHERE id=1");
             $data = $stmt->fetch();
             if(!$data) {
-                $pdo->exec("INSERT INTO server_config (id, maintenance_mode, allow_registrations) VALUES (1, 0, 1)");
-                $data = ['maintenance_mode' => 0, 'allow_registrations' => 1];
+                // Si no existe, crear por defecto
+                $pdo->exec("INSERT INTO server_config (id, maintenance_mode, allow_registrations, min_password_length, max_password_length, min_username_length, max_username_length, max_email_length) VALUES (1, 0, 1, 8, 72, 6, 32, 255)");
+                $data = [
+                    'maintenance_mode' => 0, 
+                    'allow_registrations' => 1,
+                    'min_password_length' => 8,
+                    'max_password_length' => 72,
+                    'min_username_length' => 6,
+                    'max_username_length' => 32,
+                    'max_email_length' => 255
+                ];
             }
             sendJsonResponse('success', 'OK', null, $data);
         } catch (Exception $e) {
@@ -60,13 +69,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'update_server_config') {
+        // Recibir valores
         $maintenance = isset($input['maintenance_mode']) ? (int)$input['maintenance_mode'] : 0;
         $registrations = isset($input['allow_registrations']) ? (int)$input['allow_registrations'] : 1;
         
+        $minPass = isset($input['min_password_length']) ? (int)$input['min_password_length'] : 8;
+        $maxPass = isset($input['max_password_length']) ? (int)$input['max_password_length'] : 72;
+        $minUser = isset($input['min_username_length']) ? (int)$input['min_username_length'] : 6;
+        $maxUser = isset($input['max_username_length']) ? (int)$input['max_username_length'] : 32;
+        $maxEmail = isset($input['max_email_length']) ? (int)$input['max_email_length'] : 255;
+
+        // Validaciones lógicas básicas
+        if ($minPass < 1) $minPass = 1;
+        if ($maxPass < $minPass) $maxPass = $minPass;
+        
+        if ($minUser < 1) $minUser = 1;
+        if ($maxUser < $minUser) $maxUser = $minUser;
+        
+        if ($maxEmail < 5) $maxEmail = 5;
+
         try {
-            $stmt = $pdo->prepare("UPDATE server_config SET maintenance_mode = ?, allow_registrations = ? WHERE id = 1");
-            if ($stmt->execute([$maintenance, $registrations])) {
-                logSecurityEvent($pdo, "uid_".$userId, "server_config_update: m=$maintenance, r=$registrations");
+            $sql = "UPDATE server_config SET 
+                    maintenance_mode = ?, 
+                    allow_registrations = ?,
+                    min_password_length = ?,
+                    max_password_length = ?,
+                    min_username_length = ?,
+                    max_username_length = ?,
+                    max_email_length = ?
+                    WHERE id = 1";
+
+            $stmt = $pdo->prepare($sql);
+            if ($stmt->execute([$maintenance, $registrations, $minPass, $maxPass, $minUser, $maxUser, $maxEmail])) {
+                logSecurityEvent($pdo, "uid_".$userId, "server_config_update");
                 sendJsonResponse('success', __('api.success.preferences_saved'));
             } else {
                 sendJsonResponse('error', __('api.error.db_error'));

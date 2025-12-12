@@ -11,7 +11,7 @@ COLLATE utf8mb4_unicode_ci;
 -- 3. Seleccionar la base de datos para usarla
 USE project_aurora_db;
 
--- 4. Crear la tabla de usuarios (MODIFICADO: account_status)
+-- 4. Crear la tabla de usuarios
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -19,14 +19,14 @@ CREATE TABLE users (
     password VARCHAR(255) NOT NULL,
     role ENUM('user', 'moderator', 'administrator', 'founder') DEFAULT 'user',
     uuid VARCHAR(36) NOT NULL,
-    account_status ENUM('active', 'deleted', 'suspended') DEFAULT 'active', -- NUEVO CAMPO
+    account_status ENUM('active', 'deleted', 'suspended') DEFAULT 'active',
     two_factor_secret VARCHAR(255) NULL DEFAULT NULL,
     two_factor_enabled TINYINT(1) DEFAULT 0,
     two_factor_recovery_codes TEXT NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 5. Crear la tabla de registros de acceso (Logs de éxito)
+-- 5. Crear la tabla de registros de acceso
 CREATE TABLE access_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -107,13 +107,21 @@ CREATE TABLE IF NOT EXISTS active_sessions (
     INDEX idx_session_lookup (session_id)
 );
 
--- Ejecuta esto en tu gestor SQL
+-- 12. Configuración del Servidor (ACTUALIZADA)
 CREATE TABLE IF NOT EXISTS server_config (
     id INT PRIMARY KEY,
     maintenance_mode BOOLEAN DEFAULT 0,
     allow_registrations BOOLEAN DEFAULT 1,
+    min_password_length INT DEFAULT 8,
+    max_password_length INT DEFAULT 72,
+    min_username_length INT DEFAULT 6,
+    max_username_length INT DEFAULT 32,
+    max_email_length INT DEFAULT 255,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Configuración inicial por defecto
-INSERT IGNORE INTO server_config (id, maintenance_mode, allow_registrations) VALUES (1, 0, 1);
+-- Configuración inicial por defecto con los nuevos valores
+INSERT IGNORE INTO server_config 
+(id, maintenance_mode, allow_registrations, min_password_length, max_password_length, min_username_length, max_username_length, max_email_length) 
+VALUES 
+(1, 0, 1, 8, 72, 6, 32, 255);

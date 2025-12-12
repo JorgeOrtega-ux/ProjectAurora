@@ -1,7 +1,7 @@
 /**
  * AuthController.js
  * Lógica de UI para autenticación utilizando AuthService.
- * Actualizado con sistema de Toasts, soporte para 2FA y Vistas de Recuperación.
+ * Actualizado con sistema de Toasts, soporte para 2FA y validaciones dinámicas.
  */
 
 import { AuthService } from './api-services.js';
@@ -15,8 +15,6 @@ const showError = (message) => {
 };
 
 const handleAuthResponse = (result, buttons) => {
-    // MODIFICADO: Verificación prioritaria de redirección.
-    // Esto permite que el backend envíe redirecciones incluso si el status es 'error' (ej. cuenta suspendida)
     if (result.redirect) {
         window.location.href = result.redirect;
         return;
@@ -70,7 +68,6 @@ const verify2faLogin = async (code) => {
     const formData = new FormData();
     formData.append('action', 'verify_2fa_login');
     formData.append('code', code);
-    // Necesitamos el token CSRF que está en el meta tag del HTML
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
     formData.append('csrf_token', csrfToken);
     
@@ -79,12 +76,11 @@ const verify2faLogin = async (code) => {
 };
 
 const processAuthAction = async (actionType, data) => {
-    // Seleccionamos todos los botones primarios para bloquearlos
     const buttons = document.querySelectorAll('.btn-primary');
     buttons.forEach(btn => {
         btn.disabled = true; 
         btn.style.opacity = '0.7';
-        btn.dataset.originalText = btn.textContent; // Guardar texto original
+        btn.dataset.originalText = btn.textContent;
         btn.textContent = window.t('global.processing');
     });
 
@@ -104,7 +100,6 @@ const processAuthAction = async (actionType, data) => {
             case 'verify_code':
                 result = await AuthService.verifyCode(data.code);
                 break;
-                
             case 'resend_verification_code':
                 result = await AuthService.resendVerificationCode();
                 if (result.status === 'success') {
@@ -118,10 +113,8 @@ const processAuthAction = async (actionType, data) => {
                     return; 
                 }
                 break;
-
             case 'request_password_reset':
                 result = await AuthService.requestPasswordReset(data.email);
-                
                 if (result.status === 'success') {
                     const resendContainer = document.getElementById('resend-container');
                     if(resendContainer) {
@@ -136,16 +129,12 @@ const processAuthAction = async (actionType, data) => {
                     return; 
                 }
                 break;
-
             case 'reset_password':
                 result = await AuthService.resetPassword(data.token, data.password);
                 break;
-
-            // VERIFICACIÓN 2FA (Funciona tanto para App como para Backup Codes, el backend lo maneja igual)
             case 'verify_2fa_login':
                 result = await verify2faLogin(data.code);
                 break;
-                
             default:
                 throw new Error('Acción no reconocida');
         }
@@ -164,7 +153,12 @@ const processAuthAction = async (actionType, data) => {
 };
 
 const setupAuthListeners = () => {
-    // Limpieza opcional
+    // Configuración por defecto si no existe
+    const config = window.SERVER_CONFIG || {};
+    const minPass = config.min_password_length || 8;
+    const minUser = config.min_username_length || 6;
+    const maxEmail = config.max_email_length || 255;
+
     const oldAlerts = document.querySelectorAll('.alert.error, .alert.success');
     oldAlerts.forEach(el => el.style.display = 'none');
 
@@ -177,7 +171,6 @@ const setupAuthListeners = () => {
     const viewBackup = document.getElementById('view-backup');
     
     if (viewTotp && viewBackup) {
-        // Ir a Backup
         document.getElementById('trigger-show-backup')?.addEventListener('click', (e) => {
             e.preventDefault();
             viewTotp.style.display = 'none';
@@ -185,7 +178,6 @@ const setupAuthListeners = () => {
             document.getElementById('2fa-backup-input')?.focus();
         });
 
-        // Volver a App
         document.getElementById('trigger-show-totp')?.addEventListener('click', (e) => {
             e.preventDefault();
             viewBackup.style.display = 'none';
@@ -233,8 +225,13 @@ const setupAuthListeners = () => {
                 if (!allowedDomains.includes(domainPart)) {
                     showError(window.t('api.error.email_domain')); return;
                 }
-                if (passVal.length < 8) {
-                    showError(window.t('api.error.password_short')); return;
+                if (emailVal.length > maxEmail) {
+                    showError(window.t('api.error.email_format') + ` (Max ${maxEmail})`); return;
+                }
+                
+                // VALIDACIÓN DINÁMICA DE PASSWORD
+                if (passVal.length < minPass) {
+                    showError(window.t('api.error.password_short', minPass)); return;
                 }
 
                 processAuthAction('register_step_1', { email: emailVal, password: passVal });
@@ -250,9 +247,12 @@ const setupAuthListeners = () => {
 
             if(username && username.value) {
                 const userVal = username.value.trim();
-                if (userVal.length < 6) {
-                    showError(window.t('api.error.username_short')); return;
+                
+                // VALIDACIÓN DINÁMICA DE USERNAME
+                if (userVal.length < minUser) {
+                    showError(window.t('api.error.username_short', minUser)); return;
                 }
+                
                 processAuthAction('register_step_2', { username: userVal });
             } else {
                 showError(window.t('js.error.complete_fields')); 
@@ -319,8 +319,9 @@ const setupAuthListeners = () => {
                     showError(window.t('js.error.pass_mismatch'));
                     return;
                 }
-                if (pass1.value.length < 8) {
-                    showError(window.t('api.error.password_short'));
+                // VALIDACIÓN DINÁMICA DE PASSWORD
+                if (pass1.value.length < minPass) {
+                    showError(window.t('api.error.password_short', minPass));
                     return;
                 }
                 processAuthAction('reset_password', { 
@@ -332,31 +333,22 @@ const setupAuthListeners = () => {
             }
         }
 
-        // --- H) VERIFICAR 2FA (APP) ---
-        if (e.target && (e.target.id === 'btn-verify-totp' || e.target.id === 'btn-verify-2fa-login')) {
+        // H) VERIFICAR 2FA
+        if (e.target && (e.target.id === 'btn-verify-totp' || e.target.id === 'btn-verify-2fa-login' || e.target.id === 'btn-verify-backup')) {
             e.preventDefault();
-            const codeInput = document.getElementById('2fa-code-input');
+            // Lógica unificada para inputs
+            let inputId = '2fa-code-input';
+            if (e.target.id === 'btn-verify-backup') inputId = '2fa-backup-input';
+            
+            const codeInput = document.getElementById(inputId);
             if(codeInput && codeInput.value) {
-                processAuthAction('verify_2fa_login', { code: codeInput.value });
-            } else {
-                showError(window.t('js.error.complete_fields'));
-            }
-        }
-
-        // --- I) VERIFICAR 2FA (BACKUP) - NUEVO ---
-        if (e.target && e.target.id === 'btn-verify-backup') {
-            e.preventDefault();
-            const backupInput = document.getElementById('2fa-backup-input');
-            if(backupInput && backupInput.value) {
-                // Enviamos el backup code al mismo endpoint; el backend los revisa ambos
-                processAuthAction('verify_2fa_login', { code: backupInput.value.trim() });
+                processAuthAction('verify_2fa_login', { code: codeInput.value.trim() });
             } else {
                 showError(window.t('js.error.complete_fields'));
             }
         }
     });
 
-    // Soporte para tecla Enter
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             const btns = [
@@ -364,13 +356,12 @@ const setupAuthListeners = () => {
                 'btn-verify', 'btn-recover-request', 'btn-recover-reset'
             ];
             
-            // Añadir botones de 2FA condicionalmente según visibilidad
             const viewBackup = document.getElementById('view-backup');
             if(viewBackup && viewBackup.style.display !== 'none') {
                 btns.push('btn-verify-backup');
             } else {
                 btns.push('btn-verify-totp');
-                btns.push('btn-verify-2fa-login'); // Soporte legacy
+                btns.push('btn-verify-2fa-login');
             }
 
             for(let id of btns){

@@ -19,21 +19,17 @@ function handle_login($pdo, $email, $password) {
     if ($user && password_verify($password, $user['password'])) {
         
         // --- LOGIC DE MANTENIMIENTO ---
-        // Verificamos config global. Si está en mantenimiento y NO es admin, rechazamos login.
         global $SERVER_CONFIG;
         
-        // Fallback de seguridad si la variable global no llegó (ej. llamada directa sin pasar por router)
+        // Fallback de seguridad
         if (!isset($SERVER_CONFIG)) {
              try {
-                 $stmtC = $pdo->query("SELECT maintenance_mode FROM server_config WHERE id=1");
-                 $conf = $stmtC->fetch();
-                 $maintenance = $conf['maintenance_mode'] ?? 0;
-             } catch (Exception $e) {
-                 $maintenance = 0;
-             }
-        } else {
-             $maintenance = $SERVER_CONFIG['maintenance_mode'];
+                 $stmtC = $pdo->query("SELECT * FROM server_config WHERE id=1");
+                 $SERVER_CONFIG = $stmtC->fetch();
+             } catch (Exception $e) {}
         }
+
+        $maintenance = $SERVER_CONFIG['maintenance_mode'] ?? 0;
 
         if ($maintenance == 1) {
             // Solo dejamos pasar a admins
@@ -83,29 +79,40 @@ function handle_login($pdo, $email, $password) {
 function handle_register_step_1($pdo, $email, $password) {
     global $basePath;
 
-    // --- LOGICA DE REGISTRO CERRADO (NUEVO) ---
-    try {
-        $stmtC = $pdo->query("SELECT allow_registrations FROM server_config WHERE id=1");
-        $allowed = $stmtC->fetchColumn();
-        
-        // Si allow_registrations es 0 (false), bloqueamos
-        if ($allowed !== false && $allowed == 0) {
-            return [
-                'status' => 'error', 
-                'message' => __('auth.registrations_closed'), 
-                'redirect' => $basePath . 'account-status?type=registrations_closed'
-            ];
-        }
-    } catch (Exception $e) {
-        // Si falla la consulta, asumimos abierto por defecto o manejamos error silencioso
+    // Obtener configuración global
+    $config = $GLOBALS['SERVER_CONFIG'] ?? [];
+    $allowed = $config['allow_registrations'] ?? 1;
+    
+    // Configuración de límites (con fallbacks)
+    $minPass = $config['min_password_length'] ?? 8;
+    $maxPass = $config['max_password_length'] ?? 72;
+    $maxEmail = $config['max_email_length'] ?? 255;
+
+    // --- LOGICA DE REGISTRO CERRADO ---
+    if ($allowed == 0) {
+        return [
+            'status' => 'error', 
+            'message' => __('auth.registrations_closed'), 
+            'redirect' => $basePath . 'account-status?type=registrations_closed'
+        ];
     }
     // ------------------------------------------
 
     if ($email && $password) {
+        // Validaciones de Email
+        if (strlen($email) > $maxEmail) {
+            return ['status' => 'error', 'message' => __('api.error.email_format') . " (Max $maxEmail chars)"];
+        }
         $val = validateEmailRequirements($email);
         if ($val !== true) return ['status' => 'error', 'message' => $val];
         
-        if (strlen($password) < 8) return ['status' => 'error', 'message' => __('api.error.password_short')];
+        // Validaciones de Password
+        if (strlen($password) < $minPass) {
+            return ['status' => 'error', 'message' => __('api.error.password_short', $minPass)];
+        }
+        if (strlen($password) > $maxPass) {
+            return ['status' => 'error', 'message' => "Password too long (Max $maxPass chars)"];
+        }
         
         $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
@@ -130,8 +137,19 @@ function handle_register_step_2($pdo, $username) {
     $email = $_SESSION['temp_register']['email'];
     $password = $_SESSION['temp_register']['password'];
 
+    // Configuración de límites
+    $config = $GLOBALS['SERVER_CONFIG'] ?? [];
+    $minUser = $config['min_username_length'] ?? 6;
+    $maxUser = $config['max_username_length'] ?? 32;
+
     if ($username) {
-        if (strlen($username) < 6) return ['status' => 'error', 'message' => __('api.error.username_short')];
+        // Validaciones de Username
+        if (strlen($username) < $minUser) {
+            return ['status' => 'error', 'message' => __('api.error.username_short', $minUser)];
+        }
+        if (strlen($username) > $maxUser) {
+            return ['status' => 'error', 'message' => "Username too long (Max $maxUser chars)"];
+        }
         
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
         $stmt->execute([$username]);
@@ -314,7 +332,6 @@ function handle_request_password_reset($pdo, $email) {
             return ['status' => 'success', 'message' => __('api.success.link_generated')];
         }
     } else {
-        // Seguridad por oscuridad
         return ['status' => 'success', 'message' => __('api.success.link_generated')]; 
     }
 }
@@ -322,10 +339,15 @@ function handle_request_password_reset($pdo, $email) {
 function handle_reset_password($pdo, $token, $newPass) {
     global $basePath;
 
-    // Limitamos intentos por IP
+    // Config de límites
+    $config = $GLOBALS['SERVER_CONFIG'] ?? [];
+    $minPass = $config['min_password_length'] ?? 8;
+    $maxPass = $config['max_password_length'] ?? 72;
+
     checkRateLimit($pdo, null, 'reset_token_try_ip', 10, 60, true);
 
-    if (strlen($newPass) < 8) return ['status' => 'error', 'message' => __('api.error.password_short')];
+    if (strlen($newPass) < $minPass) return ['status' => 'error', 'message' => __('api.error.password_short', $minPass)];
+    if (strlen($newPass) > $maxPass) return ['status' => 'error', 'message' => "Password too long (Max $maxPass chars)"];
     
     $stmt = $pdo->prepare("SELECT email FROM password_resets WHERE token = ? AND expires_at > NOW() LIMIT 1");
     $stmt->execute([$token]);

@@ -84,6 +84,10 @@ const goToStage2 = async (container, triggerBtn) => {
 };
 
 const submitPasswordChange = async (container) => {
+    // Configuración de límites
+    const config = window.SERVER_CONFIG || {};
+    const minPass = config.min_password_length || 8;
+
     const inputNew = container.querySelector('#new-password-input');
     const inputRepeat = container.querySelector('#repeat-password-input');
     if (!inputNew || !inputRepeat || !inputNew.value || !inputRepeat.value) {
@@ -94,10 +98,13 @@ const submitPasswordChange = async (container) => {
         Toast.error(window.t('js.error.pass_mismatch'));
         return;
     }
-    if (inputNew.value.length < 8) {
-        Toast.error(window.t('api.error.password_short'));
+    
+    // VALIDACIÓN DINÁMICA DE PASSWORD
+    if (inputNew.value.length < minPass) {
+        Toast.error(window.t('api.error.password_short', minPass));
         return;
     }
+    
     const btn = container.querySelector('[data-action="pass-submit-final"]');
     const originalText = btn.innerText;
     btn.disabled = true;

@@ -209,15 +209,26 @@ function disable_2fa($pdo, $userId, $password) {
 }
 
 function update_user_password($pdo, $userId, $currentPass, $newPass) {
+    // Config de límites
+    $config = $GLOBALS['SERVER_CONFIG'] ?? [];
+    $minPass = $config['min_password_length'] ?? 8;
+    $maxPass = $config['max_password_length'] ?? 72;
+
     // Rate Limit preventivo: 5 intentos cada 15 min
     checkRateLimit($pdo, "uid_".$userId, 'pass_change_fail', 5, 15);
 
     if (empty($currentPass) || empty($newPass)) {
         return ['status' => 'error', 'message' => __('api.error.missing_data')];
     }
-    if (strlen($newPass) < 8) {
-        return ['status' => 'error', 'message' => __('api.error.password_short')];
+    
+    // Validación de longitud
+    if (strlen($newPass) < $minPass) {
+        return ['status' => 'error', 'message' => __('api.error.password_short', $minPass)];
     }
+    if (strlen($newPass) > $maxPass) {
+        return ['status' => 'error', 'message' => "Password too long (Max $maxPass chars)"];
+    }
+
     $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
     $stmt->execute([$userId]);
     $storedHash = $stmt->fetchColumn();

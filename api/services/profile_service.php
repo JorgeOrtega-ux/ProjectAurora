@@ -7,9 +7,20 @@
  */
 
 function update_profile_data($pdo, $userId, $newUsername, $newEmail) {
+    // Configuración de límites
+    $config = $GLOBALS['SERVER_CONFIG'] ?? [];
+    $minUser = $config['min_username_length'] ?? 6;
+    $maxUser = $config['max_username_length'] ?? 32;
+    $maxEmail = $config['max_email_length'] ?? 255;
+
     if (empty($newUsername) || empty($newEmail)) return ['status' => 'error', 'message' => __('api.error.missing_data')];
-    if (strlen($newUsername) < 6) return ['status' => 'error', 'message' => __('api.error.username_short')];
     
+    // Validaciones Username
+    if (strlen($newUsername) < $minUser) return ['status' => 'error', 'message' => __('api.error.username_short', $minUser)];
+    if (strlen($newUsername) > $maxUser) return ['status' => 'error', 'message' => "Username too long (Max $maxUser chars)"];
+    
+    // Validaciones Email
+    if (strlen($newEmail) > $maxEmail) return ['status' => 'error', 'message' => __('api.error.email_format') . " (Max $maxEmail chars)"];
     $emailVal = validateEmailRequirements($newEmail);
     if ($emailVal !== true) return ['status' => 'error', 'message' => $emailVal];
 

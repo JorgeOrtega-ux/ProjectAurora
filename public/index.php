@@ -56,13 +56,23 @@ if ($userThemePref === 'dark') {
         window.BASE_PATH = '<?php echo $basePath; ?>';
         window.TRANSLATIONS = <?php echo json_encode($GLOBALS['AURORA_TRANSLATIONS']); ?>;
         
+        // INYECCIÓN DE CONFIGURACIÓN DEL SERVIDOR
+        window.SERVER_CONFIG = <?php echo json_encode($GLOBALS['SERVER_CONFIG'] ?? []); ?>;
+        
         window.USER_PREFS = {
             theme: '<?php echo $userThemePref; ?>',
             extended_alerts: <?php echo $userExtendedAlerts; ?>
         };
 
-        window.t = function(key) {
-            return window.TRANSLATIONS[key] || key;
+        // Función de traducción mejorada para soportar argumentos (%s)
+        window.t = function(key, ...args) {
+            let text = window.TRANSLATIONS[key] || key;
+            if (args.length > 0) {
+                args.forEach(arg => {
+                    text = text.replace('%s', arg);
+                });
+            }
+            return text;
         };
     </script>
     
@@ -76,7 +86,6 @@ if ($userThemePref === 'dark') {
     <title><?php echo __('app.name'); ?></title>
 
     <?php 
-    // CORRECCIÓN VISUAL: Centrar contenido si no está logueado O si es página de mantenimiento
     if (!$isLoggedIn || $currentSection === 'maintenance'): ?>
         <style>
             [data-container="main-section"] {
@@ -96,7 +105,6 @@ if ($userThemePref === 'dark') {
             <div class="general-content">
 
                 <?php 
-                // VISIBILIDAD HEADER: Solo si está logueado Y NO está en mantenimiento
                 if ($isLoggedIn && $currentSection !== 'maintenance'): ?>
                     <div class="general-content-top">
                         <div class="header">
@@ -191,7 +199,6 @@ if ($userThemePref === 'dark') {
                 <div class="general-content-bottom">
 
                     <?php 
-                    // VISIBILIDAD SIDEBAR: Solo si está logueado Y NO está en mantenimiento
                     if ($isLoggedIn && $currentSection !== 'maintenance'): ?>
                         <div class="module-content module-surface body-text disabled" data-module="moduleSurface">
                             <div class="menu-content">

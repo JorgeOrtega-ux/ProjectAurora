@@ -5,7 +5,7 @@
 
 import { SettingsService } from './api-services.js';
 import { Toast } from './toast-service.js';
-import { applyAppTheme } from './main-controller.js'; // IMPORTANTE: Importamos para aplicar cambios en tiempo real
+import { applyAppTheme } from './main-controller.js';
 import { navigateTo } from './url-manager.js';
 
 /* --- UTILIDADES --- */
@@ -36,9 +36,8 @@ const toggleEditMode = (section, isEditing) => {
     }
 };
 
-/* --- NUEVO: FUNCIÓN MÁGICA DE ACTUALIZACIÓN DE TEXTOS --- */
+/* --- FUNCIÓN MÁGICA DE ACTUALIZACIÓN DE TEXTOS --- */
 const updateLanguageTexts = () => {
-    // 1. Elementos con texto directo (span, div, p, h1...)
     document.querySelectorAll('[data-lang-key]').forEach(el => {
         const key = el.dataset.langKey;
         if (window.t(key)) {
@@ -46,7 +45,6 @@ const updateLanguageTexts = () => {
         }
     });
 
-    // 2. Elementos con placeholder (inputs)
     document.querySelectorAll('[data-lang-placeholder]').forEach(el => {
         const key = el.dataset.langPlaceholder;
         if (window.t(key)) {
@@ -54,7 +52,6 @@ const updateLanguageTexts = () => {
         }
     });
     
-    // 3. Elementos con tooltip (botones)
     document.querySelectorAll('[data-lang-tooltip]').forEach(el => {
         const key = el.dataset.langTooltip;
         if (window.t(key)) {
@@ -71,7 +68,6 @@ const setupDropdownUI = () => {
             const wrapper = trigger.closest('.trigger-select-wrapper');
             const menu = wrapper.querySelector('.popover-module');
             
-            // Si está bloqueado por guardado anterior, no abrir
             if (wrapper.classList.contains('disabled-interactive')) return;
 
             document.querySelectorAll('.popover-module.active').forEach(el => {
@@ -93,10 +89,8 @@ const setupDropdownUI = () => {
             const wrapper = link.closest('.trigger-select-wrapper');
             
             if (wrapper) {
-                // A) UI: Seleccionar visualmente
                 const triggerText = wrapper.querySelector('.trigger-select-text');
                 const triggerIcon = wrapper.querySelector('.trigger-select-icon');
-
                 const linkText = link.querySelector('.menu-link-text');
                 const linkIcon = link.querySelector('.menu-link-icon span'); 
                 const newValue = link.dataset.value;
@@ -113,9 +107,6 @@ const setupDropdownUI = () => {
                 menu.classList.remove('active');
                 wrapper.querySelector('.trigger-selector').classList.remove('active');
                 
-                // B) LÓGICA: Guardar con bloqueo
-                
-                // Bloqueamos el trigger para evitar spam clicks
                 wrapper.classList.add('disabled-interactive');
                 wrapper.style.opacity = '0.7';
 
@@ -124,18 +115,10 @@ const setupDropdownUI = () => {
                         .then(res => {
                             if(res.status === 'success') {
                                 Toast.success(res.message);
-                                
-                                // Actualizamos el diccionario global
                                 if (res.data && res.data.translations) {
                                     window.TRANSLATIONS = res.data.translations;
                                 }
-                                
-                                // Actualizamos el DOM instantáneamente
                                 updateLanguageTexts();
-                                
-                                // Opcional: Recargar el contenido SPA para actualizar textos que vengan desde PHP (placeholders fijos)
-                                // const currentPath = location.pathname.replace(window.BASE_PATH, '') || 'main';
-                                // navigateTo(currentPath);
                             } else {
                                 Toast.error(res.message || window.t('global.error'));
                             }
@@ -145,7 +128,6 @@ const setupDropdownUI = () => {
                             Toast.error(window.t('js.error.connection'));
                         })
                         .finally(() => {
-                            // Desbloqueamos
                             wrapper.classList.remove('disabled-interactive');
                             wrapper.style.opacity = '1';
                         });
@@ -179,12 +161,31 @@ const setupDropdownUI = () => {
 
 /* --- LÓGICA DE ACTUALIZACIÓN DE DATOS (TEXTO) --- */
 const handleProfileSave = async (sectionType) => {
+    // Configuración de límites
+    const config = window.SERVER_CONFIG || {};
+    const minUser = config.min_username_length || 6;
+    const maxEmail = config.max_email_length || 255;
+
     const usernameInput = document.querySelector('[data-element="username-input"]');
     const emailInput = document.querySelector('[data-element="email-input"]');
     if (!usernameInput || !emailInput) return;
 
     const currentUsername = usernameInput.value.trim();
     const currentEmail = emailInput.value.trim();
+
+    // Validaciones Client-Side Dinámicas
+    if (sectionType === 'username') {
+        if (currentUsername.length < minUser) {
+            Toast.error(window.t('api.error.username_short', minUser));
+            return;
+        }
+    }
+    if (sectionType === 'email') {
+        if (currentEmail.length > maxEmail) {
+            Toast.error(window.t('api.error.email_format') + ` (Max ${maxEmail})`);
+            return;
+        }
+    }
     
     const btn = document.querySelector(`[data-action="${sectionType}-save-trigger-btn"]`);
     const originalText = btn.innerText;
@@ -264,8 +265,6 @@ const setupProfilePictureLogic = (pfpSection) => {
                     pfpSection.dataset.hasCustom = "true";
                     btnDelete.style.display = "flex";
                     btnUploadText.innerText = window.t('settings.profile.change_btn');
-                    
-                    // Actualizar texto si cambio idioma
                     btnUploadText.dataset.langKey = 'settings.profile.change_btn';
                     
                     actionsPreview.classList.remove('active'); actionsPreview.classList.add('disabled');
@@ -296,8 +295,6 @@ const setupProfilePictureLogic = (pfpSection) => {
                     pfpSection.dataset.hasCustom = "false";
                     btnDelete.style.display = "none";
                     btnUploadText.innerText = window.t('settings.profile.upload_btn');
-                    
-                    // Actualizar texto si cambio idioma
                     btnUploadText.dataset.langKey = 'settings.profile.upload_btn';
 
                 } else {
@@ -315,24 +312,19 @@ const setupProfilePictureLogic = (pfpSection) => {
     });
 };
 
-/* --- LÓGICA DE PREFERENCIAS (CHECKBOXES) --- */
 const setupPreferencesLogic = () => {
-    
-    // Función genérica para manejar toggles con bloqueo visual
     const handleToggle = (elementId, fieldName) => {
         const toggle = document.getElementById(elementId);
         if (toggle) {
             toggle.addEventListener('change', (e) => {
                 const isChecked = e.target.checked ? 1 : 0;
                 
-                // 1. Bloqueo visual del contenedor (para que se vea gris/desactivado)
                 const wrapper = e.target.closest('.component-toggle-switch');
                 if (wrapper) {
                     wrapper.classList.add('disabled-interactive');
                     wrapper.style.opacity = '0.7';
                 }
                 
-                // 2. Bloqueo del input real
                 e.target.disabled = true;
 
                 const payload = {};
@@ -348,7 +340,6 @@ const setupPreferencesLogic = () => {
                         } else {
                             e.target.checked = !e.target.checked; 
                             Toast.error(res.message || window.t('global.error'));
-                            
                             if (res.message && (res.message.toLowerCase().includes('espera') || res.message.toLowerCase().includes('wait'))) {
                                 setTimeout(() => { 
                                     e.target.disabled = false;
@@ -357,7 +348,7 @@ const setupPreferencesLogic = () => {
                                         wrapper.style.opacity = '1';
                                     }
                                 }, 5000);
-                                return; // Salimos para no desbloquear inmediatamente abajo
+                                return;
                             }
                         }
                     })
@@ -366,7 +357,6 @@ const setupPreferencesLogic = () => {
                         Toast.error(window.t('js.error.connection'));
                     })
                     .finally(() => {
-                        // Desbloqueo final
                         e.target.disabled = false;
                         if (wrapper) {
                             wrapper.classList.remove('disabled-interactive');

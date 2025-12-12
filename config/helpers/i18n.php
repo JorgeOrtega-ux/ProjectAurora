@@ -5,8 +5,6 @@ $GLOBALS['AURORA_TRANSLATIONS'] = [];
 
 function load_translations($langCode) {
     $langCode = basename($langCode);
-    
-    // CORRECCIÓN: Ruta relativa para llegar a includes/translations desde config/helpers
     $path = __DIR__ . '/../../includes/translations/' . $langCode . '.json';
     
     if (file_exists($path)) {
@@ -21,11 +19,22 @@ function load_translations($langCode) {
     $GLOBALS['AURORA_TRANSLATIONS'] = [];
 }
 
-function __($key) {
+/**
+ * Función de traducción mejorada.
+ * Soporta reemplazo de variables tipo sprintf.
+ * Ejemplo: __('error.min_length', 8) reemplaza %s por 8 en el string.
+ */
+function __($key, ...$args) {
+    $text = $key;
     if (isset($GLOBALS['AURORA_TRANSLATIONS'][$key])) {
-        return $GLOBALS['AURORA_TRANSLATIONS'][$key];
+        $text = $GLOBALS['AURORA_TRANSLATIONS'][$key];
     }
-    return $key;
+    
+    if (!empty($args)) {
+        return vsprintf($text, $args);
+    }
+    
+    return $text;
 }
 
 function detect_browser_language() {
