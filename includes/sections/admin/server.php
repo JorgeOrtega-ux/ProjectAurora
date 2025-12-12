@@ -45,6 +45,69 @@
                 from { opacity: 0; transform: translateY(-10px); }
                 to { opacity: 1; transform: translateY(0); }
             }
+
+            /* --- ESTILOS PARA EL GESTOR DE DOMINIOS (CHIPS) --- */
+            .domain-input-group {
+                display: flex;
+                gap: 8px;
+                width: 100%;
+                margin-bottom: 12px;
+            }
+            .domain-list-container {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                padding: 12px;
+                background-color: #f5f5fa;
+                border-radius: 8px;
+                border: 1px solid #00000010;
+                min-height: 50px;
+            }
+            .domain-chip {
+                display: inline-flex;
+                align-items: center;
+                background-color: #fff;
+                border: 1px solid #00000020;
+                border-radius: 6px;
+                padding: 4px 8px 4px 12px;
+                font-size: 13px;
+                font-weight: 500;
+                color: #333;
+                animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            }
+            .domain-chip span {
+                margin-right: 6px;
+            }
+            .domain-chip-remove {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                cursor: pointer;
+                color: #999;
+                transition: background-color 0.2s, color 0.2s;
+            }
+            .domain-chip-remove:hover {
+                background-color: #ffcdd2;
+                color: #d32f2f;
+            }
+            .domain-chip-remove .material-symbols-rounded {
+                font-size: 16px;
+            }
+            @keyframes popIn {
+                from { transform: scale(0.8); opacity: 0; }
+                to { transform: scale(1); opacity: 1; }
+            }
+            .empty-domains-text {
+                color: #999;
+                font-size: 13px;
+                font-style: italic;
+                width: 100%;
+                text-align: center;
+                margin-top: 4px;
+            }
         </style>
 
         <div class="component-card component-card--grouped">
@@ -146,14 +209,28 @@
             <div id="section-limits" class="accordion-content">
                 
                 <div class="component-group-item" style="flex-direction: column; align-items: flex-start;">
-                    <div class="component-card__content" style="width: 100%; margin-bottom: 15px;">
+                    <div class="component-card__content" style="width: 100%; margin-bottom: 10px;">
                         <div class="component-card__text">
                             <h2 class="component-card__title"><?= __('admin.server.domains_title') ?></h2>
                             <p class="component-card__description"><?= __('admin.server.domains_desc') ?></p>
                         </div>
                     </div>
+                    
                     <div style="width: 100%;">
-                        <textarea id="allowed-domains" class="component-text-input" style="height: auto; min-height: 80px; padding: 10px;" rows="3" placeholder="gmail.com, outlook.com..."></textarea>
+                        <div class="domain-input-group">
+                            <div class="component-input-wrapper" style="flex:1;">
+                                <input type="text" id="new-domain-input" class="component-text-input" placeholder="ej. gmail.com, miempresa.net">
+                            </div>
+                            <button type="button" class="component-button primary" id="btn-add-domain" style="min-width: 40px;">
+                                <span class="material-symbols-rounded">add</span>
+                            </button>
+                        </div>
+
+                        <div id="domain-chips-container" class="domain-list-container">
+                            <span class="empty-domains-text">Todos los dominios permitidos (Sin restricciones)</span>
+                        </div>
+
+                        <input type="hidden" id="allowed-domains">
                     </div>
                 </div>
 
@@ -463,7 +540,76 @@
         const minUser = document.getElementById('min-user-len');
         const maxUser = document.getElementById('max-user-len');
         const maxEmail = document.getElementById('max-email-len');
-        const allowedDomains = document.getElementById('allowed-domains'); 
+        
+        // GESTIÓN DE DOMINIOS (Chips)
+        // Usamos este input oculto para mantener compatibilidad con el envío de datos existente
+        const allowedDomainsInput = document.getElementById('allowed-domains'); 
+        const chipsContainer = document.getElementById('domain-chips-container');
+        const newDomainInput = document.getElementById('new-domain-input');
+        const btnAddDomain = document.getElementById('btn-add-domain');
+
+        let allowedDomainsList = [];
+
+        // Función para renderizar los chips
+        function renderDomains() {
+            chipsContainer.innerHTML = '';
+            
+            if (allowedDomainsList.length === 0) {
+                chipsContainer.innerHTML = '<span class="empty-domains-text">Todos los dominios permitidos (Sin restricciones)</span>';
+                allowedDomainsInput.value = '';
+                return;
+            }
+
+            allowedDomainsList.forEach((domain, index) => {
+                const chip = document.createElement('div');
+                chip.className = 'domain-chip';
+                chip.innerHTML = `
+                    <span>${domain}</span>
+                    <div class="domain-chip-remove" data-index="${index}">
+                        <span class="material-symbols-rounded">close</span>
+                    </div>
+                `;
+                chipsContainer.appendChild(chip);
+            });
+
+            // Actualizar el input oculto (separado por comas)
+            allowedDomainsInput.value = allowedDomainsList.join(',');
+
+            // Añadir listeners para borrar
+            document.querySelectorAll('.domain-chip-remove').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = e.currentTarget.dataset.index;
+                    allowedDomainsList.splice(idx, 1);
+                    renderDomains();
+                });
+            });
+        }
+
+        // Función para agregar dominio
+        function addDomain() {
+            const val = newDomainInput.value.trim().toLowerCase();
+            if (!val) return;
+
+            // Evitar duplicados
+            if (!allowedDomainsList.includes(val)) {
+                allowedDomainsList.push(val);
+                renderDomains();
+            }
+            newDomainInput.value = '';
+            newDomainInput.focus();
+        }
+
+        if (btnAddDomain) {
+            btnAddDomain.addEventListener('click', addDomain);
+        }
+        if (newDomainInput) {
+            newDomainInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addDomain();
+                }
+            });
+        }
         
         // Nuevos inputs
         const maxLogin = document.getElementById('max-login-attempts');
@@ -496,7 +642,15 @@
                         if(minUser) minUser.value = res.data.min_username_length;
                         if(maxUser) maxUser.value = res.data.max_username_length;
                         if(maxEmail) maxEmail.value = res.data.max_email_length;
-                        if(allowedDomains) allowedDomains.value = res.data.allowed_email_domains || ''; 
+                        
+                        // Cargar dominios en el array y renderizar
+                        const domainsStr = res.data.allowed_email_domains || ''; 
+                        if (domainsStr) {
+                            allowedDomainsList = domainsStr.split(',').map(s => s.trim()).filter(s => s !== '');
+                        } else {
+                            allowedDomainsList = [];
+                        }
+                        renderDomains();
 
                         if(maxLogin) maxLogin.value = res.data.max_login_attempts;
                         if(lockoutTime) lockoutTime.value = res.data.lockout_time_minutes;
@@ -521,7 +675,9 @@
                 formData.append('min_username_length', minUser.value);
                 formData.append('max_username_length', maxUser.value);
                 formData.append('max_email_length', maxEmail.value);
-                formData.append('allowed_email_domains', allowedDomains.value); 
+                
+                // Usamos el input oculto que se actualiza automáticamente por renderDomains
+                formData.append('allowed_email_domains', allowedDomainsInput.value); 
 
                 formData.append('max_login_attempts', maxLogin.value);
                 formData.append('lockout_time_minutes', lockoutTime.value);
