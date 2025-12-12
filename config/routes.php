@@ -6,7 +6,7 @@ return [
     'main'     => __DIR__ . '/../includes/sections/app/main.php',
     'explorer' => __DIR__ . '/../includes/sections/app/explorer.php',
     '404'      => __DIR__ . '/../includes/sections/system/404.php',
-    'maintenance' => __DIR__ . '/../includes/sections/system/maintenance.php', // NUEVA RUTA
+    'maintenance' => __DIR__ . '/../includes/sections/system/maintenance.php',
     
     // --- Rutas de Autenticación ---
     'login'                  => __DIR__ . '/../includes/sections/auth/login.php',
@@ -29,7 +29,8 @@ return [
     'settings/delete-account'     => __DIR__ . '/../includes/sections/settings/delete-account.php',
 
     // --- Rutas de Administración ---
-    'admin/users'  => __DIR__ . '/../includes/sections/admin/users.php',
-    'admin/server' => __DIR__ . '/../includes/sections/admin/server.php',
+    'admin/dashboard' => __DIR__ . '/../includes/sections/admin/dashboard.php', // NUEVA RUTA
+    'admin/users'     => __DIR__ . '/../includes/sections/admin/users.php',
+    'admin/server'    => __DIR__ . '/../includes/sections/admin/server.php',
 ];
 ?>

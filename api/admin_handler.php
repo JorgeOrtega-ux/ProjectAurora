@@ -45,6 +45,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $action = $input['action'] ?? '';
     
+    // --- NUEVA ACCIÓN: OBTENER ESTADÍSTICAS DEL DASHBOARD ---
+    if ($action === 'get_dashboard_stats') {
+        try {
+            // 1. Total usuarios
+            $stmtUsers = $pdo->query("SELECT COUNT(*) FROM users");
+            $totalUsers = $stmtUsers->fetchColumn();
+
+            // 2. Sesiones Activas
+            $stmtSessions = $pdo->query("SELECT COUNT(*) FROM active_sessions");
+            $activeSessions = $stmtSessions->fetchColumn();
+
+            // 3. Estado Servidor
+            $stmtConfig = $pdo->query("SELECT maintenance_mode FROM server_config WHERE id=1");
+            $maintenanceMode = $stmtConfig->fetchColumn();
+
+            // 4. Últimos logs de seguridad
+            $stmtLogs = $pdo->query("SELECT user_identifier, action_type, ip_address, created_at FROM security_logs ORDER BY id DESC LIMIT 5");
+            $recentLogs = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);
+
+            $data = [
+                'total_users' => $totalUsers,
+                'active_sessions' => $activeSessions,
+                'maintenance_mode' => $maintenanceMode,
+                'recent_logs' => $recentLogs
+            ];
+
+            sendJsonResponse('success', 'OK', null, $data);
+        } catch (Exception $e) {
+            sendJsonResponse('error', __('api.error.db_error'));
+        }
+    }
+
     if ($action === 'get_server_config') {
         try {
             $stmt = $pdo->query("SELECT * FROM server_config WHERE id=1");

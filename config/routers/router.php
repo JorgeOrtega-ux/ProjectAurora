@@ -100,7 +100,8 @@ if (strpos($currentSection, 'api/') === 0) {
 }
 
 if ($currentSection === 'settings') { header("Location: " . $basePath . "settings/your-profile"); exit; }
-if ($currentSection === 'admin') { header("Location: " . $basePath . "admin/users"); exit; }
+// MODIFICADO: Redirigir admin raíz al dashboard
+if ($currentSection === 'admin') { header("Location: " . $basePath . "admin/dashboard"); exit; }
 
 $resetToken = null;
 if (strpos($currentSection, 'recover-password/') === 0) {

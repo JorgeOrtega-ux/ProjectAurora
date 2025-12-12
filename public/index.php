@@ -159,7 +159,7 @@ if ($userThemePref === 'dark') {
                                         <div class="menu-list">
                                             
                                             <?php if (in_array($_SESSION['role'], ['founder', 'administrator'])): ?>
-                                                <div class="menu-link" data-nav="admin/users">
+                                                <div class="menu-link" data-nav="admin/dashboard">
                                                     <div class="menu-link-icon">
                                                         <span class="material-symbols-rounded">admin_panel_settings</span>
                                                     </div>
@@ -274,6 +274,15 @@ if ($userThemePref === 'dark') {
 
                                         <div style="padding: 8px 12px; font-size: 12px; color: #666; font-weight: bold; text-transform: uppercase;">
                                             <span data-lang-key="menu.admin_panel"><?php echo __('menu.admin_panel'); ?></span>
+                                        </div>
+
+                                        <div class="menu-link <?php echo ($currentSection === 'admin/dashboard') ? 'active' : ''; ?>" data-nav="admin/dashboard">
+                                            <div class="menu-link-icon">
+                                                <span class="material-symbols-rounded">dashboard</span>
+                                            </div>
+                                            <div class="menu-link-text">
+                                                <span data-lang-key="admin.dashboard.title"><?php echo __('admin.dashboard.title'); ?></span>
+                                            </div>
                                         </div>
 
                                         <div class="menu-link <?php echo ($currentSection === 'admin/users') ? 'active' : ''; ?>" data-nav="admin/users">

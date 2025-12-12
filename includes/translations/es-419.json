@@ -42,6 +42,15 @@
     "menu.accessibility": "Accesibilidad",
     "menu.admin_panel": "Panel de Administración",
 
+    "admin.dashboard.title": "Dashboard",
+    "admin.dashboard.desc": "Visión general del estado del sistema y métricas clave.",
+    "admin.dashboard.total_users": "Usuarios Totales",
+    "admin.dashboard.active_sessions": "Sesiones Activas",
+    "admin.dashboard.system_status": "Estado del Sistema",
+    "admin.dashboard.recent_activity": "Actividad Reciente de Seguridad",
+    "admin.dashboard.online": "En línea",
+    "admin.dashboard.maintenance": "Mantenimiento",
+
     "admin.users.title": "Gestionar Usuarios",
     "admin.users.desc": "Administra las cuentas, roles y estados de los usuarios.",
     "admin.server.title": "Configuración del Servidor",
