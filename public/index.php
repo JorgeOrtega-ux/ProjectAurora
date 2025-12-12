@@ -12,26 +12,37 @@ $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
 $isAdminSection = (strpos($currentSection, 'admin/') === 0);
 $isHelpSection = (strpos($currentSection, 'help/') === 0);
 
-// --- LÓGICA DE AVATAR MODIFICADA ---
-// Objetivo: Generar siempre una URL para la imagen. 
-// Si el archivo no existe, el navegador mostrará su placeholder nativo (imagen rota).
+// --- LÓGICA DE AVATAR DEL HEADER (MODIFICADA CON SELF-HEALING) ---
 $globalAvatarSrc = '';
+$headerAvatarNeedsRepair = false; 
 
-if (isset($_SESSION['uuid'])) {
+if (isset($_SESSION['uuid']) && isset($_SESSION['user_id'])) {
     $uuid = $_SESSION['uuid'];
+    $userId = $_SESSION['user_id'];
     $cacheBuster = '?v=' . time(); 
     
+    // Rutas relativas (para el navegador)
     $relCustom  = 'assets/uploads/avatars/custom/' . $uuid . '.png';
     $relDefault = 'assets/uploads/avatars/default/' . $uuid . '.png';
+    
+    // Rutas absolutas (para file_exists)
+    $absCustom  = __DIR__ . '/' . $relCustom;
+    $absDefault = __DIR__ . '/' . $relDefault;
 
     // 1. Prioridad: Avatar personalizado
-    if (file_exists(__DIR__ . '/' . $relCustom)) {
+    if (file_exists($absCustom)) {
         $globalAvatarSrc = $basePath . $relCustom . $cacheBuster;
     } 
-    // 2. Fallback: Avatar por defecto
-    // Asignamos la ruta aunque el archivo no exista físicamente, para forzar el placeholder del navegador.
-    else {
+    // 2. Fallback: Avatar por defecto (SOLO SI EXISTE)
+    elseif (file_exists($absDefault)) {
         $globalAvatarSrc = $basePath . $relDefault . $cacheBuster;
+    }
+    // 3. Emergencia: No existe ninguno (Se borraron) -> Usar Fallback Local
+    else {
+        $headerAvatarNeedsRepair = true;
+        // Determinista: El mismo usuario siempre obtiene el mismo color de fallback
+        $fallbackIndex = ($userId % 5) + 1;
+        $globalAvatarSrc = $basePath . 'assets/uploads/avatars/fallback/' . $fallbackIndex . '.png';
     }
 }
 
@@ -83,6 +94,10 @@ $safePublicConfig = array_intersect_key($rawConfig, array_flip($publicConfigKeys
             theme: '<?php echo $userThemePref; ?>',
             extended_alerts: <?php echo $userExtendedAlerts; ?>
         };
+
+        // EXPOSICIÓN DEL ID DE USUARIO PARA REPARACIÓN UI
+        // Esto permite que JS sepa qué tarjeta actualizar en la lista de usuarios
+        window.CURRENT_USER_ID = <?php echo isset($_SESSION['user_id']) ? $_SESSION['user_id'] : 'null'; ?>;
 
         // Función de traducción mejorada
         window.t = function(key, ...args) {
@@ -163,7 +178,10 @@ $safePublicConfig = array_intersect_key($rawConfig, array_flip($publicConfigKeys
                                         data-lang-tooltip="menu.profile">
 
                                         <?php if ($isLoggedIn): ?>
-                                            <img src="<?php echo $globalAvatarSrc; ?>" alt="<?php echo __('menu.profile'); ?>" class="profile-img">
+                                            <img src="<?php echo $globalAvatarSrc; ?>" 
+                                                 alt="<?php echo __('menu.profile'); ?>" 
+                                                 class="profile-img"
+                                                 <?php echo $headerAvatarNeedsRepair ? 'data-needs-repair="true"' : ''; ?>>
                                         <?php else: ?>
                                             <span style="font-weight:bold; color:#555; position: relative; z-index: 1;">?</span>
                                         <?php endif; ?>
@@ -237,7 +255,6 @@ $safePublicConfig = array_intersect_key($rawConfig, array_flip($publicConfigKeys
                 <?php endif; ?>
 
                 <div class="general-content-bottom">
-
                     <?php 
                     if ($showFullLayout): ?>
                         <div class="module-content module-surface body-text disabled" data-module="moduleSurface">

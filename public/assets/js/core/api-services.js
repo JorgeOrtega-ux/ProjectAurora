@@ -13,8 +13,11 @@ async function postRequest(endpoint, data) {
         const formData = new FormData();
         
         // 1. Inyectar Datos
-        for (const [key, value] of Object.entries(data)) {
-            formData.append(key, value);
+        if (data && typeof data === 'object') {
+            for (const [key, value] of Object.entries(data)) {
+                // Manejo especial para archivos si es necesario, o valores simples
+                formData.append(key, value);
+            }
         }
 
         // 2. Inyectar Token CSRF
@@ -92,7 +95,14 @@ export const SettingsService = {
         });
     },
 
-    // NUEVO: Verificar contraseña sin cambiarla
+    // NUEVO: Método para reparar avatar automáticamente
+    repairAvatar: () => {
+        return postRequest('api/settings_handler.php', {
+            action: 'repair_avatar'
+        });
+    },
+
+    // Verificar contraseña sin cambiarla
     verifyPassword: (password) => {
         return postRequest('api/settings_handler.php', {
             action: 'verify_current_password',
@@ -129,7 +139,7 @@ export const SettingsService = {
         });
     },
 
-    // --- NUEVO: ELIMINAR CUENTA ---
+    // --- ELIMINAR CUENTA ---
     deleteAccount: (password) => {
         return postRequest('api/settings_handler.php', {
             action: 'delete_account',

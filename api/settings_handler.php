@@ -106,6 +106,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'delete_profile_picture':
             $response = handle_delete_avatar($pdo, $userId);
             break;
+
+        // --- NUEVO: REPARACIÓN DE AVATAR ---
+        case 'repair_avatar':
+            $response = handle_repair_avatar($pdo, $userId);
+            break;
     }
 
     echo json_encode($response);

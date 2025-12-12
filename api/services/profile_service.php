@@ -269,4 +269,30 @@ function handle_delete_avatar($pdo, $userId) {
      $defaultUrl = $basePath . URL_BASE_AVATARS . 'default/' . $uuid . '.png?v=' . time();
      return ['status' => 'success', 'message' => __('api.success.photo_deleted'), 'data' => ['url' => $defaultUrl]];
 }
+
+/**
+ * Función de Auto-Reparación de Avatar
+ * Se llama cuando el frontend detecta un avatar roto (data-needs-repair).
+ * Fuerza la descarga desde UI Avatars.
+ */
+function handle_repair_avatar($pdo, $userId) {
+    global $basePath;
+    
+    // Obtenemos los datos necesarios para regenerar
+    $stmt = $pdo->prepare("SELECT username, uuid FROM users WHERE id = ?");
+    $stmt->execute([$userId]);
+    $user = $stmt->fetch();
+
+    if ($user) {
+        // ensureDefaultAvatarExists verifica si existe. Como acabamos de detectar que no,
+        // esto disparará la descarga desde ui-avatars.com.
+        if (ensureDefaultAvatarExists($user['uuid'], $user['username'])) {
+             // Devolvemos la nueva URL del avatar por defecto regenerado
+             $newUrl = $basePath . 'assets/uploads/avatars/default/' . $user['uuid'] . '.png?v=' . time();
+             return ['status' => 'success', 'message' => 'Avatar repaired', 'data' => ['url' => $newUrl]];
+        }
+    }
+    
+    return ['status' => 'error', 'message' => 'Could not repair avatar'];
+}
 ?>

@@ -31,29 +31,35 @@ if (empty($currentUser)) {
     ];
 }
 
-// --- MODIFICADO: LÓGICA DE AVATAR OPTIMIZADA ---
-// Usamos la variable global calculada en index.php si existe para evitar doble carga
+// --- LOGICA AVANZADA DE AVATAR (SELF-HEALING) ---
+// 1. Definimos rutas físicas absolutas para comprobación
+$uuid = $currentUser['uuid'] ?? 'default';
+$baseUploadDir = __DIR__ . '/../../../public/assets/uploads/avatars/';
+$absCustom     = $baseUploadDir . 'custom/' . $uuid . '.png';
+$absDefault    = $baseUploadDir . 'default/' . $uuid . '.png';
+
+// 2. Variables de estado
 $finalAvatarSrc = '';
 $hasCustomAvatar = false;
+$needsRepair = false; // Bandera para activar el JS de reparación
 
-if (!empty($currentUser['uuid'])) {
-    $uuid = $currentUser['uuid'];
-    // Chequeo físico para saber si hay custom (para el botón borrar)
-    $absCustom  = __DIR__ . '/../../../public/assets/uploads/avatars/custom/' . $uuid . '.png';
-
-    if (file_exists($absCustom)) {
-        $hasCustomAvatar = true;
-    }
-}
-
-// Asignación de la fuente de la imagen
-if (isset($globalAvatarSrc) && !empty($globalAvatarSrc)) {
-    // Usamos la misma URL exacta que el header (compartida desde index.php)
-    $finalAvatarSrc = $globalAvatarSrc;
+// 3. Comprobación en Cascada (Priority Check)
+if (file_exists($absCustom)) {
+    // A. Existe avatar personalizado
+    $hasCustomAvatar = true;
+    $finalAvatarSrc = (isset($basePath) ? $basePath : '/ProjectAurora/') . 'assets/uploads/avatars/custom/' . $uuid . '.png?v=' . time();
+} elseif (file_exists($absDefault)) {
+    // B. No hay custom, pero existe el default generado
+    $finalAvatarSrc = (isset($basePath) ? $basePath : '/ProjectAurora/') . 'assets/uploads/avatars/default/' . $uuid . '.png?v=' . time();
 } else {
-    // Fallback de seguridad
-    $relDefault = 'assets/uploads/avatars/default/' . ($currentUser['uuid'] ?? 'default') . '.png';
-    $finalAvatarSrc = (isset($basePath) ? $basePath : '/ProjectAurora/') . $relDefault . '?v=' . time();
+    // C. ERROR: No existe ninguno (Se borraron del servidor) -> MODO FALLBACK & REPARACIÓN
+    $needsRepair = true;
+    
+    // Selección determinista del fallback (1 al 5) basado en el ID del usuario
+    // Esto asegura que el usuario siempre vea el mismo color de respaldo mientras se repara
+    $fallbackIndex = ($userId % 5) + 1; 
+    
+    $finalAvatarSrc = (isset($basePath) ? $basePath : '/ProjectAurora/') . 'assets/uploads/avatars/fallback/' . $fallbackIndex . '.png';
 }
 
 $languagesMap = [
@@ -83,7 +89,9 @@ $currentLangData = $languagesMap[$currentLangCode] ?? $languagesMap['en-US'];
                     <div class="component-card__profile-picture" data-role="<?php echo htmlspecialchars($currentUser['role']); ?>">
                         <img src="<?php echo htmlspecialchars($finalAvatarSrc); ?>"
                             class="component-card__avatar-image"
-                            data-element="profile-picture-preview-image">
+                            data-element="profile-picture-preview-image"
+                            <?php echo $needsRepair ? 'data-needs-repair="true"' : ''; ?>>
+                            
                         <div class="component-card__avatar-overlay" data-action="trigger-profile-picture-upload">
                             <span class="material-symbols-rounded">photo_camera</span>
                         </div>

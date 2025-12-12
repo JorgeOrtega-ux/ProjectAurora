@@ -1,8 +1,10 @@
 /**
  * MainController.js
  * Encargado de la lógica de UI (Menús, Buscador, Interacción visual).
- * ACTUALIZADO: Manejo de temas y GESTOS MOBILE (Drag to dismiss con animación fluida).
+ * ACTUALIZADO: Manejo de temas, GESTOS MOBILE y AUTO-REPARACIÓN DE AVATAR (Con Retraso).
  */
+
+import { SettingsService } from '../../core/api-services.js';
 
 // ==========================================
 // CONFIGURACIÓN
@@ -31,8 +33,6 @@ const toggleModuleState = (moduleElement) => {
 
 const closeModuleWithAnimation = (moduleElement) => {
     // 1. IMPORTANTE: Limpiar cualquier transformación inline (del drag) INMEDIATAMENTE.
-    // Al quitar el style inline y la clase .active simultáneamente, el navegador
-    // calcula la ruta desde la posición actual hasta el estado CSS inactivo (translateY 100%).
     const content = moduleElement.querySelector('.menu-content');
     if(content) {
         content.style.transform = ''; 
@@ -96,20 +96,14 @@ const setupMobileGestures = () => {
         startY = e.touches[0].clientY;
         menuHeight = menuContent.offsetHeight;
         isDragging = true;
-        
-        // Quitamos la transición para que el menú siga al dedo en tiempo real sin retraso
         menuContent.style.transition = 'none';
     }, { passive: true });
 
     // 2. Mover
     pillContainer.addEventListener('touchmove', (e) => {
         if (!isDragging) return;
-        
         currentY = e.touches[0].clientY;
         const deltaY = currentY - startY;
-
-        // Solo permitir arrastrar hacia abajo (delta positivo)
-        // Aplicamos la transformación directa al estilo inline
         if (deltaY > 0) {
             requestAnimationFrame(() => {
                 menuContent.style.transform = `translateY(${deltaY}px)`;
@@ -121,28 +115,89 @@ const setupMobileGestures = () => {
     pillContainer.addEventListener('touchend', (e) => {
         if (!isDragging) return;
         isDragging = false;
-
         const deltaY = currentY - startY;
-        
-        // Restauramos la transición CSS para que cualquier movimiento a partir de ahora sea suave
         menuContent.style.transition = 'transform 0.3s cubic-bezier(0.1, 0.7, 0.1, 1)';
-
-        // Umbral: Si bajó más del 40% de la altura...
         if (deltaY > (menuHeight * 0.4)) {
-            // ...Cerramos. La función se encarga de limpiar el transform inline
-            // permitiendo que el CSS complete la bajada suavemente.
             closeModuleWithAnimation(profileModule);
         } else {
-            // ...Si no, rebote hacia arriba (volvemos a 0)
             requestAnimationFrame(() => {
                 menuContent.style.transform = ''; 
             });
         }
-        
-        // Reset
-        startY = 0;
-        currentY = 0;
+        startY = 0; currentY = 0;
     });
+};
+
+/* --- SELF-HEALING AVATAR SYSTEM --- */
+const setupAvatarRepairSystem = () => {
+    // 1. MECÁNICO SILENCIOSO: Busca imágenes marcadas para reparación
+    const imgToRepair = document.querySelector('img[data-needs-repair="true"]');
+    
+    if (imgToRepair) {
+        console.log('MainController: Avatar roto detectado. Esperando 500ms para efecto visual...');
+        
+        // MODIFICADO: Agregamos setTimeout de 500ms antes de reparar
+        setTimeout(() => {
+            console.log('MainController: Iniciando reparación...');
+            
+            // USAMOS EL SERVICIO CENTRALIZADO
+            SettingsService.repairAvatar()
+                .then(data => {
+                    if (data.status === 'success' && data.data && data.data.url) {
+                        console.log('MainController: Avatar reparado exitosamente.');
+                        
+                        // A) Actualizar Header y Perfil
+                        document.querySelectorAll('.component-card__avatar-image, .profile-img').forEach(img => {
+                            // Pequeño fade-out/in visual opcional si quisieras, 
+                            // pero el cambio de src directo es suficiente tras el delay.
+                            img.src = data.data.url;
+                            img.removeAttribute('data-needs-repair');
+                        });
+
+                        // B) Actualizar Lista de Admin (Si existe la tarjeta del usuario actual)
+                        if (window.CURRENT_USER_ID) {
+                            const adminUserCardImg = document.querySelector(`.component-entity-card[data-id="${window.CURRENT_USER_ID}"] .component-entity-avatar img`);
+                            if (adminUserCardImg) {
+                                adminUserCardImg.src = data.data.url;
+                            }
+                        }
+
+                    } else {
+                        console.warn('MainController: No se pudo reparar el avatar.', data);
+                    }
+                })
+                .catch(err => {
+                    console.error('MainController: Error conectando con servicio de reparación.', err);
+                });
+                
+        }, 500); // <--- Retraso de 500ms
+    }
+
+    // 2. RED DE SEGURIDAD (On Error Fallback)
+    document.addEventListener('error', function(e){
+        const target = e.target;
+        if (target.tagName === 'IMG' && 
+           (target.classList.contains('profile-img') || 
+            target.classList.contains('component-card__avatar-image') ||
+            target.closest('.component-entity-avatar'))) {
+            
+            if (target.dataset.hasFallback === 'true') return;
+            
+            console.warn('MainController: Error de carga de imagen detectado. Aplicando fallback local.');
+            
+            // Fallback inmediato
+            let fallbackId = 1;
+            const card = target.closest('.component-entity-card');
+            if(card && card.dataset.id) {
+                fallbackId = (parseInt(card.dataset.id) % 5) + 1;
+            } else if (window.CURRENT_USER_ID) {
+                fallbackId = (window.CURRENT_USER_ID % 5) + 1;
+            }
+
+            target.src = `assets/uploads/avatars/fallback/${fallbackId}.png`; 
+            target.dataset.hasFallback = 'true';
+        }
+    }, true); 
 };
 
 const setupEventListeners = () => {
@@ -233,4 +288,5 @@ export const initMainController = () => {
     setupMobileGestures();
     setupScrollEffects();
     initTheme(); 
+    setupAvatarRepairSystem(); 
 };
