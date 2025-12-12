@@ -269,49 +269,78 @@ function handle_verify_code_create_account($pdo, $code) {
             $SERVER_CONFIG = $stmtC->fetch(PDO::FETCH_ASSOC);
         } catch (Exception $e) {}
     }
-    // Usamos los mismos límites que login para consistencia, o defaults
+    
     $maxAttempts = $SERVER_CONFIG['max_login_attempts'] ?? 5;
     $lockoutTime = $SERVER_CONFIG['lockout_time_minutes'] ?? 15;
 
     $emailIdentifier = $_SESSION['pending_verification_email'] ?? null;
+    
     if ($code && $emailIdentifier) {
         
+        // Rate limiting puede ir fuera de la transacción
         checkRateLimit($pdo, $emailIdentifier, 'verify_fail', $maxAttempts, $lockoutTime);
         
-        $stmt = $pdo->prepare("SELECT * FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'account_activation' AND expires_at > NOW() ORDER BY id DESC LIMIT 1");
-        $stmt->execute([$emailIdentifier, $code]);
-        $row = $stmt->fetch();
-        
-        if ($row) {
-            $payload = json_decode($row['payload'], true);
-            $uuid = generate_uuid();
-            // Se crea como active por defecto
-            $insertUser = $pdo->prepare("INSERT INTO users (username, email, password, uuid) VALUES (?, ?, ?, ?)");
-            if ($insertUser->execute([$payload['username'], $payload['email'], $payload['password'], $uuid])) {
-                $newId = $pdo->lastInsertId();
-                $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ?")->execute([$emailIdentifier]);
-                ensureDefaultAvatarExists($uuid, $payload['username']);
-                
-                $detectedLang = detect_browser_language(); 
-                $stmtPref = $pdo->prepare("INSERT INTO user_preferences (user_id, language, open_links_new_tab) VALUES (?, ?, 1)");
-                $stmtPref->execute([$newId, $detectedLang]);
-                
-                $_SESSION['user_id'] = $newId;
-                $_SESSION['username'] = $payload['username'];
-                $_SESSION['uuid'] = $uuid;
-                $_SESSION['role'] = 'user';
-                unset($_SESSION['pending_verification_email']);
-                
-                logUserAccess($pdo, $newId);
-                registerActiveSession($pdo, $newId); 
+        try {
+            // INICIO DE TRANSACCIÓN
+            $pdo->beginTransaction();
 
-                return ['status' => 'success', 'message' => __('api.success.account_created'), 'redirect' => $basePath];
+            // Usamos FOR UPDATE para bloquear la fila y prevenir Race Conditions
+            $stmt = $pdo->prepare("SELECT * FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'account_activation' AND expires_at > NOW() ORDER BY id DESC LIMIT 1 FOR UPDATE");
+            $stmt->execute([$emailIdentifier, $code]);
+            $row = $stmt->fetch();
+            
+            if ($row) {
+                $payload = json_decode($row['payload'], true);
+                $uuid = generate_uuid();
+                
+                // Se crea como active por defecto
+                $insertUser = $pdo->prepare("INSERT INTO users (username, email, password, uuid) VALUES (?, ?, ?, ?)");
+                
+                if ($insertUser->execute([$payload['username'], $payload['email'], $payload['password'], $uuid])) {
+                    $newId = $pdo->lastInsertId();
+                    
+                    // Borramos el código YA DENTRO de la transacción
+                    $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ?")->execute([$emailIdentifier]);
+                    
+                    ensureDefaultAvatarExists($uuid, $payload['username']);
+                    
+                    $detectedLang = detect_browser_language(); 
+                    $stmtPref = $pdo->prepare("INSERT INTO user_preferences (user_id, language, open_links_new_tab) VALUES (?, ?, 1)");
+                    $stmtPref->execute([$newId, $detectedLang]);
+                    
+                    // COMMIT: Confirmamos todos los cambios
+                    $pdo->commit();
+                    
+                    // Configuración de sesión (memoria PHP, no afecta BD)
+                    $_SESSION['user_id'] = $newId;
+                    $_SESSION['username'] = $payload['username'];
+                    $_SESSION['uuid'] = $uuid;
+                    $_SESSION['role'] = 'user';
+                    unset($_SESSION['pending_verification_email']);
+                    
+                    // Logs fuera de la transacción crítica para no bloquear (opcional, pero recomendado)
+                    logUserAccess($pdo, $newId);
+                    registerActiveSession($pdo, $newId); 
+
+                    return ['status' => 'success', 'message' => __('api.success.account_created'), 'redirect' => $basePath];
+                } else {
+                    // Falló el insert
+                    $pdo->rollBack();
+                    return ['status' => 'error', 'message' => __('api.error.db_error')];
+                }
             } else {
-                return ['status' => 'error', 'message' => __('api.error.db_error')];
+                // Código no válido o expirado
+                $pdo->rollBack(); // Liberamos el lock aunque no hayamos escrito
+                logSecurityEvent($pdo, $emailIdentifier, 'verify_fail');
+                return ['status' => 'error', 'message' => __('api.error.invalid_code')];
             }
-        } else {
-            logSecurityEvent($pdo, $emailIdentifier, 'verify_fail');
-            return ['status' => 'error', 'message' => __('api.error.invalid_code')];
+        } catch (Exception $e) {
+            // Error inesperado
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            // Log del error real para debug: error_log($e->getMessage());
+            return ['status' => 'error', 'message' => __('api.error.db_error')];
         }
     } else {
         return ['status' => 'error', 'message' => __('api.error.missing_data')];
