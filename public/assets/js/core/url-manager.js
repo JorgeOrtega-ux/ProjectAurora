@@ -73,7 +73,8 @@ function updateSidebarContext(section) {
     const navMain = document.getElementById('nav-main');
     const navSettings = document.getElementById('nav-settings');
     const navAdmin = document.getElementById('nav-admin');
-    const navHelp = document.getElementById('nav-help'); // NUEVO
+    const navAdminBottom = document.getElementById('nav-admin-bottom');
+    const navHelp = document.getElementById('nav-help');
 
     // Funciones helper para limpiar código
     const activate = (el) => {
@@ -94,6 +95,7 @@ function updateSidebarContext(section) {
     deactivate(navMain);
     deactivate(navSettings);
     deactivate(navAdmin);
+    deactivate(navAdminBottom);
     deactivate(navHelp);
 
     // 2. Activar el correcto según la sección
@@ -101,7 +103,8 @@ function updateSidebarContext(section) {
         activate(navSettings);
     } else if (section.startsWith('admin/')) {
         activate(navAdmin);
-    } else if (section.startsWith('help/')) { // NUEVA LOGICA
+        activate(navAdminBottom);
+    } else if (section.startsWith('help/')) { 
         activate(navHelp);
     } else {
         // Por defecto (main, explorer, etc) mostramos el menú principal

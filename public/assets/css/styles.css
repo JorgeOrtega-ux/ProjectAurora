@@ -223,6 +223,8 @@ html {
 .module-surface .menu-content {
     width: 280px;
     height: 100%;
+        display: flex;
+        flex-direction: column;
     background-color: #ffffff;
     border-radius: 12px;
     box-shadow: 0 4px 12px #00000020;
@@ -260,6 +262,7 @@ html {
     padding: 8px;
     display: flex;
     flex-direction: column;
+    justify-content: flex-end;
 }
 
 .menu-list {

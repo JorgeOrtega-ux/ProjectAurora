@@ -369,8 +369,12 @@ if ($userThemePref === 'dark') {
                                                 <span data-lang-key="admin.users.title"><?php echo __('admin.users.title'); ?></span>
                                             </div>
                                         </div>
+                                    </div>
 
-                                        <div class="menu-link <?php echo ($currentSection === 'admin/server') ? 'active' : ''; ?>" data-nav="admin/server">
+                                </div>
+                                <div class="menu-content-bottom">
+                                    <div id="nav-admin-bottom" class="menu-list <?php echo !$isAdminSection ? 'disabled' : ''; ?>">
+                                         <div class="menu-link <?php echo ($currentSection === 'admin/server') ? 'active' : ''; ?>" data-nav="admin/server">
                                             <div class="menu-link-icon">
                                                 <span class="material-symbols-rounded">dns</span>
                                             </div>
@@ -379,9 +383,7 @@ if ($userThemePref === 'dark') {
                                             </div>
                                         </div>
                                     </div>
-
                                 </div>
-                                <div class="menu-content-bottom"></div>
                             </div>
                         </div>
                     <?php endif; ?>
