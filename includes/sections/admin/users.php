@@ -103,7 +103,18 @@
             white-space: nowrap;
         }
     </style>
-<div class="toolbar"></div>
+
+    <div class="toolbar">
+        <button class="component-button" style="border:none;">
+            <span class="material-symbols-rounded">filter_list</span>
+        </button>
+        <div style="width: 1px; height: 20px; background: #eee;"></div>
+        <button class="component-button" style="border:none;">
+            <span class="material-symbols-rounded">add</span>
+            Crear
+        </button>
+    </div>
+
     <div class="component-wrapper">
         <div class="component-header-card">
             <h1 class="component-page-title" data-lang-key="admin.users.title"><?= __('admin.users.title') ?></h1>

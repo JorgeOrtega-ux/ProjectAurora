@@ -698,14 +698,29 @@
     outline: none;
 }
 
-
-
-
-
+/* =========================================
+   FLOATING TOOLBAR (Fixed Position)
+   ========================================= */
 .toolbar {
     width: 300px;
     height: 45px;
     background-color: #fff;
     border: 1px solid #00000020;
+    
+    /* Centrado y fijado en pantalla (ignora scroll del contenedor) */
     position: absolute;
+    top: 15px; /* Espacio desde la parte superior de la ventana */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 500; /* Asegura que flote sobre el contenido normal */
+    
+    /* Estética: Bordes redondeados y sombra */
+    border-radius: 999px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    
+    /* Layout interno */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
