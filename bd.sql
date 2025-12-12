@@ -117,11 +117,18 @@ CREATE TABLE IF NOT EXISTS server_config (
     min_username_length INT DEFAULT 6,
     max_username_length INT DEFAULT 32,
     max_email_length INT DEFAULT 255,
+    -- Nuevas columnas agregadas
+    max_login_attempts INT DEFAULT 5,
+    lockout_time_minutes INT DEFAULT 5,
+    code_resend_cooldown INT DEFAULT 60,
+    username_cooldown INT DEFAULT 30,
+    email_cooldown INT DEFAULT 12,
+    profile_picture_max_size INT DEFAULT 2,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- Configuración inicial por defecto con los nuevos valores
 INSERT IGNORE INTO server_config 
-(id, maintenance_mode, allow_registrations, min_password_length, max_password_length, min_username_length, max_username_length, max_email_length) 
+(id, maintenance_mode, allow_registrations, min_password_length, max_password_length, min_username_length, max_username_length, max_email_length, max_login_attempts, lockout_time_minutes, code_resend_cooldown, username_cooldown, email_cooldown, profile_picture_max_size) 
 VALUES 
-(1, 0, 1, 8, 72, 6, 32, 255);
+(1, 0, 1, 8, 72, 6, 32, 255, 5, 5, 60, 30, 12, 2);

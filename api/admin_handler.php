@@ -50,8 +50,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->query("SELECT * FROM server_config WHERE id=1");
             $data = $stmt->fetch();
             if(!$data) {
-                // Si no existe, crear por defecto
-                $pdo->exec("INSERT INTO server_config (id, maintenance_mode, allow_registrations, min_password_length, max_password_length, min_username_length, max_username_length, max_email_length) VALUES (1, 0, 1, 8, 72, 6, 32, 255)");
+                // Si no existe, crear por defecto (Valores actualizados)
+                $pdo->exec("INSERT INTO server_config (id, maintenance_mode, allow_registrations, min_password_length, max_password_length, min_username_length, max_username_length, max_email_length, max_login_attempts, lockout_time_minutes, code_resend_cooldown, username_cooldown, email_cooldown, profile_picture_max_size) VALUES (1, 0, 1, 8, 72, 6, 32, 255, 5, 5, 60, 30, 12, 2)");
                 $data = [
                     'maintenance_mode' => 0, 
                     'allow_registrations' => 1,
@@ -59,7 +59,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'max_password_length' => 72,
                     'min_username_length' => 6,
                     'max_username_length' => 32,
-                    'max_email_length' => 255
+                    'max_email_length' => 255,
+                    'max_login_attempts' => 5,
+                    'lockout_time_minutes' => 5,
+                    'code_resend_cooldown' => 60,
+                    'username_cooldown' => 30,
+                    'email_cooldown' => 12,
+                    'profile_picture_max_size' => 2
                 ];
             }
             sendJsonResponse('success', 'OK', null, $data);
@@ -69,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'update_server_config') {
-        // Recibir valores
+        // Recibir valores existentes
         $maintenance = isset($input['maintenance_mode']) ? (int)$input['maintenance_mode'] : 0;
         $registrations = isset($input['allow_registrations']) ? (int)$input['allow_registrations'] : 1;
         
@@ -79,14 +85,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $maxUser = isset($input['max_username_length']) ? (int)$input['max_username_length'] : 32;
         $maxEmail = isset($input['max_email_length']) ? (int)$input['max_email_length'] : 255;
 
+        // Recibir NUEVOS valores
+        $maxLoginAttempts = isset($input['max_login_attempts']) ? (int)$input['max_login_attempts'] : 5;
+        $lockoutTime = isset($input['lockout_time_minutes']) ? (int)$input['lockout_time_minutes'] : 5;
+        $codeResend = isset($input['code_resend_cooldown']) ? (int)$input['code_resend_cooldown'] : 60;
+        $userCooldown = isset($input['username_cooldown']) ? (int)$input['username_cooldown'] : 30;
+        $emailCooldown = isset($input['email_cooldown']) ? (int)$input['email_cooldown'] : 12;
+        $profilePicSize = isset($input['profile_picture_max_size']) ? (int)$input['profile_picture_max_size'] : 2;
+
         // Validaciones lógicas básicas
         if ($minPass < 1) $minPass = 1;
         if ($maxPass < $minPass) $maxPass = $minPass;
-        
         if ($minUser < 1) $minUser = 1;
         if ($maxUser < $minUser) $maxUser = $minUser;
-        
         if ($maxEmail < 5) $maxEmail = 5;
+
+        // Validaciones para nuevos valores
+        if ($maxLoginAttempts < 1) $maxLoginAttempts = 1;
+        if ($lockoutTime < 1) $lockoutTime = 1;
+        if ($codeResend < 0) $codeResend = 0;
+        if ($userCooldown < 0) $userCooldown = 0;
+        if ($emailCooldown < 0) $emailCooldown = 0;
+        if ($profilePicSize < 1) $profilePicSize = 1;
 
         try {
             $sql = "UPDATE server_config SET 
@@ -96,11 +116,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     max_password_length = ?,
                     min_username_length = ?,
                     max_username_length = ?,
-                    max_email_length = ?
+                    max_email_length = ?,
+                    max_login_attempts = ?,
+                    lockout_time_minutes = ?,
+                    code_resend_cooldown = ?,
+                    username_cooldown = ?,
+                    email_cooldown = ?,
+                    profile_picture_max_size = ?
                     WHERE id = 1";
 
             $stmt = $pdo->prepare($sql);
-            if ($stmt->execute([$maintenance, $registrations, $minPass, $maxPass, $minUser, $maxUser, $maxEmail])) {
+            if ($stmt->execute([
+                $maintenance, $registrations, 
+                $minPass, $maxPass, $minUser, $maxUser, $maxEmail,
+                $maxLoginAttempts, $lockoutTime, $codeResend, $userCooldown, $emailCooldown, $profilePicSize
+            ])) {
                 logSecurityEvent($pdo, "uid_".$userId, "server_config_update");
                 sendJsonResponse('success', __('api.success.preferences_saved'));
             } else {

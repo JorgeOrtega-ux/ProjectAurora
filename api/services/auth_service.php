@@ -4,12 +4,27 @@
 /**
  * Servicio de Autenticación
  * Maneja Login, Registro, Recuperación, Verificación y Logout.
+ * ACTUALIZADO: Usa configuración dinámica desde BD.
  */
 
 function handle_login($pdo, $email, $password) {
     global $basePath;
 
-    checkRateLimit($pdo, $email, 'login_fail', 5, 15);
+    // --- CARGAR CONFIGURACIÓN ---
+    global $SERVER_CONFIG;
+    if (!isset($SERVER_CONFIG)) {
+        try {
+            $stmtC = $pdo->query("SELECT * FROM server_config WHERE id=1");
+            $SERVER_CONFIG = $stmtC->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {}
+    }
+    
+    // Valores dinámicos con fallbacks seguros
+    $maxAttempts = $SERVER_CONFIG['max_login_attempts'] ?? 5;
+    $lockoutTime = $SERVER_CONFIG['lockout_time_minutes'] ?? 15;
+
+    // Chequeo de Rate Limit Dinámico
+    checkRateLimit($pdo, $email, 'login_fail', $maxAttempts, $lockoutTime);
 
     // Agregamos account_status a la consulta
     $stmt = $pdo->prepare("SELECT id, username, password, uuid, role, two_factor_enabled, account_status FROM users WHERE email = ?");
@@ -18,17 +33,6 @@ function handle_login($pdo, $email, $password) {
 
     if ($user && password_verify($password, $user['password'])) {
         
-        // --- LOGIC DE MANTENIMIENTO ---
-        global $SERVER_CONFIG;
-        
-        // Fallback de seguridad
-        if (!isset($SERVER_CONFIG)) {
-             try {
-                 $stmtC = $pdo->query("SELECT * FROM server_config WHERE id=1");
-                 $SERVER_CONFIG = $stmtC->fetch();
-             } catch (Exception $e) {}
-        }
-
         $maintenance = $SERVER_CONFIG['maintenance_mode'] ?? 0;
 
         if ($maintenance == 1) {
@@ -80,7 +84,15 @@ function handle_register_step_1($pdo, $email, $password) {
     global $basePath;
 
     // Obtener configuración global
-    $config = $GLOBALS['SERVER_CONFIG'] ?? [];
+    global $SERVER_CONFIG;
+    if (!isset($SERVER_CONFIG)) {
+        try {
+            $stmtC = $pdo->query("SELECT * FROM server_config WHERE id=1");
+            $SERVER_CONFIG = $stmtC->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {}
+    }
+
+    $config = $SERVER_CONFIG ?? [];
     $allowed = $config['allow_registrations'] ?? 1;
     
     // Configuración de límites (con fallbacks)
@@ -138,7 +150,8 @@ function handle_register_step_2($pdo, $username) {
     $password = $_SESSION['temp_register']['password'];
 
     // Configuración de límites
-    $config = $GLOBALS['SERVER_CONFIG'] ?? [];
+    global $SERVER_CONFIG;
+    $config = $SERVER_CONFIG ?? [];
     $minUser = $config['min_username_length'] ?? 6;
     $maxUser = $config['max_username_length'] ?? 32;
 
@@ -183,8 +196,26 @@ function handle_resend_verification_code($pdo) {
     }
     $email = $_SESSION['pending_verification_email'];
     
-    $checkStmt = $pdo->prepare("SELECT created_at FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation' AND created_at > (NOW() - INTERVAL 60 SECOND) ORDER BY id DESC LIMIT 1");
+    // --- CARGAR CONFIGURACIÓN ---
+    global $SERVER_CONFIG;
+    if (!isset($SERVER_CONFIG)) {
+        try {
+            $stmtC = $pdo->query("SELECT * FROM server_config WHERE id=1");
+            $SERVER_CONFIG = $stmtC->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {}
+    }
+    
+    // Cooldown dinámico
+    $resendCooldown = $SERVER_CONFIG['code_resend_cooldown'] ?? 60; // Default 60s
+    
+    // Usamos inyección directa del valor int para el INTERVAL, seguro ya que viene casteado de admin o es default
+    // Nota: PDO no permite parámetros en INTERVAL fácilmente, concatenamos el entero validado.
+    $resendCooldown = (int)$resendCooldown; 
+
+    $sql = "SELECT created_at FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation' AND created_at > (NOW() - INTERVAL $resendCooldown SECOND) ORDER BY id DESC LIMIT 1";
+    $checkStmt = $pdo->prepare($sql);
     $checkStmt->execute([$email]);
+
     if ($checkStmt->rowCount() > 0) {
         return ['status' => 'error', 'message' => __('api.error.wait_resend')];
     }
@@ -209,10 +240,23 @@ function handle_resend_verification_code($pdo) {
 
 function handle_verify_code_create_account($pdo, $code) {
     global $basePath;
+    
+    // Configuracion para límites de intentos de verificación
+    global $SERVER_CONFIG;
+    if (!isset($SERVER_CONFIG)) {
+        try {
+            $stmtC = $pdo->query("SELECT * FROM server_config WHERE id=1");
+            $SERVER_CONFIG = $stmtC->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {}
+    }
+    // Usamos los mismos límites que login para consistencia, o defaults
+    $maxAttempts = $SERVER_CONFIG['max_login_attempts'] ?? 5;
+    $lockoutTime = $SERVER_CONFIG['lockout_time_minutes'] ?? 15;
 
     $emailIdentifier = $_SESSION['pending_verification_email'] ?? null;
     if ($code && $emailIdentifier) {
-        checkRateLimit($pdo, $emailIdentifier, 'verify_fail', 5, 15);
+        
+        checkRateLimit($pdo, $emailIdentifier, 'verify_fail', $maxAttempts, $lockoutTime);
         
         $stmt = $pdo->prepare("SELECT * FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'account_activation' AND expires_at > NOW() ORDER BY id DESC LIMIT 1");
         $stmt->execute([$emailIdentifier, $code]);
@@ -262,7 +306,20 @@ function handle_verify_2fa_login($pdo, $code) {
     }
 
     $userId = $_SESSION['temp_2fa_user_id'];
-    checkRateLimit($pdo, "uid_".$userId, '2fa_verify_fail', 5, 15);
+    
+    // --- CARGAR CONFIGURACIÓN ---
+    global $SERVER_CONFIG;
+    if (!isset($SERVER_CONFIG)) {
+        try {
+            $stmtC = $pdo->query("SELECT * FROM server_config WHERE id=1");
+            $SERVER_CONFIG = $stmtC->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {}
+    }
+    
+    $maxAttempts = $SERVER_CONFIG['max_login_attempts'] ?? 5;
+    $lockoutTime = $SERVER_CONFIG['lockout_time_minutes'] ?? 15;
+
+    checkRateLimit($pdo, "uid_".$userId, '2fa_verify_fail', $maxAttempts, $lockoutTime);
 
     $stmt = $pdo->prepare("SELECT id, username, uuid, role, two_factor_secret, two_factor_recovery_codes FROM users WHERE id = ?");
     $stmt->execute([$userId]);
@@ -305,6 +362,8 @@ function handle_verify_2fa_login($pdo, $code) {
 function handle_request_password_reset($pdo, $email) {
     global $basePath;
 
+    // Podríamos usar el cooldown de email aquí también, pero generalmente el reset
+    // tiene sus propios límites duros de seguridad.
     checkRateLimit($pdo, $email, 'recovery_request', 3, 60, true);
     logSecurityEvent($pdo, $email, 'recovery_request');
     
@@ -340,7 +399,15 @@ function handle_reset_password($pdo, $token, $newPass) {
     global $basePath;
 
     // Config de límites
-    $config = $GLOBALS['SERVER_CONFIG'] ?? [];
+    global $SERVER_CONFIG;
+    if (!isset($SERVER_CONFIG)) {
+        try {
+            $stmtC = $pdo->query("SELECT * FROM server_config WHERE id=1");
+            $SERVER_CONFIG = $stmtC->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {}
+    }
+    
+    $config = $SERVER_CONFIG ?? [];
     $minPass = $config['min_password_length'] ?? 8;
     $maxPass = $config['max_password_length'] ?? 72;
 

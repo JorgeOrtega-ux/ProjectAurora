@@ -4,14 +4,29 @@
 /**
  * Servicio de Perfil
  * Maneja Actualización de Datos, Preferencias y Avatar.
+ * ACTUALIZADO: Usa configuración dinámica desde BD.
  */
 
 function update_profile_data($pdo, $userId, $newUsername, $newEmail) {
-    // Configuración de límites
-    $config = $GLOBALS['SERVER_CONFIG'] ?? [];
+    // --- CARGAR CONFIGURACIÓN ---
+    global $SERVER_CONFIG;
+    if (!isset($SERVER_CONFIG)) {
+        try {
+            $stmtC = $pdo->query("SELECT * FROM server_config WHERE id=1");
+            $SERVER_CONFIG = $stmtC->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {}
+    }
+    
+    $config = $SERVER_CONFIG ?? [];
+    
+    // Configuración de longitudes
     $minUser = $config['min_username_length'] ?? 6;
     $maxUser = $config['max_username_length'] ?? 32;
     $maxEmail = $config['max_email_length'] ?? 255;
+    
+    // Configuración de Cooldowns (Días)
+    $usernameCooldown = $config['username_cooldown'] ?? 30;
+    $emailCooldown = $config['email_cooldown'] ?? 12;
 
     if (empty($newUsername) || empty($newEmail)) return ['status' => 'error', 'message' => __('api.error.missing_data')];
     
@@ -41,12 +56,16 @@ function update_profile_data($pdo, $userId, $newUsername, $newEmail) {
     }
 
     if ($usernameChanged) {
-        if (!checkProfileChangeLimit($pdo, $userId, 'username', 12, 1)) {
+        // Validación dinámica del cooldown de nombre de usuario
+        // Nota: checkProfileChangeLimit espera (userId, type, limit_days, limit_count)
+        if (!checkProfileChangeLimit($pdo, $userId, 'username', $usernameCooldown, 1)) {
+            // Nota: Podríamos mejorar el mensaje de error para incluir los días, pero requiere actualizar traducciones con placeholders.
             return ['status' => 'error', 'message' => __('api.error.limit_username')];
         }
     }
     if ($emailChanged) {
-         if (!checkProfileChangeLimit($pdo, $userId, 'email', 12, 1)) {
+         // Validación dinámica del cooldown de email
+         if (!checkProfileChangeLimit($pdo, $userId, 'email', $emailCooldown, 1)) {
             return ['status' => 'error', 'message' => __('api.error.limit_email')];
         }
     }
@@ -158,6 +177,20 @@ function update_preferences($pdo, $userId, $input) {
 function handle_upload_avatar($pdo, $userId, $fileInput) {
     global $basePath;
 
+    // --- CARGAR CONFIGURACIÓN PARA TAMAÑO ---
+    global $SERVER_CONFIG;
+    if (!isset($SERVER_CONFIG)) {
+        try {
+            $stmtC = $pdo->query("SELECT * FROM server_config WHERE id=1");
+            $SERVER_CONFIG = $stmtC->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {}
+    }
+    
+    // Default 2MB si no existe la config
+    $maxSizeMB = $SERVER_CONFIG['profile_picture_max_size'] ?? 2;
+    // Conversión a Bytes
+    $maxSizeBytes = $maxSizeMB * 1024 * 1024;
+
     if (!checkProfileChangeLimit($pdo, $userId, 'avatar', 1, 3)) {
         return ['status' => 'error', 'message' => __('api.error.limit_avatar')];
     }
@@ -174,8 +207,10 @@ function handle_upload_avatar($pdo, $userId, $fileInput) {
     if (!in_array($mime, $allowedTypes)) {
         return ['status' => 'error', 'message' => __('api.error.upload_format')];
     }
-    if ($file['size'] > 2 * 1024 * 1024) {
-        return ['status' => 'error', 'message' => __('api.error.upload_size')];
+    
+    // Validación de tamaño dinámica
+    if ($file['size'] > $maxSizeBytes) {
+        return ['status' => 'error', 'message' => __('api.error.upload_size') . " (Max {$maxSizeMB}MB)"];
     }
     
     $uuid = $_SESSION['uuid'];
