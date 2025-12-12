@@ -67,8 +67,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $response = update_server_configuration($pdo, $userId, $input);
             break;
 
-        case 'get_users_list': // NUEVO
-            $response = get_all_users_list($pdo);
+        case 'get_users_list':
+            // Recoger parámetros de filtro
+            $sort = $input['sort'] ?? 'newest';
+            $search = $input['search'] ?? '';
+            $response = get_all_users_list($pdo, $sort, $search);
             break;
     }
     

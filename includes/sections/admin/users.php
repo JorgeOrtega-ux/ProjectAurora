@@ -90,20 +90,67 @@
             white-space: nowrap;
         }
 
+        /* Estilos específicos para el dropdown de filtro en el toolbar */
+        .filter-wrapper {
+            position: relative;
+        }
         
+        .filter-popover {
+            top: calc(100% + 8px); 
+            right: 0;
+            left: auto;
+            width: 240px;
+        }
+
     </style>
 
     <div class="component-wrapper">
         
         <div class="toolbar-wrapper">
             <div class="toolbar">
-                <button class="header-button" id="btn-toggle-search"">
+                <button class="header-button" id="btn-toggle-search">
                     <span class="material-symbols-rounded">search</span>
                 </button>
+                
                 <div style="width: 1px; height: 20px; background: #eee;"></div>
-                <button class="header-button">
-                    <span class="material-symbols-rounded">filter_list</span>
-                </button>
+                
+                <div class="filter-wrapper">
+                    <button class="header-button" id="btn-toggle-filter">
+                        <span class="material-symbols-rounded">filter_list</span>
+                    </button>
+                    
+                    <div class="popover-module filter-popover" id="filter-popover-menu">
+                        <div class="menu-list">
+                            <div style="padding: 8px 12px; font-size: 11px; color: #999; font-weight: 700; text-transform: uppercase;">
+                                Ordenar por
+                            </div>
+                            
+                            <div class="menu-link active" data-sort="newest">
+                                <div class="menu-link-icon"><span class="material-symbols-rounded">schedule</span></div>
+                                <div class="menu-link-text">Más recientes</div>
+                                <div class="menu-link-icon check-icon"><span class="material-symbols-rounded">check</span></div>
+                            </div>
+                            
+                            <div class="menu-link" data-sort="oldest">
+                                <div class="menu-link-icon"><span class="material-symbols-rounded">history</span></div>
+                                <div class="menu-link-text">Más antiguos</div>
+                                <div class="menu-link-icon check-icon" style="display:none;"><span class="material-symbols-rounded">check</span></div>
+                            </div>
+                            
+                            <div class="menu-link" data-sort="az">
+                                <div class="menu-link-icon"><span class="material-symbols-rounded">sort_by_alpha</span></div>
+                                <div class="menu-link-text">Nombre (A-Z)</div>
+                                <div class="menu-link-icon check-icon" style="display:none;"><span class="material-symbols-rounded">check</span></div>
+                            </div>
+                            
+                            <div class="menu-link" data-sort="za">
+                                <div class="menu-link-icon"><span class="material-symbols-rounded">sort_by_alpha</span></div>
+                                <div class="menu-link-text">Nombre (Z-A)</div>
+                                <div class="menu-link-icon check-icon" style="display:none;"><span class="material-symbols-rounded">check</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <div class="toolbar-secondary" id="toolbar-search-container" style="display: none;">
@@ -132,11 +179,22 @@
 
     <script>
     (function(){
-        /* --- LÓGICA DE TOOLBAR --- */
+        /* --- REFERENCIAS DOM --- */
         const btnSearch = document.getElementById('btn-toggle-search');
         const searchContainer = document.getElementById('toolbar-search-container');
         const searchInput = document.getElementById('user-search-input');
+        
+        const btnFilter = document.getElementById('btn-toggle-filter');
+        const filterPopover = document.getElementById('filter-popover-menu');
+        const sortOptions = filterPopover.querySelectorAll('.menu-link[data-sort]');
+        
+        const container = document.getElementById('users-list-container');
+        const csrf = document.querySelector('meta[name="csrf-token"]').content;
+        const basePath = window.BASE_PATH || '/ProjectAurora/';
 
+        let currentSort = 'newest';
+
+        /* --- LÓGICA DE TOOLBAR: BÚSQUEDA --- */
         if(btnSearch && searchContainer) {
             btnSearch.addEventListener('click', () => {
                 const isHidden = (searchContainer.style.display === 'none');
@@ -148,24 +206,96 @@
                 } else {
                     searchContainer.style.display = 'none';
                     btnSearch.classList.remove('toolbar-btn-active');
-                    if(searchInput) searchInput.value = ''; // Opcional: limpiar al cerrar
+                    if(searchInput) searchInput.value = ''; 
+                    loadUsers(); // Recargar al limpiar búsqueda
                 }
+            });
+
+            // Búsqueda en tiempo real (debounce simple)
+            let timeout = null;
+            if(searchInput){
+                searchInput.addEventListener('input', (e) => {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => {
+                        loadUsers(); 
+                    }, 400);
+                });
+            }
+        }
+
+        /* --- LÓGICA DE TOOLBAR: FILTRO --- */
+        if (btnFilter && filterPopover) {
+            // Toggle Popover
+            btnFilter.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isActive = filterPopover.classList.contains('active');
+                
+                // Cerrar otros dropdowns si los hubiera (opcional)
+                
+                if (isActive) {
+                    filterPopover.classList.remove('active');
+                    btnFilter.classList.remove('toolbar-btn-active');
+                } else {
+                    filterPopover.classList.add('active');
+                    btnFilter.classList.add('toolbar-btn-active');
+                }
+            });
+
+            // Cerrar al hacer click fuera
+            document.addEventListener('click', (e) => {
+                if (!filterPopover.contains(e.target) && !btnFilter.contains(e.target)) {
+                    filterPopover.classList.remove('active');
+                    btnFilter.classList.remove('toolbar-btn-active');
+                }
+            });
+
+            // Manejo de clicks en opciones
+            sortOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    // Actualizar variable
+                    currentSort = option.dataset.sort;
+
+                    // Actualizar UI del dropdown (clase active y check icon)
+                    sortOptions.forEach(opt => {
+                        opt.classList.remove('active');
+                        const check = opt.querySelector('.check-icon');
+                        if(check) check.style.display = 'none';
+                    });
+                    
+                    option.classList.add('active');
+                    const check = option.querySelector('.check-icon');
+                    if(check) check.style.display = 'flex';
+
+                    // Cerrar popover
+                    filterPopover.classList.remove('active');
+                    btnFilter.classList.remove('toolbar-btn-active');
+
+                    // Recargar lista
+                    loadUsers();
+                });
             });
         }
 
-        /* --- LÓGICA DE CARGA DE USUARIOS (Existente) --- */
-        const container = document.getElementById('users-list-container');
-        const csrf = document.querySelector('meta[name="csrf-token"]').content;
-        const basePath = window.BASE_PATH || '/ProjectAurora/';
-
+        /* --- LÓGICA DE CARGA DE USUARIOS --- */
         function loadUsers() {
+            // Mostrar loader si ya había contenido
+            if(container.innerHTML !== '') {
+                container.style.opacity = '0.5';
+            }
+
             const formData = new FormData();
             formData.append('action', 'get_users_list');
             formData.append('csrf_token', csrf);
+            formData.append('sort', currentSort); // Enviar ordenamiento
+            
+            if (searchInput && searchInput.value.trim() !== '') {
+                formData.append('search', searchInput.value.trim()); // Enviar búsqueda
+            }
 
             fetch(basePath + 'api/admin_handler.php', { method: 'POST', body: formData })
             .then(r => r.json())
             .then(res => {
+                container.style.opacity = '1';
                 if(res.status === 'success') {
                     renderUsers(res.data);
                 } else {
@@ -174,13 +304,14 @@
             })
             .catch(err => {
                 console.error(err);
+                container.style.opacity = '1';
                 container.innerHTML = `<div style="text-align:center; width:100%; padding:20px; color:red;">Error de conexión</div>`;
             });
         }
 
         function renderUsers(users) {
             if(!users || users.length === 0) {
-                container.innerHTML = `<p style="text-align:center; color:#666;">No hay usuarios registrados.</p>`;
+                container.innerHTML = `<p style="text-align:center; color:#666; padding: 40px;">No se encontraron usuarios.</p>`;
                 return;
             }
 
@@ -189,8 +320,10 @@
 
             users.forEach(u => {
                 const initial = u.username.charAt(0).toUpperCase();
+                // Manejo seguro de fecha
                 const dateObj = new Date(u.created_at);
-                const dateStr = dateObj.toLocaleDateString();
+                const dateStr = !isNaN(dateObj) ? dateObj.toLocaleDateString() : 'Fecha desconocida';
+                
                 const avatarSrc = basePath + u.avatar_url + '?v=' + timestamp;
 
                 let statusText = 'Activo';
@@ -236,6 +369,7 @@
             container.innerHTML = html;
         }
 
+        // Carga inicial
         loadUsers();
     })();
     </script>

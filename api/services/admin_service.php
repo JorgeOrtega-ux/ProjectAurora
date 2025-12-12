@@ -133,26 +133,56 @@ function update_server_configuration($pdo, $userId, $input) {
     }
 }
 
-function get_all_users_list($pdo) {
+function get_all_users_list($pdo, $sortBy = 'newest', $search = '') {
     try {
-        $sql = "SELECT id, username, email, uuid, account_status, created_at, role FROM users ORDER BY created_at DESC";
-        $stmt = $pdo->query($sql);
+        // Base query
+        $sql = "SELECT id, username, email, uuid, account_status, created_at, role FROM users";
+        $params = [];
+        
+        // 1. Aplicar búsqueda si existe
+        if (!empty($search)) {
+            $sql .= " WHERE username LIKE ? OR email LIKE ?";
+            $term = "%" . $search . "%";
+            $params[] = $term;
+            $params[] = $term;
+        }
+
+        // 2. Aplicar ordenamiento
+        switch ($sortBy) {
+            case 'az':
+                $sql .= " ORDER BY username ASC";
+                break;
+            case 'za':
+                $sql .= " ORDER BY username DESC";
+                break;
+            case 'oldest':
+                $sql .= " ORDER BY created_at ASC";
+                break;
+            case 'newest':
+            default:
+                $sql .= " ORDER BY created_at DESC";
+                break;
+        }
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
+        // Procesamiento de avatares
         foreach ($users as &$user) {
             $uuid = $user['uuid'];
             $customPath = DIR_CUSTOM . $uuid . '.png';
             $defaultPath = DIR_DEFAULT . $uuid . '.png';
             
-            $url = URL_BASE_AVATARS . 'default/' . $uuid . '.png';
+            // Determinar URL base
+            // (En un entorno real, define esto globalmente o pásalo)
+            $avatarUrl = URL_BASE_AVATARS . 'default/' . $uuid . '.png';
 
             if (file_exists($customPath)) {
-                $url = URL_BASE_AVATARS . 'custom/' . $uuid . '.png';
-            } elseif (file_exists($defaultPath)) {
-                $url = URL_BASE_AVATARS . 'default/' . $uuid . '.png';
+                $avatarUrl = URL_BASE_AVATARS . 'custom/' . $uuid . '.png';
             }
             
-            $user['avatar_url'] = $url;
+            $user['avatar_url'] = $avatarUrl;
         }
         
         return ['status' => 'success', 'message' => 'OK', 'data' => $users];
