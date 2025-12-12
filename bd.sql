@@ -106,3 +106,14 @@ CREATE TABLE IF NOT EXISTS active_sessions (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_session_lookup (session_id)
 );
+
+-- Ejecuta esto en tu gestor SQL
+CREATE TABLE IF NOT EXISTS server_config (
+    id INT PRIMARY KEY,
+    maintenance_mode BOOLEAN DEFAULT 0,
+    allow_registrations BOOLEAN DEFAULT 1,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Configuración inicial por defecto
+INSERT IGNORE INTO server_config (id, maintenance_mode, allow_registrations) VALUES (1, 0, 1);

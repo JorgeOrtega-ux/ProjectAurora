@@ -9,10 +9,26 @@ require_once __DIR__ . '/../database/db.php';
 require_once __DIR__ . '/../helpers/i18n.php'; 
 
 // ==========================================
+// 0. CARGAR CONFIGURACIÓN DEL SERVIDOR
+// ==========================================
+$serverConfig = ['maintenance_mode' => 0, 'allow_registrations' => 1];
+try {
+    $stmtConfig = $pdo->query("SELECT * FROM server_config WHERE id = 1");
+    $dbConfig = $stmtConfig->fetch();
+    if ($dbConfig) {
+        $serverConfig = $dbConfig;
+    }
+} catch (Exception $e) {}
+
+// Global para uso en servicios
+$GLOBALS['SERVER_CONFIG'] = $serverConfig;
+
+// ==========================================
 // 1. AUTENTICACIÓN Y SESIÓN
 // ==========================================
 $isLoggedIn = isset($_SESSION['user_id']);
 $userLang = null;
+$userRole = 'user'; 
 
 if ($isLoggedIn) {
     try {
@@ -33,13 +49,7 @@ if ($isLoggedIn) {
             $pdo->prepare("UPDATE active_sessions SET last_activity = NOW() WHERE session_id = ?")->execute([$currentSessionId]);
         }
 
-        $stmt = $pdo->prepare("
-            SELECT u.role, u.username, u.uuid, 
-                   p.language, p.theme, p.extended_alerts 
-            FROM users u
-            LEFT JOIN user_preferences p ON u.id = p.user_id
-            WHERE u.id = ?
-        ");
+        $stmt = $pdo->prepare("SELECT u.role, u.username, u.uuid, p.language, p.theme, p.extended_alerts FROM users u LEFT JOIN user_preferences p ON u.id = p.user_id WHERE u.id = ?");
         $stmt->execute([$_SESSION['user_id']]);
         $freshUser = $stmt->fetch();
 
@@ -47,11 +57,10 @@ if ($isLoggedIn) {
             $_SESSION['role'] = $freshUser['role'];
             $_SESSION['username'] = $freshUser['username'];
             $_SESSION['uuid'] = $freshUser['uuid'];
-            
             $_SESSION['theme'] = $freshUser['theme'] ?? 'system';
             $_SESSION['extended_alerts'] = $freshUser['extended_alerts'] ?? 0;
-            
             $userLang = $freshUser['language']; 
+            $userRole = $freshUser['role'];
         } else {
             session_destroy();
             header("Location: " . $basePath . "login");
@@ -70,19 +79,18 @@ if ($userLang) {
 }
 
 // ==========================================
-// 3. ANÁLISIS DE URL (ROUTING)
+// 3. ANÁLISIS DE URL
 // ==========================================
 $requestUri = $_SERVER['REQUEST_URI'];
-
 if (strpos($requestUri, $basePath) === 0) {
     $path = substr($requestUri, strlen($basePath));
 } else {
     $path = $requestUri;
 }
-
 $path = strtok($path, '?');
 $currentSection = rtrim($path, '/');
 
+// Permitir API
 if (strpos($currentSection, 'api/') === 0) {
     $apiTarget = __DIR__ . '/../../' . $currentSection;
     if (file_exists($apiTarget)) {
@@ -91,15 +99,8 @@ if (strpos($currentSection, 'api/') === 0) {
     }
 }
 
-if ($currentSection === 'settings') {
-    header("Location: " . $basePath . "settings/your-profile");
-    exit;
-}
-
-if ($currentSection === 'admin') {
-    header("Location: " . $basePath . "admin/users");
-    exit;
-}
+if ($currentSection === 'settings') { header("Location: " . $basePath . "settings/your-profile"); exit; }
+if ($currentSection === 'admin') { header("Location: " . $basePath . "admin/users"); exit; }
 
 $resetToken = null;
 if (strpos($currentSection, 'recover-password/') === 0) {
@@ -110,56 +111,62 @@ if (strpos($currentSection, 'recover-password/') === 0) {
     }
 }
 
-if ($currentSection === '') { 
-    $currentSection = 'main'; 
+if ($currentSection === '') { $currentSection = 'main'; }
+
+// ==========================================
+// 4. LÓGICA DE MANTENIMIENTO Y REGISTRO
+// ==========================================
+
+// Rutas permitidas en mantenimiento (Login para que entren admins)
+$maintenanceWhitelist = ['login', 'maintenance', '2fa-challenge'];
+
+// MANTENIMIENTO ACTIVO
+if ($serverConfig['maintenance_mode'] == 1) {
+    $isAdmin = in_array($userRole, ['founder', 'administrator']);
+    
+    // Si NO es admin, redirigir a mantenimiento (salvo que ya esté en login o whitelist)
+    if (!$isAdmin) {
+        if (!in_array($currentSection, $maintenanceWhitelist)) {
+            $currentSection = 'maintenance';
+        }
+    }
+}
+
+// REGISTROS CERRADOS
+if ($serverConfig['allow_registrations'] == 0) {
+    if (strpos($currentSection, 'register') === 0) {
+        header("Location: " . $basePath . "account-status?type=registrations_closed");
+        exit;
+    }
 }
 
 // ==========================================
-// 4. VALIDACIÓN DE RUTAS Y SEGURIDAD
+// 5. VALIDACIÓN DE RUTAS
 // ==========================================
-
 $routes = require __DIR__ . '/../routes.php';
 $validRoutes = array_keys($routes); 
 
-// MODIFICADO: Agregamos 'account-status' a las rutas permitidas para invitados
-$guestRoutes = [
-    'login', 
-    'register', 
-    'register/aditional-data', 
-    'register/verify', 
-    'recover-password', 
-    'recover-password-reset',
-    '2fa-challenge',
-    'account-status' // <-- NUEVO
-];
+$guestRoutes = ['login', 'register', 'register/aditional-data', 'register/verify', 'recover-password', 'recover-password-reset', '2fa-challenge', 'account-status', 'maintenance'];
 
 $is2faPending = isset($_SESSION['temp_2fa_user_id']);
 
 if (!$isLoggedIn) {
     if ($currentSection === '2fa-challenge' && $is2faPending) {
-        // Permitir acceso
-    } 
-    elseif (!in_array($currentSection, $guestRoutes)) {
+        // Permitir
+    } elseif (!in_array($currentSection, $guestRoutes)) {
         header("Location: " . $basePath . "login");
         exit;
     }
 } else {
-    // Si ya está logueado, evitar que entre a login/register
-    if (in_array($currentSection, $guestRoutes)) {
-        // Excepción: account-status podría verse estando logueado si acaba de ser baneado en tiempo real, 
-        // pero generalmente el login cierra sesión. Dejamos que el router redirija a main si intenta entrar a login.
-        if ($currentSection !== 'account-status') {
-             header("Location: " . $basePath);
-             exit;
-        }
+    if (in_array($currentSection, ['login', 'register'])) {
+         header("Location: " . $basePath);
+         exit;
     }
 }
 
-// Validación de roles admin
+// Roles Admin
 if (strpos($currentSection, 'admin/') === 0) {
     $allowedRoles = ['founder', 'administrator'];
-    $userRole = $_SESSION['role'] ?? 'user';
-    
     if (!in_array($userRole, $allowedRoles)) {
         $currentSection = '404';
     }
@@ -168,6 +175,4 @@ if (strpos($currentSection, 'admin/') === 0) {
 if (!in_array($currentSection, $validRoutes)) {
     $currentSection = '404'; 
 }
-
-$userRole = ($isLoggedIn && isset($_SESSION['role'])) ? $_SESSION['role'] : 'user';
 ?>

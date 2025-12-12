@@ -23,9 +23,13 @@ if ($type === 'deleted') {
     $title = __('auth.status.suspended_title');
     $desc = __('auth.status.suspended_desc');
     $btnText = __('auth.status.contact_support');
-    $btnLink = '#'; // Aquí podrías poner un mailto: o link a soporte real
+    $btnLink = '#'; 
+} elseif ($type === 'registrations_closed') { // NUEVO
+    $icon = 'person_off';
+    $color = '#455a64'; 
+    $title = __('auth.status.reg_closed_title');
+    $desc = __('auth.status.reg_closed_desc');
 }
-
 ?>
 
 <div class="auth-wrapper">

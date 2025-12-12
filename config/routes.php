@@ -6,6 +6,7 @@ return [
     'main'     => __DIR__ . '/../includes/sections/app/main.php',
     'explorer' => __DIR__ . '/../includes/sections/app/explorer.php',
     '404'      => __DIR__ . '/../includes/sections/system/404.php',
+    'maintenance' => __DIR__ . '/../includes/sections/system/maintenance.php', // NUEVA RUTA
     
     // --- Rutas de Autenticación ---
     'login'                  => __DIR__ . '/../includes/sections/auth/login.php',
@@ -17,11 +18,9 @@ return [
     'register/verify'         => __DIR__ . '/../includes/sections/auth/register.php',
     
     '2fa-challenge'      => __DIR__ . '/../includes/sections/auth/2fa-challenge.php',
-    
-    // NUEVA RUTA: Estado de cuenta (Suspendida/Eliminada)
     'account-status'     => __DIR__ . '/../includes/sections/auth/account-status.php',
 
-    // --- Rutas de Configuración (Settings) ---
+    // --- Rutas de Configuración ---
     'settings/your-profile'       => __DIR__ . '/../includes/sections/settings/your-profile.php',
     'settings/login-and-security' => __DIR__ . '/../includes/sections/settings/login-security.php',
     'settings/devices'            => __DIR__ . '/../includes/sections/settings/devices.php',

@@ -18,12 +18,20 @@
     "global.close_all": "Cerrar todo",
     "global.back": "Volver",
     "global.ok": "OK",
+    "global.access_denied": "Acceso denegado",
     
     "auth.status.deleted_title": "Cuenta Eliminada",
     "auth.status.deleted_desc": "Esta cuenta ha sido eliminada permanentemente por solicitud del usuario.",
     "auth.status.suspended_title": "Cuenta Suspendida",
     "auth.status.suspended_desc": "El acceso a esta cuenta ha sido restringido debido a una violación de los términos de servicio.",
+    "auth.status.reg_closed_title": "Registros Cerrados",
+    "auth.status.reg_closed_desc": "Lo sentimos, pero no estamos aceptando nuevos usuarios en este momento. Inténtalo más tarde.",
     "auth.status.contact_support": "Contactar Soporte",
+    "auth.registrations_closed": "El registro de nuevos usuarios está deshabilitado temporalmente.",
+    "auth.maintenance_mode_active": "El sistema está en mantenimiento. Acceso restringido a administradores.",
+
+    "system.maintenance.title": "En Mantenimiento",
+    "system.maintenance.desc": "El sitio no está disponible temporalmente por tareas de mantenimiento.",
 
     "menu.settings": "Configuración",
     "menu.logout": "Cerrar sesión",
@@ -38,6 +46,10 @@
     "admin.users.desc": "Administra las cuentas, roles y estados de los usuarios.",
     "admin.server.title": "Configuración del Servidor",
     "admin.server.desc": "Variables de entorno y estado del sistema.",
+    "admin.server.maintenance_title": "Modo Mantenimiento",
+    "admin.server.maintenance_desc": "Si se activa, solo los administradores podrán acceder. Los usuarios verán una pantalla de mantenimiento.",
+    "admin.server.reg_title": "Permitir Nuevos Registros",
+    "admin.server.reg_desc": "Activa o desactiva la creación de nuevas cuentas.",
 
     "auth.login.title": "Iniciar Sesión",
     "auth.login.subtitle": "Bienvenido de nuevo a Project Aurora",
@@ -259,7 +271,6 @@
     
     "global.unknown_browser": "Navegador desconocido",
     "global.unknown_system": "Sistema desconocido",
-    "global.access_denied": "Acceso denegado",
     "global.section_not_found_title": "Sección no encontrada",
     "global.section_not_found_desc": "El archivo para la sección solicitada no se encuentra.",
     "global.critical_error_404": "Error 404 Crítico",

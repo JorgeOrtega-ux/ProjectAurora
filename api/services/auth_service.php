@@ -18,17 +18,40 @@ function handle_login($pdo, $email, $password) {
 
     if ($user && password_verify($password, $user['password'])) {
         
-        // --- CHECK DE STATUS MODIFICADO ---
+        // --- LOGIC DE MANTENIMIENTO ---
+        // Verificamos config global. Si está en mantenimiento y NO es admin, rechazamos login.
+        global $SERVER_CONFIG;
+        
+        // Fallback de seguridad si la variable global no llegó (ej. llamada directa sin pasar por router)
+        if (!isset($SERVER_CONFIG)) {
+             try {
+                 $stmtC = $pdo->query("SELECT maintenance_mode FROM server_config WHERE id=1");
+                 $conf = $stmtC->fetch();
+                 $maintenance = $conf['maintenance_mode'] ?? 0;
+             } catch (Exception $e) {
+                 $maintenance = 0;
+             }
+        } else {
+             $maintenance = $SERVER_CONFIG['maintenance_mode'];
+        }
+
+        if ($maintenance == 1) {
+            // Solo dejamos pasar a admins
+            if (!in_array($user['role'], ['founder', 'administrator'])) {
+                 return ['status' => 'error', 'message' => __('auth.maintenance_mode_active')];
+            }
+        }
+        // --------------------------------------
+
+        // --- CHECK DE STATUS DE CUENTA ---
         if ($user['account_status'] === 'deleted') {
             logSecurityEvent($pdo, $email, 'login_deleted_attempt');
-            // MODIFICADO: Devolver redirección en lugar de error simple
             return [
                 'status' => 'error', 
                 'redirect' => $basePath . 'account-status?type=deleted'
             ];
         }
         if ($user['account_status'] === 'suspended') {
-            // MODIFICADO: Devolver redirección
             return [
                 'status' => 'error', 
                 'redirect' => $basePath . 'account-status?type=suspended'
@@ -59,6 +82,24 @@ function handle_login($pdo, $email, $password) {
 
 function handle_register_step_1($pdo, $email, $password) {
     global $basePath;
+
+    // --- LOGICA DE REGISTRO CERRADO (NUEVO) ---
+    try {
+        $stmtC = $pdo->query("SELECT allow_registrations FROM server_config WHERE id=1");
+        $allowed = $stmtC->fetchColumn();
+        
+        // Si allow_registrations es 0 (false), bloqueamos
+        if ($allowed !== false && $allowed == 0) {
+            return [
+                'status' => 'error', 
+                'message' => __('auth.registrations_closed'), 
+                'redirect' => $basePath . 'account-status?type=registrations_closed'
+            ];
+        }
+    } catch (Exception $e) {
+        // Si falla la consulta, asumimos abierto por defecto o manejamos error silencioso
+    }
+    // ------------------------------------------
 
     if ($email && $password) {
         $val = validateEmailRequirements($email);

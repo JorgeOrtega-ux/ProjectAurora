@@ -9,9 +9,9 @@ $sectionMap = require __DIR__ . '/../config/routes.php';
 
 // Lógica de detección de sección
 $isSettingsSection = (strpos($currentSection, 'settings/') === 0);
-$isAdminSection = (strpos($currentSection, 'admin/') === 0); // NUEVO
+$isAdminSection = (strpos($currentSection, 'admin/') === 0);
 
-// --- MODIFICADO: LÓGICA DE AVATAR CENTRALIZADA ---
+// --- LÓGICA DE AVATAR ---
 $globalAvatarSrc = '';
 $hasImage = false;
 
@@ -75,7 +75,9 @@ if ($userThemePref === 'dark') {
 
     <title><?php echo __('app.name'); ?></title>
 
-    <?php if (!$isLoggedIn): ?>
+    <?php 
+    // CORRECCIÓN VISUAL: Centrar contenido si no está logueado O si es página de mantenimiento
+    if (!$isLoggedIn || $currentSection === 'maintenance'): ?>
         <style>
             [data-container="main-section"] {
                 display: flex;
@@ -93,7 +95,9 @@ if ($userThemePref === 'dark') {
         <div class="main-content">
             <div class="general-content">
 
-                <?php if ($isLoggedIn): ?>
+                <?php 
+                // VISIBILIDAD HEADER: Solo si está logueado Y NO está en mantenimiento
+                if ($isLoggedIn && $currentSection !== 'maintenance'): ?>
                     <div class="general-content-top">
                         <div class="header">
                             <div class="header-left">
@@ -186,7 +190,9 @@ if ($userThemePref === 'dark') {
 
                 <div class="general-content-bottom">
 
-                    <?php if ($isLoggedIn): ?>
+                    <?php 
+                    // VISIBILIDAD SIDEBAR: Solo si está logueado Y NO está en mantenimiento
+                    if ($isLoggedIn && $currentSection !== 'maintenance'): ?>
                         <div class="module-content module-surface body-text disabled" data-module="moduleSurface">
                             <div class="menu-content">
                                 <div class="menu-content-top">
