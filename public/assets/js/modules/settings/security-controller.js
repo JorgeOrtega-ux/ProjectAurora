@@ -4,8 +4,8 @@
  * AHORA TAMBIÉN MANEJA LA SECCIÓN DE DISPOSITIVOS Y ELIMINACIÓN DE CUENTA.
  */
 
-import { SettingsService } from './api-services.js';
-import { Toast } from './toast-service.js';
+import { SettingsService } from '../../core/api-services.js';
+import { Toast } from '../../core/ui/toast-service.js';
 
 let currentPasswordBuffer = ''; 
 

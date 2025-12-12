@@ -3,10 +3,10 @@
  * Maneja la lógica de la sección de perfil (Datos, Foto y Preferencias).
  */
 
-import { SettingsService } from './api-services.js';
-import { Toast } from './toast-service.js';
-import { applyAppTheme } from './main-controller.js';
-import { navigateTo } from './url-manager.js';
+import { SettingsService } from '../../core/api-services.js';
+import { Toast } from '../../core/ui/toast-service.js';
+import { applyAppTheme } from '../layout/main-controller.js';
+import { navigateTo } from '../../core/url-manager.js';
 
 /* --- UTILIDADES --- */
 const toggleEditMode = (section, isEditing) => {

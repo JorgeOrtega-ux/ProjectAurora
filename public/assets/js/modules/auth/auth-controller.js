@@ -4,8 +4,8 @@
  * Actualizado con sistema de Toasts, soporte para 2FA y validaciones dinámicas.
  */
 
-import { AuthService } from './api-services.js';
-import { Toast } from './toast-service.js';
+import { AuthService } from '../../core/api-services.js';
+import { Toast } from '../../core/ui/toast-service.js';
 
 let countdownInterval;
 

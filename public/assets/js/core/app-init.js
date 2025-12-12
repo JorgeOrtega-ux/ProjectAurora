@@ -1,9 +1,9 @@
-import { initMainController } from './main-controller.js';
+import { initMainController } from '../modules/layout/main-controller.js';
 import { initUrlManager } from './url-manager.js'; 
-import { initAuthController } from './auth-controller.js';
-import { initProfileController } from './profile-controller.js'; 
-import { initSecurityController } from './security-controller.js'; 
-import { initTooltipService } from './tooltip-service.js'; // Importar servicio de tooltips
+import { initAuthController } from '../modules/auth/auth-controller.js';
+import { initProfileController } from '../modules/settings/profile-controller.js'; 
+import { initSecurityController } from '../modules/settings/security-controller.js'; 
+import { initTooltipService } from './ui/tooltip-service.js'; // Importar servicio de tooltips
 
 const App = {
     init: () => {
