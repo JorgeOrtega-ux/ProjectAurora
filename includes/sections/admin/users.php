@@ -103,7 +103,7 @@
             white-space: nowrap;
         }
     </style>
-
+<div class="toolbar"></div>
     <div class="component-wrapper">
         <div class="component-header-card">
             <h1 class="component-page-title" data-lang-key="admin.users.title"><?= __('admin.users.title') ?></h1>

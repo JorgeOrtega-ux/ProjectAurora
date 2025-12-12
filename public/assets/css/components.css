@@ -697,3 +697,15 @@
 .counter-input:focus {
     outline: none;
 }
+
+
+
+
+
+.toolbar {
+    width: 300px;
+    height: 45px;
+    background-color: #fff;
+    border: 1px solid #00000020;
+    position: absolute;
+}
