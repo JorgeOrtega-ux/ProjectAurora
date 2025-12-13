@@ -1,4 +1,5 @@
 import { ContentService } from './api-services.js';
+import { AdminController } from '../modules/admin/admin-controller.js';
 
 export function initUrlManager() {
     console.log("SPA Router: Iniciado");
@@ -140,6 +141,16 @@ async function loadContent(section) {
         
         container.innerHTML = htmlContent;
         container.scrollTop = 0; 
+        
+        // --- CONTROLADOR DE ADMIN ---
+        if (section.startsWith('admin/')) {
+            // Si entramos en admin, delegamos al controlador
+            AdminController.loadSection(section);
+        } else {
+            // Si salimos de admin, forzamos limpieza pasando una ruta dummy
+            // Esto asegura que se destruyan los listeners y variables de Admin
+            AdminController.loadSection('admin/unload');
+        }
 
     } catch (error) {
         console.error("Error cargando sección:", error);
