@@ -81,7 +81,8 @@ const processAuthAction = async (actionType, data) => {
         btn.disabled = true; 
         btn.style.opacity = '0.7';
         btn.dataset.originalText = btn.textContent;
-        btn.textContent = window.t('global.processing');
+        // btn.textContent = window.t('global.processing'); // LINEA ELIMINADA
+        btn.innerHTML = '<div class="btn-spinner"></div>'; // LINEA AGREGADA
     });
 
     try {
