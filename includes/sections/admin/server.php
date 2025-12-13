@@ -6,7 +6,9 @@
         
         <div class="component-toolbar-wrapper">
             <div class="component-toolbar">
-                 <button class="header-button" id="btn-save-limits" title="<?= __('global.save') ?>">
+                 <button class="header-button" id="btn-save-limits" 
+                         data-tooltip="<?= __('global.save') ?>"
+                         data-lang-tooltip="global.save">
                     <span class="material-symbols-rounded">save</span>
                  </button>
             </div>
@@ -129,8 +131,8 @@
                         <span class="material-symbols-rounded">settings</span>
                     </div>
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Configuración General</h2>
-                        <p class="component-card__description">Mantenimiento, registros y accesos.</p>
+                        <h2 class="component-card__title" data-lang-key="admin.server.general_title"><?= __('admin.server.general_title') ?></h2>
+                        <p class="component-card__description" data-lang-key="admin.server.general_desc"><?= __('admin.server.general_desc') ?></p>
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">
@@ -142,8 +144,8 @@
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title"><?= __('admin.server.maintenance_title') ?></h2>
-                            <p class="component-card__description"><?= __('admin.server.maintenance_desc') ?></p>
+                            <h2 class="component-card__title" data-lang-key="admin.server.maintenance_title"><?= __('admin.server.maintenance_title') ?></h2>
+                            <p class="component-card__description" data-lang-key="admin.server.maintenance_desc"><?= __('admin.server.maintenance_desc') ?></p>
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
@@ -159,8 +161,8 @@
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title"><?= __('admin.server.reg_title') ?></h2>
-                            <p class="component-card__description"><?= __('admin.server.reg_desc') ?></p>
+                            <h2 class="component-card__title" data-lang-key="admin.server.reg_title"><?= __('admin.server.reg_title') ?></h2>
+                            <p class="component-card__description" data-lang-key="admin.server.reg_desc"><?= __('admin.server.reg_desc') ?></p>
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
@@ -180,8 +182,8 @@
                         <span class="material-symbols-rounded">password</span>
                     </div>
                     <div class="component-card__text">
-                        <h2 class="component-card__title"><?= __('admin.server.limits_title') ?></h2>
-                        <p class="component-card__description"><?= __('admin.server.limits_desc') ?></p>
+                        <h2 class="component-card__title" data-lang-key="admin.server.limits_title"><?= __('admin.server.limits_title') ?></h2>
+                        <p class="component-card__description" data-lang-key="admin.server.limits_desc"><?= __('admin.server.limits_desc') ?></p>
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">
@@ -194,21 +196,23 @@
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title"><?= __('admin.server.domains_title') ?></h2>
-                            <p class="component-card__description"><?= __('admin.server.domains_desc') ?></p>
+                            <h2 class="component-card__title" data-lang-key="admin.server.domains_title"><?= __('admin.server.domains_title') ?></h2>
+                            <p class="component-card__description" data-lang-key="admin.server.domains_desc"><?= __('admin.server.domains_desc') ?></p>
                         </div>
                     </div>
                     <div>
                         <div class="domain-input-group">
                             <div class="component-input-wrapper">
-                                <input type="text" id="new-domain-input" class="component-text-input" placeholder="ej. gmail.com, miempresa.net">
+                                <input type="text" id="new-domain-input" class="component-text-input" 
+                                       placeholder="<?= __('admin.server.domains_placeholder') ?>"
+                                       data-lang-placeholder="admin.server.domains_placeholder">
                             </div>
                             <button type="button" class="component-button primary" id="btn-add-domain">
                                 <span class="material-symbols-rounded">add</span>
                             </button>
                         </div>
                         <div id="domain-chips-container" class="domain-list-container">
-                            <span class="empty-domains-text">Todos los dominios permitidos (Sin restricciones)</span>
+                            <span class="empty-domains-text" data-lang-key="admin.server.domains_empty"><?= __('admin.server.domains_empty') ?></span>
                         </div>
                         <input type="hidden" id="allowed-domains">
                     </div>
@@ -219,8 +223,8 @@
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title">Mínimo Contraseña</h2>
-                            <p class="component-card__description">Caracteres mínimos requeridos.</p>
+                            <h2 class="component-card__title" data-lang-key="admin.server.min_pass_title"><?= __('admin.server.min_pass_title') ?></h2>
+                            <p class="component-card__description" data-lang-key="admin.server.min_pass_desc"><?= __('admin.server.min_pass_desc') ?></p>
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
@@ -245,8 +249,8 @@
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title">Máximo Contraseña</h2>
-                            <p class="component-card__description">Límite superior de caracteres.</p>
+                            <h2 class="component-card__title" data-lang-key="admin.server.max_pass_title"><?= __('admin.server.max_pass_title') ?></h2>
+                            <p class="component-card__description" data-lang-key="admin.server.max_pass_desc"><?= __('admin.server.max_pass_desc') ?></p>
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
@@ -271,8 +275,8 @@
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title">Mínimo Usuario</h2>
-                            <p class="component-card__description">Longitud mínima del nombre de usuario.</p>
+                            <h2 class="component-card__title" data-lang-key="admin.server.min_user_title"><?= __('admin.server.min_user_title') ?></h2>
+                            <p class="component-card__description" data-lang-key="admin.server.min_user_desc"><?= __('admin.server.min_user_desc') ?></p>
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
@@ -297,8 +301,8 @@
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title">Máximo Usuario</h2>
-                            <p class="component-card__description">Longitud máxima del nombre de usuario.</p>
+                            <h2 class="component-card__title" data-lang-key="admin.server.max_user_title"><?= __('admin.server.max_user_title') ?></h2>
+                            <p class="component-card__description" data-lang-key="admin.server.max_user_desc"><?= __('admin.server.max_user_desc') ?></p>
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
@@ -323,8 +327,8 @@
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title">Máximo Email</h2>
-                            <p class="component-card__description">Longitud total permitida para correos.</p>
+                            <h2 class="component-card__title" data-lang-key="admin.server.max_email_title"><?= __('admin.server.max_email_title') ?></h2>
+                            <p class="component-card__description" data-lang-key="admin.server.max_email_desc"><?= __('admin.server.max_email_desc') ?></p>
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
@@ -349,8 +353,8 @@
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title"><?= __('admin.server.avatar_size_title') ?></h2>
-                            <p class="component-card__description"><?= __('admin.server.avatar_size_desc') ?></p>
+                            <h2 class="component-card__title" data-lang-key="admin.server.avatar_size_title"><?= __('admin.server.avatar_size_title') ?></h2>
+                            <p class="component-card__description" data-lang-key="admin.server.avatar_size_desc"><?= __('admin.server.avatar_size_desc') ?></p>
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
@@ -380,8 +384,8 @@
                         <span class="material-symbols-rounded">security</span>
                     </div>
                     <div class="component-card__text">
-                        <h2 class="component-card__title"><?= __('admin.server.security_limits_title') ?></h2>
-                        <p class="component-card__description"><?= __('admin.server.security_limits_desc') ?></p>
+                        <h2 class="component-card__title" data-lang-key="admin.server.security_limits_title"><?= __('admin.server.security_limits_title') ?></h2>
+                        <p class="component-card__description" data-lang-key="admin.server.security_limits_desc"><?= __('admin.server.security_limits_desc') ?></p>
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">
@@ -394,8 +398,8 @@
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title"><?= __('admin.server.max_login_title') ?></h2>
-                            <p class="component-card__description"><?= __('admin.server.max_login_desc') ?></p>
+                            <h2 class="component-card__title" data-lang-key="admin.server.max_login_title"><?= __('admin.server.max_login_title') ?></h2>
+                            <p class="component-card__description" data-lang-key="admin.server.max_login_desc"><?= __('admin.server.max_login_desc') ?></p>
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
@@ -420,8 +424,8 @@
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title"><?= __('admin.server.lockout_title') ?></h2>
-                            <p class="component-card__description"><?= __('admin.server.lockout_desc') ?></p>
+                            <h2 class="component-card__title" data-lang-key="admin.server.lockout_title"><?= __('admin.server.lockout_title') ?></h2>
+                            <p class="component-card__description" data-lang-key="admin.server.lockout_desc"><?= __('admin.server.lockout_desc') ?></p>
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
@@ -446,8 +450,8 @@
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title"><?= __('admin.server.resend_title') ?></h2>
-                            <p class="component-card__description"><?= __('admin.server.resend_desc') ?></p>
+                            <h2 class="component-card__title" data-lang-key="admin.server.resend_title"><?= __('admin.server.resend_title') ?></h2>
+                            <p class="component-card__description" data-lang-key="admin.server.resend_desc"><?= __('admin.server.resend_desc') ?></p>
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
@@ -472,8 +476,8 @@
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title"><?= __('admin.server.user_cooldown_title') ?></h2>
-                            <p class="component-card__description"><?= __('admin.server.user_cooldown_desc') ?></p>
+                            <h2 class="component-card__title" data-lang-key="admin.server.user_cooldown_title"><?= __('admin.server.user_cooldown_title') ?></h2>
+                            <p class="component-card__description" data-lang-key="admin.server.user_cooldown_desc"><?= __('admin.server.user_cooldown_desc') ?></p>
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
@@ -498,8 +502,8 @@
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title"><?= __('admin.server.email_cooldown_title') ?></h2>
-                            <p class="component-card__description"><?= __('admin.server.email_cooldown_desc') ?></p>
+                            <h2 class="component-card__title" data-lang-key="admin.server.email_cooldown_title"><?= __('admin.server.email_cooldown_title') ?></h2>
+                            <p class="component-card__description" data-lang-key="admin.server.email_cooldown_desc"><?= __('admin.server.email_cooldown_desc') ?></p>
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">

@@ -8,44 +8,51 @@
         <div class="component-toolbar-wrapper">
             
             <div class="component-toolbar" id="toolbar-normal">
-                <button class="header-button" id="btn-toggle-search" title="<?= __('global.search_placeholder') ?>">
+                <button class="header-button" id="btn-toggle-search" 
+                        data-tooltip="<?= __('global.search_placeholder') ?>" 
+                        data-lang-tooltip="global.search_placeholder">
                     <span class="material-symbols-rounded">search</span>
                 </button>
 
-                <button class="header-button" id="btn-toggle-view" title="Cambiar Vista">
+                <button class="header-button" id="btn-toggle-view" 
+                        data-tooltip="<?= __('admin.users.tooltip.view') ?>"
+                        data-lang-tooltip="admin.users.tooltip.view">
                     <span class="material-symbols-rounded">table_rows</span>
                 </button>
                 
                 <div style="width: 1px; height: 20px; background: #eee;"></div>
                 
                 <div class="component-filter-wrapper">
-                    <button class="header-button" id="btn-toggle-filter" title="Ordenar">
+                    <button class="header-button" id="btn-toggle-filter" 
+                            data-tooltip="<?= __('admin.users.tooltip.sort') ?>"
+                            data-lang-tooltip="admin.users.tooltip.sort">
                         <span class="material-symbols-rounded">filter_list</span>
                     </button>
                     
                     <div class="popover-module component-filter-popover" id="filter-popover-menu">
                         <div class="menu-list">
-                            <div style="padding: 8px 12px; font-size: 11px; color: #999; font-weight: 700; text-transform: uppercase;">
-                                Ordenar por
+                            <div style="padding: 8px 12px; font-size: 11px; color: #999; font-weight: 700; text-transform: uppercase;"
+                                 data-lang-key="admin.users.sort.label">
+                                <?= __('admin.users.sort.label') ?>
                             </div>
                             <div class="menu-link active" data-sort="newest">
                                 <div class="menu-link-icon"><span class="material-symbols-rounded">schedule</span></div>
-                                <div class="menu-link-text">Más recientes</div>
+                                <div class="menu-link-text" data-lang-key="admin.users.sort.newest"><?= __('admin.users.sort.newest') ?></div>
                                 <div class="menu-link-icon check-icon"><span class="material-symbols-rounded">check</span></div>
                             </div>
                             <div class="menu-link" data-sort="oldest">
                                 <div class="menu-link-icon"><span class="material-symbols-rounded">history</span></div>
-                                <div class="menu-link-text">Más antiguos</div>
+                                <div class="menu-link-text" data-lang-key="admin.users.sort.oldest"><?= __('admin.users.sort.oldest') ?></div>
                                 <div class="menu-link-icon check-icon" style="display:none;"><span class="material-symbols-rounded">check</span></div>
                             </div>
                             <div class="menu-link" data-sort="az">
                                 <div class="menu-link-icon"><span class="material-symbols-rounded">sort_by_alpha</span></div>
-                                <div class="menu-link-text">Nombre (A-Z)</div>
+                                <div class="menu-link-text" data-lang-key="admin.users.sort.az"><?= __('admin.users.sort.az') ?></div>
                                 <div class="menu-link-icon check-icon" style="display:none;"><span class="material-symbols-rounded">check</span></div>
                             </div>
                             <div class="menu-link" data-sort="za">
                                 <div class="menu-link-icon"><span class="material-symbols-rounded">sort_by_alpha</span></div>
-                                <div class="menu-link-text">Nombre (Z-A)</div>
+                                <div class="menu-link-text" data-lang-key="admin.users.sort.za"><?= __('admin.users.sort.za') ?></div>
                                 <div class="menu-link-icon check-icon" style="display:none;"><span class="material-symbols-rounded">check</span></div>
                             </div>
                         </div>
@@ -74,17 +81,23 @@
 
             <div class="component-toolbar" id="toolbar-actions" style="display: none;">
                 
-                <button class="header-button" id="btn-cancel-selection" title="Cancelar selección">
+                <button class="header-button" id="btn-cancel-selection" 
+                        data-tooltip="<?= __('admin.users.tooltip.cancel_sel') ?>"
+                        data-lang-tooltip="admin.users.tooltip.cancel_sel">
                     <span class="material-symbols-rounded">close</span>
                 </button>
 
                 <div style="width: 1px; height: 20px; background: #eee;"></div>
 
-                <button class="header-button" id="btn-edit-user" title="Editar Cuenta">
+                <button class="header-button" id="btn-edit-user" 
+                        data-tooltip="<?= __('admin.users.tooltip.edit') ?>"
+                        data-lang-tooltip="admin.users.tooltip.edit">
                     <span class="material-symbols-rounded">edit</span>
                 </button>
                 
-                <button class="header-button" id="btn-manage-role" title="Gestionar Rol">
+                <button class="header-button" id="btn-manage-role" 
+                        data-tooltip="<?= __('admin.users.tooltip.role') ?>"
+                        data-lang-tooltip="admin.users.tooltip.role">
                     <span class="material-symbols-rounded">shield_person</span>
                 </button>
 
