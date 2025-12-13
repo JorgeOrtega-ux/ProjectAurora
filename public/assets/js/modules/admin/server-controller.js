@@ -107,7 +107,6 @@ const setupEventListeners = () => {
             // Si desactivas Mantenimiento, registros queda libre (como estaba)
         });
     }
-    // Nota: Eliminamos los listeners que llamaban a updateConfig en 'change'
 
     // 3. Botón Guardar (Único punto de guardado)
     if (dom.btnSaveLimits) dom.btnSaveLimits.addEventListener('click', updateConfig);
@@ -127,13 +126,24 @@ const setupEventListeners = () => {
 // --- HELPERS LÓGICOS ---
 
 const toggleSection = (header, content) => {
-    const isOpen = content.classList.contains('open');
-    if (isOpen) {
-        content.classList.remove('open');
-        header.classList.remove('active');
-    } else {
+    const isOpening = !content.classList.contains('open');
+
+    // MODIFICADO: Si vamos a abrir una sección, cerramos todas las demás primero
+    if (isOpening) {
+        const activeHeaders = dom.wrapper.querySelectorAll('.accordion-header.active');
+        const activeContents = dom.wrapper.querySelectorAll('.accordion-content.open');
+        
+        activeHeaders.forEach(h => h.classList.remove('active'));
+        activeContents.forEach(c => c.classList.remove('open'));
+    }
+
+    // Aplicamos el estado a la sección actual
+    if (isOpening) {
         content.classList.add('open');
         header.classList.add('active');
+    } else {
+        content.classList.remove('open');
+        header.classList.remove('active');
     }
 };
 

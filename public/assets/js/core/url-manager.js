@@ -4,7 +4,7 @@ import { AdminController } from '../modules/admin/admin-controller.js';
 export function initUrlManager() {
     console.log("SPA Router: Iniciado");
 
-    // 1. Listener de navegación
+    // 1. Listener de navegación (Clics en enlaces)
     document.body.addEventListener('click', (e) => {
         const link = e.target.closest('[data-nav]');
         if (link) {
@@ -47,7 +47,7 @@ export function initUrlManager() {
         }
     });
 
-    // 2. Listener para botones Atrás/Adelante
+    // 2. Listener para botones Atrás/Adelante (Historial)
     window.addEventListener('popstate', (event) => {
         if (event.state && event.state.section) {
             loadContent(event.state.section);
@@ -57,6 +57,22 @@ export function initUrlManager() {
             location.reload(); 
         }
     });
+
+    // 3. (NUEVO) HIDRATACIÓN INICIAL: Detectar carga directa (F5/Reload)
+    // Esto soluciona que los scripts de admin no carguen al refrescar la página
+    const basePath = window.BASE_PATH || '/ProjectAurora/';
+    let initialPath = window.location.pathname;
+
+    if (initialPath.startsWith(basePath)) {
+        initialPath = initialPath.substring(basePath.length);
+    }
+    initialPath = initialPath.replace(/\/$/, '').trim();
+    
+    // Si la ruta inicial es de admin, invocamos manualmente el controlador
+    if (initialPath.startsWith('admin/')) {
+        console.log("SPA: Detectada carga directa en sección Admin. Inicializando controlador...");
+        AdminController.loadSection(initialPath);
+    }
 }
 
 export function navigateTo(section) {
