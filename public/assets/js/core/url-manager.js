@@ -87,11 +87,12 @@ export function navigateTo(section) {
 }
 
 function updateSidebarContext(section) {
-    const navMain = document.getElementById('nav-main');
-    const navSettings = document.getElementById('nav-settings');
-    const navAdmin = document.getElementById('nav-admin');
-    const navAdminBottom = document.getElementById('nav-admin-bottom');
-    const navHelp = document.getElementById('nav-help');
+    // MODIFICADO: Uso de data-context en lugar de IDs
+    const navMain = document.querySelector('[data-context="main"]');
+    const navSettings = document.querySelector('[data-context="settings"]');
+    const navAdmin = document.querySelector('[data-context="admin"]');
+    const navAdminBottom = document.querySelector('[data-context="admin-bottom"]');
+    const navHelp = document.querySelector('[data-context="help"]');
 
     // Funciones helper para limpiar código
     const activate = (el) => {
