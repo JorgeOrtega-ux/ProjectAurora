@@ -51,6 +51,25 @@
                         </div>
                     </div>
                 </div>
+
+                <div style="width: 1px; height: 20px; background: #eee;"></div>
+
+                <div class="component-input-wrapper">
+                    <div class="component-counter-control">
+                        <div class="counter-group left">
+                            <button type="button" class="counter-btn" id="btn-page-prev">
+                                <span class="material-symbols-rounded">keyboard_arrow_left</span>
+                            </button>
+                        </div>
+                        <input type="number" id="users-page-counter" class="counter-input" min="1" value="1">
+                        <div class="counter-group right">
+                            <button type="button" class="counter-btn" id="btn-page-next">
+                                <span class="material-symbols-rounded">keyboard_arrow_right</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <div class="component-toolbar" id="toolbar-actions" style="display: none;">
@@ -110,6 +129,11 @@
         const filterPopover = document.getElementById('filter-popover-menu');
         const sortOptions = filterPopover ? filterPopover.querySelectorAll('.menu-link[data-sort]') : [];
         
+        // Referencias Paginación
+        const btnPagePrev = document.getElementById('btn-page-prev');
+        const btnPageNext = document.getElementById('btn-page-next');
+        const inputPage = document.getElementById('users-page-counter');
+
         const toolbarActions = document.getElementById('toolbar-actions');
         const btnCancelSel = document.getElementById('btn-cancel-selection');
         const btnEdit = document.getElementById('btn-edit-user');
@@ -125,6 +149,10 @@
         
         let viewMode = 'grid'; // 'grid' | 'table'
         let usersCache = [];
+        
+        // Variables Paginación
+        let currentPage = 1;
+        let totalPages = 1;
 
         /* =========================================
            SEGURIDAD: PREVENCIÓN DE XSS
@@ -202,6 +230,7 @@
                     searchContainer.style.display = 'none';
                     btnSearch.classList.remove('toolbar-btn-active');
                     if(searchInput) searchInput.value = ''; 
+                    currentPage = 1; // Reset pagina al limpiar búsqueda
                     loadUsers(); 
                 }
             });
@@ -209,7 +238,10 @@
             if(searchInput){
                 searchInput.addEventListener('input', () => {
                     clearTimeout(timeout);
-                    timeout = setTimeout(() => loadUsers(), 400);
+                    timeout = setTimeout(() => {
+                        currentPage = 1; // Reset pagina al buscar
+                        loadUsers();
+                    }, 400);
                 });
             }
         }
@@ -237,8 +269,48 @@
                     option.querySelector('.check-icon').style.display = 'flex';
                     filterPopover.classList.remove('active');
                     btnFilter.classList.remove('toolbar-btn-active');
+                    currentPage = 1; // Reset pagina al ordenar
                     loadUsers();
                 });
+            });
+        }
+
+        /* =========================================
+           LÓGICA DE PAGINACIÓN
+           ========================================= */
+        
+        function updatePaginationUI() {
+            if(inputPage) inputPage.value = currentPage;
+            if(btnPagePrev) btnPagePrev.disabled = (currentPage <= 1);
+            if(btnPageNext) btnPageNext.disabled = (currentPage >= totalPages);
+        }
+
+        if(btnPagePrev) {
+            btnPagePrev.addEventListener('click', () => {
+                if(currentPage > 1) {
+                    currentPage--;
+                    loadUsers();
+                }
+            });
+        }
+
+        if(btnPageNext) {
+            btnPageNext.addEventListener('click', () => {
+                if(currentPage < totalPages) {
+                    currentPage++;
+                    loadUsers();
+                }
+            });
+        }
+
+        if(inputPage) {
+            inputPage.addEventListener('change', () => {
+                let val = parseInt(inputPage.value);
+                if(isNaN(val) || val < 1) val = 1;
+                if(val > totalPages) val = totalPages;
+                
+                currentPage = val;
+                loadUsers();
             });
         }
 
@@ -290,6 +362,7 @@
             formData.append('action', 'get_users_list');
             formData.append('csrf_token', csrf);
             formData.append('sort', currentSort);
+            formData.append('page', currentPage); // Enviamos página actual
             
             if (searchInput && searchInput.value.trim() !== '') {
                 formData.append('search', searchInput.value.trim());
@@ -301,6 +374,14 @@
                 container.style.opacity = '1';
                 if(res.status === 'success') {
                     usersCache = res.data; 
+                    
+                    // Actualizar información de paginación
+                    if(res.pagination) {
+                        totalPages = res.pagination.total_pages;
+                        currentPage = res.pagination.current_page;
+                        updatePaginationUI();
+                    }
+
                     renderUsers(res.data);
                 } else {
                     container.innerHTML = `<div style="text-align:center; padding:20px; color:red;">${res.message}</div>`;

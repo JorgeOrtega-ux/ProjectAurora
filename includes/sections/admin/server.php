@@ -142,7 +142,7 @@
                     </div>
                     <div class="component-card__text">
                         <h2 class="component-card__title">Configuración General</h2>
-                        <p class="component-card__description">Mantenimiento, registros y medios.</p>
+                        <p class="component-card__description">Mantenimiento, registros y accesos.</p>
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">
@@ -182,35 +182,8 @@
                         </label>
                     </div>
                 </div>
-
-                <hr class="component-divider">
-
-                <div class="component-group-item">
-                    <div class="component-card__content">
-                        <div class="component-card__text">
-                            <h2 class="component-card__title"><?= __('admin.server.avatar_size_title') ?></h2>
-                            <p class="component-card__description"><?= __('admin.server.avatar_size_desc') ?></p>
-                        </div>
-                    </div>
-                    <div class="component-card__actions actions-right">
-                        <div class="component-input-wrapper">
-                            <div class="component-counter-control">
-                                <div class="counter-group left">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('profile-size', -1)">
-                                        <span class="material-symbols-rounded">keyboard_arrow_left</span>
-                                    </button>
-                                </div>
-                                <input type="number" id="profile-size" class="counter-input" min="1">
-                                <div class="counter-group right">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('profile-size', 1)">
-                                        <span class="material-symbols-rounded">keyboard_arrow_right</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                
                 </div>
-            </div>
         </div>
 
         <div class="component-card component-card--grouped">
@@ -270,11 +243,21 @@
                         <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('min-pass-len', -1)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('min-pass-len', -5)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('min-pass-len', -1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_left</span>
+                                    </button>
                                 </div>
                                 <input type="number" id="min-pass-len" class="counter-input" min="1">
                                 <div class="counter-group right">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('min-pass-len', 1)"><span class="material-symbols-rounded">keyboard_arrow_right</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('min-pass-len', 1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_right</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('min-pass-len', 5)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_right</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -294,11 +277,21 @@
                         <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-pass-len', -1)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-pass-len', -10)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-pass-len', -1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_left</span>
+                                    </button>
                                 </div>
                                 <input type="number" id="max-pass-len" class="counter-input" min="1">
                                 <div class="counter-group right">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-pass-len', 1)"><span class="material-symbols-rounded">keyboard_arrow_right</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-pass-len', 1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_right</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-pass-len', 10)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_right</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -318,11 +311,21 @@
                         <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('min-user-len', -1)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('min-user-len', -5)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('min-user-len', -1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_left</span>
+                                    </button>
                                 </div>
                                 <input type="number" id="min-user-len" class="counter-input" min="1">
                                 <div class="counter-group right">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('min-user-len', 1)"><span class="material-symbols-rounded">keyboard_arrow_right</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('min-user-len', 1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_right</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('min-user-len', 5)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_right</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -342,11 +345,21 @@
                         <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-user-len', -1)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-user-len', -5)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-user-len', -1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_left</span>
+                                    </button>
                                 </div>
                                 <input type="number" id="max-user-len" class="counter-input" min="1">
                                 <div class="counter-group right">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-user-len', 1)"><span class="material-symbols-rounded">keyboard_arrow_right</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-user-len', 1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_right</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-user-len', 5)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_right</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -366,11 +379,55 @@
                         <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-email-len', -1)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-email-len', -10)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-email-len', -1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_left</span>
+                                    </button>
                                 </div>
                                 <input type="number" id="max-email-len" class="counter-input" min="1">
                                 <div class="counter-group right">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-email-len', 1)"><span class="material-symbols-rounded">keyboard_arrow_right</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-email-len', 1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_right</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-email-len', 10)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_right</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="component-divider">
+
+                <div class="component-group-item">
+                    <div class="component-card__content">
+                        <div class="component-card__text">
+                            <h2 class="component-card__title"><?= __('admin.server.avatar_size_title') ?></h2>
+                            <p class="component-card__description"><?= __('admin.server.avatar_size_desc') ?></p>
+                        </div>
+                    </div>
+                    <div class="component-card__actions actions-right">
+                        <div class="component-input-wrapper">
+                            <div class="component-counter-control">
+                                <div class="counter-group left">
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('profile-size', -5)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('profile-size', -1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_left</span>
+                                    </button>
+                                </div>
+                                <input type="number" id="profile-size" class="counter-input" min="1">
+                                <div class="counter-group right">
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('profile-size', 1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_right</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('profile-size', 5)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_right</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -409,11 +466,21 @@
                         <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-login-attempts', -1)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-login-attempts', -5)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-login-attempts', -1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_left</span>
+                                    </button>
                                 </div>
                                 <input type="number" id="max-login-attempts" class="counter-input" min="1">
                                 <div class="counter-group right">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-login-attempts', 1)"><span class="material-symbols-rounded">keyboard_arrow_right</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-login-attempts', 1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_right</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('max-login-attempts', 5)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_right</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -433,11 +500,21 @@
                         <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('lockout-time', -1)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('lockout-time', -10)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('lockout-time', -1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_left</span>
+                                    </button>
                                 </div>
                                 <input type="number" id="lockout-time" class="counter-input" min="1">
                                 <div class="counter-group right">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('lockout-time', 1)"><span class="material-symbols-rounded">keyboard_arrow_right</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('lockout-time', 1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_right</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('lockout-time', 10)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_right</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -457,11 +534,21 @@
                         <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('code-resend', -10)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('code-resend', -60)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('code-resend', -10)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_left</span>
+                                    </button>
                                 </div>
                                 <input type="number" id="code-resend" class="counter-input" min="0">
                                 <div class="counter-group right">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('code-resend', 10)"><span class="material-symbols-rounded">keyboard_arrow_right</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('code-resend', 10)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_right</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('code-resend', 60)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_right</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -481,11 +568,21 @@
                         <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('username-cooldown', -1)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('username-cooldown', -10)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('username-cooldown', -1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_left</span>
+                                    </button>
                                 </div>
                                 <input type="number" id="username-cooldown" class="counter-input" min="0">
                                 <div class="counter-group right">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('username-cooldown', 1)"><span class="material-symbols-rounded">keyboard_arrow_right</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('username-cooldown', 1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_right</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('username-cooldown', 10)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_right</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -505,11 +602,21 @@
                         <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('email-cooldown', -1)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('email-cooldown', -10)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('email-cooldown', -1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_left</span>
+                                    </button>
                                 </div>
                                 <input type="number" id="email-cooldown" class="counter-input" min="0">
                                 <div class="counter-group right">
-                                    <button type="button" class="counter-btn" onclick="adjustCounter('email-cooldown', 1)"><span class="material-symbols-rounded">keyboard_arrow_right</span></button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('email-cooldown', 1)">
+                                        <span class="material-symbols-rounded">keyboard_arrow_right</span>
+                                    </button>
+                                    <button type="button" class="counter-btn" onclick="adjustCounter('email-cooldown', 10)">
+                                        <span class="material-symbols-rounded">keyboard_double_arrow_right</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>

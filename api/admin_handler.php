@@ -68,10 +68,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
 
         case 'get_users_list':
-            // Recoger parámetros de filtro
+            // Recoger parámetros de filtro y paginación
             $sort = $input['sort'] ?? 'newest';
             $search = $input['search'] ?? '';
-            $response = get_all_users_list($pdo, $sort, $search);
+            $page = isset($input['page']) ? (int)$input['page'] : 1;
+            $limit = 10; // Límite solicitado de 10 usuarios
+
+            $response = get_all_users_list($pdo, $sort, $search, $page, $limit);
             break;
     }
     

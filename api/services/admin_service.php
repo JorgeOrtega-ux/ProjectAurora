@@ -133,21 +133,33 @@ function update_server_configuration($pdo, $userId, $input) {
     }
 }
 
-function get_all_users_list($pdo, $sortBy = 'newest', $search = '') {
+function get_all_users_list($pdo, $sortBy = 'newest', $search = '', $page = 1, $limit = 10) {
     try {
-        // Base query
-        $sql = "SELECT id, username, email, uuid, account_status, created_at, role FROM users";
+        // Calcular Offset
+        $offset = ($page - 1) * $limit;
+        
+        // Construir condiciones
+        $whereClause = "";
         $params = [];
         
-        // 1. Aplicar búsqueda si existe
         if (!empty($search)) {
-            $sql .= " WHERE username LIKE ? OR email LIKE ?";
+            $whereClause = " WHERE username LIKE ? OR email LIKE ?";
             $term = "%" . $search . "%";
             $params[] = $term;
             $params[] = $term;
         }
 
-        // 2. Aplicar ordenamiento
+        // 1. Obtener Total de Registros (para paginación)
+        $countSql = "SELECT COUNT(*) FROM users" . $whereClause;
+        $stmtCount = $pdo->prepare($countSql);
+        $stmtCount->execute($params);
+        $totalRecords = $stmtCount->fetchColumn();
+        $totalPages = ceil($totalRecords / $limit);
+
+        // 2. Obtener Datos Paginados
+        $sql = "SELECT id, username, email, uuid, account_status, created_at, role FROM users" . $whereClause;
+
+        // Aplicar ordenamiento
         switch ($sortBy) {
             case 'az':
                 $sql .= " ORDER BY username ASC";
@@ -163,6 +175,9 @@ function get_all_users_list($pdo, $sortBy = 'newest', $search = '') {
                 $sql .= " ORDER BY created_at DESC";
                 break;
         }
+
+        // Aplicar Límite y Offset
+        $sql .= " LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
@@ -185,7 +200,18 @@ function get_all_users_list($pdo, $sortBy = 'newest', $search = '') {
             $user['avatar_url'] = $avatarUrl;
         }
         
-        return ['status' => 'success', 'message' => 'OK', 'data' => $users];
+        return [
+            'status' => 'success', 
+            'message' => 'OK', 
+            'data' => $users,
+            'pagination' => [
+                'current_page' => (int)$page,
+                'total_pages' => $totalPages,
+                'total_records' => $totalRecords,
+                'limit' => (int)$limit
+            ]
+        ];
+
     } catch (Exception $e) {
         return ['status' => 'error', 'message' => __('api.error.db_error')];
     }
