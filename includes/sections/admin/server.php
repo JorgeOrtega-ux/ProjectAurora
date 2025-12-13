@@ -110,7 +110,6 @@
         </style>
 
         <div class="component-card component-card--grouped">
-            
             <div class="component-group-item accordion-header" onclick="toggleServerSection(this, 'section-general')">
                 <div class="component-card__content">
                     <div class="component-card__profile-picture component-card__profile-picture--bordered">
@@ -187,9 +186,9 @@
                     </div>
                 </div>
             </div>
+        </div>
 
-            <hr class="component-divider">
-
+        <div class="component-card component-card--grouped">
             <div class="component-group-item accordion-header" onclick="toggleServerSection(this, 'section-limits')">
                 <div class="component-card__content">
                     <div class="component-card__profile-picture component-card__profile-picture--bordered">
@@ -354,9 +353,9 @@
                 </div>
 
             </div>
+        </div>
 
-            <hr class="component-divider">
-
+        <div class="component-card component-card--grouped">
             <div class="component-group-item accordion-header" onclick="toggleServerSection(this, 'section-security')">
                 <div class="component-card__content">
                     <div class="component-card__profile-picture component-card__profile-picture--bordered">
@@ -491,10 +490,9 @@
                         </div>
                     </div>
                 </div>
-
             </div>
-            
         </div>
+        
     </div>
     
     <script>
