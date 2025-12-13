@@ -18,22 +18,47 @@
         </div>
 
         <style>
+            /* --- CORRECCIÓN DE BORDES (SIN OVERFLOW:HIDDEN) --- */
+            
+            /* 1. El header siempre tiene bordes redondos arriba para encajar con la tarjeta */
             .accordion-header {
                 cursor: pointer;
-                transition: background-color 0.2s;
+                transition: background-color 0.2s, border-radius 0.2s; /* Animamos el cambio de borde */
+                border-top-left-radius: 12px;
+                border-top-right-radius: 12px;
+                
+                /* Por defecto (cerrado), también es redondo abajo */
+                border-bottom-left-radius: 12px;
+                border-bottom-right-radius: 12px;
             }
+
+            /* 2. Cuando está activo (abierto), le quitamos la redondez de abajo */
+            .accordion-header.active {
+                background-color: #f5f5fa;
+                border-bottom-left-radius: 0;
+                border-bottom-right-radius: 0;
+            }
+
             .accordion-header:hover {
                 background-color: #f9f9f9;
             }
+            
+            /* 3. El contenido debe tener bordes redondos abajo para cerrar la tarjeta visualmente */
             .accordion-content {
                 display: none;
                 padding-top: 0;
                 border-top: 1px solid #f0f0f0;
                 animation: slideDown 0.3s ease-out;
+                border-bottom-left-radius: 12px;
+                border-bottom-right-radius: 12px;
+                /* Aseguramos que el fondo cubra las esquinas si tuviera color */
+                background-color: #fff; 
             }
+
             .accordion-content.open {
                 display: block;
             }
+
             .chevron-icon {
                 transition: transform 0.3s ease;
             }
@@ -490,6 +515,7 @@
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
         
