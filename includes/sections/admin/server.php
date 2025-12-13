@@ -4,11 +4,10 @@
 <div class="section-content active" data-section="admin/server">
     <div class="component-wrapper">
         
-        <div class="component-toolbar-wrapper" style="width: 100%; position: sticky; top: 16px; z-index: 100;">
-            <div class="component-toolbar" style="justify-content: flex-end;">
-                 <button class="component-button primary" id="btn-save-limits">
+        <div class="component-toolbar-wrapper">
+            <div class="component-toolbar">
+                 <button class="header-button" id="btn-save-limits" title="<?= __('global.save') ?>">
                     <span class="material-symbols-rounded">save</span>
-                    <?= __('global.save') ?>
                  </button>
             </div>
         </div>
@@ -115,7 +114,7 @@
             <div class="component-group-item accordion-header" onclick="toggleServerSection(this, 'section-general')">
                 <div class="component-card__content">
                     <div class="component-card__profile-picture component-card__profile-picture--bordered">
-                        <span class="material-symbols-rounded" style="color: #455a64;">settings</span>
+                        <span class="material-symbols-rounded">settings</span>
                     </div>
                     <div class="component-card__text">
                         <h2 class="component-card__title">Configuración General</h2>
@@ -170,7 +169,7 @@
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
-                        <div class="component-input-wrapper" style="width: 200px;">
+                        <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
                                     <button type="button" class="counter-btn" onclick="adjustCounter('profile-size', -1)">
@@ -194,7 +193,7 @@
             <div class="component-group-item accordion-header" onclick="toggleServerSection(this, 'section-limits')">
                 <div class="component-card__content">
                     <div class="component-card__profile-picture component-card__profile-picture--bordered">
-                        <span class="material-symbols-rounded" style="color: #0288d1;">password</span>
+                        <span class="material-symbols-rounded">password</span>
                     </div>
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= __('admin.server.limits_title') ?></h2>
@@ -208,20 +207,20 @@
 
             <div id="section-limits" class="accordion-content">
                 
-                <div class="component-group-item" style="flex-direction: column; align-items: flex-start;">
-                    <div class="component-card__content" style="width: 100%; margin-bottom: 10px;">
+                <div class="component-group-item">
+                    <div class="component-card__content">
                         <div class="component-card__text">
                             <h2 class="component-card__title"><?= __('admin.server.domains_title') ?></h2>
                             <p class="component-card__description"><?= __('admin.server.domains_desc') ?></p>
                         </div>
                     </div>
                     
-                    <div style="width: 100%;">
+                    <div>
                         <div class="domain-input-group">
-                            <div class="component-input-wrapper" style="flex:1;">
+                            <div class="component-input-wrapper">
                                 <input type="text" id="new-domain-input" class="component-text-input" placeholder="ej. gmail.com, miempresa.net">
                             </div>
-                            <button type="button" class="component-button primary" id="btn-add-domain" style="min-width: 40px;">
+                            <button type="button" class="component-button primary" id="btn-add-domain">
                                 <span class="material-symbols-rounded">add</span>
                             </button>
                         </div>
@@ -244,7 +243,7 @@
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
-                        <div class="component-input-wrapper" style="width: 200px;">
+                        <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
                                     <button type="button" class="counter-btn" onclick="adjustCounter('min-pass-len', -1)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
@@ -268,7 +267,7 @@
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
-                        <div class="component-input-wrapper" style="width: 200px;">
+                        <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
                                     <button type="button" class="counter-btn" onclick="adjustCounter('max-pass-len', -1)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
@@ -292,7 +291,7 @@
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
-                        <div class="component-input-wrapper" style="width: 200px;">
+                        <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
                                     <button type="button" class="counter-btn" onclick="adjustCounter('min-user-len', -1)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
@@ -316,7 +315,7 @@
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
-                        <div class="component-input-wrapper" style="width: 200px;">
+                        <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
                                     <button type="button" class="counter-btn" onclick="adjustCounter('max-user-len', -1)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
@@ -340,7 +339,7 @@
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
-                        <div class="component-input-wrapper" style="width: 200px;">
+                        <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
                                     <button type="button" class="counter-btn" onclick="adjustCounter('max-email-len', -1)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
@@ -361,7 +360,7 @@
             <div class="component-group-item accordion-header" onclick="toggleServerSection(this, 'section-security')">
                 <div class="component-card__content">
                     <div class="component-card__profile-picture component-card__profile-picture--bordered">
-                        <span class="material-symbols-rounded" style="color: #d32f2f;">security</span>
+                        <span class="material-symbols-rounded">security</span>
                     </div>
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?= __('admin.server.security_limits_title') ?></h2>
@@ -383,7 +382,7 @@
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
-                        <div class="component-input-wrapper" style="width: 200px;">
+                        <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
                                     <button type="button" class="counter-btn" onclick="adjustCounter('max-login-attempts', -1)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
@@ -407,7 +406,7 @@
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
-                        <div class="component-input-wrapper" style="width: 200px;">
+                        <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
                                     <button type="button" class="counter-btn" onclick="adjustCounter('lockout-time', -1)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
@@ -431,7 +430,7 @@
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
-                        <div class="component-input-wrapper" style="width: 200px;">
+                        <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
                                     <button type="button" class="counter-btn" onclick="adjustCounter('code-resend', -10)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
@@ -455,7 +454,7 @@
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
-                        <div class="component-input-wrapper" style="width: 200px;">
+                        <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
                                     <button type="button" class="counter-btn" onclick="adjustCounter('username-cooldown', -1)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
@@ -479,7 +478,7 @@
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
-                        <div class="component-input-wrapper" style="width: 200px;">
+                        <div class="component-input-wrapper">
                             <div class="component-counter-control">
                                 <div class="counter-group left">
                                     <button type="button" class="counter-btn" onclick="adjustCounter('email-cooldown', -1)"><span class="material-symbols-rounded">keyboard_arrow_left</span></button>
@@ -691,7 +690,6 @@
                 if(isToggle) e.target.disabled = true;
                 if(btnSaveLimits) {
                     btnSaveLimits.disabled = true; 
-                    btnSaveLimits.innerText = '...';
                 }
 
                 fetch(basePath + 'api/admin_handler.php', { method: 'POST', body: formData })
@@ -706,7 +704,6 @@
                     if(isToggle) e.target.disabled = false;
                     if(btnSaveLimits) {
                         btnSaveLimits.disabled = false;
-                        btnSaveLimits.innerText = '<?= __('global.save') ?>';
                     }
                 });
             }
