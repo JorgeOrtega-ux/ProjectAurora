@@ -2,12 +2,18 @@
 
 .component-wrapper {
     width: 100%;
-    max-width: 700px;
+    max-width: 700px; /* Se mantiene en 700px para vista tarjetas */
     margin: 0 auto;
     padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 16px;
+    transition: max-width 0.3s ease; /* Transición suave al cambiar ancho */
+}
+
+/* CLASE NUEVA PARA VISTA TABLA (100% ANCHO) */
+.component-wrapper.wrapper-full-width {
+    max-width: 100% !important;
 }
 
 .component-header-card,
@@ -898,3 +904,94 @@
 .component-pill.pill-primary { background-color: #e3f2fd; color: #0d47a1; border-color: transparent; }
 .component-pill.pill-danger { background-color: #ffebee; color: #b71c1c; border-color: transparent; }
 .component-pill.pill-warning { background-color: #fff3e0; color: #e65100; border-color: transparent; }
+
+/* =========================================
+   TABLE VIEW STYLES
+   ========================================= */
+
+.component-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    background: #fff;
+    border: 1px solid #00000020;
+    border-radius: 12px;
+}
+
+.component-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 650px; /* Evitar colapso en móviles */
+}
+
+.component-table th, 
+.component-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid #00000010;
+    font-size: 14px;
+    color: #333;
+    vertical-align: middle;
+}
+
+.component-table th {
+    font-weight: 700;
+    color: #000;
+    background-color: #f9f9f9;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.component-table tr:last-child td {
+    border-bottom: none;
+}
+
+.component-table-row {
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+}
+
+.component-table-row:hover {
+    background-color: #f5f5fa;
+}
+
+.component-table-row.active {
+    background-color: #f0f0f0;
+    box-shadow: inset 3px 0 0 #000; /* Indicador lateral de selección */
+}
+
+.component-table-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+    background-color: #eee;
+}
+
+.table-text-primary {
+    font-weight: 600;
+    color: #000;
+}
+
+.table-text-secondary {
+    color: #666;
+    font-size: 13px;
+}
+
+.component-badge-default,
+.component-badge-success,
+.component-badge-warning,
+.component-badge-danger {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.component-badge-default { background-color: #eee; color: #333; }
+.component-badge-success { background-color: #e8f5e9; color: #2e7d32; }
+.component-badge-warning { background-color: #fff3e0; color: #e65100; }
+.component-badge-danger  { background-color: #ffebee; color: #b71c1c; }

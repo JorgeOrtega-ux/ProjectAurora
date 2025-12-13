@@ -3,13 +3,17 @@
 ?>
 <div class="section-content active" data-section="admin/users">
     
-    <div class="component-wrapper">
+    <div class="component-wrapper" id="users-component-wrapper">
         
         <div class="component-toolbar-wrapper">
             
             <div class="component-toolbar" id="toolbar-normal">
                 <button class="header-button" id="btn-toggle-search" title="<?= __('global.search_placeholder') ?>">
                     <span class="material-symbols-rounded">search</span>
+                </button>
+
+                <button class="header-button" id="btn-toggle-view" title="Cambiar Vista">
+                    <span class="material-symbols-rounded">table_rows</span>
                 </button>
                 
                 <div style="width: 1px; height: 20px; background: #eee;"></div>
@@ -79,12 +83,12 @@
             </div>
         </div>
 
-        <div class="component-header-card">
+        <div class="component-header-card" id="users-header-card">
             <h1 class="component-page-title" data-lang-key="admin.users.title"><?= __('admin.users.title') ?></h1>
             <p class="component-page-description" data-lang-key="admin.users.desc"><?= __('admin.users.desc') ?></p>
         </div>
 
-        <div id="users-list-container" class="component-list-grid">
+        <div id="users-list-container">
             <div class="loader-container">
                 <div class="spinner"></div>
             </div>
@@ -94,8 +98,12 @@
     <script>
     (function(){
         /* --- DOM REFS --- */
+        const wrapper = document.getElementById('users-component-wrapper'); // Wrapper principal
+        const headerCard = document.getElementById('users-header-card');   // Header Card
+
         const toolbarNormal = document.getElementById('toolbar-normal');
         const btnSearch = document.getElementById('btn-toggle-search');
+        const btnView = document.getElementById('btn-toggle-view');
         const searchContainer = document.getElementById('toolbar-search-container');
         const searchInput = document.getElementById('user-search-input');
         const btnFilter = document.getElementById('btn-toggle-filter');
@@ -114,6 +122,9 @@
 
         let currentSort = 'newest';
         let selectedUserId = null; 
+        
+        let viewMode = 'grid'; // 'grid' | 'table'
+        let usersCache = [];
 
         /* =========================================
            SEGURIDAD: PREVENCIÓN DE XSS
@@ -142,12 +153,42 @@
                 toolbarNormal.style.display = 'flex';
                 toolbarActions.style.display = 'none';
                 selectedUserId = null;
-                container.querySelectorAll('.component-entity-card.active').forEach(c => c.classList.remove('active'));
+                // Limpiar selección visual
+                if(viewMode === 'grid') {
+                    container.querySelectorAll('.component-entity-card.active').forEach(c => c.classList.remove('active'));
+                } else {
+                    container.querySelectorAll('.component-table-row.active').forEach(r => r.classList.remove('active'));
+                }
             }
         }
 
         if(btnCancelSel) {
             btnCancelSel.addEventListener('click', () => toggleActionToolbar(false));
+        }
+
+        if(btnView) {
+            btnView.addEventListener('click', () => {
+                // Alternar modo
+                viewMode = (viewMode === 'grid') ? 'table' : 'grid';
+                
+                // Actualizar icono
+                const iconSpan = btnView.querySelector('span');
+                if(iconSpan) {
+                    iconSpan.textContent = (viewMode === 'grid') ? 'table_rows' : 'grid_view';
+                }
+
+                // APLICAR CAMBIOS DE ESTRUCTURA (Ancho 100% y Ocultar Header)
+                if (viewMode === 'table') {
+                    wrapper.classList.add('wrapper-full-width');
+                    if(headerCard) headerCard.style.display = 'none';
+                } else {
+                    wrapper.classList.remove('wrapper-full-width');
+                    if(headerCard) headerCard.style.display = 'block';
+                }
+
+                // Renderizar
+                renderUsers(usersCache);
+            });
         }
 
         if(btnSearch && searchContainer) {
@@ -207,15 +248,24 @@
 
         container.addEventListener('click', (e) => {
             const card = e.target.closest('.component-entity-card');
+            const row = e.target.closest('.component-table-row');
+            const target = card || row;
             
-            if (card) {
-                const id = card.dataset.id;
+            if (target) {
+                const id = target.dataset.id;
+                const isActive = target.classList.contains('active');
 
-                if (card.classList.contains('active')) {
+                // Limpiar previos
+                if(viewMode === 'grid') {
+                    container.querySelectorAll('.component-entity-card.active').forEach(c => c.classList.remove('active'));
+                } else {
+                    container.querySelectorAll('.component-table-row.active').forEach(r => r.classList.remove('active'));
+                }
+
+                if (isActive) {
                     toggleActionToolbar(false);
                 } else {
-                    container.querySelectorAll('.component-entity-card.active').forEach(c => c.classList.remove('active'));
-                    card.classList.add('active');
+                    target.classList.add('active');
                     selectedUserId = id;
                     toggleActionToolbar(true); 
                 }
@@ -250,6 +300,7 @@
             .then(res => {
                 container.style.opacity = '1';
                 if(res.status === 'success') {
+                    usersCache = res.data; 
                     renderUsers(res.data);
                 } else {
                     container.innerHTML = `<div style="text-align:center; padding:20px; color:red;">${res.message}</div>`;
@@ -264,35 +315,34 @@
 
         function renderUsers(users) {
             if(!users || users.length === 0) {
+                container.className = ''; 
                 container.innerHTML = '<p style="text-align:center; color:#666; padding:40px;">Sin resultados.</p>';
                 return;
             }
 
-            let html = '';
             const timestamp = new Date().getTime(); 
 
+            if (viewMode === 'grid') {
+                container.className = 'component-list-grid';
+                renderAsGrid(users, timestamp);
+            } else {
+                container.className = ''; 
+                renderAsTable(users, timestamp);
+            }
+        }
+
+        function renderAsGrid(users, timestamp) {
+            let html = '';
             users.forEach(u => {
-                // SANITIZACIÓN DE DATOS (XSS FIX)
                 const safeUsername = escapeHtml(u.username);
                 const safeEmail = escapeHtml(u.email);
                 const safeRole = escapeHtml(u.role);
-
-                const dateObj = new Date(u.created_at);
-                const dateStr = !isNaN(dateObj) ? dateObj.toLocaleDateString() : '—';
+                const dateStr = formatDate(u.created_at);
                 const avatarSrc = basePath + u.avatar_url + '?v=' + timestamp;
-                
-                // Fallback Determinista Visual (ID % 5) + 1
                 const fallbackUrl = basePath + 'assets/uploads/avatars/fallback/' + ((u.id % 5) + 1) + '.png';
 
-                let statusText = 'Activo';
-                let statusClass = ''; 
-                if(u.account_status === 'suspended') { statusText = 'Suspendido'; statusClass = 'pill-warning'; }
-                if(u.account_status === 'deleted') { statusText = 'Eliminado'; statusClass = 'pill-danger'; }
-
-                let borderClass = 'component-avatar-border-default';
-                if(u.role === 'administrator') borderClass = 'component-avatar-border-red';
-                else if (u.role === 'moderator') borderClass = 'component-avatar-border-blue';
-                else if (u.role === 'founder') borderClass = 'component-avatar-border-rainbow';
+                let {statusText, statusClass} = getStatusInfo(u.account_status);
+                let borderClass = getBorderClass(u.role);
 
                 html += `
                 <div class="component-entity-card" data-id="${u.id}">
@@ -314,6 +364,78 @@
                 </div>`;
             });
             container.innerHTML = html;
+        }
+
+        function renderAsTable(users, timestamp) {
+            let html = `
+            <div class="component-table-wrapper">
+                <table class="component-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;"></th>
+                            <th>Usuario</th>
+                            <th>Email</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th>Registro</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+            users.forEach(u => {
+                const safeUsername = escapeHtml(u.username);
+                const safeEmail = escapeHtml(u.email);
+                const safeRole = escapeHtml(u.role);
+                const dateStr = formatDate(u.created_at);
+                const avatarSrc = basePath + u.avatar_url + '?v=' + timestamp;
+                const fallbackUrl = basePath + 'assets/uploads/avatars/fallback/' + ((u.id % 5) + 1) + '.png';
+
+                let {statusText, statusClass} = getStatusInfo(u.account_status);
+                
+                let badgeClass = 'component-badge-default';
+                if(u.account_status === 'suspended') badgeClass = 'component-badge-warning';
+                if(u.account_status === 'deleted') badgeClass = 'component-badge-danger';
+                if(u.account_status === 'active') badgeClass = 'component-badge-success';
+
+                html += `
+                <tr class="component-table-row" data-id="${u.id}">
+                    <td>
+                        <img src="${avatarSrc}" 
+                             class="component-table-avatar"
+                             alt="${safeUsername}"
+                             onerror="this.src='${fallbackUrl}'; this.onerror=null;">
+                    </td>
+                    <td><span class="table-text-primary">${safeUsername}</span></td>
+                    <td><span class="table-text-secondary">${safeEmail}</span></td>
+                    <td style="text-transform:capitalize;">${safeRole}</td>
+                    <td><span class="component-badge ${badgeClass}">${statusText}</span></td>
+                    <td><span class="table-text-secondary">${dateStr}</span></td>
+                </tr>`;
+            });
+
+            html += `</tbody></table></div>`;
+            container.innerHTML = html;
+        }
+
+        // --- Helpers ---
+        function formatDate(dateString) {
+            const dateObj = new Date(dateString);
+            return !isNaN(dateObj) ? dateObj.toLocaleDateString() : '—';
+        }
+
+        function getStatusInfo(status) {
+            let statusText = 'Activo';
+            let statusClass = ''; 
+            if(status === 'suspended') { statusText = 'Suspendido'; statusClass = 'pill-warning'; }
+            if(status === 'deleted') { statusText = 'Eliminado'; statusClass = 'pill-danger'; }
+            return { statusText, statusClass };
+        }
+
+        function getBorderClass(role) {
+            if(role === 'administrator') return 'component-avatar-border-red';
+            if(role === 'moderator') return 'component-avatar-border-blue';
+            if(role === 'founder') return 'component-avatar-border-rainbow';
+            return 'component-avatar-border-default';
         }
 
         loadUsers();
