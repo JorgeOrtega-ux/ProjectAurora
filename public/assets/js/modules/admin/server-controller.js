@@ -60,24 +60,11 @@ const destroy = () => {
 
 const setupEventListeners = () => {
     // 1. Delegación para Acordeones y Contadores (botones + -)
-    // Esto reemplaza los onclick="toggleServerSection()" y "adjustCounter()" del HTML
     dom.wrapper.addEventListener('click', (e) => {
         
         // A) Acordeones
         const header = e.target.closest('.accordion-header');
         if (header) {
-            // Buscamos el contenido asociado (asumimos estructura: header + div.accordion-content)
-            // En el HTML actual, el click llama a una función con ID.
-            // Aquí lo hacemos relativo al DOM para ser más genéricos, o buscamos por ID si mantenemos atributos.
-            // Para mantener compatibilidad con tu HTML que usa IDs fijos ('section-general'),
-            // vamos a detectar cual es basándonos en el onclick attribute string o data attributes si los agregas.
-            // PLAN B (Más robusto sin tocar HTML aun): 
-            // El HTML tiene onclick="toggleServerSection(this, 'section-general')".
-            // Vamos a simular esa lógica detectando el ID target.
-            
-            let targetId = null;
-            // Hack temporal: parsear el onclick o basarnos en estructura
-            // Estructura: header -> nextSibling es el content
             const content = header.nextElementSibling;
             if (content && content.classList.contains('accordion-content')) {
                 toggleSection(header, content);
@@ -87,35 +74,15 @@ const setupEventListeners = () => {
         // B) Contadores
         const btnCounter = e.target.closest('.counter-btn');
         if (btnCounter) {
-            // El botón tiene onclick="adjustCounter('id', val)"
-            // Vamos a leer el onclick para saber qué hacer, o mejor:
-            // Dado que vamos a limpiar el HTML, asumimos que NO hay onclick.
-            // Necesitamos saber a qué input afecta.
-            // Navegamos al input cercano.
             const controlGroup = btnCounter.closest('.component-counter-control');
             if (controlGroup) {
                 const input = controlGroup.querySelector('input.counter-input');
                 if (input) {
-                    // Determinar valor a sumar
-                    // Podemos usar data-attributes en el futuro. Por ahora, inferimos por posición o texto no es fiable.
-                    // Para que funcione YA, vamos a usar una heurística simple:
-                    // Miramos si es el 1ro, 2do (resta) o 3ro, 4to (suma) botón dentro del grupo.
                     const allBtns = controlGroup.querySelectorAll('.counter-btn');
                     const index = Array.from(allBtns).indexOf(btnCounter);
                     
                     let amount = 0;
                     // Orden visual: << (-big) | < (-1) | INPUT | > (+1) | >> (+big)
-                    // indices: 0, 1, 2, 3
-                    
-                    // Asumiendo que el input 'max-email-len' tiene step 10, y otros step 5...
-                    // Es difícil adivinar el "big step" sin data attributes.
-                    // SOLUCIÓN: Leer el atributo 'onclick' actual (antes de borrarlo) sería sucio.
-                    // Vamos a estandarizar: 
-                    // btn 0: -5 (o -10 o -60 según input), btn 1: -1
-                    // btn 2: +1, btn 3: +5 (o +10 o +60)
-                    
-                    // Para hacerlo perfecto, necesitamos que el HTML tenga data-step="5" etc.
-                    // Como parche JS puro:
                     const id = input.id;
                     const bigStep = (id === 'code-resend') ? 60 : (id.includes('email') || id.includes('lockout') || id.includes('max-pass')) ? 10 : 5;
                     
@@ -130,11 +97,19 @@ const setupEventListeners = () => {
         }
     });
 
-    // 2. Toggles (Guardado automático)
-    if (dom.maintToggle) dom.maintToggle.addEventListener('change', updateConfig);
-    if (dom.regToggle) dom.regToggle.addEventListener('change', updateConfig);
+    // 2. Toggles (Lógica visual y de dependencia, SIN autoguardado)
+    if (dom.maintToggle) {
+        dom.maintToggle.addEventListener('change', (e) => {
+            // Regla: Si activas Mantenimiento, desactivar registros
+            if (e.target.checked && dom.regToggle) {
+                dom.regToggle.checked = false;
+            }
+            // Si desactivas Mantenimiento, registros queda libre (como estaba)
+        });
+    }
+    // Nota: Eliminamos los listeners que llamaban a updateConfig en 'change'
 
-    // 3. Botón Guardar
+    // 3. Botón Guardar (Único punto de guardado)
     if (dom.btnSaveLimits) dom.btnSaveLimits.addEventListener('click', updateConfig);
 
     // 4. Dominios
@@ -276,12 +251,10 @@ const updateConfig = async (e) => {
     const basePath = window.BASE_PATH || '/ProjectAurora/';
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
     
-    // Si fue disparado por un toggle, deshabilitarlo temporalmente
-    const trigger = e.target;
-    const isToggle = (trigger.type === 'checkbox');
-
-    if (isToggle) trigger.disabled = true;
+    // Bloquear UI
     if (dom.btnSaveLimits) dom.btnSaveLimits.disabled = true;
+    if (dom.maintToggle) dom.maintToggle.disabled = true;
+    if (dom.regToggle) dom.regToggle.disabled = true;
 
     const formData = new FormData();
     formData.append('action', 'update_server_config');
@@ -313,18 +286,18 @@ const updateConfig = async (e) => {
 
         if (res.status !== 'success') {
             alert(res.message || 'Error guardando configuración');
-            // Revertir en caso de error (opcional, requeriría recargar)
             loadConfig(); 
         } else {
-            // Opcional: Toast de éxito
             console.log('Configuración guardada.');
+            // Opcional: Mostrar Toast o feedback visual aquí
         }
     } catch (err) {
         console.error(err);
         alert('Error de conexión al guardar.');
     } finally {
-        if (isToggle) trigger.disabled = false;
         if (dom.btnSaveLimits) dom.btnSaveLimits.disabled = false;
+        if (dom.maintToggle) dom.maintToggle.disabled = false;
+        if (dom.regToggle) dom.regToggle.disabled = false;
     }
 };
 

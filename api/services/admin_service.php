@@ -73,6 +73,14 @@ function get_server_config_data($pdo) {
 function update_server_configuration($pdo, $userId, $input) {
     $maintenance = isset($input['maintenance_mode']) ? (int)$input['maintenance_mode'] : 0;
     $registrations = isset($input['allow_registrations']) ? (int)$input['allow_registrations'] : 1;
+    
+    // --- LÓGICA DE SEGURIDAD ---
+    // Si el modo mantenimiento está activo, forzamos que el registro esté desactivado.
+    if ($maintenance === 1) {
+        $registrations = 0;
+    }
+    // ---------------------------
+
     $minPass = isset($input['min_password_length']) ? (int)$input['min_password_length'] : 8;
     $maxPass = isset($input['max_password_length']) ? (int)$input['max_password_length'] : 72;
     $minUser = isset($input['min_username_length']) ? (int)$input['min_username_length'] : 6;
