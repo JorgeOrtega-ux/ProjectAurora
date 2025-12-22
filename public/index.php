@@ -6,21 +6,26 @@ session_start();
 require_once __DIR__ . '/../config/routers/router.php';
 require_once __DIR__ . '/../config/database/db.php';
 
-// === NUEVO: GENERACIÓN DE TOKEN CSRF ===
-// Si no existe un token en la sesión, creamos uno nuevo.
+// === GENERACIÓN DE TOKEN CSRF ===
+// Si no existe un token en la sesión, creamos uno nuevo para seguridad.
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
-// =======================================
 
 // === CONTROL DE ACCESO (MIDDLEWARE) ===
 $isLoggedIn = isset($_SESSION['user_id']);
 
-// Lista de rutas que NO requieren login
-$publicRoutes = ['login', 'register'];
+// Lista de rutas que NO requieren login (CORREGIDO PARA INCLUIR PASOS DE REGISTRO)
+$publicRoutes = [
+    'login', 
+    'register', 
+    'register/aditional-data', 
+    'register/verification-account'
+];
 
 if (!$isLoggedIn) {
     // Si NO está logueado y trata de acceder a una ruta privada -> Mandar a Login
+    // (Ahora permite estar en los pasos 2 y 3 del registro sin loguearse)
     if (!in_array($currentSection, $publicRoutes)) {
         header("Location: " . $basePath . "login");
         exit;
@@ -33,37 +38,33 @@ if (!$isLoggedIn) {
     }
 }
 
-// === PREPARAR VARIABLES DE HEADER (REPLICANDO PROJECT TEST) ===
+// === PREPARAR VARIABLES DE HEADER ===
 $globalAvatarSrc = '';
 $userRole = 'guest';
 
 if ($isLoggedIn) {
-    // Definir rol (simulado o desde sesión si existe)
+    // Definir rol
     $userRole = $_SESSION['role'] ?? 'user';
 
-    // Obtener imagen de perfil (Base64 para mantener compatibilidad con almacenamiento local fuera de public)
+    // Obtener imagen de perfil
     if (!empty($_SESSION['avatar'])) {
         $avatarFile = __DIR__ . '/../' . $_SESSION['avatar'];
 
         if (file_exists($avatarFile)) {
-            // Detectamos el tipo real del contenido (ej: image/svg+xml o image/png)
             $mimeType = mime_content_type($avatarFile);
             $data = file_get_contents($avatarFile);
-
-            // Usamos el tipo detectado en lugar de la extensión
             $globalAvatarSrc = 'data:' . $mimeType . ';base64,' . base64_encode($data);
         }
     }
 
-    // Fallback: Si no hay imagen, usar un placeholder base64 simple o un servicio externo
+    // Fallback: Si no hay imagen, usar un placeholder
     if (empty($globalAvatarSrc)) {
-        // Generar un placeholder visual si no hay imagen
         $name = $_SESSION['username'] ?? 'User';
         $globalAvatarSrc = "https://ui-avatars.com/api/?name=" . urlencode($name) . "&background=random&color=fff";
     }
 }
 
-// 2. Definir rutas físicas
+// Definir qué archivo cargar según la ruta
 $routesMap = require __DIR__ . '/../config/routes.php';
 $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
 
@@ -96,7 +97,6 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
                 <?php if ($isLoggedIn): ?>
                     <div class="general-content-top">
                         <?php
-                        // El header ahora usará $globalAvatarSrc y $userRole directamente
                         include __DIR__ . '/../includes/layouts/header.php';
                         ?>
                     </div>
@@ -123,5 +123,4 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
     </div>
 
 </body>
-
 </html>

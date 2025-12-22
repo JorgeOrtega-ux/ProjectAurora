@@ -10,11 +10,10 @@ function jsonResponse($success, $message, $data = []) {
     exit;
 }
 
-// === SEGURIDAD CSRF (VALIDACIÓN) ===
+// === SEGURIDAD CSRF ===
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        // Si el token no viene, no existe en sesión o no coincide
-        jsonResponse(false, 'Error de seguridad: Token CSRF inválido. Por favor recarga la página.');
+        jsonResponse(false, 'Error de seguridad: Token CSRF inválido. Recarga la página.');
     }
 }
 
@@ -28,67 +27,111 @@ function generate_uuid() {
 
 $action = $_POST['action'] ?? '';
 
-// === PASO 1 Y 2: PRE-VALIDACIÓN Y GENERACIÓN DE CÓDIGO ===
-if ($action === 'initiate_verification') {
+// =========================================================================
+//  NUEVO BLOQUE: PASO 1 (Guardar credenciales temporales en sesión)
+// =========================================================================
+if ($action === 'register_step_1') {
     $email = trim($_POST['email'] ?? '');
-    $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    if (empty($email) || empty($username) || empty($password)) {
-        jsonResponse(false, 'Todos los campos son obligatorios.');
+    if (empty($email) || empty($password)) {
+        jsonResponse(false, 'Por favor completa todos los campos.');
     }
 
-    // 1. Verificar si el email o usuario ya existen en la tabla real users
-    $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ? OR username = ?");
-    $stmt->execute([$email, $username]);
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        jsonResponse(false, 'El correo electrónico no es válido.');
+    }
+
+    // Verificar si ya existe en la BD
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+    $stmt->execute([$email]);
     if ($stmt->fetch()) {
-        jsonResponse(false, 'El correo electrónico o el usuario ya están registrados.');
+        jsonResponse(false, 'Este correo electrónico ya está registrado.');
     }
 
-    // 2. Generar código de 6 dígitos
-    $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
-    
-    // 3. Hash de contraseña para guardarla en el payload temporal
-    $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+    // Guardar en sesión para usarlo en el paso 2 y 3
+    $_SESSION['temp_register'] = [
+        'email' => $email,
+        'password' => $password // Se hasheará al final
+    ];
 
-    // 4. Preparar Payload JSON
+    jsonResponse(true, 'Paso 1 completado', ['next_url' => 'register/aditional-data']);
+
+// =========================================================================
+//  MODIFICADO: PASO 2 -> 3 (Iniciar Verificación)
+// =========================================================================
+} elseif ($action === 'initiate_verification') {
+    $username = trim($_POST['username'] ?? '');
+    
+    // Recuperar datos de la sesión (del Paso 1)
+    if (!isset($_SESSION['temp_register']['email'])) {
+        jsonResponse(false, 'Sesión expirada. Vuelve a comenzar el registro.');
+    }
+    
+    $email = $_SESSION['temp_register']['email'];
+    $password = $_SESSION['temp_register']['password'];
+
+    if (empty($username)) {
+        jsonResponse(false, 'Elige un nombre de usuario.');
+    }
+
+    // Verificar unicidad del username
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+    $stmt->execute([$username]);
+    if ($stmt->fetch()) {
+        jsonResponse(false, 'El nombre de usuario ya está ocupado.');
+    }
+
+    // Actualizar sesión con el username
+    $_SESSION['temp_register']['username'] = $username;
+    
+    // Crear payload para el código
+    $passwordHash = password_hash($password, PASSWORD_DEFAULT);
     $payload = json_encode([
         'username' => $username,
         'email' => $email,
         'password_hash' => $passwordHash
     ]);
 
-    // 5. Definir expiración (ej. 15 minutos)
+    // Generar código
+    $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
     $expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
 
-    // 6. Guardar en tabla verification_codes
-    // Limpiamos códigos previos de este email para evitar basura
+    // Limpiar anteriores
     $del = $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation'");
     $del->execute([$email]);
 
+    // Insertar nuevo
     $sql = "INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, 'account_activation', ?, ?, ?)";
     $stmt = $pdo->prepare($sql);
 
     try {
         $stmt->execute([$email, $code, $payload, $expiresAt]);
+        
+        // Guardar email para mostrar en el paso 3
+        $_SESSION['pending_verification_email'] = $email;
 
-        // AQUÍ IRÍA EL ENVÍO DE EMAIL REAL
-        // Por ahora, simulamos éxito.
-        jsonResponse(true, 'Código enviado.', ['debug_code' => $code]); 
+        jsonResponse(true, 'Código enviado.', [
+            'debug_code' => $code, // SOLO PARA DESARROLLO
+            'next_url' => 'register/verification-account'
+        ]); 
     } catch (Exception $e) {
-        jsonResponse(false, 'Error al generar verificación: ' . $e->getMessage());
+        jsonResponse(false, 'Error interno: ' . $e->getMessage());
     }
 
-// === PASO 3: FINALIZAR REGISTRO ===
+// =========================================================================
+//  PASO 3 (Finalizar)
+// =========================================================================
 } elseif ($action === 'complete_register') {
-    $email = trim($_POST['email'] ?? '');
     $code = trim($_POST['code'] ?? '');
+    // Usamos el email de la sesión para mayor seguridad
+    $email = $_SESSION['pending_verification_email'] ?? '';
 
-    if (empty($email) || empty($code)) {
+    if (empty($code) || empty($email)) {
         jsonResponse(false, 'Faltan datos de verificación.');
     }
 
-    // 1. Buscar el código válido
+    // Verificar código
     $sql = "SELECT * FROM verification_codes 
             WHERE identifier = ? 
             AND code = ? 
@@ -104,19 +147,13 @@ if ($action === 'initiate_verification') {
         jsonResponse(false, 'Código inválido o expirado.');
     }
 
-    // 2. Recuperar datos del payload
     $payload = json_decode($verification['payload'], true);
-    if (!$payload) {
-        jsonResponse(false, 'Error en los datos temporales.');
-    }
-
     $username = $payload['username'];
     $passwordHash = $payload['password_hash']; 
     $uuid = generate_uuid();
 
-    // 3. Generar Avatar (CORREGIDO PARA FORZAR PNG)
+    // Generar Avatar
     $firstLetter = substr($username, 0, 1);
-    // Agregamos &format=png para asegurar que la API devuelva una imagen rasterizada
     $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($firstLetter) . "&background=random&color=fff&size=128&format=png";
     
     $storageDir = __DIR__ . '/../storage/profilePicture/default/';
@@ -130,32 +167,32 @@ if ($action === 'initiate_verification') {
         ? 'storage/profilePicture/default/' . $fileName 
         : null;
 
-    // 4. Insertar usuario real en tabla users
     $pdo->beginTransaction();
     try {
         $insertUser = $pdo->prepare("INSERT INTO users (uuid, username, email, password, role, avatar_path) VALUES (?, ?, ?, ?, 'user', ?)");
         $insertUser->execute([$uuid, $username, $email, $passwordHash, $dbAvatarPath]);
         $newUserId = $pdo->lastInsertId();
 
-        // 5. Borrar el código usado
         $pdo->prepare("DELETE FROM verification_codes WHERE id = ?")->execute([$verification['id']]);
 
         $pdo->commit();
 
-        // 6. Auto-login
+        // Login y limpieza
         $_SESSION['user_id'] = $newUserId;
         $_SESSION['username'] = $username;
         $_SESSION['role'] = 'user';
         $_SESSION['avatar'] = $dbAvatarPath;
+        
+        unset($_SESSION['temp_register']);
+        unset($_SESSION['pending_verification_email']);
 
-        jsonResponse(true, 'Registro completado exitosamente.', ['redirect' => '/ProjectAurora/']);
+        jsonResponse(true, 'Registro exitoso.', ['redirect' => '/ProjectAurora/']);
 
     } catch (Exception $e) {
         $pdo->rollBack();
-        jsonResponse(false, 'Error crítico al crear usuario: ' . $e->getMessage());
+        jsonResponse(false, 'Error crítico BD: ' . $e->getMessage());
     }
 
-// === LOGIN NORMAL ===
 } elseif ($action === 'login') {
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -175,11 +212,10 @@ if ($action === 'initiate_verification') {
         jsonResponse(false, 'Credenciales incorrectas.');
     }
 
-// === LOGOUT ===
 } elseif ($action === 'logout') {
     session_destroy();
-    jsonResponse(true, 'Sesión cerrada.', ['redirect' => '/ProjectAurora/login']);
+    jsonResponse(true, 'Bye.', ['redirect' => '/ProjectAurora/login']);
 }
 
-jsonResponse(false, 'Acción no válida.');
+jsonResponse(false, 'Acción desconocida.');
 ?>
