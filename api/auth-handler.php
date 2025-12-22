@@ -1,7 +1,9 @@
 <?php
-// public/auth-handler.php
+// api/auth-handler.php
 session_start();
-require_once __DIR__ . '/../config/db.php';
+
+// ACTUALIZADO: La ruta ahora busca en config/database/
+require_once __DIR__ . '/../config/database/db.php';
 
 header('Content-Type: application/json');
 
@@ -63,9 +65,7 @@ if ($action === 'register') {
     $imageContent = file_get_contents($avatarUrl);
     if ($imageContent !== false) {
         file_put_contents($filePath, $imageContent);
-        // Ruta relativa para guardar en BD (accesible desde web via script o simlink, 
-        // pero por seguridad serviremos via PHP o moveremos a public/storage en producción.
-        // Por ahora, guardamos la ruta relativa al proyecto).
+        // Ruta relativa para guardar en BD
         $dbAvatarPath = 'storage/profilePicture/default/' . $fileName; 
     } else {
         $dbAvatarPath = null; // Fallback

@@ -47,8 +47,7 @@ export function initAuthController() {
 }
 
 /**
- * Configura las interacciones visuales copiadas de Project Test
- * (Mostrar contraseña y Generar usuario)
+ * Configura las interacciones visuales
  */
 function setupInteractions() {
     document.addEventListener('click', (e) => {
@@ -93,7 +92,6 @@ function setupInteractions() {
                 const genName = `User${day}${month}${timestamp}`;
                 
                 usernameInput.value = genName;
-                // Efecto visual de focus
                 usernameInput.focus();
             }
             return;
@@ -134,7 +132,8 @@ async function handleAuthClick(action, containerId, btnElement) {
     btnElement.style.opacity = '0.7';
 
     try {
-        const response = await fetch(window.BASE_PATH + 'public/auth-handler.php', {
+        // ACTUALIZADO: URL apunta a api/
+        const response = await fetch(window.BASE_PATH + 'api/auth-handler.php', {
             method: 'POST',
             body: formData
         });
@@ -163,7 +162,8 @@ async function handleLogout() {
     formData.append('action', 'logout');
 
     try {
-        const response = await fetch(window.BASE_PATH + 'public/auth-handler.php', {
+        // ACTUALIZADO: URL apunta a api/
+        const response = await fetch(window.BASE_PATH + 'api/auth-handler.php', {
             method: 'POST',
             body: formData
         });

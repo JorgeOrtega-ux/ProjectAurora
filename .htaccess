@@ -1,11 +1,12 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     
-    # Redirigir la petición raíz a la carpeta public/
+    # IMPORTANTE: Redirigir la petición raíz a la carpeta public/
     RewriteRule ^$ public/ [L]
 
     # Redirigir todas las demás peticiones a public/
-    # (Evita bucles verificando si ya estamos en public)
+    # PERO excluimos la carpeta 'api' para que el fetch JS funcione
     RewriteCond %{REQUEST_URI} !^/ProjectAurora/public/
+    RewriteCond %{REQUEST_URI} !^/ProjectAurora/api/
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>

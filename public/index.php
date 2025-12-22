@@ -4,7 +4,8 @@ session_start();
 
 // Cargar Router y DB
 require_once __DIR__ . '/../config/routers/router.php';
-require_once __DIR__ . '/../config/db.php'; // (Opcional si solo usas sesión aquí, pero buena práctica)
+// ACTUALIZADO: Ruta corregida a config/database/db.php
+require_once __DIR__ . '/../config/database/db.php'; 
 
 // === CONTROL DE ACCESO (MIDDLEWARE) ===
 $isLoggedIn = isset($_SESSION['user_id']);
@@ -27,15 +28,9 @@ if (!$isLoggedIn) {
 }
 
 // === PREPARAR AVATAR PARA LA VISTA ===
-// NOTA: Como guardamos la imagen fuera de 'public', necesitamos un script para servirla 
-// o usar base64. Para simplificar, si el archivo existe en storage, 
-// puedes hacer un pequeño script 'image-proxy.php' o incrustarlo.
-// Aquí simularemos el path. Para que funcione la etiqueta <img> directamente con ../storage,
-// tu servidor debe permitirlo, o mejor, movemos la lógica de visualización.
-
 $userAvatarCss = '';
 if ($isLoggedIn && !empty($_SESSION['avatar'])) {
-    // Leemos el archivo y lo convertimos a base64 para evitar problemas de permisos de carpeta pública
+    // Leemos el archivo y lo convertimos a base64
     $avatarFile = __DIR__ . '/../' . $_SESSION['avatar'];
     if (file_exists($avatarFile)) {
         $type = pathinfo($avatarFile, PATHINFO_EXTENSION);
