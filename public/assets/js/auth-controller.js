@@ -129,16 +129,23 @@ function updateRegisterStep(stepNumber) {
 }
 
 function showStep(step) {
-    // Ocultar todos
+    // 1. Ocultar todos los pasos (quitamos la clase active)
     document.querySelectorAll('.reg-step').forEach(el => {
         el.classList.remove('active');
     });
     
-    // Mostrar actual
+    // 2. Mostrar el paso actual
     const current = document.getElementById(`step-${step}`);
-    if(current) current.classList.add('active');
+    if (current) {
+        current.classList.add('active');
+    } else {
+        console.error(`Error: No existe el contenedor con id "step-${step}"`);
+    }
 
-    // Actualizar Textos Header
+    // --- BLOQUE ELIMINADO/COMENTADO ---
+    // Como dijiste que ya no existen estos elementos, comentamos esto 
+    // para que el código no falle.
+    /*
     const title = document.getElementById('step-title');
     const desc = document.getElementById('step-desc');
     
@@ -150,8 +157,9 @@ function showStep(step) {
         desc.innerText = "Elige un nombre de usuario";
     } else if(step === 3) {
         title.innerText = "Verifica tu cuenta";
-        desc.innerText = "Introduce el código enviado a " + tempRegisterData.email;
+        desc.innerText = "Introduce el código enviado...";
     }
+    */
 }
 
 /**

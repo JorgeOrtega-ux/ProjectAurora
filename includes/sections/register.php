@@ -1,32 +1,33 @@
 <?php
 // includes/sections/register.php
 
-// 1. Detección dinámica del paso actual basada en la URL
-// Asumimos que $basePath es '/ProjectAurora/' o similar
+// 1. Detección de la sub-ruta actual
 $requestUri = $_SERVER['REQUEST_URI'];
+// Adaptamos las rutas a las que usas en ProjectAurora
 $isStep2 = strpos($requestUri, 'register/aditional-data') !== false;
 $isStep3 = strpos($requestUri, 'register/verification-account') !== false;
 
-// 2. Verificación de seguridad (State Check)
-// Simula la lógica de ProjectTest: Si intentas saltar al paso 2 sin datos previos, te rebota.
-// NOTA: Para que esto funcione al 100%, tu API debe guardar estas sesiones al completar cada paso.
-$hasDataForStep2 = isset($_SESSION['temp_register_email']); 
-$hasDataForStep3 = isset($_SESSION['pending_verification_email']);
+// 2. Verificación de datos de sesión previos (State Check)
+// IMPORTANTE: Tu API (auth_handler.php) debe crear estas variables de sesión
+// al completar los pasos anteriores exitosamente.
+$hasDataForStep2 = isset($_SESSION['temp_register']) && !empty($_SESSION['temp_register']);
+$hasDataForStep3 = isset($_SESSION['pending_verification_email']) && !empty($_SESSION['pending_verification_email']);
 
+// 3. Determinar si hay un acceso inválido (Salto de pasos)
 $invalidAccess = false;
 $errorTitle = "";
 $errorMessage = "";
 
-// Si intenta acceder directamente a pasos avanzados sin pasar por los anteriores
 if ($isStep2 && !$hasDataForStep2) {
-    // Si no tienes lógica de sesión aun, puedes comentar este bloque temporalmente
-    // $invalidAccess = true;
-    // $errorTitle = "Datos faltantes";
-    // $errorMessage = "Debes completar el paso anterior.";
+    // Si intenta entrar al paso 2 sin haber completado el paso 1
+    $invalidAccess = true;
+    $errorTitle = "Datos faltantes";
+    $errorMessage = "No has completado el registro de credenciales. No puedes saltar pasos.";
 } elseif ($isStep3 && !$hasDataForStep3) {
-    // $invalidAccess = true;
-    // $errorTitle = "Verificación pendiente";
-    // $errorMessage = "No hay una cuenta pendiente de verificación.";
+    // Si intenta entrar a verificar sin tener un correo pendiente
+    $invalidAccess = true;
+    $errorTitle = "Verificación no disponible";
+    $errorMessage = "No hay un proceso de verificación activo para esta sesión.";
 }
 ?>
 
@@ -35,21 +36,23 @@ if ($isStep2 && !$hasDataForStep2) {
         
         <?php if ($invalidAccess): ?>
             <div class="auth-header">
-                <span class="material-symbols-rounded auth-error-icon">history_toggle_off</span>
-                <h1 class="text-danger"><?php echo $errorTitle; ?></h1>
-                <p><?php echo $errorMessage; ?></p>
+                <span class="material-symbols-rounded auth-error-icon" style="font-size: 48px; color: #d32f2f; margin-bottom:10px;">history_toggle_off</span>
+                <h1 class="text-danger" style="color: #d32f2f; margin: 0;"><?php echo $errorTitle; ?></h1>
+                <p style="color: #666; margin-top: 5px;"><?php echo $errorMessage; ?></p>
             </div>
-            <div class="alert error mt-20">
-                Por favor, inicia el proceso nuevamente.
+
+            <div class="alert error mt-20" style="background: #ffebee; color: #b71c1c; padding: 10px; border-radius: 8px; margin-top: 20px; font-size: 14px;">
+                Por seguridad, inicia el proceso desde el principio.
             </div>
-            <a href="<?php echo $basePath; ?>register" class="btn-primary btn-block-link">
+
+            <a href="<?php echo $basePath; ?>register" class="btn-primary btn-block-link" style="display: flex; justify-content: center; align-items: center; text-decoration: none; margin-top: 20px;">
                 Volver al inicio
             </a>
 
         <?php elseif ($isStep3): ?>
             <div class="auth-header">
                 <h1>Verifica tu cuenta</h1>
-                <p>Ingresa el código enviado a tu correo.</p>
+                <p>Ingresa el código enviado a <strong><?php echo htmlspecialchars($_SESSION['pending_verification_email']); ?></strong>.</p>
             </div>
 
             <input type="hidden" id="verify-action" name="action" value="verify_code">
@@ -88,7 +91,7 @@ if ($isStep2 && !$hasDataForStep2) {
             </div>
 
             <div style="display: flex; gap: 8px;">
-                <button type="button" class="btn-primary mt-16 btn-back" onclick="history.back()" style="background: #eee; color: #333; width: 40%;">Volver</button>
+                <a href="<?php echo $basePath; ?>register" class="btn-primary mt-16 btn-back" style="background: #eee; color: #333; width: 40%; display:flex; justify-content:center; align-items:center; text-decoration:none;">Volver</a>
                 <button type="button" id="btn-next-2" class="btn-primary mt-16" style="width: 60%;">Continuar</button>
             </div>
 
