@@ -1,27 +1,41 @@
-<div class="auth-container">
+<div class="auth-wrapper">
     <div class="auth-card">
-        <h1 class="auth-title">Crear Cuenta</h1>
-        <p class="auth-subtitle">Únete a Project Aurora</p>
+        <div class="auth-header">
+            <h1>Crear Cuenta</h1>
+            <p>Únete a la plataforma</p>
+        </div>
         
-        <form id="registerForm" class="auth-form">
+        <div id="registerContainer" class="form-groups-wrapper">
+            
             <div class="form-group">
-                <label>Nombre de usuario</label>
-                <input type="text" name="username" placeholder="Usuario" required>
-            </div>
-            <div class="form-group">
-                <label>Correo electrónico</label>
-                <input type="email" name="email" placeholder="ejemplo@correo.com" required>
-            </div>
-            <div class="form-group">
-                <label>Contraseña</label>
-                <input type="password" name="password" placeholder="••••••••" required>
+                <input type="text" name="username" id="username" required placeholder=" ">
+                <label for="username">Nombre de usuario</label>
+                <button type="button" class="btn-generate-username" tabindex="-1" title="Generar nombre aleatorio">
+                    <span class="material-symbols-rounded">autorenew</span>
+                </button>
             </div>
 
-            <button type="submit" class="component-button primary full-width">Registrarse</button>
-        </form>
+            <div class="form-group">
+                <input type="email" name="email" id="email" required placeholder=" ">
+                <label for="email">Correo electrónico</label>
+            </div>
+
+            <div class="form-group">
+                <input type="password" name="password" id="password" required placeholder=" ">
+                <label for="password">Contraseña</label>
+                <button type="button" class="btn-toggle-password" tabindex="-1">
+                    <span class="material-symbols-rounded">visibility</span>
+                </button>
+            </div>
+        </div>
+
+        <button type="button" id="btn-register" class="btn-primary">Registrarse</button>
 
         <div class="auth-footer">
-            <p>¿Ya tienes una cuenta? <a href="<?php echo $basePath; ?>login">Inicia sesión</a></p>
+            <p>
+                ¿Ya tienes cuenta? 
+                <a href="<?php echo $basePath; ?>login" class="link-primary">Inicia sesión</a>
+            </p>
         </div>
     </div>
 </div>
