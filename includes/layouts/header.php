@@ -23,12 +23,17 @@
             <div class="header-button">
                 <span class="material-symbols-rounded">notifications</span>
             </div>
+            
             <div class="header-button profile-button" 
                  data-action="toggleModuleProfile"
-                 style="<?php echo isset($avatarStyle) ? $avatarStyle : ''; ?>">
-                 <?php if(empty($avatarStyle)): ?>
-                    <span class="material-symbols-rounded">person</span>
+                 data-role="<?php echo htmlspecialchars($userRole ?? 'guest'); ?>">
+                 
+                 <?php if(isset($isLoggedIn) && $isLoggedIn): ?>
+                    <img src="<?php echo $globalAvatarSrc; ?>" class="profile-img" alt="Profile">
+                 <?php else: ?>
+                    <span class="header-guest-icon">?</span>
                  <?php endif; ?>
+                 
             </div>
         </div>
         <?php include '../includes/modules/module-profile.php'; ?>

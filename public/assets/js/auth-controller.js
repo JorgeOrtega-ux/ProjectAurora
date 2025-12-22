@@ -73,6 +73,12 @@ export function initAuthController() {
     }
 }
 
+// Helper para obtener token CSRF
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
 // Variables temporales para el registro (memoria volátil)
 let tempRegisterData = {
     email: '',
@@ -162,6 +168,7 @@ async function handleInitiateVerification(btnElement) {
     formData.append('email', tempRegisterData.email);
     formData.append('password', tempRegisterData.password);
     formData.append('username', tempRegisterData.username);
+    formData.append('csrf_token', getCsrfToken()); // CSRF
 
     setLoading(btnElement, true);
 
@@ -199,6 +206,7 @@ async function handleCompleteRegistration(btnElement) {
     formData.append('action', 'complete_register');
     formData.append('email', tempRegisterData.email);
     formData.append('code', code);
+    formData.append('csrf_token', getCsrfToken()); // CSRF
 
     setLoading(btnElement, true);
 
@@ -230,6 +238,7 @@ async function handleLogin() {
     const formData = new FormData();
     formData.append('action', 'login');
     inputs.forEach(input => formData.append(input.name, input.value));
+    formData.append('csrf_token', getCsrfToken()); // CSRF
 
     setLoading(btnElement, true);
 
@@ -253,6 +262,8 @@ async function handleLogin() {
 async function handleLogout() {
     const formData = new FormData();
     formData.append('action', 'logout');
+    formData.append('csrf_token', getCsrfToken()); // CSRF
+    
     try {
         const response = await fetch(window.BASE_PATH + 'api/auth-handler.php', {
             method: 'POST',

@@ -10,6 +10,14 @@ function jsonResponse($success, $message, $data = []) {
     exit;
 }
 
+// === SEGURIDAD CSRF (VALIDACIÓN) ===
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        // Si el token no viene, no existe en sesión o no coincide
+        jsonResponse(false, 'Error de seguridad: Token CSRF inválido. Por favor recarga la página.');
+    }
+}
+
 function generate_uuid() {
     return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
         mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
@@ -66,9 +74,7 @@ if ($action === 'initiate_verification') {
 
         // AQUÍ IRÍA EL ENVÍO DE EMAIL REAL
         // Por ahora, simulamos éxito.
-        // TODO: Integrar PHPMailer o servicio SMTP aquí.
-
-        jsonResponse(true, 'Código enviado.', ['debug_code' => $code]); // debug_code solo para desarrollo
+        jsonResponse(true, 'Código enviado.', ['debug_code' => $code]); 
     } catch (Exception $e) {
         jsonResponse(false, 'Error al generar verificación: ' . $e->getMessage());
     }
@@ -105,18 +111,21 @@ if ($action === 'initiate_verification') {
     }
 
     $username = $payload['username'];
-    $passwordHash = $payload['password_hash']; // Ya viene hasheada del paso anterior
+    $passwordHash = $payload['password_hash']; 
     $uuid = generate_uuid();
 
-    // 3. Generar Avatar (Lógica existente)
+    // 3. Generar Avatar (CORREGIDO PARA FORZAR PNG)
     $firstLetter = substr($username, 0, 1);
-    $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($firstLetter) . "&background=random&color=fff&size=128";
+    // Agregamos &format=png para asegurar que la API devuelva una imagen rasterizada
+    $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($firstLetter) . "&background=random&color=fff&size=128&format=png";
+    
     $storageDir = __DIR__ . '/../storage/profilePicture/default/';
     if (!is_dir($storageDir)) { mkdir($storageDir, 0777, true); }
     
     $fileName = $uuid . '.png';
     $filePath = $storageDir . $fileName;
     $imageContent = @file_get_contents($avatarUrl);
+    
     $dbAvatarPath = ($imageContent !== false && file_put_contents($filePath, $imageContent)) 
         ? 'storage/profilePicture/default/' . $fileName 
         : null;

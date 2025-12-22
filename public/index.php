@@ -4,8 +4,7 @@ session_start();
 
 // Cargar Router y DB
 require_once __DIR__ . '/../config/routers/router.php';
-// ACTUALIZADO: Ruta corregida a config/database/db.php
-require_once __DIR__ . '/../config/database/db.php'; 
+require_once __DIR__ . '/../config/database/db.php';
 
 // === CONTROL DE ACCESO (MIDDLEWARE) ===
 $isLoggedIn = isset($_SESSION['user_id']);
@@ -27,19 +26,33 @@ if (!$isLoggedIn) {
     }
 }
 
-// === PREPARAR AVATAR PARA LA VISTA ===
-$userAvatarCss = '';
-if ($isLoggedIn && !empty($_SESSION['avatar'])) {
-    // Leemos el archivo y lo convertimos a base64
-    $avatarFile = __DIR__ . '/../' . $_SESSION['avatar'];
-    if (file_exists($avatarFile)) {
-        $type = pathinfo($avatarFile, PATHINFO_EXTENSION);
-        $data = file_get_contents($avatarFile);
-        $base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
-        $userAvatarCss = "background-image: url('{$base64}'); background-size: cover; background-position: center;";
-    } else {
-        // Fallback color si no encuentra el archivo
-        $userAvatarCss = "background-color: #000;"; 
+// === PREPARAR VARIABLES DE HEADER (REPLICANDO PROJECT TEST) ===
+$globalAvatarSrc = '';
+$userRole = 'guest';
+
+if ($isLoggedIn) {
+    // Definir rol (simulado o desde sesión si existe)
+    $userRole = $_SESSION['role'] ?? 'user';
+
+    // Obtener imagen de perfil (Base64 para mantener compatibilidad con almacenamiento local fuera de public)
+    if (!empty($_SESSION['avatar'])) {
+        $avatarFile = __DIR__ . '/../' . $_SESSION['avatar'];
+
+        if (file_exists($avatarFile)) {
+            // Detectamos el tipo real del contenido (ej: image/svg+xml o image/png)
+            $mimeType = mime_content_type($avatarFile);
+            $data = file_get_contents($avatarFile);
+
+            // Usamos el tipo detectado en lugar de la extensión
+            $globalAvatarSrc = 'data:' . $mimeType . ';base64,' . base64_encode($data);
+        }
+    }
+
+    // Fallback: Si no hay imagen, usar un placeholder base64 simple o un servicio externo
+    if (empty($globalAvatarSrc)) {
+        // Generar un placeholder visual si no hay imagen
+        $name = $_SESSION['username'] ?? 'User';
+        $globalAvatarSrc = "https://ui-avatars.com/api/?name=" . urlencode($name) . "&background=random&color=fff";
     }
 }
 
@@ -50,43 +63,44 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
 ?>
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Aurora Alpha</title>
-    
+
     <script>
         window.BASE_PATH = '<?php echo $basePath; ?>';
     </script>
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/styles.css">
-    
+
     <script type="module" src="<?php echo $basePath; ?>public/assets/js/app-init.js"></script>
 </head>
+
 <body>
 
     <div class="page-wrapper">
         <div class="main-content">
             <div class="general-content">
-                
+
                 <?php if ($isLoggedIn): ?>
-                <div class="general-content-top">
-                    <?php 
-                        // Pasamos la variable de estilo al header
-                        $avatarStyle = $userAvatarCss; 
-                        include __DIR__ . '/../includes/layouts/header.php'; 
-                    ?>
-                </div>
+                    <div class="general-content-top">
+                        <?php
+                        // El header ahora usará $globalAvatarSrc y $userRole directamente
+                        include __DIR__ . '/../includes/layouts/header.php';
+                        ?>
+                    </div>
                 <?php endif; ?>
 
                 <div class="general-content-bottom">
                     <?php if ($isLoggedIn): ?>
                         <?php include __DIR__ . '/../includes/modules/module-surface.php'; ?>
                     <?php endif; ?>
-                    
+
                     <div class="general-content-scrolleable" data-container="main-section">
-                        <?php 
+                        <?php
                         if (file_exists($fileToLoad)) {
                             include $fileToLoad;
                         } else {
@@ -101,4 +115,5 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
     </div>
 
 </body>
+
 </html>

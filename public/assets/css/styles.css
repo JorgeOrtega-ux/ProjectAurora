@@ -183,6 +183,8 @@ html {
     background-color: #f5f5fa;
 }
 
+/* --- ESTILOS DE BOTÓN DE PERFIL Y ROLES (REPLICADO DE PROJECT TEST) --- */
+
 .header-button.profile-button {
     position: relative;
     padding: 0;
@@ -195,6 +197,60 @@ html {
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+.profile-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    position: relative;
+    z-index: 1;
+    border-radius: 50%;
+}
+
+.header-guest-icon {
+    font-weight: bold;
+    color: #555;
+    position: relative;
+    z-index: 1;
+}
+
+.header-button.profile-button::before {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border: 2px solid transparent;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Colores de Roles */
+.header-button.profile-button[data-role="user"]::before {
+    border-color: #cccccc;
+}
+
+.header-button.profile-button[data-role="moderator"]::before {
+    border-color: #0000FF;
+}
+
+.header-button.profile-button[data-role="administrator"]::before {
+    border-color: #FF0000;
+}
+
+.header-button.profile-button[data-role="founder"]::before {
+    border: none;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
 }
 
 /* =========================================
@@ -332,7 +388,7 @@ html {
 }
 
 /* =========================================
-   6. ESTILOS DE AUTENTICACIÓN (PORTADOS DE PROJECT TEST)
+   6. ESTILOS DE AUTENTICACIÓN
    ========================================= */
 .auth-wrapper {
     width: 100%;
@@ -340,7 +396,6 @@ html {
     display: flex;
     justify-content: center;
     align-items: center;
-    /* Aseguramos fondo en contenedor padre si es necesario, aunque en PageWrapper ya se maneja */
 }
 
 .auth-card {
@@ -348,9 +403,7 @@ html {
     background: #ffffff;
     padding: 32px;
     border-radius: 16px;
-    /* REQUERIMIENTO: Sin sombra */
     box-shadow: none;
-    /* Borde transparente o sutil si se desea, ProjectTest tiene border transparente */
     border: 1px solid transparent;
     text-align: center;
 }
@@ -370,7 +423,7 @@ html {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    margin-bottom: 24px; /* Ajustado para separar del form */
+    margin-bottom: 24px;
 }
 
 .auth-header h1,
@@ -387,14 +440,14 @@ html {
 
 .form-group {
     position: relative;
-    margin-bottom: 0; /* Controlado por el wrapper */
+    margin-bottom: 0;
     text-align: left;
     width: 100%;
 }
 
 .form-group input {
     width: 100%;
-    padding: 24px 16px 8px 16px; /* Espaciado interno para efecto floating */
+    padding: 24px 16px 8px 16px;
     border: 1px solid #00000020;
     border-radius: 8px;
     font-size: 16px;
@@ -433,7 +486,6 @@ html {
     transform: none;
 }
 
-/* Botón Toggle Password (Ojo) */
 .btn-toggle-password {
     position: absolute;
     right: 8px;
@@ -458,7 +510,6 @@ html {
     color: #000;
 }
 
-/* Botón Generar Usuario (Register) */
 .btn-generate-username {
     position: absolute;
     right: 8px;
@@ -489,7 +540,6 @@ html {
     padding-right: 55px;
 }
 
-/* Espacio para el botón de generar usuario */
 #username {
     padding-right: 40px;
 }
