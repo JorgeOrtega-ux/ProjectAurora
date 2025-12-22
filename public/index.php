@@ -6,6 +6,13 @@ session_start();
 require_once __DIR__ . '/../config/routers/router.php';
 require_once __DIR__ . '/../config/database/db.php';
 
+// === NUEVO: GENERACIÓN DE TOKEN CSRF ===
+// Si no existe un token en la sesión, creamos uno nuevo.
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+// =======================================
+
 // === CONTROL DE ACCESO (MIDDLEWARE) ===
 $isLoggedIn = isset($_SESSION['user_id']);
 
@@ -69,6 +76,7 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Aurora Alpha</title>
 
+    <meta name="csrf-token" content="<?php echo $_SESSION['csrf_token']; ?>">
     <script>
         window.BASE_PATH = '<?php echo $basePath; ?>';
     </script>
