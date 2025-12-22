@@ -1,10 +1,54 @@
 <?php
 // public/index.php
+session_start();
 
-// 1. Cargar el Router para saber dónde estamos
+// Cargar Router y DB
 require_once __DIR__ . '/../config/routers/router.php';
+require_once __DIR__ . '/../config/db.php'; // (Opcional si solo usas sesión aquí, pero buena práctica)
 
-// 2. Definir rutas físicas para inclusión inicial
+// === CONTROL DE ACCESO (MIDDLEWARE) ===
+$isLoggedIn = isset($_SESSION['user_id']);
+
+// Lista de rutas que NO requieren login
+$publicRoutes = ['login', 'register'];
+
+if (!$isLoggedIn) {
+    // Si NO está logueado y trata de acceder a una ruta privada -> Mandar a Login
+    if (!in_array($currentSection, $publicRoutes)) {
+        header("Location: " . $basePath . "login");
+        exit;
+    }
+} else {
+    // Si SÍ está logueado y trata de acceder a Login/Registro -> Mandar a Home
+    if (in_array($currentSection, $publicRoutes)) {
+        header("Location: " . $basePath);
+        exit;
+    }
+}
+
+// === PREPARAR AVATAR PARA LA VISTA ===
+// NOTA: Como guardamos la imagen fuera de 'public', necesitamos un script para servirla 
+// o usar base64. Para simplificar, si el archivo existe en storage, 
+// puedes hacer un pequeño script 'image-proxy.php' o incrustarlo.
+// Aquí simularemos el path. Para que funcione la etiqueta <img> directamente con ../storage,
+// tu servidor debe permitirlo, o mejor, movemos la lógica de visualización.
+
+$userAvatarCss = '';
+if ($isLoggedIn && !empty($_SESSION['avatar'])) {
+    // Leemos el archivo y lo convertimos a base64 para evitar problemas de permisos de carpeta pública
+    $avatarFile = __DIR__ . '/../' . $_SESSION['avatar'];
+    if (file_exists($avatarFile)) {
+        $type = pathinfo($avatarFile, PATHINFO_EXTENSION);
+        $data = file_get_contents($avatarFile);
+        $base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
+        $userAvatarCss = "background-image: url('{$base64}'); background-size: cover; background-position: center;";
+    } else {
+        // Fallback color si no encuentra el archivo
+        $userAvatarCss = "background-color: #000;"; 
+    }
+}
+
+// 2. Definir rutas físicas
 $routesMap = require __DIR__ . '/../config/routes.php';
 $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
 
@@ -31,12 +75,20 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
         <div class="main-content">
             <div class="general-content">
                 
+                <?php if ($isLoggedIn): ?>
                 <div class="general-content-top">
-                    <?php include __DIR__ . '/../includes/layouts/header.php'; ?>
+                    <?php 
+                        // Pasamos la variable de estilo al header
+                        $avatarStyle = $userAvatarCss; 
+                        include __DIR__ . '/../includes/layouts/header.php'; 
+                    ?>
                 </div>
+                <?php endif; ?>
 
                 <div class="general-content-bottom">
-                    <?php include __DIR__ . '/../includes/modules/module-surface.php'; ?>
+                    <?php if ($isLoggedIn): ?>
+                        <?php include __DIR__ . '/../includes/modules/module-surface.php'; ?>
+                    <?php endif; ?>
                     
                     <div class="general-content-scrolleable" data-container="main-section">
                         <?php 
