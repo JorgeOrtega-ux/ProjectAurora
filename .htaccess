@@ -1,17 +1,11 @@
 <IfModule mod_rewrite.c>
-    Options -MultiViews
     RewriteEngine On
     
-    # IMPORTANTE: Ruta base hacia la carpeta public
-    RewriteBase /ProjectAurora/public/
+    # Redirigir la petición raíz a la carpeta public/
+    RewriteRule ^$ public/ [L]
 
-    # 1. Seguridad: Proteger este archivo
-    RewriteRule ^\.htaccess$ - [F]
-
-    # 2. Si el archivo existe (css, js, imagenes), servirlo directamente
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-
-    # 3. Todo lo demás, enviarlo a index.php (SPA)
-    RewriteRule ^(.*)$ index.php [QSA,L]
+    # Redirigir todas las demás peticiones a public/
+    # (Evita bucles verificando si ya estamos en public)
+    RewriteCond %{REQUEST_URI} !^/ProjectAurora/public/
+    RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>

@@ -7,8 +7,9 @@ export function initMainController() {
 }
 
 function initModuleSystem() {
-    const allowMultipleActive = false; 
-    const closeOnEsc = true;           
+    const allowMultipleActive = false;
+    const closeOnEsc = true;
+    const closeOnClickOutside = true; // Nueva configuración
 
     const buttons = document.querySelectorAll('[data-action]');
     const allModules = document.querySelectorAll('.module-content');
@@ -24,7 +25,7 @@ function initModuleSystem() {
 
     buttons.forEach(btn => {
         btn.addEventListener('click', (e) => {
-            e.stopPropagation(); 
+            e.stopPropagation(); // Evita que el clic llegue al document y se cierre inmediatamente
 
             const action = btn.dataset.action;
             let targetModuleName = '';
@@ -37,7 +38,7 @@ function initModuleSystem() {
 
             if (targetModuleName) {
                 const targetModule = document.querySelector(`[data-module="${targetModuleName}"]`);
-                
+
                 if (targetModule) {
                     const isActive = targetModule.classList.contains('active');
 
@@ -56,6 +57,19 @@ function initModuleSystem() {
             }
         });
     });
+
+    // NUEVO: Lógica para cerrar al hacer clic fuera
+    if (closeOnClickOutside) {
+        document.addEventListener('click', (event) => {
+            // Verificamos si el clic ocurrió DENTRO de algún módulo
+            const isClickInsideModule = event.target.closest('.module-content');
+
+            // Si el clic NO fue dentro de un módulo, cerramos todo
+            if (!isClickInsideModule) {
+                closeAllModules();
+            }
+        });
+    }
 
     if (closeOnEsc) {
         document.addEventListener('keydown', (event) => {
