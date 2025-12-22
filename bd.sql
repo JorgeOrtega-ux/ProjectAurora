@@ -11,3 +11,16 @@ CREATE TABLE IF NOT EXISTS users (
     avatar_path VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- NUEVA TABLA PARA CÓDIGOS DE VERIFICACIÓN
+CREATE TABLE IF NOT EXISTS verification_codes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    identifier VARCHAR(100) NOT NULL,
+    code_type VARCHAR(50) NOT NULL DEFAULT 'account_activation',
+    code CHAR(6) NOT NULL,
+    payload JSON NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX (identifier),
+    INDEX (code)
+);
