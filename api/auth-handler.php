@@ -2,6 +2,7 @@
 // api/auth-handler.php
 session_start();
 require_once __DIR__ . '/../config/database/db.php';
+require_once __DIR__ . '/../includes/libs/TOTP.php'; // Necesario para verificar códigos 2FA
 
 header('Content-Type: application/json');
 
@@ -130,6 +131,40 @@ function create_persistence_token($pdo, $userId) {
         'httponly' => true,
         'samesite' => 'Strict'
     ]);
+}
+
+// Función auxiliar para completar login exitoso (Reutilizable)
+function completeLogin($pdo, $user) {
+    // Regenerar ID de sesión
+    session_regenerate_id(true);
+
+    $_SESSION['user_id'] = $user['id'];
+    $_SESSION['username'] = $user['username'];
+    $_SESSION['role'] = $user['role'];
+    $_SESSION['avatar'] = $user['avatar_path'];
+    $_SESSION['email'] = $user['email'];
+
+    // Cargar preferencias
+    $prefStmt = $pdo->prepare("SELECT language, open_links_new_tab FROM user_preferences WHERE user_id = ?");
+    $prefStmt->execute([$user['id']]);
+    $prefs = $prefStmt->fetch();
+
+    if ($prefs) {
+        $_SESSION['preferences'] = [
+            'language' => $prefs['language'],
+            'open_links_new_tab' => (bool)$prefs['open_links_new_tab']
+        ];
+    } else {
+        $_SESSION['preferences'] = [
+            'language' => 'es-latam',
+            'open_links_new_tab' => true
+        ];
+    }
+
+    // SIEMPRE CREAR TOKEN DE PERSISTENCIA
+    create_persistence_token($pdo, $user['id']);
+
+    jsonResponse(true, 'Bienvenido.', ['redirect' => '/ProjectAurora/']);
 }
 
 // =========================================================================
@@ -350,7 +385,7 @@ if ($action === 'register_step_1') {
     }
 
 // =========================================================================
-//  LOGIN (CON PERSISTENCIA OBLIGATORIA)
+//  LOGIN MODIFICADO CON 2FA
 // =========================================================================
 } elseif ($action === 'login') {
     $email = trim($_POST['email'] ?? '');
@@ -365,39 +400,68 @@ if ($action === 'register_step_1') {
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password'])) {
-        // Regenerar ID de sesión
-        session_regenerate_id(true);
-
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['username'] = $user['username'];
-        $_SESSION['role'] = $user['role'];
-        $_SESSION['avatar'] = $user['avatar_path'];
-        $_SESSION['email'] = $user['email'];
-
-        // Cargar preferencias
-        $prefStmt = $pdo->prepare("SELECT language, open_links_new_tab FROM user_preferences WHERE user_id = ?");
-        $prefStmt->execute([$user['id']]);
-        $prefs = $prefStmt->fetch();
-
-        if ($prefs) {
-            $_SESSION['preferences'] = [
-                'language' => $prefs['language'],
-                'open_links_new_tab' => (bool)$prefs['open_links_new_tab']
-            ];
-        } else {
-            $_SESSION['preferences'] = [
-                'language' => 'es-latam',
-                'open_links_new_tab' => true
-            ];
+        
+        // --- NUEVO: CHECK 2FA ---
+        // Verificamos si la columna existe y si está activada (1)
+        if (isset($user['two_factor_enabled']) && $user['two_factor_enabled'] == 1) {
+            // No logueamos todavía. Guardamos ID temporalmente en sesión.
+            $_SESSION['2fa_pending_user_id'] = $user['id'];
+            
+            jsonResponse(true, 'Credenciales correctas. Se requiere código 2FA.', [
+                'require_2fa' => true
+            ]);
         }
 
-        // SIEMPRE CREAR TOKEN DE PERSISTENCIA
-        create_persistence_token($pdo, $user['id']);
+        // --- FLUJO NORMAL (SIN 2FA) ---
+        completeLogin($pdo, $user);
 
-        jsonResponse(true, 'Bienvenido.', ['redirect' => '/ProjectAurora/']);
     } else {
         logSecurityEvent($pdo, $email, 'login_fail');
         jsonResponse(false, 'Credenciales incorrectas.');
+    }
+
+// =========================================================================
+//  NUEVO: VERIFICAR LOGIN 2FA (ETAPA 2)
+// =========================================================================
+} elseif ($action === 'verify_2fa_login') {
+    $code = trim($_POST['code'] ?? '');
+    
+    if (!isset($_SESSION['2fa_pending_user_id'])) {
+        jsonResponse(false, 'Sesión expirada. Vuelve a iniciar sesión.');
+    }
+
+    $userId = $_SESSION['2fa_pending_user_id'];
+    
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+    $stmt->execute([$userId]);
+    $user = $stmt->fetch();
+
+    if (!$user) {
+        jsonResponse(false, 'Usuario no encontrado.');
+    }
+
+    $isValid = false;
+
+    // 1. Intentar como código TOTP (App Authenticator)
+    if (TOTP::verifyCode($user['two_factor_secret'], $code)) {
+        $isValid = true;
+    } else {
+        // 2. Intentar como código de recuperación (Backup)
+        $recoveryCodes = json_decode($user['two_factor_recovery_codes'] ?? '[]', true);
+        if (is_array($recoveryCodes) && in_array($code, $recoveryCodes)) {
+            $isValid = true;
+            // Remover código usado para que no se use dos veces
+            $recoveryCodes = array_diff($recoveryCodes, [$code]);
+            $newJson = json_encode(array_values($recoveryCodes)); // Reindexar
+            $pdo->prepare("UPDATE users SET two_factor_recovery_codes = ? WHERE id = ?")->execute([$newJson, $userId]);
+        }
+    }
+
+    if ($isValid) {
+        unset($_SESSION['2fa_pending_user_id']);
+        completeLogin($pdo, $user);
+    } else {
+        jsonResponse(false, 'Código inválido.');
     }
 
 // =========================================================================

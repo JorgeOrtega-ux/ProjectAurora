@@ -20,18 +20,28 @@ export function initAuthController() {
         const target = e.target;
 
         // ------------------------------------------
-        // 1. LOGIN (Sin Toast)
+        // 1. LOGIN (PASO 1)
         // ------------------------------------------
         const btnLogin = target.closest('#btn-login');
         if (btnLogin) {
             e.preventDefault();
             hideError('login-error'); 
-            handleLogin(btnLogin);
+            handleLoginStep1(btnLogin); // Función renombrada para claridad
             return;
         }
 
         // ------------------------------------------
-        // 2. REGISTRO - PASO 1 -> PASO 2
+        // 2. LOGIN (PASO 2 - 2FA)
+        // ------------------------------------------
+        const btnVerify2FA = target.closest('#btn-verify-2fa');
+        if (btnVerify2FA) {
+            e.preventDefault();
+            handleLoginStep2(btnVerify2FA);
+            return;
+        }
+
+        // ------------------------------------------
+        // 3. REGISTRO - PASO 1 -> PASO 2
         // ------------------------------------------
         const btnNext1 = target.closest('#btn-next-1');
         if (btnNext1) {
@@ -71,7 +81,7 @@ export function initAuthController() {
         }
 
         // ------------------------------------------
-        // 3. REGISTRO - PASO 2 -> PASO 3
+        // 4. REGISTRO - PASO 2 -> PASO 3
         // ------------------------------------------
         const btnNext2 = target.closest('#btn-next-2');
         if (btnNext2) {
@@ -112,7 +122,7 @@ export function initAuthController() {
         }
 
         // ------------------------------------------
-        // 4. REGISTRO - PASO 3 -> FINAL
+        // 5. REGISTRO - PASO 3 -> FINAL
         // ------------------------------------------
         const btnFinish = target.closest('#btn-finish');
         if (btnFinish) {
@@ -148,7 +158,7 @@ export function initAuthController() {
         }
 
         // ------------------------------------------
-        // 5. REENVIAR CÓDIGO
+        // 6. REENVIAR CÓDIGO
         // ------------------------------------------
         const btnResend = target.closest('#btn-resend-code');
         if (btnResend) {
@@ -185,7 +195,7 @@ export function initAuthController() {
         }
 
         // ------------------------------------------
-        // 6. RECUPERAR PASSWORD - SOLICITUD (PASO 1)
+        // 7. RECUPERAR PASSWORD - SOLICITUD (PASO 1)
         // ------------------------------------------
         const btnRequestReset = target.closest('#btn-request-reset');
         if (btnRequestReset) {
@@ -232,7 +242,7 @@ export function initAuthController() {
         }
 
         // ------------------------------------------
-        // 7. RESET PASSWORD - NUEVA CLAVE (PASO 2)
+        // 8. RESET PASSWORD - NUEVA CLAVE (PASO 2)
         // ------------------------------------------
         const btnSubmitNewPass = target.closest('#btn-submit-new-password');
         if (btnSubmitNewPass) {
@@ -329,8 +339,15 @@ export function initAuthController() {
         if (e.key === 'Enter') {
             const activeInput = document.activeElement;
             if (activeInput && activeInput.closest('#loginContainer')) {
-                const btn = document.getElementById('btn-login');
-                if(btn) btn.click();
+                // Si estamos en etapa 2, trigger botón 2fa
+                const stage2 = document.getElementById('login-stage-2');
+                if(stage2 && stage2.style.display !== 'none') {
+                    const btn2 = document.getElementById('btn-verify-2fa');
+                    if(btn2) btn2.click();
+                } else {
+                    const btn1 = document.getElementById('btn-login');
+                    if(btn1) btn1.click();
+                }
             }
         }
     });
@@ -351,8 +368,9 @@ function setLoading(btn, isLoading) {
     }
 }
 
-async function handleLogin(btn) {
-    const inputs = document.querySelectorAll('.auth-card input');
+// NUEVA FUNCIÓN: LOGIN PASO 1 (EMAIL/PASS)
+async function handleLoginStep1(btn) {
+    const inputs = document.querySelectorAll('#login-stage-1 input');
     const formData = new FormData();
     formData.append('action', 'login');
     
@@ -370,8 +388,27 @@ async function handleLogin(btn) {
     setLoading(btn, true);
     try {
         const res = await ApiService.post('auth-handler.php', formData);
+        
         if (res.success) {
-            window.location.href = res.redirect;
+            // VERIFICAR SI REQUIERE 2FA
+            if (res.require_2fa) {
+                // Cambiar UI a Etapa 2
+                document.getElementById('login-stage-1').style.display = 'none';
+                
+                const stage2 = document.getElementById('login-stage-2');
+                stage2.style.display = 'block';
+                stage2.classList.remove('disabled');
+
+                document.getElementById('auth-title').innerText = "Verificación 2FA";
+                document.getElementById('auth-subtitle').innerText = "Protección adicional";
+                
+                // Enfocar input
+                const inputCode = document.getElementById('2fa-code');
+                if(inputCode) inputCode.focus();
+            } else {
+                // Login directo
+                window.location.href = res.redirect;
+            }
         } else {
             showError(btn, 'login-error', res.message);
             setLoading(btn, false);
@@ -382,13 +419,44 @@ async function handleLogin(btn) {
     }
 }
 
+// NUEVA FUNCIÓN: LOGIN PASO 2 (CÓDIGO 2FA)
+async function handleLoginStep2(btn) {
+    const code = document.getElementById('2fa-code').value;
+    if(!code) return;
+
+    const formData = new FormData();
+    formData.append('action', 'verify_2fa_login');
+    formData.append('code', code);
+
+    setLoading(btn, true);
+
+    try {
+        const res = await ApiService.post('auth-handler.php', formData);
+        if (res.success) {
+            window.location.href = res.redirect;
+        } else {
+            Toast.show(res.message, 'error'); // Mostrar error flotante o inline
+            setLoading(btn, false);
+            document.getElementById('2fa-code').value = '';
+        }
+    } catch (e) {
+        Toast.show("Error de conexión", 'error');
+        setLoading(btn, false);
+    }
+}
+
 function showError(referenceNode, errorId, message) {
     let errorDiv = document.getElementById(errorId);
     if (!errorDiv) {
         errorDiv = document.createElement('div');
         errorDiv.id = errorId;
         errorDiv.className = 'auth-inline-error';
-        referenceNode.insertAdjacentElement('afterend', errorDiv);
+        // Ajuste para insertar error correctamente
+        if(referenceNode.nextSibling) {
+            referenceNode.parentNode.insertBefore(errorDiv, referenceNode.nextSibling);
+        } else {
+            referenceNode.parentNode.appendChild(errorDiv);
+        }
     }
     errorDiv.innerText = message;
 }

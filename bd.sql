@@ -9,7 +9,11 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     role ENUM('user', 'moderator', 'administrator', 'founder') DEFAULT 'user',
     avatar_path VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- 2FA COLUMNS
+    two_factor_secret VARCHAR(255) DEFAULT NULL,
+    two_factor_enabled TINYINT(1) DEFAULT 0,
+    two_factor_recovery_codes JSON DEFAULT NULL
 );
 
 -- NUEVA TABLA PARA CÓDIGOS DE VERIFICACIÓN

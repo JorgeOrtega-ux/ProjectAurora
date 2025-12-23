@@ -2,6 +2,7 @@
 // api/settings-handler.php
 session_start();
 require_once __DIR__ . '/../config/database/db.php';
+require_once __DIR__ . '/../includes/libs/TOTP.php'; // <--- IMPORTANTE: Librería para 2FA
 
 header('Content-Type: application/json');
 
@@ -261,6 +262,55 @@ if ($action === 'upload_avatar') {
         jsonResponse(true, 'Preferencia guardada.');
     } catch (Exception $e) {
         jsonResponse(false, 'Error al guardar preferencia: ' . $e->getMessage());
+    }
+
+// =========================================================
+//  NUEVA LÓGICA: 2FA (TWO FACTOR AUTH)
+// =========================================================
+
+} elseif ($action === 'init_2fa') {
+    // 1. Generar secreto temporal
+    $secret = TOTP::createSecret();
+    $_SESSION['temp_2fa_secret'] = $secret;
+
+    // 2. Generar URL de QR
+    $username = $_SESSION['username'] ?? 'User';
+    // Genera URL para gráfico QR
+    $qrUrl = TOTP::getQRCodeUrl($username, $secret, 'ProjectAurora');
+
+    jsonResponse(true, 'Escanea el código', ['qr_url' => $qrUrl, 'secret' => $secret]);
+
+} elseif ($action === 'enable_2fa') {
+    $code = $_POST['code'] ?? '';
+    
+    if (!isset($_SESSION['temp_2fa_secret'])) {
+        jsonResponse(false, 'La sesión de configuración ha expirado. Recarga.');
+    }
+
+    $secret = $_SESSION['temp_2fa_secret'];
+
+    // 1. Verificar el código TOTP
+    if (TOTP::verifyCode($secret, $code)) {
+        
+        // 2. Generar códigos de recuperación
+        $recoveryCodes = [];
+        for($i=0; $i<8; $i++) {
+            $recoveryCodes[] = bin2hex(random_bytes(4)); // Ej: a1b2c3d4
+        }
+        $jsonCodes = json_encode($recoveryCodes);
+
+        // 3. Guardar en BD
+        $stmt = $pdo->prepare("UPDATE users SET two_factor_secret = ?, two_factor_enabled = 1, two_factor_recovery_codes = ? WHERE id = ?");
+        
+        if ($stmt->execute([$secret, $jsonCodes, $userId])) {
+            unset($_SESSION['temp_2fa_secret']);
+            jsonResponse(true, '2FA Activado correctamente.', ['recovery_codes' => $recoveryCodes]);
+        } else {
+            jsonResponse(false, 'Error al guardar en base de datos.');
+        }
+
+    } else {
+        jsonResponse(false, 'Código incorrecto. Intenta de nuevo.');
     }
 }
 
