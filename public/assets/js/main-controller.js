@@ -2,6 +2,24 @@ export function initMainController() {
     console.log("Inicializando controlador principal...");
 
     initModuleSystem();
+    initScrollEffects();
+}
+
+function initScrollEffects() {
+    const scrollContainer = document.querySelector('.general-content-scrolleable');
+    const topHeader = document.querySelector('.general-content-top');
+
+    // Verificamos que existan los elementos (por si estamos en login/register donde no hay header)
+    if (!scrollContainer || !topHeader) return;
+
+    scrollContainer.addEventListener('scroll', () => {
+        // Si el scroll es mayor a 0 (o un umbral pequeño como 10px), agregamos la sombra
+        if (scrollContainer.scrollTop > 5) {
+            topHeader.classList.add('shadow');
+        } else {
+            topHeader.classList.remove('shadow');
+        }
+    });
 }
 
 function initModuleSystem() {

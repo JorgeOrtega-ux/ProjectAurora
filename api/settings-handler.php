@@ -95,7 +95,16 @@ if ($action === 'upload_avatar') {
     $currentUser = $stmt->fetch();
     $oldPath = $currentUser['avatar_path'];
     $firstLetter = substr($currentUser['username'], 0, 1);
-    $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($firstLetter) . "&background=random&color=fff&size=128&format=png";
+    
+    // === COLORES PERSONALIZADOS Y BOLD ===
+    // Modificación para seleccionar color aleatorio de tu paleta
+    $bgColors = ['40a060', 'a73d3d', '3d3da7', '3d9da7', '9d3da7'];
+    $randomBg = $bgColors[array_rand($bgColors)];
+
+    // Añadido &bold=true
+    $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($firstLetter) . "&background=" . $randomBg . "&color=fff&size=128&format=png&bold=true";
+    // =====================================
+
     $newFileName = $currentUser['uuid'] . '-' . time() . '.png';
     $targetPath = $dirDefault . $newFileName;
     $dbPath = 'storage/profilePicture/default/' . $newFileName;

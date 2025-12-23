@@ -323,9 +323,17 @@ if ($action === 'register_step_1') {
     $passwordHash = $payload['password_hash']; 
     $uuid = generate_uuid();
 
+    // === GENERACIÓN AVATAR CON PALETA PERSONALIZADA Y BOLD ===
     $firstLetter = substr($username, 0, 1);
-    $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($firstLetter) . "&background=random&color=fff&size=128&format=png";
     
+    // Paleta de colores solicitada (sin #)
+    $bgColors = ['40a060', 'a73d3d', '3d3da7', '3d9da7', '9d3da7'];
+    $randomBg = $bgColors[array_rand($bgColors)];
+
+    // Añadido &bold=true
+    $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($firstLetter) . "&background=" . $randomBg . "&color=fff&size=128&format=png&bold=true";
+    // =========================================================
+
     $storageDir = __DIR__ . '/../storage/profilePicture/default/';
     if (!is_dir($storageDir)) { mkdir($storageDir, 0777, true); }
     

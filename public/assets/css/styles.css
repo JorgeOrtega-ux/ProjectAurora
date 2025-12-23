@@ -778,6 +778,24 @@ html {
     .search-wrapper {
         max-width: 100%;
     }
+
+    .main-content {
+        padding: 0;
+    }
+
+    .general-content {
+        border-radius: 0;
+    }
+
+    .module-content.module-surface {
+        width: 100%;
+        padding: 0;
+    }
+
+    .module-surface .menu-content {
+        width: 100%;
+        border-radius: 0;
+    }
 }
 
 @keyframes fadeIn {
