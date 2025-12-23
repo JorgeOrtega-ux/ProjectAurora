@@ -1,0 +1,427 @@
+/* public/assets/css/components.css */
+
+/* =========================================
+   1. ESTRUCTURA DE COMPONENTE (Cards & Groups)
+   ========================================= */
+.component-wrapper {
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.component-header-card,
+.component-card {
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 12px;
+    padding: 24px;
+    background-color: #ffffff;
+}
+
+.component-header-card {
+    text-align: center;
+}
+
+.component-page-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+    color: #000;
+}
+
+.component-page-description {
+    font-size: 15px;
+    color: #666;
+    margin: 0;
+}
+
+/* Agrupaciones */
+.component-card--grouped {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    gap: 0;
+}
+
+.component-group-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    padding: 24px;
+    background-color: transparent;
+    gap: 16px;
+}
+
+.component-divider {
+    border: 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    width: 100%;
+    margin: 0;
+}
+
+.component-card__content {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.component-card__text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+}
+
+.component-card__title {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0;
+    color: #000;
+}
+
+.component-card__description {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.text-display-value {
+    font-size: 14px;
+    color: #333;
+}
+
+/* =========================================
+   2. ELEMENTOS VISUALES (Avatares en componentes)
+   ========================================= */
+.component-card__profile-picture,
+.component-card__icon-container {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: #f5f5fa;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.component-card__profile-picture.component-card__profile-picture--bordered,
+.component-card__icon-container.component-card__icon-container--bordered {
+    background-color: transparent;
+    border: 1px solid #00000020;
+    border-radius: 8px;
+}
+
+/* Bordes de Rol en Componentes */
+.component-card__profile-picture::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.component-card__profile-picture[data-role="user"]::before {
+    border-color: #cccccc;
+}
+
+.component-card__profile-picture[data-role="moderator"]::before {
+    border-color: #0000FF;
+}
+
+.component-card__profile-picture[data-role="administrator"]::before {
+    border-color: #FF0000;
+}
+
+.component-card__profile-picture[data-role="founder"]::before {
+    border: none;
+    background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+}
+
+.component-card__avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.component-card__avatar-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    opacity: 0;
+    cursor: pointer;
+    border-radius: 50%;
+    z-index: 3;
+    transition: opacity 0.2s ease;
+}
+
+.component-card__profile-picture:hover .component-card__avatar-overlay {
+    opacity: 1;
+}
+
+/* =========================================
+   3. CONTROLES DE COMPONENTE (Botones, Inputs)
+   ========================================= */
+.component-card__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.component-card__actions.actions-right {
+    justify-content: flex-end;
+}
+
+.component-button {
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
+    transition: background-color 0.2s;
+}
+
+.component-button:hover {
+    background-color: #f5f5fa;
+}
+
+.component-button.primary {
+    background-color: #000;
+    color: #fff;
+    border: none;
+}
+
+.component-button.primary:hover {
+    background-color: #333;
+}
+
+.component-text-input {
+    width: 100%;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    background: transparent;
+    color: #000;
+}
+
+.component-text-input:focus {
+    border-color: #000;
+}
+
+.component-input-wrapper {
+    width: 100%;
+    min-width: 200px;
+}
+
+/* Formulario por etapas (e.g. Cambio contraseña) */
+.component-stage-form {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    width: 100%;
+}
+
+/* =========================================
+   4. ELEMENTOS AUXILIARES DE COMPONENTES
+   (Dropdowns y Toggles usados dentro del sistema)
+   ========================================= */
+
+/* Toggle Switch Component */
+.component-toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+
+.component-toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.component-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #e0e0e0;
+    border-radius: 34px;
+    transition: .3s;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.component-toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    border-radius: 50%;
+    transition: .3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+input:checked+.component-toggle-slider {
+    background-color: #000;
+}
+
+input:checked+.component-toggle-slider:before {
+    transform: translateX(20px);
+}
+
+/* Dropdowns (Trigger Select) */
+.trigger-select-wrapper {
+    position: relative;
+    width: 260px;
+}
+
+.trigger-selector {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 8px;
+    background-color: #ffffff;
+    cursor: pointer;
+    user-select: none;
+    gap: 8px;
+    transition: border-color 0.2s ease;
+}
+
+.trigger-selector:hover,
+.trigger-selector.active {
+    border-color: #000;
+}
+
+.trigger-select-text {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.popover-module {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    width: 100%;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    z-index: 1000;
+    padding: 6px;
+    display: none;
+    flex-direction: column;
+    animation: fadeInPopover 0.15s ease-out;
+}
+
+.popover-module.active {
+    display: flex;
+}
+
+@keyframes fadeInPopover {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =========================================
+   5. RESPONSIVE DE COMPONENTES
+   ========================================= */
+.component-group-item--stacked {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+}
+
+.component-group-item--stacked .component-card__actions {
+    width: 100%;
+    justify-content: flex-start !important;
+}
+
+.component-group-item--stacked .component-card__actions.actions-force-end {
+    justify-content: flex-end !important;
+}
+
+@media (max-width: 600px) {
+    .component-group-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .component-card__actions.actions-right {
+        justify-content: space-between;
+        width: 100%;
+    }
+
+    .trigger-select-wrapper {
+        width: 100%;
+    }
+
+    .input-group-responsive.active {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px;
+    }
+
+    .input-group-responsive .component-card__actions {
+        margin-top: 4px;
+    }
+
+    .component-button {
+        flex: 1;
+    }
+}

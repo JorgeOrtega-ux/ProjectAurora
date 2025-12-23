@@ -19,7 +19,7 @@ html {
 }
 
 /* =========================================
-   2. LAYOUT PRINCIPAL
+   2. LAYOUT PRINCIPAL (App Shell)
    ========================================= */
 .page-wrapper {
     width: 100%;
@@ -76,7 +76,7 @@ html {
 }
 
 /* =========================================
-   3. HEADER Y BOTONES SUPERIORES
+   3. HEADER GLOBAL
    ========================================= */
 .header {
     position: relative;
@@ -109,6 +109,96 @@ html {
     z-index: 0;
 }
 
+.header-item {
+    display: flex;
+    flex-direction: row;
+    width: auto;
+    height: 100%;
+    gap: 8px;
+}
+
+.header-button {
+    display: flex;
+    flex: 0 0 auto;
+    justify-content: center;
+    align-items: center;
+    width: 40px;
+    height: 40px;
+    background-color: transparent;
+    border-radius: 8px;
+    border: 1px solid #00000020;
+    cursor: pointer;
+    outline: none;
+    user-select: none;
+    position: relative;
+    transition: background-color 0.2s ease;
+}
+
+.header-button:hover {
+    background-color: #f5f5fa;
+}
+
+/* Perfil en Header */
+.header-button.profile-button {
+    position: relative;
+    padding: 0;
+    border: none;
+    background-color: transparent;
+    overflow: visible;
+    border-radius: 50%;
+}
+
+.profile-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    position: relative;
+    z-index: 1;
+    border-radius: 50%;
+}
+
+.header-guest-icon {
+    font-weight: bold;
+    color: #555;
+    position: relative;
+    z-index: 1;
+}
+
+.header-button.profile-button::before {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border: 2px solid transparent;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Roles Header */
+.header-button.profile-button[data-role="user"]::before {
+    border-color: #cccccc;
+}
+
+.header-button.profile-button[data-role="moderator"]::before {
+    border-color: #0000FF;
+}
+
+.header-button.profile-button[data-role="administrator"]::before {
+    border-color: #FF0000;
+}
+
+.header-button.profile-button[data-role="founder"]::before {
+    border: none;
+    background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+}
+
+/* Buscador Header */
 .search-wrapper {
     width: 100%;
     max-width: 500px;
@@ -149,112 +239,8 @@ html {
     background-color: transparent;
 }
 
-.header-right {
-    position: relative;
-    z-index: 1;
-}
-
-.header-item {
-    display: flex;
-    flex-direction: row;
-    width: auto;
-    height: 100%;
-    gap: 8px;
-}
-
-.header-button {
-    display: flex;
-    flex: 0 0 auto;
-    justify-content: center;
-    align-items: center;
-    width: 40px;
-    height: 40px;
-    background-color: transparent;
-    border-radius: 8px;
-    border: 1px solid #00000020;
-    cursor: pointer;
-    outline: none;
-    user-select: none;
-    position: relative;
-    transition: background-color 0.2s ease;
-}
-
-.header-button:hover {
-    background-color: #f5f5fa;
-}
-
-/* --- ESTILOS DE BOTÓN DE PERFIL Y ROLES --- */
-
-.header-button.profile-button {
-    position: relative;
-    padding: 0;
-    border: none;
-    background-color: transparent;
-    overflow: visible;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.profile-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-    position: relative;
-    z-index: 1;
-    border-radius: 50%;
-}
-
-.header-guest-icon {
-    font-weight: bold;
-    color: #555;
-    position: relative;
-    z-index: 1;
-}
-
-.header-button.profile-button::before {
-    content: '';
-    position: absolute;
-    border-radius: 50%;
-    top: -4px;
-    left: -4px;
-    right: -4px;
-    bottom: -4px;
-    border: 2px solid transparent;
-    pointer-events: none;
-    z-index: 2;
-}
-
-/* Colores de Roles */
-.header-button.profile-button[data-role="user"]::before {
-    border-color: #cccccc;
-}
-
-.header-button.profile-button[data-role="moderator"]::before {
-    border-color: #0000FF;
-}
-
-.header-button.profile-button[data-role="administrator"]::before {
-    border-color: #FF0000;
-}
-
-.header-button.profile-button[data-role="founder"]::before {
-    border: none;
-    top: -4px;
-    left: -4px;
-    right: -4px;
-    bottom: -4px;
-    background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
-    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
-}
-
 /* =========================================
-   4. MENÚS LATERALES
+   4. MENÚS LATERALES (MODULES)
    ========================================= */
 .module-content.module-surface {
     position: absolute;
@@ -293,54 +279,6 @@ html {
     justify-content: flex-end;
 }
 
-.menu-list {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: auto;
-    gap: 4px;
-    user-select: none;
-}
-
-.menu-link {
-    display: flex;
-    flex: 0 0 auto;
-    flex-direction: row;
-    width: 100%;
-    height: 40px;
-    position: relative;
-    border-radius: 8px;
-    cursor: pointer;
-    text-decoration: none;
-    color: inherit;
-    border: 1px solid transparent;
-    transition: background-color 0.2s ease;
-}
-
-.menu-link:hover,
-.menu-link.active {
-    background-color: #f5f5fa;
-}
-
-.menu-link-icon {
-    display: flex;
-    flex: 0 0 auto;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-}
-
-.menu-link-text {
-    display: block;
-    flex: 1 1 auto;
-    text-align: start;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 14px;
-    align-self: center;
-}
-
 .module-content.module-profile {
     position: absolute;
     height: auto;
@@ -358,47 +296,63 @@ html {
     box-shadow: 0 4px 12px #00000020;
 }
 
-.active { display: flex; }
-.disabled { display: none; }
+/* Enlaces de menú (Común en Sidebar y Dropdowns) */
+.menu-list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: auto;
+    gap: 4px;
+    user-select: none;
+}
+
+.menu-link {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: row;
+    width: 100%;
+    height: 40px;
+    /* Altura base para sidebar */
+    position: relative;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid transparent;
+    transition: background-color 0.2s ease;
+    align-items: center;
+}
+
+.menu-link:hover,
+.menu-link.active {
+    background-color: #f5f5fa;
+    color: #000;
+    font-weight: 500;
+}
+
+.menu-link-icon {
+    display: flex;
+    flex: 0 0 auto;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 40px;
+    /* Ancho fijo para icono */
+}
+
+.menu-link-text {
+    display: block;
+    flex: 1 1 auto;
+    text-align: start;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 14px;
+    padding-right: 12px;
+}
 
 /* =========================================
-   5. MEDIA QUERIES (LAYOUT)
-   ========================================= */
-@media (max-width: 725px) {
-    .header { gap: 0; justify-content: space-between; }
-    .header-left { order: 1; }
-    .header-right { order: 2; }
-    .header-center { display: flex; order: 3; flex: 0 0 100%; padding: 8px 0 0 0; width: 100%; }
-    .search-wrapper { max-width: 100%; }
-}
-
-/* Spinner General (Grande, Oscuro) */
-.spinner {
-    width: 40px; height: 40px;
-    border: 4px solid rgba(0, 0, 0, 0.1);
-    border-left-color: #000;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-/* Spinner Pequeño (Para botones oscuros) */
-.spinner-sm {
-    width: 24px;
-    height: 24px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-left-color: #fff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    display: inline-block;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* =========================================
-   6. ESTILOS DE AUTENTICACIÓN Y FORMULARIOS
+   5. PÁGINAS DE AUTENTICACIÓN (LOGIN/REGISTER)
    ========================================= */
 .auth-wrapper {
     width: 100%;
@@ -469,7 +423,6 @@ html {
 
 .form-group input:focus {
     border-color: #000;
-    background-color: #fff;
 }
 
 .form-group label {
@@ -485,9 +438,8 @@ html {
     z-index: 1;
 }
 
-/* Efecto Floating Label */
-.form-group input:focus + label,
-.form-group input:not(:placeholder-shown) + label {
+.form-group input:focus+label,
+.form-group input:not(:placeholder-shown)+label {
     top: 12px;
     left: 16px;
     font-size: 12px;
@@ -496,7 +448,13 @@ html {
     transform: none;
 }
 
-/* Botón Genérico para Inputs (Toggle Password & Generate Username) */
+/* Padding extra si hay icono (eye) a la derecha */
+.form-group input[type="password"],
+.form-group input.password-visible,
+#username {
+    padding-right: 55px;
+}
+
 .btn-input-action {
     position: absolute;
     right: 8px;
@@ -522,13 +480,6 @@ html {
     color: #000;
 }
 
-/* Padding para cuando hay botón a la derecha */
-.form-group input[type="password"],
-.form-group input.password-visible,
-#username { 
-    padding-right: 55px;
-}
-
 .forgot-password {
     display: block;
     text-align: right;
@@ -546,6 +497,7 @@ html {
     text-decoration: underline;
 }
 
+/* Botón Primario Genérico (Usado en Auth) */
 .btn-primary {
     width: 100%;
     padding: 14px;
@@ -597,14 +549,13 @@ html {
     border: 1px solid #ffcdd2;
 }
 
-/* === NUEVO ESTILO PARA ERRORES INLINE DINÁMICOS === */
 .auth-inline-error {
     width: 100%;
     margin-top: 16px;
     padding: 12px;
     background-color: transparent;
-    border: 1px solid #d32f2f; /* Borde rojo */
-    color: #d32f2f;            /* Texto rojo */
+    border: 1px solid #d32f2f;
+    color: #d32f2f;
     border-radius: 8px;
     font-size: 14px;
     text-align: center;
@@ -612,16 +563,8 @@ html {
     animation: fadeIn 0.3s ease;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.mt-16 { margin-top: 16px; }
-.mb-0 { margin-bottom: 0; }
-
 /* =========================================
-   7. SISTEMA DE NOTIFICACIONES TOAST
+   6. UTILIDADES Y EXTRAS
    ========================================= */
 #toast-container {
     position: fixed;
@@ -631,7 +574,7 @@ html {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    pointer-events: none; /* Permite clicks a través del contenedor vacío */
+    pointer-events: none;
 }
 
 .toast-item {
@@ -641,7 +584,7 @@ html {
     background-color: #ffffff;
     padding: 12px 16px;
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     display: flex;
     align-items: center;
     gap: 12px;
@@ -678,25 +621,72 @@ html {
     color: #333;
 }
 
-/* Variantes de Toast */
-.toast-item.success { border-left-color: #2e7d32; }
-.toast-item.success .toast-icon { color: #2e7d32; }
+.toast-item.success {
+    border-left-color: #2e7d32;
+}
 
-.toast-item.error { border-left-color: #d32f2f; }
-.toast-item.error .toast-icon { color: #d32f2f; }
+.toast-item.success .toast-icon {
+    color: #2e7d32;
+}
 
-.toast-item.warning { border-left-color: #ed6c02; }
-.toast-item.warning .toast-icon { color: #ed6c02; }
+.toast-item.error {
+    border-left-color: #d32f2f;
+}
 
-.toast-item.info { border-left-color: #0288d1; }
-.toast-item.info .toast-icon { color: #0288d1; }
+.toast-item.error .toast-icon {
+    color: #d32f2f;
+}
 
-/* =========================================
-   8. ESTILOS PANTALLA DE ERROR TÉCNICO (CRASH)
-   ========================================= */
+.toast-item.warning {
+    border-left-color: #ed6c02;
+}
+
+.toast-item.warning .toast-icon {
+    color: #ed6c02;
+}
+
+.toast-item.info {
+    border-left-color: #0288d1;
+}
+
+.toast-item.info .toast-icon {
+    color: #0288d1;
+}
+
+/* Loaders */
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-left-color: #000;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.spinner-sm {
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-left-color: #fff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Crash Screen */
 .crash-header {
     margin-bottom: 24px;
-    text-align: center; /* Opcional, si quieres centrado */
+    text-align: center;
 }
 
 .crash-icon {
@@ -704,8 +694,7 @@ html {
     margin-bottom: 16px;
     color: #000;
     display: block;
-    margin-left: auto;
-    margin-right: auto;
+    margin: 0 auto;
 }
 
 .crash-title {
@@ -737,452 +726,70 @@ html {
     color: #d32f2f;
 }
 
-
-
-
-
-
-/* =========================================
-   1. ESTRUCTURA Y LAYOUT (Wrapper & Cards)
-   ========================================= */
-.component-wrapper {
-    width: 100%;
-    max-width: 700px;
-    margin: 0 auto;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+/* Helpers */
+.active {
+    display: flex !important;
 }
 
-.component-header-card,
-.component-card {
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    border-radius: 12px;
-    padding: 24px;
-    background-color: #ffffff;
+.disabled {
+    display: none !important;
 }
 
-.component-header-card {
-    text-align: center;
-}
-
-.component-page-title {
-    font-size: 24px;
-    font-weight: 700;
-    margin: 0 0 8px 0;
-    color: #000;
-}
-
-.component-page-description {
-    font-size: 15px;
-    color: #666;
-    margin: 0;
-}
-
-/* Tarjetas Agrupadas (sin padding externo para que los items controlen el borde) */
-.component-card--grouped {
-    display: flex;
-    flex-direction: column;
-    padding: 0;
-    gap: 0;
-}
-
-.component-group-item {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    padding: 24px;
-    background-color: transparent;
-    gap: 16px;
-}
-
-.component-divider {
-    border: 0;
-    border-top: 1px solid rgba(0, 0, 0, 0.08);
-    width: 100%;
-    margin: 0;
-}
-
-/* =========================================
-   2. CONTENIDO INTERNO DE ITEMS
-   ========================================= */
-.component-card__content {
-    flex: 1 1 auto;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 18px;
-}
-
-.component-card__text {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+.w-100 {
     width: 100%;
 }
 
-.component-card__title {
-    font-size: 15px;
-    font-weight: 600;
-    margin: 0;
-    color: #000;
+.mt-16 {
+    margin-top: 16px;
 }
 
-.component-card__description {
-    font-size: 14px;
-    color: #666;
-    margin: 0;
-    line-height: 1.4;
+.mb-0 {
+    margin-bottom: 0;
 }
 
-/* Valor de texto (modo lectura) */
-.text-display-value {
-    font-size: 14px;
-    color: #333;
+.m-0 {
+    margin: 0 !important;
 }
 
-/* =========================================
-   3. FOTO DE PERFIL Y ROLES
-   ========================================= */
-.component-card__profile-picture {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    background-color: #f5f5fa;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-/* Bordes de Rol (Pseudo-elemento) */
-.component-card__profile-picture::before {
-    content: '';
-    position: absolute;
-    top: -4px;
-    left: -4px;
-    right: -4px;
-    bottom: -4px;
-    border-radius: 50%;
-    border: 2px solid transparent;
-    pointer-events: none;
-    z-index: 2;
-}
-
-.component-card__profile-picture[data-role="user"]::before { border-color: #cccccc; }
-.component-card__profile-picture[data-role="moderator"]::before { border-color: #0000FF; }
-.component-card__profile-picture[data-role="administrator"]::before { border-color: #FF0000; }
-.component-card__profile-picture[data-role="founder"]::before {
-    border: none;
-    background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
-    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
-}
-
-.component-card__avatar-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 50%;
-}
-
-/* Overlay de Cámara al Hover */
-.component-card__avatar-overlay {
-    position: absolute;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    opacity: 0;
-    cursor: pointer;
-    border-radius: 50%;
-    z-index: 3;
-    transition: opacity 0.2s ease;
-}
-
-.component-card__profile-picture:hover .component-card__avatar-overlay {
-    opacity: 1;
-}
-
-/* =========================================
-   4. BOTONES E INPUTS
-   ========================================= */
-.component-card__actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-}
-
-.component-card__actions.actions-right {
-    justify-content: flex-end;
-}
-
-.component-button {
-    height: 36px;
-    padding: 0 14px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    background: transparent;
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    color: #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    white-space: nowrap;
-    transition: background-color 0.2s;
-}
-
-.component-button:hover {
-    background-color: #f5f5fa;
-}
-
-.component-button.primary {
-    background-color: #000;
-    color: #fff;
-    border: none;
-}
-
-.component-button.primary:hover {
-    background-color: #333;
-}
-
-.component-text-input {
-    width: 100%;
-    height: 36px;
-    padding: 0 12px;
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    border-radius: 8px;
-    font-size: 14px;
-    outline: none;
-    background: transparent;
-    color: #000;
-}
-
-.component-text-input:focus {
-    border-color: #000;
-}
-
-.component-input-wrapper {
-    width: 100%;
-    min-width: 200px;
-}
-
-/* =========================================
-   5. DROPDOWNS (Selector de Idioma)
-   ========================================= */
-.trigger-select-wrapper {
-    position: relative;
-    width: 260px;
-}
-
-.trigger-selector {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    height: 40px;
-    padding: 0 12px;
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    border-radius: 8px;
-    background-color: #ffffff;
-    cursor: pointer;
-    user-select: none;
-    gap: 8px;
-    transition: border-color 0.2s ease;
-}
-
-.trigger-selector:hover, .trigger-selector.active {
-    border-color: #000;
-}
-
-.trigger-select-text {
+.flex-1 {
     flex: 1;
-    font-size: 14px;
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
-/* Menú Flotante */
-.popover-module {
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
-    width: 100%;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-    z-index: 1000;
-    padding: 6px;
-    display: none;
-    flex-direction: column;
-    animation: fadeInPopover 0.15s ease-out;
-}
-
-.popover-module.active {
-    display: flex;
-}
-
-.menu-link {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    color: #333;
-    font-size: 14px;
-    transition: background-color 0.2s;
-}
-
-.menu-link:hover, .menu-link.active {
-    background-color: #f5f5fa;
-    color: #000;
-    font-weight: 500;
-}
-
-@keyframes fadeInPopover {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* =========================================
-   6. TOGGLES (Interruptores)
-   ========================================= */
-.component-toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 44px;
-    height: 24px;
-}
-
-.component-toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.component-toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #e0e0e0;
-    border-radius: 34px;
-    transition: .3s;
-    border: 1px solid rgba(0,0,0,0.05);
-}
-
-.component-toggle-slider:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 2px;
-    bottom: 2px;
-    background-color: white;
-    border-radius: 50%;
-    transition: .3s cubic-bezier(0.4, 0.0, 0.2, 1);
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-
-input:checked + .component-toggle-slider {
-    background-color: #000;
-}
-
-input:checked + .component-toggle-slider:before {
-    transform: translateX(20px);
-}
-
-/* =========================================
-   7. UTILIDADES Y RESPONSIVE
-   ========================================= */
-/* Estados de visualización para JS */
-.active { display: flex !important; }
-.disabled { display: none !important; }
-
-.w-100 { width: 100%; }
-
-/* Layouts apilados (como el selector de idioma) */
-.component-group-item--stacked {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 12px !important;
-}
-
-.component-group-item--stacked .component-card__actions {
-    width: 100%;
-    justify-content: flex-start !important;
-}
-
-/* Responsive Mobile */
-@media (max-width: 600px) {
-    .component-group-item {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 12px;
-    }
-    
-    .component-card__actions.actions-right {
+@media (max-width: 725px) {
+    .header {
+        gap: 0;
         justify-content: space-between;
+    }
+
+    .header-left {
+        order: 1;
+    }
+
+    .header-right {
+        order: 2;
+    }
+
+    .header-center {
+        display: flex;
+        order: 3;
+        flex: 0 0 100%;
+        padding: 8px 0 0 0;
         width: 100%;
     }
 
-    .trigger-select-wrapper {
-        width: 100%;
-    }
-    
-    /* Responsive input group */
-    .input-group-responsive.active {
-        flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 8px;
-    }
-    
-    .input-group-responsive .component-card__actions {
-        margin-top: 4px;
-    }
-    
-    .component-button {
-        flex: 1; /* Botones ancho completo en móvil */
+    .search-wrapper {
+        max-width: 100%;
     }
 }
 
-    .component-stage-form {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    width: 100%;
-}.component-group-item--stacked .component-card__actions.actions-force-end {
-    justify-content: flex-end !important;
-}
-.component-card__profile-picture.component-card__profile-picture--bordered, .component-card__icon-container.component-card__icon-container--bordered {
-    background-color: transparent;
-    border: 1px solid #00000020;
-    border-radius: 8px;
-}.component-card__profile-picture, .component-card__icon-container {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    background-color: #f5f5fa;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

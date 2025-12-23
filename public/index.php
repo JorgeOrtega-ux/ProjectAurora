@@ -9,9 +9,9 @@ require_once __DIR__ . '/../config/database/db.php';
 // === MIDDLEWARE: AUTO-LOGIN POR COOKIE (TOKEN ROTATIVO) ===
 // Nombre genérico: 'auth_persistence_token'
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['auth_persistence_token'])) {
-    
+
     $parts = explode(':', $_COOKIE['auth_persistence_token']);
-    
+
     if (count($parts) === 2) {
         $selector = $parts[0];
         $validator = $parts[1];
@@ -24,9 +24,9 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['auth_persistence_token'])) {
         if ($authToken) {
             // Verificar el Hash del Validador (hash_equals previene ataques de timing)
             if (hash_equals($authToken['hashed_validator'], hash('sha256', $validator))) {
-                
+
                 // === ÉXITO: LOGIN AUTOMÁTICO ===
-                
+
                 // 1. Obtener datos del usuario
                 $stmtUser = $pdo->prepare("SELECT * FROM users WHERE id = ?");
                 $stmtUser->execute([$authToken['user_id']]);
@@ -69,7 +69,7 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['auth_persistence_token'])) {
                     setcookie('auth_persistence_token', "$newSelector:$newValidator", [
                         'expires' => time() + (86400 * 30),
                         'path' => '/',
-                        'domain' => '', 
+                        'domain' => '',
                         'secure' => $isSecure,
                         'httponly' => true,
                         'samesite' => 'Strict'
@@ -93,9 +93,9 @@ if (empty($_SESSION['csrf_token'])) {
 $isLoggedIn = isset($_SESSION['user_id']);
 
 $publicRoutes = [
-    'login', 
-    'register', 
-    'register/aditional-data', 
+    'login',
+    'register',
+    'register/aditional-data',
     'register/verification-account',
     'recover-password',
     'reset-password'
@@ -170,7 +170,10 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
     </script>
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
+
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/styles.css">
+
+    <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components.css">
 
     <script type="module" src="<?php echo $basePath; ?>public/assets/js/app-init.js"></script>
 </head>
@@ -210,4 +213,5 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
     </div>
 
 </body>
+
 </html>

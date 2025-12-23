@@ -27,26 +27,26 @@
                     </button>
                 </div>
 
-                <div class="w-100 component-stage-form disabled" data-state="password-stage-1" style="margin-top: 16px;">
+                <div class="w-100 component-stage-form disabled" data-state="password-stage-1">
                     <div class="component-input-wrapper">
                         <input type="password" class="component-text-input" id="current-password-input" placeholder="Contraseña actual">
                     </div>
 
-                    <div class="component-card__actions actions-right actions-force-end" style="margin-top: 12px;">
+                    <div class="component-card__actions actions-right actions-force-end">
                         <button type="button" class="component-button" data-action="pass-cancel-flow">Cancelar</button>
                         <button type="button" class="component-button primary" data-action="pass-go-step-2">Continuar</button>
                     </div>
                 </div>
 
-                <div class="w-100 component-stage-form disabled" data-state="password-stage-2" style="margin-top: 16px;">
-                    <div class="component-input-wrapper" style="margin-bottom: 8px;">
+                <div class="w-100 component-stage-form disabled" data-state="password-stage-2">
+                    <div class="component-input-wrapper">
                         <input type="password" class="component-text-input" id="new-password-input" placeholder="Nueva contraseña">
                     </div>
                     <div class="component-input-wrapper">
                         <input type="password" class="component-text-input" id="repeat-password-input" placeholder="Confirmar contraseña">
                     </div>
 
-                    <div class="component-card__actions actions-right actions-force-end" style="margin-top: 12px;">
+                    <div class="component-card__actions actions-right actions-force-end">
                         <button type="button" class="component-button" data-action="pass-cancel-flow">Cancelar</button>
                         <button type="button" class="component-button primary" data-action="pass-submit-final">Guardar</button>
                     </div>
