@@ -7,7 +7,6 @@ require_once __DIR__ . '/../config/routers/router.php';
 require_once __DIR__ . '/../config/database/db.php';
 
 // === GENERACIÓN DE TOKEN CSRF ===
-// Si no existe un token en la sesión, creamos uno nuevo para seguridad.
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -15,19 +14,18 @@ if (empty($_SESSION['csrf_token'])) {
 // === CONTROL DE ACCESO (MIDDLEWARE) ===
 $isLoggedIn = isset($_SESSION['user_id']);
 
-// Lista de rutas que NO requieren login (CORREGIDO PARA INCLUIR PASOS DE REGISTRO)
+// Lista de rutas que NO requieren login
 $publicRoutes = [
     'login', 
     'register', 
     'register/aditional-data', 
     'register/verification-account',
-    'recover-password', // <--- NUEVO
-    'reset-password'    // <--- NUEVO
+    'recover-password',
+    'reset-password'
 ];
 
 if (!$isLoggedIn) {
     // Si NO está logueado y trata de acceder a una ruta privada -> Mandar a Login
-    // (Ahora permite estar en los pasos 2 y 3 del registro sin loguearse)
     if (!in_array($currentSection, $publicRoutes)) {
         header("Location: " . $basePath . "login");
         exit;
@@ -45,7 +43,31 @@ $globalAvatarSrc = '';
 $userRole = 'guest';
 
 if ($isLoggedIn) {
-    // Definir rol
+    
+    // =========================================================
+    // NUEVO: REFRESCAR ROL Y DATOS EN CADA RECARGA
+    // =========================================================
+    // Consultamos la BD para tener siempre el rol y avatar actualizados
+    // sin necesidad de volver a iniciar sesión.
+    try {
+        if (isset($pdo)) {
+            $stmt = $pdo->prepare("SELECT role, avatar_path, username FROM users WHERE id = ? LIMIT 1");
+            $stmt->execute([$_SESSION['user_id']]);
+            $freshUser = $stmt->fetch();
+
+            if ($freshUser) {
+                $_SESSION['role'] = $freshUser['role'];
+                $_SESSION['avatar'] = $freshUser['avatar_path'];
+                $_SESSION['username'] = $freshUser['username'];
+            }
+        }
+    } catch (Exception $e) {
+        // Si falla la BD, continuamos silenciosamente con los datos viejos de sesión
+        error_log("Error al refrescar sesión: " . $e->getMessage());
+    }
+    // =========================================================
+
+    // Definir rol (ahora actualizado)
     $userRole = $_SESSION['role'] ?? 'user';
 
     // Obtener imagen de perfil

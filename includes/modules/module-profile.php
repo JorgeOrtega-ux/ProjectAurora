@@ -1,14 +1,31 @@
 <div class="module-content module-profile disabled" data-module="moduleProfile">
     <div class="menu-content">
         <div class="menu-list">
-            <div class="menu-link">
+            
+            <?php 
+            // Verificamos si el rol es administrador o founder para mostrar el panel
+            // Usamos isset por seguridad, aunque $userRole debería venir del index.php
+            if (isset($userRole) && in_array($userRole, ['founder', 'administrator'])): 
+            ?>
+                <div class="menu-link">
+                    <div class="menu-link-icon">
+                        <span class="material-symbols-rounded">admin_panel_settings</span>
+                    </div>
+                    <div class="menu-link-text">
+                        <span>Panel de administración</span>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <div class="menu-link" data-nav="settings/your-profile">
                 <div class="menu-link-icon">
                     <span class="material-symbols-rounded">settings</span>
                 </div>
                 <div class="menu-link-text">
-                    <span>Configuracion</span>
+                    <span>Configuración</span>
                 </div>
             </div>
+            
             <div class="menu-link">
                 <div class="menu-link-icon">
                     <span class="material-symbols-rounded">help</span>
@@ -17,14 +34,16 @@
                     <span>Ayuda y comentarios</span>
                 </div>
             </div>
+            
             <div class="menu-link" data-action="logout">
                 <div class="menu-link-icon">
                     <span class="material-symbols-rounded">logout</span>
                 </div>
                 <div class="menu-link-text">
-                    <span>Cerrar sesion</span>
+                    <span>Cerrar sesión</span>
                 </div>
             </div>
+
         </div>
     </div>
 </div>

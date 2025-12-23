@@ -23,23 +23,38 @@ export function initUrlManager() {
             e.preventDefault();
             const section = link.dataset.nav;
             
-            // === CORRECCIÓN ===
-            // Solo cargamos contenido si NO estamos ya en esa sección.
-            // Si ya estamos activos, saltamos este paso pero dejamos que siga el flujo
-            // para que se cierren los menús correctamente.
+            // Si estamos haciendo clic, probablemente queremos navegar.
             if (!link.classList.contains('active')) {
                 navigateTo(section);
             }
             
-            // === ESTO SE EJECUTA SIEMPRE ===
-            // Cerrar menú móvil si está abierto (para dar feedback visual de que se hizo click)
+            // Cerrar menú móvil si está abierto
+            // EXCEPCIÓN: Si estamos en modo escritorio (sidebar visible), no queremos "cerrarlo" visualmente
+            // pero la lógica actual usa 'active' para móvil. Lo dejamos así para consistencia móvil.
             const activeModules = document.querySelectorAll('.module-content.active');
             activeModules.forEach(mod => {
-                mod.classList.remove('active');
-                mod.classList.add('disabled');
+                // No cerramos el surface si es navegación interna del surface
+                // Pero sí cerramos el menú de perfil si venimos de ahí
+                if (mod.dataset.module !== 'moduleSurface' || window.innerWidth < 725) {
+                     mod.classList.remove('active');
+                     mod.classList.add('disabled');
+                }
             });
+            
+            // Específico: Si clicamos desde el menú de perfil, cerrarlo explícitamente
+            const profileModule = document.querySelector('[data-module="moduleProfile"]');
+            if(profileModule) {
+                profileModule.classList.remove('active');
+                profileModule.classList.add('disabled');
+            }
         }
     });
+    
+    // Al iniciar, determinar qué menú mostrar según la URL actual
+    // Obtenemos la sección actual desde la URL (o default 'main')
+    const path = window.location.pathname.replace(window.BASE_PATH, '');
+    const currentSection = path || 'main';
+    updateActiveMenu(currentSection);
 }
 
 export function navigateTo(section) {
@@ -54,7 +69,7 @@ export function navigateTo(section) {
     // Cargar contenido
     loadContent(section);
     
-    // Actualizar menú activo visualmente
+    // Actualizar menú activo y visibilidad de listas
     updateActiveMenu(section);
 }
 
@@ -79,8 +94,30 @@ async function loadContent(section) {
 }
 
 function updateActiveMenu(section) {
+    // 1. Limpiar activos anteriores
     document.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
     
+    // 2. Marcar el nuevo activo
     let links = document.querySelectorAll(`.menu-link[data-nav="${section}"]`);
     links.forEach(l => l.classList.add('active'));
+
+    // 3. Lógica de cambio de Menú (Settings vs Main)
+    const navMain = document.getElementById('nav-main');
+    const navSettings = document.getElementById('nav-settings');
+
+    if (navMain && navSettings) {
+        if (section.startsWith('settings/')) {
+            // Estamos en configuración -> Mostrar menú de settings
+            navMain.style.display = 'none';
+            navSettings.style.display = 'flex'; // o 'block' si prefieres
+            navSettings.style.flexDirection = 'column';
+            navSettings.style.gap = '4px';
+        } else {
+            // Estamos en navegación normal
+            navSettings.style.display = 'none';
+            navMain.style.display = 'flex';
+            navMain.style.flexDirection = 'column';
+            navMain.style.gap = '4px';
+        }
+    }
 }
