@@ -76,9 +76,7 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['auth_persistence_token'])) {
                     ]);
                 }
             } else {
-                // TOKEN ROBADO DETECTADO: El selector existe pero el validador no coincide.
-                // Como medida de seguridad, podríamos borrar todos los tokens de este usuario:
-                // $pdo->prepare("DELETE FROM user_auth_tokens WHERE user_id = ?")->execute([$authToken['user_id']]);
+                // TOKEN ROBADO DETECTADO
             }
         }
     }
@@ -120,7 +118,8 @@ $userRole = 'guest';
 if ($isLoggedIn) {
     try {
         if (isset($pdo)) {
-            $stmt = $pdo->prepare("SELECT role, avatar_path, username, email FROM users WHERE id = ? LIMIT 1");
+            // === MODIFICACIÓN AQUÍ: Añadido 'two_factor_enabled' a la consulta ===
+            $stmt = $pdo->prepare("SELECT role, avatar_path, username, email, two_factor_enabled FROM users WHERE id = ? LIMIT 1");
             $stmt->execute([$_SESSION['user_id']]);
             $freshUser = $stmt->fetch();
 
@@ -129,6 +128,8 @@ if ($isLoggedIn) {
                 $_SESSION['avatar'] = $freshUser['avatar_path'];
                 $_SESSION['username'] = $freshUser['username'];
                 $_SESSION['email'] = $freshUser['email'];
+                // Guardamos el estado en sesión
+                $_SESSION['two_factor_enabled'] = $freshUser['two_factor_enabled'];
             }
         }
     } catch (Exception $e) {

@@ -2,7 +2,7 @@
 // api/settings-handler.php
 session_start();
 require_once __DIR__ . '/../config/database/db.php';
-require_once __DIR__ . '/../includes/libs/TOTP.php'; // <--- IMPORTANTE: Librería para 2FA
+require_once __DIR__ . '/../includes/libs/TOTP.php'; 
 
 header('Content-Type: application/json');
 
@@ -304,6 +304,8 @@ if ($action === 'upload_avatar') {
         
         if ($stmt->execute([$secret, $jsonCodes, $userId])) {
             unset($_SESSION['temp_2fa_secret']);
+            // === ACTUALIZAR SESIÓN ===
+            $_SESSION['two_factor_enabled'] = 1; 
             jsonResponse(true, '2FA Activado correctamente.', ['recovery_codes' => $recoveryCodes]);
         } else {
             jsonResponse(false, 'Error al guardar en base de datos.');
@@ -311,6 +313,18 @@ if ($action === 'upload_avatar') {
 
     } else {
         jsonResponse(false, 'Código incorrecto. Intenta de nuevo.');
+    }
+
+// === NUEVO BLOQUE: DESACTIVAR 2FA ===
+} elseif ($action === 'disable_2fa') {
+    
+    $stmt = $pdo->prepare("UPDATE users SET two_factor_enabled = 0, two_factor_secret = NULL, two_factor_recovery_codes = NULL WHERE id = ?");
+    
+    if ($stmt->execute([$userId])) {
+        $_SESSION['two_factor_enabled'] = 0;
+        jsonResponse(true, '2FA desactivado correctamente.');
+    } else {
+        jsonResponse(false, 'Error al desactivar en la base de datos.');
     }
 }
 

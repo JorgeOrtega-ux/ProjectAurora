@@ -1,3 +1,12 @@
+<?php
+// includes/sections/settings/login-security.php
+
+// Verificamos estado para mostrar texto correcto
+$is2FA = isset($_SESSION['two_factor_enabled']) && $_SESSION['two_factor_enabled'] == 1;
+$statusText = $is2FA ? '<span style="color:#2e7d32; font-weight:500;">Activado</span>' : 'Desactivado (Recomendado activar)';
+$btnText = $is2FA ? 'Configurar' : 'Activar';
+?>
+
 <div class="section-content active" data-section="settings/login-security">
     <div class="component-wrapper">
 
@@ -64,14 +73,14 @@
                     <div class="component-card__text">
                         <h2 class="component-card__title">Autenticación en dos pasos</h2>
                         <p class="component-card__description">
-                            Desactivado (Recomendado)
+                            <?php echo $statusText; ?>
                         </p>
                     </div>
                 </div>
 
                 <div class="component-card__actions actions-right">
-                    <button type="button" class="component-button primary" data-nav="settings/2fa-setup">
-                        Activar
+                    <button type="button" class="component-button <?php echo $is2FA ? '' : 'primary'; ?>" data-nav="settings/2fa-setup">
+                        <?php echo $btnText; ?>
                     </button>
                 </div>
             </div>
