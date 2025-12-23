@@ -4,6 +4,7 @@
 
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
+import { I18n } from '../../core/i18n-manager.js';
 
 export const SettingsController = (function() {
     
@@ -15,16 +16,11 @@ export const SettingsController = (function() {
         wrapperSelector: '.trigger-select-wrapper'
     };
 
-    /**
-     * Guarda una preferencia general y actualiza estado global
-     */
     async function savePreference(key, value) {
-        // Optimización local: Actualizar variable global inmediatamente
         if (window.USER_PREFS) {
             window.USER_PREFS[key] = value;
         }
 
-        // Si es tema, aplicar inmediatamente
         if (key === 'theme') {
             applyTheme(value);
         }
@@ -37,30 +33,24 @@ export const SettingsController = (function() {
         try {
             const res = await ApiService.post('settings-handler.php', formData);
             if (!res.success) {
-                Toast.show(res.message || 'Error al guardar preferencia', 'error');
+                Toast.show(res.message || I18n.t('js.settings.pref_error'), 'error');
             } else {
-                // Feedback silencioso o sutil para preferencias UI
                 console.log("Preferencia guardada:", key, value);
             }
         } catch (error) {
             console.error(error);
-            Toast.show('Error de conexión al guardar preferencia', 'error');
+            Toast.show(I18n.t('js.settings.pref_error'), 'error');
         }
     }
 
-    // Lógica para aplicar tema visualmente
     function applyTheme(theme) {
         const root = document.documentElement;
-        
         if (theme === 'dark') {
             root.setAttribute('data-theme', 'dark');
         } else if (theme === 'light') {
             root.setAttribute('data-theme', 'light');
         } else {
-            // Sync/Sistema
             root.removeAttribute('data-theme');
-            // Opcional: Podrías usar JS para detectar matchMedia y forzar, 
-            // pero CSS @media (prefers-color-scheme) es más limpio si quitas el atributo.
         }
     }
 
@@ -108,7 +98,7 @@ export const SettingsController = (function() {
 
         if(btnSave) {
             btnSave.disabled = true;
-            btnSave.innerText = 'Guardando...';
+            btnSave.innerText = I18n.t('js.settings.saving');
         }
 
         const formData = new FormData();
@@ -129,16 +119,15 @@ export const SettingsController = (function() {
                 input.focus(); 
             }
         } catch (error) {
-            Toast.show('Error de conexión.', 'error');
+            Toast.show(I18n.t('js.settings.processing_error'), 'error');
         } finally {
             if(btnSave) {
                 btnSave.disabled = false;
-                btnSave.innerText = 'Guardar';
+                btnSave.innerText = I18n.t('js.settings.btn_save');
             }
         }
     }
 
-    // ... (PASSWORD LOGIC SE MANTIENE IGUAL) ...
     function _initPasswordLogic() {
         const container = document.querySelector('[data-component="password-update-section"]');
         if (!container) return; 
@@ -171,12 +160,12 @@ export const SettingsController = (function() {
                 const currentPassInput = document.getElementById('current-password-input');
                 const currentPass = currentPassInput.value;
                 if (!currentPass) {
-                    Toast.show('Ingresa tu contraseña actual.', 'warning');
+                    Toast.show(I18n.t('js.settings.enter_current_pass'), 'warning');
                     return;
                 }
                 const btn = e.target;
                 const originalText = btn.innerText;
-                btn.innerText = 'Verificando...';
+                btn.innerText = I18n.t('js.settings.verifying');
                 btn.disabled = true;
 
                 const formData = new FormData();
@@ -191,11 +180,11 @@ export const SettingsController = (function() {
                         if(inputNew) { inputNew.value = ''; inputNew.focus(); }
                         document.getElementById('repeat-password-input').value = '';
                     } else {
-                        Toast.show('La contraseña actual es incorrecta.', 'error');
+                        Toast.show(res.message, 'error'); // El backend devuelve "La contraseña es incorrecta" traducido si el handler soporta I18n, o fijo.
                         currentPassInput.focus();
                     }
                 } catch (err) {
-                    Toast.show('Error de conexión al validar.', 'error');
+                    Toast.show(I18n.t('js.settings.processing_error'), 'error');
                 } finally {
                     btn.innerText = originalText;
                     btn.disabled = false;
@@ -207,13 +196,13 @@ export const SettingsController = (function() {
                 const newPass = document.getElementById('new-password-input').value;
                 const repeatPass = document.getElementById('repeat-password-input').value;
 
-                if (!newPass || !repeatPass) { Toast.show('Completa todos los campos.', 'warning'); return; }
-                if (newPass !== repeatPass) { Toast.show('Las nuevas contraseñas no coinciden.', 'error'); return; }
-                if (newPass.length < 6) { Toast.show('La contraseña debe tener al menos 6 caracteres.', 'warning'); return; }
+                if (!newPass || !repeatPass) { Toast.show(I18n.t('js.settings.fill_all'), 'warning'); return; }
+                if (newPass !== repeatPass) { Toast.show(I18n.t('js.settings.pass_mismatch'), 'error'); return; }
+                if (newPass.length < 6) { Toast.show(I18n.t('js.settings.pass_short'), 'warning'); return; }
 
                 const btn = e.target;
                 const originalText = btn.innerText;
-                btn.innerText = 'Guardando...';
+                btn.innerText = I18n.t('js.settings.saving');
                 btn.disabled = true;
 
                 const formData = new FormData();
@@ -224,14 +213,14 @@ export const SettingsController = (function() {
                 try {
                     const res = await ApiService.post('settings-handler.php', formData);
                     if (res.success) {
-                        Toast.show('Contraseña actualizada correctamente.', 'success');
+                        Toast.show(I18n.t('js.settings.pass_updated'), 'success');
                         if(parentGroup) parentGroup.classList.remove('component-group-item--stacked');
                         if(stage1) { stage1.classList.remove(CONFIG.activeClass); stage1.classList.add(CONFIG.disabledClass); }
                         if(stage2) { stage2.classList.remove(CONFIG.activeClass); stage2.classList.add(CONFIG.disabledClass); }
                         if(stage0) { stage0.classList.remove(CONFIG.disabledClass); stage0.classList.add(CONFIG.activeClass); }
                         container.querySelectorAll('input').forEach(i => i.value = '');
                     } else { Toast.show(res.message, 'error'); }
-                } catch(err) { Toast.show('Error al procesar la solicitud.', 'error'); } 
+                } catch(err) { Toast.show(I18n.t('js.settings.processing_error'), 'error'); } 
                 finally { btn.innerText = originalText; btn.disabled = false; }
             }
         });
@@ -272,7 +261,6 @@ export const SettingsController = (function() {
         const triggerText = wrapper.querySelector('.trigger-select-text');
         if (triggerText) triggerText.innerText = textValue;
         
-        // Actualizar icono si existe
         const newIcon = itemElement.querySelector('.material-symbols-rounded')?.innerText;
         const triggerIcon = wrapper.querySelector('.trigger-select-icon');
         if(newIcon && triggerIcon) triggerIcon.innerText = newIcon;
@@ -281,9 +269,7 @@ export const SettingsController = (function() {
         itemElement.classList.add(CONFIG.activeClass);
         closeAllDropdowns();
 
-        // 3. Guardar si cambió, o si es tema (para asegurar aplicación)
         if (dataValue && (!isSameValue || dataValue === 'theme' || dataValue === 'sync' || dataValue === 'light' || dataValue === 'dark')) {
-            // Detectamos si es preferencia de tema por el valor
             const isTheme = ['sync', 'light', 'dark'].includes(dataValue);
             savePreference(isTheme ? 'theme' : 'language', dataValue);
         }
@@ -304,7 +290,6 @@ export const SettingsController = (function() {
                 savePreference('open_links_new_tab', e.target.checked);
             });
         }
-        // NUEVO LISTENER PARA TOAST
         const toggleToast = document.getElementById('pref-extended-toast');
         if (toggleToast) {
             toggleToast.addEventListener('change', (e) => {
@@ -334,7 +319,7 @@ export const SettingsController = (function() {
         selectOption,
         closeAllDropdowns,
         savePreference,
-        applyTheme // Exponemos para uso inicial
+        applyTheme
     };
 })();
 

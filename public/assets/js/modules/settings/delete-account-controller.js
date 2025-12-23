@@ -4,6 +4,7 @@
 
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
+import { I18n } from '../../core/i18n-manager.js';
 
 export const DeleteAccountController = {
     init: () => {
@@ -16,13 +17,11 @@ export const DeleteAccountController = {
 
         console.log("DeleteAccountController: Inicializado");
 
-        // 1. Manejar el Toggle de confirmación
-        toggleConfirm.checked = false; // Reset inicial
+        toggleConfirm.checked = false;
         toggleConfirm.addEventListener('change', (e) => {
             if (e.target.checked) {
                 areaConfirmation.classList.remove('disabled');
                 areaConfirmation.classList.add('active');
-                // Auto-focus al input
                 if(inputPass) setTimeout(() => inputPass.focus(), 100);
             } else {
                 areaConfirmation.classList.add('disabled');
@@ -31,21 +30,19 @@ export const DeleteAccountController = {
             }
         });
 
-        // 2. Manejar el click de eliminar
         btnDelete.addEventListener('click', async () => {
             const password = inputPass.value;
 
             if (!password) {
-                Toast.show('Debes ingresar tu contraseña.', 'warning');
+                Toast.show(I18n.t('js.delete.enter_pass'), 'warning');
                 inputPass.focus();
                 return;
             }
 
-            if (!confirm('ÚLTIMA ADVERTENCIA: ¿Estás realmente seguro?')) return;
+            if (!confirm(I18n.t('js.delete.confirm_final'))) return;
 
-            // UI Loading
             const originalText = btnDelete.innerText;
-            btnDelete.innerText = 'Procesando...';
+            btnDelete.innerText = I18n.t('js.delete.processing');
             btnDelete.disabled = true;
             toggleConfirm.disabled = true;
             inputPass.disabled = true;
@@ -58,13 +55,12 @@ export const DeleteAccountController = {
                 const res = await ApiService.post('settings-handler.php', formData);
 
                 if (res.success) {
-                    Toast.show('Cuenta eliminada. Adiós.', 'success');
+                    Toast.show(I18n.t('js.delete.goodbye'), 'success');
                     setTimeout(() => {
                         window.location.href = window.BASE_PATH + 'login';
                     }, 1500);
                 } else {
                     Toast.show(res.message, 'error');
-                    // Restaurar UI
                     btnDelete.innerText = originalText;
                     btnDelete.disabled = false;
                     toggleConfirm.disabled = false;
@@ -73,7 +69,7 @@ export const DeleteAccountController = {
                 }
             } catch (error) {
                 console.error(error);
-                Toast.show('Error de conexión.', 'error');
+                Toast.show(I18n.t('js.core.connection_error'), 'error');
                 btnDelete.innerText = originalText;
                 btnDelete.disabled = false;
                 toggleConfirm.disabled = false;

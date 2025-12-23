@@ -186,5 +186,62 @@
             "toast_title": "Duración de notificaciones",
             "toast_desc": "Mantiene los mensajes en pantalla por más tiempo (10s)."
         }
+    },
+    "js": {
+        "core": {
+            "connection_error": "Error de conexión con el servidor.",
+            "loading_error": "Error al cargar la sección."
+        },
+        "auth": {
+            "fill_all": "Por favor completa todos los campos.",
+            "choose_username": "Elige un nombre de usuario.",
+            "code_sent": "Código de verificación enviado a tu correo.",
+            "connection_error": "Error de conexión.",
+            "enter_code": "Ingresa el código de verificación.",
+            "verify_error": "Error al verificar.",
+            "resend_success": "Nuevo código de verificación enviado.",
+            "resend_error": "Error al reenviar código.",
+            "enter_email": "Ingresa tu correo.",
+            "reset_link_sent": "Correo enviado. Revisa la consola para el link (MODO DEV).",
+            "pass_mismatch": "Las contraseñas no coinciden.",
+            "pass_updated": "Contraseña actualizada. Inicia sesión.",
+            "unexpected_error": "Error inesperado.",
+            "loading": "Cargando...",
+            "continue": "Continuar"
+        },
+        "profile": {
+            "invalid_image": "Por favor selecciona un archivo de imagen válido.",
+            "saving": "Guardando...",
+            "pic_updated": "Foto de perfil actualizada.",
+            "confirm_delete": "¿Estás seguro de querer eliminar tu foto de perfil?",
+            "pic_deleted": "Foto eliminada. Se ha generado una por defecto."
+        },
+        "devices": {
+            "load_error": "Error al cargar sesiones.",
+            "connection_error": "Error de conexión.",
+            "empty": "No hay sesiones activas registradas.",
+            "current_device": "Este dispositivo",
+            "btn_revoke": "Cerrar sesión",
+            "revoke_success": "Sesión cerrada correctamente.",
+            "confirm_revoke_all": "¿Seguro que quieres cerrar sesión en TODOS los dispositivos? Deberás iniciar sesión de nuevo."
+        },
+        "settings": {
+            "pref_error": "Error al guardar preferencia.",
+            "saving": "Guardando...",
+            "enter_current_pass": "Ingresa tu contraseña actual.",
+            "verifying": "Verificando...",
+            "pass_updated": "Contraseña actualizada correctamente.",
+            "fill_all": "Completa todos los campos.",
+            "pass_mismatch": "Las nuevas contraseñas no coinciden.",
+            "pass_short": "La contraseña debe tener al menos 6 caracteres.",
+            "processing_error": "Error al procesar la solicitud.",
+            "btn_save": "Guardar"
+        },
+        "delete": {
+            "enter_pass": "Debes ingresar tu contraseña.",
+            "confirm_final": "ÚLTIMA ADVERTENCIA: ¿Estás realmente seguro?",
+            "processing": "Procesando...",
+            "goodbye": "Cuenta eliminada. Adiós."
+        }
     }
 }

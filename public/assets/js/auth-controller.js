@@ -1,38 +1,31 @@
 import { navigateTo } from './core/url-manager.js';
 import { Toast } from './core/toast-manager.js';
-import { ApiService } from './core/api-service.js'; // Importar el nuevo servicio
+import { ApiService } from './core/api-service.js';
+import { I18n } from './core/i18n-manager.js';
 
 let resendTimerInterval = null;
 
 export function initAuthController() {
     console.log("Auth Controller: Listo (SPA - Event Delegation)");
 
-    // Comprobar si entramos directamente a la pantalla de verificación para iniciar timer
     const resendBtn = document.getElementById('btn-resend-code');
     if (resendBtn) {
         startResendTimer(60);
     }
 
-    // ============================================================
-    // DELEGACIÓN DE EVENTOS
-    // ============================================================
     document.body.addEventListener('click', async (e) => {
         const target = e.target;
 
-        // ------------------------------------------
-        // 1. LOGIN (PASO 1)
-        // ------------------------------------------
+        // LOGIN PASO 1
         const btnLogin = target.closest('#btn-login');
         if (btnLogin) {
             e.preventDefault();
             hideError('login-error'); 
-            handleLoginStep1(btnLogin); // Función renombrada para claridad
+            handleLoginStep1(btnLogin); 
             return;
         }
 
-        // ------------------------------------------
-        // 2. LOGIN (PASO 2 - 2FA)
-        // ------------------------------------------
+        // LOGIN PASO 2
         const btnVerify2FA = target.closest('#btn-verify-2fa');
         if (btnVerify2FA) {
             e.preventDefault();
@@ -40,9 +33,7 @@ export function initAuthController() {
             return;
         }
 
-        // ------------------------------------------
-        // 3. REGISTRO - PASO 1 -> PASO 2
-        // ------------------------------------------
+        // REGISTRO 1 -> 2
         const btnNext1 = target.closest('#btn-next-1');
         if (btnNext1) {
             e.preventDefault();
@@ -52,7 +43,7 @@ export function initAuthController() {
             const password = document.getElementById('password').value;
 
             if(!email || !password) { 
-                showError(btnNext1, 'register-step1-error', "Completa todos los campos"); 
+                showError(btnNext1, 'register-step1-error', I18n.t('js.auth.fill_all')); 
                 return; 
             }
 
@@ -60,7 +51,6 @@ export function initAuthController() {
             formData.append('action', 'register_step_1');
             formData.append('email', email);
             formData.append('password', password);
-            // Nota: CSRF se inyecta automáticamente en ApiService
 
             setLoading(btnNext1, true);
 
@@ -74,15 +64,13 @@ export function initAuthController() {
                 }
             } catch (err) {
                 console.error(err);
-                showError(btnNext1, 'register-step1-error', "Ocurrió un error inesperado.");
+                showError(btnNext1, 'register-step1-error', I18n.t('js.auth.unexpected_error'));
                 setLoading(btnNext1, false);
             }
             return;
         }
 
-        // ------------------------------------------
-        // 4. REGISTRO - PASO 2 -> PASO 3
-        // ------------------------------------------
+        // REGISTRO 2 -> 3
         const btnNext2 = target.closest('#btn-next-2');
         if (btnNext2) {
             e.preventDefault();
@@ -91,7 +79,7 @@ export function initAuthController() {
             const username = document.getElementById('username').value;
             
             if(!username) { 
-                showError(btnNext2.parentElement, 'register-step2-error', "Elige un nombre de usuario"); 
+                showError(btnNext2.parentElement, 'register-step2-error', I18n.t('js.auth.choose_username')); 
                 return; 
             }
 
@@ -106,7 +94,7 @@ export function initAuthController() {
                 if (res.success) {
                     if(res.debug_code) console.log("Code:", res.debug_code);
                     
-                    Toast.show('Código de verificación enviado a tu correo', 'info'); 
+                    Toast.show(I18n.t('js.auth.code_sent'), 'info'); 
                     
                     navigateTo(res.next_url); 
                     setTimeout(() => startResendTimer(60), 500);
@@ -115,15 +103,13 @@ export function initAuthController() {
                     setLoading(btnNext2, false);
                 }
             } catch (err) {
-                showError(btnNext2.parentElement, 'register-step2-error', "Error de conexión.");
+                showError(btnNext2.parentElement, 'register-step2-error', I18n.t('js.auth.connection_error'));
                 setLoading(btnNext2, false);
             }
             return;
         }
 
-        // ------------------------------------------
-        // 5. REGISTRO - PASO 3 -> FINAL
-        // ------------------------------------------
+        // REGISTRO FINAL
         const btnFinish = target.closest('#btn-finish');
         if (btnFinish) {
             e.preventDefault();
@@ -132,7 +118,7 @@ export function initAuthController() {
             const code = document.getElementById('verification_code').value;
             
             if(!code) { 
-                showError(btnFinish, 'register-step3-error', "Ingresa el código de verificación"); 
+                showError(btnFinish, 'register-step3-error', I18n.t('js.auth.enter_code')); 
                 return; 
             }
 
@@ -151,15 +137,13 @@ export function initAuthController() {
                     setLoading(btnFinish, false);
                 }
             } catch (err) {
-                showError(btnFinish, 'register-step3-error', "Error al verificar.");
+                showError(btnFinish, 'register-step3-error', I18n.t('js.auth.verify_error'));
                 setLoading(btnFinish, false);
             }
             return;
         }
 
-        // ------------------------------------------
-        // 6. REENVIAR CÓDIGO
-        // ------------------------------------------
+        // REENVIAR
         const btnResend = target.closest('#btn-resend-code');
         if (btnResend) {
             e.preventDefault();
@@ -179,7 +163,7 @@ export function initAuthController() {
                 btnResend.style.opacity = '1';
 
                 if (res.success) {
-                    Toast.show('Nuevo código de verificación enviado', 'success');
+                    Toast.show(I18n.t('js.auth.resend_success'), 'success');
                     
                     if(res.debug_code) console.log("New Code:", res.debug_code);
                     startResendTimer(60);
@@ -189,14 +173,12 @@ export function initAuthController() {
             } catch (err) {
                 console.error(err);
                 btnResend.style.opacity = '1';
-                showError(btnResend, 'register-step3-error', "Error al reenviar código.");
+                showError(btnResend, 'register-step3-error', I18n.t('js.auth.resend_error'));
             }
             return;
         }
 
-        // ------------------------------------------
-        // 7. RECUPERAR PASSWORD - SOLICITUD (PASO 1)
-        // ------------------------------------------
+        // RECUPERAR
         const btnRequestReset = target.closest('#btn-request-reset');
         if (btnRequestReset) {
             e.preventDefault();
@@ -204,7 +186,7 @@ export function initAuthController() {
             
             const email = document.getElementById('email_recovery').value;
             if(!email) {
-                showError(btnRequestReset, 'recovery-error', "Ingresa tu correo.");
+                showError(btnRequestReset, 'recovery-error', I18n.t('js.auth.enter_email'));
                 return;
             }
 
@@ -219,16 +201,13 @@ export function initAuthController() {
                 setLoading(btnRequestReset, false);
 
                 if (res.success) {
-                    Toast.show('Correo enviado. Revisa la consola para el link (MODO DEV)', 'success');
-                    console.log("=== LINK DE RECUPERACIÓN ===");
-                    console.log(res.debug_link);
-                    console.log("============================");
+                    Toast.show(I18n.t('js.auth.reset_link_sent'), 'success');
+                    console.log("=== LINK ===", res.debug_link);
                     
                     const area = document.getElementById('recovery-message-area');
                     if(area) {
                         area.innerHTML = `<div class="alert success mt-16" style="background:#e8f5e9; color:#2e7d32; padding:10px; border-radius:8px;">
-                            Link generado (Copia y pega): <br> 
-                            <a href="${res.debug_link}">${res.debug_link}</a>
+                            Link: <br><a href="${res.debug_link}">${res.debug_link}</a>
                         </div>`;
                     }
                 } else {
@@ -236,14 +215,12 @@ export function initAuthController() {
                 }
             } catch (err) {
                 setLoading(btnRequestReset, false);
-                showError(btnRequestReset, 'recovery-error', "Error de conexión.");
+                showError(btnRequestReset, 'recovery-error', I18n.t('js.auth.connection_error'));
             }
             return;
         }
 
-        // ------------------------------------------
-        // 8. RESET PASSWORD - NUEVA CLAVE (PASO 2)
-        // ------------------------------------------
+        // RESET PASSWORD
         const btnSubmitNewPass = target.closest('#btn-submit-new-password');
         if (btnSubmitNewPass) {
             e.preventDefault();
@@ -254,11 +231,11 @@ export function initAuthController() {
             const pass2 = document.getElementById('confirm_password').value;
 
             if (!pass1 || !pass2) {
-                showError(btnSubmitNewPass, 'reset-pass-error', "Completa ambos campos.");
+                showError(btnSubmitNewPass, 'reset-pass-error', I18n.t('js.auth.fill_all'));
                 return;
             }
             if (pass1 !== pass2) {
-                showError(btnSubmitNewPass, 'reset-pass-error', "Las contraseñas no coinciden.");
+                showError(btnSubmitNewPass, 'reset-pass-error', I18n.t('js.auth.pass_mismatch'));
                 return;
             }
 
@@ -272,7 +249,7 @@ export function initAuthController() {
             try {
                 const res = await ApiService.post('auth-handler.php', formData);
                 if (res.success) {
-                    Toast.show('Contraseña actualizada. Inicia sesión.', 'success');
+                    Toast.show(I18n.t('js.auth.pass_updated'), 'success');
                     setTimeout(() => {
                         window.location.href = window.BASE_PATH + 'login';
                     }, 1500);
@@ -282,14 +259,12 @@ export function initAuthController() {
                 }
             } catch (err) {
                 setLoading(btnSubmitNewPass, false);
-                showError(btnSubmitNewPass, 'reset-pass-error', "Error inesperado.");
+                showError(btnSubmitNewPass, 'reset-pass-error', I18n.t('js.auth.unexpected_error'));
             }
             return;
         }
 
-        // ------------------------------------------
         // LOGOUT
-        // ------------------------------------------
         const logoutBtn = target.closest('[data-action="logout"]');
         if (logoutBtn) {
             e.preventDefault();
@@ -301,9 +276,7 @@ export function initAuthController() {
             return;
         }
 
-        // ------------------------------------------
-        // UI INTERACTIONS (Mostrar Password, Generar User)
-        // ------------------------------------------
+        // UI INTERACTIONS
         const inputActionBtn = target.closest('.btn-input-action');
         if (inputActionBtn) {
             e.preventDefault();
@@ -334,12 +307,10 @@ export function initAuthController() {
         }
     });
 
-    // Enter en inputs
     document.body.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             const activeInput = document.activeElement;
             if (activeInput && activeInput.closest('#loginContainer')) {
-                // Si estamos en etapa 2, trigger botón 2fa
                 const stage2 = document.getElementById('login-stage-2');
                 if(stage2 && stage2.style.display !== 'none') {
                     const btn2 = document.getElementById('btn-verify-2fa');
@@ -353,8 +324,6 @@ export function initAuthController() {
     });
 }
 
-// --- UTILIDADES ---
-
 function setLoading(btn, isLoading) {
     if (isLoading) {
         btn.dataset.originalText = btn.innerText;
@@ -362,13 +331,12 @@ function setLoading(btn, isLoading) {
         btn.disabled = true;
         btn.style.opacity = '0.8'; 
     } else {
-        btn.innerText = btn.dataset.originalText || 'Continuar';
+        btn.innerText = btn.dataset.originalText || I18n.t('js.auth.continue');
         btn.disabled = false;
         btn.style.opacity = '1';
     }
 }
 
-// NUEVA FUNCIÓN: LOGIN PASO 1 (EMAIL/PASS)
 async function handleLoginStep1(btn) {
     const inputs = document.querySelectorAll('#login-stage-1 input');
     const formData = new FormData();
@@ -381,7 +349,7 @@ async function handleLoginStep1(btn) {
     });
 
     if(hasEmpty) { 
-        showError(btn, 'login-error', "Por favor llena todos los campos"); 
+        showError(btn, 'login-error', I18n.t('js.auth.fill_all')); 
         return; 
     }
 
@@ -390,23 +358,19 @@ async function handleLoginStep1(btn) {
         const res = await ApiService.post('auth-handler.php', formData);
         
         if (res.success) {
-            // VERIFICAR SI REQUIERE 2FA
             if (res.require_2fa) {
-                // Cambiar UI a Etapa 2
                 document.getElementById('login-stage-1').style.display = 'none';
                 
                 const stage2 = document.getElementById('login-stage-2');
                 stage2.style.display = 'block';
                 stage2.classList.remove('disabled');
 
-                document.getElementById('auth-title').innerText = "Verificación 2FA";
-                document.getElementById('auth-subtitle').innerText = "Protección adicional";
+                document.getElementById('auth-title').innerText = I18n.t('auth.2fa.title');
+                document.getElementById('auth-subtitle').innerText = I18n.t('auth.2fa.subtitle');
                 
-                // Enfocar input
                 const inputCode = document.getElementById('2fa-code');
                 if(inputCode) inputCode.focus();
             } else {
-                // Login directo
                 window.location.href = res.redirect;
             }
         } else {
@@ -414,12 +378,11 @@ async function handleLoginStep1(btn) {
             setLoading(btn, false);
         }
     } catch(e) { 
-        showError(btn, 'login-error', "Error de conexión");
+        showError(btn, 'login-error', I18n.t('js.auth.connection_error'));
         setLoading(btn, false); 
     }
 }
 
-// NUEVA FUNCIÓN: LOGIN PASO 2 (CÓDIGO 2FA)
 async function handleLoginStep2(btn) {
     const code = document.getElementById('2fa-code').value;
     if(!code) return;
@@ -435,12 +398,12 @@ async function handleLoginStep2(btn) {
         if (res.success) {
             window.location.href = res.redirect;
         } else {
-            Toast.show(res.message, 'error'); // Mostrar error flotante o inline
+            Toast.show(res.message, 'error'); 
             setLoading(btn, false);
             document.getElementById('2fa-code').value = '';
         }
     } catch (e) {
-        Toast.show("Error de conexión", 'error');
+        Toast.show(I18n.t('js.auth.connection_error'), 'error');
         setLoading(btn, false);
     }
 }
@@ -451,7 +414,6 @@ function showError(referenceNode, errorId, message) {
         errorDiv = document.createElement('div');
         errorDiv.id = errorId;
         errorDiv.className = 'auth-inline-error';
-        // Ajuste para insertar error correctamente
         if(referenceNode.nextSibling) {
             referenceNode.parentNode.insertBefore(errorDiv, referenceNode.nextSibling);
         } else {

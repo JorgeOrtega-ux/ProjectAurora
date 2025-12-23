@@ -1,11 +1,10 @@
 /**
  * public/assets/js/modules/settings/devices-controller.js
- * Gestiona la lista de sesiones activas y revocación.
- * REFACTORIZADO: Lógica limpia, sin parches de DOM.
  */
 
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
+import { I18n } from '../../core/i18n-manager.js';
 
 export const DevicesController = (function() {
 
@@ -13,7 +12,6 @@ export const DevicesController = (function() {
 
     async function loadDevices() {
         const container = document.getElementById('devices-list-container');
-        // Si la vista cambió rápido y el contenedor ya no existe, abortamos.
         if (!container) return;
 
         if (isLoading) return;
@@ -28,12 +26,12 @@ export const DevicesController = (function() {
             if (res.success) {
                 renderList(res.sessions);
             } else {
-                container.innerHTML = `<div style="padding:20px; text-align:center;">Error al cargar sesiones.</div>`;
+                container.innerHTML = `<div style="padding:20px; text-align:center;">${I18n.t('js.devices.load_error')}</div>`;
             }
 
         } catch (e) {
             console.error(e);
-            container.innerHTML = `<div style="padding:20px; text-align:center;">Error de conexión.</div>`;
+            container.innerHTML = `<div style="padding:20px; text-align:center;">${I18n.t('js.devices.connection_error')}</div>`;
         } finally {
             isLoading = false;
         }
@@ -44,20 +42,19 @@ export const DevicesController = (function() {
         if (!container) return;
 
         if (sessions.length === 0) {
-            container.innerHTML = `<div style="padding:24px; text-align:center; color:#666;">No hay sesiones activas registradas.</div>`;
+            container.innerHTML = `<div style="padding:24px; text-align:center; color:#666;">${I18n.t('js.devices.empty')}</div>`;
             return;
         }
 
         let html = '';
         sessions.forEach((s, index) => {
-            // Icono
             let icon = 'devices';
             const plat = (s.platform || '').toLowerCase();
             if (plat.includes('win') || plat.includes('mac') || plat.includes('linux')) icon = 'computer';
             if (plat.includes('android') || plat.includes('iphone')) icon = 'smartphone';
 
             const activeBadge = s.is_current 
-                ? `<span style="font-size:11px; background:#e8f5e9; color:#2e7d32; padding:2px 6px; border-radius:4px; font-weight:600; margin-left:8px;">Este dispositivo</span>` 
+                ? `<span style="font-size:11px; background:#e8f5e9; color:#2e7d32; padding:2px 6px; border-radius:4px; font-weight:600; margin-left:8px;">${I18n.t('js.devices.current_device')}</span>` 
                 : '';
 
             html += `
@@ -78,7 +75,7 @@ export const DevicesController = (function() {
                     </div>
                     <div class="component-card__actions actions-right">
                         ${!s.is_current ? 
-                            `<button type="button" class="component-button btn-revoke-one" data-id="${s.id}">Cerrar sesión</button>` 
+                            `<button type="button" class="component-button btn-revoke-one" data-id="${s.id}">${I18n.t('js.devices.btn_revoke')}</button>` 
                             : ''
                         }
                     </div>
@@ -92,7 +89,6 @@ export const DevicesController = (function() {
     }
 
     function bindEvents() {
-        // Asignar eventos a los nuevos botones renderizados
         document.querySelectorAll('.btn-revoke-one').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const id = e.target.dataset.id;
@@ -109,9 +105,7 @@ export const DevicesController = (function() {
                 try {
                     const res = await ApiService.post('settings-handler.php', formData);
                     if(res.success) {
-                        Toast.show('Sesión cerrada correctamente', 'success');
-                        // Recargamos la lista. Como esto NO pasa por el Router, no dispara eventos globales,
-                        // por lo tanto no hay riesgo de bucle.
+                        Toast.show(I18n.t('js.devices.revoke_success'), 'success');
                         loadDevices(); 
                     } else {
                         Toast.show(res.message, 'error');
@@ -119,7 +113,7 @@ export const DevicesController = (function() {
                         e.target.disabled = false;
                     }
                 } catch(err) {
-                    Toast.show('Error de conexión', 'error');
+                    Toast.show(I18n.t('js.devices.connection_error'), 'error');
                     e.target.innerText = originalText;
                     e.target.disabled = false;
                 }
@@ -127,23 +121,19 @@ export const DevicesController = (function() {
         });
     }
 
-    // init() ahora es seguro: solo se llama cuando el router lo decide.
     async function init() {
         const container = document.getElementById('devices-list-container');
-        if (!container) return; // Validación básica por si acaso
+        if (!container) return;
 
-        // Carga inicial
         loadDevices();
         
-        // Listener botón "Cerrar todas"
         const btnAll = document.getElementById('btn-revoke-all');
         if(btnAll) {
-            // Clonación para limpiar listeners previos (útil en SPAs)
             const newBtnAll = btnAll.cloneNode(true);
             btnAll.parentNode.replaceChild(newBtnAll, btnAll);
             
             newBtnAll.addEventListener('click', async () => {
-                if(!confirm('¿Seguro que quieres cerrar sesión en TODOS los dispositivos? Deberás iniciar sesión de nuevo.')) return;
+                if(!confirm(I18n.t('js.devices.confirm_revoke_all'))) return;
 
                 const formData = new FormData();
                 formData.append('action', 'revoke_all_sessions');
@@ -156,7 +146,7 @@ export const DevicesController = (function() {
                         Toast.show(res.message, 'error');
                     }
                 } catch(err) {
-                    Toast.show('Error de conexión', 'error');
+                    Toast.show(I18n.t('js.devices.connection_error'), 'error');
                 }
             });
         }
