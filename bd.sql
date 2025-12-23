@@ -51,8 +51,20 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     language VARCHAR(20) NOT NULL DEFAULT 'es-latam',
-    open_links_new_tab TINYINT(1) NOT NULL DEFAULT 1, -- 1 = True (Activado por defecto)
+    open_links_new_tab TINYINT(1) NOT NULL DEFAULT 1, -- 1 = True
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE KEY unique_user (user_id)
+);
+
+-- === NUEVA TABLA: TOKENS DE SESIÓN ROTATIVOS ===
+CREATE TABLE IF NOT EXISTS user_auth_tokens (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    selector CHAR(24) NOT NULL,
+    hashed_validator CHAR(64) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX (selector)
 );

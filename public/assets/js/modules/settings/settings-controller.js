@@ -32,8 +32,10 @@ export const SettingsController = (function() {
             
             if (!res.success) {
                 Toast.show(res.message || 'Error al guardar preferencia', 'error');
+            } else {
+                // === CAMBIO: Mostrar Toast de éxito ===
+                Toast.show(res.message || 'Preferencia guardada', 'success');
             }
-            // Si es éxito, podemos mostrar un Toast discreto o nada.
         } catch (error) {
             console.error(error);
             Toast.show('Error de conexión al guardar preferencia', 'error');
