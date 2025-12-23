@@ -14,7 +14,6 @@ if (empty($_SESSION['csrf_token'])) {
 // === CONTROL DE ACCESO (MIDDLEWARE) ===
 $isLoggedIn = isset($_SESSION['user_id']);
 
-// Lista de rutas que NO requieren login
 $publicRoutes = [
     'login', 
     'register', 
@@ -25,13 +24,11 @@ $publicRoutes = [
 ];
 
 if (!$isLoggedIn) {
-    // Si NO está logueado y trata de acceder a una ruta privada -> Mandar a Login
     if (!in_array($currentSection, $publicRoutes)) {
         header("Location: " . $basePath . "login");
         exit;
     }
 } else {
-    // Si SÍ está logueado y trata de acceder a Login/Registro -> Mandar a Home
     if (in_array($currentSection, $publicRoutes)) {
         header("Location: " . $basePath);
         exit;
@@ -45,13 +42,12 @@ $userRole = 'guest';
 if ($isLoggedIn) {
     
     // =========================================================
-    // NUEVO: REFRESCAR ROL Y DATOS EN CADA RECARGA
+    // REFRESCAR ROL, AVATAR Y EMAIL EN CADA RECARGA
     // =========================================================
-    // Consultamos la BD para tener siempre el rol y avatar actualizados
-    // sin necesidad de volver a iniciar sesión.
     try {
         if (isset($pdo)) {
-            $stmt = $pdo->prepare("SELECT role, avatar_path, username FROM users WHERE id = ? LIMIT 1");
+            // AHORA INCLUIMOS 'email' EN LA CONSULTA
+            $stmt = $pdo->prepare("SELECT role, avatar_path, username, email FROM users WHERE id = ? LIMIT 1");
             $stmt->execute([$_SESSION['user_id']]);
             $freshUser = $stmt->fetch();
 
@@ -59,21 +55,18 @@ if ($isLoggedIn) {
                 $_SESSION['role'] = $freshUser['role'];
                 $_SESSION['avatar'] = $freshUser['avatar_path'];
                 $_SESSION['username'] = $freshUser['username'];
+                $_SESSION['email'] = $freshUser['email']; // <--- ACTUALIZAMOS EMAIL EN SESIÓN
             }
         }
     } catch (Exception $e) {
-        // Si falla la BD, continuamos silenciosamente con los datos viejos de sesión
         error_log("Error al refrescar sesión: " . $e->getMessage());
     }
     // =========================================================
 
-    // Definir rol (ahora actualizado)
     $userRole = $_SESSION['role'] ?? 'user';
 
-    // Obtener imagen de perfil
     if (!empty($_SESSION['avatar'])) {
         $avatarFile = __DIR__ . '/../' . $_SESSION['avatar'];
-
         if (file_exists($avatarFile)) {
             $mimeType = mime_content_type($avatarFile);
             $data = file_get_contents($avatarFile);
@@ -81,14 +74,12 @@ if ($isLoggedIn) {
         }
     }
 
-    // Fallback: Si no hay imagen, usar un placeholder
     if (empty($globalAvatarSrc)) {
         $name = $_SESSION['username'] ?? 'User';
         $globalAvatarSrc = "https://ui-avatars.com/api/?name=" . urlencode($name) . "&background=random&color=fff";
     }
 }
 
-// Definir qué archivo cargar según la ruta
 $routesMap = require __DIR__ . '/../config/routes.php';
 $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
 

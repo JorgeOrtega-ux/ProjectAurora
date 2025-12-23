@@ -41,17 +41,15 @@ function get_client_ip() {
 
 function logSecurityEvent($pdo, $identifier, $actionType) {
     $ip = get_client_ip();
-    // Insertamos el fallo
     $stmt = $pdo->prepare("INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)");
     $stmt->execute([$identifier, $actionType, $ip]);
 }
 
 function checkSecurityBlock($pdo, $actionType) {
     $ip = get_client_ip();
-    $limit = 5; // Máximo de intentos permitidos
-    $minutes = 15; // Tiempo de bloqueo (minutos)
+    $limit = 5; 
+    $minutes = 15; 
 
-    // Contamos fallos de ESTA IP para ESTA acción en los últimos X minutos
     $stmt = $pdo->prepare("
         SELECT COUNT(*) as failures 
         FROM security_logs 
@@ -63,7 +61,7 @@ function checkSecurityBlock($pdo, $actionType) {
     $result = $stmt->fetch();
 
     if ($result && $result['failures'] >= $limit) {
-        return true; // Está bloqueado
+        return true; 
     }
     return false;
 }
@@ -86,14 +84,12 @@ if ($action === 'register_step_1') {
         jsonResponse(false, 'El correo electrónico no es válido.');
     }
 
-    // Verificar si ya existe en la BD
     $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
     $stmt->execute([$email]);
     if ($stmt->fetch()) {
         jsonResponse(false, 'Este correo electrónico ya está registrado.');
     }
 
-    // Guardar en sesión
     $_SESSION['temp_register'] = [
         'email' => $email,
         'password' => $password
@@ -136,7 +132,6 @@ if ($action === 'register_step_1') {
     $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
     $expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
 
-    // Limpiar anteriores
     $del = $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation'");
     $del->execute([$email]);
 
@@ -156,7 +151,7 @@ if ($action === 'register_step_1') {
     }
 
 // =========================================================================
-//  NUEVO: REENVIAR CÓDIGO (¡CON SEGURIDAD DE SERVIDOR!)
+//  REENVIAR CÓDIGO
 // =========================================================================
 } elseif ($action === 'resend_code') {
     $email = $_SESSION['pending_verification_email'] ?? '';
@@ -165,8 +160,6 @@ if ($action === 'register_step_1') {
         jsonResponse(false, 'No hay proceso de verificación activo.');
     }
 
-    // --- SEGURIDAD 1: RATE LIMITING (Anti-Spam) ---
-    // Verificamos si existe algún código creado en los últimos 60 SEGUNDOS.
     $checkTime = $pdo->prepare("
         SELECT created_at 
         FROM verification_codes 
@@ -180,9 +173,7 @@ if ($action === 'register_step_1') {
     if ($checkTime->fetch()) {
         jsonResponse(false, 'Por favor espera 60 segundos antes de solicitar otro código.');
     }
-    // ---------------------------------------------
 
-    // 1. Recuperar el payload del último código (para no perder username/pass)
     $stmt = $pdo->prepare("SELECT payload FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation' ORDER BY id DESC LIMIT 1");
     $stmt->execute([$email]);
     $lastCode = $stmt->fetch();
@@ -192,16 +183,12 @@ if ($action === 'register_step_1') {
     }
 
     $payload = $lastCode['payload'];
-
-    // 2. Generar nuevo código
     $newCode = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
     $expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
 
-    // 3. Eliminar códigos anteriores (Limpieza)
     $del = $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation'");
     $del->execute([$email]);
 
-    // 4. Guardar nuevo
     $insert = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, 'account_activation', ?, ?, ?)");
     
     try {
@@ -242,7 +229,6 @@ if ($action === 'register_step_1') {
     $passwordHash = $payload['password_hash']; 
     $uuid = generate_uuid();
 
-    // Generar Avatar
     $firstLetter = substr($username, 0, 1);
     $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($firstLetter) . "&background=random&color=fff&size=128&format=png";
     
@@ -271,6 +257,7 @@ if ($action === 'register_step_1') {
         $_SESSION['username'] = $username;
         $_SESSION['role'] = 'user';
         $_SESSION['avatar'] = $dbAvatarPath;
+        $_SESSION['email'] = $email; // <--- AGREGADO: Guardamos email en sesión al registrarse
         
         unset($_SESSION['temp_register']);
         unset($_SESSION['pending_verification_email']);
@@ -283,13 +270,12 @@ if ($action === 'register_step_1') {
     }
 
 // =========================================================================
-//  LOGIN (MODIFICADO CON BLOQUEO ANTI-BRUTEFORCE)
+//  LOGIN
 // =========================================================================
 } elseif ($action === 'login') {
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    // 1. Verificar si la IP está bloqueada por demasiados intentos fallidos
     if (checkSecurityBlock($pdo, 'login_fail')) {
         jsonResponse(false, 'Demasiados intentos fallidos. Por seguridad, espera 15 minutos antes de volver a intentar.');
     }
@@ -299,22 +285,20 @@ if ($action === 'register_step_1') {
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password'])) {
-        // Login exitoso
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
         $_SESSION['avatar'] = $user['avatar_path'];
+        $_SESSION['email'] = $user['email']; // <--- AGREGADO: Guardamos email en sesión al loguearse
 
         jsonResponse(true, 'Bienvenido.', ['redirect' => '/ProjectAurora/']);
     } else {
-        // Login fallido: Registramos el evento
         logSecurityEvent($pdo, $email, 'login_fail');
-        
         jsonResponse(false, 'Credenciales incorrectas.');
     }
 
 // =========================================================================
-//  RECUPERAR CONTRASEÑA - PASO 1 (MODIFICADO CON BLOQUEO ANTI-ENUMERACIÓN)
+//  RECUPERAR CONTRASEÑA - PASO 1
 // =========================================================================
 } elseif ($action === 'request_reset') {
     $email = trim($_POST['email'] ?? '');
@@ -323,40 +307,27 @@ if ($action === 'register_step_1') {
         jsonResponse(false, 'Correo electrónico inválido.');
     }
 
-    // 1. Verificar si la IP está bloqueada por demasiadas solicitudes inválidas
     if (checkSecurityBlock($pdo, 'recovery_fail')) {
         jsonResponse(false, 'Has excedido el límite de solicitudes. Intenta más tarde.');
     }
 
-    // Verificar si el usuario existe
     $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
     $stmt->execute([$email]);
     
     if (!$stmt->fetch()) {
-        // El correo NO existe -> Contabilizar como intento fallido (para evitar enumeración masiva)
         logSecurityEvent($pdo, $email, 'recovery_fail');
-
-        // Mensaje genérico o específico según tu política. 
-        // Para cumplir tu requerimiento de "5 correos inválidos te bloquea",
-        // aquí es donde sumamos al contador.
         jsonResponse(false, 'No encontramos una cuenta con este correo.');
     }
 
-    // Si llegamos aquí, el usuario EXISTE y NO está bloqueada la IP.
-    
-    // Generar Token
     $token = bin2hex(random_bytes(32));
-    $expiresAt = date('Y-m-d H:i:s', strtotime('+1 hour')); // Expira en 1 hora
+    $expiresAt = date('Y-m-d H:i:s', strtotime('+1 hour'));
 
-    // Limpiar tokens viejos de este email
     $pdo->prepare("DELETE FROM password_resets WHERE email = ?")->execute([$email]);
 
-    // Guardar nuevo token
     $sql = "INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)";
     try {
         $pdo->prepare($sql)->execute([$email, $token, $expiresAt]);
         
-        // SIMULACIÓN DE ENVÍO DE CORREO
         $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
         $host = $_SERVER['HTTP_HOST']; 
         $resetLink = "$protocol://$host/ProjectAurora/reset-password?token=$token";
@@ -371,7 +342,7 @@ if ($action === 'register_step_1') {
     }
 
 // =========================================================================
-//  RECUPERAR CONTRASEÑA - PASO 2 (Cambiar Password)
+//  RECUPERAR CONTRASEÑA - PASO 2
 // =========================================================================
 } elseif ($action === 'reset_password') {
     $token = $_POST['token'] ?? '';
@@ -385,7 +356,6 @@ if ($action === 'register_step_1') {
         jsonResponse(false, 'La contraseña es muy corta (min 6 caracteres).');
     }
 
-    // Verificar Token y Expiración
     $stmt = $pdo->prepare("SELECT email FROM password_resets WHERE token = ? AND expires_at > NOW() LIMIT 1");
     $stmt->execute([$token]);
     $resetRequest = $stmt->fetch();
@@ -399,11 +369,9 @@ if ($action === 'register_step_1') {
 
     $pdo->beginTransaction();
     try {
-        // Actualizar usuario
         $update = $pdo->prepare("UPDATE users SET password = ? WHERE email = ?");
         $update->execute([$newHash, $email]);
 
-        // Borrar el token usado
         $pdo->prepare("DELETE FROM password_resets WHERE email = ?")->execute([$email]);
 
         $pdo->commit();

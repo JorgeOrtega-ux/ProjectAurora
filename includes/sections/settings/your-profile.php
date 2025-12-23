@@ -1,14 +1,11 @@
 <?php
 // includes/sections/settings/your-profile.php
 
-// 1. Detectar estado de la foto actual para la carga inicial
-// Asumimos que si la ruta en sesión contiene '/custom/', es una foto subida por el usuario.
 $currentAvatarPath = $_SESSION['avatar'] ?? '';
 $isCustomAvatar = (strpos($currentAvatarPath, 'storage/profilePicture/custom/') !== false);
 
-// 2. Definir clases iniciales para mostrar/ocultar botones según el estado
-$classDefault = $isCustomAvatar ? 'disabled' : 'active'; // Si es custom, ocultamos el botón "Subir"
-$classCustom  = $isCustomAvatar ? 'active' : 'disabled'; // Si es custom, mostramos "Eliminar/Cambiar"
+$classDefault = $isCustomAvatar ? 'disabled' : 'active'; 
+$classCustom  = $isCustomAvatar ? 'active' : 'disabled'; 
 ?>
 
 <div class="section-content active" data-section="settings/your-profile">
@@ -101,12 +98,12 @@ $classCustom  = $isCustomAvatar ? 'active' : 'disabled'; // Si es custom, mostra
                         <h2 class="component-card__title">Correo electrónico</h2>
 
                         <div class="active" data-state="email-view-state">
-                            <span class="text-display-value" id="display-email">jorge@ejemplo.com</span>
+                            <span class="text-display-value" id="display-email"><?php echo htmlspecialchars($_SESSION['email'] ?? ''); ?></span>
                         </div>
 
                         <div class="disabled w-100 input-group-responsive" data-state="email-edit-state">
                             <div class="component-input-wrapper flex-1">
-                                <input type="email" class="component-text-input" id="input-email" value="jorge@ejemplo.com">
+                                <input type="email" class="component-text-input" id="input-email" value="<?php echo htmlspecialchars($_SESSION['email'] ?? ''); ?>">
                             </div>
                             <div class="component-card__actions disabled m-0" data-state="email-actions-edit">
                                 <button type="button" class="component-button" onclick="toggleEdit('email', false)">Cancelar</button>
