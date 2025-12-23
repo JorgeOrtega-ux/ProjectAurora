@@ -18,6 +18,29 @@ export const SettingsController = (function() {
     };
 
     /**
+     * Guarda una preferencia general (Idioma, Toggles) en la BD
+     */
+    async function savePreference(key, value) {
+        const formData = new FormData();
+        formData.append('action', 'update_preference');
+        formData.append('key', key);
+        formData.append('value', value);
+
+        try {
+            // console.log(`Guardando ${key}: ${value}`); // Debug opcional
+            const res = await ApiService.post('settings-handler.php', formData);
+            
+            if (!res.success) {
+                Toast.show(res.message || 'Error al guardar preferencia', 'error');
+            }
+            // Si es éxito, podemos mostrar un Toast discreto o nada.
+        } catch (error) {
+            console.error(error);
+            Toast.show('Error de conexión al guardar preferencia', 'error');
+        }
+    }
+
+    /**
      * Alterna entre modo visualización y edición para inputs de texto (Username, Email)
      */
     function toggleEdit(sectionId, isEditing) {
@@ -101,7 +124,7 @@ export const SettingsController = (function() {
     }
 
     // =======================================================
-    // LÓGICA DE DROPDOWNS (UI)
+    // LÓGICA DE DROPDOWNS (UI + PREFS)
     // =======================================================
 
     function toggleDropdown(wrapperElement) {
@@ -120,7 +143,13 @@ export const SettingsController = (function() {
         if (event) event.stopPropagation();
     }
 
-    function selectOption(itemElement, textValue) {
+    /**
+     * Selecciona una opción del dropdown.
+     * @param {HTMLElement} itemElement - Elemento clicado.
+     * @param {string} textValue - Texto a mostrar en el trigger.
+     * @param {string|null} dataValue - (Opcional) Valor técnico a guardar (ej: 'es-mx').
+     */
+    function selectOption(itemElement, textValue, dataValue = null) {
         const wrapper = itemElement.closest(CONFIG.wrapperSelector);
         if (!wrapper) return;
         const triggerText = wrapper.querySelector('.trigger-select-text');
@@ -129,6 +158,13 @@ export const SettingsController = (function() {
         wrapper.querySelectorAll('.menu-link').forEach(link => link.classList.remove(CONFIG.activeClass));
         itemElement.classList.add(CONFIG.activeClass);
         closeAllDropdowns();
+
+        // Guardar preferencia si viene el dato (ej: idioma)
+        if (dataValue) {
+            // Asumimos que es idioma por ahora, o podríamos inferir la key del DOM
+            savePreference('language', dataValue);
+        }
+
         if (event) event.stopPropagation();
     }
 
@@ -136,6 +172,21 @@ export const SettingsController = (function() {
         document.querySelectorAll(CONFIG.popoverSelector).forEach(el => el.classList.remove(CONFIG.activeClass));
         document.querySelectorAll(CONFIG.triggerSelector).forEach(el => el.classList.remove(CONFIG.activeClass));
         document.querySelectorAll(CONFIG.wrapperSelector).forEach(el => el.classList.remove('dropdown-active'));
+    }
+
+    // =======================================================
+    // LÓGICA DE TOGGLES (SWITCHES)
+    // =======================================================
+    
+    function _initToggles() {
+        const toggleLinks = document.getElementById('pref-open-links');
+        if (toggleLinks) {
+            // Desvincular eventos previos si los hubiera (para evitar duplicados en SPA) es difícil sin referencias, 
+            // pero como reemplazamos el HTML en SPA, el elemento es nuevo.
+            toggleLinks.addEventListener('change', (e) => {
+                savePreference('open_links_new_tab', e.target.checked);
+            });
+        }
     }
 
     // =======================================================
@@ -262,6 +313,9 @@ export const SettingsController = (function() {
             }
         });
         
+        // Inicializar toggles (Nueva pestaña)
+        _initToggles();
+
         // Intentar iniciar lógica de contraseña (si existe el elemento en el DOM)
         _initPasswordLogic();
 
@@ -274,7 +328,8 @@ export const SettingsController = (function() {
         saveData,
         toggleDropdown,
         selectOption,
-        closeAllDropdowns
+        closeAllDropdowns,
+        savePreference // Exportamos por si se necesita externamente
     };
 })();
 

@@ -15,7 +15,7 @@ if (!isset($_SESSION['user_id'])) {
     jsonResponse(false, 'Sesión expirada.');
 }
 
-// 2. Verificar CSRF (Seguridad)
+// 2. Verificar CSRF
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
         jsonResponse(false, 'Error de seguridad: Token inválido (CSRF).');
@@ -40,7 +40,7 @@ function deleteOldAvatar($pdo, $userId, $currentPath) {
 }
 
 // =========================================================
-//  ACCIÓN: SUBIR FOTO (Upload / Change)
+//  ACCIÓN: SUBIR FOTO
 // =========================================================
 if ($action === 'upload_avatar') {
     if (!isset($_FILES['avatar']) || $_FILES['avatar']['error'] !== UPLOAD_ERR_OK) {
@@ -125,28 +125,22 @@ if ($action === 'upload_avatar') {
         jsonResponse(false, 'El campo no puede estar vacío.');
     }
 
-    // Validaciones específicas
     if ($field === 'email') {
         if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
             jsonResponse(false, 'Formato de correo inválido.');
         }
     }
 
-    // Verificar unicidad (que no exista otro usuario con ese dato)
     $stmt = $pdo->prepare("SELECT id FROM users WHERE $field = ? AND id != ?");
     $stmt->execute([$value, $userId]);
     if ($stmt->fetch()) {
         jsonResponse(false, "Este $field ya está en uso por otro usuario.");
     }
 
-    // Actualizar BD
     try {
         $update = $pdo->prepare("UPDATE users SET $field = ? WHERE id = ?");
         $update->execute([$value, $userId]);
-
-        // Actualizar Sesión
         $_SESSION[$field] = $value;
-
         jsonResponse(true, ucfirst($field) . ' actualizado correctamente.');
     } catch (Exception $e) {
         jsonResponse(false, 'Error al actualizar: ' . $e->getMessage());
@@ -162,12 +156,10 @@ if ($action === 'upload_avatar') {
     if (empty($currentPass) || empty($newPass)) {
         jsonResponse(false, 'Faltan datos requeridos.');
     }
-
     if (strlen($newPass) < 6) {
         jsonResponse(false, 'La nueva contraseña debe tener al menos 6 caracteres.');
     }
 
-    // Obtener contraseña actual de la BD
     $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
     $stmt->execute([$userId]);
     $user = $stmt->fetch();
@@ -176,15 +168,67 @@ if ($action === 'upload_avatar') {
         jsonResponse(false, 'La contraseña actual es incorrecta.');
     }
 
-    // Hashear nueva y guardar
     $newHash = password_hash($newPass, PASSWORD_DEFAULT);
-    
     try {
         $update = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
         $update->execute([$newHash, $userId]);
         jsonResponse(true, 'Contraseña actualizada exitosamente.');
     } catch (Exception $e) {
         jsonResponse(false, 'Error al guardar contraseña.');
+    }
+
+// =========================================================
+//  ACCIÓN: ACTUALIZAR PREFERENCIAS (NUEVO)
+// =========================================================
+} elseif ($action === 'update_preference') {
+    $key = $_POST['key'] ?? '';
+    $value = $_POST['value'] ?? '';
+
+    // Mapeo de claves permitidas a columnas reales de BD
+    $allowedKeys = [
+        'language' => 'language',
+        'open_links_new_tab' => 'open_links_new_tab'
+    ];
+
+    if (!array_key_exists($key, $allowedKeys)) {
+        jsonResponse(false, 'Preferencia no válida.');
+    }
+
+    // Validación y Sanitización de valores
+    $dbValue = $value;
+    
+    if ($key === 'language') {
+        $allowedLangs = ['es-latam', 'es-mx', 'en-us', 'en-gb', 'fr-fr'];
+        if (!in_array($value, $allowedLangs)) {
+            jsonResponse(false, 'Idioma no soportado.');
+        }
+    } elseif ($key === 'open_links_new_tab') {
+        // Convertir 'true'/'false' string a 1/0
+        $dbValue = ($value === 'true' || $value === '1') ? 1 : 0;
+    }
+
+    // Usamos INSERT ... ON DUPLICATE KEY UPDATE para asegurar que funcione 
+    // incluso si por algún error el usuario no tenía fila de preferencias creada.
+    $sql = "INSERT INTO user_preferences (user_id, $key) VALUES (?, ?) 
+            ON DUPLICATE KEY UPDATE $key = VALUES($key)";
+            
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$userId, $dbValue]);
+
+        // Actualizar sesión en vivo
+        if (!isset($_SESSION['preferences'])) { $_SESSION['preferences'] = []; }
+        
+        // Guardamos el valor tipado correctamente en sesión
+        if ($key === 'open_links_new_tab') {
+            $_SESSION['preferences'][$key] = (bool)$dbValue;
+        } else {
+            $_SESSION['preferences'][$key] = $dbValue;
+        }
+
+        jsonResponse(true, 'Preferencia guardada.');
+    } catch (Exception $e) {
+        jsonResponse(false, 'Error al guardar preferencia: ' . $e->getMessage());
     }
 }
 

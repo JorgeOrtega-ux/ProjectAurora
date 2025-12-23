@@ -6,6 +6,22 @@ $isCustomAvatar = (strpos($currentAvatarPath, 'storage/profilePicture/custom/') 
 
 $classDefault = $isCustomAvatar ? 'disabled' : 'active'; 
 $classCustom  = $isCustomAvatar ? 'active' : 'disabled'; 
+
+// === NUEVO: PREFERENCIAS DE USUARIO ===
+// Obtenemos los valores de la sesión (definidos en auth-handler/login o register)
+$prefLang = $_SESSION['preferences']['language'] ?? 'es-latam';
+$prefOpenLinks = $_SESSION['preferences']['open_links_new_tab'] ?? true;
+
+// Mapa de idiomas disponibles
+$langLabels = [
+    'es-latam' => 'Español (Latinoamérica)',
+    'es-mx'    => 'Español (México)',
+    'en-us'    => 'English (United States)',
+    'en-gb'    => 'English (United Kingdom)',
+    'fr-fr'    => 'Français (France)'
+];
+// Etiqueta actual para mostrar en el selector cerrado
+$currentLangLabel = $langLabels[$prefLang] ?? $langLabels['es-latam'];
 ?>
 
 <div class="section-content active" data-section="settings/your-profile">
@@ -133,19 +149,26 @@ $classCustom  = $isCustomAvatar ? 'active' : 'disabled';
                     <div class="trigger-select-wrapper" onclick="toggleDropdown(this)">
                         <div class="trigger-selector">
                             <span class="material-symbols-rounded trigger-select-icon">language</span>
-                            <span class="trigger-select-text">Español (Latinoamérica)</span>
+                            <span class="trigger-select-text"><?php echo $currentLangLabel; ?></span>
                             <span class="material-symbols-rounded">expand_more</span>
                         </div>
                         <div class="popover-module">
                             <div class="menu-list">
-                                <div class="menu-link active" onclick="selectOption(this, 'Español (Latinoamérica)')">
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">language</span></div>
-                                    <div class="menu-link-text">Español (Latinoamérica)</div>
-                                </div>
-                                <div class="menu-link" onclick="selectOption(this, 'English (US)')">
-                                    <div class="menu-link-icon"><span class="material-symbols-rounded">translate</span></div>
-                                    <div class="menu-link-text">English (US)</div>
-                                </div>
+                                
+                                <?php foreach($langLabels as $code => $label): 
+                                    $isActive = ($code === $prefLang) ? 'active' : '';
+                                    // Icono visual: lenguaje global vs traducción
+                                    $icon = (strpos($code, 'es') !== false) ? 'language' : 'translate'; 
+                                ?>
+                                    <div class="menu-link <?php echo $isActive; ?>" 
+                                         onclick="selectOption(this, '<?php echo $label; ?>', '<?php echo $code; ?>')">
+                                        <div class="menu-link-icon">
+                                            <span class="material-symbols-rounded"><?php echo $icon; ?></span>
+                                        </div>
+                                        <div class="menu-link-text"><?php echo $label; ?></div>
+                                    </div>
+                                <?php endforeach; ?>
+
                             </div>
                         </div>
                     </div>
@@ -163,7 +186,7 @@ $classCustom  = $isCustomAvatar ? 'active' : 'disabled';
                 </div>
                 <div class="component-card__actions actions-right">
                     <label class="component-toggle-switch">
-                        <input type="checkbox" checked>
+                        <input type="checkbox" id="pref-open-links" <?php echo ($prefOpenLinks) ? 'checked' : ''; ?>>
                         <span class="component-toggle-slider"></span>
                     </label>
                 </div>

@@ -46,3 +46,13 @@ CREATE TABLE IF NOT EXISTS security_logs (
     INDEX (ip_address),
     INDEX (created_at)
 );
+
+CREATE TABLE IF NOT EXISTS user_preferences (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    language VARCHAR(20) NOT NULL DEFAULT 'es-latam',
+    open_links_new_tab TINYINT(1) NOT NULL DEFAULT 1, -- 1 = True (Activado por defecto)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user (user_id)
+);

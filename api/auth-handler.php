@@ -26,6 +26,69 @@ function generate_uuid() {
 }
 
 // =========================================================================
+//  DETECCIÓN INTELIGENTE DE IDIOMA
+// =========================================================================
+function get_best_match_language() {
+    // 1. Idiomas que tu web soporta (Códigos internos)
+    // Estos deben coincidir con las opciones que muestras en el frontend
+    $available_langs = [
+        'es-latam', 
+        'es-mx', 
+        'en-us', 
+        'en-gb', 
+        'fr-fr'
+    ];
+    $default_lang = 'es-latam';
+
+    // 2. Obtener idioma del navegador
+    $http_accept_language = $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '';
+    
+    // Si no hay cabecera, devolver default
+    if (empty($http_accept_language)) return $default_lang;
+
+    // 3. Analizar la cadena (ej: "es-MX,es;q=0.9,en;q=0.8")
+    preg_match_all('/([a-z]{1,8}(-[a-z]{1,8})?)\s*(;\s*q\s*=\s*(1|0\.[0-9]+))?/i', $http_accept_language, $matches);
+
+    if (count($matches[1])) {
+        $langs = array_combine($matches[1], $matches[4]);
+        
+        // Normalizar claves a minúsculas
+        $langs = array_change_key_case($langs, CASE_LOWER);
+
+        // Ordenar por prioridad (q)
+        foreach ($langs as $lang => $val) {
+            if ($val === '') $langs[$lang] = 1;
+        }
+        arsort($langs, SORT_NUMERIC);
+
+        // 4. Lógica de coincidencia
+        foreach ($langs as $lang => $val) {
+            // A) Coincidencia Exacta (Ej: navegador "es-mx" -> web "es-mx")
+            if (in_array($lang, $available_langs)) {
+                return $lang;
+            }
+
+            // B) Coincidencia Aproximada (Familia)
+            $prefix = substr($lang, 0, 2); // 'es', 'en', 'fr'
+
+            if ($prefix === 'es') {
+                // Cualquier español que no sea mx explícito (ej: es-ar, es-es), va a latam
+                return 'es-latam';
+            }
+            if ($prefix === 'en') {
+                // Cualquier inglés (ej: en-au, en-ca) va a US (o GB si prefieres)
+                return 'en-us'; 
+            }
+            if ($prefix === 'fr') {
+                return 'fr-fr';
+            }
+        }
+    }
+
+    return $default_lang;
+}
+
+// =========================================================================
 //  FUNCIONES DE SEGURIDAD (ANTI-BRUTEFORCE)
 // =========================================================================
 
@@ -249,6 +312,12 @@ if ($action === 'register_step_1') {
         $insertUser->execute([$uuid, $username, $email, $passwordHash, $dbAvatarPath]);
         $newUserId = $pdo->lastInsertId();
 
+        // === INSERTAR PREFERENCIAS (AUTO-DETECTED) ===
+        $detectedLang = get_best_match_language();
+        // open_links_new_tab = 1 (TRUE) por defecto
+        $prefStmt = $pdo->prepare("INSERT INTO user_preferences (user_id, language, open_links_new_tab) VALUES (?, ?, 1)");
+        $prefStmt->execute([$newUserId, $detectedLang]);
+
         $pdo->prepare("DELETE FROM verification_codes WHERE id = ?")->execute([$verification['id']]);
 
         $pdo->commit();
@@ -257,7 +326,13 @@ if ($action === 'register_step_1') {
         $_SESSION['username'] = $username;
         $_SESSION['role'] = 'user';
         $_SESSION['avatar'] = $dbAvatarPath;
-        $_SESSION['email'] = $email; // <--- AGREGADO: Guardamos email en sesión al registrarse
+        $_SESSION['email'] = $email;
+        
+        // Guardar preferencias en sesión
+        $_SESSION['preferences'] = [
+            'language' => $detectedLang,
+            'open_links_new_tab' => true
+        ];
         
         unset($_SESSION['temp_register']);
         unset($_SESSION['pending_verification_email']);
@@ -289,7 +364,25 @@ if ($action === 'register_step_1') {
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
         $_SESSION['avatar'] = $user['avatar_path'];
-        $_SESSION['email'] = $user['email']; // <--- AGREGADO: Guardamos email en sesión al loguearse
+        $_SESSION['email'] = $user['email'];
+
+        // === CARGAR PREFERENCIAS AL LOGIN ===
+        $prefStmt = $pdo->prepare("SELECT language, open_links_new_tab FROM user_preferences WHERE user_id = ?");
+        $prefStmt->execute([$user['id']]);
+        $prefs = $prefStmt->fetch();
+
+        if ($prefs) {
+            $_SESSION['preferences'] = [
+                'language' => $prefs['language'],
+                'open_links_new_tab' => (bool)$prefs['open_links_new_tab']
+            ];
+        } else {
+            // Fallback para usuarios antiguos
+            $_SESSION['preferences'] = [
+                'language' => 'es-latam',
+                'open_links_new_tab' => true
+            ];
+        }
 
         jsonResponse(true, 'Bienvenido.', ['redirect' => '/ProjectAurora/']);
     } else {
