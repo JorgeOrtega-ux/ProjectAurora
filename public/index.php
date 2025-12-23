@@ -160,10 +160,10 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
     <script>
         window.BASE_PATH = '<?php echo $basePath; ?>';
         window.USER_PREFS = <?php echo json_encode($_SESSION['preferences'] ?? new stdClass()); ?>;
-        
-        // Inyectamos el objeto JSON completo (anidado) para que el JS lo consuma
         window.TRANSLATIONS = <?php echo json_encode($i18n->getAll()); ?>;
     </script>
+
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
 
@@ -196,7 +196,6 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
                     <div class="general-content-scrolleable" data-container="main-section">
                         <?php
                         if (file_exists($fileToLoad)) {
-                            // $i18n está disponible aquí por el include superior
                             include $fileToLoad;
                         } else {
                             echo $i18n->t('errors.file_not_found');

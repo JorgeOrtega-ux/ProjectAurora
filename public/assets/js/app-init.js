@@ -7,6 +7,7 @@ import { initMainController } from './main-controller.js';
 import { initUrlManager } from './core/url-manager.js';
 import { initAuthController } from './auth-controller.js'; 
 import { Toast } from './core/toast-manager.js'; 
+import { TooltipManager } from './core/tooltip-manager.js'; // Importar Tooltips
 
 import { SettingsController } from './modules/settings/settings-controller.js'; 
 import { ProfileController } from './modules/settings/profile-controller.js'; 
@@ -23,6 +24,7 @@ const App = {
         }
         
         Toast.init();
+        TooltipManager.init(); // Inicializar Tooltips
         initMainController();
         initAuthController();
         SettingsController.init();
