@@ -1,12 +1,11 @@
 import { navigateTo } from './core/url-manager.js';
-import { Toast } from './core/toast-manager.js'; // Importar Toast
+import { Toast } from './core/toast-manager.js';
+import { ApiService } from './core/api-service.js'; // Importar el nuevo servicio
 
 let resendTimerInterval = null;
 
 export function initAuthController() {
     console.log("Auth Controller: Listo (SPA - Event Delegation)");
-
-    const csrfToken = getCsrfToken();
 
     // Comprobar si entramos directamente a la pantalla de verificación para iniciar timer
     const resendBtn = document.getElementById('btn-resend-code');
@@ -27,7 +26,7 @@ export function initAuthController() {
         if (btnLogin) {
             e.preventDefault();
             hideError('login-error'); 
-            handleLogin(btnLogin, csrfToken);
+            handleLogin(btnLogin);
             return;
         }
 
@@ -51,12 +50,12 @@ export function initAuthController() {
             formData.append('action', 'register_step_1');
             formData.append('email', email);
             formData.append('password', password);
-            formData.append('csrf_token', csrfToken);
+            // Nota: CSRF se inyecta automáticamente en ApiService
 
             setLoading(btnNext1, true);
 
             try {
-                const res = await fetchApi(formData);
+                const res = await ApiService.post('auth-handler.php', formData);
                 if (res.success) {
                     navigateTo(res.next_url); 
                 } else {
@@ -72,7 +71,7 @@ export function initAuthController() {
         }
 
         // ------------------------------------------
-        // 3. REGISTRO - PASO 2 -> PASO 3 (AQUÍ VA EL TOAST)
+        // 3. REGISTRO - PASO 2 -> PASO 3
         // ------------------------------------------
         const btnNext2 = target.closest('#btn-next-2');
         if (btnNext2) {
@@ -89,16 +88,14 @@ export function initAuthController() {
             const formData = new FormData();
             formData.append('action', 'initiate_verification');
             formData.append('username', username);
-            formData.append('csrf_token', csrfToken);
 
             setLoading(btnNext2, true);
 
             try {
-                const res = await fetchApi(formData);
+                const res = await ApiService.post('auth-handler.php', formData);
                 if (res.success) {
                     if(res.debug_code) console.log("Code:", res.debug_code);
                     
-                    // === TOAST SOLICITADO ===
                     Toast.show('Código de verificación enviado a tu correo', 'info'); 
                     
                     navigateTo(res.next_url); 
@@ -132,12 +129,11 @@ export function initAuthController() {
             const formData = new FormData();
             formData.append('action', 'complete_register');
             formData.append('code', code);
-            formData.append('csrf_token', csrfToken);
 
             setLoading(btnFinish, true);
 
             try {
-                const res = await fetchApi(formData);
+                const res = await ApiService.post('auth-handler.php', formData);
                 if (res.success) {
                     window.location.href = res.redirect;
                 } else {
@@ -152,7 +148,7 @@ export function initAuthController() {
         }
 
         // ------------------------------------------
-        // 5. REENVIAR CÓDIGO (AQUÍ VA EL TOAST)
+        // 5. REENVIAR CÓDIGO
         // ------------------------------------------
         const btnResend = target.closest('#btn-resend-code');
         if (btnResend) {
@@ -165,16 +161,14 @@ export function initAuthController() {
 
             const formData = new FormData();
             formData.append('action', 'resend_code');
-            formData.append('csrf_token', csrfToken);
 
             btnResend.style.opacity = '0.5';
             
             try {
-                const res = await fetchApi(formData);
+                const res = await ApiService.post('auth-handler.php', formData);
                 btnResend.style.opacity = '1';
 
                 if (res.success) {
-                    // === TOAST SOLICITADO ===
                     Toast.show('Nuevo código de verificación enviado', 'success');
                     
                     if(res.debug_code) console.log("New Code:", res.debug_code);
@@ -207,22 +201,19 @@ export function initAuthController() {
             const formData = new FormData();
             formData.append('action', 'request_reset');
             formData.append('email', email);
-            formData.append('csrf_token', csrfToken);
 
             setLoading(btnRequestReset, true);
 
             try {
-                const res = await fetchApi(formData);
+                const res = await ApiService.post('auth-handler.php', formData);
                 setLoading(btnRequestReset, false);
 
                 if (res.success) {
-                    // Mostrar mensaje de éxito
                     Toast.show('Correo enviado. Revisa la consola para el link (MODO DEV)', 'success');
                     console.log("=== LINK DE RECUPERACIÓN ===");
                     console.log(res.debug_link);
                     console.log("============================");
                     
-                    // Opcional: Mostrar el link en pantalla para facilitar prueba
                     const area = document.getElementById('recovery-message-area');
                     if(area) {
                         area.innerHTML = `<div class="alert success mt-16" style="background:#e8f5e9; color:#2e7d32; padding:10px; border-radius:8px;">
@@ -265,12 +256,11 @@ export function initAuthController() {
             formData.append('action', 'reset_password');
             formData.append('token', token);
             formData.append('new_password', pass1);
-            formData.append('csrf_token', csrfToken);
 
             setLoading(btnSubmitNewPass, true);
 
             try {
-                const res = await fetchApi(formData);
+                const res = await ApiService.post('auth-handler.php', formData);
                 if (res.success) {
                     Toast.show('Contraseña actualizada. Inicia sesión.', 'success');
                     setTimeout(() => {
@@ -295,14 +285,14 @@ export function initAuthController() {
             e.preventDefault();
             const formData = new FormData();
             formData.append('action', 'logout');
-            formData.append('csrf_token', csrfToken);
-            await fetchApi(formData);
+            
+            await ApiService.post('auth-handler.php', formData);
             window.location.href = window.BASE_PATH + 'login';
             return;
         }
 
         // ------------------------------------------
-        // UI INTERACTIONS
+        // UI INTERACTIONS (Mostrar Password, Generar User)
         // ------------------------------------------
         const inputActionBtn = target.closest('.btn-input-action');
         if (inputActionBtn) {
@@ -348,24 +338,6 @@ export function initAuthController() {
 
 // --- UTILIDADES ---
 
-function getCsrfToken() {
-    const meta = document.querySelector('meta[name="csrf-token"]');
-    return meta ? meta.getAttribute('content') : '';
-}
-
-async function fetchApi(formData) {
-    try {
-        const response = await fetch(window.BASE_PATH + 'api/auth-handler.php', {
-            method: 'POST',
-            body: formData
-        });
-        return await response.json();
-    } catch (error) {
-        console.error("API Error:", error);
-        throw error;
-    }
-}
-
 function setLoading(btn, isLoading) {
     if (isLoading) {
         btn.dataset.originalText = btn.innerText;
@@ -379,11 +351,10 @@ function setLoading(btn, isLoading) {
     }
 }
 
-async function handleLogin(btn, token) {
+async function handleLogin(btn) {
     const inputs = document.querySelectorAll('.auth-card input');
     const formData = new FormData();
     formData.append('action', 'login');
-    formData.append('csrf_token', token);
     
     let hasEmpty = false;
     inputs.forEach(input => {
@@ -398,7 +369,7 @@ async function handleLogin(btn, token) {
 
     setLoading(btn, true);
     try {
-        const res = await fetchApi(formData);
+        const res = await ApiService.post('auth-handler.php', formData);
         if (res.success) {
             window.location.href = res.redirect;
         } else {
