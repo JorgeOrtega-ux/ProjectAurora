@@ -20,12 +20,14 @@
 
             <div class="menu-list" id="nav-settings" style="display: none;">
                 
-                <div class="menu-link" data-nav="main" style="margin-bottom: 12px; border-bottom: 1px solid #eee;">
+                <div class="menu-link" data-nav="main" style="border: 1px solid #00000020;">
                     <div class="menu-link-icon">
                         <span class="material-symbols-rounded">arrow_back</span>
                     </div>
                     <div class="menu-link-text">Volver a inicio</div>
                 </div>
+
+                <div style="width: 100%; border-bottom: 1px solid #00000020; margin: 8px 0;"></div>
 
                 <div class="menu-link" data-nav="settings/your-profile">
                     <div class="menu-link-icon">

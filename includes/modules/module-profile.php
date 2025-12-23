@@ -7,7 +7,7 @@
             // Usamos isset por seguridad, aunque $userRole debería venir del index.php
             if (isset($userRole) && in_array($userRole, ['founder', 'administrator'])): 
             ?>
-                <div class="menu-link">
+                <div class="menu-link" style="border: 1px solid #00000020;">
                     <div class="menu-link-icon">
                         <span class="material-symbols-rounded">admin_panel_settings</span>
                     </div>
@@ -15,6 +15,8 @@
                         <span>Panel de administración</span>
                     </div>
                 </div>
+                
+                <div style="width: 100%; border-bottom: 1px solid #00000020; margin: 8px 0;"></div>
             <?php endif; ?>
 
             <div class="menu-link" data-nav="settings/your-profile">

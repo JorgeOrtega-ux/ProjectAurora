@@ -77,9 +77,12 @@ async function loadContent(section) {
     const container = document.querySelector('.general-content-scrolleable');
     if (!container) return;
 
-    // Mostrar loader
-    container.innerHTML = '<div style="display:flex;justify-content:center;padding:50px;"><div class="spinner"></div></div>';
+    // Mostrar loader (Centrado)
+    container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;"><div class="spinner"></div></div>';
     
+    // === RETRASO ARTIFICIAL (200ms) ===
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     try {
         const response = await fetch(`${window.BASE_PATH}public/loader.php?section=${section}`);
         const html = await response.text();
@@ -89,7 +92,7 @@ async function loadContent(section) {
         
     } catch (error) {
         console.error("Error cargando sección:", error);
-        container.innerHTML = '<p>Error de conexión.</p>';
+        container.innerHTML = '<div style="padding: 20px;"><p>Error de conexión al cargar la sección.</p></div>';
     }
 }
 
