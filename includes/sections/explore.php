@@ -1,8 +1,8 @@
 <div class="component-header-card">
-    <h1 class="component-page-title">Explorar</h1>
-    <p class="component-page-description">Descubre nuevo contenido en la plataforma.</p>
+    <h1 class="component-page-title"><?php echo $i18n->trans('explore.title'); ?></h1>
+    <p class="component-page-description"><?php echo $i18n->trans('explore.desc'); ?></p>
 </div>
 
 <div class="component-card">
-    <p>Aquí iría la cuadrícula de exploración, galerías destacadas, etc.</p>
+    <p><?php echo $i18n->trans('explore.placeholder'); ?></p>
 </div>

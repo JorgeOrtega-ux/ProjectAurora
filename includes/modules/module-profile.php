@@ -3,8 +3,6 @@
         <div class="menu-list">
             
             <?php 
-            // Verificamos si el rol es administrador o founder para mostrar el panel
-            // Usamos isset por seguridad, aunque $userRole debería venir del index.php
             if (isset($userRole) && in_array($userRole, ['founder', 'administrator'])): 
             ?>
                 <div class="menu-link" style="border: 1px solid #00000020;">
@@ -12,7 +10,7 @@
                         <span class="material-symbols-rounded">admin_panel_settings</span>
                     </div>
                     <div class="menu-link-text">
-                        <span>Panel de administración</span>
+                        <span><?php echo $i18n->trans('menu.admin_panel'); ?></span>
                     </div>
                 </div>
                 
@@ -24,7 +22,7 @@
                     <span class="material-symbols-rounded">settings</span>
                 </div>
                 <div class="menu-link-text">
-                    <span>Configuración</span>
+                    <span><?php echo $i18n->trans('menu.settings'); ?></span>
                 </div>
             </div>
             
@@ -33,7 +31,7 @@
                     <span class="material-symbols-rounded">help</span>
                 </div>
                 <div class="menu-link-text">
-                    <span>Ayuda y comentarios</span>
+                    <span><?php echo $i18n->trans('menu.help'); ?></span>
                 </div>
             </div>
             
@@ -42,7 +40,7 @@
                     <span class="material-symbols-rounded">logout</span>
                 </div>
                 <div class="menu-link-text">
-                    <span>Cerrar sesión</span>
+                    <span><?php echo $i18n->trans('menu.logout'); ?></span>
                 </div>
             </div>
 

@@ -1,15 +1,18 @@
 <?php
 // includes/sections/settings/accessibility.php
 
-// Obtener preferencias actuales de la sesión (o defaults)
 $currentTheme = $_SESSION['preferences']['theme'] ?? 'sync';
 $isExtended = isset($_SESSION['preferences']['extended_toast']) && $_SESSION['preferences']['extended_toast'] == 1;
 
-// Mapas para visualización
+// Obtenemos las etiquetas traducidas
+$labelSystem = $i18n->trans('settings.accessibility.theme_system');
+$labelLight = $i18n->trans('settings.accessibility.theme_light');
+$labelDark = $i18n->trans('settings.accessibility.theme_dark');
+
 $themeLabels = [
-    'sync' => 'Sistema',
-    'light' => 'Claro',
-    'dark' => 'Oscuro'
+    'sync' => $labelSystem,
+    'light' => $labelLight,
+    'dark' => $labelDark
 ];
 $themeIcons = [
     'sync' => 'settings_brightness',
@@ -17,7 +20,7 @@ $themeIcons = [
     'dark' => 'dark_mode'
 ];
 
-$currentThemeLabel = $themeLabels[$currentTheme] ?? 'Sistema';
+$currentThemeLabel = $themeLabels[$currentTheme] ?? $labelSystem;
 $currentThemeIcon = $themeIcons[$currentTheme] ?? 'settings_brightness';
 ?>
 
@@ -25,16 +28,16 @@ $currentThemeIcon = $themeIcons[$currentTheme] ?? 'settings_brightness';
     <div class="component-wrapper">
         
         <div class="component-header-card">
-            <h1 class="component-page-title">Accesibilidad</h1>
-            <p class="component-page-description">Personaliza la apariencia y el comportamiento de la aplicación.</p>
+            <h1 class="component-page-title"><?php echo $i18n->trans('settings.accessibility.title'); ?></h1>
+            <p class="component-page-description"><?php echo $i18n->trans('settings.accessibility.desc'); ?></p>
         </div>
 
         <div class="component-card component-card--grouped">
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Tema</h2>
-                        <p class="component-card__description">Elige el tema de la interfaz.</p>
+                        <h2 class="component-card__title"><?php echo $i18n->trans('settings.accessibility.theme_title'); ?></h2>
+                        <p class="component-card__description"><?php echo $i18n->trans('settings.accessibility.theme_desc'); ?></p>
                     </div>
                 </div>
                 
@@ -50,27 +53,27 @@ $currentThemeIcon = $themeIcons[$currentTheme] ?? 'settings_brightness';
                         <div class="popover-module">
                             <div class="menu-list">
                                 <div class="menu-link <?php echo ($currentTheme === 'sync') ? 'active' : ''; ?>" 
-                                     onclick="selectOption(this, 'Sistema', 'sync')">
+                                     onclick="selectOption(this, '<?php echo $labelSystem; ?>', 'sync')">
                                     <div class="menu-link-icon">
                                         <span class="material-symbols-rounded">settings_brightness</span>
                                     </div>
-                                    <div class="menu-link-text">Sistema</div>
+                                    <div class="menu-link-text"><?php echo $labelSystem; ?></div>
                                 </div>
                                 
                                 <div class="menu-link <?php echo ($currentTheme === 'light') ? 'active' : ''; ?>" 
-                                     onclick="selectOption(this, 'Claro', 'light')">
+                                     onclick="selectOption(this, '<?php echo $labelLight; ?>', 'light')">
                                     <div class="menu-link-icon">
                                         <span class="material-symbols-rounded">light_mode</span>
                                     </div>
-                                    <div class="menu-link-text">Claro</div>
+                                    <div class="menu-link-text"><?php echo $labelLight; ?></div>
                                 </div>
                                 
                                 <div class="menu-link <?php echo ($currentTheme === 'dark') ? 'active' : ''; ?>" 
-                                     onclick="selectOption(this, 'Oscuro', 'dark')">
+                                     onclick="selectOption(this, '<?php echo $labelDark; ?>', 'dark')">
                                     <div class="menu-link-icon">
                                         <span class="material-symbols-rounded">dark_mode</span>
                                     </div>
-                                    <div class="menu-link-text">Oscuro</div>
+                                    <div class="menu-link-text"><?php echo $labelDark; ?></div>
                                 </div>
                             </div>
                         </div>
@@ -84,8 +87,8 @@ $currentThemeIcon = $themeIcons[$currentTheme] ?? 'settings_brightness';
             <div class="component-group-item">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Duración de notificaciones</h2>
-                        <p class="component-card__description">Mantiene los mensajes en pantalla por más tiempo (10s).</p>
+                        <h2 class="component-card__title"><?php echo $i18n->trans('settings.accessibility.toast_title'); ?></h2>
+                        <p class="component-card__description"><?php echo $i18n->trans('settings.accessibility.toast_desc'); ?></p>
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">
