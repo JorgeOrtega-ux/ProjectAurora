@@ -183,7 +183,7 @@ html {
     background-color: #f5f5fa;
 }
 
-/* --- ESTILOS DE BOTÓN DE PERFIL Y ROLES (REPLICADO DE PROJECT TEST) --- */
+/* --- ESTILOS DE BOTÓN DE PERFIL Y ROLES --- */
 
 .header-button.profile-button {
     position: relative;
@@ -254,7 +254,7 @@ html {
 }
 
 /* =========================================
-   MENÚS LATERALES
+   4. MENÚS LATERALES
    ========================================= */
 .module-content.module-surface {
     position: absolute;
@@ -363,7 +363,7 @@ html {
 .disabled { display: none; }
 
 /* =========================================
-   MEDIA QUERIES (LAYOUT)
+   5. MEDIA QUERIES (LAYOUT)
    ========================================= */
 @media (max-width: 725px) {
     .header { gap: 0; justify-content: space-between; }
@@ -373,7 +373,7 @@ html {
     .search-wrapper { max-width: 100%; }
 }
 
-/* Spinner simple */
+/* Spinner General (Grande, Oscuro) */
 .spinner {
     width: 40px; height: 40px;
     border: 4px solid rgba(0, 0, 0, 0.1);
@@ -382,13 +382,24 @@ html {
     animation: spin 1s linear infinite;
 }
 
+/* Spinner Pequeño (Para botones oscuros) */
+.spinner-sm {
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-left-color: #fff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
 
 /* =========================================
-   6. ESTILOS DE AUTENTICACIÓN
+   6. ESTILOS DE AUTENTICACIÓN Y FORMULARIOS
    ========================================= */
 .auth-wrapper {
     width: 100%;
@@ -486,7 +497,8 @@ html {
     transform: none;
 }
 
-.btn-toggle-password {
+/* Botón Genérico para Inputs (Toggle Password & Generate Username) */
+.btn-input-action {
     position: absolute;
     right: 8px;
     top: 50%;
@@ -503,45 +515,19 @@ html {
     justify-content: center;
     z-index: 10;
     transition: all 0.2s ease;
+    padding: 5px;
 }
 
-.btn-toggle-password:hover {
+.btn-input-action:hover {
     background-color: #f5f5fa;
     color: #000;
 }
 
-.btn-generate-username {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #999;
-    padding: 5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: color 0.3s ease;
-    z-index: 5;
-}
-
-.btn-generate-username:hover {
-    color: #000;
-}
-
-.btn-generate-username:hover .material-symbols-rounded {
-    animation: spin 1s linear infinite;
-}
-
+/* Padding para cuando hay botón a la derecha */
 .form-group input[type="password"],
-.form-group input.password-visible { 
+.form-group input.password-visible,
+#username { 
     padding-right: 55px;
-}
-
-#username {
-    padding-right: 40px;
 }
 
 .forgot-password {

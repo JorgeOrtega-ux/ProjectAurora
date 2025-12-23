@@ -1,6 +1,11 @@
 <?php
 // includes/sections/register.php
 
+// 0. CORRECCIÓN DE BUG ($basePath indefinido en carga AJAX)
+// Si $basePath no existe (carga via loader.php), lo definimos manualmente.
+// Asegúrate de que coincida con tu configuración en router.php
+$basePath = isset($basePath) ? $basePath : '/ProjectAurora/';
+
 // 1. Detección de la sub-ruta actual
 $currentRoute = isset($section) ? $section : ($currentSection ?? 'register');
 
@@ -80,7 +85,7 @@ if ($isStep2 && !$hasDataForStep2) {
                 <div class="form-group">
                     <input type="text" name="username" id="username" required placeholder=" ">
                     <label for="username">Nombre de usuario</label>
-                    <button type="button" class="btn-generate-username" tabindex="-1" title="Generar nombre aleatorio">
+                    <button type="button" class="btn-input-action" data-action="generate-username" tabindex="-1" title="Generar nombre aleatorio">
                         <span class="material-symbols-rounded">autorenew</span>
                     </button>
                 </div>
@@ -109,7 +114,7 @@ if ($isStep2 && !$hasDataForStep2) {
                 <div class="form-group">
                     <input type="password" name="password" id="password" required placeholder=" ">
                     <label for="password">Contraseña</label>
-                    <button type="button" class="btn-toggle-password" tabindex="-1">
+                    <button type="button" class="btn-input-action" data-action="toggle-password" tabindex="-1">
                         <span class="material-symbols-rounded">visibility</span>
                     </button>
                 </div>

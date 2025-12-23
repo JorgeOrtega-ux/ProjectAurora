@@ -179,43 +179,43 @@ export function initAuthController() {
         }
 
         // ------------------------------------------
-        // UI INTERACTIONS
+        // UI INTERACTIONS (Botones genéricos en inputs)
         // ------------------------------------------
-        
-        // Toggle Password
-        const toggleBtn = target.closest('.btn-toggle-password');
-        if (toggleBtn) {
+        const inputActionBtn = target.closest('.btn-input-action');
+        if (inputActionBtn) {
             e.preventDefault();
-            const input = toggleBtn.parentElement.querySelector('input');
-            const icon = toggleBtn.querySelector('.material-symbols-rounded');
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.textContent = 'visibility_off';
-            } else {
-                input.type = 'password';
-                icon.textContent = 'visibility';
+            const action = inputActionBtn.dataset.action;
+            
+            // ACCIÓN 1: Toggle Password
+            if (action === 'toggle-password') {
+                const input = inputActionBtn.parentElement.querySelector('input');
+                const icon = inputActionBtn.querySelector('.material-symbols-rounded');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.textContent = 'visibility_off';
+                } else {
+                    input.type = 'password';
+                    icon.textContent = 'visibility';
+                }
             }
-        }
+            
+            // ACCIÓN 2: Generar Username
+            else if (action === 'generate-username') {
+                const input = document.getElementById('username');
+                if (input) {
+                    const now = new Date();
+                    
+                    // Formatear fecha DDMMYYYY
+                    const day = String(now.getDate()).padStart(2, '0');
+                    const month = String(now.getMonth() + 1).padStart(2, '0');
+                    const year = now.getFullYear();
+                    
+                    // Obtener timestamp (milisegundos)
+                    const timestamp = now.getTime();
 
-        // === NUEVO GENERADOR DE USERNAME ===
-        // Formato: User + DDMMYYYY + Timestamp
-        const genUserBtn = target.closest('.btn-generate-username');
-        if (genUserBtn) {
-            e.preventDefault();
-            const input = document.getElementById('username');
-            if (input) {
-                const now = new Date();
-                
-                // Formatear fecha DDMMYYYY
-                const day = String(now.getDate()).padStart(2, '0');
-                const month = String(now.getMonth() + 1).padStart(2, '0'); // Meses van de 0-11
-                const year = now.getFullYear();
-                
-                // Obtener timestamp (milisegundos)
-                const timestamp = now.getTime();
-
-                // Construir string
-                input.value = `User${day}${month}${year}${timestamp}`;
+                    // Construir string
+                    input.value = `User${day}${month}${year}${timestamp}`;
+                }
             }
         }
     });
@@ -253,12 +253,13 @@ async function fetchApi(formData) {
     }
 }
 
+// FUNCIÓN ACTUALIZADA: Usa Spinner HTML en lugar de texto
 function setLoading(btn, isLoading) {
     if (isLoading) {
         btn.dataset.originalText = btn.innerText;
-        btn.innerText = 'Procesando...';
+        btn.innerHTML = '<div class="spinner-sm"></div>'; // Spinner pequeño
         btn.disabled = true;
-        btn.style.opacity = '0.7';
+        btn.style.opacity = '0.8'; // Opacidad ligera para indicar deshabilitado pero visible
     } else {
         btn.innerText = btn.dataset.originalText || 'Continuar';
         btn.disabled = false;
