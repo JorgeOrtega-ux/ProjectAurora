@@ -1,5 +1,8 @@
 <div class="module-content module-profile disabled" data-module="moduleProfile">
     <div class="menu-content">
+        <div class="pill-container">
+            <div class="drag-handle"></div>
+        </div>
         <div class="menu-list">
             
             <?php 
