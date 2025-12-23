@@ -1,7 +1,7 @@
 <?php
 // includes/sections/register.php
 
-// 0. CORRECCIÓN DE BUG ($basePath indefinido en carga AJAX)
+// 0. Corrección de ruta base
 $basePath = isset($basePath) ? $basePath : '/ProjectAurora/';
 
 // 1. Detección de la sub-ruta actual
@@ -14,19 +14,20 @@ $isStep3 = $currentRoute === 'register/verification-account';
 $hasDataForStep2 = isset($_SESSION['temp_register']) && !empty($_SESSION['temp_register']);
 $hasDataForStep3 = isset($_SESSION['pending_verification_email']) && !empty($_SESSION['pending_verification_email']);
 
-// 3. Determinar si hay un acceso inválido
+// 3. Lógica de Error 409 (Backend Real)
 $invalidAccess = false;
-$errorTitle = "";
 $errorMessage = "";
 
 if ($isStep2 && !$hasDataForStep2) {
+    http_response_code(409);
     $invalidAccess = true;
-    $errorTitle = "Datos faltantes";
-    $errorMessage = "No has completado el registro de credenciales. No puedes saltar pasos.";
+    // MENSAJE EDITADO: Sin mencionar "Step 2"
+    $errorMessage = "Required session data missing. Flow sequence violation.";
+
 } elseif ($isStep3 && !$hasDataForStep3) {
+    http_response_code(409);
     $invalidAccess = true;
-    $errorTitle = "Verificación no disponible";
-    $errorMessage = "No hay un proceso de verificación activo para esta sesión.";
+    $errorMessage = "Verification context not found. Session may have expired.";
 }
 ?>
 
@@ -34,19 +35,26 @@ if ($isStep2 && !$hasDataForStep2) {
     <div class="auth-card">
         
         <?php if ($invalidAccess): ?>
-            <div class="auth-header">
-                <span class="material-symbols-rounded auth-error-icon" style="font-size: 48px; color: #d32f2f; margin-bottom:10px;">history_toggle_off</span>
-                <h1 class="text-danger" style="color: #d32f2f; margin: 0;"><?php echo $errorTitle; ?></h1>
-                <p style="color: #666; margin-top: 5px;"><?php echo $errorMessage; ?></p>
+            <div class="crash-header">
+                <span class="material-symbols-rounded crash-icon">
+                    token
+                </span>
+                
+                <h1 class="crash-title">
+                    ¡Ups, ha ocurrido un error!
+                </h1>
             </div>
 
-            <div class="alert error mt-20" style="background: #ffebee; color: #b71c1c; padding: 10px; border-radius: 8px; margin-top: 20px; font-size: 14px;">
-                Por seguridad, inicia el proceso desde el principio.
+            <div class="crash-code-box">
+                <span class="crash-text-meta">Route Error (409): {</span><br>
+                &nbsp;&nbsp;"error": {<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;"message": "<span class="crash-text-error"><?php echo $errorMessage; ?></span>",<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;"type": "invalid_request_error",<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;"param": null,<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;"code": "invalid_state"<br>
+                &nbsp;&nbsp;}<br>
+                }
             </div>
-
-            <a href="<?php echo $basePath; ?>register" data-nav="register" class="btn-primary btn-block-link" style="display: flex; justify-content: center; align-items: center; text-decoration: none; margin-top: 20px;">
-                Volver al inicio
-            </a>
 
         <?php elseif ($isStep3): ?>
             <div class="auth-header">

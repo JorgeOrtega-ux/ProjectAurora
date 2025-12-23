@@ -691,3 +691,49 @@ html {
 
 .toast-item.info { border-left-color: #0288d1; }
 .toast-item.info .toast-icon { color: #0288d1; }
+
+/* =========================================
+   8. ESTILOS PANTALLA DE ERROR TÉCNICO (CRASH)
+   ========================================= */
+.crash-header {
+    margin-bottom: 24px;
+    text-align: center; /* Opcional, si quieres centrado */
+}
+
+.crash-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: #000;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.crash-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #000;
+    letter-spacing: -0.5px;
+    margin: 0;
+}
+
+.crash-code-box {
+    background-color: #f5f5fa;
+    border-radius: 6px;
+    padding: 16px;
+    text-align: left;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
+    color: #333;
+    margin-bottom: 24px;
+    line-height: 1.5;
+    overflow-x: auto;
+}
+
+.crash-text-meta {
+    color: #666;
+}
+
+.crash-text-error {
+    color: #d32f2f;
+}
