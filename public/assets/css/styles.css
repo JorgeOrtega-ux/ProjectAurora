@@ -1161,3 +1161,28 @@ input:checked + .component-toggle-slider:before {
         flex: 1; /* Botones ancho completo en móvil */
     }
 }
+
+    .component-stage-form {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    width: 100%;
+}.component-group-item--stacked .component-card__actions.actions-force-end {
+    justify-content: flex-end !important;
+}
+.component-card__profile-picture.component-card__profile-picture--bordered, .component-card__icon-container.component-card__icon-container--bordered {
+    background-color: transparent;
+    border: 1px solid #00000020;
+    border-radius: 8px;
+}.component-card__profile-picture, .component-card__icon-container {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: #f5f5fa;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}

@@ -11,13 +11,13 @@
             <div class="component-group-item" data-component="password-update-section">
                 
                 <div class="component-card__content">
-                    <div class="component-card__icon-container" style="display: flex; justify-content: center; align-items: center; width: 40px; height: 40px; background: #f5f5fa; border-radius: 50%; flex-shrink: 0;">
+                    <div class="component-card__icon-container component-card__icon-container--bordered">
                         <span class="material-symbols-rounded">lock</span>
                     </div>
 
                     <div class="component-card__text">
                         <h2 class="component-card__title">Contraseña</h2>
-                        <p class="component-card__description" style="color: #666;">Nunca se ha cambiado</p>
+                        <p class="component-card__description" style="color: #666;">Se recomienda usar una contraseña segura.</p>
                     </div>
                 </div>
 
@@ -27,26 +27,26 @@
                     </button>
                 </div>
 
-                <div class="disabled w-100 component-stage-form" data-state="password-stage-1" style="margin-top: 16px;">
-                    <div class="component-input-wrapper" style="margin-bottom: 8px;">
+                <div class="w-100 component-stage-form disabled" data-state="password-stage-1" style="margin-top: 16px;">
+                    <div class="component-input-wrapper">
                         <input type="password" class="component-text-input" id="current-password-input" placeholder="Contraseña actual">
                     </div>
 
-                    <div class="component-card__actions actions-right actions-force-end">
+                    <div class="component-card__actions actions-right actions-force-end" style="margin-top: 12px;">
                         <button type="button" class="component-button" data-action="pass-cancel-flow">Cancelar</button>
                         <button type="button" class="component-button primary" data-action="pass-go-step-2">Continuar</button>
                     </div>
                 </div>
 
-                <div class="disabled w-100 component-stage-form" data-state="password-stage-2" style="margin-top: 16px;">
+                <div class="w-100 component-stage-form disabled" data-state="password-stage-2" style="margin-top: 16px;">
                     <div class="component-input-wrapper" style="margin-bottom: 8px;">
                         <input type="password" class="component-text-input" id="new-password-input" placeholder="Nueva contraseña">
                     </div>
-                    <div class="component-input-wrapper" style="margin-bottom: 8px;">
+                    <div class="component-input-wrapper">
                         <input type="password" class="component-text-input" id="repeat-password-input" placeholder="Confirmar contraseña">
                     </div>
 
-                    <div class="component-card__actions actions-right actions-force-end">
+                    <div class="component-card__actions actions-right actions-force-end" style="margin-top: 12px;">
                         <button type="button" class="component-button" data-action="pass-cancel-flow">Cancelar</button>
                         <button type="button" class="component-button primary" data-action="pass-submit-final">Guardar</button>
                     </div>
@@ -57,7 +57,7 @@
 
             <div class="component-group-item">
                 <div class="component-card__content">
-                    <div class="component-card__icon-container" style="display: flex; justify-content: center; align-items: center; width: 40px; height: 40px; background: #f5f5fa; border-radius: 50%; flex-shrink: 0;">
+                    <div class="component-card__icon-container component-card__icon-container--bordered">
                         <span class="material-symbols-rounded">shield</span>
                     </div>
 
@@ -82,7 +82,7 @@
             
             <div class="component-group-item">
                 <div class="component-card__content">
-                    <div class="component-card__icon-container" style="display: flex; justify-content: center; align-items: center; width: 40px; height: 40px; background: #f5f5fa; border-radius: 50%; flex-shrink: 0;">
+                    <div class="component-card__icon-container component-card__icon-container--bordered">
                         <span class="material-symbols-rounded">devices</span>
                     </div>
 

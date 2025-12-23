@@ -27,13 +27,10 @@ export const SettingsController = (function() {
         formData.append('value', value);
 
         try {
-            // console.log(`Guardando ${key}: ${value}`); // Debug opcional
             const res = await ApiService.post('settings-handler.php', formData);
-            
             if (!res.success) {
                 Toast.show(res.message || 'Error al guardar preferencia', 'error');
             } else {
-                // === CAMBIO: Mostrar Toast de éxito ===
                 Toast.show(res.message || 'Preferencia guardada', 'success');
             }
         } catch (error) {
@@ -65,7 +62,6 @@ export const SettingsController = (function() {
         } else {
             _switchState(editState, viewState);
             _switchState(actionsEdit, actionsView);
-            // Restaurar valor si se cancela
             if (input && input.dataset.originalValue && input.value !== input.dataset.originalValue) {
                 input.value = input.dataset.originalValue;
             }
@@ -91,16 +87,14 @@ export const SettingsController = (function() {
             return;
         }
 
-        // Feedback visual
         if(btnSave) {
             btnSave.disabled = true;
             btnSave.innerText = 'Guardando...';
         }
 
-        // Preparar datos
         const formData = new FormData();
         formData.append('action', 'update_profile');
-        formData.append('field', sectionId); // 'username' o 'email'
+        formData.append('field', sectionId); 
         formData.append('value', newValue);
 
         try {
@@ -113,7 +107,7 @@ export const SettingsController = (function() {
                 toggleEdit(sectionId, false);
             } else {
                 Toast.show(res.message, 'error');
-                input.focus(); // Mantener foco en error
+                input.focus(); 
             }
         } catch (error) {
             Toast.show('Error de conexión.', 'error');
@@ -126,103 +120,46 @@ export const SettingsController = (function() {
     }
 
     // =======================================================
-    // LÓGICA DE DROPDOWNS (UI + PREFS)
-    // =======================================================
-
-    function toggleDropdown(wrapperElement) {
-        const menu = wrapperElement.querySelector(CONFIG.popoverSelector);
-        const trigger = wrapperElement.querySelector(CONFIG.triggerSelector);
-        if (!menu || !trigger) return;
-
-        const isActive = menu.classList.contains(CONFIG.activeClass);
-        closeAllDropdowns();
-
-        if (!isActive) {
-            menu.classList.add(CONFIG.activeClass);
-            trigger.classList.add(CONFIG.activeClass);
-            wrapperElement.classList.add('dropdown-active');
-        }
-        if (event) event.stopPropagation();
-    }
-
-    /**
-     * Selecciona una opción del dropdown.
-     * @param {HTMLElement} itemElement - Elemento clicado.
-     * @param {string} textValue - Texto a mostrar en el trigger.
-     * @param {string|null} dataValue - (Opcional) Valor técnico a guardar (ej: 'es-mx').
-     */
-    function selectOption(itemElement, textValue, dataValue = null) {
-        const wrapper = itemElement.closest(CONFIG.wrapperSelector);
-        if (!wrapper) return;
-        const triggerText = wrapper.querySelector('.trigger-select-text');
-        if (triggerText) triggerText.innerText = textValue;
-        
-        wrapper.querySelectorAll('.menu-link').forEach(link => link.classList.remove(CONFIG.activeClass));
-        itemElement.classList.add(CONFIG.activeClass);
-        closeAllDropdowns();
-
-        // Guardar preferencia si viene el dato (ej: idioma)
-        if (dataValue) {
-            // Asumimos que es idioma por ahora, o podríamos inferir la key del DOM
-            savePreference('language', dataValue);
-        }
-
-        if (event) event.stopPropagation();
-    }
-
-    function closeAllDropdowns() {
-        document.querySelectorAll(CONFIG.popoverSelector).forEach(el => el.classList.remove(CONFIG.activeClass));
-        document.querySelectorAll(CONFIG.triggerSelector).forEach(el => el.classList.remove(CONFIG.activeClass));
-        document.querySelectorAll(CONFIG.wrapperSelector).forEach(el => el.classList.remove('dropdown-active'));
-    }
-
-    // =======================================================
-    // LÓGICA DE TOGGLES (SWITCHES)
-    // =======================================================
-    
-    function _initToggles() {
-        const toggleLinks = document.getElementById('pref-open-links');
-        if (toggleLinks) {
-            // Desvincular eventos previos si los hubiera (para evitar duplicados en SPA) es difícil sin referencias, 
-            // pero como reemplazamos el HTML en SPA, el elemento es nuevo.
-            toggleLinks.addEventListener('change', (e) => {
-                savePreference('open_links_new_tab', e.target.checked);
-            });
-        }
-    }
-
-    // =======================================================
     // LÓGICA DE PASSWORD (LOGIN & SECURITY)
     // =======================================================
     
     function _initPasswordLogic() {
         const container = document.querySelector('[data-component="password-update-section"]');
-        if (!container) return; // No estamos en la página de seguridad
+        if (!container) return; 
 
         container.addEventListener('click', async (e) => {
             const action = e.target.dataset.action;
             if(!action) return;
 
             const stage0 = container.querySelector('[data-state="password-stage-0"]'); // Botón inicial
-            const stage1 = container.querySelector('[data-state="password-stage-1"]'); // Input Current Pass
-            const stage2 = container.querySelector('[data-state="password-stage-2"]'); // Inputs New Pass
+            const stage1 = container.querySelector('[data-state="password-stage-1"]'); // Input Contraseña Actual
+            const stage2 = container.querySelector('[data-state="password-stage-2"]'); // Inputs Nueva Contraseña
+            const parentGroup = container.closest('.component-group-item'); // El contenedor padre para añadir 'stacked'
 
             // 1. Iniciar Flujo
             if (action === 'pass-start-flow') {
+                // Añadimos clase stacked para permitir diseño vertical ancho completo
+                if(parentGroup) parentGroup.classList.add('component-group-item--stacked');
+                
                 _switchState(stage0, stage1);
                 const input = document.getElementById('current-password-input');
                 if(input) { input.value = ''; input.focus(); }
             }
 
-            // 2. Cancelar Flujo (Reset)
+            // 2. Cancelar Flujo
             if (action === 'pass-cancel-flow') {
-                // Ocultar 1 y 2, mostrar 0
+                // Quitamos clase stacked para volver a diseño horizontal
+                if(parentGroup) parentGroup.classList.remove('component-group-item--stacked');
+
                 if(stage1) { stage1.classList.remove(CONFIG.activeClass); stage1.classList.add(CONFIG.disabledClass); }
                 if(stage2) { stage2.classList.remove(CONFIG.activeClass); stage2.classList.add(CONFIG.disabledClass); }
                 if(stage0) { stage0.classList.remove(CONFIG.disabledClass); stage0.classList.add(CONFIG.activeClass); }
+                
+                // Limpiar inputs
+                container.querySelectorAll('input').forEach(i => i.value = '');
             }
 
-            // 3. Ir al Paso 2 (Validar que escribió algo en Current)
+            // 3. Ir al Paso 2
             if (action === 'pass-go-step-2') {
                 const currentPass = document.getElementById('current-password-input').value;
                 if (!currentPass) {
@@ -254,7 +191,6 @@ export const SettingsController = (function() {
                     return;
                 }
 
-                // Enviar a API
                 const btn = e.target;
                 const originalText = btn.innerText;
                 btn.innerText = 'Guardando...';
@@ -269,16 +205,17 @@ export const SettingsController = (function() {
                     const res = await ApiService.post('settings-handler.php', formData);
                     if (res.success) {
                         Toast.show('Contraseña actualizada correctamente.', 'success');
-                        // Resetear UI
-                        btn.click(); // Hack: simular click en 'pass-cancel-flow' si fuera el mismo botón, pero no.
-                        // Llamamos manualmente a cancelar para resetear
+                        
+                        // Resetear todo
+                        if(parentGroup) parentGroup.classList.remove('component-group-item--stacked');
                         if(stage1) { stage1.classList.remove(CONFIG.activeClass); stage1.classList.add(CONFIG.disabledClass); }
                         if(stage2) { stage2.classList.remove(CONFIG.activeClass); stage2.classList.add(CONFIG.disabledClass); }
                         if(stage0) { stage0.classList.remove(CONFIG.disabledClass); stage0.classList.add(CONFIG.activeClass); }
+                        
+                        container.querySelectorAll('input').forEach(i => i.value = '');
                     } else {
                         Toast.show(res.message, 'error');
-                        // Si dice contraseña incorrecta, quizás volver al paso 1?
-                        if(res.message.includes('actual')) {
+                        if(res.message.toLowerCase().includes('actual')) {
                             _switchState(stage2, stage1);
                             document.getElementById('current-password-input').focus();
                         }
@@ -308,6 +245,53 @@ export const SettingsController = (function() {
         }
     }
 
+    function toggleDropdown(wrapperElement) {
+        const menu = wrapperElement.querySelector(CONFIG.popoverSelector);
+        const trigger = wrapperElement.querySelector(CONFIG.triggerSelector);
+        if (!menu || !trigger) return;
+
+        const isActive = menu.classList.contains(CONFIG.activeClass);
+        closeAllDropdowns();
+
+        if (!isActive) {
+            menu.classList.add(CONFIG.activeClass);
+            trigger.classList.add(CONFIG.activeClass);
+            wrapperElement.classList.add('dropdown-active');
+        }
+        if (event) event.stopPropagation();
+    }
+
+    function selectOption(itemElement, textValue, dataValue = null) {
+        const wrapper = itemElement.closest(CONFIG.wrapperSelector);
+        if (!wrapper) return;
+        const triggerText = wrapper.querySelector('.trigger-select-text');
+        if (triggerText) triggerText.innerText = textValue;
+        
+        wrapper.querySelectorAll('.menu-link').forEach(link => link.classList.remove(CONFIG.activeClass));
+        itemElement.classList.add(CONFIG.activeClass);
+        closeAllDropdowns();
+
+        if (dataValue) {
+            savePreference('language', dataValue);
+        }
+        if (event) event.stopPropagation();
+    }
+
+    function closeAllDropdowns() {
+        document.querySelectorAll(CONFIG.popoverSelector).forEach(el => el.classList.remove(CONFIG.activeClass));
+        document.querySelectorAll(CONFIG.triggerSelector).forEach(el => el.classList.remove(CONFIG.activeClass));
+        document.querySelectorAll(CONFIG.wrapperSelector).forEach(el => el.classList.remove('dropdown-active'));
+    }
+
+    function _initToggles() {
+        const toggleLinks = document.getElementById('pref-open-links');
+        if (toggleLinks) {
+            toggleLinks.addEventListener('change', (e) => {
+                savePreference('open_links_new_tab', e.target.checked);
+            });
+        }
+    }
+
     function init() {
         document.addEventListener('click', (e) => {
             if (!e.target.closest(CONFIG.wrapperSelector)) {
@@ -315,13 +299,10 @@ export const SettingsController = (function() {
             }
         });
         
-        // Inicializar toggles (Nueva pestaña)
         _initToggles();
-
-        // Intentar iniciar lógica de contraseña (si existe el elemento en el DOM)
         _initPasswordLogic();
 
-        console.log("SettingsController inicializado (con lógica API y Password).");
+        console.log("SettingsController inicializado.");
     }
 
     return {
@@ -331,11 +312,11 @@ export const SettingsController = (function() {
         toggleDropdown,
         selectOption,
         closeAllDropdowns,
-        savePreference // Exportamos por si se necesita externamente
+        savePreference
     };
 })();
 
-// Mapeo global para compatibilidad con onclicks en HTML
+// Mapeo global
 window.toggleEdit = SettingsController.toggleEdit;
 window.saveData = SettingsController.saveData;
 window.toggleDropdown = SettingsController.toggleDropdown;
