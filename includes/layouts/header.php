@@ -13,7 +13,7 @@
                     <span class="material-symbols-rounded">search</span>
                 </div>
                 <div class="search-input">
-                    <input type="text">
+                    <input type="text" placeholder="<?php echo $i18n->trans('header.search_placeholder'); ?>">
                 </div>
             </div>
         </div>

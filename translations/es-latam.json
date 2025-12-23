@@ -1,0 +1,15 @@
+{
+    "app.name": "ProjectAurora",
+    "header.search_placeholder": "Buscar...",
+    "header.guest": "Invitado",
+    "menu.home": "Página principal",
+    "menu.explore": "Explorar comunidades",
+    "menu.back_home": "Volver a inicio",
+    "menu.profile": "Tu perfil",
+    "menu.security": "Inicio de sesión y seguridad",
+    "menu.accessibility": "Accesibilidad",
+    "menu.admin_panel": "Panel de administración",
+    "menu.settings": "Configuración",
+    "menu.help": "Ayuda y comentarios",
+    "menu.logout": "Cerrar sesión"
+}

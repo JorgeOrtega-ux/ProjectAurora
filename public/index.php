@@ -2,9 +2,10 @@
 // public/index.php
 session_start();
 
-// Cargar Router y DB
+// Cargar Router, DB y ahora el sistema I18n
 require_once __DIR__ . '/../config/routers/router.php';
 require_once __DIR__ . '/../config/database/db.php';
+require_once __DIR__ . '/../includes/libs/I18n.php'; // <--- NUEVO
 
 // === MIDDLEWARE: AUTO-LOGIN POR COOKIE (TOKEN ROTATIVO) ===
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['auth_persistence_token'])) {
@@ -78,6 +79,12 @@ if (empty($_SESSION['csrf_token'])) {
 
 $isLoggedIn = isset($_SESSION['user_id']);
 
+// === SISTEMA DE TRADUCCIÓN (INICIALIZACIÓN) ===
+// Obtenemos el idioma de la sesión o usamos el default
+$userLang = $_SESSION['preferences']['language'] ?? 'es-latam';
+$i18n = new I18n($userLang);
+// ==============================================
+
 $publicRoutes = [
     'login',
     'register',
@@ -143,18 +150,21 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
 
 ?>
 <!DOCTYPE html>
-<html lang="es">
+<html lang="<?php echo htmlspecialchars($userLang); ?>">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProjectAurora</title>
+    <title><?php echo $i18n->trans('app.name'); ?></title>
 
     <meta name="csrf-token" content="<?php echo $_SESSION['csrf_token']; ?>">
     <script>
         window.BASE_PATH = '<?php echo $basePath; ?>';
-        // INYECTAMOS PREFERENCIAS PARA JS
         window.USER_PREFS = <?php echo json_encode($_SESSION['preferences'] ?? new stdClass()); ?>;
+        
+        // === INYECCIÓN DE TRADUCCIONES A JS ===
+        // Si no hay traducciones (array vacío), JS también recibirá vacío y usará fallback a keys.
+        window.TRANSLATIONS = <?php echo json_encode($i18n->getAll()); ?>;
     </script>
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
@@ -188,6 +198,7 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
                     <div class="general-content-scrolleable" data-container="main-section">
                         <?php
                         if (file_exists($fileToLoad)) {
+                            // NOTA: $i18n está disponible dentro de los includes
                             include $fileToLoad;
                         } else {
                             echo "Error: Archivo base no encontrado.";
