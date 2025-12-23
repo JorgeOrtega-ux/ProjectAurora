@@ -1,6 +1,20 @@
 CREATE DATABASE IF NOT EXISTS project_aurora_db;
 USE project_aurora_db;
 
+-- =========================================================
+-- REINICIO DE TABLAS (Borrado en orden de dependencia)
+-- =========================================================
+DROP TABLE IF EXISTS user_auth_tokens;
+DROP TABLE IF EXISTS user_preferences;
+DROP TABLE IF EXISTS security_logs;
+DROP TABLE IF EXISTS password_resets;
+DROP TABLE IF EXISTS verification_codes;
+DROP TABLE IF EXISTS users;
+
+-- =========================================================
+-- CREACIÓN DE TABLAS
+-- =========================================================
+
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     uuid CHAR(36) NOT NULL UNIQUE,
@@ -62,11 +76,14 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 );
 
 -- === NUEVA TABLA: TOKENS DE SESIÓN ROTATIVOS ===
+-- ACTUALIZADA CON IP Y USER AGENT PARA GESTIÓN DE DISPOSITIVOS
 CREATE TABLE IF NOT EXISTS user_auth_tokens (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     selector CHAR(24) NOT NULL,
     hashed_validator CHAR(64) NOT NULL,
+    ip_address VARCHAR(45) DEFAULT NULL,
+    user_agent TEXT DEFAULT NULL,
     expires_at DATETIME NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,

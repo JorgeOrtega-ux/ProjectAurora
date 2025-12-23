@@ -40,6 +40,29 @@ function deleteOldAvatar($pdo, $userId, $currentPath) {
     }
 }
 
+// Helper simple para parsear User Agent
+function parseUserAgent($ua) {
+    $platform = 'Desconocido';
+    $browser  = 'Desconocido';
+    
+    // Plataforma
+    if (preg_match('/windows|win32/i', $ua)) $platform = 'Windows';
+    elseif (preg_match('/macintosh|mac os x/i', $ua)) $platform = 'Mac OS';
+    elseif (preg_match('/linux/i', $ua)) $platform = 'Linux';
+    elseif (preg_match('/android/i', $ua)) $platform = 'Android';
+    elseif (preg_match('/iphone|ipad|ipod/i', $ua)) $platform = 'iOS';
+
+    // Navegador
+    if (preg_match('/MSIE|Trident/i', $ua)) $browser = 'Internet Explorer';
+    elseif (preg_match('/Firefox/i', $ua)) $browser = 'Firefox';
+    elseif (preg_match('/Chrome/i', $ua)) $browser = 'Chrome';
+    elseif (preg_match('/Safari/i', $ua)) $browser = 'Safari';
+    elseif (preg_match('/Opera|OPR/i', $ua)) $browser = 'Opera';
+    elseif (preg_match('/Edge/i', $ua)) $browser = 'Edge';
+
+    return ['platform' => $platform, 'browser' => $browser];
+}
+
 // =========================================================
 //  ACCIÓN: SUBIR FOTO
 // =========================================================
@@ -326,6 +349,68 @@ if ($action === 'upload_avatar') {
     } else {
         jsonResponse(false, 'Error al desactivar en la base de datos.');
     }
+
+// =========================================================
+//  GESTIÓN DE DISPOSITIVOS (NUEVO)
+// =========================================================
+
+} elseif ($action === 'get_sessions') {
+    $stmt = $pdo->prepare("SELECT id, selector, ip_address, user_agent, created_at FROM user_auth_tokens WHERE user_id = ? ORDER BY created_at DESC");
+    $stmt->execute([$userId]);
+    $sessions = $stmt->fetchAll();
+
+    // Identificar sesión actual por Cookie
+    $currentSelector = '';
+    if (isset($_COOKIE['auth_persistence_token'])) {
+        $parts = explode(':', $_COOKIE['auth_persistence_token']);
+        if (count($parts) === 2) $currentSelector = $parts[0];
+    }
+
+    $formatted = [];
+    foreach($sessions as $s) {
+        $info = parseUserAgent($s['user_agent'] ?? '');
+        $isCurrent = ($s['selector'] === $currentSelector);
+        
+        $formatted[] = [
+            'id' => $s['id'],
+            'ip' => $s['ip_address'] ?? 'Desconocida',
+            'platform' => $info['platform'],
+            'browser' => $info['browser'],
+            'created_at' => $s['created_at'],
+            'is_current' => $isCurrent
+        ];
+    }
+
+    jsonResponse(true, 'Lista de sesiones', ['sessions' => $formatted]);
+
+} elseif ($action === 'revoke_session') {
+    $tokenId = $_POST['token_id'] ?? '';
+    
+    if(!$tokenId) jsonResponse(false, 'ID no válido');
+
+    $stmt = $pdo->prepare("DELETE FROM user_auth_tokens WHERE id = ? AND user_id = ?");
+    $stmt->execute([$tokenId, $userId]);
+    
+    if ($stmt->rowCount() > 0) {
+        jsonResponse(true, 'Sesión cerrada exitosamente.');
+    } else {
+        jsonResponse(false, 'No se pudo cerrar la sesión.');
+    }
+
+} elseif ($action === 'revoke_all_sessions') {
+    // Borramos todas
+    $stmt = $pdo->prepare("DELETE FROM user_auth_tokens WHERE user_id = ?");
+    $stmt->execute([$userId]);
+    
+    // Al borrar todas, borramos también la actual del usuario, 
+    // lo que provocará logout en la siguiente petición.
+    // Opcionalmente podríamos mantener la actual:
+    // DELETE FROM ... WHERE user_id = ? AND selector != ?
+    
+    // Pero "Cerrar todas las sesiones" suele implicar logout global.
+    setcookie('auth_persistence_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
+    
+    jsonResponse(true, 'Todas las sesiones han sido cerradas. Serás redirigido.', ['logout' => true]);
 }
 
 jsonResponse(false, 'Acción no reconocida.');

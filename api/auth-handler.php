@@ -101,7 +101,7 @@ function checkSecurityBlock($pdo, $actionType) {
     return false;
 }
 
-// --- NUEVA FUNCIÓN: CREAR TOKEN DE PERSISTENCIA (NOMBRE GENÉRICO) ---
+// --- NUEVA FUNCIÓN: CREAR TOKEN DE PERSISTENCIA (ACTUALIZADA) ---
 function create_persistence_token($pdo, $userId) {
     // 1. Selector (identificador público)
     $selector = bin2hex(random_bytes(12)); 
@@ -112,10 +112,14 @@ function create_persistence_token($pdo, $userId) {
     $hashedValidator = hash('sha256', $validator);
     $expiresAt = date('Y-m-d H:i:s', time() + (86400 * 30)); // 30 días
 
+    // DATOS DE DISPOSITIVO
+    $ip = get_client_ip();
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+
     // BD
-    $sql = "INSERT INTO user_auth_tokens (user_id, selector, hashed_validator, expires_at) VALUES (?, ?, ?, ?)";
+    $sql = "INSERT INTO user_auth_tokens (user_id, selector, hashed_validator, ip_address, user_agent, expires_at) VALUES (?, ?, ?, ?, ?, ?)";
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$userId, $selector, $hashedValidator, $expiresAt]);
+    $stmt->execute([$userId, $selector, $hashedValidator, $ip, $userAgent, $expiresAt]);
 
     // Cookie: selector:validator
     // Nombre genérico para la cookie
