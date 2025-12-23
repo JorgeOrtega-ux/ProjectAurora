@@ -11,11 +11,16 @@ import { Toast } from './core/toast-manager.js';
 import { SettingsController } from './modules/settings/settings-controller.js'; 
 import { ProfileController } from './modules/settings/profile-controller.js'; 
 import { DevicesController } from './modules/settings/devices-controller.js';
-import { DeleteAccountController } from './modules/settings/delete-account-controller.js'; // <--- IMPORTAR
+import { DeleteAccountController } from './modules/settings/delete-account-controller.js'; 
 
 const App = {
     init: () => {
         console.log('App: Inicializando...');
+        
+        // APLICAR TEMA INICIAL
+        if (window.USER_PREFS && window.USER_PREFS.theme) {
+            SettingsController.applyTheme(window.USER_PREFS.theme);
+        }
         
         Toast.init();
         initMainController();
@@ -49,9 +54,12 @@ function routeDispatcher(section) {
             DevicesController.init();
             break;
             
-        case 'settings/delete-account': // <--- NUEVO CASO
+        case 'settings/delete-account': 
             DeleteAccountController.init();
             break;
+            
+        // El caso para accessibility se maneja globalmente en settings-controller 
+        // porque los eventos de dropdown están delegados en el documento.
             
         default:
             break;

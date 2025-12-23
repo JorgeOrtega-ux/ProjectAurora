@@ -7,7 +7,6 @@ require_once __DIR__ . '/../config/routers/router.php';
 require_once __DIR__ . '/../config/database/db.php';
 
 // === MIDDLEWARE: AUTO-LOGIN POR COOKIE (TOKEN ROTATIVO) ===
-// Nombre genérico: 'auth_persistence_token'
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['auth_persistence_token'])) {
 
     $parts = explode(':', $_COOKIE['auth_persistence_token']);
@@ -16,24 +15,18 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['auth_persistence_token'])) {
         $selector = $parts[0];
         $validator = $parts[1];
 
-        // Buscar token en BD por Selector y que no haya expirado
         $stmt = $pdo->prepare("SELECT * FROM user_auth_tokens WHERE selector = ? AND expires_at > NOW() LIMIT 1");
         $stmt->execute([$selector]);
         $authToken = $stmt->fetch();
 
         if ($authToken) {
-            // Verificar el Hash del Validador (hash_equals previene ataques de timing)
             if (hash_equals($authToken['hashed_validator'], hash('sha256', $validator))) {
 
-                // === ÉXITO: LOGIN AUTOMÁTICO ===
-
-                // 1. Obtener datos del usuario
                 $stmtUser = $pdo->prepare("SELECT * FROM users WHERE id = ?");
                 $stmtUser->execute([$authToken['user_id']]);
                 $user = $stmtUser->fetch();
 
                 if ($user) {
-                    // Regenerar ID de sesión
                     session_regenerate_id(true);
 
                     $_SESSION['user_id'] = $user['id'];
@@ -42,20 +35,20 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['auth_persistence_token'])) {
                     $_SESSION['avatar'] = $user['avatar_path'];
                     $_SESSION['email'] = $user['email'];
 
-                    // Cargar preferencias
-                    $prefStmt = $pdo->prepare("SELECT language, open_links_new_tab FROM user_preferences WHERE user_id = ?");
+                    // --- ACTUALIZACIÓN: CARGAR NUEVAS PREFERENCIAS ---
+                    $prefStmt = $pdo->prepare("SELECT language, open_links_new_tab, theme, extended_toast FROM user_preferences WHERE user_id = ?");
                     $prefStmt->execute([$user['id']]);
                     $prefs = $prefStmt->fetch();
                     $_SESSION['preferences'] = $prefs ? [
                         'language' => $prefs['language'],
-                        'open_links_new_tab' => (bool)$prefs['open_links_new_tab']
-                    ] : ['language' => 'es-latam', 'open_links_new_tab' => true];
+                        'open_links_new_tab' => (bool)$prefs['open_links_new_tab'],
+                        'theme' => $prefs['theme'],
+                        'extended_toast' => (bool)$prefs['extended_toast']
+                    ] : ['language' => 'es-latam', 'open_links_new_tab' => true, 'theme' => 'sync', 'extended_toast' => false];
 
-                    // === ROTACIÓN DE TOKEN (SEGURIDAD CRÍTICA) ===
-                    // El token actual ya se usó, lo borramos.
+                    // Rotación de token
                     $pdo->prepare("DELETE FROM user_auth_tokens WHERE id = ?")->execute([$authToken['id']]);
 
-                    // Generamos uno nuevo para la siguiente vez
                     $newSelector = bin2hex(random_bytes(12));
                     $newValidator = bin2hex(random_bytes(32));
                     $newHashedValidator = hash('sha256', $newValidator);
@@ -64,7 +57,6 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['auth_persistence_token'])) {
                     $ins = $pdo->prepare("INSERT INTO user_auth_tokens (user_id, selector, hashed_validator, expires_at) VALUES (?, ?, ?, ?)");
                     $ins->execute([$user['id'], $newSelector, $newHashedValidator, $newExpires]);
 
-                    // Actualizar Cookie con el nuevo token
                     $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
                     setcookie('auth_persistence_token', "$newSelector:$newValidator", [
                         'expires' => time() + (86400 * 30),
@@ -75,19 +67,15 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['auth_persistence_token'])) {
                         'samesite' => 'Strict'
                     ]);
                 }
-            } else {
-                // TOKEN ROBADO DETECTADO
             }
         }
     }
 }
 
-// === GENERACIÓN DE TOKEN CSRF ===
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// === CONTROL DE ACCESO (MIDDLEWARE) ===
 $isLoggedIn = isset($_SESSION['user_id']);
 
 $publicRoutes = [
@@ -111,14 +99,12 @@ if (!$isLoggedIn) {
     }
 }
 
-// === PREPARAR VARIABLES DE HEADER ===
 $globalAvatarSrc = '';
 $userRole = 'guest';
 
 if ($isLoggedIn) {
     try {
         if (isset($pdo)) {
-            // === MODIFICACIÓN AQUÍ: Añadido 'two_factor_enabled' a la consulta ===
             $stmt = $pdo->prepare("SELECT role, avatar_path, username, email, two_factor_enabled FROM users WHERE id = ? LIMIT 1");
             $stmt->execute([$_SESSION['user_id']]);
             $freshUser = $stmt->fetch();
@@ -128,7 +114,6 @@ if ($isLoggedIn) {
                 $_SESSION['avatar'] = $freshUser['avatar_path'];
                 $_SESSION['username'] = $freshUser['username'];
                 $_SESSION['email'] = $freshUser['email'];
-                // Guardamos el estado en sesión
                 $_SESSION['two_factor_enabled'] = $freshUser['two_factor_enabled'];
             }
         }
@@ -168,6 +153,8 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
     <meta name="csrf-token" content="<?php echo $_SESSION['csrf_token']; ?>">
     <script>
         window.BASE_PATH = '<?php echo $basePath; ?>';
+        // INYECTAMOS PREFERENCIAS PARA JS
+        window.USER_PREFS = <?php echo json_encode($_SESSION['preferences'] ?? new stdClass()); ?>;
     </script>
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />

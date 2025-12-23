@@ -2,7 +2,7 @@
 // api/auth-handler.php
 session_start();
 require_once __DIR__ . '/../config/database/db.php';
-require_once __DIR__ . '/../includes/libs/TOTP.php'; // Necesario para verificar códigos 2FA
+require_once __DIR__ . '/../includes/libs/TOTP.php'; 
 
 header('Content-Type: application/json');
 
@@ -101,28 +101,21 @@ function checkSecurityBlock($pdo, $actionType) {
     return false;
 }
 
-// --- NUEVA FUNCIÓN: CREAR TOKEN DE PERSISTENCIA (ACTUALIZADA) ---
+// --- NUEVA FUNCIÓN: CREAR TOKEN DE PERSISTENCIA ---
 function create_persistence_token($pdo, $userId) {
-    // 1. Selector (identificador público)
     $selector = bin2hex(random_bytes(12)); 
-    // 2. Validador (secreto)
     $validator = bin2hex(random_bytes(32));
     
-    // Guardamos el HASH del validador
     $hashedValidator = hash('sha256', $validator);
-    $expiresAt = date('Y-m-d H:i:s', time() + (86400 * 30)); // 30 días
+    $expiresAt = date('Y-m-d H:i:s', time() + (86400 * 30)); 
 
-    // DATOS DE DISPOSITIVO
     $ip = get_client_ip();
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
 
-    // BD
     $sql = "INSERT INTO user_auth_tokens (user_id, selector, hashed_validator, ip_address, user_agent, expires_at) VALUES (?, ?, ?, ?, ?, ?)";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([$userId, $selector, $hashedValidator, $ip, $userAgent, $expiresAt]);
 
-    // Cookie: selector:validator
-    // Nombre genérico para la cookie
     $cookieName = 'auth_persistence_token';
     $cookieValue = "$selector:$validator";
     $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on'; 
@@ -137,9 +130,8 @@ function create_persistence_token($pdo, $userId) {
     ]);
 }
 
-// Función auxiliar para completar login exitoso (Reutilizable)
+// Función auxiliar para completar login exitoso
 function completeLogin($pdo, $user) {
-    // Regenerar ID de sesión
     session_regenerate_id(true);
 
     $_SESSION['user_id'] = $user['id'];
@@ -148,24 +140,28 @@ function completeLogin($pdo, $user) {
     $_SESSION['avatar'] = $user['avatar_path'];
     $_SESSION['email'] = $user['email'];
 
-    // Cargar preferencias
-    $prefStmt = $pdo->prepare("SELECT language, open_links_new_tab FROM user_preferences WHERE user_id = ?");
+    // --- ACTUALIZACIÓN: FETCH NUEVAS PREFERENCIAS ---
+    $prefStmt = $pdo->prepare("SELECT language, open_links_new_tab, theme, extended_toast FROM user_preferences WHERE user_id = ?");
     $prefStmt->execute([$user['id']]);
     $prefs = $prefStmt->fetch();
 
     if ($prefs) {
         $_SESSION['preferences'] = [
             'language' => $prefs['language'],
-            'open_links_new_tab' => (bool)$prefs['open_links_new_tab']
+            'open_links_new_tab' => (bool)$prefs['open_links_new_tab'],
+            'theme' => $prefs['theme'],
+            'extended_toast' => (bool)$prefs['extended_toast']
         ];
     } else {
+        // Valores por defecto
         $_SESSION['preferences'] = [
             'language' => 'es-latam',
-            'open_links_new_tab' => true
+            'open_links_new_tab' => true,
+            'theme' => 'sync',
+            'extended_toast' => false
         ];
     }
 
-    // SIEMPRE CREAR TOKEN DE PERSISTENCIA
     create_persistence_token($pdo, $user['id']);
 
     jsonResponse(true, 'Bienvenido.', ['redirect' => '/ProjectAurora/']);
@@ -175,9 +171,7 @@ function completeLogin($pdo, $user) {
 
 $action = $_POST['action'] ?? '';
 
-// =========================================================================
-//  PASO 1 (Guardar credenciales temporales)
-// =========================================================================
+// ... (RESTO DEL ARCHIVO IGUAL HASTA LLEGAR A REGISTER) ...
 if ($action === 'register_step_1') {
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -203,9 +197,6 @@ if ($action === 'register_step_1') {
 
     jsonResponse(true, 'Paso 1 completado', ['next_url' => 'register/aditional-data']);
 
-// =========================================================================
-//  PASO 2 -> 3 (Iniciar Verificación)
-// =========================================================================
 } elseif ($action === 'initiate_verification') {
     $username = trim($_POST['username'] ?? '');
     
@@ -256,9 +247,6 @@ if ($action === 'register_step_1') {
         jsonResponse(false, 'Error interno: ' . $e->getMessage());
     }
 
-// =========================================================================
-//  REENVIAR CÓDIGO
-// =========================================================================
 } elseif ($action === 'resend_code') {
     $email = $_SESSION['pending_verification_email'] ?? '';
 
@@ -304,9 +292,6 @@ if ($action === 'register_step_1') {
         jsonResponse(false, 'Error al guardar código: ' . $e->getMessage());
     }
 
-// =========================================================================
-//  PASO 3 (Finalizar)
-// =========================================================================
 } elseif ($action === 'complete_register') {
     $code = trim($_POST['code'] ?? '');
     $email = $_SESSION['pending_verification_email'] ?? '';
@@ -355,9 +340,9 @@ if ($action === 'register_step_1') {
         $insertUser->execute([$uuid, $username, $email, $passwordHash, $dbAvatarPath]);
         $newUserId = $pdo->lastInsertId();
 
-        // === INSERTAR PREFERENCIAS ===
+        // === INSERTAR PREFERENCIAS (ACTUALIZADO) ===
         $detectedLang = get_best_match_language();
-        $prefStmt = $pdo->prepare("INSERT INTO user_preferences (user_id, language, open_links_new_tab) VALUES (?, ?, 1)");
+        $prefStmt = $pdo->prepare("INSERT INTO user_preferences (user_id, language, open_links_new_tab, theme, extended_toast) VALUES (?, ?, 1, 'sync', 0)");
         $prefStmt->execute([$newUserId, $detectedLang]);
 
         $pdo->prepare("DELETE FROM verification_codes WHERE id = ?")->execute([$verification['id']]);
@@ -372,10 +357,11 @@ if ($action === 'register_step_1') {
         
         $_SESSION['preferences'] = [
             'language' => $detectedLang,
-            'open_links_new_tab' => true
+            'open_links_new_tab' => true,
+            'theme' => 'sync',
+            'extended_toast' => false
         ];
         
-        // AUTO-ACTIVAR PERSISTENCIA AL REGISTRAR
         create_persistence_token($pdo, $newUserId);
         
         unset($_SESSION['temp_register']);
@@ -388,9 +374,6 @@ if ($action === 'register_step_1') {
         jsonResponse(false, 'Error crítico BD: ' . $e->getMessage());
     }
 
-// =========================================================================
-//  LOGIN MODIFICADO CON 2FA Y CHECK DE ESTADO (DELETE)
-// =========================================================================
 } elseif ($action === 'login') {
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -405,18 +388,13 @@ if ($action === 'register_step_1') {
 
     if ($user && password_verify($password, $user['password'])) {
         
-        // === NUEVO: VERIFICAR ESTADO DE CUENTA ===
-        // Obtenemos el estado, o 'active' si la columna no existe o es null
         $status = $user['account_status'] ?? 'active';
 
         if ($status === 'deleted') {
             jsonResponse(false, 'Esta cuenta ha sido eliminada y desactivada.');
         }
 
-        // --- CHECK 2FA ---
-        // Verificamos si la columna existe y si está activada (1)
         if (isset($user['two_factor_enabled']) && $user['two_factor_enabled'] == 1) {
-            // No logueamos todavía. Guardamos ID temporalmente en sesión.
             $_SESSION['2fa_pending_user_id'] = $user['id'];
             
             jsonResponse(true, 'Credenciales correctas. Se requiere código 2FA.', [
@@ -424,7 +402,6 @@ if ($action === 'register_step_1') {
             ]);
         }
 
-        // --- FLUJO NORMAL (SIN 2FA) ---
         completeLogin($pdo, $user);
 
     } else {
@@ -432,9 +409,6 @@ if ($action === 'register_step_1') {
         jsonResponse(false, 'Credenciales incorrectas.');
     }
 
-// =========================================================================
-//  VERIFICAR LOGIN 2FA (ETAPA 2)
-// =========================================================================
 } elseif ($action === 'verify_2fa_login') {
     $code = trim($_POST['code'] ?? '');
     
@@ -454,17 +428,14 @@ if ($action === 'register_step_1') {
 
     $isValid = false;
 
-    // 1. Intentar como código TOTP (App Authenticator)
     if (TOTP::verifyCode($user['two_factor_secret'], $code)) {
         $isValid = true;
     } else {
-        // 2. Intentar como código de recuperación (Backup)
         $recoveryCodes = json_decode($user['two_factor_recovery_codes'] ?? '[]', true);
         if (is_array($recoveryCodes) && in_array($code, $recoveryCodes)) {
             $isValid = true;
-            // Remover código usado para que no se use dos veces
             $recoveryCodes = array_diff($recoveryCodes, [$code]);
-            $newJson = json_encode(array_values($recoveryCodes)); // Reindexar
+            $newJson = json_encode(array_values($recoveryCodes)); 
             $pdo->prepare("UPDATE users SET two_factor_recovery_codes = ? WHERE id = ?")->execute([$newJson, $userId]);
         }
     }
@@ -476,9 +447,6 @@ if ($action === 'register_step_1') {
         jsonResponse(false, 'Código inválido.');
     }
 
-// =========================================================================
-//  RECUPERAR CONTRASEÑA - PASO 1
-// =========================================================================
 } elseif ($action === 'request_reset') {
     $email = trim($_POST['email'] ?? '');
 
@@ -520,9 +488,6 @@ if ($action === 'register_step_1') {
         jsonResponse(false, 'Error al generar solicitud: ' . $e->getMessage());
     }
 
-// =========================================================================
-//  RECUPERAR CONTRASEÑA - PASO 2
-// =========================================================================
 } elseif ($action === 'reset_password') {
     $token = $_POST['token'] ?? '';
     $newPassword = $_POST['new_password'] ?? '';
@@ -553,7 +518,6 @@ if ($action === 'register_step_1') {
 
         $pdo->prepare("DELETE FROM password_resets WHERE email = ?")->execute([$email]);
 
-        // Cerrar sesiones previas por seguridad
         $stmtUser = $pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmtUser->execute([$email]);
         $uData = $stmtUser->fetch();
@@ -568,11 +532,7 @@ if ($action === 'register_step_1') {
         jsonResponse(false, 'Error al actualizar: ' . $e->getMessage());
     }
 
-// =========================================================================
-//  LOGOUT
-// =========================================================================
 } elseif ($action === 'logout') {
-    // 1. Borrar token específico de BD si existe cookie
     if (isset($_COOKIE['auth_persistence_token'])) {
         $parts = explode(':', $_COOKIE['auth_persistence_token']);
         if (count($parts) === 2) {
@@ -582,11 +542,9 @@ if ($action === 'register_step_1') {
         }
     }
 
-    // 2. Destruir cookie
     setcookie('auth_persistence_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
     unset($_COOKIE['auth_persistence_token']);
 
-    // 3. Destruir sesión
     session_destroy();
     jsonResponse(true, 'Bye.', ['redirect' => '/ProjectAurora/login']);
 }

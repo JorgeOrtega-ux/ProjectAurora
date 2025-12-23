@@ -23,7 +23,6 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     role ENUM('user', 'moderator', 'administrator', 'founder') DEFAULT 'user',
     avatar_path VARCHAR(255),
-    -- NUEVA COLUMNA DE ESTADO
     account_status ENUM('active', 'deleted') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
@@ -71,6 +70,11 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     user_id INT NOT NULL,
     language VARCHAR(20) NOT NULL DEFAULT 'es-latam',
     open_links_new_tab TINYINT(1) NOT NULL DEFAULT 1,
+    
+    -- NUEVAS COLUMNAS
+    theme VARCHAR(20) NOT NULL DEFAULT 'sync', -- 'sync', 'light', 'dark'
+    extended_toast TINYINT(1) NOT NULL DEFAULT 0, -- 0 = Normal (3s), 1 = Extendido (10s)
+    
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE KEY unique_user (user_id)
