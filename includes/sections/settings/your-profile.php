@@ -1,3 +1,16 @@
+<?php
+// includes/sections/settings/your-profile.php
+
+// 1. Detectar estado de la foto actual para la carga inicial
+// Asumimos que si la ruta en sesión contiene '/custom/', es una foto subida por el usuario.
+$currentAvatarPath = $_SESSION['avatar'] ?? '';
+$isCustomAvatar = (strpos($currentAvatarPath, 'storage/profilePicture/custom/') !== false);
+
+// 2. Definir clases iniciales para mostrar/ocultar botones según el estado
+$classDefault = $isCustomAvatar ? 'disabled' : 'active'; // Si es custom, ocultamos el botón "Subir"
+$classCustom  = $isCustomAvatar ? 'active' : 'disabled'; // Si es custom, mostramos "Eliminar/Cambiar"
+?>
+
 <div class="section-content active" data-section="settings/your-profile">
     <div class="component-wrapper">
 
@@ -10,8 +23,8 @@
 
             <div class="component-group-item" data-component="profile-picture-section">
                 <div class="component-card__content">
-                    <div class="component-card__profile-picture" data-role="administrator">
-                        <img src="https://ui-avatars.com/api/?name=Jorge+Ortega&background=random" 
+                    <div class="component-card__profile-picture" data-role="<?php echo htmlspecialchars($_SESSION['role'] ?? 'user'); ?>">
+                        <img src="<?php echo $globalAvatarSrc; ?>" 
                              class="component-card__avatar-image" 
                              id="preview-avatar">
                         
@@ -25,18 +38,30 @@
                     </div>
                 </div>
 
-                <input type="file" id="upload-avatar" accept="image/*" hidden>
+                <input type="file" id="upload-avatar" accept="image/png, image/jpeg, image/webp, image/gif" hidden>
 
                 <div class="component-card__actions actions-right">
-                    <div class="active" data-state="profile-picture-actions-default">
+                    
+                    <div class="<?php echo $classDefault; ?>" data-state="profile-picture-actions-default">
                         <button type="button" class="component-button primary" onclick="document.getElementById('upload-avatar').click()">
                             Subir foto
                         </button>
                     </div>
+
                     <div class="disabled" data-state="profile-picture-actions-preview">
                         <button type="button" class="component-button" data-action="profile-picture-cancel">Cancelar</button>
                         <button type="button" class="component-button primary" data-action="profile-picture-save">Guardar</button>
                     </div>
+
+                    <div class="<?php echo $classCustom; ?>" data-state="profile-picture-actions-custom">
+                        <button type="button" class="component-button" data-action="profile-picture-delete" style="color: #d32f2f; border-color: #d32f2f30;">
+                            Eliminar
+                        </button>
+                        <button type="button" class="component-button primary" data-action="profile-picture-change">
+                            Cambiar foto
+                        </button>
+                    </div>
+
                 </div>
             </div>
 
@@ -48,12 +73,12 @@
                         <h2 class="component-card__title">Nombre de usuario</h2>
 
                         <div class="active" data-state="username-view-state">
-                            <span class="text-display-value" id="display-username">Jorge Ortega</span>
+                            <span class="text-display-value" id="display-username"><?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?></span>
                         </div>
 
                         <div class="disabled w-100 input-group-responsive" data-state="username-edit-state">
                             <div class="component-input-wrapper flex-1">
-                                <input type="text" class="component-text-input" id="input-username" value="Jorge Ortega">
+                                <input type="text" class="component-text-input" id="input-username" value="<?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?>">
                             </div>
                             <div class="component-card__actions disabled m-0" data-state="username-actions-edit">
                                 <button type="button" class="component-button" onclick="toggleEdit('username', false)">Cancelar</button>
