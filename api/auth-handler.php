@@ -389,7 +389,7 @@ if ($action === 'register_step_1') {
     }
 
 // =========================================================================
-//  LOGIN MODIFICADO CON 2FA
+//  LOGIN MODIFICADO CON 2FA Y CHECK DE ESTADO (DELETE)
 // =========================================================================
 } elseif ($action === 'login') {
     $email = trim($_POST['email'] ?? '');
@@ -405,7 +405,15 @@ if ($action === 'register_step_1') {
 
     if ($user && password_verify($password, $user['password'])) {
         
-        // --- NUEVO: CHECK 2FA ---
+        // === NUEVO: VERIFICAR ESTADO DE CUENTA ===
+        // Obtenemos el estado, o 'active' si la columna no existe o es null
+        $status = $user['account_status'] ?? 'active';
+
+        if ($status === 'deleted') {
+            jsonResponse(false, 'Esta cuenta ha sido eliminada y desactivada.');
+        }
+
+        // --- CHECK 2FA ---
         // Verificamos si la columna existe y si está activada (1)
         if (isset($user['two_factor_enabled']) && $user['two_factor_enabled'] == 1) {
             // No logueamos todavía. Guardamos ID temporalmente en sesión.
@@ -425,7 +433,7 @@ if ($action === 'register_step_1') {
     }
 
 // =========================================================================
-//  NUEVO: VERIFICAR LOGIN 2FA (ETAPA 2)
+//  VERIFICAR LOGIN 2FA (ETAPA 2)
 // =========================================================================
 } elseif ($action === 'verify_2fa_login') {
     $code = trim($_POST['code'] ?? '');

@@ -288,7 +288,7 @@ if ($action === 'upload_avatar') {
     }
 
 // =========================================================
-//  NUEVA LÓGICA: 2FA (TWO FACTOR AUTH)
+//  LÓGICA: 2FA (TWO FACTOR AUTH)
 // =========================================================
 
 } elseif ($action === 'init_2fa') {
@@ -338,7 +338,7 @@ if ($action === 'upload_avatar') {
         jsonResponse(false, 'Código incorrecto. Intenta de nuevo.');
     }
 
-// === NUEVO BLOQUE: DESACTIVAR 2FA ===
+// === BLOQUE: DESACTIVAR 2FA ===
 } elseif ($action === 'disable_2fa') {
     
     $stmt = $pdo->prepare("UPDATE users SET two_factor_enabled = 0, two_factor_secret = NULL, two_factor_recovery_codes = NULL WHERE id = ?");
@@ -351,7 +351,7 @@ if ($action === 'upload_avatar') {
     }
 
 // =========================================================
-//  GESTIÓN DE DISPOSITIVOS (NUEVO)
+//  GESTIÓN DE DISPOSITIVOS
 // =========================================================
 
 } elseif ($action === 'get_sessions') {
@@ -402,15 +402,54 @@ if ($action === 'upload_avatar') {
     $stmt = $pdo->prepare("DELETE FROM user_auth_tokens WHERE user_id = ?");
     $stmt->execute([$userId]);
     
-    // Al borrar todas, borramos también la actual del usuario, 
-    // lo que provocará logout en la siguiente petición.
-    // Opcionalmente podríamos mantener la actual:
-    // DELETE FROM ... WHERE user_id = ? AND selector != ?
-    
-    // Pero "Cerrar todas las sesiones" suele implicar logout global.
     setcookie('auth_persistence_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
     
     jsonResponse(true, 'Todas las sesiones han sido cerradas. Serás redirigido.', ['logout' => true]);
+
+// =========================================================
+//  ACCIÓN: ELIMINAR CUENTA (SOFT DELETE)
+// =========================================================
+} elseif ($action === 'delete_account') {
+    $password = $_POST['password'] ?? '';
+
+    if (empty($password)) {
+        jsonResponse(false, 'Se requiere la contraseña para confirmar.');
+    }
+
+    // 1. Verificar contraseña actual
+    $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+    $stmt->execute([$userId]);
+    $user = $stmt->fetch();
+
+    if (!$user || !password_verify($password, $user['password'])) {
+        jsonResponse(false, 'La contraseña es incorrecta. No se puede eliminar la cuenta.');
+    }
+
+    // 2. Ejecutar Soft Delete
+    try {
+        $pdo->beginTransaction();
+
+        // A. Marcar estado como 'deleted'
+        $update = $pdo->prepare("UPDATE users SET account_status = 'deleted' WHERE id = ?");
+        $update->execute([$userId]);
+
+        // B. Eliminar todas las sesiones activas (Tokens)
+        $deleteTokens = $pdo->prepare("DELETE FROM user_auth_tokens WHERE user_id = ?");
+        $deleteTokens->execute([$userId]);
+
+        $pdo->commit();
+
+        // 3. Cerrar sesión actual
+        setcookie('auth_persistence_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
+        session_destroy();
+
+        jsonResponse(true, 'Cuenta eliminada correctamente.');
+
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        error_log("Error deleting account: " . $e->getMessage());
+        jsonResponse(false, 'Error interno al procesar la solicitud.');
+    }
 }
 
 jsonResponse(false, 'Acción no reconocida.');
