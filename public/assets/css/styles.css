@@ -752,28 +752,14 @@ html {
 .flex-1 {
     flex: 1;
 }
+
 .pill-container {
     display: none;
-}@media (max-width: 465px) {
-    .drag-handle {
-        width: 40px;
-        height: 4px;
-        background-color: #f5f5fa;
-        border-radius: 10px;
-    }
 }
-@media (max-width: 465px) {
-    .pill-container {
-        display: flex;
-        justify-content: center;
-        width: 100%;
-        padding: 8px 0;
-        padding-top: 0;
-        flex-shrink: 0;
-        touch-action: none;
-        cursor: grab;
-    }
-}
+
+/* =========================================
+   MEDIA QUERIES & RESPONSIVE
+   ========================================= */
 
 @media (max-width: 725px) {
     .header {
@@ -820,21 +806,84 @@ html {
     }
 }
 
+.general-content:has(.module-surface.active) .general-content-top {
+    box-shadow: none !important;
+    border-bottom: 1px solid #00000020;
+}
 
+/* =========================================
+   MOBILE PROFILE (BOTTOM SHEET)
+   ========================================= */
 @media (max-width: 468px) {
-     .module-content.module-profile {
+    .module-content.module-profile {
         width: 100%;
         height: 100%;
-        background-color: #00000080;
+        background-color: rgba(0, 0, 0, 0.5); /* Overlay dim */
         position: fixed;
         top: 0;
         right: 0;
-        align-items: flex-end;
+        left: 0;
+        bottom: 0;
+        z-index: 9999; /* Por encima de todo */
+        display: none; /* Por defecto oculto, .active lo muestra flex */
+        align-items: flex-end; /* Alinea contenido al fondo */
+        backdrop-filter: blur(2px);
     }
+
     .module-profile .menu-content {
         width: 100%;
+        height: auto;
+        max-height: 85vh; /* No ocupar toda la pantalla */
+        background-color: #ffffff;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
         border-bottom-left-radius: 0;
         border-bottom-right-radius: 0;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+        display: flex;
+        flex-direction: column;
+        
+        /* Animación inicial de entrada */
+        transform: translateY(100%);
+        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    
+    /* Estado activo del módulo completo (overlay) */
+    .module-content.module-profile.active {
+        display: flex !important;
+        animation: fadeInOverlay 0.3s ease forwards;
+    }
+
+    /* Cuando está activo, el contenido sube a posición 0 */
+    .module-content.module-profile.active .menu-content {
+        transform: translateY(0%);
+    }
+
+    /* Clase auxiliar para la animación de cierre (slide-down) */
+    .module-content.module-profile.closing .menu-content {
+        transform: translateY(100%) !important;
+    }
+    
+    .module-content.module-profile.closing {
+        animation: fadeOutOverlay 0.3s ease forwards;
+    }
+
+    /* PILL CONTAINER (Handle) */
+    .pill-container {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        padding: 12px 0;
+        flex-shrink: 0;
+        cursor: grab;
+        touch-action: none; /* Importante para que el navegador no haga scroll */
+    }
+    
+    .drag-handle {
+        width: 40px;
+        height: 4px;
+        background-color: #e0e0e0;
+        border-radius: 10px;
     }
 }
 
@@ -843,14 +892,20 @@ html {
         opacity: 0;
         transform: translateY(-5px);
     }
-
     to {
         opacity: 1;
         transform: translateY(0);
     }
-}.general-content:has(.module-surface.active) .general-content-top {
-    box-shadow: none !important;
-    border-bottom: 1px solid #00000020;
+}
+
+@keyframes fadeInOverlay {
+    from { background-color: rgba(0, 0, 0, 0); }
+    to { background-color: rgba(0, 0, 0, 0.5); }
+}
+
+@keyframes fadeOutOverlay {
+    from { background-color: rgba(0, 0, 0, 0.5); }
+    to { background-color: rgba(0, 0, 0, 0); }
 }
 
 /* =========================================
@@ -901,7 +956,6 @@ html {
     border: 1px solid rgba(255, 255, 255, 0.2);
     font-family: monospace;
 }
-
 
 .tooltip::before {
     position: absolute;
