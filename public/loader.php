@@ -8,6 +8,8 @@ $publicSections = [
     'register', 
     'register/aditional-data', 
     'register/verification-account',
+    'recover-password', // <--- NUEVO
+    'reset-password',   // <--- NUEVO
     '404'
 ];
 

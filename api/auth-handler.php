@@ -123,7 +123,6 @@ if ($action === 'register_step_1') {
 
     // --- SEGURIDAD 1: RATE LIMITING (Anti-Spam) ---
     // Verificamos si existe algún código creado en los últimos 60 SEGUNDOS.
-    // Usamos NOW() de SQL para evitar problemas de sincronización de hora entre PHP y DB.
     $checkTime = $pdo->prepare("
         SELECT created_at 
         FROM verification_codes 
@@ -256,6 +255,99 @@ if ($action === 'register_step_1') {
         jsonResponse(true, 'Bienvenido.', ['redirect' => '/ProjectAurora/']);
     } else {
         jsonResponse(false, 'Credenciales incorrectas.');
+    }
+
+// =========================================================================
+//  RECUPERAR CONTRASEÑA - PASO 1 (Generar Token)
+// =========================================================================
+} elseif ($action === 'request_reset') {
+    $email = trim($_POST['email'] ?? '');
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        jsonResponse(false, 'Correo electrónico inválido.');
+    }
+
+    // Verificar si el usuario existe
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+    $stmt->execute([$email]);
+    if (!$stmt->fetch()) {
+        // Por seguridad, a veces se dice "Si existe, se envió el correo", 
+        // pero para este ejemplo seremos explícitos.
+        jsonResponse(false, 'No encontramos una cuenta con este correo.');
+    }
+
+    // Generar Token
+    $token = bin2hex(random_bytes(32));
+    $expiresAt = date('Y-m-d H:i:s', strtotime('+1 hour')); // Expira en 1 hora
+
+    // Limpiar tokens viejos de este email
+    $pdo->prepare("DELETE FROM password_resets WHERE email = ?")->execute([$email]);
+
+    // Guardar nuevo token
+    $sql = "INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)";
+    try {
+        $pdo->prepare($sql)->execute([$email, $token, $expiresAt]);
+        
+        // SIMULACIÓN DE ENVÍO DE CORREO
+        // En producción aquí usarías mail() o PHPMailer.
+        // Generamos el link basado en tu IP local o dominio configurado.
+        
+        // Detección automática del host para el link
+        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+        $host = $_SERVER['HTTP_HOST']; 
+        // Nota: Ajusta '/ProjectAurora/' si tu carpeta base cambia.
+        $resetLink = "$protocol://$host/ProjectAurora/reset-password?token=$token";
+
+        jsonResponse(true, 'Enlace generado (Simulación)', [
+            'debug_link' => $resetLink,
+            'message_user' => 'Te hemos enviado un correo (Revisa la consola/respuesta para el link de prueba).'
+        ]);
+
+    } catch (Exception $e) {
+        jsonResponse(false, 'Error al generar solicitud: ' . $e->getMessage());
+    }
+
+// =========================================================================
+//  RECUPERAR CONTRASEÑA - PASO 2 (Cambiar Password)
+// =========================================================================
+} elseif ($action === 'reset_password') {
+    $token = $_POST['token'] ?? '';
+    $newPassword = $_POST['new_password'] ?? '';
+
+    if (empty($token) || empty($newPassword)) {
+        jsonResponse(false, 'Faltan datos.');
+    }
+
+    if (strlen($newPassword) < 6) {
+        jsonResponse(false, 'La contraseña es muy corta (min 6 caracteres).');
+    }
+
+    // Verificar Token y Expiración
+    $stmt = $pdo->prepare("SELECT email FROM password_resets WHERE token = ? AND expires_at > NOW() LIMIT 1");
+    $stmt->execute([$token]);
+    $resetRequest = $stmt->fetch();
+
+    if (!$resetRequest) {
+        jsonResponse(false, 'El enlace es inválido o ha expirado.');
+    }
+
+    $email = $resetRequest['email'];
+    $newHash = password_hash($newPassword, PASSWORD_DEFAULT);
+
+    $pdo->beginTransaction();
+    try {
+        // Actualizar usuario
+        $update = $pdo->prepare("UPDATE users SET password = ? WHERE email = ?");
+        $update->execute([$newHash, $email]);
+
+        // Borrar el token usado
+        $pdo->prepare("DELETE FROM password_resets WHERE email = ?")->execute([$email]);
+
+        $pdo->commit();
+        jsonResponse(true, 'Contraseña actualizada correctamente.', ['redirect' => '/ProjectAurora/login']);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        jsonResponse(false, 'Error al actualizar: ' . $e->getMessage());
     }
 
 } elseif ($action === 'logout') {

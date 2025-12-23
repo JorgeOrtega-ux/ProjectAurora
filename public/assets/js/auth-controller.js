@@ -191,6 +191,103 @@ export function initAuthController() {
         }
 
         // ------------------------------------------
+        // 6. RECUPERAR PASSWORD - SOLICITUD (PASO 1)
+        // ------------------------------------------
+        const btnRequestReset = target.closest('#btn-request-reset');
+        if (btnRequestReset) {
+            e.preventDefault();
+            hideError('recovery-error');
+            
+            const email = document.getElementById('email_recovery').value;
+            if(!email) {
+                showError(btnRequestReset, 'recovery-error', "Ingresa tu correo.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'request_reset');
+            formData.append('email', email);
+            formData.append('csrf_token', csrfToken);
+
+            setLoading(btnRequestReset, true);
+
+            try {
+                const res = await fetchApi(formData);
+                setLoading(btnRequestReset, false);
+
+                if (res.success) {
+                    // Mostrar mensaje de éxito
+                    Toast.show('Correo enviado. Revisa la consola para el link (MODO DEV)', 'success');
+                    console.log("=== LINK DE RECUPERACIÓN ===");
+                    console.log(res.debug_link);
+                    console.log("============================");
+                    
+                    // Opcional: Mostrar el link en pantalla para facilitar prueba
+                    const area = document.getElementById('recovery-message-area');
+                    if(area) {
+                        area.innerHTML = `<div class="alert success mt-16" style="background:#e8f5e9; color:#2e7d32; padding:10px; border-radius:8px;">
+                            Link generado (Copia y pega): <br> 
+                            <a href="${res.debug_link}">${res.debug_link}</a>
+                        </div>`;
+                    }
+                } else {
+                    showError(btnRequestReset, 'recovery-error', res.message);
+                }
+            } catch (err) {
+                setLoading(btnRequestReset, false);
+                showError(btnRequestReset, 'recovery-error', "Error de conexión.");
+            }
+            return;
+        }
+
+        // ------------------------------------------
+        // 7. RESET PASSWORD - NUEVA CLAVE (PASO 2)
+        // ------------------------------------------
+        const btnSubmitNewPass = target.closest('#btn-submit-new-password');
+        if (btnSubmitNewPass) {
+            e.preventDefault();
+            hideError('reset-pass-error');
+
+            const token = document.getElementById('reset_token').value;
+            const pass1 = document.getElementById('new_password').value;
+            const pass2 = document.getElementById('confirm_password').value;
+
+            if (!pass1 || !pass2) {
+                showError(btnSubmitNewPass, 'reset-pass-error', "Completa ambos campos.");
+                return;
+            }
+            if (pass1 !== pass2) {
+                showError(btnSubmitNewPass, 'reset-pass-error', "Las contraseñas no coinciden.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'reset_password');
+            formData.append('token', token);
+            formData.append('new_password', pass1);
+            formData.append('csrf_token', csrfToken);
+
+            setLoading(btnSubmitNewPass, true);
+
+            try {
+                const res = await fetchApi(formData);
+                if (res.success) {
+                    Toast.show('Contraseña actualizada. Inicia sesión.', 'success');
+                    setTimeout(() => {
+                        window.location.href = window.BASE_PATH + 'login';
+                    }, 1500);
+                } else {
+                    setLoading(btnSubmitNewPass, false);
+                    showError(btnSubmitNewPass, 'reset-pass-error', res.message);
+                }
+            } catch (err) {
+                setLoading(btnSubmitNewPass, false);
+                showError(btnSubmitNewPass, 'reset-pass-error', "Error inesperado.");
+            }
+            return;
+        }
+
+        // ------------------------------------------
         // LOGOUT
         // ------------------------------------------
         const logoutBtn = target.closest('[data-action="logout"]');

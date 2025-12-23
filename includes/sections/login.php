@@ -24,8 +24,8 @@
         </div>
 
         <div class="forgot-password">
-            <a href="<?php echo $basePath; ?>recover-password">¿Olvidaste tu contraseña?</a>
-        </div>
+    <a href="<?php echo $basePath; ?>recover-password" data-nav="recover-password">¿Olvidaste tu contraseña?</a>
+</div>
 
         <button type="button" id="btn-login" class="btn-primary">Iniciar Sesión</button>
 
