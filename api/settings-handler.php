@@ -43,6 +43,8 @@ function deleteOldAvatar($pdo, $userId, $currentPath) {
         @unlink(__DIR__ . '/../' . $currentPath);
     }
 }
+
+// AQUI ESTA EL TEXTO QUEMADO "Desconocido"
 function parseUserAgent($ua) {
     $platform = 'Desconocido'; $browser = 'Desconocido';
     if (preg_match('/windows|win32/i', $ua)) $platform = 'Windows';

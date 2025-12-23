@@ -57,6 +57,7 @@ export const DevicesController = (function() {
                 ? `<span style="font-size:11px; background:#e8f5e9; color:#2e7d32; padding:2px 6px; border-radius:4px; font-weight:600; margin-left:8px;">${I18n.t('js.devices.current_device')}</span>` 
                 : '';
 
+            // AQUI ESTA EL TEXTO QUEMADO: "IP:" e "Iniciado:"
             html += `
                 <div class="component-group-item">
                     <div class="component-card__content">

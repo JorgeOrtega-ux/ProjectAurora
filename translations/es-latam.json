@@ -5,6 +5,7 @@
     "header": {
         "search_placeholder": "Buscar...",
         "guest": "Invitado",
+        "profile_alt": "Foto de perfil",
         "role": {
             "user": "Usuario",
             "moderator": "Moderador",
@@ -228,7 +229,9 @@
             "current_device": "Este dispositivo",
             "btn_revoke": "Cerrar sesión",
             "revoke_success": "Sesión cerrada correctamente.",
-            "confirm_revoke_all": "¿Seguro que quieres cerrar sesión en TODOS los dispositivos? Deberás iniciar sesión de nuevo."
+            "confirm_revoke_all": "¿Seguro que quieres cerrar sesión en TODOS los dispositivos? Deberás iniciar sesión de nuevo.",
+            "label_ip": "IP:",
+            "label_started": "Iniciado:"
         },
         "settings": {
             "pref_error": "Error al guardar preferencia.",
@@ -327,6 +330,7 @@
         "session_revoke_error": "No se pudo cerrar la sesión.",
         "all_sessions_revoked": "Todas las sesiones han sido cerradas. Serás redirigido.",
         "pass_req_confirm": "Se requiere la contraseña para confirmar.",
-        "account_deleted_success": "Cuenta eliminada correctamente."
+        "account_deleted_success": "Cuenta eliminada correctamente.",
+        "unknown_device": "Desconocido"
     }
 }
