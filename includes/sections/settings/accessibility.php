@@ -5,9 +5,9 @@ $currentTheme = $_SESSION['preferences']['theme'] ?? 'sync';
 $isExtended = isset($_SESSION['preferences']['extended_toast']) && $_SESSION['preferences']['extended_toast'] == 1;
 
 // Obtenemos las etiquetas traducidas
-$labelSystem = $i18n->trans('settings.accessibility.theme_system');
-$labelLight = $i18n->trans('settings.accessibility.theme_light');
-$labelDark = $i18n->trans('settings.accessibility.theme_dark');
+$labelSystem = $i18n->t('settings.accessibility.theme_system');
+$labelLight = $i18n->t('settings.accessibility.theme_light');
+$labelDark = $i18n->t('settings.accessibility.theme_dark');
 
 $themeLabels = [
     'sync' => $labelSystem,
@@ -28,16 +28,16 @@ $currentThemeIcon = $themeIcons[$currentTheme] ?? 'settings_brightness';
     <div class="component-wrapper">
         
         <div class="component-header-card">
-            <h1 class="component-page-title"><?php echo $i18n->trans('settings.accessibility.title'); ?></h1>
-            <p class="component-page-description"><?php echo $i18n->trans('settings.accessibility.desc'); ?></p>
+            <h1 class="component-page-title"><?php echo $i18n->t('settings.accessibility.title'); ?></h1>
+            <p class="component-page-description"><?php echo $i18n->t('settings.accessibility.desc'); ?></p>
         </div>
 
         <div class="component-card component-card--grouped">
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title"><?php echo $i18n->trans('settings.accessibility.theme_title'); ?></h2>
-                        <p class="component-card__description"><?php echo $i18n->trans('settings.accessibility.theme_desc'); ?></p>
+                        <h2 class="component-card__title"><?php echo $i18n->t('settings.accessibility.theme_title'); ?></h2>
+                        <p class="component-card__description"><?php echo $i18n->t('settings.accessibility.theme_desc'); ?></p>
                     </div>
                 </div>
                 
@@ -87,8 +87,8 @@ $currentThemeIcon = $themeIcons[$currentTheme] ?? 'settings_brightness';
             <div class="component-group-item">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title"><?php echo $i18n->trans('settings.accessibility.toast_title'); ?></h2>
-                        <p class="component-card__description"><?php echo $i18n->trans('settings.accessibility.toast_desc'); ?></p>
+                        <h2 class="component-card__title"><?php echo $i18n->t('settings.accessibility.toast_title'); ?></h2>
+                        <p class="component-card__description"><?php echo $i18n->t('settings.accessibility.toast_desc'); ?></p>
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">

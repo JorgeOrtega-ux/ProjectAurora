@@ -7,14 +7,14 @@
                     <div class="menu-link-icon">
                         <span class="material-symbols-rounded">home</span>
                     </div>
-                    <div class="menu-link-text"><?php echo $i18n->trans('menu.home'); ?></div>
+                    <div class="menu-link-text"><?php echo $i18n->t('menu.home'); ?></div>
                 </div>
 
                 <div class="menu-link <?php echo ($currentSection === 'explore') ? 'active' : ''; ?>" data-nav="explore">
                     <div class="menu-link-icon">
                         <span class="material-symbols-rounded">explore</span>
                     </div>
-                    <div class="menu-link-text"><?php echo $i18n->trans('menu.explore'); ?></div>
+                    <div class="menu-link-text"><?php echo $i18n->t('menu.explore'); ?></div>
                 </div>
             </div>
 
@@ -24,7 +24,7 @@
                     <div class="menu-link-icon">
                         <span class="material-symbols-rounded">arrow_back</span>
                     </div>
-                    <div class="menu-link-text"><?php echo $i18n->trans('menu.back_home'); ?></div>
+                    <div class="menu-link-text"><?php echo $i18n->t('menu.back_home'); ?></div>
                 </div>
 
                 <div style="width: 100%; border-bottom: 1px solid #00000020; margin: 8px 0;"></div>
@@ -33,21 +33,21 @@
                     <div class="menu-link-icon">
                         <span class="material-symbols-rounded">person</span>
                     </div>
-                    <div class="menu-link-text"><?php echo $i18n->trans('menu.profile'); ?></div>
+                    <div class="menu-link-text"><?php echo $i18n->t('menu.profile'); ?></div>
                 </div>
 
                 <div class="menu-link" data-nav="settings/login-security">
                     <div class="menu-link-icon">
                         <span class="material-symbols-rounded">lock</span>
                     </div>
-                    <div class="menu-link-text"><?php echo $i18n->trans('menu.security'); ?></div>
+                    <div class="menu-link-text"><?php echo $i18n->t('menu.security'); ?></div>
                 </div>
 
                 <div class="menu-link" data-nav="settings/accessibility">
                     <div class="menu-link-icon">
                         <span class="material-symbols-rounded">accessibility_new</span>
                     </div>
-                    <div class="menu-link-text"><?php echo $i18n->trans('menu.accessibility'); ?></div>
+                    <div class="menu-link-text"><?php echo $i18n->t('menu.accessibility'); ?></div>
                 </div>
             </div>
 

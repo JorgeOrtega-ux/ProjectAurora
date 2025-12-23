@@ -18,20 +18,32 @@ class I18n {
             $jsonContent = file_get_contents($filePath);
             $decoded = json_decode($jsonContent, true);
             
-            // Si el JSON es válido, lo cargamos. Si no, queda vacío.
+            // Si el JSON es válido, lo cargamos.
             if (is_array($decoded)) {
                 $this->translations = $decoded;
             }
         }
-        // NOTA: Si el archivo no existe (ej. es-mx.json), $this->translations se queda vacío.
     }
 
     /**
-     * Obtiene una traducción.
-     * Si no existe la clave o el archivo de idioma, devuelve la CLAVE.
+     * Obtiene una traducción usando notación de puntos (ej: 'auth.login.title').
+     * Soporta JSON anidado.
+     * Si no encuentra la clave, devuelve la clave misma.
      */
-    public function trans($key) {
-        return $this->translations[$key] ?? $key;
+    public function t($key) {
+        $keys = explode('.', $key);
+        $value = $this->translations;
+
+        foreach ($keys as $nestedKey) {
+            if (isset($value[$nestedKey])) {
+                $value = $value[$nestedKey];
+            } else {
+                return $key; // No encontrado, devolver clave original
+            }
+        }
+
+        // Asegurarse de devolver un string (por si la clave apunta a un array intermedio)
+        return is_string($value) ? $value : $key;
     }
 
     /**

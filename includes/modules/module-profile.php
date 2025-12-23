@@ -10,7 +10,7 @@
                         <span class="material-symbols-rounded">admin_panel_settings</span>
                     </div>
                     <div class="menu-link-text">
-                        <span><?php echo $i18n->trans('menu.admin_panel'); ?></span>
+                        <span><?php echo $i18n->t('menu.admin_panel'); ?></span>
                     </div>
                 </div>
                 
@@ -22,7 +22,7 @@
                     <span class="material-symbols-rounded">settings</span>
                 </div>
                 <div class="menu-link-text">
-                    <span><?php echo $i18n->trans('menu.settings'); ?></span>
+                    <span><?php echo $i18n->t('menu.settings'); ?></span>
                 </div>
             </div>
             
@@ -31,7 +31,7 @@
                     <span class="material-symbols-rounded">help</span>
                 </div>
                 <div class="menu-link-text">
-                    <span><?php echo $i18n->trans('menu.help'); ?></span>
+                    <span><?php echo $i18n->t('menu.help'); ?></span>
                 </div>
             </div>
             
@@ -40,7 +40,7 @@
                     <span class="material-symbols-rounded">logout</span>
                 </div>
                 <div class="menu-link-text">
-                    <span><?php echo $i18n->trans('menu.logout'); ?></span>
+                    <span><?php echo $i18n->t('menu.logout'); ?></span>
                 </div>
             </div>
 

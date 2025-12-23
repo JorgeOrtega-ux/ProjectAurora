@@ -24,8 +24,8 @@ $currentLangLabel = $langLabels[$prefLang] ?? $langLabels['es-latam'];
     <div class="component-wrapper">
 
         <div class="component-header-card">
-            <h1 class="component-page-title"><?php echo $i18n->trans('settings.profile.title'); ?></h1>
-            <p class="component-page-description"><?php echo $i18n->trans('settings.profile.desc'); ?></p>
+            <h1 class="component-page-title"><?php echo $i18n->t('settings.profile.title'); ?></h1>
+            <p class="component-page-description"><?php echo $i18n->t('settings.profile.desc'); ?></p>
         </div>
 
         <div class="component-card component-card--grouped">
@@ -39,8 +39,8 @@ $currentLangLabel = $langLabels[$prefLang] ?? $langLabels['es-latam'];
                         </div>
                     </div>
                     <div class="component-card__text">
-                        <h2 class="component-card__title"><?php echo $i18n->trans('settings.profile.pic_title'); ?></h2>
-                        <p class="component-card__description"><?php echo $i18n->trans('settings.profile.pic_desc'); ?></p>
+                        <h2 class="component-card__title"><?php echo $i18n->t('settings.profile.pic_title'); ?></h2>
+                        <p class="component-card__description"><?php echo $i18n->t('settings.profile.pic_desc'); ?></p>
                     </div>
                 </div>
 
@@ -49,21 +49,21 @@ $currentLangLabel = $langLabels[$prefLang] ?? $langLabels['es-latam'];
                 <div class="component-card__actions actions-right">
                     <div class="<?php echo $classDefault; ?>" data-state="profile-picture-actions-default">
                         <button type="button" class="component-button primary" onclick="document.getElementById('upload-avatar').click()">
-                            <?php echo $i18n->trans('settings.profile.btn_upload'); ?>
+                            <?php echo $i18n->t('settings.profile.btn_upload'); ?>
                         </button>
                     </div>
 
                     <div class="disabled" data-state="profile-picture-actions-preview">
-                        <button type="button" class="component-button" data-action="profile-picture-cancel"><?php echo $i18n->trans('settings.profile.btn_cancel'); ?></button>
-                        <button type="button" class="component-button primary" data-action="profile-picture-save"><?php echo $i18n->trans('settings.profile.btn_save'); ?></button>
+                        <button type="button" class="component-button" data-action="profile-picture-cancel"><?php echo $i18n->t('settings.profile.btn_cancel'); ?></button>
+                        <button type="button" class="component-button primary" data-action="profile-picture-save"><?php echo $i18n->t('settings.profile.btn_save'); ?></button>
                     </div>
 
                     <div class="<?php echo $classCustom; ?>" data-state="profile-picture-actions-custom">
                         <button type="button" class="component-button" data-action="profile-picture-delete" style="color: #d32f2f; border-color: #d32f2f30;">
-                            <?php echo $i18n->trans('settings.profile.btn_delete'); ?>
+                            <?php echo $i18n->t('settings.profile.btn_delete'); ?>
                         </button>
                         <button type="button" class="component-button primary" data-action="profile-picture-change">
-                            <?php echo $i18n->trans('settings.profile.btn_change'); ?>
+                            <?php echo $i18n->t('settings.profile.btn_change'); ?>
                         </button>
                     </div>
                 </div>
@@ -74,7 +74,7 @@ $currentLangLabel = $langLabels[$prefLang] ?? $langLabels['es-latam'];
             <div class="component-group-item" data-component="username-section">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title"><?php echo $i18n->trans('settings.profile.username_title'); ?></h2>
+                        <h2 class="component-card__title"><?php echo $i18n->t('settings.profile.username_title'); ?></h2>
                         <div class="active" data-state="username-view-state">
                             <span class="text-display-value" id="display-username"><?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?></span>
                         </div>
@@ -83,14 +83,14 @@ $currentLangLabel = $langLabels[$prefLang] ?? $langLabels['es-latam'];
                                 <input type="text" class="component-text-input" id="input-username" value="<?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?>">
                             </div>
                             <div class="component-card__actions disabled m-0" data-state="username-actions-edit">
-                                <button type="button" class="component-button" onclick="toggleEdit('username', false)"><?php echo $i18n->trans('settings.profile.btn_cancel'); ?></button>
-                                <button type="button" class="component-button primary" onclick="saveData('username')"><?php echo $i18n->trans('settings.profile.btn_save'); ?></button>
+                                <button type="button" class="component-button" onclick="toggleEdit('username', false)"><?php echo $i18n->t('settings.profile.btn_cancel'); ?></button>
+                                <button type="button" class="component-button primary" onclick="saveData('username')"><?php echo $i18n->t('settings.profile.btn_save'); ?></button>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="component-card__actions actions-right active" data-state="username-actions-view">
-                    <button type="button" class="component-button" onclick="toggleEdit('username', true)"><?php echo $i18n->trans('settings.profile.btn_edit'); ?></button>
+                    <button type="button" class="component-button" onclick="toggleEdit('username', true)"><?php echo $i18n->t('settings.profile.btn_edit'); ?></button>
                 </div>
             </div>
 
@@ -99,7 +99,7 @@ $currentLangLabel = $langLabels[$prefLang] ?? $langLabels['es-latam'];
             <div class="component-group-item" data-component="email-section">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title"><?php echo $i18n->trans('settings.profile.email_title'); ?></h2>
+                        <h2 class="component-card__title"><?php echo $i18n->t('settings.profile.email_title'); ?></h2>
                         <div class="active" data-state="email-view-state">
                             <span class="text-display-value" id="display-email"><?php echo htmlspecialchars($_SESSION['email'] ?? ''); ?></span>
                         </div>
@@ -108,14 +108,14 @@ $currentLangLabel = $langLabels[$prefLang] ?? $langLabels['es-latam'];
                                 <input type="email" class="component-text-input" id="input-email" value="<?php echo htmlspecialchars($_SESSION['email'] ?? ''); ?>">
                             </div>
                             <div class="component-card__actions disabled m-0" data-state="email-actions-edit">
-                                <button type="button" class="component-button" onclick="toggleEdit('email', false)"><?php echo $i18n->trans('settings.profile.btn_cancel'); ?></button>
-                                <button type="button" class="component-button primary" onclick="saveData('email')"><?php echo $i18n->trans('settings.profile.btn_save'); ?></button>
+                                <button type="button" class="component-button" onclick="toggleEdit('email', false)"><?php echo $i18n->t('settings.profile.btn_cancel'); ?></button>
+                                <button type="button" class="component-button primary" onclick="saveData('email')"><?php echo $i18n->t('settings.profile.btn_save'); ?></button>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="component-card__actions actions-right active" data-state="email-actions-view">
-                    <button type="button" class="component-button" onclick="toggleEdit('email', true)"><?php echo $i18n->trans('settings.profile.btn_edit'); ?></button>
+                    <button type="button" class="component-button" onclick="toggleEdit('email', true)"><?php echo $i18n->t('settings.profile.btn_edit'); ?></button>
                 </div>
             </div>
 
@@ -125,8 +125,8 @@ $currentLangLabel = $langLabels[$prefLang] ?? $langLabels['es-latam'];
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title"><?php echo $i18n->trans('settings.profile.lang_title'); ?></h2>
-                        <p class="component-card__description"><?php echo $i18n->trans('settings.profile.lang_desc'); ?></p>
+                        <h2 class="component-card__title"><?php echo $i18n->t('settings.profile.lang_title'); ?></h2>
+                        <p class="component-card__description"><?php echo $i18n->t('settings.profile.lang_desc'); ?></p>
                     </div>
                 </div>
                 <div class="component-card__actions">
@@ -161,8 +161,8 @@ $currentLangLabel = $langLabels[$prefLang] ?? $langLabels['es-latam'];
             <div class="component-group-item">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <h2 class="component-card__title"><?php echo $i18n->trans('settings.profile.links_title'); ?></h2>
-                        <p class="component-card__description"><?php echo $i18n->trans('settings.profile.links_desc'); ?></p>
+                        <h2 class="component-card__title"><?php echo $i18n->t('settings.profile.links_title'); ?></h2>
+                        <p class="component-card__description"><?php echo $i18n->t('settings.profile.links_desc'); ?></p>
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">
