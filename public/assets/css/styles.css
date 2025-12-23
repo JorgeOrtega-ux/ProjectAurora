@@ -808,4 +808,7 @@ html {
         opacity: 1;
         transform: translateY(0);
     }
+}.general-content:has(.module-surface.active) .general-content-top {
+    box-shadow: none !important;
+    border-bottom: 1px solid #00000020;
 }
