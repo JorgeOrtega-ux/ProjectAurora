@@ -1,35 +1,31 @@
 import { navigateTo } from './core/url-manager.js';
 
 export function initAuthController() {
-    console.log("Auth Controller: Listo (SPA)");
-
-    // Configura botones visuales (ver password, generar user)
-    setupInteractions();
+    console.log("Auth Controller: Listo (SPA - Event Delegation)");
 
     const csrfToken = getCsrfToken();
 
-    // ==========================================
-    // 1. MANEJO DE LOGIN
-    // ==========================================
-    const btnLogin = document.getElementById('btn-login');
-    if (btnLogin) {
-        btnLogin.addEventListener('click', (e) => {
+    // ============================================================
+    // DELEGACIÓN DE EVENTOS (Maneja clics en elementos dinámicos)
+    // ============================================================
+    document.body.addEventListener('click', async (e) => {
+        const target = e.target;
+
+        // ------------------------------------------
+        // 1. MANEJO DE LOGIN
+        // ------------------------------------------
+        const btnLogin = target.closest('#btn-login');
+        if (btnLogin) {
             e.preventDefault();
             handleLogin(btnLogin, csrfToken);
-        });
-        
-        // Enter en inputs
-        document.querySelectorAll('#loginContainer input').forEach(input => {
-            input.addEventListener('keypress', (e) => { if(e.key === 'Enter') btnLogin.click(); });
-        });
-    }
+            return;
+        }
 
-    // ==========================================
-    // 2. REGISTRO - PASO 1 (Email/Pass) -> PASO 2
-    // ==========================================
-    const btnNext1 = document.getElementById('btn-next-1');
-    if (btnNext1) {
-        btnNext1.addEventListener('click', async (e) => {
+        // ------------------------------------------
+        // 2. REGISTRO - PASO 1 (Email/Pass) -> PASO 2
+        // ------------------------------------------
+        const btnNext1 = target.closest('#btn-next-1');
+        if (btnNext1) {
             e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
@@ -47,7 +43,6 @@ export function initAuthController() {
             try {
                 const res = await fetchApi(formData);
                 if (res.success) {
-                    // AQUÍ ESTÁ LA MAGIA: Navegamos a la URL del paso 2
                     navigateTo(res.next_url); 
                 } else {
                     alert(res.message);
@@ -57,15 +52,14 @@ export function initAuthController() {
                 console.error(err);
                 setLoading(btnNext1, false);
             }
-        });
-    }
+            return;
+        }
 
-    // ==========================================
-    // 3. REGISTRO - PASO 2 (Username) -> PASO 3
-    // ==========================================
-    const btnNext2 = document.getElementById('btn-next-2');
-    if (btnNext2) {
-        btnNext2.addEventListener('click', async (e) => {
+        // ------------------------------------------
+        // 3. REGISTRO - PASO 2 (Username) -> PASO 3
+        // ------------------------------------------
+        const btnNext2 = target.closest('#btn-next-2');
+        if (btnNext2) {
             e.preventDefault();
             const username = document.getElementById('username').value;
             
@@ -82,7 +76,7 @@ export function initAuthController() {
                 const res = await fetchApi(formData);
                 if (res.success) {
                     if(res.debug_code) console.log("Code:", res.debug_code);
-                    navigateTo(res.next_url); // Navegar al paso 3
+                    navigateTo(res.next_url); 
                 } else {
                     alert(res.message);
                     setLoading(btnNext2, false);
@@ -90,15 +84,14 @@ export function initAuthController() {
             } catch (err) {
                 setLoading(btnNext2, false);
             }
-        });
-    }
+            return;
+        }
 
-    // ==========================================
-    // 4. REGISTRO - PASO 3 (Código) -> FINAL
-    // ==========================================
-    const btnFinish = document.getElementById('btn-finish');
-    if (btnFinish) {
-        btnFinish.addEventListener('click', async (e) => {
+        // ------------------------------------------
+        // 4. REGISTRO - PASO 3 (Código) -> FINAL
+        // ------------------------------------------
+        const btnFinish = target.closest('#btn-finish');
+        if (btnFinish) {
             e.preventDefault();
             const code = document.getElementById('verification_code').value;
             
@@ -122,21 +115,62 @@ export function initAuthController() {
             } catch (err) {
                 setLoading(btnFinish, false);
             }
-        });
-    }
+            return;
+        }
 
-    // LOGOUT
-    const logoutBtn = document.querySelector('[data-action="logout"]');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', async (e) => {
+        // ------------------------------------------
+        // LOGOUT
+        // ------------------------------------------
+        const logoutBtn = target.closest('[data-action="logout"]');
+        if (logoutBtn) {
             e.preventDefault();
             const formData = new FormData();
             formData.append('action', 'logout');
             formData.append('csrf_token', csrfToken);
             await fetchApi(formData);
             window.location.href = window.BASE_PATH + 'login';
-        });
-    }
+            return;
+        }
+
+        // ------------------------------------------
+        // UI INTERACTIONS (Toggle Pass / Gen User)
+        // ------------------------------------------
+        const toggleBtn = target.closest('.btn-toggle-password');
+        if (toggleBtn) {
+            e.preventDefault();
+            const input = toggleBtn.parentElement.querySelector('input');
+            const icon = toggleBtn.querySelector('.material-symbols-rounded');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.textContent = 'visibility_off';
+            } else {
+                input.type = 'password';
+                icon.textContent = 'visibility';
+            }
+        }
+
+        const genUserBtn = target.closest('.btn-generate-username');
+        if (genUserBtn) {
+            e.preventDefault();
+            const input = document.getElementById('username');
+            if (input) {
+                const rand = Math.floor(Math.random() * 10000);
+                input.value = `User${rand}`;
+            }
+        }
+    });
+
+    // Enter en inputs (Delegado también, para el login)
+    document.body.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const activeInput = document.activeElement;
+            // Si estamos en el contexto de login
+            if (activeInput && activeInput.closest('#loginContainer')) {
+                const btn = document.getElementById('btn-login');
+                if(btn) btn.click();
+            }
+        }
+    });
 }
 
 // --- UTILIDADES ---
@@ -173,40 +207,8 @@ function setLoading(btn, isLoading) {
     }
 }
 
-function setupInteractions() {
-    // Listener delegado para elementos que pueden aparecer dinámicamente
-    document.body.addEventListener('click', (e) => {
-        // Toggle Password
-        const toggleBtn = e.target.closest('.btn-toggle-password');
-        if (toggleBtn) {
-            e.preventDefault();
-            const input = toggleBtn.parentElement.querySelector('input');
-            const icon = toggleBtn.querySelector('.material-symbols-rounded');
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.textContent = 'visibility_off';
-            } else {
-                input.type = 'password';
-                icon.textContent = 'visibility';
-            }
-        }
-
-        // Generate Username
-        const genUserBtn = e.target.closest('.btn-generate-username');
-        if (genUserBtn) {
-            e.preventDefault();
-            const input = document.getElementById('username');
-            if (input) {
-                const rand = Math.floor(Math.random() * 10000);
-                input.value = `User${rand}`;
-            }
-        }
-    });
-}
-
-// Login Helper
 async function handleLogin(btn, token) {
-    const inputs = document.querySelectorAll('#loginContainer input, .auth-card input');
+    const inputs = document.querySelectorAll('.auth-card input');
     const formData = new FormData();
     formData.append('action', 'login');
     formData.append('csrf_token', token);

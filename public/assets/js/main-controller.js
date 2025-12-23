@@ -1,16 +1,15 @@
-
 export function initMainController() {
     console.log("Inicializando controlador principal...");
 
     initModuleSystem();
-
 }
 
 function initModuleSystem() {
     const allowMultipleActive = false;
     const closeOnEsc = true;
-    const closeOnClickOutside = true; // Nueva configuración
+    const closeOnClickOutside = true;
 
+    // Seleccionamos todos los botones con data-action
     const buttons = document.querySelectorAll('[data-action]');
     const allModules = document.querySelectorAll('.module-content');
 
@@ -25,46 +24,47 @@ function initModuleSystem() {
 
     buttons.forEach(btn => {
         btn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Evita que el clic llegue al document y se cierre inmediatamente
-
             const action = btn.dataset.action;
-            let targetModuleName = '';
 
-            if (action === 'toggleModuleProfile') {
-                targetModuleName = 'moduleProfile';
-            } else if (action === 'toggleModuleSurface') {
-                targetModuleName = 'moduleSurface';
-            }
+            // === CORRECCIÓN ===
+            // Solo detenemos la propagación y ejecutamos lógica UI
+            // si la acción ES de interfaz (abrir/cerrar menús).
+            // Si es 'logout', DEJAMOS que el evento pase (burbujee) 
+            // para que auth-controller lo capture.
+            if (action === 'toggleModuleProfile' || action === 'toggleModuleSurface') {
+                e.stopPropagation(); // Solo paramos el clic para estos
+                
+                let targetModuleName = '';
+                if (action === 'toggleModuleProfile') targetModuleName = 'moduleProfile';
+                if (action === 'toggleModuleSurface') targetModuleName = 'moduleSurface';
 
-            if (targetModuleName) {
-                const targetModule = document.querySelector(`[data-module="${targetModuleName}"]`);
+                if (targetModuleName) {
+                    const targetModule = document.querySelector(`[data-module="${targetModuleName}"]`);
+                    if (targetModule) {
+                        const isActive = targetModule.classList.contains('active');
 
-                if (targetModule) {
-                    const isActive = targetModule.classList.contains('active');
+                        if (!allowMultipleActive && !isActive) {
+                            closeAllModules(targetModule);
+                        }
 
-                    if (!allowMultipleActive && !isActive) {
-                        closeAllModules(targetModule);
-                    }
-
-                    if (isActive) {
-                        targetModule.classList.remove('active');
-                        targetModule.classList.add('disabled');
-                    } else {
-                        targetModule.classList.remove('disabled');
-                        targetModule.classList.add('active');
+                        if (isActive) {
+                            targetModule.classList.remove('active');
+                            targetModule.classList.add('disabled');
+                        } else {
+                            targetModule.classList.remove('disabled');
+                            targetModule.classList.add('active');
+                        }
                     }
                 }
             }
+            // Si es 'logout', no hacemos nada aquí y dejamos que el evento siga su camino.
         });
     });
 
-    // NUEVO: Lógica para cerrar al hacer clic fuera
     if (closeOnClickOutside) {
         document.addEventListener('click', (event) => {
-            // Verificamos si el clic ocurrió DENTRO de algún módulo
             const isClickInsideModule = event.target.closest('.module-content');
-
-            // Si el clic NO fue dentro de un módulo, cerramos todo
+            // Si el clic no fue dentro de un módulo, cerramos todo
             if (!isClickInsideModule) {
                 closeAllModules();
             }

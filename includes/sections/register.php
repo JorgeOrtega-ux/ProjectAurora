@@ -1,30 +1,27 @@
 <?php
 // includes/sections/register.php
 
-// 1. Detección de la sub-ruta actual
-$requestUri = $_SERVER['REQUEST_URI'];
-// Adaptamos las rutas a las que usas en ProjectAurora
-$isStep2 = strpos($requestUri, 'register/aditional-data') !== false;
-$isStep3 = strpos($requestUri, 'register/verification-account') !== false;
+// 1. Detección de la sub-ruta actual (Compatible con SPA y carga directa)
+// Si viene de loader.php, usamos $section. Si viene de index.php, usamos $currentSection.
+$currentRoute = isset($section) ? $section : ($currentSection ?? 'register');
+
+$isStep2 = $currentRoute === 'register/aditional-data';
+$isStep3 = $currentRoute === 'register/verification-account';
 
 // 2. Verificación de datos de sesión previos (State Check)
-// IMPORTANTE: Tu API (auth_handler.php) debe crear estas variables de sesión
-// al completar los pasos anteriores exitosamente.
 $hasDataForStep2 = isset($_SESSION['temp_register']) && !empty($_SESSION['temp_register']);
 $hasDataForStep3 = isset($_SESSION['pending_verification_email']) && !empty($_SESSION['pending_verification_email']);
 
-// 3. Determinar si hay un acceso inválido (Salto de pasos)
+// 3. Determinar si hay un acceso inválido
 $invalidAccess = false;
 $errorTitle = "";
 $errorMessage = "";
 
 if ($isStep2 && !$hasDataForStep2) {
-    // Si intenta entrar al paso 2 sin haber completado el paso 1
     $invalidAccess = true;
     $errorTitle = "Datos faltantes";
     $errorMessage = "No has completado el registro de credenciales. No puedes saltar pasos.";
 } elseif ($isStep3 && !$hasDataForStep3) {
-    // Si intenta entrar a verificar sin tener un correo pendiente
     $invalidAccess = true;
     $errorTitle = "Verificación no disponible";
     $errorMessage = "No hay un proceso de verificación activo para esta sesión.";
@@ -45,14 +42,14 @@ if ($isStep2 && !$hasDataForStep2) {
                 Por seguridad, inicia el proceso desde el principio.
             </div>
 
-            <a href="<?php echo $basePath; ?>register" class="btn-primary btn-block-link" style="display: flex; justify-content: center; align-items: center; text-decoration: none; margin-top: 20px;">
+            <a href="<?php echo $basePath; ?>register" data-nav="register" class="btn-primary btn-block-link" style="display: flex; justify-content: center; align-items: center; text-decoration: none; margin-top: 20px;">
                 Volver al inicio
             </a>
 
         <?php elseif ($isStep3): ?>
             <div class="auth-header">
                 <h1>Verifica tu cuenta</h1>
-                <p>Ingresa el código enviado a <strong><?php echo htmlspecialchars($_SESSION['pending_verification_email']); ?></strong>.</p>
+                <p>Ingresa el código enviado a <strong><?php echo htmlspecialchars($_SESSION['pending_verification_email'] ?? ''); ?></strong>.</p>
             </div>
 
             <input type="hidden" id="verify-action" name="action" value="verify_code">
@@ -91,7 +88,8 @@ if ($isStep2 && !$hasDataForStep2) {
             </div>
 
             <div style="display: flex; gap: 8px;">
-                <a href="<?php echo $basePath; ?>register" class="btn-primary mt-16 btn-back" style="background: #eee; color: #333; width: 40%; display:flex; justify-content:center; align-items:center; text-decoration:none;">Volver</a>
+                <a href="<?php echo $basePath; ?>register" data-nav="register" class="btn-primary mt-16 btn-back" style="background: #eee; color: #333; width: 40%; display:flex; justify-content:center; align-items:center; text-decoration:none;">Volver</a>
+                
                 <button type="button" id="btn-next-2" class="btn-primary mt-16" style="width: 60%;">Continuar</button>
             </div>
 
@@ -123,7 +121,7 @@ if ($isStep2 && !$hasDataForStep2) {
             <div class="auth-footer">
                 <p>
                     ¿Ya tienes cuenta? 
-                    <a href="<?php echo $basePath; ?>login" class="link-primary">Inicia sesión</a>
+                    <a href="<?php echo $basePath; ?>login" data-nav="login" class="link-primary">Inicia sesión</a>
                 </p>
             </div>
         <?php endif; ?>
