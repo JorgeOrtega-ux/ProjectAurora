@@ -1,51 +1,80 @@
+/**
+ * app-init.js
+ * Punto de entrada de la aplicación.
+ * REFACTORIZADO: Usa eventos en lugar de observar el DOM.
+ */
+
 import { initMainController } from './main-controller.js';
 import { initUrlManager } from './core/url-manager.js';
 import { initAuthController } from './auth-controller.js'; 
 import { Toast } from './core/toast-manager.js'; 
 
-// Importar controladores de Settings
 import { SettingsController } from './modules/settings/settings-controller.js'; 
 import { ProfileController } from './modules/settings/profile-controller.js'; 
-import { DevicesController } from './modules/settings/devices-controller.js'; // <--- NUEVO
+import { DevicesController } from './modules/settings/devices-controller.js';
 
 const App = {
     init: () => {
         console.log('App: Inicializando...');
         
+        // Inicializadores Globales (se ejecutan una sola vez)
         Toast.init();
         initMainController();
         initAuthController();
+        SettingsController.init(); // Listeners globales de settings
         
-        // Inicializar lógica general de Settings (Dropdowns, Toggles, Edición de texto)
-        SettingsController.init();
-        
-        // Inicializadores específicos (para primera carga si entramos directo por URL)
-        ProfileController.init();
-        DevicesController.init(); // <--- NUEVO
-
-        // Sistema de Rutas SPA
+        // Inicializar Router
         if (document.querySelector('.general-content-scrolleable')) {
              initUrlManager();
         }
 
-        // Observer para SPA: Detectar cambios de sección y re-inicializar controladores específicos
-        const observer = new MutationObserver(() => {
-           // Si aparece el input de avatar, reinicializar controller perfil
-           if(document.getElementById('upload-avatar')) {
-               ProfileController.init();
-           }
-           // Si aparece el contenedor de dispositivos, inicializar controller devices <--- NUEVO
-           if(document.getElementById('devices-list-container')) {
-               DevicesController.init();
-           }
-        });
+        // ============================================================
+        // SISTEMA DE RUTAS (Lógica de controladores por vista)
+        // ============================================================
+        
+        // 1. Manejar carga inicial (Landing directo)
+        // Obtenemos la sección actual de la URL
+        const path = window.location.pathname.replace(window.BASE_PATH, '').replace(/^\/+|\/+$/g, '');
+        const initialSection = path || 'main';
+        routeDispatcher(initialSection);
 
-        const scrollContainer = document.querySelector('.general-content-scrolleable');
-        if(scrollContainer) {
-            observer.observe(scrollContainer, { childList: true, subtree: true });
-        }
+        // 2. Manejar navegación SPA (Eventos del Router)
+        document.addEventListener('spa:view_loaded', (e) => {
+            const section = e.detail.section;
+            routeDispatcher(section);
+        });
     }
 };
+
+/**
+ * Función que decide qué controlador iniciar según la sección.
+ * Actúa como un "Controller Factory" o Dispatcher.
+ */
+function routeDispatcher(section) {
+    console.log(`Router Dispatch: Inicializando controladores para [${section}]`);
+
+    // Limpieza previa si fuera necesaria (opcional)
+    
+    // Switch de Rutas
+    switch (section) {
+        case 'settings/your-profile':
+            ProfileController.init();
+            break;
+            
+        case 'settings/devices':
+            DevicesController.init();
+            break;
+            
+        // Puedes agregar más casos aquí según crezca la app
+        case 'settings/login-security':
+            // Si hubiera lógica específica...
+            break;
+            
+        default:
+            // Lógica por defecto o "main"
+            break;
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     App.init();

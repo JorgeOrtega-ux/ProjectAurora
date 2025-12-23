@@ -1,6 +1,7 @@
 /**
  * public/assets/js/modules/settings/devices-controller.js
  * Gestiona la lista de sesiones activas y revocación.
+ * REFACTORIZADO: Lógica limpia, sin parches de DOM.
  */
 
 import { ApiService } from '../../core/api-service.js';
@@ -8,9 +9,15 @@ import { Toast } from '../../core/toast-manager.js';
 
 export const DevicesController = (function() {
 
+    let isLoading = false;
+
     async function loadDevices() {
         const container = document.getElementById('devices-list-container');
+        // Si la vista cambió rápido y el contenedor ya no existe, abortamos.
         if (!container) return;
+
+        if (isLoading) return;
+        isLoading = true;
 
         try {
             const formData = new FormData();
@@ -27,6 +34,8 @@ export const DevicesController = (function() {
         } catch (e) {
             console.error(e);
             container.innerHTML = `<div style="padding:20px; text-align:center;">Error de conexión.</div>`;
+        } finally {
+            isLoading = false;
         }
     }
 
@@ -41,9 +50,9 @@ export const DevicesController = (function() {
 
         let html = '';
         sessions.forEach((s, index) => {
-            // Icono según plataforma (básico)
+            // Icono
             let icon = 'devices';
-            const plat = s.platform.toLowerCase();
+            const plat = (s.platform || '').toLowerCase();
             if (plat.includes('win') || plat.includes('mac') || plat.includes('linux')) icon = 'computer';
             if (plat.includes('android') || plat.includes('iphone')) icon = 'smartphone';
 
@@ -83,7 +92,7 @@ export const DevicesController = (function() {
     }
 
     function bindEvents() {
-        // Botones individuales
+        // Asignar eventos a los nuevos botones renderizados
         document.querySelectorAll('.btn-revoke-one').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const id = e.target.dataset.id;
@@ -101,7 +110,9 @@ export const DevicesController = (function() {
                     const res = await ApiService.post('settings-handler.php', formData);
                     if(res.success) {
                         Toast.show('Sesión cerrada correctamente', 'success');
-                        loadDevices(); // Recargar lista
+                        // Recargamos la lista. Como esto NO pasa por el Router, no dispara eventos globales,
+                        // por lo tanto no hay riesgo de bucle.
+                        loadDevices(); 
                     } else {
                         Toast.show(res.message, 'error');
                         e.target.innerText = originalText;
@@ -109,36 +120,45 @@ export const DevicesController = (function() {
                     }
                 } catch(err) {
                     Toast.show('Error de conexión', 'error');
+                    e.target.innerText = originalText;
+                    e.target.disabled = false;
                 }
             });
         });
     }
 
+    // init() ahora es seguro: solo se llama cuando el router lo decide.
     async function init() {
-        // Detectar si estamos en la vista
-        if (document.getElementById('devices-list-container')) {
-            loadDevices();
-            
-            const btnAll = document.getElementById('btn-revoke-all');
-            if(btnAll) {
-                btnAll.addEventListener('click', async () => {
-                    if(!confirm('¿Seguro que quieres cerrar sesión en TODOS los dispositivos? Deberás iniciar sesión de nuevo.')) return;
+        const container = document.getElementById('devices-list-container');
+        if (!container) return; // Validación básica por si acaso
 
-                    const formData = new FormData();
-                    formData.append('action', 'revoke_all_sessions');
-                    
-                    try {
-                        const res = await ApiService.post('settings-handler.php', formData);
-                        if(res.success) {
-                            window.location.href = window.BASE_PATH + 'login';
-                        } else {
-                            Toast.show(res.message, 'error');
-                        }
-                    } catch(err) {
-                        Toast.show('Error de conexión', 'error');
+        // Carga inicial
+        loadDevices();
+        
+        // Listener botón "Cerrar todas"
+        const btnAll = document.getElementById('btn-revoke-all');
+        if(btnAll) {
+            // Clonación para limpiar listeners previos (útil en SPAs)
+            const newBtnAll = btnAll.cloneNode(true);
+            btnAll.parentNode.replaceChild(newBtnAll, btnAll);
+            
+            newBtnAll.addEventListener('click', async () => {
+                if(!confirm('¿Seguro que quieres cerrar sesión en TODOS los dispositivos? Deberás iniciar sesión de nuevo.')) return;
+
+                const formData = new FormData();
+                formData.append('action', 'revoke_all_sessions');
+                
+                try {
+                    const res = await ApiService.post('settings-handler.php', formData);
+                    if(res.success) {
+                        window.location.href = window.BASE_PATH + 'login';
+                    } else {
+                        Toast.show(res.message, 'error');
                     }
-                });
-            }
+                } catch(err) {
+                    Toast.show('Error de conexión', 'error');
+                }
+            });
         }
     }
 
