@@ -3,8 +3,13 @@
 session_start();
 require_once __DIR__ . '/../config/database/db.php';
 require_once __DIR__ . '/../includes/libs/TOTP.php'; 
+require_once __DIR__ . '/../includes/libs/I18n.php';
 
 header('Content-Type: application/json');
+
+// Inicializar I18n
+$userLang = $_SESSION['preferences']['language'] ?? 'es-latam';
+$i18n = new I18n($userLang);
 
 function jsonResponse($success, $message, $data = []) {
     echo json_encode(array_merge(['success' => $success, 'message' => $message], $data));
@@ -13,20 +18,20 @@ function jsonResponse($success, $message, $data = []) {
 
 // 1. Verificar Autenticación
 if (!isset($_SESSION['user_id'])) {
-    jsonResponse(false, 'Sesión expirada.');
+    jsonResponse(false, $i18n->t('api.session_expired'));
 }
 
 // 2. Verificar CSRF
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        jsonResponse(false, 'Error de seguridad: Token inválido (CSRF).');
+        jsonResponse(false, $i18n->t('api.security_error'));
     }
 }
 
 $userId = $_SESSION['user_id'];
 $action = $_POST['action'] ?? '';
 
-// ... (AVATAR CODE SE MANTIENE IGUAL) ...
+// ... (UTILIDADES AVATAR) ...
 $baseDir = __DIR__ . '/../storage/profilePicture/';
 $dirDefault = $baseDir . 'default/';
 $dirCustom  = $baseDir . 'custom/';
@@ -54,15 +59,14 @@ function parseUserAgent($ua) {
     return ['platform' => $platform, 'browser' => $browser];
 }
 
-// ... (ACCIONES UPLOAD_AVATAR, DELETE_AVATAR, UPDATE_PROFILE, PASSWORD, ETC. SE MANTIENEN IGUAL) ...
+// ... (ACCIONES) ...
 if ($action === 'upload_avatar') {
-    // ... (Código original) ...
-    if (!isset($_FILES['avatar']) || $_FILES['avatar']['error'] !== UPLOAD_ERR_OK) { jsonResponse(false, 'No se ha seleccionado una imagen válida.'); }
+    if (!isset($_FILES['avatar']) || $_FILES['avatar']['error'] !== UPLOAD_ERR_OK) { jsonResponse(false, $i18n->t('api.no_image')); }
     $file = $_FILES['avatar'];
     $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     $finfo = new finfo(FILEINFO_MIME_TYPE);
     $mime = $finfo->file($file['tmp_name']);
-    if (!in_array($mime, $allowedTypes)) { jsonResponse(false, 'Formato de imagen no permitido.'); }
+    if (!in_array($mime, $allowedTypes)) { jsonResponse(false, $i18n->t('api.image_format')); }
     $stmt = $pdo->prepare("SELECT avatar_path, uuid FROM users WHERE id = ?");
     $stmt->execute([$userId]);
     $currentUser = $stmt->fetch();
@@ -76,12 +80,12 @@ if ($action === 'upload_avatar') {
         if ($update->execute([$dbPath, $userId])) {
             deleteOldAvatar($pdo, $userId, $oldPath);
             $_SESSION['avatar'] = $dbPath;
-            jsonResponse(true, 'Foto de perfil actualizada.', ['new_src' => $dbPath, 'type' => 'custom']);
+            jsonResponse(true, $i18n->t('api.pic_updated'), ['new_src' => $dbPath, 'type' => 'custom']);
         } else {
             @unlink($targetPath);
-            jsonResponse(false, 'Error al guardar en la base de datos.');
+            jsonResponse(false, $i18n->t('api.pic_db_error'));
         }
-    } else { jsonResponse(false, 'Error al mover el archivo al servidor.'); }
+    } else { jsonResponse(false, $i18n->t('api.pic_move_error')); }
 
 } elseif ($action === 'delete_avatar') {
     $stmt = $pdo->prepare("SELECT avatar_path, username, uuid FROM users WHERE id = ?");
@@ -99,58 +103,54 @@ if ($action === 'upload_avatar') {
         if ($update->execute([$dbPath, $userId])) {
             deleteOldAvatar($pdo, $userId, $oldPath);
             $_SESSION['avatar'] = $dbPath;
-            jsonResponse(true, 'Foto eliminada. Se ha generado una por defecto.', ['type' => 'default']);
-        } else { jsonResponse(false, 'Error al actualizar base de datos.'); }
-    } else { jsonResponse(false, 'No se pudo generar el avatar por defecto.'); }
+            jsonResponse(true, $i18n->t('api.pic_deleted'), ['type' => 'default']);
+        } else { jsonResponse(false, $i18n->t('api.pic_db_error')); }
+    } else { jsonResponse(false, $i18n->t('api.pic_gen_error')); }
 
 } elseif ($action === 'update_profile') {
     $field = $_POST['field'] ?? '';
     $value = trim($_POST['value'] ?? '');
-    if (!in_array($field, ['username', 'email'])) { jsonResponse(false, 'Campo no válido.'); }
-    if (empty($value)) { jsonResponse(false, 'El campo no puede estar vacío.'); }
-    if ($field === 'email') { if (!filter_var($value, FILTER_VALIDATE_EMAIL)) { jsonResponse(false, 'Formato de correo inválido.'); } }
+    if (!in_array($field, ['username', 'email'])) { jsonResponse(false, $i18n->t('api.field_invalid')); }
+    if (empty($value)) { jsonResponse(false, $i18n->t('api.field_empty')); }
+    if ($field === 'email') { if (!filter_var($value, FILTER_VALIDATE_EMAIL)) { jsonResponse(false, $i18n->t('api.email_invalid')); } }
     $stmt = $pdo->prepare("SELECT id FROM users WHERE $field = ? AND id != ?");
     $stmt->execute([$value, $userId]);
-    if ($stmt->fetch()) { jsonResponse(false, "Este $field ya está en uso por otro usuario."); }
+    if ($stmt->fetch()) { jsonResponse(false, $i18n->t('api.field_in_use')); }
     try {
         $update = $pdo->prepare("UPDATE users SET $field = ? WHERE id = ?");
         $update->execute([$value, $userId]);
         $_SESSION[$field] = $value;
-        jsonResponse(true, ucfirst($field) . ' actualizado correctamente.');
-    } catch (Exception $e) { jsonResponse(false, 'Error al actualizar: ' . $e->getMessage()); }
+        jsonResponse(true, $i18n->t('api.field_updated'));
+    } catch (Exception $e) { jsonResponse(false, $i18n->t('api.update_error') . ': ' . $e->getMessage()); }
 
 } elseif ($action === 'validate_current_password') {
     $currentPass = $_POST['current_password'] ?? '';
-    if (empty($currentPass)) { jsonResponse(false, 'Ingresa tu contraseña actual.'); }
+    if (empty($currentPass)) { jsonResponse(false, $i18n->t('api.pass_current_req')); }
     $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
     $stmt->execute([$userId]);
     $user = $stmt->fetch();
-    if ($user && password_verify($currentPass, $user['password'])) { jsonResponse(true, 'Contraseña correcta.'); } else { jsonResponse(false, 'La contraseña actual es incorrecta.'); }
+    if ($user && password_verify($currentPass, $user['password'])) { jsonResponse(true, $i18n->t('api.pass_correct')); } else { jsonResponse(false, $i18n->t('api.pass_incorrect')); }
 
 } elseif ($action === 'change_password') {
     $currentPass = $_POST['current_password'] ?? '';
     $newPass     = $_POST['new_password'] ?? '';
-    if (empty($currentPass) || empty($newPass)) { jsonResponse(false, 'Faltan datos requeridos.'); }
-    if (strlen($newPass) < 6) { jsonResponse(false, 'La nueva contraseña debe tener al menos 6 caracteres.'); }
+    if (empty($currentPass) || empty($newPass)) { jsonResponse(false, $i18n->t('api.missing_data')); }
+    if (strlen($newPass) < 6) { jsonResponse(false, $i18n->t('api.pass_short')); }
     $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
     $stmt->execute([$userId]);
     $user = $stmt->fetch();
-    if (!$user || !password_verify($currentPass, $user['password'])) { jsonResponse(false, 'La contraseña actual es incorrecta.'); }
+    if (!$user || !password_verify($currentPass, $user['password'])) { jsonResponse(false, $i18n->t('api.pass_incorrect')); }
     $newHash = password_hash($newPass, PASSWORD_DEFAULT);
     try {
         $update = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
         $update->execute([$newHash, $userId]);
-        jsonResponse(true, 'Contraseña actualizada exitosamente.');
-    } catch (Exception $e) { jsonResponse(false, 'Error al guardar contraseña.'); }
+        jsonResponse(true, $i18n->t('api.pass_updated'));
+    } catch (Exception $e) { jsonResponse(false, $i18n->t('api.update_error')); }
 
-// =========================================================
-//  ACCIÓN: ACTUALIZAR PREFERENCIAS (MODIFICADO)
-// =========================================================
 } elseif ($action === 'update_preference') {
     $key = $_POST['key'] ?? '';
     $value = $_POST['value'] ?? '';
 
-    // Validar claves permitidas
     $allowedKeys = [
         'language' => 'language',
         'open_links_new_tab' => 'open_links_new_tab',
@@ -159,31 +159,28 @@ if ($action === 'upload_avatar') {
     ];
 
     if (!array_key_exists($key, $allowedKeys)) {
-        jsonResponse(false, 'Preferencia no válida.');
+        jsonResponse(false, $i18n->t('api.pref_invalid'));
     }
 
     $dbValue = $value;
     
-    // Validación específica por tipo
     if ($key === 'language') {
         $allowedLangs = ['es-latam', 'es-mx', 'en-us', 'en-gb', 'fr-fr'];
-        if (!in_array($value, $allowedLangs)) jsonResponse(false, 'Idioma no soportado.');
+        if (!in_array($value, $allowedLangs)) jsonResponse(false, $i18n->t('api.lang_invalid'));
         
     } elseif ($key === 'open_links_new_tab' || $key === 'extended_toast') {
         $dbValue = ($value === 'true' || $value === '1') ? 1 : 0;
         
     } elseif ($key === 'theme') {
         $allowedThemes = ['sync', 'light', 'dark'];
-        if (!in_array($value, $allowedThemes)) jsonResponse(false, 'Tema no válido.');
+        if (!in_array($value, $allowedThemes)) jsonResponse(false, $i18n->t('api.theme_invalid'));
     }
 
     try {
-        // Optimización: Si el valor es el mismo, no actualizar
         $stmtCheck = $pdo->prepare("SELECT $key FROM user_preferences WHERE user_id = ?");
         $stmtCheck->execute([$userId]);
         $currentDbValue = $stmtCheck->fetchColumn();
         
-        // Conversión estricta para comparar
         if ($currentDbValue !== false) {
             $val1 = $currentDbValue; 
             $val2 = $dbValue;
@@ -192,17 +189,15 @@ if ($action === 'upload_avatar') {
                 $val2 = (int)$val2;
             }
             if ($val1 === $val2) {
-                jsonResponse(true, 'Preferencia actualizada (Sin cambios).');
+                jsonResponse(true, $i18n->t('api.pref_saved_no_change'));
             }
         }
 
-        // Guardar
         $sql = "INSERT INTO user_preferences (user_id, $key) VALUES (?, ?) 
                 ON DUPLICATE KEY UPDATE $key = VALUES($key)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$userId, $dbValue]);
 
-        // Actualizar sesión
         if (!isset($_SESSION['preferences'])) { $_SESSION['preferences'] = []; }
         
         if ($key === 'open_links_new_tab' || $key === 'extended_toast') {
@@ -211,22 +206,21 @@ if ($action === 'upload_avatar') {
             $_SESSION['preferences'][$key] = $dbValue;
         }
 
-        jsonResponse(true, 'Preferencia guardada.');
+        jsonResponse(true, $i18n->t('api.pref_saved'));
     } catch (Exception $e) {
-        jsonResponse(false, 'Error al guardar preferencia: ' . $e->getMessage());
+        jsonResponse(false, $i18n->t('api.pref_save_error') . ': ' . $e->getMessage());
     }
 
-// ... (RESTO DEL ARCHIVO 2FA, SESSIONS, DELETE_ACCOUNT IGUAL) ...
 } elseif ($action === 'init_2fa') {
     $secret = TOTP::createSecret();
     $_SESSION['temp_2fa_secret'] = $secret;
     $username = $_SESSION['username'] ?? 'User';
     $qrUrl = TOTP::getQRCodeUrl($username, $secret, 'ProjectAurora');
-    jsonResponse(true, 'Escanea el código', ['qr_url' => $qrUrl, 'secret' => $secret]);
+    jsonResponse(true, $i18n->t('api.qr_scan'), ['qr_url' => $qrUrl, 'secret' => $secret]);
 
 } elseif ($action === 'enable_2fa') {
     $code = $_POST['code'] ?? '';
-    if (!isset($_SESSION['temp_2fa_secret'])) { jsonResponse(false, 'La sesión de configuración ha expirado. Recarga.'); }
+    if (!isset($_SESSION['temp_2fa_secret'])) { jsonResponse(false, $i18n->t('api.session_config_expired')); }
     $secret = $_SESSION['temp_2fa_secret'];
     if (TOTP::verifyCode($secret, $code)) {
         $recoveryCodes = [];
@@ -236,16 +230,16 @@ if ($action === 'upload_avatar') {
         if ($stmt->execute([$secret, $jsonCodes, $userId])) {
             unset($_SESSION['temp_2fa_secret']);
             $_SESSION['two_factor_enabled'] = 1; 
-            jsonResponse(true, '2FA Activado correctamente.', ['recovery_codes' => $recoveryCodes]);
-        } else { jsonResponse(false, 'Error al guardar en base de datos.'); }
-    } else { jsonResponse(false, 'Código incorrecto. Intenta de nuevo.'); }
+            jsonResponse(true, $i18n->t('api.2fa_enabled'), ['recovery_codes' => $recoveryCodes]);
+        } else { jsonResponse(false, $i18n->t('api.pic_db_error')); }
+    } else { jsonResponse(false, $i18n->t('api.code_invalid')); }
 
 } elseif ($action === 'disable_2fa') {
     $stmt = $pdo->prepare("UPDATE users SET two_factor_enabled = 0, two_factor_secret = NULL, two_factor_recovery_codes = NULL WHERE id = ?");
     if ($stmt->execute([$userId])) {
         $_SESSION['two_factor_enabled'] = 0;
-        jsonResponse(true, '2FA desactivado correctamente.');
-    } else { jsonResponse(false, 'Error al desactivar en la base de datos.'); }
+        jsonResponse(true, $i18n->t('api.2fa_disabled'));
+    } else { jsonResponse(false, $i18n->t('api.update_error')); }
 
 } elseif ($action === 'get_sessions') {
     $stmt = $pdo->prepare("SELECT id, selector, ip_address, user_agent, created_at FROM user_auth_tokens WHERE user_id = ? ORDER BY created_at DESC");
@@ -269,28 +263,28 @@ if ($action === 'upload_avatar') {
             'is_current' => $isCurrent
         ];
     }
-    jsonResponse(true, 'Lista de sesiones', ['sessions' => $formatted]);
+    jsonResponse(true, $i18n->t('api.sessions_list'), ['sessions' => $formatted]);
 
 } elseif ($action === 'revoke_session') {
     $tokenId = $_POST['token_id'] ?? '';
-    if(!$tokenId) jsonResponse(false, 'ID no válido');
+    if(!$tokenId) jsonResponse(false, $i18n->t('api.id_invalid'));
     $stmt = $pdo->prepare("DELETE FROM user_auth_tokens WHERE id = ? AND user_id = ?");
     $stmt->execute([$tokenId, $userId]);
-    if ($stmt->rowCount() > 0) { jsonResponse(true, 'Sesión cerrada exitosamente.'); } else { jsonResponse(false, 'No se pudo cerrar la sesión.'); }
+    if ($stmt->rowCount() > 0) { jsonResponse(true, $i18n->t('api.session_revoked')); } else { jsonResponse(false, $i18n->t('api.session_revoke_error')); }
 
 } elseif ($action === 'revoke_all_sessions') {
     $stmt = $pdo->prepare("DELETE FROM user_auth_tokens WHERE user_id = ?");
     $stmt->execute([$userId]);
     setcookie('auth_persistence_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
-    jsonResponse(true, 'Todas las sesiones han sido cerradas. Serás redirigido.', ['logout' => true]);
+    jsonResponse(true, $i18n->t('api.all_sessions_revoked'), ['logout' => true]);
 
 } elseif ($action === 'delete_account') {
     $password = $_POST['password'] ?? '';
-    if (empty($password)) { jsonResponse(false, 'Se requiere la contraseña para confirmar.'); }
+    if (empty($password)) { jsonResponse(false, $i18n->t('api.pass_req_confirm')); }
     $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
     $stmt->execute([$userId]);
     $user = $stmt->fetch();
-    if (!$user || !password_verify($password, $user['password'])) { jsonResponse(false, 'La contraseña es incorrecta. No se puede eliminar la cuenta.'); }
+    if (!$user || !password_verify($password, $user['password'])) { jsonResponse(false, $i18n->t('api.pass_incorrect')); }
     try {
         $pdo->beginTransaction();
         $update = $pdo->prepare("UPDATE users SET account_status = 'deleted' WHERE id = ?");
@@ -300,13 +294,13 @@ if ($action === 'upload_avatar') {
         $pdo->commit();
         setcookie('auth_persistence_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
         session_destroy();
-        jsonResponse(true, 'Cuenta eliminada correctamente.');
+        jsonResponse(true, $i18n->t('api.account_deleted_success'));
     } catch (Exception $e) {
         $pdo->rollBack();
         error_log("Error deleting account: " . $e->getMessage());
-        jsonResponse(false, 'Error interno al procesar la solicitud.');
+        jsonResponse(false, $i18n->t('api.internal_error'));
     }
 }
 
-jsonResponse(false, 'Acción no reconocida.');
+jsonResponse(false, $i18n->t('api.unknown_action'));
 ?>

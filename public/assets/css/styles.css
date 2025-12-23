@@ -326,8 +326,6 @@ html {
 .menu-link:hover,
 .menu-link.active {
     background-color: #f5f5fa;
-    color: #000;
-    font-weight: 500;
 }
 
 .menu-link-icon {

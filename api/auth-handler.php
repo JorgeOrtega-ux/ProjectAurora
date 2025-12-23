@@ -3,8 +3,13 @@
 session_start();
 require_once __DIR__ . '/../config/database/db.php';
 require_once __DIR__ . '/../includes/libs/TOTP.php'; 
+require_once __DIR__ . '/../includes/libs/I18n.php';
 
 header('Content-Type: application/json');
+
+// Inicializar I18n
+$userLang = $_SESSION['preferences']['language'] ?? 'es-latam';
+$i18n = new I18n($userLang);
 
 function jsonResponse($success, $message, $data = []) {
     echo json_encode(array_merge(['success' => $success, 'message' => $message], $data));
@@ -14,7 +19,7 @@ function jsonResponse($success, $message, $data = []) {
 // === SEGURIDAD CSRF ===
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        jsonResponse(false, 'Error de seguridad: Token CSRF inválido. Recarga la página.');
+        jsonResponse(false, $i18n->t('api.security_error'));
     }
 }
 
@@ -101,7 +106,6 @@ function checkSecurityBlock($pdo, $actionType) {
     return false;
 }
 
-// --- NUEVA FUNCIÓN: CREAR TOKEN DE PERSISTENCIA ---
 function create_persistence_token($pdo, $userId) {
     $selector = bin2hex(random_bytes(12)); 
     $validator = bin2hex(random_bytes(32));
@@ -131,7 +135,7 @@ function create_persistence_token($pdo, $userId) {
 }
 
 // Función auxiliar para completar login exitoso
-function completeLogin($pdo, $user) {
+function completeLogin($pdo, $user, $i18n) {
     session_regenerate_id(true);
 
     $_SESSION['user_id'] = $user['id'];
@@ -140,7 +144,7 @@ function completeLogin($pdo, $user) {
     $_SESSION['avatar'] = $user['avatar_path'];
     $_SESSION['email'] = $user['email'];
 
-    // --- ACTUALIZACIÓN: FETCH NUEVAS PREFERENCIAS ---
+    // --- FETCH NUEVAS PREFERENCIAS ---
     $prefStmt = $pdo->prepare("SELECT language, open_links_new_tab, theme, extended_toast FROM user_preferences WHERE user_id = ?");
     $prefStmt->execute([$user['id']]);
     $prefs = $prefStmt->fetch();
@@ -164,30 +168,29 @@ function completeLogin($pdo, $user) {
 
     create_persistence_token($pdo, $user['id']);
 
-    jsonResponse(true, 'Bienvenido.', ['redirect' => '/ProjectAurora/']);
+    jsonResponse(true, $i18n->t('api.welcome'), ['redirect' => '/ProjectAurora/']);
 }
 
 // =========================================================================
 
 $action = $_POST['action'] ?? '';
 
-// ... (RESTO DEL ARCHIVO IGUAL HASTA LLEGAR A REGISTER) ...
 if ($action === 'register_step_1') {
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
     if (empty($email) || empty($password)) {
-        jsonResponse(false, 'Por favor completa todos los campos.');
+        jsonResponse(false, $i18n->t('api.fill_all'));
     }
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        jsonResponse(false, 'El correo electrónico no es válido.');
+        jsonResponse(false, $i18n->t('api.email_invalid'));
     }
 
     $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
     $stmt->execute([$email]);
     if ($stmt->fetch()) {
-        jsonResponse(false, 'Este correo electrónico ya está registrado.');
+        jsonResponse(false, $i18n->t('api.email_taken'));
     }
 
     $_SESSION['temp_register'] = [
@@ -195,26 +198,26 @@ if ($action === 'register_step_1') {
         'password' => $password
     ];
 
-    jsonResponse(true, 'Paso 1 completado', ['next_url' => 'register/aditional-data']);
+    jsonResponse(true, $i18n->t('api.step_1_ok'), ['next_url' => 'register/aditional-data']);
 
 } elseif ($action === 'initiate_verification') {
     $username = trim($_POST['username'] ?? '');
     
     if (!isset($_SESSION['temp_register']['email'])) {
-        jsonResponse(false, 'Sesión expirada. Vuelve a comenzar el registro.');
+        jsonResponse(false, $i18n->t('api.register_expired'));
     }
     
     $email = $_SESSION['temp_register']['email'];
     $password = $_SESSION['temp_register']['password'];
 
     if (empty($username)) {
-        jsonResponse(false, 'Elige un nombre de usuario.');
+        jsonResponse(false, $i18n->t('api.choose_user'));
     }
 
     $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
     $stmt->execute([$username]);
     if ($stmt->fetch()) {
-        jsonResponse(false, 'El nombre de usuario ya está ocupado.');
+        jsonResponse(false, $i18n->t('api.user_taken'));
     }
 
     $_SESSION['temp_register']['username'] = $username;
@@ -239,19 +242,19 @@ if ($action === 'register_step_1') {
         $stmt->execute([$email, $code, $payload, $expiresAt]);
         $_SESSION['pending_verification_email'] = $email;
 
-        jsonResponse(true, 'Código enviado.', [
+        jsonResponse(true, $i18n->t('api.code_sent'), [
             'debug_code' => $code,
             'next_url' => 'register/verification-account'
         ]); 
     } catch (Exception $e) {
-        jsonResponse(false, 'Error interno: ' . $e->getMessage());
+        jsonResponse(false, $i18n->t('api.internal_error') . ': ' . $e->getMessage());
     }
 
 } elseif ($action === 'resend_code') {
     $email = $_SESSION['pending_verification_email'] ?? '';
 
     if (empty($email)) {
-        jsonResponse(false, 'No hay proceso de verificación activo.');
+        jsonResponse(false, $i18n->t('api.no_verification'));
     }
 
     $checkTime = $pdo->prepare("
@@ -265,7 +268,7 @@ if ($action === 'register_step_1') {
     $checkTime->execute([$email]);
     
     if ($checkTime->fetch()) {
-        jsonResponse(false, 'Por favor espera 60 segundos antes de solicitar otro código.');
+        jsonResponse(false, $i18n->t('api.wait_resend'));
     }
 
     $stmt = $pdo->prepare("SELECT payload FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation' ORDER BY id DESC LIMIT 1");
@@ -273,7 +276,7 @@ if ($action === 'register_step_1') {
     $lastCode = $stmt->fetch();
 
     if (!$lastCode) {
-        jsonResponse(false, 'Error: No se encontraron datos de registro previos. Vuelve a iniciar.');
+        jsonResponse(false, $i18n->t('api.no_data'));
     }
 
     $payload = $lastCode['payload'];
@@ -287,9 +290,9 @@ if ($action === 'register_step_1') {
     
     try {
         $insert->execute([$email, $newCode, $payload, $expiresAt]);
-        jsonResponse(true, 'Nuevo código generado', ['debug_code' => $newCode]);
+        jsonResponse(true, $i18n->t('api.code_generated'), ['debug_code' => $newCode]);
     } catch (Exception $e) {
-        jsonResponse(false, 'Error al guardar código: ' . $e->getMessage());
+        jsonResponse(false, $i18n->t('api.code_save_error') . ': ' . $e->getMessage());
     }
 
 } elseif ($action === 'complete_register') {
@@ -297,7 +300,7 @@ if ($action === 'register_step_1') {
     $email = $_SESSION['pending_verification_email'] ?? '';
 
     if (empty($code) || empty($email)) {
-        jsonResponse(false, 'Faltan datos de verificación.');
+        jsonResponse(false, $i18n->t('api.missing_data'));
     }
 
     $sql = "SELECT * FROM verification_codes 
@@ -312,7 +315,7 @@ if ($action === 'register_step_1') {
     $verification = $stmt->fetch();
 
     if (!$verification) {
-        jsonResponse(false, 'Código inválido o expirado.');
+        jsonResponse(false, $i18n->t('api.code_invalid_expired'));
     }
 
     $payload = json_decode($verification['payload'], true);
@@ -340,7 +343,7 @@ if ($action === 'register_step_1') {
         $insertUser->execute([$uuid, $username, $email, $passwordHash, $dbAvatarPath]);
         $newUserId = $pdo->lastInsertId();
 
-        // === INSERTAR PREFERENCIAS (ACTUALIZADO) ===
+        // === INSERTAR PREFERENCIAS ===
         $detectedLang = get_best_match_language();
         $prefStmt = $pdo->prepare("INSERT INTO user_preferences (user_id, language, open_links_new_tab, theme, extended_toast) VALUES (?, ?, 1, 'sync', 0)");
         $prefStmt->execute([$newUserId, $detectedLang]);
@@ -367,11 +370,11 @@ if ($action === 'register_step_1') {
         unset($_SESSION['temp_register']);
         unset($_SESSION['pending_verification_email']);
 
-        jsonResponse(true, 'Registro exitoso.', ['redirect' => '/ProjectAurora/']);
+        jsonResponse(true, $i18n->t('api.register_success'), ['redirect' => '/ProjectAurora/']);
 
     } catch (Exception $e) {
         $pdo->rollBack();
-        jsonResponse(false, 'Error crítico BD: ' . $e->getMessage());
+        jsonResponse(false, $i18n->t('api.db_error') . ': ' . $e->getMessage());
     }
 
 } elseif ($action === 'login') {
@@ -379,7 +382,7 @@ if ($action === 'register_step_1') {
     $password = $_POST['password'] ?? '';
 
     if (checkSecurityBlock($pdo, 'login_fail')) {
-        jsonResponse(false, 'Demasiados intentos fallidos. Por seguridad, espera 15 minutos antes de volver a intentar.');
+        jsonResponse(false, $i18n->t('api.login_block'));
     }
 
     $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
@@ -391,29 +394,29 @@ if ($action === 'register_step_1') {
         $status = $user['account_status'] ?? 'active';
 
         if ($status === 'deleted') {
-            jsonResponse(false, 'Esta cuenta ha sido eliminada y desactivada.');
+            jsonResponse(false, $i18n->t('api.account_deleted'));
         }
 
         if (isset($user['two_factor_enabled']) && $user['two_factor_enabled'] == 1) {
             $_SESSION['2fa_pending_user_id'] = $user['id'];
             
-            jsonResponse(true, 'Credenciales correctas. Se requiere código 2FA.', [
+            jsonResponse(true, $i18n->t('api.credentials_ok_2fa'), [
                 'require_2fa' => true
             ]);
         }
 
-        completeLogin($pdo, $user);
+        completeLogin($pdo, $user, $i18n);
 
     } else {
         logSecurityEvent($pdo, $email, 'login_fail');
-        jsonResponse(false, 'Credenciales incorrectas.');
+        jsonResponse(false, $i18n->t('api.credentials_invalid'));
     }
 
 } elseif ($action === 'verify_2fa_login') {
     $code = trim($_POST['code'] ?? '');
     
     if (!isset($_SESSION['2fa_pending_user_id'])) {
-        jsonResponse(false, 'Sesión expirada. Vuelve a iniciar sesión.');
+        jsonResponse(false, $i18n->t('api.session_expired'));
     }
 
     $userId = $_SESSION['2fa_pending_user_id'];
@@ -423,7 +426,7 @@ if ($action === 'register_step_1') {
     $user = $stmt->fetch();
 
     if (!$user) {
-        jsonResponse(false, 'Usuario no encontrado.');
+        jsonResponse(false, $i18n->t('api.user_not_found'));
     }
 
     $isValid = false;
@@ -442,20 +445,20 @@ if ($action === 'register_step_1') {
 
     if ($isValid) {
         unset($_SESSION['2fa_pending_user_id']);
-        completeLogin($pdo, $user);
+        completeLogin($pdo, $user, $i18n);
     } else {
-        jsonResponse(false, 'Código inválido.');
+        jsonResponse(false, $i18n->t('api.code_invalid'));
     }
 
 } elseif ($action === 'request_reset') {
     $email = trim($_POST['email'] ?? '');
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        jsonResponse(false, 'Correo electrónico inválido.');
+        jsonResponse(false, $i18n->t('api.email_invalid'));
     }
 
     if (checkSecurityBlock($pdo, 'recovery_fail')) {
-        jsonResponse(false, 'Has excedido el límite de solicitudes. Intenta más tarde.');
+        jsonResponse(false, $i18n->t('api.recovery_limit'));
     }
 
     $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
@@ -463,7 +466,7 @@ if ($action === 'register_step_1') {
     
     if (!$stmt->fetch()) {
         logSecurityEvent($pdo, $email, 'recovery_fail');
-        jsonResponse(false, 'No encontramos una cuenta con este correo.');
+        jsonResponse(false, $i18n->t('api.email_not_found'));
     }
 
     $token = bin2hex(random_bytes(32));
@@ -479,13 +482,13 @@ if ($action === 'register_step_1') {
         $host = $_SERVER['HTTP_HOST']; 
         $resetLink = "$protocol://$host/ProjectAurora/reset-password?token=$token";
 
-        jsonResponse(true, 'Enlace generado (Simulación)', [
+        jsonResponse(true, $i18n->t('api.link_generated'), [
             'debug_link' => $resetLink,
-            'message_user' => 'Te hemos enviado un correo (Revisa la consola/respuesta para el link de prueba).'
+            'message_user' => $i18n->t('api.message_email_sent')
         ]);
 
     } catch (Exception $e) {
-        jsonResponse(false, 'Error al generar solicitud: ' . $e->getMessage());
+        jsonResponse(false, $i18n->t('api.internal_error') . ': ' . $e->getMessage());
     }
 
 } elseif ($action === 'reset_password') {
@@ -493,11 +496,11 @@ if ($action === 'register_step_1') {
     $newPassword = $_POST['new_password'] ?? '';
 
     if (empty($token) || empty($newPassword)) {
-        jsonResponse(false, 'Faltan datos.');
+        jsonResponse(false, $i18n->t('api.missing_data'));
     }
 
     if (strlen($newPassword) < 6) {
-        jsonResponse(false, 'La contraseña es muy corta (min 6 caracteres).');
+        jsonResponse(false, $i18n->t('api.pass_short'));
     }
 
     $stmt = $pdo->prepare("SELECT email FROM password_resets WHERE token = ? AND expires_at > NOW() LIMIT 1");
@@ -505,7 +508,7 @@ if ($action === 'register_step_1') {
     $resetRequest = $stmt->fetch();
 
     if (!$resetRequest) {
-        jsonResponse(false, 'El enlace es inválido o ha expirado.');
+        jsonResponse(false, $i18n->t('api.link_invalid'));
     }
 
     $email = $resetRequest['email'];
@@ -526,10 +529,10 @@ if ($action === 'register_step_1') {
         }
 
         $pdo->commit();
-        jsonResponse(true, 'Contraseña actualizada correctamente.', ['redirect' => '/ProjectAurora/login']);
+        jsonResponse(true, $i18n->t('api.pass_updated'), ['redirect' => '/ProjectAurora/login']);
     } catch (Exception $e) {
         $pdo->rollBack();
-        jsonResponse(false, 'Error al actualizar: ' . $e->getMessage());
+        jsonResponse(false, $i18n->t('api.update_error') . ': ' . $e->getMessage());
     }
 
 } elseif ($action === 'logout') {
@@ -546,8 +549,8 @@ if ($action === 'register_step_1') {
     unset($_COOKIE['auth_persistence_token']);
 
     session_destroy();
-    jsonResponse(true, 'Bye.', ['redirect' => '/ProjectAurora/login']);
+    jsonResponse(true, $i18n->t('api.bye'), ['redirect' => '/ProjectAurora/login']);
 }
 
-jsonResponse(false, 'Acción desconocida.');
+jsonResponse(false, $i18n->t('api.unknown_action'));
 ?>

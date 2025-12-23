@@ -2,8 +2,7 @@
 // public/loader.php
 session_start();
 
-// === CORRECCIÓN: INCLUIR E INICIALIZAR I18N ===
-// Esto hace que la variable $i18n esté disponible en todas las vistas cargadas por AJAX
+// Iniciar I18n
 require_once __DIR__ . '/../includes/libs/I18n.php';
 
 // Obtenemos el idioma de la sesión o usamos el default
@@ -30,8 +29,7 @@ $section = strtok($section, '?');
 // Si el usuario NO está logueado Y la sección NO es pública -> Bloquear
 if (!isset($_SESSION['user_id']) && !in_array($section, $publicSections)) {
     http_response_code(401);
-    // Usamos el sistema de traducción si es posible, o un fallback
-    echo "<div class='auth-container'><p>Sesión expirada. Por favor recarga la página.</p></div>";
+    echo "<div class='auth-container'><p>" . $i18n->t('errors.session_expired') . "</p></div>";
     exit;
 }
 
@@ -48,6 +46,6 @@ if (file_exists($file)) {
     // Al incluir el archivo aquí, heredará la variable $i18n definida arriba
     include $file;
 } else {
-    echo "<h1>Error 500</h1><p>El archivo de la sección no se encuentra.</p>";
+    echo "<h1>Error 500</h1><p>" . $i18n->t('errors.server_error') . "</p>";
 }
 ?>

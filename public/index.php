@@ -199,7 +199,7 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
                             // $i18n está disponible aquí por el include superior
                             include $fileToLoad;
                         } else {
-                            echo "Error: Archivo base no encontrado.";
+                            echo $i18n->t('errors.file_not_found');
                         }
                         ?>
                     </div>

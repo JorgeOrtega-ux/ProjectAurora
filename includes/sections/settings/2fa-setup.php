@@ -85,24 +85,38 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
 </div>
 
 <script>
-    // --- NUEVA LÓGICA: DESACTIVAR 2FA ---
+    // --- LÓGICA 2FA (Actualizada con I18n) ---
+    // Usamos el objeto global I18n definido en i18n-manager.js, 
+    // pero como este script es inline, accedemos a window.TRANSLATIONS o usamos I18n si ya está en scope global.
+    // Dado que I18n es un módulo ES6, no está en window por defecto, pero index.php inyecta window.TRANSLATIONS.
+    // Vamos a usar una función helper simple aquí para leer de window.TRANSLATIONS
+    
+    function t(key) {
+        if (!window.TRANSLATIONS) return key;
+        const keys = key.split('.');
+        let value = window.TRANSLATIONS;
+        for (const k of keys) {
+            if (value && value[k]) value = value[k];
+            else return key;
+        }
+        return (typeof value === 'string') ? value : key;
+    }
+
     async function disable2FA() {
-        if(!confirm('¿Estás seguro de desactivar la autenticación en dos pasos? Tu cuenta será menos segura.')) return;
+        if(!confirm(t('js.2fa.confirm_disable'))) return;
 
         const btn = event.target;
         const originalText = btn.innerText;
         btn.disabled = true;
-        btn.innerText = "Desactivando...";
+        btn.innerText = t('js.2fa.disabling');
 
         const formData = new FormData();
         formData.append('action', 'disable_2fa');
 
-        // INYECTAR TOKEN CSRF
         const csrfMeta = document.querySelector('meta[name="csrf-token"]');
         if(csrfMeta) formData.append('csrf_token', csrfMeta.getAttribute('content'));
 
         try {
-            // Usamos ruta absoluta o relativa controlada
             const response = await fetch('<?php echo $basePath; ?>api/settings-handler.php', {
                 method: 'POST',
                 body: formData
@@ -110,7 +124,6 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
             const res = await response.json();
 
             if(res.success) {
-                // Recargar para que PHP detecte el cambio de sesión y muestre el Wizard de nuevo
                 window.location.reload();
             } else {
                 alert(res.message);
@@ -119,22 +132,21 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
             }
         } catch(e) {
             console.error(e);
-            alert("Error de conexión");
+            alert(t('js.2fa.error_connection'));
             btn.disabled = false;
             btn.innerText = originalText;
         }
     }
 
-    // --- LÓGICA EXISTENTE: ACTIVAR 2FA (CON CORRECCIÓN CSRF) ---
     async function start2FASetup() {
         const btn = event.target;
+        const originalText = btn.innerText;
         btn.disabled = true;
-        btn.innerText = "Generando...";
+        btn.innerText = t('js.2fa.generating');
 
         const formData = new FormData();
         formData.append('action', 'init_2fa');
 
-        // INYECTAR TOKEN CSRF
         const csrfMeta = document.querySelector('meta[name="csrf-token"]');
         if(csrfMeta) formData.append('csrf_token', csrfMeta.getAttribute('content'));
 
@@ -157,30 +169,29 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
             } else {
                 alert(res.message);
                 btn.disabled = false;
-                btn.innerText = "Comenzar configuración";
+                btn.innerText = originalText;
             }
         } catch(e) {
             console.error(e);
-            alert("Error de conexión");
+            alert(t('js.2fa.error_connection'));
             btn.disabled = false;
-            btn.innerText = "Comenzar configuración";
+            btn.innerText = originalText;
         }
     }
 
     async function verifyAndEnable2FA() {
         const code = document.getElementById('input-2fa-verify').value;
-        if(code.length < 6) { alert("Ingresa el código completo"); return; }
+        if(code.length < 6) { alert(t('js.2fa.fill_code')); return; }
 
         const btn = event.target;
         const originalText = btn.innerText;
         btn.disabled = true;
-        btn.innerText = "Verificando...";
+        btn.innerText = t('js.2fa.verifying');
 
         const formData = new FormData();
         formData.append('action', 'enable_2fa');
         formData.append('code', code);
 
-        // INYECTAR TOKEN CSRF
         const csrfMeta = document.querySelector('meta[name="csrf-token"]');
         if(csrfMeta) formData.append('csrf_token', csrfMeta.getAttribute('content'));
 
@@ -207,7 +218,7 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
             }
         } catch(e) {
             console.error(e);
-            alert("Error verificando código");
+            alert(t('js.2fa.error_verify'));
             btn.disabled = false;
             btn.innerText = originalText;
         }
