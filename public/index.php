@@ -75,7 +75,7 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Aurora Alpha</title>
+    <title>ProjectAurora</title>
 
     <meta name="csrf-token" content="<?php echo $_SESSION['csrf_token']; ?>">
     <script>

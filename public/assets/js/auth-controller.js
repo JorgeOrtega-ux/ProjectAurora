@@ -1,9 +1,17 @@
 import { navigateTo } from './core/url-manager.js';
 
+let resendTimerInterval = null;
+
 export function initAuthController() {
     console.log("Auth Controller: Listo (SPA - Event Delegation)");
 
     const csrfToken = getCsrfToken();
+
+    // Comprobar si entramos directamente a la pantalla de verificación para iniciar timer
+    const resendBtn = document.getElementById('btn-resend-code');
+    if (resendBtn) {
+        startResendTimer(60);
+    }
 
     // ============================================================
     // DELEGACIÓN DE EVENTOS (Maneja clics en elementos dinámicos)
@@ -77,6 +85,8 @@ export function initAuthController() {
                 if (res.success) {
                     if(res.debug_code) console.log("Code:", res.debug_code);
                     navigateTo(res.next_url); 
+                    // Iniciar timer después de navegar
+                    setTimeout(() => startResendTimer(60), 500);
                 } else {
                     alert(res.message);
                     setLoading(btnNext2, false);
@@ -119,6 +129,42 @@ export function initAuthController() {
         }
 
         // ------------------------------------------
+        // 5. REENVIAR CÓDIGO
+        // ------------------------------------------
+        const btnResend = target.closest('#btn-resend-code');
+        if (btnResend) {
+            e.preventDefault();
+            
+            // Verificar si está deshabilitado por estilo o clase
+            if (btnResend.classList.contains('link-disabled') || btnResend.style.pointerEvents === 'none') {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'resend_code');
+            formData.append('csrf_token', csrfToken);
+
+            btnResend.style.opacity = '0.5';
+            
+            try {
+                const res = await fetchApi(formData);
+                btnResend.style.opacity = '1';
+
+                if (res.success) {
+                    alert("Nuevo código enviado.");
+                    if(res.debug_code) console.log("New Code:", res.debug_code);
+                    startResendTimer(60);
+                } else {
+                    alert(res.message);
+                }
+            } catch (err) {
+                console.error(err);
+                btnResend.style.opacity = '1';
+            }
+            return;
+        }
+
+        // ------------------------------------------
         // LOGOUT
         // ------------------------------------------
         const logoutBtn = target.closest('[data-action="logout"]');
@@ -133,8 +179,10 @@ export function initAuthController() {
         }
 
         // ------------------------------------------
-        // UI INTERACTIONS (Toggle Pass / Gen User)
+        // UI INTERACTIONS
         // ------------------------------------------
+        
+        // Toggle Password
         const toggleBtn = target.closest('.btn-toggle-password');
         if (toggleBtn) {
             e.preventDefault();
@@ -149,22 +197,33 @@ export function initAuthController() {
             }
         }
 
+        // === NUEVO GENERADOR DE USERNAME ===
+        // Formato: User + DDMMYYYY + Timestamp
         const genUserBtn = target.closest('.btn-generate-username');
         if (genUserBtn) {
             e.preventDefault();
             const input = document.getElementById('username');
             if (input) {
-                const rand = Math.floor(Math.random() * 10000);
-                input.value = `User${rand}`;
+                const now = new Date();
+                
+                // Formatear fecha DDMMYYYY
+                const day = String(now.getDate()).padStart(2, '0');
+                const month = String(now.getMonth() + 1).padStart(2, '0'); // Meses van de 0-11
+                const year = now.getFullYear();
+                
+                // Obtener timestamp (milisegundos)
+                const timestamp = now.getTime();
+
+                // Construir string
+                input.value = `User${day}${month}${year}${timestamp}`;
             }
         }
     });
 
-    // Enter en inputs (Delegado también, para el login)
+    // Enter en inputs
     document.body.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             const activeInput = document.activeElement;
-            // Si estamos en el contexto de login
             if (activeInput && activeInput.closest('#loginContainer')) {
                 const btn = document.getElementById('btn-login');
                 if(btn) btn.click();
@@ -231,4 +290,36 @@ async function handleLogin(btn, token) {
             setLoading(btn, false);
         }
     } catch(e) { setLoading(btn, false); }
+}
+
+// --- TIMER DE REENVÍO ---
+function startResendTimer(seconds) {
+    const btn = document.getElementById('btn-resend-code');
+    const timerSpan = document.getElementById('register-timer');
+    
+    if (!btn || !timerSpan) return;
+
+    let timeLeft = seconds;
+    
+    // Aplicar estado deshabilitado visualmente
+    btn.classList.add('link-disabled');
+    btn.style.pointerEvents = 'none';
+    btn.style.color = 'rgb(153, 153, 153)';
+    timerSpan.textContent = `(${timeLeft})`;
+
+    if (resendTimerInterval) clearInterval(resendTimerInterval);
+
+    resendTimerInterval = setInterval(() => {
+        timeLeft--;
+        timerSpan.textContent = `(${timeLeft})`;
+
+        if (timeLeft <= 0) {
+            clearInterval(resendTimerInterval);
+            // Habilitar botón
+            btn.classList.remove('link-disabled');
+            btn.style.pointerEvents = 'auto';
+            btn.style.color = ''; // Volver al color original (heredado o CSS)
+            timerSpan.textContent = ''; 
+        }
+    }, 1000);
 }

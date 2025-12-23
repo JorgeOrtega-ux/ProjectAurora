@@ -28,7 +28,7 @@ function generate_uuid() {
 $action = $_POST['action'] ?? '';
 
 // =========================================================================
-//  NUEVO BLOQUE: PASO 1 (Guardar credenciales temporales en sesión)
+//  PASO 1 (Guardar credenciales temporales)
 // =========================================================================
 if ($action === 'register_step_1') {
     $email = trim($_POST['email'] ?? '');
@@ -49,21 +49,20 @@ if ($action === 'register_step_1') {
         jsonResponse(false, 'Este correo electrónico ya está registrado.');
     }
 
-    // Guardar en sesión para usarlo en el paso 2 y 3
+    // Guardar en sesión
     $_SESSION['temp_register'] = [
         'email' => $email,
-        'password' => $password // Se hasheará al final
+        'password' => $password
     ];
 
     jsonResponse(true, 'Paso 1 completado', ['next_url' => 'register/aditional-data']);
 
 // =========================================================================
-//  MODIFICADO: PASO 2 -> 3 (Iniciar Verificación)
+//  PASO 2 -> 3 (Iniciar Verificación)
 // =========================================================================
 } elseif ($action === 'initiate_verification') {
     $username = trim($_POST['username'] ?? '');
     
-    // Recuperar datos de la sesión (del Paso 1)
     if (!isset($_SESSION['temp_register']['email'])) {
         jsonResponse(false, 'Sesión expirada. Vuelve a comenzar el registro.');
     }
@@ -75,17 +74,14 @@ if ($action === 'register_step_1') {
         jsonResponse(false, 'Elige un nombre de usuario.');
     }
 
-    // Verificar unicidad del username
     $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
     $stmt->execute([$username]);
     if ($stmt->fetch()) {
         jsonResponse(false, 'El nombre de usuario ya está ocupado.');
     }
 
-    // Actualizar sesión con el username
     $_SESSION['temp_register']['username'] = $username;
     
-    // Crear payload para el código
     $passwordHash = password_hash($password, PASSWORD_DEFAULT);
     $payload = json_encode([
         'username' => $username,
@@ -93,7 +89,6 @@ if ($action === 'register_step_1') {
         'password_hash' => $passwordHash
     ]);
 
-    // Generar código
     $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
     $expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
 
@@ -101,18 +96,15 @@ if ($action === 'register_step_1') {
     $del = $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation'");
     $del->execute([$email]);
 
-    // Insertar nuevo
     $sql = "INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, 'account_activation', ?, ?, ?)";
     $stmt = $pdo->prepare($sql);
 
     try {
         $stmt->execute([$email, $code, $payload, $expiresAt]);
-        
-        // Guardar email para mostrar en el paso 3
         $_SESSION['pending_verification_email'] = $email;
 
         jsonResponse(true, 'Código enviado.', [
-            'debug_code' => $code, // SOLO PARA DESARROLLO
+            'debug_code' => $code,
             'next_url' => 'register/verification-account'
         ]); 
     } catch (Exception $e) {
@@ -120,18 +112,73 @@ if ($action === 'register_step_1') {
     }
 
 // =========================================================================
+//  NUEVO: REENVIAR CÓDIGO (¡CON SEGURIDAD DE SERVIDOR!)
+// =========================================================================
+} elseif ($action === 'resend_code') {
+    $email = $_SESSION['pending_verification_email'] ?? '';
+
+    if (empty($email)) {
+        jsonResponse(false, 'No hay proceso de verificación activo.');
+    }
+
+    // --- SEGURIDAD 1: RATE LIMITING (Anti-Spam) ---
+    // Verificamos si existe algún código creado en los últimos 60 SEGUNDOS.
+    // Usamos NOW() de SQL para evitar problemas de sincronización de hora entre PHP y DB.
+    $checkTime = $pdo->prepare("
+        SELECT created_at 
+        FROM verification_codes 
+        WHERE identifier = ? 
+        AND code_type = 'account_activation' 
+        AND created_at > (NOW() - INTERVAL 60 SECOND)
+        ORDER BY id DESC LIMIT 1
+    ");
+    $checkTime->execute([$email]);
+    
+    if ($checkTime->fetch()) {
+        jsonResponse(false, 'Por favor espera 60 segundos antes de solicitar otro código.');
+    }
+    // ---------------------------------------------
+
+    // 1. Recuperar el payload del último código (para no perder username/pass)
+    $stmt = $pdo->prepare("SELECT payload FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation' ORDER BY id DESC LIMIT 1");
+    $stmt->execute([$email]);
+    $lastCode = $stmt->fetch();
+
+    if (!$lastCode) {
+        jsonResponse(false, 'Error: No se encontraron datos de registro previos. Vuelve a iniciar.');
+    }
+
+    $payload = $lastCode['payload'];
+
+    // 2. Generar nuevo código
+    $newCode = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
+    $expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+
+    // 3. Eliminar códigos anteriores (Limpieza)
+    $del = $pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation'");
+    $del->execute([$email]);
+
+    // 4. Guardar nuevo
+    $insert = $pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, 'account_activation', ?, ?, ?)");
+    
+    try {
+        $insert->execute([$email, $newCode, $payload, $expiresAt]);
+        jsonResponse(true, 'Nuevo código generado', ['debug_code' => $newCode]);
+    } catch (Exception $e) {
+        jsonResponse(false, 'Error al guardar código: ' . $e->getMessage());
+    }
+
+// =========================================================================
 //  PASO 3 (Finalizar)
 // =========================================================================
 } elseif ($action === 'complete_register') {
     $code = trim($_POST['code'] ?? '');
-    // Usamos el email de la sesión para mayor seguridad
     $email = $_SESSION['pending_verification_email'] ?? '';
 
     if (empty($code) || empty($email)) {
         jsonResponse(false, 'Faltan datos de verificación.');
     }
 
-    // Verificar código
     $sql = "SELECT * FROM verification_codes 
             WHERE identifier = ? 
             AND code = ? 
@@ -177,7 +224,6 @@ if ($action === 'register_step_1') {
 
         $pdo->commit();
 
-        // Login y limpieza
         $_SESSION['user_id'] = $newUserId;
         $_SESSION['username'] = $username;
         $_SESSION['role'] = 'user';

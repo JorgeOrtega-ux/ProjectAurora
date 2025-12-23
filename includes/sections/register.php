@@ -1,14 +1,13 @@
 <?php
 // includes/sections/register.php
 
-// 1. Detección de la sub-ruta actual (Compatible con SPA y carga directa)
-// Si viene de loader.php, usamos $section. Si viene de index.php, usamos $currentSection.
+// 1. Detección de la sub-ruta actual
 $currentRoute = isset($section) ? $section : ($currentSection ?? 'register');
 
 $isStep2 = $currentRoute === 'register/aditional-data';
 $isStep3 = $currentRoute === 'register/verification-account';
 
-// 2. Verificación de datos de sesión previos (State Check)
+// 2. Verificación de datos de sesión previos
 $hasDataForStep2 = isset($_SESSION['temp_register']) && !empty($_SESSION['temp_register']);
 $hasDataForStep3 = isset($_SESSION['pending_verification_email']) && !empty($_SESSION['pending_verification_email']);
 
@@ -63,9 +62,9 @@ if ($isStep2 && !$hasDataForStep2) {
 
             <button type="button" id="btn-finish" class="btn-primary">Verificar Cuenta</button>
 
-            <div class="auth-resend-wrapper">
-                <a href="#" id="btn-resend-code" class="link-disabled">
-                    Reenviar código <span id="register-timer">(60)</span>
+            <div class="auth-resend-wrapper" style="margin-top: 16px;">
+                <a href="#" id="btn-resend-code" class="link-disabled" style="pointer-events: none; color: rgb(153, 153, 153); text-decoration: none; font-size: 14px;">
+                    Reenviar código de verificación <span id="register-timer">(60)</span>
                 </a>
             </div>
 
