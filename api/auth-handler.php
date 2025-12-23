@@ -25,6 +25,50 @@ function generate_uuid() {
     );
 }
 
+// =========================================================================
+//  FUNCIONES DE SEGURIDAD (ANTI-BRUTEFORCE)
+// =========================================================================
+
+function get_client_ip() {
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+        return $_SERVER['HTTP_CLIENT_IP'];
+    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        return $_SERVER['HTTP_X_FORWARDED_FOR'];
+    } else {
+        return $_SERVER['REMOTE_ADDR'];
+    }
+}
+
+function logSecurityEvent($pdo, $identifier, $actionType) {
+    $ip = get_client_ip();
+    // Insertamos el fallo
+    $stmt = $pdo->prepare("INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)");
+    $stmt->execute([$identifier, $actionType, $ip]);
+}
+
+function checkSecurityBlock($pdo, $actionType) {
+    $ip = get_client_ip();
+    $limit = 5; // Máximo de intentos permitidos
+    $minutes = 15; // Tiempo de bloqueo (minutos)
+
+    // Contamos fallos de ESTA IP para ESTA acción en los últimos X minutos
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) as failures 
+        FROM security_logs 
+        WHERE ip_address = ? 
+        AND action_type = ? 
+        AND created_at > (NOW() - INTERVAL $minutes MINUTE)
+    ");
+    $stmt->execute([$ip, $actionType]);
+    $result = $stmt->fetch();
+
+    if ($result && $result['failures'] >= $limit) {
+        return true; // Está bloqueado
+    }
+    return false;
+}
+// =========================================================================
+
 $action = $_POST['action'] ?? '';
 
 // =========================================================================
@@ -238,15 +282,24 @@ if ($action === 'register_step_1') {
         jsonResponse(false, 'Error crítico BD: ' . $e->getMessage());
     }
 
+// =========================================================================
+//  LOGIN (MODIFICADO CON BLOQUEO ANTI-BRUTEFORCE)
+// =========================================================================
 } elseif ($action === 'login') {
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
+
+    // 1. Verificar si la IP está bloqueada por demasiados intentos fallidos
+    if (checkSecurityBlock($pdo, 'login_fail')) {
+        jsonResponse(false, 'Demasiados intentos fallidos. Por seguridad, espera 15 minutos antes de volver a intentar.');
+    }
 
     $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password'])) {
+        // Login exitoso
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
@@ -254,11 +307,14 @@ if ($action === 'register_step_1') {
 
         jsonResponse(true, 'Bienvenido.', ['redirect' => '/ProjectAurora/']);
     } else {
+        // Login fallido: Registramos el evento
+        logSecurityEvent($pdo, $email, 'login_fail');
+        
         jsonResponse(false, 'Credenciales incorrectas.');
     }
 
 // =========================================================================
-//  RECUPERAR CONTRASEÑA - PASO 1 (Generar Token)
+//  RECUPERAR CONTRASEÑA - PASO 1 (MODIFICADO CON BLOQUEO ANTI-ENUMERACIÓN)
 // =========================================================================
 } elseif ($action === 'request_reset') {
     $email = trim($_POST['email'] ?? '');
@@ -267,15 +323,27 @@ if ($action === 'register_step_1') {
         jsonResponse(false, 'Correo electrónico inválido.');
     }
 
+    // 1. Verificar si la IP está bloqueada por demasiadas solicitudes inválidas
+    if (checkSecurityBlock($pdo, 'recovery_fail')) {
+        jsonResponse(false, 'Has excedido el límite de solicitudes. Intenta más tarde.');
+    }
+
     // Verificar si el usuario existe
     $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
     $stmt->execute([$email]);
+    
     if (!$stmt->fetch()) {
-        // Por seguridad, a veces se dice "Si existe, se envió el correo", 
-        // pero para este ejemplo seremos explícitos.
+        // El correo NO existe -> Contabilizar como intento fallido (para evitar enumeración masiva)
+        logSecurityEvent($pdo, $email, 'recovery_fail');
+
+        // Mensaje genérico o específico según tu política. 
+        // Para cumplir tu requerimiento de "5 correos inválidos te bloquea",
+        // aquí es donde sumamos al contador.
         jsonResponse(false, 'No encontramos una cuenta con este correo.');
     }
 
+    // Si llegamos aquí, el usuario EXISTE y NO está bloqueada la IP.
+    
     // Generar Token
     $token = bin2hex(random_bytes(32));
     $expiresAt = date('Y-m-d H:i:s', strtotime('+1 hour')); // Expira en 1 hora
@@ -289,13 +357,8 @@ if ($action === 'register_step_1') {
         $pdo->prepare($sql)->execute([$email, $token, $expiresAt]);
         
         // SIMULACIÓN DE ENVÍO DE CORREO
-        // En producción aquí usarías mail() o PHPMailer.
-        // Generamos el link basado en tu IP local o dominio configurado.
-        
-        // Detección automática del host para el link
         $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
         $host = $_SERVER['HTTP_HOST']; 
-        // Nota: Ajusta '/ProjectAurora/' si tu carpeta base cambia.
         $resetLink = "$protocol://$host/ProjectAurora/reset-password?token=$token";
 
         jsonResponse(true, 'Enlace generado (Simulación)', [

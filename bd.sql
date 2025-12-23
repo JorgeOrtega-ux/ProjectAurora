@@ -34,3 +34,15 @@ CREATE TABLE IF NOT EXISTS password_resets (
     INDEX (token),
     INDEX (email)
 );
+
+-- TABLA DE LOGS DE SEGURIDAD (ANTI-BRUTEFORCE)
+CREATE TABLE IF NOT EXISTS security_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_identifier VARCHAR(255) NOT NULL, -- Email intentado o 'unknown'
+    action_type VARCHAR(50) NOT NULL,      -- 'login_fail' o 'recovery_fail'
+    ip_address VARCHAR(45) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX (user_identifier),
+    INDEX (ip_address),
+    INDEX (created_at)
+);
