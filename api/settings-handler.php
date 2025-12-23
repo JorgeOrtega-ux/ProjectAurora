@@ -101,8 +101,8 @@ if ($action === 'upload_avatar') {
     $bgColors = ['40a060', 'a73d3d', '3d3da7', '3d9da7', '9d3da7'];
     $randomBg = $bgColors[array_rand($bgColors)];
 
-    // Añadido &bold=true
-    $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($firstLetter) . "&background=" . $randomBg . "&color=fff&size=128&format=png&bold=true";
+    // Añadido &bold=true y size=512
+    $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($firstLetter) . "&background=" . $randomBg . "&color=fff&size=512&format=png&bold=true";
     // =====================================
 
     $newFileName = $currentUser['uuid'] . '-' . time() . '.png';
