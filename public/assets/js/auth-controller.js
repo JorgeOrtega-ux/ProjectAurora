@@ -1,4 +1,5 @@
 import { navigateTo } from './core/url-manager.js';
+import { Toast } from './core/toast-manager.js'; // Importar Toast
 
 let resendTimerInterval = null;
 
@@ -14,13 +15,13 @@ export function initAuthController() {
     }
 
     // ============================================================
-    // DELEGACIÓN DE EVENTOS (Maneja clics en elementos dinámicos)
+    // DELEGACIÓN DE EVENTOS
     // ============================================================
     document.body.addEventListener('click', async (e) => {
         const target = e.target;
 
         // ------------------------------------------
-        // 1. MANEJO DE LOGIN
+        // 1. LOGIN (Sin Toast)
         // ------------------------------------------
         const btnLogin = target.closest('#btn-login');
         if (btnLogin) {
@@ -31,7 +32,7 @@ export function initAuthController() {
         }
 
         // ------------------------------------------
-        // 2. REGISTRO - PASO 1 (Email/Pass) -> PASO 2
+        // 2. REGISTRO - PASO 1 -> PASO 2
         // ------------------------------------------
         const btnNext1 = target.closest('#btn-next-1');
         if (btnNext1) {
@@ -71,7 +72,7 @@ export function initAuthController() {
         }
 
         // ------------------------------------------
-        // 3. REGISTRO - PASO 2 (Username) -> PASO 3
+        // 3. REGISTRO - PASO 2 -> PASO 3 (AQUÍ VA EL TOAST)
         // ------------------------------------------
         const btnNext2 = target.closest('#btn-next-2');
         if (btnNext2) {
@@ -81,8 +82,6 @@ export function initAuthController() {
             const username = document.getElementById('username').value;
             
             if(!username) { 
-                // NOTA: btnNext2 está dentro de un div flexbox.
-                // Insertamos el error DESPUÉS del contenedor padre para que quede abajo.
                 showError(btnNext2.parentElement, 'register-step2-error', "Elige un nombre de usuario"); 
                 return; 
             }
@@ -98,8 +97,11 @@ export function initAuthController() {
                 const res = await fetchApi(formData);
                 if (res.success) {
                     if(res.debug_code) console.log("Code:", res.debug_code);
+                    
+                    // === TOAST SOLICITADO ===
+                    Toast.show('Código de verificación enviado a tu correo', 'info'); 
+                    
                     navigateTo(res.next_url); 
-                    // Iniciar timer después de navegar
                     setTimeout(() => startResendTimer(60), 500);
                 } else {
                     showError(btnNext2.parentElement, 'register-step2-error', res.message);
@@ -113,7 +115,7 @@ export function initAuthController() {
         }
 
         // ------------------------------------------
-        // 4. REGISTRO - PASO 3 (Código) -> FINAL
+        // 4. REGISTRO - PASO 3 -> FINAL
         // ------------------------------------------
         const btnFinish = target.closest('#btn-finish');
         if (btnFinish) {
@@ -137,7 +139,7 @@ export function initAuthController() {
             try {
                 const res = await fetchApi(formData);
                 if (res.success) {
-                    window.location.href = res.redirect; // Recarga completa al Home
+                    window.location.href = res.redirect;
                 } else {
                     showError(btnFinish, 'register-step3-error', res.message);
                     setLoading(btnFinish, false);
@@ -150,14 +152,13 @@ export function initAuthController() {
         }
 
         // ------------------------------------------
-        // 5. REENVIAR CÓDIGO
+        // 5. REENVIAR CÓDIGO (AQUÍ VA EL TOAST)
         // ------------------------------------------
         const btnResend = target.closest('#btn-resend-code');
         if (btnResend) {
             e.preventDefault();
             hideError('register-step3-error');
             
-            // Verificar si está deshabilitado por estilo o clase
             if (btnResend.classList.contains('link-disabled') || btnResend.style.pointerEvents === 'none') {
                 return;
             }
@@ -173,7 +174,9 @@ export function initAuthController() {
                 btnResend.style.opacity = '1';
 
                 if (res.success) {
-                    alert("Nuevo código enviado.");
+                    // === TOAST SOLICITADO ===
+                    Toast.show('Nuevo código de verificación enviado', 'success');
+                    
                     if(res.debug_code) console.log("New Code:", res.debug_code);
                     startResendTimer(60);
                 } else {
@@ -202,14 +205,13 @@ export function initAuthController() {
         }
 
         // ------------------------------------------
-        // UI INTERACTIONS (Botones genéricos en inputs)
+        // UI INTERACTIONS
         // ------------------------------------------
         const inputActionBtn = target.closest('.btn-input-action');
         if (inputActionBtn) {
             e.preventDefault();
             const action = inputActionBtn.dataset.action;
             
-            // ACCIÓN 1: Toggle Password
             if (action === 'toggle-password') {
                 const input = inputActionBtn.parentElement.querySelector('input');
                 const icon = inputActionBtn.querySelector('.material-symbols-rounded');
@@ -221,22 +223,14 @@ export function initAuthController() {
                     icon.textContent = 'visibility';
                 }
             }
-            
-            // ACCIÓN 2: Generar Username
             else if (action === 'generate-username') {
                 const input = document.getElementById('username');
                 if (input) {
                     const now = new Date();
-                    
-                    // Formatear fecha DDMMYYYY
                     const day = String(now.getDate()).padStart(2, '0');
                     const month = String(now.getMonth() + 1).padStart(2, '0');
                     const year = now.getFullYear();
-                    
-                    // Obtener timestamp (milisegundos)
                     const timestamp = now.getTime();
-
-                    // Construir string
                     input.value = `User${day}${month}${year}${timestamp}`;
                 }
             }
@@ -278,7 +272,7 @@ async function fetchApi(formData) {
 function setLoading(btn, isLoading) {
     if (isLoading) {
         btn.dataset.originalText = btn.innerText;
-        btn.innerHTML = '<div class="spinner-sm"></div>'; // Spinner pequeño
+        btn.innerHTML = '<div class="spinner-sm"></div>'; 
         btn.disabled = true;
         btn.style.opacity = '0.8'; 
     } else {
@@ -320,44 +314,24 @@ async function handleLogin(btn, token) {
     }
 }
 
-// --- NUEVAS FUNCIONES DE ERROR UI DINÁMICAS ---
-
-/**
- * Crea y muestra un mensaje de error debajo del elemento de referencia.
- * @param {HTMLElement} referenceNode - El elemento (botón o contenedor) después del cual aparecerá el error.
- * @param {string} errorId - ID único para el div de error.
- * @param {string} message - El texto del mensaje.
- */
 function showError(referenceNode, errorId, message) {
-    // 1. Verificar si ya existe para actualizarlo
     let errorDiv = document.getElementById(errorId);
-    
-    // 2. Si no existe, crearlo dinámicamente
     if (!errorDiv) {
         errorDiv = document.createElement('div');
         errorDiv.id = errorId;
         errorDiv.className = 'auth-inline-error';
-        
-        // Insertar DESPUÉS del nodo de referencia
         referenceNode.insertAdjacentElement('afterend', errorDiv);
     }
-    
-    // 3. Actualizar mensaje
     errorDiv.innerText = message;
 }
 
-/**
- * Elimina el elemento de error del DOM si existe.
- * @param {string} errorId 
- */
 function hideError(errorId) {
     const el = document.getElementById(errorId);
     if (el) {
-        el.remove(); // Eliminación completa del DOM
+        el.remove(); 
     }
 }
 
-// --- TIMER DE REENVÍO ---
 function startResendTimer(seconds) {
     const btn = document.getElementById('btn-resend-code');
     const timerSpan = document.getElementById('register-timer');
@@ -366,7 +340,6 @@ function startResendTimer(seconds) {
 
     let timeLeft = seconds;
     
-    // Aplicar estado deshabilitado visualmente
     btn.classList.add('link-disabled');
     btn.style.pointerEvents = 'none';
     btn.style.color = 'rgb(153, 153, 153)';
@@ -380,7 +353,6 @@ function startResendTimer(seconds) {
 
         if (timeLeft <= 0) {
             clearInterval(resendTimerInterval);
-            // Habilitar botón
             btn.classList.remove('link-disabled');
             btn.style.pointerEvents = 'auto';
             btn.style.color = ''; 
