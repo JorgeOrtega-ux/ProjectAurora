@@ -147,7 +147,27 @@ if ($action === 'upload_avatar') {
     }
 
 // =========================================================
-//  ACCIÓN: CAMBIAR CONTRASEÑA
+//  ACCIÓN: VALIDAR CONTRASEÑA ACTUAL (SOLO VALIDACIÓN)
+// =========================================================
+} elseif ($action === 'validate_current_password') {
+    $currentPass = $_POST['current_password'] ?? '';
+
+    if (empty($currentPass)) {
+        jsonResponse(false, 'Ingresa tu contraseña actual.');
+    }
+
+    $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+    $stmt->execute([$userId]);
+    $user = $stmt->fetch();
+
+    if ($user && password_verify($currentPass, $user['password'])) {
+        jsonResponse(true, 'Contraseña correcta.');
+    } else {
+        jsonResponse(false, 'La contraseña actual es incorrecta.');
+    }
+
+// =========================================================
+//  ACCIÓN: CAMBIAR CONTRASEÑA (FLUJO FINAL)
 // =========================================================
 } elseif ($action === 'change_password') {
     $currentPass = $_POST['current_password'] ?? '';
@@ -178,13 +198,12 @@ if ($action === 'upload_avatar') {
     }
 
 // =========================================================
-//  ACCIÓN: ACTUALIZAR PREFERENCIAS (NUEVO)
+//  ACCIÓN: ACTUALIZAR PREFERENCIAS
 // =========================================================
 } elseif ($action === 'update_preference') {
     $key = $_POST['key'] ?? '';
     $value = $_POST['value'] ?? '';
 
-    // Mapeo de claves permitidas a columnas reales de BD
     $allowedKeys = [
         'language' => 'language',
         'open_links_new_tab' => 'open_links_new_tab'
@@ -194,7 +213,6 @@ if ($action === 'upload_avatar') {
         jsonResponse(false, 'Preferencia no válida.');
     }
 
-    // Validación y Sanitización de valores
     $dbValue = $value;
     
     if ($key === 'language') {
@@ -203,23 +221,37 @@ if ($action === 'upload_avatar') {
             jsonResponse(false, 'Idioma no soportado.');
         }
     } elseif ($key === 'open_links_new_tab') {
-        // Convertir 'true'/'false' string a 1/0
         $dbValue = ($value === 'true' || $value === '1') ? 1 : 0;
     }
 
-    // Usamos INSERT ... ON DUPLICATE KEY UPDATE para asegurar que funcione 
-    // incluso si por algún error el usuario no tenía fila de preferencias creada.
-    $sql = "INSERT INTO user_preferences (user_id, $key) VALUES (?, ?) 
-            ON DUPLICATE KEY UPDATE $key = VALUES($key)";
-            
     try {
+        // === OPTIMIZACIÓN BACKEND: Evitar writes innecesarios ===
+        $stmtCheck = $pdo->prepare("SELECT $key FROM user_preferences WHERE user_id = ?");
+        $stmtCheck->execute([$userId]);
+        $currentDbValue = $stmtCheck->fetchColumn();
+        
+        if ($currentDbValue !== false) {
+            $val1 = $currentDbValue; 
+            $val2 = $dbValue;
+            
+            if ($key === 'open_links_new_tab') {
+                $val1 = (int)$val1;
+                $val2 = (int)$val2;
+            }
+
+            if ($val1 === $val2) {
+                jsonResponse(true, 'Preferencia actualizada (Sin cambios).');
+            }
+        }
+
+        $sql = "INSERT INTO user_preferences (user_id, $key) VALUES (?, ?) 
+                ON DUPLICATE KEY UPDATE $key = VALUES($key)";
+            
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$userId, $dbValue]);
 
-        // Actualizar sesión en vivo
         if (!isset($_SESSION['preferences'])) { $_SESSION['preferences'] = []; }
         
-        // Guardamos el valor tipado correctamente en sesión
         if ($key === 'open_links_new_tab') {
             $_SESSION['preferences'][$key] = (bool)$dbValue;
         } else {

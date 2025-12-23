@@ -159,17 +159,47 @@ export const SettingsController = (function() {
                 container.querySelectorAll('input').forEach(i => i.value = '');
             }
 
-            // 3. Ir al Paso 2
+            // 3. Ir al Paso 2 (CON VALIDACIÓN PREVIA)
             if (action === 'pass-go-step-2') {
-                const currentPass = document.getElementById('current-password-input').value;
+                const currentPassInput = document.getElementById('current-password-input');
+                const currentPass = currentPassInput.value;
+                
                 if (!currentPass) {
                     Toast.show('Ingresa tu contraseña actual.', 'warning');
                     return;
                 }
-                _switchState(stage1, stage2);
-                const inputNew = document.getElementById('new-password-input');
-                if(inputNew) { inputNew.value = ''; inputNew.focus(); }
-                document.getElementById('repeat-password-input').value = '';
+
+                // === NUEVO: Validar contra backend antes de avanzar ===
+                const btn = e.target;
+                const originalText = btn.innerText;
+                btn.innerText = 'Verificando...';
+                btn.disabled = true;
+
+                const formData = new FormData();
+                formData.append('action', 'validate_current_password');
+                formData.append('current_password', currentPass);
+
+                try {
+                    const res = await ApiService.post('settings-handler.php', formData);
+                    
+                    if (res.success) {
+                        // Correcto: Avanzamos UI
+                        _switchState(stage1, stage2);
+                        const inputNew = document.getElementById('new-password-input');
+                        if(inputNew) { inputNew.value = ''; inputNew.focus(); }
+                        document.getElementById('repeat-password-input').value = '';
+                    } else {
+                        // Incorrecto: Mostramos error y nos quedamos aquí
+                        Toast.show('La contraseña actual es incorrecta.', 'error');
+                        currentPassInput.focus();
+                    }
+                } catch (err) {
+                    console.error(err);
+                    Toast.show('Error de conexión al validar.', 'error');
+                } finally {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                }
             }
 
             // 4. Submit Final
@@ -215,10 +245,6 @@ export const SettingsController = (function() {
                         container.querySelectorAll('input').forEach(i => i.value = '');
                     } else {
                         Toast.show(res.message, 'error');
-                        if(res.message.toLowerCase().includes('actual')) {
-                            _switchState(stage2, stage1);
-                            document.getElementById('current-password-input').focus();
-                        }
                     }
                 } catch(err) {
                     Toast.show('Error al procesar la solicitud.', 'error');
@@ -264,16 +290,27 @@ export const SettingsController = (function() {
     function selectOption(itemElement, textValue, dataValue = null) {
         const wrapper = itemElement.closest(CONFIG.wrapperSelector);
         if (!wrapper) return;
+
+        // 1. Detectamos si ya estaba activo para evitar API Call
+        const isSameValue = itemElement.classList.contains(CONFIG.activeClass);
+
+        // 2. Realizamos TODA la lógica visual (Feedback UI inmediato)
         const triggerText = wrapper.querySelector('.trigger-select-text');
         if (triggerText) triggerText.innerText = textValue;
         
         wrapper.querySelectorAll('.menu-link').forEach(link => link.classList.remove(CONFIG.activeClass));
         itemElement.classList.add(CONFIG.activeClass);
+        
+        // Cerramos el dropdown para que no se sienta "trabado"
         closeAllDropdowns();
 
-        if (dataValue) {
+        // 3. Solo si cambió el valor, llamamos al servidor
+        if (dataValue && !isSameValue) {
             savePreference('language', dataValue);
+        } else if (isSameValue) {
+            console.log("Preferencia sin cambios. UI actualizada, API omitida.");
         }
+
         if (event) event.stopPropagation();
     }
 
