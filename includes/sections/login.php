@@ -17,7 +17,7 @@
             <div class="form-group">
                 <input type="password" name="password" id="password" required placeholder=" ">
                 <label for="password">Contraseña</label>
-                <button type="button" class="btn-toggle-password" tabindex="-1">
+                <button type="button" class="btn-input-action" data-action="toggle-password" tabindex="-1">
                     <span class="material-symbols-rounded">visibility</span>
                 </button>
             </div>

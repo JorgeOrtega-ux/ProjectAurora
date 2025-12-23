@@ -25,6 +25,7 @@ export function initAuthController() {
         const btnLogin = target.closest('#btn-login');
         if (btnLogin) {
             e.preventDefault();
+            hideError('login-error'); 
             handleLogin(btnLogin, csrfToken);
             return;
         }
@@ -35,10 +36,15 @@ export function initAuthController() {
         const btnNext1 = target.closest('#btn-next-1');
         if (btnNext1) {
             e.preventDefault();
+            hideError('register-step1-error');
+            
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
 
-            if(!email || !password) { alert("Completa los campos"); return; }
+            if(!email || !password) { 
+                showError(btnNext1, 'register-step1-error', "Completa todos los campos"); 
+                return; 
+            }
 
             const formData = new FormData();
             formData.append('action', 'register_step_1');
@@ -53,11 +59,12 @@ export function initAuthController() {
                 if (res.success) {
                     navigateTo(res.next_url); 
                 } else {
-                    alert(res.message);
+                    showError(btnNext1, 'register-step1-error', res.message);
                     setLoading(btnNext1, false);
                 }
             } catch (err) {
                 console.error(err);
+                showError(btnNext1, 'register-step1-error', "Ocurrió un error inesperado.");
                 setLoading(btnNext1, false);
             }
             return;
@@ -69,9 +76,16 @@ export function initAuthController() {
         const btnNext2 = target.closest('#btn-next-2');
         if (btnNext2) {
             e.preventDefault();
+            hideError('register-step2-error');
+
             const username = document.getElementById('username').value;
             
-            if(!username) { alert("Elige un usuario"); return; }
+            if(!username) { 
+                // NOTA: btnNext2 está dentro de un div flexbox.
+                // Insertamos el error DESPUÉS del contenedor padre para que quede abajo.
+                showError(btnNext2.parentElement, 'register-step2-error', "Elige un nombre de usuario"); 
+                return; 
+            }
 
             const formData = new FormData();
             formData.append('action', 'initiate_verification');
@@ -88,10 +102,11 @@ export function initAuthController() {
                     // Iniciar timer después de navegar
                     setTimeout(() => startResendTimer(60), 500);
                 } else {
-                    alert(res.message);
+                    showError(btnNext2.parentElement, 'register-step2-error', res.message);
                     setLoading(btnNext2, false);
                 }
             } catch (err) {
+                showError(btnNext2.parentElement, 'register-step2-error', "Error de conexión.");
                 setLoading(btnNext2, false);
             }
             return;
@@ -103,9 +118,14 @@ export function initAuthController() {
         const btnFinish = target.closest('#btn-finish');
         if (btnFinish) {
             e.preventDefault();
+            hideError('register-step3-error');
+
             const code = document.getElementById('verification_code').value;
             
-            if(!code) { alert("Ingresa el código"); return; }
+            if(!code) { 
+                showError(btnFinish, 'register-step3-error', "Ingresa el código de verificación"); 
+                return; 
+            }
 
             const formData = new FormData();
             formData.append('action', 'complete_register');
@@ -119,10 +139,11 @@ export function initAuthController() {
                 if (res.success) {
                     window.location.href = res.redirect; // Recarga completa al Home
                 } else {
-                    alert(res.message);
+                    showError(btnFinish, 'register-step3-error', res.message);
                     setLoading(btnFinish, false);
                 }
             } catch (err) {
+                showError(btnFinish, 'register-step3-error', "Error al verificar.");
                 setLoading(btnFinish, false);
             }
             return;
@@ -134,6 +155,7 @@ export function initAuthController() {
         const btnResend = target.closest('#btn-resend-code');
         if (btnResend) {
             e.preventDefault();
+            hideError('register-step3-error');
             
             // Verificar si está deshabilitado por estilo o clase
             if (btnResend.classList.contains('link-disabled') || btnResend.style.pointerEvents === 'none') {
@@ -155,11 +177,12 @@ export function initAuthController() {
                     if(res.debug_code) console.log("New Code:", res.debug_code);
                     startResendTimer(60);
                 } else {
-                    alert(res.message);
+                    showError(btnResend, 'register-step3-error', res.message);
                 }
             } catch (err) {
                 console.error(err);
                 btnResend.style.opacity = '1';
+                showError(btnResend, 'register-step3-error', "Error al reenviar código.");
             }
             return;
         }
@@ -248,18 +271,16 @@ async function fetchApi(formData) {
         return await response.json();
     } catch (error) {
         console.error("API Error:", error);
-        alert("Error de conexión con el servidor");
         throw error;
     }
 }
 
-// FUNCIÓN ACTUALIZADA: Usa Spinner HTML en lugar de texto
 function setLoading(btn, isLoading) {
     if (isLoading) {
         btn.dataset.originalText = btn.innerText;
         btn.innerHTML = '<div class="spinner-sm"></div>'; // Spinner pequeño
         btn.disabled = true;
-        btn.style.opacity = '0.8'; // Opacidad ligera para indicar deshabilitado pero visible
+        btn.style.opacity = '0.8'; 
     } else {
         btn.innerText = btn.dataset.originalText || 'Continuar';
         btn.disabled = false;
@@ -279,7 +300,10 @@ async function handleLogin(btn, token) {
         if(input.required && !input.value) hasEmpty = true;
     });
 
-    if(hasEmpty) { alert("Llena los campos"); return; }
+    if(hasEmpty) { 
+        showError(btn, 'login-error', "Por favor llena todos los campos"); 
+        return; 
+    }
 
     setLoading(btn, true);
     try {
@@ -287,10 +311,50 @@ async function handleLogin(btn, token) {
         if (res.success) {
             window.location.href = res.redirect;
         } else {
-            alert(res.message);
+            showError(btn, 'login-error', res.message);
             setLoading(btn, false);
         }
-    } catch(e) { setLoading(btn, false); }
+    } catch(e) { 
+        showError(btn, 'login-error', "Error de conexión");
+        setLoading(btn, false); 
+    }
+}
+
+// --- NUEVAS FUNCIONES DE ERROR UI DINÁMICAS ---
+
+/**
+ * Crea y muestra un mensaje de error debajo del elemento de referencia.
+ * @param {HTMLElement} referenceNode - El elemento (botón o contenedor) después del cual aparecerá el error.
+ * @param {string} errorId - ID único para el div de error.
+ * @param {string} message - El texto del mensaje.
+ */
+function showError(referenceNode, errorId, message) {
+    // 1. Verificar si ya existe para actualizarlo
+    let errorDiv = document.getElementById(errorId);
+    
+    // 2. Si no existe, crearlo dinámicamente
+    if (!errorDiv) {
+        errorDiv = document.createElement('div');
+        errorDiv.id = errorId;
+        errorDiv.className = 'auth-inline-error';
+        
+        // Insertar DESPUÉS del nodo de referencia
+        referenceNode.insertAdjacentElement('afterend', errorDiv);
+    }
+    
+    // 3. Actualizar mensaje
+    errorDiv.innerText = message;
+}
+
+/**
+ * Elimina el elemento de error del DOM si existe.
+ * @param {string} errorId 
+ */
+function hideError(errorId) {
+    const el = document.getElementById(errorId);
+    if (el) {
+        el.remove(); // Eliminación completa del DOM
+    }
 }
 
 // --- TIMER DE REENVÍO ---
@@ -319,7 +383,7 @@ function startResendTimer(seconds) {
             // Habilitar botón
             btn.classList.remove('link-disabled');
             btn.style.pointerEvents = 'auto';
-            btn.style.color = ''; // Volver al color original (heredado o CSS)
+            btn.style.color = ''; 
             timerSpan.textContent = ''; 
         }
     }, 1000);

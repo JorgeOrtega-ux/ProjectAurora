@@ -598,5 +598,25 @@ html {
     border: 1px solid #ffcdd2;
 }
 
+/* === NUEVO ESTILO PARA ERRORES INLINE DINÁMICOS === */
+.auth-inline-error {
+    width: 100%;
+    margin-top: 16px;
+    padding: 12px;
+    background-color: transparent;
+    border: 1px solid #d32f2f; /* Borde rojo */
+    color: #d32f2f;            /* Texto rojo */
+    border-radius: 8px;
+    font-size: 14px;
+    text-align: center;
+    font-weight: 500;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .mt-16 { margin-top: 16px; }
 .mb-0 { margin-bottom: 0; }

@@ -2,8 +2,6 @@
 // includes/sections/register.php
 
 // 0. CORRECCIÓN DE BUG ($basePath indefinido en carga AJAX)
-// Si $basePath no existe (carga via loader.php), lo definimos manualmente.
-// Asegúrate de que coincida con tu configuración en router.php
 $basePath = isset($basePath) ? $basePath : '/ProjectAurora/';
 
 // 1. Detección de la sub-ruta actual
