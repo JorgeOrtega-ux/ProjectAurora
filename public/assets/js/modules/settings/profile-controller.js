@@ -186,7 +186,11 @@ function toggleEditState(fieldId, isEditing) {
         
         if (input) {
             input.dataset.originalValue = input.value;
+            // CORRECCIÓN: Truco para mover el cursor al final del texto
+            const val = input.value;
             input.focus();
+            input.value = '';
+            input.value = val;
         }
     } else {
         editState?.classList.replace('active', 'disabled');
