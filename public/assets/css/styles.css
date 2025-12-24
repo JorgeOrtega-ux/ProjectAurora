@@ -827,7 +827,6 @@ html {
         z-index: 9999; /* Por encima de todo */
         display: none; /* Por defecto oculto, .active lo muestra flex */
         align-items: flex-end; /* Alinea contenido al fondo */
-        backdrop-filter: blur(2px);
     }
 
     .module-profile .menu-content {
@@ -873,8 +872,8 @@ html {
         display: flex;
         justify-content: center;
         width: 100%;
-        padding: 12px 0;
         flex-shrink: 0;
+        padding-bottom: 8px;
         cursor: grab;
         touch-action: none; /* Importante para que el navegador no haga scroll */
     }
@@ -882,7 +881,7 @@ html {
     .drag-handle {
         width: 40px;
         height: 4px;
-        background-color: #e0e0e0;
+        background-color: #f5f5fa;
         border-radius: 10px;
     }
 }
