@@ -6,7 +6,7 @@ import { I18n } from './core/i18n-manager.js';
 let resendTimerInterval = null;
 
 export function initAuthController() {
-    console.log("Auth Controller: Listo (SPA - Event Delegation)");
+    console.log("Auth Controller: Listo (SPA - Event Delegation - Generic Components)");
 
     const resendBtn = document.getElementById('btn-resend-code');
     if (resendBtn) {
@@ -206,7 +206,7 @@ export function initAuthController() {
                     
                     const area = document.getElementById('recovery-message-area');
                     if(area) {
-                        area.innerHTML = `<div class="alert success mt-16" style="background:#e8f5e9; color:#2e7d32; padding:10px; border-radius:8px;">
+                        area.innerHTML = `<div class="component-message component-message--success">
                             Link: <br><a href="${res.debug_link}">${res.debug_link}</a>
                         </div>`;
                     }
@@ -276,8 +276,8 @@ export function initAuthController() {
             return;
         }
 
-        // UI INTERACTIONS
-        const inputActionBtn = target.closest('.btn-input-action');
+        // UI INTERACTIONS (Nuevo Selector Generic)
+        const inputActionBtn = target.closest('.component-input-action');
         if (inputActionBtn) {
             e.preventDefault();
             const action = inputActionBtn.dataset.action;
@@ -310,9 +310,10 @@ export function initAuthController() {
     document.body.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             const activeInput = document.activeElement;
-            if (activeInput && activeInput.closest('#loginContainer')) {
+            // Buscar si estamos dentro de un componente de tarjeta auth
+            if (activeInput && activeInput.closest('.component-card')) {
                 const stage2 = document.getElementById('login-stage-2');
-                if(stage2 && stage2.style.display !== 'none') {
+                if(stage2 && !stage2.classList.contains('disabled')) {
                     const btn2 = document.getElementById('btn-verify-2fa');
                     if(btn2) btn2.click();
                 } else {
@@ -359,10 +360,10 @@ async function handleLoginStep1(btn) {
         
         if (res.success) {
             if (res.require_2fa) {
-                document.getElementById('login-stage-1').style.display = 'none';
+                const stage1 = document.getElementById('login-stage-1');
+                stage1.classList.add('disabled');
                 
                 const stage2 = document.getElementById('login-stage-2');
-                stage2.style.display = 'block';
                 stage2.classList.remove('disabled');
 
                 document.getElementById('auth-title').innerText = I18n.t('auth.2fa.title');
@@ -413,7 +414,10 @@ function showError(referenceNode, errorId, message) {
     if (!errorDiv) {
         errorDiv = document.createElement('div');
         errorDiv.id = errorId;
-        errorDiv.className = 'auth-inline-error';
+        // Nueva clase genérica
+        errorDiv.className = 'component-message component-message--error';
+        
+        // Insertar después del botón de referencia (o nodo)
         if(referenceNode.nextSibling) {
             referenceNode.parentNode.insertBefore(errorDiv, referenceNode.nextSibling);
         } else {

@@ -139,7 +139,6 @@ html {
     background-color: #f5f5fa;
 }
 
-/* Trigger de búsqueda móvil (oculto en desktop) */
 .mobile-search-trigger {
     display: none;
 }
@@ -184,7 +183,6 @@ html {
     z-index: 2;
 }
 
-/* Roles Header */
 .header-button.profile-button[data-role="user"]::before {
     border-color: #cccccc;
 }
@@ -302,7 +300,7 @@ html {
     box-shadow: 0 4px 12px #00000020;
 }
 
-/* Enlaces de menú (Común en Sidebar y Dropdowns) */
+/* Enlaces de menú */
 .menu-list {
     display: flex;
     flex-direction: column;
@@ -318,7 +316,6 @@ html {
     flex-direction: row;
     width: 100%;
     height: 40px;
-    /* Altura base para sidebar */
     position: relative;
     border-radius: 8px;
     cursor: pointer;
@@ -341,7 +338,6 @@ html {
     align-items: center;
     height: 100%;
     width: 40px;
-    /* Ancho fijo para icono */
 }
 
 .menu-link-text {
@@ -356,219 +352,7 @@ html {
 }
 
 /* =========================================
-   5. PÁGINAS DE AUTENTICACIÓN (LOGIN/REGISTER)
-   ========================================= */
-.auth-wrapper {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.auth-card {
-    width: 420px;
-    background: #ffffff;
-    padding: 32px;
-    border-radius: 16px;
-    box-shadow: none;
-    border: 1px solid transparent;
-    text-align: center;
-}
-
-.auth-card h1 {
-    font-size: 26px;
-    margin-bottom: 8px;
-    color: #1a1a1a;
-}
-
-.auth-card p {
-    color: #666;
-    font-size: 15px;
-}
-
-.auth-header {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 24px;
-}
-
-.auth-header h1,
-.auth-header p {
-    margin: 0;
-}
-
-.form-groups-wrapper {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 8px;
-}
-
-.form-group {
-    position: relative;
-    margin-bottom: 0;
-    text-align: left;
-    width: 100%;
-}
-
-.form-group input {
-    width: 100%;
-    padding: 24px 16px 8px 16px;
-    border: 1px solid #00000020;
-    border-radius: 8px;
-    font-size: 16px;
-    background-color: #fff;
-    height: 55px;
-    transition: border-color 0.2s ease, background-color 0.2s ease;
-    outline: none;
-}
-
-.form-group input:focus {
-    border-color: #000;
-}
-
-.form-group label {
-    position: absolute;
-    top: 50%;
-    left: 16px;
-    transform: translateY(-50%);
-    font-size: 16px;
-    color: #888;
-    pointer-events: none;
-    background-color: transparent;
-    transition: all 0.2s ease-out;
-    z-index: 1;
-}
-
-.form-group input:focus+label,
-.form-group input:not(:placeholder-shown)+label {
-    top: 12px;
-    left: 16px;
-    font-size: 12px;
-    color: #000;
-    font-weight: 600;
-    transform: none;
-}
-
-/* Padding extra si hay icono (eye) a la derecha */
-.form-group input[type="password"],
-.form-group input.password-visible,
-#username {
-    padding-right: 55px;
-}
-
-.btn-input-action {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    height: 40px;
-    width: 40px;
-    background: transparent;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    color: #666;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-    transition: all 0.2s ease;
-    padding: 5px;
-}
-
-.btn-input-action:hover {
-    background-color: #f5f5fa;
-    color: #000;
-}
-
-.forgot-password {
-    display: block;
-    text-align: right;
-    margin: 8px 0;
-    font-size: 14px;
-}
-
-.forgot-password a {
-    color: #666;
-    text-decoration: none;
-}
-
-.forgot-password a:hover {
-    color: #000;
-    text-decoration: underline;
-}
-
-/* Botón Primario Genérico (Usado en Auth) */
-.btn-primary {
-    width: 100%;
-    padding: 14px;
-    height: 55px;
-    background-color: #000;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.btn-primary:hover {
-    background-color: #333;
-}
-
-.auth-footer {
-    margin-top: 12px;
-    font-size: 14px;
-    color: #666;
-}
-
-.auth-footer a {
-    color: #000;
-    font-weight: 600;
-    text-decoration: none;
-}
-
-.auth-footer a:hover {
-    text-decoration: underline;
-}
-
-.alert {
-    padding: 12px;
-    margin-bottom: 24px;
-    border-radius: 8px;
-    font-size: 14px;
-    text-align: left;
-}
-
-.alert.error {
-    background-color: #ffebee;
-    color: #d32f2f;
-    border: 1px solid #ffcdd2;
-}
-
-.auth-inline-error {
-    width: 100%;
-    margin-top: 16px;
-    padding: 12px;
-    background-color: transparent;
-    border: 1px solid #d32f2f;
-    color: #d32f2f;
-    border-radius: 8px;
-    font-size: 14px;
-    text-align: center;
-    font-weight: 500;
-    animation: fadeIn 0.3s ease;
-}
-
-/* =========================================
-   6. UTILIDADES Y EXTRAS
+   5. UTILIDADES Y EXTRAS
    ========================================= */
 #toast-container {
     position: fixed;
@@ -628,31 +412,24 @@ html {
 .toast-item.success {
     border-left-color: #2e7d32;
 }
-
 .toast-item.success .toast-icon {
     color: #2e7d32;
 }
-
 .toast-item.error {
     border-left-color: #d32f2f;
 }
-
 .toast-item.error .toast-icon {
     color: #d32f2f;
 }
-
 .toast-item.warning {
     border-left-color: #ed6c02;
 }
-
 .toast-item.warning .toast-icon {
     color: #ed6c02;
 }
-
 .toast-item.info {
     border-left-color: #0288d1;
 }
-
 .toast-item.info .toast-icon {
     color: #0288d1;
 }
@@ -678,13 +455,8 @@ html {
 }
 
 @keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* Crash Screen */
@@ -692,7 +464,6 @@ html {
     margin-bottom: 24px;
     text-align: center;
 }
-
 .crash-icon {
     font-size: 48px;
     margin-bottom: 16px;
@@ -700,7 +471,6 @@ html {
     display: block;
     margin: 0 auto;
 }
-
 .crash-title {
     font-size: 28px;
     font-weight: 700;
@@ -708,7 +478,6 @@ html {
     letter-spacing: -0.5px;
     margin: 0;
 }
-
 .crash-code-box {
     background-color: #f5f5fa;
     border-radius: 6px;
@@ -721,50 +490,21 @@ html {
     line-height: 1.5;
     overflow-x: auto;
 }
-
-.crash-text-meta {
-    color: #666;
-}
-
-.crash-text-error {
-    color: #d32f2f;
-}
+.crash-text-meta { color: #666; }
+.crash-text-error { color: #d32f2f; }
 
 /* Helpers */
-.active {
-    display: flex !important;
-}
-
-.disabled {
-    display: none !important;
-}
-
-.w-100 {
-    width: 100%;
-}
-
-.mt-16 {
-    margin-top: 16px;
-}
-
-.mb-0 {
-    margin-bottom: 0;
-}
-
-.m-0 {
-    margin: 0 !important;
-}
-
-.flex-1 {
-    flex: 1;
-}
-
-.pill-container {
-    display: none;
-}
+.active { display: flex !important; }
+.disabled { display: none !important; }
+.w-100 { width: 100%; }
+.mt-16 { margin-top: 16px; }
+.mb-0 { margin-bottom: 0; }
+.m-0 { margin: 0 !important; }
+.flex-1 { flex: 1; }
+.pill-container { display: none; }
 
 /* =========================================
-   MEDIA QUERIES & RESPONSIVE
+   6. MEDIA QUERIES & RESPONSIVE
    ========================================= */
 
 @media (max-width: 725px) {
@@ -772,17 +512,8 @@ html {
         gap: 0;
         justify-content: space-between;
     }
-
-    .header-left {
-        order: 1;
-    }
-
-    .header-right {
-        order: 2;
-    }
-
-    /* HEADER CENTER (BUSCADOR):
-       Por defecto oculto, se muestra al añadir .active */
+    .header-left { order: 1; }
+    .header-right { order: 2; }
     .header-center {
         display: none;
         order: 3;
@@ -791,38 +522,13 @@ html {
         width: 100%;
         animation: slideDownSearch 0.2s ease-out;
     }
-    
-    .header-center.active {
-        display: flex;
-    }
-
-    /* BOTÓN TRIGGER DE BÚSQUEDA:
-       Visible solo en móviles */
-    .mobile-search-trigger {
-        display: flex;
-    }
-
-    .search-wrapper {
-        max-width: 100%;
-    }
-
-    .main-content {
-        padding: 0;
-    }
-
-    .general-content {
-        border-radius: 0;
-    }
-
-    .module-content.module-surface {
-        width: 100%;
-        padding: 0;
-    }
-
-    .module-surface .menu-content {
-        width: 100%;
-        border-radius: 0;
-    }
+    .header-center.active { display: flex; }
+    .mobile-search-trigger { display: flex; }
+    .search-wrapper { max-width: 100%; }
+    .main-content { padding: 0; }
+    .general-content { border-radius: 0; }
+    .module-content.module-surface { width: 100%; padding: 0; }
+    .module-surface .menu-content { width: 100%; border-radius: 0; }
 }
 
 @keyframes slideDownSearch {
@@ -836,27 +542,27 @@ html {
 }
 
 /* =========================================
-   MOBILE PROFILE (BOTTOM SHEET)
+   7. MOBILE PROFILE (BOTTOM SHEET)
    ========================================= */
 @media (max-width: 468px) {
     .module-content.module-profile {
         width: 100%;
         height: 100%;
-        background-color: rgba(0, 0, 0, 0.5); /* Overlay dim */
+        background-color: rgba(0, 0, 0, 0.5);
         position: fixed;
         top: 0;
         right: 0;
         left: 0;
         bottom: 0;
-        z-index: 9999; /* Por encima de todo */
-        display: none; /* Por defecto oculto, .active lo muestra flex */
-        align-items: flex-end; /* Alinea contenido al fondo */
+        z-index: 9999;
+        display: none;
+        align-items: flex-end;
     }
 
     .module-profile .menu-content {
         width: 100%;
         height: auto;
-        max-height: 85vh; /* No ocupar toda la pantalla */
+        max-height: 85vh;
         background-color: #ffffff;
         border-top-left-radius: 16px;
         border-top-right-radius: 16px;
@@ -865,24 +571,19 @@ html {
         box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
         display: flex;
         flex-direction: column;
-        
-        /* Animación inicial de entrada */
         transform: translateY(100%);
         transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
     }
     
-    /* Estado activo del módulo completo (overlay) */
     .module-content.module-profile.active {
         display: flex !important;
         animation: fadeInOverlay 0.3s ease forwards;
     }
 
-    /* Cuando está activo, el contenido sube a posición 0 */
     .module-content.module-profile.active .menu-content {
         transform: translateY(0%);
     }
 
-    /* Clase auxiliar para la animación de cierre (slide-down) */
     .module-content.module-profile.closing .menu-content {
         transform: translateY(100%) !important;
     }
@@ -891,7 +592,6 @@ html {
         animation: fadeOutOverlay 0.3s ease forwards;
     }
 
-    /* PILL CONTAINER (Handle) */
     .pill-container {
         display: flex;
         justify-content: center;
@@ -899,7 +599,7 @@ html {
         flex-shrink: 0;
         padding-bottom: 8px;
         cursor: grab;
-        touch-action: none; /* Importante para que el navegador no haga scroll */
+        touch-action: none;
     }
     
     .drag-handle {
@@ -911,14 +611,8 @@ html {
 }
 
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-5px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes fadeInOverlay {
@@ -932,7 +626,7 @@ html {
 }
 
 /* =========================================
-   10. TOOLTIPS
+   8. TOOLTIPS
    ========================================= */
 .tooltip {
     position: fixed;
@@ -963,14 +657,8 @@ html {
     padding: 8px 12px;
 }
 
-.tooltip .tooltip-text {
-    line-height: 1.2;
-}
-
-.tooltip .tooltip-shortcut {
-    opacity: 0.7;
-}
-
+.tooltip .tooltip-text { line-height: 1.2; }
+.tooltip .tooltip-shortcut { opacity: 0.7; }
 .tooltip .tooltip-shortcut kbd {
     padding: 2px 6px;
     font-size: 0.75rem;
@@ -988,45 +676,22 @@ html {
 }
 
 .tooltip[data-popper-placement^="bottom"]::before {
-    top: -5px;
-    left: 50%;
-    width: 10px;
-    height: 10px;
-    border-right: none;
-    border-bottom: none;
-    border-radius: 2px 0 0 0;
-    transform: translateX(-50%) rotate(45deg);
+    top: -5px; left: 50%; width: 10px; height: 10px;
+    border-right: none; border-bottom: none;
+    border-radius: 2px 0 0 0; transform: translateX(-50%) rotate(45deg);
 }
-
 .tooltip[data-popper-placement^="top"]::before {
-    bottom: -5px;
-    left: 50%;
-    width: 10px;
-    height: 10px;
-    border-top: none;
-    border-left: none;
-    border-radius: 0 0 2px 0;
-    transform: translateX(-50%) rotate(45deg);
+    bottom: -5px; left: 50%; width: 10px; height: 10px;
+    border-top: none; border-left: none;
+    border-radius: 0 0 2px 0; transform: translateX(-50%) rotate(45deg);
 }
-
 .tooltip[data-popper-placement^="right"]::before {
-    top: 50%;
-    left: -5px;
-    width: 10px;
-    height: 10px;
-    border-top: none;
-    border-right: none;
-    border-radius: 0 0 0 2px;
-    transform: translateY(-50%) rotate(45deg);
+    top: 50%; left: -5px; width: 10px; height: 10px;
+    border-top: none; border-right: none;
+    border-radius: 0 0 0 2px; transform: translateY(-50%) rotate(45deg);
 }
-
 .tooltip[data-popper-placement^="left"]::before {
-    top: 50%;
-    right: -5px;
-    width: 10px;
-    height: 10px;
-    border-left: none;
-    border-bottom: none;
-    border-radius: 0 2px 0 0;
-    transform: translateY(-50%) rotate(45deg);
+    top: 50%; right: -5px; width: 10px; height: 10px;
+    border-left: none; border-bottom: none;
+    border-radius: 0 2px 0 0; transform: translateY(-50%) rotate(45deg);
 }

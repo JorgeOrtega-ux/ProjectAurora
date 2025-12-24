@@ -20,8 +20,8 @@ if ($isStep2 && !$hasDataForStep2) {
 }
 ?>
 
-<div class="auth-wrapper">
-    <div class="auth-card">
+<div class="component-layout-centered">
+    <div class="component-card component-card--compact">
         
         <?php if ($invalidAccess): ?>
             <div class="crash-header">
@@ -33,90 +33,96 @@ if ($isStep2 && !$hasDataForStep2) {
             </div>
 
         <?php elseif ($isStep3): ?>
-            <div class="auth-header">
+            <div class="component-header-centered">
                 <h1><?php echo $i18n->t('auth.register.title_3'); ?></h1>
                 <p><?php echo $i18n->t('auth.register.subtitle_3'); ?> <strong><?php echo htmlspecialchars($_SESSION['pending_verification_email'] ?? ''); ?></strong>.</p>
             </div>
 
             <input type="hidden" id="verify-action" name="action" value="verify_code">
             
-            <div class="form-groups-wrapper">
-                <div class="form-group">
-                    <input type="text" name="code" id="verification_code" class="input-code-verify" required placeholder=" " maxlength="6" style="letter-spacing: 4px; text-align: center; font-size: 20px;">
-                    <label for="verification_code" class="label-centered"><?php echo $i18n->t('auth.register.field.code'); ?></label>
+            <div class="component-stage-form">
+                <div class="component-form-group">
+                    <div class="component-input-wrapper component-input-wrapper--floating">
+                        <input type="text" name="code" id="verification_code" class="component-text-input input-code-verify" required placeholder=" " maxlength="6" style="letter-spacing: 4px; text-align: center; font-size: 20px;">
+                        <label for="verification_code" class="component-label-floating" style="left: 50%; transform: translateX(-50%) translateY(-50%);"><?php echo $i18n->t('auth.register.field.code'); ?></label>
+                    </div>
                 </div>
             </div>
 
-            <button type="button" id="btn-finish" class="btn-primary"><?php echo $i18n->t('auth.register.btn.finish'); ?></button>
+            <button type="button" id="btn-finish" class="component-button component-button--large primary"><?php echo $i18n->t('auth.register.btn.finish'); ?></button>
 
-            <div class="auth-resend-wrapper" style="margin-top: 16px;">
+            <div class="component-text-footer">
                 <a href="#" id="btn-resend-code" class="link-disabled" style="pointer-events: none; color: rgb(153, 153, 153); text-decoration: none; font-size: 14px;">
                     <?php echo $i18n->t('auth.register.resend_code'); ?> <span id="register-timer">(60)</span>
                 </a>
             </div>
 
         <?php elseif ($isStep2): ?>
-            <div class="auth-header">
+            <div class="component-header-centered">
                 <h1><?php echo $i18n->t('auth.register.title_2'); ?></h1>
                 <p><?php echo $i18n->t('auth.register.subtitle_2'); ?></p>
             </div>
 
             <input type="hidden" id="register-action-2" name="action" value="register_step_2">
             
-            <div class="form-groups-wrapper">
-                <div class="form-group">
-                    <input type="text" name="username" id="username" required placeholder=" ">
-                    <label for="username"><?php echo $i18n->t('auth.field.username'); ?></label>
-                    <button type="button" class="btn-input-action" data-action="generate-username" tabindex="-1">
-                        <span class="material-symbols-rounded">autorenew</span>
-                    </button>
+            <div class="component-stage-form">
+                <div class="component-form-group">
+                    <div class="component-input-wrapper component-input-wrapper--floating">
+                        <input type="text" name="username" id="username" class="component-text-input has-action" required placeholder=" ">
+                        <label for="username" class="component-label-floating"><?php echo $i18n->t('auth.field.username'); ?></label>
+                        <button type="button" class="component-input-action" data-action="generate-username" tabindex="-1">
+                            <span class="material-symbols-rounded">autorenew</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <div style="display: flex; gap: 8px;">
-                <a href="<?php echo $basePath; ?>register" data-nav="register" class="btn-primary mt-16 btn-back" style="background: #eee; color: #333; width: 40%; display:flex; justify-content:center; align-items:center; text-decoration:none;">
+                <a href="<?php echo $basePath; ?>register" data-nav="register" class="component-button component-button--large btn-back" style="background: #eee; color: #333; width: 40%; display:flex; justify-content:center; align-items:center; text-decoration:none;">
                     <?php echo $i18n->t('auth.btn.back'); ?>
                 </a>
-                <button type="button" id="btn-next-2" class="btn-primary mt-16" style="width: 60%;">
+                <button type="button" id="btn-next-2" class="component-button component-button--large primary" style="width: 60%;">
                     <?php echo $i18n->t('auth.btn.continue'); ?>
                 </button>
             </div>
 
         <?php else: ?>
-            <div class="auth-header">
+            <div class="component-header-centered">
                 <h1><?php echo $i18n->t('auth.register.title_1'); ?></h1>
                 <p><?php echo $i18n->t('auth.register.subtitle_1'); ?></p>
             </div>
 
             <input type="hidden" id="register-action-1" name="action" value="register_step_1">
             
-            <div class="form-groups-wrapper">
-                <div class="form-group">
-                    <input type="email" name="email" id="email" required placeholder=" ">
-                    <label for="email"><?php echo $i18n->t('auth.field.email'); ?></label>
-                </div>
+            <div class="component-stage-form">
+                <div class="component-form-group">
+                    <div class="component-input-wrapper component-input-wrapper--floating">
+                        <input type="email" name="email" id="email" class="component-text-input" required placeholder=" ">
+                        <label for="email" class="component-label-floating"><?php echo $i18n->t('auth.field.email'); ?></label>
+                    </div>
 
-                <div class="form-group">
-                    <input type="password" name="password" id="password" required placeholder=" ">
-                    <label for="password"><?php echo $i18n->t('auth.field.password'); ?></label>
-                    <button type="button" class="btn-input-action" data-action="toggle-password" tabindex="-1">
-                        <span class="material-symbols-rounded">visibility</span>
-                    </button>
+                    <div class="component-input-wrapper component-input-wrapper--floating">
+                        <input type="password" name="password" id="password" class="component-text-input has-action" required placeholder=" ">
+                        <label for="password" class="component-label-floating"><?php echo $i18n->t('auth.field.password'); ?></label>
+                        <button type="button" class="component-input-action" data-action="toggle-password" tabindex="-1">
+                            <span class="material-symbols-rounded">visibility</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <button type="button" id="btn-next-1" class="btn-primary"><?php echo $i18n->t('auth.btn.continue'); ?></button>
+            <button type="button" id="btn-next-1" class="component-button component-button--large primary"><?php echo $i18n->t('auth.btn.continue'); ?></button>
 
-            <div class="auth-footer">
+            <div class="component-text-footer">
                 <p>
                     <?php echo $i18n->t('auth.has_account'); ?> 
-                    <a href="<?php echo $basePath; ?>login" data-nav="login" class="link-primary"><?php echo $i18n->t('auth.login_link'); ?></a>
+                    <a href="<?php echo $basePath; ?>login" data-nav="login"><?php echo $i18n->t('auth.login_link'); ?></a>
                 </p>
             </div>
         <?php endif; ?>
 
         <?php if (isset($_SESSION['error']) && !$invalidAccess): ?>
-            <div class="alert error mt-16 mb-0">
+            <div class="component-message component-message--error">
                 <?php echo $_SESSION['error']; unset($_SESSION['error']); ?>
             </div>
         <?php endif; ?>

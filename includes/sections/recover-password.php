@@ -1,23 +1,25 @@
-<div class="auth-wrapper">
-    <div class="auth-card">
+<div class="component-layout-centered">
+    <div class="component-card component-card--compact">
         
-        <div class="auth-header">
+        <div class="component-header-centered">
             <h1><?php echo $i18n->t('auth.recover.title'); ?></h1>
             <p><?php echo $i18n->t('auth.recover.desc'); ?></p>
         </div>
         
-        <div class="form-groups-wrapper">
-            <div class="form-group">
-                <input type="email" name="email_recovery" id="email_recovery" required placeholder=" ">
-                <label for="email_recovery"><?php echo $i18n->t('auth.field.email'); ?></label>
+        <div class="component-stage-form">
+            <div class="component-form-group">
+                <div class="component-input-wrapper component-input-wrapper--floating">
+                    <input type="email" name="email_recovery" id="email_recovery" class="component-text-input" required placeholder=" ">
+                    <label for="email_recovery" class="component-label-floating"><?php echo $i18n->t('auth.field.email'); ?></label>
+                </div>
             </div>
         </div>
 
-        <button type="button" id="btn-request-reset" class="btn-primary"><?php echo $i18n->t('auth.recover.btn_send'); ?></button>
+        <button type="button" id="btn-request-reset" class="component-button component-button--large primary"><?php echo $i18n->t('auth.recover.btn_send'); ?></button>
         <div id="recovery-message-area"></div>
 
-        <div class="auth-footer">
-            <a href="<?php echo $basePath; ?>login" data-nav="login" class="link-primary"><?php echo $i18n->t('auth.recover.back_login'); ?></a>
+        <div class="component-text-footer">
+            <a href="<?php echo $basePath; ?>login" data-nav="login"><?php echo $i18n->t('auth.recover.back_login'); ?></a>
         </div>
     </div>
 </div>

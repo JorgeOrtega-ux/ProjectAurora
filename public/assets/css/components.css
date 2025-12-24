@@ -227,6 +227,14 @@
     background-color: #333;
 }
 
+/* Modificador: Botón Grande (Auth) */
+.component-button--large {
+    height: 56px;
+    padding: 0 24px;
+    font-size: 16px;
+    width: 100%;
+}
+
 .component-text-input {
     width: 100%;
     height: 36px;
@@ -248,18 +256,28 @@
     min-width: 200px;
 }
 
-/* Formulario por etapas (e.g. Cambio contraseña) */
+/* Formulario por etapas (CONTENEDOR PADRE) */
 .component-stage-form {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 8px;
+    gap: 0;
+    width: 100%;
+}
+
+/* NUEVO: GRUPO DE INPUTS (CONTENEDOR HIJO) */
+.component-form-group {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;           /* Separación entre inputs */
+    margin-bottom: 8px; /* Separación con el siguiente elemento (link/boton) */
     width: 100%;
 }
 
 /* =========================================
    4. ELEMENTOS AUXILIARES DE COMPONENTES
-   (Dropdowns y Toggles usados dentro del sistema)
+   (Dropdowns y Toggles)
    ========================================= */
 
 /* Toggle Switch Component */
@@ -366,19 +384,187 @@ input:checked+.component-toggle-slider:before {
 }
 
 @keyframes fadeInPopover {
-    from {
-        opacity: 0;
-        transform: translateY(-5px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* =========================================
-   5. RESPONSIVE DE COMPONENTES
+   5. EXTENSIÓN: COMPONENTES DE LAYOUT Y FORMULARIOS AVANZADOS
+   (Reemplazan estilos viejos de Auth)
+   ========================================= */
+
+/* Layout Centrado (Login, etc) */
+.component-layout-centered {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+    background-color: transparent;
+}
+
+/* Tarjeta Compacta (Login card) */
+.component-card--compact {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border: none;
+    box-shadow: none;
+}
+
+/* Headers Centrados */
+.component-header-centered {
+    text-align: center;
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.component-header-centered h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0;
+}
+.component-header-centered p {
+    font-size: 15px;
+    color: #666;
+    margin: 0;
+}
+
+/* Wrapper Flotante (Floating Labels) */
+.component-input-wrapper--floating {
+    position: relative;
+    width: 100%;
+    margin-bottom: 0; /* ELIMINADO EL MARGIN BOTTOM AQUI */
+}
+
+.component-input-wrapper--floating .component-text-input {
+    height: 56px;
+    padding: 24px 16px 8px 16px; /* Espacio para el label arriba */
+    background-color: #fff;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+/* Label Flotante */
+.component-label-floating {
+    position: absolute;
+    top: 50%;
+    left: 16px;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: #888;
+    pointer-events: none;
+    transition: all 0.2s ease-out;
+    z-index: 1;
+    background-color: transparent;
+}
+
+/* Animación del Label */
+.component-input-wrapper--floating .component-text-input:focus + .component-label-floating,
+.component-input-wrapper--floating .component-text-input:not(:placeholder-shown) + .component-label-floating {
+    top: 12px;
+    left: 16px;
+    font-size: 12px;
+    color: #000;
+    font-weight: 600;
+    transform: none;
+}
+
+/* Action Button (Ojo contraseña, refresh) */
+.component-input-action {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    border-radius: 50%;
+    cursor: pointer;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+    z-index: 2;
+}
+.component-input-action:hover {
+    background-color: #f5f5fa;
+    color: #000;
+}
+
+/* Ajuste de padding si hay acción */
+.component-input-wrapper--floating .component-text-input[type="password"],
+.component-input-wrapper--floating .component-text-input.has-action {
+    padding-right: 48px;
+}
+
+/* Mensajes / Alertas */
+.component-message {
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    text-align: left;
+    margin-bottom: 16px;
+    border: 1px solid transparent;
+}
+.component-message--error {
+    background-color: #ffebee;
+    color: #d32f2f;
+    border-color: #ffcdd2;
+    text-align: center;
+    margin-top: 16px;
+    animation: fadeIn 0.3s ease;
+}
+.component-message--success {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border-color: #c8e6c9;
+}
+
+/* Footer de texto (Links abajo) */
+.component-text-footer {
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+    margin-top: 12px;
+}
+.component-text-footer a {
+    color: #000;
+    font-weight: 600;
+    text-decoration: none;
+}
+.component-text-footer a:hover {
+    text-decoration: underline;
+}
+
+/* Links simples (Olvidé contraseña) */
+.component-link-simple {
+    display: block;
+    text-align: right;
+    font-size: 14px;
+    color: #666;
+    text-decoration: none;
+    margin: 0 0 8px 0; 
+}
+.component-link-simple:hover {
+    color: #000;
+    text-decoration: underline;
+}
+
+/* Helpers Adicionales */
+.w-100 { width: 100%; }
+.m-0 { margin: 0 !important; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+
+/* =========================================
+   6. RESPONSIVE DE COMPONENTES
    ========================================= */
 .component-group-item--stacked {
     flex-direction: column !important;
