@@ -7,6 +7,11 @@ require_once __DIR__ . '/../includes/libs/I18n.php';
 // Es recomendable incluir la DB por si alguna sección la requiere directamente
 require_once __DIR__ . '/../config/database/db.php';
 
+// === SOLUCIÓN: DEFINIR BASEPATH AQUÍ ===
+// Esto asegura que todas las vistas cargadas por AJAX tengan acceso a la ruta base
+$basePath = '/ProjectAurora/'; 
+// =======================================
+
 // Obtenemos el idioma de la sesión o usamos el default
 $userLang = $_SESSION['preferences']['language'] ?? 'es-latam';
 $i18n = new I18n($userLang);

@@ -1,6 +1,8 @@
 <?php
 // includes/sections/register.php
-$basePath = isset($basePath) ? $basePath : '/ProjectAurora/';
+
+// NOTA: $basePath ya viene definido desde loader.php o index.php, no hace falta redefinirlo.
+
 $currentRoute = isset($section) ? $section : ($currentSection ?? 'register');
 $isStep2 = $currentRoute === 'register/aditional-data';
 $isStep3 = $currentRoute === 'register/verification-account';
