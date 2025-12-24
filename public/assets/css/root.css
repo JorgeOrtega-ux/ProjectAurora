@@ -1,11 +1,10 @@
-/* public/assets/css/styles.css */
+/* public/assets/css/root.css */
 
 @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap');
 
 :root {
     /* ========================================================================
        1. PRIMITIVOS (DESIGN TOKENS)
-       * Tu paleta completa de colores y variables base.
        ======================================================================== */
        
     /* --- GRAY SCALE (Base HSL) --- */
@@ -371,8 +370,6 @@
 
     /* ========================================================================
        2. SEMÁNTICA DEL PROYECTO (PROJECT AURORA)
-       * Aquí mapeamos los tokens de arriba a tus variables de uso real.
-       * Esto permite cambiar temas sin tocar el HTML.
        ======================================================================== */
 
     /* --- Backgrounds --- */
@@ -406,4 +403,30 @@
     /* --- Dimensions & Effects --- */
     --radius-md: var(--sl-border-radius-large); /* 12px aprox */
     --shadow-card: var(--sl-shadow-medium);
+
+    /* ========================================================================
+       3. COLORES FALTANTES / POR ACOMODAR (DETECTADOS EN ESTILOS VIEJOS)
+       * Añadidos para evitar uso de HEX directo.
+       ======================================================================== */
+    
+    /* Colores Específicos de Toast (Que no estaban mapeados) */
+    --color-toast-info: #0288d1;
+    --color-toast-warning: #ed6c02;
+    --color-toast-success-text: #2e7d32;
+    --color-toast-error-text: #d32f2f;
+    
+    /* Variaciones de Background */
+    --bg-hover-light: #f5f5fa; /* Similar a neutral-50 pero específico para hovers */
+    --bg-toggle-off: #e0e0e0;
+    
+    /* Bordes y Opacidades */
+    --border-light: rgba(0, 0, 0, 0.12);
+    --border-lighter: rgba(0, 0, 0, 0.08);
+    --border-transparent-20: #00000020;
+    --overlay-dark: rgba(0, 0, 0, 0.4);
+    
+    /* Roles de Usuario */
+    --role-moderator: #0000FF;
+    --role-administrator: #FF0000;
+    --role-user-border: #cccccc;
 }
