@@ -51,8 +51,15 @@ function routeDispatcher(section) {
     console.log(`Router Dispatch: Inicializando controladores para [${section}]`);
 
     switch (section) {
+  
+            
         case 'settings/your-profile':
             ProfileController.init();
+            SettingsController.sync(); // También aquí por el idioma
+            break;
+
+              case 'settings/accessibility': // <--- AGREGA ESTE CASO
+            SettingsController.sync(); // Forzar sincronización cuando esta vista cargue
             break;
             
         case 'settings/login-security':
