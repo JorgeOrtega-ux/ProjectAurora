@@ -186,9 +186,9 @@
             "desc": "Personaliza la apariencia y el comportamiento de la aplicación.",
             "theme_title": "Tema",
             "theme_desc": "Elige el tema de la interfaz.",
-            "theme_system": "Sistema",
-            "theme_light": "Claro",
-            "theme_dark": "Oscuro",
+            "theme_system": "Sincronizar con el sistema",
+            "theme_light": "Tema claro",
+            "theme_dark": "Tema oscuro",
             "toast_title": "Duración de notificaciones",
             "toast_desc": "Mantiene los mensajes en pantalla por más tiempo (10s)."
         }

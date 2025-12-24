@@ -1,54 +1,68 @@
 /**
  * public/assets/js/core/tooltip-manager.js
- * Sistema de Tooltips usando Popper.js (Posicionamiento Automático)
+ * Sistema de Tooltips usando Popper.js
+ * Lógica: Creación y destrucción dinámica de elementos en el DOM.
  */
 
 export const TooltipManager = {
     init: () => {
+        // Verificación de dependencia
         if (!window.Popper) {
             console.error('Popper.js no encontrado. Tooltips desactivados.');
             return;
         }
 
-        // Crear el elemento tooltip único en el DOM si no existe
-        let tooltipEl = document.getElementById('global-tooltip');
-        if (!tooltipEl) {
-            tooltipEl = document.createElement('div');
-            tooltipEl.id = 'global-tooltip';
-            tooltipEl.classList.add('tooltip');
-            tooltipEl.setAttribute('role', 'tooltip');
-            document.body.appendChild(tooltipEl);
-        }
-
         let popperInstance = null;
         let activeTrigger = null;
+        let currentTooltipEl = null; // Referencia al elemento DOM actual
 
+        // Función helper para fabricar el nodo HTML
+        const createTooltipElement = () => {
+            const el = document.createElement('div');
+            el.id = 'global-tooltip';
+            el.classList.add('tooltip');
+            el.setAttribute('role', 'tooltip');
+            return el;
+        };
+
+        // Mostrar Tooltip (Crear + Insertar)
         const showTooltip = (trigger) => {
+            // Limpieza preventiva por si hay un cambio muy rápido entre elementos
+            if (currentTooltipEl) {
+                removeTooltipFromDOM();
+            }
+
             const text = trigger.dataset.tooltip;
             const shortcut = trigger.dataset.shortcut;
             
-            // Ya no leemos data-placement, será automático
-
             if (!text) return;
 
             activeTrigger = trigger;
 
-            // Construir contenido
+            // 1. Crear elemento dinámicamente
+            currentTooltipEl = createTooltipElement();
+
+            // 2. Construir contenido (con o sin atajo de teclado)
             if (shortcut) {
-                tooltipEl.classList.add('tooltip--with-shortcut');
-                tooltipEl.innerHTML = `
+                currentTooltipEl.classList.add('tooltip--with-shortcut');
+                currentTooltipEl.innerHTML = `
                     <span class="tooltip-text">${text}</span>
                     <span class="tooltip-shortcut"><kbd>${shortcut}</kbd></span>
                 `;
             } else {
-                tooltipEl.classList.remove('tooltip--with-shortcut');
-                tooltipEl.innerHTML = `<span class="tooltip-text">${text}</span>`;
+                currentTooltipEl.classList.remove('tooltip--with-shortcut');
+                currentTooltipEl.innerHTML = `<span class="tooltip-text">${text}</span>`;
             }
 
-            tooltipEl.style.display = 'block';
+            // 3. Insertar en el DOM (Body)
+            document.body.appendChild(currentTooltipEl);
+            
+            // Hacerlo visible (block) para que Popper pueda calcular dimensiones.
+            // (El CSS original tiene display: none por defecto)
+            currentTooltipEl.style.display = 'block';
 
-            // Configuración de Popper con placement: 'auto'
-            popperInstance = Popper.createPopper(trigger, tooltipEl, {
+            // 4. Configurar Popper.js
+            popperInstance = Popper.createPopper(trigger, currentTooltipEl, {
                 placement: 'auto',
                 modifiers: [
                     {
@@ -66,42 +80,53 @@ export const TooltipManager = {
                 ],
             });
             
-            // Atributo para controlar visibilidad/estilo
-            tooltipEl.setAttribute('data-show', '');
+            // Atributo data-show para posibles transiciones CSS
+            currentTooltipEl.setAttribute('data-show', '');
         };
 
-        const hideTooltip = () => {
-            tooltipEl.style.display = 'none';
-            tooltipEl.removeAttribute('data-show');
+        // Ocultar Tooltip (Destruir + Remover)
+        const removeTooltipFromDOM = () => {
+            // Destruir instancia de Popper para limpiar listeners internos
             if (popperInstance) {
                 popperInstance.destroy();
                 popperInstance = null;
             }
+            
+            // Eliminar el nodo HTML del DOM
+            if (currentTooltipEl) {
+                currentTooltipEl.remove();
+                currentTooltipEl = null;
+            }
+            
             activeTrigger = null;
         };
 
-        // Delegación de eventos
+        // --- DELEGACIÓN DE EVENTOS ---
+
         const eventsShow = ['mouseenter', 'focus'];
         const eventsHide = ['mouseleave', 'blur'];
 
+        // Listener para mostrar
         eventsShow.forEach(event => {
             document.body.addEventListener(event, (e) => {
                 const trigger = e.target.closest('[data-tooltip]');
                 if (trigger) {
                     showTooltip(trigger);
                 }
-            }, true);
+            }, true); // Use capture para asegurar detección
         });
 
+        // Listener para ocultar
         eventsHide.forEach(event => {
             document.body.addEventListener(event, (e) => {
                 const trigger = e.target.closest('[data-tooltip]');
+                // Solo remover si el evento viene del trigger actualmente activo
                 if (trigger && trigger === activeTrigger) {
-                    hideTooltip();
+                    removeTooltipFromDOM();
                 }
             }, true);
         });
         
-        console.log("TooltipManager: Inicializado (Auto Placement)");
+        console.log("TooltipManager: Inicializado (Modo Dinámico - On Demand)");
     }
 };
