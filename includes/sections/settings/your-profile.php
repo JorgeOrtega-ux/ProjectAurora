@@ -16,7 +16,13 @@ $langLabels = [
     'en-gb'    => 'English (United Kingdom)',
     'fr-fr'    => 'Français (France)'
 ];
-$currentLangLabel = $langLabels[$prefLang] ?? $langLabels['es-latam'];
+
+// Validación de seguridad por si el idioma en sesión no existe en el array
+if (!array_key_exists($prefLang, $langLabels)) {
+    $prefLang = 'es-latam';
+}
+
+$currentLangLabel = $langLabels[$prefLang];
 ?>
 
 <div class="section-content active" data-section="settings/your-profile">
@@ -129,9 +135,11 @@ $currentLangLabel = $langLabels[$prefLang] ?? $langLabels['es-latam'];
                     </div>
                 </div>
                 <div class="component-card__actions">
-                    <div class="trigger-select-wrapper" onclick="toggleDropdown(this)">
+                    <div class="trigger-select-wrapper" data-trigger="dropdown">
                         <div class="trigger-selector">
-                            <span class="material-symbols-rounded trigger-select-icon">language</span>
+                            <span class="material-symbols-rounded trigger-select-icon">
+                                <?php echo (strpos($prefLang, 'es') !== false) ? 'language' : 'translate'; ?>
+                            </span>
                             <span class="trigger-select-text"><?php echo $currentLangLabel; ?></span>
                             <span class="material-symbols-rounded">expand_more</span>
                         </div>
@@ -142,7 +150,10 @@ $currentLangLabel = $langLabels[$prefLang] ?? $langLabels['es-latam'];
                                     $icon = (strpos($code, 'es') !== false) ? 'language' : 'translate'; 
                                 ?>
                                     <div class="menu-link <?php echo $isActive; ?>" 
-                                         onclick="selectOption(this, '<?php echo $label; ?>', '<?php echo $code; ?>')">
+                                         data-action="select-option"
+                                         data-value="<?php echo $code; ?>"
+                                         data-label="<?php echo $label; ?>"
+                                         data-type="language">
                                         <div class="menu-link-icon">
                                             <span class="material-symbols-rounded"><?php echo $icon; ?></span>
                                         </div>
@@ -152,7 +163,7 @@ $currentLangLabel = $langLabels[$prefLang] ?? $langLabels['es-latam'];
                             </div>
                         </div>
                     </div>
-                </div>
+                    </div>
             </div>
         </div>
 

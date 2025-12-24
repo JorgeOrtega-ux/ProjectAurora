@@ -20,8 +20,13 @@ $themeIcons = [
     'dark' => 'dark_mode'
 ];
 
-$currentThemeLabel = $themeLabels[$currentTheme] ?? $labelSystem;
-$currentThemeIcon = $themeIcons[$currentTheme] ?? 'settings_brightness';
+// Validación por si el tema en sesión es inválido
+if (!array_key_exists($currentTheme, $themeLabels)) {
+    $currentTheme = 'sync';
+}
+
+$currentThemeLabel = $themeLabels[$currentTheme];
+$currentThemeIcon = $themeIcons[$currentTheme];
 ?>
 
 <div class="section-content active" data-section="settings/accessibility">
@@ -42,7 +47,7 @@ $currentThemeIcon = $themeIcons[$currentTheme] ?? 'settings_brightness';
                 </div>
                 
                 <div class="component-card__actions">
-                    <div class="trigger-select-wrapper" onclick="toggleDropdown(this)">
+                    <div class="trigger-select-wrapper" data-trigger="dropdown">
                         
                         <div class="trigger-selector">
                             <span class="material-symbols-rounded trigger-select-icon"><?php echo $currentThemeIcon; ?></span>
@@ -53,7 +58,10 @@ $currentThemeIcon = $themeIcons[$currentTheme] ?? 'settings_brightness';
                         <div class="popover-module">
                             <div class="menu-list">
                                 <div class="menu-link <?php echo ($currentTheme === 'sync') ? 'active' : ''; ?>" 
-                                     onclick="selectOption(this, '<?php echo $labelSystem; ?>', 'sync')">
+                                     data-action="select-option"
+                                     data-value="sync" 
+                                     data-label="<?php echo $labelSystem; ?>" 
+                                     data-type="theme">
                                     <div class="menu-link-icon">
                                         <span class="material-symbols-rounded">settings_brightness</span>
                                     </div>
@@ -61,7 +69,10 @@ $currentThemeIcon = $themeIcons[$currentTheme] ?? 'settings_brightness';
                                 </div>
                                 
                                 <div class="menu-link <?php echo ($currentTheme === 'light') ? 'active' : ''; ?>" 
-                                     onclick="selectOption(this, '<?php echo $labelLight; ?>', 'light')">
+                                     data-action="select-option"
+                                     data-value="light" 
+                                     data-label="<?php echo $labelLight; ?>" 
+                                     data-type="theme">
                                     <div class="menu-link-icon">
                                         <span class="material-symbols-rounded">light_mode</span>
                                     </div>
@@ -69,7 +80,10 @@ $currentThemeIcon = $themeIcons[$currentTheme] ?? 'settings_brightness';
                                 </div>
                                 
                                 <div class="menu-link <?php echo ($currentTheme === 'dark') ? 'active' : ''; ?>" 
-                                     onclick="selectOption(this, '<?php echo $labelDark; ?>', 'dark')">
+                                     data-action="select-option"
+                                     data-value="dark" 
+                                     data-label="<?php echo $labelDark; ?>" 
+                                     data-type="theme">
                                     <div class="menu-link-icon">
                                         <span class="material-symbols-rounded">dark_mode</span>
                                     </div>
@@ -79,7 +93,7 @@ $currentThemeIcon = $themeIcons[$currentTheme] ?? 'settings_brightness';
                         </div>
 
                     </div>
-                </div>
+                    </div>
             </div>
         </div>
 
