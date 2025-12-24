@@ -33,12 +33,5 @@
 
         </div>
 
-        <div class="component-card">
-            <button class="component-button" data-nav="settings/login-security">
-                <span class="material-symbols-rounded">arrow_back</span>
-                <?php echo $i18n->t('settings.devices.btn_back'); ?>
-            </button>
-        </div>
-
     </div>
 </div>
