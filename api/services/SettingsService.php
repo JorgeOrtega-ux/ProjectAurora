@@ -1,6 +1,9 @@
 <?php
 // api/services/SettingsService.php
 
+// Asegurarse de cargar la nueva librería
+require_once __DIR__ . '/../../includes/libs/GoogleAuthenticator.php';
+
 class SettingsService {
     private $pdo;
     private $i18n;
@@ -187,18 +190,28 @@ class SettingsService {
     }
 
     public function init2fa() {
-        $secret = TOTP::createSecret();
+        // CAMBIO: Usar GoogleAuthenticator
+        $secret = GoogleAuthenticator::createSecret();
         $_SESSION['temp_2fa_secret'] = $secret;
+        
         $username = $_SESSION['username'] ?? 'User';
-        $qrUrl = TOTP::getQRCodeUrl($username, $secret, 'ProjectAurora');
-        return ['success' => true, 'message' => $this->i18n->t('api.qr_scan'), 'qr_url' => $qrUrl, 'secret' => $secret];
+        // CAMBIO: Obtener URL otpauth cruda, no imagen
+        $otpauthUrl = GoogleAuthenticator::getQrUrl($username, $secret, 'ProjectAurora');
+        
+        return [
+            'success' => true, 
+            'message' => $this->i18n->t('api.qr_scan'), 
+            'otpauth_url' => $otpauthUrl, // Enviamos el string para el JS
+            'secret' => $secret
+        ];
     }
 
     public function enable2fa($code) {
         if (!isset($_SESSION['temp_2fa_secret'])) return ['success' => false, 'message' => $this->i18n->t('api.session_config_expired')];
         $secret = $_SESSION['temp_2fa_secret'];
         
-        if (TOTP::verifyCode($secret, $code)) {
+        // CAMBIO: Usar GoogleAuthenticator
+        if (GoogleAuthenticator::verifyCode($secret, $code)) {
             $recoveryCodes = [];
             for($i=0; $i<8; $i++) $recoveryCodes[] = bin2hex(random_bytes(4));
             $jsonCodes = json_encode($recoveryCodes);

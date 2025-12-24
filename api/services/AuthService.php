@@ -1,6 +1,9 @@
 <?php
 // api/services/AuthService.php
 
+// Asegurarse de cargar la nueva librería en lugar de TOTP
+require_once __DIR__ . '/../../includes/libs/GoogleAuthenticator.php';
+
 class AuthService {
     private $pdo;
     private $i18n;
@@ -261,7 +264,8 @@ class AuthService {
         }
 
         $isValid = false;
-        if (TOTP::verifyCode($user['two_factor_secret'], $code)) {
+        // CAMBIO: Usar GoogleAuthenticator
+        if (GoogleAuthenticator::verifyCode($user['two_factor_secret'], $code)) {
             $isValid = true;
         } else {
             $recoveryCodes = json_decode($user['two_factor_recovery_codes'] ?? '[]', true);

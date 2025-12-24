@@ -37,11 +37,40 @@ export const TwoFactorController = {
                         document.getElementById('step-qr').classList.remove('disabled');
                         document.getElementById('step-qr').classList.add('active');
 
-                        // Inyectar QR
-                        const qrDiv = document.getElementById('qr-container');
-                        if (qrDiv) {
-                            qrDiv.innerHTML = `<img src="${res.qr_url}" alt="QR Code" style="width: 200px; height: 200px; border-radius: 4px;">`;
+                        // Generar e Inyectar QR usando qr-code-styling
+                        const qrContainer = document.getElementById('qr-container');
+                        if (qrContainer && res.otpauth_url && window.QRCodeStyling) {
+                            
+                            // Limpiar spinner o contenido previo
+                            qrContainer.innerHTML = '';
+                            qrContainer.style.display = 'flex';
+                            qrContainer.style.justifyContent = 'center';
+
+                            const qrCode = new QRCodeStyling({
+                                width: 220,
+                                height: 220,
+                                type: "svg",
+                                data: res.otpauth_url,
+                                image: "",
+                                dotsOptions: {
+                                    color: "#000000",
+                                    type: "rounded"
+                                },
+                                backgroundOptions: {
+                                    color: "#ffffff",
+                                },
+                                imageOptions: {
+                                    crossOrigin: "anonymous",
+                                    margin: 10
+                                }
+                            });
+
+                            qrCode.append(qrContainer);
+                        } else if (!window.QRCodeStyling) {
+                            console.error("QRCodeStyling library not loaded.");
+                            qrContainer.innerHTML = '<p style="color:red">Error: Library missing</p>';
                         }
+
                     } else {
                         Toast.show(res.message, 'error');
                         setLoading(btnStart, false, originalText);
