@@ -32,12 +32,13 @@ function initModuleSystem() {
     const buttons = document.querySelectorAll('[data-action]');
     const allModules = document.querySelectorAll('.module-content');
 
-    // Función auxiliar para cerrar con animación
+    // Función auxiliar para cerrar con animación (Maneja Profile y Notifications)
     const closeModuleWithAnimation = (mod) => {
         const isMobile = window.innerWidth <= 468;
-        const isProfile = mod.dataset.module === 'moduleProfile';
+        // Definimos qué módulos actúan como Bottom Sheet
+        const isSheetModule = mod.dataset.module === 'moduleProfile' || mod.dataset.module === 'moduleNotifications';
 
-        if (isMobile && isProfile && mod.classList.contains('active')) {
+        if (isMobile && isSheetModule && mod.classList.contains('active')) {
             mod.classList.add('closing');
             
             setTimeout(() => {
@@ -69,13 +70,14 @@ function initModuleSystem() {
         btn.addEventListener('click', (e) => {
             const action = btn.dataset.action;
 
-            // --- Lógica de módulos existentes ---
-            if (action === 'toggleModuleProfile' || action === 'toggleModuleSurface') {
+            // --- Lógica de módulos ---
+            if (action.startsWith('toggleModule')) {
                 e.stopPropagation(); 
                 
                 let targetModuleName = '';
                 if (action === 'toggleModuleProfile') targetModuleName = 'moduleProfile';
                 if (action === 'toggleModuleSurface') targetModuleName = 'moduleSurface';
+                if (action === 'toggleModuleNotifications') targetModuleName = 'moduleNotifications'; // Nuevo
 
                 if (targetModuleName) {
                     const targetModule = document.querySelector(`[data-module="${targetModuleName}"]`);
@@ -100,7 +102,7 @@ function initModuleSystem() {
                 }
             }
 
-            // --- NUEVA LÓGICA: TOGGLE BÚSQUEDA MÓVIL ---
+            // --- TOGGLE BÚSQUEDA MÓVIL ---
             if (action === 'toggleSearch') {
                 const searchContainer = document.getElementById('header-search-bar');
                 if (searchContainer) {
@@ -143,15 +145,21 @@ function initModuleSystem() {
         });
     }
 
-    initMobileDrag(closeModuleWithAnimation);
+    // Inicializar Drag para Perfil Y Notificaciones
+    const sheetModules = document.querySelectorAll('[data-module="moduleProfile"], [data-module="moduleNotifications"]');
+    sheetModules.forEach(mod => {
+        initMobileDrag(mod, closeModuleWithAnimation);
+    });
 }
 
-function initMobileDrag(closeCallback) {
-    const profileModule = document.querySelector('[data-module="moduleProfile"]');
-    if (!profileModule) return;
+/**
+ * Lógica genérica de arrastre para módulos tipo sheet
+ */
+function initMobileDrag(moduleElement, closeCallback) {
+    if (!moduleElement) return;
 
-    const content = profileModule.querySelector('.menu-content');
-    const handle = profileModule.querySelector('.pill-container');
+    const content = moduleElement.querySelector('.menu-content');
+    const handle = moduleElement.querySelector('.pill-container');
 
     if (!content || !handle) return;
 
@@ -178,8 +186,6 @@ function initMobileDrag(closeCallback) {
         const deltaY = clientY - startY;
 
         // Solo permitir bajar (deltaY > 0)
-        // Añadimos una resistencia elástica si intentan subir (deltaY < 0) opcional, 
-        // pero por ahora bloqueamos subir más allá del 0.
         if (deltaY > 0) {
             if (event.cancelable) event.preventDefault(); // Evitar scroll/refresh
             
@@ -200,7 +206,7 @@ function initMobileDrag(closeCallback) {
         const threshold = menuHeight * 0.4;
 
         if (currentY > threshold) {
-            closeCallback(profileModule);
+            closeCallback(moduleElement);
         } else {
             // Rebote
             content.style.transform = '';

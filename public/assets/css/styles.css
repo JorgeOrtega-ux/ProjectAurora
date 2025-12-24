@@ -281,6 +281,7 @@ html {
     justify-content: flex-end;
 }
 
+/* === MODULO PERFIL === */
 .module-content.module-profile {
     position: absolute;
     height: auto;
@@ -296,6 +297,35 @@ html {
     background-color: var(--bg-surface);
     border-radius: var(--radius-md);
     box-shadow: 0 4px 12px var(--border-transparent-20);
+}
+
+/* === MODULO NOTIFICACIONES (NUEVO) === */
+.module-content.module-notifications {
+    position: absolute;
+    height: auto;
+    top: calc(100% + 5px);
+    right: 0;
+    z-index: 998;
+}
+
+.module-notifications .menu-content {
+    width: 425px; /* Ancho solicitado */
+    height: 525px; /* Alto solicitado */
+    padding: 0; /* Ajuste para que el contenido fluya */
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-surface);
+    border-radius: var(--radius-md);
+    box-shadow: 0 4px 12px var(--border-transparent-20);
+}
+
+.module-notifications .menu-content-top {
+    padding: 16px; /* Padding específico para notificaciones */
+}
+
+.module-notifications .menu-content-bottom {
+    justify-content: flex-start; /* Contenido arriba */
+    padding: 0;
 }
 
 /* Enlaces de menú */
@@ -541,10 +571,12 @@ html {
 }
 
 /* =========================================
-   7. MOBILE PROFILE (BOTTOM SHEET)
+   7. MOBILE PROFILE & NOTIFICATIONS (BOTTOM SHEET)
    ========================================= */
 @media (max-width: 468px) {
-    .module-content.module-profile {
+    /* Aplicar a ambos módulos */
+    .module-content.module-profile,
+    .module-content.module-notifications {
         width: 100%;
         height: 100%;
         background-color: rgba(0, 0, 0, 0.5);
@@ -558,10 +590,11 @@ html {
         align-items: flex-end;
     }
 
-    .module-profile .menu-content {
+    .module-profile .menu-content,
+    .module-notifications .menu-content {
         width: 100%;
         height: auto;
-        max-height: 85vh;
+        max-height: 85vh; /* Ambos respetan el max height */
         background-color: var(--bg-surface);
         border-top-left-radius: 16px;
         border-top-right-radius: 16px;
@@ -574,20 +607,25 @@ html {
         transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
     }
     
-    .module-content.module-profile.active {
+    /* Clases de animación compartidas */
+    .module-content.module-profile.active,
+    .module-content.module-notifications.active {
         display: flex !important;
         animation: fadeInOverlay 0.3s ease forwards;
     }
 
-    .module-content.module-profile.active .menu-content {
+    .module-content.module-profile.active .menu-content,
+    .module-content.module-notifications.active .menu-content {
         transform: translateY(0%);
     }
 
-    .module-content.module-profile.closing .menu-content {
+    .module-content.module-profile.closing .menu-content,
+    .module-content.module-notifications.closing .menu-content {
         transform: translateY(100%) !important;
     }
     
-    .module-content.module-profile.closing {
+    .module-content.module-profile.closing,
+    .module-content.module-notifications.closing {
         animation: fadeOutOverlay 0.3s ease forwards;
     }
 
@@ -596,7 +634,7 @@ html {
         justify-content: center;
         width: 100%;
         flex-shrink: 0;
-        padding-bottom: 8px;
+        padding: 8px 0;
         cursor: grab;
         touch-action: none;
     }

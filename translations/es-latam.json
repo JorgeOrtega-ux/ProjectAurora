@@ -13,6 +13,10 @@
             "founder": "Fundador"
         }
     },
+    "notifications": {
+        "title": "Notificaciones",
+        "mark_all_read": "Marcar todo como leído"
+    },
     "menu": {
         "home": "Página principal",
         "explore": "Explorar comunidades",
