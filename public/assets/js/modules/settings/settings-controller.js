@@ -1,10 +1,8 @@
 /**
  * public/assets/js/modules/settings/settings-controller.js
- * Actualizado con Logs de Depuración Profunda
  */
 
 import { ApiService } from '../../core/api-service.js';
-import { I18n } from '../../core/i18n-manager.js';
 
 export const SettingsController = (function() {
     
@@ -16,74 +14,43 @@ export const SettingsController = (function() {
         triggerIcon: '.trigger-select-icon',
         optionClass: '.menu-link',
         activeClass: 'active',
-        // Selectores de datos
         attrTrigger: '[data-trigger="dropdown"]',
-        attrOption: '[data-action="select-option"]'
+        attrOption: '[data-action="select-option"]',
+        attrSearch: '[data-action="filter-languages"]'
     };
 
     function init() {
-        console.group("⚙️ SettingsController: Init");
         _bindEvents();
         _initToggles();
-        
-        // Intentar sincronizar al inicio
         _syncStateWithDOM();
-        
-        console.groupEnd();
     }
 
-    /**
-     * MÉTODO PÚBLICO NUEVO:
-     * Llama a esto cuando cargues la vista de Accesibilidad vía AJAX/Router
-     */
     function sync() {
-        console.log("🔄 SettingsController: Forzando resincronización manual...");
         _syncStateWithDOM();
     }
 
     function _syncStateWithDOM() {
         const prefs = window.USER_PREFS || {};
-        console.groupCollapsed("🔍 Sincronizando DOM con Preferencias");
-        console.log("📦 Preferencias actuales:", JSON.stringify(prefs));
 
         if (prefs.language) _highlightActiveOption('language', prefs.language);
         if (prefs.theme) _highlightActiveOption('theme', prefs.theme);
-        
-        console.groupEnd();
     }
 
     function _highlightActiveOption(type, value) {
         const selector = `${SELECTORS.optionClass}[data-type="${type}"]`;
         const options = document.querySelectorAll(selector);
-        
-        console.log(`🔎 Buscando elementos para [${type}]:`, selector);
-        console.log(`📊 Cantidad encontrada: ${options.length}`);
 
-        if (options.length === 0) {
-            console.warn(`⚠️ NO se encontraron elementos en el DOM para [${type}]. Es probable que la vista no esté cargada todavía.`);
-            return;
-        }
-
-        let matchFound = false;
+        if (options.length === 0) return;
 
         options.forEach(opt => {
             const optValue = opt.dataset.value;
             const isMatch = (optValue === value);
             
-            // Log de comparación
-            // console.log(`   - Comparando elemento [${optValue}] vs preferencia [${value}] -> ${isMatch ? 'MATCH ✅' : 'No match'}`);
-
             if (isMatch) {
-                matchFound = true;
-                
-                // 1. Activar opción
                 opt.classList.add(SELECTORS.activeClass);
-
-                // 2. Actualizar texto del Trigger padre
                 const wrapper = opt.closest(SELECTORS.wrapper);
                 if (wrapper) {
                     const triggerText = wrapper.querySelector(SELECTORS.triggerText);
-                    // Actualizar texto si existe
                     if (triggerText && opt.dataset.label) {
                         triggerText.innerText = opt.dataset.label;
                     }
@@ -92,18 +59,13 @@ export const SettingsController = (function() {
                 opt.classList.remove(SELECTORS.activeClass);
             }
         });
-
-        if (matchFound) {
-            console.log(`✅ UI Actualizada correctamente para [${type} = ${value}]`);
-        } else {
-            console.error(`❌ ERROR LÓGICO: Se encontraron elementos para [${type}] pero ninguno tiene el valor [${value}]. Revisa los data-value en el HTML.`);
-        }
     }
 
-    // --- (El resto de funciones _bindEvents, _initToggles, savePreference siguen igual) ---
-    
     function _bindEvents() {
+        // Event Delegation
         document.addEventListener('click', (e) => {
+            if (e.target.closest(SELECTORS.attrSearch)) return;
+
             const optionBtn = e.target.closest(SELECTORS.attrOption);
             if (optionBtn) { _handleOptionSelect(optionBtn, e); return; }
 
@@ -112,8 +74,40 @@ export const SettingsController = (function() {
                 if (e.target.closest(SELECTORS.triggerSelector)) { _handleDropdownToggle(triggerWrapper, e); }
                 return;
             }
+            
             if (!e.target.closest(SELECTORS.wrapper)) { _closeAllDropdowns(); }
         });
+
+        // Búsqueda en tiempo real
+        document.addEventListener('input', (e) => {
+            if (e.target.matches(SELECTORS.attrSearch)) {
+                _handleLanguageSearch(e.target);
+            }
+        });
+    }
+
+    function _handleLanguageSearch(input) {
+        const term = input.value.toLowerCase().trim();
+        const wrapper = input.closest(SELECTORS.popover);
+        if (!wrapper) return;
+
+        const links = wrapper.querySelectorAll(`${SELECTORS.optionClass}[data-type="language"]`);
+        const noResults = wrapper.querySelector('#no-lang-results');
+        let hasVisible = false;
+
+        links.forEach(link => {
+            const label = (link.dataset.label || '').toLowerCase();
+            if (label.includes(term)) {
+                link.style.display = 'flex';
+                hasVisible = true;
+            } else {
+                link.style.display = 'none';
+            }
+        });
+
+        if (noResults) {
+            noResults.style.display = hasVisible ? 'none' : 'block';
+        }
     }
 
     function _handleDropdownToggle(wrapperElement, event) {
@@ -124,10 +118,15 @@ export const SettingsController = (function() {
 
         const isAlreadyActive = menu.classList.contains(SELECTORS.activeClass);
         _closeAllDropdowns();
+        
         if (!isAlreadyActive) {
             menu.classList.add(SELECTORS.activeClass);
             trigger.classList.add(SELECTORS.activeClass);
             wrapperElement.classList.add('dropdown-active');
+            
+            // Auto-focus al input
+            const input = menu.querySelector('input');
+            if(input) setTimeout(() => input.focus(), 100);
         }
     }
 
@@ -141,7 +140,6 @@ export const SettingsController = (function() {
         const label = optionElement.dataset.label;
         const type = optionElement.dataset.type;
 
-        // UI Update
         const triggerText = wrapper.querySelector(SELECTORS.triggerText);
         if (triggerText && label) triggerText.innerText = label;
         
@@ -166,7 +164,14 @@ export const SettingsController = (function() {
     }
 
     function _closeAllDropdowns() {
-        document.querySelectorAll(SELECTORS.popover).forEach(el => el.classList.remove(SELECTORS.activeClass));
+        document.querySelectorAll(SELECTORS.popover).forEach(el => {
+            el.classList.remove(SELECTORS.activeClass);
+            const input = el.querySelector('input');
+            if(input) {
+                input.value = '';
+                _handleLanguageSearch(input); // Resetear lista
+            }
+        });
         document.querySelectorAll(SELECTORS.triggerSelector).forEach(el => el.classList.remove(SELECTORS.activeClass));
         document.querySelectorAll(SELECTORS.wrapper).forEach(el => el.classList.remove('dropdown-active'));
     }
@@ -188,7 +193,6 @@ export const SettingsController = (function() {
     }
 
     function _initToggles() {
-        // Toggles logic... (sin cambios)
         const toggleLinks = document.getElementById('pref-open-links');
         if (toggleLinks) {
             toggleLinks.addEventListener('change', (e) => savePreference('open_links_new_tab', e.target.checked));
@@ -201,7 +205,7 @@ export const SettingsController = (function() {
 
     return {
         init,
-        sync, // <--- EXPORTADO PÚBLICAMENTE
+        sync, 
         savePreference,
         applyTheme
     };

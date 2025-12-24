@@ -611,7 +611,8 @@ input:checked+.component-toggle-slider:before {
         flex: 1;
         min-height: 56px;
     }
-}/* =========================================
+}
+/* =========================================
    7. AJUSTES RESPONSIVE (Móvil < 468px)
    ========================================= */
 @media (max-width: 468px) {
@@ -630,4 +631,61 @@ input:checked+.component-toggle-slider:before {
     .component-card--compact {
         padding: 0;
     }
+}
+
+/* =========================================
+   8. EXTENSIONES: DROPDOWNS AVANZADOS (Buscador)
+   ========================================= */
+
+/* Modificador para Popover que contiene estructuras complejas (Header + Lista) */
+.popover-module.popover-module--searchable {
+    padding: 0; /* Elimina padding default para que el header toque los bordes */
+    overflow: hidden; /* Asegura bordes redondeados */
+    display: none; /* Mantiene comportamiento base */
+    flex-direction: column;
+}
+
+.popover-module.popover-module--searchable.active {
+    display: flex; /* Mantiene comportamiento base */
+}
+
+/* Contenedor interno sin sombras ni bordes (ya los tiene el popover padre) */
+.menu-content.menu-content--flush {
+    width: 100%;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 0;
+    background-color: transparent;
+}
+
+/* Cabecera del menú (Input de búsqueda) */
+.menu-search-header {
+    padding: 8px;
+    border-bottom: 1px solid var(--border-transparent-20);
+    background-color: var(--bg-surface);
+}
+
+/* Lista con scroll interno */
+.menu-list.menu-list--scrollable {
+    padding: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    overscroll-behavior: contain; /* Evita scroll del body al llegar al final */
+}
+
+/* Modificador para Inputs pequeños dentro de menús */
+.component-text-input.component-text-input--sm {
+    height: 36px;
+    font-size: 13px;
+    padding: 0 10px;
+}
+
+/* Estado vacío (Sin resultados) */
+.menu-empty-state {
+    display: none; /* Controlado por JS */
+    padding: 16px 12px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-secondary);
+    user-select: none;
 }

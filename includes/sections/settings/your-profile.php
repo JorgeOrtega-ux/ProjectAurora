@@ -17,7 +17,6 @@ $langLabels = [
     'fr-fr'    => 'Français (France)'
 ];
 
-// Validación de seguridad por si el idioma en sesión no existe en el array
 if (!array_key_exists($prefLang, $langLabels)) {
     $prefLang = 'es-latam';
 }
@@ -34,9 +33,8 @@ $currentLangLabel = $langLabels[$prefLang];
         </div>
 
         <div class="component-card component-card--grouped">
-
             <div class="component-group-item" data-component="profile-picture-section">
-                <div class="component-card__content">
+                 <div class="component-card__content">
                     <div class="component-card__profile-picture" data-role="<?php echo htmlspecialchars($_SESSION['role'] ?? 'user'); ?>">
                         <img src="<?php echo $globalAvatarSrc; ?>" class="component-card__avatar-image" id="preview-avatar">
                         <div class="component-card__avatar-overlay" id="btn-trigger-upload">
@@ -73,7 +71,7 @@ $currentLangLabel = $langLabels[$prefLang];
                     </div>
                 </div>
             </div>
-
+            
             <hr class="component-divider">
 
             <div class="component-group-item" data-component="username-section">
@@ -123,7 +121,6 @@ $currentLangLabel = $langLabels[$prefLang];
                     <button type="button" class="component-button" data-action="start-edit" data-target="email"><?php echo $i18n->t('settings.profile.btn_edit'); ?></button>
                 </div>
             </div>
-
         </div>
 
         <div class="component-card component-card--grouped">
@@ -143,27 +140,45 @@ $currentLangLabel = $langLabels[$prefLang];
                             <span class="trigger-select-text"><?php echo $currentLangLabel; ?></span>
                             <span class="material-symbols-rounded">expand_more</span>
                         </div>
-                        <div class="popover-module">
-                            <div class="menu-list">
-                                <?php foreach($langLabels as $code => $label): 
-                                    $isActive = ($code === $prefLang) ? 'active' : '';
-                                    $icon = (strpos($code, 'es') !== false) ? 'language' : 'translate'; 
-                                ?>
-                                    <div class="menu-link <?php echo $isActive; ?>" 
-                                         data-action="select-option"
-                                         data-value="<?php echo $code; ?>"
-                                         data-label="<?php echo $label; ?>"
-                                         data-type="language">
-                                        <div class="menu-link-icon">
-                                            <span class="material-symbols-rounded"><?php echo $icon; ?></span>
-                                        </div>
-                                        <div class="menu-link-text"><?php echo $label; ?></div>
+                        
+                        <div class="popover-module popover-module--searchable">
+                            <div class="menu-content menu-content--flush">
+                                
+                                <div class="menu-search-header">
+                                    <div class="component-input-wrapper">
+                                        <input type="text" 
+                                               class="component-text-input component-text-input--sm" 
+                                               placeholder="<?php echo $i18n->t('header.search_placeholder'); ?>" 
+                                               data-action="filter-languages">
                                     </div>
-                                <?php endforeach; ?>
+                                </div>
+
+                                <div class="menu-list menu-list--scrollable">
+                                    <?php foreach($langLabels as $code => $label): 
+                                        $isActive = ($code === $prefLang) ? 'active' : '';
+                                        $icon = (strpos($code, 'es') !== false) ? 'language' : 'translate'; 
+                                    ?>
+                                        <div class="menu-link <?php echo $isActive; ?>" 
+                                             data-action="select-option"
+                                             data-value="<?php echo $code; ?>"
+                                             data-label="<?php echo $label; ?>"
+                                             data-type="language">
+                                            <div class="menu-link-icon">
+                                                <span class="material-symbols-rounded"><?php echo $icon; ?></span>
+                                            </div>
+                                            <div class="menu-link-text"><?php echo $label; ?></div>
+                                        </div>
+                                    <?php endforeach; ?>
+
+                                    <div class="menu-empty-state" id="no-lang-results">
+                                        No se encontraron resultados.
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
-                    </div>
-                    </div>
+                        </div>
+                </div>
             </div>
         </div>
 
