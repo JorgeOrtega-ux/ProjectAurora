@@ -609,5 +609,25 @@ input:checked+.component-toggle-slider:before {
 
     .component-button {
         flex: 1;
+        min-height: 56px;
+    }
+}/* =========================================
+   7. AJUSTES RESPONSIVE (Móvil < 468px)
+   ========================================= */
+@media (max-width: 468px) {
+    .component-layout-centered {
+        /* Cambiamos la alineación vertical de 'center' a 'flex-start' (arriba) */
+        align-items: flex-start;
+        
+        /* Agregamos el padding superior que pediste */
+        padding-top: 120px; 
+        
+        /* Aseguramos que si la pantalla es muy pequeña, el contenedor crezca */
+        height: auto;
+        min-height: 100%;
+    }
+
+    .component-card--compact {
+        padding: 0;
     }
 }
