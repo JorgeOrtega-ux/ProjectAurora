@@ -7,12 +7,15 @@ import { initMainController } from './main-controller.js';
 import { initUrlManager } from './core/url-manager.js';
 import { initAuthController } from './auth-controller.js'; 
 import { Toast } from './core/toast-manager.js'; 
-import { TooltipManager } from './core/tooltip-manager.js'; // Importar Tooltips
+import { TooltipManager } from './core/tooltip-manager.js';
 
+// Módulos de configuración (Granulares)
 import { SettingsController } from './modules/settings/settings-controller.js'; 
 import { ProfileController } from './modules/settings/profile-controller.js'; 
 import { DevicesController } from './modules/settings/devices-controller.js';
-import { DeleteAccountController } from './modules/settings/delete-account-controller.js'; 
+import { DeleteAccountController } from './modules/settings/delete-account-controller.js';
+import { TwoFactorController } from './modules/settings/2fa-controller.js';
+import { SecurityController } from './modules/settings/security-controller.js'; // <--- NUEVO
 
 const App = {
     init: () => {
@@ -24,10 +27,10 @@ const App = {
         }
         
         Toast.init();
-        TooltipManager.init(); // Inicializar Tooltips
+        TooltipManager.init();
         initMainController();
         initAuthController();
-        SettingsController.init();
+        SettingsController.init(); // Inicializa listeners globales de settings
         
         if (document.querySelector('.general-content-scrolleable')) {
              initUrlManager();
@@ -52,6 +55,10 @@ function routeDispatcher(section) {
             ProfileController.init();
             break;
             
+        case 'settings/login-security':
+            SecurityController.init(); // Maneja contraseña
+            break;
+
         case 'settings/devices':
             DevicesController.init();
             break;
@@ -59,9 +66,10 @@ function routeDispatcher(section) {
         case 'settings/delete-account': 
             DeleteAccountController.init();
             break;
-            
-        // El caso para accessibility se maneja globalmente en settings-controller 
-        // porque los eventos de dropdown están delegados en el documento.
+
+        case 'settings/2fa-setup': 
+            TwoFactorController.init();
+            break;
             
         default:
             break;

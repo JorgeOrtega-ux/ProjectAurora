@@ -19,7 +19,7 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
                         <?php echo $i18n->t('settings.2fa.protected_desc'); ?>
                     </p>
                     <br>
-                    <button type="button" class="component-button" onclick="disable2FA()" style="width: 100%; justify-content: center; color: #d32f2f; border-color: #d32f2f50;">
+                    <button type="button" class="component-button" id="btn-disable-2fa" style="width: 100%; justify-content: center; color: #d32f2f; border-color: #d32f2f50;">
                         <?php echo $i18n->t('settings.2fa.btn_disable'); ?>
                     </button>
                 </div>
@@ -33,7 +33,7 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
                             <?php echo $i18n->t('settings.2fa.setup_desc'); ?>
                         </p>
                         <br>
-                        <button type="button" class="component-button primary" onclick="start2FASetup()" style="width: 100%; justify-content: center;">
+                        <button type="button" class="component-button primary" id="btn-start-2fa" style="width: 100%; justify-content: center;">
                             <?php echo $i18n->t('settings.2fa.btn_start'); ?>
                         </button>
                     </div>
@@ -55,7 +55,7 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
                                 <input type="text" id="input-2fa-verify" class="component-text-input" placeholder="000000" maxlength="6" style="text-align: center; letter-spacing: 4px; font-size: 18px;">
                             </div>
                             <br>
-                            <button type="button" class="component-button primary" onclick="verifyAndEnable2FA()" style="width: 100%; justify-content: center;">
+                            <button type="button" class="component-button primary" id="btn-confirm-2fa" style="width: 100%; justify-content: center;">
                                 <?php echo $i18n->t('settings.2fa.btn_verify'); ?>
                             </button>
                         </div>
@@ -83,144 +83,3 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
         </div>
     </div>
 </div>
-
-<script>
-    // --- LÓGICA 2FA (Actualizada con I18n) ---
-    // Usamos el objeto global I18n definido en i18n-manager.js, 
-    // pero como este script es inline, accedemos a window.TRANSLATIONS o usamos I18n si ya está en scope global.
-    // Dado que I18n es un módulo ES6, no está en window por defecto, pero index.php inyecta window.TRANSLATIONS.
-    // Vamos a usar una función helper simple aquí para leer de window.TRANSLATIONS
-    
-    function t(key) {
-        if (!window.TRANSLATIONS) return key;
-        const keys = key.split('.');
-        let value = window.TRANSLATIONS;
-        for (const k of keys) {
-            if (value && value[k]) value = value[k];
-            else return key;
-        }
-        return (typeof value === 'string') ? value : key;
-    }
-
-    async function disable2FA() {
-        if(!confirm(t('js.2fa.confirm_disable'))) return;
-
-        const btn = event.target;
-        const originalText = btn.innerText;
-        btn.disabled = true;
-        btn.innerText = t('js.2fa.disabling');
-
-        const formData = new FormData();
-        formData.append('action', 'disable_2fa');
-
-        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-        if(csrfMeta) formData.append('csrf_token', csrfMeta.getAttribute('content'));
-
-        try {
-            const response = await fetch('<?php echo $basePath; ?>api/settings-handler.php', {
-                method: 'POST',
-                body: formData
-            });
-            const res = await response.json();
-
-            if(res.success) {
-                window.location.reload();
-            } else {
-                alert(res.message);
-                btn.disabled = false;
-                btn.innerText = originalText;
-            }
-        } catch(e) {
-            console.error(e);
-            alert(t('js.2fa.error_connection'));
-            btn.disabled = false;
-            btn.innerText = originalText;
-        }
-    }
-
-    async function start2FASetup() {
-        const btn = event.target;
-        const originalText = btn.innerText;
-        btn.disabled = true;
-        btn.innerText = t('js.2fa.generating');
-
-        const formData = new FormData();
-        formData.append('action', 'init_2fa');
-
-        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-        if(csrfMeta) formData.append('csrf_token', csrfMeta.getAttribute('content'));
-
-        try {
-            const response = await fetch('<?php echo $basePath; ?>api/settings-handler.php', {
-                method: 'POST',
-                body: formData
-            });
-            const res = await response.json();
-
-            if(res.success) {
-                document.getElementById('step-intro').classList.add('disabled');
-                document.getElementById('step-intro').classList.remove('active');
-                
-                document.getElementById('step-qr').classList.remove('disabled');
-                document.getElementById('step-qr').classList.add('active');
-
-                const qrDiv = document.getElementById('qr-container');
-                qrDiv.innerHTML = `<img src="${res.qr_url}" alt="QR Code" style="width: 200px; height: 200px;">`;
-            } else {
-                alert(res.message);
-                btn.disabled = false;
-                btn.innerText = originalText;
-            }
-        } catch(e) {
-            console.error(e);
-            alert(t('js.2fa.error_connection'));
-            btn.disabled = false;
-            btn.innerText = originalText;
-        }
-    }
-
-    async function verifyAndEnable2FA() {
-        const code = document.getElementById('input-2fa-verify').value;
-        if(code.length < 6) { alert(t('js.2fa.fill_code')); return; }
-
-        const btn = event.target;
-        const originalText = btn.innerText;
-        btn.disabled = true;
-        btn.innerText = t('js.2fa.verifying');
-
-        const formData = new FormData();
-        formData.append('action', 'enable_2fa');
-        formData.append('code', code);
-
-        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-        if(csrfMeta) formData.append('csrf_token', csrfMeta.getAttribute('content'));
-
-        try {
-            const response = await fetch('<?php echo $basePath; ?>api/settings-handler.php', {
-                method: 'POST',
-                body: formData
-            });
-            const res = await response.json();
-
-            if(res.success) {
-                document.getElementById('step-qr').classList.add('disabled');
-                document.getElementById('step-qr').classList.remove('active');
-                
-                document.getElementById('step-success').classList.remove('disabled');
-                document.getElementById('step-success').classList.add('active');
-
-                const list = document.getElementById('recovery-codes-list');
-                list.innerHTML = res.recovery_codes.map(c => `<span>${c}</span>`).join('');
-            } else {
-                alert(res.message);
-                btn.disabled = false;
-                btn.innerText = originalText;
-            }
-        } catch(e) {
-            console.error(e);
-            alert(t('js.2fa.error_verify'));
-            btn.disabled = false;
-            btn.innerText = originalText;
-        }
-    }
-</script>

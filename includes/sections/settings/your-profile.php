@@ -9,7 +9,6 @@ $classCustom  = $isCustomAvatar ? 'active' : 'disabled';
 $prefLang = $_SESSION['preferences']['language'] ?? 'es-latam';
 $prefOpenLinks = $_SESSION['preferences']['open_links_new_tab'] ?? true;
 
-// Mantenemos los nombres nativos de los idiomas ya que es convención internacional
 $langLabels = [
     'es-latam' => 'Español (Latinoamérica)',
     'es-mx'    => 'Español (México)',
@@ -34,7 +33,7 @@ $currentLangLabel = $langLabels[$prefLang] ?? $langLabels['es-latam'];
                 <div class="component-card__content">
                     <div class="component-card__profile-picture" data-role="<?php echo htmlspecialchars($_SESSION['role'] ?? 'user'); ?>">
                         <img src="<?php echo $globalAvatarSrc; ?>" class="component-card__avatar-image" id="preview-avatar">
-                        <div class="component-card__avatar-overlay" onclick="document.getElementById('upload-avatar').click()">
+                        <div class="component-card__avatar-overlay" id="btn-trigger-upload">
                             <span class="material-symbols-rounded">photo_camera</span>
                         </div>
                     </div>
@@ -48,7 +47,7 @@ $currentLangLabel = $langLabels[$prefLang] ?? $langLabels['es-latam'];
 
                 <div class="component-card__actions actions-right">
                     <div class="<?php echo $classDefault; ?>" data-state="profile-picture-actions-default">
-                        <button type="button" class="component-button primary" onclick="document.getElementById('upload-avatar').click()">
+                        <button type="button" class="component-button primary" id="btn-upload-init">
                             <?php echo $i18n->t('settings.profile.btn_upload'); ?>
                         </button>
                     </div>
@@ -83,14 +82,14 @@ $currentLangLabel = $langLabels[$prefLang] ?? $langLabels['es-latam'];
                                 <input type="text" class="component-text-input" id="input-username" value="<?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?>">
                             </div>
                             <div class="component-card__actions disabled m-0" data-state="username-actions-edit">
-                                <button type="button" class="component-button" onclick="toggleEdit('username', false)"><?php echo $i18n->t('settings.profile.btn_cancel'); ?></button>
-                                <button type="button" class="component-button primary" onclick="saveData('username')"><?php echo $i18n->t('settings.profile.btn_save'); ?></button>
+                                <button type="button" class="component-button" data-action="cancel-edit" data-target="username"><?php echo $i18n->t('settings.profile.btn_cancel'); ?></button>
+                                <button type="button" class="component-button primary" data-action="save-field" data-target="username"><?php echo $i18n->t('settings.profile.btn_save'); ?></button>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="component-card__actions actions-right active" data-state="username-actions-view">
-                    <button type="button" class="component-button" onclick="toggleEdit('username', true)"><?php echo $i18n->t('settings.profile.btn_edit'); ?></button>
+                    <button type="button" class="component-button" data-action="start-edit" data-target="username"><?php echo $i18n->t('settings.profile.btn_edit'); ?></button>
                 </div>
             </div>
 
@@ -108,14 +107,14 @@ $currentLangLabel = $langLabels[$prefLang] ?? $langLabels['es-latam'];
                                 <input type="email" class="component-text-input" id="input-email" value="<?php echo htmlspecialchars($_SESSION['email'] ?? ''); ?>">
                             </div>
                             <div class="component-card__actions disabled m-0" data-state="email-actions-edit">
-                                <button type="button" class="component-button" onclick="toggleEdit('email', false)"><?php echo $i18n->t('settings.profile.btn_cancel'); ?></button>
-                                <button type="button" class="component-button primary" onclick="saveData('email')"><?php echo $i18n->t('settings.profile.btn_save'); ?></button>
+                                <button type="button" class="component-button" data-action="cancel-edit" data-target="email"><?php echo $i18n->t('settings.profile.btn_cancel'); ?></button>
+                                <button type="button" class="component-button primary" data-action="save-field" data-target="email"><?php echo $i18n->t('settings.profile.btn_save'); ?></button>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="component-card__actions actions-right active" data-state="email-actions-view">
-                    <button type="button" class="component-button" onclick="toggleEdit('email', true)"><?php echo $i18n->t('settings.profile.btn_edit'); ?></button>
+                    <button type="button" class="component-button" data-action="start-edit" data-target="email"><?php echo $i18n->t('settings.profile.btn_edit'); ?></button>
                 </div>
             </div>
 
