@@ -69,6 +69,7 @@ function initModuleSystem() {
         btn.addEventListener('click', (e) => {
             const action = btn.dataset.action;
 
+            // --- Lógica de módulos existentes ---
             if (action === 'toggleModuleProfile' || action === 'toggleModuleSurface') {
                 e.stopPropagation(); 
                 
@@ -98,6 +99,21 @@ function initModuleSystem() {
                     }
                 }
             }
+
+            // --- NUEVA LÓGICA: TOGGLE BÚSQUEDA MÓVIL ---
+            if (action === 'toggleSearch') {
+                const searchContainer = document.getElementById('header-search-bar');
+                if (searchContainer) {
+                    searchContainer.classList.toggle('active');
+                    btn.classList.toggle('active'); // Opcional: para iluminar el botón
+
+                    // Enfocar el input si se abre
+                    if (searchContainer.classList.contains('active')) {
+                        const input = searchContainer.querySelector('input');
+                        if(input) input.focus();
+                    }
+                }
+            }
         });
     });
 
@@ -116,6 +132,13 @@ function initModuleSystem() {
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
                 closeAllModules();
+                
+                // Cerrar búsqueda si está abierta
+                const searchContainer = document.getElementById('header-search-bar');
+                if (searchContainer && searchContainer.classList.contains('active')) {
+                    searchContainer.classList.remove('active');
+                    document.querySelectorAll('[data-action="toggleSearch"]').forEach(b => b.classList.remove('active'));
+                }
             }
         });
     }

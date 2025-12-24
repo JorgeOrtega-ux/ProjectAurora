@@ -8,7 +8,8 @@
             </div>
         </div>
     </div>
-    <div class="header-center">
+    
+    <div class="header-center" id="header-search-bar">
         <div class="search-wrapper">
             <div class="search-content">
                 <div class="search-icon">
@@ -20,8 +21,15 @@
             </div>
         </div>
     </div>
+
     <div class="header-right">
         <div class="header-item">
+            <div class="header-button mobile-search-trigger" 
+                 data-action="toggleSearch"
+                 data-tooltip="Buscar">
+                <span class="material-symbols-rounded">search</span>
+            </div>
+
             <div class="header-button" 
                  data-tooltip="Notificaciones">
                 <span class="material-symbols-rounded">notifications</span>

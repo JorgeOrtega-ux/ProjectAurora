@@ -134,8 +134,14 @@ html {
     transition: background-color 0.2s ease;
 }
 
-.header-button:hover {
+.header-button:hover,
+.header-button.active {
     background-color: #f5f5fa;
+}
+
+/* Trigger de búsqueda móvil (oculto en desktop) */
+.mobile-search-trigger {
+    display: none;
 }
 
 /* Perfil en Header */
@@ -775,12 +781,25 @@ html {
         order: 2;
     }
 
+    /* HEADER CENTER (BUSCADOR):
+       Por defecto oculto, se muestra al añadir .active */
     .header-center {
-        display: flex;
+        display: none;
         order: 3;
         flex: 0 0 100%;
         padding: 8px 0 0 0;
         width: 100%;
+        animation: slideDownSearch 0.2s ease-out;
+    }
+    
+    .header-center.active {
+        display: flex;
+    }
+
+    /* BOTÓN TRIGGER DE BÚSQUEDA:
+       Visible solo en móviles */
+    .mobile-search-trigger {
+        display: flex;
     }
 
     .search-wrapper {
@@ -804,6 +823,11 @@ html {
         width: 100%;
         border-radius: 0;
     }
+}
+
+@keyframes slideDownSearch {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .general-content:has(.module-surface.active) .general-content-top {
