@@ -2,14 +2,12 @@
 // public/index.php
 session_start();
 
-// Cargar Router, DB y el sistema I18n
 require_once __DIR__ . '/../config/routers/router.php';
 require_once __DIR__ . '/../config/database/db.php';
-require_once __DIR__ . '/../includes/libs/I18n.php';
+require_once __DIR__ . '/../includes/libs/Utils.php';
 
 // === MIDDLEWARE: AUTO-LOGIN POR COOKIE (TOKEN ROTATIVO) ===
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['auth_persistence_token'])) {
-
     $parts = explode(':', $_COOKIE['auth_persistence_token']);
 
     if (count($parts) === 2) {
@@ -22,14 +20,12 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['auth_persistence_token'])) {
 
         if ($authToken) {
             if (hash_equals($authToken['hashed_validator'], hash('sha256', $validator))) {
-
                 $stmtUser = $pdo->prepare("SELECT * FROM users WHERE id = ?");
                 $stmtUser->execute([$authToken['user_id']]);
                 $user = $stmtUser->fetch();
 
                 if ($user) {
                     session_regenerate_id(true);
-
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['username'] = $user['username'];
                     $_SESSION['role'] = $user['role'];
@@ -79,10 +75,10 @@ if (empty($_SESSION['csrf_token'])) {
 
 $isLoggedIn = isset($_SESSION['user_id']);
 
-// === SISTEMA DE TRADUCCIÓN (INICIALIZACIÓN) ===
-$userLang = $_SESSION['preferences']['language'] ?? 'es-latam';
-$i18n = new I18n($userLang);
-// ==============================================
+// === SISTEMA DE TRADUCCIÓN USANDO UTILS ===
+$i18n = Utils::initI18n();
+$userLang = $_SESSION['preferences']['language'] ?? 'es-latam'; // Para el atributo lang del HTML
+// ==========================================
 
 $publicRoutes = [
     'login',
@@ -105,10 +101,9 @@ if (!$isLoggedIn) {
     }
 }
 
-$globalAvatarSrc = '';
-$userRole = 'guest';
-
+// === AVATAR Y DATOS DE SESIÓN USANDO UTILS ===
 if ($isLoggedIn) {
+    // Refrescar datos básicos de sesión
     try {
         if (isset($pdo)) {
             $stmt = $pdo->prepare("SELECT role, avatar_path, username, email, two_factor_enabled FROM users WHERE id = ? LIMIT 1");
@@ -126,23 +121,11 @@ if ($isLoggedIn) {
     } catch (Exception $e) {
         error_log("Error al refrescar sesión: " . $e->getMessage());
     }
-
-    $userRole = $_SESSION['role'] ?? 'user';
-
-    if (!empty($_SESSION['avatar'])) {
-        $avatarFile = __DIR__ . '/../' . $_SESSION['avatar'];
-        if (file_exists($avatarFile)) {
-            $mimeType = mime_content_type($avatarFile);
-            $data = file_get_contents($avatarFile);
-            $globalAvatarSrc = 'data:' . $mimeType . ';base64,' . base64_encode($data);
-        }
-    }
-
-    if (empty($globalAvatarSrc)) {
-        $name = $_SESSION['username'] ?? 'User';
-        $globalAvatarSrc = "https://ui-avatars.com/api/?name=" . urlencode($name) . "&background=random&color=fff";
-    }
 }
+
+$userRole = $_SESSION['role'] ?? 'guest';
+$globalAvatarSrc = Utils::getGlobalAvatarSrc();
+// =============================================
 
 $routesMap = require __DIR__ . '/../config/routes.php';
 $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
@@ -169,9 +152,7 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
 
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/root.css">
-
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/styles.css">
-
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components.css">
 
     <script type="module" src="<?php echo $basePath; ?>public/assets/js/app-init.js"></script>
@@ -212,5 +193,4 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
     </div>
 
 </body>
-
 </html>

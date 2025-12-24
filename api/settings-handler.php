@@ -1,36 +1,21 @@
 <?php
 // api/settings-handler.php
 session_start();
+
 require_once __DIR__ . '/../config/database/db.php';
-require_once __DIR__ . '/../includes/libs/TOTP.php'; 
-require_once __DIR__ . '/../includes/libs/I18n.php';
-// Incluimos el servicio
+require_once __DIR__ . '/../includes/libs/Utils.php';
 require_once __DIR__ . '/services/SettingsService.php';
 
-header('Content-Type: application/json');
+// Inicializar I18n usando Utils
+$i18n = Utils::initI18n();
 
-// Inicializar I18n
-$userLang = $_SESSION['preferences']['language'] ?? 'es-latam';
-$i18n = new I18n($userLang);
-
-function jsonResponse($data) {
-    echo json_encode($data);
-    exit;
-}
-
-// 1. Verificar Autenticación
+// 1. Verificar Autenticación (Esto es específico de este handler, se queda aquí)
 if (!isset($_SESSION['user_id'])) {
-    echo json_encode(['success' => false, 'message' => $i18n->t('api.session_expired')]);
-    exit;
+    Utils::jsonResponse(['success' => false, 'message' => $i18n->t('api.session_expired')]);
 }
 
-// 2. Verificar CSRF
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        echo json_encode(['success' => false, 'message' => $i18n->t('api.security_error')]);
-        exit;
-    }
-}
+// 2. Validación de seguridad CSRF centralizada
+Utils::validateCsrf($i18n);
 
 // Inicializar Servicio
 $userId = $_SESSION['user_id'];
@@ -41,69 +26,69 @@ $action = $_POST['action'] ?? '';
 
 switch ($action) {
     case 'upload_avatar':
-        jsonResponse($settingsService->uploadAvatar($_FILES));
+        Utils::jsonResponse($settingsService->uploadAvatar($_FILES));
         break;
 
     case 'delete_avatar':
-        jsonResponse($settingsService->deleteAvatar());
+        Utils::jsonResponse($settingsService->deleteAvatar());
         break;
 
     case 'update_profile':
         $field = $_POST['field'] ?? '';
         $value = trim($_POST['value'] ?? '');
-        jsonResponse($settingsService->updateProfile($field, $value));
+        Utils::jsonResponse($settingsService->updateProfile($field, $value));
         break;
 
     case 'validate_current_password':
         $currentPass = $_POST['current_password'] ?? '';
-        jsonResponse($settingsService->validateCurrentPassword($currentPass));
+        Utils::jsonResponse($settingsService->validateCurrentPassword($currentPass));
         break;
 
     case 'change_password':
         $currentPass = $_POST['current_password'] ?? '';
         $newPass     = $_POST['new_password'] ?? '';
-        jsonResponse($settingsService->changePassword($currentPass, $newPass));
+        Utils::jsonResponse($settingsService->changePassword($currentPass, $newPass));
         break;
 
     case 'update_preference':
         $key = $_POST['key'] ?? '';
         $value = $_POST['value'] ?? '';
-        jsonResponse($settingsService->updatePreference($key, $value));
+        Utils::jsonResponse($settingsService->updatePreference($key, $value));
         break;
 
     case 'init_2fa':
-        jsonResponse($settingsService->init2fa());
+        Utils::jsonResponse($settingsService->init2fa());
         break;
 
     case 'enable_2fa':
         $code = $_POST['code'] ?? '';
-        jsonResponse($settingsService->enable2fa($code));
+        Utils::jsonResponse($settingsService->enable2fa($code));
         break;
 
     case 'disable_2fa':
-        jsonResponse($settingsService->disable2fa());
+        Utils::jsonResponse($settingsService->disable2fa());
         break;
 
     case 'get_sessions':
-        jsonResponse($settingsService->getSessions());
+        Utils::jsonResponse($settingsService->getSessions());
         break;
 
     case 'revoke_session':
         $tokenId = $_POST['token_id'] ?? '';
-        jsonResponse($settingsService->revokeSession($tokenId));
+        Utils::jsonResponse($settingsService->revokeSession($tokenId));
         break;
 
     case 'revoke_all_sessions':
-        jsonResponse($settingsService->revokeAllSessions());
+        Utils::jsonResponse($settingsService->revokeAllSessions());
         break;
 
     case 'delete_account':
         $password = $_POST['password'] ?? '';
-        jsonResponse($settingsService->deleteAccount($password));
+        Utils::jsonResponse($settingsService->deleteAccount($password));
         break;
 
     default:
-        echo json_encode(['success' => false, 'message' => $i18n->t('api.unknown_action')]);
+        Utils::jsonResponse(['success' => false, 'message' => $i18n->t('api.unknown_action')]);
         break;
 }
 ?>
