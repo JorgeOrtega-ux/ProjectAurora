@@ -1,3 +1,7 @@
+<?php
+// includes/sections/settings/delete-account.php
+// (Sin cambios en lógica PHP superior, solo HTML)
+?>
 <div class="section-content active" data-section="settings/delete-account">
     <div class="component-wrapper">
 
@@ -60,12 +64,6 @@
                 </div>
             </div>
 
-        </div>
-
-        <div class="component-card">
-            <button class="component-button" data-nav="settings/login-security">
-                <?php echo $i18n->t('settings.delete.btn_cancel'); ?>
-            </button>
         </div>
 
     </div>

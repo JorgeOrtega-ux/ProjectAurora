@@ -21,14 +21,10 @@ class SettingsService {
         
         $file = $files['avatar'];
 
-        // [SEGURIDAD] Validación de Tamaño de Archivo (Max 2MB)
         if ($file['size'] > 2097152) {
             return ['success' => false, 'message' => $this->i18n->t('api.avatar_size_limit')];
         }
 
-        // [SEGURIDAD] Validación de Dimensiones (Image Bomb / Pixel Flood)
-        // Se valida ANTES de cargar la imagen en memoria con GD.
-        // 4096 x 4096 píxeles es más que suficiente para un avatar.
         $maxDimension = 4096;
         list($width, $height) = getimagesize($file['tmp_name']);
         
@@ -36,13 +32,10 @@ class SettingsService {
             return ['success' => false, 'message' => $this->i18n->t('api.avatar_dimensions_limit')];
         }
 
-        // [SEGURIDAD] Límite de frecuencia (3 veces en 24 horas)
         if ($this->checkRateLimitExceeded('avatar_update', 24, 3)) {
             return ['success' => false, 'message' => $this->i18n->t('api.avatar_rate_limit')];
         }
 
-        // [SEGURIDAD] Mapeo estricto de MIME a Extensión
-        // MODIFICACIÓN: Eliminado soporte para GIF (solo estáticas)
         $allowedTypes = [
             'image/jpeg' => 'jpg',
             'image/png'  => 'png',
@@ -52,7 +45,6 @@ class SettingsService {
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $mime = $finfo->file($file['tmp_name']);
         
-        // Validamos usando las llaves del array (MIME types)
         if (!array_key_exists($mime, $allowedTypes)) { 
             return ['success' => false, 'message' => $this->i18n->t('api.image_format')]; 
         }
@@ -62,31 +54,22 @@ class SettingsService {
         $currentUser = $stmt->fetch();
         
         $oldPath = $currentUser['avatar_path'];
-        
-        // [SEGURIDAD] Asignamos la extensión basada en el MIME detectado
         $extension = $allowedTypes[$mime];
-        
         $newFileName = $currentUser['uuid'] . '-' . time() . '.' . $extension;
-        
         $baseDir = __DIR__ . '/../../storage/profilePicture/custom/';
         
-        // [SEGURIDAD] Permisos 0755
         if (!is_dir($baseDir)) mkdir($baseDir, 0755, true);
         
         $targetPath = $baseDir . $newFileName;
         $dbPath = 'storage/profilePicture/custom/' . $newFileName;
 
-        // [CORRECCIÓN 2] Recreación de imagen para eliminar metadatos/EXIF (Privacidad y Seguridad)
         $imageSaved = false;
 
-        // [CORRECCIÓN CRÍTICA] Eliminado el fallback inseguro. 
-        // Si GD no está instalado, NO se procesa la imagen para evitar subir archivos maliciosos.
         if (extension_loaded('gd')) {
             switch ($mime) {
                 case 'image/jpeg':
                     $img = @imagecreatefromjpeg($file['tmp_name']);
                     if ($img) { 
-                        // Calidad 90
                         $imageSaved = imagejpeg($img, $targetPath, 90); 
                         imagedestroy($img); 
                     }
@@ -94,11 +77,9 @@ class SettingsService {
                 case 'image/png':
                     $img = @imagecreatefrompng($file['tmp_name']);
                     if ($img) { 
-                        // Preservar transparencia
                         imagepalettetotruecolor($img);
                         imagealphablending($img, true);
                         imagesavealpha($img, true);
-                        // Compresión 9 (máxima para PNG, sin pérdida de calidad visual excesiva)
                         $imageSaved = imagepng($img, $targetPath, 9); 
                         imagedestroy($img); 
                     }
@@ -110,20 +91,15 @@ class SettingsService {
                         imagedestroy($img); 
                     }
                     break;
-                // ELIMINADO: case 'image/gif'
             }
         } else {
-            // Error explícito si GD no está disponible
             return ['success' => false, 'message' => $this->i18n->t('api.server_config_error')];
         }
 
         if ($imageSaved) {
             $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
             if ($update->execute([$dbPath, $this->userId])) {
-                
-                // [LOG] Registramos como 'avatar_update' para el conteo
                 $this->logProfileChange('avatar_update', $oldPath, $dbPath);
-
                 $this->deleteOldAvatar($oldPath);
                 $_SESSION['avatar'] = $dbPath;
                 return ['success' => true, 'message' => $this->i18n->t('api.pic_updated'), 'new_src' => $dbPath, 'type' => 'custom'];
@@ -160,9 +136,7 @@ class SettingsService {
         if ($imageContent !== false && file_put_contents($targetPath, $imageContent)) {
             $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
             if ($update->execute([$dbPath, $this->userId])) {
-                
                 $this->logProfileChange('avatar_delete', $oldPath, $dbPath . ' (Default)');
-
                 $this->deleteOldAvatar($oldPath);
                 $_SESSION['avatar'] = $dbPath;
                 return ['success' => true, 'message' => $this->i18n->t('api.pic_deleted'), 'type' => 'default'];
@@ -180,17 +154,14 @@ class SettingsService {
             if (!filter_var($value, FILTER_VALIDATE_EMAIL)) return ['success' => false, 'message' => $this->i18n->t('api.email_invalid')];
         }
 
-        // [SEGURIDAD] Límite de identidad: 1 vez cada 12 días
         if ($this->checkRateLimitExceeded($field, 288, 1)) {
             return ['success' => false, 'message' => $this->i18n->t('api.identity_rate_limit')];
         }
 
-        // Verificar duplicados
         $stmt = $this->pdo->prepare("SELECT id FROM users WHERE $field = ? AND id != ?");
         $stmt->execute([$value, $this->userId]);
         if ($stmt->fetch()) return ['success' => false, 'message' => $this->i18n->t('api.field_in_use')];
 
-        // Obtener valor antiguo
         $stmtOld = $this->pdo->prepare("SELECT $field FROM users WHERE id = ?");
         $stmtOld->execute([$this->userId]);
         $oldValue = $stmtOld->fetchColumn();
@@ -202,9 +173,7 @@ class SettingsService {
         try {
             $update = $this->pdo->prepare("UPDATE users SET $field = ? WHERE id = ?");
             $update->execute([$value, $this->userId]);
-            
             $this->logProfileChange($field, $oldValue, $value);
-
             $_SESSION[$field] = $value;
             return ['success' => true, 'message' => $this->i18n->t('api.field_updated')];
         } catch (Exception $e) {
@@ -213,30 +182,48 @@ class SettingsService {
     }
 
     public function validateCurrentPassword($currentPass) {
+        // [SEGURIDAD] Rate Limit: Máx 5 intentos en 15 minutos
+        if ($this->checkSecurityLimit('password_verify_fail', 5, 15)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
+        }
+
         if (empty($currentPass)) return ['success' => false, 'message' => $this->i18n->t('api.pass_current_req')];
+        
         $stmt = $this->pdo->prepare("SELECT password FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
         $user = $stmt->fetch();
+        
         if ($user && password_verify($currentPass, $user['password'])) {
             return ['success' => true, 'message' => $this->i18n->t('api.pass_correct')];
         }
+
+        // [SEGURIDAD] Registrar fallo
+        $this->logSecurityAction('password_verify_fail');
         return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
     }
 
     public function changePassword($currentPass, $newPass) {
+        // [SEGURIDAD] Reutilizamos la validación con Rate Limit implícita (si llaman directo a esta función)
+        if ($this->checkSecurityLimit('password_verify_fail', 5, 15)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
+        }
+
         if (empty($currentPass) || empty($newPass)) return ['success' => false, 'message' => $this->i18n->t('api.missing_data')];
         if (strlen($newPass) < 6) return ['success' => false, 'message' => $this->i18n->t('api.pass_short')];
+        
         $stmt = $this->pdo->prepare("SELECT password FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
         $user = $stmt->fetch();
+        
         if (!$user || !password_verify($currentPass, $user['password'])) {
+            $this->logSecurityAction('password_verify_fail'); // Registrar fallo
             return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
         }
+        
         $newHash = password_hash($newPass, PASSWORD_DEFAULT);
         try {
             $update = $this->pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
             $update->execute([$newHash, $this->userId]);
-            
             $this->logProfileChange('password', '***', '***');
             return ['success' => true, 'message' => $this->i18n->t('api.pass_updated')];
         } catch (Exception $e) {
@@ -245,7 +232,8 @@ class SettingsService {
     }
 
     public function updatePreference($key, $value) {
-        if ($this->checkPreferenceRateLimit()) {
+        // [SEGURIDAD] Rate Limit específico para preferencias (10 cambios por minuto)
+        if ($this->checkSecurityLimit('pref_update', 10, 1)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
 
@@ -284,7 +272,7 @@ class SettingsService {
             if (!isset($_SESSION['preferences'])) $_SESSION['preferences'] = [];
             $_SESSION['preferences'][$key] = ($key === 'open_links_new_tab' || $key === 'extended_toast') ? (bool)$dbValue : $dbValue;
 
-            $this->logPreferenceUpdate();
+            $this->logSecurityAction('pref_update'); // Registrar acción válida para el rate limit
 
             return ['success' => true, 'message' => $this->i18n->t('api.pref_saved')];
         } catch (Exception $e) {
@@ -293,16 +281,30 @@ class SettingsService {
     }
 
     public function init2fa() {
+        // [SEGURIDAD] Rate Limit: Evitar generación masiva de secretos (Max 10 por hora)
+        if ($this->checkSecurityLimit('2fa_init_attempt', 10, 60)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
+        }
+
         $secret = GoogleAuthenticator::createSecret();
         $_SESSION['temp_2fa_secret'] = $secret;
         $username = $_SESSION['username'] ?? 'User';
         $otpauthUrl = GoogleAuthenticator::getQrUrl($username, $secret, 'ProjectAurora');
+        
+        $this->logSecurityAction('2fa_init_attempt');
+        
         return ['success' => true, 'message' => $this->i18n->t('api.qr_scan'), 'otpauth_url' => $otpauthUrl, 'secret' => $secret];
     }
 
     public function enable2fa($code) {
+        // [SEGURIDAD] Rate Limit: Evitar adivinar código 2FA (Max 5 intentos por 15 min)
+        if ($this->checkSecurityLimit('2fa_verify_attempt', 5, 15)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
+        }
+
         if (!isset($_SESSION['temp_2fa_secret'])) return ['success' => false, 'message' => $this->i18n->t('api.session_config_expired')];
         $secret = $_SESSION['temp_2fa_secret'];
+        
         if (GoogleAuthenticator::verifyCode($secret, $code)) {
             $recoveryCodes = [];
             for($i=0; $i<8; $i++) $recoveryCodes[] = bin2hex(random_bytes(4));
@@ -316,6 +318,8 @@ class SettingsService {
             }
             return ['success' => false, 'message' => $this->i18n->t('api.pic_db_error')];
         }
+
+        $this->logSecurityAction('2fa_verify_attempt');
         return ['success' => false, 'message' => $this->i18n->t('api.code_invalid')];
     }
 
@@ -370,13 +374,22 @@ class SettingsService {
     }
 
     public function deleteAccount($password) {
+        // [SEGURIDAD] Rate Limit: Evitar fuerza bruta en confirmación de contraseña (Max 5 en 30 min)
+        if ($this->checkSecurityLimit('account_delete_attempt', 5, 30)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
+        }
+
         if (empty($password)) return ['success' => false, 'message' => $this->i18n->t('api.pass_req_confirm')];
+        
         $stmt = $this->pdo->prepare("SELECT password FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
         $user = $stmt->fetch();
+        
         if (!$user || !password_verify($password, $user['password'])) {
+            $this->logSecurityAction('account_delete_attempt');
             return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
         }
+
         try {
             $this->pdo->beginTransaction();
             $update = $this->pdo->prepare("UPDATE users SET account_status = 'deleted' WHERE id = ?");
@@ -412,27 +425,34 @@ class SettingsService {
         return ($count >= $limit);
     }
 
-    private function checkPreferenceRateLimit() {
-        $limit = 10;
-        $minutes = 1;
+    /**
+     * Comprueba si se ha excedido el límite de acciones de seguridad.
+     * Utiliza la tabla 'security_logs' y combina user_id e IP.
+     */
+    private function checkSecurityLimit($actionType, $limit, $minutes) {
+        $ip = $this->getClientIp();
         
+        // Contamos intentos tanto por ID de usuario COMO por IP para evitar evasión
         $sql = "SELECT COUNT(*) FROM security_logs 
-                WHERE user_identifier = ? 
-                AND action_type = 'pref_update' 
+                WHERE (user_identifier = ? OR ip_address = ?)
+                AND action_type = ? 
                 AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
                 
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$this->userId]); 
+        $stmt->execute([$this->userId, $ip, $actionType]); 
         $count = $stmt->fetchColumn();
 
         return ($count >= $limit);
     }
 
-    private function logPreferenceUpdate() {
+    /**
+     * Registra una acción en security_logs para el conteo del Rate Limit.
+     */
+    private function logSecurityAction($actionType) {
         $ip = $this->getClientIp();
-        $sql = "INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, 'pref_update', ?)";
+        $sql = "INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)";
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$this->userId, $ip]);
+        $stmt->execute([$this->userId, $actionType, $ip]);
     }
 
     private function deleteOldAvatar($currentPath) {

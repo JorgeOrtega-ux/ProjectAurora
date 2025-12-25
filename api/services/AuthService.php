@@ -1,7 +1,6 @@
 <?php
 // api/services/AuthService.php
 
-// Asegurarse de cargar la nueva librería en lugar de TOTP
 require_once __DIR__ . '/../../includes/libs/GoogleAuthenticator.php';
 
 class AuthService {
@@ -18,6 +17,12 @@ class AuthService {
     // =========================================================================
 
     public function registerStep1($email, $password) {
+        // [SEGURIDAD] Anti-Spam registro paso 1 (Max 10 intentos por IP cada 10 min)
+        if ($this->checkSecurityBlock('register_attempt', 10, 10)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
+        }
+        $this->logSecurityEvent($email, 'register_attempt');
+
         if (empty($email) || empty($password)) {
             return ['success' => false, 'message' => $this->i18n->t('api.fill_all')];
         }
@@ -46,6 +51,12 @@ class AuthService {
         }
         
         $email = $_SESSION['temp_register']['email'];
+        
+        // [SEGURIDAD] Anti-Spam Email Bombing (Max 3 códigos por email en 15 min)
+        if ($this->checkSecurityBlock('register_code_req', 3, 15, $email)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
+        }
+
         $password = $_SESSION['temp_register']['password'];
 
         if (empty($username)) {
@@ -78,6 +89,8 @@ class AuthService {
 
         try {
             $stmt->execute([$email, $code, $payload, $expiresAt]);
+            $this->logSecurityEvent($email, 'register_code_req'); // Registrar intento
+
             $_SESSION['pending_verification_email'] = $email;
 
             return [
@@ -96,6 +109,11 @@ class AuthService {
 
         if (empty($email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.no_verification')];
+        }
+        
+        // [SEGURIDAD] Rate Limit reenvío (Max 3 veces en 10 min)
+        if ($this->checkSecurityBlock('resend_code_req', 3, 10, $email)) {
+             return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
 
         $checkTime = $this->pdo->prepare("
@@ -131,6 +149,8 @@ class AuthService {
         
         try {
             $insert->execute([$email, $newCode, $payload, $expiresAt]);
+            $this->logSecurityEvent($email, 'resend_code_req');
+
             return ['success' => true, 'message' => $this->i18n->t('api.code_generated'), 'debug_code' => $newCode];
         } catch (Exception $e) {
             return ['success' => false, 'message' => $this->i18n->t('api.code_save_error') . ': ' . $e->getMessage()];
@@ -142,6 +162,11 @@ class AuthService {
 
         if (empty($code) || empty($email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.missing_data')];
+        }
+
+        // [SEGURIDAD] Evitar fuerza bruta contra el código (5 intentos en 15 min)
+        if ($this->checkSecurityBlock('register_verify_fail', 5, 15, $email)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
         }
 
         $sql = "SELECT * FROM verification_codes 
@@ -156,6 +181,7 @@ class AuthService {
         $verification = $stmt->fetch();
 
         if (!$verification) {
+            $this->logSecurityEvent($email, 'register_verify_fail'); // Registrar fallo
             return ['success' => false, 'message' => $this->i18n->t('api.code_invalid_expired')];
         }
 
@@ -164,7 +190,6 @@ class AuthService {
         $passwordHash = $payload['password_hash']; 
         $uuid = $this->generateUuid();
 
-        // Generación de Avatar
         $firstLetter = substr($username, 0, 1);
         $bgColors = ['40a060', 'a73d3d', '3d3da7', '3d9da7', '9d3da7'];
         $randomBg = $bgColors[array_rand($bgColors)];
@@ -195,7 +220,6 @@ class AuthService {
 
             $this->pdo->commit();
 
-            // Configurar Sesión
             $_SESSION['user_id'] = $newUserId;
             $_SESSION['username'] = $username;
             $_SESSION['role'] = 'user';
@@ -223,7 +247,7 @@ class AuthService {
     }
 
     public function login($email, $password) {
-        if ($this->checkSecurityBlock('login_fail')) {
+        if ($this->checkSecurityBlock('login_fail', 5, 15, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
         }
 
@@ -255,6 +279,13 @@ class AuthService {
         }
 
         $userId = $_SESSION['2fa_pending_user_id'];
+        
+        // [SEGURIDAD] Evitar saltarse 2FA con fuerza bruta (5 intentos / 15 min)
+        // Usamos el ID del usuario pendiente como identificador
+        if ($this->checkSecurityBlock('2fa_login_fail', 5, 15, "user:$userId")) {
+            return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
+        }
+
         $stmt = $this->pdo->prepare("SELECT * FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $user = $stmt->fetch();
@@ -264,7 +295,7 @@ class AuthService {
         }
 
         $isValid = false;
-        // CAMBIO: Usar GoogleAuthenticator
+        
         if (GoogleAuthenticator::verifyCode($user['two_factor_secret'], $code)) {
             $isValid = true;
         } else {
@@ -281,6 +312,7 @@ class AuthService {
             unset($_SESSION['2fa_pending_user_id']);
             return $this->completeLogin($user);
         } else {
+            $this->logSecurityEvent("user:$userId", '2fa_login_fail');
             return ['success' => false, 'message' => $this->i18n->t('api.code_invalid')];
         }
     }
@@ -290,7 +322,8 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.email_invalid')];
         }
 
-        if ($this->checkSecurityBlock('recovery_fail')) {
+        // [SEGURIDAD] Evitar spam de recuperaciones (5 intentos en 15 min)
+        if ($this->checkSecurityBlock('recovery_fail', 5, 15, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.recovery_limit')];
         }
 
@@ -435,13 +468,28 @@ class AuthService {
         $stmt->execute([$identifier, $actionType, $ip]);
     }
 
-    private function checkSecurityBlock($actionType) {
+    /**
+     * Comprueba si una acción está bloqueada por rate limit.
+     * Combina chequeo por Identificador (Email/User) O por IP.
+     * * @param string $actionType El tipo de acción (login_fail, etc)
+     * @param int $limit Número máximo de intentos permitidos
+     * @param int $minutes Ventana de tiempo en minutos
+     * @param string $identifier Identificador opcional (email, username)
+     */
+    private function checkSecurityBlock($actionType, $limit, $minutes, $identifier = '') {
         $ip = $this->getClientIp();
-        $limit = 5; 
-        $minutes = 15; 
-        $stmt = $this->pdo->prepare("SELECT COUNT(*) as failures FROM security_logs WHERE ip_address = ? AND action_type = ? AND created_at > (NOW() - INTERVAL $minutes MINUTE)");
-        $stmt->execute([$ip, $actionType]);
+        
+        // La consulta verifica si la IP O el identificador han superado el límite
+        $sql = "SELECT COUNT(*) as failures 
+                FROM security_logs 
+                WHERE (ip_address = ? OR user_identifier = ?) 
+                AND action_type = ? 
+                AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
+                
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$ip, $identifier, $actionType]);
         $result = $stmt->fetch();
+        
         return ($result && $result['failures'] >= $limit);
     }
 
@@ -480,7 +528,6 @@ class AuthService {
         $_SESSION['avatar'] = $user['avatar_path'];
         $_SESSION['email'] = $user['email'];
 
-        // Preferencias
         $prefStmt = $this->pdo->prepare("SELECT language, open_links_new_tab, theme, extended_toast FROM user_preferences WHERE user_id = ?");
         $prefStmt->execute([$user['id']]);
         $prefs = $prefStmt->fetch();
