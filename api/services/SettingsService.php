@@ -133,19 +133,30 @@ class SettingsService {
         $dbPath = 'storage/profilePicture/default/' . $newFileName;
         
         $imageContent = @file_get_contents($avatarUrl);
+        
         if ($imageContent !== false && file_put_contents($targetPath, $imageContent)) {
             $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
             if ($update->execute([$dbPath, $this->userId])) {
                 $this->logProfileChange('avatar_delete', $oldPath, $dbPath . ' (Default)');
                 $this->deleteOldAvatar($oldPath);
                 $_SESSION['avatar'] = $dbPath;
-                return ['success' => true, 'message' => $this->i18n->t('api.pic_deleted'), 'type' => 'default'];
+
+                // --- CORRECCIÓN: Devolver Base64 para evitar bloqueo de .htaccess ---
+                $base64Image = 'data:image/png;base64,' . base64_encode($imageContent);
+                
+                return [
+                    'success' => true, 
+                    'message' => $this->i18n->t('api.pic_deleted'), 
+                    'type' => 'default', 
+                    'new_src' => $base64Image // Enviamos la imagen codificada
+                ];
             }
             return ['success' => false, 'message' => $this->i18n->t('api.pic_db_error')];
         }
         return ['success' => false, 'message' => $this->i18n->t('api.pic_gen_error')];
     }
 
+    // ... (Resto de métodos updateProfile, changePassword, etc. IGUALES QUE ANTES) ...
     public function updateProfile($field, $value) {
         if (!in_array($field, ['username', 'email'])) return ['success' => false, 'message' => $this->i18n->t('api.field_invalid')];
         if (empty($value)) return ['success' => false, 'message' => $this->i18n->t('api.field_empty')];
@@ -182,11 +193,9 @@ class SettingsService {
     }
 
     public function validateCurrentPassword($currentPass) {
-        // [SEGURIDAD] Rate Limit: Máx 5 intentos en 15 minutos
         if ($this->checkSecurityLimit('password_verify_fail', 5, 15)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
         }
-
         if (empty($currentPass)) return ['success' => false, 'message' => $this->i18n->t('api.pass_current_req')];
         
         $stmt = $this->pdo->prepare("SELECT password FROM users WHERE id = ?");
@@ -196,18 +205,14 @@ class SettingsService {
         if ($user && password_verify($currentPass, $user['password'])) {
             return ['success' => true, 'message' => $this->i18n->t('api.pass_correct')];
         }
-
-        // [SEGURIDAD] Registrar fallo
         $this->logSecurityAction('password_verify_fail');
         return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
     }
 
     public function changePassword($currentPass, $newPass) {
-        // [SEGURIDAD] Reutilizamos la validación con Rate Limit implícita (si llaman directo a esta función)
         if ($this->checkSecurityLimit('password_verify_fail', 5, 15)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
         }
-
         if (empty($currentPass) || empty($newPass)) return ['success' => false, 'message' => $this->i18n->t('api.missing_data')];
         if (strlen($newPass) < 6) return ['success' => false, 'message' => $this->i18n->t('api.pass_short')];
         
@@ -216,7 +221,7 @@ class SettingsService {
         $user = $stmt->fetch();
         
         if (!$user || !password_verify($currentPass, $user['password'])) {
-            $this->logSecurityAction('password_verify_fail'); // Registrar fallo
+            $this->logSecurityAction('password_verify_fail');
             return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
         }
         
@@ -232,11 +237,9 @@ class SettingsService {
     }
 
     public function updatePreference($key, $value) {
-        // [SEGURIDAD] Rate Limit específico para preferencias (10 cambios por minuto)
         if ($this->checkSecurityLimit('pref_update', 10, 1)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
-
         $allowedKeys = ['language', 'open_links_new_tab', 'theme', 'extended_toast'];
         if (!in_array($key, $allowedKeys)) return ['success' => false, 'message' => $this->i18n->t('api.pref_invalid')];
 
@@ -272,7 +275,7 @@ class SettingsService {
             if (!isset($_SESSION['preferences'])) $_SESSION['preferences'] = [];
             $_SESSION['preferences'][$key] = ($key === 'open_links_new_tab' || $key === 'extended_toast') ? (bool)$dbValue : $dbValue;
 
-            $this->logSecurityAction('pref_update'); // Registrar acción válida para el rate limit
+            $this->logSecurityAction('pref_update'); 
 
             return ['success' => true, 'message' => $this->i18n->t('api.pref_saved')];
         } catch (Exception $e) {
@@ -281,30 +284,23 @@ class SettingsService {
     }
 
     public function init2fa() {
-        // [SEGURIDAD] Rate Limit: Evitar generación masiva de secretos (Max 10 por hora)
         if ($this->checkSecurityLimit('2fa_init_attempt', 10, 60)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
-
         $secret = GoogleAuthenticator::createSecret();
         $_SESSION['temp_2fa_secret'] = $secret;
         $username = $_SESSION['username'] ?? 'User';
         $otpauthUrl = GoogleAuthenticator::getQrUrl($username, $secret, 'ProjectAurora');
-        
         $this->logSecurityAction('2fa_init_attempt');
-        
         return ['success' => true, 'message' => $this->i18n->t('api.qr_scan'), 'otpauth_url' => $otpauthUrl, 'secret' => $secret];
     }
 
     public function enable2fa($code) {
-        // [SEGURIDAD] Rate Limit: Evitar adivinar código 2FA (Max 5 intentos por 15 min)
         if ($this->checkSecurityLimit('2fa_verify_attempt', 5, 15)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
         }
-
         if (!isset($_SESSION['temp_2fa_secret'])) return ['success' => false, 'message' => $this->i18n->t('api.session_config_expired')];
         $secret = $_SESSION['temp_2fa_secret'];
-        
         if (GoogleAuthenticator::verifyCode($secret, $code)) {
             $recoveryCodes = [];
             for($i=0; $i<8; $i++) $recoveryCodes[] = bin2hex(random_bytes(4));
@@ -318,7 +314,6 @@ class SettingsService {
             }
             return ['success' => false, 'message' => $this->i18n->t('api.pic_db_error')];
         }
-
         $this->logSecurityAction('2fa_verify_attempt');
         return ['success' => false, 'message' => $this->i18n->t('api.code_invalid')];
     }
@@ -374,22 +369,17 @@ class SettingsService {
     }
 
     public function deleteAccount($password) {
-        // [SEGURIDAD] Rate Limit: Evitar fuerza bruta en confirmación de contraseña (Max 5 en 30 min)
         if ($this->checkSecurityLimit('account_delete_attempt', 5, 30)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
         }
-
         if (empty($password)) return ['success' => false, 'message' => $this->i18n->t('api.pass_req_confirm')];
-        
         $stmt = $this->pdo->prepare("SELECT password FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
         $user = $stmt->fetch();
-        
         if (!$user || !password_verify($password, $user['password'])) {
             $this->logSecurityAction('account_delete_attempt');
             return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
         }
-
         try {
             $this->pdo->beginTransaction();
             $update = $this->pdo->prepare("UPDATE users SET account_status = 'deleted' WHERE id = ?");
@@ -407,60 +397,29 @@ class SettingsService {
         }
     }
 
-    // =========================================================================
-    //  MÉTODOS PRIVADOS
-    // =========================================================================
-
     private function checkRateLimitExceeded($changeType, $hours, $limit) {
-        $stmt = $this->pdo->prepare("
-            SELECT COUNT(*) 
-            FROM profile_changes 
-            WHERE user_id = ? 
-            AND change_type = ? 
-            AND created_at > (NOW() - INTERVAL $hours HOUR)
-        ");
+        $stmt = $this->pdo->prepare("SELECT COUNT(*) FROM profile_changes WHERE user_id = ? AND change_type = ? AND created_at > (NOW() - INTERVAL $hours HOUR)");
         $stmt->execute([$this->userId, $changeType]);
-        $count = $stmt->fetchColumn();
-
-        return ($count >= $limit);
+        return ($stmt->fetchColumn() >= $limit);
     }
-
-    /**
-     * Comprueba si se ha excedido el límite de acciones de seguridad.
-     * Utiliza la tabla 'security_logs' y combina user_id e IP.
-     */
     private function checkSecurityLimit($actionType, $limit, $minutes) {
         $ip = $this->getClientIp();
-        
-        // Contamos intentos tanto por ID de usuario COMO por IP para evitar evasión
-        $sql = "SELECT COUNT(*) FROM security_logs 
-                WHERE (user_identifier = ? OR ip_address = ?)
-                AND action_type = ? 
-                AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
-                
+        $sql = "SELECT COUNT(*) FROM security_logs WHERE (user_identifier = ? OR ip_address = ?) AND action_type = ? AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$this->userId, $ip, $actionType]); 
-        $count = $stmt->fetchColumn();
-
-        return ($count >= $limit);
+        return ($stmt->fetchColumn() >= $limit);
     }
-
-    /**
-     * Registra una acción en security_logs para el conteo del Rate Limit.
-     */
     private function logSecurityAction($actionType) {
         $ip = $this->getClientIp();
         $sql = "INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$this->userId, $actionType, $ip]);
     }
-
     private function deleteOldAvatar($currentPath) {
         if ($currentPath && file_exists(__DIR__ . '/../../' . $currentPath)) {
             @unlink(__DIR__ . '/../../' . $currentPath);
         }
     }
-
     private function parseUserAgent($ua) {
         $platform = 'Desconocido'; $browser = 'Desconocido';
         if (preg_match('/windows|win32/i', $ua)) $platform = 'Windows';
@@ -476,21 +435,13 @@ class SettingsService {
         elseif (preg_match('/Edge/i', $ua)) $browser = 'Edge';
         return ['platform' => $platform, 'browser' => $browser];
     }
-    
     private function logProfileChange($changeType, $oldValue, $newValue) {
         $ip = $this->getClientIp();
         $ua = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
-
         $sql = "INSERT INTO profile_changes (user_id, change_type, old_value, new_value, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)";
         $stmt = $this->pdo->prepare($sql);
-        
-        try {
-            $stmt->execute([$this->userId, $changeType, $oldValue, $newValue, $ip, $ua]);
-        } catch (Exception $e) {
-            error_log("Error logging profile change: " . $e->getMessage());
-        }
+        try { $stmt->execute([$this->userId, $changeType, $oldValue, $newValue, $ip, $ua]); } catch (Exception $e) { error_log("Error logging profile change: " . $e->getMessage()); }
     }
-
     private function getClientIp() {
         if (!empty($_SERVER['HTTP_CLIENT_IP'])) return $_SERVER['HTTP_CLIENT_IP'];
         elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) return $_SERVER['HTTP_X_FORWARDED_FOR'];

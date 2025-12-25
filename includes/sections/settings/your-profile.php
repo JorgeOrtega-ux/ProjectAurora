@@ -153,7 +153,7 @@ $currentLangLabel = $langLabels[$prefLang];
                                     </div>
                                 </div>
 
-                                <div class="menu-list menu-list--scrollable">
+                                <div class="menu-list menu-list--scrollable overflow-y">
                                     <?php foreach($langLabels as $code => $label): 
                                         $isActive = ($code === $prefLang) ? 'active' : '';
                                         $icon = (strpos($code, 'es') !== false) ? 'language' : 'translate'; 

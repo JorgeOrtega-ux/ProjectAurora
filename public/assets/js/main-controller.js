@@ -7,6 +7,7 @@ export function initMainController() {
 
     initModuleSystem();
     initScrollEffects();
+    initGlobalStateListeners(); // Importante: Activamos la escucha de eventos
 }
 
 function initScrollEffects() {
@@ -32,10 +33,8 @@ function initModuleSystem() {
     const buttons = document.querySelectorAll('[data-action]');
     const allModules = document.querySelectorAll('.module-content');
 
-    // Función auxiliar para cerrar con animación (Maneja Profile y Notifications)
     const closeModuleWithAnimation = (mod) => {
         const isMobile = window.innerWidth <= 468;
-        // Definimos qué módulos actúan como Bottom Sheet
         const isSheetModule = mod.dataset.module === 'moduleProfile' || mod.dataset.module === 'moduleNotifications';
 
         if (isMobile && isSheetModule && mod.classList.contains('active')) {
@@ -45,7 +44,6 @@ function initModuleSystem() {
                 mod.classList.remove('active', 'closing');
                 mod.classList.add('disabled');
                 
-                // Limpiar transformaciones inline
                 const content = mod.querySelector('.menu-content');
                 if(content) {
                     content.style.transform = '';
@@ -70,14 +68,13 @@ function initModuleSystem() {
         btn.addEventListener('click', (e) => {
             const action = btn.dataset.action;
 
-            // --- Lógica de módulos ---
             if (action.startsWith('toggleModule')) {
                 e.stopPropagation(); 
                 
                 let targetModuleName = '';
                 if (action === 'toggleModuleProfile') targetModuleName = 'moduleProfile';
                 if (action === 'toggleModuleSurface') targetModuleName = 'moduleSurface';
-                if (action === 'toggleModuleNotifications') targetModuleName = 'moduleNotifications'; // Nuevo
+                if (action === 'toggleModuleNotifications') targetModuleName = 'moduleNotifications';
 
                 if (targetModuleName) {
                     const targetModule = document.querySelector(`[data-module="${targetModuleName}"]`);
@@ -91,10 +88,9 @@ function initModuleSystem() {
                         if (isActive) {
                             closeModuleWithAnimation(targetModule);
                         } else {
-                            // Abrir con animación
                             targetModule.classList.remove('disabled');
                             targetModule.style.display = 'flex';
-                            void targetModule.offsetHeight; // Forzar Reflow
+                            void targetModule.offsetHeight; 
                             targetModule.classList.add('active');
                             targetModule.style.display = '';
                         }
@@ -102,14 +98,12 @@ function initModuleSystem() {
                 }
             }
 
-            // --- TOGGLE BÚSQUEDA MÓVIL ---
             if (action === 'toggleSearch') {
                 const searchContainer = document.getElementById('header-search-bar');
                 if (searchContainer) {
                     searchContainer.classList.toggle('active');
-                    btn.classList.toggle('active'); // Opcional: para iluminar el botón
+                    btn.classList.toggle('active'); 
 
-                    // Enfocar el input si se abre
                     if (searchContainer.classList.contains('active')) {
                         const input = searchContainer.querySelector('input');
                         if(input) input.focus();
@@ -134,8 +128,6 @@ function initModuleSystem() {
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
                 closeAllModules();
-                
-                // Cerrar búsqueda si está abierta
                 const searchContainer = document.getElementById('header-search-bar');
                 if (searchContainer && searchContainer.classList.contains('active')) {
                     searchContainer.classList.remove('active');
@@ -145,16 +137,12 @@ function initModuleSystem() {
         });
     }
 
-    // Inicializar Drag para Perfil Y Notificaciones
     const sheetModules = document.querySelectorAll('[data-module="moduleProfile"], [data-module="moduleNotifications"]');
     sheetModules.forEach(mod => {
         initMobileDrag(mod, closeModuleWithAnimation);
     });
 }
 
-/**
- * Lógica genérica de arrastre para módulos tipo sheet
- */
 function initMobileDrag(moduleElement, closeCallback) {
     if (!moduleElement) return;
 
@@ -168,58 +156,41 @@ function initMobileDrag(moduleElement, closeCallback) {
     let isDragging = false;
     let menuHeight = 0;
 
-    // Lógica común para iniciar arrastre
     const startDrag = (clientY) => {
-        if (window.innerWidth > 468) return; // Solo móvil
+        if (window.innerWidth > 468) return; 
         startY = clientY;
         menuHeight = content.offsetHeight;
         isDragging = true;
-        
-        // Quitar transición para respuesta instantánea
         content.style.transition = 'none';
     };
 
-    // Lógica común para mover
     const moveDrag = (clientY, event) => {
         if (!isDragging) return;
-        
         const deltaY = clientY - startY;
-
-        // Solo permitir bajar (deltaY > 0)
         if (deltaY > 0) {
-            if (event.cancelable) event.preventDefault(); // Evitar scroll/refresh
-            
+            if (event.cancelable) event.preventDefault();
             content.style.transform = `translateY(${deltaY}px)`;
             currentY = deltaY;
         }
     };
 
-    // Lógica común para terminar
     const endDrag = () => {
         if (!isDragging) return;
         isDragging = false;
-
-        // Restaurar transición suave
         content.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
-
-        // Umbral del 40%
         const threshold = menuHeight * 0.4;
-
         if (currentY > threshold) {
             closeCallback(moduleElement);
         } else {
-            // Rebote
             content.style.transform = '';
         }
         currentY = 0;
     };
 
-    // --- EVENTOS TOUCH (Móviles reales) ---
     handle.addEventListener('touchstart', (e) => startDrag(e.touches[0].clientY), { passive: false });
     handle.addEventListener('touchmove', (e) => moveDrag(e.touches[0].clientY, e), { passive: false });
     handle.addEventListener('touchend', endDrag);
 
-    // --- EVENTOS MOUSE (Desktop / Testing) ---
     const onMouseMove = (e) => moveDrag(e.clientY, e);
     const onMouseUp = () => {
         endDrag();
@@ -231,5 +202,32 @@ function initMobileDrag(moduleElement, closeCallback) {
         startDrag(e.clientY);
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
+    });
+}
+
+/**
+ * Escucha eventos globales de la aplicación para sincronizar UI (Avatar y otros)
+ */
+function initGlobalStateListeners() {
+    // Escuchar evento 'user:avatar_update' disparado desde ProfileController
+    document.addEventListener('user:avatar_update', (e) => {
+        const newSrc = e.detail.src;
+        if (!newSrc) return;
+
+        console.log("MainController: Sincronizando avatar global...", newSrc);
+
+        // Actualizar imagen en el Header
+        const headerImg = document.querySelector('.header .profile-button .profile-img');
+        if (headerImg) {
+            headerImg.src = newSrc;
+            
+            // Animación de feedback
+            if (headerImg.animate) {
+                headerImg.animate([
+                    { transform: 'scale(0.8)', opacity: 0.5 },
+                    { transform: 'scale(1)', opacity: 1 }
+                ], { duration: 300, easing: 'ease-out' });
+            }
+        }
     });
 }

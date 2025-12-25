@@ -177,7 +177,7 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
                         <?php include __DIR__ . '/../includes/modules/module-surface.php'; ?>
                     <?php endif; ?>
 
-                    <div class="general-content-scrolleable" data-container="main-section">
+                    <div class="general-content-scrolleable overflow-y" data-container="main-section">
                         <?php
                         if (file_exists($fileToLoad)) {
                             include $fileToLoad;

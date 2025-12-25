@@ -64,7 +64,7 @@ function initAvatarLogic() {
             toggleProfileActions(isCustom ? 'custom' : 'default');
         }
 
-        // GUARDAR
+        // GUARDAR (MODERNO - Event Bus)
         if (action === 'profile-picture-save') {
             const file = fileInput.files[0];
             if (!file) return;
@@ -82,13 +82,23 @@ function initAvatarLogic() {
                 const res = await ApiService.post('settings-handler.php', formData);
                 if (res.success) {
                     Toast.show(I18n.t('js.profile.pic_updated'), 'success');
-                    originalSrc = res.new_src || previewImg.src; 
+                    
+                    const newAvatarSrc = previewImg.src; // Base64 directo del preview
+                    originalSrc = res.new_src || newAvatarSrc; 
                     toggleProfileActions('custom');
                     fileInput.value = ''; 
+
+                    // Despachar evento
+                    const event = new CustomEvent('user:avatar_update', { 
+                        detail: { src: newAvatarSrc } 
+                    });
+                    document.dispatchEvent(event);
+
                 } else {
                     Toast.show(res.message, 'error');
                 }
             } catch(err) {
+                console.error(err);
                 Toast.show(I18n.t('js.core.connection_error'), 'error');
             } finally {
                 btn.innerText = originalText;
@@ -96,7 +106,7 @@ function initAvatarLogic() {
             }
         }
 
-        // ELIMINAR
+        // ELIMINAR (MODERNO - Event Bus)
         if (action === 'profile-picture-delete') {
             if(!confirm(I18n.t('js.profile.confirm_delete'))) return;
             
@@ -110,7 +120,26 @@ function initAvatarLogic() {
                 const res = await ApiService.post('settings-handler.php', formData);
                 if (res.success) {
                     Toast.show(I18n.t('js.profile.pic_deleted'), 'info');
-                    window.location.reload(); 
+                    
+                    // CORRECCIÓN: Usamos el Base64 directamente (ya no es una ruta relativa)
+                    if (res.new_src) {
+                        const newUrl = res.new_src; // Es un string "data:image/png;base64,..."
+                        
+                        previewImg.src = newUrl;
+                        originalSrc = newUrl;
+                        
+                        toggleProfileActions('default');
+
+                        // Actualizar Header
+                        const event = new CustomEvent('user:avatar_update', { 
+                            detail: { src: newUrl } 
+                        });
+                        document.dispatchEvent(event);
+                    } else {
+                        // Fallback de seguridad
+                         window.location.reload();
+                    }
+
                 } else {
                     Toast.show(res.message, 'error');
                 }
@@ -144,7 +173,7 @@ function toggleProfileActions(state) {
 }
 
 /**
- * Lógica para editar Username y Email
+ * Lógica para editar Username y Email (Sin cambios)
  */
 function initIdentityLogic() {
     const container = document.querySelector('[data-section="settings/your-profile"]');
@@ -186,7 +215,6 @@ function toggleEditState(fieldId, isEditing) {
         
         if (input) {
             input.dataset.originalValue = input.value;
-            // CORRECCIÓN: Truco para mover el cursor al final del texto
             const val = input.value;
             input.focus();
             input.value = '';
@@ -200,7 +228,7 @@ function toggleEditState(fieldId, isEditing) {
         actionsView?.classList.replace('disabled', 'active');
         
         if (input && input.dataset.originalValue) {
-            input.value = input.dataset.originalValue; // Revertir cambios
+            input.value = input.dataset.originalValue;
         }
     }
 }

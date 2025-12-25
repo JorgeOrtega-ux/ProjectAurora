@@ -732,3 +732,13 @@ html {
     border-left: none; border-bottom: none;
     border-radius: 0 2px 0 0; transform: translateY(-50%) rotate(45deg);
 }
+
+.overflow-y {
+    overflow-x: hidden;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+    scrollbar-color: #00000080 transparent;
+    scrollbar-width: thin;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+}
