@@ -1,6 +1,5 @@
 /**
  * public/assets/js/modules/settings/2fa-controller.js
- * Controlador para la configuración de Autenticación de Dos Factores
  */
 
 import { ApiService } from '../../core/api-service.js';
@@ -9,86 +8,53 @@ import { I18n } from '../../core/i18n-manager.js';
 
 export const TwoFactorController = {
     init: () => {
-        console.log("TwoFactorController: Inicializado");
+        console.log("TwoFactorController: Inicializado (Final Design)");
 
-        // Elementos del DOM
-        const btnStart = document.getElementById('btn-start-2fa');
         const btnVerify = document.getElementById('btn-confirm-2fa');
         const btnDisable = document.getElementById('btn-disable-2fa');
         const inputCode = document.getElementById('input-2fa-verify');
+        
+        // 1. Auto-carga del QR al iniciar el módulo
+        const qrContainer = document.getElementById('qr-container');
+        if (qrContainer) {
+            loadQrCode(qrContainer);
+        }
 
-        // Evento: Comenzar configuración (Generar QR)
-        if (btnStart) {
-            btnStart.addEventListener('click', async () => {
-                const originalText = btnStart.innerText;
-                setLoading(btnStart, true, I18n.t('js.2fa.generating'));
-
-                const formData = new FormData();
-                formData.append('action', 'init_2fa');
-
-                try {
-                    const res = await ApiService.post('settings-handler.php', formData);
-
-                    if (res.success) {
-                        // Cambiar de vista Intro -> QR
-                        document.getElementById('step-intro').classList.add('disabled');
-                        document.getElementById('step-intro').classList.remove('active');
-                        
-                        document.getElementById('step-qr').classList.remove('disabled');
-                        document.getElementById('step-qr').classList.add('active');
-
-                        // Generar e Inyectar QR usando qr-code-styling
-                        const qrContainer = document.getElementById('qr-container');
-                        if (qrContainer && res.otpauth_url && window.QRCodeStyling) {
-                            
-                            // Limpiar spinner o contenido previo
-                            qrContainer.innerHTML = '';
-                            qrContainer.style.display = 'flex';
-                            qrContainer.style.justifyContent = 'center';
-
-                            const qrCode = new QRCodeStyling({
-                                width: 220,
-                                height: 220,
-                                type: "svg",
-                                data: res.otpauth_url,
-                                image: "",
-                                dotsOptions: {
-                                    color: "#000000",
-                                    type: "rounded"
-                                },
-                                backgroundOptions: {
-                                    color: "#ffffff",
-                                },
-                                imageOptions: {
-                                    crossOrigin: "anonymous",
-                                    margin: 10
-                                }
-                            });
-
-                            qrCode.append(qrContainer);
-                        } else if (!window.QRCodeStyling) {
-                            console.error("QRCodeStyling library not loaded.");
-                            qrContainer.innerHTML = '<p style="color:red">Error: Library missing</p>';
-                        }
-
-                    } else {
-                        Toast.show(res.message, 'error');
-                        setLoading(btnStart, false, originalText);
+        // 2. Manejo del botón COPIAR (Delegación de eventos)
+        // Se puede vincular al body o al contenedor local
+        const contentArea = document.getElementById('2fa-content-area');
+        if (contentArea) {
+            contentArea.addEventListener('click', (e) => {
+                const btnCopy = e.target.closest('[data-action="copy-input"]');
+                if (btnCopy) {
+                    const targetId = btnCopy.dataset.target;
+                    const input = document.getElementById(targetId);
+                    if (input && input.value) {
+                        navigator.clipboard.writeText(input.value).then(() => {
+                            Toast.show('Copiado al portapapeles', 'info');
+                        }).catch(() => {
+                            Toast.show('Error al copiar', 'error');
+                        });
                     }
-                } catch (error) {
-                    console.error(error);
-                    Toast.show(I18n.t('js.core.connection_error'), 'error');
-                    setLoading(btnStart, false, originalText);
                 }
             });
         }
 
-        // Evento: Verificar código y activar
+        // Formato automático del input (000 000)
+        if (inputCode) {
+            inputCode.addEventListener('input', (e) => {
+                let val = e.target.value.replace(/\D/g, '');
+                if (val.length > 3) val = val.slice(0,3) + ' ' + val.slice(3,6);
+                e.target.value = val;
+            });
+        }
+
+        // Evento: Verificar
         if (btnVerify) {
             btnVerify.addEventListener('click', async () => {
-                const code = inputCode.value.trim();
+                const rawCode = inputCode.value.replace(/\s/g, ''); // Quitar espacios para enviar
                 
-                if (code.length < 6) {
+                if (rawCode.length < 6) {
                     Toast.show(I18n.t('js.2fa.fill_code'), 'warning');
                     inputCode.focus();
                     return;
@@ -99,20 +65,27 @@ export const TwoFactorController = {
 
                 const formData = new FormData();
                 formData.append('action', 'enable_2fa');
-                formData.append('code', code);
+                formData.append('code', rawCode);
 
                 try {
                     const res = await ApiService.post('settings-handler.php', formData);
 
                     if (res.success) {
-                        // Cambiar vista QR -> Success
-                        document.getElementById('step-qr').classList.add('disabled');
-                        document.getElementById('step-qr').classList.remove('active');
+                        // Ocultar paso QR
+                        const stepQr = document.getElementById('step-qr');
+                        if(stepQr) {
+                            stepQr.classList.remove('active');
+                            stepQr.style.display = 'none'; // Forzar ocultado visual inmediato
+                        }
                         
-                        document.getElementById('step-success').classList.remove('disabled');
-                        document.getElementById('step-success').classList.add('active');
+                        // Mostrar paso Success
+                        const stepSuccess = document.getElementById('step-success');
+                        if(stepSuccess) {
+                            stepSuccess.classList.remove('disabled');
+                            stepSuccess.classList.add('active');
+                        }
 
-                        // Mostrar códigos de recuperación
+                        // Llenar códigos de recuperación
                         const list = document.getElementById('recovery-codes-list');
                         if (list && res.recovery_codes) {
                             list.innerHTML = res.recovery_codes.map(c => `<span>${c}</span>`).join('');
@@ -133,7 +106,7 @@ export const TwoFactorController = {
             });
         }
 
-        // Evento: Desactivar 2FA
+        // Evento: Desactivar (Igual que antes)
         if (btnDisable) {
             btnDisable.addEventListener('click', async () => {
                 if (!confirm(I18n.t('js.2fa.confirm_disable'))) return;
@@ -146,18 +119,14 @@ export const TwoFactorController = {
 
                 try {
                     const res = await ApiService.post('settings-handler.php', formData);
-
                     if (res.success) {
                         Toast.show(I18n.t('api.2fa_disabled'), 'success');
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1000);
+                        setTimeout(() => window.location.reload(), 1000);
                     } else {
                         Toast.show(res.message, 'error');
                         setLoading(btnDisable, false, originalText);
                     }
                 } catch (error) {
-                    console.error(error);
                     Toast.show(I18n.t('js.2fa.error_connection'), 'error');
                     setLoading(btnDisable, false, originalText);
                 }
@@ -166,7 +135,53 @@ export const TwoFactorController = {
     }
 };
 
-// Helper simple para estado de carga en botones
+async function loadQrCode(container) {
+    const formData = new FormData();
+    formData.append('action', 'init_2fa');
+
+    try {
+        const res = await ApiService.post('settings-handler.php', formData);
+
+        if (res.success && res.otpauth_url) {
+            
+            // 1. Generar QR
+            container.innerHTML = '';
+            // ... (código del QR igual que antes) ...
+            if (window.QRCodeStyling) {
+                const qrCode = new QRCodeStyling({
+                    width: 160,
+                    height: 160,
+                    type: "svg",
+                    data: res.otpauth_url,
+                    image: "",
+                    dotsOptions: { color: "#000000", type: "rounded" },
+                    backgroundOptions: { color: "#ffffff" },
+                    imageOptions: { crossOrigin: "anonymous", margin: 0 }
+                });
+                qrCode.append(container);
+            }
+
+            // 2. Mostrar Secreto Manual
+            const manualInput = document.getElementById('manual-secret-input');
+            if (manualInput && res.secret) {
+                manualInput.value = res.secret;
+            }
+
+            // Auto-focus
+            const inputVerify = document.getElementById('input-2fa-verify');
+            if(inputVerify) setTimeout(() => inputVerify.focus(), 500);
+
+        } else {
+            // CORRECCIÓN AQUÍ: Mostrar el mensaje real del servidor
+            // Probablemente diga "Demasiados intentos..." o similar.
+            container.innerHTML = `<p style="color:var(--color-error); font-size:13px; text-align:center; padding:10px;">${res.message || 'Error desconocido'}</p>`;
+        }
+    } catch (error) {
+        console.error(error);
+        container.innerHTML = `<p style="color:var(--color-error); font-size:13px; text-align:center;">Error de conexión.</p>`;
+    }
+}
+
 function setLoading(btn, isLoading, text) {
     if (isLoading) {
         btn.disabled = true;

@@ -3,7 +3,6 @@
  */
 
 import { ApiService } from '../../core/api-service.js';
-// 1. IMPORTAR TOAST (Faltaba esto)
 import { Toast } from '../../core/toast-manager.js';
 import { I18n } from '../../core/i18n-manager.js';
 
@@ -26,15 +25,44 @@ export const SettingsController = (function() {
         _bindEvents();
         _initToggles();
         _syncStateWithDOM();
+        bindScrollListeners(); // Intentar vincular al inicio por si acaso
     }
 
     function sync() {
         _syncStateWithDOM();
     }
 
+    // === NUEVA FUNCIÓN PÚBLICA ===
+    // Se debe llamar cada vez que se carga la vista 'settings/your-profile'
+    function bindScrollListeners() {
+        const scrollableLists = document.querySelectorAll('.menu-list--scrollable');
+        
+        scrollableLists.forEach(list => {
+            // Evitar doble binding verificando si ya tiene un flag
+            if (list.dataset.scrollBound === 'true') return;
+            
+            list.dataset.scrollBound = 'true'; // Marcar como vinculado
+            
+            list.addEventListener('scroll', (e) => {
+                const container = e.target;
+                // Buscamos el contenedor padre .popover-module para encontrar el header dentro de él
+                const wrapper = container.closest('.popover-module');
+                if (!wrapper) return;
+
+                const header = wrapper.querySelector('.menu-search-header');
+                if (!header) return;
+
+                if (container.scrollTop > 5) {
+                    header.classList.add('shadow');
+                } else {
+                    header.classList.remove('shadow');
+                }
+            });
+        });
+    }
+
     function _syncStateWithDOM() {
         const prefs = window.USER_PREFS || {};
-
         if (prefs.language) _highlightActiveOption('language', prefs.language);
         if (prefs.theme) _highlightActiveOption('theme', prefs.theme);
     }
@@ -65,7 +93,8 @@ export const SettingsController = (function() {
     }
 
     function _bindEvents() {
-        // Event Delegation
+        // Event Delegation (Click en Dropdowns, Opciones, etc.)
+        // Estos sí funcionan siempre porque se atan al document
         document.addEventListener('click', (e) => {
             if (e.target.closest(SELECTORS.attrSearch)) return;
 
@@ -81,7 +110,7 @@ export const SettingsController = (function() {
             if (!e.target.closest(SELECTORS.wrapper)) { _closeAllDropdowns(); }
         });
 
-        // Búsqueda en tiempo real
+        // Búsqueda en tiempo real (Input Delegation)
         document.addEventListener('input', (e) => {
             if (e.target.matches(SELECTORS.attrSearch)) {
                 _handleLanguageSearch(e.target);
@@ -127,7 +156,6 @@ export const SettingsController = (function() {
             trigger.classList.add(SELECTORS.activeClass);
             wrapperElement.classList.add('dropdown-active');
             
-            // Auto-focus al input
             const input = menu.querySelector('input');
             if(input) setTimeout(() => input.focus(), 100);
         }
@@ -143,7 +171,7 @@ export const SettingsController = (function() {
         const label = optionElement.dataset.label;
         const type = optionElement.dataset.type;
 
-        // UI Optimista (Cambia visualmente antes de confirmar)
+        // UI Optimista
         const triggerText = wrapper.querySelector(SELECTORS.triggerText);
         if (triggerText && label) triggerText.innerText = label;
         
@@ -159,13 +187,9 @@ export const SettingsController = (function() {
 
         if (value && type) {
             savePreference(type, value);
-            
             if (type === 'theme') {
                 applyTheme(value);
             } else {
-                // Solo recargamos si es idioma, pero damos un momento para que se guarde
-                // OJO: Si falla el guardado, se recargará igual. 
-                // Idealmente deberíamos esperar a savePreference, pero para UX rápida lo dejamos así.
                 setTimeout(() => window.location.reload(), 150);
             }
         }
@@ -177,14 +201,13 @@ export const SettingsController = (function() {
             const input = el.querySelector('input');
             if(input) {
                 input.value = '';
-                _handleLanguageSearch(input); // Resetear lista
+                _handleLanguageSearch(input);
             }
         });
         document.querySelectorAll(SELECTORS.triggerSelector).forEach(el => el.classList.remove(SELECTORS.activeClass));
         document.querySelectorAll(SELECTORS.wrapper).forEach(el => el.classList.remove('dropdown-active'));
     }
 
-    // 2. FUNCIÓN SAVEPREFERENCE ACTUALIZADA
     async function savePreference(key, value) {
         const formData = new FormData();
         formData.append('action', 'update_preference');
@@ -193,21 +216,14 @@ export const SettingsController = (function() {
 
         try { 
             const res = await ApiService.post('settings-handler.php', formData); 
-            
             if (res.success) {
-                // Actualizar caché local solo si tuvo éxito
                 if (window.USER_PREFS) window.USER_PREFS[key] = value;
             } else {
-                // MOSTRAR ERROR (Aquí es donde sale el Toast del límite)
                 Toast.show(res.message, 'error');
-                
-                // Si era un cambio de tema y falló (por rate limit), revertimos visualmente
                 if (key === 'theme' && window.USER_PREFS && window.USER_PREFS.theme) {
                     applyTheme(window.USER_PREFS.theme);
-                    _syncStateWithDOM(); // Regresa el selector a su sitio
+                    _syncStateWithDOM(); 
                 }
-                
-                // Si era un toggle (checkbox), revertimos el check
                 if (key === 'open_links_new_tab' || key === 'extended_toast') {
                    _revertToggle(key);
                 }
@@ -222,10 +238,8 @@ export const SettingsController = (function() {
         let selectorId = '';
         if (key === 'open_links_new_tab') selectorId = 'pref-open-links';
         if (key === 'extended_toast') selectorId = 'pref-extended-toast';
-        
         const checkbox = document.getElementById(selectorId);
         if (checkbox && window.USER_PREFS) {
-            // Regresa al valor que tenía guardado en memoria
             checkbox.checked = !!window.USER_PREFS[key]; 
         }
     }
@@ -252,6 +266,7 @@ export const SettingsController = (function() {
         init,
         sync, 
         savePreference,
-        applyTheme
+        applyTheme,
+        bindScrollListeners // <--- EXPORTAMOS LA FUNCIÓN
     };
 })();

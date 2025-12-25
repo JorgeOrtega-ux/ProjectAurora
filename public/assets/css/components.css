@@ -96,7 +96,7 @@
 
 .text-display-value {
     font-size: 14px;
-    color: var(--text-primary); /* #333 */
+    color: var(--text-primary);
 }
 
 /* =========================================
@@ -115,6 +115,15 @@
     flex-shrink: 0;
 }
 
+/* MODIFICADOR: Icono pequeño (40px) solicitado */
+.component-card__icon-container--small {
+    width: 40px;
+    height: 40px;
+}
+.component-card__icon-container--small .material-symbols-rounded {
+    font-size: 20px;
+}
+
 .component-card__profile-picture.component-card__profile-picture--bordered,
 .component-card__icon-container.component-card__icon-container--bordered {
     background-color: transparent;
@@ -122,7 +131,6 @@
     border-radius: 8px;
 }
 
-/* Bordes de Rol en Componentes */
 .component-card__profile-picture::before {
     content: '';
     position: absolute;
@@ -136,18 +144,9 @@
     z-index: 2;
 }
 
-.component-card__profile-picture[data-role="user"]::before {
-    border-color: var(--role-user-border);
-}
-
-.component-card__profile-picture[data-role="moderator"]::before {
-    border-color: var(--role-moderator);
-}
-
-.component-card__profile-picture[data-role="administrator"]::before {
-    border-color: var(--role-administrator);
-}
-
+.component-card__profile-picture[data-role="user"]::before { border-color: var(--role-user-border); }
+.component-card__profile-picture[data-role="moderator"]::before { border-color: var(--role-moderator); }
+.component-card__profile-picture[data-role="administrator"]::before { border-color: var(--role-administrator); }
 .component-card__profile-picture[data-role="founder"]::before {
     border: none;
     background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
@@ -177,9 +176,7 @@
     transition: opacity 0.2s ease;
 }
 
-.component-card__profile-picture:hover .component-card__avatar-overlay {
-    opacity: 1;
-}
+.component-card__profile-picture:hover .component-card__avatar-overlay { opacity: 1; }
 
 /* =========================================
    3. CONTROLES DE COMPONENTE (Botones, Inputs)
@@ -213,9 +210,7 @@
     transition: background-color 0.2s;
 }
 
-.component-button:hover {
-    background-color: var(--bg-hover-light);
-}
+.component-button:hover { background-color: var(--bg-hover-light); }
 
 .component-button.primary {
     background-color: var(--action-primary);
@@ -223,11 +218,8 @@
     border: none;
 }
 
-.component-button.primary:hover {
-    background-color: var(--action-primary-hover); /* #333 aprox */
-}
+.component-button.primary:hover { background-color: var(--action-primary-hover); }
 
-/* Modificador: Botón Grande (Auth) */
 .component-button--large {
     height: 56px;
     padding: 0 24px;
@@ -247,16 +239,13 @@
     color: var(--text-primary);
 }
 
-.component-text-input:focus {
-    border-color: var(--action-primary);
-}
+.component-text-input:focus { border-color: var(--action-primary); }
 
 .component-input-wrapper {
     width: 100%;
     min-width: 200px;
 }
 
-/* Formulario por etapas (CONTENEDOR PADRE) */
 .component-stage-form {
     display: flex;
     flex-direction: column;
@@ -265,22 +254,18 @@
     width: 100%;
 }
 
-/* NUEVO: GRUPO DE INPUTS (CONTENEDOR HIJO) */
 .component-form-group {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 8px;           /* Separación entre inputs */
-    margin-bottom: 8px; /* Separación con el siguiente elemento (link/boton) */
+    gap: 8px;
+    margin-bottom: 8px;
     width: 100%;
 }
 
 /* =========================================
-   4. ELEMENTOS AUXILIARES DE COMPONENTES
-   (Dropdowns y Toggles)
+   4. ELEMENTOS AUXILIARES
    ========================================= */
-
-/* Toggle Switch Component */
 .component-toggle-switch {
     position: relative;
     display: inline-block;
@@ -288,19 +273,12 @@
     height: 24px;
 }
 
-.component-toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
+.component-toggle-switch input { opacity: 0; width: 0; height: 0; }
 
 .component-toggle-slider {
     position: absolute;
     cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    top: 0; left: 0; right: 0; bottom: 0;
     background-color: var(--bg-toggle-off);
     border-radius: 34px;
     transition: .3s;
@@ -310,29 +288,18 @@
 .component-toggle-slider:before {
     position: absolute;
     content: "";
-    height: 18px;
-    width: 18px;
-    left: 2px;
-    bottom: 2px;
+    height: 18px; width: 18px;
+    left: 2px; bottom: 2px;
     background-color: white;
     border-radius: var(--sl-border-radius-circle);
     transition: .3s cubic-bezier(0.4, 0.0, 0.2, 1);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-input:checked+.component-toggle-slider {
-    background-color: var(--action-primary);
-}
+input:checked+.component-toggle-slider { background-color: var(--action-primary); }
+input:checked+.component-toggle-slider:before { transform: translateX(20px); }
 
-input:checked+.component-toggle-slider:before {
-    transform: translateX(20px);
-}
-
-/* Dropdowns (Trigger Select) */
-.trigger-select-wrapper {
-    position: relative;
-    width: 260px;
-}
+.trigger-select-wrapper { position: relative; width: 260px; }
 
 .trigger-selector {
     display: flex;
@@ -350,10 +317,7 @@ input:checked+.component-toggle-slider:before {
     transition: border-color 0.2s ease;
 }
 
-.trigger-selector:hover,
-.trigger-selector.active {
-    border-color: var(--action-primary);
-}
+.trigger-selector:hover, .trigger-selector.active { border-color: var(--action-primary); }
 
 .trigger-select-text {
     flex: 1;
@@ -379,9 +343,7 @@ input:checked+.component-toggle-slider:before {
     animation: fadeInPopover 0.15s ease-out;
 }
 
-.popover-module.active {
-    display: flex;
-}
+.popover-module.active { display: flex; }
 
 @keyframes fadeInPopover {
     from { opacity: 0; transform: translateY(-5px); }
@@ -389,11 +351,8 @@ input:checked+.component-toggle-slider:before {
 }
 
 /* =========================================
-   5. EXTENSIÓN: COMPONENTES DE LAYOUT Y FORMULARIOS AVANZADOS
-   (Reemplazan estilos viejos de Auth)
+   5. EXTENSIONES DE LAYOUT Y FORMULARIOS
    ========================================= */
-
-/* Layout Centrado (Login, etc) */
 .component-layout-centered {
     width: 100%;
     height: 100%;
@@ -404,7 +363,6 @@ input:checked+.component-toggle-slider:before {
     background-color: transparent;
 }
 
-/* Tarjeta Compacta (Login card) */
 .component-card--compact {
     width: 100%;
     max-width: 420px;
@@ -415,7 +373,6 @@ input:checked+.component-toggle-slider:before {
     box-shadow: none;
 }
 
-/* Headers Centrados */
 .component-header-centered {
     text-align: center;
     margin-bottom: 8px;
@@ -426,44 +383,37 @@ input:checked+.component-toggle-slider:before {
 .component-header-centered h1 {
     font-size: 26px;
     font-weight: var(--sl-font-weight-bold);
-    color: #1a1a1a; /* Mantener oscuro profundo o usar var(--text-primary) */
+    color: #1a1a1a;
     margin: 0;
 }
-.component-header-centered p {
-    font-size: 15px;
-    color: var(--text-secondary);
-    margin: 0;
-}
+.component-header-centered p { font-size: 15px; color: var(--text-secondary); margin: 0; }
 
-/* Wrapper Flotante (Floating Labels) */
 .component-input-wrapper--floating {
     position: relative;
     width: 100%;
-    margin-bottom: 0; /* ELIMINADO EL MARGIN BOTTOM AQUI */
+    margin-bottom: 0;
 }
 
 .component-input-wrapper--floating .component-text-input {
     height: 56px;
-    padding: 24px 16px 8px 16px; /* Espacio para el label arriba */
+    padding: 24px 16px 8px 16px;
     background-color: var(--bg-surface);
     transition: border-color 0.2s, background-color 0.2s;
 }
 
-/* Label Flotante */
 .component-label-floating {
     position: absolute;
     top: 50%;
     left: 16px;
     transform: translateY(-50%);
     font-size: 16px;
-    color: var(--text-tertiary); /* #888 */
+    color: var(--text-tertiary);
     pointer-events: none;
     transition: all 0.2s ease-out;
     z-index: 1;
     background-color: transparent;
 }
 
-/* Animación del Label */
 .component-input-wrapper--floating .component-text-input:focus + .component-label-floating,
 .component-input-wrapper--floating .component-text-input:not(:placeholder-shown) + .component-label-floating {
     top: 12px;
@@ -474,7 +424,6 @@ input:checked+.component-toggle-slider:before {
     transform: none;
 }
 
-/* Action Button (Ojo contraseña, refresh) */
 .component-input-action {
     position: absolute;
     right: 8px;
@@ -498,13 +447,11 @@ input:checked+.component-toggle-slider:before {
     color: var(--text-primary);
 }
 
-/* Ajuste de padding si hay acción */
 .component-input-wrapper--floating .component-text-input[type="password"],
 .component-input-wrapper--floating .component-text-input.has-action {
     padding-right: 48px;
 }
 
-/* Mensajes / Alertas */
 .component-message {
     padding: 12px 16px;
     border-radius: 8px;
@@ -514,36 +461,28 @@ input:checked+.component-toggle-slider:before {
     border: 1px solid transparent;
 }
 .component-message--error {
-    background-color: var(--color-error-bg); /* #ffebee */
-    color: var(--color-toast-error-text); /* #d32f2f */
-    border-color: #ffcdd2; /* Puedes pasar esto a var también si quieres */
+    background-color: var(--color-error-bg);
+    color: var(--color-toast-error-text);
+    border-color: #ffcdd2;
     text-align: center;
     margin-top: 16px;
     animation: fadeIn 0.3s ease;
 }
 .component-message--success {
-    background-color: var(--color-success-bg); /* #e8f5e9 */
-    color: var(--color-toast-success-text); /* #2e7d32 */
+    background-color: var(--color-success-bg);
+    color: var(--color-toast-success-text);
     border-color: #c8e6c9;
 }
 
-/* Footer de texto (Links abajo) */
 .component-text-footer {
     text-align: center;
     font-size: 14px;
     color: var(--text-secondary);
     margin-top: 12px;
 }
-.component-text-footer a {
-    color: var(--text-primary);
-    font-weight: 600;
-    text-decoration: none;
-}
-.component-text-footer a:hover {
-    text-decoration: underline;
-}
+.component-text-footer a { color: var(--text-primary); font-weight: 600; text-decoration: none; }
+.component-text-footer a:hover { text-decoration: underline; }
 
-/* Links simples (Olvidé contraseña) */
 .component-link-simple {
     display: block;
     text-align: right;
@@ -552,19 +491,15 @@ input:checked+.component-toggle-slider:before {
     text-decoration: none;
     margin: 0 0 8px 0; 
 }
-.component-link-simple:hover {
-    color: var(--text-primary);
-    text-decoration: underline;
-}
+.component-link-simple:hover { color: var(--text-primary); text-decoration: underline; }
 
-/* Helpers Adicionales */
 .w-100 { width: 100%; }
 .m-0 { margin: 0 !important; }
 .mt-16 { margin-top: 16px; }
 .mt-24 { margin-top: 24px; }
 
 /* =========================================
-   6. RESPONSIVE DE COMPONENTES
+   6. RESPONSIVE
    ========================================= */
 .component-group-item--stacked {
     flex-direction: column !important;
@@ -587,69 +522,36 @@ input:checked+.component-toggle-slider:before {
         align-items: stretch;
         gap: 12px;
     }
-
     .component-card__actions.actions-right {
         justify-content: space-between;
         width: 100%;
     }
-
-    .trigger-select-wrapper {
-        width: 100%;
-    }
-
+    .trigger-select-wrapper { width: 100%; }
     .input-group-responsive.active {
         flex-direction: column !important;
         align-items: stretch !important;
         gap: 8px;
     }
-
-    .input-group-responsive .component-card__actions {
-        margin-top: 4px;
-    }
-
-    .component-button {
-        flex: 1;
-        min-height: 56px;
-    }
+    .input-group-responsive .component-card__actions { margin-top: 4px; }
+    .component-button { flex: 1; min-height: 56px; }
 }
-/* =========================================
-   7. AJUSTES RESPONSIVE (Móvil < 468px)
-   ========================================= */
+
 @media (max-width: 468px) {
-    .component-layout-centered {
-        /* Cambiamos la alineación vertical de 'center' a 'flex-start' (arriba) */
-        align-items: flex-start;
-        
-        /* Agregamos el padding superior que pediste */
-        padding-top: 120px; 
-        
-        /* Aseguramos que si la pantalla es muy pequeña, el contenedor crezca */
-        height: auto;
-        min-height: 100%;
-    }
-
-    .component-card--compact {
-        padding: 0;
-    }
+    .component-layout-centered { align-items: flex-start; padding-top: 120px; height: auto; min-height: 100%; }
+    .component-card--compact { padding: 0; }
 }
 
 /* =========================================
-   8. EXTENSIONES: DROPDOWNS AVANZADOS (Buscador)
+   8. EXTENSIONES AVANZADAS
    ========================================= */
-
-/* Modificador para Popover que contiene estructuras complejas (Header + Lista) */
 .popover-module.popover-module--searchable {
-    padding: 0; /* Elimina padding default para que el header toque los bordes */
-    overflow: hidden; /* Asegura bordes redondeados */
-    display: none; /* Mantiene comportamiento base */
+    padding: 0;
+    overflow: hidden;
+    display: none;
     flex-direction: column;
 }
+.popover-module.popover-module--searchable.active { display: flex; }
 
-.popover-module.popover-module--searchable.active {
-    display: flex; /* Mantiene comportamiento base */
-}
-
-/* Contenedor interno sin sombras ni bordes (ya los tiene el popover padre) */
 .menu-content.menu-content--flush {
     width: 100%;
     box-shadow: none;
@@ -658,34 +560,79 @@ input:checked+.component-toggle-slider:before {
     background-color: transparent;
 }
 
-/* Cabecera del menú (Input de búsqueda) */
 .menu-search-header {
     padding: 8px;
     border-bottom: 1px solid var(--border-transparent-20);
     background-color: var(--bg-surface);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    position: relative;
+    z-index: 10;
+}
+.menu-search-header.shadow {
+    box-shadow: 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    border-bottom-color: transparent;
 }
 
-/* Lista con scroll interno */
 .menu-list.menu-list--scrollable {
     padding: 4px;
     max-height: 200px;
     overflow-y: auto;
-    overscroll-behavior: contain; /* Evita scroll del body al llegar al final */
+    overscroll-behavior: contain;
 }
 
-/* Modificador para Inputs pequeños dentro de menús */
 .component-text-input.component-text-input--sm {
     height: 36px;
     font-size: 13px;
     padding: 0 10px;
 }
 
-/* Estado vacío (Sin resultados) */
 .menu-empty-state {
-    display: none; /* Controlado por JS */
+    display: none;
     padding: 16px 12px;
     text-align: center;
     font-size: 13px;
     color: var(--text-secondary);
     user-select: none;
+}
+
+/* =========================================
+   9. UTILIDADES DE LAYOUT FLEXIBLE (2FA)
+   ========================================= */
+.component-flexible-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    width: 100%;
+}
+
+.component-flexible-row__content {
+    flex: 1;
+    min-width: 240px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px; /* Espacio entre el Header y el Input Flotante */
+}
+
+/* Estilo para el contenedor del QR */
+.component-flexible-row__side {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #fff;
+    padding: 12px;
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+}
+
+/* Input para el Código de Verificación (Step 3) - Estilo Monospace Grande */
+.input-code-2fa {
+    font-size: 20px;
+    letter-spacing: 4px;
+    text-align: center;
+    font-family: var(--sl-font-mono);
+    height: 48px;
+    padding: 0 16px;
 }
