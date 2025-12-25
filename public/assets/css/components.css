@@ -115,7 +115,7 @@
     flex-shrink: 0;
 }
 
-/* MODIFICADOR: Icono pequeño (40px) solicitado */
+/* MODIFICADOR: Icono pequeño (40px) */
 .component-card__icon-container--small {
     width: 40px;
     height: 40px;
@@ -348,6 +348,18 @@ input:checked+.component-toggle-slider:before { transform: translateX(20px); }
 @keyframes fadeInPopover {
     from { opacity: 0; transform: translateY(-5px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* NUEVA CLASE: Contenedor visual (QR, imágenes) */
+.component-visual-box {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+    border-radius: 12px;
+    background-color: transparent;
+    border: 1px solid #00000020;
 }
 
 /* =========================================
@@ -593,46 +605,82 @@ input:checked+.component-toggle-slider:before { transform: translateX(20px); }
     font-size: 13px;
     color: var(--text-secondary);
     user-select: none;
-}
-
-/* =========================================
-   9. UTILIDADES DE LAYOUT FLEXIBLE (2FA)
-   ========================================= */
-.component-flexible-row {
+}/* Contenedor flexible (Fila) */
+.component-visual-group {
     display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 24px;
+    gap: 12px;
     width: 100%;
 }
 
-.component-flexible-row__content {
-    flex: 1;
-    min-width: 240px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px; /* Espacio entre el Header y el Input Flotante */
-}
-
-/* Estilo para el contenedor del QR */
-.component-flexible-row__side {
-    flex: 0 0 auto;
+/* Caja base (Borde sutil, fondo transparente) */
+.component-visual-box {
     display: flex;
     justify-content: center;
     align-items: center;
-    background: #fff;
-    padding: 12px;
-    border: 1px solid var(--border-light);
+    padding: 20px;
     border-radius: 12px;
+    background-color: transparent;
+    border: 1px solid rgba(0, 0, 0, 0.12); /* Equivalente a #00000020 */
+    position: relative;
 }
 
-/* Input para el Código de Verificación (Step 3) - Estilo Monospace Grande */
-.input-code-2fa {
-    font-size: 20px;
-    letter-spacing: 4px;
-    text-align: center;
-    font-family: var(--sl-font-mono);
-    height: 48px;
-    padding: 0 16px;
+/* Modificador: Caja que ocupa el espacio restante (Izquierda) */
+.component-visual-box.box-grow {
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 12px;
+}
+
+/* Modificador: Caja ajustada al contenido (Derecha - QR) */
+.component-visual-box.box-qr {
+    width: auto;
+    flex-shrink: 0;
+    background-color: #fff; /* Opcional: fondo blanco para asegurar contraste del QR */
+}
+
+/* Estilos para la lista de pasos dentro de la caja izquierda */
+.visual-step-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.visual-step-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.visual-step-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--sl-border-radius-circle);
+    background-color: transparent;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    border: 1px solid #00000020;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+/* Responsive: En móviles se ponen en columna */
+@media (max-width: 600px) {
+    .component-visual-group {
+        flex-direction: column-reverse; /* QR arriba en móvil, o column normal */
+    }
+    .component-visual-box {
+        width: 100%;
+    }
 }

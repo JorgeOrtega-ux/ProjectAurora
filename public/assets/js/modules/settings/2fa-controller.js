@@ -8,7 +8,7 @@ import { I18n } from '../../core/i18n-manager.js';
 
 export const TwoFactorController = {
     init: () => {
-        console.log("TwoFactorController: Inicializado (Final Design)");
+        console.log("TwoFactorController: Inicializado (Final Design - 150px)");
 
         const btnVerify = document.getElementById('btn-confirm-2fa');
         const btnDisable = document.getElementById('btn-disable-2fa');
@@ -21,7 +21,6 @@ export const TwoFactorController = {
         }
 
         // 2. Manejo del botón COPIAR (Delegación de eventos)
-        // Se puede vincular al body o al contenedor local
         const contentArea = document.getElementById('2fa-content-area');
         if (contentArea) {
             contentArea.addEventListener('click', (e) => {
@@ -75,7 +74,8 @@ export const TwoFactorController = {
                         const stepQr = document.getElementById('step-qr');
                         if(stepQr) {
                             stepQr.classList.remove('active');
-                            stepQr.style.display = 'none'; // Forzar ocultado visual inmediato
+                            stepQr.classList.add('disabled'); 
+                            stepQr.style.display = 'none'; 
                         }
                         
                         // Mostrar paso Success
@@ -83,6 +83,7 @@ export const TwoFactorController = {
                         if(stepSuccess) {
                             stepSuccess.classList.remove('disabled');
                             stepSuccess.classList.add('active');
+                            stepSuccess.style.display = ''; 
                         }
 
                         // Llenar códigos de recuperación
@@ -106,7 +107,7 @@ export const TwoFactorController = {
             });
         }
 
-        // Evento: Desactivar (Igual que antes)
+        // Evento: Desactivar
         if (btnDisable) {
             btnDisable.addEventListener('click', async () => {
                 if (!confirm(I18n.t('js.2fa.confirm_disable'))) return;
@@ -144,24 +145,39 @@ async function loadQrCode(container) {
 
         if (res.success && res.otpauth_url) {
             
-            // 1. Generar QR
+            // 1. Limpiar contenedor previo
             container.innerHTML = '';
-            // ... (código del QR igual que antes) ...
+
+            // 2. Generar QR con estilos redondos y tamaño ajustado (150px)
             if (window.QRCodeStyling) {
                 const qrCode = new QRCodeStyling({
-                    width: 160,
-                    height: 160,
+                    width: 150,  // TAMAÑO 150px
+                    height: 150, // TAMAÑO 150px
                     type: "svg",
                     data: res.otpauth_url,
                     image: "",
-                    dotsOptions: { color: "#000000", type: "rounded" },
-                    backgroundOptions: { color: "#ffffff" },
-                    imageOptions: { crossOrigin: "anonymous", margin: 0 }
+                    dotsOptions: { 
+                        color: "#000000", 
+                        type: "rounded" // Puntos redondos
+                    },
+                    cornersSquareOptions: {
+                        type: "extra-rounded" // Marco del ojo redondo
+                    },
+                    cornersDotOptions: {
+                        type: "dot" // Punto del ojo redondo
+                    },
+                    backgroundOptions: { 
+                        color: "#ffffff" 
+                    },
+                    imageOptions: { 
+                        crossOrigin: "anonymous", 
+                        margin: 0 
+                    }
                 });
                 qrCode.append(container);
             }
 
-            // 2. Mostrar Secreto Manual
+            // 3. Mostrar Secreto Manual
             const manualInput = document.getElementById('manual-secret-input');
             if (manualInput && res.secret) {
                 manualInput.value = res.secret;
@@ -172,8 +188,6 @@ async function loadQrCode(container) {
             if(inputVerify) setTimeout(() => inputVerify.focus(), 500);
 
         } else {
-            // CORRECCIÓN AQUÍ: Mostrar el mensaje real del servidor
-            // Probablemente diga "Demasiados intentos..." o similar.
             container.innerHTML = `<p style="color:var(--color-error); font-size:13px; text-align:center; padding:10px;">${res.message || 'Error desconocido'}</p>`;
         }
     } catch (error) {
