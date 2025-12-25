@@ -9,6 +9,7 @@ DROP TABLE IF EXISTS user_preferences;
 DROP TABLE IF EXISTS security_logs;
 DROP TABLE IF EXISTS password_resets;
 DROP TABLE IF EXISTS verification_codes;
+DROP TABLE IF EXISTS profile_changes; -- Nueva tabla para limpieza
 DROP TABLE IF EXISTS users;
 
 -- =========================================================
@@ -91,4 +92,21 @@ CREATE TABLE IF NOT EXISTS user_auth_tokens (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX (selector)
+);
+
+-- =========================================================
+-- NUEVA TABLA: Historial de Cambios de Perfil
+-- =========================================================
+CREATE TABLE IF NOT EXISTS profile_changes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    change_type VARCHAR(50) NOT NULL, -- 'username', 'email', 'avatar'
+    old_value TEXT DEFAULT NULL,
+    new_value TEXT DEFAULT NULL,
+    ip_address VARCHAR(45) DEFAULT NULL,
+    user_agent TEXT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX (user_id),
+    INDEX (change_type)
 );

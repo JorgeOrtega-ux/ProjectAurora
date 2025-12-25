@@ -46,6 +46,9 @@ class SettingsService {
         if (move_uploaded_file($file['tmp_name'], $targetPath)) {
             $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
             if ($update->execute([$dbPath, $this->userId])) {
+                // LOG: Registrar cambio de avatar
+                $this->logProfileChange('avatar', $oldPath, $dbPath);
+
                 $this->deleteOldAvatar($oldPath);
                 $_SESSION['avatar'] = $dbPath;
                 return ['success' => true, 'message' => $this->i18n->t('api.pic_updated'), 'new_src' => $dbPath, 'type' => 'custom'];
@@ -80,6 +83,9 @@ class SettingsService {
         if ($imageContent !== false && file_put_contents($targetPath, $imageContent)) {
             $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
             if ($update->execute([$dbPath, $this->userId])) {
+                // LOG: Registrar eliminación de avatar
+                $this->logProfileChange('avatar', $oldPath, $dbPath . ' (Default)');
+
                 $this->deleteOldAvatar($oldPath);
                 $_SESSION['avatar'] = $dbPath;
                 return ['success' => true, 'message' => $this->i18n->t('api.pic_deleted'), 'type' => 'default'];
@@ -97,13 +103,28 @@ class SettingsService {
             if (!filter_var($value, FILTER_VALIDATE_EMAIL)) return ['success' => false, 'message' => $this->i18n->t('api.email_invalid')];
         }
 
+        // Verificar duplicados
         $stmt = $this->pdo->prepare("SELECT id FROM users WHERE $field = ? AND id != ?");
         $stmt->execute([$value, $this->userId]);
         if ($stmt->fetch()) return ['success' => false, 'message' => $this->i18n->t('api.field_in_use')];
 
+        // LOG: Obtener valor antiguo antes de actualizar
+        $stmtOld = $this->pdo->prepare("SELECT $field FROM users WHERE id = ?");
+        $stmtOld->execute([$this->userId]);
+        $oldValue = $stmtOld->fetchColumn();
+
+        // Si el valor no ha cambiado realmente, retornamos éxito sin hacer nada a la BD
+        if ($oldValue === $value) {
+             return ['success' => true, 'message' => $this->i18n->t('api.field_updated')];
+        }
+
         try {
             $update = $this->pdo->prepare("UPDATE users SET $field = ? WHERE id = ?");
             $update->execute([$value, $this->userId]);
+            
+            // LOG: Registrar cambio de username o email
+            $this->logProfileChange($field, $oldValue, $value);
+
             $_SESSION[$field] = $value;
             return ['success' => true, 'message' => $this->i18n->t('api.field_updated')];
         } catch (Exception $e) {
@@ -140,6 +161,10 @@ class SettingsService {
         try {
             $update = $this->pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
             $update->execute([$newHash, $this->userId]);
+            
+            // LOG: Registrar cambio de contraseña (Opcional, pero recomendado)
+            $this->logProfileChange('password', '***', '***'); // No guardamos las contraseñas reales
+
             return ['success' => true, 'message' => $this->i18n->t('api.pass_updated')];
         } catch (Exception $e) {
             return ['success' => false, 'message' => $this->i18n->t('api.update_error')];
@@ -220,6 +245,8 @@ class SettingsService {
             if ($stmt->execute([$secret, $jsonCodes, $this->userId])) {
                 unset($_SESSION['temp_2fa_secret']);
                 $_SESSION['two_factor_enabled'] = 1;
+                // LOG: Registro de activación 2FA
+                $this->logProfileChange('2fa', 'disabled', 'enabled');
                 return ['success' => true, 'message' => $this->i18n->t('api.2fa_enabled'), 'recovery_codes' => $recoveryCodes];
             }
             return ['success' => false, 'message' => $this->i18n->t('api.pic_db_error')];
@@ -231,6 +258,8 @@ class SettingsService {
         $stmt = $this->pdo->prepare("UPDATE users SET two_factor_enabled = 0, two_factor_secret = NULL, two_factor_recovery_codes = NULL WHERE id = ?");
         if ($stmt->execute([$this->userId])) {
             $_SESSION['two_factor_enabled'] = 0;
+            // LOG: Registro de desactivación 2FA
+            $this->logProfileChange('2fa', 'enabled', 'disabled');
             return ['success' => true, 'message' => $this->i18n->t('api.2fa_disabled')];
         }
         return ['success' => false, 'message' => $this->i18n->t('api.update_error')];
@@ -295,6 +324,10 @@ class SettingsService {
             $update->execute([$this->userId]);
             $deleteTokens = $this->pdo->prepare("DELETE FROM user_auth_tokens WHERE user_id = ?");
             $deleteTokens->execute([$this->userId]);
+            
+            // LOG FINAL
+            $this->logProfileChange('account_status', 'active', 'deleted');
+            
             $this->pdo->commit();
             
             setcookie('auth_persistence_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
@@ -330,6 +363,28 @@ class SettingsService {
         elseif (preg_match('/Opera|OPR/i', $ua)) $browser = 'Opera';
         elseif (preg_match('/Edge/i', $ua)) $browser = 'Edge';
         return ['platform' => $platform, 'browser' => $browser];
+    }
+    
+    // Método privado para registrar cambios en la nueva tabla
+    private function logProfileChange($changeType, $oldValue, $newValue) {
+        $ip = $this->getClientIp();
+        $ua = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
+
+        $sql = "INSERT INTO profile_changes (user_id, change_type, old_value, new_value, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)";
+        $stmt = $this->pdo->prepare($sql);
+        
+        try {
+            $stmt->execute([$this->userId, $changeType, $oldValue, $newValue, $ip, $ua]);
+        } catch (Exception $e) {
+            // Silenciosamente ignorar errores de log para no romper la UX
+            error_log("Error logging profile change: " . $e->getMessage());
+        }
+    }
+
+    private function getClientIp() {
+        if (!empty($_SERVER['HTTP_CLIENT_IP'])) return $_SERVER['HTTP_CLIENT_IP'];
+        elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) return $_SERVER['HTTP_X_FORWARDED_FOR'];
+        else return $_SERVER['REMOTE_ADDR'];
     }
 }
 ?>
