@@ -32,7 +32,6 @@ class SettingsService {
         }
 
         // [SEGURIDAD] Mapeo estricto de MIME a Extensión
-        // Esto evita que se usen extensiones maliciosas (ej: .php) aunque el archivo sea una imagen válida.
         $allowedTypes = [
             'image/jpeg' => 'jpg',
             'image/png'  => 'png',
@@ -54,18 +53,67 @@ class SettingsService {
         
         $oldPath = $currentUser['avatar_path'];
         
-        // [SEGURIDAD] Asignamos la extensión basada en el MIME detectado, IGNORANDO $file['name']
+        // [SEGURIDAD] Asignamos la extensión basada en el MIME detectado
         $extension = $allowedTypes[$mime];
         
         $newFileName = $currentUser['uuid'] . '-' . time() . '.' . $extension;
         
         $baseDir = __DIR__ . '/../../storage/profilePicture/custom/';
-        if (!is_dir($baseDir)) mkdir($baseDir, 0777, true);
+        
+        // [CORRECCIÓN 1] Cambiado 0777 a 0755 para mayor seguridad
+        if (!is_dir($baseDir)) mkdir($baseDir, 0755, true);
         
         $targetPath = $baseDir . $newFileName;
         $dbPath = 'storage/profilePicture/custom/' . $newFileName;
 
-        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+        // [CORRECCIÓN 2] Recreación de imagen para eliminar metadatos/EXIF (Privacidad y Seguridad)
+        $imageSaved = false;
+
+        // Verificamos que la librería GD esté activa
+        if (extension_loaded('gd')) {
+            switch ($mime) {
+                case 'image/jpeg':
+                    $img = @imagecreatefromjpeg($file['tmp_name']);
+                    if ($img) { 
+                        // Calidad 90
+                        $imageSaved = imagejpeg($img, $targetPath, 90); 
+                        imagedestroy($img); 
+                    }
+                    break;
+                case 'image/png':
+                    $img = @imagecreatefrompng($file['tmp_name']);
+                    if ($img) { 
+                        // Preservar transparencia
+                        imagepalettetotruecolor($img);
+                        imagealphablending($img, true);
+                        imagesavealpha($img, true);
+                        // Compresión 9 (máxima para PNG, sin pérdida de calidad visual excesiva)
+                        $imageSaved = imagepng($img, $targetPath, 9); 
+                        imagedestroy($img); 
+                    }
+                    break;
+                case 'image/webp':
+                    $img = @imagecreatefromwebp($file['tmp_name']);
+                    if ($img) { 
+                        $imageSaved = imagewebp($img, $targetPath, 90); 
+                        imagedestroy($img); 
+                    }
+                    break;
+                case 'image/gif':
+                    $img = @imagecreatefromgif($file['tmp_name']);
+                    if ($img) { 
+                        $imageSaved = imagegif($img, $targetPath); 
+                        imagedestroy($img); 
+                    }
+                    break;
+            }
+        } else {
+            // Fallback si GD no está instalado: usar move_uploaded_file (menos seguro para metadatos)
+            // Opcionalmente podrías lanzar error aquí si GD es obligatorio.
+            $imageSaved = move_uploaded_file($file['tmp_name'], $targetPath);
+        }
+
+        if ($imageSaved) {
             $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
             if ($update->execute([$dbPath, $this->userId])) {
                 
@@ -90,8 +138,6 @@ class SettingsService {
         
         $oldPath = $currentUser['avatar_path'];
         
-        // NOTA: No verificamos límite aquí para permitir volver al default siempre.
-        
         $firstLetter = substr($currentUser['username'], 0, 1);
         $bgColors = ['40a060', 'a73d3d', '3d3da7', '3d9da7', '9d3da7'];
         $randomBg = $bgColors[array_rand($bgColors)];
@@ -99,7 +145,9 @@ class SettingsService {
         $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($firstLetter) . "&background=" . $randomBg . "&color=fff&size=512&format=png&bold=true";
         
         $baseDir = __DIR__ . '/../../storage/profilePicture/default/';
-        if (!is_dir($baseDir)) mkdir($baseDir, 0777, true);
+        
+        // [CORRECCIÓN 1] Cambiado 0777 a 0755
+        if (!is_dir($baseDir)) mkdir($baseDir, 0755, true);
 
         $newFileName = $currentUser['uuid'] . '-' . time() . '.png';
         $targetPath = $baseDir . $newFileName;
@@ -110,7 +158,6 @@ class SettingsService {
             $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
             if ($update->execute([$dbPath, $this->userId])) {
                 
-                // [LOG] Registramos como 'avatar_delete' (no afecta al rate limit de update)
                 $this->logProfileChange('avatar_delete', $oldPath, $dbPath . ' (Default)');
 
                 $this->deleteOldAvatar($oldPath);
@@ -130,7 +177,7 @@ class SettingsService {
             if (!filter_var($value, FILTER_VALIDATE_EMAIL)) return ['success' => false, 'message' => $this->i18n->t('api.email_invalid')];
         }
 
-        // [SEGURIDAD] Límite de identidad: 1 vez cada 12 días (288 horas)
+        // [SEGURIDAD] Límite de identidad: 1 vez cada 12 días
         if ($this->checkRateLimitExceeded($field, 288, 1)) {
             return ['success' => false, 'message' => $this->i18n->t('api.identity_rate_limit')];
         }
@@ -153,7 +200,6 @@ class SettingsService {
             $update = $this->pdo->prepare("UPDATE users SET $field = ? WHERE id = ?");
             $update->execute([$value, $this->userId]);
             
-            // [LOG] Registramos el cambio para activar el cooldown de 12 días
             $this->logProfileChange($field, $oldValue, $value);
 
             $_SESSION[$field] = $value;
@@ -196,7 +242,6 @@ class SettingsService {
     }
 
     public function updatePreference($key, $value) {
-        // [SEGURIDAD] Límite Anti-Spam (10 cambios por minuto)
         if ($this->checkPreferenceRateLimit()) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
@@ -216,7 +261,6 @@ class SettingsService {
         }
 
         try {
-            // Check if needs update
             $stmtCheck = $this->pdo->prepare("SELECT $key FROM user_preferences WHERE user_id = ?");
             $stmtCheck->execute([$this->userId]);
             $currentDbValue = $stmtCheck->fetchColumn();
@@ -237,7 +281,6 @@ class SettingsService {
             if (!isset($_SESSION['preferences'])) $_SESSION['preferences'] = [];
             $_SESSION['preferences'][$key] = ($key === 'open_links_new_tab' || $key === 'extended_toast') ? (bool)$dbValue : $dbValue;
 
-            // [LOG] Registramos en security_logs para el anti-spam
             $this->logPreferenceUpdate();
 
             return ['success' => true, 'message' => $this->i18n->t('api.pref_saved')];
@@ -352,13 +395,6 @@ class SettingsService {
     //  MÉTODOS PRIVADOS
     // =========================================================================
 
-    /**
-     * Verifica si se ha excedido el límite de cambios en profile_changes.
-     * @param string $changeType 'avatar_update', 'username', 'email'
-     * @param int $hours Horas a verificar hacia atrás
-     * @param int $limit Límite de registros permitidos
-     * @return bool
-     */
     private function checkRateLimitExceeded($changeType, $hours, $limit) {
         $stmt = $this->pdo->prepare("
             SELECT COUNT(*) 
@@ -373,13 +409,9 @@ class SettingsService {
         return ($count >= $limit);
     }
 
-    /**
-     * Verifica si el usuario está haciendo spam de cambios de preferencias (security_logs).
-     * @return bool
-     */
     private function checkPreferenceRateLimit() {
-        $limit = 10; // 10 cambios
-        $minutes = 1; // en 1 minuto
+        $limit = 10;
+        $minutes = 1;
         
         $sql = "SELECT COUNT(*) FROM security_logs 
                 WHERE user_identifier = ? 
