@@ -264,15 +264,55 @@ export function initAuthController() {
             return;
         }
 
-        // LOGOUT
+        // =================================================================
+        // LOGOUT CON SPINNER DINÁMICO
+        // =================================================================
         const logoutBtn = target.closest('[data-action="logout"]');
         if (logoutBtn) {
             e.preventDefault();
+            e.stopPropagation();
+
+            // Evitar múltiples clics mientras carga
+            if (logoutBtn.dataset.processing === "true") return;
+            logoutBtn.dataset.processing = "true";
+
+            // 1. Crear el contenedor del icono (derecha)
+            // Usamos 'menu-link-icon' para mantener dimensiones consistentes (40px)
+            const spinnerContainer = document.createElement('div');
+            spinnerContainer.className = 'menu-link-icon'; 
+            spinnerContainer.id = 'logout-spinner';
+            
+            // 2. Crear el spinner
+            const spinner = document.createElement('div');
+            spinner.className = 'spinner-sm';
+            
+            // Sobrescribir colores para que se vea bien en el menú (fondo claro)
+            // La clase original .spinner-sm usa blanco/transparente para botones primarios
+            spinner.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+            spinner.style.borderLeftColor = 'var(--text-primary)';
+            spinner.style.width = '20px';
+            spinner.style.height = '20px';
+            spinner.style.borderWidth = '2px';
+
+            // 3. Insertar en el botón
+            spinnerContainer.appendChild(spinner);
+            logoutBtn.appendChild(spinnerContainer);
+
+            // 4. Realizar petición
             const formData = new FormData();
             formData.append('action', 'logout');
             
-            await ApiService.post('auth-handler.php', formData);
-            window.location.href = window.BASE_PATH + 'login';
+            try {
+                await ApiService.post('auth-handler.php', formData);
+                window.location.href = window.BASE_PATH + 'login';
+            } catch (err) {
+                console.error("Logout error:", err);
+                // Si falla, limpiar el spinner para permitir reintentar
+                if (spinnerContainer.parentNode) {
+                    spinnerContainer.remove();
+                }
+                logoutBtn.dataset.processing = "false";
+            }
             return;
         }
 

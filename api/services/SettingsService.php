@@ -31,11 +31,20 @@ class SettingsService {
             return ['success' => false, 'message' => $this->i18n->t('api.avatar_rate_limit')];
         }
 
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        // [SEGURIDAD] Mapeo estricto de MIME a Extensión
+        // Esto evita que se usen extensiones maliciosas (ej: .php) aunque el archivo sea una imagen válida.
+        $allowedTypes = [
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/webp' => 'webp',
+            'image/gif'  => 'gif'
+        ];
+
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $mime = $finfo->file($file['tmp_name']);
         
-        if (!in_array($mime, $allowedTypes)) { 
+        // Validamos usando las llaves del array (MIME types)
+        if (!array_key_exists($mime, $allowedTypes)) { 
             return ['success' => false, 'message' => $this->i18n->t('api.image_format')]; 
         }
 
@@ -44,7 +53,10 @@ class SettingsService {
         $currentUser = $stmt->fetch();
         
         $oldPath = $currentUser['avatar_path'];
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+        
+        // [SEGURIDAD] Asignamos la extensión basada en el MIME detectado, IGNORANDO $file['name']
+        $extension = $allowedTypes[$mime];
+        
         $newFileName = $currentUser['uuid'] . '-' . time() . '.' . $extension;
         
         $baseDir = __DIR__ . '/../../storage/profilePicture/custom/';
