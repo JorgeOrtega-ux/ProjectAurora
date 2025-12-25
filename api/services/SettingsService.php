@@ -21,9 +21,19 @@ class SettingsService {
         
         $file = $files['avatar'];
 
-        // [SEGURIDAD] Validación de Tamaño (Max 2MB)
+        // [SEGURIDAD] Validación de Tamaño de Archivo (Max 2MB)
         if ($file['size'] > 2097152) {
             return ['success' => false, 'message' => $this->i18n->t('api.avatar_size_limit')];
+        }
+
+        // [SEGURIDAD] Validación de Dimensiones (Image Bomb / Pixel Flood)
+        // Se valida ANTES de cargar la imagen en memoria con GD.
+        // 4096 x 4096 píxeles es más que suficiente para un avatar.
+        $maxDimension = 4096;
+        list($width, $height) = getimagesize($file['tmp_name']);
+        
+        if ($width > $maxDimension || $height > $maxDimension) {
+            return ['success' => false, 'message' => $this->i18n->t('api.avatar_dimensions_limit')];
         }
 
         // [SEGURIDAD] Límite de frecuencia (3 veces en 24 horas)
@@ -60,7 +70,7 @@ class SettingsService {
         
         $baseDir = __DIR__ . '/../../storage/profilePicture/custom/';
         
-        // [CORRECCIÓN 1] Cambiado 0777 a 0755 para mayor seguridad
+        // [SEGURIDAD] Permisos 0755
         if (!is_dir($baseDir)) mkdir($baseDir, 0755, true);
         
         $targetPath = $baseDir . $newFileName;
@@ -69,7 +79,8 @@ class SettingsService {
         // [CORRECCIÓN 2] Recreación de imagen para eliminar metadatos/EXIF (Privacidad y Seguridad)
         $imageSaved = false;
 
-        // Verificamos que la librería GD esté activa
+        // [CORRECCIÓN CRÍTICA] Eliminado el fallback inseguro. 
+        // Si GD no está instalado, NO se procesa la imagen para evitar subir archivos maliciosos.
         if (extension_loaded('gd')) {
             switch ($mime) {
                 case 'image/jpeg':
@@ -108,9 +119,8 @@ class SettingsService {
                     break;
             }
         } else {
-            // Fallback si GD no está instalado: usar move_uploaded_file (menos seguro para metadatos)
-            // Opcionalmente podrías lanzar error aquí si GD es obligatorio.
-            $imageSaved = move_uploaded_file($file['tmp_name'], $targetPath);
+            // Error explícito si GD no está disponible
+            return ['success' => false, 'message' => $this->i18n->t('api.server_config_error')];
         }
 
         if ($imageSaved) {
@@ -146,7 +156,6 @@ class SettingsService {
         
         $baseDir = __DIR__ . '/../../storage/profilePicture/default/';
         
-        // [CORRECCIÓN 1] Cambiado 0777 a 0755
         if (!is_dir($baseDir)) mkdir($baseDir, 0755, true);
 
         $newFileName = $currentUser['uuid'] . '-' . time() . '.png';
