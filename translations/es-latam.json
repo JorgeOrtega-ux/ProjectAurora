@@ -335,6 +335,10 @@
         "all_sessions_revoked": "Todas las sesiones han sido cerradas. Serás redirigido.",
         "pass_req_confirm": "Se requiere la contraseña para confirmar.",
         "account_deleted_success": "Cuenta eliminada correctamente.",
-        "unknown_device": "Desconocido"
+        "unknown_device": "Desconocido",
+        "avatar_size_limit": "La imagen excede el tamaño máximo permitido (2 MB).",
+        "avatar_rate_limit": "Has excedido el límite de cambios de foto (máximo 3 por día).",
+        "identity_rate_limit": "Solo puedes cambiar este dato una vez cada 12 días.",
+        "pref_rate_limit": "Demasiados cambios recientes. Espera un momento."
     }
 }

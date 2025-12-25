@@ -1,7 +1,6 @@
 <?php
 // api/services/SettingsService.php
 
-// Asegurarse de cargar la nueva librería
 require_once __DIR__ . '/../../includes/libs/GoogleAuthenticator.php';
 
 class SettingsService {
@@ -21,6 +20,17 @@ class SettingsService {
         }
         
         $file = $files['avatar'];
+
+        // [SEGURIDAD] Validación de Tamaño (Max 2MB)
+        if ($file['size'] > 2097152) {
+            return ['success' => false, 'message' => $this->i18n->t('api.avatar_size_limit')];
+        }
+
+        // [SEGURIDAD] Límite de frecuencia (3 veces en 24 horas)
+        if ($this->checkRateLimitExceeded('avatar_update', 24, 3)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.avatar_rate_limit')];
+        }
+
         $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $mime = $finfo->file($file['tmp_name']);
@@ -46,8 +56,9 @@ class SettingsService {
         if (move_uploaded_file($file['tmp_name'], $targetPath)) {
             $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
             if ($update->execute([$dbPath, $this->userId])) {
-                // LOG: Registrar cambio de avatar
-                $this->logProfileChange('avatar', $oldPath, $dbPath);
+                
+                // [LOG] Registramos como 'avatar_update' para el conteo
+                $this->logProfileChange('avatar_update', $oldPath, $dbPath);
 
                 $this->deleteOldAvatar($oldPath);
                 $_SESSION['avatar'] = $dbPath;
@@ -66,6 +77,9 @@ class SettingsService {
         $currentUser = $stmt->fetch();
         
         $oldPath = $currentUser['avatar_path'];
+        
+        // NOTA: No verificamos límite aquí para permitir volver al default siempre.
+        
         $firstLetter = substr($currentUser['username'], 0, 1);
         $bgColors = ['40a060', 'a73d3d', '3d3da7', '3d9da7', '9d3da7'];
         $randomBg = $bgColors[array_rand($bgColors)];
@@ -83,8 +97,9 @@ class SettingsService {
         if ($imageContent !== false && file_put_contents($targetPath, $imageContent)) {
             $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
             if ($update->execute([$dbPath, $this->userId])) {
-                // LOG: Registrar eliminación de avatar
-                $this->logProfileChange('avatar', $oldPath, $dbPath . ' (Default)');
+                
+                // [LOG] Registramos como 'avatar_delete' (no afecta al rate limit de update)
+                $this->logProfileChange('avatar_delete', $oldPath, $dbPath . ' (Default)');
 
                 $this->deleteOldAvatar($oldPath);
                 $_SESSION['avatar'] = $dbPath;
@@ -103,17 +118,21 @@ class SettingsService {
             if (!filter_var($value, FILTER_VALIDATE_EMAIL)) return ['success' => false, 'message' => $this->i18n->t('api.email_invalid')];
         }
 
+        // [SEGURIDAD] Límite de identidad: 1 vez cada 12 días (288 horas)
+        if ($this->checkRateLimitExceeded($field, 288, 1)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.identity_rate_limit')];
+        }
+
         // Verificar duplicados
         $stmt = $this->pdo->prepare("SELECT id FROM users WHERE $field = ? AND id != ?");
         $stmt->execute([$value, $this->userId]);
         if ($stmt->fetch()) return ['success' => false, 'message' => $this->i18n->t('api.field_in_use')];
 
-        // LOG: Obtener valor antiguo antes de actualizar
+        // Obtener valor antiguo
         $stmtOld = $this->pdo->prepare("SELECT $field FROM users WHERE id = ?");
         $stmtOld->execute([$this->userId]);
         $oldValue = $stmtOld->fetchColumn();
 
-        // Si el valor no ha cambiado realmente, retornamos éxito sin hacer nada a la BD
         if ($oldValue === $value) {
              return ['success' => true, 'message' => $this->i18n->t('api.field_updated')];
         }
@@ -122,7 +141,7 @@ class SettingsService {
             $update = $this->pdo->prepare("UPDATE users SET $field = ? WHERE id = ?");
             $update->execute([$value, $this->userId]);
             
-            // LOG: Registrar cambio de username o email
+            // [LOG] Registramos el cambio para activar el cooldown de 12 días
             $this->logProfileChange($field, $oldValue, $value);
 
             $_SESSION[$field] = $value;
@@ -134,11 +153,9 @@ class SettingsService {
 
     public function validateCurrentPassword($currentPass) {
         if (empty($currentPass)) return ['success' => false, 'message' => $this->i18n->t('api.pass_current_req')];
-        
         $stmt = $this->pdo->prepare("SELECT password FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
         $user = $stmt->fetch();
-        
         if ($user && password_verify($currentPass, $user['password'])) {
             return ['success' => true, 'message' => $this->i18n->t('api.pass_correct')];
         }
@@ -148,23 +165,18 @@ class SettingsService {
     public function changePassword($currentPass, $newPass) {
         if (empty($currentPass) || empty($newPass)) return ['success' => false, 'message' => $this->i18n->t('api.missing_data')];
         if (strlen($newPass) < 6) return ['success' => false, 'message' => $this->i18n->t('api.pass_short')];
-        
         $stmt = $this->pdo->prepare("SELECT password FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
         $user = $stmt->fetch();
-        
         if (!$user || !password_verify($currentPass, $user['password'])) {
             return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
         }
-        
         $newHash = password_hash($newPass, PASSWORD_DEFAULT);
         try {
             $update = $this->pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
             $update->execute([$newHash, $this->userId]);
             
-            // LOG: Registrar cambio de contraseña (Opcional, pero recomendado)
-            $this->logProfileChange('password', '***', '***'); // No guardamos las contraseñas reales
-
+            $this->logProfileChange('password', '***', '***');
             return ['success' => true, 'message' => $this->i18n->t('api.pass_updated')];
         } catch (Exception $e) {
             return ['success' => false, 'message' => $this->i18n->t('api.update_error')];
@@ -172,6 +184,11 @@ class SettingsService {
     }
 
     public function updatePreference($key, $value) {
+        // [SEGURIDAD] Límite Anti-Spam (10 cambios por minuto)
+        if ($this->checkPreferenceRateLimit()) {
+            return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
+        }
+
         $allowedKeys = ['language', 'open_links_new_tab', 'theme', 'extended_toast'];
         if (!in_array($key, $allowedKeys)) return ['success' => false, 'message' => $this->i18n->t('api.pref_invalid')];
 
@@ -208,6 +225,9 @@ class SettingsService {
             if (!isset($_SESSION['preferences'])) $_SESSION['preferences'] = [];
             $_SESSION['preferences'][$key] = ($key === 'open_links_new_tab' || $key === 'extended_toast') ? (bool)$dbValue : $dbValue;
 
+            // [LOG] Registramos en security_logs para el anti-spam
+            $this->logPreferenceUpdate();
+
             return ['success' => true, 'message' => $this->i18n->t('api.pref_saved')];
         } catch (Exception $e) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_save_error') . ': ' . $e->getMessage()];
@@ -215,37 +235,24 @@ class SettingsService {
     }
 
     public function init2fa() {
-        // CAMBIO: Usar GoogleAuthenticator
         $secret = GoogleAuthenticator::createSecret();
         $_SESSION['temp_2fa_secret'] = $secret;
-        
         $username = $_SESSION['username'] ?? 'User';
-        // CAMBIO: Obtener URL otpauth cruda, no imagen
         $otpauthUrl = GoogleAuthenticator::getQrUrl($username, $secret, 'ProjectAurora');
-        
-        return [
-            'success' => true, 
-            'message' => $this->i18n->t('api.qr_scan'), 
-            'otpauth_url' => $otpauthUrl, // Enviamos el string para el JS
-            'secret' => $secret
-        ];
+        return ['success' => true, 'message' => $this->i18n->t('api.qr_scan'), 'otpauth_url' => $otpauthUrl, 'secret' => $secret];
     }
 
     public function enable2fa($code) {
         if (!isset($_SESSION['temp_2fa_secret'])) return ['success' => false, 'message' => $this->i18n->t('api.session_config_expired')];
         $secret = $_SESSION['temp_2fa_secret'];
-        
-        // CAMBIO: Usar GoogleAuthenticator
         if (GoogleAuthenticator::verifyCode($secret, $code)) {
             $recoveryCodes = [];
             for($i=0; $i<8; $i++) $recoveryCodes[] = bin2hex(random_bytes(4));
             $jsonCodes = json_encode($recoveryCodes);
-            
             $stmt = $this->pdo->prepare("UPDATE users SET two_factor_secret = ?, two_factor_enabled = 1, two_factor_recovery_codes = ? WHERE id = ?");
             if ($stmt->execute([$secret, $jsonCodes, $this->userId])) {
                 unset($_SESSION['temp_2fa_secret']);
                 $_SESSION['two_factor_enabled'] = 1;
-                // LOG: Registro de activación 2FA
                 $this->logProfileChange('2fa', 'disabled', 'enabled');
                 return ['success' => true, 'message' => $this->i18n->t('api.2fa_enabled'), 'recovery_codes' => $recoveryCodes];
             }
@@ -258,7 +265,6 @@ class SettingsService {
         $stmt = $this->pdo->prepare("UPDATE users SET two_factor_enabled = 0, two_factor_secret = NULL, two_factor_recovery_codes = NULL WHERE id = ?");
         if ($stmt->execute([$this->userId])) {
             $_SESSION['two_factor_enabled'] = 0;
-            // LOG: Registro de desactivación 2FA
             $this->logProfileChange('2fa', 'enabled', 'disabled');
             return ['success' => true, 'message' => $this->i18n->t('api.2fa_disabled')];
         }
@@ -269,13 +275,11 @@ class SettingsService {
         $stmt = $this->pdo->prepare("SELECT id, selector, ip_address, user_agent, created_at FROM user_auth_tokens WHERE user_id = ? ORDER BY created_at DESC");
         $stmt->execute([$this->userId]);
         $sessions = $stmt->fetchAll();
-        
         $currentSelector = '';
         if (isset($_COOKIE['auth_persistence_token'])) {
             $parts = explode(':', $_COOKIE['auth_persistence_token']);
             if (count($parts) === 2) $currentSelector = $parts[0];
         }
-        
         $formatted = [];
         foreach($sessions as $s) {
             $info = $this->parseUserAgent($s['user_agent'] ?? '');
@@ -309,27 +313,20 @@ class SettingsService {
 
     public function deleteAccount($password) {
         if (empty($password)) return ['success' => false, 'message' => $this->i18n->t('api.pass_req_confirm')];
-        
         $stmt = $this->pdo->prepare("SELECT password FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
         $user = $stmt->fetch();
-        
         if (!$user || !password_verify($password, $user['password'])) {
             return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
         }
-
         try {
             $this->pdo->beginTransaction();
             $update = $this->pdo->prepare("UPDATE users SET account_status = 'deleted' WHERE id = ?");
             $update->execute([$this->userId]);
             $deleteTokens = $this->pdo->prepare("DELETE FROM user_auth_tokens WHERE user_id = ?");
             $deleteTokens->execute([$this->userId]);
-            
-            // LOG FINAL
             $this->logProfileChange('account_status', 'active', 'deleted');
-            
             $this->pdo->commit();
-            
             setcookie('auth_persistence_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
             session_destroy();
             return ['success' => true, 'message' => $this->i18n->t('api.account_deleted_success')];
@@ -342,6 +339,54 @@ class SettingsService {
     // =========================================================================
     //  MÉTODOS PRIVADOS
     // =========================================================================
+
+    /**
+     * Verifica si se ha excedido el límite de cambios en profile_changes.
+     * @param string $changeType 'avatar_update', 'username', 'email'
+     * @param int $hours Horas a verificar hacia atrás
+     * @param int $limit Límite de registros permitidos
+     * @return bool
+     */
+    private function checkRateLimitExceeded($changeType, $hours, $limit) {
+        $stmt = $this->pdo->prepare("
+            SELECT COUNT(*) 
+            FROM profile_changes 
+            WHERE user_id = ? 
+            AND change_type = ? 
+            AND created_at > (NOW() - INTERVAL $hours HOUR)
+        ");
+        $stmt->execute([$this->userId, $changeType]);
+        $count = $stmt->fetchColumn();
+
+        return ($count >= $limit);
+    }
+
+    /**
+     * Verifica si el usuario está haciendo spam de cambios de preferencias (security_logs).
+     * @return bool
+     */
+    private function checkPreferenceRateLimit() {
+        $limit = 10; // 10 cambios
+        $minutes = 1; // en 1 minuto
+        
+        $sql = "SELECT COUNT(*) FROM security_logs 
+                WHERE user_identifier = ? 
+                AND action_type = 'pref_update' 
+                AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
+                
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$this->userId]); 
+        $count = $stmt->fetchColumn();
+
+        return ($count >= $limit);
+    }
+
+    private function logPreferenceUpdate() {
+        $ip = $this->getClientIp();
+        $sql = "INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, 'pref_update', ?)";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$this->userId, $ip]);
+    }
 
     private function deleteOldAvatar($currentPath) {
         if ($currentPath && file_exists(__DIR__ . '/../../' . $currentPath)) {
@@ -365,7 +410,6 @@ class SettingsService {
         return ['platform' => $platform, 'browser' => $browser];
     }
     
-    // Método privado para registrar cambios en la nueva tabla
     private function logProfileChange($changeType, $oldValue, $newValue) {
         $ip = $this->getClientIp();
         $ua = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
@@ -376,7 +420,6 @@ class SettingsService {
         try {
             $stmt->execute([$this->userId, $changeType, $oldValue, $newValue, $ip, $ua]);
         } catch (Exception $e) {
-            // Silenciosamente ignorar errores de log para no romper la UX
             error_log("Error logging profile change: " . $e->getMessage());
         }
     }

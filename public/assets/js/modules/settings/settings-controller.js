@@ -3,6 +3,9 @@
  */
 
 import { ApiService } from '../../core/api-service.js';
+// 1. IMPORTAR TOAST (Faltaba esto)
+import { Toast } from '../../core/toast-manager.js';
+import { I18n } from '../../core/i18n-manager.js';
 
 export const SettingsController = (function() {
     
@@ -140,6 +143,7 @@ export const SettingsController = (function() {
         const label = optionElement.dataset.label;
         const type = optionElement.dataset.type;
 
+        // UI Optimista (Cambia visualmente antes de confirmar)
         const triggerText = wrapper.querySelector(SELECTORS.triggerText);
         if (triggerText && label) triggerText.innerText = label;
         
@@ -155,9 +159,13 @@ export const SettingsController = (function() {
 
         if (value && type) {
             savePreference(type, value);
+            
             if (type === 'theme') {
                 applyTheme(value);
             } else {
+                // Solo recargamos si es idioma, pero damos un momento para que se guarde
+                // OJO: Si falla el guardado, se recargará igual. 
+                // Idealmente deberíamos esperar a savePreference, pero para UX rápida lo dejamos así.
                 setTimeout(() => window.location.reload(), 150);
             }
         }
@@ -176,13 +184,50 @@ export const SettingsController = (function() {
         document.querySelectorAll(SELECTORS.wrapper).forEach(el => el.classList.remove('dropdown-active'));
     }
 
+    // 2. FUNCIÓN SAVEPREFERENCE ACTUALIZADA
     async function savePreference(key, value) {
-        if (window.USER_PREFS) window.USER_PREFS[key] = value;
         const formData = new FormData();
         formData.append('action', 'update_preference');
         formData.append('key', key);
         formData.append('value', value);
-        try { await ApiService.post('settings-handler.php', formData); } catch (error) { console.error(error); }
+
+        try { 
+            const res = await ApiService.post('settings-handler.php', formData); 
+            
+            if (res.success) {
+                // Actualizar caché local solo si tuvo éxito
+                if (window.USER_PREFS) window.USER_PREFS[key] = value;
+            } else {
+                // MOSTRAR ERROR (Aquí es donde sale el Toast del límite)
+                Toast.show(res.message, 'error');
+                
+                // Si era un cambio de tema y falló (por rate limit), revertimos visualmente
+                if (key === 'theme' && window.USER_PREFS && window.USER_PREFS.theme) {
+                    applyTheme(window.USER_PREFS.theme);
+                    _syncStateWithDOM(); // Regresa el selector a su sitio
+                }
+                
+                // Si era un toggle (checkbox), revertimos el check
+                if (key === 'open_links_new_tab' || key === 'extended_toast') {
+                   _revertToggle(key);
+                }
+            }
+        } catch (error) { 
+            console.error(error); 
+            Toast.show(I18n.t('js.core.connection_error'), 'error');
+        }
+    }
+
+    function _revertToggle(key) {
+        let selectorId = '';
+        if (key === 'open_links_new_tab') selectorId = 'pref-open-links';
+        if (key === 'extended_toast') selectorId = 'pref-extended-toast';
+        
+        const checkbox = document.getElementById(selectorId);
+        if (checkbox && window.USER_PREFS) {
+            // Regresa al valor que tenía guardado en memoria
+            checkbox.checked = !!window.USER_PREFS[key]; 
+        }
     }
 
     function applyTheme(theme) {
