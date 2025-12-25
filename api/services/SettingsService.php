@@ -42,11 +42,11 @@ class SettingsService {
         }
 
         // [SEGURIDAD] Mapeo estricto de MIME a Extensión
+        // MODIFICACIÓN: Eliminado soporte para GIF (solo estáticas)
         $allowedTypes = [
             'image/jpeg' => 'jpg',
             'image/png'  => 'png',
-            'image/webp' => 'webp',
-            'image/gif'  => 'gif'
+            'image/webp' => 'webp'
         ];
 
         $finfo = new finfo(FILEINFO_MIME_TYPE);
@@ -110,13 +110,7 @@ class SettingsService {
                         imagedestroy($img); 
                     }
                     break;
-                case 'image/gif':
-                    $img = @imagecreatefromgif($file['tmp_name']);
-                    if ($img) { 
-                        $imageSaved = imagegif($img, $targetPath); 
-                        imagedestroy($img); 
-                    }
-                    break;
+                // ELIMINADO: case 'image/gif'
             }
         } else {
             // Error explícito si GD no está disponible
