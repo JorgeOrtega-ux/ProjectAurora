@@ -4,6 +4,7 @@ import { ApiService } from './core/api-service.js';
 import { I18n } from './core/i18n-manager.js';
 
 let resendTimerInterval = null;
+let recoveryTimerInterval = null;
 
 export function initAuthController() {
     console.log("Auth Controller: Listo (Production Mode)");
@@ -92,8 +93,6 @@ export function initAuthController() {
             try {
                 const res = await ApiService.post('auth-handler.php', formData);
                 if (res.success) {
-                    // [LIMPIEZA] Eliminado console.log del código debug
-                    
                     Toast.show(I18n.t('js.auth.code_sent'), 'info'); 
                     
                     navigateTo(res.next_url); 
@@ -143,7 +142,7 @@ export function initAuthController() {
             return;
         }
 
-        // REENVIAR
+        // REENVIAR CÓDIGO REGISTRO
         const btnResend = target.closest('#btn-resend-code');
         if (btnResend) {
             e.preventDefault();
@@ -164,7 +163,6 @@ export function initAuthController() {
 
                 if (res.success) {
                     Toast.show(I18n.t('js.auth.resend_success'), 'success');
-                    // [LIMPIEZA] Eliminado console.log del código debug
                     startResendTimer(60);
                 } else {
                     showError(btnResend, 'register-step3-error', res.message);
@@ -177,7 +175,7 @@ export function initAuthController() {
             return;
         }
 
-        // RECUPERAR PASSWORD
+        // RECUPERAR PASSWORD (INICIO)
         const btnRequestReset = target.closest('#btn-request-reset');
         if (btnRequestReset) {
             e.preventDefault();
@@ -197,20 +195,54 @@ export function initAuthController() {
 
             try {
                 const res = await ApiService.post('auth-handler.php', formData);
-                setLoading(btnRequestReset, false);
+                setLoading(btnRequestReset, false); // Quita el spinner, pero la función startRecoveryTimer lo desactivará de nuevo si es success
 
                 if (res.success) {
                     Toast.show(I18n.t('js.auth.reset_link_sent'), 'success');
-                    
-                    // [LIMPIEZA] Eliminada la inyección de HTML con el link de debug.
-                    // Ahora solo muestra el Toast de éxito.
-                    
+                    startRecoveryTimer(60); // Inicia bloqueo y contador
                 } else {
                     showError(btnRequestReset, 'recovery-error', res.message);
                 }
             } catch (err) {
                 setLoading(btnRequestReset, false);
                 showError(btnRequestReset, 'recovery-error', I18n.t('js.auth.connection_error'));
+            }
+            return;
+        }
+
+        // REENVIAR RECUPERACIÓN (NUEVO LINK)
+        const linkResendRecovery = target.closest('#link-resend-recovery');
+        if (linkResendRecovery) {
+            e.preventDefault();
+            
+            // Verificación extra de estado
+            if (linkResendRecovery.classList.contains('link-disabled') || linkResendRecovery.style.pointerEvents === 'none') {
+                return;
+            }
+
+            const email = document.getElementById('email_recovery').value;
+            if(!email) return;
+
+            const formData = new FormData();
+            formData.append('action', 'request_reset');
+            formData.append('email', email);
+
+            // Feedback visual ligero
+            linkResendRecovery.style.opacity = '0.5';
+
+            try {
+                const res = await ApiService.post('auth-handler.php', formData);
+                linkResendRecovery.style.opacity = '1';
+
+                if (res.success) {
+                    Toast.show(I18n.t('js.auth.reset_link_sent'), 'success');
+                    startRecoveryTimer(60); // Reiniciar timer
+                } else {
+                    Toast.show(res.message, 'error');
+                }
+            } catch (err) {
+                linkResendRecovery.style.opacity = '1';
+                Toast.show(I18n.t('js.auth.connection_error'), 'error');
             }
             return;
         }
@@ -479,6 +511,73 @@ function startResendTimer(seconds) {
             btn.style.pointerEvents = 'auto';
             btn.style.color = ''; 
             timerSpan.textContent = ''; 
+        }
+    }, 1000);
+}
+
+// [MODIFICADO] Función startRecoveryTimer según especificaciones
+function startRecoveryTimer(seconds) {
+    const btnRequest = document.getElementById('btn-request-reset');
+    const linkBack = document.getElementById('link-back-login');
+    const linkResend = document.getElementById('link-resend-recovery');
+    const timerSpan = document.getElementById('recovery-timer');
+    const inputEmail = document.getElementById('email_recovery');
+    
+    // 1. Desactivar botón principal (NO ELIMINAR, SOLO DISABLED)
+    if (btnRequest) {
+        btnRequest.disabled = true;
+        btnRequest.style.opacity = '0.5'; // Visualmente desactivado
+    }
+
+    // 2. Ocultar enlace de volver al login
+    if (linkBack) linkBack.style.display = 'none';
+    
+    // 3. Mostrar enlace de reenvío en estado "desactivado"
+    if (linkResend) {
+        linkResend.style.display = 'inline-block';
+        linkResend.classList.add('link-disabled');
+        linkResend.style.pointerEvents = 'none';
+        linkResend.style.color = 'rgb(153, 153, 153)';
+    }
+
+    // 4. Bloquear Input
+    if (inputEmail) {
+        inputEmail.disabled = true;
+        inputEmail.style.opacity = '0.7';
+    }
+
+    let timeLeft = seconds;
+    if (timerSpan) timerSpan.textContent = `(${timeLeft})`;
+
+    if (recoveryTimerInterval) clearInterval(recoveryTimerInterval);
+
+    recoveryTimerInterval = setInterval(() => {
+        timeLeft--;
+        if (timerSpan) timerSpan.textContent = `(${timeLeft})`;
+
+        if (timeLeft <= 0) {
+            clearInterval(recoveryTimerInterval);
+            
+            // Reactivar UI
+            if (btnRequest) {
+                btnRequest.disabled = false;
+                btnRequest.style.opacity = '1';
+            }
+
+            if (linkResend) {
+                linkResend.classList.remove('link-disabled');
+                linkResend.style.pointerEvents = 'auto';
+                linkResend.style.color = ''; // Volver al color CSS original
+                if (timerSpan) timerSpan.textContent = '';
+            }
+
+            // Opcional: Volver a mostrar el botón de volver si se desea
+            if (linkBack) linkBack.style.display = 'inline-block';
+
+            if (inputEmail) {
+                inputEmail.disabled = false;
+                inputEmail.style.opacity = '1';
+            }
         }
     }, 1000);
 }

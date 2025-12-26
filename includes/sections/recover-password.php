@@ -18,7 +18,11 @@
         <button type="button" id="btn-request-reset" class="component-button component-button--large primary"><?php echo $i18n->t('auth.recover.btn_send'); ?></button>
         
         <div class="component-text-footer">
-            <a href="<?php echo $basePath; ?>login" data-nav="login"><?php echo $i18n->t('auth.recover.back_login'); ?></a>
+            <a href="<?php echo $basePath; ?>login" id="link-back-login" data-nav="login"><?php echo $i18n->t('auth.recover.back_login'); ?></a>
+
+            <a href="#" id="link-resend-recovery" class="link-disabled" style="display: none; pointer-events: none; color: rgb(153, 153, 153); text-decoration: none; font-size: 14px;">
+                Reenviar correo de restablecimiento <span id="recovery-timer">(60)</span>
+            </a>
         </div>
     </div>
 </div>

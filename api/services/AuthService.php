@@ -351,10 +351,19 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.email_not_found')];
         }
 
+        // [MODIFICACIÓN] Verificar Cooldown de 60 segundos
+        $checkRecent = $this->pdo->prepare("SELECT created_at FROM password_resets WHERE email = ? AND created_at > (NOW() - INTERVAL 60 SECOND)");
+        $checkRecent->execute([$email]);
+        if ($checkRecent->fetch()) {
+             return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
+        }
+
         $token = bin2hex(random_bytes(32));
         $expiresAt = date('Y-m-d H:i:s', strtotime('+1 hour'));
 
+        // Borrar tokens anteriores SOLO si pasó el check de cooldown
         $this->pdo->prepare("DELETE FROM password_resets WHERE email = ?")->execute([$email]);
+        
         $sql = "INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)";
         
         try {
