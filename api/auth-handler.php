@@ -28,13 +28,17 @@ Utils::validateCsrf($i18n);
 $authService = new AuthService($pdo, $i18n);
 $action = $_POST['action'] ?? '';
 
+// CAPTURAR EL TOKEN DE TURNSTILE
+$turnstileToken = $_POST['cf-turnstile-response'] ?? '';
+
 // === DISPATCHER ===
 
 switch ($action) {
     case 'register_step_1':
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
-        Utils::jsonResponse($authService->registerStep1($email, $password));
+        // Pasamos el token
+        Utils::jsonResponse($authService->registerStep1($email, $password, $turnstileToken));
         break;
 
     case 'initiate_verification':
@@ -54,7 +58,8 @@ switch ($action) {
     case 'login':
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
-        Utils::jsonResponse($authService->login($email, $password));
+        // Pasamos el token
+        Utils::jsonResponse($authService->login($email, $password, $turnstileToken));
         break;
 
     case 'verify_2fa_login':

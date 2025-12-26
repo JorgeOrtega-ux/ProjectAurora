@@ -140,6 +140,8 @@ if ($isStep2 && !$hasDataForStep2) {
                 </div>
             </div>
 
+            <div id="turnstile-container" style="position: absolute; opacity: 0; pointer-events: none;"></div>
+
             <button type="button" id="btn-next-1" class="component-button component-button--large primary"><?php echo $i18n->t('auth.btn.continue'); ?></button>
 
             <div class="component-text-footer">

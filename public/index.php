@@ -2,21 +2,23 @@
 // public/index.php
 
 // CONFIGURACIÓN DE SEGURIDAD PARA LA SESIÓN
-// Antes de iniciar la sesión, configuramos los parámetros de la cookie
 $cookieParams = session_get_cookie_params();
 session_set_cookie_params([
     'lifetime' => $cookieParams['lifetime'],
     'path' => '/',
     'domain' => $cookieParams['domain'],
-    'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on', // Solo si hay HTTPS
-    'httponly' => true, // Previene acceso vía JS (XSS)
-    'samesite' => 'Strict' // Previene CSRF
+    'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+    'httponly' => true,
+    'samesite' => 'Strict'
 ]);
 session_start();
 
 require_once __DIR__ . '/../config/routers/router.php';
 require_once __DIR__ . '/../config/database/db.php';
 require_once __DIR__ . '/../includes/libs/Utils.php';
+
+// Cargar variables de entorno para Turnstile si no se han cargado (seguridad redundante)
+$turnstileSiteKey = $_ENV['TURNSTILE_SITE_KEY'] ?? '1x00000000000000000000AA';
 
 // === MIDDLEWARE: AUTO-LOGIN POR COOKIE (TOKEN ROTATIVO) ===
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['auth_persistence_token'])) {
@@ -38,17 +40,13 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['auth_persistence_token'])) {
 
                 if ($user) {
                     session_regenerate_id(true);
-
-                    // [SEGURIDAD] Rotar CSRF Token también en auto-login
                     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['username'] = $user['username'];
                     $_SESSION['role'] = $user['role'];
                     $_SESSION['avatar'] = $user['avatar_path'];
                     $_SESSION['email'] = $user['email'];
 
-                    // Cargar preferencias
                     $prefStmt = $pdo->prepare("SELECT language, open_links_new_tab, theme, extended_toast FROM user_preferences WHERE user_id = ?");
                     $prefStmt->execute([$user['id']]);
                     $prefs = $prefStmt->fetch();
@@ -59,7 +57,6 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['auth_persistence_token'])) {
                         'extended_toast' => (bool)$prefs['extended_toast']
                     ] : ['language' => 'es-latam', 'open_links_new_tab' => true, 'theme' => 'sync', 'extended_toast' => false];
 
-                    // Rotación de token
                     $pdo->prepare("DELETE FROM user_auth_tokens WHERE id = ?")->execute([$authToken['id']]);
 
                     $newSelector = bin2hex(random_bytes(12));
@@ -90,11 +87,8 @@ if (empty($_SESSION['csrf_token'])) {
 }
 
 $isLoggedIn = isset($_SESSION['user_id']);
-
-// === SISTEMA DE TRADUCCIÓN USANDO UTILS ===
 $i18n = Utils::initI18n();
-$userLang = $_SESSION['preferences']['language'] ?? 'es-latam'; // Para el atributo lang del HTML
-// ==========================================
+$userLang = $_SESSION['preferences']['language'] ?? 'es-latam';
 
 $publicRoutes = [
     'login',
@@ -117,9 +111,7 @@ if (!$isLoggedIn) {
     }
 }
 
-// === AVATAR Y DATOS DE SESIÓN USANDO UTILS ===
 if ($isLoggedIn) {
-    // Refrescar datos básicos de sesión
     try {
         if (isset($pdo)) {
             $stmt = $pdo->prepare("SELECT role, avatar_path, username, email, two_factor_enabled FROM users WHERE id = ? LIMIT 1");
@@ -141,11 +133,8 @@ if ($isLoggedIn) {
 
 $userRole = $_SESSION['role'] ?? 'guest';
 $globalAvatarSrc = Utils::getGlobalAvatarSrc();
-// =============================================
-
 $routesMap = require __DIR__ . '/../config/routes.php';
 $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
-
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo htmlspecialchars($userLang); ?>">
@@ -156,10 +145,15 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
     <title><?php echo $i18n->t('app.name'); ?></title>
 
     <meta name="csrf-token" content="<?php echo $_SESSION['csrf_token']; ?>">
+    
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"></script>
+
     <script>
         window.BASE_PATH = '<?php echo $basePath; ?>';
         window.USER_PREFS = <?php echo json_encode($_SESSION['preferences'] ?? new stdClass()); ?>;
         window.TRANSLATIONS = <?php echo json_encode($i18n->getAll()); ?>;
+        // Exponemos la clave del sitio para el JS
+        window.TURNSTILE_SITE_KEY = '<?php echo $turnstileSiteKey; ?>';
     </script>
 
     <script src="https://unpkg.com/@popperjs/core@2"></script>
@@ -176,24 +170,18 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
 </head>
 
 <body>
-
     <div class="page-wrapper">
         <div class="main-content">
             <div class="general-content">
-
                 <?php if ($isLoggedIn): ?>
                     <div class="general-content-top">
-                        <?php
-                        include __DIR__ . '/../includes/layouts/header.php';
-                        ?>
+                        <?php include __DIR__ . '/../includes/layouts/header.php'; ?>
                     </div>
                 <?php endif; ?>
-
                 <div class="general-content-bottom">
                     <?php if ($isLoggedIn): ?>
                         <?php include __DIR__ . '/../includes/modules/module-surface.php'; ?>
                     <?php endif; ?>
-
                     <div class="general-content-scrolleable overflow-y" data-container="main-section">
                         <?php
                         if (file_exists($fileToLoad)) {
@@ -204,12 +192,9 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
                         ?>
                     </div>
                 </div>
-
             </div>
         </div>
     </div>
-
     <?php include __DIR__ . '/../includes/layouts/dialogs.php'; ?>
-
 </body>
 </html>

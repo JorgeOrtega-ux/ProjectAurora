@@ -5,9 +5,19 @@ import { I18n } from './core/i18n-manager.js';
 
 let resendTimerInterval = null;
 let recoveryTimerInterval = null;
+let turnstileWidgetId = null; // Guardamos el ID del widget
 
 export function initAuthController() {
-    console.log("Auth Controller: Listo (Production Mode)");
+    console.log("Auth Controller: Listo (Turnstile Enabled - Invisible)");
+
+    // Intentar renderizar Turnstile al iniciar si el contenedor existe
+    renderTurnstile();
+
+    // Escuchar cambios de navegación (tu sistema SPA dispara este evento)
+    document.addEventListener('spa:view_loaded', () => {
+        // Pequeño delay para asegurar que el DOM cargó
+        setTimeout(renderTurnstile, 100);
+    });
 
     const resendBtn = document.getElementById('btn-resend-code');
     if (resendBtn) {
@@ -42,16 +52,24 @@ export function initAuthController() {
             
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            // Obtener Token Turnstile
+            const tsToken = getTurnstileToken();
 
             if(!email || !password) { 
                 showError(btnNext1, 'register-step1-error', I18n.t('js.auth.fill_all')); 
                 return; 
             }
 
+            if(!tsToken) {
+                showError(btnNext1, 'register-step1-error', 'Verificando seguridad, intenta de nuevo en un segundo...');
+                return;
+            }
+
             const formData = new FormData();
             formData.append('action', 'register_step_1');
             formData.append('email', email);
             formData.append('password', password);
+            formData.append('cf-turnstile-response', tsToken); // Adjuntar token
 
             setLoading(btnNext1, true);
 
@@ -62,11 +80,13 @@ export function initAuthController() {
                 } else {
                     showError(btnNext1, 'register-step1-error', res.message);
                     setLoading(btnNext1, false);
+                    resetTurnstile(); // Resetear widget al fallar
                 }
             } catch (err) {
                 console.error(err);
                 showError(btnNext1, 'register-step1-error', I18n.t('js.auth.unexpected_error'));
                 setLoading(btnNext1, false);
+                resetTurnstile();
             }
             return;
         }
@@ -379,34 +399,71 @@ export function initAuthController() {
     });
 }
 
-function setLoading(btn, isLoading) {
-    if (isLoading) {
-        btn.dataset.originalText = btn.innerText;
-        btn.innerHTML = '<div class="spinner-sm"></div>'; 
-        btn.disabled = true;
-        btn.style.opacity = '0.8'; 
-    } else {
-        btn.innerText = btn.dataset.originalText || I18n.t('js.auth.continue');
-        btn.disabled = false;
-        btn.style.opacity = '1';
+// === FUNCIONES TURNSTILE ===
+
+function renderTurnstile() {
+    const container = document.getElementById('turnstile-container');
+    if (container && window.turnstile) {
+        // Si ya hay un widget, lo removemos limpiando el HTML antes de renderizar uno nuevo
+        // o si turnstile.render devuelve un ID, lo usamos para ver si ya está.
+        // Lo más seguro en SPA simple: Limpiar y renderizar.
+        container.innerHTML = ''; 
+        
+        try {
+            turnstileWidgetId = turnstile.render('#turnstile-container', {
+                sitekey: window.TURNSTILE_SITE_KEY, // Variable global desde index.php
+                theme: 'auto',
+                appearance: 'interaction-only' // Forzar modo no intrusivo si la key lo permite
+            });
+        } catch(e) {
+            console.warn("Turnstile render error (puede que ya esté renderizado):", e);
+        }
     }
 }
+
+function getTurnstileToken() {
+    if (window.turnstile && turnstileWidgetId !== null) {
+        return turnstile.getResponse(turnstileWidgetId);
+    }
+    // Fallback por si el widget se renderizó automáticamente
+    const input = document.querySelector('[name="cf-turnstile-response"]');
+    return input ? input.value : '';
+}
+
+function resetTurnstile() {
+    if (window.turnstile && turnstileWidgetId !== null) {
+        turnstile.reset(turnstileWidgetId);
+    }
+}
+
+// === LOGICA LOGIN MODIFICADA ===
 
 async function handleLoginStep1(btn) {
     const inputs = document.querySelectorAll('#login-stage-1 input');
     const formData = new FormData();
     formData.append('action', 'login');
     
+    // Obtener Token
+    const tsToken = getTurnstileToken();
+    
     let hasEmpty = false;
     inputs.forEach(input => {
-        if(input.name) formData.append(input.name, input.value);
-        if(input.required && !input.value) hasEmpty = true;
+        if(input.name && input.name !== 'cf-turnstile-response') { 
+            formData.append(input.name, input.value);
+            if(input.required && !input.value) hasEmpty = true;
+        }
     });
 
     if(hasEmpty) { 
         showError(btn, 'login-error', I18n.t('js.auth.fill_all')); 
         return; 
     }
+    
+    if(!tsToken) {
+        showError(btn, 'login-error', 'Verificando seguridad, intenta de nuevo en un segundo...');
+        return;
+    }
+    formData.append('cf-turnstile-response', tsToken);
 
     setLoading(btn, true);
     try {
@@ -431,10 +488,12 @@ async function handleLoginStep1(btn) {
         } else {
             showError(btn, 'login-error', res.message);
             setLoading(btn, false);
+            resetTurnstile(); // Resetear al fallar
         }
     } catch(e) { 
         showError(btn, 'login-error', I18n.t('js.auth.connection_error'));
         setLoading(btn, false); 
+        resetTurnstile();
     }
 }
 
@@ -460,6 +519,19 @@ async function handleLoginStep2(btn) {
     } catch (e) {
         Toast.show(I18n.t('js.auth.connection_error'), 'error');
         setLoading(btn, false);
+    }
+}
+
+function setLoading(btn, isLoading) {
+    if (isLoading) {
+        btn.dataset.originalText = btn.innerText;
+        btn.innerHTML = '<div class="spinner-sm"></div>'; 
+        btn.disabled = true;
+        btn.style.opacity = '0.8'; 
+    } else {
+        btn.innerText = btn.dataset.originalText || I18n.t('js.auth.continue');
+        btn.disabled = false;
+        btn.style.opacity = '1';
     }
 }
 

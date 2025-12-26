@@ -24,6 +24,8 @@
                 </div>
             </div>
 
+            <div id="turnstile-container" style="position: absolute; opacity: 0; pointer-events: none;"></div>
+
             <a href="<?php echo $basePath; ?>recover-password" data-nav="recover-password" class="component-link-simple"><?php echo $i18n->t('auth.forgot_password'); ?></a>
 
             <button type="button" id="btn-login" class="component-button component-button--large primary"><?php echo $i18n->t('auth.btn.login'); ?></button>

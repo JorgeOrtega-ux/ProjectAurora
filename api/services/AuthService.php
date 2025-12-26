@@ -6,17 +6,26 @@ require_once __DIR__ . '/../../includes/libs/GoogleAuthenticator.php';
 class AuthService {
     private $pdo;
     private $i18n;
+    private $turnstileSecret;
 
     public function __construct($pdo, $i18n) {
         $this->pdo = $pdo;
         $this->i18n = $i18n;
+        // Obtenemos el secreto del entorno o usamos el de prueba por defecto
+        $this->turnstileSecret = $_ENV['TURNSTILE_SECRET_KEY'] ?? '1x00000000000000000000AA';
     }
 
     // =========================================================================
     //  MÉTODOS PÚBLICOS (Lógica de Negocio)
     // =========================================================================
 
-    public function registerStep1($email, $password) {
+    public function registerStep1($email, $password, $turnstileToken) {
+        // 1. Validar Turnstile antes que nada
+        $turnstileCheck = $this->verifyTurnstile($turnstileToken);
+        if (!$turnstileCheck['success']) {
+            return ['success' => false, 'message' => 'Error de seguridad (Captcha): ' . $turnstileCheck['message']];
+        }
+
         // [SEGURIDAD] Anti-Spam registro paso 1 (Max 10 intentos por IP cada 10 min)
         if ($this->checkSecurityBlock('register_attempt', 10, 10)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
@@ -98,7 +107,6 @@ class AuthService {
             return [
                 'success' => true, 
                 'message' => $this->i18n->t('api.code_sent'), 
-                // [SEGURIDAD] debug_code eliminado para producción
                 'next_url' => 'register/verification-account'
             ]; 
         } catch (Exception $e) {
@@ -156,7 +164,6 @@ class AuthService {
             // TODO: Enviar nuevo código por correo aquí
             
             return ['success' => true, 'message' => $this->i18n->t('api.code_generated')];
-            // [SEGURIDAD] debug_code eliminado
         } catch (Exception $e) {
             return ['success' => false, 'message' => $this->i18n->t('api.code_save_error') . ': ' . $e->getMessage()];
         }
@@ -251,7 +258,13 @@ class AuthService {
         }
     }
 
-    public function login($email, $password) {
+    public function login($email, $password, $turnstileToken) {
+        // 1. Validar Turnstile
+        $turnstileCheck = $this->verifyTurnstile($turnstileToken);
+        if (!$turnstileCheck['success']) {
+             return ['success' => false, 'message' => 'Error de seguridad (Captcha): ' . $turnstileCheck['message']];
+        }
+
         if ($this->checkSecurityBlock('login_fail', 5, 15, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
         }
@@ -386,7 +399,6 @@ class AuthService {
 
             return [
                 'success' => true, 
-                // [SEGURIDAD] Eliminado debug_link
                 'message_user' => $this->i18n->t('api.message_email_sent')
             ];
         } catch (Exception $e) {
@@ -456,6 +468,45 @@ class AuthService {
     //  MÉTODOS PRIVADOS (Helpers Internos)
     // =========================================================================
 
+    private function verifyTurnstile($token) {
+        if (empty($token)) {
+            return ['success' => false, 'message' => 'Por favor completa el captcha.'];
+        }
+
+        $url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+        $ip = $this->getClientIp();
+
+        $data = [
+            'secret' => $this->turnstileSecret,
+            'response' => $token,
+            'remoteip' => $ip
+        ];
+
+        $options = [
+            'http' => [
+                'header'  => "Content-type: application/x-www-form-urlencoded\r\n",
+                'method'  => 'POST',
+                'content' => http_build_query($data)
+            ]
+        ];
+
+        $context  = stream_context_create($options);
+        $result = @file_get_contents($url, false, $context);
+
+        if ($result === FALSE) {
+            return ['success' => false, 'message' => 'No se pudo conectar con el servidor de validación.'];
+        }
+
+        $response = json_decode($result, true);
+
+        if ($response['success']) {
+            return ['success' => true];
+        } else {
+            // Códigos de error para debugging (opcional mostrar)
+            return ['success' => false, 'message' => 'Validación fallida. Inténtalo de nuevo.'];
+        }
+    }
+
     private function generateUuid() {
         return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
             mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
@@ -491,10 +542,6 @@ class AuthService {
         return $default_lang;
     }
 
-    /**
-     * Obtiene la IP del cliente de forma segura.
-     * Se confía únicamente en REMOTE_ADDR.
-     */
     private function getClientIp() {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';
@@ -506,9 +553,6 @@ class AuthService {
         $stmt->execute([$identifier, $actionType, $ip]);
     }
 
-    /**
-     * Comprueba si una acción está bloqueada por rate limit.
-     */
     private function checkSecurityBlock($actionType, $limit, $minutes, $identifier = '') {
         $ip = $this->getClientIp();
         
