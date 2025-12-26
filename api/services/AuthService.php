@@ -339,7 +339,14 @@ class AuthService {
         }
 
         // [SEGURIDAD] Evitar spam de recuperaciones (5 intentos en 15 min)
+        // Esto protege contra fuerza bruta para encontrar correos válidos
         if ($this->checkSecurityBlock('recovery_fail', 5, 15, $email)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.recovery_limit')];
+        }
+
+        // [SEGURIDAD - NUEVO] Protección contra spam masivo desde una misma IP (Exitosos)
+        // Limita a 5 peticiones exitosas de recuperación por IP cada hora.
+        if ($this->checkSecurityBlock('recovery_success', 5, 60)) {
             return ['success' => false, 'message' => $this->i18n->t('api.recovery_limit')];
         }
 
@@ -351,7 +358,7 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.email_not_found')];
         }
 
-        // [MODIFICACIÓN] Verificar Cooldown de 60 segundos
+        // [MODIFICACIÓN] Verificar Cooldown de 60 segundos por correo
         $checkRecent = $this->pdo->prepare("SELECT created_at FROM password_resets WHERE email = ? AND created_at > (NOW() - INTERVAL 60 SECOND)");
         $checkRecent->execute([$email]);
         if ($checkRecent->fetch()) {
@@ -369,6 +376,9 @@ class AuthService {
         try {
             $this->pdo->prepare($sql)->execute([$email, $token, $expiresAt]);
             
+            // [SEGURIDAD - NUEVO] Registrar el evento de éxito para el rate limit por IP
+            $this->logSecurityEvent($email, 'recovery_success');
+
             // TODO: Enviar correo con el link aquí
             // $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
             // $host = $_SERVER['HTTP_HOST']; 
