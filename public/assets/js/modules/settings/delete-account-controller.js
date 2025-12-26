@@ -5,6 +5,7 @@
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { I18n } from '../../core/i18n-manager.js';
+import { Dialog } from '../../core/dialog-manager.js'; // <--- IMPORTADO
 
 export const DeleteAccountController = {
     init: () => {
@@ -39,7 +40,17 @@ export const DeleteAccountController = {
                 return;
             }
 
-            if (!confirm(I18n.t('js.delete.confirm_final'))) return;
+            // --- NUEVO SISTEMA DE DIÁLOGO ---
+            const confirmed = await Dialog.confirm({
+                title: '¿Eliminar cuenta permanentemente?',
+                message: I18n.t('js.delete.confirm_final'),
+                type: 'danger',
+                confirmText: 'SÍ, ELIMINAR',
+                cancelText: 'Cancelar'
+            });
+
+            if (!confirmed) return;
+            // --------------------------------
 
             const originalText = btnDelete.innerText;
             btnDelete.innerText = I18n.t('js.delete.processing');

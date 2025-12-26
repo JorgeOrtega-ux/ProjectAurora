@@ -5,8 +5,8 @@
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { I18n } from '../../core/i18n-manager.js';
+import { Dialog } from '../../core/dialog-manager.js'; // <--- IMPORTADO
 
-// Utilería de seguridad: Escapar caracteres HTML para evitar XSS
 const escapeHtml = (text) => {
     if (!text) return text;
     return String(text)
@@ -64,7 +64,6 @@ export const DevicesController = (function() {
             if (plat.includes('win') || plat.includes('mac') || plat.includes('linux')) icon = 'computer';
             if (plat.includes('android') || plat.includes('iphone')) icon = 'smartphone';
 
-            // Usamos escapeHtml en los datos dinámicos
             const safePlatform = escapeHtml(s.platform);
             const safeBrowser = escapeHtml(s.browser);
             const safeIp = escapeHtml(s.ip);
@@ -150,7 +149,18 @@ export const DevicesController = (function() {
             btnAll.parentNode.replaceChild(newBtnAll, btnAll);
             
             newBtnAll.addEventListener('click', async () => {
-                if(!confirm(I18n.t('js.devices.confirm_revoke_all'))) return;
+                
+                // --- NUEVO SISTEMA DE DIÁLOGO ---
+                const confirmed = await Dialog.confirm({
+                    title: '¿Cerrar todas las sesiones?',
+                    message: I18n.t('js.devices.confirm_revoke_all'),
+                    type: 'danger',
+                    confirmText: 'Cerrar todas',
+                    cancelText: 'Cancelar'
+                });
+                
+                if (!confirmed) return;
+                // --------------------------------
 
                 const formData = new FormData();
                 formData.append('action', 'revoke_all_sessions');

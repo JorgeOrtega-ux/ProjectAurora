@@ -5,23 +5,21 @@
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { I18n } from '../../core/i18n-manager.js';
+import { Dialog } from '../../core/dialog-manager.js'; // <--- IMPORTADO
 
 export const TwoFactorController = {
     init: () => {
-        console.log("TwoFactorController: Inicializado (Con Recuperación)");
+        console.log("TwoFactorController: Inicializado");
 
-        // Lógica de Setup Original
         const btnVerify = document.getElementById('btn-confirm-2fa');
         const btnDisable = document.getElementById('btn-disable-2fa');
         const inputCode = document.getElementById('input-2fa-verify');
         
-        // 1. Auto-carga del QR al iniciar el módulo (solo si existe el contenedor)
         const qrContainer = document.getElementById('qr-container');
         if (qrContainer) {
             loadQrCode(qrContainer);
         }
 
-        // 2. Manejo del botón COPIAR (Delegación)
         const contentArea = document.getElementById('2fa-content-area');
         if (contentArea) {
             contentArea.addEventListener('click', (e) => {
@@ -40,7 +38,6 @@ export const TwoFactorController = {
             });
         }
 
-        // Formato automático del input (000 000)
         if (inputCode) {
             inputCode.addEventListener('input', (e) => {
                 let val = e.target.value.replace(/\D/g, '');
@@ -49,7 +46,7 @@ export const TwoFactorController = {
             });
         }
 
-        // Evento: Verificar
+        // Verificar 2FA
         if (btnVerify) {
             btnVerify.addEventListener('click', async () => {
                 const rawCode = inputCode.value.replace(/\s/g, ''); 
@@ -71,7 +68,6 @@ export const TwoFactorController = {
                     const res = await ApiService.post('settings-handler.php', formData);
 
                     if (res.success) {
-                        // Ocultar paso QR
                         const stepQr = document.getElementById('step-qr');
                         if(stepQr) {
                             stepQr.classList.remove('active');
@@ -79,7 +75,6 @@ export const TwoFactorController = {
                             stepQr.style.display = 'none'; 
                         }
                         
-                        // Mostrar paso Success
                         const stepSuccess = document.getElementById('step-success');
                         if(stepSuccess) {
                             stepSuccess.classList.remove('disabled');
@@ -87,7 +82,6 @@ export const TwoFactorController = {
                             stepSuccess.style.display = ''; 
                         }
 
-                        // Llenar códigos de recuperación
                         const list = document.getElementById('recovery-codes-list');
                         if (list && res.recovery_codes) {
                             list.innerHTML = res.recovery_codes.map(c => `<span>${c}</span>`).join('');
@@ -108,10 +102,21 @@ export const TwoFactorController = {
             });
         }
 
-        // Evento: Desactivar
+        // DESACTIVAR 2FA (MODIFICADO CON DIALOG)
         if (btnDisable) {
             btnDisable.addEventListener('click', async () => {
-                if (!confirm(I18n.t('js.2fa.confirm_disable'))) return;
+                
+                // --- NUEVO SISTEMA DE DIÁLOGO ---
+                const confirmed = await Dialog.confirm({
+                    title: '¿Desactivar 2FA?',
+                    message: I18n.t('js.2fa.confirm_disable'),
+                    type: 'danger',
+                    confirmText: 'Desactivar',
+                    cancelText: 'Cancelar'
+                });
+
+                if (!confirmed) return;
+                // --------------------------------
 
                 const originalText = btnDisable.innerText;
                 setLoading(btnDisable, true, I18n.t('js.2fa.disabling'));
@@ -135,7 +140,6 @@ export const TwoFactorController = {
             });
         }
 
-        // 3. Inicializar lógica de Recuperación (Si existe el elemento)
         if (document.getElementById('recovery-count-display')) {
             initRecoveryLogic();
         }
@@ -152,7 +156,6 @@ async function initRecoveryLogic() {
     const areaNewCodes = document.getElementById('new-codes-area');
     const listNewCodes = document.getElementById('new-recovery-codes-list');
 
-    // 1. Obtener estado actual (Conteo)
     try {
         const formData = new FormData();
         formData.append('action', 'get_recovery_status');
@@ -162,17 +165,15 @@ async function initRecoveryLogic() {
         }
     } catch (e) { console.error(e); }
 
-    // 2. Mostrar área de confirmación
     if (btnShowRegen) {
         btnShowRegen.addEventListener('click', () => {
             areaRegen.classList.remove('disabled');
             areaRegen.classList.add('active');
-            btnShowRegen.classList.add('disabled'); // Ocultar botón trigger
+            btnShowRegen.classList.add('disabled'); 
             if(inputPass) setTimeout(() => inputPass.focus(), 100);
         });
     }
 
-    // 3. Cancelar
     if (btnCancelRegen) {
         btnCancelRegen.addEventListener('click', () => {
             areaRegen.classList.remove('active');
@@ -182,7 +183,6 @@ async function initRecoveryLogic() {
         });
     }
 
-    // 4. Enviar Regeneración
     if (btnSubmitRegen) {
         btnSubmitRegen.addEventListener('click', async () => {
             const password = inputPass.value;
@@ -204,20 +204,15 @@ async function initRecoveryLogic() {
                 
                 if (res.success) {
                     Toast.show(I18n.t('js.2fa.codes_generated'), 'success');
-                    
-                    // Ocultar formulario de pass
                     areaRegen.classList.remove('active');
                     areaRegen.classList.add('disabled');
 
-                    // Mostrar nuevos códigos
                     if (listNewCodes && res.recovery_codes) {
                         listNewCodes.innerHTML = res.recovery_codes.map(c => `<span>${c}</span>`).join('');
                         areaNewCodes.classList.remove('disabled');
                         areaNewCodes.classList.add('active');
                     }
-
-                    // Actualizar contador visualmente
-                    if(countDisplay) countDisplay.innerText = '10'; // Siempre se regeneran 10
+                    if(countDisplay) countDisplay.innerText = '10'; 
                     
                 } else {
                     Toast.show(res.message, 'error');
@@ -244,46 +239,27 @@ async function loadQrCode(container) {
         const res = await ApiService.post('settings-handler.php', formData);
 
         if (res.success && res.otpauth_url) {
-            
-            // 1. Limpiar contenedor previo
             container.innerHTML = '';
-
-            // 2. Generar QR con estilos redondos y tamaño ajustado (150px)
             if (window.QRCodeStyling) {
                 const qrCode = new QRCodeStyling({
-                    width: 150,  // TAMAÑO 150px
-                    height: 150, // TAMAÑO 150px
+                    width: 150,
+                    height: 150,
                     type: "svg",
                     data: res.otpauth_url,
                     image: "",
-                    dotsOptions: { 
-                        color: "#000000", 
-                        type: "rounded" // Puntos redondos
-                    },
-                    cornersSquareOptions: {
-                        type: "extra-rounded" // Marco del ojo redondo
-                    },
-                    cornersDotOptions: {
-                        type: "dot" // Punto del ojo redondo
-                    },
-                    backgroundOptions: { 
-                        color: "#ffffff" 
-                    },
-                    imageOptions: { 
-                        crossOrigin: "anonymous", 
-                        margin: 0 
-                    }
+                    dotsOptions: { color: "#000000", type: "rounded" },
+                    cornersSquareOptions: { type: "extra-rounded" },
+                    cornersDotOptions: { type: "dot" },
+                    backgroundOptions: { color: "#ffffff" },
+                    imageOptions: { crossOrigin: "anonymous", margin: 0 }
                 });
                 qrCode.append(container);
             }
 
-            // 3. Mostrar Secreto Manual
             const manualInput = document.getElementById('manual-secret-input');
             if (manualInput && res.secret) {
                 manualInput.value = res.secret;
             }
-
-            // Auto-focus
             const inputVerify = document.getElementById('input-2fa-verify');
             if(inputVerify) setTimeout(() => inputVerify.focus(), 500);
 

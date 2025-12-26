@@ -5,6 +5,7 @@
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { I18n } from '../../core/i18n-manager.js';
+import { Dialog } from '../../core/dialog-manager.js'; // <--- IMPORTADO
 
 export const ProfileController = {
     
@@ -64,7 +65,7 @@ function initAvatarLogic() {
             toggleProfileActions(isCustom ? 'custom' : 'default');
         }
 
-        // GUARDAR (MODERNO - Event Bus)
+        // GUARDAR
         if (action === 'profile-picture-save') {
             const file = fileInput.files[0];
             if (!file) return;
@@ -83,7 +84,7 @@ function initAvatarLogic() {
                 if (res.success) {
                     Toast.show(I18n.t('js.profile.pic_updated'), 'success');
                     
-                    const newAvatarSrc = previewImg.src; // Base64 directo del preview
+                    const newAvatarSrc = previewImg.src; 
                     originalSrc = res.new_src || newAvatarSrc; 
                     toggleProfileActions('custom');
                     fileInput.value = ''; 
@@ -106,10 +107,21 @@ function initAvatarLogic() {
             }
         }
 
-        // ELIMINAR (MODERNO - Event Bus)
+        // ELIMINAR (MODIFICADO CON DIALOG)
         if (action === 'profile-picture-delete') {
-            if(!confirm(I18n.t('js.profile.confirm_delete'))) return;
             
+            // --- NUEVO SISTEMA DE DIÁLOGO ---
+            const confirmed = await Dialog.confirm({
+                title: '¿Eliminar foto de perfil?',
+                message: I18n.t('js.profile.confirm_delete'),
+                type: 'danger',
+                confirmText: 'Sí, eliminar',
+                cancelText: 'Cancelar'
+            });
+
+            if (!confirmed) return;
+            // --------------------------------
+
             const btn = e.target;
             btn.disabled = true;
 
@@ -121,9 +133,8 @@ function initAvatarLogic() {
                 if (res.success) {
                     Toast.show(I18n.t('js.profile.pic_deleted'), 'info');
                     
-                    // CORRECCIÓN: Usamos el Base64 directamente (ya no es una ruta relativa)
                     if (res.new_src) {
-                        const newUrl = res.new_src; // Es un string "data:image/png;base64,..."
+                        const newUrl = res.new_src;
                         
                         previewImg.src = newUrl;
                         originalSrc = newUrl;
@@ -136,7 +147,6 @@ function initAvatarLogic() {
                         });
                         document.dispatchEvent(event);
                     } else {
-                        // Fallback de seguridad
                          window.location.reload();
                     }
 
@@ -173,7 +183,7 @@ function toggleProfileActions(state) {
 }
 
 /**
- * Lógica para editar Username y Email (Sin cambios)
+ * Lógica para editar Username y Email
  */
 function initIdentityLogic() {
     const container = document.querySelector('[data-section="settings/your-profile"]');

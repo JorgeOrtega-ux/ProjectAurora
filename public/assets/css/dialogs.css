@@ -1,0 +1,105 @@
+/* public/assets/css/dialogs.css */
+
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* Overlay oscuro translúcido */
+    z-index: 2000; /* Por encima de todo, incluso tooltips */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    backdrop-filter: blur(2px); /* Efecto moderno opcional */
+}
+
+.dialog-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.dialog-container {
+    width: 100%;
+    max-width: 400px;
+    padding: 16px;
+    transform: scale(0.95) translateY(10px);
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.dialog-overlay.active .dialog-container {
+    transform: scale(1) translateY(0);
+}
+
+/* Reutilizamos estilos de component-card pero aseguramos el fondo */
+.dialog-card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.dialog-icon-area {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.dialog-icon {
+    font-size: 48px;
+    color: var(--text-secondary);
+}
+
+.dialog-content {
+    text-align: center;
+}
+
+.dialog-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.dialog-message {
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.dialog-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 8px;
+}
+
+.dialog-actions .component-button {
+    flex: 1;
+    justify-content: center;
+}
+
+/* Variantes */
+.dialog-type-danger .dialog-icon { color: var(--color-error); }
+.dialog-type-danger .dialog-title { color: var(--color-error); }
+.dialog-type-success .dialog-icon { color: var(--color-success); }
+
+/* Loading Spinner Específico */
+.dialog-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--border-light);
+    border-left-color: var(--action-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
