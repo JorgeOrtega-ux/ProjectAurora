@@ -11,38 +11,28 @@ class AuthService {
     public function __construct($pdo, $i18n) {
         $this->pdo = $pdo;
         $this->i18n = $i18n;
-
-        // [CORRECCIÓN CRÍTICA] Lógica robusta para cargar la clave secreta
-        // 1. Intentar leer de $_ENV (Cargado por db.php)
-        $key = $_ENV['TURNSTILE_SECRET_KEY'] ?? null;
-
-        // 2. Si no existe, intentar getenv() manejando el valor 'false' explícitamente
-        if (!$key) {
-            $envVal = getenv('TURNSTILE_SECRET_KEY');
-            if ($envVal !== false && $envVal !== '') {
-                $key = $envVal;
-            }
+        
+        // 1. Intentar obtener de $_ENV
+        $secret = $_ENV['TURNSTILE_SECRET_KEY'] ?? null;
+        
+        // 2. Si falla o está vacío, intentar getenv()
+        if (empty($secret)) {
+            $secret = getenv('TURNSTILE_SECRET_KEY');
         }
-
-        // 3. Fallback: Si sigue vacío, usar la clave de prueba OFICIAL de Cloudflare (Siempre pasa)
-        // Clave Test Secret: 1x00000000000000000000BB
-        $this->turnstileSecret = $key ?: '1x00000000000000000000BB';
+    
+        // 3. Si sigue vacío, usar la clave de prueba de Cloudflare (Fallback)
+        // Corrección: Aseguramos que no se use un string vacío accidentalmente
+        $this->turnstileSecret = !empty($secret) ? $secret : '1x0000000000000000000000000000000AA';
     }
 
     // =========================================================================
-    //  MÉTODOS PÚBLICOS
+    //  MÉTODOS PÚBLICOS (Lógica de Negocio)
     // =========================================================================
 
     public function registerStep1($email, $password, $turnstileToken) {
-        // 1. Validar Turnstile con Logs Detallados
         $turnstileCheck = $this->verifyTurnstile($turnstileToken);
-        
         if (!$turnstileCheck['success']) {
-            return [
-                'success' => false, 
-                'message' => 'Error de seguridad (Captcha): ' . $turnstileCheck['message'],
-                'debug' => $turnstileCheck['debug'] ?? null // [DEBUG] Pasar logs al frontend
-            ];
+            return ['success' => false, 'message' => 'Error de seguridad (Captcha): ' . $turnstileCheck['message']];
         }
 
         if ($this->checkSecurityBlock('register_attempt', 10, 10)) {
@@ -119,6 +109,8 @@ class AuthService {
 
             $_SESSION['pending_verification_email'] = $email;
 
+            // TODO: Implementar envío real de correo electrónico aquí
+            
             return [
                 'success' => true, 
                 'message' => $this->i18n->t('api.code_sent'), 
@@ -174,6 +166,9 @@ class AuthService {
         try {
             $insert->execute([$email, $newCode, $payload, $expiresAt]);
             $this->logSecurityEvent($email, 'resend_code_req');
+
+            // TODO: Enviar nuevo código por correo
+            
             return ['success' => true, 'message' => $this->i18n->t('api.code_generated')];
         } catch (Exception $e) {
             return ['success' => false, 'message' => $this->i18n->t('api.code_save_error') . ': ' . $e->getMessage()];
@@ -203,7 +198,7 @@ class AuthService {
         $verification = $stmt->fetch();
 
         if (!$verification) {
-            $this->logSecurityEvent($email, 'register_verify_fail'); 
+            $this->logSecurityEvent($email, 'register_verify_fail');
             return ['success' => false, 'message' => $this->i18n->t('api.code_invalid_expired')];
         }
 
@@ -269,15 +264,9 @@ class AuthService {
     }
 
     public function login($email, $password, $turnstileToken) {
-        // 1. Validar Turnstile con Logs Detallados
         $turnstileCheck = $this->verifyTurnstile($turnstileToken);
-        
         if (!$turnstileCheck['success']) {
-             return [
-                 'success' => false, 
-                 'message' => 'Error de seguridad (Captcha): ' . $turnstileCheck['message'],
-                 'debug' => $turnstileCheck['debug'] ?? null // [DEBUG] Pasar logs al frontend
-             ];
+             return ['success' => false, 'message' => 'Error de seguridad (Captcha): ' . $turnstileCheck['message']];
         }
 
         if ($this->checkSecurityBlock('login_fail', 5, 15, $email)) {
@@ -339,7 +328,7 @@ class AuthService {
                         unset($recoveryHashes[$index]);
                         $newJson = json_encode(array_values($recoveryHashes)); 
                         $this->pdo->prepare("UPDATE users SET two_factor_recovery_codes = ? WHERE id = ?")->execute([$newJson, $userId]);
-                        break; 
+                        break;
                     }
                 }
             }
@@ -392,6 +381,7 @@ class AuthService {
             $this->pdo->prepare($sql)->execute([$email, $token, $expiresAt]);
             $this->logSecurityEvent($email, 'recovery_success');
 
+            // TODO: Enviar correo con el link
             return [
                 'success' => true, 
                 'message_user' => $this->i18n->t('api.message_email_sent')
@@ -460,93 +450,44 @@ class AuthService {
     }
 
     // =========================================================================
-    //  MÉTODOS PRIVADOS
+    //  MÉTODOS PRIVADOS (Helpers Internos)
     // =========================================================================
 
     private function verifyTurnstile($token) {
-        // [DEBUG] Preparar información técnica para el frontend
-        $ip = $this->getClientIp();
-        $debugInfo = [
-            'timestamp' => date('Y-m-d H:i:s'),
-            'backend_secret_key_source' => 'unknown',
-            'backend_secret_key_preview' => 'N/A',
-            'remote_ip_sent' => $ip,
-            'received_token_length' => strlen($token),
-            'received_token_preview' => substr($token, 0, 10) . '...',
-        ];
-
-        // Determinar origen de la clave (solo informativo)
-        if ($this->turnstileSecret === '1x00000000000000000000BB') {
-            $debugInfo['backend_secret_key_source'] = 'FALLBACK_TEST_KEY (1x...BB)';
-        } else {
-            $debugInfo['backend_secret_key_source'] = 'CUSTOM_ENV_KEY';
-        }
-        $debugInfo['backend_secret_key_preview'] = substr($this->turnstileSecret, 0, 10) . '...';
-
         if (empty($token)) {
-            return [
-                'success' => false, 
-                'message' => 'Por favor completa el captcha (Token vacío).',
-                'debug' => $debugInfo
-            ];
+            return ['success' => false, 'message' => 'Por favor completa el captcha.'];
         }
 
         $url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
-        
+        $ip = $this->getClientIp();
+
         $data = [
             'secret' => $this->turnstileSecret,
             'response' => $token,
             'remoteip' => $ip
         ];
 
-        // [CORRECCIÓN CRÍTICA] Desactivar verificación SSL para evitar fallos en local
         $options = [
             'http' => [
                 'header'  => "Content-type: application/x-www-form-urlencoded\r\n",
                 'method'  => 'POST',
-                'content' => http_build_query($data),
-                'ignore_errors' => true // Traer el contenido incluso si es 400/500
-            ],
-            'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false
+                'content' => http_build_query($data)
             ]
         ];
 
         $context  = stream_context_create($options);
-        
-        // Capturar headers de respuesta (variable mágica $http_response_header)
-        // Inicializamos para evitar warnings si la petición falla catastróficamente
-        $http_response_header = null;
-        
         $result = @file_get_contents($url, false, $context);
-        
-        // Agregar info de conexión al debug
-        $debugInfo['http_response_header'] = $http_response_header ?? 'No headers (Connection Failed)';
-        $debugInfo['php_error_last'] = error_get_last();
-        $debugInfo['raw_result_preview'] = substr($result, 0, 500); // Primeros 500 chars
 
         if ($result === FALSE) {
-            return [
-                'success' => false, 
-                'message' => 'Error de conexión HTTP con Cloudflare (Ver consola).', 
-                'debug' => $debugInfo
-            ];
+            return ['success' => false, 'message' => 'No se pudo conectar con el servidor de validación.'];
         }
 
         $response = json_decode($result, true);
-        $debugInfo['json_error'] = json_last_error_msg();
-        $debugInfo['cloudflare_response_parsed'] = $response;
 
-        if (isset($response['success']) && $response['success'] === true) {
-            return ['success' => true, 'debug' => $debugInfo];
+        if ($response['success']) {
+            return ['success' => true];
         } else {
-            $codes = json_encode($response['error-codes'] ?? []);
-            return [
-                'success' => false, 
-                'message' => "Validación fallida (Codes: $codes).", 
-                'debug' => $debugInfo
-            ];
+            return ['success' => false, 'message' => 'Validación fallida. Inténtalo de nuevo.'];
         }
     }
 
@@ -640,6 +581,7 @@ class AuthService {
 
     private function completeLogin($user) {
         session_regenerate_id(true);
+
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 
         $_SESSION['user_id'] = $user['id'];

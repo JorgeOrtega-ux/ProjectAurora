@@ -5,17 +5,14 @@ import { I18n } from './core/i18n-manager.js';
 
 let resendTimerInterval = null;
 let recoveryTimerInterval = null;
-let turnstileWidgetId = null; // Guardamos el ID del widget
+let turnstileWidgetId = null;
 
 export function initAuthController() {
-    console.log("Auth Controller: Listo (Logs Detallados Activados)");
-
     // Intentar renderizar Turnstile al iniciar si el contenedor existe
     renderTurnstile();
 
-    // Escuchar cambios de navegación (tu sistema SPA dispara este evento)
+    // Escuchar cambios de navegación
     document.addEventListener('spa:view_loaded', () => {
-        // Pequeño delay para asegurar que el DOM cargó
         setTimeout(renderTurnstile, 100);
     });
 
@@ -49,7 +46,44 @@ export function initAuthController() {
         if (btnNext1) {
             e.preventDefault();
             hideError('register-step1-error');
-            handleRegisterStep1(btnNext1); // Usamos helper separado
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const tsToken = getTurnstileToken();
+
+            if(!email || !password) { 
+                showError(btnNext1, 'register-step1-error', I18n.t('js.auth.fill_all')); 
+                return; 
+            }
+
+            if(!tsToken) {
+                showError(btnNext1, 'register-step1-error', 'Verificando seguridad, intenta de nuevo en un segundo...');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'register_step_1');
+            formData.append('email', email);
+            formData.append('password', password);
+            formData.append('cf-turnstile-response', tsToken);
+
+            setLoading(btnNext1, true);
+
+            try {
+                const res = await ApiService.post('auth-handler.php', formData);
+                if (res.success) {
+                    navigateTo(res.next_url); 
+                } else {
+                    showError(btnNext1, 'register-step1-error', res.message);
+                    setLoading(btnNext1, false);
+                    resetTurnstile();
+                }
+            } catch (err) {
+                console.error(err);
+                showError(btnNext1, 'register-step1-error', I18n.t('js.auth.unexpected_error'));
+                setLoading(btnNext1, false);
+                resetTurnstile();
+            }
             return;
         }
 
@@ -76,7 +110,6 @@ export function initAuthController() {
                 const res = await ApiService.post('auth-handler.php', formData);
                 if (res.success) {
                     Toast.show(I18n.t('js.auth.code_sent'), 'info'); 
-                    
                     navigateTo(res.next_url); 
                     setTimeout(() => startResendTimer(60), 500);
                 } else {
@@ -177,11 +210,11 @@ export function initAuthController() {
 
             try {
                 const res = await ApiService.post('auth-handler.php', formData);
-                setLoading(btnRequestReset, false); 
+                setLoading(btnRequestReset, false);
 
                 if (res.success) {
                     Toast.show(I18n.t('js.auth.reset_link_sent'), 'success');
-                    startRecoveryTimer(60); 
+                    startRecoveryTimer(60);
                 } else {
                     showError(btnRequestReset, 'recovery-error', res.message);
                 }
@@ -216,7 +249,7 @@ export function initAuthController() {
 
                 if (res.success) {
                     Toast.show(I18n.t('js.auth.reset_link_sent'), 'success');
-                    startRecoveryTimer(60); 
+                    startRecoveryTimer(60);
                 } else {
                     Toast.show(res.message, 'error');
                 }
@@ -311,7 +344,7 @@ export function initAuthController() {
             return;
         }
 
-        // UI INTERACTIONS
+        // UI INTERACTIONS (Toggle Password / Generate Username)
         const inputActionBtn = target.closest('.component-input-action');
         if (inputActionBtn) {
             e.preventDefault();
@@ -371,7 +404,7 @@ function renderTurnstile() {
                 theme: 'auto'
             });
         } catch(e) {
-            console.warn("Turnstile render error (puede que ya esté renderizado):", e);
+            // Ignorar errores de renderizado repetido
         }
     }
 }
@@ -390,7 +423,7 @@ function resetTurnstile() {
     }
 }
 
-// === LÓGICA LOGIN MODIFICADA CON LOGS ===
+// === LOGICA LOGIN ===
 
 async function handleLoginStep1(btn) {
     const inputs = document.querySelectorAll('#login-stage-1 input');
@@ -398,6 +431,7 @@ async function handleLoginStep1(btn) {
     formData.append('action', 'login');
     
     const tsToken = getTurnstileToken();
+    
     let hasEmpty = false;
     inputs.forEach(input => {
         if(input.name && input.name !== 'cf-turnstile-response') { 
@@ -415,40 +449,11 @@ async function handleLoginStep1(btn) {
         showError(btn, 'login-error', 'Verificando seguridad, intenta de nuevo en un segundo...');
         return;
     }
-
-    // [DEBUG] Loguear qué tenemos en el frontend antes de enviar
-    console.group("🚀 [Frontend] Preparando Login");
-    console.log("Token Turnstile generado:", tsToken ? (tsToken.substring(0,10) + "...") : "VACÍO");
-    console.log("Site Key en window:", window.TURNSTILE_SITE_KEY);
-    console.groupEnd();
-
     formData.append('cf-turnstile-response', tsToken);
 
     setLoading(btn, true);
     try {
         const res = await ApiService.post('auth-handler.php', formData);
-        
-        // === NUEVO: IMPRIMIR LOGS DEL SERVIDOR ===
-        if (res.debug) {
-            console.group("🔥 [Backend DEBUG] Validación Turnstile");
-            console.log("Token Length:", res.debug.token_length);
-            console.log("Secret Preview:", res.debug.backend_secret_key_preview);
-            
-            if(res.debug.connection_error) console.error("Error Conexión PHP:", res.debug.connection_error);
-            if(res.debug.http_response_header) console.table(res.debug.http_response_header);
-            
-            console.log("Cloudflare Response (Parsed):", res.debug.cloudflare_response_parsed);
-            
-            if (res.debug.raw_result_preview) {
-                console.log("Raw Result (First 500 chars):", res.debug.raw_result_preview);
-            }
-
-            if (res.debug.backend_secret_key_preview && res.debug.backend_secret_key_preview.includes("1x0000")) {
-                console.info("ℹ️ NOTA: El backend está usando claves de PRUEBA (1x0000...).");
-            }
-            console.groupEnd();
-        }
-        // ==========================================
         
         if (res.success) {
             if (res.require_2fa) {
@@ -469,63 +474,11 @@ async function handleLoginStep1(btn) {
         } else {
             showError(btn, 'login-error', res.message);
             setLoading(btn, false);
-            resetTurnstile(); 
-        }
-    } catch(e) { 
-        console.error("Error en login:", e);
-        showError(btn, 'login-error', I18n.t('js.auth.connection_error'));
-        setLoading(btn, false); 
-        resetTurnstile();
-    }
-}
-
-// === LOGICA REGISTRO PASO 1 CON LOGS ===
-
-async function handleRegisterStep1(btn) {
-    hideError('register-step1-error');
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const tsToken = getTurnstileToken();
-
-    if(!email || !password) { 
-        showError(btn, 'register-step1-error', I18n.t('js.auth.fill_all')); 
-        return; 
-    }
-
-    if(!tsToken) {
-        showError(btn, 'register-step1-error', 'Verificando seguridad...');
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append('action', 'register_step_1');
-    formData.append('email', email);
-    formData.append('password', password);
-    formData.append('cf-turnstile-response', tsToken);
-
-    setLoading(btn, true);
-
-    try {
-        const res = await ApiService.post('auth-handler.php', formData);
-        
-        // Logs
-        if (res.debug) {
-            console.group("🔥 [Backend DEBUG] Registro");
-            console.log("Cloudflare Response:", res.debug.cloudflare_response_parsed);
-            console.groupEnd();
-        }
-
-        if (res.success) {
-            navigateTo(res.next_url); 
-        } else {
-            showError(btn, 'register-step1-error', res.message);
-            setLoading(btn, false);
             resetTurnstile();
         }
-    } catch (err) {
-        console.error(err);
-        showError(btn, 'register-step1-error', I18n.t('js.auth.unexpected_error'));
-        setLoading(btn, false);
+    } catch(e) { 
+        showError(btn, 'login-error', I18n.t('js.auth.connection_error'));
+        setLoading(btn, false); 
         resetTurnstile();
     }
 }
@@ -629,7 +582,7 @@ function startRecoveryTimer(seconds) {
     
     if (btnRequest) {
         btnRequest.disabled = true;
-        btnRequest.style.opacity = '0.5'; 
+        btnRequest.style.opacity = '0.5';
     }
 
     if (linkBack) linkBack.style.display = 'none';
@@ -666,7 +619,7 @@ function startRecoveryTimer(seconds) {
             if (linkResend) {
                 linkResend.classList.remove('link-disabled');
                 linkResend.style.pointerEvents = 'auto';
-                linkResend.style.color = ''; 
+                linkResend.style.color = '';
                 if (timerSpan) timerSpan.textContent = '';
             }
 
