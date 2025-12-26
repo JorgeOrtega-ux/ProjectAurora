@@ -5,7 +5,8 @@
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { I18n } from '../../core/i18n-manager.js';
-import { Dialog } from '../../core/dialog-manager.js'; // <--- IMPORTADO
+import { Dialog } from '../../core/dialog-manager.js';
+import { DialogDefinitions } from '../../core/dialog-definitions.js'; // <--- NUEVO IMPORT
 
 export const TwoFactorController = {
     init: () => {
@@ -102,21 +103,15 @@ export const TwoFactorController = {
             });
         }
 
-        // DESACTIVAR 2FA (MODIFICADO CON DIALOG)
+        // DESACTIVAR 2FA (MODIFICADO CON DIALOG CENTRALIZADO)
         if (btnDisable) {
             btnDisable.addEventListener('click', async () => {
                 
-                // --- NUEVO SISTEMA DE DIÁLOGO ---
-                const confirmed = await Dialog.confirm({
-                    title: '¿Desactivar 2FA?',
-                    message: I18n.t('js.2fa.confirm_disable'),
-                    type: 'danger',
-                    confirmText: 'Desactivar',
-                    cancelText: 'Cancelar'
-                });
+                // --- USO DE DEFINICIÓN CENTRALIZADA ---
+                const confirmed = await Dialog.confirm(DialogDefinitions.TwoFactor.DISABLE);
 
                 if (!confirmed) return;
-                // --------------------------------
+                // -------------------------------------
 
                 const originalText = btnDisable.innerText;
                 setLoading(btnDisable, true, I18n.t('js.2fa.disabling'));
@@ -167,14 +162,11 @@ async function initRecoveryLogic() {
 
     if (btnShowRegen) {
         btnShowRegen.addEventListener('click', async () => {
-            // --- NUEVO SISTEMA DE DIÁLOGO PARA REGENERAR CÓDIGOS ---
-            const confirmed = await Dialog.confirm({
-                type: 'regen-codes'
-                // Título y mensaje se toman del template HTML si no se pasan
-            });
+            // --- USO DE DEFINICIÓN CENTRALIZADA ---
+            const confirmed = await Dialog.confirm(DialogDefinitions.TwoFactor.REGENERATE);
 
             if (!confirmed) return;
-            // -------------------------------------------------------
+            // -------------------------------------
 
             areaRegen.classList.remove('disabled');
             areaRegen.classList.add('active');

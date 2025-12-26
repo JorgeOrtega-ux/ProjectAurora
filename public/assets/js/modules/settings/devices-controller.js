@@ -5,7 +5,8 @@
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { I18n } from '../../core/i18n-manager.js';
-import { Dialog } from '../../core/dialog-manager.js'; // <--- IMPORTADO
+import { Dialog } from '../../core/dialog-manager.js';
+import { DialogDefinitions } from '../../core/dialog-definitions.js'; // <--- NUEVO IMPORT
 
 const escapeHtml = (text) => {
     if (!text) return text;
@@ -150,17 +151,11 @@ export const DevicesController = (function() {
             
             newBtnAll.addEventListener('click', async () => {
                 
-                // --- NUEVO SISTEMA DE DIÁLOGO ---
-                const confirmed = await Dialog.confirm({
-                    title: '¿Cerrar todas las sesiones?',
-                    message: I18n.t('js.devices.confirm_revoke_all'),
-                    type: 'danger',
-                    confirmText: 'Cerrar todas',
-                    cancelText: 'Cancelar'
-                });
+                // --- USO DE DEFINICIÓN CENTRALIZADA ---
+                const confirmed = await Dialog.confirm(DialogDefinitions.Devices.REVOKE_ALL);
                 
                 if (!confirmed) return;
-                // --------------------------------
+                // -------------------------------------
 
                 const formData = new FormData();
                 formData.append('action', 'revoke_all_sessions');

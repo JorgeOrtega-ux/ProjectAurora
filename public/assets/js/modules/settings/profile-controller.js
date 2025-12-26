@@ -5,7 +5,8 @@
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { I18n } from '../../core/i18n-manager.js';
-import { Dialog } from '../../core/dialog-manager.js'; // <--- IMPORTADO
+import { Dialog } from '../../core/dialog-manager.js';
+import { DialogDefinitions } from '../../core/dialog-definitions.js'; // <--- NUEVO IMPORT
 
 export const ProfileController = {
     
@@ -107,20 +108,14 @@ function initAvatarLogic() {
             }
         }
 
-        // ELIMINAR (MODIFICADO CON DIALOG)
+        // ELIMINAR (MODIFICADO CON DIALOG CENTRALIZADO)
         if (action === 'profile-picture-delete') {
             
-            // --- NUEVO SISTEMA DE DIÁLOGO ---
-            const confirmed = await Dialog.confirm({
-                title: '¿Eliminar foto de perfil?',
-                message: I18n.t('js.profile.confirm_delete'),
-                type: 'danger',
-                confirmText: 'Sí, eliminar',
-                cancelText: 'Cancelar'
-            });
+            // --- USO DE DEFINICIÓN CENTRALIZADA ---
+            const confirmed = await Dialog.confirm(DialogDefinitions.Profile.DELETE_AVATAR);
 
             if (!confirmed) return;
-            // --------------------------------
+            // --------------------------------------
 
             const btn = e.target;
             btn.disabled = true;
