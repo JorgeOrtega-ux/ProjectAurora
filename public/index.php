@@ -13,9 +13,43 @@ session_set_cookie_params([
 ]);
 session_start();
 
+// =======================================================================
+// INICIO BLOQUE DE SEGURIDAD (CABECERAS HTTP & CSP)
+// =======================================================================
+
+// 1. Generar Nonce aleatorio para scripts inline
+$cspNonce = base64_encode(random_bytes(16));
+
+// 2. Definir Content-Security-Policy
+// Se permiten dominios específicos detectados en tu código:
+// - fonts.googleapis.com y gstatic.com (Fuentes)
+// - challenges.cloudflare.com (Turnstile)
+// - unpkg.com (Librerías JS externas como QR y Popper)
+// - ui-avatars.com (Imágenes de perfil)
+header("Content-Security-Policy: " .
+    "default-src 'self'; " .
+    "script-src 'self' https://challenges.cloudflare.com https://unpkg.com 'nonce-$cspNonce'; " .
+    "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; " .
+    "img-src 'self' data: https://ui-avatars.com; " .
+    "font-src 'self' https://fonts.gstatic.com; " .
+    "frame-src https://challenges.cloudflare.com; " .
+    "connect-src 'self' https://challenges.cloudflare.com; " .
+    "object-src 'none'; " .
+    "base-uri 'self';"
+);
+
+// 3. Cabeceras adicionales de hardening
+header("X-Frame-Options: DENY");
+header("X-Content-Type-Options: nosniff");
+header("Referrer-Policy: strict-origin-when-cross-origin");
+
+// =======================================================================
+// FIN BLOQUE DE SEGURIDAD
+// =======================================================================
+
 require_once __DIR__ . '/../config/routers/router.php';
 require_once __DIR__ . '/../includes/libs/Utils.php';
-Utils::initErrorHandlers(); // <--- AGREGAR ESTA LÍNEA
+Utils::initErrorHandlers(); 
 require_once __DIR__ . '/../config/database/db.php';
 
 // Cargar variables de entorno para Turnstile si no se han cargado (seguridad redundante)
@@ -149,14 +183,13 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
     
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"></script>
 
-    <script>
+    <script nonce="<?php echo $cspNonce; ?>">
         window.BASE_PATH = '<?php echo $basePath; ?>';
         window.USER_PREFS = <?php echo json_encode($_SESSION['preferences'] ?? new stdClass()); ?>;
         window.TRANSLATIONS = <?php echo json_encode($i18n->getAll()); ?>;
         // Exponemos la clave del sitio para el JS
         window.TURNSTILE_SITE_KEY = '<?php echo $turnstileSiteKey; ?>';
     </script>
-
     <script src="https://unpkg.com/@popperjs/core@2"></script>
     <script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
 
