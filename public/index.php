@@ -18,7 +18,7 @@ require_once __DIR__ . '/../config/database/db.php';
 require_once __DIR__ . '/../includes/libs/Utils.php';
 
 // Cargar variables de entorno para Turnstile si no se han cargado (seguridad redundante)
-$turnstileSiteKey = $_ENV['TURNSTILE_SITE_KEY'] ?? '1x00000000000000000000AA';
+$turnstileSiteKey = $_ENV['TURNSTILE_SITE_KEY'] ?? '1x00000000000000000000BB';
 
 // === MIDDLEWARE: AUTO-LOGIN POR COOKIE (TOKEN ROTATIVO) ===
 if (!isset($_SESSION['user_id']) && isset($_COOKIE['auth_persistence_token'])) {

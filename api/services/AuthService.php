@@ -11,24 +11,40 @@ class AuthService {
     public function __construct($pdo, $i18n) {
         $this->pdo = $pdo;
         $this->i18n = $i18n;
-        // Obtenemos el secreto del entorno con respaldo (getenv)
-        $this->turnstileSecret = $_ENV['TURNSTILE_SECRET_KEY'] 
-                                 ?? getenv('TURNSTILE_SECRET_KEY') 
-                                 ?? '1x00000000000000000000BB';
+
+        // [CORRECCIÓN CRÍTICA] Lógica robusta para cargar la clave secreta
+        // 1. Intentar leer de $_ENV (Cargado por db.php)
+        $key = $_ENV['TURNSTILE_SECRET_KEY'] ?? null;
+
+        // 2. Si no existe, intentar getenv() manejando el valor 'false' explícitamente
+        if (!$key) {
+            $envVal = getenv('TURNSTILE_SECRET_KEY');
+            if ($envVal !== false && $envVal !== '') {
+                $key = $envVal;
+            }
+        }
+
+        // 3. Fallback: Si sigue vacío, usar la clave de prueba OFICIAL de Cloudflare (Siempre pasa)
+        // Clave Test Secret: 1x00000000000000000000BB
+        $this->turnstileSecret = $key ?: '1x00000000000000000000BB';
     }
 
     // =========================================================================
-    //  MÉTODOS PÚBLICOS (Lógica de Negocio)
+    //  MÉTODOS PÚBLICOS
     // =========================================================================
 
     public function registerStep1($email, $password, $turnstileToken) {
-        // 1. Validar Turnstile antes que nada
+        // 1. Validar Turnstile con Logs Detallados
         $turnstileCheck = $this->verifyTurnstile($turnstileToken);
+        
         if (!$turnstileCheck['success']) {
-            return ['success' => false, 'message' => 'Error de seguridad (Captcha): ' . $turnstileCheck['message']];
+            return [
+                'success' => false, 
+                'message' => 'Error de seguridad (Captcha): ' . $turnstileCheck['message'],
+                'debug' => $turnstileCheck['debug'] ?? null // [DEBUG] Pasar logs al frontend
+            ];
         }
 
-        // [SEGURIDAD] Anti-Spam registro paso 1 (Max 10 intentos por IP cada 10 min)
         if ($this->checkSecurityBlock('register_attempt', 10, 10)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
@@ -63,7 +79,6 @@ class AuthService {
         
         $email = $_SESSION['temp_register']['email'];
         
-        // [SEGURIDAD] Anti-Spam Email Bombing (Max 3 códigos por email en 15 min)
         if ($this->checkSecurityBlock('register_code_req', 3, 15, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
@@ -100,12 +115,10 @@ class AuthService {
 
         try {
             $stmt->execute([$email, $code, $payload, $expiresAt]);
-            $this->logSecurityEvent($email, 'register_code_req'); // Registrar intento
+            $this->logSecurityEvent($email, 'register_code_req');
 
             $_SESSION['pending_verification_email'] = $email;
 
-            // TODO: Implementar envío real de correo electrónico aquí (PHPMailer, etc.)
-            
             return [
                 'success' => true, 
                 'message' => $this->i18n->t('api.code_sent'), 
@@ -123,7 +136,6 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.no_verification')];
         }
         
-        // [SEGURIDAD] Rate Limit reenvío (Max 3 veces en 10 min)
         if ($this->checkSecurityBlock('resend_code_req', 3, 10, $email)) {
              return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
@@ -162,9 +174,6 @@ class AuthService {
         try {
             $insert->execute([$email, $newCode, $payload, $expiresAt]);
             $this->logSecurityEvent($email, 'resend_code_req');
-
-            // TODO: Enviar nuevo código por correo aquí
-            
             return ['success' => true, 'message' => $this->i18n->t('api.code_generated')];
         } catch (Exception $e) {
             return ['success' => false, 'message' => $this->i18n->t('api.code_save_error') . ': ' . $e->getMessage()];
@@ -178,7 +187,6 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.missing_data')];
         }
 
-        // [SEGURIDAD] Evitar fuerza bruta contra el código (5 intentos en 15 min)
         if ($this->checkSecurityBlock('register_verify_fail', 5, 15, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
         }
@@ -195,7 +203,7 @@ class AuthService {
         $verification = $stmt->fetch();
 
         if (!$verification) {
-            $this->logSecurityEvent($email, 'register_verify_fail'); // Registrar fallo
+            $this->logSecurityEvent($email, 'register_verify_fail'); 
             return ['success' => false, 'message' => $this->i18n->t('api.code_invalid_expired')];
         }
 
@@ -261,10 +269,15 @@ class AuthService {
     }
 
     public function login($email, $password, $turnstileToken) {
-        // 1. Validar Turnstile
+        // 1. Validar Turnstile con Logs Detallados
         $turnstileCheck = $this->verifyTurnstile($turnstileToken);
+        
         if (!$turnstileCheck['success']) {
-             return ['success' => false, 'message' => 'Error de seguridad (Captcha): ' . $turnstileCheck['message']];
+             return [
+                 'success' => false, 
+                 'message' => 'Error de seguridad (Captcha): ' . $turnstileCheck['message'],
+                 'debug' => $turnstileCheck['debug'] ?? null // [DEBUG] Pasar logs al frontend
+             ];
         }
 
         if ($this->checkSecurityBlock('login_fail', 5, 15, $email)) {
@@ -300,7 +313,6 @@ class AuthService {
 
         $userId = $_SESSION['2fa_pending_user_id'];
         
-        // [SEGURIDAD] Evitar saltarse 2FA con fuerza bruta (5 intentos / 15 min)
         if ($this->checkSecurityBlock('2fa_login_fail', 5, 15, "user:$userId")) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
         }
@@ -315,25 +327,19 @@ class AuthService {
 
         $isValid = false;
         
-        // 1. Verificar TOTP (Google Authenticator)
         if (GoogleAuthenticator::verifyCode($user['two_factor_secret'], $code)) {
             $isValid = true;
         } else {
-            // 2. Verificar Códigos de Recuperación (SEGURIDAD MEJORADA: HASHES)
             $recoveryHashes = json_decode($user['two_factor_recovery_codes'] ?? '[]', true);
             
             if (is_array($recoveryHashes)) {
                 foreach ($recoveryHashes as $index => $hash) {
-                    // Verificamos si el código ingresado coincide con el hash almacenado
                     if (password_verify($code, $hash)) {
                         $isValid = true;
-                        
-                        // Quemar el código usado
                         unset($recoveryHashes[$index]);
                         $newJson = json_encode(array_values($recoveryHashes)); 
-                        
                         $this->pdo->prepare("UPDATE users SET two_factor_recovery_codes = ? WHERE id = ?")->execute([$newJson, $userId]);
-                        break; // Salir del loop si encontramos coincidencia
+                        break; 
                     }
                 }
             }
@@ -353,14 +359,10 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.email_invalid')];
         }
 
-        // [SEGURIDAD] Evitar spam de recuperaciones (5 intentos en 15 min)
-        // Esto protege contra fuerza bruta para encontrar correos válidos
         if ($this->checkSecurityBlock('recovery_fail', 5, 15, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.recovery_limit')];
         }
 
-        // [SEGURIDAD - NUEVO] Protección contra spam masivo desde una misma IP (Exitosos)
-        // Limita a 5 peticiones exitosas de recuperación por IP cada hora.
         if ($this->checkSecurityBlock('recovery_success', 5, 60)) {
             return ['success' => false, 'message' => $this->i18n->t('api.recovery_limit')];
         }
@@ -373,7 +375,6 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.email_not_found')];
         }
 
-        // [MODIFICACIÓN] Verificar Cooldown de 60 segundos por correo
         $checkRecent = $this->pdo->prepare("SELECT created_at FROM password_resets WHERE email = ? AND created_at > (NOW() - INTERVAL 60 SECOND)");
         $checkRecent->execute([$email]);
         if ($checkRecent->fetch()) {
@@ -383,21 +384,13 @@ class AuthService {
         $token = bin2hex(random_bytes(32));
         $expiresAt = date('Y-m-d H:i:s', strtotime('+1 hour'));
 
-        // Borrar tokens anteriores SOLO si pasó el check de cooldown
         $this->pdo->prepare("DELETE FROM password_resets WHERE email = ?")->execute([$email]);
         
         $sql = "INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)";
         
         try {
             $this->pdo->prepare($sql)->execute([$email, $token, $expiresAt]);
-            
-            // [SEGURIDAD - NUEVO] Registrar el evento de éxito para el rate limit por IP
             $this->logSecurityEvent($email, 'recovery_success');
-
-            // TODO: Enviar correo con el link aquí
-            // $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
-            // $host = $_SERVER['HTTP_HOST']; 
-            // $resetLink = "$protocol://$host/ProjectAurora/reset-password?token=$token";
 
             return [
                 'success' => true, 
@@ -467,45 +460,93 @@ class AuthService {
     }
 
     // =========================================================================
-    //  MÉTODOS PRIVADOS (Helpers Internos)
+    //  MÉTODOS PRIVADOS
     // =========================================================================
 
     private function verifyTurnstile($token) {
+        // [DEBUG] Preparar información técnica para el frontend
+        $ip = $this->getClientIp();
+        $debugInfo = [
+            'timestamp' => date('Y-m-d H:i:s'),
+            'backend_secret_key_source' => 'unknown',
+            'backend_secret_key_preview' => 'N/A',
+            'remote_ip_sent' => $ip,
+            'received_token_length' => strlen($token),
+            'received_token_preview' => substr($token, 0, 10) . '...',
+        ];
+
+        // Determinar origen de la clave (solo informativo)
+        if ($this->turnstileSecret === '1x00000000000000000000BB') {
+            $debugInfo['backend_secret_key_source'] = 'FALLBACK_TEST_KEY (1x...BB)';
+        } else {
+            $debugInfo['backend_secret_key_source'] = 'CUSTOM_ENV_KEY';
+        }
+        $debugInfo['backend_secret_key_preview'] = substr($this->turnstileSecret, 0, 10) . '...';
+
         if (empty($token)) {
-            return ['success' => false, 'message' => 'Por favor completa el captcha.'];
+            return [
+                'success' => false, 
+                'message' => 'Por favor completa el captcha (Token vacío).',
+                'debug' => $debugInfo
+            ];
         }
 
         $url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
-        $ip = $this->getClientIp();
-
+        
         $data = [
             'secret' => $this->turnstileSecret,
             'response' => $token,
             'remoteip' => $ip
         ];
 
+        // [CORRECCIÓN CRÍTICA] Desactivar verificación SSL para evitar fallos en local
         $options = [
             'http' => [
                 'header'  => "Content-type: application/x-www-form-urlencoded\r\n",
                 'method'  => 'POST',
-                'content' => http_build_query($data)
+                'content' => http_build_query($data),
+                'ignore_errors' => true // Traer el contenido incluso si es 400/500
+            ],
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false
             ]
         ];
 
         $context  = stream_context_create($options);
+        
+        // Capturar headers de respuesta (variable mágica $http_response_header)
+        // Inicializamos para evitar warnings si la petición falla catastróficamente
+        $http_response_header = null;
+        
         $result = @file_get_contents($url, false, $context);
+        
+        // Agregar info de conexión al debug
+        $debugInfo['http_response_header'] = $http_response_header ?? 'No headers (Connection Failed)';
+        $debugInfo['php_error_last'] = error_get_last();
+        $debugInfo['raw_result_preview'] = substr($result, 0, 500); // Primeros 500 chars
 
         if ($result === FALSE) {
-            return ['success' => false, 'message' => 'No se pudo conectar con el servidor de validación.'];
+            return [
+                'success' => false, 
+                'message' => 'Error de conexión HTTP con Cloudflare (Ver consola).', 
+                'debug' => $debugInfo
+            ];
         }
 
         $response = json_decode($result, true);
+        $debugInfo['json_error'] = json_last_error_msg();
+        $debugInfo['cloudflare_response_parsed'] = $response;
 
-        if ($response['success']) {
-            return ['success' => true];
+        if (isset($response['success']) && $response['success'] === true) {
+            return ['success' => true, 'debug' => $debugInfo];
         } else {
-            // Códigos de error para debugging (opcional mostrar)
-            return ['success' => false, 'message' => 'Validación fallida. Inténtalo de nuevo.'];
+            $codes = json_encode($response['error-codes'] ?? []);
+            return [
+                'success' => false, 
+                'message' => "Validación fallida (Codes: $codes).", 
+                'debug' => $debugInfo
+            ];
         }
     }
 
@@ -599,8 +640,6 @@ class AuthService {
 
     private function completeLogin($user) {
         session_regenerate_id(true);
-
-        // [SEGURIDAD] Rotar CSRF Token inmediatamente al loguearse para evitar Session Fixation + CSRF heredado
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 
         $_SESSION['user_id'] = $user['id'];

@@ -8,7 +8,7 @@ let recoveryTimerInterval = null;
 let turnstileWidgetId = null; // Guardamos el ID del widget
 
 export function initAuthController() {
-    console.log("Auth Controller: Listo (Turnstile Enabled - Invisible)");
+    console.log("Auth Controller: Listo (Logs Detallados Activados)");
 
     // Intentar renderizar Turnstile al iniciar si el contenedor existe
     renderTurnstile();
@@ -49,45 +49,7 @@ export function initAuthController() {
         if (btnNext1) {
             e.preventDefault();
             hideError('register-step1-error');
-            
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            // Obtener Token Turnstile
-            const tsToken = getTurnstileToken();
-
-            if(!email || !password) { 
-                showError(btnNext1, 'register-step1-error', I18n.t('js.auth.fill_all')); 
-                return; 
-            }
-
-            if(!tsToken) {
-                showError(btnNext1, 'register-step1-error', 'Verificando seguridad, intenta de nuevo en un segundo...');
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('action', 'register_step_1');
-            formData.append('email', email);
-            formData.append('password', password);
-            formData.append('cf-turnstile-response', tsToken); // Adjuntar token
-
-            setLoading(btnNext1, true);
-
-            try {
-                const res = await ApiService.post('auth-handler.php', formData);
-                if (res.success) {
-                    navigateTo(res.next_url); 
-                } else {
-                    showError(btnNext1, 'register-step1-error', res.message);
-                    setLoading(btnNext1, false);
-                    resetTurnstile(); // Resetear widget al fallar
-                }
-            } catch (err) {
-                console.error(err);
-                showError(btnNext1, 'register-step1-error', I18n.t('js.auth.unexpected_error'));
-                setLoading(btnNext1, false);
-                resetTurnstile();
-            }
+            handleRegisterStep1(btnNext1); // Usamos helper separado
             return;
         }
 
@@ -215,11 +177,11 @@ export function initAuthController() {
 
             try {
                 const res = await ApiService.post('auth-handler.php', formData);
-                setLoading(btnRequestReset, false); // Quita el spinner, pero la función startRecoveryTimer lo desactivará de nuevo si es success
+                setLoading(btnRequestReset, false); 
 
                 if (res.success) {
                     Toast.show(I18n.t('js.auth.reset_link_sent'), 'success');
-                    startRecoveryTimer(60); // Inicia bloqueo y contador
+                    startRecoveryTimer(60); 
                 } else {
                     showError(btnRequestReset, 'recovery-error', res.message);
                 }
@@ -235,7 +197,6 @@ export function initAuthController() {
         if (linkResendRecovery) {
             e.preventDefault();
             
-            // Verificación extra de estado
             if (linkResendRecovery.classList.contains('link-disabled') || linkResendRecovery.style.pointerEvents === 'none') {
                 return;
             }
@@ -247,7 +208,6 @@ export function initAuthController() {
             formData.append('action', 'request_reset');
             formData.append('email', email);
 
-            // Feedback visual ligero
             linkResendRecovery.style.opacity = '0.5';
 
             try {
@@ -256,7 +216,7 @@ export function initAuthController() {
 
                 if (res.success) {
                     Toast.show(I18n.t('js.auth.reset_link_sent'), 'success');
-                    startRecoveryTimer(60); // Reiniciar timer
+                    startRecoveryTimer(60); 
                 } else {
                     Toast.show(res.message, 'error');
                 }
@@ -404,14 +364,11 @@ export function initAuthController() {
 function renderTurnstile() {
     const container = document.getElementById('turnstile-container');
     if (container && window.turnstile) {
-        // Limpiamos el contenedor antes de renderizar para evitar duplicados en SPA
         container.innerHTML = ''; 
-        
         try {
             turnstileWidgetId = turnstile.render('#turnstile-container', {
-                sitekey: window.TURNSTILE_SITE_KEY, // Variable global desde index.php
+                sitekey: window.TURNSTILE_SITE_KEY, 
                 theme: 'auto'
-                // NOTA: Eliminamos 'appearance: interaction-only' para permitir modo invisible
             });
         } catch(e) {
             console.warn("Turnstile render error (puede que ya esté renderizado):", e);
@@ -423,7 +380,6 @@ function getTurnstileToken() {
     if (window.turnstile && turnstileWidgetId !== null) {
         return turnstile.getResponse(turnstileWidgetId);
     }
-    // Fallback por si el widget se renderizó automáticamente
     const input = document.querySelector('[name="cf-turnstile-response"]');
     return input ? input.value : '';
 }
@@ -434,16 +390,14 @@ function resetTurnstile() {
     }
 }
 
-// === LOGICA LOGIN MODIFICADA ===
+// === LÓGICA LOGIN MODIFICADA CON LOGS ===
 
 async function handleLoginStep1(btn) {
     const inputs = document.querySelectorAll('#login-stage-1 input');
     const formData = new FormData();
     formData.append('action', 'login');
     
-    // Obtener Token
     const tsToken = getTurnstileToken();
-    
     let hasEmpty = false;
     inputs.forEach(input => {
         if(input.name && input.name !== 'cf-turnstile-response') { 
@@ -461,11 +415,40 @@ async function handleLoginStep1(btn) {
         showError(btn, 'login-error', 'Verificando seguridad, intenta de nuevo en un segundo...');
         return;
     }
+
+    // [DEBUG] Loguear qué tenemos en el frontend antes de enviar
+    console.group("🚀 [Frontend] Preparando Login");
+    console.log("Token Turnstile generado:", tsToken ? (tsToken.substring(0,10) + "...") : "VACÍO");
+    console.log("Site Key en window:", window.TURNSTILE_SITE_KEY);
+    console.groupEnd();
+
     formData.append('cf-turnstile-response', tsToken);
 
     setLoading(btn, true);
     try {
         const res = await ApiService.post('auth-handler.php', formData);
+        
+        // === NUEVO: IMPRIMIR LOGS DEL SERVIDOR ===
+        if (res.debug) {
+            console.group("🔥 [Backend DEBUG] Validación Turnstile");
+            console.log("Token Length:", res.debug.token_length);
+            console.log("Secret Preview:", res.debug.backend_secret_key_preview);
+            
+            if(res.debug.connection_error) console.error("Error Conexión PHP:", res.debug.connection_error);
+            if(res.debug.http_response_header) console.table(res.debug.http_response_header);
+            
+            console.log("Cloudflare Response (Parsed):", res.debug.cloudflare_response_parsed);
+            
+            if (res.debug.raw_result_preview) {
+                console.log("Raw Result (First 500 chars):", res.debug.raw_result_preview);
+            }
+
+            if (res.debug.backend_secret_key_preview && res.debug.backend_secret_key_preview.includes("1x0000")) {
+                console.info("ℹ️ NOTA: El backend está usando claves de PRUEBA (1x0000...).");
+            }
+            console.groupEnd();
+        }
+        // ==========================================
         
         if (res.success) {
             if (res.require_2fa) {
@@ -486,11 +469,63 @@ async function handleLoginStep1(btn) {
         } else {
             showError(btn, 'login-error', res.message);
             setLoading(btn, false);
-            resetTurnstile(); // Resetear al fallar
+            resetTurnstile(); 
         }
     } catch(e) { 
+        console.error("Error en login:", e);
         showError(btn, 'login-error', I18n.t('js.auth.connection_error'));
         setLoading(btn, false); 
+        resetTurnstile();
+    }
+}
+
+// === LOGICA REGISTRO PASO 1 CON LOGS ===
+
+async function handleRegisterStep1(btn) {
+    hideError('register-step1-error');
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const tsToken = getTurnstileToken();
+
+    if(!email || !password) { 
+        showError(btn, 'register-step1-error', I18n.t('js.auth.fill_all')); 
+        return; 
+    }
+
+    if(!tsToken) {
+        showError(btn, 'register-step1-error', 'Verificando seguridad...');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('action', 'register_step_1');
+    formData.append('email', email);
+    formData.append('password', password);
+    formData.append('cf-turnstile-response', tsToken);
+
+    setLoading(btn, true);
+
+    try {
+        const res = await ApiService.post('auth-handler.php', formData);
+        
+        // Logs
+        if (res.debug) {
+            console.group("🔥 [Backend DEBUG] Registro");
+            console.log("Cloudflare Response:", res.debug.cloudflare_response_parsed);
+            console.groupEnd();
+        }
+
+        if (res.success) {
+            navigateTo(res.next_url); 
+        } else {
+            showError(btn, 'register-step1-error', res.message);
+            setLoading(btn, false);
+            resetTurnstile();
+        }
+    } catch (err) {
+        console.error(err);
+        showError(btn, 'register-step1-error', I18n.t('js.auth.unexpected_error'));
+        setLoading(btn, false);
         resetTurnstile();
     }
 }
@@ -585,7 +620,6 @@ function startResendTimer(seconds) {
     }, 1000);
 }
 
-// [MODIFICADO] Función startRecoveryTimer según especificaciones
 function startRecoveryTimer(seconds) {
     const btnRequest = document.getElementById('btn-request-reset');
     const linkBack = document.getElementById('link-back-login');
@@ -593,16 +627,13 @@ function startRecoveryTimer(seconds) {
     const timerSpan = document.getElementById('recovery-timer');
     const inputEmail = document.getElementById('email_recovery');
     
-    // 1. Desactivar botón principal (NO ELIMINAR, SOLO DISABLED)
     if (btnRequest) {
         btnRequest.disabled = true;
-        btnRequest.style.opacity = '0.5'; // Visualmente desactivado
+        btnRequest.style.opacity = '0.5'; 
     }
 
-    // 2. Ocultar enlace de volver al login
     if (linkBack) linkBack.style.display = 'none';
     
-    // 3. Mostrar enlace de reenvío en estado "desactivado"
     if (linkResend) {
         linkResend.style.display = 'inline-block';
         linkResend.classList.add('link-disabled');
@@ -610,7 +641,6 @@ function startRecoveryTimer(seconds) {
         linkResend.style.color = 'rgb(153, 153, 153)';
     }
 
-    // 4. Bloquear Input
     if (inputEmail) {
         inputEmail.disabled = true;
         inputEmail.style.opacity = '0.7';
@@ -628,7 +658,6 @@ function startRecoveryTimer(seconds) {
         if (timeLeft <= 0) {
             clearInterval(recoveryTimerInterval);
             
-            // Reactivar UI
             if (btnRequest) {
                 btnRequest.disabled = false;
                 btnRequest.style.opacity = '1';
@@ -637,11 +666,10 @@ function startRecoveryTimer(seconds) {
             if (linkResend) {
                 linkResend.classList.remove('link-disabled');
                 linkResend.style.pointerEvents = 'auto';
-                linkResend.style.color = ''; // Volver al color CSS original
+                linkResend.style.color = ''; 
                 if (timerSpan) timerSpan.textContent = '';
             }
 
-            // Opcional: Volver a mostrar el botón de volver si se desea
             if (linkBack) linkBack.style.display = 'inline-block';
 
             if (inputEmail) {
