@@ -1,0 +1,1 @@
+[2025-12-27 00:47:04] [ERROR  ] [192.168.1.158] [USER:GUEST] [POST /ProjectAurora/api/auth-handler.php] Error enviando correo: SMTP Error: Could not authenticate. 

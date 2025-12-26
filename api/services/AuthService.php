@@ -2,6 +2,8 @@
 // api/services/AuthService.php
 
 require_once __DIR__ . '/../../includes/libs/GoogleAuthenticator.php';
+// Agregamos el servicio de correo
+require_once __DIR__ . '/../../includes/libs/MailService.php';
 
 class AuthService {
     private $pdo;
@@ -21,7 +23,6 @@ class AuthService {
         }
     
         // 3. Si sigue vacío, usar la clave de prueba de Cloudflare (Fallback)
-        // Corrección: Aseguramos que no se use un string vacío accidentalmente
         $this->turnstileSecret = !empty($secret) ? $secret : '1x0000000000000000000000000000000AA';
     }
 
@@ -109,7 +110,20 @@ class AuthService {
 
             $_SESSION['pending_verification_email'] = $email;
 
-            // TODO: Implementar envío real de correo electrónico aquí
+            // --- ENVÍO REAL DE CORREO (PHPMailer) ---
+            $subject = "Verifica tu cuenta en Project Aurora";
+            $body = "<h1>Hola, $username</h1>
+                     <p>Gracias por registrarte. Tu código de verificación es:</p>
+                     <p style='font-size: 24px; font-weight: bold; color: #333; letter-spacing: 4px;'>$code</p>
+                     <p><small>Este código expirará en 15 minutos.</small></p>";
+
+            $emailResult = MailService::send($email, $subject, $body);
+
+            if (!$emailResult['success']) {
+                // Si falla el envío, retornamos error para que el usuario sepa (y no se quede esperando un código que no llegará)
+                return ['success' => false, 'message' => 'Error al enviar el correo: ' . $emailResult['message']];
+            }
+            // ----------------------------------------
             
             return [
                 'success' => true, 
@@ -167,7 +181,13 @@ class AuthService {
             $insert->execute([$email, $newCode, $payload, $expiresAt]);
             $this->logSecurityEvent($email, 'resend_code_req');
 
-            // TODO: Enviar nuevo código por correo
+            // --- ENVÍO REAL DE CORREO (Resend) ---
+            $subject = "Nuevo código de verificación - Project Aurora";
+            $body = "<p>Has solicitado un nuevo código. Tu código es:</p>
+                     <p style='font-size: 24px; font-weight: bold; color: #333; letter-spacing: 4px;'>$newCode</p>";
+            
+            MailService::send($email, $subject, $body);
+            // -------------------------------------
             
             return ['success' => true, 'message' => $this->i18n->t('api.code_generated')];
         } catch (Exception $e) {
@@ -381,7 +401,18 @@ class AuthService {
             $this->pdo->prepare($sql)->execute([$email, $token, $expiresAt]);
             $this->logSecurityEvent($email, 'recovery_success');
 
-            // TODO: Enviar correo con el link
+            // --- ENVÍO REAL DE CORREO (Reset Password) ---
+            $resetLink = "https://tudominio.com/ProjectAurora/reset-password?token=" . $token; 
+            // NOTA: Ajusta 'tudominio.com' o usa $_SERVER['HTTP_HOST'] si prefieres dinámico.
+            
+            $subject = "Recuperar contraseña - Project Aurora";
+            $body = "<p>Has solicitado restablecer tu contraseña. Haz clic en el siguiente enlace:</p>
+                     <p><a href='$resetLink'>$resetLink</a></p>
+                     <p>Si no fuiste tú, ignora este mensaje.</p>";
+            
+            MailService::send($email, $subject, $body);
+            // ---------------------------------------------
+            
             return [
                 'success' => true, 
                 'message_user' => $this->i18n->t('api.message_email_sent')
