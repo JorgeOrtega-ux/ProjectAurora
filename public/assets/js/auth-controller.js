@@ -404,16 +404,14 @@ export function initAuthController() {
 function renderTurnstile() {
     const container = document.getElementById('turnstile-container');
     if (container && window.turnstile) {
-        // Si ya hay un widget, lo removemos limpiando el HTML antes de renderizar uno nuevo
-        // o si turnstile.render devuelve un ID, lo usamos para ver si ya está.
-        // Lo más seguro en SPA simple: Limpiar y renderizar.
+        // Limpiamos el contenedor antes de renderizar para evitar duplicados en SPA
         container.innerHTML = ''; 
         
         try {
             turnstileWidgetId = turnstile.render('#turnstile-container', {
                 sitekey: window.TURNSTILE_SITE_KEY, // Variable global desde index.php
-                theme: 'auto',
-                appearance: 'interaction-only' // Forzar modo no intrusivo si la key lo permite
+                theme: 'auto'
+                // NOTA: Eliminamos 'appearance: interaction-only' para permitir modo invisible
             });
         } catch(e) {
             console.warn("Turnstile render error (puede que ya esté renderizado):", e);

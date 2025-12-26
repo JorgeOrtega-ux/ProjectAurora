@@ -11,8 +11,10 @@ class AuthService {
     public function __construct($pdo, $i18n) {
         $this->pdo = $pdo;
         $this->i18n = $i18n;
-        // Obtenemos el secreto del entorno o usamos el de prueba por defecto
-        $this->turnstileSecret = $_ENV['TURNSTILE_SECRET_KEY'] ?? '1x00000000000000000000AA';
+        // Obtenemos el secreto del entorno con respaldo (getenv)
+        $this->turnstileSecret = $_ENV['TURNSTILE_SECRET_KEY'] 
+                                 ?? getenv('TURNSTILE_SECRET_KEY') 
+                                 ?? '1x00000000000000000000BB';
     }
 
     // =========================================================================
