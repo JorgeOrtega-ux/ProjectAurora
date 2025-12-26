@@ -93,10 +93,12 @@ class AuthService {
 
             $_SESSION['pending_verification_email'] = $email;
 
+            // TODO: Implementar envío real de correo electrónico aquí (PHPMailer, etc.)
+            
             return [
                 'success' => true, 
                 'message' => $this->i18n->t('api.code_sent'), 
-                'debug_code' => $code, // Quitar en producción
+                // [SEGURIDAD] debug_code eliminado para producción
                 'next_url' => 'register/verification-account'
             ]; 
         } catch (Exception $e) {
@@ -151,7 +153,10 @@ class AuthService {
             $insert->execute([$email, $newCode, $payload, $expiresAt]);
             $this->logSecurityEvent($email, 'resend_code_req');
 
-            return ['success' => true, 'message' => $this->i18n->t('api.code_generated'), 'debug_code' => $newCode];
+            // TODO: Enviar nuevo código por correo aquí
+            
+            return ['success' => true, 'message' => $this->i18n->t('api.code_generated')];
+            // [SEGURIDAD] debug_code eliminado
         } catch (Exception $e) {
             return ['success' => false, 'message' => $this->i18n->t('api.code_save_error') . ': ' . $e->getMessage()];
         }
@@ -355,14 +360,14 @@ class AuthService {
         try {
             $this->pdo->prepare($sql)->execute([$email, $token, $expiresAt]);
             
-            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
-            $host = $_SERVER['HTTP_HOST']; 
-            $resetLink = "$protocol://$host/ProjectAurora/reset-password?token=$token";
+            // TODO: Enviar correo con el link aquí
+            // $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+            // $host = $_SERVER['HTTP_HOST']; 
+            // $resetLink = "$protocol://$host/ProjectAurora/reset-password?token=$token";
 
             return [
                 'success' => true, 
-                'message' => $this->i18n->t('api.link_generated'), 
-                'debug_link' => $resetLink,
+                // [SEGURIDAD] Eliminado debug_link
                 'message_user' => $this->i18n->t('api.message_email_sent')
             ];
         } catch (Exception $e) {
@@ -469,9 +474,6 @@ class AuthService {
 
     /**
      * Obtiene la IP del cliente de forma segura.
-     * CORRECCIÓN DE SEGURIDAD:
-     * Se elimina el uso de HTTP_X_FORWARDED_FOR para prevenir IP Spoofing.
-     * Si no se utiliza un proxy confiable (configurado a nivel de servidor), esta cabecera es insegura.
      * Se confía únicamente en REMOTE_ADDR.
      */
     private function getClientIp() {

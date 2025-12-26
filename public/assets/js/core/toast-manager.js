@@ -11,7 +11,7 @@ export const Toast = {
     },
 
     /**
-     * Muestra una notificación toast
+     * Muestra una notificación toast de manera segura
      */
     show: (message, type = 'info', duration = 3000) => {
         // 1. Obtener o crear el contenedor dinámicamente
@@ -28,7 +28,7 @@ export const Toast = {
             duration = 10000; // 10 segundos si está activo
         }
 
-        // Crear el elemento toast
+        // 2. Crear el elemento toast contenedor
         const toast = document.createElement('div');
         toast.classList.add('toast-item', type);
 
@@ -37,11 +37,20 @@ export const Toast = {
         if (type === 'error') iconName = 'error';
         if (type === 'warning') iconName = 'warning';
 
+        // 3. [SEGURIDAD] Construcción segura del DOM para prevenir XSS.
+        // Solo insertamos HTML estático seguro (iconos y estructura) vía innerHTML.
+        // El mensaje del usuario se inserta después usando textContent.
         toast.innerHTML = `
             <span class="material-symbols-rounded toast-icon">${iconName}</span>
-            <span class="toast-message">${message}</span>
+            <span class="toast-message"></span>
             <span class="material-symbols-rounded toast-close">close</span>
         `;
+
+        // Insertar el mensaje como TEXTO puro (Sanitización automática del navegador)
+        const messageEl = toast.querySelector('.toast-message');
+        if (messageEl) {
+            messageEl.textContent = message;
+        }
 
         container.appendChild(toast);
 

@@ -6,7 +6,7 @@ import { I18n } from './core/i18n-manager.js';
 let resendTimerInterval = null;
 
 export function initAuthController() {
-    console.log("Auth Controller: Listo (SPA - Event Delegation - Generic Components)");
+    console.log("Auth Controller: Listo (Production Mode)");
 
     const resendBtn = document.getElementById('btn-resend-code');
     if (resendBtn) {
@@ -92,7 +92,7 @@ export function initAuthController() {
             try {
                 const res = await ApiService.post('auth-handler.php', formData);
                 if (res.success) {
-                    if(res.debug_code) console.log("Code:", res.debug_code);
+                    // [LIMPIEZA] Eliminado console.log del código debug
                     
                     Toast.show(I18n.t('js.auth.code_sent'), 'info'); 
                     
@@ -164,8 +164,7 @@ export function initAuthController() {
 
                 if (res.success) {
                     Toast.show(I18n.t('js.auth.resend_success'), 'success');
-                    
-                    if(res.debug_code) console.log("New Code:", res.debug_code);
+                    // [LIMPIEZA] Eliminado console.log del código debug
                     startResendTimer(60);
                 } else {
                     showError(btnResend, 'register-step3-error', res.message);
@@ -178,7 +177,7 @@ export function initAuthController() {
             return;
         }
 
-        // RECUPERAR
+        // RECUPERAR PASSWORD
         const btnRequestReset = target.closest('#btn-request-reset');
         if (btnRequestReset) {
             e.preventDefault();
@@ -202,14 +201,10 @@ export function initAuthController() {
 
                 if (res.success) {
                     Toast.show(I18n.t('js.auth.reset_link_sent'), 'success');
-                    console.log("=== LINK ===", res.debug_link);
                     
-                    const area = document.getElementById('recovery-message-area');
-                    if(area) {
-                        area.innerHTML = `<div class="component-message component-message--success">
-                            Link: <br><a href="${res.debug_link}">${res.debug_link}</a>
-                        </div>`;
-                    }
+                    // [LIMPIEZA] Eliminada la inyección de HTML con el link de debug.
+                    // Ahora solo muestra el Toast de éxito.
+                    
                 } else {
                     showError(btnRequestReset, 'recovery-error', res.message);
                 }
@@ -220,7 +215,7 @@ export function initAuthController() {
             return;
         }
 
-        // RESET PASSWORD
+        // RESET PASSWORD (Submit nuevo password)
         const btnSubmitNewPass = target.closest('#btn-submit-new-password');
         if (btnSubmitNewPass) {
             e.preventDefault();
@@ -264,41 +259,30 @@ export function initAuthController() {
             return;
         }
 
-        // =================================================================
-        // LOGOUT CON SPINNER DINÁMICO
-        // =================================================================
+        // LOGOUT
         const logoutBtn = target.closest('[data-action="logout"]');
         if (logoutBtn) {
             e.preventDefault();
             e.stopPropagation();
 
-            // Evitar múltiples clics mientras carga
             if (logoutBtn.dataset.processing === "true") return;
             logoutBtn.dataset.processing = "true";
 
-            // 1. Crear el contenedor del icono (derecha)
-            // Usamos 'menu-link-icon' para mantener dimensiones consistentes (40px)
             const spinnerContainer = document.createElement('div');
             spinnerContainer.className = 'menu-link-icon'; 
             spinnerContainer.id = 'logout-spinner';
             
-            // 2. Crear el spinner
             const spinner = document.createElement('div');
             spinner.className = 'spinner-sm';
-            
-            // Sobrescribir colores para que se vea bien en el menú (fondo claro)
-            // La clase original .spinner-sm usa blanco/transparente para botones primarios
             spinner.style.borderColor = 'rgba(0, 0, 0, 0.1)';
             spinner.style.borderLeftColor = 'var(--text-primary)';
             spinner.style.width = '20px';
             spinner.style.height = '20px';
             spinner.style.borderWidth = '2px';
 
-            // 3. Insertar en el botón
             spinnerContainer.appendChild(spinner);
             logoutBtn.appendChild(spinnerContainer);
 
-            // 4. Realizar petición
             const formData = new FormData();
             formData.append('action', 'logout');
             
@@ -307,7 +291,6 @@ export function initAuthController() {
                 window.location.href = window.BASE_PATH + 'login';
             } catch (err) {
                 console.error("Logout error:", err);
-                // Si falla, limpiar el spinner para permitir reintentar
                 if (spinnerContainer.parentNode) {
                     spinnerContainer.remove();
                 }
@@ -316,7 +299,7 @@ export function initAuthController() {
             return;
         }
 
-        // UI INTERACTIONS (Nuevo Selector Generic)
+        // UI INTERACTIONS
         const inputActionBtn = target.closest('.component-input-action');
         if (inputActionBtn) {
             e.preventDefault();
@@ -350,7 +333,6 @@ export function initAuthController() {
     document.body.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             const activeInput = document.activeElement;
-            // Buscar si estamos dentro de un componente de tarjeta auth
             if (activeInput && activeInput.closest('.component-card')) {
                 const stage2 = document.getElementById('login-stage-2');
                 if(stage2 && !stage2.classList.contains('disabled')) {
@@ -454,10 +436,8 @@ function showError(referenceNode, errorId, message) {
     if (!errorDiv) {
         errorDiv = document.createElement('div');
         errorDiv.id = errorId;
-        // Nueva clase genérica
         errorDiv.className = 'component-message component-message--error';
         
-        // Insertar después del botón de referencia (o nodo)
         if(referenceNode.nextSibling) {
             referenceNode.parentNode.insertBefore(errorDiv, referenceNode.nextSibling);
         } else {

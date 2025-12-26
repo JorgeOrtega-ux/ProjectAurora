@@ -16,8 +16,7 @@
         </div>
 
         <button type="button" id="btn-request-reset" class="component-button component-button--large primary"><?php echo $i18n->t('auth.recover.btn_send'); ?></button>
-        <div id="recovery-message-area"></div>
-
+        
         <div class="component-text-footer">
             <a href="<?php echo $basePath; ?>login" data-nav="login"><?php echo $i18n->t('auth.recover.back_login'); ?></a>
         </div>
