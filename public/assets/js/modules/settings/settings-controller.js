@@ -123,8 +123,8 @@ export const SettingsController = (function() {
         const wrapper = input.closest(SELECTORS.popover);
         if (!wrapper) return;
 
+        const listContainer = wrapper.querySelector('.menu-list');
         const links = wrapper.querySelectorAll(`${SELECTORS.optionClass}[data-type="language"]`);
-        const noResults = wrapper.querySelector('#no-lang-results');
         let hasVisible = false;
 
         links.forEach(link => {
@@ -137,8 +137,23 @@ export const SettingsController = (function() {
             }
         });
 
-        if (noResults) {
-            noResults.style.display = hasVisible ? 'none' : 'block';
+        // Lógica Dinámica para "No results"
+        let noResults = wrapper.querySelector('#no-lang-results');
+
+        if (!hasVisible) {
+            if (!noResults) {
+                noResults = document.createElement('div');
+                noResults.id = 'no-lang-results';
+                noResults.className = 'menu-empty-state';
+                noResults.innerText = 'No se encontraron resultados.';
+                // Forzamos display block porque la clase CSS tiene display:none por defecto
+                noResults.style.display = 'block'; 
+                listContainer.appendChild(noResults);
+            }
+        } else {
+            if (noResults) {
+                noResults.remove();
+            }
         }
     }
 

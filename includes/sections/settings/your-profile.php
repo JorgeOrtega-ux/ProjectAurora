@@ -169,10 +169,6 @@ $currentLangLabel = $langLabels[$prefLang];
                                             <div class="menu-link-text"><?php echo $label; ?></div>
                                         </div>
                                     <?php endforeach; ?>
-
-                                    <div class="menu-empty-state" id="no-lang-results">
-                                        No se encontraron resultados.
-                                    </div>
                                 </div>
 
                             </div>
