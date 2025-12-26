@@ -250,7 +250,7 @@
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 0;
+    gap: 8px;
     width: 100%;
 }
 
@@ -528,30 +528,6 @@ input:checked+.component-toggle-slider:before { transform: translateX(20px); }
     justify-content: flex-end !important;
 }
 
-@media (max-width: 600px) {
-    .component-group-item {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 12px;
-    }
-    .component-card__actions.actions-right {
-        justify-content: space-between;
-        width: 100%;
-    }
-    .trigger-select-wrapper { width: 100%; }
-    .input-group-responsive.active {
-        flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 8px;
-    }
-    .input-group-responsive .component-card__actions { margin-top: 4px; }
-    .component-button { flex: 1; min-height: 56px; }
-}
-
-@media (max-width: 468px) {
-    .component-layout-centered { align-items: flex-start; padding-top: 120px; height: auto; min-height: 100%; }
-    .component-card--compact { padding: 0; }
-}
 
 /* =========================================
    8. EXTENSIONES AVANZADAS
@@ -683,4 +659,38 @@ input:checked+.component-toggle-slider:before { transform: translateX(20px); }
     .component-visual-box {
         width: 100%;
     }
+}
+
+@media (max-width: 600px) {
+    .component-group-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    .component-card__actions.actions-right {
+        width: 100%;
+    }
+    .input-group-responsive.active {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px;
+    }
+    .input-group-responsive .component-card__actions { margin-top: 4px; }
+    .component-button { flex: 1; }
+}
+@media (max-width: 600px) {
+    .component-group-item>.component-card__actions>.active {
+        width: 100%;
+        display: flex;
+        gap: 8px;
+    }
+}
+@media (max-width: 468px) {
+    .component-layout-centered { align-items: flex-start; padding-top: 120px; height: auto; min-height: 100%; }
+    .component-card--compact { padding: 0; }
+}
+.input-group-responsive {
+    gap: 8px;
+    align-items: center;
+    margin-top: 2px;
 }

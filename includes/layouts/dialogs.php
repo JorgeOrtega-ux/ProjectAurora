@@ -2,6 +2,9 @@
     <div class="dialog-container">
         
         <div id="dialog-content-wrapper" class="dialog-card">
+            <div class="dialog-pill-container">
+                <div class="dialog-drag-handle"></div>
+            </div>
             <div class="dialog-spinner"></div>
         </div>
 
