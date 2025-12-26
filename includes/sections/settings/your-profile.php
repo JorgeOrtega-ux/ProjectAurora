@@ -50,18 +50,18 @@ $currentLangLabel = $langLabels[$prefLang];
                 <input type="file" id="upload-avatar" accept="image/png, image/jpeg, image/webp, image/gif" hidden>
 
                 <div class="component-card__actions actions-right">
-                    <div class="<?php echo $classDefault; ?>" data-state="profile-picture-actions-default">
+                    <div class="component-action-group <?php echo $classDefault; ?>" data-state="profile-picture-actions-default">
                         <button type="button" class="component-button primary" id="btn-upload-init">
                             <?php echo $i18n->t('settings.profile.btn_upload'); ?>
                         </button>
                     </div>
 
-                    <div class="disabled" data-state="profile-picture-actions-preview">
+                    <div class="component-action-group disabled" data-state="profile-picture-actions-preview">
                         <button type="button" class="component-button" data-action="profile-picture-cancel"><?php echo $i18n->t('settings.profile.btn_cancel'); ?></button>
                         <button type="button" class="component-button primary" data-action="profile-picture-save"><?php echo $i18n->t('settings.profile.btn_save'); ?></button>
                     </div>
 
-                    <div class="<?php echo $classCustom; ?>" data-state="profile-picture-actions-custom">
+                    <div class="component-action-group <?php echo $classCustom; ?>" data-state="profile-picture-actions-custom">
                         <button type="button" class="component-button" data-action="profile-picture-delete" style="color: #d32f2f; border-color: #d32f2f30;">
                             <?php echo $i18n->t('settings.profile.btn_delete'); ?>
                         </button>

@@ -27,6 +27,11 @@ export const TooltipManager = {
 
         // Mostrar Tooltip (Crear + Insertar)
         const showTooltip = (trigger) => {
+            // === MODIFICACIÓN: Desactivar en móviles ===
+            // Si el ancho es menor o igual a 725px (tu breakpoint móvil), no hacemos nada.
+            if (window.innerWidth <= 725) return;
+            // ==========================================
+
             // Limpieza preventiva por si hay un cambio muy rápido entre elementos
             if (currentTooltipEl) {
                 removeTooltipFromDOM();

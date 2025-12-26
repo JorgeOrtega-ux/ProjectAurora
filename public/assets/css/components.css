@@ -192,6 +192,13 @@
     justify-content: flex-end;
 }
 
+/* === NUEVA CLASE: Para agrupar botones internos con gap === */
+.component-action-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
 .component-button {
     height: 36px;
     padding: 0 14px;
@@ -360,6 +367,68 @@ input:checked+.component-toggle-slider:before { transform: translateX(20px); }
     border-radius: 12px;
     background-color: transparent;
     border: 1px solid #00000020;
+    position: relative;
+}
+
+/* Modificador: Caja que ocupa el espacio restante (Izquierda) */
+.component-visual-box.box-grow {
+    flex: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 12px;
+}
+
+/* Modificador: Caja ajustada al contenido (Derecha - QR) */
+.component-visual-box.box-qr {
+    width: auto;
+    flex-shrink: 0;
+    background-color: #fff; /* Opcional: fondo blanco para asegurar contraste del QR */
+}
+
+/* Estilos para la lista de pasos dentro de la caja izquierda */
+.visual-step-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.visual-step-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.visual-step-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--sl-border-radius-circle);
+    background-color: transparent;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    border: 1px solid #00000020;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+/* Responsive: En móviles se ponen en columna */
+@media (max-width: 600px) {
+    .component-visual-group {
+        flex-direction: column-reverse; /* QR arriba en móvil, o column normal */
+    }
+    .component-visual-box {
+        width: 100%;
+    }
 }
 
 /* =========================================
@@ -581,84 +650,13 @@ input:checked+.component-toggle-slider:before { transform: translateX(20px); }
     font-size: 13px;
     color: var(--text-secondary);
     user-select: none;
-}/* Contenedor flexible (Fila) */
+}
+
+/* Contenedor flexible (Fila) */
 .component-visual-group {
     display: flex;
     gap: 12px;
     width: 100%;
-}
-
-/* Caja base (Borde sutil, fondo transparente) */
-.component-visual-box {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-    border-radius: 12px;
-    background-color: transparent;
-    border: 1px solid rgba(0, 0, 0, 0.12); /* Equivalente a #00000020 */
-    position: relative;
-}
-
-/* Modificador: Caja que ocupa el espacio restante (Izquierda) */
-.component-visual-box.box-grow {
-    flex: 1;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 12px;
-}
-
-/* Modificador: Caja ajustada al contenido (Derecha - QR) */
-.component-visual-box.box-qr {
-    width: auto;
-    flex-shrink: 0;
-    background-color: #fff; /* Opcional: fondo blanco para asegurar contraste del QR */
-}
-
-/* Estilos para la lista de pasos dentro de la caja izquierda */
-.visual-step-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.visual-step-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 13px;
-    color: var(--text-secondary);
-    line-height: 1.4;
-}
-
-.visual-step-icon {
-    width: 28px;
-    height: 28px;
-    border-radius: var(--sl-border-radius-circle);
-    background-color: transparent;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    border: 1px solid #00000020;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 600;
-    flex-shrink: 0;
-}
-
-/* Responsive: En móviles se ponen en columna */
-@media (max-width: 600px) {
-    .component-visual-group {
-        flex-direction: column-reverse; /* QR arriba en móvil, o column normal */
-    }
-    .component-visual-box {
-        width: 100%;
-    }
 }
 
 @media (max-width: 600px) {
@@ -676,7 +674,13 @@ input:checked+.component-toggle-slider:before { transform: translateX(20px); }
         gap: 8px;
     }
     .input-group-responsive .component-card__actions { margin-top: 4px; }
-    .component-button { flex: 1; }
+    
+    /* MODIFICADO: Aplicar flex: 1 solo a botones dentro de grupos (Settings) 
+       para evitar comprimir los botones de Auth (Login/Register) */
+    .component-group-item .component-button,
+    .input-group-responsive .component-button { 
+        flex: 1; 
+    }
 }
 @media (max-width: 600px) {
     .component-group-item>.component-card__actions>.active {
