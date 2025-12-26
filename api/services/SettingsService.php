@@ -141,14 +141,13 @@ class SettingsService {
                 $this->deleteOldAvatar($oldPath);
                 $_SESSION['avatar'] = $dbPath;
 
-                // --- CORRECCIÓN: Devolver Base64 para evitar bloqueo de .htaccess ---
                 $base64Image = 'data:image/png;base64,' . base64_encode($imageContent);
                 
                 return [
                     'success' => true, 
                     'message' => $this->i18n->t('api.pic_deleted'), 
                     'type' => 'default', 
-                    'new_src' => $base64Image // Enviamos la imagen codificada
+                    'new_src' => $base64Image 
                 ];
             }
             return ['success' => false, 'message' => $this->i18n->t('api.pic_db_error')];
@@ -156,7 +155,6 @@ class SettingsService {
         return ['success' => false, 'message' => $this->i18n->t('api.pic_gen_error')];
     }
 
-    // ... (Resto de métodos updateProfile, changePassword, etc. IGUALES QUE ANTES) ...
     public function updateProfile($field, $value) {
         if (!in_array($field, ['username', 'email'])) return ['success' => false, 'message' => $this->i18n->t('api.field_invalid')];
         if (empty($value)) return ['success' => false, 'message' => $this->i18n->t('api.field_empty')];
@@ -442,10 +440,26 @@ class SettingsService {
         $stmt = $this->pdo->prepare($sql);
         try { $stmt->execute([$this->userId, $changeType, $oldValue, $newValue, $ip, $ua]); } catch (Exception $e) { error_log("Error logging profile change: " . $e->getMessage()); }
     }
+    
+    /**
+     * Obtiene la IP del cliente de forma segura.
+     * CORRECCIÓN DE SEGURIDAD:
+     * No se confía ciegamente en HTTP_X_FORWARDED_FOR. Se valida que sea una IP real.
+     */
     private function getClientIp() {
-        if (!empty($_SERVER['HTTP_CLIENT_IP'])) return $_SERVER['HTTP_CLIENT_IP'];
-        elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) return $_SERVER['HTTP_X_FORWARDED_FOR'];
-        else return $_SERVER['REMOTE_ADDR'];
+        $ip = $_SERVER['REMOTE_ADDR']; // Valor por defecto seguro
+        
+        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $parts = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+            $potentialIp = trim($parts[0]);
+            
+            // VALIDACIÓN ESTRICTA
+            if (filter_var($potentialIp, FILTER_VALIDATE_IP)) {
+                $ip = $potentialIp;
+            }
+        }
+        
+        return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';
     }
 }
 ?>

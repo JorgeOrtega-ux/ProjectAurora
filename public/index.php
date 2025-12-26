@@ -1,5 +1,17 @@
 <?php
 // public/index.php
+
+// CONFIGURACIÓN DE SEGURIDAD PARA LA SESIÓN
+// Antes de iniciar la sesión, configuramos los parámetros de la cookie
+$cookieParams = session_get_cookie_params();
+session_set_cookie_params([
+    'lifetime' => $cookieParams['lifetime'],
+    'path' => '/',
+    'domain' => $cookieParams['domain'],
+    'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on', // Solo si hay HTTPS
+    'httponly' => true, // Previene acceso vía JS (XSS)
+    'samesite' => 'Strict' // Previene CSRF
+]);
 session_start();
 
 require_once __DIR__ . '/../config/routers/router.php';

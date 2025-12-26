@@ -6,6 +6,17 @@ import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { I18n } from '../../core/i18n-manager.js';
 
+// Utilería de seguridad: Escapar caracteres HTML para evitar XSS
+const escapeHtml = (text) => {
+    if (!text) return text;
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+};
+
 export const DevicesController = (function() {
 
     let isLoading = false;
@@ -53,11 +64,16 @@ export const DevicesController = (function() {
             if (plat.includes('win') || plat.includes('mac') || plat.includes('linux')) icon = 'computer';
             if (plat.includes('android') || plat.includes('iphone')) icon = 'smartphone';
 
+            // Usamos escapeHtml en los datos dinámicos
+            const safePlatform = escapeHtml(s.platform);
+            const safeBrowser = escapeHtml(s.browser);
+            const safeIp = escapeHtml(s.ip);
+            const safeDate = escapeHtml(s.created_at);
+
             const activeBadge = s.is_current 
                 ? `<span style="font-size:11px; background:#e8f5e9; color:#2e7d32; padding:2px 6px; border-radius:4px; font-weight:600; margin-left:8px;">${I18n.t('js.devices.current_device')}</span>` 
                 : '';
 
-            // AQUI ESTA EL TEXTO QUEMADO: "IP:" e "Iniciado:"
             html += `
                 <div class="component-group-item">
                     <div class="component-card__content">
@@ -66,17 +82,17 @@ export const DevicesController = (function() {
                         </div>
                         <div class="component-card__text">
                             <h2 class="component-card__title">
-                                ${s.platform} - ${s.browser} ${activeBadge}
+                                ${safePlatform} - ${safeBrowser} ${activeBadge}
                             </h2>
                             <p class="component-card__description">
-                                IP: ${s.ip} <br>
-                                <span style="font-size:12px; color:#999;">Iniciado: ${s.created_at}</span>
+                                IP: ${safeIp} <br>
+                                <span style="font-size:12px; color:#999;">Iniciado: ${safeDate}</span>
                             </p>
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
                         ${!s.is_current ? 
-                            `<button type="button" class="component-button btn-revoke-one" data-id="${s.id}">${I18n.t('js.devices.btn_revoke')}</button>` 
+                            `<button type="button" class="component-button btn-revoke-one" data-id="${escapeHtml(s.id)}">${I18n.t('js.devices.btn_revoke')}</button>` 
                             : ''
                         }
                     </div>

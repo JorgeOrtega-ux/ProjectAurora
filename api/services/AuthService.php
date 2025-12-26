@@ -456,10 +456,29 @@ class AuthService {
         return $default_lang;
     }
 
+    /**
+     * Obtiene la IP del cliente de forma segura.
+     * CORRECCIÓN DE SEGURIDAD:
+     * No se confía ciegamente en HTTP_X_FORWARDED_FOR. Se valida que sea una IP real.
+     * Si contiene scripts (XSS) o formato inválido, se ignora.
+     */
     private function getClientIp() {
-        if (!empty($_SERVER['HTTP_CLIENT_IP'])) return $_SERVER['HTTP_CLIENT_IP'];
-        elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) return $_SERVER['HTTP_X_FORWARDED_FOR'];
-        else return $_SERVER['REMOTE_ADDR'];
+        $ip = $_SERVER['REMOTE_ADDR']; // Valor por defecto seguro
+        
+        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            // Puede venir una lista separada por comas. Tomamos la primera.
+            $parts = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+            $potentialIp = trim($parts[0]);
+            
+            // VALIDACIÓN ESTRICTA: Solo aceptamos si es una IP válida.
+            // Esto elimina cualquier intento de XSS (<script>...) o spoofing mal formado.
+            if (filter_var($potentialIp, FILTER_VALIDATE_IP)) {
+                $ip = $potentialIp;
+            }
+        }
+        
+        // Capa extra de seguridad: asegurar que lo que devolvemos es una IP válida
+        return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';
     }
 
     private function logSecurityEvent($identifier, $actionType) {
@@ -470,16 +489,10 @@ class AuthService {
 
     /**
      * Comprueba si una acción está bloqueada por rate limit.
-     * Combina chequeo por Identificador (Email/User) O por IP.
-     * * @param string $actionType El tipo de acción (login_fail, etc)
-     * @param int $limit Número máximo de intentos permitidos
-     * @param int $minutes Ventana de tiempo en minutos
-     * @param string $identifier Identificador opcional (email, username)
      */
     private function checkSecurityBlock($actionType, $limit, $minutes, $identifier = '') {
         $ip = $this->getClientIp();
         
-        // La consulta verifica si la IP O el identificador han superado el límite
         $sql = "SELECT COUNT(*) as failures 
                 FROM security_logs 
                 WHERE (ip_address = ? OR user_identifier = ?) 
