@@ -158,7 +158,16 @@
             "btn_verify": "Verificar y Activar",
             "success_title": "¡2FA Activado!",
             "success_desc": "IMPORTANTE: Guarda estos códigos de recuperación en un lugar seguro.",
-            "btn_finish": "Finalizar"
+            "btn_finish": "Finalizar",
+            "recovery": {
+                "title": "Códigos de verificación",
+                "desc": "Puedes usarlos si pierdes acceso a tu dispositivo móvil.",
+                "remaining": "Códigos restantes:",
+                "btn_generate": "Generar nuevos códigos",
+                "confirm_pass": "Para generar nuevos códigos, confirma tu contraseña.",
+                "new_codes_title": "Nuevos códigos generados",
+                "new_codes_desc": "Guarda estos códigos ahora. No podrás volver a verlos."
+            }
         },
         "devices": {
             "title": "Dispositivos",
@@ -261,7 +270,8 @@
             "fill_code": "Ingresa el código completo",
             "verifying": "Verificando...",
             "error_verify": "Error verificando código",
-            "error_connection": "Error de conexión"
+            "error_connection": "Error de conexión",
+            "codes_generated": "Nuevos códigos generados correctamente."
         },
         "delete": {
             "enter_pass": "Debes ingresar tu contraseña.",
@@ -345,6 +355,8 @@
         "server_config_error": "Error de configuración del servidor (GD faltante).",
         "avatar_rate_limit": "Has excedido el límite de cambios de foto (máximo 3 por día).",
         "identity_rate_limit": "Solo puedes cambiar este dato una vez cada 12 días.",
-        "pref_rate_limit": "Demasiados cambios recientes. Espera un momento."
+        "pref_rate_limit": "Demasiados cambios recientes. Espera un momento.",
+        "recovery_status": "Estado obtenido.",
+        "recovery_regenerated": "Códigos regenerados."
     }
 }

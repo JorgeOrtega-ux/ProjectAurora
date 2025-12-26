@@ -80,6 +80,17 @@ switch ($action) {
         Utils::jsonResponse($settingsService->disable2fa());
         break;
 
+    // --- NUEVAS RUTAS DE RECUPERACIÓN ---
+    case 'get_recovery_status':
+        Utils::jsonResponse($settingsService->getRecoveryStatus());
+        break;
+        
+    case 'regenerate_recovery_codes':
+        $password = $_POST['password'] ?? '';
+        Utils::jsonResponse($settingsService->regenerateRecoveryCodes($password));
+        break;
+    // ------------------------------------
+
     case 'get_sessions':
         Utils::jsonResponse($settingsService->getSessions());
         break;

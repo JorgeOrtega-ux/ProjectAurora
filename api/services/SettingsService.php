@@ -305,8 +305,8 @@ class SettingsService {
             $recoveryCodes = []; // Códigos en texto plano para el usuario
             $hashedCodes = [];   // Códigos hasheados para la BD
 
-            for($i=0; $i<8; $i++) {
-                $plainCode = bin2hex(random_bytes(4));
+            for($i=0; $i<10; $i++) {
+                $plainCode = bin2hex(random_bytes(4)); // 8 caracteres hex
                 $recoveryCodes[] = $plainCode;
                 $hashedCodes[] = password_hash($plainCode, PASSWORD_DEFAULT);
             }
@@ -337,6 +337,66 @@ class SettingsService {
         }
         return ['success' => false, 'message' => $this->i18n->t('api.update_error')];
     }
+
+    // === NUEVOS MÉTODOS PARA RECUPERACIÓN DE CÓDIGOS ===
+
+    public function getRecoveryStatus() {
+        $stmt = $this->pdo->prepare("SELECT two_factor_recovery_codes FROM users WHERE id = ?");
+        $stmt->execute([$this->userId]);
+        $codesJson = $stmt->fetchColumn();
+        
+        $count = 0;
+        if ($codesJson) {
+            $codes = json_decode($codesJson, true);
+            if (is_array($codes)) {
+                $count = count($codes);
+            }
+        }
+        
+        return ['success' => true, 'message' => $this->i18n->t('api.recovery_status'), 'count' => $count];
+    }
+
+    public function regenerateRecoveryCodes($password) {
+        // 1. Rate Limit
+        if ($this->checkSecurityLimit('2fa_regen_codes', 3, 15)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
+        }
+
+        // 2. Verificar Contraseña
+        if (empty($password)) return ['success' => false, 'message' => $this->i18n->t('api.pass_req_confirm')];
+        
+        $stmt = $this->pdo->prepare("SELECT password FROM users WHERE id = ?");
+        $stmt->execute([$this->userId]);
+        $user = $stmt->fetch();
+        
+        if (!$user || !password_verify($password, $user['password'])) {
+            $this->logSecurityAction('2fa_regen_codes_fail');
+            return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
+        }
+
+        // 3. Generar Nuevos Códigos
+        $recoveryCodes = []; 
+        $hashedCodes = []; 
+
+        for($i=0; $i<10; $i++) {
+            $plainCode = bin2hex(random_bytes(4)); 
+            $recoveryCodes[] = $plainCode;
+            $hashedCodes[] = password_hash($plainCode, PASSWORD_DEFAULT);
+        }
+
+        $jsonCodes = json_encode($hashedCodes);
+
+        // 4. Guardar
+        $update = $this->pdo->prepare("UPDATE users SET two_factor_recovery_codes = ? WHERE id = ?");
+        if ($update->execute([$jsonCodes, $this->userId])) {
+            $this->logSecurityAction('2fa_regen_codes');
+            return ['success' => true, 'message' => $this->i18n->t('api.recovery_regenerated'), 'recovery_codes' => $recoveryCodes];
+        } else {
+             return ['success' => false, 'message' => $this->i18n->t('api.db_error')];
+        }
+    }
+    
+    // ==================================================
 
     public function getSessions() {
         $stmt = $this->pdo->prepare("SELECT id, selector, ip_address, user_agent, created_at FROM user_auth_tokens WHERE user_id = ? ORDER BY created_at DESC");
@@ -453,13 +513,6 @@ class SettingsService {
         try { $stmt->execute([$this->userId, $changeType, $oldValue, $newValue, $ip, $ua]); } catch (Exception $e) { error_log("Error logging profile change: " . $e->getMessage()); }
     }
     
-    /**
-     * Obtiene la IP del cliente de forma segura.
-     * CORRECCIÓN DE SEGURIDAD:
-     * Se elimina el uso de HTTP_X_FORWARDED_FOR para prevenir IP Spoofing.
-     * Si no se utiliza un proxy confiable (configurado a nivel de servidor), esta cabecera es insegura.
-     * Se confía únicamente en REMOTE_ADDR.
-     */
     private function getClientIp() {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';

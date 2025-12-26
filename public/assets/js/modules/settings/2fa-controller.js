@@ -8,19 +8,20 @@ import { I18n } from '../../core/i18n-manager.js';
 
 export const TwoFactorController = {
     init: () => {
-        console.log("TwoFactorController: Inicializado (Final Design - 150px)");
+        console.log("TwoFactorController: Inicializado (Con Recuperación)");
 
+        // Lógica de Setup Original
         const btnVerify = document.getElementById('btn-confirm-2fa');
         const btnDisable = document.getElementById('btn-disable-2fa');
         const inputCode = document.getElementById('input-2fa-verify');
         
-        // 1. Auto-carga del QR al iniciar el módulo
+        // 1. Auto-carga del QR al iniciar el módulo (solo si existe el contenedor)
         const qrContainer = document.getElementById('qr-container');
         if (qrContainer) {
             loadQrCode(qrContainer);
         }
 
-        // 2. Manejo del botón COPIAR (Delegación de eventos)
+        // 2. Manejo del botón COPIAR (Delegación)
         const contentArea = document.getElementById('2fa-content-area');
         if (contentArea) {
             contentArea.addEventListener('click', (e) => {
@@ -51,7 +52,7 @@ export const TwoFactorController = {
         // Evento: Verificar
         if (btnVerify) {
             btnVerify.addEventListener('click', async () => {
-                const rawCode = inputCode.value.replace(/\s/g, ''); // Quitar espacios para enviar
+                const rawCode = inputCode.value.replace(/\s/g, ''); 
                 
                 if (rawCode.length < 6) {
                     Toast.show(I18n.t('js.2fa.fill_code'), 'warning');
@@ -133,8 +134,107 @@ export const TwoFactorController = {
                 }
             });
         }
+
+        // 3. Inicializar lógica de Recuperación (Si existe el elemento)
+        if (document.getElementById('recovery-count-display')) {
+            initRecoveryLogic();
+        }
     }
 };
+
+async function initRecoveryLogic() {
+    const countDisplay = document.getElementById('recovery-count-display');
+    const btnShowRegen = document.getElementById('btn-show-regen-area');
+    const areaRegen = document.getElementById('regen-confirmation-area');
+    const btnCancelRegen = document.getElementById('btn-cancel-regen');
+    const btnSubmitRegen = document.getElementById('btn-submit-regen');
+    const inputPass = document.getElementById('regen-password-input');
+    const areaNewCodes = document.getElementById('new-codes-area');
+    const listNewCodes = document.getElementById('new-recovery-codes-list');
+
+    // 1. Obtener estado actual (Conteo)
+    try {
+        const formData = new FormData();
+        formData.append('action', 'get_recovery_status');
+        const res = await ApiService.post('settings-handler.php', formData);
+        if (res.success && countDisplay) {
+            countDisplay.innerText = res.count;
+        }
+    } catch (e) { console.error(e); }
+
+    // 2. Mostrar área de confirmación
+    if (btnShowRegen) {
+        btnShowRegen.addEventListener('click', () => {
+            areaRegen.classList.remove('disabled');
+            areaRegen.classList.add('active');
+            btnShowRegen.classList.add('disabled'); // Ocultar botón trigger
+            if(inputPass) setTimeout(() => inputPass.focus(), 100);
+        });
+    }
+
+    // 3. Cancelar
+    if (btnCancelRegen) {
+        btnCancelRegen.addEventListener('click', () => {
+            areaRegen.classList.remove('active');
+            areaRegen.classList.add('disabled');
+            btnShowRegen.classList.remove('disabled');
+            if(inputPass) inputPass.value = '';
+        });
+    }
+
+    // 4. Enviar Regeneración
+    if (btnSubmitRegen) {
+        btnSubmitRegen.addEventListener('click', async () => {
+            const password = inputPass.value;
+            if(!password) {
+                Toast.show(I18n.t('js.auth.fill_all'), 'warning');
+                return;
+            }
+
+            const originalText = btnSubmitRegen.innerText;
+            setLoading(btnSubmitRegen, true, I18n.t('js.2fa.generating'));
+            inputPass.disabled = true;
+
+            const formData = new FormData();
+            formData.append('action', 'regenerate_recovery_codes');
+            formData.append('password', password);
+
+            try {
+                const res = await ApiService.post('settings-handler.php', formData);
+                
+                if (res.success) {
+                    Toast.show(I18n.t('js.2fa.codes_generated'), 'success');
+                    
+                    // Ocultar formulario de pass
+                    areaRegen.classList.remove('active');
+                    areaRegen.classList.add('disabled');
+
+                    // Mostrar nuevos códigos
+                    if (listNewCodes && res.recovery_codes) {
+                        listNewCodes.innerHTML = res.recovery_codes.map(c => `<span>${c}</span>`).join('');
+                        areaNewCodes.classList.remove('disabled');
+                        areaNewCodes.classList.add('active');
+                    }
+
+                    // Actualizar contador visualmente
+                    if(countDisplay) countDisplay.innerText = '10'; // Siempre se regeneran 10
+                    
+                } else {
+                    Toast.show(res.message, 'error');
+                    setLoading(btnSubmitRegen, false, originalText);
+                    inputPass.disabled = false;
+                    inputPass.focus();
+                }
+
+            } catch (error) {
+                console.error(error);
+                Toast.show(I18n.t('js.core.connection_error'), 'error');
+                setLoading(btnSubmitRegen, false, originalText);
+                inputPass.disabled = false;
+            }
+        });
+    }
+}
 
 async function loadQrCode(container) {
     const formData = new FormData();

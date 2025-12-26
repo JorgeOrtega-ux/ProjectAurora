@@ -46,7 +46,66 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
                 </div>
             </div>
 
-        <?php else: ?>
+            <div class="component-card component-card--grouped mt-16">
+                <div class="component-group-item">
+                    <div class="component-card__content">
+                        <div class="component-card__icon-container component-card__icon-container--bordered">
+                            <span class="material-symbols-rounded">password</span>
+                        </div>
+                        <div class="component-card__text">
+                            <h2 class="component-card__title"><?php echo $i18n->t('settings.2fa.recovery.title'); ?></h2>
+                            <p class="component-card__description">
+                                <?php echo $i18n->t('settings.2fa.recovery.desc'); ?> <br>
+                                <span style="font-weight: 500; color: var(--text-primary);">
+                                    <?php echo $i18n->t('settings.2fa.recovery.remaining'); ?> <span id="recovery-count-display">...</span>
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="component-card__actions actions-right">
+                        <button type="button" class="component-button" id="btn-show-regen-area">
+                            <?php echo $i18n->t('settings.2fa.recovery.btn_generate'); ?>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="component-group-item component-group-item--stacked disabled" id="regen-confirmation-area">
+                    <hr class="component-divider w-100 mb-0">
+                    
+                    <div class="component-card__content w-100 mt-16">
+                        <div class="component-card__text w-100">
+                            <p class="component-card__description"><?php echo $i18n->t('settings.2fa.recovery.confirm_pass'); ?></p>
+                            
+                            <div class="component-input-wrapper mt-16">
+                                <input type="password" class="component-text-input" id="regen-password-input" placeholder="<?php echo $i18n->t('auth.field.password'); ?>">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="component-card__actions actions-right w-100">
+                         <button type="button" class="component-button" id="btn-cancel-regen">
+                            <?php echo $i18n->t('settings.profile.btn_cancel'); ?>
+                        </button>
+                        <button type="button" class="component-button primary" id="btn-submit-regen">
+                            <?php echo $i18n->t('settings.2fa.recovery.btn_generate'); ?>
+                        </button>
+                    </div>
+                </div>
+
+                 <div class="component-group-item component-group-item--stacked disabled" id="new-codes-area">
+                    <hr class="component-divider w-100 mb-0">
+                    <div class="component-card__content w-100 mt-16" style="text-align: center;">
+                        <div class="component-card__text w-100">
+                            <h2 class="component-card__title" style="color: var(--color-success);"><?php echo $i18n->t('settings.2fa.recovery.new_codes_title'); ?></h2>
+                            <p class="component-card__description"><?php echo $i18n->t('settings.2fa.recovery.new_codes_desc'); ?></p>
+                        </div>
+                        
+                        <div id="new-recovery-codes-list" style="background: var(--bg-hover-light); padding: 16px; border-radius: 8px; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-family: monospace; font-size: 14px; text-align: center; border: 1px solid var(--border-light); margin-top: 16px;"></div>
+                    </div>
+                 </div>
+
+            </div>
+            <?php else: ?>
 
             <div class="component-card component-card--grouped active" id="step-qr">
                 
