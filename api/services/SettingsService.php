@@ -300,14 +300,26 @@ class SettingsService {
         if (!isset($_SESSION['temp_2fa_secret'])) return ['success' => false, 'message' => $this->i18n->t('api.session_config_expired')];
         $secret = $_SESSION['temp_2fa_secret'];
         if (GoogleAuthenticator::verifyCode($secret, $code)) {
-            $recoveryCodes = [];
-            for($i=0; $i<8; $i++) $recoveryCodes[] = bin2hex(random_bytes(4));
-            $jsonCodes = json_encode($recoveryCodes);
+            
+            // SEGURIDAD MEJORADA: HASHING DE CÓDIGOS DE RECUPERACIÓN
+            $recoveryCodes = []; // Códigos en texto plano para el usuario
+            $hashedCodes = [];   // Códigos hasheados para la BD
+
+            for($i=0; $i<8; $i++) {
+                $plainCode = bin2hex(random_bytes(4));
+                $recoveryCodes[] = $plainCode;
+                $hashedCodes[] = password_hash($plainCode, PASSWORD_DEFAULT);
+            }
+
+            $jsonCodes = json_encode($hashedCodes);
+
             $stmt = $this->pdo->prepare("UPDATE users SET two_factor_secret = ?, two_factor_enabled = 1, two_factor_recovery_codes = ? WHERE id = ?");
             if ($stmt->execute([$secret, $jsonCodes, $this->userId])) {
                 unset($_SESSION['temp_2fa_secret']);
                 $_SESSION['two_factor_enabled'] = 1;
                 $this->logProfileChange('2fa', 'disabled', 'enabled');
+                
+                // Retornamos los códigos planos para que el usuario los guarde
                 return ['success' => true, 'message' => $this->i18n->t('api.2fa_enabled'), 'recovery_codes' => $recoveryCodes];
             }
             return ['success' => false, 'message' => $this->i18n->t('api.pic_db_error')];
@@ -444,21 +456,12 @@ class SettingsService {
     /**
      * Obtiene la IP del cliente de forma segura.
      * CORRECCIÓN DE SEGURIDAD:
-     * No se confía ciegamente en HTTP_X_FORWARDED_FOR. Se valida que sea una IP real.
+     * Se elimina el uso de HTTP_X_FORWARDED_FOR para prevenir IP Spoofing.
+     * Si no se utiliza un proxy confiable (configurado a nivel de servidor), esta cabecera es insegura.
+     * Se confía únicamente en REMOTE_ADDR.
      */
     private function getClientIp() {
-        $ip = $_SERVER['REMOTE_ADDR']; // Valor por defecto seguro
-        
-        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            $parts = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-            $potentialIp = trim($parts[0]);
-            
-            // VALIDACIÓN ESTRICTA
-            if (filter_var($potentialIp, FILTER_VALIDATE_IP)) {
-                $ip = $potentialIp;
-            }
-        }
-        
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';
     }
 }

@@ -281,7 +281,6 @@ class AuthService {
         $userId = $_SESSION['2fa_pending_user_id'];
         
         // [SEGURIDAD] Evitar saltarse 2FA con fuerza bruta (5 intentos / 15 min)
-        // Usamos el ID del usuario pendiente como identificador
         if ($this->checkSecurityBlock('2fa_login_fail', 5, 15, "user:$userId")) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
         }
@@ -296,15 +295,27 @@ class AuthService {
 
         $isValid = false;
         
+        // 1. Verificar TOTP (Google Authenticator)
         if (GoogleAuthenticator::verifyCode($user['two_factor_secret'], $code)) {
             $isValid = true;
         } else {
-            $recoveryCodes = json_decode($user['two_factor_recovery_codes'] ?? '[]', true);
-            if (is_array($recoveryCodes) && in_array($code, $recoveryCodes)) {
-                $isValid = true;
-                $recoveryCodes = array_diff($recoveryCodes, [$code]);
-                $newJson = json_encode(array_values($recoveryCodes)); 
-                $this->pdo->prepare("UPDATE users SET two_factor_recovery_codes = ? WHERE id = ?")->execute([$newJson, $userId]);
+            // 2. Verificar Códigos de Recuperación (SEGURIDAD MEJORADA: HASHES)
+            $recoveryHashes = json_decode($user['two_factor_recovery_codes'] ?? '[]', true);
+            
+            if (is_array($recoveryHashes)) {
+                foreach ($recoveryHashes as $index => $hash) {
+                    // Verificamos si el código ingresado coincide con el hash almacenado
+                    if (password_verify($code, $hash)) {
+                        $isValid = true;
+                        
+                        // Quemar el código usado
+                        unset($recoveryHashes[$index]);
+                        $newJson = json_encode(array_values($recoveryHashes)); 
+                        
+                        $this->pdo->prepare("UPDATE users SET two_factor_recovery_codes = ? WHERE id = ?")->execute([$newJson, $userId]);
+                        break; // Salir del loop si encontramos coincidencia
+                    }
+                }
             }
         }
 
@@ -459,25 +470,12 @@ class AuthService {
     /**
      * Obtiene la IP del cliente de forma segura.
      * CORRECCIÓN DE SEGURIDAD:
-     * No se confía ciegamente en HTTP_X_FORWARDED_FOR. Se valida que sea una IP real.
-     * Si contiene scripts (XSS) o formato inválido, se ignora.
+     * Se elimina el uso de HTTP_X_FORWARDED_FOR para prevenir IP Spoofing.
+     * Si no se utiliza un proxy confiable (configurado a nivel de servidor), esta cabecera es insegura.
+     * Se confía únicamente en REMOTE_ADDR.
      */
     private function getClientIp() {
-        $ip = $_SERVER['REMOTE_ADDR']; // Valor por defecto seguro
-        
-        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            // Puede venir una lista separada por comas. Tomamos la primera.
-            $parts = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-            $potentialIp = trim($parts[0]);
-            
-            // VALIDACIÓN ESTRICTA: Solo aceptamos si es una IP válida.
-            // Esto elimina cualquier intento de XSS (<script>...) o spoofing mal formado.
-            if (filter_var($potentialIp, FILTER_VALIDATE_IP)) {
-                $ip = $potentialIp;
-            }
-        }
-        
-        // Capa extra de seguridad: asegurar que lo que devolvemos es una IP válida
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';
     }
 
