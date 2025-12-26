@@ -2,8 +2,9 @@
 // public/loader.php
 session_start();
 
-require_once __DIR__ . '/../config/database/db.php';
 require_once __DIR__ . '/../includes/libs/Utils.php';
+Utils::initErrorHandlers(); // <--- AGREGAR ESTA LÍNEA JUSTO AQUÍ
+require_once __DIR__ . '/../config/database/db.php';
 
 // === BASEPATH ===
 $basePath = '/ProjectAurora/'; 

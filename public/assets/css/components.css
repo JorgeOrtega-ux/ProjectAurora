@@ -546,8 +546,6 @@ input:checked+.component-toggle-slider:before { transform: translateX(20px); }
     color: var(--color-toast-error-text);
     border-color: #ffcdd2;
     text-align: center;
-    margin-top: 16px;
-    animation: fadeIn 0.3s ease;
 }
 .component-message--success {
     background-color: var(--color-success-bg);

@@ -14,8 +14,9 @@ session_set_cookie_params([
 session_start();
 
 require_once __DIR__ . '/../config/routers/router.php';
-require_once __DIR__ . '/../config/database/db.php';
 require_once __DIR__ . '/../includes/libs/Utils.php';
+Utils::initErrorHandlers(); // <--- AGREGAR ESTA LÍNEA
+require_once __DIR__ . '/../config/database/db.php';
 
 // Cargar variables de entorno para Turnstile si no se han cargado (seguridad redundante)
 $turnstileSiteKey = $_ENV['TURNSTILE_SITE_KEY'] ?? '1x00000000000000000000BB';
