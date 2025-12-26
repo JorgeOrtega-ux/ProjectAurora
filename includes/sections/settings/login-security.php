@@ -2,7 +2,40 @@
 // includes/sections/settings/login-security.php
 $is2FA = isset($_SESSION['two_factor_enabled']) && $_SESSION['two_factor_enabled'] == 1;
 
-// Traducimos el estado
+// --- LÓGICA DE ACTUALIZACIÓN DE CONTRASEÑA ---
+// Consultamos la tabla profile_changes para ver cuándo fue el último cambio de contraseña
+$passUpdatedMsg = $i18n->t('settings.security.pass_never_updated');
+
+try {
+    // IMPORTANTE: Asumimos que $pdo está disponible porque este archivo se incluye desde loader.php
+    if (isset($pdo) && isset($_SESSION['user_id'])) {
+        $stmtPass = $pdo->prepare("SELECT created_at FROM profile_changes WHERE user_id = ? AND change_type = 'password' ORDER BY created_at DESC LIMIT 1");
+        $stmtPass->execute([$_SESSION['user_id']]);
+        $lastPassChange = $stmtPass->fetchColumn();
+
+        if ($lastPassChange) {
+            // Helper para formatear fecha en español manualmente (para evitar dependencias de setlocale)
+            $months = [
+                1 => 'enero', 2 => 'febrero', 3 => 'marzo', 4 => 'abril',
+                5 => 'mayo', 6 => 'junio', 7 => 'julio', 8 => 'agosto',
+                9 => 'septiembre', 10 => 'octubre', 11 => 'noviembre', 12 => 'diciembre'
+            ];
+            
+            $ts = strtotime($lastPassChange);
+            $day = date('j', $ts);
+            $month = $months[(int)date('n', $ts)];
+            $year = date('Y', $ts);
+            
+            $dateStr = "$day de $month del $year";
+            $passUpdatedMsg = sprintf($i18n->t('settings.security.pass_last_updated'), $dateStr);
+        }
+    }
+} catch (Exception $e) {
+    // Silenciar error visual, mantener mensaje por defecto
+}
+// --------------------------------------------
+
+// Traducimos el estado de 2FA
 $textEnabled = $i18n->t('settings.security.2fa_enabled');
 $textDisabled = $i18n->t('settings.security.2fa_disabled');
 
@@ -10,9 +43,10 @@ $statusText = $is2FA
     ? "<span style='color:#2e7d32; font-weight:500;'>$textEnabled</span>" 
     : $textDisabled;
 
+// Botón de 2FA: "Gestionar" si está activo, "Habilitar" si está desactivado
 $btnText = $is2FA 
-    ? $i18n->t('settings.security.btn_config') 
-    : $i18n->t('settings.security.btn_activate');
+    ? $i18n->t('settings.security.btn_config') // Gestionar
+    : $i18n->t('settings.security.btn_activate'); // Habilitar
 ?>
 
 <div class="section-content active" data-section="settings/login-security">
@@ -34,7 +68,7 @@ $btnText = $is2FA
 
                     <div class="component-card__text">
                         <h2 class="component-card__title"><?php echo $i18n->t('settings.security.pass_title'); ?></h2>
-                        <p class="component-card__description" style="color: #666;"><?php echo $i18n->t('settings.security.pass_desc'); ?></p>
+                        <p class="component-card__description" style="color: #666;"><?php echo $passUpdatedMsg; ?></p>
                     </div>
                 </div>
 
