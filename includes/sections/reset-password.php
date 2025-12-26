@@ -1,16 +1,55 @@
 <?php
+// includes/sections/reset-password.php
+
 $token = $_GET['token'] ?? '';
+$isValidToken = false;
+$errorMessage = "";
+
+// Verificación Server-Side
+if (!empty($token) && isset($pdo)) {
+    try {
+        $stmt = $pdo->prepare("SELECT id FROM password_resets WHERE token = ? AND expires_at > NOW() LIMIT 1");
+        $stmt->execute([$token]);
+        if ($stmt->fetch()) {
+            $isValidToken = true;
+        }
+    } catch (Exception $e) {
+        error_log("Error validating reset token: " . $e->getMessage());
+    }
+}
+
+// Si no es válido, preparamos el JSON de error
+if (!$isValidToken) {
+    // Usamos 400 Bad Request o 404 Not Found, aquí usaremos estructura similar al registro
+    $errorData = [
+        "error" => [
+            "message" => "Invalid request. Token not found or expired.",
+            "type" => "invalid_request_error",
+            "param" => "token",
+            "code" => "token_invalid"
+        ]
+    ];
+    $errorMessage = "Route Error (400): " . json_encode($errorData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+}
 ?>
 <div class="component-layout-centered">
     <div class="component-card component-card--compact">
         
-        <?php if(empty($token)): ?>
-            <div class="component-header-centered">
-                <span class="material-symbols-rounded" style="font-size: 48px; color: #d32f2f;">broken_image</span>
-                <h1 style="color: #d32f2f;"><?php echo $i18n->t('auth.reset.invalid_title'); ?></h1>
-                <p><?php echo $i18n->t('auth.reset.invalid_desc'); ?></p>
+        <?php if (!$isValidToken): ?>
+            <div class="crash-header">
+                <span class="material-symbols-rounded crash-icon">data_object</span>
+                <h1 class="crash-title">Bad Request</h1>
             </div>
-            <a href="<?php echo $basePath; ?>login" class="component-button component-button--large primary mt-16" style="text-decoration: none;"><?php echo $i18n->t('auth.reset.btn_login'); ?></a>
+
+            <div class="crash-code-box" style="white-space: pre-wrap; font-family: monospace; font-size: 13px; color: #333; background-color: #f5f5f5; border: 1px solid #e0e0e0;">
+<?php echo htmlspecialchars($errorMessage); ?>
+            </div>
+
+            <div style="margin-top: 24px; text-align: center;">
+                <a href="<?php echo $basePath; ?>login" class="component-button component-button--large primary" style="text-decoration: none;">
+                    <?php echo $i18n->t('auth.reset.btn_login'); ?>
+                </a>
+            </div>
 
         <?php else: ?>
             <div class="component-header-centered">

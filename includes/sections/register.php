@@ -1,24 +1,44 @@
 <?php
 // includes/sections/register.php
 
-// NOTA: $basePath ya viene definido desde loader.php o index.php, no hace falta redefinirlo.
-
 $currentRoute = isset($section) ? $section : ($currentSection ?? 'register');
 $isStep2 = $currentRoute === 'register/aditional-data';
 $isStep3 = $currentRoute === 'register/verification-account';
+
+// Verificación de sesión
 $hasDataForStep2 = isset($_SESSION['temp_register']) && !empty($_SESSION['temp_register']);
 $hasDataForStep3 = isset($_SESSION['pending_verification_email']) && !empty($_SESSION['pending_verification_email']);
+
 $invalidAccess = false;
 $errorMessage = "";
 
+// Lógica de Error con JSON Genérico
 if ($isStep2 && !$hasDataForStep2) {
     http_response_code(409);
     $invalidAccess = true;
-    $errorMessage = "Required session data missing.";
+    
+    // Mensaje genérico simulando error de API
+    $errorData = [
+        "error" => [
+            "message" => "Invalid request. Session state mismatch.",
+            "type" => "invalid_request_error",
+            "code" => "state_error"
+        ]
+    ];
+    $errorMessage = "Route Error (409): " . json_encode($errorData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
 } elseif ($isStep3 && !$hasDataForStep3) {
     http_response_code(409);
     $invalidAccess = true;
-    $errorMessage = "Verification context not found.";
+    
+    $errorData = [
+        "error" => [
+            "message" => "Invalid request. Verification context missing.",
+            "type" => "invalid_request_error",
+            "code" => "context_error"
+        ]
+    ];
+    $errorMessage = "Route Error (409): " . json_encode($errorData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
 }
 ?>
 
@@ -27,11 +47,18 @@ if ($isStep2 && !$hasDataForStep2) {
         
         <?php if ($invalidAccess): ?>
             <div class="crash-header">
-                <span class="material-symbols-rounded crash-icon">token</span>
-                <h1 class="crash-title">Error 409</h1>
+                <span class="material-symbols-rounded crash-icon">data_object</span>
+                <h1 class="crash-title">Conflict</h1>
             </div>
-            <div class="crash-code-box">
-                <span class="crash-text-error"><?php echo $errorMessage; ?></span>
+            
+            <div class="crash-code-box" style="white-space: pre-wrap; font-family: monospace; font-size: 13px; color: #333; background-color: #f5f5f5; border: 1px solid #e0e0e0;">
+<?php echo htmlspecialchars($errorMessage); ?>
+            </div>
+
+            <div style="margin-top: 24px; text-align: center;">
+                <a href="<?php echo $basePath; ?>register" class="component-button component-button--large primary" style="text-decoration: none;">
+                    <?php echo $i18n->t('auth.register.title_1'); ?>
+                </a>
             </div>
 
         <?php elseif ($isStep3): ?>
