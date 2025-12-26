@@ -554,6 +554,9 @@ class AuthService {
     private function completeLogin($user) {
         session_regenerate_id(true);
 
+        // [SEGURIDAD] Rotar CSRF Token inmediatamente al loguearse para evitar Session Fixation + CSRF heredado
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];

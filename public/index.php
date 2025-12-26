@@ -38,6 +38,10 @@ if (!isset($_SESSION['user_id']) && isset($_COOKIE['auth_persistence_token'])) {
 
                 if ($user) {
                     session_regenerate_id(true);
+
+                    // [SEGURIDAD] Rotar CSRF Token también en auto-login
+                    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['username'] = $user['username'];
                     $_SESSION['role'] = $user['role'];
