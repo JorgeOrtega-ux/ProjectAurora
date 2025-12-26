@@ -1,7 +1,6 @@
 /**
  * public/assets/js/core/dialog-manager.js
- * Sistema de Diálogos Personalizados (Alert, Confirm, Loading)
- * Reemplaza los nativos del navegador usando Promesas.
+ * Sistema de Diálogos Personalizados
  */
 
 export const Dialog = {
@@ -19,77 +18,73 @@ export const Dialog = {
         console.log("DialogManager: Inicializado");
     },
 
-    /**
-     * Muestra un mensaje simple (Reemplazo de alert)
-     */
-    alert: ({ title = 'Atención', message = '', icon = 'info' }) => {
+    alert: ({ title = 'Atención', message = '' }) => {
         return new Promise((resolve) => {
-            Dialog._render('template-alert', { title, message, icon });
+            Dialog._render('template-alert', { title, message });
             
-            // Configurar botón
             const btn = Dialog.elements.wrapper.querySelector('.btn-accept');
-            btn.onclick = () => {
-                Dialog.close();
-                resolve(true);
-            };
-
+            if (btn) {
+                btn.onclick = () => {
+                    Dialog.close();
+                    resolve(true);
+                };
+                setTimeout(() => btn.focus(), 50);
+            }
             Dialog._show();
         });
     },
 
-    /**
-     * Muestra una confirmación (Reemplazo de confirm)
-     * Retorna true si acepta, false si cancela.
-     */
-    confirm: ({ title = '¿Estás seguro?', message = '', type = 'default', confirmText = 'Confirmar', cancelText = 'Cancelar' }) => {
+    confirm: ({ title, message, type = 'default', confirmText, cancelText }) => {
         return new Promise((resolve) => {
-            const templateId = type === 'danger' ? 'template-danger' : 'template-confirm';
+            let templateId = 'template-confirm';
+            if (type === 'danger') templateId = 'template-danger';
+            if (type === 'regen-codes') templateId = 'template-regen-codes';
+
+            // Si es regen-codes, el título y mensaje ya vienen en el HTML, 
+            // pero permitimos sobreescribirlos si se pasan explícitamente.
             Dialog._render(templateId, { title, message });
 
-            // Personalizar textos de botones
             const btnConfirm = Dialog.elements.wrapper.querySelector('.btn-confirm');
             const btnCancel = Dialog.elements.wrapper.querySelector('.btn-cancel');
             
-            if(confirmText) btnConfirm.innerText = confirmText;
-            if(cancelText) btnCancel.innerText = cancelText;
+            if(confirmText && btnConfirm) btnConfirm.innerText = confirmText;
+            if(cancelText && btnCancel) btnCancel.innerText = cancelText;
 
-            // Lógica de botones
-            btnConfirm.onclick = () => {
-                Dialog.close();
-                resolve(true);
-            };
+            if (btnConfirm) {
+                btnConfirm.onclick = () => {
+                    Dialog.close();
+                    resolve(true);
+                };
+            }
 
-            btnCancel.onclick = () => {
-                Dialog.close();
-                resolve(false);
-            };
+            if (btnCancel) {
+                btnCancel.onclick = () => {
+                    Dialog.close();
+                    resolve(false);
+                };
+            }
 
             Dialog._show();
+            
+            // Foco inteligente
+            if (type === 'danger' && btnCancel) setTimeout(() => btnCancel.focus(), 50);
+            else if (btnConfirm) setTimeout(() => btnConfirm.focus(), 50);
         });
     },
 
-    /**
-     * Muestra un spinner de carga bloqueante
-     */
     showLoading: (text = 'Procesando...') => {
-        Dialog._render('template-loading', { message: text });
+        Dialog._render('template-loading', { title: text });
         Dialog._show();
     },
 
-    /**
-     * Cierra cualquier diálogo abierto
-     */
     close: () => {
         if (Dialog.elements.overlay) {
             Dialog.elements.overlay.classList.remove('active');
-            // Limpiar contenido después de la animación
             setTimeout(() => {
                 Dialog.elements.wrapper.innerHTML = '';
             }, 200);
         }
     },
-
-    // --- MÉTODOS PRIVADOS ---
 
     _render: (templateId, data) => {
         if (!Dialog.elements.templates || !Dialog.elements.wrapper) return;
@@ -97,22 +92,21 @@ export const Dialog = {
         const template = Dialog.elements.templates.querySelector(`#${templateId}`);
         if (!template) return;
 
-        // Clonar contenido
         Dialog.elements.wrapper.innerHTML = template.innerHTML;
         
-        // Inyectar datos
         const elTitle = Dialog.elements.wrapper.querySelector('.dialog-title');
         const elMsg = Dialog.elements.wrapper.querySelector('.dialog-message');
-        const elIcon = Dialog.elements.wrapper.querySelector('.dialog-icon');
         const card = Dialog.elements.wrapper;
 
+        // Solo sobreescribimos si data.title/message existen y no están vacíos
+        // Esto permite usar el texto por defecto del template 'template-regen-codes'
         if (elTitle && data.title) elTitle.innerText = data.title;
-        if (elMsg && data.message) elMsg.innerText = data.message;
-        if (elIcon && data.icon) elIcon.innerText = data.icon;
+        if (elMsg && data.message) {
+            elMsg.innerText = data.message;
+            elMsg.style.display = 'block';
+        }
 
-        // Clases de tipo
-        card.className = 'dialog-card'; // Reset
-        if (templateId === 'template-danger') card.classList.add('dialog-type-danger');
+        card.className = 'dialog-card';
     },
 
     _show: () => {

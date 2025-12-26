@@ -166,7 +166,16 @@ async function initRecoveryLogic() {
     } catch (e) { console.error(e); }
 
     if (btnShowRegen) {
-        btnShowRegen.addEventListener('click', () => {
+        btnShowRegen.addEventListener('click', async () => {
+            // --- NUEVO SISTEMA DE DIÁLOGO PARA REGENERAR CÓDIGOS ---
+            const confirmed = await Dialog.confirm({
+                type: 'regen-codes'
+                // Título y mensaje se toman del template HTML si no se pasan
+            });
+
+            if (!confirmed) return;
+            // -------------------------------------------------------
+
             areaRegen.classList.remove('disabled');
             areaRegen.classList.add('active');
             btnShowRegen.classList.add('disabled'); 
@@ -206,6 +215,7 @@ async function initRecoveryLogic() {
                     Toast.show(I18n.t('js.2fa.codes_generated'), 'success');
                     areaRegen.classList.remove('active');
                     areaRegen.classList.add('disabled');
+                    btnShowRegen.classList.remove('disabled'); // Reactivamos botón
 
                     if (listNewCodes && res.recovery_codes) {
                         listNewCodes.innerHTML = res.recovery_codes.map(c => `<span>${c}</span>`).join('');
@@ -213,6 +223,7 @@ async function initRecoveryLogic() {
                         areaNewCodes.classList.add('active');
                     }
                     if(countDisplay) countDisplay.innerText = '10'; 
+                    inputPass.value = '';
                     
                 } else {
                     Toast.show(res.message, 'error');
