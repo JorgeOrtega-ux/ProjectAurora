@@ -2,7 +2,7 @@
 // api/settings-handler.php
 
 // Carga del Autoloader de Composer
-require_once __DIR__ . '/../../vendor/autoload.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
 // CONFIGURACIÓN DE SEGURIDAD PARA LA SESIÓN
 $cookieParams = session_get_cookie_params();
