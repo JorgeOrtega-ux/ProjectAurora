@@ -51,8 +51,13 @@ switch ($action) {
         break;
 
     // --- VERIFICACIÓN CAMBIO DE EMAIL ---
+    case 'get_email_edit_status':
+        Utils::jsonResponse($settingsService->getEmailEditStatus());
+        break;
+
     case 'request_email_change_verification':
-        Utils::jsonResponse($settingsService->requestEmailChangeVerification());
+        $forceResend = isset($_POST['force_resend']) && $_POST['force_resend'] === 'true';
+        Utils::jsonResponse($settingsService->requestEmailChangeVerification($forceResend));
         break;
 
     case 'verify_email_change_code':

@@ -89,12 +89,47 @@ class SettingsService {
         return ['success' => false, 'message' => $this->i18n->t('api.pic_gen_error')];
     }
 
-    // === NUEVOS MÉTODOS PARA VERIFICACIÓN DE EMAIL ===
+    // === NUEVOS MÉTODOS PARA VERIFICACIÓN DE EMAIL (CON VALIDACIÓN DE LÍMITE) ===
 
-    public function requestEmailChangeVerification() {
-        // 1. Rate Limit
-        if ($this->checkSecurityLimit('email_change_req', 3, 10)) {
-            return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
+    /**
+     * Comprueba el estado de la verificación actual.
+     * Devuelve si ya está autorizado o si hay un código pendiente.
+     */
+    public function getEmailEditStatus() {
+        // 1. Verificar si ya tiene permiso en sesión (validez 5 minutos)
+        if (isset($_SESSION['email_change_auth']) && $_SESSION['email_change_auth'] > time()) {
+            return ['success' => true, 'status' => 'authorized'];
+        }
+
+        // 2. Verificar si hay un código activo en BD
+        $stmt = $this->pdo->prepare("SELECT email FROM users WHERE id = ?");
+        $stmt->execute([$this->userId]);
+        $email = $stmt->fetchColumn();
+
+        $stmtCode = $this->pdo->prepare("SELECT created_at FROM verification_codes WHERE identifier = ? AND code_type = 'email_update_auth' AND expires_at > NOW() ORDER BY id DESC LIMIT 1");
+        $stmtCode->execute([$email]);
+        $lastCode = $stmtCode->fetch();
+
+        if ($lastCode) {
+            $createdAt = strtotime($lastCode['created_at']);
+            $elapsed = time() - $createdAt;
+            $cooldown = 60 - $elapsed; // 60 segundos de cooldown
+            
+            return [
+                'success' => true, 
+                'status' => 'pending_code',
+                'cooldown' => ($cooldown > 0) ? $cooldown : 0
+            ];
+        }
+
+        return ['success' => true, 'status' => 'none'];
+    }
+
+    public function requestEmailChangeVerification($forceResend = false) {
+        // 1. [NUEVO] Validación de frecuencia de cambio (12 días / 288 horas)
+        // Verificamos antes de nada si el usuario tiene permitido cambiar el email.
+        if ($this->checkRateLimitExceeded('email', 288, 1)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.identity_rate_limit')];
         }
 
         // 2. Obtener email actual
@@ -106,15 +141,41 @@ class SettingsService {
         $currentEmail = $user['email'];
         $username = $user['username'];
 
-        // 3. Generar código
+        // 3. Verificar códigos existentes (si NO es reenvío forzado)
+        if (!$forceResend) {
+            $stmtCheck = $this->pdo->prepare("SELECT id FROM verification_codes WHERE identifier = ? AND code_type = 'email_update_auth' AND expires_at > NOW()");
+            $stmtCheck->execute([$currentEmail]);
+            if ($stmtCheck->fetch()) {
+                // Ya existe un código válido, no enviamos otro para evitar spam/redundancia
+                return ['success' => true, 'message' => 'Código ya enviado previamente.'];
+            }
+        }
+
+        // 4. Rate Limit (Seguridad global anti-spam)
+        if ($this->checkSecurityLimit('email_change_req', 3, 10)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
+        }
+
+        // 5. Cooldown de Reenvío (60 segundos estricto)
+        $stmtTime = $this->pdo->prepare("SELECT created_at FROM verification_codes WHERE identifier = ? AND code_type = 'email_update_auth' ORDER BY id DESC LIMIT 1");
+        $stmtTime->execute([$currentEmail]);
+        $lastRequest = $stmtTime->fetch();
+        
+        if ($lastRequest) {
+            $secondsSince = time() - strtotime($lastRequest['created_at']);
+            if ($secondsSince < 60) {
+                return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
+            }
+        }
+
+        // 6. Generar y Guardar
         $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
         $expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
 
-        // 4. Limpiar códigos anteriores de este tipo
+        // Limpiamos códigos anteriores para no acumular basura
         $del = $this->pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'email_update_auth'");
         $del->execute([$currentEmail]);
 
-        // 5. Guardar código
         $sql = "INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, 'email_update_auth', ?, '{}', ?)";
         $insert = $this->pdo->prepare($sql);
         
@@ -122,7 +183,7 @@ class SettingsService {
             $insert->execute([$currentEmail, $code, $expiresAt]);
             $this->logSecurityAction('email_change_req');
 
-            // 6. Enviar Correo
+            // 7. Enviar Correo
             $subject = "Verifica tu identidad - Project Aurora";
             $body = "<p>Hola $username,</p><p>Has solicitado cambiar tu correo electrónico. Para continuar, utiliza el siguiente código de seguridad:</p>
                      <h2 style='letter-spacing: 4px;'>$code</h2>
@@ -139,23 +200,17 @@ class SettingsService {
     public function verifyEmailChangeCode($code) {
         if (empty($code)) return ['success' => false, 'message' => $this->i18n->t('api.missing_data')];
 
-        // 1. Obtener email actual para buscar el código
         $stmtEmail = $this->pdo->prepare("SELECT email FROM users WHERE id = ?");
         $stmtEmail->execute([$this->userId]);
         $currentEmail = $stmtEmail->fetchColumn();
 
-        // 2. Verificar código en BD
         $stmt = $this->pdo->prepare("SELECT id FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'email_update_auth' AND expires_at > NOW()");
         $stmt->execute([$currentEmail, $code]);
         $verification = $stmt->fetch();
 
         if ($verification) {
-            // 3. Código válido: Establecer flag en sesión
             $_SESSION['email_change_auth'] = time() + 300; // Válido por 5 minutos
-            
-            // 4. Borrar código usado
             $this->pdo->prepare("DELETE FROM verification_codes WHERE id = ?")->execute([$verification['id']]);
-            
             return ['success' => true, 'message' => 'Código verificado.'];
         } else {
             return ['success' => false, 'message' => $this->i18n->t('api.code_invalid')];

@@ -194,59 +194,165 @@ function initIdentityLogic() {
     });
 }
 
+/**
+ * Maneja el flujo completo de verificación de email:
+ * 1. Verifica estado actual (api).
+ * 2. Si ya está autorizado, abre editor.
+ * 3. Si hay código pendiente, abre dialog directamente.
+ * 4. Si no, solicita envío y luego abre dialog.
+ */
 async function handleEmailVerification(targetField) {
-    Dialog.showLoading('Enviando código...');
+    Dialog.showLoading('Comprobando estado...');
     
-    // 1. Solicitar envío de código
-    const formData = new FormData();
-    formData.append('action', 'request_email_change_verification');
-
     try {
-        const res = await ApiService.post('settings-handler.php', formData);
+        // 1. Obtener estado
+        const statusData = new FormData();
+        statusData.append('action', 'get_email_edit_status');
+        const statusRes = await ApiService.post('settings-handler.php', statusData);
+        
         Dialog.close();
 
-        if (res.success) {
-            // 2. Mostrar diálogo de input
-            const confirmed = await Dialog.confirm(DialogDefinitions.Profile.VERIFY_EMAIL);
-            
-            if (confirmed) {
-                // Obtener el valor del input del diálogo
-                // (El input sigue en el DOM momentáneamente o necesitamos leerlo antes de cerrar el dialog)
-                // Dado que Dialog.confirm cierra al clickar, debemos asegurarnos de leer el valor.
-                // En nuestra implementación de Dialog.confirm, el resolve ocurre DESPUÉS del click.
-                // El elemento sigue accesible si la transición de cierre no ha terminado de eliminar el nodo.
-                // PERO para mayor seguridad, obtenemos el valor directamente del DOM global ya que el ID es único.
-                const inputCode = document.getElementById('verify-email-code');
-                const code = inputCode ? inputCode.value.trim() : '';
-
-                if (!code) {
-                    Toast.show(I18n.t('js.profile.email_code_req'), 'warning');
-                    return;
-                }
-
-                Dialog.showLoading('Verificando...');
-                
-                const verifyData = new FormData();
-                verifyData.append('action', 'verify_email_change_code');
-                verifyData.append('code', code);
-
-                const verifyRes = await ApiService.post('settings-handler.php', verifyData);
-                Dialog.close();
-
-                if (verifyRes.success) {
-                    Toast.show('Identidad verificada. Puedes cambiar tu correo.', 'success');
-                    toggleEditState(targetField, true);
-                } else {
-                    Toast.show(verifyRes.message, 'error');
-                }
-            }
-        } else {
-            Toast.show(res.message, 'error');
+        if (!statusRes.success) {
+            Toast.show(statusRes.message, 'error');
+            return;
         }
+
+        const { status, cooldown } = statusRes;
+
+        // CASO A: Ya autorizado
+        if (status === 'authorized') {
+            toggleEditState(targetField, true);
+            return;
+        }
+
+        // CASO B: Código pendiente o CASO C: Nada (Solicitar)
+        if (status === 'none') {
+            // Solicitar código primero
+            const reqData = new FormData();
+            reqData.append('action', 'request_email_change_verification');
+            
+            Dialog.showLoading('Enviando código...');
+            const reqRes = await ApiService.post('settings-handler.php', reqData);
+            Dialog.close();
+
+            if (!reqRes.success) {
+                // Si falla (por ejemplo, por límite de 12 días), mostramos el error y NO abrimos el modal
+                Toast.show(reqRes.message, 'error');
+                return;
+            }
+            Toast.show('Código enviado', 'success');
+        } else {
+            // status === 'pending_code'
+            Toast.show('Ya tienes un código activo', 'info');
+        }
+
+        // Mostrar Diálogo
+        showVerificationDialog(targetField, cooldown || 0);
+
     } catch (e) {
+        console.error(e);
         Dialog.close();
         Toast.show(I18n.t('js.core.connection_error'), 'error');
     }
+}
+
+/**
+ * Muestra el diálogo de verificación y maneja la lógica de reenvío
+ */
+async function showVerificationDialog(targetField, initialCooldown) {
+    // Definición local con callback onReady
+    const dialogOptions = {
+        ...DialogDefinitions.Profile.VERIFY_EMAIL,
+        onReady: (wrapper) => bindResendLogic(wrapper, initialCooldown)
+    };
+
+    const confirmed = await Dialog.confirm(dialogOptions);
+    
+    if (confirmed) {
+        const inputCode = document.getElementById('verify-email-code');
+        const code = inputCode ? inputCode.value.trim() : '';
+
+        if (!code) {
+            Toast.show(I18n.t('js.profile.email_code_req'), 'warning');
+            return;
+        }
+
+        Dialog.showLoading('Verificando...');
+        
+        const verifyData = new FormData();
+        verifyData.append('action', 'verify_email_change_code');
+        verifyData.append('code', code);
+
+        const verifyRes = await ApiService.post('settings-handler.php', verifyData);
+        Dialog.close();
+
+        if (verifyRes.success) {
+            Toast.show('Identidad verificada. Puedes cambiar tu correo.', 'success');
+            toggleEditState(targetField, true);
+        } else {
+            Toast.show(verifyRes.message, 'error');
+        }
+    }
+}
+
+/**
+ * Lógica del botón "Reenviar código" dentro del diálogo
+ */
+function bindResendLogic(wrapper, initialCooldown) {
+    const btnResend = wrapper.querySelector('#btn-dialog-resend');
+    const timerSpan = wrapper.querySelector('#dialog-resend-timer');
+    let resendInterval = null;
+
+    const startTimer = (seconds) => {
+        let timeLeft = seconds;
+        btnResend.style.pointerEvents = 'none';
+        btnResend.style.opacity = '0.5';
+        btnResend.style.textDecoration = 'none';
+        timerSpan.innerText = `(${timeLeft}s)`;
+
+        if (resendInterval) clearInterval(resendInterval);
+
+        resendInterval = setInterval(() => {
+            timeLeft--;
+            timerSpan.innerText = `(${timeLeft}s)`;
+            if (timeLeft <= 0) {
+                clearInterval(resendInterval);
+                btnResend.style.pointerEvents = 'auto';
+                btnResend.style.opacity = '1';
+                timerSpan.innerText = '';
+            }
+        }, 1000);
+    };
+
+    // Si ya viene con cooldown del servidor
+    if (initialCooldown > 0) {
+        startTimer(initialCooldown);
+    }
+
+    btnResend.addEventListener('click', async (e) => {
+        e.preventDefault();
+        
+        btnResend.innerText = 'Enviando...';
+        
+        const formData = new FormData();
+        formData.append('action', 'request_email_change_verification');
+        formData.append('force_resend', 'true');
+
+        try {
+            const res = await ApiService.post('settings-handler.php', formData);
+            btnResend.innerText = 'Reenviar código';
+
+            if (res.success) {
+                Toast.show('Nuevo código enviado', 'success');
+                startTimer(60);
+            } else {
+                Toast.show(res.message, 'error');
+            }
+        } catch(err) {
+            btnResend.innerText = 'Reenviar código';
+            Toast.show(I18n.t('js.core.connection_error'), 'error');
+        }
+    });
 }
 
 function toggleEditState(fieldId, isEditing) {

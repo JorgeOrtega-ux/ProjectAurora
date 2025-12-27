@@ -63,6 +63,10 @@
             <div class="component-input-wrapper mt-16">
                 <input type="text" id="verify-email-code" class="component-text-input" placeholder="000 000" maxlength="6" style="text-align: center; letter-spacing: 4px; font-size: 18px;">
             </div>
+            <p style="text-align: center; font-size: 13px; margin-top: 8px;">
+                <a href="#" id="btn-dialog-resend" style="text-decoration: none; color: var(--action-primary); font-weight: 500;">Reenviar código</a> 
+                <span id="dialog-resend-timer" style="color: var(--text-secondary);"></span>
+            </p>
         </div>
         <div class="dialog-actions">
             <button type="button" class="component-button btn-cancel">Cancelar</button>

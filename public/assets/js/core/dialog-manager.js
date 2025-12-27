@@ -44,12 +44,14 @@ export const Dialog = {
         });
     },
 
-    confirm: ({ title, message, type = 'default', confirmText, cancelText }) => {
+    /**
+     * MODIFICADO: Añadido soporte para onReady callback
+     */
+    confirm: ({ title, message, type = 'default', confirmText, cancelText, onReady }) => {
         return new Promise((resolve) => {
             let templateId = 'template-confirm';
             if (type === 'danger') templateId = 'template-danger';
             if (type === 'regen-codes') templateId = 'template-regen-codes';
-            // Soporte para el nuevo tipo verify-email
             if (type === 'verify-email') templateId = 'template-verify-email';
 
             Dialog._render(templateId, { title, message });
@@ -87,6 +89,11 @@ export const Dialog = {
             } else if (btnConfirm) {
                 setTimeout(() => btnConfirm.focus(), 50);
             }
+
+            // Ejecutar callback cuando el diálogo esté listo (para bindear eventos extra)
+            if (typeof onReady === 'function') {
+                onReady(Dialog.elements.wrapper);
+            }
         });
     },
 
@@ -104,7 +111,6 @@ export const Dialog = {
                 Dialog.elements.container.style.transform = ''; 
             }
 
-            // CORRECCIÓN: Guardamos el timer para poder cancelarlo si se abre otro dialog rápidamente
             if (Dialog.cleanupTimer) clearTimeout(Dialog.cleanupTimer);
             
             Dialog.cleanupTimer = setTimeout(() => {
@@ -118,7 +124,6 @@ export const Dialog = {
     _render: (templateId, data) => {
         if (!Dialog.elements.templates || !Dialog.elements.wrapper) return;
 
-        // CORRECCIÓN: Cancelar limpieza pendiente si abrimos un diálogo inmediatamente después de cerrar otro
         if (Dialog.cleanupTimer) clearTimeout(Dialog.cleanupTimer);
 
         const template = Dialog.elements.templates.querySelector(`#${templateId}`);
@@ -147,7 +152,6 @@ export const Dialog = {
     },
 
     _show: () => {
-        // Aseguramos cancelación del timer aquí también por seguridad
         if (Dialog.cleanupTimer) clearTimeout(Dialog.cleanupTimer);
         
         if (Dialog.elements.overlay) {
