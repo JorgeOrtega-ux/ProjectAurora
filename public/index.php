@@ -1,6 +1,9 @@
 <?php
 // public/index.php
 
+// Carga del Autoloader de Composer (ESTA ES LA LÍNEA NUEVA IMPORTANTE)
+require_once __DIR__ . '/../vendor/autoload.php';
+
 // CONFIGURACIÓN DE SEGURIDAD PARA LA SESIÓN
 $cookieParams = session_get_cookie_params();
 session_set_cookie_params([
@@ -21,11 +24,6 @@ session_start();
 $cspNonce = base64_encode(random_bytes(16));
 
 // 2. Definir Content-Security-Policy
-// Se permiten dominios específicos detectados en tu código:
-// - fonts.googleapis.com y gstatic.com (Fuentes)
-// - challenges.cloudflare.com (Turnstile)
-// - unpkg.com (Librerías JS externas como QR y Popper y sus source maps)
-// - ui-avatars.com (Imágenes de perfil)
 header("Content-Security-Policy: " .
     "default-src 'self'; " .
     "script-src 'self' https://challenges.cloudflare.com https://unpkg.com 'nonce-$cspNonce'; " .
@@ -33,7 +31,6 @@ header("Content-Security-Policy: " .
     "img-src 'self' data: https://ui-avatars.com; " .
     "font-src 'self' https://fonts.gstatic.com; " .
     "frame-src https://challenges.cloudflare.com; " .
-    // CORRECCIÓN: Agregado https://unpkg.com a connect-src para permitir source maps (.map)
     "connect-src 'self' https://challenges.cloudflare.com https://unpkg.com; " .
     "object-src 'none'; " .
     "base-uri 'self';"
@@ -53,7 +50,7 @@ require_once __DIR__ . '/../includes/libs/Utils.php';
 Utils::initErrorHandlers(); 
 require_once __DIR__ . '/../config/database/db.php';
 
-// Cargar variables de entorno para Turnstile si no se han cargado (seguridad redundante)
+// Cargar variables de entorno para Turnstile
 $turnstileSiteKey = $_ENV['TURNSTILE_SITE_KEY'] ?? '1x00000000000000000000BB';
 
 // === MIDDLEWARE: AUTO-LOGIN POR COOKIE (TOKEN ROTATIVO) ===

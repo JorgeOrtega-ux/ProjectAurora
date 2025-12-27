@@ -2,18 +2,16 @@
 # Ignorar el archivo de variables de entorno para no exponer contraseñas
 .env
 
+# --- DEPENDENCIAS (COMPOSER) ---
+/vendor/
+
 # --- LOGS Y REGISTROS ---
-# Ignorar los archivos de log generados diariamente
 logs/app/*.log
 logs/database/*.log
 logs/security/*.log
-# (Opcional) Ignorar todos los logs pero mantener la estructura de carpetas
-# logs/**/*.log
 
 # --- ALMACENAMIENTO DE USUARIO ---
-# Ignorar las imágenes subidas por los usuarios (Custom Avatars)
 storage/profilePicture/custom/*
-# Excepción: Mantener un archivo vacío o .gitkeep si quieres preservar la carpeta
 !storage/profilePicture/custom/.gitkeep
 
 # --- SISTEMA OPERATIVO E IDE ---

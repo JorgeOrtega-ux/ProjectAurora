@@ -1,9 +1,13 @@
 <?php
 // public/loader.php
+
+// Carga del Autoloader de Composer (ESTA ES LA LÍNEA NUEVA IMPORTANTE)
+require_once __DIR__ . '/../vendor/autoload.php';
+
 session_start();
 
 require_once __DIR__ . '/../includes/libs/Utils.php';
-Utils::initErrorHandlers(); // <--- AGREGAR ESTA LÍNEA JUSTO AQUÍ
+Utils::initErrorHandlers();
 require_once __DIR__ . '/../config/database/db.php';
 
 // === BASEPATH ===
