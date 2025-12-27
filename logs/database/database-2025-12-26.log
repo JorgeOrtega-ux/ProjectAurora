@@ -1,1 +1,0 @@
-[2025-12-26 22:48:56] [CRITICAL] [192.168.1.158] [USER:1] [GET /ProjectAurora/] Error de conexión PDO {"exception_message":"SQLSTATE[HY000] [1045] Access denied for user 'ro4ot'@'localhost' (using password: NO)","code":1045,"file":"E:\\xampp\\htdocs\\ProjectAurora\\config\\database\\db.php","line":37}
