@@ -182,7 +182,7 @@
                 "btn_generate": "Generar nuevos códigos",
                 "confirm_pass": "Para generar nuevos códigos, confirma tu contraseña.",
                 "new_codes_title": "Nuevos códigos generados",
-                "new_codes_desc": "Guarda estos códigos ahora. No podrás volver a verlos."
+                "new_codes_desc": "Guarda estos códigos now. No podrás volver a verlos."
             }
         },
         "devices": {
@@ -308,7 +308,7 @@
         "code_invalid_expired": "Código inválido o expirado.",
         "register_success": "Registro exitoso.",
         "db_error": "Error crítico BD.",
-        "login_block": "Demasiados intentos fallidos. Por seguridad, espera 15 minutos antes de volver a intentar.",
+        "login_block": "Demasiados intentos fallidos. Por seguridad, espera %s minutos antes de volver a intentar.",
         "account_deleted": "Esta cuenta ha sido eliminada y desactivada.",
         "credentials_ok_2fa": "Credenciales correctas. Se requiere código 2FA.",
         "credentials_invalid": "Credenciales incorrectas.",
@@ -356,8 +356,8 @@
         "pass_req_confirm": "Se requiere la contraseña para confirmar.",
         "account_deleted_success": "Cuenta eliminada correctamente.",
         "unknown_device": "Desconocido",
-        "avatar_size_limit": "La imagen excede el tamaño máximo permitido (2 MB).",
-        "avatar_dimensions_limit": "Las dimensiones de la imagen son demasiado grandes (máx 4096px).",
+        "avatar_size_limit": "La imagen excede el tamaño máximo permitido (%s MB).",
+        "avatar_dimensions_limit": "Las dimensiones de la imagen son demasiado grandes (máx %s px).",
         "server_config_error": "Error de configuración del servidor (GD faltante).",
         "avatar_rate_limit": "Has excedido el límite de cambios de foto (máximo 3 por día).",
         "identity_rate_limit": "Solo puedes cambiar este dato una vez cada 12 días.",

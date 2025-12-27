@@ -2,7 +2,6 @@
 // api/services/SettingsService.php
 
 // Carga de librerías
-// NOTA: El Autoloader de Composer se encarga de GoogleAuthenticator
 use Google\Authenticator\GoogleAuthenticator;
 
 require_once __DIR__ . '/../../includes/libs/MailService.php';
@@ -23,15 +22,34 @@ class SettingsService {
             return ['success' => false, 'message' => $this->i18n->t('api.no_image')]; 
         }
         $file = $files['avatar'];
-        if ($file['size'] > 2097152) { return ['success' => false, 'message' => $this->i18n->t('api.avatar_size_limit')]; }
-        $maxDimension = 4096;
+        
+        // CONFIGURACIÓN DINÁMICA: Tamaño Máximo (bytes)
+        $maxSize = (int)Utils::getServerConfig($this->pdo, 'upload_avatar_max_size', '2097152');
+        if ($file['size'] > $maxSize) {
+            // Conversión a MB para el mensaje amigable
+            $maxSizeMB = round($maxSize / 1048576, 1);
+            return ['success' => false, 'message' => $this->i18n->t('api.avatar_size_limit', [$maxSizeMB])]; 
+        }
+
+        // CONFIGURACIÓN DINÁMICA: Dimensión Máxima (px)
+        $maxDim = (int)Utils::getServerConfig($this->pdo, 'upload_avatar_max_dim', '4096');
         list($width, $height) = getimagesize($file['tmp_name']);
-        if ($width > $maxDimension || $height > $maxDimension) { return ['success' => false, 'message' => $this->i18n->t('api.avatar_dimensions_limit')]; }
-        if ($this->checkRateLimitExceeded('avatar_update', 24, 3)) { return ['success' => false, 'message' => $this->i18n->t('api.avatar_rate_limit')]; }
+        if ($width > $maxDim || $height > $maxDim) { 
+            return ['success' => false, 'message' => $this->i18n->t('api.avatar_dimensions_limit', [$maxDim])]; 
+        }
+
+        // Rate Limit Genérico
+        if ($this->checkRateLimitExceeded('avatar_update', 24, 3)) { 
+            return ['success' => false, 'message' => $this->i18n->t('api.avatar_rate_limit')]; 
+        }
+
         $allowedTypes = ['image/jpeg' => 'jpg', 'image/png'  => 'png', 'image/webp' => 'webp'];
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $mime = $finfo->file($file['tmp_name']);
-        if (!array_key_exists($mime, $allowedTypes)) { return ['success' => false, 'message' => $this->i18n->t('api.image_format')]; }
+        if (!array_key_exists($mime, $allowedTypes)) { 
+            return ['success' => false, 'message' => $this->i18n->t('api.image_format')]; 
+        }
+
         $stmt = $this->pdo->prepare("SELECT avatar_path, uuid FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
         $currentUser = $stmt->fetch();
@@ -140,6 +158,8 @@ class SettingsService {
             }
         }
 
+        // Rate Limit General
+        $limit = (int)Utils::getServerConfig($this->pdo, 'security_general_rate_limit', '10');
         if ($this->checkSecurityLimit('email_change_req', 3, 10)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
@@ -156,7 +176,10 @@ class SettingsService {
         }
 
         $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
-        $expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+        
+        // Expiración Dinámica
+        $expiryMinutes = (int)Utils::getServerConfig($this->pdo, 'auth_verification_code_expiry', '15');
+        $expiresAt = date('Y-m-d H:i:s', strtotime("+$expiryMinutes minutes"));
 
         $del = $this->pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'email_update_auth'");
         $del->execute([$currentEmail]);
@@ -265,8 +288,13 @@ class SettingsService {
     }
 
     public function validateCurrentPassword($currentPass) {
-        if ($this->checkSecurityLimit('password_verify_fail', 5, 15)) {
-            return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
+        // Rate Limits Dinámicos
+        $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
+        $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
+        
+        if ($this->checkSecurityLimit('password_verify_fail', $limit, $duration)) {
+            // Pasamos la duración al mensaje traducido
+            return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
         if (empty($currentPass)) return ['success' => false, 'message' => $this->i18n->t('api.pass_current_req')];
         
@@ -282,8 +310,11 @@ class SettingsService {
     }
 
     public function changePassword($currentPass, $newPass) {
-        if ($this->checkSecurityLimit('password_verify_fail', 5, 15)) {
-            return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
+        $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
+        $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
+        
+        if ($this->checkSecurityLimit('password_verify_fail', $limit, $duration)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
         if (empty($currentPass) || empty($newPass)) return ['success' => false, 'message' => $this->i18n->t('api.missing_data')];
         
@@ -314,7 +345,8 @@ class SettingsService {
     }
 
     public function updatePreference($key, $value) {
-        if ($this->checkSecurityLimit('pref_update', 10, 1)) {
+        $limit = (int)Utils::getServerConfig($this->pdo, 'security_general_rate_limit', '10');
+        if ($this->checkSecurityLimit('pref_update', $limit, 1)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
         $allowedKeys = ['language', 'open_links_new_tab', 'theme', 'extended_toast'];
@@ -381,8 +413,11 @@ class SettingsService {
     }
 
     public function enable2fa($code) {
-        if ($this->checkSecurityLimit('2fa_verify_attempt', 5, 15)) {
-            return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
+        $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
+        $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
+
+        if ($this->checkSecurityLimit('2fa_verify_attempt', $limit, $duration)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
         if (!isset($_SESSION['temp_2fa_secret'])) return ['success' => false, 'message' => $this->i18n->t('api.session_config_expired')];
         $secret = $_SESSION['temp_2fa_secret'];
@@ -437,8 +472,11 @@ class SettingsService {
     }
 
     public function regenerateRecoveryCodes($password) {
-        if ($this->checkSecurityLimit('2fa_regen_codes', 3, 15)) {
-            return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
+        $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5'); // Limit estricto
+        $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
+
+        if ($this->checkSecurityLimit('2fa_regen_codes', 3, $duration)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
         if (empty($password)) return ['success' => false, 'message' => $this->i18n->t('api.pass_req_confirm')];
         $stmt = $this->pdo->prepare("SELECT password FROM users WHERE id = ?");
@@ -506,8 +544,11 @@ class SettingsService {
     }
 
     public function deleteAccount($password) {
-        if ($this->checkSecurityLimit('account_delete_attempt', 5, 30)) {
-            return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
+        $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
+        $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
+
+        if ($this->checkSecurityLimit('account_delete_attempt', $limit, $duration * 2)) { // Bloqueo doblemente largo
+            return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration * 2])];
         }
         if (empty($password)) return ['success' => false, 'message' => $this->i18n->t('api.pass_req_confirm')];
         $stmt = $this->pdo->prepare("SELECT password FROM users WHERE id = ?");

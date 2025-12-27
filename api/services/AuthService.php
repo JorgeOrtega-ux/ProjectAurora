@@ -45,8 +45,11 @@ class AuthService {
             return ['success' => false, 'message' => 'Error de seguridad (Captcha): ' . $turnstileCheck['message']];
         }
 
-        // 3. Verificar Rate Limit
-        if ($this->checkSecurityBlock('register_attempt', 10, 10)) {
+        // 3. Verificar Rate Limit (Dinámico)
+        $limit = (int)Utils::getServerConfig($this->pdo, 'security_register_max_attempts', '10');
+        $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15'); // Usamos duración estándar
+
+        if ($this->checkSecurityBlock('register_attempt', $limit, $duration)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
         $this->logSecurityEvent($email, 'register_attempt');
@@ -117,6 +120,7 @@ class AuthService {
         
         $email = $_SESSION['temp_register']['email'];
         
+        // Rate limit para pedir códigos
         if ($this->checkSecurityBlock('register_code_req', 3, 15, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
@@ -154,7 +158,10 @@ class AuthService {
         ]);
 
         $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
-        $expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+        
+        // Expiración Dinámica
+        $expiryMinutes = (int)Utils::getServerConfig($this->pdo, 'auth_verification_code_expiry', '15');
+        $expiresAt = date('Y-m-d H:i:s', strtotime("+$expiryMinutes minutes"));
 
         $del = $this->pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation'");
         $del->execute([$email]);
@@ -172,7 +179,7 @@ class AuthService {
             $body = "<h1>Hola, $username</h1>
                      <p>Gracias por registrarte. Tu código de verificación es:</p>
                      <p style='font-size: 24px; font-weight: bold; color: #333; letter-spacing: 4px;'>$code</p>
-                     <p><small>Este código expirará en 15 minutos.</small></p>";
+                     <p><small>Este código expirará en $expiryMinutes minutos.</small></p>";
 
             $emailResult = MailService::send($email, $subject, $body);
 
@@ -221,7 +228,10 @@ class AuthService {
 
         $payload = $lastCode['payload'];
         $newCode = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
-        $expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+        
+        // Expiración Dinámica
+        $expiryMinutes = (int)Utils::getServerConfig($this->pdo, 'auth_verification_code_expiry', '15');
+        $expiresAt = date('Y-m-d H:i:s', strtotime("+$expiryMinutes minutes"));
 
         $del = $this->pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation'");
         $del->execute([$email]);
@@ -253,9 +263,13 @@ class AuthService {
         if (empty($code) || empty($email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.missing_data')];
         }
+        
+        // Rate limit para intentos fallidos de verificación
+        $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5'); // Reusamos el de login
+        $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        if ($this->checkSecurityBlock('register_verify_fail', 5, 15, $email)) {
-            return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
+        if ($this->checkSecurityBlock('register_verify_fail', $limit, $duration, $email)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
 
         $sql = "SELECT * FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'account_activation' AND expires_at > NOW() ORDER BY id DESC LIMIT 1";
@@ -335,9 +349,14 @@ class AuthService {
         if (!$turnstileCheck['success']) {
              return ['success' => false, 'message' => 'Error de seguridad (Captcha): ' . $turnstileCheck['message']];
         }
+        
+        // Bloqueo Dinámico
+        $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
+        $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        if ($this->checkSecurityBlock('login_fail', 5, 15, $email)) {
-            return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
+        if ($this->checkSecurityBlock('login_fail', $limit, $duration, $email)) {
+            // INYECCIÓN DE VALOR: Pasamos la duración al mensaje traducido
+            return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
 
         $stmt = $this->pdo->prepare("SELECT * FROM users WHERE email = ?");
@@ -377,8 +396,12 @@ class AuthService {
 
         $userId = $_SESSION['2fa_pending_user_id'];
         
-        if ($this->checkSecurityBlock('2fa_login_fail', 5, 15, "user:$userId")) {
-            return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
+        // Bloqueo Dinámico 2FA
+        $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
+        $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
+        
+        if ($this->checkSecurityBlock('2fa_login_fail', $limit, $duration, "user:$userId")) {
+            return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
 
         $stmt = $this->pdo->prepare("SELECT * FROM users WHERE id = ?");
@@ -423,11 +446,15 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.email_invalid')];
         }
 
-        if ($this->checkSecurityBlock('recovery_fail', 5, 15, $email)) {
+        // Límites dinámicos
+        $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
+        $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
+
+        if ($this->checkSecurityBlock('recovery_fail', $limit, $duration, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.recovery_limit')];
         }
 
-        if ($this->checkSecurityBlock('recovery_success', 5, 60)) {
+        if ($this->checkSecurityBlock('recovery_success', $limit, 60)) {
             return ['success' => false, 'message' => $this->i18n->t('api.recovery_limit')];
         }
 
@@ -446,7 +473,10 @@ class AuthService {
         }
 
         $token = bin2hex(random_bytes(32));
-        $expiresAt = date('Y-m-d H:i:s', strtotime('+1 hour'));
+        
+        // Expiración Token Dinámica
+        $expiryMinutes = (int)Utils::getServerConfig($this->pdo, 'auth_reset_token_expiry', '60');
+        $expiresAt = date('Y-m-d H:i:s', strtotime("+$expiryMinutes minutes"));
 
         $this->pdo->prepare("DELETE FROM password_resets WHERE email = ?")->execute([$email]);
         
@@ -461,7 +491,8 @@ class AuthService {
             $subject = "Recuperar contraseña - Project Aurora";
             $body = "<p>Has solicitado restablecer tu contraseña. Haz clic en el siguiente enlace:</p>
                      <p><a href='$resetLink'>$resetLink</a></p>
-                     <p>Si no fuiste tú, ignora este mensaje.</p>";
+                     <p>Si no fuiste tú, ignora este mensaje.</p>
+                     <p><small>Este enlace expirará en $expiryMinutes minutos.</small></p>";
             
             MailService::send($email, $subject, $body);
             
