@@ -1,7 +1,10 @@
 <?php
 // api/services/AuthService.php
 
-require_once __DIR__ . '/../../includes/libs/GoogleAuthenticator.php';
+// Carga de librerías
+// NOTA: El Autoloader de Composer se encarga de GoogleAuthenticator
+use Google\Authenticator\GoogleAuthenticator;
+
 // Agregamos el servicio de correo
 require_once __DIR__ . '/../../includes/libs/MailService.php';
 
@@ -120,7 +123,6 @@ class AuthService {
             $emailResult = MailService::send($email, $subject, $body);
 
             if (!$emailResult['success']) {
-                // Si falla el envío, retornamos error para que el usuario sepa (y no se quede esperando un código que no llegará)
                 return ['success' => false, 'message' => 'Error al enviar el correo: ' . $emailResult['message']];
             }
             // ----------------------------------------
@@ -336,9 +338,12 @@ class AuthService {
 
         $isValid = false;
         
-        if (GoogleAuthenticator::verifyCode($user['two_factor_secret'], $code)) {
+        // --- CAMBIO PARA COMPOSER ---
+        $g = new GoogleAuthenticator();
+        if ($g->checkCode($user['two_factor_secret'], $code)) {
             $isValid = true;
         } else {
+            // Verificar códigos de recuperación
             $recoveryHashes = json_decode($user['two_factor_recovery_codes'] ?? '[]', true);
             
             if (is_array($recoveryHashes)) {
@@ -353,6 +358,7 @@ class AuthService {
                 }
             }
         }
+        // -----------------------------
 
         if ($isValid) {
             unset($_SESSION['2fa_pending_user_id']);
@@ -403,7 +409,6 @@ class AuthService {
 
             // --- ENVÍO REAL DE CORREO (Reset Password) ---
             $resetLink = "https://tudominio.com/ProjectAurora/reset-password?token=" . $token; 
-            // NOTA: Ajusta 'tudominio.com' o usa $_SERVER['HTTP_HOST'] si prefieres dinámico.
             
             $subject = "Recuperar contraseña - Project Aurora";
             $body = "<p>Has solicitado restablecer tu contraseña. Haz clic en el siguiente enlace:</p>

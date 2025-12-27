@@ -1,8 +1,11 @@
 <?php
 // api/services/SettingsService.php
 
-require_once __DIR__ . '/../../includes/libs/GoogleAuthenticator.php';
-require_once __DIR__ . '/../../includes/libs/MailService.php'; // Incluido para envío de correos
+// Carga de librerías
+// NOTA: El Autoloader de Composer se encarga de GoogleAuthenticator
+use Google\Authenticator\GoogleAuthenticator;
+
+require_once __DIR__ . '/../../includes/libs/MailService.php';
 
 class SettingsService {
     private $pdo;
@@ -15,7 +18,6 @@ class SettingsService {
         $this->userId = $userId;
     }
 
-    // ... (uploadAvatar, deleteAvatar se mantienen igual) ...
     public function uploadAvatar($files) {
         if (!isset($files['avatar']) || $files['avatar']['error'] !== UPLOAD_ERR_OK) { 
             return ['success' => false, 'message' => $this->i18n->t('api.no_image')]; 
@@ -89,19 +91,11 @@ class SettingsService {
         return ['success' => false, 'message' => $this->i18n->t('api.pic_gen_error')];
     }
 
-    // === NUEVOS MÉTODOS PARA VERIFICACIÓN DE EMAIL (CON VALIDACIÓN DE LÍMITE) ===
-
-    /**
-     * Comprueba el estado de la verificación actual.
-     * Devuelve si ya está autorizado o si hay un código pendiente.
-     */
     public function getEmailEditStatus() {
-        // 1. Verificar si ya tiene permiso en sesión (validez 5 minutos)
         if (isset($_SESSION['email_change_auth']) && $_SESSION['email_change_auth'] > time()) {
             return ['success' => true, 'status' => 'authorized'];
         }
 
-        // 2. Verificar si hay un código activo en BD
         $stmt = $this->pdo->prepare("SELECT email FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
         $email = $stmt->fetchColumn();
@@ -113,7 +107,7 @@ class SettingsService {
         if ($lastCode) {
             $createdAt = strtotime($lastCode['created_at']);
             $elapsed = time() - $createdAt;
-            $cooldown = 60 - $elapsed; // 60 segundos de cooldown
+            $cooldown = 60 - $elapsed;
             
             return [
                 'success' => true, 
@@ -126,13 +120,10 @@ class SettingsService {
     }
 
     public function requestEmailChangeVerification($forceResend = false) {
-        // 1. [NUEVO] Validación de frecuencia de cambio (12 días / 288 horas)
-        // Verificamos antes de nada si el usuario tiene permitido cambiar el email.
         if ($this->checkRateLimitExceeded('email', 288, 1)) {
             return ['success' => false, 'message' => $this->i18n->t('api.identity_rate_limit')];
         }
 
-        // 2. Obtener email actual
         $stmt = $this->pdo->prepare("SELECT email, username FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
         $user = $stmt->fetch();
@@ -141,22 +132,18 @@ class SettingsService {
         $currentEmail = $user['email'];
         $username = $user['username'];
 
-        // 3. Verificar códigos existentes (si NO es reenvío forzado)
         if (!$forceResend) {
             $stmtCheck = $this->pdo->prepare("SELECT id FROM verification_codes WHERE identifier = ? AND code_type = 'email_update_auth' AND expires_at > NOW()");
             $stmtCheck->execute([$currentEmail]);
             if ($stmtCheck->fetch()) {
-                // Ya existe un código válido, no enviamos otro para evitar spam/redundancia
                 return ['success' => true, 'message' => 'Código ya enviado previamente.'];
             }
         }
 
-        // 4. Rate Limit (Seguridad global anti-spam)
         if ($this->checkSecurityLimit('email_change_req', 3, 10)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
 
-        // 5. Cooldown de Reenvío (60 segundos estricto)
         $stmtTime = $this->pdo->prepare("SELECT created_at FROM verification_codes WHERE identifier = ? AND code_type = 'email_update_auth' ORDER BY id DESC LIMIT 1");
         $stmtTime->execute([$currentEmail]);
         $lastRequest = $stmtTime->fetch();
@@ -168,11 +155,9 @@ class SettingsService {
             }
         }
 
-        // 6. Generar y Guardar
         $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
         $expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
 
-        // Limpiamos códigos anteriores para no acumular basura
         $del = $this->pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'email_update_auth'");
         $del->execute([$currentEmail]);
 
@@ -183,7 +168,6 @@ class SettingsService {
             $insert->execute([$currentEmail, $code, $expiresAt]);
             $this->logSecurityAction('email_change_req');
 
-            // 7. Enviar Correo
             $subject = "Verifica tu identidad - Project Aurora";
             $body = "<p>Hola $username,</p><p>Has solicitado cambiar tu correo electrónico. Para continuar, utiliza el siguiente código de seguridad:</p>
                      <h2 style='letter-spacing: 4px;'>$code</h2>
@@ -209,7 +193,7 @@ class SettingsService {
         $verification = $stmt->fetch();
 
         if ($verification) {
-            $_SESSION['email_change_auth'] = time() + 300; // Válido por 5 minutos
+            $_SESSION['email_change_auth'] = time() + 300;
             $this->pdo->prepare("DELETE FROM verification_codes WHERE id = ?")->execute([$verification['id']]);
             return ['success' => true, 'message' => 'Código verificado.'];
         } else {
@@ -217,22 +201,17 @@ class SettingsService {
         }
     }
 
-    // =================================================
-
     public function updateProfile($field, $value) {
         if (!in_array($field, ['username', 'email'])) return ['success' => false, 'message' => $this->i18n->t('api.field_invalid')];
         if (empty($value)) return ['success' => false, 'message' => $this->i18n->t('api.field_empty')];
         
-        // === PROTECCIÓN DE EMAIL ===
         if ($field === 'email') { 
             if (!filter_var($value, FILTER_VALIDATE_EMAIL)) return ['success' => false, 'message' => $this->i18n->t('api.email_invalid')];
             
-            // Verificar si tiene permiso en sesión
             if (!isset($_SESSION['email_change_auth']) || $_SESSION['email_change_auth'] < time()) {
                 return ['success' => false, 'message' => $this->i18n->t('api.auth_required')];
             }
         }
-        // ===========================
 
         if ($this->checkRateLimitExceeded($field, 288, 1)) {
             return ['success' => false, 'message' => $this->i18n->t('api.identity_rate_limit')];
@@ -256,7 +235,6 @@ class SettingsService {
             $this->logProfileChange($field, $oldValue, $value);
             $_SESSION[$field] = $value;
             
-            // Consumir el token de autorización si fue un cambio de email
             if ($field === 'email') {
                 unset($_SESSION['email_change_auth']);
             }
@@ -362,10 +340,18 @@ class SettingsService {
         if ($this->checkSecurityLimit('2fa_init_attempt', 10, 60)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
-        $secret = GoogleAuthenticator::createSecret();
+
+        // --- CAMBIO PARA COMPOSER (Sonata) ---
+        $g = new GoogleAuthenticator();
+        $secret = $g->generateSecret();
+        
         $_SESSION['temp_2fa_secret'] = $secret;
         $username = $_SESSION['username'] ?? 'User';
-        $otpauthUrl = GoogleAuthenticator::getQrUrl($username, $secret, 'ProjectAurora');
+        
+        // Sonata usa getUrl($user, $host, $secret) para generar el formato otpauth:// compatible
+        $otpauthUrl = $g->getUrl($username, 'ProjectAurora', $secret);
+        // -------------------------------------
+
         $this->logSecurityAction('2fa_init_attempt');
         return ['success' => true, 'message' => $this->i18n->t('api.qr_scan'), 'otpauth_url' => $otpauthUrl, 'secret' => $secret];
     }
@@ -376,7 +362,11 @@ class SettingsService {
         }
         if (!isset($_SESSION['temp_2fa_secret'])) return ['success' => false, 'message' => $this->i18n->t('api.session_config_expired')];
         $secret = $_SESSION['temp_2fa_secret'];
-        if (GoogleAuthenticator::verifyCode($secret, $code)) {
+
+        // --- CAMBIO PARA COMPOSER ---
+        $g = new GoogleAuthenticator();
+        if ($g->checkCode($secret, $code)) {
+        // -----------------------------
             $recoveryCodes = []; 
             $hashedCodes = [];   
             for($i=0; $i<10; $i++) {

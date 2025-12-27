@@ -673,8 +673,6 @@ input:checked+.component-toggle-slider:before { transform: translateX(20px); }
     }
     .input-group-responsive .component-card__actions { margin-top: 4px; }
     
-    /* MODIFICADO: Aplicar flex: 1 solo a botones dentro de grupos (Settings) 
-       para evitar comprimir los botones de Auth (Login/Register) */
     .component-group-item .component-button,
     .input-group-responsive .component-button { 
         flex: 1; 
@@ -695,4 +693,52 @@ input:checked+.component-toggle-slider:before { transform: translateX(20px); }
     gap: 8px;
     align-items: center;
     margin-top: 2px;
+}
+
+/* =========================================
+   9. ACORDEÓN (2FA) - NUEVO BLOQUE (Estructura Full-Width)
+   ========================================= */
+.component-accordion-item {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background-color: transparent; /* El padding lo tienen los hijos */
+}
+
+/* El Header es un component-group-item, así que ya tiene padding 24px */
+.component-accordion-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s ease;
+}
+
+.component-accordion-header:hover {
+    background-color: var(--bg-hover-light);
+}
+
+.component-accordion-content {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+}
+
+.component-accordion-item.active .component-accordion-content {
+    display: flex;
+    animation: slideDownAccordion 0.2s ease-out;
+}
+
+/* Chevron */
+.component-accordion-chevron {
+    transition: transform 0.3s ease;
+    color: var(--text-secondary);
+}
+
+.component-accordion-item.active .component-accordion-chevron {
+    transform: rotate(180deg);
+    color: var(--action-primary);
+}
+
+@keyframes slideDownAccordion {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
 }

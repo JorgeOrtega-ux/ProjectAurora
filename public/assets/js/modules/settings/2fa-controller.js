@@ -6,7 +6,7 @@ import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { I18n } from '../../core/i18n-manager.js';
 import { Dialog } from '../../core/dialog-manager.js';
-import { DialogDefinitions } from '../../core/dialog-definitions.js'; // <--- NUEVO IMPORT
+import { DialogDefinitions } from '../../core/dialog-definitions.js';
 
 export const TwoFactorController = {
     init: () => {
@@ -21,6 +21,7 @@ export const TwoFactorController = {
             loadQrCode(qrContainer);
         }
 
+        // Lógica para copiar al portapapeles
         const contentArea = document.getElementById('2fa-content-area');
         if (contentArea) {
             contentArea.addEventListener('click', (e) => {
@@ -39,6 +40,7 @@ export const TwoFactorController = {
             });
         }
 
+        // Formato input 2FA (espacio en medio)
         if (inputCode) {
             inputCode.addEventListener('input', (e) => {
                 let val = e.target.value.replace(/\D/g, '');
@@ -46,6 +48,9 @@ export const TwoFactorController = {
                 e.target.value = val;
             });
         }
+
+        // === INICIALIZACIÓN DEL ACORDEÓN ===
+        initAccordion();
 
         // Verificar 2FA
         if (btnVerify) {
@@ -69,13 +74,15 @@ export const TwoFactorController = {
                     const res = await ApiService.post('settings-handler.php', formData);
 
                     if (res.success) {
-                        const stepQr = document.getElementById('step-qr');
-                        if(stepQr) {
-                            stepQr.classList.remove('active');
-                            stepQr.classList.add('disabled'); 
-                            stepQr.style.display = 'none'; 
+                        // Ocultamos el contenedor de pasos (Acordeón)
+                        const stepQrContainer = document.getElementById('step-qr-container');
+                        if(stepQrContainer) {
+                            stepQrContainer.classList.remove('active');
+                            stepQrContainer.classList.add('disabled'); 
+                            stepQrContainer.style.display = 'none'; 
                         }
                         
+                        // Mostramos el éxito
                         const stepSuccess = document.getElementById('step-success');
                         if(stepSuccess) {
                             stepSuccess.classList.remove('disabled');
@@ -103,15 +110,11 @@ export const TwoFactorController = {
             });
         }
 
-        // DESACTIVAR 2FA (MODIFICADO CON DIALOG CENTRALIZADO)
+        // DESACTIVAR 2FA
         if (btnDisable) {
             btnDisable.addEventListener('click', async () => {
-                
-                // --- USO DE DEFINICIÓN CENTRALIZADA ---
                 const confirmed = await Dialog.confirm(DialogDefinitions.TwoFactor.DISABLE);
-
                 if (!confirmed) return;
-                // -------------------------------------
 
                 const originalText = btnDisable.innerText;
                 setLoading(btnDisable, true, I18n.t('js.2fa.disabling'));
@@ -141,6 +144,44 @@ export const TwoFactorController = {
     }
 };
 
+/**
+ * Lógica del Acordeón Exclusivo con las nuevas clases
+ */
+function initAccordion() {
+    const items = document.querySelectorAll('.component-accordion-item');
+    
+    items.forEach(item => {
+        const header = item.querySelector('.component-accordion-header');
+        if(!header) return;
+
+        header.addEventListener('click', () => {
+            const isActive = item.classList.contains('active');
+            
+            // 1. Cerrar todos los demás
+            items.forEach(otherItem => {
+                if (otherItem !== item) {
+                    otherItem.classList.remove('active');
+                }
+            });
+
+            // 2. Toggle del actual
+            if (isActive) {
+                item.classList.remove('active');
+            } else {
+                item.classList.add('active');
+                
+                // Hack para foco automático en input si se abre el paso 3
+                if (item.dataset.accordionId === '3') {
+                    setTimeout(() => {
+                        const input = document.getElementById('input-2fa-verify');
+                        if(input) input.focus();
+                    }, 200);
+                }
+            }
+        });
+    });
+}
+
 async function initRecoveryLogic() {
     const countDisplay = document.getElementById('recovery-count-display');
     const btnShowRegen = document.getElementById('btn-show-regen-area');
@@ -162,11 +203,8 @@ async function initRecoveryLogic() {
 
     if (btnShowRegen) {
         btnShowRegen.addEventListener('click', async () => {
-            // --- USO DE DEFINICIÓN CENTRALIZADA ---
             const confirmed = await Dialog.confirm(DialogDefinitions.TwoFactor.REGENERATE);
-
             if (!confirmed) return;
-            // -------------------------------------
 
             areaRegen.classList.remove('disabled');
             areaRegen.classList.add('active');
@@ -207,7 +245,7 @@ async function initRecoveryLogic() {
                     Toast.show(I18n.t('js.2fa.codes_generated'), 'success');
                     areaRegen.classList.remove('active');
                     areaRegen.classList.add('disabled');
-                    btnShowRegen.classList.remove('disabled'); // Reactivamos botón
+                    btnShowRegen.classList.remove('disabled');
 
                     if (listNewCodes && res.recovery_codes) {
                         listNewCodes.innerHTML = res.recovery_codes.map(c => `<span>${c}</span>`).join('');
@@ -263,8 +301,9 @@ async function loadQrCode(container) {
             if (manualInput && res.secret) {
                 manualInput.value = res.secret;
             }
-            const inputVerify = document.getElementById('input-2fa-verify');
-            if(inputVerify) setTimeout(() => inputVerify.focus(), 500);
+            // NO HACER FOCUS AQUÍ al cargar QR para no abrir el teclado en móviles
+            // const inputVerify = document.getElementById('input-2fa-verify');
+            // if(inputVerify) setTimeout(() => inputVerify.focus(), 500);
 
         } else {
             container.innerHTML = `<p style="color:var(--color-error); font-size:13px; text-align:center; padding:10px;">${res.message || 'Error desconocido'}</p>`;
