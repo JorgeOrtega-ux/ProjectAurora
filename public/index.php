@@ -1,20 +1,10 @@
 <?php
 // public/index.php
 
-// Carga del Autoloader de Composer (ESTA ES LA LÍNEA NUEVA IMPORTANTE)
-require_once __DIR__ . '/../vendor/autoload.php';
-
-// CONFIGURACIÓN DE SEGURIDAD PARA LA SESIÓN
-$cookieParams = session_get_cookie_params();
-session_set_cookie_params([
-    'lifetime' => $cookieParams['lifetime'],
-    'path' => '/',
-    'domain' => $cookieParams['domain'],
-    'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
-    'httponly' => true,
-    'samesite' => 'Strict'
-]);
-session_start();
+// === CARGA DEL SISTEMA (BOOTSTRAP) ===
+// Esto nos devuelve $pdo e $i18n y configura sesión, BD y errores.
+$services = require_once __DIR__ . '/../includes/bootstrap.php';
+extract($services); 
 
 // =======================================================================
 // INICIO BLOQUE DE SEGURIDAD (CABECERAS HTTP & CSP)
@@ -24,6 +14,7 @@ session_start();
 $cspNonce = base64_encode(random_bytes(16));
 
 // 2. Definir Content-Security-Policy
+// Nota: Se agregan las fuentes y dominios necesarios para tu proyecto
 header("Content-Security-Policy: " .
     "default-src 'self'; " .
     "script-src 'self' https://challenges.cloudflare.com https://unpkg.com 'nonce-$cspNonce'; " .
@@ -45,12 +36,10 @@ header("Referrer-Policy: strict-origin-when-cross-origin");
 // FIN BLOQUE DE SEGURIDAD
 // =======================================================================
 
+// Carga de Rutas
 require_once __DIR__ . '/../config/routers/router.php';
-require_once __DIR__ . '/../includes/libs/Utils.php';
-Utils::initErrorHandlers(); 
-require_once __DIR__ . '/../config/database/db.php';
 
-// Cargar variables de entorno para Turnstile
+// Cargar variables de entorno para Turnstile (ya cargadas en memoria por db.php -> bootstrap)
 $turnstileSiteKey = $_ENV['TURNSTILE_SITE_KEY'] ?? '1x00000000000000000000BB';
 
 // === MIDDLEWARE: AUTO-LOGIN POR COOKIE (TOKEN ROTATIVO) ===
@@ -120,7 +109,7 @@ if (empty($_SESSION['csrf_token'])) {
 }
 
 $isLoggedIn = isset($_SESSION['user_id']);
-$i18n = Utils::initI18n();
+// $i18n ya fue inicializado en bootstrap, pero actualizamos si hay preferencia de sesión
 $userLang = $_SESSION['preferences']['language'] ?? 'es-latam';
 
 $publicRoutes = [
@@ -132,6 +121,7 @@ $publicRoutes = [
     'reset-password'
 ];
 
+// Redirecciones de seguridad (Auth Guard)
 if (!$isLoggedIn) {
     if (!in_array($currentSection, $publicRoutes)) {
         header("Location: " . $basePath . "login");
@@ -144,6 +134,7 @@ if (!$isLoggedIn) {
     }
 }
 
+// Refrescar datos de sesión si está logueado
 if ($isLoggedIn) {
     try {
         if (isset($pdo)) {

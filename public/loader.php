@@ -1,20 +1,14 @@
 <?php
 // public/loader.php
 
-// Carga del Autoloader de Composer (ESTA ES LA LÍNEA NUEVA IMPORTANTE)
-require_once __DIR__ . '/../vendor/autoload.php';
-
-session_start();
-
-require_once __DIR__ . '/../includes/libs/Utils.php';
-Utils::initErrorHandlers();
-require_once __DIR__ . '/../config/database/db.php';
+// === CARGA DEL SISTEMA (BOOTSTRAP) ===
+// Esto nos devuelve $pdo e $i18n y configura sesión, BD y errores.
+$services = require_once __DIR__ . '/../includes/bootstrap.php';
+extract($services); 
 
 // === BASEPATH ===
+// Mantenemos la definición explícita para el contexto de carga asíncrona
 $basePath = '/ProjectAurora/'; 
-
-// === I18n desde Utils ===
-$i18n = Utils::initI18n();
 
 // Definimos qué secciones son públicas
 $publicSections = [
