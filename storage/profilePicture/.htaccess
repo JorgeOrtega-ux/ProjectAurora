@@ -1,5 +1,0 @@
-<FilesMatch "\.(php|php7|phtml)$">
-    Order Allow,Deny
-    Deny from all
-</FilesMatch>
-php_flag engine off
