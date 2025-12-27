@@ -26,11 +26,13 @@ class I18n {
     }
 
     /**
-     * Obtiene una traducción usando notación de puntos (ej: 'auth.login.title').
-     * Soporta JSON anidado.
-     * Si no encuentra la clave, devuelve la clave misma.
+     * Obtiene una traducción usando notación de puntos.
+     * Soporta argumentos dinámicos para sprintf.
+     * Ejemplo: t('api.pass_short', [8]) -> "Mínimo 8 caracteres"
+     * * @param string $key Clave de la traducción
+     * @param array $args Argumentos opcionales para reemplazar placeholders %s
      */
-    public function t($key) {
+    public function t($key, $args = []) {
         $keys = explode('.', $key);
         $value = $this->translations;
 
@@ -40,6 +42,14 @@ class I18n {
             } else {
                 return $key; // No encontrado, devolver clave original
             }
+        }
+
+        // Si el valor es string y tenemos argumentos, formateamos
+        if (is_string($value)) {
+            if (!empty($args)) {
+                return vsprintf($value, $args);
+            }
+            return $value;
         }
 
         // Asegurarse de devolver un string (por si la clave apunta a un array intermedio)

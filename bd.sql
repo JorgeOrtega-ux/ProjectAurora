@@ -1,4 +1,3 @@
--- [EXISTING CONTENT OF bd.sql] --
 CREATE DATABASE IF NOT EXISTS project_aurora_db;
 USE project_aurora_db;
 
@@ -120,4 +119,10 @@ CREATE TABLE IF NOT EXISTS server_config (
 INSERT IGNORE INTO server_config (config_key, config_value) VALUES 
 ('maintenance_mode', '0'),
 ('allow_registrations', '1'),
-('allow_login', '1'); -- NUEVO CAMPO
+('allow_login', '1'),
+-- NUEVAS CONFIGURACIONES DE VALIDACIÓN
+('password_min_length', '8'),
+('username_min_length', '4'),
+('username_max_length', '20'),
+('email_min_prefix_length', '3'), -- Caracteres mínimos antes del @
+('email_allowed_domains', '*');   -- '*' para todos, o lista separada por comas: 'gmail.com,outlook.com'

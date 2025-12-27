@@ -213,17 +213,6 @@
             "pass_placeholder": "Tu contraseña actual",
             "btn_final": "Eliminar mi cuenta definitivamente",
             "btn_cancel": "Cancelar y volver"
-        },
-        "accessibility": {
-            "title": "Accesibilidad",
-            "desc": "Personaliza la apariencia y el comportamiento de la aplicación.",
-            "theme_title": "Tema",
-            "theme_desc": "Elige el tema de la interfaz.",
-            "theme_system": "Sincronizar con el sistema",
-            "theme_light": "Tema claro",
-            "theme_dark": "Tema oscuro",
-            "toast_title": "Duración de notificaciones",
-            "toast_desc": "Mantiene los mensajes en pantalla por más tiempo (10s)."
         }
     },
     "js": {
@@ -330,7 +319,7 @@
         "link_generated": "Enlace de recuperación generado.",
         "message_email_sent": "Te hemos enviado un correo con las instrucciones.",
         "link_invalid": "El enlace es inválido o ha expirado.",
-        "pass_short": "La contraseña es muy corta (min 6 caracteres).",
+        "pass_short": "La contraseña debe tener al menos %s caracteres.",
         "pass_updated": "Contraseña actualizada correctamente.",
         "bye": "Sesión cerrada.",
         "unknown_action": "Acción desconocida.",
@@ -375,6 +364,9 @@
         "pref_rate_limit": "Demasiados cambios recientes. Espera un momento.",
         "recovery_status": "Estado obtenido.",
         "recovery_regenerated": "Códigos regenerados.",
-        "auth_required": "Verificación requerida. Solicita un código primero."
+        "auth_required": "Verificación requerida. Solicita un código primero.",
+        "username_bounds": "El nombre de usuario debe tener entre %s y %s caracteres.",
+        "email_prefix_short": "El correo debe tener al menos %s caracteres antes del @.",
+        "email_domain_not_allowed": "El dominio de correo (%s) no está permitido en este servidor."
     }
 }

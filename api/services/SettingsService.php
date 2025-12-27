@@ -205,9 +205,28 @@ class SettingsService {
         if (!in_array($field, ['username', 'email'])) return ['success' => false, 'message' => $this->i18n->t('api.field_invalid')];
         if (empty($value)) return ['success' => false, 'message' => $this->i18n->t('api.field_empty')];
         
+        // VALIDACIÓN: Longitud de Usuario
+        if ($field === 'username') {
+            $minUserLen = (int)Utils::getServerConfig($this->pdo, 'username_min_length', '4');
+            $maxUserLen = (int)Utils::getServerConfig($this->pdo, 'username_max_length', '20');
+            if (strlen($value) < $minUserLen || strlen($value) > $maxUserLen) {
+                return ['success' => false, 'message' => $this->i18n->t('api.username_bounds', [$minUserLen, $maxUserLen])];
+            }
+        }
+        
         if ($field === 'email') { 
             if (!filter_var($value, FILTER_VALIDATE_EMAIL)) return ['success' => false, 'message' => $this->i18n->t('api.email_invalid')];
             
+            // VALIDACIÓN: Dominios Permitidos en Email (Update)
+            $allowedDomainsStr = Utils::getServerConfig($this->pdo, 'email_allowed_domains', '*');
+            if ($allowedDomainsStr !== '*' && trim($allowedDomainsStr) !== '') {
+                $allowedDomains = array_map('trim', explode(',', strtolower($allowedDomainsStr)));
+                $domain = substr(strrchr($value, "@"), 1);
+                if (!in_array(strtolower($domain), $allowedDomains)) {
+                    return ['success' => false, 'message' => $this->i18n->t('api.email_domain_not_allowed', [$domain])];
+                }
+            }
+
             if (!isset($_SESSION['email_change_auth']) || $_SESSION['email_change_auth'] < time()) {
                 return ['success' => false, 'message' => $this->i18n->t('api.auth_required')];
             }
@@ -267,7 +286,12 @@ class SettingsService {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
         }
         if (empty($currentPass) || empty($newPass)) return ['success' => false, 'message' => $this->i18n->t('api.missing_data')];
-        if (strlen($newPass) < 6) return ['success' => false, 'message' => $this->i18n->t('api.pass_short')];
+        
+        // VALIDACIÓN: Longitud Mínima en Cambio
+        $minPassLen = (int)Utils::getServerConfig($this->pdo, 'password_min_length', '6');
+        if (strlen($newPass) < $minPassLen) {
+             return ['success' => false, 'message' => $this->i18n->t('api.pass_short', [$minPassLen])];
+        }
         
         $stmt = $this->pdo->prepare("SELECT password FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
@@ -516,7 +540,6 @@ class SettingsService {
         return ($stmt->fetchColumn() >= $limit);
     }
     
-    // MODIFICADO: Cambiado de private a public para usar en la vista
     public function checkSecurityLimit($actionType, $limit, $minutes) {
         $ip = $this->getClientIp();
         $sql = "SELECT COUNT(*) FROM security_logs WHERE (user_identifier = ? OR ip_address = ?) AND action_type = ? AND created_at > (NOW() - INTERVAL $minutes MINUTE)";

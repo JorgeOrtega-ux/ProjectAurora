@@ -23,7 +23,6 @@ class AuthService {
 
     /**
      * Verifica si la opción de registro está habilitada en el servidor.
-     * No verifica modo mantenimiento (desacoplado).
      */
     private function checkRegistrationStatus() {
         $allowed = Utils::getServerConfig($this->pdo, 'allow_registrations', '1');
@@ -36,20 +35,23 @@ class AuthService {
     }
 
     public function registerStep1($email, $password, $turnstileToken) {
-        // Verificar Configuración
+        // 1. Verificar Configuración Global
         $configCheck = $this->checkRegistrationStatus();
         if (!$configCheck['success']) return $configCheck;
 
+        // 2. Verificar Captcha
         $turnstileCheck = $this->verifyTurnstile($turnstileToken);
         if (!$turnstileCheck['success']) {
             return ['success' => false, 'message' => 'Error de seguridad (Captcha): ' . $turnstileCheck['message']];
         }
 
+        // 3. Verificar Rate Limit
         if ($this->checkSecurityBlock('register_attempt', 10, 10)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
         $this->logSecurityEvent($email, 'register_attempt');
 
+        // 4. Validar campos básicos
         if (empty($email) || empty($password)) {
             return ['success' => false, 'message' => $this->i18n->t('api.fill_all')];
         }
@@ -57,6 +59,39 @@ class AuthService {
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return ['success' => false, 'message' => $this->i18n->t('api.email_invalid')];
         }
+
+        // ========================================================
+        // VALIDACIONES AVANZADAS DE SERVIDOR (Configurables)
+        // ========================================================
+
+        // A. Longitud Mínima de Contraseña
+        $minPassLen = (int)Utils::getServerConfig($this->pdo, 'password_min_length', '6');
+        if (strlen($password) < $minPassLen) {
+            return ['success' => false, 'message' => $this->i18n->t('api.pass_short', [$minPassLen])];
+        }
+
+        // B. Estructura del Email (Prefijo antes del @)
+        $minPrefixLen = (int)Utils::getServerConfig($this->pdo, 'email_min_prefix_length', '3');
+        $parts = explode('@', $email);
+        $prefix = $parts[0] ?? '';
+        
+        if (strlen($prefix) < $minPrefixLen) {
+            return ['success' => false, 'message' => $this->i18n->t('api.email_prefix_short', [$minPrefixLen])];
+        }
+
+        // C. Lista Blanca de Dominios (Whitelist)
+        $allowedDomainsStr = Utils::getServerConfig($this->pdo, 'email_allowed_domains', '*');
+        // Si no es comodín y no está vacío
+        if ($allowedDomainsStr !== '*' && trim($allowedDomainsStr) !== '') {
+            $allowedDomains = array_map('trim', explode(',', strtolower($allowedDomainsStr)));
+            $domain = strtolower($parts[1] ?? '');
+            
+            if (!in_array($domain, $allowedDomains)) {
+                return ['success' => false, 'message' => $this->i18n->t('api.email_domain_not_allowed', [$domain])];
+            }
+        }
+
+        // ========================================================
 
         $stmt = $this->pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
@@ -73,7 +108,6 @@ class AuthService {
     }
 
     public function initiateVerification($username) {
-        // Verificar Configuración
         $configCheck = $this->checkRegistrationStatus();
         if (!$configCheck['success']) return $configCheck;
 
@@ -92,6 +126,17 @@ class AuthService {
         if (empty($username)) {
             return ['success' => false, 'message' => $this->i18n->t('api.choose_user')];
         }
+
+        // ========================================================
+        // VALIDACIÓN DE USUARIO (Longitud Configurable)
+        // ========================================================
+        $minUserLen = (int)Utils::getServerConfig($this->pdo, 'username_min_length', '4');
+        $maxUserLen = (int)Utils::getServerConfig($this->pdo, 'username_max_length', '20');
+        
+        if (strlen($username) < $minUserLen || strlen($username) > $maxUserLen) {
+            return ['success' => false, 'message' => $this->i18n->t('api.username_bounds', [$minUserLen, $maxUserLen])];
+        }
+        // ========================================================
 
         $stmt = $this->pdo->prepare("SELECT id FROM users WHERE username = ?");
         $stmt->execute([$username]);
@@ -152,7 +197,6 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.no_verification')];
         }
         
-        // Bloquear reenvío si el registro está cerrado globalmente
         $configCheck = $this->checkRegistrationStatus();
         if (!$configCheck['success']) return $configCheck;
         
@@ -201,7 +245,6 @@ class AuthService {
     }
 
     public function completeRegister($code) {
-        // Verificar Configuración
         $configCheck = $this->checkRegistrationStatus();
         if (!$configCheck['success']) return $configCheck;
 
@@ -306,20 +349,14 @@ class AuthService {
             if ($status === 'deleted') {
                 return ['success' => false, 'message' => $this->i18n->t('api.account_deleted')];
             }
-
-            // === VERIFICAR CONFIGURACIÓN DE LOGIN (allow_login) ===
-            // Nota: No verificamos Maintenance Mode aquí, solo si el login está desactivado explícitamente.
             
             $allowLogin = Utils::getServerConfig($this->pdo, 'allow_login', '1');
             $userRole = $user['role'] ?? 'user';
             $staffRoles = ['founder', 'administrator', 'moderator'];
 
-            // Si allow_login es '0' y el usuario NO es staff, bloqueamos.
-            // Si es staff, siempre permitimos entrar (para poder administrar).
             if ($allowLogin === '0' && !in_array($userRole, $staffRoles)) {
                 return ['success' => false, 'message' => 'El inicio de sesión está deshabilitado temporalmente.'];
             }
-            // ======================================================
 
             if (isset($user['two_factor_enabled']) && $user['two_factor_enabled'] == 1) {
                 $_SESSION['2fa_pending_user_id'] = $user['id'];
@@ -442,8 +479,10 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.missing_data')];
         }
 
-        if (strlen($newPassword) < 6) {
-            return ['success' => false, 'message' => $this->i18n->t('api.pass_short')];
+        // VALIDACIÓN: Longitud Mínima en Reset
+        $minPassLen = (int)Utils::getServerConfig($this->pdo, 'password_min_length', '6');
+        if (strlen($newPassword) < $minPassLen) {
+            return ['success' => false, 'message' => $this->i18n->t('api.pass_short', [$minPassLen])];
         }
 
         $stmt = $this->pdo->prepare("SELECT email FROM password_resets WHERE token = ? AND expires_at > NOW() LIMIT 1");
@@ -495,14 +534,8 @@ class AuthService {
         return ['success' => true, 'message' => $this->i18n->t('api.bye'), 'redirect' => '/ProjectAurora/login'];
     }
 
-    /**
-     * Intenta iniciar sesión automáticamente usando la cookie de persistencia.
-     */
     public function attemptAutoLogin() {
-        // Si ya hay sesión, no hacemos nada
         if (isset($_SESSION['user_id'])) return;
-
-        // Si no hay cookie, tampoco
         if (!isset($_COOKIE['auth_persistence_token'])) return;
 
         $parts = explode(':', $_COOKIE['auth_persistence_token']);
@@ -511,38 +544,26 @@ class AuthService {
         $selector = $parts[0];
         $validator = $parts[1];
 
-        // Buscar token en BD
         $stmt = $this->pdo->prepare("SELECT * FROM user_auth_tokens WHERE selector = ? AND expires_at > NOW() LIMIT 1");
         $stmt->execute([$selector]);
         $authToken = $stmt->fetch();
 
         if ($authToken && hash_equals($authToken['hashed_validator'], hash('sha256', $validator))) {
-            // Obtener usuario
             $stmtUser = $this->pdo->prepare("SELECT * FROM users WHERE id = ?");
             $stmtUser->execute([$authToken['user_id']]);
             $user = $stmtUser->fetch();
 
             if ($user) {
-                // Rellenar sesión (Lógica extraída de completeLogin pero sin redirect)
                 $this->fillSession($user);
-
-                // Rotar el token (Seguridad)
                 $this->rotatePersistenceToken($authToken['id'], $user['id']);
             }
         }
     }
 
     private function rotatePersistenceToken($oldTokenId, $userId) {
-        // Borrar token viejo
         $this->pdo->prepare("DELETE FROM user_auth_tokens WHERE id = ?")->execute([$oldTokenId]);
-        
-        // Crear nuevo
         $this->createPersistenceToken($userId);
     }
-
-    // =========================================================================
-    //  MÉTODOS PRIVADOS (Helpers)
-    // =========================================================================
 
     private function verifyTurnstile($token) {
         if (empty($token)) {
@@ -666,10 +687,6 @@ class AuthService {
         ]);
     }
 
-    /**
-     * Rellena la sesión con los datos del usuario.
-     * Separado de completeLogin para reusabilidad en auto-login.
-     */
     private function fillSession($user) {
         session_regenerate_id(true);
 
