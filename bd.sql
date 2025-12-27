@@ -117,12 +117,28 @@ CREATE TABLE IF NOT EXISTS server_config (
 
 -- INSERCIÓN DE VALORES POR DEFECTO
 INSERT IGNORE INTO server_config (config_key, config_value) VALUES 
+-- Configuración General
 ('maintenance_mode', '0'),
 ('allow_registrations', '1'),
 ('allow_login', '1'),
--- NUEVAS CONFIGURACIONES DE VALIDACIÓN
+
+-- Validaciones de Usuario
 ('password_min_length', '8'),
 ('username_min_length', '4'),
 ('username_max_length', '20'),
-('email_min_prefix_length', '3'), -- Caracteres mínimos antes del @
-('email_allowed_domains', '*');   -- '*' para todos, o lista separada por comas: 'gmail.com,outlook.com'
+('email_min_prefix_length', '3'),
+('email_allowed_domains', '*'),
+
+-- 1. Límites de Subida (Uploads)
+('upload_avatar_max_size', '2097152'), -- 2 MB en bytes
+('upload_avatar_max_dim', '4096'),     -- Píxeles (ancho/alto)
+
+-- 2. Seguridad y Rate Limiting
+('security_login_max_attempts', '5'),    -- Intentos antes de bloqueo login
+('security_block_duration', '15'),       -- Minutos de bloqueo
+('security_register_max_attempts', '10'),-- Intentos de registro por IP
+('security_general_rate_limit', '10'),   -- Límite genérico (ej. updates)
+
+-- 3. Tiempos de Expiración
+('auth_verification_code_expiry', '15'), -- Minutos validez códigos (6 dígitos)
+('auth_reset_token_expiry', '60');       -- Minutos validez tokens reset (link)
