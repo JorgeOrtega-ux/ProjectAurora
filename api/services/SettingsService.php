@@ -515,13 +515,16 @@ class SettingsService {
         $stmt->execute([$this->userId, $changeType]);
         return ($stmt->fetchColumn() >= $limit);
     }
-    private function checkSecurityLimit($actionType, $limit, $minutes) {
+    
+    // MODIFICADO: Cambiado de private a public para usar en la vista
+    public function checkSecurityLimit($actionType, $limit, $minutes) {
         $ip = $this->getClientIp();
         $sql = "SELECT COUNT(*) FROM security_logs WHERE (user_identifier = ? OR ip_address = ?) AND action_type = ? AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$this->userId, $ip, $actionType]); 
         return ($stmt->fetchColumn() >= $limit);
     }
+    
     private function logSecurityAction($actionType) {
         $ip = $this->getClientIp();
         $sql = "INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)";

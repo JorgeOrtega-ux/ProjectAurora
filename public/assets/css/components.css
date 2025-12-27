@@ -742,3 +742,11 @@ input:checked+.component-toggle-slider:before { transform: translateX(20px); }
     from { opacity: 0; transform: translateY(-5px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* =========================================
+   10. ESTADOS INTERACTIVOS (Deshabilitado)
+   ========================================= */
+.disabled-interactive {
+    opacity: 0.5;
+    pointer-events: none;
+}

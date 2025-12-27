@@ -1,5 +1,17 @@
 <?php
 // includes/sections/settings/2fa-setup.php
+
+// CORRECCIÓN: Ruta ajustada para subir 3 niveles hasta la raíz
+require_once __DIR__ . '/../../../api/services/SettingsService.php';
+
+// Instanciar el servicio y verificar el límite
+$settingsService = new SettingsService($pdo, $i18n, $_SESSION['user_id']);
+$isRateLimited = $settingsService->checkSecurityLimit('2fa_init_attempt', 10, 60);
+
+// Definir clases y estilos basados en el límite
+$containerClass = $isRateLimited ? 'disabled-interactive' : '';
+$qrBoxStyle = $isRateLimited ? 'display: none;' : '';
+
 $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_factor_enabled'] === 1;
 ?>
 
@@ -107,9 +119,9 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
             </div>
             <?php else: ?>
 
-            <div class="component-card component-card--grouped active" id="step-qr-container">
+            <div class="component-card component-card--grouped <?php echo $containerClass; ?>" id="step-qr-container">
                 
-                <div class="component-accordion-item active" data-accordion-id="1">
+                <div class="component-accordion-item" data-accordion-id="1">
                     <div class="component-group-item component-accordion-header">
                         <div class="component-card__content">
                             <div class="component-card__icon-container component-card__icon-container--bordered">
@@ -138,7 +150,7 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
                                         </li>
                                     </ul>
                                 </div>
-                                <div class="component-visual-box box-qr">
+                                <div class="component-visual-box box-qr" style="<?php echo $qrBoxStyle; ?>">
                                     <div id="qr-container">
                                          <div class="spinner-sm" style="border-color: #000; border-left-color: transparent;"></div>
                                     </div>

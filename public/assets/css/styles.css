@@ -742,3 +742,8 @@ html {
     overscroll-behavior: none;
     -webkit-overflow-scrolling: touch;
 }
+
+.disabled-interactive {
+    opacity: 0.5;
+    pointer-events: none;
+}

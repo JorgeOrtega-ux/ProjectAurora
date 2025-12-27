@@ -17,7 +17,10 @@ export const TwoFactorController = {
         const inputCode = document.getElementById('input-2fa-verify');
         
         const qrContainer = document.getElementById('qr-container');
-        if (qrContainer) {
+        // MODIFICACIÓN: Verificar si el contenedor ya está deshabilitado por el servidor
+        const mainContainer = document.getElementById('step-qr-container');
+        
+        if (qrContainer && mainContainer && !mainContainer.classList.contains('disabled-interactive')) {
             loadQrCode(qrContainer);
         }
 
@@ -301,16 +304,24 @@ async function loadQrCode(container) {
             if (manualInput && res.secret) {
                 manualInput.value = res.secret;
             }
-            // NO HACER FOCUS AQUÍ al cargar QR para no abrir el teclado en móviles
-            // const inputVerify = document.getElementById('input-2fa-verify');
-            // if(inputVerify) setTimeout(() => inputVerify.focus(), 500);
 
         } else {
-            container.innerHTML = `<p style="color:var(--color-error); font-size:13px; text-align:center; padding:10px;">${res.message || 'Error desconocido'}</p>`;
+            // Si hay error (ej: límite), ocultamos el cuadro QR y deshabilitamos
+            const boxQr = container.closest('.box-qr');
+            if (boxQr) {
+                boxQr.style.display = 'none';
+            }
+
+            const mainContainer = document.getElementById('step-qr-container');
+            if(mainContainer) {
+                mainContainer.classList.add('disabled-interactive');
+            }
         }
     } catch (error) {
         console.error(error);
-        container.innerHTML = `<p style="color:var(--color-error); font-size:13px; text-align:center;">Error de conexión.</p>`;
+        const boxQr = container.closest('.box-qr');
+        if (boxQr) boxQr.style.display = 'none';
+        Toast.show(I18n.t('js.core.connection_error'), 'error');
     }
 }
 
