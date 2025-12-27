@@ -95,7 +95,7 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
 
                  <div class="component-group-item component-group-item--stacked disabled" id="new-codes-area">
                     <hr class="component-divider w-100 mb-0">
-                    <div class="component-card__content w-100 mt-16" style="text-align: center;">
+                    <div class="component-card__content w-100" style="text-align: center;">
                         <div class="component-card__text w-100">
                             <h2 class="component-card__title" style="color: var(--color-success);"><?php echo $i18n->t('settings.2fa.recovery.new_codes_title'); ?></h2>
                             <p class="component-card__description"><?php echo $i18n->t('settings.2fa.recovery.new_codes_desc'); ?></p>
@@ -177,7 +177,7 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
                                 </div>
                             </div>
 
-                            <div class="w-100 component-stage-form mt-16">
+                            <div class="w-100 component-stage-form">
                                 <div class="component-input-wrapper component-input-wrapper--floating">
                                     <input type="text" id="manual-secret-input" class="component-text-input has-action" readonly placeholder="Cargando...">
                                     <label for="manual-secret-input" class="component-label-floating">Clave de configuración</label>
@@ -219,13 +219,13 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
                                 </div>
                             </div>
 
-                            <div class="w-100 component-stage-form mt-16">
+                            <div class="w-100 component-stage-form">
                                 <div class="component-input-wrapper">
                                     <input type="text" id="input-2fa-verify" class="component-text-input" placeholder="000 000" maxlength="7" style="font-family: monospace; letter-spacing: 2px; font-size: 16px; text-align: center;">
                                 </div>
                             </div>
                             
-                            <div class="component-card__actions actions-right w-100 mt-16">
+                            <div class="component-card__actions actions-right w-100">
                                 <button type="button" class="component-button primary w-100" id="btn-confirm-2fa">
                                     <?php echo $i18n->t('settings.2fa.btn_verify'); ?>
                                 </button>
