@@ -50,6 +50,17 @@ switch ($action) {
         Utils::jsonResponse($settingsService->updateProfile($field, $value));
         break;
 
+    // --- VERIFICACIÓN CAMBIO DE EMAIL ---
+    case 'request_email_change_verification':
+        Utils::jsonResponse($settingsService->requestEmailChangeVerification());
+        break;
+
+    case 'verify_email_change_code':
+        $code = trim($_POST['code'] ?? '');
+        Utils::jsonResponse($settingsService->verifyEmailChangeCode($code));
+        break;
+    // ------------------------------------
+
     case 'validate_current_password':
         $currentPass = $_POST['current_password'] ?? '';
         Utils::jsonResponse($settingsService->validateCurrentPassword($currentPass));
@@ -80,7 +91,6 @@ switch ($action) {
         Utils::jsonResponse($settingsService->disable2fa());
         break;
 
-    // --- NUEVAS RUTAS DE RECUPERACIÓN ---
     case 'get_recovery_status':
         Utils::jsonResponse($settingsService->getRecoveryStatus());
         break;
@@ -89,7 +99,6 @@ switch ($action) {
         $password = $_POST['password'] ?? '';
         Utils::jsonResponse($settingsService->regenerateRecoveryCodes($password));
         break;
-    // ------------------------------------
 
     case 'get_sessions':
         Utils::jsonResponse($settingsService->getSessions());

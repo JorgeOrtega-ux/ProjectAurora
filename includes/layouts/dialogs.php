@@ -56,6 +56,20 @@
         </div>
     </div>
 
+    <div id="template-verify-email">
+        <div class="dialog-content">
+            <h1 class="dialog-title"></h1>
+            <p class="dialog-message"></p>
+            <div class="component-input-wrapper mt-16">
+                <input type="text" id="verify-email-code" class="component-text-input" placeholder="000 000" maxlength="6" style="text-align: center; letter-spacing: 4px; font-size: 18px;">
+            </div>
+        </div>
+        <div class="dialog-actions">
+            <button type="button" class="component-button btn-cancel">Cancelar</button>
+            <button type="button" class="component-button primary btn-confirm">Verificar</button>
+        </div>
+    </div>
+
     <div id="template-loading">
         <div style="display: flex; align-items: center; gap: 16px;">
             <div class="dialog-spinner"></div>

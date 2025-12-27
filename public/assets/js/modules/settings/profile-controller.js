@@ -6,7 +6,7 @@ import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { I18n } from '../../core/i18n-manager.js';
 import { Dialog } from '../../core/dialog-manager.js';
-import { DialogDefinitions } from '../../core/dialog-definitions.js'; // <--- NUEVO IMPORT
+import { DialogDefinitions } from '../../core/dialog-definitions.js';
 
 export const ProfileController = {
     
@@ -31,12 +31,10 @@ function initAvatarLogic() {
 
     let originalSrc = previewImg.src;
 
-    // Triggers para abrir el selector de archivos
     const openFileSelector = () => fileInput.click();
     if(triggerBtn) triggerBtn.addEventListener('click', openFileSelector);
     if(initBtn) initBtn.addEventListener('click', openFileSelector);
 
-    // Cuando se selecciona un archivo (Preview)
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -53,12 +51,10 @@ function initAvatarLogic() {
         }
     });
 
-    // Delegación de eventos para botones de acción del avatar
     container.addEventListener('click', async (e) => {
         const action = e.target.dataset.action;
         if (!action) return;
 
-        // CANCELAR
         if (action === 'profile-picture-cancel') {
             previewImg.src = originalSrc;
             fileInput.value = ''; 
@@ -66,7 +62,6 @@ function initAvatarLogic() {
             toggleProfileActions(isCustom ? 'custom' : 'default');
         }
 
-        // GUARDAR
         if (action === 'profile-picture-save') {
             const file = fileInput.files[0];
             if (!file) return;
@@ -90,7 +85,6 @@ function initAvatarLogic() {
                     toggleProfileActions('custom');
                     fileInput.value = ''; 
 
-                    // Despachar evento
                     const event = new CustomEvent('user:avatar_update', { 
                         detail: { src: newAvatarSrc } 
                     });
@@ -108,14 +102,10 @@ function initAvatarLogic() {
             }
         }
 
-        // ELIMINAR (MODIFICADO CON DIALOG CENTRALIZADO)
         if (action === 'profile-picture-delete') {
-            
-            // --- USO DE DEFINICIÓN CENTRALIZADA ---
             const confirmed = await Dialog.confirm(DialogDefinitions.Profile.DELETE_AVATAR);
 
             if (!confirmed) return;
-            // --------------------------------------
 
             const btn = e.target;
             btn.disabled = true;
@@ -136,7 +126,6 @@ function initAvatarLogic() {
                         
                         toggleProfileActions('default');
 
-                        // Actualizar Header
                         const event = new CustomEvent('user:avatar_update', { 
                             detail: { src: newUrl } 
                         });
@@ -152,7 +141,6 @@ function initAvatarLogic() {
             finally { btn.disabled = false; }
         }
 
-        // CAMBIAR
         if (action === 'profile-picture-change') {
             fileInput.click();
         }
@@ -192,13 +180,73 @@ function initIdentityLogic() {
         const targetField = btn.dataset.target; // 'username' o 'email'
 
         if(action === 'start-edit') {
-            toggleEditState(targetField, true);
+            // === INTERCEPCIÓN PARA VERIFICACIÓN DE EMAIL ===
+            if (targetField === 'email') {
+                await handleEmailVerification(targetField);
+            } else {
+                toggleEditState(targetField, true);
+            }
         } else if (action === 'cancel-edit') {
             toggleEditState(targetField, false);
         } else if (action === 'save-field') {
             await saveFieldData(targetField, btn);
         }
     });
+}
+
+async function handleEmailVerification(targetField) {
+    Dialog.showLoading('Enviando código...');
+    
+    // 1. Solicitar envío de código
+    const formData = new FormData();
+    formData.append('action', 'request_email_change_verification');
+
+    try {
+        const res = await ApiService.post('settings-handler.php', formData);
+        Dialog.close();
+
+        if (res.success) {
+            // 2. Mostrar diálogo de input
+            const confirmed = await Dialog.confirm(DialogDefinitions.Profile.VERIFY_EMAIL);
+            
+            if (confirmed) {
+                // Obtener el valor del input del diálogo
+                // (El input sigue en el DOM momentáneamente o necesitamos leerlo antes de cerrar el dialog)
+                // Dado que Dialog.confirm cierra al clickar, debemos asegurarnos de leer el valor.
+                // En nuestra implementación de Dialog.confirm, el resolve ocurre DESPUÉS del click.
+                // El elemento sigue accesible si la transición de cierre no ha terminado de eliminar el nodo.
+                // PERO para mayor seguridad, obtenemos el valor directamente del DOM global ya que el ID es único.
+                const inputCode = document.getElementById('verify-email-code');
+                const code = inputCode ? inputCode.value.trim() : '';
+
+                if (!code) {
+                    Toast.show(I18n.t('js.profile.email_code_req'), 'warning');
+                    return;
+                }
+
+                Dialog.showLoading('Verificando...');
+                
+                const verifyData = new FormData();
+                verifyData.append('action', 'verify_email_change_code');
+                verifyData.append('code', code);
+
+                const verifyRes = await ApiService.post('settings-handler.php', verifyData);
+                Dialog.close();
+
+                if (verifyRes.success) {
+                    Toast.show('Identidad verificada. Puedes cambiar tu correo.', 'success');
+                    toggleEditState(targetField, true);
+                } else {
+                    Toast.show(verifyRes.message, 'error');
+                }
+            }
+        } else {
+            Toast.show(res.message, 'error');
+        }
+    } catch (e) {
+        Dialog.close();
+        Toast.show(I18n.t('js.core.connection_error'), 'error');
+    }
 }
 
 function toggleEditState(fieldId, isEditing) {

@@ -2,6 +2,7 @@
 // api/services/SettingsService.php
 
 require_once __DIR__ . '/../../includes/libs/GoogleAuthenticator.php';
+require_once __DIR__ . '/../../includes/libs/MailService.php'; // Incluido para envío de correos
 
 class SettingsService {
     private $pdo;
@@ -14,88 +15,39 @@ class SettingsService {
         $this->userId = $userId;
     }
 
+    // ... (uploadAvatar, deleteAvatar se mantienen igual) ...
     public function uploadAvatar($files) {
         if (!isset($files['avatar']) || $files['avatar']['error'] !== UPLOAD_ERR_OK) { 
             return ['success' => false, 'message' => $this->i18n->t('api.no_image')]; 
         }
-        
         $file = $files['avatar'];
-
-        if ($file['size'] > 2097152) {
-            return ['success' => false, 'message' => $this->i18n->t('api.avatar_size_limit')];
-        }
-
+        if ($file['size'] > 2097152) { return ['success' => false, 'message' => $this->i18n->t('api.avatar_size_limit')]; }
         $maxDimension = 4096;
         list($width, $height) = getimagesize($file['tmp_name']);
-        
-        if ($width > $maxDimension || $height > $maxDimension) {
-            return ['success' => false, 'message' => $this->i18n->t('api.avatar_dimensions_limit')];
-        }
-
-        if ($this->checkRateLimitExceeded('avatar_update', 24, 3)) {
-            return ['success' => false, 'message' => $this->i18n->t('api.avatar_rate_limit')];
-        }
-
-        $allowedTypes = [
-            'image/jpeg' => 'jpg',
-            'image/png'  => 'png',
-            'image/webp' => 'webp'
-        ];
-
+        if ($width > $maxDimension || $height > $maxDimension) { return ['success' => false, 'message' => $this->i18n->t('api.avatar_dimensions_limit')]; }
+        if ($this->checkRateLimitExceeded('avatar_update', 24, 3)) { return ['success' => false, 'message' => $this->i18n->t('api.avatar_rate_limit')]; }
+        $allowedTypes = ['image/jpeg' => 'jpg', 'image/png'  => 'png', 'image/webp' => 'webp'];
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $mime = $finfo->file($file['tmp_name']);
-        
-        if (!array_key_exists($mime, $allowedTypes)) { 
-            return ['success' => false, 'message' => $this->i18n->t('api.image_format')]; 
-        }
-
+        if (!array_key_exists($mime, $allowedTypes)) { return ['success' => false, 'message' => $this->i18n->t('api.image_format')]; }
         $stmt = $this->pdo->prepare("SELECT avatar_path, uuid FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
         $currentUser = $stmt->fetch();
-        
         $oldPath = $currentUser['avatar_path'];
         $extension = $allowedTypes[$mime];
         $newFileName = $currentUser['uuid'] . '-' . time() . '.' . $extension;
         $baseDir = __DIR__ . '/../../storage/profilePicture/custom/';
-        
         if (!is_dir($baseDir)) mkdir($baseDir, 0755, true);
-        
         $targetPath = $baseDir . $newFileName;
         $dbPath = 'storage/profilePicture/custom/' . $newFileName;
-
         $imageSaved = false;
-
         if (extension_loaded('gd')) {
             switch ($mime) {
-                case 'image/jpeg':
-                    $img = @imagecreatefromjpeg($file['tmp_name']);
-                    if ($img) { 
-                        $imageSaved = imagejpeg($img, $targetPath, 90); 
-                        imagedestroy($img); 
-                    }
-                    break;
-                case 'image/png':
-                    $img = @imagecreatefrompng($file['tmp_name']);
-                    if ($img) { 
-                        imagepalettetotruecolor($img);
-                        imagealphablending($img, true);
-                        imagesavealpha($img, true);
-                        $imageSaved = imagepng($img, $targetPath, 9); 
-                        imagedestroy($img); 
-                    }
-                    break;
-                case 'image/webp':
-                    $img = @imagecreatefromwebp($file['tmp_name']);
-                    if ($img) { 
-                        $imageSaved = imagewebp($img, $targetPath, 90); 
-                        imagedestroy($img); 
-                    }
-                    break;
+                case 'image/jpeg': $img = @imagecreatefromjpeg($file['tmp_name']); if ($img) { $imageSaved = imagejpeg($img, $targetPath, 90); imagedestroy($img); } break;
+                case 'image/png': $img = @imagecreatefrompng($file['tmp_name']); if ($img) { imagepalettetotruecolor($img); imagealphablending($img, true); imagesavealpha($img, true); $imageSaved = imagepng($img, $targetPath, 9); imagedestroy($img); } break;
+                case 'image/webp': $img = @imagecreatefromwebp($file['tmp_name']); if ($img) { $imageSaved = imagewebp($img, $targetPath, 90); imagedestroy($img); } break;
             }
-        } else {
-            return ['success' => false, 'message' => $this->i18n->t('api.server_config_error')];
-        }
-
+        } else { return ['success' => false, 'message' => $this->i18n->t('api.server_config_error')]; }
         if ($imageSaved) {
             $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
             if ($update->execute([$dbPath, $this->userId])) {
@@ -103,10 +55,7 @@ class SettingsService {
                 $this->deleteOldAvatar($oldPath);
                 $_SESSION['avatar'] = $dbPath;
                 return ['success' => true, 'message' => $this->i18n->t('api.pic_updated'), 'new_src' => $dbPath, 'type' => 'custom'];
-            } else {
-                @unlink($targetPath);
-                return ['success' => false, 'message' => $this->i18n->t('api.pic_db_error')];
-            }
+            } else { @unlink($targetPath); return ['success' => false, 'message' => $this->i18n->t('api.pic_db_error')]; }
         }
         return ['success' => false, 'message' => $this->i18n->t('api.pic_move_error')];
     }
@@ -115,53 +64,120 @@ class SettingsService {
         $stmt = $this->pdo->prepare("SELECT avatar_path, username, uuid FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
         $currentUser = $stmt->fetch();
-        
         $oldPath = $currentUser['avatar_path'];
-        
         $firstLetter = substr($currentUser['username'], 0, 1);
         $bgColors = ['40a060', 'a73d3d', '3d3da7', '3d9da7', '9d3da7'];
         $randomBg = $bgColors[array_rand($bgColors)];
-        
         $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($firstLetter) . "&background=" . $randomBg . "&color=fff&size=512&format=png&bold=true";
-        
         $baseDir = __DIR__ . '/../../storage/profilePicture/default/';
-        
         if (!is_dir($baseDir)) mkdir($baseDir, 0755, true);
-
         $newFileName = $currentUser['uuid'] . '-' . time() . '.png';
         $targetPath = $baseDir . $newFileName;
         $dbPath = 'storage/profilePicture/default/' . $newFileName;
-        
         $imageContent = @file_get_contents($avatarUrl);
-        
         if ($imageContent !== false && file_put_contents($targetPath, $imageContent)) {
             $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
             if ($update->execute([$dbPath, $this->userId])) {
                 $this->logProfileChange('avatar_delete', $oldPath, $dbPath . ' (Default)');
                 $this->deleteOldAvatar($oldPath);
                 $_SESSION['avatar'] = $dbPath;
-
                 $base64Image = 'data:image/png;base64,' . base64_encode($imageContent);
-                
-                return [
-                    'success' => true, 
-                    'message' => $this->i18n->t('api.pic_deleted'), 
-                    'type' => 'default', 
-                    'new_src' => $base64Image 
-                ];
+                return ['success' => true, 'message' => $this->i18n->t('api.pic_deleted'), 'type' => 'default', 'new_src' => $base64Image];
             }
             return ['success' => false, 'message' => $this->i18n->t('api.pic_db_error')];
         }
         return ['success' => false, 'message' => $this->i18n->t('api.pic_gen_error')];
     }
 
+    // === NUEVOS MÉTODOS PARA VERIFICACIÓN DE EMAIL ===
+
+    public function requestEmailChangeVerification() {
+        // 1. Rate Limit
+        if ($this->checkSecurityLimit('email_change_req', 3, 10)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
+        }
+
+        // 2. Obtener email actual
+        $stmt = $this->pdo->prepare("SELECT email, username FROM users WHERE id = ?");
+        $stmt->execute([$this->userId]);
+        $user = $stmt->fetch();
+        if (!$user) return ['success' => false, 'message' => $this->i18n->t('api.internal_error')];
+
+        $currentEmail = $user['email'];
+        $username = $user['username'];
+
+        // 3. Generar código
+        $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
+        $expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+
+        // 4. Limpiar códigos anteriores de este tipo
+        $del = $this->pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'email_update_auth'");
+        $del->execute([$currentEmail]);
+
+        // 5. Guardar código
+        $sql = "INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, 'email_update_auth', ?, '{}', ?)";
+        $insert = $this->pdo->prepare($sql);
+        
+        try {
+            $insert->execute([$currentEmail, $code, $expiresAt]);
+            $this->logSecurityAction('email_change_req');
+
+            // 6. Enviar Correo
+            $subject = "Verifica tu identidad - Project Aurora";
+            $body = "<p>Hola $username,</p><p>Has solicitado cambiar tu correo electrónico. Para continuar, utiliza el siguiente código de seguridad:</p>
+                     <h2 style='letter-spacing: 4px;'>$code</h2>
+                     <p>Si no fuiste tú, cambia tu contraseña inmediatamente.</p>";
+            
+            MailService::send($currentEmail, $subject, $body);
+
+            return ['success' => true, 'message' => $this->i18n->t('api.code_sent')];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $this->i18n->t('api.internal_error')];
+        }
+    }
+
+    public function verifyEmailChangeCode($code) {
+        if (empty($code)) return ['success' => false, 'message' => $this->i18n->t('api.missing_data')];
+
+        // 1. Obtener email actual para buscar el código
+        $stmtEmail = $this->pdo->prepare("SELECT email FROM users WHERE id = ?");
+        $stmtEmail->execute([$this->userId]);
+        $currentEmail = $stmtEmail->fetchColumn();
+
+        // 2. Verificar código en BD
+        $stmt = $this->pdo->prepare("SELECT id FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'email_update_auth' AND expires_at > NOW()");
+        $stmt->execute([$currentEmail, $code]);
+        $verification = $stmt->fetch();
+
+        if ($verification) {
+            // 3. Código válido: Establecer flag en sesión
+            $_SESSION['email_change_auth'] = time() + 300; // Válido por 5 minutos
+            
+            // 4. Borrar código usado
+            $this->pdo->prepare("DELETE FROM verification_codes WHERE id = ?")->execute([$verification['id']]);
+            
+            return ['success' => true, 'message' => 'Código verificado.'];
+        } else {
+            return ['success' => false, 'message' => $this->i18n->t('api.code_invalid')];
+        }
+    }
+
+    // =================================================
+
     public function updateProfile($field, $value) {
         if (!in_array($field, ['username', 'email'])) return ['success' => false, 'message' => $this->i18n->t('api.field_invalid')];
         if (empty($value)) return ['success' => false, 'message' => $this->i18n->t('api.field_empty')];
         
+        // === PROTECCIÓN DE EMAIL ===
         if ($field === 'email') { 
             if (!filter_var($value, FILTER_VALIDATE_EMAIL)) return ['success' => false, 'message' => $this->i18n->t('api.email_invalid')];
+            
+            // Verificar si tiene permiso en sesión
+            if (!isset($_SESSION['email_change_auth']) || $_SESSION['email_change_auth'] < time()) {
+                return ['success' => false, 'message' => $this->i18n->t('api.auth_required')];
+            }
         }
+        // ===========================
 
         if ($this->checkRateLimitExceeded($field, 288, 1)) {
             return ['success' => false, 'message' => $this->i18n->t('api.identity_rate_limit')];
@@ -184,6 +200,12 @@ class SettingsService {
             $update->execute([$value, $this->userId]);
             $this->logProfileChange($field, $oldValue, $value);
             $_SESSION[$field] = $value;
+            
+            // Consumir el token de autorización si fue un cambio de email
+            if ($field === 'email') {
+                unset($_SESSION['email_change_auth']);
+            }
+
             return ['success' => true, 'message' => $this->i18n->t('api.field_updated')];
         } catch (Exception $e) {
             return ['success' => false, 'message' => $this->i18n->t('api.update_error') . ': ' . $e->getMessage()];
@@ -300,26 +322,19 @@ class SettingsService {
         if (!isset($_SESSION['temp_2fa_secret'])) return ['success' => false, 'message' => $this->i18n->t('api.session_config_expired')];
         $secret = $_SESSION['temp_2fa_secret'];
         if (GoogleAuthenticator::verifyCode($secret, $code)) {
-            
-            // SEGURIDAD MEJORADA: HASHING DE CÓDIGOS DE RECUPERACIÓN
-            $recoveryCodes = []; // Códigos en texto plano para el usuario
-            $hashedCodes = [];   // Códigos hasheados para la BD
-
+            $recoveryCodes = []; 
+            $hashedCodes = [];   
             for($i=0; $i<10; $i++) {
-                $plainCode = bin2hex(random_bytes(4)); // 8 caracteres hex
+                $plainCode = bin2hex(random_bytes(4)); 
                 $recoveryCodes[] = $plainCode;
                 $hashedCodes[] = password_hash($plainCode, PASSWORD_DEFAULT);
             }
-
             $jsonCodes = json_encode($hashedCodes);
-
             $stmt = $this->pdo->prepare("UPDATE users SET two_factor_secret = ?, two_factor_enabled = 1, two_factor_recovery_codes = ? WHERE id = ?");
             if ($stmt->execute([$secret, $jsonCodes, $this->userId])) {
                 unset($_SESSION['temp_2fa_secret']);
                 $_SESSION['two_factor_enabled'] = 1;
                 $this->logProfileChange('2fa', 'disabled', 'enabled');
-                
-                // Retornamos los códigos planos para que el usuario los guarde
                 return ['success' => true, 'message' => $this->i18n->t('api.2fa_enabled'), 'recovery_codes' => $recoveryCodes];
             }
             return ['success' => false, 'message' => $this->i18n->t('api.pic_db_error')];
@@ -338,13 +353,10 @@ class SettingsService {
         return ['success' => false, 'message' => $this->i18n->t('api.update_error')];
     }
 
-    // === NUEVOS MÉTODOS PARA RECUPERACIÓN DE CÓDIGOS ===
-
     public function getRecoveryStatus() {
         $stmt = $this->pdo->prepare("SELECT two_factor_recovery_codes FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
         $codesJson = $stmt->fetchColumn();
-        
         $count = 0;
         if ($codesJson) {
             $codes = json_decode($codesJson, true);
@@ -352,41 +364,29 @@ class SettingsService {
                 $count = count($codes);
             }
         }
-        
         return ['success' => true, 'message' => $this->i18n->t('api.recovery_status'), 'count' => $count];
     }
 
     public function regenerateRecoveryCodes($password) {
-        // 1. Rate Limit
         if ($this->checkSecurityLimit('2fa_regen_codes', 3, 15)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
         }
-
-        // 2. Verificar Contraseña
         if (empty($password)) return ['success' => false, 'message' => $this->i18n->t('api.pass_req_confirm')];
-        
         $stmt = $this->pdo->prepare("SELECT password FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
         $user = $stmt->fetch();
-        
         if (!$user || !password_verify($password, $user['password'])) {
             $this->logSecurityAction('2fa_regen_codes_fail');
             return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
         }
-
-        // 3. Generar Nuevos Códigos
         $recoveryCodes = []; 
         $hashedCodes = []; 
-
         for($i=0; $i<10; $i++) {
             $plainCode = bin2hex(random_bytes(4)); 
             $recoveryCodes[] = $plainCode;
             $hashedCodes[] = password_hash($plainCode, PASSWORD_DEFAULT);
         }
-
         $jsonCodes = json_encode($hashedCodes);
-
-        // 4. Guardar
         $update = $this->pdo->prepare("UPDATE users SET two_factor_recovery_codes = ? WHERE id = ?");
         if ($update->execute([$jsonCodes, $this->userId])) {
             $this->logSecurityAction('2fa_regen_codes');
@@ -395,8 +395,6 @@ class SettingsService {
              return ['success' => false, 'message' => $this->i18n->t('api.db_error')];
         }
     }
-    
-    // ==================================================
 
     public function getSessions() {
         $stmt = $this->pdo->prepare("SELECT id, selector, ip_address, user_agent, created_at FROM user_auth_tokens WHERE user_id = ? ORDER BY created_at DESC");

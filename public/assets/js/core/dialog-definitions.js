@@ -14,6 +14,13 @@ export const DialogDefinitions = {
             type: 'danger',
             confirmText: 'Sí, eliminar',
             cancelText: 'Cancelar'
+        },
+        VERIFY_EMAIL: {
+            get title() { return I18n.t('settings.profile.verify_email_title'); },
+            get message() { return I18n.t('settings.profile.verify_email_msg'); },
+            type: 'verify-email',
+            get confirmText() { return I18n.t('settings.profile.btn_verify'); },
+            get cancelText() { return I18n.t('settings.profile.btn_cancel'); }
         }
     },
 
@@ -45,8 +52,6 @@ export const DialogDefinitions = {
             confirmText: 'Desactivar',
             cancelText: 'Cancelar'
         },
-        // Este diálogo usa un template especial HTML (template-regen-codes)
-        // por lo que no necesita título/mensaje aquí, ya están en el HTML.
         REGENERATE: {
             type: 'regen-codes'
         }

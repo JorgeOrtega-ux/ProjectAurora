@@ -121,7 +121,11 @@
             "lang_title": "Idioma",
             "lang_desc": "Selecciona el idioma de la interfaz.",
             "links_title": "Abrir enlaces en pestaña nueva",
-            "links_desc": "Los enlaces externos se abrirán en otra ventana."
+            "links_desc": "Los enlaces externos se abrirán en otra ventana.",
+            "verify_email_title": "Verificar identidad",
+            "verify_email_msg": "Por seguridad, hemos enviado un código a tu correo actual. Ingrésalo para continuar.",
+            "btn_verify": "Verificar",
+            "code_placeholder": "Código de 6 dígitos"
         },
         "security": {
             "title": "Inicio de sesión y seguridad",
@@ -239,7 +243,8 @@
             "saving": "Guardando...",
             "pic_updated": "Foto de perfil actualizada.",
             "confirm_delete": "¿Estás seguro de querer eliminar tu foto de perfil?",
-            "pic_deleted": "Foto eliminada. Se ha generado una por defecto."
+            "pic_deleted": "Foto eliminada. Se ha generado una por defecto.",
+            "email_code_req": "Debes ingresar el código."
         },
         "devices": {
             "load_error": "Error al cargar sesiones.",
@@ -359,6 +364,7 @@
         "identity_rate_limit": "Solo puedes cambiar este dato una vez cada 12 días.",
         "pref_rate_limit": "Demasiados cambios recientes. Espera un momento.",
         "recovery_status": "Estado obtenido.",
-        "recovery_regenerated": "Códigos regenerados."
+        "recovery_regenerated": "Códigos regenerados.",
+        "auth_required": "Verificación requerida. Solicita un código primero."
     }
 }
