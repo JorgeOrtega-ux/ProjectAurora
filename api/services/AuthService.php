@@ -21,7 +21,25 @@ class AuthService {
         $this->turnstileSecret = !empty($secret) ? $secret : '1x0000000000000000000000000000000AA';
     }
 
+    /**
+     * Verifica si la opción de registro está habilitada en el servidor.
+     * No verifica modo mantenimiento (desacoplado).
+     */
+    private function checkRegistrationStatus() {
+        $allowed = Utils::getServerConfig($this->pdo, 'allow_registrations', '1');
+        
+        if ($allowed === '0') {
+            return ['success' => false, 'message' => 'El registro de nuevos usuarios está deshabilitado temporalmente.'];
+        }
+        
+        return ['success' => true];
+    }
+
     public function registerStep1($email, $password, $turnstileToken) {
+        // Verificar Configuración
+        $configCheck = $this->checkRegistrationStatus();
+        if (!$configCheck['success']) return $configCheck;
+
         $turnstileCheck = $this->verifyTurnstile($turnstileToken);
         if (!$turnstileCheck['success']) {
             return ['success' => false, 'message' => 'Error de seguridad (Captcha): ' . $turnstileCheck['message']];
@@ -55,6 +73,10 @@ class AuthService {
     }
 
     public function initiateVerification($username) {
+        // Verificar Configuración
+        $configCheck = $this->checkRegistrationStatus();
+        if (!$configCheck['success']) return $configCheck;
+
         if (!isset($_SESSION['temp_register']['email'])) {
             return ['success' => false, 'message' => $this->i18n->t('api.register_expired')];
         }
@@ -130,6 +152,10 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.no_verification')];
         }
         
+        // Bloquear reenvío si el registro está cerrado globalmente
+        $configCheck = $this->checkRegistrationStatus();
+        if (!$configCheck['success']) return $configCheck;
+        
         if ($this->checkSecurityBlock('resend_code_req', 3, 10, $email)) {
              return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
@@ -175,6 +201,10 @@ class AuthService {
     }
 
     public function completeRegister($code) {
+        // Verificar Configuración
+        $configCheck = $this->checkRegistrationStatus();
+        if (!$configCheck['success']) return $configCheck;
+
         $email = $_SESSION['pending_verification_email'] ?? '';
 
         if (empty($code) || empty($email)) {
@@ -276,6 +306,20 @@ class AuthService {
             if ($status === 'deleted') {
                 return ['success' => false, 'message' => $this->i18n->t('api.account_deleted')];
             }
+
+            // === VERIFICAR CONFIGURACIÓN DE LOGIN (allow_login) ===
+            // Nota: No verificamos Maintenance Mode aquí, solo si el login está desactivado explícitamente.
+            
+            $allowLogin = Utils::getServerConfig($this->pdo, 'allow_login', '1');
+            $userRole = $user['role'] ?? 'user';
+            $staffRoles = ['founder', 'administrator', 'moderator'];
+
+            // Si allow_login es '0' y el usuario NO es staff, bloqueamos.
+            // Si es staff, siempre permitimos entrar (para poder administrar).
+            if ($allowLogin === '0' && !in_array($userRole, $staffRoles)) {
+                return ['success' => false, 'message' => 'El inicio de sesión está deshabilitado temporalmente.'];
+            }
+            // ======================================================
 
             if (isset($user['two_factor_enabled']) && $user['two_factor_enabled'] == 1) {
                 $_SESSION['2fa_pending_user_id'] = $user['id'];
@@ -450,10 +494,6 @@ class AuthService {
         
         return ['success' => true, 'message' => $this->i18n->t('api.bye'), 'redirect' => '/ProjectAurora/login'];
     }
-
-    // =========================================================================
-    //  NUEVOS MÉTODOS PARA AUTO-LOGIN (Refactorizados desde index.php)
-    // =========================================================================
 
     /**
      * Intenta iniciar sesión automáticamente usando la cookie de persistencia.

@@ -1,3 +1,4 @@
+-- [EXISTING CONTENT OF bd.sql] --
 CREATE DATABASE IF NOT EXISTS project_aurora_db;
 USE project_aurora_db;
 
@@ -9,8 +10,9 @@ DROP TABLE IF EXISTS user_preferences;
 DROP TABLE IF EXISTS security_logs;
 DROP TABLE IF EXISTS password_resets;
 DROP TABLE IF EXISTS verification_codes;
-DROP TABLE IF EXISTS profile_changes; -- Nueva tabla para limpieza
+DROP TABLE IF EXISTS profile_changes;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS server_config;
 
 -- =========================================================
 -- CREACIÓN DE TABLAS
@@ -71,11 +73,8 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     user_id INT NOT NULL,
     language VARCHAR(20) NOT NULL DEFAULT 'es-latam',
     open_links_new_tab TINYINT(1) NOT NULL DEFAULT 1,
-    
-    -- NUEVAS COLUMNAS
-    theme VARCHAR(20) NOT NULL DEFAULT 'sync', -- 'sync', 'light', 'dark'
-    extended_toast TINYINT(1) NOT NULL DEFAULT 0, -- 0 = Normal (3s), 1 = Extendido (10s)
-    
+    theme VARCHAR(20) NOT NULL DEFAULT 'sync',
+    extended_toast TINYINT(1) NOT NULL DEFAULT 0,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE KEY unique_user (user_id)
@@ -94,13 +93,10 @@ CREATE TABLE IF NOT EXISTS user_auth_tokens (
     INDEX (selector)
 );
 
--- =========================================================
--- NUEVA TABLA: Historial de Cambios de Perfil
--- =========================================================
 CREATE TABLE IF NOT EXISTS profile_changes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    change_type VARCHAR(50) NOT NULL, -- 'username', 'email', 'avatar'
+    change_type VARCHAR(50) NOT NULL,
     old_value TEXT DEFAULT NULL,
     new_value TEXT DEFAULT NULL,
     ip_address VARCHAR(45) DEFAULT NULL,
@@ -110,3 +106,18 @@ CREATE TABLE IF NOT EXISTS profile_changes (
     INDEX (user_id),
     INDEX (change_type)
 );
+
+-- =========================================================
+-- TABLA DE CONFIGURACIÓN DEL SERVIDOR
+-- =========================================================
+CREATE TABLE IF NOT EXISTS server_config (
+    config_key VARCHAR(50) PRIMARY KEY,
+    config_value VARCHAR(255) NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- INSERCIÓN DE VALORES POR DEFECTO
+INSERT IGNORE INTO server_config (config_key, config_value) VALUES 
+('maintenance_mode', '0'),
+('allow_registrations', '1'),
+('allow_login', '1'); -- NUEVO CAMPO

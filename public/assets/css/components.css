@@ -545,6 +545,8 @@ input:checked+.component-toggle-slider:before { transform: translateX(20px); }
     background-color: var(--color-error-bg);
     color: var(--color-toast-error-text);
     border-color: #ffcdd2;
+    margin-top: 8px;
+    margin-bottom: 0;
     text-align: center;
 }
 .component-message--success {

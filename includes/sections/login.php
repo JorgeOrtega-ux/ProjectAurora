@@ -49,8 +49,7 @@
         </div>
 
         <div class="component-text-footer">
-            <p><?php echo $i18n->t('auth.no_account'); ?> <a href="<?php echo $basePath; ?>register"><?php echo $i18n->t('auth.register_link'); ?></a></p>
-            
+<p><?php echo $i18n->t('auth.no_account'); ?> <a href="<?php echo $basePath; ?>register" data-nav="register"><?php echo $i18n->t('auth.register_link'); ?></a></p>            
             <?php if (isset($_SESSION['error'])): ?>
                 <div class="component-message component-message--error">
                     <?php echo $_SESSION['error']; unset($_SESSION['error']); ?>

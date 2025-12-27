@@ -1,42 +1,50 @@
 <?php
 // public/loader.php
 
-// === CARGA DEL SISTEMA (BOOTSTRAP) ===
-// Esto nos devuelve $pdo e $i18n y configura sesión, BD y errores.
 $services = require_once __DIR__ . '/../includes/bootstrap.php';
 extract($services); 
 
-// === BASEPATH ===
-// Mantenemos la definición explícita para el contexto de carga asíncrona
 $basePath = '/ProjectAurora/'; 
-
-// Definimos qué secciones son públicas
-$publicSections = [
-    'login', 
-    'register', 
-    'register/aditional-data', 
-    'register/verification-account',
-    'recover-password',
-    'reset-password',
-    '404'
-];
-
 $section = $_GET['section'] ?? 'main';
 $section = strtok($section, '?');
 
-// VERIFICACIÓN DE SEGURIDAD
+// === VERIFICACIÓN DE MANTENIMIENTO (LOADER) ===
+$maintenanceMode = Utils::getServerConfig($pdo, 'maintenance_mode', '0');
+$userRole = $_SESSION['role'] ?? 'guest';
+$allowedRoles = ['founder', 'administrator', 'moderator'];
+
+// LISTA BLANCA: Secciones que SIEMPRE se deben cargar, incluso en mantenimiento
+$alwaysVisibleSections = [
+    'login', 
+    'register', 
+    'register/aditional-data', 
+    'register/verification-account', 
+    'recover-password', 
+    'reset-password'
+];
+
+// Bloquear solo si: Mantenimiento activo Y No es staff Y No es una sección pública
+if ($maintenanceMode === '1' && !in_array($userRole, $allowedRoles) && !in_array($section, $alwaysVisibleSections)) {
+    include __DIR__ . '/maintenance.php';
+    exit;
+}
+// ==============================================
+
+// Definimos secciones públicas para el control de sesión
+$publicSections = $alwaysVisibleSections; 
+$publicSections[] = '404'; // Agregamos 404 a las públicas
+
+// VERIFICACIÓN DE SEGURIDAD (Sesión expirada)
 if (!isset($_SESSION['user_id']) && !in_array($section, $publicSections)) {
     http_response_code(401);
     echo "<div class='auth-container'><p>" . $i18n->t('errors.session_expired') . "</p></div>";
     exit;
 }
 
-// === Carga de datos de usuario y Avatar desde Utils ===
 $userRole = $_SESSION['role'] ?? 'guest';
 $isLoggedIn = isset($_SESSION['user_id']);
 $globalAvatarSrc = Utils::getGlobalAvatarSrc();
 
-// Cargamos las rutas
 $routes = require __DIR__ . '/../config/routes.php';
 
 if (array_key_exists($section, $routes)) {

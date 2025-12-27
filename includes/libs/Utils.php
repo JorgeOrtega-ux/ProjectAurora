@@ -107,6 +107,21 @@ class Utils {
         exit;
     }
 
+    /**
+     * Obtiene una configuración del servidor desde la BD.
+     * Retorna el valor por defecto si falla o no existe.
+     */
+    public static function getServerConfig($pdo, $key, $default = '0') {
+        try {
+            $stmt = $pdo->prepare("SELECT config_value FROM server_config WHERE config_key = ? LIMIT 1");
+            $stmt->execute([$key]);
+            $val = $stmt->fetchColumn();
+            return $val !== false ? $val : $default;
+        } catch (Exception $e) {
+            return $default;
+        }
+    }
+
     public static function initI18n() {
         $userLang = $_SESSION['preferences']['language'] ?? 'es-latam';
         return new I18n($userLang);

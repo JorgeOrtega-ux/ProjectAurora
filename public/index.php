@@ -1,16 +1,14 @@
 <?php
 // public/index.php
 
-// 1. BOOTSTRAP (Carga BD, Sesión, Utils, I18n)
+// 1. BOOTSTRAP
 $services = require_once __DIR__ . '/../includes/bootstrap.php';
 extract($services); 
 
 // 2. SEGURIDAD HTTP
-// Obtenemos el nonce llamando al método que creamos en Utils
 $cspNonce = Utils::applySecurityHeaders();
 
-// 3. AUTO-LOGIN (Middleware)
-// Instanciamos AuthService solo para intentar el login automático si no hay sesión
+// 3. AUTO-LOGIN
 if (!isset($_SESSION['user_id'])) {
     require_once __DIR__ . '/../api/services/AuthService.php';
     $authService = new AuthService($pdo, $i18n); 
@@ -25,8 +23,13 @@ if (empty($_SESSION['csrf_token'])) {
 // 5. RUTEO Y CONTROL DE ACCESO
 require_once __DIR__ . '/../config/routers/router.php';
 
-$isLoggedIn = isset($_SESSION['user_id']);
-$publicRoutes = [
+// === CONFIGURACIÓN DE MANTENIMIENTO ===
+$maintenanceMode = Utils::getServerConfig($pdo, 'maintenance_mode', '0');
+$userRole = $_SESSION['role'] ?? 'guest';
+$allowedRoles = ['founder', 'administrator', 'moderator'];
+
+// LISTA BLANCA: Secciones que SIEMPRE deben ser visibles (Renderizar HTML)
+$alwaysVisibleSections = [
     'login', 
     'register', 
     'register/aditional-data', 
@@ -35,17 +38,32 @@ $publicRoutes = [
     'reset-password'
 ];
 
-// Redirecciones de seguridad (Auth Guard)
-if (!$isLoggedIn && !in_array($currentSection, $publicRoutes)) {
-    header("Location: " . $basePath . "login");
-    exit;
-} elseif ($isLoggedIn && in_array($currentSection, $publicRoutes)) {
-    header("Location: " . $basePath);
-    exit;
+// Determinar si debemos mostrar la pantalla de Mantenimiento
+// Solo si está activo, el usuario NO es staff, y NO está intentando ver una sección pública.
+$showMaintenanceScreen = (
+    $maintenanceMode === '1' && 
+    !in_array($userRole, $allowedRoles) && 
+    !in_array($currentSection, $alwaysVisibleSections)
+);
+
+// 6. GESTIÓN DE SESIÓN
+$isLoggedIn = isset($_SESSION['user_id']);
+$publicRoutes = $alwaysVisibleSections; // Usamos la misma lista para el Auth Guard
+
+// Redirecciones de Seguridad (Auth Guard)
+if (!$showMaintenanceScreen) {
+    if (!$isLoggedIn && !in_array($currentSection, $publicRoutes)) {
+        header("Location: " . $basePath . "login");
+        exit;
+    } elseif ($isLoggedIn && in_array($currentSection, $publicRoutes)) {
+        // Si ya está logueado e intenta ir al login, lo mandamos al inicio
+        header("Location: " . $basePath);
+        exit;
+    }
 }
 
-// Refrescar datos de sesión si está logueado
-if ($isLoggedIn) {
+// Refrescar datos de sesión si corresponde
+if ($isLoggedIn && !$showMaintenanceScreen) {
     try {
         $stmt = $pdo->prepare("SELECT role, avatar_path, username, email, two_factor_enabled FROM users WHERE id = ? LIMIT 1");
         $stmt->execute([$_SESSION['user_id']]);
@@ -59,22 +77,28 @@ if ($isLoggedIn) {
             $_SESSION['two_factor_enabled'] = $freshUser['two_factor_enabled'];
         }
     } catch (Exception $e) {
-        error_log("Error al refrescar sesión: " . $e->getMessage());
+        error_log("Error sesión: " . $e->getMessage());
     }
 }
 
-// 6. DATOS DE VISTA
+// 7. PREPARAR VISTA
 $userRole = $_SESSION['role'] ?? 'guest';
 $globalAvatarSrc = Utils::getGlobalAvatarSrc();
 $userLang = $_SESSION['preferences']['language'] ?? 'es-latam';
 $turnstileSiteKey = $_ENV['TURNSTILE_SITE_KEY'] ?? '';
 
-// Pre-codificar JSON para evitar errores de sintaxis en el HTML
 $jsUserPrefs = json_encode($_SESSION['preferences'] ?? new stdClass());
 $jsTranslations = json_encode($i18n->getAll());
 
-$routesMap = require __DIR__ . '/../config/routes.php';
-$fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
+// Decidir qué archivo cargar
+if ($showMaintenanceScreen) {
+    $fileToLoad = __DIR__ . '/maintenance.php';
+    $showInterface = false; // Ocultar Header y Menú
+} else {
+    $routesMap = require __DIR__ . '/../config/routes.php';
+    $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
+    $showInterface = $isLoggedIn; // Mostrar interfaz solo si está dentro del sistema
+}
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo htmlspecialchars($userLang); ?>">
@@ -111,15 +135,16 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
     <div class="page-wrapper">
         <div class="main-content">
             <div class="general-content">
-                <?php if ($isLoggedIn): ?>
+                <?php if ($showInterface): ?>
                     <div class="general-content-top">
                         <?php include __DIR__ . '/../includes/layouts/header.php'; ?>
                     </div>
                 <?php endif; ?>
                 <div class="general-content-bottom">
-                    <?php if ($isLoggedIn): ?>
+                    <?php if ($showInterface): ?>
                         <?php include __DIR__ . '/../includes/modules/module-surface.php'; ?>
                     <?php endif; ?>
+                    
                     <div class="general-content-scrolleable overflow-y" data-container="main-section">
                         <?php
                         if (file_exists($fileToLoad)) {
