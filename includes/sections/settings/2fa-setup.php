@@ -26,9 +26,9 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
         <?php if ($is2FAEnabled): ?>
             
             <div class="component-card component-card--grouped">
-                <div class="component-group-item">
+                <div class="component-group-item component-group-item--stacked">
                     <div class="component-card__content">
-                        <div class="component-card__icon-container component-card__icon-container--bordered" style="color: var(--color-success); background: var(--color-success-bg);">
+                        <div class="component-card__icon-container component-card__icon-container--bordered">
                             <span class="material-symbols-rounded">verified_user</span>
                         </div>
                         <div class="component-card__text">
@@ -38,19 +38,8 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
                             </p>
                         </div>
                     </div>
-                </div>
-
-                <hr class="component-divider">
-
-                <div class="component-group-item">
-                    <div class="component-card__content">
-                            <div class="component-card__text">
-                            <p class="component-card__description">
-                                Para desactivar la protección, pulsa el botón.
-                            </p>
-                            </div>
-                    </div>
-                    <div class="component-card__actions actions-right">
+                    
+                    <div class="component-card__actions actions-right actions-force-end">
                         <button type="button" class="component-button" id="btn-disable-2fa" style="color: var(--color-error); border-color: rgba(211, 47, 47, 0.3);">
                             <?php echo $i18n->t('settings.2fa.btn_disable'); ?>
                         </button>
@@ -58,7 +47,7 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
                 </div>
             </div>
 
-            <div class="component-card component-card--grouped mt-16">
+            <div class="component-card component-card--grouped">
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__icon-container component-card__icon-container--bordered">
@@ -261,7 +250,7 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
 
                     <div id="recovery-codes-list" style="background: var(--bg-hover-light); padding: 16px; border-radius: 8px; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-family: monospace; font-size: 14px; text-align: center; border: 1px solid var(--border-light);"></div>
 
-                    <div class="component-card__actions w-100 mt-16">
+                    <div class="component-card__actions w-100">
                         <button type="button" class="component-button primary w-100" onclick="window.location.reload()">
                             <?php echo $i18n->t('settings.2fa.btn_finish'); ?>
                         </button>
