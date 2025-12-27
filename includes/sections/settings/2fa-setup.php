@@ -116,8 +116,8 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
                                 <span class="material-symbols-rounded">qr_code_scanner</span>
                             </div>
                             <div class="component-card__text">
-                                <h2 class="component-card__title">Configurar aplicación</h2>
-                                <p class="component-card__description">Escanea el código QR</p>
+                                <h2 class="component-card__title"><?php echo $i18n->t('settings.2fa.step1_title'); ?></h2>
+                                <p class="component-card__description"><?php echo $i18n->t('settings.2fa.step1_desc'); ?></p>
                             </div>
                         </div>
                         <span class="material-symbols-rounded component-accordion-chevron">expand_more</span>
@@ -157,8 +157,8 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
                                 <span class="material-symbols-rounded">key</span>
                             </div>
                             <div class="component-card__text">
-                                <h2 class="component-card__title">Configuración manual</h2>
-                                <p class="component-card__description">Si no puedes escanear</p>
+                                <h2 class="component-card__title"><?php echo $i18n->t('settings.2fa.step2_title'); ?></h2>
+                                <p class="component-card__description"><?php echo $i18n->t('settings.2fa.step2_desc'); ?></p>
                             </div>
                         </div>
                         <span class="material-symbols-rounded component-accordion-chevron">expand_more</span>
@@ -166,8 +166,17 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
 
                     <div class="component-accordion-content">
                         <hr class="component-divider">
+                        
                         <div class="component-group-item component-group-item--stacked">
-                            <div class="w-100 component-stage-form">
+                            
+                            <div class="component-card__content">
+                                <div class="component-card__text">
+                                    <h2 class="component-card__title"><?php echo $i18n->t('settings.2fa.step2_inner_title'); ?></h2>
+                                    <p class="component-card__description"><?php echo $i18n->t('settings.2fa.step2_inner_desc'); ?></p>
+                                </div>
+                            </div>
+
+                            <div class="w-100 component-stage-form mt-16">
                                 <div class="component-input-wrapper component-input-wrapper--floating">
                                     <input type="text" id="manual-secret-input" class="component-text-input has-action" readonly placeholder="Cargando...">
                                     <label for="manual-secret-input" class="component-label-floating">Clave de configuración</label>
@@ -177,6 +186,7 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
                                 </div>
                             </div>
                         </div>
+
                     </div>
                 </div>
 
@@ -189,8 +199,8 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
                                 <span class="material-symbols-rounded">lock_clock</span>
                             </div>
                             <div class="component-card__text">
-                                <h2 class="component-card__title">Verificar código</h2>
-                                <p class="component-card__description">Activar protección</p>
+                                <h2 class="component-card__title"><?php echo $i18n->t('settings.2fa.step3_title'); ?></h2>
+                                <p class="component-card__description"><?php echo $i18n->t('settings.2fa.step3_desc'); ?></p>
                             </div>
                         </div>
                         <span class="material-symbols-rounded component-accordion-chevron">expand_more</span>
@@ -198,18 +208,29 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
 
                     <div class="component-accordion-content">
                         <hr class="component-divider">
+                        
                         <div class="component-group-item component-group-item--stacked">
-                            <div class="w-100 component-stage-form">
+                            
+                            <div class="component-card__content">
+                                <div class="component-card__text">
+                                    <h2 class="component-card__title"><?php echo $i18n->t('settings.2fa.step3_inner_title'); ?></h2>
+                                    <p class="component-card__description"><?php echo $i18n->t('settings.2fa.step3_inner_desc'); ?></p>
+                                </div>
+                            </div>
+
+                            <div class="w-100 component-stage-form mt-16">
                                 <div class="component-input-wrapper">
                                     <input type="text" id="input-2fa-verify" class="component-text-input" placeholder="000 000" maxlength="7" style="font-family: monospace; letter-spacing: 2px; font-size: 16px; text-align: center;">
                                 </div>
                             </div>
+                            
                             <div class="component-card__actions actions-right w-100 mt-16">
                                 <button type="button" class="component-button primary w-100" id="btn-confirm-2fa">
                                     <?php echo $i18n->t('settings.2fa.btn_verify'); ?>
                                 </button>
                             </div>
                         </div>
+
                     </div>
                 </div>
 
