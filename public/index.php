@@ -1,162 +1,78 @@
 <?php
 // public/index.php
 
-// === CARGA DEL SISTEMA (BOOTSTRAP) ===
-// Esto nos devuelve $pdo e $i18n y configura sesión, BD y errores.
+// 1. BOOTSTRAP (Carga BD, Sesión, Utils, I18n)
 $services = require_once __DIR__ . '/../includes/bootstrap.php';
 extract($services); 
 
-// =======================================================================
-// INICIO BLOQUE DE SEGURIDAD (CABECERAS HTTP & CSP)
-// =======================================================================
+// 2. SEGURIDAD HTTP
+// Obtenemos el nonce llamando al método que creamos en Utils
+$cspNonce = Utils::applySecurityHeaders();
 
-// 1. Generar Nonce aleatorio para scripts inline
-$cspNonce = base64_encode(random_bytes(16));
-
-// 2. Definir Content-Security-Policy
-// Nota: Se agregan las fuentes y dominios necesarios para tu proyecto
-header("Content-Security-Policy: " .
-    "default-src 'self'; " .
-    "script-src 'self' https://challenges.cloudflare.com https://unpkg.com 'nonce-$cspNonce'; " .
-    "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; " .
-    "img-src 'self' data: https://ui-avatars.com; " .
-    "font-src 'self' https://fonts.gstatic.com; " .
-    "frame-src https://challenges.cloudflare.com; " .
-    "connect-src 'self' https://challenges.cloudflare.com https://unpkg.com; " .
-    "object-src 'none'; " .
-    "base-uri 'self';"
-);
-
-// 3. Cabeceras adicionales de hardening
-header("X-Frame-Options: DENY");
-header("X-Content-Type-Options: nosniff");
-header("Referrer-Policy: strict-origin-when-cross-origin");
-
-// =======================================================================
-// FIN BLOQUE DE SEGURIDAD
-// =======================================================================
-
-// Carga de Rutas
-require_once __DIR__ . '/../config/routers/router.php';
-
-// Cargar variables de entorno para Turnstile (ya cargadas en memoria por db.php -> bootstrap)
-$turnstileSiteKey = $_ENV['TURNSTILE_SITE_KEY'] ?? '1x00000000000000000000BB';
-
-// === MIDDLEWARE: AUTO-LOGIN POR COOKIE (TOKEN ROTATIVO) ===
-if (!isset($_SESSION['user_id']) && isset($_COOKIE['auth_persistence_token'])) {
-    $parts = explode(':', $_COOKIE['auth_persistence_token']);
-
-    if (count($parts) === 2) {
-        $selector = $parts[0];
-        $validator = $parts[1];
-
-        $stmt = $pdo->prepare("SELECT * FROM user_auth_tokens WHERE selector = ? AND expires_at > NOW() LIMIT 1");
-        $stmt->execute([$selector]);
-        $authToken = $stmt->fetch();
-
-        if ($authToken) {
-            if (hash_equals($authToken['hashed_validator'], hash('sha256', $validator))) {
-                $stmtUser = $pdo->prepare("SELECT * FROM users WHERE id = ?");
-                $stmtUser->execute([$authToken['user_id']]);
-                $user = $stmtUser->fetch();
-
-                if ($user) {
-                    session_regenerate_id(true);
-                    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-                    $_SESSION['user_id'] = $user['id'];
-                    $_SESSION['username'] = $user['username'];
-                    $_SESSION['role'] = $user['role'];
-                    $_SESSION['avatar'] = $user['avatar_path'];
-                    $_SESSION['email'] = $user['email'];
-
-                    $prefStmt = $pdo->prepare("SELECT language, open_links_new_tab, theme, extended_toast FROM user_preferences WHERE user_id = ?");
-                    $prefStmt->execute([$user['id']]);
-                    $prefs = $prefStmt->fetch();
-                    $_SESSION['preferences'] = $prefs ? [
-                        'language' => $prefs['language'],
-                        'open_links_new_tab' => (bool)$prefs['open_links_new_tab'],
-                        'theme' => $prefs['theme'],
-                        'extended_toast' => (bool)$prefs['extended_toast']
-                    ] : ['language' => 'es-latam', 'open_links_new_tab' => true, 'theme' => 'sync', 'extended_toast' => false];
-
-                    $pdo->prepare("DELETE FROM user_auth_tokens WHERE id = ?")->execute([$authToken['id']]);
-
-                    $newSelector = bin2hex(random_bytes(12));
-                    $newValidator = bin2hex(random_bytes(32));
-                    $newHashedValidator = hash('sha256', $newValidator);
-                    $newExpires = date('Y-m-d H:i:s', time() + (86400 * 30));
-
-                    $ins = $pdo->prepare("INSERT INTO user_auth_tokens (user_id, selector, hashed_validator, expires_at) VALUES (?, ?, ?, ?)");
-                    $ins->execute([$user['id'], $newSelector, $newHashedValidator, $newExpires]);
-
-                    $isSecure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
-                    setcookie('auth_persistence_token', "$newSelector:$newValidator", [
-                        'expires' => time() + (86400 * 30),
-                        'path' => '/',
-                        'domain' => '',
-                        'secure' => $isSecure,
-                        'httponly' => true,
-                        'samesite' => 'Strict'
-                    ]);
-                }
-            }
-        }
-    }
+// 3. AUTO-LOGIN (Middleware)
+// Instanciamos AuthService solo para intentar el login automático si no hay sesión
+if (!isset($_SESSION['user_id'])) {
+    require_once __DIR__ . '/../api/services/AuthService.php';
+    $authService = new AuthService($pdo, $i18n); 
+    $authService->attemptAutoLogin();
 }
 
+// 4. CSRF TOKEN INIT
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-$isLoggedIn = isset($_SESSION['user_id']);
-// $i18n ya fue inicializado en bootstrap, pero actualizamos si hay preferencia de sesión
-$userLang = $_SESSION['preferences']['language'] ?? 'es-latam';
+// 5. RUTEO Y CONTROL DE ACCESO
+require_once __DIR__ . '/../config/routers/router.php';
 
+$isLoggedIn = isset($_SESSION['user_id']);
 $publicRoutes = [
-    'login',
-    'register',
-    'register/aditional-data',
-    'register/verification-account',
-    'recover-password',
+    'login', 
+    'register', 
+    'register/aditional-data', 
+    'register/verification-account', 
+    'recover-password', 
     'reset-password'
 ];
 
 // Redirecciones de seguridad (Auth Guard)
-if (!$isLoggedIn) {
-    if (!in_array($currentSection, $publicRoutes)) {
-        header("Location: " . $basePath . "login");
-        exit;
-    }
-} else {
-    if (in_array($currentSection, $publicRoutes)) {
-        header("Location: " . $basePath);
-        exit;
-    }
+if (!$isLoggedIn && !in_array($currentSection, $publicRoutes)) {
+    header("Location: " . $basePath . "login");
+    exit;
+} elseif ($isLoggedIn && in_array($currentSection, $publicRoutes)) {
+    header("Location: " . $basePath);
+    exit;
 }
 
 // Refrescar datos de sesión si está logueado
 if ($isLoggedIn) {
     try {
-        if (isset($pdo)) {
-            $stmt = $pdo->prepare("SELECT role, avatar_path, username, email, two_factor_enabled FROM users WHERE id = ? LIMIT 1");
-            $stmt->execute([$_SESSION['user_id']]);
-            $freshUser = $stmt->fetch();
+        $stmt = $pdo->prepare("SELECT role, avatar_path, username, email, two_factor_enabled FROM users WHERE id = ? LIMIT 1");
+        $stmt->execute([$_SESSION['user_id']]);
+        $freshUser = $stmt->fetch();
 
-            if ($freshUser) {
-                $_SESSION['role'] = $freshUser['role'];
-                $_SESSION['avatar'] = $freshUser['avatar_path'];
-                $_SESSION['username'] = $freshUser['username'];
-                $_SESSION['email'] = $freshUser['email'];
-                $_SESSION['two_factor_enabled'] = $freshUser['two_factor_enabled'];
-            }
+        if ($freshUser) {
+            $_SESSION['role'] = $freshUser['role'];
+            $_SESSION['avatar'] = $freshUser['avatar_path'];
+            $_SESSION['username'] = $freshUser['username'];
+            $_SESSION['email'] = $freshUser['email'];
+            $_SESSION['two_factor_enabled'] = $freshUser['two_factor_enabled'];
         }
     } catch (Exception $e) {
         error_log("Error al refrescar sesión: " . $e->getMessage());
     }
 }
 
+// 6. DATOS DE VISTA
 $userRole = $_SESSION['role'] ?? 'guest';
 $globalAvatarSrc = Utils::getGlobalAvatarSrc();
+$userLang = $_SESSION['preferences']['language'] ?? 'es-latam';
+$turnstileSiteKey = $_ENV['TURNSTILE_SITE_KEY'] ?? '';
+
+// Pre-codificar JSON para evitar errores de sintaxis en el HTML
+$jsUserPrefs = json_encode($_SESSION['preferences'] ?? new stdClass());
+$jsTranslations = json_encode($i18n->getAll());
+
 $routesMap = require __DIR__ . '/../config/routes.php';
 $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
 ?>
@@ -174,9 +90,8 @@ $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
 
     <script nonce="<?php echo $cspNonce; ?>">
         window.BASE_PATH = '<?php echo $basePath; ?>';
-        window.USER_PREFS = <?php echo json_encode($_SESSION['preferences'] ?? new stdClass()); ?>;
-        window.TRANSLATIONS = <?php echo json_encode($i18n->getAll()); ?>;
-        // Exponemos la clave del sitio para el JS
+        window.USER_PREFS = <?php echo $jsUserPrefs; ?>;
+        window.TRANSLATIONS = <?php echo $jsTranslations; ?>;
         window.TURNSTILE_SITE_KEY = '<?php echo $turnstileSiteKey; ?>';
     </script>
     <script src="https://unpkg.com/@popperjs/core@2"></script>

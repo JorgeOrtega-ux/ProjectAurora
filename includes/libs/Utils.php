@@ -2,16 +2,14 @@
 // includes/libs/Utils.php
 
 require_once __DIR__ . '/I18n.php';
-require_once __DIR__ . '/Logger.php'; // Aseguramos que el Logger esté disponible
+require_once __DIR__ . '/Logger.php';
 
 class Utils {
 
     /**
      * Inicializa los manejadores globales de errores y excepciones.
-     * Debe llamarse al inicio de la aplicación (ej: en loader.php o index.php).
      */
     public static function initErrorHandlers() {
-        // 1. Manejador de Excepciones No Capturadas (Uncaught Exceptions)
         set_exception_handler(function ($e) {
             Logger::app('Uncaught Exception', [
                 'type' => get_class($e),
@@ -20,18 +18,14 @@ class Utils {
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
             self::showGenericErrorPage();
         });
 
-        // 2. Manejador de Errores PHP (Notices, Warnings, etc.)
         set_error_handler(function ($errno, $errstr, $errfile, $errline) {
-            // Ignorar errores silenciados con @
             if (!(error_reporting() & $errno)) {
                 return false;
             }
 
-            // Convertir errores en logs
             $level = 'ERROR';
             switch ($errno) {
                 case E_WARNING: $level = 'WARNING'; break;
@@ -45,12 +39,9 @@ class Utils {
                 'errno' => $errno
             ], $level);
 
-            // Si es un error crítico, detener ejecución; si es Warning, dejamos continuar
-            // pero NO mostramos nada en pantalla gracias a display_errors = 0 (configurado en php.ini o runtime)
-            return true; // true evita que PHP use su manejador de errores estándar
+            return true;
         });
 
-        // 3. Manejador de Cierre (Shutdown) para errores Fatales
         register_shutdown_function(function () {
             $error = error_get_last();
             if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
@@ -59,24 +50,47 @@ class Utils {
                     'file' => $error['file'],
                     'line' => $error['line']
                 ], 'CRITICAL');
-                
                 self::showGenericErrorPage();
             }
         });
         
-        // FORZAR SILENCIO EN FRONTEND (Capa extra de seguridad)
         ini_set('display_errors', '0');
         ini_set('log_errors', '1');
     }
 
     /**
-     * Muestra una página de error genérica y termina el script.
+     * Aplica las cabeceras de seguridad y CSP.
+     * @return string El nonce generado para scripts inline.
      */
+    public static function applySecurityHeaders() {
+        // 1. Generar Nonce aleatorio para scripts inline
+        $cspNonce = base64_encode(random_bytes(16));
+
+        // 2. Definir Content-Security-Policy
+        header("Content-Security-Policy: " .
+            "default-src 'self'; " .
+            "script-src 'self' https://challenges.cloudflare.com https://unpkg.com 'nonce-$cspNonce'; " .
+            "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; " .
+            "img-src 'self' data: https://ui-avatars.com; " .
+            "font-src 'self' https://fonts.gstatic.com; " .
+            "frame-src https://challenges.cloudflare.com; " .
+            "connect-src 'self' https://challenges.cloudflare.com https://unpkg.com; " .
+            "object-src 'none'; " .
+            "base-uri 'self';"
+        );
+
+        // 3. Cabeceras adicionales de hardening
+        header("X-Frame-Options: DENY");
+        header("X-Content-Type-Options: nosniff");
+        header("Referrer-Policy: strict-origin-when-cross-origin");
+
+        return $cspNonce;
+    }
+
     public static function showGenericErrorPage() {
         if (!headers_sent()) {
             http_response_code(500);
         }
-        // Verificar si es una petición AJAX/API para responder JSON
         $isApi = (strpos($_SERVER['REQUEST_URI'], '/api/') !== false) || 
                  (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
 
@@ -93,49 +107,29 @@ class Utils {
         exit;
     }
 
-    /**
-     * Inicializa el sistema de internacionalización basado en la sesión.
-     * @return I18n
-     */
     public static function initI18n() {
         $userLang = $_SESSION['preferences']['language'] ?? 'es-latam';
         return new I18n($userLang);
     }
 
-    /**
-     * Envía una respuesta JSON y termina la ejecución.
-     * @param array $data
-     */
     public static function jsonResponse($data) {
         header('Content-Type: application/json');
         echo json_encode($data);
         exit;
     }
 
-    /**
-     * Valida el Token CSRF en peticiones POST.
-     * Si falla, loguea el intento de seguridad y termina.
-     * @param I18n $i18n
-     */
     public static function validateCsrf($i18n) {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!isset($_POST['csrf_token']) || !isset($_SESSION['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-                
-                // LOG DE SEGURIDAD AUTOMÁTICO
                 Logger::security('CSRF Validation Failed', [
                     'post_token' => $_POST['csrf_token'] ?? 'null',
                     'session_token' => $_SESSION['csrf_token'] ?? 'null'
                 ]);
-
                 self::jsonResponse(['success' => false, 'message' => $i18n->t('api.security_error')]);
             }
         }
     }
 
-    /**
-     * Obtiene la fuente (src) del avatar global.
-     * @return string
-     */
     public static function getGlobalAvatarSrc() {
         $src = '';
         if (isset($_SESSION['user_id'])) {

@@ -1,11 +1,8 @@
 <?php
 // api/services/AuthService.php
 
-// Carga de librerías
-// NOTA: El Autoloader de Composer se encarga de GoogleAuthenticator
 use Google\Authenticator\GoogleAuthenticator;
 
-// Agregamos el servicio de correo
 require_once __DIR__ . '/../../includes/libs/MailService.php';
 
 class AuthService {
@@ -17,21 +14,12 @@ class AuthService {
         $this->pdo = $pdo;
         $this->i18n = $i18n;
         
-        // 1. Intentar obtener de $_ENV
         $secret = $_ENV['TURNSTILE_SECRET_KEY'] ?? null;
-        
-        // 2. Si falla o está vacío, intentar getenv()
         if (empty($secret)) {
             $secret = getenv('TURNSTILE_SECRET_KEY');
         }
-    
-        // 3. Si sigue vacío, usar la clave de prueba de Cloudflare (Fallback)
         $this->turnstileSecret = !empty($secret) ? $secret : '1x0000000000000000000000000000000AA';
     }
-
-    // =========================================================================
-    //  MÉTODOS PÚBLICOS (Lógica de Negocio)
-    // =========================================================================
 
     public function registerStep1($email, $password, $turnstileToken) {
         $turnstileCheck = $this->verifyTurnstile($turnstileToken);
@@ -113,7 +101,6 @@ class AuthService {
 
             $_SESSION['pending_verification_email'] = $email;
 
-            // --- ENVÍO REAL DE CORREO (PHPMailer) ---
             $subject = "Verifica tu cuenta en Project Aurora";
             $body = "<h1>Hola, $username</h1>
                      <p>Gracias por registrarte. Tu código de verificación es:</p>
@@ -125,7 +112,6 @@ class AuthService {
             if (!$emailResult['success']) {
                 return ['success' => false, 'message' => 'Error al enviar el correo: ' . $emailResult['message']];
             }
-            // ----------------------------------------
             
             return [
                 'success' => true, 
@@ -148,14 +134,7 @@ class AuthService {
              return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
 
-        $checkTime = $this->pdo->prepare("
-            SELECT created_at 
-            FROM verification_codes 
-            WHERE identifier = ? 
-            AND code_type = 'account_activation' 
-            AND created_at > (NOW() - INTERVAL 60 SECOND)
-            ORDER BY id DESC LIMIT 1
-        ");
+        $checkTime = $this->pdo->prepare("SELECT created_at FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation' AND created_at > (NOW() - INTERVAL 60 SECOND) ORDER BY id DESC LIMIT 1");
         $checkTime->execute([$email]);
         
         if ($checkTime->fetch()) {
@@ -183,13 +162,11 @@ class AuthService {
             $insert->execute([$email, $newCode, $payload, $expiresAt]);
             $this->logSecurityEvent($email, 'resend_code_req');
 
-            // --- ENVÍO REAL DE CORREO (Resend) ---
             $subject = "Nuevo código de verificación - Project Aurora";
             $body = "<p>Has solicitado un nuevo código. Tu código es:</p>
                      <p style='font-size: 24px; font-weight: bold; color: #333; letter-spacing: 4px;'>$newCode</p>";
             
             MailService::send($email, $subject, $body);
-            // -------------------------------------
             
             return ['success' => true, 'message' => $this->i18n->t('api.code_generated')];
         } catch (Exception $e) {
@@ -208,12 +185,7 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block')];
         }
 
-        $sql = "SELECT * FROM verification_codes 
-                WHERE identifier = ? 
-                AND code = ? 
-                AND code_type = 'account_activation' 
-                AND expires_at > NOW() 
-                ORDER BY id DESC LIMIT 1";
+        $sql = "SELECT * FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'account_activation' AND expires_at > NOW() ORDER BY id DESC LIMIT 1";
         
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$email, $code]);
@@ -338,14 +310,11 @@ class AuthService {
 
         $isValid = false;
         
-        // --- CAMBIO PARA COMPOSER ---
         $g = new GoogleAuthenticator();
         if ($g->checkCode($user['two_factor_secret'], $code)) {
             $isValid = true;
         } else {
-            // Verificar códigos de recuperación
             $recoveryHashes = json_decode($user['two_factor_recovery_codes'] ?? '[]', true);
-            
             if (is_array($recoveryHashes)) {
                 foreach ($recoveryHashes as $index => $hash) {
                     if (password_verify($code, $hash)) {
@@ -358,7 +327,6 @@ class AuthService {
                 }
             }
         }
-        // -----------------------------
 
         if ($isValid) {
             unset($_SESSION['2fa_pending_user_id']);
@@ -407,7 +375,6 @@ class AuthService {
             $this->pdo->prepare($sql)->execute([$email, $token, $expiresAt]);
             $this->logSecurityEvent($email, 'recovery_success');
 
-            // --- ENVÍO REAL DE CORREO (Reset Password) ---
             $resetLink = "https://tudominio.com/ProjectAurora/reset-password?token=" . $token; 
             
             $subject = "Recuperar contraseña - Project Aurora";
@@ -416,7 +383,6 @@ class AuthService {
                      <p>Si no fuiste tú, ignora este mensaje.</p>";
             
             MailService::send($email, $subject, $body);
-            // ---------------------------------------------
             
             return [
                 'success' => true, 
@@ -486,7 +452,56 @@ class AuthService {
     }
 
     // =========================================================================
-    //  MÉTODOS PRIVADOS (Helpers Internos)
+    //  NUEVOS MÉTODOS PARA AUTO-LOGIN (Refactorizados desde index.php)
+    // =========================================================================
+
+    /**
+     * Intenta iniciar sesión automáticamente usando la cookie de persistencia.
+     */
+    public function attemptAutoLogin() {
+        // Si ya hay sesión, no hacemos nada
+        if (isset($_SESSION['user_id'])) return;
+
+        // Si no hay cookie, tampoco
+        if (!isset($_COOKIE['auth_persistence_token'])) return;
+
+        $parts = explode(':', $_COOKIE['auth_persistence_token']);
+        if (count($parts) !== 2) return;
+
+        $selector = $parts[0];
+        $validator = $parts[1];
+
+        // Buscar token en BD
+        $stmt = $this->pdo->prepare("SELECT * FROM user_auth_tokens WHERE selector = ? AND expires_at > NOW() LIMIT 1");
+        $stmt->execute([$selector]);
+        $authToken = $stmt->fetch();
+
+        if ($authToken && hash_equals($authToken['hashed_validator'], hash('sha256', $validator))) {
+            // Obtener usuario
+            $stmtUser = $this->pdo->prepare("SELECT * FROM users WHERE id = ?");
+            $stmtUser->execute([$authToken['user_id']]);
+            $user = $stmtUser->fetch();
+
+            if ($user) {
+                // Rellenar sesión (Lógica extraída de completeLogin pero sin redirect)
+                $this->fillSession($user);
+
+                // Rotar el token (Seguridad)
+                $this->rotatePersistenceToken($authToken['id'], $user['id']);
+            }
+        }
+    }
+
+    private function rotatePersistenceToken($oldTokenId, $userId) {
+        // Borrar token viejo
+        $this->pdo->prepare("DELETE FROM user_auth_tokens WHERE id = ?")->execute([$oldTokenId]);
+        
+        // Crear nuevo
+        $this->createPersistenceToken($userId);
+    }
+
+    // =========================================================================
+    //  MÉTODOS PRIVADOS (Helpers)
     // =========================================================================
 
     private function verifyTurnstile($token) {
@@ -576,11 +591,7 @@ class AuthService {
     private function checkSecurityBlock($actionType, $limit, $minutes, $identifier = '') {
         $ip = $this->getClientIp();
         
-        $sql = "SELECT COUNT(*) as failures 
-                FROM security_logs 
-                WHERE (ip_address = ? OR user_identifier = ?) 
-                AND action_type = ? 
-                AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
+        $sql = "SELECT COUNT(*) as failures FROM security_logs WHERE (ip_address = ? OR user_identifier = ?) AND action_type = ? AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
                 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$ip, $identifier, $actionType]);
@@ -615,11 +626,14 @@ class AuthService {
         ]);
     }
 
-    private function completeLogin($user) {
+    /**
+     * Rellena la sesión con los datos del usuario.
+     * Separado de completeLogin para reusabilidad en auto-login.
+     */
+    private function fillSession($user) {
         session_regenerate_id(true);
 
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
@@ -641,9 +655,11 @@ class AuthService {
             'theme' => 'sync',
             'extended_toast' => false
         ];
+    }
 
+    private function completeLogin($user) {
+        $this->fillSession($user);
         $this->createPersistenceToken($user['id']);
-
         return ['success' => true, 'message' => $this->i18n->t('api.welcome'), 'redirect' => '/ProjectAurora/'];
     }
 }
