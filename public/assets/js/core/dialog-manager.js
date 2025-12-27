@@ -11,6 +11,9 @@ export const Dialog = {
         templates: null,
         pill: null 
     },
+    
+    // Timer para la limpieza del DOM
+    cleanupTimer: null,
 
     init: () => {
         Dialog.elements.overlay = document.getElementById('dialog-overlay');
@@ -59,9 +62,6 @@ export const Dialog = {
 
             if (btnConfirm) {
                 btnConfirm.onclick = () => {
-                    // No cerramos inmediatamente, el controlador se encargará 
-                    // o cerramos y dejamos que el controlador lea el input antes de que el DOM desaparezca
-                    // (Dialog.close tiene un delay de 200ms para animaciones)
                     Dialog.close();
                     resolve(true);
                 };
@@ -104,14 +104,22 @@ export const Dialog = {
                 Dialog.elements.container.style.transform = ''; 
             }
 
-            setTimeout(() => {
-                Dialog.elements.wrapper.innerHTML = ''; 
+            // CORRECCIÓN: Guardamos el timer para poder cancelarlo si se abre otro dialog rápidamente
+            if (Dialog.cleanupTimer) clearTimeout(Dialog.cleanupTimer);
+            
+            Dialog.cleanupTimer = setTimeout(() => {
+                if (Dialog.elements.wrapper) {
+                    Dialog.elements.wrapper.innerHTML = ''; 
+                }
             }, 200);
         }
     },
 
     _render: (templateId, data) => {
         if (!Dialog.elements.templates || !Dialog.elements.wrapper) return;
+
+        // CORRECCIÓN: Cancelar limpieza pendiente si abrimos un diálogo inmediatamente después de cerrar otro
+        if (Dialog.cleanupTimer) clearTimeout(Dialog.cleanupTimer);
 
         const template = Dialog.elements.templates.querySelector(`#${templateId}`);
         if (!template) return;
@@ -139,6 +147,9 @@ export const Dialog = {
     },
 
     _show: () => {
+        // Aseguramos cancelación del timer aquí también por seguridad
+        if (Dialog.cleanupTimer) clearTimeout(Dialog.cleanupTimer);
+        
         if (Dialog.elements.overlay) {
             Dialog.elements.overlay.classList.add('active');
         }

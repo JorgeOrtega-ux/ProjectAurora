@@ -24,7 +24,7 @@ $cspNonce = base64_encode(random_bytes(16));
 // Se permiten dominios específicos detectados en tu código:
 // - fonts.googleapis.com y gstatic.com (Fuentes)
 // - challenges.cloudflare.com (Turnstile)
-// - unpkg.com (Librerías JS externas como QR y Popper)
+// - unpkg.com (Librerías JS externas como QR y Popper y sus source maps)
 // - ui-avatars.com (Imágenes de perfil)
 header("Content-Security-Policy: " .
     "default-src 'self'; " .
@@ -33,7 +33,8 @@ header("Content-Security-Policy: " .
     "img-src 'self' data: https://ui-avatars.com; " .
     "font-src 'self' https://fonts.gstatic.com; " .
     "frame-src https://challenges.cloudflare.com; " .
-    "connect-src 'self' https://challenges.cloudflare.com; " .
+    // CORRECCIÓN: Agregado https://unpkg.com a connect-src para permitir source maps (.map)
+    "connect-src 'self' https://challenges.cloudflare.com https://unpkg.com; " .
     "object-src 'none'; " .
     "base-uri 'self';"
 );
