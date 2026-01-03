@@ -20,7 +20,12 @@ export const WhiteboardController = {
         history: [],
         historyIndex: -1,
         historyLocked: false,
-        isSpinLoopRunning: false 
+        isSpinLoopRunning: false,
+        
+        // Estado de dibujo
+        drawTool: 'pen', // pen, marker, highlighter, eraser
+        drawColor: '#000000',
+        drawWidth: 3
     },
     
     config: {
@@ -44,6 +49,7 @@ export const WhiteboardController = {
         WhiteboardController.bindEvents();
         WhiteboardController.bindShapeEvents();
         WhiteboardController.bindColorEvents(); 
+        WhiteboardController.bindDrawEvents(); 
         
         WhiteboardController.saveHistory();
         
@@ -67,7 +73,8 @@ export const WhiteboardController = {
             backgroundColor: 'transparent',
             selectionColor: WhiteboardController.config.selectionColor,
             selectionBorderColor: WhiteboardController.config.selectionBorderColor,
-            selectionLineWidth: 1
+            selectionLineWidth: 1,
+            isDrawingMode: false
         });
 
         // Configuración de controles Fabric
@@ -105,8 +112,11 @@ export const WhiteboardController = {
 
         // Listeners del Canvas
         WhiteboardController.canvas.on('object:added', (e) => {
-            if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
-            WhiteboardPhysics.addBody(e.target);
+            // No guardar historia o física si es un Path (dibujo), ya que eso se maneja en 'path:created'
+            if (e.target.type !== 'path') {
+                if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
+                WhiteboardPhysics.addBody(e.target);
+            }
         });
         
         WhiteboardController.canvas.on('object:removed', (e) => {
@@ -130,6 +140,28 @@ export const WhiteboardController = {
             WhiteboardPhysics.removeBody(e.target);
             WhiteboardPhysics.addBody(e.target);
         });
+        
+        // --- GESTIÓN DE FINALIZACIÓN DE TRAZO (DIBUJO Y BORRADOR) ---
+        WhiteboardController.canvas.on('path:created', (e) => {
+            e.path.set({ objectCaching: false });
+            
+            // LÓGICA DE BORRADOR REAL
+            if (WhiteboardController.state.drawTool === 'eraser') {
+                e.path.set({
+                    globalCompositeOperation: 'destination-out', // ESTO HACE LA MAGIA: Borra/Corta
+                    stroke: 'rgba(0,0,0,1)', // Color opaco necesario para cortar, aunque no se vea
+                    selectable: false,
+                    evented: false,
+                    perPixelTargetFind: true
+                });
+                // NO agregamos física al borrador para evitar muros invisibles
+            } else {
+                // Si es un dibujo normal (boli, marcador), sí agregamos física
+                WhiteboardPhysics.addBody(e.path);
+            }
+
+            if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
+        });
 
         // Listeners de Selección para UI
         const updateToolbar = () => {
@@ -137,6 +169,11 @@ export const WhiteboardController = {
             WhiteboardUI.toggleToolbar(!!activeObj);
             
             if (activeObj) {
+                // Si seleccionamos algo, salimos del modo dibujo
+                if(WhiteboardController.canvas.isDrawingMode) {
+                    WhiteboardController.setDrawingMode(false);
+                }
+                
                 WhiteboardUI.updateToolbarValues(activeObj);
                 WhiteboardUI.syncPopoverValues(activeObj);
             } else {
@@ -172,6 +209,7 @@ export const WhiteboardController = {
             if (evt.button === 1 || (evt.button === 0 && evt.shiftKey)) {
                 WhiteboardController.state.panning = true;
                 WhiteboardController.canvas.selection = false; 
+                WhiteboardController.canvas.isDrawingMode = false; // Pausar dibujo temporalmente al hacer pan
                 WhiteboardController.state.lastPosX = evt.clientX;
                 WhiteboardController.state.lastPosY = evt.clientY;
                 WhiteboardController.canvas.defaultCursor = 'grabbing';
@@ -196,6 +234,11 @@ export const WhiteboardController = {
             if (WhiteboardController.state.panning) {
                 WhiteboardController.state.panning = false;
                 WhiteboardController.canvas.selection = true; 
+                // Restaurar modo dibujo si estaba activo
+                if (WhiteboardUI.elements.drawer.querySelector('[data-drawer="drawer-draw"]').classList.contains('active')) {
+                     WhiteboardController.canvas.isDrawingMode = true;
+                }
+                
                 WhiteboardController.canvas.defaultCursor = 'default';
                 if (WhiteboardController.state.isShiftPressed) WhiteboardController.canvas.defaultCursor = 'grab';
             }
@@ -291,6 +334,7 @@ export const WhiteboardController = {
                 e.stopPropagation();
                 WhiteboardUI.openDrawer('drawer-colors', 'Colores');
                 WhiteboardUI.toggleBorderPopover(false); 
+                WhiteboardController.setDrawingMode(false); // Salir de modo dibujo al abrir colores de relleno
             });
         }
 
@@ -457,17 +501,34 @@ export const WhiteboardController = {
         }
         
         if (ui.btnCenter) ui.btnCenter.addEventListener('click', () => WhiteboardController.centerBoard());
+        
+        // Listener sidebar general para desactivar dibujo si se cambia de tab
+        const sidebarBtns = document.querySelectorAll('.wb-sidebar-btn[data-drawer]');
+        sidebarBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const target = btn.getAttribute('data-drawer');
+                if (target !== 'drawer-draw') {
+                    WhiteboardController.setDrawingMode(false);
+                } else {
+                    // Si clicamos en Dibujo, reactivamos el último estado
+                    WhiteboardController.setDrawingMode(true);
+                }
+            });
+        });
     },
 
     bindShapeEvents: () => {
         const shapeButtons = document.querySelectorAll('.wb-shape-card');
         shapeButtons.forEach(btn => {
-            btn.addEventListener('click', () => { WhiteboardController.addShape(btn.getAttribute('data-shape')); });
+            btn.addEventListener('click', () => { 
+                WhiteboardController.addShape(btn.getAttribute('data-shape')); 
+                WhiteboardController.setDrawingMode(false); // Desactivar dibujo al añadir forma
+            });
         });
     },
 
     bindColorEvents: () => {
-        const colorSwatches = document.querySelectorAll('.wb-color-swatch');
+        const colorSwatches = document.querySelectorAll('.wb-color-swatch:not([data-draw-color])');
         colorSwatches.forEach(swatch => {
             swatch.addEventListener('click', (e) => {
                 const color = swatch.getAttribute('data-color');
@@ -475,6 +536,131 @@ export const WhiteboardController = {
             });
         });
     },
+    
+    bindDrawEvents: () => {
+        const ui = WhiteboardUI.elements;
+        
+        // Botones de Herramienta (Boli, Marcador, Resaltador, Borrador)
+        ui.drawBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tool = btn.getAttribute('data-tool');
+                WhiteboardController.setDrawingTool(tool);
+            });
+        });
+        
+        // Slider de Grosor de Dibujo
+        if (ui.inpDrawWidth) {
+            ui.inpDrawWidth.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value, 10);
+                if (ui.valDrawWidth) ui.valDrawWidth.innerText = val;
+                WhiteboardController.state.drawWidth = val;
+                WhiteboardController.updateBrushSettings();
+            });
+        }
+        
+        // Paleta de Color de Dibujo
+        ui.drawColorSwatches.forEach(swatch => {
+            swatch.addEventListener('click', (e) => {
+                const color = swatch.getAttribute('data-draw-color');
+                WhiteboardController.state.drawColor = color;
+                
+                // Si la herramienta es borrador, cambiamos a boli para que pinte
+                if (WhiteboardController.state.drawTool === 'eraser') {
+                    WhiteboardController.setDrawingTool('pen');
+                } else {
+                    WhiteboardController.updateBrushSettings();
+                }
+            });
+        });
+    },
+
+    // --- LÓGICA DE DIBUJO ---
+
+    setDrawingMode: (isActive) => {
+        const canvas = WhiteboardController.canvas;
+        if(!canvas) return;
+        
+        canvas.isDrawingMode = isActive;
+        if (isActive) {
+            canvas.discardActiveObject();
+            canvas.requestRenderAll();
+            WhiteboardController.updateBrushSettings();
+        }
+    },
+
+    setDrawingTool: (tool) => {
+        WhiteboardController.state.drawTool = tool;
+        WhiteboardUI.setActiveDrawTool(tool);
+        
+        // Activar modo dibujo si no lo está
+        if (!WhiteboardController.canvas.isDrawingMode) {
+            WhiteboardController.setDrawingMode(true);
+        }
+        
+        // Actualizar parámetros por defecto según herramienta
+        const ui = WhiteboardUI.elements;
+        let defaultWidth = 3;
+        
+        if (tool === 'marker') defaultWidth = 10;
+        else if (tool === 'highlighter') defaultWidth = 20;
+        else if (tool === 'eraser') defaultWidth = 20;
+        
+        // Actualizar UI del slider sin disparar evento
+        WhiteboardController.state.drawWidth = defaultWidth;
+        if (ui.inpDrawWidth) ui.inpDrawWidth.value = defaultWidth;
+        if (ui.valDrawWidth) ui.valDrawWidth.innerText = defaultWidth;
+        
+        WhiteboardController.updateBrushSettings();
+    },
+
+    updateBrushSettings: () => {
+        const canvas = WhiteboardController.canvas;
+        if (!canvas) return;
+
+        const { drawTool, drawColor, drawWidth } = WhiteboardController.state;
+        
+        // Instancia base
+        canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+        
+        if (drawTool === 'eraser') {
+            // Mientras dibujamos, se ve blanco/goma, pero al soltar (path:created) se convierte en transparente
+            canvas.freeDrawingBrush.color = 'rgba(255,255,255,0.7)'; 
+            canvas.freeDrawingBrush.width = drawWidth;
+            canvas.freeDrawingBrush.strokeLineCap = 'round';
+        } 
+        else if (drawTool === 'highlighter') {
+            // Resaltador: Color con transparencia
+            const rgba = WhiteboardController.hexToRgba(drawColor, 0.5);
+            canvas.freeDrawingBrush.color = rgba;
+            canvas.freeDrawingBrush.width = drawWidth;
+            canvas.freeDrawingBrush.strokeLineCap = 'butt'; 
+        }
+        else if (drawTool === 'marker') {
+            canvas.freeDrawingBrush.color = drawColor;
+            canvas.freeDrawingBrush.width = drawWidth;
+            canvas.freeDrawingBrush.strokeLineCap = 'round';
+        } 
+        else {
+            // Pen (Bolígrafo)
+            canvas.freeDrawingBrush.color = drawColor;
+            canvas.freeDrawingBrush.width = drawWidth;
+        }
+    },
+
+    hexToRgba: (hex, alpha) => {
+        let c;
+        if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+            c= hex.substring(1).split('');
+            if(c.length== 3){
+                c= [c[0], c[0], c[1], c[1], c[2], c[2]];
+            }
+            c= '0x'+c.join('');
+            return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
+        }
+        return hex;
+    },
+
+    // --- COLORES Y FORMAS EXISTENTES ---
 
     setColorToSelection: (color) => {
         const canvas = WhiteboardController.canvas;

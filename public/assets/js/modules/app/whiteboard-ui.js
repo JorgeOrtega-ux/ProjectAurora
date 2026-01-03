@@ -45,7 +45,13 @@ export const WhiteboardUI = {
         inpBorderColor: null,
         inpBorderRadius: null,
         valBorderRadius: null,
-        rowBorderRadius: null
+        rowBorderRadius: null,
+
+        // Herramientas de Dibujo
+        drawBtns: [],
+        inpDrawWidth: null,
+        valDrawWidth: null,
+        drawColorSwatches: []
     },
 
     config: {
@@ -100,6 +106,12 @@ export const WhiteboardUI = {
         el.valBorderRadius = document.getElementById('val-border-radius');
         el.rowBorderRadius = document.getElementById('row-border-radius');
 
+        // Elementos de Dibujo
+        el.drawBtns = document.querySelectorAll('.wb-draw-btn');
+        el.inpDrawWidth = document.getElementById('inp-draw-width');
+        el.valDrawWidth = document.getElementById('val-draw-width');
+        el.drawColorSwatches = document.querySelectorAll('.wb-color-swatch[data-draw-color]');
+
         WhiteboardUI.bindSidebarEvents();
         WhiteboardUI.updateSliderFill();
     },
@@ -114,9 +126,13 @@ export const WhiteboardUI = {
                 const contentId = btn.getAttribute('data-drawer');
                 const contentEl = document.getElementById(contentId);
                 const buttonTitle = btn.getAttribute('title');
+                
+                // Si el drawer ya está abierto en esta sección, cerrarlo
                 if (drawer.classList.contains('active') && contentEl.classList.contains('active')) {
-                    WhiteboardUI.closeDrawer(); return;
+                    WhiteboardUI.closeDrawer(); 
+                    return;
                 }
+                
                 WhiteboardUI.openDrawer(contentId, buttonTitle);
                 toggleBtns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
@@ -301,5 +317,15 @@ export const WhiteboardUI = {
     updateStatusText: (pointer) => {
         const { status } = WhiteboardUI.elements; if (!status || !pointer) return;
         status.innerText = `X: ${Math.round(pointer.x)} Y: ${Math.round(pointer.y)}`;
+    },
+
+    setActiveDrawTool: (toolName) => {
+        WhiteboardUI.elements.drawBtns.forEach(btn => {
+            if (btn.getAttribute('data-tool') === toolName) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
     }
 };
