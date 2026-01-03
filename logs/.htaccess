@@ -1,0 +1,9 @@
+# logs/.htaccess
+# Bloquear acceso total a esta carpeta y subcarpetas
+Order Deny,Allow
+Deny from all
+
+<Files "*">
+    Order Deny,Allow
+    Deny from all
+</Files>

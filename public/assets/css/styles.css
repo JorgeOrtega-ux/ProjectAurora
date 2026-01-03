@@ -1,0 +1,788 @@
+/* public/assets/css/styles.css */
+
+/* =========================================
+   1. BASE Y RESET
+   ========================================= */
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: var(--sl-font-sans);
+}
+
+body,
+html {
+    width: 100%;
+    height: 100%;
+    color-scheme: light dark; 
+}
+
+/* =========================================
+   2. LAYOUT PRINCIPAL (App Shell)
+   ========================================= */
+.page-wrapper {
+    width: 100%;
+    height: 100%;
+}
+
+.main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    padding: 12px;
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+}
+
+/* --- Contenedor Principal --- */
+.general-content {
+    position: relative;
+    display: flex;
+    overflow: hidden;
+    flex: 1 1 auto;
+    flex-direction: column;
+    background-color: var(--bg-surface);
+    border-radius: var(--radius-md);
+    
+    /* Default Light: Sombra y borde transparente */
+    box-shadow: 0 4px 12px var(--border-transparent-20);
+    border: 1px solid transparent;
+}
+
+.general-content-top {
+    width: 100%;
+    height: auto;
+    border-bottom: 1px solid var(--border-transparent-20);
+    z-index: 999;
+    position: relative;
+    transition: box-shadow var(--sl-transition-medium) ease, border-color 0.2s ease;
+    background-color: var(--bg-surface);
+}
+
+/* Estado con Scroll (Light Mode): Sombra visible, borde oculto */
+.general-content-top.shadow {
+    box-shadow: 0 4px 6px -4px rgba(0, 0, 0, 0.2);
+    border-bottom-color: transparent; 
+}
+
+.general-content-bottom {
+    position: relative;
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.general-content-scrolleable {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+}
+
+/* =========================================
+   3. HEADER GLOBAL
+   ========================================= */
+.header {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    height: auto;
+    padding: 8px;
+    gap: 8px;
+    border-top-left-radius: var(--radius-md);
+    border-top-right-radius: var(--radius-md);
+    flex-wrap: wrap;
+    color: var(--text-primary);
+}
+
+.header-left,
+.header-right {
+    display: flex;
+    flex: 0 0 auto;
+}
+
+.header-center {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0 16px;
+    height: 100%;
+    flex: 1;
+    z-index: 0;
+}
+
+.header-item {
+    display: flex;
+    flex-direction: row;
+    width: auto;
+    height: 100%;
+    gap: 8px;
+}
+
+.header-button {
+    display: flex;
+    flex: 0 0 auto;
+    justify-content: center;
+    align-items: center;
+    width: 40px;
+    height: 40px;
+    background-color: transparent;
+    border-radius: 8px;
+    border: 1px solid var(--border-transparent-20);
+    cursor: pointer;
+    outline: none;
+    user-select: none;
+    position: relative;
+    transition: background-color 0.2s ease;
+    color: var(--text-primary);
+}
+
+.header-button:hover,
+.header-button.active {
+    background-color: var(--bg-hover-light);
+}
+
+.mobile-search-trigger {
+    display: none;
+}
+
+/* Perfil en Header */
+.header-button.profile-button {
+    position: relative;
+    padding: 0;
+    border: none;
+    background-color: transparent;
+    overflow: visible;
+    border-radius: var(--sl-border-radius-circle);
+}
+
+.profile-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    position: relative;
+    z-index: 1;
+    border-radius: var(--sl-border-radius-circle);
+}
+
+.header-guest-icon {
+    font-weight: var(--sl-font-weight-bold);
+    color: var(--text-secondary);
+    position: relative;
+    z-index: 1;
+}
+
+.header-button.profile-button::before {
+    content: '';
+    position: absolute;
+    border-radius: var(--sl-border-radius-circle);
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border: 2px solid transparent;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.header-button.profile-button[data-role="user"]::before {
+    border-color: var(--role-user-border);
+}
+
+.header-button.profile-button[data-role="moderator"]::before {
+    border-color: var(--role-moderator);
+}
+
+.header-button.profile-button[data-role="administrator"]::before {
+    border-color: var(--role-administrator);
+}
+
+.header-button.profile-button[data-role="founder"]::before {
+    border: none;
+    background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+}
+
+/* Buscador Header */
+.search-wrapper {
+    width: 100%;
+    max-width: 500px;
+}
+
+.search-content {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 40px;
+    background-color: var(--bg-surface);
+    border-radius: 8px;
+    border: 1px solid var(--border-transparent-20);
+    color: var(--text-primary);
+}
+
+.search-icon {
+    width: 45px;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--text-secondary);
+}
+
+.search-icon .material-symbols-rounded {
+    font-size: 20px;
+}
+
+.search-input {
+    width: 100%;
+    height: 90%;
+}
+
+.search-input>input {
+    width: 100%;
+    height: 100%;
+    border: none;
+    outline: none;
+    background-color: transparent;
+    color: var(--text-primary);
+}
+
+.search-input>input::placeholder {
+    color: var(--text-tertiary);
+}
+
+/* =========================================
+   4. MENÚS LATERALES (MODULES)
+   ========================================= */
+.module-content.module-surface {
+    position: absolute;
+    height: 100%;
+    padding: 8px;
+    top: 0;
+    left: 0;
+    z-index: 998;
+}
+
+/* Unificación de Contenedores de Módulos (Base Light Mode) */
+.module-surface .menu-content,
+.module-profile .menu-content,
+.module-notifications .menu-content {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-surface);
+    border-radius: var(--radius-md);
+    
+    /* Default Light: Sombra y borde transparente */
+    box-shadow: 0 4px 12px var(--border-transparent-20);
+    border: 1px solid transparent; 
+}
+
+/* Dimensiones Específicas con FIX DE SCROLL */
+.module-surface .menu-content { 
+    width: 280px; 
+    height: 100%; 
+    /* El surface suele ser 100% height, su contenido interno debe scrollear */
+}
+
+.module-profile .menu-content { 
+    width: 280px; 
+    height: auto; 
+    padding: 8px; 
+    
+    /* FIX: Scroll en Perfil si la pantalla es baja */
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+}
+
+.module-notifications .menu-content { 
+    width: 425px; 
+    height: 525px; 
+    padding: 0; 
+    
+    /* FIX: Scroll en Notificaciones si la pantalla es baja */
+    max-height: calc(100vh - 80px);
+    /* Notificaciones ya tiene un div interno con scroll, 
+       pero esto asegura que el contenedor no se corte */
+}
+
+.module-content.module-profile,
+.module-content.module-notifications {
+    position: absolute;
+    height: auto;
+    top: calc(100% + 5px);
+    right: 0;
+    z-index: 998;
+}
+
+.menu-content-top {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+}
+
+.module-notifications .menu-content-top { padding: 16px; }
+
+.menu-content-bottom {
+    flex: 1 1 auto;
+    position: relative;
+    overflow-y: auto; /* Scroll principal de módulos */
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 0; /* FIX: Evita desbordamiento en Flexbox */
+}
+
+.module-notifications .menu-content-bottom {
+    justify-content: flex-start;
+    padding: 0;
+}
+
+/* Enlaces de menú */
+.menu-list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: auto;
+    gap: 4px;
+    user-select: none;
+}
+
+.menu-link {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: row;
+    width: 100%;
+    height: 40px;
+    position: relative;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    color: var(--text-primary);
+    border: 1px solid transparent; /* Borde base */
+    transition: background-color 0.2s ease;
+    align-items: center;
+}
+
+.menu-link:hover,
+.menu-link.active {
+    background-color: var(--bg-hover-light);
+}
+
+/* === CLASES AUXILIARES DE BORDE (DARK MODE COMPATIBLE) === */
+.menu-link.menu-link--bordered {
+    border: 1px solid var(--border-transparent-20);
+}
+
+.menu-divider {
+    width: 100%;
+    border-bottom: 1px solid var(--border-transparent-20);
+    margin: 8px 0;
+}
+/* ======================================================== */
+
+.menu-link-icon {
+    display: flex;
+    flex: 0 0 auto;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 40px;
+    color: var(--text-secondary);
+}
+
+.menu-link.active .menu-link-icon {
+    color: var(--text-primary);
+}
+
+.menu-link-text {
+    display: block;
+    flex: 1 1 auto;
+    text-align: start;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 14px;
+    padding-right: 12px;
+}
+
+/* =========================================
+   OVERRIDES DARK MODE (UNIFICADOS)
+   ========================================= */
+
+/* A) Cuando el sistema pide Dark Mode y no se fuerza Light */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .general-content,
+    :root:not([data-theme="light"]) .module-surface .menu-content,
+    :root:not([data-theme="light"]) .module-profile .menu-content,
+    :root:not([data-theme="light"]) .module-notifications .menu-content,
+    :root:not([data-theme="light"]) .popover-module {
+        box-shadow: none !important; 
+        border: 1px solid var(--border-light); /* #ffffff20 */
+    }
+
+    /* FIX: Scroll Shadow en Dark Mode (Solo Borde, Sin Sombra) */
+    :root:not([data-theme="light"]) .general-content-top.shadow {
+        box-shadow: none !important;
+        border-bottom: 1px solid var(--border-transparent-20) !important;
+    }
+
+    /* FIX: Drag Handle visibility in Dark Mode (#FFFFFF80) */
+    :root:not([data-theme="light"]) .drag-handle {
+        background-color: #FFFFFF80;
+    }
+}
+
+/* B) Cuando se fuerza Dark Mode manualmente */
+[data-theme="dark"] .general-content,
+[data-theme="dark"] .module-surface .menu-content,
+[data-theme="dark"] .module-profile .menu-content,
+[data-theme="dark"] .module-notifications .menu-content,
+[data-theme="dark"] .popover-module {
+    box-shadow: none !important;
+    border: 1px solid var(--border-light);
+}
+
+/* FIX: Scroll Shadow en Dark Mode (Solo Borde, Sin Sombra) */
+[data-theme="dark"] .general-content-top.shadow {
+    box-shadow: none !important;
+    border-bottom: 1px solid var(--border-transparent-20) !important;
+}
+
+/* FIX: Drag Handle visibility in Dark Mode (#FFFFFF80) */
+[data-theme="dark"] .drag-handle {
+    background-color: #FFFFFF80;
+}
+
+/* =========================================
+   5. UTILIDADES Y EXTRAS
+   ========================================= */
+#toast-container {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: var(--sl-z-index-toast);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast-item {
+    pointer-events: auto;
+    min-width: 300px;
+    max-width: 400px;
+    background-color: var(--bg-surface);
+    padding: 12px 16px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transform: translateX(-120%);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+    opacity: 0;
+    border-left: 4px solid var(--action-primary-hover);
+    border: 1px solid var(--border-light);
+}
+
+.toast-item.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast-icon { font-size: 24px; }
+.toast-message {
+    font-size: 14px;
+    color: var(--text-primary);
+    font-weight: var(--sl-font-weight-semibold);
+    flex: 1;
+}
+.toast-close {
+    font-size: 18px;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+.toast-close:hover { color: var(--text-primary); }
+
+.toast-item.success { border-left-color: var(--color-toast-success-text); }
+.toast-item.success .toast-icon { color: var(--color-toast-success-text); }
+.toast-item.error { border-left-color: var(--color-toast-error-text); }
+.toast-item.error .toast-icon { color: var(--color-toast-error-text); }
+.toast-item.warning { border-left-color: var(--color-toast-warning); }
+.toast-item.warning .toast-icon { color: var(--color-toast-warning); }
+.toast-item.info { border-left-color: var(--color-toast-info); }
+.toast-item.info .toast-icon { color: var(--color-toast-info); }
+
+/* Loaders */
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-left-color: var(--text-primary);
+    border-radius: var(--sl-border-radius-circle);
+    animation: spin 1s linear infinite;
+}
+
+.spinner-sm {
+    width: 24px;
+    height: 24px;
+    border: 3px solid var(--border-lighter);
+    border-left-color: var(--text-primary);
+    border-radius: var(--sl-border-radius-circle);
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Crash Screen */
+.crash-header { margin-bottom: 24px; text-align: center; }
+.crash-icon { font-size: 48px; margin-bottom: 16px; color: var(--text-primary); display: block; margin: 0 auto; }
+.crash-title { font-size: 28px; font-weight: var(--sl-font-weight-bold); color: var(--text-primary); letter-spacing: -0.5px; margin: 0; }
+.crash-code-box {
+    background-color: var(--bg-hover-light);
+    border-radius: 6px;
+    padding: 16px;
+    text-align: left;
+    font-family: var(--sl-font-mono);
+    font-size: 13px;
+    color: var(--text-primary);
+    margin-bottom: 24px;
+    line-height: 1.5;
+    overflow-x: auto;
+    border: 1px solid var(--border-light);
+}
+.crash-text-meta { color: var(--text-secondary); }
+.crash-text-error { color: var(--color-toast-error-text); }
+
+/* Helpers */
+.active { display: flex !important; }
+.disabled { display: none !important; }
+.w-100 { width: 100%; }
+.mt-16 { margin-top: 16px; }
+.mb-0 { margin-bottom: 0; }
+.m-0 { margin: 0 !important; }
+.flex-1 { flex: 1; }
+.pill-container { display: none; }
+
+/* =========================================
+   6. MEDIA QUERIES & RESPONSIVE
+   ========================================= */
+
+@media (max-width: 725px) {
+    .header { gap: 0; justify-content: space-between; }
+    .header-left { order: 1; }
+    .header-right { order: 2; }
+    .header-center {
+        display: none;
+        order: 3;
+        flex: 0 0 100%;
+        padding: 8px 0 0 0;
+        width: 100%;
+        animation: slideDownSearch 0.2s ease-out;
+    }
+    .header-center.active { display: flex; }
+    .mobile-search-trigger { display: flex; }
+    .search-wrapper { max-width: 100%; }
+    .main-content { padding: 0; }
+    .general-content { border-radius: 0; border: none; }
+    .module-content.module-surface { width: 100%; padding: 0; }
+    /* FIX: Forzar eliminación de borde en móvil para evitar doble borde con General Content Top */
+    .module-surface .menu-content { width: 100%; border-radius: 0; border: none !important; }
+    .general-content:has(.module-surface.active) .general-content-top {
+        box-shadow: none !important;
+        border-bottom: 1px solid var(--border-transparent-20);
+    }
+}
+
+@keyframes slideDownSearch {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================
+   7. MOBILE PROFILE & NOTIFICATIONS (BOTTOM SHEET)
+   ========================================= */
+@media (max-width: 468px) {
+    .module-content.module-profile,
+    .module-content.module-notifications {
+        width: 100%;
+        height: 100%;
+        background-color: var(--overlay-dark);
+        position: fixed;
+        top: 0;
+        right: 0;
+        left: 0;
+        bottom: 0;
+        z-index: 9999;
+        display: none;
+        align-items: flex-end;
+    }
+
+    .module-profile .menu-content,
+    .module-notifications .menu-content {
+        width: 100%;
+        height: auto;
+        max-height: 85vh;
+        background-color: var(--bg-surface);
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+        display: flex;
+        flex-direction: column;
+        transform: translateY(100%);
+        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        border: none;
+    }
+    
+    .module-content.module-profile.active,
+    .module-content.module-notifications.active {
+        display: flex !important;
+        animation: fadeInOverlay 0.3s ease forwards;
+    }
+
+    .module-content.module-profile.active .menu-content,
+    .module-content.module-notifications.active .menu-content {
+        transform: translateY(0%);
+    }
+
+    .module-content.module-profile.closing .menu-content,
+    .module-content.module-notifications.closing .menu-content {
+        transform: translateY(100%) !important;
+    }
+    
+    .module-content.module-profile.closing,
+    .module-content.module-notifications.closing {
+        animation: fadeOutOverlay 0.3s ease forwards;
+    }
+
+    .pill-container {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        flex-shrink: 0;
+        padding: 8px 0;
+        cursor: grab;
+        touch-action: none;
+    }
+    
+    .drag-handle {
+        width: 40px;
+        height: 4px;
+        background-color: var(--bg-hover-light);
+        border-radius: 10px;
+    }
+}
+
+@keyframes fadeInOverlay {
+    from { background-color: rgba(0, 0, 0, 0); }
+    to { background-color: var(--overlay-dark); }
+}
+
+@keyframes fadeOutOverlay {
+    from { background-color: var(--overlay-dark); }
+    to { background-color: rgba(0, 0, 0, 0); }
+}
+
+/* =========================================
+   8. TOOLTIPS
+   ========================================= */
+.tooltip {
+    position: fixed;
+    z-index: 2001;
+    display: none;
+    min-width: 100px;
+    max-width: 300px;
+    width: auto;
+    padding: 4px 12px;
+    font-size: 0.875rem;
+    font-weight: var(--sl-font-weight-semibold);
+    line-height: 1.3;
+    letter-spacing: 0.0178571429em;
+    text-align: center;
+    color: #fff;
+    background-color: #222;
+    border-radius: 6px;
+    border: 1px solid #ffffff20;
+    box-sizing: border-box;
+    pointer-events: none;
+}
+
+.tooltip.tooltip--with-shortcut {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+}
+
+.tooltip .tooltip-text { line-height: 1.2; }
+.tooltip .tooltip-shortcut { opacity: 0.7; }
+.tooltip .tooltip-shortcut kbd {
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    background-color: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-family: monospace;
+}
+
+.tooltip::before {
+    position: absolute;
+    background-color: #222;
+    border: 1px solid #ffffff20;
+    content: "";
+}
+
+.tooltip[data-popper-placement^="bottom"]::before {
+    top: -5px; left: 50%; width: 10px; height: 10px;
+    border-right: none; border-bottom: none;
+    border-radius: 2px 0 0 0; transform: translateX(-50%) rotate(45deg);
+}
+.tooltip[data-popper-placement^="top"]::before {
+    bottom: -5px; left: 50%; width: 10px; height: 10px;
+    border-top: none; border-left: none;
+    border-radius: 0 0 2px 0; transform: translateX(-50%) rotate(45deg);
+}
+.tooltip[data-popper-placement^="right"]::before {
+    top: 50%; left: -5px; width: 10px; height: 10px;
+    border-top: none; border-right: none;
+    border-radius: 0 0 0 2px; transform: translateY(-50%) rotate(45deg);
+}
+.tooltip[data-popper-placement^="left"]::before {
+    top: 50%; right: -5px; width: 10px; height: 10px;
+    border-left: none; border-bottom: none;
+    border-radius: 0 2px 0 0; transform: translateY(-50%) rotate(45deg);
+}
+
+.overflow-y {
+    overflow-x: hidden;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+    scrollbar-color: var(--text-tertiary) transparent;
+    scrollbar-width: thin;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.disabled-interactive {
+    opacity: 0.5;
+    pointer-events: none;
+}

@@ -1,0 +1,22 @@
+# --- SEGURIDAD (CRÍTICO) ---
+# Ignorar el archivo de variables de entorno para no exponer contraseñas
+.env
+
+# --- DEPENDENCIAS (COMPOSER) ---
+/vendor/
+
+# --- LOGS Y REGISTROS ---
+logs/app/*.log
+logs/database/*.log
+logs/security/*.log
+
+# --- ALMACENAMIENTO DE USUARIO ---
+storage/profilePicture/custom/*
+!storage/profilePicture/custom/.gitkeep
+
+# --- SISTEMA OPERATIVO E IDE ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

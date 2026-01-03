@@ -1,0 +1,359 @@
+{
+    "app": {
+        "name": "Project Aurora",
+        "tagline": "Modularidad y Seguridad"
+    },
+    "header": {
+        "search_placeholder": "Buscar..."
+    },
+    "menu": {
+        "home": "Inicio",
+        "explore": "Explorar",
+        "profile": "Perfil",
+        "settings": "Configuración",
+        "security": "Seguridad",
+        "accessibility": "Accesibilidad",
+        "help": "Ayuda",
+        "logout": "Cerrar Sesión",
+        "admin_panel": "Panel de Administración",
+        "back_home": "Volver al Inicio"
+    },
+    "notifications": {
+        "title": "Notificaciones",
+        "mark_all_read": "Marcar todo como leído",
+        "empty": "No tienes notificaciones nuevas."
+    },
+    "auth": {
+        "login": {
+            "title": "Bienvenido de nuevo",
+            "subtitle": "Ingresa tus credenciales para continuar."
+        },
+        "register": {
+            "title_1": "Crea tu cuenta",
+            "subtitle_1": "Únete a nosotros hoy mismo.",
+            "title_2": "Te damos la bienvenida",
+            "subtitle_2": "Elige cómo quieres que te llamen.",
+            "title_3": "Verifica tu correo",
+            "subtitle_3": "Hemos enviado un código de 6 dígitos a",
+            "resend_code": "Reenviar código",
+            "field": {
+                "code": "Código de verificación"
+            },
+            "btn": {
+                "finish": "Verificar Cuenta",
+                "back": "Volver"
+            }
+        },
+        "recover": {
+            "title": "Recuperar Contraseña",
+            "desc": "Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.",
+            "btn_send": "Enviar enlace",
+            "back_login": "Volver al inicio de sesión"
+        },
+        "reset": {
+            "title": "Nueva Contraseña",
+            "desc": "Ingresa tu nueva contraseña a continuación.",
+            "field_new": "Nueva contraseña",
+            "field_confirm": "Confirmar contraseña",
+            "btn_change": "Cambiar Contraseña",
+            "btn_login": "Ir a Iniciar Sesión"
+        },
+        "2fa": {
+            "title": "Verificación en 2 Pasos",
+            "subtitle": "Tu cuenta está protegida con 2FA.",
+            "desc": "Ingresa el código de 6 dígitos de tu aplicación de autenticación.",
+            "field_code": "Código de 6 dígitos",
+            "back": "Volver al login"
+        },
+        "field": {
+            "email": "Correo electrónico",
+            "password": "Contraseña",
+            "username": "Nombre de usuario"
+        },
+        "btn": {
+            "login": "Iniciar Sesión",
+            "continue": "Continuar",
+            "verify": "Verificar"
+        },
+        "forgot_password": "¿Olvidaste tu contraseña?",
+        "no_account": "¿No tienes una cuenta?",
+        "has_account": "¿Ya tienes cuenta?",
+        "register_link": "Regístrate",
+        "login_link": "Inicia sesión"
+    },
+    "settings": {
+        "profile": {
+            "title": "Tu Perfil",
+            "desc": "Administra tu información personal y cómo te ven los demás.",
+            "pic_title": "Foto de perfil",
+            "pic_desc": "Haz clic en la imagen para subir una nueva.",
+            "username_title": "Nombre de usuario",
+            "email_title": "Correo electrónico",
+            "lang_title": "Idioma",
+            "lang_desc": "Selecciona el idioma de la interfaz.",
+            "links_title": "Enlaces externos",
+            "links_desc": "Abrir enlaces en una nueva pestaña.",
+            "btn_upload": "Subir imagen",
+            "btn_cancel": "Cancelar",
+            "btn_save": "Guardar",
+            "btn_edit": "Editar",
+            "btn_delete": "Eliminar",
+            "btn_change": "Cambiar",
+            "verify_email_title": "Verificar Identidad",
+            "verify_email_msg": "Para cambiar tu correo, necesitamos verificar tu identidad. Se enviará un código a tu correo actual.",
+            "btn_verify": "Verificar"
+        },
+        "security": {
+            "title": "Inicio de sesión y seguridad",
+            "desc": "Gestiona tu contraseña y la seguridad de tu cuenta.",
+            "pass_title": "Contraseña",
+            "pass_never_updated": "Nunca actualizada",
+            "pass_last_updated": "Actualizada el %s",
+            "btn_change_pass": "Cambiar contraseña",
+            "field_current": "Contraseña actual",
+            "field_new": "Nueva contraseña",
+            "field_repeat": "Repetir nueva contraseña",
+            "2fa_title": "Autenticación de dos factores (2FA)",
+            "2fa_enabled": "Activado",
+            "2fa_disabled": "Desactivado. Actívalo para mayor seguridad.",
+            "btn_activate": "Habilitar 2FA",
+            "btn_config": "Gestionar 2FA",
+            "devices_title": "Dispositivos",
+            "devices_desc": "Gestiona las sesiones activas en otros dispositivos.",
+            "btn_manage": "Ver dispositivos",
+            "delete_title": "Eliminar cuenta",
+            "delete_desc": "Esta acción es permanente y no se puede deshacer.",
+            "btn_delete": "Eliminar mi cuenta"
+        },
+        "accessibility": {
+            "title": "Accesibilidad y Apariencia",
+            "desc": "Personaliza tu experiencia visual.",
+            "theme_title": "Tema de la aplicación",
+            "theme_desc": "Elige entre claro, oscuro o sincronizado con el sistema.",
+            "theme_system": "Sistema",
+            "theme_light": "Claro",
+            "theme_dark": "Oscuro",
+            "toast_title": "Notificaciones extendidas",
+            "toast_desc": "Mantener las notificaciones en pantalla por más tiempo (10s)."
+        },
+        "2fa": {
+            "title": "Configurar 2FA",
+            "desc": "Añade una capa extra de seguridad a tu cuenta.",
+            "step1_title": "1. Obtener la aplicación",
+            "step1_desc": "Necesitas una app de autenticación.",
+            "step2_title": "2. Escanear código QR",
+            "step2_desc": "Escanea la imagen con tu aplicación.",
+            "step2_inner_title": "Escanea este código QR",
+            "step2_inner_desc": "Abre tu aplicación de autenticación (Google Authenticator, Authy, etc.) y escanea el código.",
+            "step3_title": "3. Verificar código",
+            "step3_desc": "Introduce el código generado por la app.",
+            "step3_inner_title": "Ingresa el código",
+            "step3_inner_desc": "Introduce el código de 6 dígitos que aparece en tu aplicación para confirmar la configuración.",
+            "btn_verify": "Verificar y Activar",
+            "success_title": "¡2FA Activado!",
+            "success_desc": "Tu cuenta ahora es más segura. Guarda estos códigos de recuperación en un lugar seguro.",
+            "btn_finish": "Finalizar",
+            "protected_title": "2FA está activado",
+            "protected_desc": "Tu cuenta está protegida. Se requerirá un código cada vez que inicies sesión en un nuevo dispositivo.",
+            "btn_disable": "Desactivar 2FA",
+            "recovery": {
+                "title": "Códigos de recuperación",
+                "desc": "Úsalos si pierdes acceso a tu dispositivo móvil.",
+                "remaining": "Códigos restantes:",
+                "btn_generate": "Generar nuevos códigos",
+                "confirm_pass": "Por seguridad, ingresa tu contraseña para generar nuevos códigos.",
+                "new_codes_title": "Nuevos códigos generados",
+                "new_codes_desc": "Los códigos anteriores han sido invalidados. Guarda estos nuevos códigos."
+            }
+        },
+        "devices": {
+            "title": "Dispositivos Activos",
+            "desc": "Aquí puedes ver y cerrar sesión en los dispositivos que han accedido a tu cuenta.",
+            "current_device": "Este dispositivo",
+            "btn_revoke": "Cerrar sesión",
+            "btn_revoke_all": "Cerrar todas las sesiones",
+            "revoke_all_title": "Cerrar todas las sesiones",
+            "revoke_all_desc": "Se cerrará la sesión en todos los dispositivos excepto este.",
+            "loading": "Cargando dispositivos...",
+            "empty": "No se encontraron otras sesiones activas.",
+            "revoke_success": "Sesión cerrada correctamente.",
+            "connection_error": "Error de conexión."
+        },
+        "delete": {
+            "title": "Eliminar Cuenta",
+            "desc": "Eliminar permanentemente tu cuenta y todos tus datos.",
+            "warn_title": "Zona de Peligro",
+            "warn_desc": "Una vez que elimines tu cuenta, no hay vuelta atrás. Por favor, asegúrate de querer hacer esto.",
+            "confirm_title": "Confirmar eliminación",
+            "confirm_desc": "Entiendo las consecuencias.",
+            "pass_title": "Ingresa tu contraseña",
+            "pass_desc": "Para confirmar, ingresa tu contraseña actual.",
+            "pass_placeholder": "Tu contraseña",
+            "btn_final": "Eliminar permanentemente",
+            "processing": "Eliminando...",
+            "goodbye": "Tu cuenta ha sido eliminada.",
+            "enter_pass": "Ingresa tu contraseña."
+        }
+    },
+    "explore": {
+        "title": "Explorar",
+        "desc": "Descubre contenido nuevo.",
+        "placeholder": "Contenido de exploración próximamente..."
+    },
+    "404": {
+        "title": "Página no encontrada",
+        "desc": "Lo sentimos, la página que buscas no existe.",
+        "btn_home": "Volver al Inicio"
+    },
+    "api": {
+        "unknown_action": "Acción desconocida.",
+        "session_expired": "La sesión ha expirado.",
+        "fill_all": "Por favor completa todos los campos.",
+        "email_invalid": "Correo electrónico inválido.",
+        "pass_short": "La contraseña debe tener al menos %s caracteres.",
+        "email_taken": "Este correo ya está registrado.",
+        "step_1_ok": "Paso 1 completado.",
+        "register_expired": "El proceso de registro ha expirado. Empieza de nuevo.",
+        "choose_user": "Elige un nombre de usuario.",
+        "user_taken": "El nombre de usuario ya está en uso.",
+        "code_sent": "Código de verificación enviado.",
+        "internal_error": "Error interno del servidor.",
+        "no_verification": "No hay un proceso de verificación pendiente.",
+        "wait_resend": "Por favor espera 60 segundos antes de solicitar otro código.",
+        "no_data": "No se encontraron datos de verificación.",
+        "code_generated": "Nuevo código generado.",
+        "code_save_error": "Error al guardar el código.",
+        "missing_data": "Faltan datos.",
+        "code_invalid_expired": "Código inválido o expirado.",
+        "register_success": "Registro completado con éxito.",
+        "db_error": "Error de base de datos.",
+        "account_deleted": "Esta cuenta ha sido eliminada.",
+        "credentials_invalid": "Credenciales incorrectas.",
+        "credentials_ok_2fa": "Credenciales correctas. Se requiere 2FA.",
+        "welcome": "¡Bienvenido!",
+        "user_not_found": "Usuario no encontrado.",
+        "code_invalid": "Código incorrecto.",
+        "email_not_found": "No existe una cuenta con este correo.",
+        "recovery_limit": "Has excedido el límite de intentos de recuperación.",
+        "message_email_sent": "Si el correo existe, recibirás instrucciones.",
+        "link_invalid": "El enlace es inválido o ha expirado.",
+        "pass_updated": "Contraseña actualizada correctamente.",
+        "update_error": "Error al actualizar.",
+        "bye": "Sesión cerrada.",
+        "security_error": "Error de seguridad (CSRF). Recarga la página.",
+        "no_image": "No se recibió ninguna imagen.",
+        "avatar_size_limit": "La imagen es demasiado grande. Máximo %s MB.",
+        "avatar_dimensions_limit": "La imagen es demasiado grande (Máx %spx).",
+        "avatar_rate_limit": "Has cambiado tu foto muchas veces. Espera un momento.",
+        "image_format": "Formato no permitido. Usa JPG, PNG o WEBP.",
+        "server_config_error": "Error de configuración del servidor (GD Missing).",
+        "pic_updated": "Foto de perfil actualizada.",
+        "pic_db_error": "Error al actualizar la base de datos.",
+        "pic_move_error": "Error al guardar la imagen.",
+        "pic_deleted": "Foto de perfil eliminada.",
+        "pic_gen_error": "Error al generar avatar por defecto.",
+        "field_invalid": "Campo inválido.",
+        "field_empty": "El valor no puede estar vacío.",
+        "username_bounds": "El nombre de usuario debe tener entre %s y %s caracteres.",
+        "field_in_use": "Este valor ya está en uso por otro usuario.",
+        "field_updated": "Actualizado correctamente.",
+        "auth_required": "Se requiere autorización previa.",
+        "pass_current_req": "Se requiere la contraseña actual.",
+        "pass_correct": "Contraseña correcta.",
+        "pass_incorrect": "Contraseña incorrecta.",
+        "pref_rate_limit": "Demasiadas solicitudes. Inténtalo más tarde.",
+        "pref_invalid": "Preferencia inválida.",
+        "lang_invalid": "Idioma no soportado.",
+        "theme_invalid": "Tema no válido.",
+        "pref_saved": "Preferencia guardada.",
+        "pref_saved_no_change": "Preferencia guardada (sin cambios).",
+        "pref_save_error": "Error al guardar preferencia.",
+        "qr_scan": "Escanea el código QR.",
+        "2fa_enabled": "Autenticación de dos factores activada.",
+        "2fa_disabled": "Autenticación de dos factores desactivada.",
+        "recovery_status": "Estado de recuperación obtenido.",
+        "pass_req_confirm": "Se requiere contraseña para confirmar.",
+        "recovery_regenerated": "Nuevos códigos generados.",
+        "sessions_list": "Lista de sesiones obtenida.",
+        "id_invalid": "ID inválido.",
+        "session_revoked": "Sesión cerrada.",
+        "session_revoke_error": "No se pudo cerrar la sesión.",
+        "all_sessions_revoked": "Todas las sesiones cerradas.",
+        "account_deleted_success": "Cuenta eliminada correctamente.",
+        "identity_rate_limit": "Has realizado demasiados cambios de identidad recientemente.",
+        "login_block": "Demasiados intentos fallidos. Bloqueado por %s minutos.",
+        "email_prefix_short": "La parte local del correo debe tener al menos %s caracteres.",
+        "email_domain_not_allowed": "El dominio '%s' no está permitido.",
+        "session_config_expired": "La sesión de configuración ha expirado."
+    },
+    "errors": {
+        "file_not_found": "Archivo de sección no encontrado.",
+        "session_expired": "Tu sesión ha expirado. Por favor recarga la página.",
+        "server_error": "Error interno del servidor."
+    },
+    "js": {
+        "auth": {
+            "fill_all": "Por favor completa todos los campos.",
+            "choose_username": "Elige un nombre de usuario.",
+            "code_sent": "Código enviado. Revisa tu correo.",
+            "connection_error": "Error de conexión.",
+            "enter_code": "Ingresa el código de verificación.",
+            "verify_error": "Error al verificar.",
+            "resend_success": "Código reenviado.",
+            "resend_error": "Error al reenviar código.",
+            "enter_email": "Ingresa tu correo.",
+            "reset_link_sent": "Enlace enviado (si el correo existe).",
+            "pass_mismatch": "Las contraseñas no coinciden.",
+            "pass_updated": "Contraseña actualizada. Redirigiendo...",
+            "unexpected_error": "Error inesperado.",
+            "continue": "Continuar"
+        },
+        "profile": {
+            "invalid_image": "Por favor selecciona una imagen válida.",
+            "saving": "Guardando...",
+            "pic_updated": "Foto actualizada.",
+            "pic_deleted": "Foto eliminada.",
+            "confirm_delete": "¿Estás seguro de eliminar tu foto actual? Se volverá al avatar por defecto.",
+            "email_code_req": "Ingresa el código de verificación."
+        },
+        "settings": {
+            "saving": "Guardando...",
+            "processing_error": "Error al procesar.",
+            "enter_current_pass": "Ingresa tu contraseña actual.",
+            "verifying": "Verificando...",
+            "fill_all": "Completa todos los campos.",
+            "pass_mismatch": "Las contraseñas nuevas no coinciden.",
+            "pass_short": "La contraseña es muy corta.",
+            "pass_updated": "Contraseña actualizada."
+        },
+        "2fa": {
+            "fill_code": "Ingresa el código de 6 dígitos.",
+            "verifying": "Verificando...",
+            "error_verify": "Error al verificar 2FA.",
+            "disabling": "Desactivando...",
+            "error_connection": "Error de conexión.",
+            "confirm_disable": "Tu cuenta quedará menos protegida. ¿Seguro que quieres desactivar 2FA?",
+            "generating": "Generando...",
+            "codes_generated": "Nuevos códigos generados."
+        },
+        "devices": {
+            "load_error": "Error al cargar dispositivos.",
+            "connection_error": "Error de conexión.",
+            "empty": "No hay otros dispositivos.",
+            "current_device": "Este dispositivo",
+            "btn_revoke": "Cerrar sesión",
+            "revoke_success": "Dispositivo desconectado.",
+            "confirm_revoke_all": "¿Cerrar sesión en TODOS los dispositivos excepto este?"
+        },
+        "delete": {
+            "enter_pass": "Ingresa tu contraseña para confirmar.",
+            "confirm_final": "¿ESTÁS SEGURO? Esta acción es irreversible y eliminará todos tus datos.",
+            "processing": "Procesando eliminación...",
+            "goodbye": "Cuenta eliminada. Hasta luego."
+        },
+        "core": {
+            "loading_error": "Error al cargar el contenido.",
+            "connection_error": "Error de conexión."
+        }
+    }
+}
