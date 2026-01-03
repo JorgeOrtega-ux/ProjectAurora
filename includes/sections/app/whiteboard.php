@@ -17,6 +17,22 @@
             opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); pointer-events: all;
         }
 
+        /* --- TOOLBAR SECUNDARIO (ANIMACIÓN) --- */
+        .wb-secondary-toolbar {
+            position: absolute;
+            top: 70px; /* Debajo del toolbar principal */
+            left: 50%; transform: translateX(-50%) translateY(-10px);
+            background: #ffffff; padding: 6px 12px; border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #e0e0e0;
+            display: flex; gap: 10px; align-items: center; z-index: 99;
+            opacity: 0; visibility: hidden; transition: all 0.2s;
+            pointer-events: none;
+        }
+        
+        .wb-secondary-toolbar.active {
+            opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); pointer-events: all;
+        }
+
         .wb-tool-group { display: flex; align-items: center; gap: 4px; }
 
         .wb-tool-btn {
@@ -26,9 +42,10 @@
         }
         
         .wb-tool-btn:hover, .wb-tool-btn.active { background-color: #f5f5f5; color: #000; }
-        
-        /* Estilo especial para botón activo (Física Global) */
         .wb-tool-btn.active-state { background-color: #e0f2fe; color: #0284c7; border-color: #bae6fd; }
+        
+        /* Botón Play activo */
+        .wb-tool-btn.is-playing { background-color: #dcfce7; color: #16a34a; border-color: #bbf7d0; }
 
         .wb-tool-input-wrapper {
             display: flex; align-items: center; background: #f5f5f5;
@@ -47,7 +64,7 @@
         /* --- ESTILOS POPOVER DE BORDE --- */
         .wb-popover {
             position: absolute;
-            top: 60px; /* Debajo de la toolbar */
+            top: 60px; 
             left: 50%;
             transform: translateX(-50%) translateY(-10px);
             background: #fff;
@@ -73,15 +90,16 @@
 
         .wb-popover-label { font-size: 12px; color: #666; font-weight: 500; }
 
-        .wb-slider {
-            width: 100px; accent-color: #000;
-        }
+        .wb-slider { width: 100px; accent-color: #000; }
+        .wb-slider-mini { width: 60px; accent-color: #000; height: 4px; }
+        
+        /* Slider de velocidad */
+        .wb-slider-velocity { width: 80px; accent-color: #0284c7; height: 4px; }
 
         .wb-color-input {
             width: 30px; height: 30px; border: none; padding: 0; background: none; cursor: pointer;
         }
 
-        /* --- ESTILOS COLORES DRAWER --- */
         .wb-colors-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 5px; }
         .wb-color-swatch { width: 100%; aspect-ratio: 1; border-radius: 6px; cursor: pointer; border: 1px solid rgba(0,0,0,0.1); transition: transform 0.1s; }
         .wb-color-swatch:hover { transform: scale(1.1); box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1; }
@@ -149,7 +167,6 @@
                                  style="background: repeating-linear-gradient(45deg, #e0e0e0, #e0e0e0 5px, #ffffff 5px, #ffffff 10px); border: 1px solid #ccc; display: flex; align-items: center; justify-content: center;">
                                  <span class="material-symbols-rounded" style="font-size: 18px; color: #666;">block</span>
                             </div>
-
                             <div class="wb-color-swatch" data-color="#000000" style="background-color: #000000;" title="Negro"></div>
                             <div class="wb-color-swatch" data-color="#ffffff" style="background-color: #ffffff; border: 1px solid #ddd;" title="Blanco"></div>
                             <div class="wb-color-swatch" data-color="#ef4444" style="background-color: #ef4444;" title="Rojo"></div>
@@ -159,7 +176,12 @@
                         </div>
                     </div>
 
-                    <div id="drawer-toys" class="wb-drawer-content"><p style="font-size: 13px; color: #666;">Elementos 3D próximamente.</p></div>
+                    <div id="drawer-toys" class="wb-drawer-content">
+                         <h4 style="font-size: 12px; color: #666; margin: 10px 0 5px; text-transform: uppercase;">Mecánicos</h4>
+                        <div class="wb-shapes-grid">
+                             <div class="wb-shape-card" data-shape="circle-cut" title="Anillo Motorizado"><span class="material-symbols-rounded">data_usage</span></div>
+                        </div>
+                    </div>
                     <div id="drawer-draw" class="wb-drawer-content"><p style="font-size: 13px; color: #666;">Configuración de pincel próximamente.</p></div>
                 </div>
             </div>
@@ -180,6 +202,14 @@
 
                 <div class="wb-divider"></div>
 
+                <div class="wb-tool-group" id="wb-aperture-group" style="display: none;">
+                    <div class="wb-tool-input-wrapper">
+                        <span class="wb-tool-label">Apertura</span>
+                        <input type="range" id="inp-aperture-size" class="wb-slider-mini" min="10" max="160" step="5" value="45">
+                    </div>
+                     <div class="wb-divider"></div>
+                </div>
+
                 <div class="wb-tool-group">
                     <button class="wb-tool-btn" id="btn-open-colors" title="Color de Relleno">
                         <span class="material-symbols-rounded" style="font-size: 18px;">format_color_fill</span>
@@ -198,6 +228,20 @@
                     <button class="wb-tool-btn" id="btn-delete-selection" title="Eliminar selección" style="color: #ef4444;">
                         <span class="material-symbols-rounded" style="font-size: 18px;">delete</span>
                     </button>
+                </div>
+            </div>
+
+            <div id="wb-secondary-toolbar" class="wb-secondary-toolbar">
+                <div class="wb-tool-group">
+                    <button class="wb-tool-btn" id="btn-spin-toggle" title="Play/Pausa">
+                        <span class="material-symbols-rounded" id="icon-spin-toggle" style="font-size: 20px;">play_arrow</span>
+                    </button>
+                </div>
+                <div class="wb-divider"></div>
+                <div class="wb-tool-group">
+                    <span class="wb-tool-label" style="margin-left: 4px;">Velocidad</span>
+                    <input type="range" id="inp-spin-speed" class="wb-slider-velocity" min="-20" max="20" step="1" value="2">
+                    <span id="val-spin-speed" style="font-size: 11px; margin-left: 5px; min-width: 20px;">2</span>
                 </div>
             </div>
 

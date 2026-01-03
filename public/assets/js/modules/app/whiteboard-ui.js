@@ -21,13 +21,23 @@ export const WhiteboardUI = {
         btnCloseDrawer: null,
         
         toolbar: null,
+        secondaryToolbar: null, // Nuevo
         btnScaleUp: null,
         btnScaleDown: null,
         btnDelete: null,
         btnColors: null,
-        btnMakeHollow: null, // Nuevo botón
+        btnMakeHollow: null,
         btnBorderOptions: null,
         sizeDisplay: null,
+        
+        groupAperture: null,
+        inpApertureSize: null,
+
+        // Controles secundarios (Spin)
+        btnSpinToggle: null,
+        iconSpinToggle: null,
+        inpSpinSpeed: null,
+        valSpinSpeed: null,
 
         borderPopover: null,
         inpBorderWidth: null,
@@ -65,13 +75,24 @@ export const WhiteboardUI = {
         el.btnCloseDrawer = document.getElementById('wb-close-drawer');
 
         el.toolbar = document.getElementById('wb-top-toolbar');
+        el.secondaryToolbar = document.getElementById('wb-secondary-toolbar'); // Cachear secondary
+        
         el.btnScaleUp = document.getElementById('btn-scale-up');
         el.btnScaleDown = document.getElementById('btn-scale-down');
         el.btnDelete = document.getElementById('btn-delete-selection');
         el.btnColors = document.getElementById('btn-open-colors');
-        el.btnMakeHollow = document.getElementById('btn-make-hollow'); // Inicializar
+        el.btnMakeHollow = document.getElementById('btn-make-hollow');
         el.btnBorderOptions = document.getElementById('btn-border-options');
         el.sizeDisplay = document.getElementById('wb-size-display');
+        
+        el.groupAperture = document.getElementById('wb-aperture-group');
+        el.inpApertureSize = document.getElementById('inp-aperture-size');
+
+        // Cachear controles spin
+        el.btnSpinToggle = document.getElementById('btn-spin-toggle');
+        el.iconSpinToggle = document.getElementById('icon-spin-toggle');
+        el.inpSpinSpeed = document.getElementById('inp-spin-speed');
+        el.valSpinSpeed = document.getElementById('val-spin-speed');
 
         el.borderPopover = document.getElementById('wb-border-popover');
         el.inpBorderWidth = document.getElementById('inp-border-width');
@@ -122,12 +143,16 @@ export const WhiteboardUI = {
     },
 
     toggleToolbar: (show) => {
-        const { toolbar } = WhiteboardUI.elements;
+        const { toolbar, secondaryToolbar } = WhiteboardUI.elements;
         if (!toolbar) return;
-        if (show) toolbar.classList.add('active');
-        else {
+        
+        if (show) {
+            toolbar.classList.add('active');
+        } else {
             toolbar.classList.remove('active');
             WhiteboardUI.toggleBorderPopover(false); 
+            // También ocultar secondary si se deselecciona todo
+            if (secondaryToolbar) secondaryToolbar.classList.remove('active');
         }
     },
 
@@ -171,10 +196,42 @@ export const WhiteboardUI = {
     },
 
     updateToolbarValues: (activeObj) => {
-        const { sizeDisplay } = WhiteboardUI.elements;
+        const { sizeDisplay, groupAperture, inpApertureSize, secondaryToolbar, btnSpinToggle, iconSpinToggle, inpSpinSpeed, valSpinSpeed } = WhiteboardUI.elements;
         if (!sizeDisplay || !activeObj) return;
 
         let displayValue = "";
+        
+        // --- Lógica circle-cut y Secondary Toolbar ---
+        if (activeObj.customType === 'circle-cut') {
+            // Mostrar controles de apertura
+            if (groupAperture) groupAperture.style.display = 'flex';
+            if (inpApertureSize) inpApertureSize.value = activeObj.apertureDegree || 45;
+
+            // Mostrar Toolbar Secundario
+            if (secondaryToolbar) secondaryToolbar.classList.add('active');
+            
+            // Sincronizar valores de Spin
+            const isSpinning = activeObj.isSpinning || false;
+            const speed = activeObj.spinSpeed !== undefined ? activeObj.spinSpeed : 2;
+
+            if (btnSpinToggle) {
+                if (isSpinning) {
+                    btnSpinToggle.classList.add('is-playing');
+                    if (iconSpinToggle) iconSpinToggle.innerText = 'pause';
+                } else {
+                    btnSpinToggle.classList.remove('is-playing');
+                    if (iconSpinToggle) iconSpinToggle.innerText = 'play_arrow';
+                }
+            }
+            if (inpSpinSpeed) inpSpinSpeed.value = speed;
+            if (valSpinSpeed) valSpinSpeed.innerText = speed;
+
+        } else {
+            // Ocultar controles específicos
+            if (groupAperture) groupAperture.style.display = 'none';
+            if (secondaryToolbar) secondaryToolbar.classList.remove('active');
+        }
+
         if (activeObj.type === 'activeSelection') {
             const objects = activeObj.getObjects();
             let firstHeight = null;

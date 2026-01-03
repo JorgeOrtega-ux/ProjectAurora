@@ -102,9 +102,13 @@ export const WhiteboardPhysics = {
             isStatic: isStatic
         };
 
-        // --- LÓGICA AVANZADA DE FORMAS ---
-        if (obj.type === 'polygon' || obj.type === 'triangle') {
-             // Caso Hueco (Paredes) o Sólido (Convexo)
+        // --- LÓGICA DE FORMAS ---
+
+        // CASO ESPECIAL: Círculo Hueco (Arc)
+        if (obj.customType === 'circle-cut') {
+            body = WhiteboardPhysics.createArcBody(obj, x, y, angle, options);
+        }
+        else if (obj.type === 'polygon' || obj.type === 'triangle') {
              if (obj.fill === 'transparent') {
                  body = WhiteboardPhysics.createHollowPolygon(obj, x, y, angle, options);
              } else {
@@ -183,6 +187,69 @@ export const WhiteboardPhysics = {
             y: p.y * obj.scaleY
         }));
         return Matter.Bodies.fromVertices(x, y, [points], options);
+    },
+
+    // Generar cuerpo para el Anillo Abierto
+    createArcBody: (obj, x, y, rotation, options) => {
+        const parts = [];
+        
+        // Propiedades de Fabric
+        const r = obj.radius * obj.scaleX;
+        
+        // Convertir grados de Fabric a Radianes para Física
+        const start = fabric.util.degreesToRadians(obj.startAngle);
+        const end = fabric.util.degreesToRadians(obj.endAngle);
+        
+        const stroke = (obj.strokeWidth * obj.scaleX) || 10;
+        // Ajuste: El radio físico debe ser el centro del trazo
+        // Fabric dibuja el stroke centrado en el borde del radio definido.
+        const effectiveR = r; 
+        
+        let totalAngle = end - start;
+        if (totalAngle < 0) totalAngle += Math.PI * 2;
+        
+        // --- MEJORA DE RESOLUCIÓN ---
+        // Aumentamos la densidad de segmentos para suavizar la curva física.
+        // Factor base 10 (antes 4) y consideramos el tamaño del radio para círculos grandes.
+        const density = Math.max(10, r / 5); 
+        const segments = Math.max(10, Math.floor(totalAngle * (density / Math.PI))); 
+
+        const step = totalAngle / segments;
+
+        for (let i = 0; i < segments; i++) {
+            const a1 = start + i * step;
+            const a2 = start + (i + 1) * step;
+            const midAngle = (a1 + a2) / 2;
+
+            const cx = effectiveR * Math.cos(midAngle);
+            const cy = effectiveR * Math.sin(midAngle);
+
+            // Longitud de la cuerda (ligeramente aumentada para solapamiento y evitar grietas)
+            const arcLen = (effectiveR * step) + 2; 
+
+            const cosRot = Math.cos(rotation);
+            const sinRot = Math.sin(rotation);
+            
+            const rx = cx * cosRot - cy * sinRot;
+            const ry = cx * sinRot + cy * cosRot;
+
+            const partX = x + rx;
+            const partY = y + ry;
+            
+            const partRotation = midAngle + rotation + (Math.PI / 2); 
+
+            const part = Matter.Bodies.rectangle(partX, partY, arcLen, stroke, {
+                angle: partRotation,
+                ...options
+            });
+            
+            parts.push(part);
+        }
+
+        return Matter.Body.create({
+            parts: parts,
+            ...options
+        });
     },
 
     createHollowPolygon: (obj, x, y, angle, options) => {

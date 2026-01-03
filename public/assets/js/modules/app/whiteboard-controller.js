@@ -19,7 +19,8 @@ export const WhiteboardController = {
         clipboard: null,
         history: [],
         historyIndex: -1,
-        historyLocked: false
+        historyLocked: false,
+        isSpinLoopRunning: false // Estado del loop de rotación
     },
     
     config: {
@@ -52,6 +53,9 @@ export const WhiteboardController = {
         window.addEventListener('resize', WhiteboardController.resizeCanvas);
         WhiteboardController.resizeCanvas();
         WhiteboardController.centerBoard();
+        
+        // Iniciar loop de animación para objetos que giran
+        WhiteboardController.startSpinLoop();
     },
 
     initCanvas: () => {
@@ -207,6 +211,41 @@ export const WhiteboardController = {
         }
     },
 
+    startSpinLoop: () => {
+        if (WhiteboardController.state.isSpinLoopRunning) return;
+        WhiteboardController.state.isSpinLoopRunning = true;
+
+        const loop = () => {
+            const canvas = WhiteboardController.canvas;
+            if (canvas) {
+                const objects = canvas.getObjects();
+                let needsRender = false;
+
+                objects.forEach(obj => {
+                    if (obj.isSpinning && obj.spinSpeed !== 0) {
+                        // Rotar objeto visual
+                        obj.angle += parseFloat(obj.spinSpeed);
+                        // Asegurar 0-360
+                        obj.angle = obj.angle % 360;
+                        obj.setCoords(); // Actualizar coords para selección y física
+                        
+                        // Sincronizar fuertemente con la física
+                        // Esto hace que el cuerpo físico (paredes) gire y golpee otros objetos
+                        WhiteboardPhysics.syncBodyRotation(obj);
+                        
+                        needsRender = true;
+                    }
+                });
+
+                if (needsRender) {
+                    canvas.requestRenderAll();
+                }
+            }
+            fabric.util.requestAnimFrame(loop);
+        };
+        fabric.util.requestAnimFrame(loop);
+    },
+
     bindEvents: () => {
         const ui = WhiteboardUI.elements;
         const canvas = WhiteboardController.canvas;
@@ -254,7 +293,6 @@ export const WhiteboardController = {
             });
         }
 
-        // --- NUEVO EVENTO PARA BOTÓN HACER HUECA ---
         if (ui.btnMakeHollow) {
             ui.btnMakeHollow.addEventListener('click', () => {
                 WhiteboardController.makeSelectionHollow();
@@ -267,6 +305,62 @@ export const WhiteboardController = {
                 const isActive = ui.borderPopover.classList.contains('active');
                 WhiteboardUI.toggleBorderPopover(!isActive);
                 if (!isActive) WhiteboardUI.closeDrawer();
+            });
+        }
+
+        if (ui.inpApertureSize) {
+            ui.inpApertureSize.addEventListener('input', (e) => {
+                const activeObj = canvas.getActiveObject();
+                if (!activeObj || activeObj.customType !== 'circle-cut') return;
+                
+                const val = parseInt(e.target.value, 10);
+                activeObj.set('apertureDegree', val);
+                
+                // Usamos GRADOS directamente
+                const startDeg = val / 2;
+                const endDeg = 360 - (val / 2);
+                
+                activeObj.set({
+                    startAngle: startDeg,
+                    endAngle: endDeg
+                });
+                
+                activeObj.setCoords();
+                canvas.requestRenderAll();
+                
+                // Regenerar física
+                WhiteboardPhysics.removeBody(activeObj);
+                WhiteboardPhysics.addBody(activeObj);
+            });
+            
+            ui.inpApertureSize.addEventListener('change', () => {
+                WhiteboardController.saveHistory();
+            });
+        }
+
+        // --- EVENTOS DE GIRO (SPIN) ---
+        if (ui.btnSpinToggle) {
+            ui.btnSpinToggle.addEventListener('click', () => {
+                const activeObj = canvas.getActiveObject();
+                if (!activeObj || activeObj.customType !== 'circle-cut') return;
+                
+                const newState = !activeObj.isSpinning;
+                activeObj.set('isSpinning', newState);
+                
+                // Actualizar UI
+                WhiteboardUI.updateToolbarValues(activeObj);
+            });
+        }
+
+        if (ui.inpSpinSpeed) {
+            ui.inpSpinSpeed.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value, 10);
+                if (ui.valSpinSpeed) ui.valSpinSpeed.innerText = val;
+                
+                const activeObj = canvas.getActiveObject();
+                if (activeObj && activeObj.customType === 'circle-cut') {
+                    activeObj.set('spinSpeed', val);
+                }
             });
         }
 
@@ -375,7 +469,6 @@ export const WhiteboardController = {
 
         const applyColor = (obj) => {
             if (color === 'transparent') {
-                // MODIFICADO: Solo quitar relleno, NO agregar borde automáticamente
                 obj.set('fill', 'transparent');
             } else {
                 if (obj.type === 'path' && (!obj.fill || obj.fill === 'transparent' || obj.fill === '')) {
@@ -400,7 +493,6 @@ export const WhiteboardController = {
         WhiteboardController.saveHistory(); 
     },
 
-    // --- NUEVA FUNCIÓN PARA HACER HUECA ---
     makeSelectionHollow: () => {
         const canvas = WhiteboardController.canvas;
         if (!canvas) return;
@@ -410,10 +502,9 @@ export const WhiteboardController = {
         const applyHollow = (obj) => {
             obj.set({
                 fill: 'transparent',
-                stroke: '#000000', // Forzar borde negro
-                strokeWidth: 2     // Forzar grosor
+                stroke: '#000000', 
+                strokeWidth: 2     
             });
-            // La física detectará fill=transparent y creará paredes
             WhiteboardPhysics.removeBody(obj);
             WhiteboardPhysics.addBody(obj);
         };
@@ -552,6 +643,28 @@ export const WhiteboardController = {
                 obj = new fabric.Path('M 100 0 L 0 0 L 5 -10 M 0 0 L 5 10', { ...commonProps, fill: '', stroke: '#000000', strokeWidth: 4, strokeLineCap: 'round', strokeLineJoin: 'round' }); break;
             case 'arrow-double': 
                 obj = new fabric.Path('M 5 10 L 0 0 L 5 -10 M 0 0 L 100 0 L 95 -10 M 100 0 L 95 10', { ...commonProps, fill: '', stroke: '#000000', strokeWidth: 4, strokeLineCap: 'round', strokeLineJoin: 'round' }); break;
+            
+            case 'circle-cut':
+                const apertureDeg = 45;
+                const startDeg = apertureDeg / 2;
+                const endDeg = 360 - (apertureDeg / 2);
+                
+                obj = new fabric.Circle({
+                    ...commonProps,
+                    radius: 50,
+                    fill: 'transparent',
+                    stroke: '#000000',
+                    strokeWidth: 10,
+                    startAngle: startDeg, 
+                    endAngle: endDeg      
+                });
+                
+                obj.set('customType', 'circle-cut');
+                obj.set('apertureDegree', apertureDeg);
+                // Propiedades nuevas para motor
+                obj.set('isSpinning', false);
+                obj.set('spinSpeed', 2);
+                break;
         }
         if (obj) { 
             canvas.add(obj); 
