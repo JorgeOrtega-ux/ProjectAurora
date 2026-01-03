@@ -135,6 +135,13 @@
                 <div class="wb-drawer-body">
                     <div id="drawer-shapes" class="wb-drawer-content">
                         <div class="wb-shapes-section">
+                            <h4 style="font-size: 12px; color: #666; margin: 10px 0 5px; text-transform: uppercase;">Líneas</h4>
+                            <div class="wb-shapes-grid">
+                                <div class="wb-shape-card" data-shape="line" title="Línea Recta"><span class="material-symbols-rounded">remove</span></div>
+                            </div>
+                        </div>
+
+                        <div class="wb-shapes-section">
                             <h4 style="font-size: 12px; color: #666; margin: 10px 0 5px; text-transform: uppercase;">Básicas</h4>
                             <div class="wb-shapes-grid">
                                 <div class="wb-shape-card" data-shape="rect" title="Rectángulo"><span class="material-symbols-rounded">crop_square</span></div>
@@ -180,6 +187,7 @@
                          <h4 style="font-size: 12px; color: #666; margin: 10px 0 5px; text-transform: uppercase;">Mecánicos</h4>
                         <div class="wb-shapes-grid">
                              <div class="wb-shape-card" data-shape="circle-cut" title="Anillo Motorizado"><span class="material-symbols-rounded">data_usage</span></div>
+                             <div class="wb-shape-card" data-shape="seesaw" title="Sube y Baja"><span class="material-symbols-rounded">balance</span></div>
                         </div>
                     </div>
                     <div id="drawer-draw" class="wb-drawer-content"><p style="font-size: 13px; color: #666;">Configuración de pincel próximamente.</p></div>

@@ -8,6 +8,7 @@ export const WhiteboardPhysics = {
     world: null,
     runner: null,
     bodiesMap: new Map(),
+    constraintsMap: new Map(), // Nuevo: Mapa para guardar restricciones (constraints)
     
     // Estado interno de la física
     running: false,
@@ -85,7 +86,7 @@ export const WhiteboardPhysics = {
     addBody: (obj) => {
         if (obj.type === 'selection' || obj.type === 'activeSelection') return;
         
-        const Bodies = Matter.Bodies, World = Matter.World;
+        const Bodies = Matter.Bodies, World = Matter.World, Constraint = Matter.Constraint;
         const world = WhiteboardPhysics.world;
         if (!world) return;
 
@@ -93,7 +94,8 @@ export const WhiteboardPhysics = {
         const x = obj.left;
         const y = obj.top;
         const angle = fabric.util.degreesToRadians(obj.angle);
-        const isStatic = !WhiteboardPhysics.globalEnabled;
+        // Respetar flag isStatic si viene del objeto (ej. base del sube y baja)
+        const isStatic = obj.isStatic !== undefined ? obj.isStatic : !WhiteboardPhysics.globalEnabled;
 
         const options = {
             friction: 0.5,
@@ -107,6 +109,10 @@ export const WhiteboardPhysics = {
         // CASO ESPECIAL: Círculo Hueco (Arc)
         if (obj.customType === 'circle-cut') {
             body = WhiteboardPhysics.createArcBody(obj, x, y, angle, options);
+        }
+        // CASO: Línea
+        else if (obj.type === 'line') {
+            body = WhiteboardPhysics.createLineBody(obj, options);
         }
         else if (obj.type === 'polygon' || obj.type === 'triangle') {
              if (obj.fill === 'transparent') {
@@ -137,13 +143,35 @@ export const WhiteboardPhysics = {
         if (body) {
             World.add(world, body);
             WhiteboardPhysics.bodiesMap.set(obj, body);
+
+            // --- LÓGICA ESPECIAL: SUBE Y BAJA (Beam) ---
+            // Si es la barra del sube y baja, agregamos un Constraint (pivote) al centro
+            if (obj.customType === 'seesaw-beam') {
+                const constraint = Constraint.create({
+                    bodyA: body,
+                    pointB: { x: x, y: y }, // Clavar al punto del mundo donde fue creado
+                    stiffness: 1,
+                    length: 0
+                });
+                World.add(world, constraint);
+                WhiteboardPhysics.constraintsMap.set(obj, constraint);
+            }
         }
     },
 
     removeBody: (obj) => {
+        const world = WhiteboardPhysics.world;
+        if (!world) return;
+
+        // Eliminar Constraints asociados primero
+        if (WhiteboardPhysics.constraintsMap.has(obj)) {
+            Matter.World.remove(world, WhiteboardPhysics.constraintsMap.get(obj));
+            WhiteboardPhysics.constraintsMap.delete(obj);
+        }
+
         const body = WhiteboardPhysics.bodiesMap.get(obj);
-        if (body && WhiteboardPhysics.world) {
-            Matter.World.remove(WhiteboardPhysics.world, body);
+        if (body) {
+            Matter.World.remove(world, body);
             WhiteboardPhysics.bodiesMap.delete(obj);
         }
     },
@@ -169,6 +197,7 @@ export const WhiteboardPhysics = {
             Matter.World.clear(WhiteboardPhysics.world);
             Matter.Engine.clear(WhiteboardPhysics.engine);
             WhiteboardPhysics.bodiesMap.clear();
+            WhiteboardPhysics.constraintsMap.clear();
         }
         // Reinicializar motor limpio
         WhiteboardPhysics.init(WhiteboardPhysics.canvasRef);
@@ -187,6 +216,33 @@ export const WhiteboardPhysics = {
             y: p.y * obj.scaleY
         }));
         return Matter.Bodies.fromVertices(x, y, [points], options);
+    },
+
+    createLineBody: (obj, options) => {
+        // Calcular centro, longitud y ángulo de la línea
+        const p1 = { x: obj.x1, y: obj.y1 };
+        const p2 = { x: obj.x2, y: obj.y2 };
+        
+        // Fabric ubica la línea basándose en left/top, necesitamos el punto central absoluto
+        const center = obj.getCenterPoint(); 
+        
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const length = Math.sqrt(dx*dx + dy*dy);
+        const strokeWidth = obj.strokeWidth || 4;
+        
+        // El ángulo de la línea se deriva de sus puntos más la rotación del objeto
+        // Simplificación: creamos un rectángulo en el centro con el ángulo correcto
+        // Nota: Fabric maneja angle separado de x1/y1 coords en transformaciones
+        
+        // Calculamos ángulo base de la línea + rotación del objeto
+        const baseAngle = Math.atan2(dy, dx);
+        const totalAngle = baseAngle + fabric.util.degreesToRadians(obj.angle);
+
+        return Matter.Bodies.rectangle(center.x, center.y, length, strokeWidth, {
+            ...options,
+            angle: totalAngle
+        });
     },
 
     // Generar cuerpo para el Anillo Abierto

@@ -644,6 +644,49 @@ export const WhiteboardController = {
             case 'arrow-double': 
                 obj = new fabric.Path('M 5 10 L 0 0 L 5 -10 M 0 0 L 100 0 L 95 -10 M 100 0 L 95 10', { ...commonProps, fill: '', stroke: '#000000', strokeWidth: 4, strokeLineCap: 'round', strokeLineJoin: 'round' }); break;
             
+            // --- NUEVO: LÍNEA ---
+            case 'line':
+                obj = new fabric.Line([0, 0, 150, 0], {
+                    ...commonProps,
+                    fill: '',
+                    stroke: '#000000',
+                    strokeWidth: 4,
+                    strokeLineCap: 'round'
+                });
+                break;
+
+            // --- NUEVO: SUBE Y BAJA (SEESAW) ---
+            case 'seesaw':
+                // 1. Crear Base (Triángulo) - ESTÁTICO
+                const base = new fabric.Triangle({
+                    ...commonProps,
+                    top: centerY + 50, // Ajustar posición vertical
+                    width: 60, height: 60,
+                    fill: '#333333',
+                    // Propiedad especial para que Physics lo trate como estático
+                    isStatic: true 
+                });
+                
+                // 2. Crear Barra (Rectángulo) - DINÁMICO PERO CON PIVOTE
+                const beam = new fabric.Rect({
+                    ...commonProps,
+                    top: centerY, // Justo encima de la base
+                    width: 300, height: 15,
+                    fill: '#0284c7',
+                    rx: 4, ry: 4,
+                    // Propiedad especial para Physics: agregará un constraint en el centro
+                    customType: 'seesaw-beam' 
+                });
+
+                // Agregar ambos al canvas
+                canvas.add(base);
+                canvas.add(beam);
+                canvas.setActiveObject(beam);
+                canvas.requestRenderAll();
+                
+                // Retornamos aquí para evitar el add(obj) genérico del final
+                return;
+
             case 'circle-cut':
                 const apertureDeg = 45;
                 const startDeg = apertureDeg / 2;
