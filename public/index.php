@@ -130,7 +130,7 @@ if ($showMaintenanceScreen) {
     <script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/root.css">
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/styles.css">
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components.css">

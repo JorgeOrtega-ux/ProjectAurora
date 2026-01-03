@@ -67,9 +67,10 @@ class Utils {
         $cspNonce = base64_encode(random_bytes(16));
 
         // 2. Definir Content-Security-Policy
+        // CORRECCIÓN: Agregado 'https://cdnjs.cloudflare.com' a script-src
         header("Content-Security-Policy: " .
             "default-src 'self'; " .
-            "script-src 'self' https://challenges.cloudflare.com https://unpkg.com 'nonce-$cspNonce'; " .
+            "script-src 'self' https://challenges.cloudflare.com https://unpkg.com https://cdnjs.cloudflare.com 'nonce-$cspNonce'; " .
             "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; " .
             "img-src 'self' data: https://ui-avatars.com; " .
             "font-src 'self' https://fonts.gstatic.com; " .
