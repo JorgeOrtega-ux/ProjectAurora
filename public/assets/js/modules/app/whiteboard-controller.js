@@ -152,18 +152,29 @@ export const WhiteboardController = {
         });
 
         // 3. ZOOM (WHEEL)
+      // 3. ZOOM (WHEEL)
         viewport.addEventListener('wheel', (e) => {
             e.preventDefault();
+            
+            // CORRECCIÓN: Calcular coordenadas relativas al viewport, no a la ventana
+            const rect = viewport.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
             if (e.ctrlKey) {
                 // Zoom
-                const xs = (e.clientX - WhiteboardController.state.pointX) / WhiteboardController.state.scale;
-                const ys = (e.clientY - WhiteboardController.state.pointY) / WhiteboardController.state.scale;
+                // Usamos mouseX/mouseY (relativos) en lugar de e.clientX/e.clientY (globales)
+                const xs = (mouseX - WhiteboardController.state.pointX) / WhiteboardController.state.scale;
+                const ys = (mouseY - WhiteboardController.state.pointY) / WhiteboardController.state.scale;
+                
                 const delta = -Math.sign(e.deltaY);
                 const step = 0.1;
                 let newScale = WhiteboardController.state.scale + (delta * step * WhiteboardController.state.scale);
                 newScale = Math.min(Math.max(newScale, WhiteboardController.config.minScale), WhiteboardController.config.maxScale);
-                const newX = e.clientX - xs * newScale;
-                const newY = e.clientY - ys * newScale;
+                
+                const newX = mouseX - xs * newScale;
+                const newY = mouseY - ys * newScale;
+                
                 WhiteboardController.updateTransform(newX, newY, newScale);
             } else {
                 // Scroll normal (pan)
