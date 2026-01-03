@@ -32,44 +32,33 @@ export const WhiteboardPhysics = {
         WhiteboardPhysics.runner = runner;
 
         // --- LÓGICA DE CINTA TRANSPORTADORA (CONVEYOR) ---
-        // Se ejecuta antes de cada cálculo de física
         Events.on(engine, 'beforeUpdate', function(event) {
-            if (!WhiteboardPhysics.globalEnabled) return;
-
+            
             const bodies = Matter.Composite.allBodies(world);
             const conveyors = bodies.filter(b => b.plugin && b.plugin.isConveyor);
 
             if (conveyors.length === 0) return;
 
             conveyors.forEach(conveyor => {
-                // Si la velocidad es 0 (pausado), no hacemos nada
                 const speed = conveyor.plugin.speed || 0;
                 if (speed === 0) return;
 
-                // Buscamos objetos que estén tocando la cinta
-                // Usamos Query.collides para detectar superposición
                 const collisions = Matter.Query.collides(conveyor, bodies);
 
                 collisions.forEach(collision => {
                     const otherBody = collision.bodyA === conveyor ? collision.bodyB : collision.bodyA;
                     
-                    if (otherBody.isStatic) return; // No mover objetos estáticos
+                    if (otherBody.isStatic) return; 
 
-                    // Calcular vector de dirección basado en el ángulo de la cinta
                     const angle = conveyor.angle;
-                    
-                    // Vector unitario de dirección
                     const dirX = Math.cos(angle);
                     const dirY = Math.sin(angle);
 
-                    // Aplicar velocidad al objeto
-                    // Usamos una mezcla (lerp) entre la velocidad actual y la de la cinta para simular fricción
                     Matter.Body.setVelocity(otherBody, {
                         x: otherBody.velocity.x * 0.9 + (dirX * speed) * 0.1,
                         y: otherBody.velocity.y * 0.9 + (dirY * speed) * 0.1
                     });
 
-                    // Opcional: Trasladar ligeramente para asegurar movimiento constante
                     Matter.Body.translate(otherBody, {
                         x: dirX * speed * 0.05,
                         y: dirY * speed * 0.05
@@ -106,7 +95,7 @@ export const WhiteboardPhysics = {
         
         if (enable) {
             WhiteboardPhysics.bodiesMap.forEach(body => {
-                // Si es conveyor o base de seesaw, mantener estático aunque la física esté global
+                // Si es conveyor, mantener estático aunque la física esté global
                 const shouldBeStatic = body.plugin && (body.plugin.isConveyor || body.plugin.forceStatic);
                 
                 if (!shouldBeStatic) {
@@ -127,7 +116,6 @@ export const WhiteboardPhysics = {
         activeObjects.forEach(obj => {
             const body = WhiteboardPhysics.bodiesMap.get(obj);
             if (body) {
-                // Respetar objetos que deben ser estáticos por naturaleza
                 if (obj.customType === 'conveyor' || obj.isStatic) return;
 
                 Matter.Body.setStatic(body, false);
@@ -147,7 +135,7 @@ export const WhiteboardPhysics = {
         const x = obj.left;
         const y = obj.top;
         const angle = fabric.util.degreesToRadians(obj.angle);
-        // Respetar flag isStatic si viene del objeto (ej. base del sube y baja o cinta)
+        
         const isStatic = obj.isStatic !== undefined ? obj.isStatic : !WhiteboardPhysics.globalEnabled;
 
         const options = {
@@ -155,17 +143,15 @@ export const WhiteboardPhysics = {
             restitution: 0.6,
             angle: angle,
             isStatic: isStatic,
-            plugin: {} // Espacio para metadata custom
+            plugin: {} 
         };
 
         // --- LÓGICA DE FORMAS ---
 
-        // CASO ESPECIAL: Cinta Transportadora
         if (obj.customType === 'conveyor') {
-            options.friction = 1; // Alta fricción para agarrar objetos
+            options.friction = 1; 
             options.plugin.isConveyor = true;
             
-            // Si está activa (isSpinning != false), usamos la velocidad, si no 0.
             const isActive = (obj.isSpinning !== undefined) ? obj.isSpinning : true;
             const speedVal = obj.conveyorSpeed || 2;
             options.plugin.speed = isActive ? speedVal : 0;
@@ -177,11 +163,9 @@ export const WhiteboardPhysics = {
             const h = obj.getScaledHeight();
             body = Bodies.rectangle(x, y, w, h, options);
         }
-        // CASO ESPECIAL: Círculo Hueco (Arc)
         else if (obj.customType === 'circle-cut') {
             body = WhiteboardPhysics.createArcBody(obj, x, y, angle, options);
         }
-        // CASO: Línea
         else if (obj.type === 'line') {
             body = WhiteboardPhysics.createLineBody(obj, options);
         }
@@ -205,32 +189,18 @@ export const WhiteboardPhysics = {
             body = Bodies.circle(x, y, r, options);
         } 
         else {
-            // Fallback para paths complejos
             const w = obj.getScaledWidth();
             const h = obj.getScaledHeight();
             body = Bodies.rectangle(x, y, w, h, options);
         }
 
         if (body) {
-            // Marcar estáticos forzados (como la base del seesaw)
             if (obj.isStatic) {
                 body.plugin.forceStatic = true;
             }
 
             World.add(world, body);
             WhiteboardPhysics.bodiesMap.set(obj, body);
-
-            // --- LÓGICA ESPECIAL: SUBE Y BAJA (Beam) ---
-            if (obj.customType === 'seesaw-beam') {
-                const constraint = Constraint.create({
-                    bodyA: body,
-                    pointB: { x: x, y: y }, 
-                    stiffness: 1,
-                    length: 0
-                });
-                World.add(world, constraint);
-                WhiteboardPhysics.constraintsMap.set(obj, constraint);
-            }
         }
     },
 

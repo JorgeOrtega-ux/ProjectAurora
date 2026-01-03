@@ -187,7 +187,6 @@
                          <h4 style="font-size: 12px; color: #666; margin: 10px 0 5px; text-transform: uppercase;">Mecánicos</h4>
                         <div class="wb-shapes-grid">
                              <div class="wb-shape-card" data-shape="circle-cut" title="Anillo Motorizado"><span class="material-symbols-rounded">data_usage</span></div>
-                             <div class="wb-shape-card" data-shape="seesaw" title="Sube y Baja"><span class="material-symbols-rounded">balance</span></div>
                              <div class="wb-shape-card" data-shape="conveyor" title="Cinta Transportadora"><span class="material-symbols-rounded">conveyor_belt</span></div>
                         </div>
                     </div>

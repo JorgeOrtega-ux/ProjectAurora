@@ -222,13 +222,19 @@ export const WhiteboardController = {
                 let needsRender = false;
 
                 objects.forEach(obj => {
-                    // Solo rotar si es circle-cut y tiene velocidad
-                    // La cinta usa 'isSpinning' solo para estado on/off, no para rotar visualmente
+                    // Animación del Círculo (Rotación)
                     if (obj.customType === 'circle-cut' && obj.isSpinning && obj.spinSpeed !== 0) {
                         obj.angle += parseFloat(obj.spinSpeed);
                         obj.angle = obj.angle % 360;
                         obj.setCoords(); 
                         WhiteboardPhysics.syncBodyRotation(obj);
+                        needsRender = true;
+                    }
+                    // Animación de la Cinta Transportadora (Desplazamiento de línea)
+                    else if (obj.customType === 'conveyor' && obj.isSpinning && obj.conveyorSpeed !== 0) {
+                        const speed = obj.conveyorSpeed || 0;
+                        obj.strokeDashOffset -= speed; 
+                        if (Math.abs(obj.strokeDashOffset) > 1000) obj.strokeDashOffset = 0;
                         needsRender = true;
                     }
                 });
@@ -663,30 +669,6 @@ export const WhiteboardController = {
                 });
                 break;
 
-            case 'seesaw':
-                const base = new fabric.Triangle({
-                    ...commonProps,
-                    top: centerY + 50,
-                    width: 60, height: 60,
-                    fill: '#333333',
-                    isStatic: true 
-                });
-                
-                const beam = new fabric.Rect({
-                    ...commonProps,
-                    top: centerY, 
-                    width: 300, height: 15,
-                    fill: '#0284c7',
-                    rx: 4, ry: 4,
-                    customType: 'seesaw-beam' 
-                });
-
-                canvas.add(base);
-                canvas.add(beam);
-                canvas.setActiveObject(beam);
-                canvas.requestRenderAll();
-                return;
-
             case 'circle-cut':
                 const apertureDeg = 45;
                 const startDeg = apertureDeg / 2;
@@ -708,7 +690,6 @@ export const WhiteboardController = {
                 obj.set('spinSpeed', 2);
                 break;
 
-            // --- NUEVO: CINTA TRANSPORTADORA ---
             case 'conveyor':
                 obj = new fabric.Rect({
                     ...commonProps,
@@ -716,13 +697,12 @@ export const WhiteboardController = {
                     fill: '#e5e7eb',
                     stroke: '#4b5563',
                     strokeWidth: 3,
-                    strokeDashArray: [10, 5], // Efecto visual de "correa"
+                    strokeDashArray: [10, 5], 
                     rx: 5, ry: 5
                 });
                 obj.set('customType', 'conveyor');
-                obj.set('conveyorSpeed', 5); // Velocidad por defecto
-                // Iniciamos como "Encendida" (isSpinning = true se usará para el estado)
-                obj.set('isSpinning', true); 
+                obj.set('conveyorSpeed', 5); 
+                obj.set('isSpinning', false); 
                 break;
         }
         if (obj) { 
