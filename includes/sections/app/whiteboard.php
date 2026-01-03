@@ -188,6 +188,7 @@
                         <div class="wb-shapes-grid">
                              <div class="wb-shape-card" data-shape="circle-cut" title="Anillo Motorizado"><span class="material-symbols-rounded">data_usage</span></div>
                              <div class="wb-shape-card" data-shape="seesaw" title="Sube y Baja"><span class="material-symbols-rounded">balance</span></div>
+                             <div class="wb-shape-card" data-shape="conveyor" title="Cinta Transportadora"><span class="material-symbols-rounded">conveyor_belt</span></div>
                         </div>
                     </div>
                     <div id="drawer-draw" class="wb-drawer-content"><p style="font-size: 13px; color: #666;">Configuración de pincel próximamente.</p></div>

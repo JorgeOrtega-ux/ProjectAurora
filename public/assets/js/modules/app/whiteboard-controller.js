@@ -20,7 +20,7 @@ export const WhiteboardController = {
         history: [],
         historyIndex: -1,
         historyLocked: false,
-        isSpinLoopRunning: false // Estado del loop de rotación
+        isSpinLoopRunning: false 
     },
     
     config: {
@@ -222,17 +222,13 @@ export const WhiteboardController = {
                 let needsRender = false;
 
                 objects.forEach(obj => {
-                    if (obj.isSpinning && obj.spinSpeed !== 0) {
-                        // Rotar objeto visual
+                    // Solo rotar si es circle-cut y tiene velocidad
+                    // La cinta usa 'isSpinning' solo para estado on/off, no para rotar visualmente
+                    if (obj.customType === 'circle-cut' && obj.isSpinning && obj.spinSpeed !== 0) {
                         obj.angle += parseFloat(obj.spinSpeed);
-                        // Asegurar 0-360
                         obj.angle = obj.angle % 360;
-                        obj.setCoords(); // Actualizar coords para selección y física
-                        
-                        // Sincronizar fuertemente con la física
-                        // Esto hace que el cuerpo físico (paredes) gire y golpee otros objetos
+                        obj.setCoords(); 
                         WhiteboardPhysics.syncBodyRotation(obj);
-                        
                         needsRender = true;
                     }
                 });
@@ -270,7 +266,6 @@ export const WhiteboardController = {
             ui.btnPhysicsAll.addEventListener('click', () => {
                 const enable = !WhiteboardPhysics.globalEnabled;
                 WhiteboardPhysics.toggleGlobal(enable);
-                // Actualizar UI del botón
                 if (enable) ui.btnPhysicsAll.classList.add('active-state');
                 else ui.btnPhysicsAll.classList.remove('active-state');
             });
@@ -316,7 +311,6 @@ export const WhiteboardController = {
                 const val = parseInt(e.target.value, 10);
                 activeObj.set('apertureDegree', val);
                 
-                // Usamos GRADOS directamente
                 const startDeg = val / 2;
                 const endDeg = 360 - (val / 2);
                 
@@ -328,7 +322,6 @@ export const WhiteboardController = {
                 activeObj.setCoords();
                 canvas.requestRenderAll();
                 
-                // Regenerar física
                 WhiteboardPhysics.removeBody(activeObj);
                 WhiteboardPhysics.addBody(activeObj);
             });
@@ -338,17 +331,25 @@ export const WhiteboardController = {
             });
         }
 
-        // --- EVENTOS DE GIRO (SPIN) ---
+        // --- EVENTOS DE GIRO Y CINTA ---
         if (ui.btnSpinToggle) {
             ui.btnSpinToggle.addEventListener('click', () => {
                 const activeObj = canvas.getActiveObject();
-                if (!activeObj || activeObj.customType !== 'circle-cut') return;
+                // Permitir si es círculo o cinta
+                if (!activeObj || (activeObj.customType !== 'circle-cut' && activeObj.customType !== 'conveyor')) return;
                 
-                const newState = !activeObj.isSpinning;
+                // Toggle isSpinning
+                const currentState = (activeObj.isSpinning !== undefined) ? activeObj.isSpinning : (activeObj.customType === 'conveyor');
+                const newState = !currentState;
                 activeObj.set('isSpinning', newState);
                 
-                // Actualizar UI
                 WhiteboardUI.updateToolbarValues(activeObj);
+
+                // Si es conveyor, necesitamos actualizar la física inmediatamente para que se detenga/arranque
+                if (activeObj.customType === 'conveyor') {
+                    WhiteboardPhysics.removeBody(activeObj);
+                    WhiteboardPhysics.addBody(activeObj);
+                }
             });
         }
 
@@ -358,8 +359,16 @@ export const WhiteboardController = {
                 if (ui.valSpinSpeed) ui.valSpinSpeed.innerText = val;
                 
                 const activeObj = canvas.getActiveObject();
-                if (activeObj && activeObj.customType === 'circle-cut') {
-                    activeObj.set('spinSpeed', val);
+                if (activeObj) {
+                     if(activeObj.customType === 'circle-cut') {
+                        activeObj.set('spinSpeed', val);
+                     } else if (activeObj.customType === 'conveyor') {
+                        // Actualizar velocidad de la cinta
+                        activeObj.set('conveyorSpeed', val);
+                        // Recrear cuerpo físico para actualizar el plugin.speed
+                        WhiteboardPhysics.removeBody(activeObj);
+                        WhiteboardPhysics.addBody(activeObj);
+                     }
                 }
             });
         }
@@ -644,7 +653,6 @@ export const WhiteboardController = {
             case 'arrow-double': 
                 obj = new fabric.Path('M 5 10 L 0 0 L 5 -10 M 0 0 L 100 0 L 95 -10 M 100 0 L 95 10', { ...commonProps, fill: '', stroke: '#000000', strokeWidth: 4, strokeLineCap: 'round', strokeLineJoin: 'round' }); break;
             
-            // --- NUEVO: LÍNEA ---
             case 'line':
                 obj = new fabric.Line([0, 0, 150, 0], {
                     ...commonProps,
@@ -655,36 +663,28 @@ export const WhiteboardController = {
                 });
                 break;
 
-            // --- NUEVO: SUBE Y BAJA (SEESAW) ---
             case 'seesaw':
-                // 1. Crear Base (Triángulo) - ESTÁTICO
                 const base = new fabric.Triangle({
                     ...commonProps,
-                    top: centerY + 50, // Ajustar posición vertical
+                    top: centerY + 50,
                     width: 60, height: 60,
                     fill: '#333333',
-                    // Propiedad especial para que Physics lo trate como estático
                     isStatic: true 
                 });
                 
-                // 2. Crear Barra (Rectángulo) - DINÁMICO PERO CON PIVOTE
                 const beam = new fabric.Rect({
                     ...commonProps,
-                    top: centerY, // Justo encima de la base
+                    top: centerY, 
                     width: 300, height: 15,
                     fill: '#0284c7',
                     rx: 4, ry: 4,
-                    // Propiedad especial para Physics: agregará un constraint en el centro
                     customType: 'seesaw-beam' 
                 });
 
-                // Agregar ambos al canvas
                 canvas.add(base);
                 canvas.add(beam);
                 canvas.setActiveObject(beam);
                 canvas.requestRenderAll();
-                
-                // Retornamos aquí para evitar el add(obj) genérico del final
                 return;
 
             case 'circle-cut':
@@ -704,9 +704,25 @@ export const WhiteboardController = {
                 
                 obj.set('customType', 'circle-cut');
                 obj.set('apertureDegree', apertureDeg);
-                // Propiedades nuevas para motor
                 obj.set('isSpinning', false);
                 obj.set('spinSpeed', 2);
+                break;
+
+            // --- NUEVO: CINTA TRANSPORTADORA ---
+            case 'conveyor':
+                obj = new fabric.Rect({
+                    ...commonProps,
+                    width: 250, height: 40,
+                    fill: '#e5e7eb',
+                    stroke: '#4b5563',
+                    strokeWidth: 3,
+                    strokeDashArray: [10, 5], // Efecto visual de "correa"
+                    rx: 5, ry: 5
+                });
+                obj.set('customType', 'conveyor');
+                obj.set('conveyorSpeed', 5); // Velocidad por defecto
+                // Iniciamos como "Encendida" (isSpinning = true se usará para el estado)
+                obj.set('isSpinning', true); 
                 break;
         }
         if (obj) { 

@@ -21,7 +21,7 @@ export const WhiteboardUI = {
         btnCloseDrawer: null,
         
         toolbar: null,
-        secondaryToolbar: null, // Nuevo
+        secondaryToolbar: null, 
         btnScaleUp: null,
         btnScaleDown: null,
         btnDelete: null,
@@ -33,7 +33,7 @@ export const WhiteboardUI = {
         groupAperture: null,
         inpApertureSize: null,
 
-        // Controles secundarios (Spin)
+        // Controles secundarios (Spin/Conveyor)
         btnSpinToggle: null,
         iconSpinToggle: null,
         inpSpinSpeed: null,
@@ -48,7 +48,6 @@ export const WhiteboardUI = {
         rowBorderRadius: null
     },
 
-    // Configuración específica de UI
     config: {
         sliderFillColor: '#000000', 
         sliderBgColor: '#e0e0e0',
@@ -75,7 +74,7 @@ export const WhiteboardUI = {
         el.btnCloseDrawer = document.getElementById('wb-close-drawer');
 
         el.toolbar = document.getElementById('wb-top-toolbar');
-        el.secondaryToolbar = document.getElementById('wb-secondary-toolbar'); // Cachear secondary
+        el.secondaryToolbar = document.getElementById('wb-secondary-toolbar');
         
         el.btnScaleUp = document.getElementById('btn-scale-up');
         el.btnScaleDown = document.getElementById('btn-scale-down');
@@ -88,7 +87,6 @@ export const WhiteboardUI = {
         el.groupAperture = document.getElementById('wb-aperture-group');
         el.inpApertureSize = document.getElementById('inp-aperture-size');
 
-        // Cachear controles spin
         el.btnSpinToggle = document.getElementById('btn-spin-toggle');
         el.iconSpinToggle = document.getElementById('icon-spin-toggle');
         el.inpSpinSpeed = document.getElementById('inp-spin-speed');
@@ -151,7 +149,6 @@ export const WhiteboardUI = {
         } else {
             toolbar.classList.remove('active');
             WhiteboardUI.toggleBorderPopover(false); 
-            // También ocultar secondary si se deselecciona todo
             if (secondaryToolbar) secondaryToolbar.classList.remove('active');
         }
     },
@@ -201,21 +198,36 @@ export const WhiteboardUI = {
 
         let displayValue = "";
         
-        // --- Lógica circle-cut y Secondary Toolbar ---
-        if (activeObj.customType === 'circle-cut') {
-            // Mostrar controles de apertura
-            if (groupAperture) groupAperture.style.display = 'flex';
-            if (inpApertureSize) inpApertureSize.value = activeObj.apertureDegree || 45;
+        // --- LÓGICA DE HERRAMIENTAS SECUNDARIAS (Anillo y Cinta) ---
+        const isCircleCut = activeObj.customType === 'circle-cut';
+        const isConveyor = activeObj.customType === 'conveyor';
+
+        if (isCircleCut || isConveyor) {
+            // Mostrar controles de apertura solo para círculo hueco
+            if (groupAperture) groupAperture.style.display = isCircleCut ? 'flex' : 'none';
+            if (isCircleCut && inpApertureSize) inpApertureSize.value = activeObj.apertureDegree || 45;
 
             // Mostrar Toolbar Secundario
             if (secondaryToolbar) secondaryToolbar.classList.add('active');
             
-            // Sincronizar valores de Spin
-            const isSpinning = activeObj.isSpinning || false;
-            const speed = activeObj.spinSpeed !== undefined ? activeObj.spinSpeed : 2;
+            // --- UNIFICACIÓN DE CONTROLES DE VELOCIDAD/PLAY ---
+            let isPlaying = false;
+            let speed = 2;
 
+            if (isCircleCut) {
+                isPlaying = activeObj.isSpinning || false;
+                speed = activeObj.spinSpeed !== undefined ? activeObj.spinSpeed : 2;
+            } else if (isConveyor) {
+                // Para la cinta, usamos isSpinning como flag de "Activa/Pausada"
+                isPlaying = activeObj.isSpinning !== false; // Por defecto true si no está definido
+                speed = activeObj.conveyorSpeed !== undefined ? activeObj.conveyorSpeed : 2;
+            }
+
+            // Mostrar y actualizar botón Play/Pause
             if (btnSpinToggle) {
-                if (isSpinning) {
+                btnSpinToggle.style.display = 'flex'; // Asegurar que sea visible para ambos
+                
+                if (isPlaying) {
                     btnSpinToggle.classList.add('is-playing');
                     if (iconSpinToggle) iconSpinToggle.innerText = 'pause';
                 } else {
@@ -223,6 +235,8 @@ export const WhiteboardUI = {
                     if (iconSpinToggle) iconSpinToggle.innerText = 'play_arrow';
                 }
             }
+            
+            // Sincronizar Slider de Velocidad
             if (inpSpinSpeed) inpSpinSpeed.value = speed;
             if (valSpinSpeed) valSpinSpeed.innerText = speed;
 

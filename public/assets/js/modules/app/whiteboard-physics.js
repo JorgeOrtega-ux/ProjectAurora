@@ -8,12 +8,12 @@ export const WhiteboardPhysics = {
     world: null,
     runner: null,
     bodiesMap: new Map(),
-    constraintsMap: new Map(), // Nuevo: Mapa para guardar restricciones (constraints)
+    constraintsMap: new Map(),
     
     // Estado interno de la física
     running: false,
     globalEnabled: false,
-    canvasRef: null, // Referencia al canvas de Fabric para renderizar
+    canvasRef: null, 
 
     init: (fabricCanvas) => {
         if (!window.Matter) { console.error("Matter.js no cargado"); return; }
@@ -21,7 +21,7 @@ export const WhiteboardPhysics = {
         console.log("WhiteboardPhysics: Iniciando motor...");
         WhiteboardPhysics.canvasRef = fabricCanvas;
 
-        const Engine = Matter.Engine, World = Matter.World, Runner = Matter.Runner;
+        const Engine = Matter.Engine, World = Matter.World, Runner = Matter.Runner, Events = Matter.Events;
         const engine = Engine.create();
         const world = engine.world;
         
@@ -30,6 +30,53 @@ export const WhiteboardPhysics = {
         
         const runner = Runner.create();
         WhiteboardPhysics.runner = runner;
+
+        // --- LÓGICA DE CINTA TRANSPORTADORA (CONVEYOR) ---
+        // Se ejecuta antes de cada cálculo de física
+        Events.on(engine, 'beforeUpdate', function(event) {
+            if (!WhiteboardPhysics.globalEnabled) return;
+
+            const bodies = Matter.Composite.allBodies(world);
+            const conveyors = bodies.filter(b => b.plugin && b.plugin.isConveyor);
+
+            if (conveyors.length === 0) return;
+
+            conveyors.forEach(conveyor => {
+                // Si la velocidad es 0 (pausado), no hacemos nada
+                const speed = conveyor.plugin.speed || 0;
+                if (speed === 0) return;
+
+                // Buscamos objetos que estén tocando la cinta
+                // Usamos Query.collides para detectar superposición
+                const collisions = Matter.Query.collides(conveyor, bodies);
+
+                collisions.forEach(collision => {
+                    const otherBody = collision.bodyA === conveyor ? collision.bodyB : collision.bodyA;
+                    
+                    if (otherBody.isStatic) return; // No mover objetos estáticos
+
+                    // Calcular vector de dirección basado en el ángulo de la cinta
+                    const angle = conveyor.angle;
+                    
+                    // Vector unitario de dirección
+                    const dirX = Math.cos(angle);
+                    const dirY = Math.sin(angle);
+
+                    // Aplicar velocidad al objeto
+                    // Usamos una mezcla (lerp) entre la velocidad actual y la de la cinta para simular fricción
+                    Matter.Body.setVelocity(otherBody, {
+                        x: otherBody.velocity.x * 0.9 + (dirX * speed) * 0.1,
+                        y: otherBody.velocity.y * 0.9 + (dirY * speed) * 0.1
+                    });
+
+                    // Opcional: Trasladar ligeramente para asegurar movimiento constante
+                    Matter.Body.translate(otherBody, {
+                        x: dirX * speed * 0.05,
+                        y: dirY * speed * 0.05
+                    });
+                });
+            });
+        });
         
         Runner.run(runner, engine);
         WhiteboardPhysics.running = true;
@@ -59,8 +106,13 @@ export const WhiteboardPhysics = {
         
         if (enable) {
             WhiteboardPhysics.bodiesMap.forEach(body => {
-                Matter.Body.setStatic(body, false);
-                Matter.Sleeping.set(body, false);
+                // Si es conveyor o base de seesaw, mantener estático aunque la física esté global
+                const shouldBeStatic = body.plugin && (body.plugin.isConveyor || body.plugin.forceStatic);
+                
+                if (!shouldBeStatic) {
+                    Matter.Body.setStatic(body, false);
+                    Matter.Sleeping.set(body, false);
+                }
             });
         } else {
             WhiteboardPhysics.bodiesMap.forEach(body => {
@@ -72,11 +124,12 @@ export const WhiteboardPhysics = {
     activateForSelection: (activeObjects) => {
         if (!activeObjects || !activeObjects.length) return;
 
-        // Si el motor no estaba corriendo (caso raro), reiniciarlo es responsabilidad del Controller,
-        // pero aquí aseguramos que los cuerpos despierten.
         activeObjects.forEach(obj => {
             const body = WhiteboardPhysics.bodiesMap.get(obj);
             if (body) {
+                // Respetar objetos que deben ser estáticos por naturaleza
+                if (obj.customType === 'conveyor' || obj.isStatic) return;
+
                 Matter.Body.setStatic(body, false);
                 Matter.Sleeping.set(body, false);
             }
@@ -94,20 +147,38 @@ export const WhiteboardPhysics = {
         const x = obj.left;
         const y = obj.top;
         const angle = fabric.util.degreesToRadians(obj.angle);
-        // Respetar flag isStatic si viene del objeto (ej. base del sube y baja)
+        // Respetar flag isStatic si viene del objeto (ej. base del sube y baja o cinta)
         const isStatic = obj.isStatic !== undefined ? obj.isStatic : !WhiteboardPhysics.globalEnabled;
 
         const options = {
             friction: 0.5,
             restitution: 0.6,
             angle: angle,
-            isStatic: isStatic
+            isStatic: isStatic,
+            plugin: {} // Espacio para metadata custom
         };
 
         // --- LÓGICA DE FORMAS ---
 
+        // CASO ESPECIAL: Cinta Transportadora
+        if (obj.customType === 'conveyor') {
+            options.friction = 1; // Alta fricción para agarrar objetos
+            options.plugin.isConveyor = true;
+            
+            // Si está activa (isSpinning != false), usamos la velocidad, si no 0.
+            const isActive = (obj.isSpinning !== undefined) ? obj.isSpinning : true;
+            const speedVal = obj.conveyorSpeed || 2;
+            options.plugin.speed = isActive ? speedVal : 0;
+
+            options.plugin.forceStatic = true; 
+            options.isStatic = true; 
+            
+            const w = obj.getScaledWidth();
+            const h = obj.getScaledHeight();
+            body = Bodies.rectangle(x, y, w, h, options);
+        }
         // CASO ESPECIAL: Círculo Hueco (Arc)
-        if (obj.customType === 'circle-cut') {
+        else if (obj.customType === 'circle-cut') {
             body = WhiteboardPhysics.createArcBody(obj, x, y, angle, options);
         }
         // CASO: Línea
@@ -141,15 +212,19 @@ export const WhiteboardPhysics = {
         }
 
         if (body) {
+            // Marcar estáticos forzados (como la base del seesaw)
+            if (obj.isStatic) {
+                body.plugin.forceStatic = true;
+            }
+
             World.add(world, body);
             WhiteboardPhysics.bodiesMap.set(obj, body);
 
             // --- LÓGICA ESPECIAL: SUBE Y BAJA (Beam) ---
-            // Si es la barra del sube y baja, agregamos un Constraint (pivote) al centro
             if (obj.customType === 'seesaw-beam') {
                 const constraint = Constraint.create({
                     bodyA: body,
-                    pointB: { x: x, y: y }, // Clavar al punto del mundo donde fue creado
+                    pointB: { x: x, y: y }, 
                     stiffness: 1,
                     length: 0
                 });
@@ -163,7 +238,6 @@ export const WhiteboardPhysics = {
         const world = WhiteboardPhysics.world;
         if (!world) return;
 
-        // Eliminar Constraints asociados primero
         if (WhiteboardPhysics.constraintsMap.has(obj)) {
             Matter.World.remove(world, WhiteboardPhysics.constraintsMap.get(obj));
             WhiteboardPhysics.constraintsMap.delete(obj);
@@ -199,10 +273,8 @@ export const WhiteboardPhysics = {
             WhiteboardPhysics.bodiesMap.clear();
             WhiteboardPhysics.constraintsMap.clear();
         }
-        // Reinicializar motor limpio
         WhiteboardPhysics.init(WhiteboardPhysics.canvasRef);
         
-        // Re-agregar todos los objetos
         if(fabricObjects) {
             fabricObjects.forEach(obj => WhiteboardPhysics.addBody(obj));
         }
@@ -219,11 +291,8 @@ export const WhiteboardPhysics = {
     },
 
     createLineBody: (obj, options) => {
-        // Calcular centro, longitud y ángulo de la línea
         const p1 = { x: obj.x1, y: obj.y1 };
         const p2 = { x: obj.x2, y: obj.y2 };
-        
-        // Fabric ubica la línea basándose en left/top, necesitamos el punto central absoluto
         const center = obj.getCenterPoint(); 
         
         const dx = p2.x - p1.x;
@@ -231,11 +300,6 @@ export const WhiteboardPhysics = {
         const length = Math.sqrt(dx*dx + dy*dy);
         const strokeWidth = obj.strokeWidth || 4;
         
-        // El ángulo de la línea se deriva de sus puntos más la rotación del objeto
-        // Simplificación: creamos un rectángulo en el centro con el ángulo correcto
-        // Nota: Fabric maneja angle separado de x1/y1 coords en transformaciones
-        
-        // Calculamos ángulo base de la línea + rotación del objeto
         const baseAngle = Math.atan2(dy, dx);
         const totalAngle = baseAngle + fabric.util.degreesToRadians(obj.angle);
 
@@ -245,31 +309,19 @@ export const WhiteboardPhysics = {
         });
     },
 
-    // Generar cuerpo para el Anillo Abierto
     createArcBody: (obj, x, y, rotation, options) => {
         const parts = [];
-        
-        // Propiedades de Fabric
         const r = obj.radius * obj.scaleX;
-        
-        // Convertir grados de Fabric a Radianes para Física
         const start = fabric.util.degreesToRadians(obj.startAngle);
         const end = fabric.util.degreesToRadians(obj.endAngle);
-        
         const stroke = (obj.strokeWidth * obj.scaleX) || 10;
-        // Ajuste: El radio físico debe ser el centro del trazo
-        // Fabric dibuja el stroke centrado en el borde del radio definido.
         const effectiveR = r; 
         
         let totalAngle = end - start;
         if (totalAngle < 0) totalAngle += Math.PI * 2;
         
-        // --- MEJORA DE RESOLUCIÓN ---
-        // Aumentamos la densidad de segmentos para suavizar la curva física.
-        // Factor base 10 (antes 4) y consideramos el tamaño del radio para círculos grandes.
         const density = Math.max(10, r / 5); 
         const segments = Math.max(10, Math.floor(totalAngle * (density / Math.PI))); 
-
         const step = totalAngle / segments;
 
         for (let i = 0; i < segments; i++) {
@@ -279,26 +331,21 @@ export const WhiteboardPhysics = {
 
             const cx = effectiveR * Math.cos(midAngle);
             const cy = effectiveR * Math.sin(midAngle);
-
-            // Longitud de la cuerda (ligeramente aumentada para solapamiento y evitar grietas)
             const arcLen = (effectiveR * step) + 2; 
 
             const cosRot = Math.cos(rotation);
             const sinRot = Math.sin(rotation);
-            
             const rx = cx * cosRot - cy * sinRot;
             const ry = cx * sinRot + cy * cosRot;
 
             const partX = x + rx;
             const partY = y + ry;
-            
             const partRotation = midAngle + rotation + (Math.PI / 2); 
 
             const part = Matter.Bodies.rectangle(partX, partY, arcLen, stroke, {
                 angle: partRotation,
                 ...options
             });
-            
             parts.push(part);
         }
 
