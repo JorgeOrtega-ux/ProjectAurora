@@ -26,6 +26,9 @@
         }
         
         .wb-tool-btn:hover, .wb-tool-btn.active { background-color: #f5f5f5; color: #000; }
+        
+        /* Estilo especial para botón activo (Física Global) */
+        .wb-tool-btn.active-state { background-color: #e0f2fe; color: #0284c7; border-color: #bae6fd; }
 
         .wb-tool-input-wrapper {
             display: flex; align-items: center; background: #f5f5f5;
@@ -78,7 +81,7 @@
             width: 30px; height: 30px; border: none; padding: 0; background: none; cursor: pointer;
         }
 
-        /* --- ESTILOS COLORES DRAWER (PREVIO) --- */
+        /* --- ESTILOS COLORES DRAWER --- */
         .wb-colors-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 5px; }
         .wb-color-swatch { width: 100%; aspect-ratio: 1; border-radius: 6px; cursor: pointer; border: 1px solid rgba(0,0,0,0.1); transition: transform 0.1s; }
         .wb-color-swatch:hover { transform: scale(1.1); box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1; }
@@ -142,13 +145,18 @@
                     <div id="drawer-colors" class="wb-drawer-content">
                         <h4 style="font-size: 12px; color: #666; margin: 10px 0 10px; text-transform: uppercase;">Paleta de Colores</h4>
                         <div class="wb-colors-grid">
+                            <div class="wb-color-swatch" data-color="transparent" title="Sin Relleno (Solo Borde)"
+                                 style="background: repeating-linear-gradient(45deg, #e0e0e0, #e0e0e0 5px, #ffffff 5px, #ffffff 10px); border: 1px solid #ccc; display: flex; align-items: center; justify-content: center;">
+                                 <span class="material-symbols-rounded" style="font-size: 18px; color: #666;">block</span>
+                            </div>
+
                             <div class="wb-color-swatch" data-color="#000000" style="background-color: #000000;" title="Negro"></div>
                             <div class="wb-color-swatch" data-color="#ffffff" style="background-color: #ffffff; border: 1px solid #ddd;" title="Blanco"></div>
                             <div class="wb-color-swatch" data-color="#ef4444" style="background-color: #ef4444;" title="Rojo"></div>
                             <div class="wb-color-swatch" data-color="#3b82f6" style="background-color: #3b82f6;" title="Azul"></div>
                             <div class="wb-color-swatch" data-color="#22c55e" style="background-color: #22c55e;" title="Verde"></div>
                             <div class="wb-color-swatch" data-color="#eab308" style="background-color: #eab308;" title="Amarillo"></div>
-                            </div>
+                        </div>
                     </div>
 
                     <div id="drawer-toys" class="wb-drawer-content"><p style="font-size: 13px; color: #666;">Elementos 3D próximamente.</p></div>
@@ -218,6 +226,22 @@
 
     <div class="wb-footer">
         <div class="wb-footer-controls">
+            <button class="wb-tool-btn" id="wb-btn-physics-selected" title="Activar Física (Selección)">
+                <span class="material-symbols-rounded">touch_app</span> </button>
+            <button class="wb-tool-btn" id="wb-btn-physics-all" title="Activar/Desactivar Física (Todo)">
+                <span class="material-symbols-rounded">bolt</span> </button>
+            
+            <div style="width: 1px; height: 24px; background-color: var(--border-color, #e0e0e0); margin: 0 5px;"></div>
+
+            <button class="wb-tool-btn" id="wb-btn-undo" title="Deshacer (Ctrl+Z)">
+                <span class="material-symbols-rounded">undo</span>
+            </button>
+            <button class="wb-tool-btn" id="wb-btn-redo" title="Rehacer (Ctrl+Y)">
+                <span class="material-symbols-rounded">redo</span>
+            </button>
+            
+            <div style="width: 1px; height: 24px; background-color: var(--border-color, #e0e0e0); margin: 0 5px;"></div>
+            
             <button class="wb-tool-btn" id="wb-btn-center">Centrar</button>
             <div style="width: 1px; height: 24px; background-color: var(--border-color, #e0e0e0);"></div>
             <div class="wb-zoom-wrapper">

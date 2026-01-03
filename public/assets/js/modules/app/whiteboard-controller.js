@@ -11,7 +11,22 @@ export const WhiteboardController = {
         mouseY: 0,
         isShiftPressed: false,
         lastPosX: 0,
-        lastPosY: 0
+        lastPosY: 0,
+        clipboard: null,
+        history: [],
+        historyIndex: -1,
+        historyLocked: false,
+        
+        // Estado Física
+        physicsRunning: false, 
+        physicsGlobalEnabled: false
+    },
+    
+    physics: {
+        engine: null,
+        world: null,
+        runner: null,
+        bodiesMap: new Map(), 
     },
     
     config: {
@@ -32,20 +47,24 @@ export const WhiteboardController = {
         zoomSlider: null,
         zoomDisplay: null,
         btnCenter: null,
+        
+        btnUndo: null,
+        btnRedo: null,
+        btnPhysicsAll: null,
+        btnPhysicsSelected: null,
+
         drawer: null,
         drawerTitle: null,
         btnCloseDrawer: null,
         
-        // Toolbar Superior
         toolbar: null,
         btnScaleUp: null,
         btnScaleDown: null,
         btnDelete: null,
         btnColors: null,
-        btnBorderOptions: null, // Nuevo
+        btnBorderOptions: null,
         sizeDisplay: null,
 
-        // Popover Borde
         borderPopover: null,
         inpBorderWidth: null,
         valBorderWidth: null,
@@ -64,11 +83,15 @@ export const WhiteboardController = {
         WhiteboardController.elements.zoomDisplay = document.getElementById('wb-zoom-display');
         WhiteboardController.elements.btnCenter = document.getElementById('wb-btn-center');
         
+        WhiteboardController.elements.btnUndo = document.getElementById('wb-btn-undo');
+        WhiteboardController.elements.btnRedo = document.getElementById('wb-btn-redo');
+        WhiteboardController.elements.btnPhysicsAll = document.getElementById('wb-btn-physics-all');
+        WhiteboardController.elements.btnPhysicsSelected = document.getElementById('wb-btn-physics-selected');
+        
         WhiteboardController.elements.drawer = document.getElementById('wb-drawer');
         WhiteboardController.elements.drawerTitle = document.getElementById('wb-drawer-title');
         WhiteboardController.elements.btnCloseDrawer = document.getElementById('wb-close-drawer');
 
-        // Toolbar
         WhiteboardController.elements.toolbar = document.getElementById('wb-top-toolbar');
         WhiteboardController.elements.btnScaleUp = document.getElementById('btn-scale-up');
         WhiteboardController.elements.btnScaleDown = document.getElementById('btn-scale-down');
@@ -77,7 +100,6 @@ export const WhiteboardController = {
         WhiteboardController.elements.btnBorderOptions = document.getElementById('btn-border-options');
         WhiteboardController.elements.sizeDisplay = document.getElementById('wb-size-display');
 
-        // Popover Borde
         WhiteboardController.elements.borderPopover = document.getElementById('wb-border-popover');
         WhiteboardController.elements.inpBorderWidth = document.getElementById('inp-border-width');
         WhiteboardController.elements.valBorderWidth = document.getElementById('val-border-width');
@@ -95,6 +117,11 @@ export const WhiteboardController = {
         WhiteboardController.bindColorEvents(); 
         WhiteboardController.updateSliderFill();
         
+        WhiteboardController.saveHistory();
+        
+        // Inicializar motor (pausado)
+        WhiteboardController.initPhysicsEngine();
+
         window.addEventListener('resize', WhiteboardController.resizeCanvas);
         WhiteboardController.resizeCanvas();
         WhiteboardController.centerBoard();
@@ -126,7 +153,6 @@ export const WhiteboardController = {
             fabric.Object.prototype.controls.mtr.cursorStyle = 'pointer';
         }
 
-        // Renderizadores de Píldoras (Minimizado para ahorrar espacio visual en el código)
         const pillLength=24, pillThickness=6; 
         const drawPillPath = (ctx, w, h) => {
             const x = -w/2, y = -h/2, r = Math.min(w, h)/2; 
@@ -144,6 +170,34 @@ export const WhiteboardController = {
         fabric.Object.prototype.controls.mb.render = (c,l,t,s,o)=>renderPill(c,l,t,s,o,0);
         fabric.Object.prototype.controls.ml.render = (c,l,t,s,o)=>renderPill(c,l,t,s,o,1);
         fabric.Object.prototype.controls.mr.render = (c,l,t,s,o)=>renderPill(c,l,t,s,o,1);
+
+        // Listeners
+        WhiteboardController.canvas.on('object:added', (e) => {
+            if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
+            WhiteboardController.addBodyToWorld(e.target);
+        });
+        
+        WhiteboardController.canvas.on('object:removed', (e) => {
+            if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
+            WhiteboardController.removeBodyFromWorld(e.target);
+        });
+
+        WhiteboardController.canvas.on('object:modified', () => {
+            if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
+        });
+
+        WhiteboardController.canvas.on('object:moving', (e) => {
+            WhiteboardController.syncBodyPosition(e.target);
+        });
+        
+        WhiteboardController.canvas.on('object:rotating', (e) => {
+            WhiteboardController.syncBodyRotation(e.target);
+        });
+        
+        WhiteboardController.canvas.on('object:scaling', (e) => {
+            WhiteboardController.removeBodyFromWorld(e.target);
+            WhiteboardController.addBodyToWorld(e.target);
+        });
     },
 
     resizeCanvas: () => {
@@ -157,19 +211,18 @@ export const WhiteboardController = {
 
     bindEvents: () => {
         const { btnScaleUp, btnScaleDown, btnDelete, btnColors, btnBorderOptions, 
-                borderPopover, inpBorderWidth, inpBorderColor, inpBorderRadius } = WhiteboardController.elements;
+                borderPopover, inpBorderWidth, inpBorderColor, inpBorderRadius,
+                btnUndo, btnRedo, btnPhysicsAll, btnPhysicsSelected } = WhiteboardController.elements;
         const canvas = WhiteboardController.canvas;
 
         const updateToolbar = () => {
             const activeObj = canvas.getActiveObject();
             WhiteboardController.toggleToolbar(!!activeObj);
             
-            // Si hay objeto seleccionado, actualizamos los valores del toolbar y del popover (si está abierto)
             if (activeObj) {
                 WhiteboardController.updateToolbarValues();
                 WhiteboardController.syncPopoverValues(activeObj);
             } else {
-                // Si se deselecciona, cerramos popover
                 WhiteboardController.toggleBorderPopover(false);
             }
         };
@@ -180,7 +233,6 @@ export const WhiteboardController = {
         canvas.on('object:modified', updateToolbar);
         canvas.on('object:scaling', updateToolbar);
 
-        // --- BOTONES TOOLBAR ---
         if (btnScaleUp) btnScaleUp.addEventListener('click', () => WhiteboardController.modifySelectionScale(1.1));
         if (btnScaleDown) btnScaleDown.addEventListener('click', () => WhiteboardController.modifySelectionScale(0.9));
         
@@ -194,33 +246,43 @@ export const WhiteboardController = {
             });
         }
 
+        if (btnUndo) btnUndo.addEventListener('click', () => WhiteboardController.undo());
+        if (btnRedo) btnRedo.addEventListener('click', () => WhiteboardController.redo());
+        
+        if (btnPhysicsAll) {
+            btnPhysicsAll.addEventListener('click', () => {
+                WhiteboardController.togglePhysicsGlobal();
+            });
+        }
+        
+        if (btnPhysicsSelected) {
+            btnPhysicsSelected.addEventListener('click', () => {
+                WhiteboardController.activatePhysicsForSelection();
+            });
+        }
+
         if (btnColors) {
             btnColors.addEventListener('click', (e) => {
                 e.stopPropagation();
                 WhiteboardController.openDrawer('drawer-colors', 'Colores');
-                WhiteboardController.toggleBorderPopover(false); // Cerrar el otro si está abierto
+                WhiteboardController.toggleBorderPopover(false); 
             });
         }
 
-        // --- NUEVO: BOTÓN DE OPCIONES DE BORDE ---
         if (btnBorderOptions) {
             btnBorderOptions.addEventListener('click', (e) => {
                 e.stopPropagation();
-                // Toggle visibilidad del popover
                 const isActive = borderPopover.classList.contains('active');
                 WhiteboardController.toggleBorderPopover(!isActive);
-                // Si abrimos, cerramos el drawer lateral para limpiar la vista
                 if (!isActive) WhiteboardController.closeDrawer();
             });
         }
 
-        // --- EVENTOS DE INPUTS DEL POPOVER ---
         if (inpBorderWidth) {
             inpBorderWidth.addEventListener('input', (e) => {
                 const val = parseInt(e.target.value, 10);
                 WhiteboardController.elements.valBorderWidth.innerText = val;
                 WhiteboardController.updateSelectionProp('strokeWidth', val);
-                // Si el borde es > 0 y el color es transparente, ponerlo negro por defecto para que se vea
                 if (val > 0) {
                     const obj = canvas.getActiveObject();
                     if (obj && (obj.stroke === 'transparent' || !obj.stroke)) {
@@ -241,25 +303,19 @@ export const WhiteboardController = {
             inpBorderRadius.addEventListener('input', (e) => {
                 const val = parseInt(e.target.value, 10);
                 WhiteboardController.elements.valBorderRadius.innerText = val;
-                // En Fabric.js rects usan rx y ry
                 WhiteboardController.updateSelectionProp('rx', val);
                 WhiteboardController.updateSelectionProp('ry', val);
             });
         }
 
-        // --- CIERRE DE POPOVERS AL CLIC FUERA ---
-        // Agregar listener global para cerrar el popover si clicamos fuera del toolbar/popover
         document.addEventListener('click', (e) => {
             if (borderPopover && borderPopover.classList.contains('active')) {
-                // Si el clic NO fue dentro del popover NI dentro del botón que lo abre
                 if (!borderPopover.contains(e.target) && !btnBorderOptions.contains(e.target)) {
                     WhiteboardController.toggleBorderPopover(false);
                 }
             }
         });
 
-
-        // --- MOUSE & KEYBOARD (Zoom/Pan) ---
         canvas.on('mouse:wheel', (opt) => {
             opt.e.preventDefault(); opt.e.stopPropagation();
             if (opt.e.ctrlKey) {
@@ -313,12 +369,21 @@ export const WhiteboardController = {
                 WhiteboardController.state.isShiftPressed = true;
                 if (!WhiteboardController.state.panning) canvas.defaultCursor = 'grab';
             }
+
             if ((e.key === 'Delete' || e.key === 'Backspace') && !WhiteboardController.isInputActive()) {
                 const activeObjects = canvas.getActiveObjects();
                 if (activeObjects.length) {
                     canvas.discardActiveObject();
                     activeObjects.forEach((obj) => canvas.remove(obj));
                 }
+            }
+
+            const isCtrl = e.ctrlKey || e.metaKey;
+            if (isCtrl && !WhiteboardController.isInputActive()) {
+                if (e.code === 'KeyC') { e.preventDefault(); WhiteboardController.copy(); }
+                if (e.code === 'KeyV') { e.preventDefault(); WhiteboardController.paste(); }
+                if (e.code === 'KeyZ' && !e.shiftKey) { e.preventDefault(); WhiteboardController.undo(); }
+                if ((e.code === 'KeyY') || (e.code === 'KeyZ' && e.shiftKey)) { e.preventDefault(); WhiteboardController.redo(); }
             }
         });
 
@@ -341,7 +406,324 @@ export const WhiteboardController = {
         if (WhiteboardController.elements.btnCenter) WhiteboardController.elements.btnCenter.addEventListener('click', () => WhiteboardController.centerBoard());
     },
 
-    bindSidebarEvents: () => { /* ... (Igual que antes) ... */ 
+    // --- LÓGICA DE FÍSICA ---
+
+    initPhysicsEngine: () => {
+        if (!window.Matter) { console.error("Matter.js no cargado"); return; }
+        
+        const Engine = Matter.Engine, World = Matter.World, Runner = Matter.Runner;
+        const engine = Engine.create();
+        const world = engine.world;
+        
+        WhiteboardController.physics.engine = engine;
+        WhiteboardController.physics.world = world;
+        
+        const runner = Runner.create();
+        WhiteboardController.physics.runner = runner;
+        
+        Runner.run(runner, engine);
+        WhiteboardController.state.physicsRunning = true;
+
+        const updateLoop = () => {
+            if (!WhiteboardController.state.physicsRunning) return;
+            
+            WhiteboardController.physics.bodiesMap.forEach((body, obj) => {
+                if (!body.isStatic) {
+                    obj.left = body.position.x;
+                    obj.top = body.position.y;
+                    obj.angle = body.angle * (180 / Math.PI);
+                    obj.setCoords(); 
+                }
+            });
+            
+            WhiteboardController.canvas.requestRenderAll();
+            requestAnimationFrame(updateLoop);
+        };
+        requestAnimationFrame(updateLoop);
+    },
+
+    togglePhysicsGlobal: () => {
+        const { btnPhysicsAll } = WhiteboardController.elements;
+        const enable = !WhiteboardController.state.physicsGlobalEnabled;
+        WhiteboardController.state.physicsGlobalEnabled = enable;
+
+        if (enable) {
+            btnPhysicsAll.classList.add('active-state');
+            WhiteboardController.physics.bodiesMap.forEach(body => {
+                Matter.Body.setStatic(body, false);
+                Matter.Sleeping.set(body, false);
+            });
+        } else {
+            btnPhysicsAll.classList.remove('active-state');
+            WhiteboardController.physics.bodiesMap.forEach(body => {
+                Matter.Body.setStatic(body, true);
+            });
+        }
+    },
+
+    activatePhysicsForSelection: () => {
+        const activeObjects = WhiteboardController.canvas.getActiveObjects();
+        if (!activeObjects.length) return;
+
+        if (!WhiteboardController.state.physicsRunning) WhiteboardController.initPhysicsEngine();
+
+        activeObjects.forEach(obj => {
+            const body = WhiteboardController.physics.bodiesMap.get(obj);
+            if (body) {
+                Matter.Body.setStatic(body, false);
+                Matter.Sleeping.set(body, false);
+            }
+        });
+        
+        WhiteboardController.canvas.discardActiveObject();
+        WhiteboardController.canvas.requestRenderAll();
+    },
+
+    addBodyToWorld: (obj) => {
+        if (obj.type === 'selection' || obj.type === 'activeSelection') return;
+        
+        const Bodies = Matter.Bodies, World = Matter.World;
+        const world = WhiteboardController.physics.world;
+        if (!world) return;
+
+        let body = null;
+        const x = obj.left;
+        const y = obj.top;
+        const angle = fabric.util.degreesToRadians(obj.angle);
+        const isStatic = !WhiteboardController.state.physicsGlobalEnabled;
+
+        const options = {
+            friction: 0.5,
+            restitution: 0.6,
+            angle: angle,
+            isStatic: isStatic
+        };
+
+        // --- LÓGICA AVANZADA DE FORMAS ---
+        
+        if (obj.type === 'polygon' || obj.type === 'triangle') {
+             // Caso Hueco (Paredes) o Sólido (Convexo)
+             if (obj.fill === 'transparent') {
+                 // Crear paredes siguiendo los vértices
+                 body = WhiteboardController.createHollowPolygon(obj, x, y, angle, options);
+             } else {
+                 // Crear cuerpo sólido convexo siguiendo los vértices
+                 body = WhiteboardController.createSolidPolygon(obj, x, y, options);
+             }
+        }
+        else if (obj.type === 'rect' && obj.fill === 'transparent') {
+            body = WhiteboardController.createHollowRect(obj, x, y, angle, options);
+        }
+        else if (obj.type === 'rect' || obj.type === 'image') {
+            const w = obj.getScaledWidth();
+            const h = obj.getScaledHeight();
+            body = Bodies.rectangle(x, y, w, h, options);
+        } 
+        else if (obj.type === 'circle') {
+            const r = obj.getScaledWidth() / 2;
+            body = Bodies.circle(x, y, r, options);
+        } 
+        else {
+            // Fallback para paths complejos (flechas, dibujos) -> Caja rectangular
+            const w = obj.getScaledWidth();
+            const h = obj.getScaledHeight();
+            body = Bodies.rectangle(x, y, w, h, options);
+        }
+
+        if (body) {
+            World.add(world, body);
+            WhiteboardController.physics.bodiesMap.set(obj, body);
+        }
+    },
+
+    // --- GENERADORES DE CUERPOS FÍSICOS ---
+
+    // Crea un polígono sólido exacto usando los vértices reales de Fabric
+    createSolidPolygon: (obj, x, y, options) => {
+        // Fabric almacena puntos relativos al centro. Necesitamos escalarlos.
+        const points = obj.points.map(p => ({
+            x: p.x * obj.scaleX,
+            y: p.y * obj.scaleY
+        }));
+        
+        // Matter.Bodies.fromVertices crea el cuerpo centrado en su propio centro de masa calculado.
+        // x, y son las coordenadas donde queremos que aparezca en el mundo.
+        return Matter.Bodies.fromVertices(x, y, [points], options);
+    },
+
+    // Crea un polígono hueco (paredes) recorriendo los vértices
+    createHollowPolygon: (obj, x, y, angle, options) => {
+        const parts = [];
+        const points = obj.points; 
+        const len = points.length;
+        // Grosor de la pared
+        const thickness = Math.max(obj.strokeWidth * obj.scaleX || 10, 10);
+        
+        // Calcular vértices reales en coordenadas relativas (con escala)
+        const scaledPoints = points.map(p => ({
+            x: p.x * obj.scaleX,
+            y: p.y * obj.scaleY
+        }));
+
+        for (let i = 0; i < len; i++) {
+            const p1 = scaledPoints[i];
+            const p2 = scaledPoints[(i + 1) % len]; // Conectar último con primero
+
+            // Datos del segmento
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            const segmentAngle = Math.atan2(dy, dx);
+            
+            // Centro del segmento relativo al centro del objeto
+            const midX = (p1.x + p2.x) / 2;
+            const midY = (p1.y + p2.y) / 2;
+
+            // Crear rectángulo para este lado
+            // Nota: x e y del objeto ya se pasan en 'create', las partes son relativas
+            // Pero Matter.Body.create parts requiere coordenadas absolutas iniciales si no se agrupan bien.
+            // Truco: Creamos el cuerpo en (0,0) relativo y luego Matter lo compone.
+            
+            // Sin embargo, para simplificar con rotation, crearemos las partes en su posición "mundial"
+            // asumiendo rotación 0 del objeto padre, y luego el 'options.angle' rotará todo el grupo.
+            
+            // Coordenada absoluta de la pared asumiendo que el objeto está en (x,y) con rotación 0
+            const wallX = x + midX;
+            const wallY = y + midY;
+
+            const wall = Matter.Bodies.rectangle(wallX, wallY, length, thickness, {
+                angle: segmentAngle, // Ángulo local de la pared
+                ...options
+            });
+            parts.push(wall);
+        }
+
+        return Matter.Body.create({
+            parts: parts,
+            ...options
+        });
+    },
+
+    createHollowRect: (obj, x, y, angle, options) => {
+        const w = obj.getScaledWidth();
+        const h = obj.getScaledHeight();
+        const t = Math.max(obj.strokeWidth * obj.scaleX || 10, 10); 
+
+        const top = Matter.Bodies.rectangle(x, y - h/2, w, t, options);
+        const bottom = Matter.Bodies.rectangle(x, y + h/2, w, t, options);
+        const left = Matter.Bodies.rectangle(x - w/2, y, t, h, options);
+        const right = Matter.Bodies.rectangle(x + w/2, y, t, h, options);
+
+        return Matter.Body.create({
+            parts: [top, bottom, left, right],
+            ...options
+        });
+    },
+
+    removeBodyFromWorld: (obj) => {
+        const body = WhiteboardController.physics.bodiesMap.get(obj);
+        if (body && WhiteboardController.physics.world) {
+            Matter.World.remove(WhiteboardController.physics.world, body);
+            WhiteboardController.physics.bodiesMap.delete(obj);
+        }
+    },
+
+    syncBodyPosition: (obj) => {
+        const body = WhiteboardController.physics.bodiesMap.get(obj);
+        if (body) {
+            Matter.Body.setPosition(body, { x: obj.left, y: obj.top });
+            Matter.Body.setVelocity(body, { x: 0, y: 0 }); 
+        }
+    },
+
+    syncBodyRotation: (obj) => {
+        const body = WhiteboardController.physics.bodiesMap.get(obj);
+        if (body) {
+            Matter.Body.setAngle(body, fabric.util.degreesToRadians(obj.angle));
+            Matter.Body.setAngularVelocity(body, 0);
+        }
+    },
+
+    // --- UTILS ---
+
+    saveHistory: () => {
+        if (WhiteboardController.state.historyLocked) return;
+        if (WhiteboardController.state.historyIndex < WhiteboardController.state.history.length - 1) {
+            WhiteboardController.state.history = WhiteboardController.state.history.slice(0, WhiteboardController.state.historyIndex + 1);
+        }
+        const json = JSON.stringify(WhiteboardController.canvas);
+        WhiteboardController.state.history.push(json);
+        WhiteboardController.state.historyIndex++;
+        
+        if (WhiteboardController.state.history.length > 50) {
+            WhiteboardController.state.history.shift();
+            WhiteboardController.state.historyIndex--;
+        }
+    },
+
+    undo: () => {
+        if (WhiteboardController.state.historyIndex > 0) {
+            WhiteboardController.state.historyLocked = true; 
+            WhiteboardController.state.historyIndex--;
+            const prevState = WhiteboardController.state.history[WhiteboardController.state.historyIndex];
+            WhiteboardController.canvas.loadFromJSON(prevState, () => {
+                WhiteboardController.canvas.renderAll();
+                WhiteboardController.state.historyLocked = false;
+                WhiteboardController.rebuildPhysicsWorld();
+            });
+        }
+    },
+
+    redo: () => {
+        if (WhiteboardController.state.historyIndex < WhiteboardController.state.history.length - 1) {
+            WhiteboardController.state.historyLocked = true;
+            WhiteboardController.state.historyIndex++;
+            const nextState = WhiteboardController.state.history[WhiteboardController.state.historyIndex];
+            WhiteboardController.canvas.loadFromJSON(nextState, () => {
+                WhiteboardController.canvas.renderAll();
+                WhiteboardController.state.historyLocked = false;
+                WhiteboardController.rebuildPhysicsWorld();
+            });
+        }
+    },
+
+    rebuildPhysicsWorld: () => {
+        if (WhiteboardController.physics.world) {
+            Matter.World.clear(WhiteboardController.physics.world);
+            Matter.Engine.clear(WhiteboardController.physics.engine);
+            WhiteboardController.physics.bodiesMap.clear();
+        }
+        WhiteboardController.initPhysicsEngine();
+        const objects = WhiteboardController.canvas.getObjects();
+        objects.forEach(obj => WhiteboardController.addBodyToWorld(obj));
+    },
+
+    copy: () => {
+        const activeObj = WhiteboardController.canvas.getActiveObject();
+        if (activeObj) {
+            activeObj.clone((cloned) => { WhiteboardController.state.clipboard = cloned; });
+        }
+    },
+
+    paste: () => {
+        if (!WhiteboardController.state.clipboard) return;
+        WhiteboardController.state.clipboard.clone((clonedObj) => {
+            WhiteboardController.canvas.discardActiveObject();
+            clonedObj.set({ left: clonedObj.left + 20, top: clonedObj.top + 20, evented: true });
+            if (clonedObj.type === 'activeSelection') {
+                clonedObj.canvas = WhiteboardController.canvas;
+                clonedObj.forEachObject((obj) => { WhiteboardController.canvas.add(obj); });
+                clonedObj.setCoords();
+            } else {
+                WhiteboardController.canvas.add(clonedObj);
+            }
+            WhiteboardController.canvas.setActiveObject(clonedObj);
+            WhiteboardController.canvas.requestRenderAll();
+            WhiteboardController.saveHistory();
+        });
+    },
+
+    bindSidebarEvents: () => {
         const { drawer, btnCloseDrawer } = WhiteboardController.elements;
         if (!drawer) return;
         const toggleBtns = document.querySelectorAll('[data-drawer]');
@@ -379,8 +761,6 @@ export const WhiteboardController = {
         });
     },
 
-    // --- MANEJO DE PROPIEDADES ---
-
     setColorToSelection: (color) => {
         const canvas = WhiteboardController.canvas;
         if (!canvas) return;
@@ -388,11 +768,23 @@ export const WhiteboardController = {
         if (!activeObj) return; 
 
         const applyColor = (obj) => {
-            if (obj.type === 'path' || (obj.strokeWidth > 0 && (!obj.fill || obj.fill === ''))) {
-                obj.set('stroke', color);
+            // Si elige transparente, se vuelve hueco
+            if (color === 'transparent') {
+                obj.set('fill', 'transparent');
+                // Forzar borde para que no desaparezca visualmente
+                if (!obj.stroke || obj.stroke === 'transparent' || obj.strokeWidth === 0) {
+                    obj.set({ stroke: '#000000', strokeWidth: 2 });
+                }
             } else {
-                obj.set('fill', color);
+                if (obj.type === 'path' && (!obj.fill || obj.fill === 'transparent' || obj.fill === '')) {
+                     obj.set('stroke', color);
+                } else {
+                    obj.set('fill', color);
+                }
             }
+            // Importante: Si cambia el "relleno", cambia la física. Reconstruir cuerpo.
+            WhiteboardController.removeBodyFromWorld(obj);
+            WhiteboardController.addBodyToWorld(obj);
         };
 
         if (activeObj.type === 'activeSelection') {
@@ -400,10 +792,12 @@ export const WhiteboardController = {
         } else {
             applyColor(activeObj);
         }
+        
+        WhiteboardController.syncPopoverValues(activeObj);
         canvas.requestRenderAll();
+        WhiteboardController.saveHistory(); 
     },
 
-    // Función genérica para actualizar propiedad
     updateSelectionProp: (prop, value) => {
         const canvas = WhiteboardController.canvas;
         const activeObj = canvas.getActiveObject();
@@ -415,9 +809,8 @@ export const WhiteboardController = {
             activeObj.set(prop, value);
         }
         canvas.requestRenderAll();
+        WhiteboardController.saveHistory(); 
     },
-
-    // --- UI HELPERS ---
 
     toggleToolbar: (show) => {
         const { toolbar } = WhiteboardController.elements;
@@ -425,7 +818,7 @@ export const WhiteboardController = {
         if (show) toolbar.classList.add('active');
         else {
             toolbar.classList.remove('active');
-            WhiteboardController.toggleBorderPopover(false); // Cerrar popover si se oculta toolbar
+            WhiteboardController.toggleBorderPopover(false); 
         }
     },
 
@@ -441,37 +834,30 @@ export const WhiteboardController = {
         }
     },
 
-    // Sincroniza los inputs del popover con el objeto seleccionado
     syncPopoverValues: (obj) => {
         const { inpBorderWidth, valBorderWidth, inpBorderColor, inpBorderRadius, valBorderRadius, rowBorderRadius } = WhiteboardController.elements;
         
-        // Si hay varios objetos, tomamos el primero como referencia
         if (obj.type === 'activeSelection') {
             obj = obj.getObjects()[0];
         }
 
         if (!obj) return;
 
-        // Borde Width
         const width = obj.strokeWidth || 0;
         if (inpBorderWidth) inpBorderWidth.value = width;
         if (valBorderWidth) valBorderWidth.innerText = width;
 
-        // Borde Color
         const color = obj.stroke || '#000000';
-        // Convertimos 'transparent' a blanco o negro para el input color picker
         if (inpBorderColor) {
             inpBorderColor.value = (color === 'transparent') ? '#000000' : color;
         }
 
-        // Borde Radio (Solo para Rect)
         if (obj.type === 'rect') {
             if (rowBorderRadius) rowBorderRadius.style.display = 'flex';
             const rx = obj.rx || 0;
             if (inpBorderRadius) inpBorderRadius.value = rx;
             if (valBorderRadius) valBorderRadius.innerText = rx;
         } else {
-            // Ocultamos opción si no es rect
             if (rowBorderRadius) rowBorderRadius.style.display = 'none';
         }
     },
@@ -513,9 +899,10 @@ export const WhiteboardController = {
         activeObj.setCoords();
         canvas.requestRenderAll();
         WhiteboardController.updateToolbarValues();
+        WhiteboardController.saveHistory(); 
     },
 
-    addShape: (type) => { /* ... igual que antes ... */ 
+    addShape: (type) => {
         const canvas = WhiteboardController.canvas;
         if (!canvas) return;
         const vpt = canvas.viewportTransform;
@@ -544,7 +931,11 @@ export const WhiteboardController = {
             case 'arrow-double': 
                 obj = new fabric.Path('M 5 10 L 0 0 L 5 -10 M 0 0 L 100 0 L 95 -10 M 100 0 L 95 10', { ...commonProps, fill: '', stroke: '#000000', strokeWidth: 4, strokeLineCap: 'round', strokeLineJoin: 'round' }); break;
         }
-        if (obj) { canvas.add(obj); canvas.setActiveObject(obj); canvas.requestRenderAll(); }
+        if (obj) { 
+            canvas.add(obj); 
+            canvas.setActiveObject(obj); 
+            canvas.requestRenderAll(); 
+        }
     },
 
     getRegularPolygonPoints: (sideCount, radius) => {
