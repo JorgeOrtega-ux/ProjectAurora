@@ -1027,35 +1027,38 @@ input:checked+.component-toggle-slider:before {
 /* =========================================
    VIEWPORT & SURFACE (La Pizarra 3000px)
    ========================================= */
+
 .wb-viewport {
     flex: 1;
-    background-color: #e5e7eb; /* Fondo gris "vacío" */
+    background-color: #fff; /* Color de fondo base */
     position: relative;
     overflow: hidden;
     cursor: grab;
-    touch-action: none; /* Importante para gestos */
-}
-
-.wb-viewport:active {
-    cursor: grabbing;
+    touch-action: none;
+    
+    /* MOVEMOS EL PATRÓN AQUÍ */
+    background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='2' fill='%23d1d5db'/%3E%3C/svg%3E");
+    background-size: 24px 24px;
+    background-repeat: repeat;
 }
 
 .wb-surface {
-    width: 3000px;
-    height: 3000px;
-    background-color: #ffffff;
-    
-    /* Patrón de puntos SVG */
-    background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='2' fill='%23d1d5db'/%3E%3C/svg%3E");
-    background-size: 24px 24px;
-    
+    /* La superficie ahora es un contenedor "fantasma" infinito */
+    width: 0px;   /* Ya no 3000px */
+    height: 0px;  /* Ya no 3000px */
     position: absolute;
-    /* Centrado inicial por CSS, luego JS lo controla */
-    left: 0; 
-    top: 0; 
-
+    left: 0;
+    top: 0;
+    
+    /* Importante: permite ver elementos fuera del 0x0 */
+    overflow: visible; 
+    
+    /* Quitamos el fondo y la sombra de aquí */
+    background-color: transparent;
+    background-image: none;
+    box-shadow: none;
+    
     transform-origin: 0 0;
-    box-shadow: 0 0 40px rgba(0,0,0,0.1);
 }
 
 /* Caja de Selección (Estilo Windows) */

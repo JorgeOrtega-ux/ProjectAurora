@@ -283,36 +283,25 @@ export const WhiteboardController = {
 
     updateTransform: (x, y, scale) => {
         const { viewport, surface, zoomSlider, zoomDisplay } = WhiteboardController.elements;
-        const { boardWidth, boardHeight, scrollMargin } = WhiteboardController.config;
         
         if(!viewport) return;
 
-        const viewportRect = viewport.getBoundingClientRect();
-        const currentWidth = boardWidth * scale;
-        const currentHeight = boardHeight * scale;
-        
-        // Límites para que no se pierda la pizarra
-        const minX = viewportRect.width - currentWidth - scrollMargin;
-        const maxX = scrollMargin;
-        const minY = viewportRect.height - currentHeight - scrollMargin;
-        const maxY = scrollMargin;
+        // 1. ELIMINAMOS LOS LÍMITES (minX, maxX, etc.)
+        // Ahora permitimos que x e y sean cualquier valor.
 
-        let constrainedX, constrainedY;
-
-        // Si es más pequeña que el viewport, centrar
-        if (currentWidth < viewportRect.width) constrainedX = (viewportRect.width - currentWidth) / 2;
-        else constrainedX = Math.min(maxX, Math.max(x, minX));
-
-        if (currentHeight < viewportRect.height) constrainedY = (viewportRect.height - currentHeight) / 2;
-        else constrainedY = Math.min(maxY, Math.max(y, minY));
-
-        WhiteboardController.state.pointX = constrainedX;
-        WhiteboardController.state.pointY = constrainedY;
+        WhiteboardController.state.pointX = x;
+        WhiteboardController.state.pointY = y;
         WhiteboardController.state.scale = scale;
         
-        surface.style.transform = `translate(${constrainedX}px, ${constrainedY}px) scale(${scale})`;
+        // Mover la superficie
+        surface.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
 
-        // Actualizar UI
+        // 2. TRUCO DE MAGIA: Mover y escalar el fondo del viewport
+        // Esto crea la ilusión de que el grid es infinito
+        viewport.style.backgroundPosition = `${x}px ${y}px`;
+        viewport.style.backgroundSize = `${24 * scale}px ${24 * scale}px`;
+
+        // Actualizar UI (Slider y Textos)
         const currentSliderValue = Math.round(scale * 100);
         if (zoomSlider && Math.abs(zoomSlider.value - currentSliderValue) > 1) {
             zoomSlider.value = currentSliderValue;
@@ -321,7 +310,6 @@ export const WhiteboardController = {
         if (zoomDisplay) zoomDisplay.innerText = `${currentSliderValue}%`;
         WhiteboardController.updateStatusText();
     },
-
     updateSliderFill: () => {
         const slider = WhiteboardController.elements.zoomSlider;
         if (!slider) return;
@@ -335,31 +323,34 @@ export const WhiteboardController = {
         slider.style.background = `linear-gradient(to right, ${sliderFillColor} 0%, ${sliderFillColor} ${percentage}%, ${sliderBgColor} ${percentage}%, ${sliderBgColor} 100%)`;
     },
 
-    updateStatusText: () => {
+updateStatusText: () => {
         const { status } = WhiteboardController.elements;
+        // Obtenemos el estado actual
         const { scale, pointX, pointY, mouseX, mouseY } = WhiteboardController.state;
-        const { boardWidth, boardHeight } = WhiteboardController.config;
+        
         if (!status) return;
         
-        // Calcular coordenadas "reales" en la superficie
+        // CÁLCULO INFINITO CORRECTO:
+        // 1. (mouseX - pointX): Distancia desde el origen (0,0) visual hasta el mouse
+        // 2. / scale: Ajustamos esa distancia según el nivel de zoom
         const rawX = (mouseX - pointX) / scale;
         const rawY = (mouseY - pointY) / scale;
         
-        // Coordenadas relativas al centro del tablero (0,0 es el centro)
-        const centeredX = rawX - (boardWidth / 2);
-        const centeredY = rawY - (boardHeight / 2);
-        
-        status.innerText = `X: ${Math.round(centeredX)} Y: ${Math.round(centeredY)}`;
+        // Eliminamos la resta de boardWidth/2 y boardHeight/2
+        // Ahora (0,0) es exactamente donde está la cruz central
+        status.innerText = `X: ${Math.round(rawX)} Y: ${Math.round(rawY)}`;
     },
-
-    centerBoard: () => {
+centerBoard: () => {
         const { viewport } = WhiteboardController.elements;
         if(!viewport) return;
+        
         const vpW = viewport.clientWidth;
         const vpH = viewport.clientHeight;
-        // Calcular centro
-        const centerX = (vpW - WhiteboardController.config.boardWidth) / 2;
-        const centerY = (vpH - WhiteboardController.config.boardHeight) / 2;
+        
+        // Colocamos el origen (0,0) en el centro exacto de la pantalla
+        const centerX = vpW / 2;
+        const centerY = vpH / 2;
+        
         WhiteboardController.updateTransform(centerX, centerY, 1);
     }
 };
