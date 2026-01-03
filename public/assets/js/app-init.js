@@ -8,7 +8,7 @@ import { initUrlManager } from './core/url-manager.js';
 import { initAuthController } from './auth-controller.js'; 
 import { Toast } from './core/toast-manager.js'; 
 import { TooltipManager } from './core/tooltip-manager.js';
-import { Dialog } from './core/dialog-manager.js'; // <--- IMPORTADO
+import { Dialog } from './core/dialog-manager.js';
 
 // Módulos de configuración (Granulares)
 import { SettingsController } from './modules/settings/settings-controller.js'; 
@@ -18,10 +18,16 @@ import { DeleteAccountController } from './modules/settings/delete-account-contr
 import { TwoFactorController } from './modules/settings/2fa-controller.js';
 import { SecurityController } from './modules/settings/security-controller.js';
 
+// Módulo Whiteboard (Pizarra)
+import { WhiteboardController } from './modules/app/whiteboard-controller.js';
+
 const App = {
     init: () => {
         console.log('App: Inicializando...');
         
+        // Exponer WhiteboardController globalmente para acceso en SPA si fuera necesario
+        window.WhiteboardController = WhiteboardController;
+
         // APLICAR TEMA INICIAL
         if (window.USER_PREFS && window.USER_PREFS.theme) {
             SettingsController.applyTheme(window.USER_PREFS.theme);
@@ -29,7 +35,7 @@ const App = {
         
         Toast.init();
         TooltipManager.init();
-        Dialog.init(); // <--- INICIALIZADO
+        Dialog.init();
         
         initMainController();
         initAuthController();
@@ -41,8 +47,14 @@ const App = {
 
         const path = window.location.pathname.replace(window.BASE_PATH, '').replace(/^\/+|\/+$/g, '');
         const initialSection = path || 'main';
-        routeDispatcher(initialSection);
+        
+        // Manejar carga inicial
+        // Pequeño delay para asegurar que el DOM de la sección esté listo si es la primera carga
+        setTimeout(() => {
+            routeDispatcher(initialSection);
+        }, 50);
 
+        // Escuchar cambios de navegación SPA
         document.addEventListener('spa:view_loaded', (e) => {
             const section = e.detail.section;
             routeDispatcher(section);
@@ -54,7 +66,13 @@ function routeDispatcher(section) {
     console.log(`Router Dispatch: Inicializando controladores para [${section}]`);
 
     switch (section) {
-            
+        
+        // --- SECCIÓN APP ---
+        case 'app/whiteboard':
+            WhiteboardController.init();
+            break;
+
+        // --- SECCIÓN SETTINGS ---
         case 'settings/your-profile':
             ProfileController.init();
             SettingsController.sync();

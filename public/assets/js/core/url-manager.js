@@ -27,8 +27,10 @@ export function initUrlManager() {
                 navigateTo(section);
             }
             
+            // Cerrar módulos flotantes al navegar
             const activeModules = document.querySelectorAll('.module-content.active');
             activeModules.forEach(mod => {
+                // Excepción para módulos específicos si es necesario
                 if (mod.dataset.module !== 'moduleSurface' || window.innerWidth < 725) {
                      mod.classList.remove('active');
                      mod.classList.add('disabled');
@@ -43,6 +45,7 @@ export function initUrlManager() {
         }
     });
     
+    // Marcar menú activo al inicio
     const path = window.location.pathname.replace(window.BASE_PATH, '');
     const cleanPath = path.replace(/^\/+|\/+$/g, ''); 
     const currentSection = cleanPath || 'main';
@@ -62,8 +65,10 @@ async function loadContent(section) {
     const container = document.querySelector('.general-content-scrolleable');
     if (!container) return;
 
+    // Spinner de carga
     container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;"><div class="spinner"></div></div>';
     
+    // Simular un pequeño delay para suavidad visual (opcional)
     await new Promise(resolve => setTimeout(resolve, 200));
 
     try {
@@ -73,6 +78,7 @@ async function loadContent(section) {
         container.innerHTML = html;
         container.scrollTop = 0; 
         
+        // IMPORTANTE: Disparar evento para que app-init.js sepa que debe cargar controladores
         const event = new CustomEvent('spa:view_loaded', { detail: { section } });
         document.dispatchEvent(event);
         
@@ -91,6 +97,7 @@ function updateActiveMenu(section) {
     const navMain = document.getElementById('nav-main');
     const navSettings = document.getElementById('nav-settings');
 
+    // Lógica para cambiar entre menús laterales (Principal vs Configuración)
     if (navMain && navSettings) {
         if (section.startsWith('settings/')) {
             navMain.style.display = 'none';
