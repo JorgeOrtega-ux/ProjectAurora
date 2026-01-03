@@ -30,12 +30,6 @@
                 <span class="material-symbols-rounded">search</span>
             </div>
 
-            <div class="header-button" 
-                 data-action="toggleModuleNotifications"
-                 data-tooltip="<?php echo $i18n->t('notifications.title'); ?>">
-                <span class="material-symbols-rounded">notifications</span>
-            </div>
-            
             <div class="header-button profile-button" 
                  data-action="toggleModuleProfile"
                  data-role="<?php echo htmlspecialchars($userRole ?? 'guest'); ?>"
@@ -50,6 +44,5 @@
             </div>
         </div>
         <?php include '../includes/modules/module-profile.php'; ?>
-        <?php include '../includes/modules/module-notifications.php'; ?>
     </div>
 </div>
