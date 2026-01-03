@@ -254,6 +254,13 @@ export const WhiteboardController = {
             });
         }
 
+        // --- NUEVO EVENTO PARA BOTÓN HACER HUECA ---
+        if (ui.btnMakeHollow) {
+            ui.btnMakeHollow.addEventListener('click', () => {
+                WhiteboardController.makeSelectionHollow();
+            });
+        }
+
         if (ui.btnBorderOptions) {
             ui.btnBorderOptions.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -368,10 +375,8 @@ export const WhiteboardController = {
 
         const applyColor = (obj) => {
             if (color === 'transparent') {
+                // MODIFICADO: Solo quitar relleno, NO agregar borde automáticamente
                 obj.set('fill', 'transparent');
-                if (!obj.stroke || obj.stroke === 'transparent' || obj.strokeWidth === 0) {
-                    obj.set({ stroke: '#000000', strokeWidth: 2 });
-                }
             } else {
                 if (obj.type === 'path' && (!obj.fill || obj.fill === 'transparent' || obj.fill === '')) {
                      obj.set('stroke', color);
@@ -379,7 +384,7 @@ export const WhiteboardController = {
                     obj.set('fill', color);
                 }
             }
-            // Física cambia si cambia el relleno (sólido vs hueco)
+            // Re-generar física
             WhiteboardPhysics.removeBody(obj);
             WhiteboardPhysics.addBody(obj);
         };
@@ -393,6 +398,35 @@ export const WhiteboardController = {
         WhiteboardUI.syncPopoverValues(activeObj);
         canvas.requestRenderAll();
         WhiteboardController.saveHistory(); 
+    },
+
+    // --- NUEVA FUNCIÓN PARA HACER HUECA ---
+    makeSelectionHollow: () => {
+        const canvas = WhiteboardController.canvas;
+        if (!canvas) return;
+        const activeObj = canvas.getActiveObject();
+        if (!activeObj) return;
+
+        const applyHollow = (obj) => {
+            obj.set({
+                fill: 'transparent',
+                stroke: '#000000', // Forzar borde negro
+                strokeWidth: 2     // Forzar grosor
+            });
+            // La física detectará fill=transparent y creará paredes
+            WhiteboardPhysics.removeBody(obj);
+            WhiteboardPhysics.addBody(obj);
+        };
+
+        if (activeObj.type === 'activeSelection') {
+            activeObj.getObjects().forEach(obj => applyHollow(obj));
+        } else {
+            applyHollow(activeObj);
+        }
+
+        WhiteboardUI.syncPopoverValues(activeObj);
+        canvas.requestRenderAll();
+        WhiteboardController.saveHistory();
     },
 
     updateSelectionProp: (prop, value) => {

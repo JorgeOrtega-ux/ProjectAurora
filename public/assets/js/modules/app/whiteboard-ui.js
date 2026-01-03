@@ -25,6 +25,7 @@ export const WhiteboardUI = {
         btnScaleDown: null,
         btnDelete: null,
         btnColors: null,
+        btnMakeHollow: null, // Nuevo botón
         btnBorderOptions: null,
         sizeDisplay: null,
 
@@ -68,6 +69,7 @@ export const WhiteboardUI = {
         el.btnScaleDown = document.getElementById('btn-scale-down');
         el.btnDelete = document.getElementById('btn-delete-selection');
         el.btnColors = document.getElementById('btn-open-colors');
+        el.btnMakeHollow = document.getElementById('btn-make-hollow'); // Inicializar
         el.btnBorderOptions = document.getElementById('btn-border-options');
         el.sizeDisplay = document.getElementById('wb-size-display');
 

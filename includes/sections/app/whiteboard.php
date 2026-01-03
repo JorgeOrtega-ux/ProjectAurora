@@ -145,7 +145,7 @@
                     <div id="drawer-colors" class="wb-drawer-content">
                         <h4 style="font-size: 12px; color: #666; margin: 10px 0 10px; text-transform: uppercase;">Paleta de Colores</h4>
                         <div class="wb-colors-grid">
-                            <div class="wb-color-swatch" data-color="transparent" title="Sin Relleno (Solo Borde)"
+                            <div class="wb-color-swatch" data-color="transparent" title="Sin Relleno (Transparente)"
                                  style="background: repeating-linear-gradient(45deg, #e0e0e0, #e0e0e0 5px, #ffffff 5px, #ffffff 10px); border: 1px solid #ccc; display: flex; align-items: center; justify-content: center;">
                                  <span class="material-symbols-rounded" style="font-size: 18px; color: #666;">block</span>
                             </div>
@@ -183,6 +183,9 @@
                 <div class="wb-tool-group">
                     <button class="wb-tool-btn" id="btn-open-colors" title="Color de Relleno">
                         <span class="material-symbols-rounded" style="font-size: 18px;">format_color_fill</span>
+                    </button>
+                    <button class="wb-tool-btn" id="btn-make-hollow" title="Hacer Hueca (Borde + Sin Relleno)">
+                        <span class="material-symbols-rounded" style="font-size: 18px;">check_box_outline_blank</span>
                     </button>
                     <button class="wb-tool-btn" id="btn-border-options" title="Opciones de Borde">
                         <span class="material-symbols-rounded" style="font-size: 18px;">border_style</span>
