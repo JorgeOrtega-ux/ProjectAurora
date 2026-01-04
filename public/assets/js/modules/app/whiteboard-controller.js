@@ -38,6 +38,21 @@ export const WhiteboardController = {
         controlBg: '#ffffff'                       
     },
 
+    /**
+     * Generador de UUID seguro con fallback para entornos HTTP/No-Seguros
+     */
+    generateUUID: () => {
+        // Intento 1: API Nativa (Solo funciona en HTTPS/Localhost)
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            return crypto.randomUUID();
+        }
+        // Intento 2: Math.random (Fallback compatible para desarrollo/HTTP)
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    },
+
     init: async () => {
         console.log("WhiteboardController: Iniciando...");
         
@@ -269,9 +284,9 @@ export const WhiteboardController = {
             // No procesar objetos de selección interna
             if (obj.type === 'selection' || obj.type === 'activeSelection') return;
 
-            // [NUEVO] Asegurar ID único si no tiene (especialmente para dibujo libre)
+            // [CORREGIDO] Usar el helper generateUUID
             if (!obj.id) {
-                obj.set('id', crypto.randomUUID());
+                obj.set('id', WhiteboardController.generateUUID());
             }
 
             if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
@@ -340,10 +355,9 @@ export const WhiteboardController = {
             if (WhiteboardController.state.isRemoteUpdate) return;
             const path = e.path;
             
-            // El evento object:added también se dispara para paths, 
-            // pero nos aseguramos de que tenga ID aquí por si acaso.
+            // [CORREGIDO] Usar el helper generateUUID
             if (!path.id) {
-                path.set('id', crypto.randomUUID());
+                path.set('id', WhiteboardController.generateUUID());
             }
         });
 
@@ -965,12 +979,14 @@ export const WhiteboardController = {
             if (clonedObj.type === 'activeSelection') {
                 clonedObj.canvas = WhiteboardController.canvas;
                 clonedObj.forEachObject((obj) => { 
-                    obj.set('id', crypto.randomUUID());
+                    // [CORREGIDO] Usar generateUUID
+                    obj.set('id', WhiteboardController.generateUUID());
                     WhiteboardController.canvas.add(obj); 
                 });
                 clonedObj.setCoords();
             } else {
-                clonedObj.set('id', crypto.randomUUID());
+                // [CORREGIDO] Usar generateUUID
+                clonedObj.set('id', WhiteboardController.generateUUID());
                 WhiteboardController.canvas.add(clonedObj);
             }
             WhiteboardController.canvas.setActiveObject(clonedObj);
@@ -1061,8 +1077,8 @@ export const WhiteboardController = {
                 obj.set('customType', type);
             }
             
-            // [NUEVO] Generar ID único
-            obj.set('id', crypto.randomUUID());
+            // [CORREGIDO] Usar generateUUID
+            obj.set('id', WhiteboardController.generateUUID());
 
             canvas.add(obj); 
             canvas.setActiveObject(obj); 

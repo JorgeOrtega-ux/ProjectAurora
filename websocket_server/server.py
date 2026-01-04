@@ -124,7 +124,8 @@ async def handler(websocket):
             # Reenviar a todos los demás en la sala
             if whiteboard_uuid in rooms:
                 # Filtrar conexiones cerradas y al remitente
-                other_clients = [ws for ws in rooms[whiteboard_uuid] if ws != websocket and not ws.closed]
+                # [CORRECCIÓN] Usamos ws.open en lugar de not ws.closed
+                other_clients = [ws for ws in rooms[whiteboard_uuid] if ws != websocket and ws.open]
                 
                 if other_clients:
                     # Broadcast eficiente

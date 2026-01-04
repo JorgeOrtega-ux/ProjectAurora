@@ -179,10 +179,18 @@ export const WhiteboardUI = {
         if (btnCloseDrawer) btnCloseDrawer.addEventListener('click', () => WhiteboardUI.closeDrawer());
     },
 
-    // [NUEVO] Bindings para el modal de compartir (cerrar y copiar)
+    // [NUEVO] Bindings para el modal de compartir (abrir, cerrar y copiar)
     bindShareEvents: () => {
-        const { btnCloseShare, btnCopyLink, shareLinkInput, shareModal } = WhiteboardUI.elements;
+        const { btnShare, btnCloseShare, btnCopyLink, shareLinkInput, shareModal } = WhiteboardUI.elements;
         
+        // --- CORRECCIÓN AQUÍ: Listener para ABRIR el modal ---
+        if (btnShare) {
+            btnShare.addEventListener('click', () => {
+                WhiteboardUI.toggleShareModal(true);
+            });
+        }
+        // -----------------------------------------------------
+
         if (btnCloseShare) {
             btnCloseShare.addEventListener('click', () => {
                 WhiteboardUI.toggleShareModal(false);
