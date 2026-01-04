@@ -25,8 +25,10 @@ export const WhiteboardController = {
         historyLocked: false,
         isSpinLoopRunning: false,
         debugMode: false,
-        // [NUEVO] Flag para evitar bucles de actualización (Eco)
-        isRemoteUpdate: false
+        // Flag para evitar bucles de actualización (Eco)
+        isRemoteUpdate: false,
+        // [NUEVO] Flag para indicar que se está cargando el pizarrón inicial
+        isLoading: false
     },
     
     config: {
@@ -83,7 +85,7 @@ export const WhiteboardController = {
         if (WhiteboardController.currentUUID) {
             await WhiteboardController.loadFromServer(WhiteboardController.currentUUID);
             
-            // [NUEVO] Conectar WebSocket y suscribirse
+            // Conectar WebSocket y suscribirse
             WebSocketManager.connect(WhiteboardController.currentUUID);
             WebSocketManager.subscribe(WhiteboardController.handleRemoteMessage);
         } else {
@@ -96,7 +98,7 @@ export const WhiteboardController = {
         WhiteboardController.startSpinLoop();
     },
 
-    // [NUEVO] Manejador de mensajes remotos
+    // Manejador de mensajes remotos
     handleRemoteMessage: (msg) => {
         if (!msg || !msg.type) return;
         const canvas = WhiteboardController.canvas;
@@ -140,7 +142,7 @@ export const WhiteboardController = {
         }
     },
 
-    // [NUEVO] Helper para buscar objetos por ID
+    // Helper para buscar objetos por ID
     findObjectById: (id) => {
         return WhiteboardController.canvas.getObjects().find(o => o.id === id);
     },
@@ -157,10 +159,16 @@ export const WhiteboardController = {
             if (res.success && res.data) {
                 const data = res.data;
                 
+                // [NUEVO] Activar flag de carga para evitar eventos espurios
+                WhiteboardController.state.isLoading = true;
+
                 // Cargar JSON en FabricJS
                 WhiteboardController.canvas.loadFromJSON(data, () => {
                     console.log("Pizarrón cargado correctamente.");
                     
+                    // [NUEVO] Desactivar flag de carga
+                    WhiteboardController.state.isLoading = false;
+
                     // Re-renderizar y reconstruir mundo físico
                     WhiteboardController.canvas.requestRenderAll();
                     WhiteboardPhysics.rebuildWorld(WhiteboardController.canvas.getObjects());
@@ -173,6 +181,8 @@ export const WhiteboardController = {
             }
         } catch (error) {
             console.error("Error de red al cargar:", error);
+            // [NUEVO] Asegurar que se desactiva el flag en caso de error
+            WhiteboardController.state.isLoading = false;
         }
     },
 
@@ -278,13 +288,14 @@ export const WhiteboardController = {
         
         // 1. Objeto Agregado
         WhiteboardController.canvas.on('object:added', (e) => {
-            if (WhiteboardController.state.isRemoteUpdate) return;
+            // [NUEVO] Evitar enviar si es una actualización remota O se está cargando
+            if (WhiteboardController.state.isRemoteUpdate || WhiteboardController.state.isLoading) return;
             
             const obj = e.target;
             // No procesar objetos de selección interna
             if (obj.type === 'selection' || obj.type === 'activeSelection') return;
 
-            // [CORREGIDO] Usar el helper generateUUID
+            // Usar el helper generateUUID
             if (!obj.id) {
                 obj.set('id', WhiteboardController.generateUUID());
             }
@@ -292,7 +303,7 @@ export const WhiteboardController = {
             if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
             WhiteboardPhysics.addBody(obj);
 
-            // [NUEVO] Enviar al WebSocket
+            // Enviar al WebSocket
             const propertiesToInclude = ['id', 'customType', 'isSpinning', 'spinSpeed', 'conveyorSpeed', 'apertureDegree', 'selectable'];
             WebSocketManager.send({
                 type: 'OBJECT_ADDED',
@@ -302,13 +313,13 @@ export const WhiteboardController = {
         
         // 2. Objeto Removido
         WhiteboardController.canvas.on('object:removed', (e) => {
-            if (WhiteboardController.state.isRemoteUpdate) return;
+            if (WhiteboardController.state.isRemoteUpdate || WhiteboardController.state.isLoading) return;
             const obj = e.target;
 
             if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
             WhiteboardPhysics.removeBody(obj);
 
-            // [NUEVO] Enviar al WebSocket
+            // Enviar al WebSocket
             if (obj.id) {
                 WebSocketManager.send({
                     type: 'OBJECT_REMOVED',
@@ -319,12 +330,13 @@ export const WhiteboardController = {
 
         // 3. Objeto Modificado
         WhiteboardController.canvas.on('object:modified', (e) => {
-            if (WhiteboardController.state.isRemoteUpdate) return;
+            // [NUEVO] Evitar enviar si es una actualización remota O se está cargando
+            if (WhiteboardController.state.isRemoteUpdate || WhiteboardController.state.isLoading) return;
             const obj = e.target;
 
             if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
             
-            // [NUEVO] Enviar actualización al WebSocket
+            // Enviar actualización al WebSocket
             if (obj.id) {
                 const updateData = {
                     left: obj.left,
@@ -350,12 +362,12 @@ export const WhiteboardController = {
             }
         });
 
-        // [NUEVO] Listener para path:created (Dibujo libre)
+        // Listener para path:created (Dibujo libre)
         WhiteboardController.canvas.on('path:created', (e) => {
-            if (WhiteboardController.state.isRemoteUpdate) return;
+            if (WhiteboardController.state.isRemoteUpdate || WhiteboardController.state.isLoading) return;
             const path = e.path;
             
-            // [CORREGIDO] Usar el helper generateUUID
+            // Usar el helper generateUUID
             if (!path.id) {
                 path.set('id', WhiteboardController.generateUUID());
             }
@@ -512,7 +524,7 @@ export const WhiteboardController = {
         const debugData = objects.map((obj, index) => {
             const data = {
                 index: index,
-                id: obj.id, // [NUEVO] Mostrar ID en debug
+                id: obj.id, // Mostrar ID en debug
                 type: obj.type,
                 customType: obj.customType || 'N/A',
                 position: { 

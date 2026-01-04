@@ -123,13 +123,28 @@ async def handler(websocket):
         async for message in websocket:
             # Reenviar a todos los demás en la sala
             if whiteboard_uuid in rooms:
-                # Filtrar conexiones cerradas y al remitente
-                # [CORRECCIÓN] Usamos ws.open en lugar de not ws.closed
-                other_clients = [ws for ws in rooms[whiteboard_uuid] if ws != websocket and ws.open]
+                other_clients = []
+                # [CORRECCIÓN CRÍTICA] Iteración segura para evitar errores de atributo 'open'
+                for ws in rooms[whiteboard_uuid]:
+                    if ws == websocket:
+                        continue
+                    
+                    is_active = False
+                    try:
+                        # Intenta compatibilidad con versiones nuevas (v10+) y antiguas (v8/9)
+                        if hasattr(ws, 'open'):
+                            is_active = ws.open
+                        else:
+                            is_active = not ws.closed
+                    except:
+                        is_active = False
+
+                    if is_active:
+                        other_clients.append(ws)
                 
                 if other_clients:
-                    # Broadcast eficiente
-                    await asyncio.gather(*[client.send(message) for client in other_clients])
+                    # Broadcast eficiente con manejo de excepciones (evita caída masiva)
+                    await asyncio.gather(*[client.send(message) for client in other_clients], return_exceptions=True)
             
     except websockets.exceptions.ConnectionClosed:
         print(f"Usuario {user_id} desconectado de {whiteboard_uuid}.")
