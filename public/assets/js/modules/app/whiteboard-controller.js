@@ -1,11 +1,16 @@
 /**
  * public/assets/js/modules/app/whiteboard-controller.js
- * Controlador principal con Logs de Diagnóstico y Throttling
+ * Controlador principal con Logs de Diagnóstico, Throttling e Interpolación (LERP)
  */
 
 import { WhiteboardPhysics } from './whiteboard-physics.js';
 import { WhiteboardUI } from './whiteboard-ui.js';
 import { WebSocketManager } from '../../core/websocket-manager.js';
+
+// Función auxiliar de LERP (Interpolación Lineal) para suavizar movimiento
+const lerp = (start, end, amt) => {
+    return (1 - amt) * start + amt * end;
+};
 
 export const WhiteboardController = {
     canvas: null,
@@ -82,12 +87,11 @@ export const WhiteboardController = {
         WhiteboardController.startSpinLoop();
     },
 
-    // --- MANEJADOR DE MENSAJES REMOTOS (DIAGNÓSTICO) ---
+    // --- MANEJADOR DE MENSAJES REMOTOS (CON LÓGICA LERP) ---
     handleRemoteMessage: (msg) => {
         if (!msg || !msg.type) return;
         
-        // Log Forzado para ver si llega la señal
-        if(msg.type !== 'system') {
+        if(msg.type !== 'system' && WhiteboardController.state.debugMode) {
             console.log(`%c[WS RX] ${msg.type}`, 'color: #00d2ff; font-weight: bold;', msg);
         }
 
@@ -98,15 +102,43 @@ export const WhiteboardController = {
             if (msg.type === 'OBJECT_UPDATE') {
                 const obj = WhiteboardController.findObjectById(msg.objectId);
                 if (obj) {
-                    obj.set(msg.data);
-                    obj.setCoords();
-                    WhiteboardPhysics.syncBodyPosition(obj); 
-                    canvas.requestRenderAll();
-                    // Log de éxito silencioso
-                    // console.log(`%c[WS OK] Objeto ${msg.objectId.substr(0,4)} actualizado.`, 'color: #2ecc71');
-                } else {
-                    console.warn(`%c[WS ERROR] Objeto ID ${msg.objectId} NO ENCONTRADO en este cliente.`, 'color: #ff0000; font-weight: bold;');
-                }
+                    // 1. Separamos propiedades visuales estáticas de las de movimiento
+                    const motionProps = ['left', 'top', 'angle', 'scaleX', 'scaleY'];
+                    
+                    // 2. Aplicar propiedades estáticas INMEDIATAMENTE (Color, Stroke, etc.)
+                    const staticData = { ...msg.data };
+                    motionProps.forEach(p => delete staticData[p]);
+                    
+                    // Aplicar cambios que no requieren interpolación
+                    obj.set(staticData);
+
+                    // 3. Configurar el destino para la INTERPOLACIÓN
+                    const dist = Math.abs(obj.left - msg.data.left) + Math.abs(obj.top - msg.data.top);
+                    
+                    // Si la distancia es enorme (ej: recién creado o lagazo), teletransportar
+                    if (dist > 300) {
+                        obj.set({
+                            left: msg.data.left,
+                            top: msg.data.top,
+                            angle: msg.data.angle,
+                            scaleX: msg.data.scaleX,
+                            scaleY: msg.data.scaleY
+                        });
+                        obj.setCoords();
+                        WhiteboardPhysics.syncBodyPosition(obj);
+                        delete obj.remoteDestination;
+                        canvas.requestRenderAll();
+                    } else {
+                        // Guardar destino para que el loop lo anime suavemente
+                        obj.remoteDestination = {
+                            left: msg.data.left,
+                            top: msg.data.top,
+                            angle: msg.data.angle,
+                            scaleX: msg.data.scaleX,
+                            scaleY: msg.data.scaleY
+                        };
+                    }
+                } 
             } 
             else if (msg.type === 'OBJECT_ADDED') {
                 if (!WhiteboardController.findObjectById(msg.data.id)) {
@@ -114,6 +146,7 @@ export const WhiteboardController = {
                     fabric.util.enlivenObjects([msg.data], (enlivenedObjects) => {
                         enlivenedObjects.forEach((obj) => {
                             canvas.add(obj);
+                            WhiteboardPhysics.addBody(obj);
                         });
                         canvas.requestRenderAll();
                     });
@@ -123,6 +156,7 @@ export const WhiteboardController = {
                 const obj = WhiteboardController.findObjectById(msg.objectId);
                 if (obj) {
                     canvas.remove(obj);
+                    WhiteboardPhysics.removeBody(obj);
                     canvas.requestRenderAll();
                 }
             }
@@ -259,7 +293,7 @@ export const WhiteboardController = {
         fabric.Object.prototype.controls.mr.render = (c,l,t,s,o)=>renderPill(c,l,t,s,o,1);
 
         // =========================================================================
-        // --- LOGICA DE SINCRONIZACIÓN EN VIVO (Throttling) ---
+        // --- LOGICA DE SINCRONIZACIÓN EN VIVO (Throttling Ajustado) ---
         // =========================================================================
 
         const throttle = (func, limit) => {
@@ -278,7 +312,6 @@ export const WhiteboardController = {
         const sendObjectUpdate = (obj, sourceEvent) => {
             if (!obj.id) return;
             
-            // Log Forzado de Envío
             if (WhiteboardController.state.debugMode) {
                 console.log(`[WS TX] Enviando (${sourceEvent}) ID: ${obj.id.substring(0,4)}...`);
             }
@@ -305,9 +338,10 @@ export const WhiteboardController = {
             });
         };
 
+        // Reducido a 30ms para mayor fluidez (aprox 33 updates/seg)
         const throttledSendUpdate = throttle((obj) => {
             sendObjectUpdate(obj, 'moving');
-        }, 40);
+        }, 30);
 
         // --- LISTENERS ---
 
@@ -335,7 +369,7 @@ export const WhiteboardController = {
             }
         });
 
-        // 3. MODIFICADO FINAL (Sincronización precisa al soltar)
+        // 3. MODIFICADO FINAL
         WhiteboardController.canvas.on('object:modified', (e) => {
             if (WhiteboardController.state.isRemoteUpdate || WhiteboardController.state.isLoading) return;
             
@@ -488,6 +522,41 @@ export const WhiteboardController = {
                 let needsRender = false;
 
                 objects.forEach(obj => {
+                    // === LÓGICA LERP PARA MOVIMIENTO REMOTO ===
+                    if (obj.remoteDestination) {
+                        const lerpFactor = 0.3; // Factor de suavizado (0.3 es equilibrado para 60fps)
+
+                        const dist = Math.abs(obj.left - obj.remoteDestination.left) + 
+                                     Math.abs(obj.top - obj.remoteDestination.top);
+
+                        if (dist > 0.5) { 
+                            obj.left = lerp(obj.left, obj.remoteDestination.left, lerpFactor);
+                            obj.top = lerp(obj.top, obj.remoteDestination.top, lerpFactor);
+                            
+                            if (obj.remoteDestination.angle !== undefined) {
+                                obj.angle = lerp(obj.angle, obj.remoteDestination.angle, lerpFactor);
+                            }
+                            if (obj.remoteDestination.scaleX !== undefined) {
+                                obj.scaleX = lerp(obj.scaleX, obj.remoteDestination.scaleX, lerpFactor);
+                                obj.scaleY = lerp(obj.scaleY, obj.remoteDestination.scaleY, lerpFactor);
+                            }
+
+                            obj.setCoords();
+                            WhiteboardPhysics.syncBodyPosition(obj); // Sincronizar física sin emitir
+                            needsRender = true;
+                        } else {
+                            // Destino alcanzado
+                            obj.left = obj.remoteDestination.left;
+                            obj.top = obj.remoteDestination.top;
+                            obj.angle = obj.remoteDestination.angle;
+                            obj.setCoords();
+                            delete obj.remoteDestination;
+                            needsRender = true;
+                        }
+                    }
+                    // ==========================================
+
+                    // Lógica de objetos mecánicos
                     if (obj.customType === 'circle-cut' && obj.isSpinning && obj.spinSpeed !== 0) {
                         obj.angle += parseFloat(obj.spinSpeed);
                         obj.angle = obj.angle % 360;
