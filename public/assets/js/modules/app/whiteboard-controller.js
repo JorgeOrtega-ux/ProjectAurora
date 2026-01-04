@@ -1,11 +1,16 @@
 /**
  * public/assets/js/modules/app/whiteboard-controller.js
- * Controlador principal con Logs de Diagnóstico, Throttling y AUTOGUARDADO OPTIMIZADO
+ * Controlador principal con Logs de Diagnóstico, Throttling e Interpolación (LERP)
  */
 
 import { WhiteboardPhysics } from './whiteboard-physics.js';
 import { WhiteboardUI } from './whiteboard-ui.js';
 import { WebSocketManager } from '../../core/websocket-manager.js';
+
+// Función auxiliar de LERP (Interpolación Lineal) para suavizar movimiento
+const lerp = (start, end, amt) => {
+    return (1 - amt) * start + amt * end;
+};
 
 export const WhiteboardController = {
     canvas: null,
@@ -25,12 +30,7 @@ export const WhiteboardController = {
         isSpinLoopRunning: false,
         debugMode: false,
         isRemoteUpdate: false,
-        isLoading: false,
-        
-        // --- ESTADO AUTOGUARDADO ---
-        saveTimer: null,
-        isSaving: false,
-        isSavePending: false // Optimización para no tocar el DOM constantemente
+        isLoading: false
     },
     
     config: {
@@ -39,8 +39,7 @@ export const WhiteboardController = {
         selectionColor: 'rgba(0, 153, 255, 0.1)', 
         selectionBorderColor: '#0099ff',           
         controlColor: '#0099ff',                   
-        controlBg: '#ffffff',
-        autoSaveDelay: 2000 
+        controlBg: '#ffffff'                       
     },
 
     generateUUID: () => {
@@ -88,12 +87,12 @@ export const WhiteboardController = {
         WhiteboardController.startSpinLoop();
     },
 
-    // --- MANEJADOR DE MENSAJES REMOTOS ---
+    // --- MANEJADOR DE MENSAJES REMOTOS (CON LÓGICA LERP) ---
     handleRemoteMessage: (msg) => {
         if (!msg || !msg.type) return;
         
-        if(msg.type !== 'system') {
-            // console.log(`%c[WS RX] ${msg.type}`, 'color: #00d2ff;', msg);
+        if(msg.type !== 'system' && WhiteboardController.state.debugMode) {
+            console.log(`%c[WS RX] ${msg.type}`, 'color: #00d2ff; font-weight: bold;', msg);
         }
 
         const canvas = WhiteboardController.canvas;
@@ -103,17 +102,51 @@ export const WhiteboardController = {
             if (msg.type === 'OBJECT_UPDATE') {
                 const obj = WhiteboardController.findObjectById(msg.objectId);
                 if (obj) {
-                    obj.set(msg.data);
-                    obj.setCoords();
-                    WhiteboardPhysics.syncBodyPosition(obj); 
-                    canvas.requestRenderAll();
-                }
+                    // 1. Separamos propiedades visuales estáticas de las de movimiento
+                    const motionProps = ['left', 'top', 'angle', 'scaleX', 'scaleY'];
+                    
+                    // 2. Aplicar propiedades estáticas INMEDIATAMENTE (Color, Stroke, etc.)
+                    const staticData = { ...msg.data };
+                    motionProps.forEach(p => delete staticData[p]);
+                    
+                    // Aplicar cambios que no requieren interpolación
+                    obj.set(staticData);
+
+                    // 3. Configurar el destino para la INTERPOLACIÓN
+                    const dist = Math.abs(obj.left - msg.data.left) + Math.abs(obj.top - msg.data.top);
+                    
+                    // Si la distancia es enorme (ej: recién creado o lagazo), teletransportar
+                    if (dist > 300) {
+                        obj.set({
+                            left: msg.data.left,
+                            top: msg.data.top,
+                            angle: msg.data.angle,
+                            scaleX: msg.data.scaleX,
+                            scaleY: msg.data.scaleY
+                        });
+                        obj.setCoords();
+                        WhiteboardPhysics.syncBodyPosition(obj);
+                        delete obj.remoteDestination;
+                        canvas.requestRenderAll();
+                    } else {
+                        // Guardar destino para que el loop lo anime suavemente
+                        obj.remoteDestination = {
+                            left: msg.data.left,
+                            top: msg.data.top,
+                            angle: msg.data.angle,
+                            scaleX: msg.data.scaleX,
+                            scaleY: msg.data.scaleY
+                        };
+                    }
+                } 
             } 
             else if (msg.type === 'OBJECT_ADDED') {
                 if (!WhiteboardController.findObjectById(msg.data.id)) {
+                    console.log(`%c[WS] Agregando nuevo objeto ${msg.data.id.substr(0,4)}`, 'color: #e67e22');
                     fabric.util.enlivenObjects([msg.data], (enlivenedObjects) => {
                         enlivenedObjects.forEach((obj) => {
                             canvas.add(obj);
+                            WhiteboardPhysics.addBody(obj);
                         });
                         canvas.requestRenderAll();
                     });
@@ -123,11 +156,12 @@ export const WhiteboardController = {
                 const obj = WhiteboardController.findObjectById(msg.objectId);
                 if (obj) {
                     canvas.remove(obj);
+                    WhiteboardPhysics.removeBody(obj);
                     canvas.requestRenderAll();
                 }
             }
         } catch (error) {
-            console.error("Error WS:", error);
+            console.error("Error aplicando actualización remota:", error);
         } finally {
             WhiteboardController.state.isRemoteUpdate = false;
         }
@@ -148,55 +182,31 @@ export const WhiteboardController = {
                 WhiteboardController.state.isLoading = true;
 
                 WhiteboardController.canvas.loadFromJSON(data, () => {
-                    console.log("Pizarrón cargado.");
+                    console.log("Pizarrón cargado correctamente.");
                     WhiteboardController.state.isLoading = false;
                     WhiteboardController.canvas.requestRenderAll();
                     WhiteboardPhysics.rebuildWorld(WhiteboardController.canvas.getObjects());
                     WhiteboardController.saveHistory();
                 });
             } else {
-                console.warn("Error cargar datos:", res.error);
+                console.warn("No se encontraron datos o hubo error:", res.error);
             }
         } catch (error) {
-            console.error("Error red:", error);
+            console.error("Error de red al cargar:", error);
             WhiteboardController.state.isLoading = false;
         }
     },
 
-    // --- AUTOGUARDADO OPTIMIZADO (Sin lag) ---
-    triggerAutoSave: () => {
-        // 1. Reiniciar timer
-        if (WhiteboardController.state.saveTimer) {
-            clearTimeout(WhiteboardController.state.saveTimer);
-        }
-
-        // 2. Optimización: Solo tocar el DOM si NO estaba ya pendiente
-        // Esto evita recálculos de estilo masivos mientras mueves el mouse
-        if (!WhiteboardController.state.isSavePending) {
-            const btnSave = document.getElementById('wb-btn-save');
-            if (btnSave) btnSave.style.color = '#fbbf24'; // Color "Pendiente" (Ámbar)
-            WhiteboardController.state.isSavePending = true;
-        }
-
-        // 3. Programar guardado
-        WhiteboardController.state.saveTimer = setTimeout(() => {
-            WhiteboardController.save(true);
-        }, WhiteboardController.config.autoSaveDelay);
-    },
-
-    save: async (silentMode = false) => {
+    save: async () => {
         if (!WhiteboardController.currentUUID) {
-            if (!silentMode) alert("Falta UUID.");
+            alert("Error: No se ha identificado el pizarrón (Falta UUID).");
             return;
         }
-
-        if (WhiteboardController.state.isSaving) return;
-        WhiteboardController.state.isSaving = true;
 
         const btnSave = document.getElementById('wb-btn-save');
 
         try {
-            if (btnSave && !silentMode) {
+            if (btnSave) {
                 btnSave.classList.add('active-state');
                 btnSave.innerHTML = '<span class="material-symbols-rounded vector-spin">refresh</span>';
             }
@@ -216,34 +226,23 @@ export const WhiteboardController = {
             const res = await response.json();
 
             if (res.success) {
+                console.log("Guardado exitoso.");
                 if (btnSave) {
-                    btnSave.style.color = '#16a34a'; // Verde (Éxito)
-                    setTimeout(() => {
-                        // Solo quitar el verde si no hay otro guardado pendiente
-                        if (!WhiteboardController.state.isSavePending) btnSave.style.color = ''; 
-                    }, 2000);
+                    btnSave.style.color = '#16a34a'; 
+                    setTimeout(() => btnSave.style.color = '', 2000);
                 }
             } else {
                 throw new Error(res.error || "Error desconocido");
             }
 
         } catch (error) {
-            console.error("Error save:", error);
-            if (!silentMode) alert("Error al guardar: " + error.message);
+            console.error("Error al guardar:", error);
+            alert("Error al guardar: " + error.message);
             if (btnSave) btnSave.style.color = '#ef4444'; 
         } finally {
-            WhiteboardController.state.isSaving = false;
-            WhiteboardController.state.isSavePending = false; // Resetear bandera
-            
             if (btnSave) {
-                if (!silentMode) {
-                    btnSave.classList.remove('active-state');
-                    btnSave.innerHTML = '<span class="material-symbols-rounded">save</span>';
-                }
-                // Si no hay nada pendiente, restaurar color (por si acaso)
-                if (!WhiteboardController.state.saveTimer) {
-                     // Dejar que el timeout del éxito maneje el color
-                }
+                btnSave.classList.remove('active-state');
+                btnSave.innerHTML = '<span class="material-symbols-rounded">save</span>';
             }
         }
     },
@@ -275,7 +274,6 @@ export const WhiteboardController = {
             fabric.Object.prototype.controls.mtr.cursorStyle = 'pointer';
         }
 
-        // Renderizado de controles personalizados (Pildoras)
         const pillLength=24, pillThickness=6; 
         const drawPillPath = (ctx, w, h) => {
             const x = -w/2, y = -h/2, r = Math.min(w, h)/2; 
@@ -295,7 +293,7 @@ export const WhiteboardController = {
         fabric.Object.prototype.controls.mr.render = (c,l,t,s,o)=>renderPill(c,l,t,s,o,1);
 
         // =========================================================================
-        // --- LOGICA WS (Throttling) ---
+        // --- LOGICA DE SINCRONIZACIÓN EN VIVO (Throttling Ajustado) ---
         // =========================================================================
 
         const throttle = (func, limit) => {
@@ -315,15 +313,22 @@ export const WhiteboardController = {
             if (!obj.id) return;
             
             if (WhiteboardController.state.debugMode) {
-                console.log(`[WS TX] Enviando (${sourceEvent})...`);
+                console.log(`[WS TX] Enviando (${sourceEvent}) ID: ${obj.id.substring(0,4)}...`);
             }
 
             const updateData = {
-                left: obj.left, top: obj.top, angle: obj.angle,
-                scaleX: obj.scaleX, scaleY: obj.scaleY,
-                fill: obj.fill, stroke: obj.stroke, strokeWidth: obj.strokeWidth,
-                customType: obj.customType, isSpinning: obj.isSpinning,
-                spinSpeed: obj.spinSpeed, conveyorSpeed: obj.conveyorSpeed
+                left: obj.left,
+                top: obj.top,
+                angle: obj.angle,
+                scaleX: obj.scaleX,
+                scaleY: obj.scaleY,
+                fill: obj.fill,
+                stroke: obj.stroke,
+                strokeWidth: obj.strokeWidth,
+                customType: obj.customType,
+                isSpinning: obj.isSpinning,
+                spinSpeed: obj.spinSpeed,
+                conveyorSpeed: obj.conveyorSpeed
             };
 
             WebSocketManager.send({
@@ -333,51 +338,48 @@ export const WhiteboardController = {
             });
         };
 
+        // Reducido a 30ms para mayor fluidez (aprox 33 updates/seg)
         const throttledSendUpdate = throttle((obj) => {
             sendObjectUpdate(obj, 'moving');
-        }, 40);
+        }, 30);
 
         // --- LISTENERS ---
 
-        // 1. MOVIMIENTO
+        // 1. MOVIMIENTO (Sincronización en vivo)
         WhiteboardController.canvas.on('object:moving', (e) => {
             WhiteboardPhysics.syncBodyPosition(e.target);
             if (!WhiteboardController.state.isRemoteUpdate && !WhiteboardController.state.isLoading) {
                 throttledSendUpdate(e.target);
-                WhiteboardController.triggerAutoSave(); // Autoguardado
             }
         });
 
-        // 2. ROTACIÓN
+        // 2. ROTACIÓN Y ESCALADO (Sincronización en vivo)
         WhiteboardController.canvas.on('object:rotating', (e) => {
             WhiteboardPhysics.syncBodyRotation(e.target);
             if (!WhiteboardController.state.isRemoteUpdate && !WhiteboardController.state.isLoading) {
                 throttledSendUpdate(e.target);
-                WhiteboardController.triggerAutoSave();
             }
         });
         
-        // 3. ESCALADO
         WhiteboardController.canvas.on('object:scaling', (e) => {
             WhiteboardPhysics.removeBody(e.target);
             WhiteboardPhysics.addBody(e.target);
             if (!WhiteboardController.state.isRemoteUpdate && !WhiteboardController.state.isLoading) {
                 throttledSendUpdate(e.target);
-                WhiteboardController.triggerAutoSave();
             }
         });
 
-        // 4. MODIFICADO FINAL
+        // 3. MODIFICADO FINAL
         WhiteboardController.canvas.on('object:modified', (e) => {
             if (WhiteboardController.state.isRemoteUpdate || WhiteboardController.state.isLoading) return;
+            
             const obj = e.target;
             if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
             
             sendObjectUpdate(obj, 'modified');
-            WhiteboardController.triggerAutoSave();
         });
 
-        // 5. CREACIÓN
+        // 4. CREACIÓN
         WhiteboardController.canvas.on('object:added', (e) => {
             if (WhiteboardController.state.isRemoteUpdate || WhiteboardController.state.isLoading) return;
             const obj = e.target;
@@ -393,10 +395,9 @@ export const WhiteboardController = {
                 type: 'OBJECT_ADDED',
                 data: obj.toJSON(propertiesToInclude)
             });
-            WhiteboardController.triggerAutoSave();
         });
         
-        // 6. ELIMINACIÓN
+        // 5. ELIMINACIÓN
         WhiteboardController.canvas.on('object:removed', (e) => {
             if (WhiteboardController.state.isRemoteUpdate || WhiteboardController.state.isLoading) return;
             const obj = e.target;
@@ -410,14 +411,12 @@ export const WhiteboardController = {
                     objectId: obj.id
                 });
             }
-            WhiteboardController.triggerAutoSave();
         });
 
         WhiteboardController.canvas.on('path:created', (e) => {
             if (WhiteboardController.state.isRemoteUpdate || WhiteboardController.state.isLoading) return;
             const path = e.path;
             if (!path.id) path.set('id', WhiteboardController.generateUUID());
-            WhiteboardController.triggerAutoSave();
         });
 
         // Eventos UI...
@@ -523,6 +522,39 @@ export const WhiteboardController = {
                 let needsRender = false;
 
                 objects.forEach(obj => {
+                    // === LÓGICA LERP PARA MOVIMIENTO REMOTO ===
+                    if (obj.remoteDestination) {
+                        const lerpFactor = 0.3; // Factor de suavizado
+
+                        const dist = Math.abs(obj.left - obj.remoteDestination.left) + 
+                                     Math.abs(obj.top - obj.remoteDestination.top);
+
+                        if (dist > 0.5) { 
+                            obj.left = lerp(obj.left, obj.remoteDestination.left, lerpFactor);
+                            obj.top = lerp(obj.top, obj.remoteDestination.top, lerpFactor);
+                            
+                            if (obj.remoteDestination.angle !== undefined) {
+                                obj.angle = lerp(obj.angle, obj.remoteDestination.angle, lerpFactor);
+                            }
+                            if (obj.remoteDestination.scaleX !== undefined) {
+                                obj.scaleX = lerp(obj.scaleX, obj.remoteDestination.scaleX, lerpFactor);
+                                obj.scaleY = lerp(obj.scaleY, obj.remoteDestination.scaleY, lerpFactor);
+                            }
+
+                            obj.setCoords();
+                            WhiteboardPhysics.syncBodyPosition(obj); 
+                            needsRender = true;
+                        } else {
+                            obj.left = obj.remoteDestination.left;
+                            obj.top = obj.remoteDestination.top;
+                            obj.angle = obj.remoteDestination.angle;
+                            obj.setCoords();
+                            delete obj.remoteDestination;
+                            needsRender = true;
+                        }
+                    }
+                    // ==========================================
+
                     if (obj.customType === 'circle-cut' && obj.isSpinning && obj.spinSpeed !== 0) {
                         obj.angle += parseFloat(obj.spinSpeed);
                         obj.angle = obj.angle % 360;
@@ -534,10 +566,6 @@ export const WhiteboardController = {
                         const speed = obj.conveyorSpeed || 0;
                         obj.strokeDashOffset -= speed; 
                         if (Math.abs(obj.strokeDashOffset) > 1000) obj.strokeDashOffset = 0;
-                        
-                        // FIX: Forzar redibujado visual para el conveyor
-                        obj.dirty = true;
-                        
                         needsRender = true;
                     }
                 });
