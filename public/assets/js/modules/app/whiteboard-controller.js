@@ -8,7 +8,6 @@ import { WhiteboardUI } from './whiteboard-ui.js';
 
 export const WhiteboardController = {
     canvas: null,
-    uuid: null, // Identificador único del pizarrón
 
     state: {
         panning: false,
@@ -22,8 +21,7 @@ export const WhiteboardController = {
         historyIndex: -1,
         historyLocked: false,
         isSpinLoopRunning: false,
-        debugMode: false,
-        isSaving: false // Estado para evitar spam en la UI
+        debugMode: false
     },
     
     config: {
@@ -35,37 +33,20 @@ export const WhiteboardController = {
         controlBg: '#ffffff'                       
     },
 
-    init: async () => {
+    init: () => {
         console.log("WhiteboardController: Iniciando...");
         
-        // 1. Obtener UUID de la URL
-        // Se asume estructura: .../whiteboard/{uuid}
-        const pathSegments = window.location.pathname.split('/');
-        WhiteboardController.uuid = pathSegments[pathSegments.length - 1];
-
-        if (!WhiteboardController.uuid) {
-            console.error("Error: No se encontró un UUID válido en la URL.");
-        }
-
         // Inicializar subsistemas
         WhiteboardUI.init();
         
         if (!WhiteboardUI.elements.viewport) return;
 
         WhiteboardController.initCanvas();
-
-        // 2. Cargar datos del servidor (Si existe UUID)
-        if (WhiteboardController.uuid) {
-            await WhiteboardController.loadFromServer();
-        }
-
         WhiteboardController.bindEvents();
         WhiteboardController.bindShapeEvents();
         WhiteboardController.bindColorEvents(); 
-        WhiteboardController.bindNetworkEvents(); // Eventos de persistencia (Beacon/Save)
         
-        // Inicializar historial (sin guardar en red la carga inicial)
-        WhiteboardController.saveHistory(false);
+        WhiteboardController.saveHistory();
         
         // Inicializar motor de física con referencia al canvas
         WhiteboardPhysics.init(WhiteboardController.canvas);
@@ -131,12 +112,6 @@ export const WhiteboardController = {
                 if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
                 WhiteboardPhysics.addBody(e.target);
             }
-        });
-        
-        // Listener para dibujo a mano alzada
-        WhiteboardController.canvas.on('path:created', (e) => {
-            if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
-            WhiteboardPhysics.addBody(e.target);
         });
         
         WhiteboardController.canvas.on('object:removed', (e) => {
@@ -240,102 +215,6 @@ export const WhiteboardController = {
             WhiteboardController.canvas.renderAll();
         }
     },
-
-    // --- MÉTODOS DE RED Y PERSISTENCIA (NUEVO) ---
-
-    getJsonData: () => {
-        // Serializamos asegurando que las propiedades personalizadas (customType, mecánica) se guarden
-        const propertiesToInclude = ['customType', 'isSpinning', 'spinSpeed', 'conveyorSpeed', 'apertureDegree'];
-        return JSON.stringify(WhiteboardController.canvas.toJSON(propertiesToInclude));
-    },
-
-    loadFromServer: async () => {
-        try {
-            const formData = new FormData();
-            formData.append('action', 'load');
-            formData.append('uuid', WhiteboardController.uuid);
-
-            // Ajustar ruta relativa a la API
-            const response = await fetch('../api/whiteboard-handler.php', {
-                method: 'POST',
-                body: formData
-            });
-
-            const result = await response.json();
-            
-            if (result.success) {
-                // Actualizar título en UI si existe el elemento
-                const titleEl = document.getElementById('wb-title');
-                if (titleEl && result.meta) titleEl.textContent = result.meta.name;
-
-                if (result.data) {
-                    WhiteboardController.state.historyLocked = true;
-                    // Asegurar que sea objeto (puede venir como string JSON desde DB/Redis)
-                    const dataObj = typeof result.data === 'string' ? JSON.parse(result.data) : result.data;
-                    
-                    WhiteboardController.canvas.loadFromJSON(dataObj, () => {
-                        WhiteboardController.canvas.renderAll();
-                        WhiteboardController.state.historyLocked = false;
-                        // Reiniciar historial con este estado base sin disparar guardado
-                        WhiteboardController.state.history = [];
-                        WhiteboardController.state.historyIndex = -1;
-                        WhiteboardController.saveHistory(false); 
-                    });
-                }
-            } else {
-                console.error("Error cargando pizarrón:", result.message);
-                // Aquí podrías mostrar una notificación de error
-            }
-        } catch (e) {
-            console.error("Error de red cargando:", e);
-        }
-    },
-
-    saveToServer: async () => {
-        if (!WhiteboardController.uuid) return;
-        
-        const dataJson = WhiteboardController.getJsonData();
-        WhiteboardUI.updateSaveStatus('Guardando...'); // Feedback visual
-
-        try {
-            const formData = new FormData();
-            formData.append('action', 'save');
-            formData.append('uuid', WhiteboardController.uuid);
-            formData.append('data', dataJson);
-
-            const response = await fetch('../api/whiteboard-handler.php', {
-                method: 'POST',
-                body: formData
-            });
-            
-            const res = await response.json();
-            if (res.success) {
-                WhiteboardUI.updateSaveStatus('Guardado');
-                setTimeout(() => WhiteboardUI.updateSaveStatus(''), 2000);
-            }
-        } catch (e) {
-            console.error("Error guardando:", e);
-            WhiteboardUI.updateSaveStatus('Error');
-        }
-    },
-
-    bindNetworkEvents: () => {
-        // Beacon: Asegurar guardado al cerrar pestaña o navegar fuera
-        window.addEventListener('beforeunload', () => {
-            if (!WhiteboardController.uuid) return;
-            
-            const dataJson = WhiteboardController.getJsonData();
-            const formData = new FormData();
-            formData.append('action', 'save');
-            formData.append('uuid', WhiteboardController.uuid);
-            formData.append('data', dataJson);
-            formData.append('beacon', 'true'); // Bandera para forzar escritura en disco
-
-            navigator.sendBeacon('../api/whiteboard-handler.php', formData);
-        });
-    },
-
-    // --- FIN MÉTODOS RED ---
 
     startSpinLoop: () => {
         if (WhiteboardController.state.isSpinLoopRunning) return;
@@ -567,9 +446,6 @@ export const WhiteboardController = {
                     WhiteboardPhysics.removeBody(activeObj);
                     WhiteboardPhysics.addBody(activeObj);
                 }
-                
-                // Guardar cambio
-                WhiteboardController.saveHistory();
             });
         }
 
@@ -590,10 +466,6 @@ export const WhiteboardController = {
                         WhiteboardPhysics.addBody(activeObj);
                      }
                 }
-            });
-            
-            ui.inpSpinSpeed.addEventListener('change', () => {
-                WhiteboardController.saveHistory();
             });
         }
 
@@ -803,14 +675,14 @@ export const WhiteboardController = {
 
     // --- LÓGICA DE HISTORIAL Y PORTAPAPELES ---
 
-    // Modificado: Se agregó parámetro opcional syncToNetwork para controlar el autoguardado
-    saveHistory: (syncToNetwork = true) => {
+    saveHistory: () => {
         if (WhiteboardController.state.historyLocked) return;
         if (WhiteboardController.state.historyIndex < WhiteboardController.state.history.length - 1) {
             WhiteboardController.state.history = WhiteboardController.state.history.slice(0, WhiteboardController.state.historyIndex + 1);
         }
         
-        // Incluir propiedades personalizadas en el JSON
+        // MODIFICADO: Incluir propiedades personalizadas en el JSON para que el 'customType' se guarde
+        // Esto es crucial para la futura exportación/importación
         const propertiesToInclude = ['customType', 'isSpinning', 'spinSpeed', 'conveyorSpeed', 'apertureDegree'];
         const json = JSON.stringify(WhiteboardController.canvas.toJSON(propertiesToInclude));
         
@@ -820,11 +692,6 @@ export const WhiteboardController = {
         if (WhiteboardController.state.history.length > 50) {
             WhiteboardController.state.history.shift();
             WhiteboardController.state.historyIndex--;
-        }
-
-        // TRIGGER SAVE: Disparar guardado en servidor automáticamente
-        if (syncToNetwork) {
-            WhiteboardController.saveToServer();
         }
     },
 
@@ -837,8 +704,6 @@ export const WhiteboardController = {
                 WhiteboardController.canvas.renderAll();
                 WhiteboardController.state.historyLocked = false;
                 WhiteboardPhysics.rebuildWorld(WhiteboardController.canvas.getObjects());
-                // Sincronizar estado actual
-                WhiteboardController.saveToServer();
             });
         }
     },
@@ -852,8 +717,6 @@ export const WhiteboardController = {
                 WhiteboardController.canvas.renderAll();
                 WhiteboardController.state.historyLocked = false;
                 WhiteboardPhysics.rebuildWorld(WhiteboardController.canvas.getObjects());
-                // Sincronizar estado actual
-                WhiteboardController.saveToServer();
             });
         }
     },
@@ -884,7 +747,7 @@ export const WhiteboardController = {
             }
             WhiteboardController.canvas.setActiveObject(clonedObj);
             WhiteboardController.canvas.requestRenderAll();
-            WhiteboardController.saveHistory(); // Esto dispara el saveToServer automáticamente
+            WhiteboardController.saveHistory();
         }, ['customType', 'isSpinning', 'spinSpeed', 'conveyorSpeed', 'apertureDegree']);
     },
 
@@ -966,7 +829,8 @@ export const WhiteboardController = {
                 break;
         }
         if (obj) {
-            // Asignar customType a TODOS los objetos
+            // MODIFICADO: Asignar customType a TODOS los objetos
+            // Usamos el 'type' del argumento (ej. 'rect', 'arrow-left') como identificador único
             if (!obj.customType) {
                 obj.set('customType', type);
             }
@@ -974,7 +838,6 @@ export const WhiteboardController = {
             canvas.add(obj); 
             canvas.setActiveObject(obj); 
             canvas.requestRenderAll(); 
-            // Esto dispara 'object:added' -> saveHistory() -> saveToServer()
         }
     },
 
