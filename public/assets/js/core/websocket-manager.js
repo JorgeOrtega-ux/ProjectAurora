@@ -9,6 +9,7 @@ export const WebSocketManager = {
     socket: null,
     reconnectInterval: 5000,
     shouldReconnect: true,
+    subscribers: [], // Lista de callbacks suscritos
 
     init: () => {
         if (!window.WS_URL) {
@@ -16,17 +17,22 @@ export const WebSocketManager = {
             return;
         }
         console.log("WebSocketManager: Inicializando...");
-        WebSocketManager.connect();
+        // No conectamos automáticamente en init, esperamos a que el controlador del whiteboard lo pida con el UUID
     },
 
     /**
      * Inicia el proceso de conexión seguro:
      * 1. Solicita un token de un solo uso a la API PHP.
-     * 2. Si lo obtiene, abre el socket pasando el token en la URL.
+     * 2. Si lo obtiene, abre el socket pasando el token Y el UUID en la URL.
      */
-    connect: async () => {
+    connect: async (whiteboardUuid) => {
+        if (!whiteboardUuid) {
+            console.error("WebSocketManager: UUID de whiteboard requerido para conectar.");
+            return;
+        }
+
         try {
-            console.log("WebSocketManager: Solicitando token de acceso...");
+            console.log(`WebSocketManager: Solicitando token de acceso para ${whiteboardUuid}...`);
             
             // 1. Obtener Token de la API (AuthService)
             const formData = new FormData();
@@ -36,27 +42,26 @@ export const WebSocketManager = {
 
             if (!res.success || !res.token) {
                 console.warn("WebSocketManager: No se pudo obtener token de autenticación.", res.message);
-                // Si falla la autenticación, quizás no deberíamos reintentar inmediatamente para no saturar
                 return; 
             }
 
             const token = res.token;
             console.log("WebSocketManager: Token recibido. Conectando al socket...");
 
-            // 2. Construir URL con el token como Query Parameter
-            // Ejemplo: ws://localhost:8765?token=abc123...
+            // 2. Construir URL con token y UUID
             const wsUrl = new URL(window.WS_URL);
             wsUrl.searchParams.append('token', token);
+            wsUrl.searchParams.append('uuid', whiteboardUuid);
 
             WebSocketManager.socket = new WebSocket(wsUrl.toString());
-            WebSocketManager.bindEvents();
+            WebSocketManager.bindEvents(whiteboardUuid); // Pasamos UUID para reconexión si fuera necesario
 
         } catch (error) {
             console.error("WebSocketManager: Error crítico al iniciar conexión.", error);
         }
     },
 
-    bindEvents: () => {
+    bindEvents: (whiteboardUuid) => {
         if (!WebSocketManager.socket) return;
 
         WebSocketManager.socket.onopen = (event) => {
@@ -66,11 +71,9 @@ export const WebSocketManager = {
         WebSocketManager.socket.onclose = (event) => {
             console.warn(`WebSocketManager: ⚠️ Conexión cerrada (Código: ${event.code}).`, event.reason);
             
-            // Código 4000-4999 suelen ser cierres lógicos/aplicación. 
-            // Si el servidor nos rechaza el token (ej. expirado), cerrará con un código específico.
-            if (WebSocketManager.shouldReconnect) {
+            if (WebSocketManager.shouldReconnect && event.code !== 1000 && event.code !== 4001 && event.code !== 4003) {
                 console.log(`WebSocketManager: Reintentando en ${WebSocketManager.reconnectInterval / 1000}s...`);
-                setTimeout(WebSocketManager.connect, WebSocketManager.reconnectInterval);
+                setTimeout(() => WebSocketManager.connect(whiteboardUuid), WebSocketManager.reconnectInterval);
             }
         };
 
@@ -79,14 +82,41 @@ export const WebSocketManager = {
         };
 
         WebSocketManager.socket.onmessage = (event) => {
-            // Manejo de mensajes entrantes
             try {
                 const data = JSON.parse(event.data);
-                console.log("WebSocketManager: Mensaje recibido:", data);
-                // Aquí podrías despachar eventos al DOM: document.dispatchEvent(...)
+                // Notificar a todos los suscriptores
+                WebSocketManager.subscribers.forEach(callback => callback(data));
             } catch (e) {
-                console.log("WebSocketManager: Mensaje crudo recibido:", event.data);
+                console.log("WebSocketManager: Mensaje no-JSON recibido:", event.data);
             }
         };
+    },
+
+    /**
+     * Envía datos al servidor WebSocket
+     */
+    send: (data) => {
+        if (WebSocketManager.socket && WebSocketManager.socket.readyState === WebSocket.OPEN) {
+            WebSocketManager.socket.send(JSON.stringify(data));
+        } else {
+            console.warn("WebSocketManager: No se puede enviar, socket no conectado.");
+        }
+    },
+
+    /**
+     * Permite a otros módulos escuchar mensajes entrantes
+     */
+    subscribe: (callback) => {
+        if (typeof callback === 'function') {
+            WebSocketManager.subscribers.push(callback);
+        }
+    },
+
+    disconnect: () => {
+        WebSocketManager.shouldReconnect = false;
+        if (WebSocketManager.socket) {
+            WebSocketManager.socket.close();
+        }
+        WebSocketManager.subscribers = [];
     }
 };

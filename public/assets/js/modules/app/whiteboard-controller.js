@@ -5,6 +5,8 @@
 
 import { WhiteboardPhysics } from './whiteboard-physics.js';
 import { WhiteboardUI } from './whiteboard-ui.js';
+// [NUEVO] Importar WebSocketManager
+import { WebSocketManager } from '../../core/websocket-manager.js';
 
 export const WhiteboardController = {
     canvas: null,
@@ -22,7 +24,9 @@ export const WhiteboardController = {
         historyIndex: -1,
         historyLocked: false,
         isSpinLoopRunning: false,
-        debugMode: false
+        debugMode: false,
+        // [NUEVO] Flag para evitar bucles de actualización (Eco)
+        isRemoteUpdate: false
     },
     
     config: {
@@ -63,6 +67,10 @@ export const WhiteboardController = {
         // IMPORTANTE: Cargar datos del servidor si existe un UUID
         if (WhiteboardController.currentUUID) {
             await WhiteboardController.loadFromServer(WhiteboardController.currentUUID);
+            
+            // [NUEVO] Conectar WebSocket y suscribirse
+            WebSocketManager.connect(WhiteboardController.currentUUID);
+            WebSocketManager.subscribe(WhiteboardController.handleRemoteMessage);
         } else {
             // Si es nuevo o no hay datos, centrar y guardar estado inicial
             WhiteboardController.centerBoard();
@@ -73,14 +81,63 @@ export const WhiteboardController = {
         WhiteboardController.startSpinLoop();
     },
 
+    // [NUEVO] Manejador de mensajes remotos
+    handleRemoteMessage: (msg) => {
+        if (!msg || !msg.type) return;
+        const canvas = WhiteboardController.canvas;
+
+        // Bloquear emisión de eventos mientras aplicamos cambios remotos
+        WhiteboardController.state.isRemoteUpdate = true;
+
+        try {
+            if (msg.type === 'OBJECT_UPDATE') {
+                const obj = WhiteboardController.findObjectById(msg.objectId);
+                if (obj) {
+                    obj.set(msg.data);
+                    obj.setCoords();
+                    WhiteboardPhysics.syncBodyPosition(obj); // Sincronizar física si es necesario
+                    canvas.requestRenderAll();
+                }
+            } 
+            else if (msg.type === 'OBJECT_ADDED') {
+                // Verificar si ya existe para evitar duplicados
+                if (!WhiteboardController.findObjectById(msg.data.id)) {
+                    fabric.util.enlivenObjects([msg.data], (enlivenedObjects) => {
+                        enlivenedObjects.forEach((obj) => {
+                            canvas.add(obj);
+                        });
+                        canvas.requestRenderAll();
+                    });
+                }
+            } 
+            else if (msg.type === 'OBJECT_REMOVED') {
+                const obj = WhiteboardController.findObjectById(msg.objectId);
+                if (obj) {
+                    canvas.remove(obj);
+                    canvas.requestRenderAll();
+                }
+            }
+        } catch (error) {
+            console.error("Error aplicando actualización remota:", error);
+        } finally {
+            // Liberar bloqueo
+            WhiteboardController.state.isRemoteUpdate = false;
+        }
+    },
+
+    // [NUEVO] Helper para buscar objetos por ID
+    findObjectById: (id) => {
+        return WhiteboardController.canvas.getObjects().find(o => o.id === id);
+    },
+
     // --- LÓGICA DE CLIENTE-SERVIDOR ---
 
     loadFromServer: async (uuid) => {
         try {
-            // Mostrar estado de carga (opcional)
             console.log("Cargando pizarrón...");
             
-const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?action=load&uuid=${uuid}`);            const res = await response.json();
+            const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?action=load&uuid=${uuid}`);
+            const res = await response.json();
 
             if (res.success && res.data) {
                 const data = res.data;
@@ -95,9 +152,6 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
                     
                     // Guardar este estado como el inicial en el historial
                     WhiteboardController.saveHistory();
-                    
-                    // Asegurar que el zoom y centro sean correctos si vienen en el JSON o resetear
-                    // (Opcional: aquí podrías guardar el viewportTransform en el JSON también)
                 });
             } else {
                 console.warn("No se encontraron datos o hubo error:", res.error);
@@ -114,37 +168,31 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
         }
 
         const btnSave = document.getElementById('wb-btn-save');
-        const originalIcon = btnSave ? btnSave.innerHTML : '';
 
         try {
-            // Feedback Visual: Loading
             if (btnSave) {
                 btnSave.classList.add('active-state');
                 btnSave.innerHTML = '<span class="material-symbols-rounded vector-spin">refresh</span>';
             }
 
-            // Preparar JSON
-            // Es CRUCIAL incluir las propiedades personalizadas
             const propertiesToInclude = ['customType', 'isSpinning', 'spinSpeed', 'conveyorSpeed', 'apertureDegree', 'id', 'selectable'];
             const jsonContent = JSON.stringify(WhiteboardController.canvas.toJSON(propertiesToInclude));
 
-        // Localiza esta línea dentro de la función save
-const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?action=save`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-        uuid: WhiteboardController.currentUUID,
-        content: jsonContent
-    })
-});
+            const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?action=save`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    uuid: WhiteboardController.currentUUID,
+                    content: jsonContent
+                })
+            });
 
             const res = await response.json();
 
             if (res.success) {
-                // Feedback: Éxito (Poner verde momentáneamente o usar ToastManager si estuviera importado)
                 console.log("Guardado exitoso.");
                 if (btnSave) {
-                    btnSave.style.color = '#16a34a'; // Green
+                    btnSave.style.color = '#16a34a'; 
                     setTimeout(() => btnSave.style.color = '', 2000);
                 }
             } else {
@@ -154,9 +202,8 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
         } catch (error) {
             console.error("Error al guardar:", error);
             alert("Error al guardar: " + error.message);
-            if (btnSave) btnSave.style.color = '#ef4444'; // Red
+            if (btnSave) btnSave.style.color = '#ef4444'; 
         } finally {
-            // Restaurar botón
             if (btnSave) {
                 btnSave.classList.remove('active-state');
                 btnSave.innerHTML = '<span class="material-symbols-rounded">save</span>';
@@ -212,22 +259,92 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
         fabric.Object.prototype.controls.ml.render = (c,l,t,s,o)=>renderPill(c,l,t,s,o,1);
         fabric.Object.prototype.controls.mr.render = (c,l,t,s,o)=>renderPill(c,l,t,s,o,1);
 
-        // Listeners del Canvas
+        // --- LISTENERS DE FABRIC (MODIFICADOS) ---
+        
+        // 1. Objeto Agregado
         WhiteboardController.canvas.on('object:added', (e) => {
-            // No guardar historia o física si es un Path (dibujo), ya que eso se maneja en 'path:created'
-            if (e.target.type !== 'path') {
-                if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
-                WhiteboardPhysics.addBody(e.target);
+            if (WhiteboardController.state.isRemoteUpdate) return;
+            
+            const obj = e.target;
+            // No procesar objetos de selección interna
+            if (obj.type === 'selection' || obj.type === 'activeSelection') return;
+
+            // [NUEVO] Asegurar ID único si no tiene (especialmente para dibujo libre)
+            if (!obj.id) {
+                obj.set('id', crypto.randomUUID());
             }
+
+            if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
+            WhiteboardPhysics.addBody(obj);
+
+            // [NUEVO] Enviar al WebSocket
+            const propertiesToInclude = ['id', 'customType', 'isSpinning', 'spinSpeed', 'conveyorSpeed', 'apertureDegree', 'selectable'];
+            WebSocketManager.send({
+                type: 'OBJECT_ADDED',
+                data: obj.toJSON(propertiesToInclude)
+            });
         });
         
+        // 2. Objeto Removido
         WhiteboardController.canvas.on('object:removed', (e) => {
+            if (WhiteboardController.state.isRemoteUpdate) return;
+            const obj = e.target;
+
             if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
-            WhiteboardPhysics.removeBody(e.target);
+            WhiteboardPhysics.removeBody(obj);
+
+            // [NUEVO] Enviar al WebSocket
+            if (obj.id) {
+                WebSocketManager.send({
+                    type: 'OBJECT_REMOVED',
+                    objectId: obj.id
+                });
+            }
         });
 
-        WhiteboardController.canvas.on('object:modified', () => {
+        // 3. Objeto Modificado
+        WhiteboardController.canvas.on('object:modified', (e) => {
+            if (WhiteboardController.state.isRemoteUpdate) return;
+            const obj = e.target;
+
             if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
+            
+            // [NUEVO] Enviar actualización al WebSocket
+            if (obj.id) {
+                const updateData = {
+                    left: obj.left,
+                    top: obj.top,
+                    angle: obj.angle,
+                    scaleX: obj.scaleX,
+                    scaleY: obj.scaleY,
+                    fill: obj.fill,
+                    stroke: obj.stroke,
+                    strokeWidth: obj.strokeWidth,
+                    // Props custom
+                    customType: obj.customType,
+                    isSpinning: obj.isSpinning,
+                    spinSpeed: obj.spinSpeed,
+                    conveyorSpeed: obj.conveyorSpeed
+                };
+
+                WebSocketManager.send({
+                    type: 'OBJECT_UPDATE',
+                    objectId: obj.id,
+                    data: updateData
+                });
+            }
+        });
+
+        // [NUEVO] Listener para path:created (Dibujo libre)
+        WhiteboardController.canvas.on('path:created', (e) => {
+            if (WhiteboardController.state.isRemoteUpdate) return;
+            const path = e.path;
+            
+            // El evento object:added también se dispara para paths, 
+            // pero nos aseguramos de que tenga ID aquí por si acaso.
+            if (!path.id) {
+                path.set('id', crypto.randomUUID());
+            }
         });
 
         WhiteboardController.canvas.on('object:moving', (e) => {
@@ -327,24 +444,20 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
         if (WhiteboardController.state.isSpinLoopRunning) return;
         WhiteboardController.state.isSpinLoopRunning = true;
 
-        // Variables para el cálculo de FPS
         let lastTime = performance.now();
         let frameCount = 0;
 
         const loop = () => {
-            // --- CÁLCULO DE FPS ---
             const now = performance.now();
             frameCount++;
             const delta = now - lastTime;
             
-            // Actualizar cada 1000ms (1 segundo)
             if (delta >= 1000) {
                 const fps = Math.round((frameCount * 1000) / delta);
                 WhiteboardUI.updateFPS(fps);
                 frameCount = 0;
                 lastTime = now;
             }
-            // ---------------------
 
             const canvas = WhiteboardController.canvas;
             if (canvas) {
@@ -352,7 +465,6 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
                 let needsRender = false;
 
                 objects.forEach(obj => {
-                    // Animación del Círculo (Rotación)
                     if (obj.customType === 'circle-cut' && obj.isSpinning && obj.spinSpeed !== 0) {
                         obj.angle += parseFloat(obj.spinSpeed);
                         obj.angle = obj.angle % 360;
@@ -360,7 +472,6 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
                         WhiteboardPhysics.syncBodyRotation(obj);
                         needsRender = true;
                     }
-                    // Animación de la Cinta Transportadora (Desplazamiento de línea)
                     else if (obj.customType === 'conveyor' && obj.isSpinning && obj.conveyorSpeed !== 0) {
                         const speed = obj.conveyorSpeed || 0;
                         obj.strokeDashOffset -= speed; 
@@ -373,7 +484,6 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
                     canvas.requestRenderAll();
                 }
 
-                // Actualizar Debug en tiempo real si está activo
                 if (WhiteboardController.state.debugMode) {
                     WhiteboardController.updateDebugData();
                 }
@@ -388,8 +498,9 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
         const debugData = objects.map((obj, index) => {
             const data = {
                 index: index,
-                type: obj.type, // Tipo nativo de Fabric (rect, circle, polygon, path)
-                customType: obj.customType || 'N/A', // Tipo personalizado (circle-cut, arrow-right, rect)
+                id: obj.id, // [NUEVO] Mostrar ID en debug
+                type: obj.type,
+                customType: obj.customType || 'N/A',
                 position: { 
                     x: Math.round(obj.left), 
                     y: Math.round(obj.top) 
@@ -429,7 +540,6 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
         const ui = WhiteboardUI.elements;
         const canvas = WhiteboardController.canvas;
 
-        // VINCULACIÓN DEL BOTÓN GUARDAR (NUEVO)
         const btnSave = document.getElementById('wb-btn-save');
         if (btnSave) {
             btnSave.addEventListener('click', () => {
@@ -465,8 +575,6 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
         if (ui.btnPhysicsSelected) {
             ui.btnPhysicsSelected.addEventListener('click', () => {
                 const activeObjects = canvas.getActiveObjects();
-                
-                // PROTECCIÓN: Filtrar mecánicas que no deberían tener físicas activables manuales
                 const validObjects = activeObjects.filter(obj => 
                     obj.customType !== 'conveyor' && obj.customType !== 'circle-cut'
                 );
@@ -533,6 +641,9 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
                 activeObj.setCoords();
                 canvas.requestRenderAll();
                 
+                // Disparar evento modified para que se envíe al socket
+                activeObj.fire('modified');
+
                 WhiteboardPhysics.removeBody(activeObj);
                 WhiteboardPhysics.addBody(activeObj);
             });
@@ -542,21 +653,19 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
             });
         }
 
-        // --- EVENTOS DE GIRO Y CINTA ---
         if (ui.btnSpinToggle) {
             ui.btnSpinToggle.addEventListener('click', () => {
                 const activeObj = canvas.getActiveObject();
-                // Permitir si es círculo o cinta
                 if (!activeObj || (activeObj.customType !== 'circle-cut' && activeObj.customType !== 'conveyor')) return;
                 
-                // Toggle isSpinning
                 const currentState = (activeObj.isSpinning !== undefined) ? activeObj.isSpinning : (activeObj.customType === 'conveyor');
                 const newState = !currentState;
                 activeObj.set('isSpinning', newState);
                 
                 WhiteboardUI.updateToolbarValues(activeObj);
+                // Disparar evento para socket
+                activeObj.fire('modified');
 
-                // Si es conveyor, necesitamos actualizar la física inmediatamente para que se detenga/arranque
                 if (activeObj.customType === 'conveyor') {
                     WhiteboardPhysics.removeBody(activeObj);
                     WhiteboardPhysics.addBody(activeObj);
@@ -574,12 +683,12 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
                      if(activeObj.customType === 'circle-cut') {
                         activeObj.set('spinSpeed', val);
                      } else if (activeObj.customType === 'conveyor') {
-                        // Actualizar velocidad de la cinta
                         activeObj.set('conveyorSpeed', val);
-                        // Recrear cuerpo físico para actualizar el plugin.speed
                         WhiteboardPhysics.removeBody(activeObj);
                         WhiteboardPhysics.addBody(activeObj);
                      }
+                     // Disparar evento para socket
+                     activeObj.fire('modified');
                 }
             });
         }
@@ -643,7 +752,6 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
                 if (e.code === 'KeyZ' && !e.shiftKey) { e.preventDefault(); WhiteboardController.undo(); }
                 if ((e.code === 'KeyY') || (e.code === 'KeyZ' && e.shiftKey)) { e.preventDefault(); WhiteboardController.redo(); }
                 
-                // ATAJO GUARDAR (CTRL+S)
                 if (e.code === 'KeyS') { e.preventDefault(); WhiteboardController.save(); }
             }
         });
@@ -695,7 +803,6 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
         if (!activeObj) return; 
 
         const applyColor = (obj) => {
-            // PROTECCIÓN: Las mecánicas no cambian de color (Circle Cut es hueco, Conveyor es textura)
             if (obj.customType === 'conveyor' || obj.customType === 'circle-cut') return;
 
             if (color === 'transparent') {
@@ -707,9 +814,10 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
                     obj.set('fill', color);
                 }
             }
-            // Re-generar física
             WhiteboardPhysics.removeBody(obj);
             WhiteboardPhysics.addBody(obj);
+            // Trigger modified
+            obj.fire('modified');
         };
 
         if (activeObj.type === 'activeSelection') {
@@ -730,7 +838,6 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
         if (!activeObj) return;
 
         const applyHollow = (obj) => {
-            // PROTECCIÓN: No aplicar a mecánicas
             if (obj.customType === 'conveyor' || obj.customType === 'circle-cut') return;
 
             obj.set({
@@ -740,6 +847,8 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
             });
             WhiteboardPhysics.removeBody(obj);
             WhiteboardPhysics.addBody(obj);
+            // Trigger modified
+            obj.fire('modified');
         };
 
         if (activeObj.type === 'activeSelection') {
@@ -758,17 +867,15 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
         const activeObj = canvas.getActiveObject();
         if (!activeObj) return;
 
-        // Protección adicional para propiedades de borde en Conveyor
         if (prop === 'strokeWidth' || prop === 'stroke') {
-             // Si es selección simple, chequeamos
              if (activeObj.customType === 'conveyor') return;
-             
-             // Si es selección múltiple, filtramos dentro del loop
         }
 
         const applyProp = (obj) => {
             if (obj.customType === 'conveyor' && (prop === 'strokeWidth' || prop === 'stroke' || prop === 'rx' || prop === 'ry')) return;
             obj.set(prop, value);
+            // Trigger modified
+            obj.fire('modified');
         }
 
         if (activeObj.type === 'activeSelection') {
@@ -786,6 +893,8 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
         if (!activeObj) return;
         activeObj.scale(activeObj.scaleX * factor);
         activeObj.setCoords();
+        // Trigger modified
+        activeObj.fire('modified');
         canvas.requestRenderAll();
         WhiteboardUI.updateToolbarValues(activeObj);
         WhiteboardController.saveHistory(); 
@@ -799,9 +908,7 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
             WhiteboardController.state.history = WhiteboardController.state.history.slice(0, WhiteboardController.state.historyIndex + 1);
         }
         
-        // MODIFICADO: Incluir propiedades personalizadas en el JSON para que el 'customType' se guarde
-        // Esto es crucial para la futura exportación/importación
-        const propertiesToInclude = ['customType', 'isSpinning', 'spinSpeed', 'conveyorSpeed', 'apertureDegree'];
+        const propertiesToInclude = ['customType', 'isSpinning', 'spinSpeed', 'conveyorSpeed', 'apertureDegree', 'id'];
         const json = JSON.stringify(WhiteboardController.canvas.toJSON(propertiesToInclude));
         
         WhiteboardController.state.history.push(json);
@@ -842,25 +949,28 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
     copy: () => {
         const activeObj = WhiteboardController.canvas.getActiveObject();
         if (activeObj) {
-            // Clonar incluyendo las propiedades personalizadas importantes
             activeObj.clone((cloned) => { WhiteboardController.state.clipboard = cloned; }, 
-            ['customType', 'isSpinning', 'spinSpeed', 'conveyorSpeed', 'apertureDegree']);
+            ['customType', 'isSpinning', 'spinSpeed', 'conveyorSpeed', 'apertureDegree', 'id']);
         }
     },
 
     paste: () => {
         if (!WhiteboardController.state.clipboard) return;
         
-        // Al pegar, también necesitamos asegurar que las propiedades se clonen
         WhiteboardController.state.clipboard.clone((clonedObj) => {
             WhiteboardController.canvas.discardActiveObject();
             clonedObj.set({ left: clonedObj.left + 20, top: clonedObj.top + 20, evented: true });
             
+            // Asignar nuevos IDs al pegar para que sean únicos
             if (clonedObj.type === 'activeSelection') {
                 clonedObj.canvas = WhiteboardController.canvas;
-                clonedObj.forEachObject((obj) => { WhiteboardController.canvas.add(obj); });
+                clonedObj.forEachObject((obj) => { 
+                    obj.set('id', crypto.randomUUID());
+                    WhiteboardController.canvas.add(obj); 
+                });
                 clonedObj.setCoords();
             } else {
+                clonedObj.set('id', crypto.randomUUID());
                 WhiteboardController.canvas.add(clonedObj);
             }
             WhiteboardController.canvas.setActiveObject(clonedObj);
@@ -947,12 +1057,13 @@ const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?acti
                 break;
         }
         if (obj) {
-            // MODIFICADO: Asignar customType a TODOS los objetos
-            // Usamos el 'type' del argumento (ej. 'rect', 'arrow-left') como identificador único
             if (!obj.customType) {
                 obj.set('customType', type);
             }
             
+            // [NUEVO] Generar ID único
+            obj.set('id', crypto.randomUUID());
+
             canvas.add(obj); 
             canvas.setActiveObject(obj); 
             canvas.requestRenderAll(); 

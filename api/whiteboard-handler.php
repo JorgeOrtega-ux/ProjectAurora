@@ -34,7 +34,8 @@ try {
 
         if ($action === 'create') {
             $name = $input['name'] ?? 'Nuevo Pizarrón';
-            $uuid = $wbService->createWhiteboard($currentUser, $name);
+            $visibility = $input['visibility'] ?? 'private';
+            $uuid = $wbService->createWhiteboard($currentUser, $name, $visibility);
             echo json_encode(['success' => true, 'uuid' => $uuid]);
         } 
         elseif ($action === 'save') {
@@ -53,6 +54,15 @@ try {
             $wbService->saveContent($uuid, $currentUser, $content);
             echo json_encode(['success' => true]);
         }
+        elseif ($action === 'update_access') {
+            $uuid = $input['uuid'] ?? '';
+            $level = $input['visibility'] ?? 'private';
+            
+            if (empty($uuid)) throw new Exception("UUID requerido");
+            
+            $wbService->setAccessLevel($uuid, $currentUser, $level);
+            echo json_encode(['success' => true, 'message' => 'Visibilidad actualizada']);
+        }
         else {
             throw new Exception("Acción no válida");
         }
@@ -65,7 +75,19 @@ try {
             $content = $wbService->getContent($uuid, $currentUser);
             // Devolvemos el contenido directamente dentro de 'data'
             echo json_encode(['success' => true, 'data' => json_decode($content)]);
-        } else {
+        } 
+        elseif ($action === 'get_metadata') {
+            $uuid = $_GET['uuid'] ?? '';
+            if (empty($uuid)) throw new Exception("UUID requerido");
+            
+            $metadata = $wbService->getMetadata($uuid);
+            // Añadir flag isOwner para la UI
+            $metadata['isOwner'] = ((int)$metadata['user_id'] === (int)$currentUser);
+            unset($metadata['user_id']); // No exponer ID interno innecesariamente
+            
+            echo json_encode(['success' => true, 'data' => $metadata]);
+        }
+        else {
             throw new Exception("Acción GET no válida");
         }
     }

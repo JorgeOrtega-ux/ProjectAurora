@@ -4,8 +4,8 @@ USE project_aurora_db;
 -- =========================================================
 -- REINICIO DE TABLAS
 -- =========================================================
-DROP TABLE IF EXISTS whiteboards; -- Agregado para limpiar si existe la version anterior
-DROP TABLE IF EXISTS ws_tokens;   -- NUEVO: Tabla para tokens efímeros de WebSocket
+DROP TABLE IF EXISTS whiteboards;
+DROP TABLE IF EXISTS ws_tokens;
 DROP TABLE IF EXISTS user_auth_tokens;
 DROP TABLE IF EXISTS user_preferences;
 DROP TABLE IF EXISTS security_logs;
@@ -164,6 +164,7 @@ CREATE TABLE IF NOT EXISTS whiteboards (
     uuid CHAR(36) NOT NULL UNIQUE,
     user_id INT NOT NULL,
     name VARCHAR(100) NOT NULL DEFAULT 'Nuevo Pizarrón',
+    visibility ENUM('private', 'public') DEFAULT 'private', -- COLUMNA NUEVA
     file_path VARCHAR(255) NOT NULL, -- Ruta relativa al archivo JSON o URL
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

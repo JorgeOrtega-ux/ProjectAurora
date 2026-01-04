@@ -154,6 +154,53 @@ if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
         .wb-debug-panel::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
         .wb-debug-panel::-webkit-scrollbar-thumb:hover { background: #475569; }
 
+        /* --- MODAL DE COMPARTIR --- */
+        .wb-modal-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 2000;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden; transition: all 0.2s;
+        }
+        .wb-modal-overlay.active { opacity: 1; visibility: visible; }
+        .wb-modal {
+            background: #fff; width: 400px; max-width: 90%;
+            border-radius: 12px; padding: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            transform: translateY(20px); transition: transform 0.2s;
+        }
+        .wb-modal-overlay.active .wb-modal { transform: translateY(0); }
+        .wb-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .wb-modal-title { font-size: 18px; font-weight: 700; color: #1e293b; }
+        .wb-modal-close { background: none; border: none; cursor: pointer; color: #64748b; }
+        
+        .wb-share-option {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px;
+            margin-bottom: 10px; cursor: pointer; transition: all 0.2s;
+        }
+        .wb-share-option:hover { background: #f8fafc; border-color: #cbd5e1; }
+        .wb-share-option.selected { border-color: #3b82f6; background: #eff6ff; }
+        .wb-share-radio { margin-top: 4px; accent-color: #3b82f6; }
+        .wb-share-text h4 { margin: 0 0 4px; font-size: 14px; font-weight: 600; color: #334155; }
+        .wb-share-text p { margin: 0; font-size: 12px; color: #64748b; }
+
+        .wb-share-link-box {
+            margin-top: 16px; display: none;
+        }
+        .wb-share-link-box.active { display: block; animation: fadeIn 0.3s; }
+        .wb-link-wrapper {
+            display: flex; gap: 8px; margin-top: 8px;
+        }
+        .wb-link-input {
+            flex: 1; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px;
+            font-size: 13px; color: #475569; background: #f8fafc; outline: none;
+        }
+        .wb-btn-copy {
+            padding: 8px 16px; background: #3b82f6; color: #fff; border: none;
+            border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer;
+        }
+        .wb-btn-copy:hover { background: #2563eb; }
+
     </style>
 
     <div id="wb-debug-panel" class="wb-debug-panel">
@@ -165,6 +212,39 @@ if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
 
     <div class="wb-status-overlay">
         <span id="wb-status-text">X: 0 Y: 0</span>
+    </div>
+
+    <div id="wb-share-modal" class="wb-modal-overlay">
+        <div class="wb-modal">
+            <div class="wb-modal-header">
+                <span class="wb-modal-title">Compartir Pizarrón</span>
+                <button id="wb-share-close" class="wb-modal-close"><span class="material-symbols-rounded">close</span></button>
+            </div>
+            
+            <label class="wb-share-option" id="opt-private">
+                <input type="radio" name="wb-visibility" value="private" class="wb-share-radio">
+                <div class="wb-share-text">
+                    <h4>Privado</h4>
+                    <p>Solo tú tienes acceso a este pizarrón.</p>
+                </div>
+            </label>
+
+            <label class="wb-share-option" id="opt-public">
+                <input type="radio" name="wb-visibility" value="public" class="wb-share-radio">
+                <div class="wb-share-text">
+                    <h4>Cualquiera con el enlace</h4>
+                    <p>Usuarios registrados con el link pueden ver y editar.</p>
+                </div>
+            </label>
+
+            <div id="wb-share-link-area" class="wb-share-link-box">
+                <div style="font-size: 13px; font-weight: 500; color: #334155;">Enlace para copiar:</div>
+                <div class="wb-link-wrapper">
+                    <input type="text" id="wb-share-input" class="wb-link-input" readonly value="<?php echo "https://" . $_SERVER['HTTP_HOST'] . "/ProjectAurora/whiteboard/" . htmlspecialchars($uuid); ?>">
+                    <button id="wb-btn-copy-link" class="wb-btn-copy">Copiar</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="wb-main-row">
@@ -338,6 +418,11 @@ if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
             <button class="wb-tool-btn" id="wb-btn-save" title="Guardar Proyecto" style="color: #2563eb;">
                 <span class="material-symbols-rounded">save</span>
             </button>
+            
+            <button class="wb-tool-btn" id="wb-btn-share" title="Compartir y Acceso" style="color: #0891b2; margin-left: 4px;">
+                <span class="material-symbols-rounded">share</span>
+            </button>
+
             <div style="width: 1px; height: 24px; background-color: var(--border-color, #e0e0e0); margin: 0 5px;"></div>
             
             <button class="wb-tool-btn" id="wb-btn-physics-selected" title="Activar Física (Selección)">

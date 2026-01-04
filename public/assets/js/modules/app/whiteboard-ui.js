@@ -51,7 +51,16 @@ export const WhiteboardUI = {
         // Elementos Debug
         btnDebug: null,
         debugPanel: null,
-        debugContent: null
+        debugContent: null,
+
+        // [NUEVO] Elementos Compartir
+        btnShare: null,
+        shareModal: null,
+        btnCloseShare: null,
+        radiosVisibility: null,
+        shareLinkArea: null,
+        shareLinkInput: null,
+        btnCopyLink: null
     },
 
     config: {
@@ -129,7 +138,17 @@ export const WhiteboardUI = {
         el.debugPanel = document.getElementById('wb-debug-panel');
         el.debugContent = document.getElementById('wb-debug-content');
 
+        // [NUEVO] Inicializar elementos Compartir
+        el.btnShare = document.getElementById('wb-btn-share');
+        el.shareModal = document.getElementById('wb-share-modal');
+        el.btnCloseShare = document.getElementById('wb-share-close');
+        el.radiosVisibility = document.querySelectorAll('input[name="wb-visibility"]');
+        el.shareLinkArea = document.getElementById('wb-share-link-area');
+        el.shareLinkInput = document.getElementById('wb-share-input');
+        el.btnCopyLink = document.getElementById('wb-btn-copy-link');
+
         WhiteboardUI.bindSidebarEvents();
+        WhiteboardUI.bindShareEvents(); // Nuevo binding
         WhiteboardUI.updateSliderFill();
     },
 
@@ -158,6 +177,42 @@ export const WhiteboardUI = {
             });
         });
         if (btnCloseDrawer) btnCloseDrawer.addEventListener('click', () => WhiteboardUI.closeDrawer());
+    },
+
+    // [NUEVO] Bindings para el modal de compartir (cerrar y copiar)
+    bindShareEvents: () => {
+        const { btnCloseShare, btnCopyLink, shareLinkInput, shareModal } = WhiteboardUI.elements;
+        
+        if (btnCloseShare) {
+            btnCloseShare.addEventListener('click', () => {
+                WhiteboardUI.toggleShareModal(false);
+            });
+        }
+
+        if (btnCopyLink && shareLinkInput) {
+            btnCopyLink.addEventListener('click', () => {
+                shareLinkInput.select();
+                shareLinkInput.setSelectionRange(0, 99999);
+                navigator.clipboard.writeText(shareLinkInput.value).then(() => {
+                    const originalText = btnCopyLink.innerText;
+                    btnCopyLink.innerText = '¡Copiado!';
+                    btnCopyLink.style.background = '#10b981';
+                    setTimeout(() => {
+                        btnCopyLink.innerText = originalText;
+                        btnCopyLink.style.background = '';
+                    }, 2000);
+                });
+            });
+        }
+
+        // Cerrar al hacer clic fuera del modal
+        if (shareModal) {
+            shareModal.addEventListener('click', (e) => {
+                if (e.target === shareModal) {
+                    WhiteboardUI.toggleShareModal(false);
+                }
+            });
+        }
     },
 
     openDrawer: (id, t) => {
@@ -202,6 +257,37 @@ export const WhiteboardUI = {
         } else {
             borderPopover.classList.remove('active');
             if(btnBorderOptions) btnBorderOptions.classList.remove('active');
+        }
+    },
+
+    // [NUEVO] Abrir/Cerrar Modal de Compartir
+    toggleShareModal: (show) => {
+        const { shareModal } = WhiteboardUI.elements;
+        if (!shareModal) return;
+        if (show) shareModal.classList.add('active');
+        else shareModal.classList.remove('active');
+    },
+
+    // [NUEVO] Actualizar estado visual del modal (Radio buttons)
+    updateShareUI: (level) => {
+        const { radiosVisibility, shareLinkArea } = WhiteboardUI.elements;
+        if (!radiosVisibility) return;
+
+        radiosVisibility.forEach(radio => {
+            if (radio.value === level) {
+                radio.checked = true;
+                // Actualizar estilo visual del contenedor padre
+                document.querySelectorAll('.wb-share-option').forEach(opt => opt.classList.remove('selected'));
+                radio.closest('.wb-share-option').classList.add('selected');
+            }
+        });
+
+        if (shareLinkArea) {
+            if (level === 'public') {
+                shareLinkArea.classList.add('active');
+            } else {
+                shareLinkArea.classList.remove('active');
+            }
         }
     },
 
@@ -373,19 +459,16 @@ export const WhiteboardUI = {
         status.innerText = `X: ${Math.round(pointer.x)} Y: ${Math.round(pointer.y)}`;
     },
 
-    // --- NUEVO: Actualizar el contador de FPS ---
     updateFPS: (fpsVal) => {
         const { fps } = WhiteboardUI.elements;
         if (!fps) return;
-        // Colorear según rendimiento (Opcional, pero útil)
-        if (fpsVal >= 50) fps.style.color = '#4CAF50'; // Verde
-        else if (fpsVal >= 30) fps.style.color = '#FF9800'; // Naranja
-        else fps.style.color = '#F44336'; // Rojo
+        if (fpsVal >= 50) fps.style.color = '#4CAF50'; 
+        else if (fpsVal >= 30) fps.style.color = '#FF9800';
+        else fps.style.color = '#F44336';
         
         fps.innerText = `FPS: ${fpsVal}`;
     },
 
-    // --- MÉTODOS DE DEBUG ---
     toggleDebugPanel: (show) => {
         const { debugPanel, btnDebug } = WhiteboardUI.elements;
         if (!debugPanel) return;
@@ -403,4 +486,4 @@ export const WhiteboardUI = {
         if (!debugContent) return;
         debugContent.innerText = JSON.stringify(data, null, 2);
     }
-};1
+};
