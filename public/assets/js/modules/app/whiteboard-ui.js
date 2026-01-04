@@ -45,7 +45,12 @@ export const WhiteboardUI = {
         inpBorderColor: null,
         inpBorderRadius: null,
         valBorderRadius: null,
-        rowBorderRadius: null
+        rowBorderRadius: null,
+
+        // Elementos Debug
+        btnDebug: null,
+        debugPanel: null,
+        debugContent: null
     },
 
     config: {
@@ -99,6 +104,11 @@ export const WhiteboardUI = {
         el.inpBorderRadius = document.getElementById('inp-border-radius');
         el.valBorderRadius = document.getElementById('val-border-radius');
         el.rowBorderRadius = document.getElementById('row-border-radius');
+
+        // Inicializar elementos Debug
+        el.btnDebug = document.getElementById('wb-btn-debug');
+        el.debugPanel = document.getElementById('wb-debug-panel');
+        el.debugContent = document.getElementById('wb-debug-content');
 
         WhiteboardUI.bindSidebarEvents();
         WhiteboardUI.updateSliderFill();
@@ -305,5 +315,25 @@ export const WhiteboardUI = {
     updateStatusText: (pointer) => {
         const { status } = WhiteboardUI.elements; if (!status || !pointer) return;
         status.innerText = `X: ${Math.round(pointer.x)} Y: ${Math.round(pointer.y)}`;
+    },
+
+    // --- MÉTODOS DE DEBUG ---
+    toggleDebugPanel: (show) => {
+        const { debugPanel, btnDebug } = WhiteboardUI.elements;
+        if (!debugPanel) return;
+        if (show) {
+            debugPanel.classList.add('active');
+            if(btnDebug) btnDebug.classList.add('active-state');
+        } else {
+            debugPanel.classList.remove('active');
+            if(btnDebug) btnDebug.classList.remove('active-state');
+        }
+    },
+
+    updateDebugContent: (data) => {
+        const { debugContent } = WhiteboardUI.elements;
+        if (!debugContent) return;
+        // Convertir JSON a string con formato
+        debugContent.innerText = JSON.stringify(data, null, 2);
     }
 };

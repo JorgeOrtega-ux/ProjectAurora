@@ -104,7 +104,50 @@
         .wb-color-swatch { width: 100%; aspect-ratio: 1; border-radius: 6px; cursor: pointer; border: 1px solid rgba(0,0,0,0.1); transition: transform 0.1s; }
         .wb-color-swatch:hover { transform: scale(1.1); box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1; }
         
+        /* --- MODO DEBUG --- */
+        .wb-debug-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            max-height: calc(100vh - 140px);
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 15px;
+            color: #22d3ee;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 11px;
+            z-index: 1000;
+            overflow-y: auto;
+            backdrop-filter: blur(4px);
+            display: none;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        .wb-debug-panel.active {
+            display: block;
+        }
+
+        .wb-debug-content {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* Scrollbar del debug */
+        .wb-debug-panel::-webkit-scrollbar { width: 6px; }
+        .wb-debug-panel::-webkit-scrollbar-track { background: #0f172a; }
+        .wb-debug-panel::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        .wb-debug-panel::-webkit-scrollbar-thumb:hover { background: #475569; }
+
     </style>
+
+    <div id="wb-debug-panel" class="wb-debug-panel">
+        <div style="margin-bottom: 10px; border-bottom: 1px solid #334155; padding-bottom: 5px; color: #fff; font-weight: bold;">
+            DEBUG MONITOR (JSON)
+        </div>
+        <div id="wb-debug-content" class="wb-debug-content">Waiting for data...</div>
+    </div>
 
     <div class="wb-status-overlay">
         <span id="wb-status-text">X: 0 Y: 0</span>
@@ -300,6 +343,11 @@
                 <input type="range" id="wb-zoom-slider" class="wb-zoom-slider" min="10" max="500" value="100">
                 <span id="wb-zoom-display" style="font-size: 12px; font-weight: 500; min-width: 40px; text-align: right;">100%</span>
             </div>
+
+            <div style="width: 1px; height: 24px; background-color: var(--border-color, #e0e0e0); margin: 0 5px;"></div>
+            <button class="wb-tool-btn" id="wb-btn-debug" title="Modo Debug (JSON Monitor)">
+                <span class="material-symbols-rounded">bug_report</span>
+            </button>
         </div>
     </div>
 </div>

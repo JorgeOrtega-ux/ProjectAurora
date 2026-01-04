@@ -110,13 +110,14 @@ export const WhiteboardPhysics = {
         }
     },
 
-    activateForSelection: (activeObjects) => {
+   activateForSelection: (activeObjects) => {
         if (!activeObjects || !activeObjects.length) return;
 
         activeObjects.forEach(obj => {
             const body = WhiteboardPhysics.bodiesMap.get(obj);
             if (body) {
-                if (obj.customType === 'conveyor' || obj.isStatic) return;
+                // MODIFICADO: Agregamos "obj.customType === 'circle-cut'" para evitar que se active
+                if (obj.customType === 'conveyor' || obj.customType === 'circle-cut' || obj.isStatic) return;
 
                 Matter.Body.setStatic(body, false);
                 Matter.Sleeping.set(body, false);
@@ -163,9 +164,13 @@ export const WhiteboardPhysics = {
             const h = obj.getScaledHeight();
             body = Bodies.rectangle(x, y, w, h, options);
         }
+        // MODIFICADO: Bloque completo para el Anillo
         else if (obj.customType === 'circle-cut') {
+            options.isStatic = true;          // Nace estático
+            options.plugin.forceStatic = true; // Se mantiene estático aunque se active la física global
             body = WhiteboardPhysics.createArcBody(obj, x, y, angle, options);
         }
+        // Fin de modificación
         else if (obj.type === 'line') {
             body = WhiteboardPhysics.createLineBody(obj, options);
         }
@@ -195,6 +200,7 @@ export const WhiteboardPhysics = {
         }
 
         if (body) {
+            // Asegura que si el objeto traía la propiedad estática manual, se respete
             if (obj.isStatic) {
                 body.plugin.forceStatic = true;
             }

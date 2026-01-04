@@ -20,7 +20,8 @@ export const WhiteboardController = {
         history: [],
         historyIndex: -1,
         historyLocked: false,
-        isSpinLoopRunning: false
+        isSpinLoopRunning: false,
+        debugMode: false
     },
     
     config: {
@@ -54,7 +55,7 @@ export const WhiteboardController = {
         WhiteboardController.resizeCanvas();
         WhiteboardController.centerBoard();
         
-        // Iniciar loop de animación para objetos que giran
+        // Iniciar loop de animación para objetos que giran y debug
         WhiteboardController.startSpinLoop();
     },
 
@@ -246,10 +247,57 @@ export const WhiteboardController = {
                 if (needsRender) {
                     canvas.requestRenderAll();
                 }
+
+                // Actualizar Debug en tiempo real si está activo
+                if (WhiteboardController.state.debugMode) {
+                    WhiteboardController.updateDebugData();
+                }
             }
             fabric.util.requestAnimFrame(loop);
         };
         fabric.util.requestAnimFrame(loop);
+    },
+
+    updateDebugData: () => {
+        const objects = WhiteboardController.canvas.getObjects();
+        const debugData = objects.map((obj, index) => {
+            const data = {
+                index: index,
+                type: obj.type, // Tipo nativo de Fabric (rect, circle, polygon, path)
+                customType: obj.customType || 'N/A', // Tipo personalizado (circle-cut, arrow-right, rect)
+                position: { 
+                    x: Math.round(obj.left), 
+                    y: Math.round(obj.top) 
+                },
+                angle: Math.round(obj.angle),
+                dimensions: {
+                    width: Math.round(obj.width * obj.scaleX),
+                    height: Math.round(obj.height * obj.scaleY)
+                },
+                style: {
+                    fill: obj.fill,
+                    stroke: obj.stroke,
+                    strokeWidth: obj.strokeWidth
+                }
+            };
+
+            if (obj.customType === 'circle-cut') {
+                data.mechanics = {
+                    isSpinning: obj.isSpinning,
+                    speed: obj.spinSpeed,
+                    aperture: obj.apertureDegree
+                };
+            } else if (obj.customType === 'conveyor') {
+                data.mechanics = {
+                    isSpinning: obj.isSpinning,
+                    speed: obj.conveyorSpeed
+                };
+            }
+            
+            return data;
+        });
+
+        WhiteboardUI.updateDebugContent(debugData);
     },
 
     bindEvents: () => {
@@ -310,6 +358,13 @@ export const WhiteboardController = {
                 const isActive = ui.borderPopover.classList.contains('active');
                 WhiteboardUI.toggleBorderPopover(!isActive);
                 if (!isActive) WhiteboardUI.closeDrawer();
+            });
+        }
+
+        if (ui.btnDebug) {
+            ui.btnDebug.addEventListener('click', () => {
+                WhiteboardController.state.debugMode = !WhiteboardController.state.debugMode;
+                WhiteboardUI.toggleDebugPanel(WhiteboardController.state.debugMode);
             });
         }
 
@@ -575,7 +630,12 @@ export const WhiteboardController = {
         if (WhiteboardController.state.historyIndex < WhiteboardController.state.history.length - 1) {
             WhiteboardController.state.history = WhiteboardController.state.history.slice(0, WhiteboardController.state.historyIndex + 1);
         }
-        const json = JSON.stringify(WhiteboardController.canvas);
+        
+        // MODIFICADO: Incluir propiedades personalizadas en el JSON para que el 'customType' se guarde
+        // Esto es crucial para la futura exportación/importación
+        const propertiesToInclude = ['customType', 'isSpinning', 'spinSpeed', 'conveyorSpeed', 'apertureDegree'];
+        const json = JSON.stringify(WhiteboardController.canvas.toJSON(propertiesToInclude));
+        
         WhiteboardController.state.history.push(json);
         WhiteboardController.state.historyIndex++;
         
@@ -614,15 +674,20 @@ export const WhiteboardController = {
     copy: () => {
         const activeObj = WhiteboardController.canvas.getActiveObject();
         if (activeObj) {
-            activeObj.clone((cloned) => { WhiteboardController.state.clipboard = cloned; });
+            // Clonar incluyendo las propiedades personalizadas importantes
+            activeObj.clone((cloned) => { WhiteboardController.state.clipboard = cloned; }, 
+            ['customType', 'isSpinning', 'spinSpeed', 'conveyorSpeed', 'apertureDegree']);
         }
     },
 
     paste: () => {
         if (!WhiteboardController.state.clipboard) return;
+        
+        // Al pegar, también necesitamos asegurar que las propiedades se clonen
         WhiteboardController.state.clipboard.clone((clonedObj) => {
             WhiteboardController.canvas.discardActiveObject();
             clonedObj.set({ left: clonedObj.left + 20, top: clonedObj.top + 20, evented: true });
+            
             if (clonedObj.type === 'activeSelection') {
                 clonedObj.canvas = WhiteboardController.canvas;
                 clonedObj.forEachObject((obj) => { WhiteboardController.canvas.add(obj); });
@@ -633,7 +698,7 @@ export const WhiteboardController = {
             WhiteboardController.canvas.setActiveObject(clonedObj);
             WhiteboardController.canvas.requestRenderAll();
             WhiteboardController.saveHistory();
-        });
+        }, ['customType', 'isSpinning', 'spinSpeed', 'conveyorSpeed', 'apertureDegree']);
     },
 
     // --- CREACIÓN DE FORMAS ---
@@ -713,7 +778,13 @@ export const WhiteboardController = {
                 obj.set('isSpinning', false); 
                 break;
         }
-        if (obj) { 
+        if (obj) {
+            // MODIFICADO: Asignar customType a TODOS los objetos
+            // Usamos el 'type' del argumento (ej. 'rect', 'arrow-left') como identificador único
+            if (!obj.customType) {
+                obj.set('customType', type);
+            }
+            
             canvas.add(obj); 
             canvas.setActiveObject(obj); 
             canvas.requestRenderAll(); 
