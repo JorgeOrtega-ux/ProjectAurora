@@ -357,15 +357,21 @@ export const WhiteboardPhysics = {
         return Matter.Bodies.fromVertices(x, y, [points], options);
     },
 
-    createLineBody: (obj, options) => {
+createLineBody: (obj, options) => {
         const p1 = { x: obj.x1, y: obj.y1 };
         const p2 = { x: obj.x2, y: obj.y2 };
         const center = obj.getCenterPoint(); 
         
         const dx = p2.x - p1.x;
         const dy = p2.y - p1.y;
-        const length = Math.sqrt(dx*dx + dy*dy);
-        const strokeWidth = obj.strokeWidth || 4;
+        
+        // === CORRECCIÓN AQUÍ: Multiplicar por la escala actual ===
+        // La longitud visual es la distancia base * escala X (asumiendo estiramiento longitudinal)
+        const currentScale = obj.scaleX || 1; 
+        const length = Math.sqrt(dx*dx + dy*dy) * currentScale; 
+        // =========================================================
+
+        const strokeWidth = (obj.strokeWidth || 4) * (obj.scaleY || 1); // También escalar grosor si es necesario
         
         const baseAngle = Math.atan2(dy, dx);
         const totalAngle = baseAngle + fabric.util.degreesToRadians(obj.angle);
