@@ -2,12 +2,116 @@
  * public/assets/js/main-controller.js
  */
 
+import { DialogManager } from './core/dialog-manager.js';
+
 export function initMainController() {
     console.log("Inicializando controlador principal...");
 
     initModuleSystem();
     initScrollEffects();
     initGlobalStateListeners(); // Importante: Activamos la escucha de eventos
+    
+    // Lógica específica del Dashboard (Inicio)
+    initDashboardLogic();
+}
+
+function initDashboardLogic() {
+    // 1. Cargar lista de pizarrones si estamos en el contenedor correcto
+    const wbContainer = document.getElementById('whiteboards-grid');
+    if (wbContainer) {
+        fetchWhiteboards(wbContainer);
+    }
+
+    // 2. Listener para botón "Crear Pizarrón"
+    const createBtn = document.getElementById('btn-create-whiteboard');
+    if (createBtn) {
+        createBtn.addEventListener('click', handleCreateWhiteboard);
+    }
+}
+
+async function fetchWhiteboards(container) {
+    try {
+        const formData = new FormData();
+        formData.append('action', 'list');
+
+        const response = await fetch('api/whiteboard-handler.php', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+
+        if (result.success && result.data) {
+            renderWhiteboards(container, result.data);
+        } else {
+            container.innerHTML = '<div class="empty-state">No hay pizarrones recientes.</div>';
+        }
+    } catch (error) {
+        console.error('Error cargando pizarrones:', error);
+        container.innerHTML = '<div class="error-state">Error de conexión.</div>';
+    }
+}
+
+function renderWhiteboards(container, list) {
+    if (list.length === 0) {
+        container.innerHTML = '<div class="empty-state">Crea tu primer pizarrón para comenzar.</div>';
+        return;
+    }
+
+    // Renderizado seguro de tarjetas
+    container.innerHTML = list.map(wb => `
+        <a href="whiteboard/${wb.uuid}" class="wb-card">
+            <div class="wb-card-preview">
+                <div class="wb-icon">🎨</div>
+            </div>
+            <div class="wb-card-info">
+                <h3>${escapeHtml(wb.name)}</h3>
+                <span class="date">Editado: ${new Date(wb.updated_at).toLocaleDateString()}</span>
+            </div>
+        </a>
+    `).join('');
+}
+
+function handleCreateWhiteboard() {
+    DialogManager.showInput({
+        title: 'Nuevo Pizarrón',
+        message: 'Ingresa un nombre para tu proyecto',
+        confirmText: 'Crear',
+        cancelText: 'Cancelar',
+        placeholder: 'Ej. Lluvia de ideas Q1',
+        onConfirm: async (inputValue) => {
+            const name = inputValue.trim() || 'Sin título';
+            
+            try {
+                const formData = new FormData();
+                formData.append('action', 'create');
+                formData.append('name', name);
+
+                const response = await fetch('api/whiteboard-handler.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.redirect) {
+                    window.location.href = result.redirect;
+                } else {
+                    alert('Error: ' + (result.message || 'No se pudo crear.'));
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Error de conexión al crear.');
+            }
+        }
+    });
+}
+
+function escapeHtml(text) {
+    if (!text) return text;
+    return text.replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+    });
 }
 
 function initScrollEffects() {

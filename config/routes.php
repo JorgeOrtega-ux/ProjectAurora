@@ -5,7 +5,12 @@ return [
     // === APP (General) ===
     'main'     => __DIR__ . '/../includes/sections/app/main.php',
     'explore'  => __DIR__ . '/../includes/sections/app/explore.php',
-    'app/whiteboard' => __DIR__ . '/../includes/sections/app/whiteboard.php',
+    'app/whiteboard' => __DIR__ . '/../includes/sections/app/whiteboard.php', // Ruta legacy (opcional)
+    
+    // RUTA DINÁMICA: Captura UUIDs para editar pizarrones
+    // Coincide con: whiteboard/550e8400-e29b...
+    'whiteboard/([a-zA-Z0-9-]+)' => __DIR__ . '/../includes/sections/app/whiteboard.php',
+
     // === AUTH (Autenticación) ===
     'login'    => __DIR__ . '/../includes/sections/auth/login.php',
     
