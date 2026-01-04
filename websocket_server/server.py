@@ -7,7 +7,6 @@ from urllib.parse import urlparse, parse_qs
 from datetime import datetime
 
 # Configuración de Base de Datos
-# NOTA: En un entorno real, usa python-dotenv para cargar esto desde el archivo .env
 DB_CONFIG = {
     'user': 'root',           # Ajusta según tu .env local
     'password': '',           # Ajusta según tu .env local
@@ -132,10 +131,14 @@ async def handler(websocket):
                     is_active = False
                     try:
                         # Intenta compatibilidad con versiones nuevas (v10+) y antiguas (v8/9)
-                        if hasattr(ws, 'open'):
+                        # Nota: En v10+ 'open' es una propiedad boolean. En versiones anteriores 'closed' existe.
+                        if hasattr(ws, 'open') and isinstance(ws.open, bool):
                             is_active = ws.open
-                        else:
+                        elif hasattr(ws, 'closed'):
                             is_active = not ws.closed
+                        else:
+                            # Fallback para estructuras más recientes de websockets si ha cambiado
+                            is_active = True 
                     except:
                         is_active = False
 
@@ -143,6 +146,9 @@ async def handler(websocket):
                         other_clients.append(ws)
                 
                 if other_clients:
+                    # [DEBUG] Log para confirmar reenvío
+                    # print(f"-> Reenviando mensaje a {len(other_clients)} clientes.")
+                    
                     # Broadcast eficiente con manejo de excepciones (evita caída masiva)
                     await asyncio.gather(*[client.send(message) for client in other_clients], return_exceptions=True)
             

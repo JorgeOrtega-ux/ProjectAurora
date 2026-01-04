@@ -1,16 +1,15 @@
 /**
  * public/assets/js/modules/app/whiteboard-controller.js
- * Controlador principal, estado y orquestación
+ * Controlador principal con Logs de Diagnóstico y Throttling
  */
 
 import { WhiteboardPhysics } from './whiteboard-physics.js';
 import { WhiteboardUI } from './whiteboard-ui.js';
-// [NUEVO] Importar WebSocketManager
 import { WebSocketManager } from '../../core/websocket-manager.js';
 
 export const WhiteboardController = {
     canvas: null,
-    currentUUID: null, // Almacena el ID del pizarrón actual
+    currentUUID: null, 
 
     state: {
         panning: false,
@@ -25,9 +24,7 @@ export const WhiteboardController = {
         historyLocked: false,
         isSpinLoopRunning: false,
         debugMode: false,
-        // Flag para evitar bucles de actualización (Eco)
         isRemoteUpdate: false,
-        // [NUEVO] Flag para indicar que se está cargando el pizarrón inicial
         isLoading: false
     },
     
@@ -40,15 +37,10 @@ export const WhiteboardController = {
         controlBg: '#ffffff'                       
     },
 
-    /**
-     * Generador de UUID seguro con fallback para entornos HTTP/No-Seguros
-     */
     generateUUID: () => {
-        // Intento 1: API Nativa (Solo funciona en HTTPS/Localhost)
         if (typeof crypto !== 'undefined' && crypto.randomUUID) {
             return crypto.randomUUID();
         }
-        // Intento 2: Math.random (Fallback compatible para desarrollo/HTTP)
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
             var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
             return v.toString(16);
@@ -58,14 +50,12 @@ export const WhiteboardController = {
     init: async () => {
         console.log("WhiteboardController: Iniciando...");
         
-        // Capturar UUID del DOM
         const container = document.querySelector('.wb-container');
         if (container && container.dataset.wbUuid) {
             WhiteboardController.currentUUID = container.dataset.wbUuid;
             console.log("Whiteboard UUID:", WhiteboardController.currentUUID);
         }
 
-        // Inicializar subsistemas
         WhiteboardUI.init();
         
         if (!WhiteboardUI.elements.viewport) return;
@@ -75,35 +65,33 @@ export const WhiteboardController = {
         WhiteboardController.bindShapeEvents();
         WhiteboardController.bindColorEvents(); 
         
-        // Inicializar motor de física con referencia al canvas
         WhiteboardPhysics.init(WhiteboardController.canvas);
 
         window.addEventListener('resize', WhiteboardController.resizeCanvas);
         WhiteboardController.resizeCanvas();
         
-        // IMPORTANTE: Cargar datos del servidor si existe un UUID
         if (WhiteboardController.currentUUID) {
             await WhiteboardController.loadFromServer(WhiteboardController.currentUUID);
-            
-            // Conectar WebSocket y suscribirse
             WebSocketManager.connect(WhiteboardController.currentUUID);
             WebSocketManager.subscribe(WhiteboardController.handleRemoteMessage);
         } else {
-            // Si es nuevo o no hay datos, centrar y guardar estado inicial
             WhiteboardController.centerBoard();
             WhiteboardController.saveHistory();
         }
         
-        // Iniciar loop de animación para objetos que giran y debug
         WhiteboardController.startSpinLoop();
     },
 
-    // Manejador de mensajes remotos
+    // --- MANEJADOR DE MENSAJES REMOTOS (DIAGNÓSTICO) ---
     handleRemoteMessage: (msg) => {
         if (!msg || !msg.type) return;
-        const canvas = WhiteboardController.canvas;
+        
+        // Log Forzado para ver si llega la señal
+        if(msg.type !== 'system') {
+            console.log(`%c[WS RX] ${msg.type}`, 'color: #00d2ff; font-weight: bold;', msg);
+        }
 
-        // Bloquear emisión de eventos mientras aplicamos cambios remotos
+        const canvas = WhiteboardController.canvas;
         WhiteboardController.state.isRemoteUpdate = true;
 
         try {
@@ -112,13 +100,17 @@ export const WhiteboardController = {
                 if (obj) {
                     obj.set(msg.data);
                     obj.setCoords();
-                    WhiteboardPhysics.syncBodyPosition(obj); // Sincronizar física si es necesario
+                    WhiteboardPhysics.syncBodyPosition(obj); 
                     canvas.requestRenderAll();
+                    // Log de éxito silencioso
+                    // console.log(`%c[WS OK] Objeto ${msg.objectId.substr(0,4)} actualizado.`, 'color: #2ecc71');
+                } else {
+                    console.warn(`%c[WS ERROR] Objeto ID ${msg.objectId} NO ENCONTRADO en este cliente.`, 'color: #ff0000; font-weight: bold;');
                 }
             } 
             else if (msg.type === 'OBJECT_ADDED') {
-                // Verificar si ya existe para evitar duplicados
                 if (!WhiteboardController.findObjectById(msg.data.id)) {
+                    console.log(`%c[WS] Agregando nuevo objeto ${msg.data.id.substr(0,4)}`, 'color: #e67e22');
                     fabric.util.enlivenObjects([msg.data], (enlivenedObjects) => {
                         enlivenedObjects.forEach((obj) => {
                             canvas.add(obj);
@@ -137,43 +129,29 @@ export const WhiteboardController = {
         } catch (error) {
             console.error("Error aplicando actualización remota:", error);
         } finally {
-            // Liberar bloqueo
             WhiteboardController.state.isRemoteUpdate = false;
         }
     },
 
-    // Helper para buscar objetos por ID
     findObjectById: (id) => {
         return WhiteboardController.canvas.getObjects().find(o => o.id === id);
     },
 
-    // --- LÓGICA DE CLIENTE-SERVIDOR ---
-
     loadFromServer: async (uuid) => {
         try {
             console.log("Cargando pizarrón...");
-            
             const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?action=load&uuid=${uuid}`);
             const res = await response.json();
 
             if (res.success && res.data) {
                 const data = res.data;
-                
-                // [NUEVO] Activar flag de carga para evitar eventos espurios
                 WhiteboardController.state.isLoading = true;
 
-                // Cargar JSON en FabricJS
                 WhiteboardController.canvas.loadFromJSON(data, () => {
                     console.log("Pizarrón cargado correctamente.");
-                    
-                    // [NUEVO] Desactivar flag de carga
                     WhiteboardController.state.isLoading = false;
-
-                    // Re-renderizar y reconstruir mundo físico
                     WhiteboardController.canvas.requestRenderAll();
                     WhiteboardPhysics.rebuildWorld(WhiteboardController.canvas.getObjects());
-                    
-                    // Guardar este estado como el inicial en el historial
                     WhiteboardController.saveHistory();
                 });
             } else {
@@ -181,7 +159,6 @@ export const WhiteboardController = {
             }
         } catch (error) {
             console.error("Error de red al cargar:", error);
-            // [NUEVO] Asegurar que se desactiva el flag en caso de error
             WhiteboardController.state.isLoading = false;
         }
     },
@@ -236,8 +213,6 @@ export const WhiteboardController = {
         }
     },
 
-    // ----------------------------------
-
     initCanvas: () => {
         WhiteboardController.canvas = new fabric.Canvas('wb-canvas', {
             fireRightClick: true,
@@ -251,7 +226,6 @@ export const WhiteboardController = {
             isDrawingMode: false
         });
 
-        // Configuración de controles Fabric
         fabric.Object.prototype.set({
             transparentCorners: false,      
             cornerColor: WhiteboardController.config.controlBg, 
@@ -284,26 +258,104 @@ export const WhiteboardController = {
         fabric.Object.prototype.controls.ml.render = (c,l,t,s,o)=>renderPill(c,l,t,s,o,1);
         fabric.Object.prototype.controls.mr.render = (c,l,t,s,o)=>renderPill(c,l,t,s,o,1);
 
-        // --- LISTENERS DE FABRIC (MODIFICADOS) ---
+        // =========================================================================
+        // --- LOGICA DE SINCRONIZACIÓN EN VIVO (Throttling) ---
+        // =========================================================================
+
+        const throttle = (func, limit) => {
+            let inThrottle;
+            return function() {
+                const args = arguments;
+                const context = this;
+                if (!inThrottle) {
+                    func.apply(context, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            }
+        };
+
+        const sendObjectUpdate = (obj, sourceEvent) => {
+            if (!obj.id) return;
+            
+            // Log Forzado de Envío
+            if (WhiteboardController.state.debugMode) {
+                console.log(`[WS TX] Enviando (${sourceEvent}) ID: ${obj.id.substring(0,4)}...`);
+            }
+
+            const updateData = {
+                left: obj.left,
+                top: obj.top,
+                angle: obj.angle,
+                scaleX: obj.scaleX,
+                scaleY: obj.scaleY,
+                fill: obj.fill,
+                stroke: obj.stroke,
+                strokeWidth: obj.strokeWidth,
+                customType: obj.customType,
+                isSpinning: obj.isSpinning,
+                spinSpeed: obj.spinSpeed,
+                conveyorSpeed: obj.conveyorSpeed
+            };
+
+            WebSocketManager.send({
+                type: 'OBJECT_UPDATE',
+                objectId: obj.id,
+                data: updateData
+            });
+        };
+
+        const throttledSendUpdate = throttle((obj) => {
+            sendObjectUpdate(obj, 'moving');
+        }, 40);
+
+        // --- LISTENERS ---
+
+        // 1. MOVIMIENTO (Sincronización en vivo)
+        WhiteboardController.canvas.on('object:moving', (e) => {
+            WhiteboardPhysics.syncBodyPosition(e.target);
+            if (!WhiteboardController.state.isRemoteUpdate && !WhiteboardController.state.isLoading) {
+                throttledSendUpdate(e.target);
+            }
+        });
+
+        // 2. ROTACIÓN Y ESCALADO (Sincronización en vivo)
+        WhiteboardController.canvas.on('object:rotating', (e) => {
+            WhiteboardPhysics.syncBodyRotation(e.target);
+            if (!WhiteboardController.state.isRemoteUpdate && !WhiteboardController.state.isLoading) {
+                throttledSendUpdate(e.target);
+            }
+        });
         
-        // 1. Objeto Agregado
-        WhiteboardController.canvas.on('object:added', (e) => {
-            // [NUEVO] Evitar enviar si es una actualización remota O se está cargando
+        WhiteboardController.canvas.on('object:scaling', (e) => {
+            WhiteboardPhysics.removeBody(e.target);
+            WhiteboardPhysics.addBody(e.target);
+            if (!WhiteboardController.state.isRemoteUpdate && !WhiteboardController.state.isLoading) {
+                throttledSendUpdate(e.target);
+            }
+        });
+
+        // 3. MODIFICADO FINAL (Sincronización precisa al soltar)
+        WhiteboardController.canvas.on('object:modified', (e) => {
             if (WhiteboardController.state.isRemoteUpdate || WhiteboardController.state.isLoading) return;
             
             const obj = e.target;
-            // No procesar objetos de selección interna
+            if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
+            
+            sendObjectUpdate(obj, 'modified');
+        });
+
+        // 4. CREACIÓN
+        WhiteboardController.canvas.on('object:added', (e) => {
+            if (WhiteboardController.state.isRemoteUpdate || WhiteboardController.state.isLoading) return;
+            const obj = e.target;
             if (obj.type === 'selection' || obj.type === 'activeSelection') return;
 
-            // Usar el helper generateUUID
-            if (!obj.id) {
-                obj.set('id', WhiteboardController.generateUUID());
-            }
+            if (!obj.id) obj.set('id', WhiteboardController.generateUUID());
 
             if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
             WhiteboardPhysics.addBody(obj);
 
-            // Enviar al WebSocket
             const propertiesToInclude = ['id', 'customType', 'isSpinning', 'spinSpeed', 'conveyorSpeed', 'apertureDegree', 'selectable'];
             WebSocketManager.send({
                 type: 'OBJECT_ADDED',
@@ -311,7 +363,7 @@ export const WhiteboardController = {
             });
         });
         
-        // 2. Objeto Removido
+        // 5. ELIMINACIÓN
         WhiteboardController.canvas.on('object:removed', (e) => {
             if (WhiteboardController.state.isRemoteUpdate || WhiteboardController.state.isLoading) return;
             const obj = e.target;
@@ -319,7 +371,6 @@ export const WhiteboardController = {
             if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
             WhiteboardPhysics.removeBody(obj);
 
-            // Enviar al WebSocket
             if (obj.id) {
                 WebSocketManager.send({
                     type: 'OBJECT_REMOVED',
@@ -328,69 +379,16 @@ export const WhiteboardController = {
             }
         });
 
-        // 3. Objeto Modificado
-        WhiteboardController.canvas.on('object:modified', (e) => {
-            // [NUEVO] Evitar enviar si es una actualización remota O se está cargando
-            if (WhiteboardController.state.isRemoteUpdate || WhiteboardController.state.isLoading) return;
-            const obj = e.target;
-
-            if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
-            
-            // Enviar actualización al WebSocket
-            if (obj.id) {
-                const updateData = {
-                    left: obj.left,
-                    top: obj.top,
-                    angle: obj.angle,
-                    scaleX: obj.scaleX,
-                    scaleY: obj.scaleY,
-                    fill: obj.fill,
-                    stroke: obj.stroke,
-                    strokeWidth: obj.strokeWidth,
-                    // Props custom
-                    customType: obj.customType,
-                    isSpinning: obj.isSpinning,
-                    spinSpeed: obj.spinSpeed,
-                    conveyorSpeed: obj.conveyorSpeed
-                };
-
-                WebSocketManager.send({
-                    type: 'OBJECT_UPDATE',
-                    objectId: obj.id,
-                    data: updateData
-                });
-            }
-        });
-
-        // Listener para path:created (Dibujo libre)
         WhiteboardController.canvas.on('path:created', (e) => {
             if (WhiteboardController.state.isRemoteUpdate || WhiteboardController.state.isLoading) return;
             const path = e.path;
-            
-            // Usar el helper generateUUID
-            if (!path.id) {
-                path.set('id', WhiteboardController.generateUUID());
-            }
+            if (!path.id) path.set('id', WhiteboardController.generateUUID());
         });
 
-        WhiteboardController.canvas.on('object:moving', (e) => {
-            WhiteboardPhysics.syncBodyPosition(e.target);
-        });
-        
-        WhiteboardController.canvas.on('object:rotating', (e) => {
-            WhiteboardPhysics.syncBodyRotation(e.target);
-        });
-        
-        WhiteboardController.canvas.on('object:scaling', (e) => {
-            WhiteboardPhysics.removeBody(e.target);
-            WhiteboardPhysics.addBody(e.target);
-        });
-
-        // Listeners de Selección para UI
+        // Eventos UI...
         const updateToolbar = () => {
             const activeObj = WhiteboardController.canvas.getActiveObject();
             WhiteboardUI.toggleToolbar(!!activeObj);
-            
             if (activeObj) {
                 WhiteboardUI.updateToolbarValues(activeObj);
                 WhiteboardUI.syncPopoverValues(activeObj);
@@ -405,7 +403,6 @@ export const WhiteboardController = {
         WhiteboardController.canvas.on('object:modified', updateToolbar);
         WhiteboardController.canvas.on('object:scaling', updateToolbar);
 
-        // Zoom y Panning
         WhiteboardController.canvas.on('mouse:wheel', (opt) => {
             opt.e.preventDefault(); opt.e.stopPropagation();
             if (opt.e.ctrlKey) {
@@ -524,7 +521,7 @@ export const WhiteboardController = {
         const debugData = objects.map((obj, index) => {
             const data = {
                 index: index,
-                id: obj.id, // Mostrar ID en debug
+                id: obj.id,
                 type: obj.type,
                 customType: obj.customType || 'N/A',
                 position: { 
@@ -667,7 +664,6 @@ export const WhiteboardController = {
                 activeObj.setCoords();
                 canvas.requestRenderAll();
                 
-                // Disparar evento modified para que se envíe al socket
                 activeObj.fire('modified');
 
                 WhiteboardPhysics.removeBody(activeObj);
@@ -689,7 +685,6 @@ export const WhiteboardController = {
                 activeObj.set('isSpinning', newState);
                 
                 WhiteboardUI.updateToolbarValues(activeObj);
-                // Disparar evento para socket
                 activeObj.fire('modified');
 
                 if (activeObj.customType === 'conveyor') {
@@ -713,7 +708,6 @@ export const WhiteboardController = {
                         WhiteboardPhysics.removeBody(activeObj);
                         WhiteboardPhysics.addBody(activeObj);
                      }
-                     // Disparar evento para socket
                      activeObj.fire('modified');
                 }
             });
@@ -820,8 +814,6 @@ export const WhiteboardController = {
         });
     },
     
-    // --- COLORES Y FORMAS EXISTENTES ---
-
     setColorToSelection: (color) => {
         const canvas = WhiteboardController.canvas;
         if (!canvas) return;
@@ -842,7 +834,6 @@ export const WhiteboardController = {
             }
             WhiteboardPhysics.removeBody(obj);
             WhiteboardPhysics.addBody(obj);
-            // Trigger modified
             obj.fire('modified');
         };
 
@@ -873,7 +864,6 @@ export const WhiteboardController = {
             });
             WhiteboardPhysics.removeBody(obj);
             WhiteboardPhysics.addBody(obj);
-            // Trigger modified
             obj.fire('modified');
         };
 
@@ -900,7 +890,6 @@ export const WhiteboardController = {
         const applyProp = (obj) => {
             if (obj.customType === 'conveyor' && (prop === 'strokeWidth' || prop === 'stroke' || prop === 'rx' || prop === 'ry')) return;
             obj.set(prop, value);
-            // Trigger modified
             obj.fire('modified');
         }
 
@@ -919,14 +908,11 @@ export const WhiteboardController = {
         if (!activeObj) return;
         activeObj.scale(activeObj.scaleX * factor);
         activeObj.setCoords();
-        // Trigger modified
         activeObj.fire('modified');
         canvas.requestRenderAll();
         WhiteboardUI.updateToolbarValues(activeObj);
         WhiteboardController.saveHistory(); 
     },
-
-    // --- LÓGICA DE HISTORIAL Y PORTAPAPELES ---
 
     saveHistory: () => {
         if (WhiteboardController.state.historyLocked) return;
@@ -987,17 +973,14 @@ export const WhiteboardController = {
             WhiteboardController.canvas.discardActiveObject();
             clonedObj.set({ left: clonedObj.left + 20, top: clonedObj.top + 20, evented: true });
             
-            // Asignar nuevos IDs al pegar para que sean únicos
             if (clonedObj.type === 'activeSelection') {
                 clonedObj.canvas = WhiteboardController.canvas;
                 clonedObj.forEachObject((obj) => { 
-                    // [CORREGIDO] Usar generateUUID
                     obj.set('id', WhiteboardController.generateUUID());
                     WhiteboardController.canvas.add(obj); 
                 });
                 clonedObj.setCoords();
             } else {
-                // [CORREGIDO] Usar generateUUID
                 clonedObj.set('id', WhiteboardController.generateUUID());
                 WhiteboardController.canvas.add(clonedObj);
             }
@@ -1006,8 +989,6 @@ export const WhiteboardController = {
             WhiteboardController.saveHistory();
         }, ['customType', 'isSpinning', 'spinSpeed', 'conveyorSpeed', 'apertureDegree']);
     },
-
-    // --- CREACIÓN DE FORMAS ---
 
     addShape: (type) => {
         const canvas = WhiteboardController.canvas;
@@ -1089,7 +1070,6 @@ export const WhiteboardController = {
                 obj.set('customType', type);
             }
             
-            // [CORREGIDO] Usar generateUUID
             obj.set('id', WhiteboardController.generateUUID());
 
             canvas.add(obj); 
@@ -1109,8 +1089,6 @@ export const WhiteboardController = {
         }
         return points;
     },
-
-    // --- UTILS ---
 
     centerBoard: () => {
         const canvas = WhiteboardController.canvas; if(!canvas) return;
