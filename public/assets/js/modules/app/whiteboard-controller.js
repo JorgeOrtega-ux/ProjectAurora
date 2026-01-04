@@ -1,6 +1,6 @@
 /**
  * public/assets/js/modules/app/whiteboard-controller.js
- * Controlador principal con Logs de Diagnóstico y Throttling
+ * Controlador principal con Logs de Diagnóstico, Throttling y AUTOGUARDADO OPTIMIZADO
  */
 
 import { WhiteboardPhysics } from './whiteboard-physics.js';
@@ -25,7 +25,12 @@ export const WhiteboardController = {
         isSpinLoopRunning: false,
         debugMode: false,
         isRemoteUpdate: false,
-        isLoading: false
+        isLoading: false,
+        
+        // --- ESTADO AUTOGUARDADO ---
+        saveTimer: null,
+        isSaving: false,
+        isSavePending: false // Optimización para no tocar el DOM constantemente
     },
     
     config: {
@@ -34,7 +39,8 @@ export const WhiteboardController = {
         selectionColor: 'rgba(0, 153, 255, 0.1)', 
         selectionBorderColor: '#0099ff',           
         controlColor: '#0099ff',                   
-        controlBg: '#ffffff'                       
+        controlBg: '#ffffff',
+        autoSaveDelay: 2000 
     },
 
     generateUUID: () => {
@@ -82,13 +88,12 @@ export const WhiteboardController = {
         WhiteboardController.startSpinLoop();
     },
 
-    // --- MANEJADOR DE MENSAJES REMOTOS (DIAGNÓSTICO) ---
+    // --- MANEJADOR DE MENSAJES REMOTOS ---
     handleRemoteMessage: (msg) => {
         if (!msg || !msg.type) return;
         
-        // Log Forzado para ver si llega la señal
         if(msg.type !== 'system') {
-            console.log(`%c[WS RX] ${msg.type}`, 'color: #00d2ff; font-weight: bold;', msg);
+            // console.log(`%c[WS RX] ${msg.type}`, 'color: #00d2ff;', msg);
         }
 
         const canvas = WhiteboardController.canvas;
@@ -102,15 +107,10 @@ export const WhiteboardController = {
                     obj.setCoords();
                     WhiteboardPhysics.syncBodyPosition(obj); 
                     canvas.requestRenderAll();
-                    // Log de éxito silencioso
-                    // console.log(`%c[WS OK] Objeto ${msg.objectId.substr(0,4)} actualizado.`, 'color: #2ecc71');
-                } else {
-                    console.warn(`%c[WS ERROR] Objeto ID ${msg.objectId} NO ENCONTRADO en este cliente.`, 'color: #ff0000; font-weight: bold;');
                 }
             } 
             else if (msg.type === 'OBJECT_ADDED') {
                 if (!WhiteboardController.findObjectById(msg.data.id)) {
-                    console.log(`%c[WS] Agregando nuevo objeto ${msg.data.id.substr(0,4)}`, 'color: #e67e22');
                     fabric.util.enlivenObjects([msg.data], (enlivenedObjects) => {
                         enlivenedObjects.forEach((obj) => {
                             canvas.add(obj);
@@ -127,7 +127,7 @@ export const WhiteboardController = {
                 }
             }
         } catch (error) {
-            console.error("Error aplicando actualización remota:", error);
+            console.error("Error WS:", error);
         } finally {
             WhiteboardController.state.isRemoteUpdate = false;
         }
@@ -148,31 +148,55 @@ export const WhiteboardController = {
                 WhiteboardController.state.isLoading = true;
 
                 WhiteboardController.canvas.loadFromJSON(data, () => {
-                    console.log("Pizarrón cargado correctamente.");
+                    console.log("Pizarrón cargado.");
                     WhiteboardController.state.isLoading = false;
                     WhiteboardController.canvas.requestRenderAll();
                     WhiteboardPhysics.rebuildWorld(WhiteboardController.canvas.getObjects());
                     WhiteboardController.saveHistory();
                 });
             } else {
-                console.warn("No se encontraron datos o hubo error:", res.error);
+                console.warn("Error cargar datos:", res.error);
             }
         } catch (error) {
-            console.error("Error de red al cargar:", error);
+            console.error("Error red:", error);
             WhiteboardController.state.isLoading = false;
         }
     },
 
-    save: async () => {
+    // --- AUTOGUARDADO OPTIMIZADO (Sin lag) ---
+    triggerAutoSave: () => {
+        // 1. Reiniciar timer
+        if (WhiteboardController.state.saveTimer) {
+            clearTimeout(WhiteboardController.state.saveTimer);
+        }
+
+        // 2. Optimización: Solo tocar el DOM si NO estaba ya pendiente
+        // Esto evita recálculos de estilo masivos mientras mueves el mouse
+        if (!WhiteboardController.state.isSavePending) {
+            const btnSave = document.getElementById('wb-btn-save');
+            if (btnSave) btnSave.style.color = '#fbbf24'; // Color "Pendiente" (Ámbar)
+            WhiteboardController.state.isSavePending = true;
+        }
+
+        // 3. Programar guardado
+        WhiteboardController.state.saveTimer = setTimeout(() => {
+            WhiteboardController.save(true);
+        }, WhiteboardController.config.autoSaveDelay);
+    },
+
+    save: async (silentMode = false) => {
         if (!WhiteboardController.currentUUID) {
-            alert("Error: No se ha identificado el pizarrón (Falta UUID).");
+            if (!silentMode) alert("Falta UUID.");
             return;
         }
+
+        if (WhiteboardController.state.isSaving) return;
+        WhiteboardController.state.isSaving = true;
 
         const btnSave = document.getElementById('wb-btn-save');
 
         try {
-            if (btnSave) {
+            if (btnSave && !silentMode) {
                 btnSave.classList.add('active-state');
                 btnSave.innerHTML = '<span class="material-symbols-rounded vector-spin">refresh</span>';
             }
@@ -192,23 +216,34 @@ export const WhiteboardController = {
             const res = await response.json();
 
             if (res.success) {
-                console.log("Guardado exitoso.");
                 if (btnSave) {
-                    btnSave.style.color = '#16a34a'; 
-                    setTimeout(() => btnSave.style.color = '', 2000);
+                    btnSave.style.color = '#16a34a'; // Verde (Éxito)
+                    setTimeout(() => {
+                        // Solo quitar el verde si no hay otro guardado pendiente
+                        if (!WhiteboardController.state.isSavePending) btnSave.style.color = ''; 
+                    }, 2000);
                 }
             } else {
                 throw new Error(res.error || "Error desconocido");
             }
 
         } catch (error) {
-            console.error("Error al guardar:", error);
-            alert("Error al guardar: " + error.message);
+            console.error("Error save:", error);
+            if (!silentMode) alert("Error al guardar: " + error.message);
             if (btnSave) btnSave.style.color = '#ef4444'; 
         } finally {
+            WhiteboardController.state.isSaving = false;
+            WhiteboardController.state.isSavePending = false; // Resetear bandera
+            
             if (btnSave) {
-                btnSave.classList.remove('active-state');
-                btnSave.innerHTML = '<span class="material-symbols-rounded">save</span>';
+                if (!silentMode) {
+                    btnSave.classList.remove('active-state');
+                    btnSave.innerHTML = '<span class="material-symbols-rounded">save</span>';
+                }
+                // Si no hay nada pendiente, restaurar color (por si acaso)
+                if (!WhiteboardController.state.saveTimer) {
+                     // Dejar que el timeout del éxito maneje el color
+                }
             }
         }
     },
@@ -240,6 +275,7 @@ export const WhiteboardController = {
             fabric.Object.prototype.controls.mtr.cursorStyle = 'pointer';
         }
 
+        // Renderizado de controles personalizados (Pildoras)
         const pillLength=24, pillThickness=6; 
         const drawPillPath = (ctx, w, h) => {
             const x = -w/2, y = -h/2, r = Math.min(w, h)/2; 
@@ -259,7 +295,7 @@ export const WhiteboardController = {
         fabric.Object.prototype.controls.mr.render = (c,l,t,s,o)=>renderPill(c,l,t,s,o,1);
 
         // =========================================================================
-        // --- LOGICA DE SINCRONIZACIÓN EN VIVO (Throttling) ---
+        // --- LOGICA WS (Throttling) ---
         // =========================================================================
 
         const throttle = (func, limit) => {
@@ -278,24 +314,16 @@ export const WhiteboardController = {
         const sendObjectUpdate = (obj, sourceEvent) => {
             if (!obj.id) return;
             
-            // Log Forzado de Envío
             if (WhiteboardController.state.debugMode) {
-                console.log(`[WS TX] Enviando (${sourceEvent}) ID: ${obj.id.substring(0,4)}...`);
+                console.log(`[WS TX] Enviando (${sourceEvent})...`);
             }
 
             const updateData = {
-                left: obj.left,
-                top: obj.top,
-                angle: obj.angle,
-                scaleX: obj.scaleX,
-                scaleY: obj.scaleY,
-                fill: obj.fill,
-                stroke: obj.stroke,
-                strokeWidth: obj.strokeWidth,
-                customType: obj.customType,
-                isSpinning: obj.isSpinning,
-                spinSpeed: obj.spinSpeed,
-                conveyorSpeed: obj.conveyorSpeed
+                left: obj.left, top: obj.top, angle: obj.angle,
+                scaleX: obj.scaleX, scaleY: obj.scaleY,
+                fill: obj.fill, stroke: obj.stroke, strokeWidth: obj.strokeWidth,
+                customType: obj.customType, isSpinning: obj.isSpinning,
+                spinSpeed: obj.spinSpeed, conveyorSpeed: obj.conveyorSpeed
             };
 
             WebSocketManager.send({
@@ -311,41 +339,45 @@ export const WhiteboardController = {
 
         // --- LISTENERS ---
 
-        // 1. MOVIMIENTO (Sincronización en vivo)
+        // 1. MOVIMIENTO
         WhiteboardController.canvas.on('object:moving', (e) => {
             WhiteboardPhysics.syncBodyPosition(e.target);
             if (!WhiteboardController.state.isRemoteUpdate && !WhiteboardController.state.isLoading) {
                 throttledSendUpdate(e.target);
+                WhiteboardController.triggerAutoSave(); // Autoguardado
             }
         });
 
-        // 2. ROTACIÓN Y ESCALADO (Sincronización en vivo)
+        // 2. ROTACIÓN
         WhiteboardController.canvas.on('object:rotating', (e) => {
             WhiteboardPhysics.syncBodyRotation(e.target);
             if (!WhiteboardController.state.isRemoteUpdate && !WhiteboardController.state.isLoading) {
                 throttledSendUpdate(e.target);
+                WhiteboardController.triggerAutoSave();
             }
         });
         
+        // 3. ESCALADO
         WhiteboardController.canvas.on('object:scaling', (e) => {
             WhiteboardPhysics.removeBody(e.target);
             WhiteboardPhysics.addBody(e.target);
             if (!WhiteboardController.state.isRemoteUpdate && !WhiteboardController.state.isLoading) {
                 throttledSendUpdate(e.target);
+                WhiteboardController.triggerAutoSave();
             }
         });
 
-        // 3. MODIFICADO FINAL (Sincronización precisa al soltar)
+        // 4. MODIFICADO FINAL
         WhiteboardController.canvas.on('object:modified', (e) => {
             if (WhiteboardController.state.isRemoteUpdate || WhiteboardController.state.isLoading) return;
-            
             const obj = e.target;
             if (!WhiteboardController.state.historyLocked) WhiteboardController.saveHistory();
             
             sendObjectUpdate(obj, 'modified');
+            WhiteboardController.triggerAutoSave();
         });
 
-        // 4. CREACIÓN
+        // 5. CREACIÓN
         WhiteboardController.canvas.on('object:added', (e) => {
             if (WhiteboardController.state.isRemoteUpdate || WhiteboardController.state.isLoading) return;
             const obj = e.target;
@@ -361,9 +393,10 @@ export const WhiteboardController = {
                 type: 'OBJECT_ADDED',
                 data: obj.toJSON(propertiesToInclude)
             });
+            WhiteboardController.triggerAutoSave();
         });
         
-        // 5. ELIMINACIÓN
+        // 6. ELIMINACIÓN
         WhiteboardController.canvas.on('object:removed', (e) => {
             if (WhiteboardController.state.isRemoteUpdate || WhiteboardController.state.isLoading) return;
             const obj = e.target;
@@ -377,12 +410,14 @@ export const WhiteboardController = {
                     objectId: obj.id
                 });
             }
+            WhiteboardController.triggerAutoSave();
         });
 
         WhiteboardController.canvas.on('path:created', (e) => {
             if (WhiteboardController.state.isRemoteUpdate || WhiteboardController.state.isLoading) return;
             const path = e.path;
             if (!path.id) path.set('id', WhiteboardController.generateUUID());
+            WhiteboardController.triggerAutoSave();
         });
 
         // Eventos UI...
@@ -500,9 +535,9 @@ export const WhiteboardController = {
                         obj.strokeDashOffset -= speed; 
                         if (Math.abs(obj.strokeDashOffset) > 1000) obj.strokeDashOffset = 0;
                         
-                        // FIX: Forzar regeneración del caché visual para el conveyor
+                        // FIX: Forzar redibujado visual para el conveyor
                         obj.dirty = true;
-
+                        
                         needsRender = true;
                     }
                 });
