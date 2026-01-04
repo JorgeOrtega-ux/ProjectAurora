@@ -1,9 +1,12 @@
-<div class="component-wrapper component-wrapper--full">
-    <div class="component-header-card">
-        <h1 class="component-page-title"><?php echo $i18n->t('app.name'); ?></h1>
-        <p class="component-page-description"></p>
+<div class="app-container">
+    <div class="toolbar">
+        <h1>Mis Pizarrones</h1>
+        <button id="btn-create-wb" class="btn btn-primary">
+            <span class="material-symbols-rounded">add</span> Nuevo Pizarrón
+        </button>
     </div>
-
-    <div class="component-card">
-        </div>
+    
+    <div id="whiteboards-grid" class="grid-layout">
+        <div class="loader">Cargando...</div>
+    </div>
 </div>

@@ -142,3 +142,16 @@ INSERT IGNORE INTO server_config (config_key, config_value) VALUES
 -- 3. Tiempos de Expiración
 ('auth_verification_code_expiry', '15'), -- Minutos validez códigos (6 dígitos)
 ('auth_reset_token_expiry', '60');       -- Minutos validez tokens reset (link)
+
+-- Agrega esto al final de tu archivo bd.sql o ejecútalo en tu gestor
+
+CREATE TABLE IF NOT EXISTS whiteboards (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    uuid CHAR(36) NOT NULL UNIQUE,
+    user_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL DEFAULT 'Nuevo Pizarrón',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX (user_id)
+);
