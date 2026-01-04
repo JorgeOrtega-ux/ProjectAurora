@@ -8,6 +8,7 @@ import { WhiteboardUI } from './whiteboard-ui.js';
 
 export const WhiteboardController = {
     canvas: null,
+    currentUUID: null, // Almacena el ID del pizarrón actual
 
     state: {
         panning: false,
@@ -33,9 +34,16 @@ export const WhiteboardController = {
         controlBg: '#ffffff'                       
     },
 
-    init: () => {
+    init: async () => {
         console.log("WhiteboardController: Iniciando...");
         
+        // Capturar UUID del DOM
+        const container = document.querySelector('.wb-container');
+        if (container && container.dataset.wbUuid) {
+            WhiteboardController.currentUUID = container.dataset.wbUuid;
+            console.log("Whiteboard UUID:", WhiteboardController.currentUUID);
+        }
+
         // Inicializar subsistemas
         WhiteboardUI.init();
         
@@ -46,18 +54,117 @@ export const WhiteboardController = {
         WhiteboardController.bindShapeEvents();
         WhiteboardController.bindColorEvents(); 
         
-        WhiteboardController.saveHistory();
-        
         // Inicializar motor de física con referencia al canvas
         WhiteboardPhysics.init(WhiteboardController.canvas);
 
         window.addEventListener('resize', WhiteboardController.resizeCanvas);
         WhiteboardController.resizeCanvas();
-        WhiteboardController.centerBoard();
+        
+        // IMPORTANTE: Cargar datos del servidor si existe un UUID
+        if (WhiteboardController.currentUUID) {
+            await WhiteboardController.loadFromServer(WhiteboardController.currentUUID);
+        } else {
+            // Si es nuevo o no hay datos, centrar y guardar estado inicial
+            WhiteboardController.centerBoard();
+            WhiteboardController.saveHistory();
+        }
         
         // Iniciar loop de animación para objetos que giran y debug
         WhiteboardController.startSpinLoop();
     },
+
+    // --- LÓGICA DE CLIENTE-SERVIDOR ---
+
+    loadFromServer: async (uuid) => {
+        try {
+            // Mostrar estado de carga (opcional)
+            console.log("Cargando pizarrón...");
+            
+            const response = await fetch(`api/whiteboard-handler.php?action=load&uuid=${uuid}`);
+            const res = await response.json();
+
+            if (res.success && res.data) {
+                const data = res.data;
+                
+                // Cargar JSON en FabricJS
+                WhiteboardController.canvas.loadFromJSON(data, () => {
+                    console.log("Pizarrón cargado correctamente.");
+                    
+                    // Re-renderizar y reconstruir mundo físico
+                    WhiteboardController.canvas.requestRenderAll();
+                    WhiteboardPhysics.rebuildWorld(WhiteboardController.canvas.getObjects());
+                    
+                    // Guardar este estado como el inicial en el historial
+                    WhiteboardController.saveHistory();
+                    
+                    // Asegurar que el zoom y centro sean correctos si vienen en el JSON o resetear
+                    // (Opcional: aquí podrías guardar el viewportTransform en el JSON también)
+                });
+            } else {
+                console.warn("No se encontraron datos o hubo error:", res.error);
+            }
+        } catch (error) {
+            console.error("Error de red al cargar:", error);
+        }
+    },
+
+    save: async () => {
+        if (!WhiteboardController.currentUUID) {
+            alert("Error: No se ha identificado el pizarrón (Falta UUID).");
+            return;
+        }
+
+        const btnSave = document.getElementById('wb-btn-save');
+        const originalIcon = btnSave ? btnSave.innerHTML : '';
+
+        try {
+            // Feedback Visual: Loading
+            if (btnSave) {
+                btnSave.classList.add('active-state');
+                btnSave.innerHTML = '<span class="material-symbols-rounded vector-spin">refresh</span>';
+            }
+
+            // Preparar JSON
+            // Es CRUCIAL incluir las propiedades personalizadas
+            const propertiesToInclude = ['customType', 'isSpinning', 'spinSpeed', 'conveyorSpeed', 'apertureDegree', 'id', 'selectable'];
+            const jsonContent = JSON.stringify(WhiteboardController.canvas.toJSON(propertiesToInclude));
+
+            const response = await fetch('api/whiteboard-handler.php?action=save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    uuid: WhiteboardController.currentUUID,
+                    content: jsonContent
+                })
+            });
+
+            const res = await response.json();
+
+            if (res.success) {
+                // Feedback: Éxito (Poner verde momentáneamente o usar ToastManager si estuviera importado)
+                console.log("Guardado exitoso.");
+                if (btnSave) {
+                    btnSave.style.color = '#16a34a'; // Green
+                    setTimeout(() => btnSave.style.color = '', 2000);
+                }
+            } else {
+                throw new Error(res.error || "Error desconocido");
+            }
+
+        } catch (error) {
+            console.error("Error al guardar:", error);
+            alert("Error al guardar: " + error.message);
+            if (btnSave) btnSave.style.color = '#ef4444'; // Red
+        } finally {
+            // Restaurar botón
+            if (btnSave) {
+                btnSave.classList.remove('active-state');
+                btnSave.innerHTML = '<span class="material-symbols-rounded">save</span>';
+            }
+        }
+    },
+
+    // ----------------------------------
 
     initCanvas: () => {
         WhiteboardController.canvas = new fabric.Canvas('wb-canvas', {
@@ -322,6 +429,14 @@ export const WhiteboardController = {
         const ui = WhiteboardUI.elements;
         const canvas = WhiteboardController.canvas;
 
+        // VINCULACIÓN DEL BOTÓN GUARDAR (NUEVO)
+        const btnSave = document.getElementById('wb-btn-save');
+        if (btnSave) {
+            btnSave.addEventListener('click', () => {
+                WhiteboardController.save();
+            });
+        }
+
         if (ui.btnScaleUp) ui.btnScaleUp.addEventListener('click', () => WhiteboardController.modifySelectionScale(1.1));
         if (ui.btnScaleDown) ui.btnScaleDown.addEventListener('click', () => WhiteboardController.modifySelectionScale(0.9));
         
@@ -527,6 +642,9 @@ export const WhiteboardController = {
                 if (e.code === 'KeyV') { e.preventDefault(); WhiteboardController.paste(); }
                 if (e.code === 'KeyZ' && !e.shiftKey) { e.preventDefault(); WhiteboardController.undo(); }
                 if ((e.code === 'KeyY') || (e.code === 'KeyZ' && e.shiftKey)) { e.preventDefault(); WhiteboardController.redo(); }
+                
+                // ATAJO GUARDAR (CTRL+S)
+                if (e.code === 'KeyS') { e.preventDefault(); WhiteboardController.save(); }
             }
         });
 

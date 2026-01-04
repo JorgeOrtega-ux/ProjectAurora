@@ -4,6 +4,7 @@ USE project_aurora_db;
 -- =========================================================
 -- REINICIO DE TABLAS
 -- =========================================================
+DROP TABLE IF EXISTS whiteboards; -- Agregado para limpiar si existe la version anterior
 DROP TABLE IF EXISTS user_auth_tokens;
 DROP TABLE IF EXISTS user_preferences;
 DROP TABLE IF EXISTS security_logs;
@@ -143,13 +144,15 @@ INSERT IGNORE INTO server_config (config_key, config_value) VALUES
 ('auth_verification_code_expiry', '15'), -- Minutos validez códigos (6 dígitos)
 ('auth_reset_token_expiry', '60');       -- Minutos validez tokens reset (link)
 
--- Agrega esto al final de tu archivo bd.sql o ejecútalo en tu gestor
-
+-- =========================================================
+-- TABLA DE WHITEBOARDS (PIZARRAS)
+-- =========================================================
 CREATE TABLE IF NOT EXISTS whiteboards (
     id INT AUTO_INCREMENT PRIMARY KEY,
     uuid CHAR(36) NOT NULL UNIQUE,
     user_id INT NOT NULL,
     name VARCHAR(100) NOT NULL DEFAULT 'Nuevo Pizarrón',
+    file_path VARCHAR(255) NOT NULL, -- Ruta relativa al archivo JSON o URL
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,

@@ -5,7 +5,10 @@ return [
     // === APP (General) ===
     'main'     => __DIR__ . '/../includes/sections/app/main.php',
     'explore'  => __DIR__ . '/../includes/sections/app/explore.php',
-    'app/whiteboard' => __DIR__ . '/../includes/sections/app/whiteboard.php',
+    
+    // Ruta dinámica para pizarrones (El router deberá manejar los parámetros adicionales)
+    'whiteboard' => __DIR__ . '/../includes/sections/app/whiteboard.php',
+    
     // === AUTH (Autenticación) ===
     'login'    => __DIR__ . '/../includes/sections/auth/login.php',
     

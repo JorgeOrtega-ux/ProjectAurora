@@ -4,6 +4,7 @@
 use Google\Authenticator\GoogleAuthenticator;
 
 require_once __DIR__ . '/../../includes/libs/MailService.php';
+require_once __DIR__ . '/../../includes/libs/Utils.php';
 
 class AuthService {
     private $pdo;
@@ -22,39 +23,37 @@ class AuthService {
     }
 
     /**
-     * Verifica si la opción de registro está habilitada en el servidor.
+     * Verifica si el usuario tiene una sesión activa.
      */
+    public function isLoggedIn() {
+        return isset($_SESSION['user_id']);
+    }
+
     private function checkRegistrationStatus() {
         $allowed = Utils::getServerConfig($this->pdo, 'allow_registrations', '1');
-        
         if ($allowed === '0') {
             return ['success' => false, 'message' => 'El registro de nuevos usuarios está deshabilitado temporalmente.'];
         }
-        
         return ['success' => true];
     }
 
     public function registerStep1($email, $password, $turnstileToken) {
-        // 1. Verificar Configuración Global
         $configCheck = $this->checkRegistrationStatus();
         if (!$configCheck['success']) return $configCheck;
 
-        // 2. Verificar Captcha
         $turnstileCheck = $this->verifyTurnstile($turnstileToken);
         if (!$turnstileCheck['success']) {
             return ['success' => false, 'message' => 'Error de seguridad (Captcha): ' . $turnstileCheck['message']];
         }
 
-        // 3. Verificar Rate Limit (Dinámico)
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_register_max_attempts', '10');
-        $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15'); // Usamos duración estándar
+        $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
         if ($this->checkSecurityBlock('register_attempt', $limit, $duration)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
         $this->logSecurityEvent($email, 'register_attempt');
 
-        // 4. Validar campos básicos
         if (empty($email) || empty($password)) {
             return ['success' => false, 'message' => $this->i18n->t('api.fill_all')];
         }
@@ -63,17 +62,11 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.email_invalid')];
         }
 
-        // ========================================================
-        // VALIDACIONES AVANZADAS DE SERVIDOR (Configurables)
-        // ========================================================
-
-        // A. Longitud Mínima de Contraseña
         $minPassLen = (int)Utils::getServerConfig($this->pdo, 'password_min_length', '6');
         if (strlen($password) < $minPassLen) {
             return ['success' => false, 'message' => $this->i18n->t('api.pass_short', [$minPassLen])];
         }
 
-        // B. Estructura del Email (Prefijo antes del @)
         $minPrefixLen = (int)Utils::getServerConfig($this->pdo, 'email_min_prefix_length', '3');
         $parts = explode('@', $email);
         $prefix = $parts[0] ?? '';
@@ -82,9 +75,7 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.email_prefix_short', [$minPrefixLen])];
         }
 
-        // C. Lista Blanca de Dominios (Whitelist)
         $allowedDomainsStr = Utils::getServerConfig($this->pdo, 'email_allowed_domains', '*');
-        // Si no es comodín y no está vacío
         if ($allowedDomainsStr !== '*' && trim($allowedDomainsStr) !== '') {
             $allowedDomains = array_map('trim', explode(',', strtolower($allowedDomainsStr)));
             $domain = strtolower($parts[1] ?? '');
@@ -93,8 +84,6 @@ class AuthService {
                 return ['success' => false, 'message' => $this->i18n->t('api.email_domain_not_allowed', [$domain])];
             }
         }
-
-        // ========================================================
 
         $stmt = $this->pdo->prepare("SELECT id FROM users WHERE email = ?");
         $stmt->execute([$email]);
@@ -120,7 +109,6 @@ class AuthService {
         
         $email = $_SESSION['temp_register']['email'];
         
-        // Rate limit para pedir códigos
         if ($this->checkSecurityBlock('register_code_req', 3, 15, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
@@ -131,16 +119,12 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.choose_user')];
         }
 
-        // ========================================================
-        // VALIDACIÓN DE USUARIO (Longitud Configurable)
-        // ========================================================
         $minUserLen = (int)Utils::getServerConfig($this->pdo, 'username_min_length', '4');
         $maxUserLen = (int)Utils::getServerConfig($this->pdo, 'username_max_length', '20');
         
         if (strlen($username) < $minUserLen || strlen($username) > $maxUserLen) {
             return ['success' => false, 'message' => $this->i18n->t('api.username_bounds', [$minUserLen, $maxUserLen])];
         }
-        // ========================================================
 
         $stmt = $this->pdo->prepare("SELECT id FROM users WHERE username = ?");
         $stmt->execute([$username]);
@@ -158,8 +142,6 @@ class AuthService {
         ]);
 
         $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
-        
-        // Expiración Dinámica
         $expiryMinutes = (int)Utils::getServerConfig($this->pdo, 'auth_verification_code_expiry', '15');
         $expiresAt = date('Y-m-d H:i:s', strtotime("+$expiryMinutes minutes"));
 
@@ -228,8 +210,6 @@ class AuthService {
 
         $payload = $lastCode['payload'];
         $newCode = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
-        
-        // Expiración Dinámica
         $expiryMinutes = (int)Utils::getServerConfig($this->pdo, 'auth_verification_code_expiry', '15');
         $expiresAt = date('Y-m-d H:i:s', strtotime("+$expiryMinutes minutes"));
 
@@ -264,8 +244,7 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.missing_data')];
         }
         
-        // Rate limit para intentos fallidos de verificación
-        $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5'); // Reusamos el de login
+        $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
         if ($this->checkSecurityBlock('register_verify_fail', $limit, $duration, $email)) {
@@ -286,7 +265,7 @@ class AuthService {
         $payload = json_decode($verification['payload'], true);
         $username = $payload['username'];
         $passwordHash = $payload['password_hash']; 
-        $uuid = $this->generateUuid();
+        $uuid = Utils::generateUUID(); // Modificado para usar Utils
 
         $firstLetter = substr($username, 0, 1);
         $bgColors = ['40a060', 'a73d3d', '3d3da7', '3d9da7', '9d3da7'];
@@ -350,12 +329,10 @@ class AuthService {
              return ['success' => false, 'message' => 'Error de seguridad (Captcha): ' . $turnstileCheck['message']];
         }
         
-        // Bloqueo Dinámico
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
         if ($this->checkSecurityBlock('login_fail', $limit, $duration, $email)) {
-            // INYECCIÓN DE VALOR: Pasamos la duración al mensaje traducido
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
 
@@ -396,7 +373,6 @@ class AuthService {
 
         $userId = $_SESSION['2fa_pending_user_id'];
         
-        // Bloqueo Dinámico 2FA
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
         
@@ -446,7 +422,6 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.email_invalid')];
         }
 
-        // Límites dinámicos
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
@@ -473,8 +448,6 @@ class AuthService {
         }
 
         $token = bin2hex(random_bytes(32));
-        
-        // Expiración Token Dinámica
         $expiryMinutes = (int)Utils::getServerConfig($this->pdo, 'auth_reset_token_expiry', '60');
         $expiresAt = date('Y-m-d H:i:s', strtotime("+$expiryMinutes minutes"));
 
@@ -510,7 +483,6 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.missing_data')];
         }
 
-        // VALIDACIÓN: Longitud Mínima en Reset
         $minPassLen = (int)Utils::getServerConfig($this->pdo, 'password_min_length', '6');
         if (strlen($newPassword) < $minPassLen) {
             return ['success' => false, 'message' => $this->i18n->t('api.pass_short', [$minPassLen])];
@@ -632,14 +604,6 @@ class AuthService {
         } else {
             return ['success' => false, 'message' => 'Validación fallida. Inténtalo de nuevo.'];
         }
-    }
-
-    private function generateUuid() {
-        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
-            mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000,
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
-        );
     }
 
     private function getBestMatchLanguage() {

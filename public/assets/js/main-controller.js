@@ -8,6 +8,7 @@ export function initMainController() {
     initModuleSystem();
     initScrollEffects();
     initGlobalStateListeners(); // Importante: Activamos la escucha de eventos
+    initWhiteboardCreation();   // NUEVO: Escucha para el botón Crear
 }
 
 function initScrollEffects() {
@@ -230,6 +231,43 @@ function initGlobalStateListeners() {
                     { transform: 'scale(1)', opacity: 1 }
                 ], { duration: 300, easing: 'ease-out' });
             }
+        }
+    });
+}
+
+/**
+ * Lógica para crear nuevos pizarrones desde el Header
+ */
+function initWhiteboardCreation() {
+    const btnCreate = document.getElementById('btn-create-whiteboard');
+    if (!btnCreate) return;
+
+    btnCreate.addEventListener('click', async () => {
+        // Feedback visual inmediato
+        btnCreate.style.transform = 'scale(0.9)';
+        setTimeout(() => btnCreate.style.transform = '', 150);
+
+        try {
+            // Asumimos que la API base está en /api/ o similar relativo
+            const response = await fetch('api/whiteboard-handler.php?action=create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name: 'Nuevo Pizarrón' })
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.uuid) {
+                // Redirigir a la nueva URL
+                window.location.href = `whiteboard/${data.uuid}`;
+            } else {
+                alert('Error al crear el pizarrón: ' + (data.error || 'Desconocido'));
+            }
+        } catch (error) {
+            console.error('Error de red:', error);
+            alert('Error de conexión al crear el pizarrón.');
         }
     });
 }

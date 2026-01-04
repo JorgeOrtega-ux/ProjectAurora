@@ -16,13 +16,6 @@
                     </div>
                     <div class="menu-link-text"><?php echo $i18n->t('menu.explore'); ?></div>
                 </div>
-
-                <div class="menu-link <?php echo ($currentSection === 'app/whiteboard') ? 'active' : ''; ?>" data-nav="app/whiteboard">
-        <div class="menu-link-icon">
-            <span class="material-symbols-rounded">draw</span>
-        </div>
-        <div class="menu-link-text">Pizarra</div> 
-    </div>
             </div>
 
             <div class="menu-list" id="nav-settings" style="display: none;">

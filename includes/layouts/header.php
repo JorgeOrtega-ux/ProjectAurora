@@ -24,6 +24,14 @@
 
     <div class="header-right">
         <div class="header-item">
+            <div class="header-button" 
+                 id="btn-create-whiteboard"
+                 data-tooltip="Nuevo Pizarrón">
+                <span class="material-symbols-rounded">add_circle</span>
+            </div>
+        </div>
+
+        <div class="header-item">
             <div class="header-button mobile-search-trigger" 
                  data-action="toggleSearch"
                  data-tooltip="Buscar">

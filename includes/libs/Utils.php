@@ -63,11 +63,8 @@ class Utils {
      * @return string El nonce generado para scripts inline.
      */
     public static function applySecurityHeaders() {
-        // 1. Generar Nonce aleatorio para scripts inline
         $cspNonce = base64_encode(random_bytes(16));
 
-        // 2. Definir Content-Security-Policy
-        // CORRECCIÓN: Agregado 'https://cdnjs.cloudflare.com' a script-src
         header("Content-Security-Policy: " .
             "default-src 'self'; " .
             "script-src 'self' https://challenges.cloudflare.com https://unpkg.com https://cdnjs.cloudflare.com 'nonce-$cspNonce'; " .
@@ -80,7 +77,6 @@ class Utils {
             "base-uri 'self';"
         );
 
-        // 3. Cabeceras adicionales de hardening
         header("X-Frame-Options: DENY");
         header("X-Content-Type-Options: nosniff");
         header("Referrer-Policy: strict-origin-when-cross-origin");
@@ -110,7 +106,6 @@ class Utils {
 
     /**
      * Obtiene una configuración del servidor desde la BD.
-     * Retorna el valor por defecto si falla o no existe.
      */
     public static function getServerConfig($pdo, $key, $default = '0') {
         try {
@@ -163,6 +158,18 @@ class Utils {
             }
         }
         return $src;
+    }
+
+    /**
+     * Genera un UUID v4 válido.
+     * Usado por WhiteboardService y AuthService.
+     */
+    public static function generateUUID() {
+        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+            mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000,
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+        );
     }
 }
 ?>

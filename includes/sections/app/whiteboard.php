@@ -1,6 +1,20 @@
-<div class="wb-container">
-    
+<?php
+// includes/sections/app/whiteboard.php
 
+// Intentar recuperar el UUID de la URL si no viene definido por el router
+if (!isset($uuid) || empty($uuid)) {
+    // Asumiendo formato /whiteboard/{uuid}
+    $pathParts = explode('/', parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
+    $uuid = end($pathParts);
+}
+
+// Validación básica de seguridad para el UUID
+if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $uuid)) {
+    $uuid = ''; // UUID inválido
+}
+?>
+<div class="wb-container" data-wb-uuid="<?php echo htmlspecialchars($uuid); ?>">
+    
     <style>
         /* --- ESTILOS TOOLBAR SUPERIOR --- */
         .wb-top-toolbar {
@@ -321,6 +335,11 @@
 
     <div class="wb-footer">
         <div class="wb-footer-controls">
+            <button class="wb-tool-btn" id="wb-btn-save" title="Guardar Proyecto" style="color: #2563eb;">
+                <span class="material-symbols-rounded">save</span>
+            </button>
+            <div style="width: 1px; height: 24px; background-color: var(--border-color, #e0e0e0); margin: 0 5px;"></div>
+            
             <button class="wb-tool-btn" id="wb-btn-physics-selected" title="Activar Física (Selección)">
                 <span class="material-symbols-rounded">touch_app</span> </button>
             <button class="wb-tool-btn" id="wb-btn-physics-all" title="Activar/Desactivar Física (Todo)">
