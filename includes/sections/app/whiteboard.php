@@ -104,18 +104,6 @@
         .wb-color-swatch { width: 100%; aspect-ratio: 1; border-radius: 6px; cursor: pointer; border: 1px solid rgba(0,0,0,0.1); transition: transform 0.1s; }
         .wb-color-swatch:hover { transform: scale(1.1); box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 1; }
         
-        /* --- ESTILOS DIBUJO --- */
-        .wb-draw-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px; }
-        .wb-draw-btn { 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-            padding: 10px 4px; border: 1px solid #eee; border-radius: 8px; cursor: pointer;
-            transition: all 0.2s; background: #fff;
-        }
-        .wb-draw-btn:hover { background: #f9f9f9; border-color: #ddd; }
-        .wb-draw-btn.active { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
-        .wb-draw-btn span { font-size: 24px; }
-        .wb-draw-btn p { font-size: 10px; margin: 0; font-weight: 500; }
-        
     </style>
 
     <div class="wb-status-overlay">
@@ -130,9 +118,6 @@
             </button>
             <button class="wb-sidebar-btn" data-drawer="drawer-toys" title="Objetos">
                 <span class="material-symbols-rounded">smart_toy</span>
-            </button>
-            <button class="wb-sidebar-btn" data-drawer="drawer-draw" title="Dibujar">
-                <span class="material-symbols-rounded">brush</span>
             </button>
 
             <div style="flex: 1;"></div>
@@ -201,51 +186,6 @@
                         <div class="wb-shapes-grid">
                              <div class="wb-shape-card" data-shape="circle-cut" title="Anillo Motorizado"><span class="material-symbols-rounded">data_usage</span></div>
                              <div class="wb-shape-card" data-shape="conveyor" title="Cinta Transportadora"><span class="material-symbols-rounded">conveyor_belt</span></div>
-                        </div>
-                    </div>
-
-                    <div id="drawer-draw" class="wb-drawer-content">
-                        <h4 style="font-size: 12px; color: #666; margin: 10px 0 10px; text-transform: uppercase;">Herramientas</h4>
-                        
-                        <div class="wb-draw-grid">
-                            <div class="wb-draw-btn active" data-tool="pen" title="Bolígrafo">
-                                <span class="material-symbols-rounded">edit</span>
-                                <p>Boli</p>
-                            </div>
-                            <div class="wb-draw-btn" data-tool="marker" title="Marcador">
-                                <span class="material-symbols-rounded">ink_marker</span>
-                                <p>Marcador</p>
-                            </div>
-                            <div class="wb-draw-btn" data-tool="highlighter" title="Resaltador">
-                                <span class="material-symbols-rounded">format_ink_highlighter</span>
-                                <p>Resaltar</p>
-                            </div>
-                            <div class="wb-draw-btn" data-tool="eraser" title="Borrador">
-                                <span class="material-symbols-rounded">ink_eraser</span>
-                                <p>Borrador</p>
-                            </div>
-                        </div>
-
-                        <div class="wb-divider" style="width: 100%; height: 1px; margin: 15px 0;"></div>
-
-                        <div class="wb-popover-row">
-                            <span class="wb-popover-label">Tamaño</span>
-                            <input type="range" id="inp-draw-width" class="wb-slider" min="1" max="50" step="1" value="3">
-                            <span id="val-draw-width" style="font-size: 11px; color:#333; width: 20px; text-align:right;">3</span>
-                        </div>
-
-                        <div class="wb-divider" style="width: 100%; height: 1px; margin: 15px 0;"></div>
-
-                        <h4 style="font-size: 12px; color: #666; margin: 10px 0 10px; text-transform: uppercase;">Color</h4>
-                        <div class="wb-colors-grid">
-                            <div class="wb-color-swatch" data-draw-color="#000000" style="background-color: #000000;" title="Negro"></div>
-                            <div class="wb-color-swatch" data-draw-color="#ef4444" style="background-color: #ef4444;" title="Rojo"></div>
-                            <div class="wb-color-swatch" data-draw-color="#3b82f6" style="background-color: #3b82f6;" title="Azul"></div>
-                            <div class="wb-color-swatch" data-draw-color="#22c55e" style="background-color: #22c55e;" title="Verde"></div>
-                            <div class="wb-color-swatch" data-draw-color="#eab308" style="background-color: #eab308;" title="Amarillo"></div>
-                            <div class="wb-color-swatch" data-draw-color="#a855f7" style="background-color: #a855f7;" title="Morado"></div>
-                            <div class="wb-color-swatch" data-draw-color="#f97316" style="background-color: #f97316;" title="Naranja"></div>
-                            <div class="wb-color-swatch" data-draw-color="#64748b" style="background-color: #64748b;" title="Gris"></div>
                         </div>
                     </div>
                 </div>
