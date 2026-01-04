@@ -1,6 +1,7 @@
 /**
  * public/assets/js/modules/app/whiteboard-controller.js
- * Controlador principal con Logs de Diagnóstico, Throttling e Interpolación (LERP)
+ * Controlador principal con Logs de Diagnóstico, Throttling, Interpolación (LERP)
+ * y Gestión de Cursores Remotos en Tiempo Real.
  */
 
 import { WhiteboardPhysics } from './whiteboard-physics.js';
@@ -30,7 +31,12 @@ export const WhiteboardController = {
         isSpinLoopRunning: false,
         debugMode: false,
         isRemoteUpdate: false,
-        isLoading: false
+        isLoading: false,
+        
+        // --- NUEVO: Estado para Cursores ---
+        myColor: '#' + Math.floor(Math.random()*16777215).toString(16), // Color temporal
+        myUsername: window.USER_NAME || 'Yo', // Se espera que window.USER_NAME esté definido en index.php
+        remoteCursors: {} // Almacena la última posición absoluta de otros usuarios
     },
     
     config: {
@@ -87,13 +93,34 @@ export const WhiteboardController = {
         WhiteboardController.startSpinLoop();
     },
 
-    // --- MANEJADOR DE MENSAJES REMOTOS (CON LÓGICA LERP) ---
+    // --- MANEJADOR DE MENSAJES REMOTOS (CON LÓGICA LERP Y CURSORES) ---
     handleRemoteMessage: (msg) => {
         if (!msg || !msg.type) return;
         
-        if(msg.type !== 'system' && WhiteboardController.state.debugMode) {
+        // Filtrar mensajes de sistema y mouse para no saturar la consola
+        if(msg.type !== 'system' && msg.type !== 'MOUSE_MOVE' && WhiteboardController.state.debugMode) {
             console.log(`%c[WS RX] ${msg.type}`, 'color: #00d2ff; font-weight: bold;', msg);
         }
+
+        // === NUEVO: MANEJO DE CURSORES ===
+        if (msg.type === 'MOUSE_MOVE') {
+            // Ignorar mi propio cursor (si el servidor lo rebota)
+            if (msg.userId === WhiteboardController.state.myUsername) return;
+
+            // Guardamos la posición "Mundo" (absoluta) y timestamp
+            WhiteboardController.state.remoteCursors[msg.userId] = { 
+                x: msg.data.x, 
+                y: msg.data.y, 
+                username: msg.data.username, 
+                color: msg.data.color, 
+                timestamp: Date.now() 
+            };
+
+            // Renderizamos inmediatamente para suavidad
+            WhiteboardController.renderAllCursors();
+            return; 
+        }
+        // =================================
 
         const canvas = WhiteboardController.canvas;
         WhiteboardController.state.isRemoteUpdate = true;
@@ -165,6 +192,35 @@ export const WhiteboardController = {
         } finally {
             WhiteboardController.state.isRemoteUpdate = false;
         }
+    },
+
+    // === NUEVO: Renderizado de cursores remotos ===
+    renderAllCursors: () => {
+        const canvas = WhiteboardController.canvas;
+        if (!canvas) return;
+        
+        const vpt = canvas.viewportTransform;
+        const now = Date.now();
+
+        Object.keys(WhiteboardController.state.remoteCursors).forEach(key => {
+            const cursor = WhiteboardController.state.remoteCursors[key];
+            
+            // Limpieza de datos viejos (10 seg sin info)
+            if (now - cursor.timestamp > 10000) {
+                delete WhiteboardController.state.remoteCursors[key];
+                if (WhiteboardUI.removeCursor) WhiteboardUI.removeCursor(key);
+                return;
+            }
+
+            // Transformación: Mundo -> Pantalla
+            // Fórmula: screenX = (worldX * zoom) + panX
+            const screenX = (cursor.x * vpt[0]) + vpt[4];
+            const screenY = (cursor.y * vpt[3]) + vpt[5];
+            
+            if (WhiteboardUI.updateRemoteCursor) {
+                WhiteboardUI.updateRemoteCursor(key, screenX, screenY, cursor.username, cursor.color);
+            }
+        });
     },
 
     findObjectById: (id) => {
@@ -343,6 +399,35 @@ export const WhiteboardController = {
             sendObjectUpdate(obj, 'moving');
         }, 30);
 
+        // --- NUEVO: THROTTLE PARA MOUSE ---
+        // 50ms = 20 fps, suficiente para cursores sin saturar la red
+        const throttleMouse = (func, limit) => {
+            let inThrottle;
+            return function() {
+                const args = arguments;
+                const context = this;
+                if (!inThrottle) {
+                    func.apply(context, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            }
+        };
+
+        const sendMouseMove = throttleMouse((pointer) => {
+            // pointer ya contiene coordenadas absolutas (Mundo) si viene de opt.absolutePointer
+            WebSocketManager.send({
+                type: 'MOUSE_MOVE',
+                userId: WhiteboardController.state.myUsername,
+                data: {
+                    x: Math.round(pointer.x),
+                    y: Math.round(pointer.y),
+                    color: WhiteboardController.state.myColor,
+                    username: WhiteboardController.state.myUsername
+                }
+            });
+        }, 50);
+
         // --- LISTENERS ---
 
         // 1. MOVIMIENTO (Sincronización en vivo)
@@ -445,11 +530,15 @@ export const WhiteboardController = {
                 if (zoom < WhiteboardController.config.minScale) zoom = WhiteboardController.config.minScale;
                 WhiteboardController.canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
                 WhiteboardUI.updateUIFromCanvas(WhiteboardController.canvas);
+                // --- Actualizar cursores remotos al hacer zoom ---
+                WhiteboardController.renderAllCursors();
             } else {
                 const vpt = WhiteboardController.canvas.viewportTransform;
                 vpt[4] -= opt.e.deltaX; vpt[5] -= opt.e.deltaY;
                 WhiteboardController.canvas.requestRenderAll(); 
                 WhiteboardUI.updateGridBackground(WhiteboardController.canvas);
+                // --- Actualizar cursores remotos al panear con rueda ---
+                WhiteboardController.renderAllCursors();
             }
         });
 
@@ -467,6 +556,10 @@ export const WhiteboardController = {
         WhiteboardController.canvas.on('mouse:move', (opt) => {
             const evt = opt.e;
             WhiteboardUI.updateStatusText(opt.absolutePointer);
+            
+            // --- NUEVO: Enviar posición del mouse ---
+            sendMouseMove(opt.absolutePointer);
+
             if (WhiteboardController.state.panning) {
                 const vpt = WhiteboardController.canvas.viewportTransform;
                 vpt[4] += evt.clientX - WhiteboardController.state.lastPosX;
@@ -475,6 +568,9 @@ export const WhiteboardController = {
                 WhiteboardController.state.lastPosX = evt.clientX;
                 WhiteboardController.state.lastPosY = evt.clientY;
                 WhiteboardUI.updateGridBackground(WhiteboardController.canvas);
+                
+                // --- Actualizar cursores remotos al panear ---
+                WhiteboardController.renderAllCursors();
             }
         });
 
@@ -494,6 +590,8 @@ export const WhiteboardController = {
             WhiteboardController.canvas.setWidth(viewport.clientWidth);
             WhiteboardController.canvas.setHeight(viewport.clientHeight);
             WhiteboardController.canvas.renderAll();
+            // Actualizar cursores tras resize
+            WhiteboardController.renderAllCursors();
         }
     },
 
@@ -856,6 +954,7 @@ export const WhiteboardController = {
                 const center = canvas.getCenter();
                 canvas.zoomToPoint({ x: center.left, y: center.top }, percent / 100);
                 WhiteboardUI.updateUIFromCanvas(canvas);
+                WhiteboardController.renderAllCursors(); // Actualizar cursores al zoom
             });
         }
         
@@ -1163,6 +1262,7 @@ export const WhiteboardController = {
         const vpt = canvas.viewportTransform; vpt[0] = 1; vpt[3] = 1; vpt[4] = w/2; vpt[5] = h/2;
         canvas.requestRenderAll(); 
         WhiteboardUI.updateUIFromCanvas(canvas);
+        WhiteboardController.renderAllCursors();
     },
 
     isInputActive: () => {

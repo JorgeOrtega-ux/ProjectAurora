@@ -493,5 +493,50 @@ export const WhiteboardUI = {
         const { debugContent } = WhiteboardUI.elements;
         if (!debugContent) return;
         debugContent.innerText = JSON.stringify(data, null, 2);
+    },
+
+    // --- GESTIÓN DE CURSORES REMOTOS ---
+    updateRemoteCursor: (id, x, y, username, color) => {
+        const { viewport } = WhiteboardUI.elements;
+        if (!viewport) return;
+
+        let cursor = document.getElementById(`cursor-${id}`);
+        
+        // 1. Crear si no existe
+        if (!cursor) {
+            cursor = document.createElement('div');
+            cursor.id = `cursor-${id}`;
+            cursor.className = 'wb-remote-cursor';
+            
+            // Icono (Flecha)
+            const icon = document.createElement('div');
+            icon.className = 'wb-cursor-icon';
+            icon.style.borderBottomColor = color || '#ff0000';
+            
+            // Etiqueta (Nombre)
+            const label = document.createElement('div');
+            label.className = 'wb-cursor-label';
+            label.innerText = username || 'Anon';
+            label.style.backgroundColor = color || '#ff0000';
+
+            cursor.appendChild(icon);
+            cursor.appendChild(label);
+            viewport.appendChild(cursor);
+        }
+
+        // 2. Mover (Transform es más eficiente que top/left)
+        // Nota: Las coordenadas x, y ya deben venir convertidas a coordenadas de PANTALLA
+        cursor.style.transform = `translate(${x}px, ${y}px)`;
+        
+        // 3. Gestionar inactividad (borrar si deja de moverse)
+        if (cursor.dataset.timeout) clearTimeout(cursor.dataset.timeout);
+        cursor.dataset.timeout = setTimeout(() => {
+            cursor.remove();
+        }, 5000); // 5 segundos sin movimiento = eliminar
+    },
+
+    removeCursor: (id) => {
+        const cursor = document.getElementById(`cursor-${id}`);
+        if (cursor) cursor.remove();
     }
 };
