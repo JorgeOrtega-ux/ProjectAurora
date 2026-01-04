@@ -563,6 +563,34 @@ class AuthService {
         }
     }
 
+    /**
+     * Genera un token efímero para autenticar la conexión WebSocket.
+     */
+    public function generateWebSocketToken() {
+        if (!$this->isLoggedIn()) {
+            return ['success' => false, 'message' => $this->i18n->t('api.session_expired')];
+        }
+
+        $userId = $_SESSION['user_id'];
+        // Generar un token criptográficamente seguro
+        $token = bin2hex(random_bytes(32)); 
+        // Expiración corta: 30 segundos
+        $expiresAt = date('Y-m-d H:i:s', time() + 30); 
+
+        // Limpiar tokens expirados antiguos (mantenimiento en línea)
+        $this->pdo->prepare("DELETE FROM ws_tokens WHERE expires_at < NOW()")->execute();
+
+        // Insertar el nuevo token
+        $stmt = $this->pdo->prepare("INSERT INTO ws_tokens (user_id, token, expires_at) VALUES (?, ?, ?)");
+        
+        try {
+            $stmt->execute([$userId, $token, $expiresAt]);
+            return ['success' => true, 'token' => $token];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $this->i18n->t('api.internal_error')];
+        }
+    }
+
     private function rotatePersistenceToken($oldTokenId, $userId) {
         $this->pdo->prepare("DELETE FROM user_auth_tokens WHERE id = ?")->execute([$oldTokenId]);
         $this->createPersistenceToken($userId);

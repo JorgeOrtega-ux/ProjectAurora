@@ -5,6 +5,7 @@ USE project_aurora_db;
 -- REINICIO DE TABLAS
 -- =========================================================
 DROP TABLE IF EXISTS whiteboards; -- Agregado para limpiar si existe la version anterior
+DROP TABLE IF EXISTS ws_tokens;   -- NUEVO: Tabla para tokens efímeros de WebSocket
 DROP TABLE IF EXISTS user_auth_tokens;
 DROP TABLE IF EXISTS user_preferences;
 DROP TABLE IF EXISTS security_logs;
@@ -91,6 +92,17 @@ CREATE TABLE IF NOT EXISTS user_auth_tokens (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX (selector)
+);
+
+-- NUEVO: Tabla para tokens de WebSocket (WS)
+CREATE TABLE IF NOT EXISTS ws_tokens (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    token VARCHAR(64) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX (token)
 );
 
 CREATE TABLE IF NOT EXISTS profile_changes (

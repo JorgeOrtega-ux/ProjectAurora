@@ -85,6 +85,11 @@ switch ($action) {
         Utils::jsonResponse($authService->logout());
         break;
 
+    case 'get_ws_token':
+        // NUEVO: Generar token para WebSocket
+        Utils::jsonResponse($authService->generateWebSocketToken());
+        break;
+
     default:
         Utils::jsonResponse(['success' => false, 'message' => $i18n->t('api.unknown_action')]);
         break;
