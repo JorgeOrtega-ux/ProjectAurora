@@ -49,7 +49,6 @@ const App = {
         const initialSection = path || 'main';
         
         // Manejar carga inicial
-        // Pequeño delay para asegurar que el DOM de la sección esté listo si es la primera carga
         setTimeout(() => {
             routeDispatcher(initialSection);
         }, 50);
@@ -65,13 +64,15 @@ const App = {
 function routeDispatcher(section) {
     console.log(`Router Dispatch: Inicializando controladores para [${section}]`);
 
+    // --- MEJORA PARA RUTAS DINÁMICAS ---
+    // Si la ruta empieza con 'whiteboard/', inicializamos el controlador del pizarrón
+    if (section.startsWith('whiteboard/')) {
+        WhiteboardController.init();
+        return; // Importante para que no entre al switch
+    }
+
     switch (section) {
         
-        // --- SECCIÓN APP ---
-        case 'app/whiteboard':
-            WhiteboardController.init();
-            break;
-
         // --- SECCIÓN SETTINGS ---
         case 'settings/your-profile':
             ProfileController.init();

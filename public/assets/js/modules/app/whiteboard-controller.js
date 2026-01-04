@@ -80,8 +80,7 @@ export const WhiteboardController = {
             // Mostrar estado de carga (opcional)
             console.log("Cargando pizarrón...");
             
-            const response = await fetch(`api/whiteboard-handler.php?action=load&uuid=${uuid}`);
-            const res = await response.json();
+const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?action=load&uuid=${uuid}`);            const res = await response.json();
 
             if (res.success && res.data) {
                 const data = res.data;
@@ -129,14 +128,15 @@ export const WhiteboardController = {
             const propertiesToInclude = ['customType', 'isSpinning', 'spinSpeed', 'conveyorSpeed', 'apertureDegree', 'id', 'selectable'];
             const jsonContent = JSON.stringify(WhiteboardController.canvas.toJSON(propertiesToInclude));
 
-            const response = await fetch('api/whiteboard-handler.php?action=save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    uuid: WhiteboardController.currentUUID,
-                    content: jsonContent
-                })
-            });
+        // Localiza esta línea dentro de la función save
+const response = await fetch(`${window.BASE_PATH}api/whiteboard-handler.php?action=save`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        uuid: WhiteboardController.currentUUID,
+        content: jsonContent
+    })
+});
 
             const res = await response.json();
 
