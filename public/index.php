@@ -95,6 +95,9 @@ $globalAvatarSrc = Utils::getGlobalAvatarSrc();
 $userLang = $_SESSION['preferences']['language'] ?? 'es-latam';
 $turnstileSiteKey = $_ENV['TURNSTILE_SITE_KEY'] ?? '';
 
+// [NUEVO] Obtener URL de WebSocket
+$wsUrl = getenv('WS_URL') ?: 'ws://localhost:8765';
+
 $jsUserPrefs = json_encode($_SESSION['preferences'] ?? new stdClass());
 $jsTranslations = json_encode($i18n->getAll());
 
@@ -125,6 +128,8 @@ if ($showMaintenanceScreen) {
         window.USER_PREFS = <?php echo $jsUserPrefs; ?>;
         window.TRANSLATIONS = <?php echo $jsTranslations; ?>;
         window.TURNSTILE_SITE_KEY = '<?php echo $turnstileSiteKey; ?>';
+        // [NUEVO] Inyectar WS_URL para uso en cliente
+        window.WS_URL = '<?php echo $wsUrl; ?>';
     </script>
     <script src="https://unpkg.com/@popperjs/core@2"></script>
     <script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>

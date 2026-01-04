@@ -65,6 +65,9 @@ class Utils {
     public static function applySecurityHeaders() {
         $cspNonce = base64_encode(random_bytes(16));
 
+        // [MODIFICADO] Recuperamos la URL del WebSocket del entorno
+        $wsUrl = getenv('WS_URL') ?: 'ws://localhost:8765';
+
         header("Content-Security-Policy: " .
             "default-src 'self'; " .
             "script-src 'self' https://challenges.cloudflare.com https://unpkg.com https://cdnjs.cloudflare.com 'nonce-$cspNonce'; " .
@@ -72,7 +75,8 @@ class Utils {
             "img-src 'self' data: https://ui-avatars.com; " .
             "font-src 'self' https://fonts.gstatic.com; " .
             "frame-src https://challenges.cloudflare.com; " .
-            "connect-src 'self' https://challenges.cloudflare.com https://unpkg.com; " .
+            // [MODIFICADO] Agregamos $wsUrl a connect-src para permitir la conexión WS
+            "connect-src 'self' https://challenges.cloudflare.com https://unpkg.com $wsUrl; " .
             "object-src 'none'; " .
             "base-uri 'self';"
         );

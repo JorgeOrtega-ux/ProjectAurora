@@ -9,6 +9,8 @@ import { initAuthController } from './auth-controller.js';
 import { Toast } from './core/toast-manager.js'; 
 import { TooltipManager } from './core/tooltip-manager.js';
 import { Dialog } from './core/dialog-manager.js';
+// [NUEVO] Importar el gestor de WebSockets
+import { WebSocketManager } from './core/websocket-manager.js';
 
 // Módulos de configuración (Granulares)
 import { SettingsController } from './modules/settings/settings-controller.js'; 
@@ -36,6 +38,9 @@ const App = {
         Toast.init();
         TooltipManager.init();
         Dialog.init();
+        
+        // [NUEVO] Inicializar conexión WebSocket
+        WebSocketManager.init();
         
         initMainController();
         initAuthController();
