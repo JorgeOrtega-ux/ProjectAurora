@@ -220,7 +220,25 @@ export const WhiteboardController = {
         if (WhiteboardController.state.isSpinLoopRunning) return;
         WhiteboardController.state.isSpinLoopRunning = true;
 
+        // Variables para el cálculo de FPS
+        let lastTime = performance.now();
+        let frameCount = 0;
+
         const loop = () => {
+            // --- CÁLCULO DE FPS ---
+            const now = performance.now();
+            frameCount++;
+            const delta = now - lastTime;
+            
+            // Actualizar cada 1000ms (1 segundo)
+            if (delta >= 1000) {
+                const fps = Math.round((frameCount * 1000) / delta);
+                WhiteboardUI.updateFPS(fps);
+                frameCount = 0;
+                lastTime = now;
+            }
+            // ---------------------
+
             const canvas = WhiteboardController.canvas;
             if (canvas) {
                 const objects = canvas.getObjects();
@@ -332,15 +350,25 @@ export const WhiteboardController = {
         if (ui.btnPhysicsSelected) {
             ui.btnPhysicsSelected.addEventListener('click', () => {
                 const activeObjects = canvas.getActiveObjects();
-                WhiteboardPhysics.activateForSelection(activeObjects);
-                canvas.discardActiveObject();
-                canvas.requestRenderAll();
+                
+                // PROTECCIÓN: Filtrar mecánicas que no deberían tener físicas activables manuales
+                const validObjects = activeObjects.filter(obj => 
+                    obj.customType !== 'conveyor' && obj.customType !== 'circle-cut'
+                );
+                
+                if (validObjects.length > 0) {
+                    WhiteboardPhysics.activateForSelection(validObjects);
+                    canvas.discardActiveObject();
+                    canvas.requestRenderAll();
+                }
             });
         }
 
         if (ui.btnColors) {
             ui.btnColors.addEventListener('click', (e) => {
                 e.stopPropagation();
+                if (ui.btnColors.disabled || ui.btnColors.classList.contains('disabled')) return;
+                
                 WhiteboardUI.openDrawer('drawer-colors', 'Colores');
                 WhiteboardUI.toggleBorderPopover(false); 
             });
@@ -348,6 +376,7 @@ export const WhiteboardController = {
 
         if (ui.btnMakeHollow) {
             ui.btnMakeHollow.addEventListener('click', () => {
+                if (ui.btnMakeHollow.disabled || ui.btnMakeHollow.classList.contains('disabled')) return;
                 WhiteboardController.makeSelectionHollow();
             });
         }
@@ -355,6 +384,8 @@ export const WhiteboardController = {
         if (ui.btnBorderOptions) {
             ui.btnBorderOptions.addEventListener('click', (e) => {
                 e.stopPropagation();
+                if (ui.btnBorderOptions.disabled || ui.btnBorderOptions.classList.contains('disabled')) return;
+
                 const isActive = ui.borderPopover.classList.contains('active');
                 WhiteboardUI.toggleBorderPopover(!isActive);
                 if (!isActive) WhiteboardUI.closeDrawer();
@@ -546,6 +577,9 @@ export const WhiteboardController = {
         if (!activeObj) return; 
 
         const applyColor = (obj) => {
+            // PROTECCIÓN: Las mecánicas no cambian de color (Circle Cut es hueco, Conveyor es textura)
+            if (obj.customType === 'conveyor' || obj.customType === 'circle-cut') return;
+
             if (color === 'transparent') {
                 obj.set('fill', 'transparent');
             } else {
@@ -578,6 +612,9 @@ export const WhiteboardController = {
         if (!activeObj) return;
 
         const applyHollow = (obj) => {
+            // PROTECCIÓN: No aplicar a mecánicas
+            if (obj.customType === 'conveyor' || obj.customType === 'circle-cut') return;
+
             obj.set({
                 fill: 'transparent',
                 stroke: '#000000', 
@@ -603,10 +640,23 @@ export const WhiteboardController = {
         const activeObj = canvas.getActiveObject();
         if (!activeObj) return;
 
+        // Protección adicional para propiedades de borde en Conveyor
+        if (prop === 'strokeWidth' || prop === 'stroke') {
+             // Si es selección simple, chequeamos
+             if (activeObj.customType === 'conveyor') return;
+             
+             // Si es selección múltiple, filtramos dentro del loop
+        }
+
+        const applyProp = (obj) => {
+            if (obj.customType === 'conveyor' && (prop === 'strokeWidth' || prop === 'stroke' || prop === 'rx' || prop === 'ry')) return;
+            obj.set(prop, value);
+        }
+
         if (activeObj.type === 'activeSelection') {
-            activeObj.getObjects().forEach(obj => obj.set(prop, value));
+            activeObj.getObjects().forEach(obj => applyProp(obj));
         } else {
-            activeObj.set(prop, value);
+            applyProp(activeObj);
         }
         canvas.requestRenderAll();
         WhiteboardController.saveHistory(); 

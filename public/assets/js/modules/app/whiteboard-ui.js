@@ -7,6 +7,7 @@ export const WhiteboardUI = {
     elements: {
         viewport: null,
         status: null,
+        fps: null, // Nuevo elemento para FPS
         zoomSlider: null,
         zoomDisplay: null,
         btnCenter: null,
@@ -65,6 +66,24 @@ export const WhiteboardUI = {
         const el = WhiteboardUI.elements;
         el.viewport = document.getElementById('wb-viewport');
         el.status = document.getElementById('wb-status-text');
+        
+        // --- INYECCIÓN DEL CONTADOR DE FPS ---
+        // Buscamos si ya existe, si no, lo creamos al lado de las coordenadas
+        el.fps = document.getElementById('wb-fps-display');
+        if (!el.fps && el.status && el.status.parentNode) {
+            el.fps = document.createElement('span');
+            el.fps.id = 'wb-fps-display';
+            // Estilos inline para asegurar que se vea bien sin tocar CSS externo
+            el.fps.style.marginLeft = '12px';
+            el.fps.style.paddingLeft = '12px';
+            el.fps.style.borderLeft = '1px solid #ccc';
+            el.fps.style.fontFamily = 'monospace';
+            el.fps.style.color = '#666';
+            el.fps.style.fontSize = '0.85em';
+            el.fps.innerText = 'FPS: --';
+            el.status.parentNode.appendChild(el.fps);
+        }
+
         el.zoomSlider = document.getElementById('wb-zoom-slider');
         el.zoomDisplay = document.getElementById('wb-zoom-display');
         el.btnCenter = document.getElementById('wb-btn-center');
@@ -121,11 +140,13 @@ export const WhiteboardUI = {
         toggleBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                
+                if (btn.classList.contains('disabled') || btn.disabled) return;
+
                 const contentId = btn.getAttribute('data-drawer');
                 const contentEl = document.getElementById(contentId);
                 const buttonTitle = btn.getAttribute('title');
                 
-                // Si el drawer ya está abierto en esta sección, cerrarlo
                 if (drawer.classList.contains('active') && contentEl.classList.contains('active')) {
                     WhiteboardUI.closeDrawer(); 
                     return;
@@ -170,6 +191,11 @@ export const WhiteboardUI = {
     toggleBorderPopover: (show) => {
         const { borderPopover, btnBorderOptions } = WhiteboardUI.elements;
         if (!borderPopover) return;
+        
+        if (show && btnBorderOptions && (btnBorderOptions.disabled || btnBorderOptions.classList.contains('disabled'))) {
+            return;
+        }
+
         if (show) {
             borderPopover.classList.add('active');
             if(btnBorderOptions) btnBorderOptions.classList.add('active');
@@ -206,25 +232,52 @@ export const WhiteboardUI = {
         }
     },
 
+    setBtnState: (btn, enable) => {
+        if (!btn) return;
+        if (enable) {
+            btn.classList.remove('disabled');
+            btn.removeAttribute('disabled');
+            btn.style.opacity = '1';
+            btn.style.pointerEvents = 'all';
+        } else {
+            btn.classList.add('disabled');
+            btn.setAttribute('disabled', 'true');
+            btn.style.opacity = '0.3';
+            btn.style.pointerEvents = 'none';
+        }
+    },
+
     updateToolbarValues: (activeObj) => {
-        const { sizeDisplay, groupAperture, inpApertureSize, secondaryToolbar, btnSpinToggle, iconSpinToggle, inpSpinSpeed, valSpinSpeed } = WhiteboardUI.elements;
+        const { 
+            sizeDisplay, groupAperture, inpApertureSize, secondaryToolbar, 
+            btnSpinToggle, iconSpinToggle, inpSpinSpeed, valSpinSpeed,
+            btnPhysicsSelected, btnColors, btnMakeHollow, btnBorderOptions 
+        } = WhiteboardUI.elements;
+
         if (!sizeDisplay || !activeObj) return;
 
         let displayValue = "";
         
-        // --- LÓGICA DE HERRAMIENTAS SECUNDARIAS (Anillo y Cinta) ---
         const isCircleCut = activeObj.customType === 'circle-cut';
         const isConveyor = activeObj.customType === 'conveyor';
+        const isMechanical = isCircleCut || isConveyor;
 
-        if (isCircleCut || isConveyor) {
-            // Mostrar controles de apertura solo para círculo hueco
+        WhiteboardUI.setBtnState(btnPhysicsSelected, !isMechanical);
+        WhiteboardUI.setBtnState(btnColors, !isMechanical);
+        WhiteboardUI.setBtnState(btnMakeHollow, !isMechanical);
+
+        if (isConveyor) {
+            WhiteboardUI.setBtnState(btnBorderOptions, false);
+        } else {
+            WhiteboardUI.setBtnState(btnBorderOptions, true);
+        }
+
+        if (isMechanical) {
             if (groupAperture) groupAperture.style.display = isCircleCut ? 'flex' : 'none';
             if (isCircleCut && inpApertureSize) inpApertureSize.value = activeObj.apertureDegree || 45;
 
-            // Mostrar Toolbar Secundario
             if (secondaryToolbar) secondaryToolbar.classList.add('active');
             
-            // --- UNIFICACIÓN DE CONTROLES DE VELOCIDAD/PLAY ---
             let isPlaying = false;
             let speed = 2;
 
@@ -232,14 +285,12 @@ export const WhiteboardUI = {
                 isPlaying = activeObj.isSpinning || false;
                 speed = activeObj.spinSpeed !== undefined ? activeObj.spinSpeed : 2;
             } else if (isConveyor) {
-                // Para la cinta, usamos isSpinning como flag de "Activa/Pausada"
-                isPlaying = activeObj.isSpinning !== false; // Por defecto true si no está definido
+                isPlaying = activeObj.isSpinning !== false;
                 speed = activeObj.conveyorSpeed !== undefined ? activeObj.conveyorSpeed : 2;
             }
 
-            // Mostrar y actualizar botón Play/Pause
             if (btnSpinToggle) {
-                btnSpinToggle.style.display = 'flex'; // Asegurar que sea visible para ambos
+                btnSpinToggle.style.display = 'flex'; 
                 
                 if (isPlaying) {
                     btnSpinToggle.classList.add('is-playing');
@@ -250,12 +301,10 @@ export const WhiteboardUI = {
                 }
             }
             
-            // Sincronizar Slider de Velocidad
             if (inpSpinSpeed) inpSpinSpeed.value = speed;
             if (valSpinSpeed) valSpinSpeed.innerText = speed;
 
         } else {
-            // Ocultar controles específicos
             if (groupAperture) groupAperture.style.display = 'none';
             if (secondaryToolbar) secondaryToolbar.classList.remove('active');
         }
@@ -264,6 +313,13 @@ export const WhiteboardUI = {
             const objects = activeObj.getObjects();
             let firstHeight = null;
             let isUniform = true;
+
+            const hasMechanical = objects.some(o => o.customType === 'conveyor' || o.customType === 'circle-cut');
+            if (hasMechanical) {
+                WhiteboardUI.setBtnState(btnPhysicsSelected, false);
+                WhiteboardUI.setBtnState(btnColors, false);
+                WhiteboardUI.setBtnState(btnMakeHollow, false);
+            }
 
             for (let obj of objects) {
                 const currentHeight = Math.round(obj.getScaledHeight());
@@ -317,6 +373,18 @@ export const WhiteboardUI = {
         status.innerText = `X: ${Math.round(pointer.x)} Y: ${Math.round(pointer.y)}`;
     },
 
+    // --- NUEVO: Actualizar el contador de FPS ---
+    updateFPS: (fpsVal) => {
+        const { fps } = WhiteboardUI.elements;
+        if (!fps) return;
+        // Colorear según rendimiento (Opcional, pero útil)
+        if (fpsVal >= 50) fps.style.color = '#4CAF50'; // Verde
+        else if (fpsVal >= 30) fps.style.color = '#FF9800'; // Naranja
+        else fps.style.color = '#F44336'; // Rojo
+        
+        fps.innerText = `FPS: ${fpsVal}`;
+    },
+
     // --- MÉTODOS DE DEBUG ---
     toggleDebugPanel: (show) => {
         const { debugPanel, btnDebug } = WhiteboardUI.elements;
@@ -333,7 +401,6 @@ export const WhiteboardUI = {
     updateDebugContent: (data) => {
         const { debugContent } = WhiteboardUI.elements;
         if (!debugContent) return;
-        // Convertir JSON a string con formato
         debugContent.innerText = JSON.stringify(data, null, 2);
     }
-};
+};1

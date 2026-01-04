@@ -70,14 +70,36 @@ export const WhiteboardPhysics = {
         Runner.run(runner, engine);
         WhiteboardPhysics.running = true;
 
+        // --- LOOP PRINCIPAL (Sincronización Física -> Visual) ---
         const updateLoop = () => {
             if (!WhiteboardPhysics.running) return;
             
             WhiteboardPhysics.bodiesMap.forEach((body, obj) => {
                 if (!body.isStatic) {
-                    obj.left = body.position.x;
-                    obj.top = body.position.y;
-                    obj.angle = body.angle * (180 / Math.PI);
+                    // Obtener posición física
+                    let posX = body.position.x;
+                    let posY = body.position.y;
+                    const angle = body.angle;
+
+                    // Si el cuerpo tiene un offset visual (ej. Triángulo), aplicarlo inversamente
+                    if (body.plugin.fabricOffset) {
+                        const offset = body.plugin.fabricOffset;
+                        // Rotar el vector de offset según el ángulo del cuerpo
+                        const cos = Math.cos(angle);
+                        const sin = Math.sin(angle);
+                        
+                        // Rotación de vector (x, y)
+                        const rotX = offset.x * cos - offset.y * sin;
+                        const rotY = offset.x * sin + offset.y * cos;
+
+                        // Restar el offset para encontrar el centro visual de Fabric
+                        posX -= rotX;
+                        posY -= rotY;
+                    }
+
+                    obj.left = posX;
+                    obj.top = posY;
+                    obj.angle = angle * (180 / Math.PI);
                     obj.setCoords(); 
                 }
             });
@@ -116,7 +138,6 @@ export const WhiteboardPhysics = {
         activeObjects.forEach(obj => {
             const body = WhiteboardPhysics.bodiesMap.get(obj);
             if (body) {
-                // MODIFICADO: Agregamos "obj.customType === 'circle-cut'" para evitar que se active
                 if (obj.customType === 'conveyor' || obj.customType === 'circle-cut' || obj.isStatic) return;
 
                 Matter.Body.setStatic(body, false);
@@ -128,7 +149,7 @@ export const WhiteboardPhysics = {
     addBody: (obj) => {
         if (obj.type === 'selection' || obj.type === 'activeSelection') return;
         
-        const Bodies = Matter.Bodies, World = Matter.World, Constraint = Matter.Constraint;
+        const Bodies = Matter.Bodies, World = Matter.World;
         const world = WhiteboardPhysics.world;
         if (!world) return;
 
@@ -144,7 +165,9 @@ export const WhiteboardPhysics = {
             restitution: 0.6,
             angle: angle,
             isStatic: isStatic,
-            plugin: {} 
+            plugin: {
+                fabricOffset: null // Almacenará el desfase del centro de masa
+            } 
         };
 
         // --- LÓGICA DE FORMAS ---
@@ -156,7 +179,6 @@ export const WhiteboardPhysics = {
             const isActive = (obj.isSpinning !== undefined) ? obj.isSpinning : true;
             const speedVal = obj.conveyorSpeed || 2;
             options.plugin.speed = isActive ? speedVal : 0;
-
             options.plugin.forceStatic = true; 
             options.isStatic = true; 
             
@@ -164,21 +186,65 @@ export const WhiteboardPhysics = {
             const h = obj.getScaledHeight();
             body = Bodies.rectangle(x, y, w, h, options);
         }
-        // MODIFICADO: Bloque completo para el Anillo
         else if (obj.customType === 'circle-cut') {
-            options.isStatic = true;          // Nace estático
-            options.plugin.forceStatic = true; // Se mantiene estático aunque se active la física global
+            options.isStatic = true;          
+            options.plugin.forceStatic = true; 
             body = WhiteboardPhysics.createArcBody(obj, x, y, angle, options);
         }
-        // Fin de modificación
         else if (obj.type === 'line') {
             body = WhiteboardPhysics.createLineBody(obj, options);
         }
         else if (obj.type === 'polygon' || obj.type === 'triangle') {
+             
+             let polyPoints = obj.points;
+             
+             // CORRECCIÓN TRIÁNGULO: Definición manual y cálculo de offset
+             if (obj.type === 'triangle') {
+                 const w = obj.width;
+                 const h = obj.height;
+                 
+                 // Puntos relativos al centro visual (0,0)
+                 polyPoints = [
+                     { x: 0, y: -h / 2 },
+                     { x: -w / 2, y: h / 2 },
+                     { x: w / 2, y: h / 2 }
+                 ];
+
+                 // CÁLCULO DEL OFFSET (Centro de Masa)
+                 // El centroide de un triángulo está a 1/3 de la altura desde la base, 
+                 // o a h/6 del centro geométrico hacia abajo.
+                 const scaleY = obj.scaleY || 1;
+                 const scaledHeight = h * scaleY;
+                 const centroidOffset = scaledHeight / 6;
+
+                 // Guardamos este offset para aplicarlo en sincronización
+                 options.plugin.fabricOffset = { x: 0, y: centroidOffset };
+             }
+
              if (obj.fill === 'transparent') {
-                 body = WhiteboardPhysics.createHollowPolygon(obj, x, y, angle, options);
+                 body = WhiteboardPhysics.createHollowPolygon(obj, x, y, angle, options, polyPoints);
              } else {
-                 body = WhiteboardPhysics.createSolidPolygon(obj, x, y, options);
+                 body = WhiteboardPhysics.createSolidPolygon(obj, x, y, options, polyPoints);
+             }
+
+             // Si es un triángulo, el cuerpo creado por Matter estará centrado en su centro de masa.
+             // Pero nosotros le pasamos 'x, y' (centro visual).
+             // Por lo tanto, el cuerpo físico nace desplazado hacia arriba visualmente (el centro de masa se pone en el centro visual).
+             // Necesitamos mover el cuerpo físico a su posición real (centro de masa real).
+             if (options.plugin.fabricOffset) {
+                 // Rotar offset para posicionamiento inicial
+                 const cos = Math.cos(angle);
+                 const sin = Math.sin(angle);
+                 const offY = options.plugin.fabricOffset.y;
+                 
+                 // Desplazamiento local (0, offY) rotado
+                 const dx = -offY * sin; 
+                 const dy = offY * cos;
+
+                 Matter.Body.setPosition(body, { 
+                     x: body.position.x + dx, 
+                     y: body.position.y + dy 
+                 });
              }
         }
         else if (obj.type === 'rect' && obj.fill === 'transparent') {
@@ -200,7 +266,6 @@ export const WhiteboardPhysics = {
         }
 
         if (body) {
-            // Asegura que si el objeto traía la propiedad estática manual, se respete
             if (obj.isStatic) {
                 body.plugin.forceStatic = true;
             }
@@ -226,10 +291,29 @@ export const WhiteboardPhysics = {
         }
     },
 
+    // --- Sincronización Visual -> Física (Al arrastrar) ---
     syncBodyPosition: (obj) => {
         const body = WhiteboardPhysics.bodiesMap.get(obj);
         if (body) {
-            Matter.Body.setPosition(body, { x: obj.left, y: obj.top });
+            let targetX = obj.left;
+            let targetY = obj.top;
+
+            // Si hay offset (Triángulos), ajustar la posición destino del cuerpo
+            if (body.plugin.fabricOffset) {
+                const angle = body.angle;
+                const cos = Math.cos(angle);
+                const sin = Math.sin(angle);
+                const offset = body.plugin.fabricOffset;
+
+                // Rotar el offset para saber dónde debe estar el centro de masa
+                const rotX = offset.x * cos - offset.y * sin;
+                const rotY = offset.x * sin + offset.y * cos;
+
+                targetX += rotX;
+                targetY += rotY;
+            }
+
+            Matter.Body.setPosition(body, { x: targetX, y: targetY });
             Matter.Body.setVelocity(body, { x: 0, y: 0 }); 
         }
     },
@@ -237,8 +321,13 @@ export const WhiteboardPhysics = {
     syncBodyRotation: (obj) => {
         const body = WhiteboardPhysics.bodiesMap.get(obj);
         if (body) {
-            Matter.Body.setAngle(body, fabric.util.degreesToRadians(obj.angle));
+            const rads = fabric.util.degreesToRadians(obj.angle);
+            Matter.Body.setAngle(body, rads);
             Matter.Body.setAngularVelocity(body, 0);
+
+            // Al rotar, la posición del centro de masa cambia respecto al centro visual
+            // Necesitamos re-sincronizar la posición también
+            WhiteboardPhysics.syncBodyPosition(obj);
         }
     },
 
@@ -258,11 +347,13 @@ export const WhiteboardPhysics = {
 
     // --- GENERADORES DE CUERPOS ---
 
-    createSolidPolygon: (obj, x, y, options) => {
-        const points = obj.points.map(p => ({
+    createSolidPolygon: (obj, x, y, options, pointsOverride) => {
+        const sourcePoints = pointsOverride || obj.points;
+        const points = sourcePoints.map(p => ({
             x: p.x * obj.scaleX,
             y: p.y * obj.scaleY
         }));
+        // Matter calcula el centroide automáticamente y centra el cuerpo allí
         return Matter.Bodies.fromVertices(x, y, [points], options);
     },
 
@@ -331,9 +422,9 @@ export const WhiteboardPhysics = {
         });
     },
 
-    createHollowPolygon: (obj, x, y, angle, options) => {
+    createHollowPolygon: (obj, x, y, angle, options, pointsOverride) => {
         const parts = [];
-        const points = obj.points; 
+        const points = pointsOverride || obj.points; 
         const len = points.length;
         const thickness = Math.max(obj.strokeWidth * obj.scaleX || 10, 10);
         
@@ -364,6 +455,10 @@ export const WhiteboardPhysics = {
             parts.push(wall);
         }
 
+        // Corrección para polígonos huecos: El centro de masa puede cambiar ligeramente 
+        // dependiendo de la distribución, pero usualmente para regulares coincide con el centro.
+        // Si hay problemas con huecos irregulares, se necesitaría lógica similar al triángulo.
+        
         return Matter.Body.create({
             parts: parts,
             ...options
