@@ -15,12 +15,31 @@
     transition: max-width 0.3s ease;
 }
 
+/* Layout Centrado (Agregado para Login/Register) */
+.component-layout-centered {
+    width: 100%;
+    min-height: calc(100vh - 60px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+}
+
 .component-header-card,
 .component-card {
     border: 1px solid rgba(0, 0, 0, 0.12);
     border-radius: 12px;
     padding: 24px;
     background-color: #ffffff;
+}
+
+/* Card Compacta (Agregado para Login/Register) */
+.component-card--compact {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .component-header-card {
@@ -82,6 +101,28 @@
     margin: 0;
 }
 
+/* Header Centrado (Agregado para Login/Register) */
+.component-header-centered {
+    text-align: center;
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.component-header-centered h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: #000000;
+    margin: 0;
+}
+
+.component-header-centered p {
+    font-size: 15px;
+    color: #666666;
+    margin: 0;
+}
+
 .component-card__text {
     display: flex;
     flex-direction: column;
@@ -103,6 +144,37 @@
     line-height: 1.4;
 }
 
+/* Footer Links (Agregado para Login/Register) */
+.component-text-footer {
+    text-align: center;
+    font-size: 14px;
+    color: #666666;
+    margin-top: 12px;
+}
+
+.component-text-footer a {
+    color: #000000;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.component-text-footer a:hover {
+    text-decoration: underline;
+}
+
+.component-link-simple {
+    display: block;
+    text-align: right;
+    font-size: 14px;
+    color: #666666;
+    text-decoration: none;
+}
+
+.component-link-simple:hover {
+    color: #000000;
+    text-decoration: underline;
+}
+
 /* =========================================
    3. CONTROLES Y FORMULARIOS
    ========================================= */
@@ -122,7 +194,61 @@
     justify-content: flex-start !important;
 }
 
+/* Botones (Agregado para Login/Register) */
+.component-button {
+    height: 36px;
+    padding: 0 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    color: #000000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
+    transition: background-color 0.2s;
+}
+
+.component-button:hover {
+    background-color: #f5f5fa;
+}
+
+.component-button.primary {
+    background-color: #000000;
+    color: #ffffff;
+    border: none;
+}
+
+.component-button.primary:hover {
+    opacity: 0.9;
+}
+
+.component-button--large {
+    height: 48px;
+    padding: 0 24px;
+    font-size: 16px;
+    width: 100%;
+}
+
 /* Inputs y Formularios */
+.component-stage-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.component-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
 .component-text-input {
     width: 100%;
     height: 36px;
@@ -148,6 +274,68 @@
 .component-input-wrapper {
     width: 100%;
     min-width: 200px;
+}
+
+/* Inputs Flotantes (Agregado para Login/Register) */
+.component-input-wrapper--floating {
+    position: relative;
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.component-input-wrapper--floating .component-text-input {
+    height: 56px;
+    padding: 24px 16px 8px 16px;
+    background-color: #ffffff;
+    border: 1px solid #00000020;
+    border-radius: 8px;
+    font-size: 16px;
+    width: 100%;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.component-input-wrapper--floating .component-text-input:focus {
+    background-color: #ffffff;
+    border-color: #000000;
+}
+
+.component-label-floating {
+    position: absolute;
+    top: 50%;
+    left: 16px;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: #666666;
+    pointer-events: none;
+    transition: all 0.2s ease-out;
+    z-index: 1;
+}
+
+.component-input-wrapper--floating .component-text-input:focus + .component-label-floating,
+.component-input-wrapper--floating .component-text-input:not(:placeholder-shown) + .component-label-floating {
+    top: 14px;
+    font-size: 12px;
+    color: #000000;
+    font-weight: 600;
+    transform: translateY(-50%);
+}
+
+.component-input-action {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    border-radius: 50%;
+    cursor: pointer;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Toggle Switch */
