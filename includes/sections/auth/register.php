@@ -1,5 +1,5 @@
 <div class="component-layout-centered">
-    <div class="component-card component-card--compact">
+    <div class="component-card--compact">
         
         <div class="component-header-centered">
             <h1><?php echo __('auth.register.title') ?? 'Crear cuenta'; ?></h1>

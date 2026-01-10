@@ -36,7 +36,7 @@
 /* Card Compacta (Agregado para Login/Register) */
 .component-card--compact {
     width: 100%;
-    max-width: 400px;
+    max-width: 365px;
     display: flex;
     flex-direction: column;
     gap: 2px;
