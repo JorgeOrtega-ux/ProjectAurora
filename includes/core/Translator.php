@@ -4,7 +4,7 @@
 class Translator {
     private static $instance = null;
     private $translations = [];
-    private $currentLang = 'es-latam'; // Fallback por defecto
+    private $currentLang = 'es-latam'; 
 
     private function __construct() {}
 
@@ -16,7 +16,8 @@ class Translator {
     }
 
     /**
-     * Carga el archivo de idioma
+     * Carga el archivo de idioma.
+     * Si el archivo no existe, NO carga ningún fallback.
      */
     public function load($langCode) {
         $this->currentLang = $langCode;
@@ -28,19 +29,15 @@ class Translator {
             $json = file_get_contents($filePath);
             $this->translations = json_decode($json, true) ?? [];
         } else {
-            // Si no existe, intentar cargar el fallback (es-latam)
-            $fallbackPath = __DIR__ . '/../lang/es-latam.json';
-            if (file_exists($fallbackPath)) {
-                $json = file_get_contents($fallbackPath);
-                $this->translations = json_decode($json, true) ?? [];
-            } else {
-                $this->translations = [];
-            }
+            // Si no existe el archivo, dejamos las traducciones vacías.
+            // Esto hará que el sistema muestre las claves (keys) directamente.
+            $this->translations = [];
         }
     }
 
     /**
-     * Obtiene una traducción por su clave
+     * Obtiene una traducción por su clave.
+     * Si no existe la traducción, devuelve la clave misma.
      */
     public function get($key) {
         return $this->translations[$key] ?? $key;
