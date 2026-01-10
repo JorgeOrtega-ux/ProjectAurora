@@ -5,33 +5,28 @@
 define('PROJECT_ROOT', dirname(__DIR__));
 define('CONFIG_PATH', PROJECT_ROOT . '/config');
 
-// IMPORTANTE: Ajustamos la ruta base porque el proyecto está en una subcarpeta
 $basePath = '/ProjectAurora/'; 
 
-// 2. DETECTAR SECCIÓN ACTUAL (Ruteo Simple)
-// Obtenemos la URL actual
+// 2. DETECTAR SECCIÓN ACTUAL
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-
-// Eliminamos la parte de la subcarpeta (/ProjectAurora/) para saber qué sección pide
 $path = str_replace($basePath, '', $requestUri);
-
-// Limpiamos barras extra
 $currentSection = ($path === '' || $path === '/') ? 'main' : $path;
 $currentSection = trim($currentSection, '/');
-
-// Si está vacío, es main
 if ($currentSection === '') $currentSection = 'main';
 
-// 3. CARGAR EL CONTENIDO (SSR - Server Side Rendering)
+// 3. LÓGICA DE CONTEXTO (APP vs HELP)
+// Definimos qué secciones pertenecen al módulo de ayuda
+$helpSections = ['help', 'privacy', 'terms', 'cookies', 'feedback'];
+$isHelpContext = in_array($currentSection, $helpSections);
+
+// 4. CARGAR EL CONTENIDO (SSR)
 $routes = require CONFIG_PATH . '/routes.php';
 $fileToLoad = $routes[$currentSection] ?? $routes['404'];
 
-// Buffer para capturar el HTML del contenido
 ob_start();
 if (file_exists($fileToLoad)) {
     include $fileToLoad;
 } else {
-    // Fallback simple por si falla el include
     echo "<div style='padding:20px'><h1>404</h1><p>Sección no encontrada (SSR).</p></div>";
 }
 $contentHtml = ob_get_clean();
@@ -49,6 +44,8 @@ $contentHtml = ob_get_clean();
     
     <script>
         window.BASE_PATH = '<?php echo $basePath; ?>';
+        // Pasamos el array de secciones de ayuda a JS
+        window.HELP_SECTIONS = <?php echo json_encode($helpSections); ?>;
     </script>
 </head>
 
@@ -92,7 +89,7 @@ $contentHtml = ob_get_clean();
                                                 <span>Configuración</span>
                                             </div>
                                         </div>
-                                        <div class="menu-link">
+                                        <div class="menu-link" data-nav="help">
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">help</span></div>
                                             <div class="menu-link-text">
                                                 <span>Ayuda y comentarios</span>
@@ -107,22 +104,57 @@ $contentHtml = ob_get_clean();
 
                 <div class="general-content-bottom">
                     
-                    <div class="module-content module-surface disabled"> <div class="menu-content">
+                    <div class="module-content module-surface disabled"> 
+                        <div class="menu-content">
                             <div class="menu-content-top">
                                 <div class="menu-list">
                                     
-                                    <div class="menu-link <?php echo $currentSection === 'main' ? 'active' : ''; ?>" data-nav="main">
-                                        <div class="menu-link-icon"><span class="material-symbols-rounded">home</span></div>
-                                        <div class="menu-link-text">
-                                            <span>Página principal</span>
+                                    <div id="nav-group-app" style="<?php echo $isHelpContext ? 'display:none;' : ''; ?>">
+                                        
+                                        <div class="menu-link <?php echo $currentSection === 'main' ? 'active' : ''; ?>" data-nav="main">
+                                            <div class="menu-link-icon"><span class="material-symbols-rounded">home</span></div>
+                                            <div class="menu-link-text"><span>Página principal</span></div>
                                         </div>
+
+                                        <div class="menu-link <?php echo $currentSection === 'trends' ? 'active' : ''; ?>" data-nav="trends">
+                                            <div class="menu-link-icon"><span class="material-symbols-rounded">folder</span></div>
+                                            <div class="menu-link-text"><span>Explorar tendencias</span></div>
+                                        </div>
+                                    
                                     </div>
 
-                                    <div class="menu-link <?php echo $currentSection === 'trends' ? 'active' : ''; ?>" data-nav="trends">
-                                        <div class="menu-link-icon"><span class="material-symbols-rounded">folder</span></div>
-                                        <div class="menu-link-text">
-                                            <span>Explorar tendencias</span>
+                                    <div id="nav-group-help" style="<?php echo $isHelpContext ? '' : 'display:none;'; ?>">
+                                        
+                                        <div class="menu-link" data-nav="main" style="margin-bottom: 8px; border-bottom: 1px solid #eee;">
+                                            <div class="menu-link-icon"><span class="material-symbols-rounded">arrow_back</span></div>
+                                            <div class="menu-link-text"><span>Volver a la App</span></div>
                                         </div>
+
+                                        <div class="menu-link <?php echo $currentSection === 'help' ? 'active' : ''; ?>" data-nav="help">
+                                            <div class="menu-link-icon"><span class="material-symbols-rounded">help_center</span></div>
+                                            <div class="menu-link-text"><span>Centro de Ayuda</span></div>
+                                        </div>
+
+                                        <div class="menu-link <?php echo $currentSection === 'privacy' ? 'active' : ''; ?>" data-nav="privacy">
+                                            <div class="menu-link-icon"><span class="material-symbols-rounded">lock</span></div>
+                                            <div class="menu-link-text"><span>Política de Privacidad</span></div>
+                                        </div>
+
+                                        <div class="menu-link <?php echo $currentSection === 'terms' ? 'active' : ''; ?>" data-nav="terms">
+                                            <div class="menu-link-icon"><span class="material-symbols-rounded">gavel</span></div>
+                                            <div class="menu-link-text"><span>Términos y Condiciones</span></div>
+                                        </div>
+
+                                        <div class="menu-link <?php echo $currentSection === 'cookies' ? 'active' : ''; ?>" data-nav="cookies">
+                                            <div class="menu-link-icon"><span class="material-symbols-rounded">cookie</span></div>
+                                            <div class="menu-link-text"><span>Política de Cookies</span></div>
+                                        </div>
+
+                                        <div class="menu-link <?php echo $currentSection === 'feedback' ? 'active' : ''; ?>" data-nav="feedback">
+                                            <div class="menu-link-icon"><span class="material-symbols-rounded">chat</span></div>
+                                            <div class="menu-link-text"><span>Enviar comentarios</span></div>
+                                        </div>
+
                                     </div>
 
                                 </div>
