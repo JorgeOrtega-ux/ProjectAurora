@@ -4,92 +4,166 @@
    ========================================= */
 
 // CONFIGURATION
-// Determines if multiple modules can be open simultaneously
 var allowMultipleModules = false; 
-// Determines if modules can be closed using the ESC key
 var allowCloseOnEsc = true;
 
-// ACTION MAP
 const moduleActionMap = {
     'toggleModuleSurface': '.module-surface',
     'toggleModuleOptions': '.module-options'
 };
 
 /**
- * Closes all modules except the one explicitly passed (optional).
- * @param {HTMLElement} exceptionElement - The module to keep open (optional)
+ * Cierra todos los módulos flotantes (sidebar, menú opciones y popovers internos).
+ * @param {HTMLElement} exceptionElement - Elemento que se mantendrá abierto.
  */
 function closeAllModules(exceptionElement) {
-    var allModules = document.querySelectorAll('.module-content');
-    
-    allModules.forEach(function(module) {
-        if (exceptionElement && module === exceptionElement) return;
-
+    // 1. Cerrar Módulos Globales (Sidebar, Header Menu)
+    const globalModules = document.querySelectorAll('.module-content');
+    globalModules.forEach(module => {
+        if (exceptionElement && (module === exceptionElement || module.contains(exceptionElement))) return;
         module.classList.remove('active');
         module.classList.add('disabled');
+    });
+
+    // 2. Cerrar Popovers Internos (Dropdowns de Preferencias)
+    const popovers = document.querySelectorAll('.popover-module');
+    popovers.forEach(popover => {
+        // Encontrar el wrapper padre para verificar la excepción
+        const wrapper = popover.closest('.trigger-select-wrapper');
+        if (exceptionElement && wrapper && wrapper.contains(exceptionElement)) return;
+        
+        popover.classList.remove('active');
+        // Remover clase activa del trigger visual también
+        if(wrapper) {
+            const selector = wrapper.querySelector('.trigger-selector');
+            if(selector) selector.classList.remove('active');
+        }
     });
 }
 
 /**
- * Toggles the state of a specific module.
- * @param {string} moduleSelector - The CSS selector of the module to toggle
+ * Alterna la visibilidad de un módulo global.
  */
-function toggleModule(moduleSelector) {
-    var module = document.querySelector(moduleSelector);
+function toggleGlobalModule(moduleSelector) {
+    const module = document.querySelector(moduleSelector);
     if (!module) return;
 
-    var isActive = module.classList.contains('active');
-
-    // If multiple modules are not allowed, close others before opening this one.
+    const isActive = module.classList.contains('active');
+    
     if (!allowMultipleModules && !isActive) {
-        closeAllModules(module);
+        closeAllModules(module); // Cerrar otros antes de abrir
     }
 
     if (isActive) {
-        // Deactivate
         module.classList.remove('active');
         module.classList.add('disabled');
     } else {
-        // Activate
         module.classList.remove('disabled');
         module.classList.add('active');
     }
 }
 
 /**
- * Initializes the main controller events.
+ * Maneja la lógica de los Dropdowns (Selectores dentro de Preferencias)
+ */
+function handleDropdownToggle(triggerWrapper) {
+    const popover = triggerWrapper.querySelector('.popover-module');
+    const selector = triggerWrapper.querySelector('.trigger-selector');
+    
+    if (!popover) return;
+
+    const isActive = popover.classList.contains('active');
+
+    // Cerrar otros menús abiertos para evitar solapamiento
+    closeAllModules(popover);
+
+    if (isActive) {
+        popover.classList.remove('active');
+        if(selector) selector.classList.remove('active');
+    } else {
+        popover.classList.add('active');
+        if(selector) selector.classList.add('active');
+    }
+}
+
+/**
+ * Actualiza la UI cuando se selecciona una opción
+ */
+function handleOptionSelect(optionLink) {
+    const wrapper = optionLink.closest('.trigger-select-wrapper');
+    if (!wrapper) return;
+
+    const label = optionLink.getAttribute('data-label');
+    const value = optionLink.getAttribute('data-value'); // Para uso futuro (backend)
+
+    // 1. Actualizar texto del selector principal
+    const textSpan = wrapper.querySelector('.trigger-select-text');
+    if (textSpan && label) {
+        textSpan.textContent = label;
+    }
+
+    // 2. Actualizar estado visual (check icons, active class)
+    const allLinks = wrapper.querySelectorAll('.menu-link');
+    allLinks.forEach(link => link.classList.remove('active'));
+    optionLink.classList.add('active');
+
+    // 3. Cerrar el menú
+    closeAllModules();
+
+    console.log(`Opción seleccionada: ${label} (${value})`);
+}
+
+/**
+ * Initializes the main controller events using Delegation.
  */
 function initMainController() {
-    console.log('Main Controller: Initialized');
+    console.log('Main Controller: Initialized with Event Delegation');
 
-    // 1. HEADER BUTTON HANDLERS
-    var triggerButtons = document.querySelectorAll('[data-action]');
-    
-    triggerButtons.forEach(function(btn) {
-        btn.addEventListener('click', function(event) {
-            // Stop propagation prevents the document click from firing immediately
-            event.stopPropagation();
-
-            var action = btn.getAttribute('data-action');
-            var targetSelector = moduleActionMap[action];
-            
-            if (targetSelector) {
-                toggleModule(targetSelector);
-            }
-        });
-    });
-
-    // 2. OUTSIDE CLICK HANDLER (CLOSE MODULES)
+    // DELEGACIÓN DE EVENTOS GLOBAL (Maneja clics presentes y futuros)
     document.addEventListener('click', function(event) {
-        // Check if the click originated from within a module
-        var isClickInsideModule = event.target.closest('.module-content');
+        const target = event.target;
 
-        if (!isClickInsideModule) {
+        // A. CLICK EN BOTONES DEL HEADER (Acciones Globales)
+        const btn = target.closest('[data-action]');
+        if (btn) {
+            const action = btn.getAttribute('data-action');
+            
+            // Acciones de Módulos Globales
+            if (moduleActionMap[action]) {
+                event.stopPropagation();
+                toggleGlobalModule(moduleActionMap[action]);
+                return;
+            }
+            
+            // Acción de Seleccionar Opción (Dentro de Popovers)
+            if (action === 'select-option') {
+                event.preventDefault(); // Evitar navegación si es un <a>
+                handleOptionSelect(btn);
+                return;
+            }
+        }
+
+        // B. CLICK EN TRIGGERS DE DROPDOWN (Preferencias)
+        const triggerWrapper = target.closest('[data-trigger="dropdown"]');
+        if (triggerWrapper) {
+            // Verificamos si el clic fue en el input de búsqueda (no cerrar si es así)
+            if (target.tagName === 'INPUT') return;
+
+            event.stopPropagation();
+            handleDropdownToggle(triggerWrapper);
+            return;
+        }
+
+        // C. CLICK FUERA (Cerrar Todo)
+        // Si el clic no fue dentro de un módulo de contenido ni en un trigger
+        const isInsideModule = target.closest('.module-content') || target.closest('.popover-module');
+        
+        if (!isInsideModule) {
             closeAllModules();
         }
     });
 
-    // 3. ESC KEY HANDLER (CLOSE MODULES)
+    // ESC KEY HANDLER
     document.addEventListener('keydown', function(event) {
         if (allowCloseOnEsc && event.key === 'Escape') {
             closeAllModules();

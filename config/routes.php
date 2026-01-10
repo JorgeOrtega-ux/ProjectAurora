@@ -6,8 +6,8 @@ return [
     'main'    => __DIR__ . '/../includes/sections/app/main.php',
     'trends'  => __DIR__ . '/../includes/sections/app/trends.php',
     
-    // --- Contexto: SETTINGS (Nuevas Rutas) ---
-    'settings/accessibility' => __DIR__ . '/../includes/sections/settings/accessibility.php',
+    // --- Contexto: SETTINGS ---
+    // Accesibilidad eliminada, solo queda preferencias
     'settings/preferences'   => __DIR__ . '/../includes/sections/settings/preferences.php',
 
     // --- Contexto: HELP (Ayuda y Legales) ---

@@ -5,8 +5,6 @@
 define('PROJECT_ROOT', dirname(__DIR__));
 define('CONFIG_PATH', PROJECT_ROOT . '/config');
 
-// Ajusta esto si tu proyecto está en otra carpeta. 
-// Ejemplo: si es localhost/ProjectAurora, usa '/ProjectAurora/'
 $basePath = '/ProjectAurora/'; 
 
 // 2. DETECTAR SECCIÓN ACTUAL
@@ -18,7 +16,8 @@ if ($currentSection === '') $currentSection = 'main';
 
 // 3. LÓGICA DE CONTEXTO
 $helpSections = ['help', 'privacy', 'terms', 'cookies', 'feedback'];
-$settingsSections = ['settings/accessibility', 'settings/preferences'];
+// Eliminada accesibilidad del array de settings
+$settingsSections = ['settings/preferences'];
 
 $isHelpContext = in_array($currentSection, $helpSections);
 $isSettingsContext = in_array($currentSection, $settingsSections);
@@ -52,7 +51,6 @@ $contentHtml = ob_get_clean();
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/components.css">
     
     <script>
-        // Definimos la ruta base para que JS también la use
         window.BASE_PATH = '<?php echo $basePath; ?>';
         window.HELP_SECTIONS = <?php echo json_encode($helpSections); ?>;
         window.SETTINGS_SECTIONS = <?php echo json_encode($settingsSections); ?>;
@@ -97,11 +95,7 @@ $contentHtml = ob_get_clean();
                                     <div class="menu-list">
                                         <div class="menu-link" data-nav="settings/preferences"> 
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">settings</span></div>
-                                            <div class="menu-link-text"><span>Preferencias</span></div>
-                                        </div>
-                                        <div class="menu-link" data-nav="settings/accessibility"> 
-                                            <div class="menu-link-icon"><span class="material-symbols-rounded">accessibility_new</span></div>
-                                            <div class="menu-link-text"><span>Accesibilidad</span></div>
+                                            <div class="menu-link-text"><span>Configuración</span></div>
                                         </div>
                                         <div class="menu-link" data-nav="help">
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">help</span></div>
@@ -140,11 +134,7 @@ $contentHtml = ob_get_clean();
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">tune</span></div>
                                             <div class="menu-link-text"><span>Preferencias</span></div>
                                         </div>
-                                        <div class="menu-link <?php echo $currentSection === 'settings/accessibility' ? 'active' : ''; ?>" data-nav="settings/accessibility">
-                                            <div class="menu-link-icon"><span class="material-symbols-rounded">accessibility_new</span></div>
-                                            <div class="menu-link-text"><span>Accesibilidad</span></div>
                                         </div>
-                                    </div>
 
                                     <div id="nav-group-help" style="<?php echo $isHelpContext ? '' : 'display:none;'; ?>">
                                         <div class="menu-link" data-nav="main" style="margin-bottom: 8px; border-bottom: 1px solid #eee;">
@@ -159,7 +149,7 @@ $contentHtml = ob_get_clean();
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">lock</span></div>
                                             <div class="menu-link-text"><span>Privacidad</span></div>
                                         </div>
-                                        </div>
+                                    </div>
 
                                 </div>
                             </div>
