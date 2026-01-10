@@ -1,0 +1,10 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # 1. Redirigir la raíz (domain.com/) a la carpeta public/
+    RewriteRule ^$ public/ [L]
+
+    # 2. Redirigir cualquier otra petición (domain.com/algo) a public/algo
+    # La condición (?!public/) evita un bucle infinito si ya se está accediendo a public
+    RewriteRule ^((?!public/).*)$ public/$1 [L,NC]
+</IfModule>
