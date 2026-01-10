@@ -314,7 +314,7 @@
 
 .component-input-wrapper--floating .component-text-input:focus + .component-label-floating,
 .component-input-wrapper--floating .component-text-input:not(:placeholder-shown) + .component-label-floating {
-    top: 14px;
+    top: 18px;
     font-size: 12px;
     color: #000000;
     font-weight: 600;
