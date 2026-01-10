@@ -35,23 +35,23 @@
                                 </div>
                                 <div class="menu-list menu-list--scrollable overflow-y">
                                     <div class="menu-link active" data-action="select-option" data-value="es-latam" data-label="Español (Latinoamérica)">
-                                        <div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div>
+                                        <div class="menu-link-icon"><span class="material-symbols-rounded trigger-select-icon">language</span></div>
                                         <div class="menu-link-text">Español (Latinoamérica)</div>
                                     </div>
                                     <div class="menu-link" data-action="select-option" data-value="es-mx" data-label="Español (México)">
-                                        <div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div>
+                                        <div class="menu-link-icon"><span class="material-symbols-rounded trigger-select-icon">language</span></div>
                                         <div class="menu-link-text">Español (México)</div>
                                     </div>
                                     <div class="menu-link" data-action="select-option" data-value="en-us" data-label="English (United States)">
-                                        <div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div>
+                                        <div class="menu-link-icon"><span class="material-symbols-rounded trigger-select-icon">language</span></div>
                                         <div class="menu-link-text">English (United States)</div>
                                     </div>
                                     <div class="menu-link" data-action="select-option" data-value="en-uk" data-label="English (United Kingdom)">
-                                        <div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div>
+                                        <div class="menu-link-icon"><span class="material-symbols-rounded trigger-select-icon">language</span></div>
                                         <div class="menu-link-text">English (United Kingdom)</div>
                                     </div>
                                     <div class="menu-link" data-action="select-option" data-value="fr-fr" data-label="Français (France)">
-                                        <div class="menu-link-icon"><span class="material-symbols-rounded">check</span></div>
+                                        <div class="menu-link-icon"><span class="material-symbols-rounded trigger-select-icon">language</span></div>
                                         <div class="menu-link-text">Français (France)</div>
                                     </div>
                                 </div>
@@ -78,7 +78,7 @@
                             <span class="material-symbols-rounded">expand_more</span>
                         </div>
                         <div class="popover-module">
-                            <div class="menu-list">
+                            <div class="menu-list overflow-y">
                                 <div class="menu-link active" data-action="select-option" data-value="sync" data-label="Sincronizar con el sistema">
                                     <div class="menu-link-icon"><span class="material-symbols-rounded">settings_brightness</span></div>
                                     <div class="menu-link-text">Sincronizar con el sistema</div>

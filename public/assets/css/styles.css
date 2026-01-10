@@ -184,16 +184,6 @@ html {
     color: #000;
 }
 
-
-
-
-
-
-
-
-
-
-
 /* =========================================
    4. MENÚS LATERALES (MODULES GLOBALES)
    ========================================= */
@@ -253,11 +243,6 @@ html {
     box-shadow: 0 4px 12px #00000020;
     border: 1px solid transparent;
 }
-
-
-
-
-
 
 /* Enlaces de menú contextuales */
 .menu-list {
@@ -322,6 +307,7 @@ html {
 .disabled {
     display: none;
 }
+
 /* =========================================
    5. LOADER / SPINNER
    ========================================= */
@@ -346,4 +332,17 @@ html {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* =========================================
+   6. UTILIDADES
+   ========================================= */
+.overflow-y {
+    overflow-x: hidden;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+    scrollbar-color: var(--text-tertiary) transparent;
+    scrollbar-width: thin;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
 }

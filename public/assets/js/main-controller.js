@@ -114,12 +114,58 @@ function handleOptionSelect(optionLink) {
 }
 
 /**
+ * Inicializa los efectos de sombra al hacer scroll.
+ * Usa 'capture: true' en el listener para detectar eventos de scroll
+ * en elementos que pueden no existir al inicio (cargados dinámicamente).
+ */
+function initScrollEffects() {
+    document.addEventListener('scroll', function(event) {
+        const target = event.target;
+        
+        // Verificación básica
+        if (!target.classList) return;
+
+        // CASO 1: Scroll Principal (.general-content-scrolleable) -> Header Principal (.general-content-top)
+        if (target.classList.contains('general-content-scrolleable')) {
+            const header = document.querySelector('.general-content-top');
+            if (header) {
+                if (target.scrollTop > 0) {
+                    header.classList.add('shadow');
+                } else {
+                    header.classList.remove('shadow');
+                }
+            }
+        }
+
+        // CASO 2: Scroll en Menús/Popovers (.menu-list--scrollable) -> Header de Búsqueda (.menu-search-header)
+        if (target.classList.contains('menu-list--scrollable')) {
+            // Buscamos el contenedor padre para encontrar el header asociado
+            const menuContent = target.closest('.menu-content');
+            if (menuContent) {
+                const searchHeader = menuContent.querySelector('.menu-search-header');
+                if (searchHeader) {
+                    if (target.scrollTop > 0) {
+                        searchHeader.classList.add('shadow');
+                    } else {
+                        searchHeader.classList.remove('shadow');
+                    }
+                }
+            }
+        }
+
+    }, true); // 'true' habilita la fase de captura (necesario para eventos de scroll que no burbujean)
+}
+
+/**
  * Initializes the main controller events using Delegation.
  */
 function initMainController() {
     console.log('Main Controller: Initialized with Event Delegation');
 
-    // DELEGACIÓN DE EVENTOS GLOBAL (Maneja clics presentes y futuros)
+    // 1. Iniciar lógica de sombras en scroll
+    initScrollEffects();
+
+    // 2. DELEGACIÓN DE EVENTOS GLOBAL (Maneja clics presentes y futuros)
     document.addEventListener('click', function(event) {
         const target = event.target;
 

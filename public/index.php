@@ -148,7 +148,7 @@ $contentHtml = ob_get_clean();
 
                     </div>
 
-                    <div class="general-content-scrolleable" id="app-content">
+                    <div class="general-content-scrolleable overflow-y" id="app-content">
                         <?php echo $contentHtml; ?>
                     </div>
 
