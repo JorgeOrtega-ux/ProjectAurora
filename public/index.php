@@ -4,17 +4,25 @@
 // 1. CONFIGURACIÓN BÁSICA
 define('PROJECT_ROOT', dirname(__DIR__));
 define('CONFIG_PATH', PROJECT_ROOT . '/config');
-$basePath = '/'; // Ajusta esto si estás en una subcarpeta (ej: '/mi-web/')
+
+// IMPORTANTE: Ajustamos la ruta base porque el proyecto está en una subcarpeta
+$basePath = '/ProjectAurora/'; 
 
 // 2. DETECTAR SECCIÓN ACTUAL (Ruteo Simple)
-// Si usas .htaccess, la URL vendrá limpia. Si no, usamos $_GET.
+// Obtenemos la URL actual
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+// Eliminamos la parte de la subcarpeta (/ProjectAurora/) para saber qué sección pide
 $path = str_replace($basePath, '', $requestUri);
+
+// Limpiamos barras extra
 $currentSection = ($path === '' || $path === '/') ? 'main' : $path;
 $currentSection = trim($currentSection, '/');
+
+// Si está vacío, es main
 if ($currentSection === '') $currentSection = 'main';
 
-// 3. CARGAR EL CONTENIDO (SSR)
+// 3. CARGAR EL CONTENIDO (SSR - Server Side Rendering)
 $routes = require CONFIG_PATH . '/routes.php';
 $fileToLoad = $routes[$currentSection] ?? $routes['404'];
 
@@ -23,7 +31,8 @@ ob_start();
 if (file_exists($fileToLoad)) {
     include $fileToLoad;
 } else {
-    echo "<div style='padding:20px'><h1>404</h1><p>Sección no encontrada.</p></div>";
+    // Fallback simple por si falla el include
+    echo "<div style='padding:20px'><h1>404</h1><p>Sección no encontrada (SSR).</p></div>";
 }
 $contentHtml = ob_get_clean();
 ?>

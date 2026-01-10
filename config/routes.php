@@ -1,9 +1,12 @@
 <?php
+// config/routes.php
 
 return [
-    'main'    => __DIR__ . '/../includes/pages/home.php',
-    'trends'  => __DIR__ . '/../includes/pages/trends.php',
+    // Rutas de la aplicación (includes > sections > app)
+    'main'    => __DIR__ . '/../includes/sections/app/main.php',
+    'trends'  => __DIR__ . '/../includes/sections/app/trends.php',
     
-    '404'     => __DIR__ . '/../includes/pages/404.php',
+    // Rutas del sistema (includes > sections > system)
+    '404'     => __DIR__ . '/../includes/sections/system/404.php',
 ];
 ?>
