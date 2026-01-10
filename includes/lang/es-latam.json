@@ -1,53 +1,62 @@
 {
-    "app.title": "Project Aurora",
-    "menu.back_home": "Volver al inicio",
-    "menu.home": "Página principal",
-    "menu.trends": "Explorar tendencias",
-    "menu.settings": "Configuración",
-    "menu.help": "Ayuda",
-    "menu.preferences": "Preferencias",
-    
-    "menu.help_center": "Centro de Ayuda",
-    "menu.privacy": "Privacidad",
-    "menu.terms": "Términos y Condiciones",
-    "menu.cookies": "Cookies",
-    "menu.feedback": "Comentarios",
-    
-    "main.header": "Página Principal",
-    "main.welcome": "Bienvenido al Dashboard de Project Aurora.",
-    "main.recent_activity": "Actividad Reciente",
-    "main.system_ok": "El sistema está funcionando correctamente.",
-    
-    "settings.page_title": "Preferencias",
-    "settings.page_desc": "Personaliza tu experiencia visual y de navegación.",
-    "settings.lang_title": "Idioma",
-    "settings.lang_desc": "Selecciona el idioma de la interfaz.",
-    "settings.search_placeholder": "Buscar idioma...",
-    "settings.theme_title": "Tema",
-    "settings.theme_desc": "Define la apariencia de la aplicación.",
-    "settings.nav_title": "Navegación",
-    "settings.nav_desc": "Abrir enlaces externos en una nueva pestaña.",
-    
-    "help.main_title": "Centro de Ayuda",
-    "help.main_desc": "Bienvenido al soporte de Project Aurora. Selecciona una opción del menú.",
-    "help.privacy_title": "Política de Privacidad",
-    "help.privacy_desc": "Información detallada sobre cómo recopilamos y protegemos tus datos.",
-    "help.terms_title": "Términos y Condiciones",
-    "help.terms_desc": "Acuerdos legales y normas de uso del servicio.",
-    "help.cookies_title": "Política de Cookies",
-    "help.cookies_desc": "Detalles sobre el uso de cookies y tecnologías de rastreo.",
-    "help.feedback_title": "Enviar Comentarios",
-    "help.feedback_desc": "Reporta un error, sugiere una mejora o contáctanos.",
-
-    "theme.sync": "Sincronizar con el sistema",
-    "theme.light": "Tema claro",
-    "theme.dark": "Tema oscuro",
-    
-    "search.placeholder": "Buscar...",
-
-    "lang.es-latam": "Español (Latinoamérica)",
-    "lang.es-mx": "Español (México)",
-    "lang.en-us": "English (United States)",
-    "lang.en-uk": "English (United Kingdom)",
-    "lang.fr-fr": "Français (France)"
+    "app": {
+        "title": "Project Aurora"
+    },
+    "menu": {
+        "back_home": "Volver al inicio",
+        "home": "Página principal",
+        "trends": "Explorar tendencias",
+        "settings": "Configuración",
+        "help": "Ayuda",
+        "preferences": "Preferencias",
+        "help_center": "Centro de Ayuda",
+        "privacy": "Privacidad",
+        "terms": "Términos y Condiciones",
+        "cookies": "Cookies",
+        "feedback": "Comentarios"
+    },
+    "main": {
+        "header": "Página Principal",
+        "welcome": "Bienvenido al Dashboard de Project Aurora.",
+        "recent_activity": "Actividad Reciente",
+        "system_ok": "El sistema está funcionando correctamente."
+    },
+    "settings": {
+        "page_title": "Preferencias",
+        "page_desc": "Personaliza tu experiencia visual y de navegación.",
+        "lang_title": "Idioma",
+        "lang_desc": "Selecciona el idioma de la interfaz.",
+        "search_placeholder": "Buscar idioma...",
+        "theme_title": "Tema",
+        "theme_desc": "Define la apariencia de la aplicación.",
+        "nav_title": "Navegación",
+        "nav_desc": "Abrir enlaces externos en una nueva pestaña."
+    },
+    "help": {
+        "main_title": "Centro de Ayuda",
+        "main_desc": "Bienvenido al soporte de Project Aurora. Selecciona una opción del menú.",
+        "privacy_title": "Política de Privacidad",
+        "privacy_desc": "Información detallada sobre cómo recopilamos y protegemos tus datos.",
+        "terms_title": "Términos y Condiciones",
+        "terms_desc": "Acuerdos legales y normas de uso del servicio.",
+        "cookies_title": "Política de Cookies",
+        "cookies_desc": "Detalles sobre el uso de cookies y tecnologías de rastreo.",
+        "feedback_title": "Enviar Comentarios",
+        "feedback_desc": "Reporta un error, sugiere una mejora o contáctanos."
+    },
+    "theme": {
+        "sync": "Sincronizar con el sistema",
+        "light": "Tema claro",
+        "dark": "Tema oscuro"
+    },
+    "search": {
+        "placeholder": "Buscar..."
+    },
+    "lang": {
+        "es-latam": "Español (Latinoamérica)",
+        "es-mx": "Español (México)",
+        "en-us": "English (United States)",
+        "en-uk": "English (United Kingdom)",
+        "fr-fr": "Français (France)"
+    }
 }

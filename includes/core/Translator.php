@@ -17,7 +17,7 @@ class Translator {
 
     /**
      * Carga el archivo de idioma.
-     * Si el archivo no existe, NO carga ningún fallback.
+     * json_decode convierte automáticamente los objetos anidados en arrays multidimensionales.
      */
     public function load($langCode) {
         $this->currentLang = $langCode;
@@ -30,17 +30,35 @@ class Translator {
             $this->translations = json_decode($json, true) ?? [];
         } else {
             // Si no existe el archivo, dejamos las traducciones vacías.
-            // Esto hará que el sistema muestre las claves (keys) directamente.
             $this->translations = [];
         }
     }
 
     /**
-     * Obtiene una traducción por su clave.
-     * Si no existe la traducción, devuelve la clave misma.
+     * Obtiene una traducción por su clave soportando "dot notation".
+     * Ejemplo: 'menu.home' busca en $this->translations['menu']['home']
+     * Si no existe la traducción o la ruta es inválida, devuelve la clave original.
      */
     public function get($key) {
-        return $this->translations[$key] ?? $key;
+        $keys = explode('.', $key);
+        $value = $this->translations;
+
+        foreach ($keys as $segment) {
+            // Verificamos si el nivel actual es un array y si existe la clave
+            if (is_array($value) && array_key_exists($segment, $value)) {
+                $value = $value[$segment];
+            } else {
+                return $key; // Retorna la clave original si no encuentra la ruta
+            }
+        }
+
+        // Seguridad: Si el resultado final sigue siendo un array (ej. pediste solo 'menu'),
+        // devolvemos la clave original porque no podemos imprimir un array.
+        if (is_array($value)) {
+            return $key;
+        }
+
+        return $value;
     }
 
     public function getCurrentLang() {
