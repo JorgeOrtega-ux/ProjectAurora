@@ -19,9 +19,10 @@ export function initUrlManager() {
         if (link) {
             e.preventDefault();
             const section = link.dataset.nav;
-            
             const currentPath = window.location.pathname.split('/').pop() || 'main';
-            if (section === currentPath && section !== 'main') return;
+            
+            // Comentado para permitir recarga si es necesario en desarrollo
+            // if (section === currentPath && section !== 'main') return;
 
             navigateTo(section);
         }
@@ -30,6 +31,7 @@ export function initUrlManager() {
 
 export function navigateTo(section) {
     const basePath = window.BASE_PATH || '/';
+    // Si la sección es 'main', vamos a la raíz, si no, concatenamos
     const url = (section === 'main') ? basePath : basePath + section;
 
     history.pushState({ section: section }, '', url);
@@ -40,7 +42,6 @@ async function loadContent(section, updateHistory) {
     const container = document.getElementById('app-content');
     if (!container) return;
 
-    // Spinner
     container.innerHTML = `
         <div class="loader-container">
             <div class="spinner"></div>
@@ -50,21 +51,30 @@ async function loadContent(section, updateHistory) {
 
     try {
         const minDelay = new Promise(resolve => setTimeout(resolve, 200));
-        const fetchRequest = fetch(`loader.php?section=${section}&_t=${Date.now()}`);
+        
+        // --- FIX: Usar ruta absoluta para el loader ---
+        const basePath = window.BASE_PATH || '/';
+        const loaderUrl = `${basePath}loader.php?section=${section}&_t=${Date.now()}`;
+        
+        const fetchRequest = fetch(loaderUrl);
 
         const [_, response] = await Promise.all([minDelay, fetchRequest]);
         
-        if (!response.ok) throw new Error('Error en red');
+        if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+
+        // Verificamos que sea JSON antes de parsear
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("La respuesta del servidor no es JSON válido (posible error 404 o PHP)");
+        }
 
         const data = await response.json();
-
         container.innerHTML = data.content;
         
         if(data.title) document.title = data.title;
 
         window.scrollTo(0, 0);
 
-        // --- NUEVO: Actualizar Contexto del Menú ---
         updateSidebarContext(section);
         updateActiveLinks(section);
 
@@ -72,42 +82,45 @@ async function loadContent(section, updateHistory) {
         console.error("Error SPA:", error);
         container.innerHTML = `
             <div style="padding:40px; text-align:center; color: #ff4444;">
+                <span class="material-symbols-rounded" style="font-size: 48px;">link_off</span>
                 <h3>Error de carga</h3>
-                <p>No se pudo cargar el contenido. Inténtalo de nuevo.</p>
+                <p>No se pudo cargar la sección. Verifica la consola.</p>
+                <p style="font-size:12px; color:#666;">Intentando acceder a: ${section}</p>
             </div>
         `;
     }
 }
 
-/**
- * Decide qué grupo de menú mostrar en el sidebar
- */
 function updateSidebarContext(section) {
     const helpSections = window.HELP_SECTIONS || [];
+    const settingsSections = window.SETTINGS_SECTIONS || [];
+
     const isHelp = helpSections.includes(section);
+    const isSettings = settingsSections.includes(section);
 
     const appGroup = document.getElementById('nav-group-app');
     const helpGroup = document.getElementById('nav-group-help');
+    const settingsGroup = document.getElementById('nav-group-settings');
 
-    if (appGroup && helpGroup) {
-        if (isHelp) {
-            appGroup.style.display = 'none';
-            helpGroup.style.display = 'block';
-        } else {
-            appGroup.style.display = 'block';
-            helpGroup.style.display = 'none';
-        }
+    // Helper para ocultar/mostrar
+    const toggle = (el, show) => { if(el) el.style.display = show ? 'block' : 'none'; };
+
+    // Reset general (ocultar todo primero)
+    toggle(appGroup, false);
+    toggle(helpGroup, false);
+    toggle(settingsGroup, false);
+
+    if (isHelp) {
+        toggle(helpGroup, true);
+    } else if (isSettings) {
+        toggle(settingsGroup, true);
+    } else {
+        toggle(appGroup, true);
     }
 }
 
 function updateActiveLinks(section) {
-    // Quitar activo a todos
-    document.querySelectorAll('[data-nav]').forEach(el => {
-        el.classList.remove('active');
-    });
-
-    // Poner activo solo a los que coincidan con la sección actual
-    document.querySelectorAll(`[data-nav="${section}"]`).forEach(el => {
-        el.classList.add('active');
-    });
+    document.querySelectorAll('[data-nav]').forEach(el => el.classList.remove('active'));
+    // El selector debe coincidir exactamente con el data-nav
+    document.querySelectorAll(`[data-nav="${section}"]`).forEach(el => el.classList.add('active'));
 }

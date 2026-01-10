@@ -5,6 +5,8 @@
 define('PROJECT_ROOT', dirname(__DIR__));
 define('CONFIG_PATH', PROJECT_ROOT . '/config');
 
+// Ajusta esto si tu proyecto está en otra carpeta. 
+// Ejemplo: si es localhost/ProjectAurora, usa '/ProjectAurora/'
 $basePath = '/ProjectAurora/'; 
 
 // 2. DETECTAR SECCIÓN ACTUAL
@@ -14,10 +16,13 @@ $currentSection = ($path === '' || $path === '/') ? 'main' : $path;
 $currentSection = trim($currentSection, '/');
 if ($currentSection === '') $currentSection = 'main';
 
-// 3. LÓGICA DE CONTEXTO (APP vs HELP)
-// Definimos qué secciones pertenecen al módulo de ayuda
+// 3. LÓGICA DE CONTEXTO
 $helpSections = ['help', 'privacy', 'terms', 'cookies', 'feedback'];
+$settingsSections = ['settings/accessibility', 'settings/preferences'];
+
 $isHelpContext = in_array($currentSection, $helpSections);
+$isSettingsContext = in_array($currentSection, $settingsSections);
+$isAppContext = !$isHelpContext && !$isSettingsContext;
 
 // 4. CARGAR EL CONTENIDO (SSR)
 $routes = require CONFIG_PATH . '/routes.php';
@@ -27,7 +32,10 @@ ob_start();
 if (file_exists($fileToLoad)) {
     include $fileToLoad;
 } else {
-    echo "<div style='padding:20px'><h1>404</h1><p>Sección no encontrada (SSR).</p></div>";
+    echo "<div style='padding:40px; text-align:center;'>
+            <h1>404</h1>
+            <p>Sección no encontrada: " . htmlspecialchars($currentSection) . "</p>
+          </div>";
 }
 $contentHtml = ob_get_clean();
 ?>
@@ -40,13 +48,14 @@ $contentHtml = ob_get_clean();
     <title>Project Aurora</title>
     
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
-    <link rel="stylesheet" type="text/css" href="assets/css/styles.css">
-    <link rel="stylesheet" type="text/css" href="assets/css/components.css">
+    <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/styles.css">
+    <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/components.css">
     
     <script>
+        // Definimos la ruta base para que JS también la use
         window.BASE_PATH = '<?php echo $basePath; ?>';
-        // Pasamos el array de secciones de ayuda a JS
         window.HELP_SECTIONS = <?php echo json_encode($helpSections); ?>;
+        window.SETTINGS_SECTIONS = <?php echo json_encode($settingsSections); ?>;
     </script>
 </head>
 
@@ -86,83 +95,71 @@ $contentHtml = ob_get_clean();
                             <div class="module-content module-options disabled">
                                 <div class="menu-content">
                                     <div class="menu-list">
-                                        
-                                        <div class="menu-link" data-nav="settings/accessibility"> 
+                                        <div class="menu-link" data-nav="settings/preferences"> 
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">settings</span></div>
-                                            <div class="menu-link-text">
-                                                <span>Configuración</span>
-                                            </div>
+                                            <div class="menu-link-text"><span>Preferencias</span></div>
                                         </div>
-                                        
+                                        <div class="menu-link" data-nav="settings/accessibility"> 
+                                            <div class="menu-link-icon"><span class="material-symbols-rounded">accessibility_new</span></div>
+                                            <div class="menu-link-text"><span>Accesibilidad</span></div>
+                                        </div>
                                         <div class="menu-link" data-nav="help">
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">help</span></div>
-                                            <div class="menu-link-text">
-                                                <span>Ayuda y comentarios</span>
-                                            </div>
+                                            <div class="menu-link-text"><span>Ayuda y comentarios</span></div>
                                         </div>
-
                                     </div>
                                 </div>
                             </div>
-                            
                         </div>
                     </div>
                 </div>
 
                 <div class="general-content-bottom">
-                    
                     <div class="module-content module-surface disabled"> 
                         <div class="menu-content">
                             <div class="menu-content-top">
                                 <div class="menu-list">
                                     
-                                    <div id="nav-group-app" style="<?php echo $isHelpContext ? 'display:none;' : ''; ?>">
-                                        
+                                    <div id="nav-group-app" style="<?php echo $isAppContext ? '' : 'display:none;'; ?>">
                                         <div class="menu-link <?php echo $currentSection === 'main' ? 'active' : ''; ?>" data-nav="main">
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">home</span></div>
                                             <div class="menu-link-text"><span>Página principal</span></div>
                                         </div>
-
                                         <div class="menu-link <?php echo $currentSection === 'trends' ? 'active' : ''; ?>" data-nav="trends">
-                                            <div class="menu-link-icon"><span class="material-symbols-rounded">folder</span></div>
+                                            <div class="menu-link-icon"><span class="material-symbols-rounded">trending_up</span></div>
                                             <div class="menu-link-text"><span>Explorar tendencias</span></div>
                                         </div>
-                                    
+                                    </div>
+
+                                    <div id="nav-group-settings" style="<?php echo $isSettingsContext ? '' : 'display:none;'; ?>">
+                                        <div class="menu-link" data-nav="main" style="margin-bottom: 8px; border-bottom: 1px solid #eee;">
+                                            <div class="menu-link-icon"><span class="material-symbols-rounded">arrow_back</span></div>
+                                            <div class="menu-link-text"><span>Volver al inicio</span></div>
+                                        </div>
+                                        <div class="menu-link <?php echo $currentSection === 'settings/preferences' ? 'active' : ''; ?>" data-nav="settings/preferences">
+                                            <div class="menu-link-icon"><span class="material-symbols-rounded">tune</span></div>
+                                            <div class="menu-link-text"><span>Preferencias</span></div>
+                                        </div>
+                                        <div class="menu-link <?php echo $currentSection === 'settings/accessibility' ? 'active' : ''; ?>" data-nav="settings/accessibility">
+                                            <div class="menu-link-icon"><span class="material-symbols-rounded">accessibility_new</span></div>
+                                            <div class="menu-link-text"><span>Accesibilidad</span></div>
+                                        </div>
                                     </div>
 
                                     <div id="nav-group-help" style="<?php echo $isHelpContext ? '' : 'display:none;'; ?>">
-                                        
                                         <div class="menu-link" data-nav="main" style="margin-bottom: 8px; border-bottom: 1px solid #eee;">
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">arrow_back</span></div>
-                                            <div class="menu-link-text"><span>Volver a la App</span></div>
+                                            <div class="menu-link-text"><span>Volver al inicio</span></div>
                                         </div>
-
                                         <div class="menu-link <?php echo $currentSection === 'help' ? 'active' : ''; ?>" data-nav="help">
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">help_center</span></div>
                                             <div class="menu-link-text"><span>Centro de Ayuda</span></div>
                                         </div>
-
                                         <div class="menu-link <?php echo $currentSection === 'privacy' ? 'active' : ''; ?>" data-nav="privacy">
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">lock</span></div>
-                                            <div class="menu-link-text"><span>Política de Privacidad</span></div>
+                                            <div class="menu-link-text"><span>Privacidad</span></div>
                                         </div>
-
-                                        <div class="menu-link <?php echo $currentSection === 'terms' ? 'active' : ''; ?>" data-nav="terms">
-                                            <div class="menu-link-icon"><span class="material-symbols-rounded">gavel</span></div>
-                                            <div class="menu-link-text"><span>Términos y Condiciones</span></div>
                                         </div>
-
-                                        <div class="menu-link <?php echo $currentSection === 'cookies' ? 'active' : ''; ?>" data-nav="cookies">
-                                            <div class="menu-link-icon"><span class="material-symbols-rounded">cookie</span></div>
-                                            <div class="menu-link-text"><span>Política de Cookies</span></div>
-                                        </div>
-
-                                        <div class="menu-link <?php echo $currentSection === 'feedback' ? 'active' : ''; ?>" data-nav="feedback">
-                                            <div class="menu-link-icon"><span class="material-symbols-rounded">chat</span></div>
-                                            <div class="menu-link-text"><span>Enviar comentarios</span></div>
-                                        </div>
-
-                                    </div>
 
                                 </div>
                             </div>
@@ -179,6 +176,6 @@ $contentHtml = ob_get_clean();
         </div>
     </div>
 
-    <script type="module" src="assets/js/app-init.js"></script>
+    <script type="module" src="<?php echo $basePath; ?>assets/js/app-init.js"></script>
 </body>
 </html>
