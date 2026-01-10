@@ -1,0 +1,32 @@
+{
+    "app.title": "Project Aurora",
+    "menu.back_home": "Volver al inicio",
+    "menu.home": "Página principal",
+    "menu.trends": "Explorar tendencias",
+    "menu.settings": "Configuración",
+    "menu.help": "Ayuda",
+    "menu.privacy": "Privacidad",
+    "menu.help_center": "Centro de Ayuda",
+    "menu.preferences": "Preferencias",
+    
+    "main.header": "Página Principal",
+    "main.welcome": "Bienvenido al Dashboard de Project Aurora.",
+    "main.recent_activity": "Actividad Reciente",
+    "main.system_ok": "El sistema está funcionando correctamente.",
+    
+    "settings.page_title": "Preferencias",
+    "settings.page_desc": "Personaliza tu experiencia visual y de navegación.",
+    "settings.lang_title": "Idioma",
+    "settings.lang_desc": "Selecciona el idioma de la interfaz.",
+    "settings.search_placeholder": "Buscar idioma...",
+    "settings.theme_title": "Tema",
+    "settings.theme_desc": "Define la apariencia de la aplicación.",
+    "settings.nav_title": "Navegación",
+    "settings.nav_desc": "Abrir enlaces externos en una nueva pestaña.",
+    
+    "theme.sync": "Sincronizar con el sistema",
+    "theme.light": "Tema claro",
+    "theme.dark": "Tema oscuro",
+    
+    "search.placeholder": "Buscar..."
+}
