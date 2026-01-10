@@ -106,15 +106,6 @@ class PreferencesManager {
 
         // Usamos atributo data-theme en HTML para CSS global
         document.documentElement.setAttribute('data-theme', effectiveTheme);
-        
-        // Fallback básico JS
-        if (effectiveTheme === 'dark') {
-            document.body.classList.add('theme-dark');
-            document.body.classList.remove('theme-light');
-        } else {
-            document.body.classList.add('theme-light');
-            document.body.classList.remove('theme-dark');
-        }
     }
 
     applyExternalLinksBehavior() {

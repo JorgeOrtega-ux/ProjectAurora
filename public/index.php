@@ -30,15 +30,12 @@ $fileToLoad = $routes[$currentSection] ?? $routes['404'];
 
 // 6. LÓGICA DE TEMA (Para el <body> inicial)
 // $currentTheme viene de boot.php
-$bodyClass = '';
 $htmlDataTheme = 'light'; 
 
 if ($currentTheme === 'dark') {
     $htmlDataTheme = 'dark';
-    $bodyClass = 'theme-dark';
 } elseif ($currentTheme === 'light') {
     $htmlDataTheme = 'light';
-    $bodyClass = 'theme-light';
 } else {
     $htmlDataTheme = 'sync'; 
 }
@@ -70,7 +67,7 @@ $contentHtml = ob_get_clean();
         window.BASE_PATH = '<?php echo $basePath; ?>'; 
     </script>
 </head>
-<body class="<?php echo $bodyClass; ?>">
+<body>
     <div class="page-wrapper">
         <div class="main-content">
             <div class="general-content">
