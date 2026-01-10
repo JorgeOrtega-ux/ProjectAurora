@@ -5,9 +5,13 @@
     "menu.trends": "Explorar tendencias",
     "menu.settings": "Configuración",
     "menu.help": "Ayuda",
-    "menu.privacy": "Privacidad",
-    "menu.help_center": "Centro de Ayuda",
     "menu.preferences": "Preferencias",
+    
+    "menu.help_center": "Centro de Ayuda",
+    "menu.privacy": "Privacidad",
+    "menu.terms": "Términos y Condiciones",
+    "menu.cookies": "Cookies",
+    "menu.feedback": "Comentarios",
     
     "main.header": "Página Principal",
     "main.welcome": "Bienvenido al Dashboard de Project Aurora.",
@@ -24,9 +28,26 @@
     "settings.nav_title": "Navegación",
     "settings.nav_desc": "Abrir enlaces externos en una nueva pestaña.",
     
+    "help.main_title": "Centro de Ayuda",
+    "help.main_desc": "Bienvenido al soporte de Project Aurora. Selecciona una opción del menú.",
+    "help.privacy_title": "Política de Privacidad",
+    "help.privacy_desc": "Información detallada sobre cómo recopilamos y protegemos tus datos.",
+    "help.terms_title": "Términos y Condiciones",
+    "help.terms_desc": "Acuerdos legales y normas de uso del servicio.",
+    "help.cookies_title": "Política de Cookies",
+    "help.cookies_desc": "Detalles sobre el uso de cookies y tecnologías de rastreo.",
+    "help.feedback_title": "Enviar Comentarios",
+    "help.feedback_desc": "Reporta un error, sugiere una mejora o contáctanos.",
+
     "theme.sync": "Sincronizar con el sistema",
     "theme.light": "Tema claro",
     "theme.dark": "Tema oscuro",
     
-    "search.placeholder": "Buscar..."
+    "search.placeholder": "Buscar...",
+
+    "lang.es-latam": "Español (Latinoamérica)",
+    "lang.es-mx": "Español (México)",
+    "lang.en-us": "English (United States)",
+    "lang.en-uk": "English (United Kingdom)",
+    "lang.fr-fr": "Français (France)"
 }

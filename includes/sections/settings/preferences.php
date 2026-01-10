@@ -4,14 +4,13 @@
 // Recuperamos el idioma actual cargado por boot.php
 global $currentLang, $currentTheme;
 
-// Mapas de Etiquetas (Estos se quedan aquí para renderizar la lista)
-// Nota: Podrías incluso traducir los nombres de idiomas si quisieras en el JSON
+// Mapas de Etiquetas usando traducción para evitar hardcode
 $langLabels = [
-    'es-latam' => 'Español (Latinoamérica)',
-    'es-mx'    => 'Español (México)',
-    'en-us'    => 'English (United States)',
-    'en-uk'    => 'English (United Kingdom)',
-    'fr-fr'    => 'Français (France)'
+    'es-latam' => __('lang.es-latam'),
+    'es-mx'    => __('lang.es-mx'),
+    'en-us'    => __('lang.en-us'),
+    'en-uk'    => __('lang.en-uk'),
+    'fr-fr'    => __('lang.fr-fr')
 ];
 
 // Obtener etiqueta actual

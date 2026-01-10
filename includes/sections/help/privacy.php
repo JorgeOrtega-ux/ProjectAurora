@@ -1,10 +1,9 @@
 <?php
+// includes/sections/help/privacy.php
 ?>
-<div class="page-header">
-    <h1>Política de Privacidad</h1>
-</div>
-<div style="padding: 20px; max-width: 800px; color: #444; line-height: 1.6;">
-    <p>Última actualización: Enero 2026</p>
-    <h3>1. Introducción</h3>
-    <p>En Project Aurora, nos tomamos su privacidad muy en serio...</p>
+<div class="component-wrapper">
+    <div class="component-header-card">
+        <h1 class="component-page-title"><?php echo __('help.privacy_title'); ?></h1>
+        <p class="component-page-description"><?php echo __('help.privacy_desc'); ?></p>
     </div>
+</div>
