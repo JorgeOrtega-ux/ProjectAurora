@@ -41,6 +41,7 @@ $contentHtml = ob_get_clean();
     
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
     <link rel="stylesheet" type="text/css" href="assets/css/styles.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/components.css">
     
     <script>
         window.BASE_PATH = '<?php echo $basePath; ?>';
@@ -81,23 +82,29 @@ $contentHtml = ob_get_clean();
                                     <span class="material-symbols-rounded">more_vert</span>
                                 </div>
                             </div>
+                            
                             <div class="module-content module-options disabled">
                                 <div class="menu-content">
                                     <div class="menu-list">
-                                        <div class="menu-link" data-nav="settings"> <div class="menu-link-icon"><span class="material-symbols-rounded">settings</span></div>
+                                        
+                                        <div class="menu-link" data-nav="settings/accessibility"> 
+                                            <div class="menu-link-icon"><span class="material-symbols-rounded">settings</span></div>
                                             <div class="menu-link-text">
                                                 <span>Configuración</span>
                                             </div>
                                         </div>
+                                        
                                         <div class="menu-link" data-nav="help">
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">help</span></div>
                                             <div class="menu-link-text">
                                                 <span>Ayuda y comentarios</span>
                                             </div>
                                         </div>
+
                                     </div>
                                 </div>
                             </div>
+                            
                         </div>
                     </div>
                 </div>
