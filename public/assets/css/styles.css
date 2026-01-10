@@ -1,10 +1,14 @@
 /* =========================================
    1. BASE Y RESET
    ========================================= */
+   @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap');
+
 * {
     padding: 0;
     margin: 0;
     box-sizing: border-box;
+      font-family: "Roboto Condensed", sans-serif;
+
 }
 
 body,
@@ -345,4 +349,40 @@ html {
     scrollbar-width: thin;
     overscroll-behavior: none;
     -webkit-overflow-scrolling: touch;
+}/* ... al final de public/assets/css/styles.css ... */
+
+/* Botón de texto para el Header (Login/Register) */
+.header-text-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    padding: 0 16px;
+    background-color: #000000; /* Fondo negro para resaltar (Call to Action) */
+    color: #ffffff;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    user-select: none;
+}
+
+.header-text-button:hover {
+    background-color: #333333;
+}
+
+.header-text-button:active {
+    transform: scale(0.98);
+}
+
+/* Variante "Ghost" (solo texto) si prefieres algo más sutil */
+.header-text-button.ghost {
+    background-color: transparent;
+    color: #000000;
+    border: 1px solid #00000020;
+}
+
+.header-text-button.ghost:hover {
+    background-color: #f5f5fa;
 }

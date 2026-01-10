@@ -30,14 +30,14 @@ $fileToLoad = $routes[$currentSection] ?? $routes['404'];
 
 // 6. LÓGICA DE TEMA (Para el <body> inicial)
 // $currentTheme viene de boot.php
-$htmlDataTheme = 'light'; 
+$htmlDataTheme = 'light';
 
 if ($currentTheme === 'dark') {
     $htmlDataTheme = 'dark';
 } elseif ($currentTheme === 'light') {
     $htmlDataTheme = 'light';
 } else {
-    $htmlDataTheme = 'sync'; 
+    $htmlDataTheme = 'sync';
 }
 
 // 7. BUFFER DE SALIDA
@@ -48,6 +48,7 @@ $contentHtml = ob_get_clean();
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo $currentLang; ?>" data-theme="<?php echo $htmlDataTheme; ?>">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -55,7 +56,7 @@ $contentHtml = ob_get_clean();
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/styles.css">
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/components.css">
-    
+
     <script>
         (function() {
             const savedTheme = '<?php echo $currentTheme; ?>';
@@ -64,14 +65,15 @@ $contentHtml = ob_get_clean();
                 document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
             }
         })();
-        window.BASE_PATH = '<?php echo $basePath; ?>'; 
+        window.BASE_PATH = '<?php echo $basePath; ?>';
     </script>
 </head>
+
 <body>
     <div class="page-wrapper">
         <div class="main-content">
             <div class="general-content">
-                
+
                 <div class="general-content-top">
                     <div class="header">
                         <div class="header-left">
@@ -90,15 +92,22 @@ $contentHtml = ob_get_clean();
                             </div>
                         </div>
                         <div class="header-right">
+
+                     
+
                             <div class="header-item">
+                                 <a href="<?php echo $basePath; ?>login" class="header-text-button ghost">
+                                    <span>Acceder</span>
+                                </a>
                                 <div class="header-button" data-action="toggleModuleOptions">
                                     <span class="material-symbols-rounded">more_vert</span>
                                 </div>
                             </div>
+
                             <div class="module-content module-options disabled">
                                 <div class="menu-content">
                                     <div class="menu-list">
-                                        <div class="menu-link" data-nav="settings/preferences"> 
+                                        <div class="menu-link" data-nav="settings/preferences">
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">settings</span></div>
                                             <div class="menu-link-text"><span><?php echo __('menu.settings'); ?></span></div>
                                         </div>
@@ -109,21 +118,22 @@ $contentHtml = ob_get_clean();
                                     </div>
                                 </div>
                             </div>
+
                         </div>
                     </div>
                 </div>
 
                 <div class="general-content-bottom">
-                    <div class="module-content module-surface disabled"> 
-                        
+                    <div class="module-content module-surface disabled">
+
                         <?php if ($context === 'app'): ?>
-                             <?php include PROJECT_ROOT . '/includes/menus/app.php'; ?>
+                            <?php include PROJECT_ROOT . '/includes/menus/app.php'; ?>
 
                         <?php elseif ($context === 'settings'): ?>
-                             <?php include PROJECT_ROOT . '/includes/menus/settings.php'; ?>
+                            <?php include PROJECT_ROOT . '/includes/menus/settings.php'; ?>
 
                         <?php elseif ($context === 'help'): ?>
-                             <?php include PROJECT_ROOT . '/includes/menus/help.php'; ?>
+                            <?php include PROJECT_ROOT . '/includes/menus/help.php'; ?>
                         <?php endif; ?>
 
                     </div>
@@ -138,4 +148,5 @@ $contentHtml = ob_get_clean();
     </div>
     <script type="module" src="<?php echo $basePath; ?>assets/js/app-init.js"></script>
 </body>
+
 </html>
