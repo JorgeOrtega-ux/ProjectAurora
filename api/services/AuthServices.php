@@ -1,7 +1,8 @@
 <?php
 // api/services/AuthServices.php
 
-require_once __DIR__ . '/../../includes/core/Database.php';
+// ACTUALIZADO: Ruta corregida apuntando a config/db.php
+require_once __DIR__ . '/../../config/database/db.php';
 
 class AuthServices {
     private $db;
@@ -103,7 +104,7 @@ class AuthServices {
     }
 
     /**
-     * NUEVO: Refresca los datos de la sesión desde la BD en cada carga
+     * Refresca los datos de la sesión desde la BD en cada carga
      */
     public function refreshSessionData() {
         // Si no hay usuario logueado, salir
@@ -129,7 +130,7 @@ class AuthServices {
 
             // 2. Actualizar variables de sesión con datos frescos
             $_SESSION['username'] = $row['username'];
-            $_SESSION['user_role'] = $row['account_role']; // Esto actualiza el borde del avatar
+            $_SESSION['user_role'] = $row['account_role']; 
             $_SESSION['user_pic'] = $row['profile_picture_url'];
             
         } else {

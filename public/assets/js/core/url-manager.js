@@ -18,6 +18,14 @@ export function initUrlManager() {
         
         if (link) {
             e.preventDefault();
+
+            // --- NUEVO: Evitar recarga si ya estamos en la sección ---
+            if (link.classList.contains('active')) {
+                console.log('Navegación evitada: Ya estás en esta sección.');
+                return;
+            }
+            // ---------------------------------------------------------
+            
             const section = link.dataset.nav;
             
             // Navegación normal
@@ -100,6 +108,5 @@ function updateActiveLinks(section) {
     document.querySelectorAll('[data-nav]').forEach(el => el.classList.remove('active'));
     
     // Ponemos 'active' solo al link exacto de la sección actual
-    // Nota: Esto funciona incluso si acabamos de inyectar el menú nuevo
     document.querySelectorAll(`[data-nav="${section}"]`).forEach(el => el.classList.add('active'));
 }

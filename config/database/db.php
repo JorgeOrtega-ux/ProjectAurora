@@ -1,11 +1,11 @@
 <?php
-// includes/core/Database.php
+// config/db.php
 
 class Database {
     private $host = 'localhost';
     private $db_name = 'project_aurora';
-    private $username = 'root'; // Cambia esto
-    private $password = '';     // Cambia esto
+    private $username = 'root'; // Cambia esto por tu usuario real
+    private $password = '';     // Cambia esto por tu contraseña real
     public $conn;
 
     public function getConnection() {
