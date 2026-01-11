@@ -6,70 +6,121 @@ require_once __DIR__ . '/../services/AuthServices.php';
 class AuthHandler {
     private $authService;
     private $basePath = '/ProjectAurora/'; 
-    // Ajustar si cambia tu IP o dominio
     private $redirectUrl = 'http://192.168.1.158/ProjectAurora/'; 
 
     public function __construct() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
         $this->authService = new AuthServices();
     }
 
-    /**
-     * Procesa la petición entrante
-     */
     public function handleRequest() {
-        // Capturar acción de POST o GET
         $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             switch ($action) {
-                case 'register':
-                    $this->processRegister();
-                    break;
                 case 'login':
                     $this->processLogin();
                     break;
+                case 'register_step_1':
+                    $this->processRegisterStep1();
+                    break;
+                case 'register_step_2':
+                    $this->processRegisterStep2();
+                    break;
+                case 'verify_account':
+                    $this->processVerification();
+                    break;
                 default:
-                    // Acción desconocida
-                    header("Location: " . $this->basePath);
-                    exit;
+                    // Si la acción no existe, retornamos error JSON si es ajax
+                    $this->sendJson(false, 'Acción no válida');
             }
         } elseif ($action === 'logout') {
             $this->processLogout();
-        } else {
-            // Sin acción válida, volver al inicio
-            header("Location: " . $this->basePath);
-            exit;
         }
     }
 
-    private function processRegister() {
-        $username = $_POST['username'] ?? '';
-        $email = $_POST['email'] ?? '';
+    // --- HELPER: RESPUESTA JSON ---
+    private function sendJson($status, $message, $redirect = null) {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status' => $status,
+            'message' => $message,
+            'redirect' => $redirect
+        ]);
+        exit;
+    }
+    // -----------------------------
+
+    private function processRegisterStep1() {
+        $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
 
-        $result = $this->authService->register($username, $email, $password);
+        if (empty($email) || empty($password)) {
+            $this->sendJson(false, __('auth.service.empty_fields'));
+        }
+
+        if ($this->authService->checkEmailExists($email)) {
+            $this->sendJson(false, __('auth.service.email_exists'));
+        }
+
+        $_SESSION['reg_temp_email'] = $email;
+        $_SESSION['reg_temp_password'] = $password;
+
+        // Éxito: Indicar al JS a dónde navegar
+        $this->sendJson(true, 'OK', $this->basePath . "register/additional-data");
+    }
+
+    private function processRegisterStep2() {
+        $username = trim($_POST['username'] ?? '');
+        $email = $_SESSION['reg_temp_email'] ?? null;
+        $password = $_SESSION['reg_temp_password'] ?? null;
+
+        if (!$email || !$password) {
+            $this->sendJson(false, 'La sesión expiró, recarga la página.');
+        }
+
+        if (empty($username)) {
+            $this->sendJson(false, __('auth.service.empty_fields'));
+        }
+
+        $result = $this->authService->requestVerificationCode($email, $username, $password);
 
         if ($result['status']) {
-            header("Location: " . $this->redirectUrl);
-            exit;
+            unset($_SESSION['reg_temp_password']); 
+            $this->sendJson(true, 'OK', $this->basePath . "register/verification-account");
         } else {
-            header("Location: " . $this->basePath . "register?error=" . urlencode($result['message']));
-            exit;
+            $this->sendJson(false, $result['message']);
+        }
+    }
+
+    private function processVerification() {
+        $code = $_POST['code'] ?? '';
+        $email = $_SESSION['reg_temp_email'] ?? null;
+
+        if (!$email) {
+            $this->sendJson(false, 'La sesión expiró.');
+        }
+
+        $result = $this->authService->verifyAndCreateUser($email, $code);
+
+        if ($result['status']) {
+            unset($_SESSION['reg_temp_email']);
+            // Redirigir al Dashboard o Home
+            $this->sendJson(true, 'Bienvenido', $this->redirectUrl);
+        } else {
+            $this->sendJson(false, $result['message']);
         }
     }
 
     private function processLogin() {
         $email = $_POST['email'] ?? '';
         $password = $_POST['password'] ?? '';
-
         $result = $this->authService->login($email, $password);
 
         if ($result['status']) {
-            header("Location: " . $this->redirectUrl);
-            exit;
+            $this->sendJson(true, 'Bienvenido', $this->redirectUrl);
         } else {
-            header("Location: " . $this->basePath . "login?error=" . urlencode($result['message']));
-            exit;
+            $this->sendJson(false, $result['message']);
         }
     }
 

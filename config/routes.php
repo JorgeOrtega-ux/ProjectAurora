@@ -8,9 +8,13 @@ return [
     
     // --- Contexto: AUTH ---
     'login'    => __DIR__ . '/../includes/sections/auth/login.php',
-    'register' => __DIR__ . '/../includes/sections/auth/register.php',
     
-    // --- Contexto: SETTINGS (Rutas Nuevas Agregadas) ---
+    // --- REGISTRO POR ETAPAS ---
+    'register'                      => __DIR__ . '/../includes/sections/auth/register.php',
+    'register/additional-data'      => __DIR__ . '/../includes/sections/auth/register.php',
+    'register/verification-account' => __DIR__ . '/../includes/sections/auth/register.php',
+    
+    // --- Contexto: SETTINGS ---
     'settings/preferences' => __DIR__ . '/../includes/sections/settings/preferences.php',
     'settings/profile'     => __DIR__ . '/../includes/sections/settings/profile.php',
     'settings/security'    => __DIR__ . '/../includes/sections/settings/security.php',

@@ -18,7 +18,7 @@
 /* Layout Centrado (Agregado para Login/Register) */
 .component-layout-centered {
     width: 100%;
-    min-height: calc(100vh - 60px);
+   height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;

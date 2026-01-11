@@ -69,16 +69,22 @@
         },
         "register": {
             "title": "Crear cuenta",
-            "subtitle": "Únete a nosotros hoy"
+            "subtitle": "Paso 1: Datos de acceso",
+            "step2_title": "Cuéntanos de ti",
+            "step2_subtitle": "Paso 2: Información pública",
+            "step3_title": "Verifica tu cuenta",
+            "step3_subtitle": "Hemos enviado un código a tu correo"
         },
         "field": {
             "email": "Correo electrónico",
             "password": "Contraseña",
-            "username": "Nombre de usuario"
+            "username": "Nombre de usuario",
+            "code": "Código de verificación"
         },
         "btn": {
             "login": "Acceder",
-            "register": "Crear cuenta"
+            "next": "Siguiente",
+            "verify": "Verificar y Crear"
         },
         "forgot_password": "¿Olvidaste tu contraseña?",
         "no_account": "¿No tienes cuenta?",
@@ -94,7 +100,9 @@
             "account_suspended": "Tu cuenta está suspendida o desactivada.",
             "welcome": "Bienvenido.",
             "password_incorrect": "Contraseña incorrecta.",
-            "email_not_found": "No existe una cuenta con ese correo."
+            "email_not_found": "No existe una cuenta con ese correo.",
+            "code_generated": "Código generado correctamente (Simulación).",
+            "invalid_code": "Código inválido o expirado."
         }
     },
     "theme": {

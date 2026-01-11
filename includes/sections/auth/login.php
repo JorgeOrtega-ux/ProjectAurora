@@ -4,25 +4,24 @@
         <div class="component-header-centered">
             <h1><?php echo __('auth.login.title') ?? 'Iniciar sesión'; ?></h1>
             <p><?php echo __('auth.login.subtitle') ?? 'Bienvenido de nuevo'; ?></p>
-            <?php if(isset($_GET['error'])): ?>
-                <p style="color: #d32f2f; font-size: 14px; background: #ffebee; padding: 8px; border-radius: 4px;">
-                    <?php echo htmlspecialchars($_GET['error']); ?>
-                </p>
-            <?php endif; ?>
+            
+            <div id="auth-error-container" style="color: #d32f2f; font-size: 14px; background: #ffebee; padding: 12px; border-radius: 8px; margin-top: 8px; display: none; align-items: center; gap: 8px;">
+                <span class="material-symbols-rounded" style="font-size: 18px;">error</span>
+                <span id="auth-error-text"></span>
+            </div>
         </div>
         
-        <form action="<?php echo $basePath; ?>" method="POST" class="component-stage-form">
-            <input type="hidden" name="action" value="login">
+        <div class="component-stage-form">
             
             <div class="component-form-group">
                 <div class="component-input-wrapper component-input-wrapper--floating">
-                    <input type="email" name="email" id="email" class="component-text-input" required placeholder=" ">
-                    <label for="email" class="component-label-floating"><?php echo __('auth.field.email') ?? 'Correo electrónico'; ?></label>
+                    <input type="email" id="login-email" class="component-text-input" required placeholder=" ">
+                    <label for="login-email" class="component-label-floating"><?php echo __('auth.field.email') ?? 'Correo electrónico'; ?></label>
                 </div>
 
                 <div class="component-input-wrapper component-input-wrapper--floating">
-                    <input type="password" name="password" id="password" class="component-text-input" required placeholder=" ">
-                    <label for="password" class="component-label-floating"><?php echo __('auth.field.password') ?? 'Contraseña'; ?></label>
+                    <input type="password" id="login-password" class="component-text-input" required placeholder=" ">
+                    <label for="login-password" class="component-label-floating"><?php echo __('auth.field.password') ?? 'Contraseña'; ?></label>
                     
                     <button type="button" class="component-input-action" tabindex="-1">
                         <span class="material-symbols-rounded">visibility</span>
@@ -34,15 +33,15 @@
                 <?php echo __('auth.forgot_password') ?? '¿Olvidaste tu contraseña?'; ?>
             </a>
 
-            <button type="submit" id="btn-login" class="component-button component-button--large primary">
+            <button type="button" id="btn-login-action" class="component-button component-button--large primary">
                 <?php echo __('auth.btn.login') ?? 'Acceder'; ?>
             </button>
-        </form>
+        </div>
 
         <div class="component-text-footer">
             <p>
                 <?php echo __('auth.no_account') ?? '¿No tienes cuenta?'; ?> 
-                <a href="<?php echo $basePath; ?>register"><?php echo __('auth.register_link') ?? 'Regístrate'; ?></a>
+                <a href="<?php echo $basePath; ?>register" data-nav="register"><?php echo __('auth.register_link') ?? 'Regístrate'; ?></a>
             </p>
         </div>
     </div>

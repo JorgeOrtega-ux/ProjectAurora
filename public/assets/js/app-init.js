@@ -1,23 +1,18 @@
-/* =========================================
-   APP INITIALIZATION
-   Entry point for application scripts
-   ========================================= */
+/* public/assets/js/app-init.js */
 
-// 1. Importamos el gestor de preferencias (NUEVO - Debe ir primero para aplicar temas rápido)
 import { prefsManager } from './core/preferences-manager.js';
-
-// 2. Importamos el controlador de UI
 import { initMainController } from './main-controller.js';
-
-// 3. Importamos el gestor de URL
 import { initUrlManager } from './core/url-manager.js';
+
+// NUEVO: Importar controlador de Auth
+import { initAuthController } from './auth-controller.js';
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('App: Inicializando...');
 
-    // Iniciar lógica de interfaz y pasarle el gestor de preferencias
     initMainController(prefsManager);
-
-    // Iniciar sistema de navegación sin recarga
     initUrlManager();
+    
+    // Iniciar Auth Controller
+    initAuthController();
 });
