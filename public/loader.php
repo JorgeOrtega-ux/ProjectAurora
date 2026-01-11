@@ -12,16 +12,20 @@ require_once PROJECT_ROOT . '/includes/core/boot.php';
 $section = $_GET['section'] ?? 'main';
 $section = strtok($section, '?');
 
-// --- SEGURIDAD: VERIFICACIÓN DE SESIÓN EN SPA ---
+// --- SEGURIDAD Y REDIRECCIONES ---
 $protectedRoutes = [
     'settings/profile',
     'settings/security'
 ];
 $isLoggedIn = isset($_SESSION['user_id']);
 
+// Redirección interna de /settings (Lógica anterior)
+if ($section === 'settings') {
+    $section = $isLoggedIn ? 'settings/profile' : 'settings/preferences';
+}
+
 if (in_array($section, $protectedRoutes) && !$isLoggedIn) {
     // Si intenta cargar algo privado sin sesión, forzamos la carga de "login"
-    // Esto mostrará el formulario de login al usuario inmediatamente.
     $section = 'login';
 }
 // ------------------------------------------------
@@ -59,12 +63,20 @@ if (file_exists($fileToLoad)) {
 }
 $contentHtml = ob_get_clean();
 
+// --- NUEVO: Lógica de Título "App - Sección" ---
+$pageTitle = __('app.title');
+if ($section !== 'main') {
+    // Project Aurora - Sección
+    $pageTitle .= ' - ' . ucfirst($section);
+}
+// ----------------------------------------------
+
 // 7. Respuesta JSON
 header('Content-Type: application/json');
 echo json_encode([
     'section'  => $section,
     'content'  => $contentHtml,
     'menuHTML' => $menuHtml,
-    'title'    => ucfirst($section) . ' - ' . __('app.title')
+    'title'    => $pageTitle
 ]);
 ?>

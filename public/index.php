@@ -29,6 +29,14 @@ $currentSection = ($path === '' || $path === '/') ? 'main' : $path;
 $currentSection = trim($currentSection, '/');
 if ($currentSection === '') $currentSection = 'main';
 
+// --- LÓGICA DE REDIRECCIÓN /settings ---
+if ($currentSection === 'settings') {
+    $target = $isLoggedIn ? 'settings/profile' : 'settings/preferences';
+    header("Location: " . $basePath . $target);
+    exit;
+}
+// ---------------------------------------
+
 // --- SEGURIDAD: RUTAS PROTEGIDAS ---
 $protectedRoutes = [
     'settings/profile',
@@ -36,7 +44,6 @@ $protectedRoutes = [
 ];
 
 if (in_array($currentSection, $protectedRoutes) && !$isLoggedIn) {
-    // Redirección limpia al login (sin mensajes de error)
     header("Location: " . $basePath . "login");
     exit;
 }
@@ -67,6 +74,13 @@ ob_start();
 if (file_exists($fileToLoad)) include $fileToLoad;
 else echo "<div style='padding:40px;'><h1>404</h1></div>";
 $contentHtml = ob_get_clean();
+
+// --- NUEVO: Cálculo del Título para <head> ---
+$pageTitle = __('app.title');
+if ($currentSection !== 'main') {
+    $pageTitle .= ' - ' . ucfirst($currentSection);
+}
+// ---------------------------------------------
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo $currentLang; ?>" data-theme="<?php echo $htmlDataTheme; ?>">
@@ -74,7 +88,7 @@ $contentHtml = ob_get_clean();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo __('app.title'); ?></title>
+    <title><?php echo $pageTitle; ?></title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/styles.css">
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>assets/css/components.css">
