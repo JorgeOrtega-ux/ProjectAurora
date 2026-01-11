@@ -79,6 +79,39 @@ class SettingsServices {
         return ['status' => false, 'message' => 'Error BD.'];
     }
 
+    // --- NUEVO: ACTUALIZAR CONTRASEÑA ---
+    public function updatePassword($userId, $currentPassword, $newPassword) {
+        // 1. Obtener hash actual
+        $stmt = $this->db->prepare("SELECT password FROM users WHERE id = :id LIMIT 1");
+        $stmt->execute([':id' => $userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) return ['status' => false, 'message' => 'Usuario no encontrado.'];
+
+        // 2. Verificar contraseña actual
+        if (!password_verify($currentPassword, $row['password'])) {
+            return ['status' => false, 'message' => 'La contraseña actual es incorrecta.'];
+        }
+
+        // 3. Validar nueva contraseña (Reglas de negocio)
+        $passLen = strlen($newPassword);
+        if ($passLen < 12 || $passLen > 64) {
+            return ['status' => false, 'message' => 'La nueva contraseña debe tener entre 12 y 64 caracteres.'];
+        }
+
+        // 4. Hashear y guardar
+        $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
+        
+        $upd = $this->db->prepare("UPDATE users SET password = :hash WHERE id = :id");
+        if ($upd->execute([':hash' => $newHash, ':id' => $userId])) {
+            
+            $this->logChange($userId, 'update_password', 'HASHED', 'HASHED');
+            return ['status' => true, 'message' => 'Contraseña actualizada correctamente.'];
+        }
+
+        return ['status' => false, 'message' => 'Error al actualizar en base de datos.'];
+    }
+
     // --- SUBIR FOTO (CON GD + RATE LIMIT) ---
     public function updateAvatar($userId, $file) {
         // 1. VALIDAR LÍMITE: 3 cambios al día

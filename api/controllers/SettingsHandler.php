@@ -32,6 +32,9 @@ class SettingsHandler {
             case 'settings_delete_avatar':
                 $this->processDeleteAvatar();
                 break;
+            case 'settings_change_password': // --- NUEVO ---
+                $this->processChangePassword();
+                break;
             default:
                 $this->sendJson(false, 'Acción de configuración no válida.');
         }
@@ -44,6 +47,24 @@ class SettingsHandler {
         if (empty($value)) $this->sendJson(false, 'El valor no puede estar vacío.');
 
         $res = $this->service->updateField($_SESSION['user_id'], $field, $value);
+        $this->sendJson($res['status'], $res['message']);
+    }
+
+    // --- NUEVO MÉTODO DE CONTROLADOR ---
+    private function processChangePassword() {
+        $current = $_POST['current_password'] ?? '';
+        $new     = $_POST['new_password'] ?? '';
+        $repeat  = $_POST['repeat_password'] ?? '';
+
+        if (empty($current) || empty($new) || empty($repeat)) {
+            $this->sendJson(false, 'Por favor complete todos los campos.');
+        }
+
+        if ($new !== $repeat) {
+            $this->sendJson(false, 'La nueva contraseña no coincide con la confirmación.');
+        }
+
+        $res = $this->service->updatePassword($_SESSION['user_id'], $current, $new);
         $this->sendJson($res['status'], $res['message']);
     }
 
