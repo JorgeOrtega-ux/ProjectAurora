@@ -47,7 +47,16 @@
         "security_coming_soon": "Próximamente: Cambio de contraseña y verificación en dos pasos.",
         "profile_title": "Tu perfil",
         "profile_desc": "Gestiona tu información personal y pública.",
-        "profile_coming_soon": "Próximamente: Edición de avatar, nombre de usuario y biografía."
+        "profile_pic_title": "Foto de perfil",
+        "profile_pic_desc": "Esta imagen será visible para otros usuarios.",
+        "profile_username_title": "Nombre de usuario",
+        "profile_email_title": "Correo electrónico",
+        "profile_btn_upload": "Subir foto",
+        "profile_btn_change": "Cambiar",
+        "profile_btn_delete": "Eliminar",
+        "profile_btn_cancel": "Cancelar",
+        "profile_btn_save": "Guardar",
+        "profile_btn_edit": "Editar"
     },
     "help": {
         "main_title": "Centro de Ayuda",

@@ -15,10 +15,10 @@
     transition: max-width 0.3s ease;
 }
 
-/* Layout Centrado (Agregado para Login/Register) */
+/* Layout Centrado (Login/Register) */
 .component-layout-centered {
     width: 100%;
-   height: 100%;
+    height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -33,17 +33,17 @@
     background-color: #ffffff;
 }
 
-/* Card Compacta (Agregado para Login/Register) */
+.component-header-card {
+    text-align: center;
+}
+
+/* Card Compacta (Login/Register) */
 .component-card--compact {
     width: 100%;
     max-width: 365px;
     display: flex;
     flex-direction: column;
     gap: 2px;
-}
-
-.component-header-card {
-    text-align: center;
 }
 
 .component-card--grouped {
@@ -101,7 +101,7 @@
     margin: 0;
 }
 
-/* Header Centrado (Agregado para Login/Register) */
+/* Header Centrado */
 .component-header-centered {
     text-align: center;
     margin-bottom: 24px;
@@ -126,7 +126,6 @@
 .component-card__text {
     display: flex;
     flex-direction: column;
-    gap: 4px;
     width: 100%;
 }
 
@@ -144,7 +143,7 @@
     line-height: 1.4;
 }
 
-/* Footer Links (Agregado para Login/Register) */
+/* Footer & Links */
 .component-text-footer {
     text-align: center;
     font-size: 14px;
@@ -178,23 +177,8 @@
 /* =========================================
    3. CONTROLES Y FORMULARIOS
    ========================================= */
-.component-card__actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-}
 
-.component-card__actions.actions-right {
-    justify-content: flex-end;
-}
-
-.component-group-item--stacked .component-card__actions {
-    width: 100%;
-    justify-content: flex-start !important;
-}
-
-/* Botones (Agregado para Login/Register) */
+/* --- Botones --- */
 .component-button {
     height: 36px;
     padding: 0 14px;
@@ -234,19 +218,48 @@
     width: 100%;
 }
 
-/* Inputs y Formularios */
-.component-stage-form {
+/* --- Grupos de Acción --- */
+.component-card__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.component-card__actions.actions-right {
+    justify-content: flex-end;
+}
+
+/* Fix para ocultar acciones desactivadas */
+.component-card__actions.disabled {
+    display: none;
+}
+
+.component-group-item--stacked .component-card__actions {
+    width: 100%;
+    justify-content: flex-start !important;
+}
+
+/* --- Inputs y Grupos --- */
+.component-stage-form,
+.component-form-group {
     display: flex;
     flex-direction: column;
     gap: 12px;
     width: 100%;
 }
 
-.component-form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+.component-input-wrapper {
     width: 100%;
+    min-width: 200px;
+}
+
+/* Grupo responsivo (Input + Botones) con Gap arreglado */
+.input-group-responsive {
+    gap: 8px; /* Separación entre input y botones */
+    align-items: center;
+    width: 100%;
+    /* display: flex; se aplica via clase .active */
 }
 
 .component-text-input {
@@ -271,12 +284,7 @@
     padding: 0 10px;
 }
 
-.component-input-wrapper {
-    width: 100%;
-    min-width: 200px;
-}
-
-/* Inputs Flotantes (Agregado para Login/Register) */
+/* --- Inputs Flotantes --- */
 .component-input-wrapper--floating {
     position: relative;
     width: 100%;
@@ -338,7 +346,7 @@
     justify-content: center;
 }
 
-/* Toggle Switch */
+/* --- Toggle Switch --- */
 .component-toggle-switch {
     position: relative;
     display: inline-block;
@@ -386,7 +394,7 @@ input:checked+.component-toggle-slider:before {
     background-color: #ffffff;
 }
 
-/* Selectores y Triggers */
+/* --- Selectores y Triggers --- */
 .trigger-select-wrapper {
     position: relative;
     width: 260px;
@@ -422,7 +430,7 @@ input:checked+.component-toggle-slider:before {
     text-overflow: ellipsis;
 }
 
-/* Popovers */
+/* --- Popovers --- */
 .popover-module {
     position: absolute;
     top: calc(100% + 6px);
@@ -490,25 +498,13 @@ input:checked+.component-toggle-slider:before {
 }
 
 /* =========================================
-   4. UTILIDADES Y RESPONSIVE
-   ========================================= */
-@media (max-width: 600px) {
-    .component-group-item {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 12px;
-    }
-    .component-card__actions.actions-right {
-        width: 100%;
-    }
-}/* =========================================
-   ELEMENTOS VISUALES (Avatars & Roles)
+   4. ELEMENTOS VISUALES (Avatars & Roles)
    ========================================= */
 .component-card__profile-picture {
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    background-color: #f5f5fa; /* var(--bg-hover-light) */
+    background-color: #f5f5fa;
     position: relative;
     display: flex;
     align-items: center;
@@ -527,9 +523,16 @@ input:checked+.component-toggle-slider:before {
     z-index: 2;
 }
 
-/* Definición de colores de roles */
-.component-card__profile-picture[data-role="user"]::before { border-color: rgba(0,0,0,0.1); }
-.component-card__profile-picture[data-role="administrator"]::before { border-color: #000000; }
+/* --- COLORES DE ROLES (Corregido) --- */
+.component-card__profile-picture[data-role="user"]::before { 
+    border-color: rgba(0,0,0,0.1); 
+}
+.component-card__profile-picture[data-role="moderator"]::before { 
+    border-color: #206BD3; 
+}
+.component-card__profile-picture[data-role="administrator"]::before { 
+    border-color: #D32029; /* CORREGIDO: Rojo en vez de Negro */
+}
 .component-card__profile-picture[data-role="founder"]::before {
     border: none;
     background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
@@ -562,4 +565,37 @@ input:checked+.component-toggle-slider:before {
 
 .component-card__profile-picture:hover .component-card__avatar-overlay {
     opacity: 1;
+}
+
+/* =========================================
+   5. UTILIDADES Y RESPONSIVE
+   ========================================= */
+@media (max-width: 600px) {
+    .component-group-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    
+    .component-card__actions.actions-right {
+        width: 100%;
+    }
+    
+    /* Responsive para Input + Botones */
+    .input-group-responsive {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    
+    .input-group-responsive .component-card__actions {
+        justify-content: flex-end;
+    }
+}/* Estilo para los valores de texto en modo lectura (Perfil) */
+.text-display-value {
+    font-size: 14px;      /* Igual que .component-text-input */
+    color: #000000;       /* Color de texto principal */
+    font-weight: 400;     /* Peso normal */
+    line-height: 1.5;     /* Buena legibilidad */
+    display: block;       /* Asegura que ocupe su espacio correctamente */
 }
