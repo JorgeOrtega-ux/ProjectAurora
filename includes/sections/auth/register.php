@@ -4,9 +4,16 @@
         <div class="component-header-centered">
             <h1><?php echo __('auth.register.title') ?? 'Crear cuenta'; ?></h1>
             <p><?php echo __('auth.register.subtitle') ?? 'Únete a nosotros hoy'; ?></p>
+            <?php if(isset($_GET['error'])): ?>
+                <p style="color: #d32f2f; font-size: 14px; background: #ffebee; padding: 8px; border-radius: 4px;">
+                    <?php echo htmlspecialchars($_GET['error']); ?>
+                </p>
+            <?php endif; ?>
         </div>
         
-        <div class="component-stage-form">
+        <form action="<?php echo $basePath; ?>auth-action.php" method="POST" class="component-stage-form">
+            <input type="hidden" name="action" value="register">
+
             <div class="component-form-group">
                 
                 <div class="component-input-wrapper component-input-wrapper--floating">
@@ -30,10 +37,10 @@
 
             </div>
 
-            <button type="button" id="btn-register" class="component-button component-button--large primary">
+            <button type="submit" id="btn-register" class="component-button component-button--large primary">
                 <?php echo __('auth.btn.register') ?? 'Crear cuenta'; ?>
             </button>
-        </div>
+        </form>
 
         <div class="component-text-footer">
             <p>

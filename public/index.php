@@ -4,10 +4,15 @@
 // 1. CONFIGURACIÓN
 define('PROJECT_ROOT', dirname(__DIR__));
 define('CONFIG_PATH', PROJECT_ROOT . '/config');
-$basePath = '/ProjectAurora/'; // Ajusta según tu entorno
+$basePath = '/ProjectAurora/'; 
 
-// 2. BOOTSTRAP (Carga Idioma y Preferencias)
+// 2. BOOTSTRAP (Carga Idioma, Preferencias y SESIÓN)
 require_once PROJECT_ROOT . '/includes/core/boot.php';
+
+// Variables de sesión
+$isLoggedIn = isset($_SESSION['user_id']);
+$userPic = $_SESSION['user_pic'] ?? null;
+$userName = $_SESSION['username'] ?? 'Usuario';
 
 // 3. DETECTAR SECCIÓN ACTUAL
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -28,17 +33,11 @@ $context = $isHelp ? 'help' : ($isSettings ? 'settings' : 'app');
 $routes = require CONFIG_PATH . '/routes.php';
 $fileToLoad = $routes[$currentSection] ?? $routes['404'];
 
-// 6. LÓGICA DE TEMA (Para el <body> inicial)
-// $currentTheme viene de boot.php
+// 6. LÓGICA DE TEMA
 $htmlDataTheme = 'light';
-
-if ($currentTheme === 'dark') {
-    $htmlDataTheme = 'dark';
-} elseif ($currentTheme === 'light') {
-    $htmlDataTheme = 'light';
-} else {
-    $htmlDataTheme = 'sync';
-}
+if ($currentTheme === 'dark') $htmlDataTheme = 'dark';
+elseif ($currentTheme === 'light') $htmlDataTheme = 'light';
+else $htmlDataTheme = 'sync';
 
 // 7. BUFFER DE SALIDA
 ob_start();
@@ -93,15 +92,16 @@ $contentHtml = ob_get_clean();
                         </div>
                         <div class="header-right">
 
-                     
-
                             <div class="header-item">
-                                 <a href="<?php echo $basePath; ?>login" class="header-text-button ghost">
-                                    <span>Acceder</span>
-                                </a>
-                                <div class="header-button" data-action="toggleModuleOptions">
-                                    <span class="material-symbols-rounded">more_vert</span>
-                                </div>
+                                <?php if (!$isLoggedIn): ?>
+                                    <a href="<?php echo $basePath; ?>login" class="header-text-button ghost">
+                                        <span>Acceder</span>
+                                    </a>
+                                <?php else: ?>
+                                    <div class="header-profile-btn" data-action="toggleModuleOptions">
+                                        <img src="<?php echo $userPic ?? 'assets/img/default-user.png'; ?>" alt="<?php echo $userName; ?>" class="header-profile-img">
+                                    </div>
+                                <?php endif; ?>
                             </div>
 
                             <div class="module-content module-options disabled">
@@ -115,6 +115,15 @@ $contentHtml = ob_get_clean();
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">help</span></div>
                                             <div class="menu-link-text"><span><?php echo __('menu.help'); ?></span></div>
                                         </div>
+                                        
+                                        <?php if ($isLoggedIn): ?>
+                                        <div style="width: 100%; height: 1px; background-color: #eee; margin: 4px 0;"></div>
+                                        <a href="<?php echo $basePath; ?>auth-action.php?action=logout" class="menu-link">
+                                            <div class="menu-link-icon"><span class="material-symbols-rounded" style="color: #ff4444;">logout</span></div>
+                                            <div class="menu-link-text"><span style="color: #ff4444;">Cerrar sesión</span></div>
+                                        </a>
+                                        <?php endif; ?>
+
                                     </div>
                                 </div>
                             </div>
@@ -125,28 +134,22 @@ $contentHtml = ob_get_clean();
 
                 <div class="general-content-bottom">
                     <div class="module-content module-surface disabled">
-
                         <?php if ($context === 'app'): ?>
                             <?php include PROJECT_ROOT . '/includes/menus/app.php'; ?>
-
                         <?php elseif ($context === 'settings'): ?>
                             <?php include PROJECT_ROOT . '/includes/menus/settings.php'; ?>
-
                         <?php elseif ($context === 'help'): ?>
                             <?php include PROJECT_ROOT . '/includes/menus/help.php'; ?>
                         <?php endif; ?>
-
                     </div>
 
                     <div class="general-content-scrolleable overflow-y" id="app-content">
                         <?php echo $contentHtml; ?>
                     </div>
-
                 </div>
             </div>
         </div>
     </div>
     <script type="module" src="<?php echo $basePath; ?>assets/js/app-init.js"></script>
 </body>
-
 </html>
