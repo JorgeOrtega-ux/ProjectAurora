@@ -85,69 +85,7 @@ $contentHtml = ob_get_clean();
             <div class="general-content">
 
                 <div class="general-content-top">
-                    <div class="header">
-                        <div class="header-left">
-                            <div class="header-item">
-                                <div class="header-button" data-action="toggleModuleSurface">
-                                    <span class="material-symbols-rounded">menu</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="header-center">
-                            <div class="search-wrapper">
-                                <div class="search-content">
-                                    <div class="search-icon"><span class="material-symbols-rounded">search</span></div>
-                                    <div class="search-input"><input type="text" placeholder="<?php echo __('search.placeholder'); ?>"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="header-right">
-
-                            <div class="header-item">
-                                <?php if (!$isLoggedIn): ?>
-                                    <a href="<?php echo $basePath; ?>login" class="header-text-button ghost">
-                                        <span>Acceder</span>
-                                    </a>
-
-                                    <div class="header-button" data-action="toggleModuleOptions">
-                                        <span class="material-symbols-rounded">more_vert</span>
-                                    </div>
-
-                                <?php else: ?>
-                                    <div class="header-button profile-button" 
-                                         data-role="<?php echo htmlspecialchars($userRole); ?>" 
-                                         data-action="toggleModuleOptions">
-                                        <img src="<?php echo $userPic ?? $basePath . 'assets/img/default-user.png'; ?>" alt="<?php echo $userName; ?>" class="header-profile-img">
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-
-                            <div class="module-content module-options disabled">
-                                <div class="menu-content">
-                                    <div class="menu-list">
-                                        <div class="menu-link" data-nav="settings/preferences">
-                                            <div class="menu-link-icon"><span class="material-symbols-rounded">settings</span></div>
-                                            <div class="menu-link-text"><span><?php echo __('menu.settings'); ?></span></div>
-                                        </div>
-                                        <div class="menu-link" data-nav="help">
-                                            <div class="menu-link-icon"><span class="material-symbols-rounded">help</span></div>
-                                            <div class="menu-link-text"><span><?php echo __('menu.help'); ?></span></div>
-                                        </div>
-
-                                        <?php if ($isLoggedIn): ?>
-                                            <div style="width: 100%; height: 1px; background-color: #eee; margin: 4px 0;"></div>
-                                            <a href="<?php echo $basePath; ?>?action=logout" class="menu-link">
-                                                <div class="menu-link-icon"><span class="material-symbols-rounded" style="color: #ff4444;">logout</span></div>
-                                                <div class="menu-link-text"><span style="color: #ff4444;">Cerrar sesión</span></div>
-                                            </a>
-                                        <?php endif; ?>
-
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
+                      <?php include PROJECT_ROOT . '/includes/layouts/header.php'; ?>
                 </div>
 
                 <div class="general-content-bottom">
