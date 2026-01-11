@@ -5,12 +5,27 @@ define('PROJECT_ROOT', dirname(__DIR__));
 define('CONFIG_PATH', PROJECT_ROOT . '/config');
 define('MENUS_PATH', PROJECT_ROOT . '/includes/menus');
 
-// 1. BOOTSTRAP (Carga Idioma y Preferencias)
+// 1. BOOTSTRAP
 require_once PROJECT_ROOT . '/includes/core/boot.php';
 
-// 2. Obtener sección
+// 2. Obtener sección solicitada
 $section = $_GET['section'] ?? 'main';
 $section = strtok($section, '?');
+
+// --- SEGURIDAD: VERIFICACIÓN DE SESIÓN EN SPA ---
+$protectedRoutes = [
+    'settings/profile',
+    'settings/security'
+];
+$isLoggedIn = isset($_SESSION['user_id']);
+
+if (in_array($section, $protectedRoutes) && !$isLoggedIn) {
+    // Si intenta cargar algo privado sin sesión, forzamos la carga de "login"
+    // Esto mostrará el formulario de login al usuario inmediatamente.
+    $section = 'login';
+}
+// ------------------------------------------------
+
 $currentSection = $section; 
 
 // 3. Cargar Rutas
@@ -19,7 +34,7 @@ $fileToLoad = $routes[$section] ?? $routes['404'];
 
 // 4. Determinar Contexto del Menú
 $helpSections = ['help', 'privacy', 'terms', 'cookies', 'feedback'];
-$settingsSections = ['settings/preferences'];
+$settingsSections = ['settings/preferences', 'settings/profile', 'settings/security'];
 
 $menuFile = 'app.php'; 
 if (in_array($section, $helpSections)) {

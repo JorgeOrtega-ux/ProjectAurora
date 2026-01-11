@@ -9,18 +9,17 @@ $basePath = '/ProjectAurora/';
 // 2. BOOTSTRAP (Carga Idioma, Preferencias, SESIÓN y AuthServices)
 require_once PROJECT_ROOT . '/includes/core/boot.php';
 
-// --- NUEVO: INTERCEPTOR DE AUTH ---
+// --- INTERCEPTOR DE AUTH ---
 if (isset($_REQUEST['action'])) {
     require_once PROJECT_ROOT . '/api/controllers/AuthHandler.php';
     $handler = new AuthHandler($basePath);
     $handler->handleRequest();
 }
 
-// Variables de sesión (para la vista)
+// Variables de sesión
 $isLoggedIn = isset($_SESSION['user_id']);
 $userPic = $_SESSION['user_pic'] ?? null;
 $userName = $_SESSION['username'] ?? 'Usuario';
-// --- NUEVO: Obtenemos el rol para el CSS ---
 $userRole = $_SESSION['user_role'] ?? 'user'; 
 
 // 3. DETECTAR SECCIÓN ACTUAL
@@ -30,9 +29,22 @@ $currentSection = ($path === '' || $path === '/') ? 'main' : $path;
 $currentSection = trim($currentSection, '/');
 if ($currentSection === '') $currentSection = 'main';
 
+// --- SEGURIDAD: RUTAS PROTEGIDAS ---
+$protectedRoutes = [
+    'settings/profile',
+    'settings/security'
+];
+
+if (in_array($currentSection, $protectedRoutes) && !$isLoggedIn) {
+    // Redirección limpia al login (sin mensajes de error)
+    header("Location: " . $basePath . "login");
+    exit;
+}
+// -----------------------------------
+
 // 4. CONTEXTO
 $helpSections = ['help', 'privacy', 'terms', 'cookies', 'feedback'];
-$settingsSections = ['settings/preferences', 'settings/accessibility'];
+$settingsSections = ['settings/preferences', 'settings/profile', 'settings/security', 'settings/accessibility'];
 
 $isHelp = in_array($currentSection, $helpSections);
 $isSettings = in_array($currentSection, $settingsSections);

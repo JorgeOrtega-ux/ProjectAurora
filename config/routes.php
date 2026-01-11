@@ -6,12 +6,14 @@ return [
     'main'    => __DIR__ . '/../includes/sections/app/main.php',
     'trends'  => __DIR__ . '/../includes/sections/app/trends.php',
     
-    // --- Contexto: AUTH (NUEVAS RUTAS) ---
+    // --- Contexto: AUTH ---
     'login'    => __DIR__ . '/../includes/sections/auth/login.php',
     'register' => __DIR__ . '/../includes/sections/auth/register.php',
     
-    // --- Contexto: SETTINGS ---
-    'settings/preferences'   => __DIR__ . '/../includes/sections/settings/preferences.php',
+    // --- Contexto: SETTINGS (Rutas Nuevas Agregadas) ---
+    'settings/preferences' => __DIR__ . '/../includes/sections/settings/preferences.php',
+    'settings/profile'     => __DIR__ . '/../includes/sections/settings/profile.php',
+    'settings/security'    => __DIR__ . '/../includes/sections/settings/security.php',
 
     // --- Contexto: HELP ---
     'help'     => __DIR__ . '/../includes/sections/help/main.php',
