@@ -5,12 +5,17 @@ require_once __DIR__ . '/../services/AuthServices.php';
 
 class AuthHandler {
     private $authService;
-    private $basePath = '/ProjectAurora/'; 
-    private $redirectUrl = 'http://192.168.1.158/ProjectAurora/'; 
+    private $basePath;
+    private $redirectUrl;
 
     public function __construct() {
         if (session_status() === PHP_SESSION_NONE) session_start();
+        
         $this->authService = new AuthServices();
+        
+        // Cargamos configuración desde variables de entorno
+        $this->basePath = $_ENV['APP_BASE_PATH'] ?? '/ProjectAurora/';
+        $this->redirectUrl = $_ENV['APP_URL'] ?? 'http://localhost/ProjectAurora/';
     }
 
     public function handleRequest() {
@@ -18,9 +23,9 @@ class AuthHandler {
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
-            // --- NUEVO: Validación de Seguridad CSRF ---
+            // --- Validación de Seguridad CSRF ---
             $this->validateCSRF();
-            // -------------------------------------------
+            // ------------------------------------
 
             switch ($action) {
                 case 'login':
@@ -43,19 +48,16 @@ class AuthHandler {
         }
     }
 
-    // --- NUEVO: Método Helper de Validación CSRF ---
+    // --- Método Helper de Validación CSRF ---
     private function validateCSRF() {
-        // Verificar existencia en sesión y en POST
         if (empty($_SESSION['csrf_token']) || empty($_POST['csrf_token'])) {
             $this->sendJson(false, 'Error de seguridad: Token no encontrado. Recarga la página.');
         }
 
-        // Comparación segura (timing attack resistant)
         if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
             $this->sendJson(false, 'Error de seguridad: Token inválido (CSRF). Por favor recarga la página.');
         }
     }
-    // -----------------------------------------------
 
     // --- HELPER: RESPUESTA JSON ---
     private function sendJson($status, $message, $redirect = null) {
@@ -67,7 +69,6 @@ class AuthHandler {
         ]);
         exit;
     }
-    // -----------------------------
 
     private function processRegisterStep1() {
         $email = trim($_POST['email'] ?? '');
@@ -77,7 +78,6 @@ class AuthHandler {
             $this->sendJson(false, __('auth.service.empty_fields'));
         }
 
-        // NUEVO: Validar reglas de negocio (Longitud, dominios, password)
         $validation = $this->authService->validateStep1($email, $password);
         if (!$validation['status']) {
             $this->sendJson(false, $validation['message']);
@@ -106,7 +106,6 @@ class AuthHandler {
             $this->sendJson(false, __('auth.service.empty_fields'));
         }
 
-        // NUEVO: Validar reglas de usuario
         $validation = $this->authService->validateUsername($username);
         if (!$validation['status']) {
             $this->sendJson(false, $validation['message']);
@@ -134,7 +133,7 @@ class AuthHandler {
 
         if ($result['status']) {
             unset($_SESSION['reg_temp_email']);
-            // Redirigir al Dashboard o Home
+            // Usamos la URL desde el .env
             $this->sendJson(true, 'Bienvenido', $this->redirectUrl);
         } else {
             $this->sendJson(false, $result['message']);

@@ -1,0 +1,4 @@
+.env
+.DS_Store
+/public/assets/img/avatars/uploads/*
+!/public/assets/img/avatars/uploads/.gitkeep

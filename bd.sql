@@ -24,3 +24,18 @@ CREATE TABLE IF NOT EXISTS verification_codes (
     INDEX (identifier),
     INDEX (code)
 );
+
+-- NUEVA TABLA PARA REGISTRO DE CAMBIOS
+CREATE TABLE IF NOT EXISTS profile_changes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    change_type VARCHAR(50) NOT NULL,
+    old_value TEXT DEFAULT NULL,
+    new_value TEXT DEFAULT NULL,
+    ip_address VARCHAR(45) DEFAULT NULL,
+    user_agent TEXT DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX (user_id),
+    INDEX (change_type)
+);
