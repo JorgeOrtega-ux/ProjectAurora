@@ -24,12 +24,11 @@
     },
     "main": {
         "header": "Página Principal",
-        "welcome": "Bienvenido al Dashboard de Project Aurora.",
-        "recent_activity": "Actividad Reciente",
-        "system_ok": "El sistema está funcionando correctamente."
+        "welcome": "Bienvenido al Dashboard de Project Aurora. Aquí encontrarás un resumen de tu actividad."
     },
     "trends": {
         "title": "Explorar Tendencias",
+        "desc": "Visualiza estadísticas globales y métricas relevantes en tiempo real.",
         "no_data_title": "Sin datos de tendencias",
         "debug_info": "Esta sección se cargó desde"
     },
@@ -52,7 +51,7 @@
     },
     "help": {
         "main_title": "Centro de Ayuda",
-        "main_desc": "Bienvenido al soporte de Project Aurora. Selecciona una opción del menú.",
+        "main_desc": "Bienvenido al soporte de Project Aurora. Selecciona una opción del menú para comenzar.",
         "privacy_title": "Política de Privacidad",
         "privacy_desc": "Información detallada sobre cómo recopilamos y protegemos tus datos.",
         "terms_title": "Términos y Condiciones",
@@ -101,7 +100,7 @@
             "welcome": "Bienvenido.",
             "password_incorrect": "Contraseña incorrecta.",
             "email_not_found": "No existe una cuenta con ese correo.",
-            "code_generated": "Código generado correctamente (Simulación).",
+            "code_generated": "Código generado correctamente.",
             "invalid_code": "Código inválido o expirado."
         }
     },

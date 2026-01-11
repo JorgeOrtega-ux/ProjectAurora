@@ -14,6 +14,57 @@ class AuthServices {
         $this->db = $database->getConnection();
     }
 
+    // --- VALIDACIONES DE REGLAS DE NEGOCIO (NUEVO) ---
+
+    public function validateStep1($email, $password) {
+        // 1. Validar Email
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return ['status' => false, 'message' => 'El formato del correo electrónico no es válido.'];
+        }
+
+        // Desglosar el correo
+        $parts = explode('@', $email);
+        $localPart = $parts[0];
+        $domainPart = $parts[1];
+
+        // Regla: Parte antes del @ (mínimo 6, máximo 64)
+        $localLen = strlen($localPart);
+        if ($localLen < 6 || $localLen > 64) {
+            return ['status' => false, 'message' => 'La parte local del correo debe tener entre 6 y 64 caracteres.'];
+        }
+
+        // Regla: Parte después del @ (máximo 255)
+        if (strlen($domainPart) > 255) {
+            return ['status' => false, 'message' => 'El dominio del correo es demasiado largo (máx 255).'];
+        }
+
+        // Regla: Dominios permitidos
+        $allowedDomains = ['gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com', 'icloud.com'];
+        if (!in_array(strtolower($domainPart), $allowedDomains)) {
+            return ['status' => false, 'message' => 'Solo se permiten correos de: Gmail, Outlook, Hotmail, Yahoo o iCloud.'];
+        }
+
+        // 2. Validar Contraseña
+        // Regla: Mínimo 12 caracteres, Máximo 64
+        $passLen = strlen($password);
+        if ($passLen < 12 || $passLen > 64) {
+            return ['status' => false, 'message' => 'La contraseña debe tener entre 12 y 64 caracteres.'];
+        }
+
+        return ['status' => true, 'message' => 'OK'];
+    }
+
+    public function validateUsername($username) {
+        // Regla: Nombre de usuario mínimo 6 y máximo 32
+        $userLen = strlen($username);
+        if ($userLen < 6 || $userLen > 32) {
+            return ['status' => false, 'message' => 'El nombre de usuario debe tener entre 6 y 32 caracteres.'];
+        }
+        return ['status' => true, 'message' => 'OK'];
+    }
+
+    // --------------------------------------------------
+
     // --- ETAPA 1: Validación Previa ---
     public function checkEmailExists($email) {
         $stmt = $this->db->prepare("SELECT id FROM users WHERE email = :email LIMIT 1");
@@ -44,7 +95,7 @@ class AuthServices {
         $expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
 
         // 5. Insertar en tabla de verificación
-        // Limpiamos códigos previos para este email para no acumular basura
+        // Limpiamos códigos previos para este email
         $delStmt = $this->db->prepare("DELETE FROM verification_codes WHERE identifier = :email AND code_type = 'account_activation'");
         $delStmt->bindParam(':email', $email);
         $delStmt->execute();
@@ -57,8 +108,6 @@ class AuthServices {
         $stmt->bindParam(':expiresAt', $expiresAt);
 
         if ($stmt->execute()) {
-            // NOTA: Aquí enviarías el email real.
-            // Por ahora, solo retornamos true. El usuario verá la pantalla de ingreso de código.
             return ['status' => true, 'message' => 'Código enviado']; 
         } else {
             return ['status' => false, 'message' => __('auth.service.register_db_error')];
@@ -132,7 +181,7 @@ class AuthServices {
         return ['status' => true, 'message' => __('auth.service.welcome')];
     }
 
-    // Login normal (mantenido)
+    // Login normal
     public function login($email, $password) {
         if (empty($email) || empty($password)) {
             return ['status' => false, 'message' => __('auth.service.login_empty')];

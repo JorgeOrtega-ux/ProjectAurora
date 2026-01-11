@@ -31,7 +31,6 @@ class AuthHandler {
                     $this->processVerification();
                     break;
                 default:
-                    // Si la acción no existe, retornamos error JSON si es ajax
                     $this->sendJson(false, 'Acción no válida');
             }
         } elseif ($action === 'logout') {
@@ -59,6 +58,12 @@ class AuthHandler {
             $this->sendJson(false, __('auth.service.empty_fields'));
         }
 
+        // NUEVO: Validar reglas de negocio (Longitud, dominios, password)
+        $validation = $this->authService->validateStep1($email, $password);
+        if (!$validation['status']) {
+            $this->sendJson(false, $validation['message']);
+        }
+
         if ($this->authService->checkEmailExists($email)) {
             $this->sendJson(false, __('auth.service.email_exists'));
         }
@@ -66,7 +71,6 @@ class AuthHandler {
         $_SESSION['reg_temp_email'] = $email;
         $_SESSION['reg_temp_password'] = $password;
 
-        // Éxito: Indicar al JS a dónde navegar
         $this->sendJson(true, 'OK', $this->basePath . "register/additional-data");
     }
 
@@ -81,6 +85,12 @@ class AuthHandler {
 
         if (empty($username)) {
             $this->sendJson(false, __('auth.service.empty_fields'));
+        }
+
+        // NUEVO: Validar reglas de usuario
+        $validation = $this->authService->validateUsername($username);
+        if (!$validation['status']) {
+            $this->sendJson(false, $validation['message']);
         }
 
         $result = $this->authService->requestVerificationCode($email, $username, $password);

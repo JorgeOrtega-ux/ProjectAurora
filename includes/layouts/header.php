@@ -18,7 +18,7 @@
 
         <div class="header-item">
             <?php if (!$isLoggedIn): ?>
-                <a href="<?php echo $basePath; ?>login" class="header-text-button ghost">
+                <a href="<?php echo $basePath; ?>login" class="header-text-button ghost" data-nav="login">
                     <span><?php echo __('header.login_btn'); ?></span>
                 </a>
 
