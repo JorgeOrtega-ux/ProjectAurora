@@ -231,14 +231,17 @@
     justify-content: flex-end;
 }
 
-/* FIX: Clase agregada para agrupar botones internos (Eliminar/Cambiar) */
+.component-card__actions.actions-force-end {
+    justify-content: flex-end !important;
+}
+
 .component-action-group {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-/* FIX: Ocultar correctamente cuando está disabled */
+/* Ocultar elementos desactivados */
 .component-card__actions.disabled,
 .component-action-group.disabled {
     display: none;
@@ -258,19 +261,32 @@
     width: 100%;
 }
 
+/* Estados de Stage Form (Para flujos JS) */
+.component-stage-form.disabled {
+    display: none;
+}
+
+.component-stage-form.active {
+    display: flex;
+    animation: fadeInStage 0.2s ease-out;
+}
+
+@keyframes fadeInStage {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .component-input-wrapper {
     width: 100%;
     min-width: 200px;
 }
 
-/* Grupo responsivo (Input + Botones) */
 .input-group-responsive {
     gap: 8px; 
     align-items: center;
     width: 100%;
 }
 
-/* Texto de solo lectura (Perfil) */
 .text-display-value {
     font-size: 14px;
     color: #000000;
@@ -479,11 +495,6 @@ input:checked+.component-toggle-slider:before {
     display: flex;
 }
 
-@keyframes fadeInPopover {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
 .menu-content.menu-content--flush {
     width: 100%;
     box-shadow: none;
@@ -529,7 +540,6 @@ input:checked+.component-toggle-slider:before {
     flex-shrink: 0;
 }
 
-/* Borde doble para roles */
 .component-card__profile-picture::before {
     content: '';
     position: absolute;
@@ -541,15 +551,9 @@ input:checked+.component-toggle-slider:before {
 }
 
 /* --- COLORES DE ROLES --- */
-.component-card__profile-picture[data-role="user"]::before { 
-    border-color: rgba(0,0,0,0.1); 
-}
-.component-card__profile-picture[data-role="moderator"]::before { 
-    border-color: #206BD3; 
-}
-.component-card__profile-picture[data-role="administrator"]::before { 
-    border-color: #D32029; 
-}
+.component-card__profile-picture[data-role="user"]::before { border-color: rgba(0,0,0,0.1); }
+.component-card__profile-picture[data-role="moderator"]::before { border-color: #206BD3; }
+.component-card__profile-picture[data-role="administrator"]::before { border-color: #D32029; }
 .component-card__profile-picture[data-role="founder"]::before {
     border: none;
     background-image: conic-gradient(from 300deg, #D32029 0deg 90deg, #206BD3 90deg 210deg, #28A745 210deg 300deg, #FFC107 300deg 360deg);
@@ -564,7 +568,6 @@ input:checked+.component-toggle-slider:before {
     border-radius: 50%;
 }
 
-/* Overlay de cámara al pasar el mouse */
 .component-card__avatar-overlay {
     position: absolute;
     inset: 0;
@@ -585,17 +588,65 @@ input:checked+.component-toggle-slider:before {
 }
 
 /* =========================================
-   5. UTILIDADES Y RESPONSIVE
+   5. ICONOS Y CONTENEDORES VISUALES
+   ========================================= */
+
+/* Contenedor genérico para iconos en tarjetas */
+.component-card__icon-container {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: #f5f5fa;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #333;
+}
+
+.component-card__icon-container.component-card__icon-container--bordered {
+    background-color: transparent;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 8px; /* Cuadrado redondeado para iconos de sistema */
+}
+
+/* =========================================
+   6. MENSAJES Y UTILIDADES DE ESTADO
+   ========================================= */
+.w-100 { width: 100%; }
+
+.component-message {
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    text-align: left;
+    margin-bottom: 16px;
+    border: 1px solid transparent;
+}
+
+.component-message--error {
+    background-color: #ffebee;
+    color: #c62828;
+    border-color: rgba(198, 40, 40, 0.2);
+}
+
+.component-message--success {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+    border-color: rgba(46, 125, 50, 0.2);
+}
+
+/* =========================================
+   7. UTILIDADES Y RESPONSIVE
    ========================================= */
 @media (max-width: 600px) {
-    /* 1. Stack vertical para los items del grupo */
     .component-group-item {
         flex-direction: column;
         align-items: stretch;
         gap: 16px;
     }
     
-    /* 2. Contenedores de acciones ocupan todo el ancho */
     .component-card__actions.actions-right,
     .component-action-group {
         width: 100%;
@@ -603,9 +654,6 @@ input:checked+.component-toggle-slider:before {
         gap: 12px; 
     }
 
-    /* 3. BOTONES RESPONSIVOS: 
-       flex: 1 hace que crezcan equitativamente.
-    */
     .component-card__actions .component-button,
     .component-action-group .component-button {
         flex: 1;
@@ -613,14 +661,12 @@ input:checked+.component-toggle-slider:before {
         width: auto;
     }
     
-    /* 4. Responsive para Input + Botones (Edit Mode) */
     .input-group-responsive {
         flex-direction: column;
         align-items: stretch;
         gap: 12px;
     }
     
-    /* Aseguramos que el grupo de botones dentro del input-group también se expanda */
     .input-group-responsive .component-card__actions {
         width: 100%;
         justify-content: flex-end;
