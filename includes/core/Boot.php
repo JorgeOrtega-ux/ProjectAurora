@@ -7,8 +7,8 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/Translator.php';
-// Cargamos Auth para que esté disponible si se necesita verificar sesión globalmente
-require_once __DIR__ . '/Auth.php';
+// Cargamos AuthServices para que esté disponible globalmente (Reemplaza a Auth.php)
+require_once __DIR__ . '/../../api/services/AuthServices.php';
 
 // 1. Obtener preferencias de Cookie
 $cookies = json_decode($_COOKIE['project_aurora_prefs'] ?? '{}', true);

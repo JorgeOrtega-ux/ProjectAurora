@@ -4,12 +4,21 @@
 // 1. CONFIGURACIÓN
 define('PROJECT_ROOT', dirname(__DIR__));
 define('CONFIG_PATH', PROJECT_ROOT . '/config');
-$basePath = '/ProjectAurora/'; 
+$basePath = '/ProjectAurora/';
 
-// 2. BOOTSTRAP (Carga Idioma, Preferencias y SESIÓN)
+// 2. BOOTSTRAP (Carga Idioma, Preferencias, SESIÓN y AuthServices)
 require_once PROJECT_ROOT . '/includes/core/boot.php';
 
-// Variables de sesión
+// --- NUEVO: INTERCEPTOR DE AUTH ---
+// Si hay una acción (login, register, logout), el Handler se encarga y termina la ejecución (exit).
+if (isset($_REQUEST['action'])) {
+    require_once PROJECT_ROOT . '/api/controllers/AuthHandler.php';
+    $handler = new AuthHandler($basePath);
+    $handler->handleRequest();
+}
+// ----------------------------------
+
+// Variables de sesión (para la vista)
 $isLoggedIn = isset($_SESSION['user_id']);
 $userPic = $_SESSION['user_pic'] ?? null;
 $userName = $_SESSION['username'] ?? 'Usuario';
@@ -35,9 +44,11 @@ $fileToLoad = $routes[$currentSection] ?? $routes['404'];
 
 // 6. LÓGICA DE TEMA
 $htmlDataTheme = 'light';
-if ($currentTheme === 'dark') $htmlDataTheme = 'dark';
-elseif ($currentTheme === 'light') $htmlDataTheme = 'light';
-else $htmlDataTheme = 'sync';
+if (isset($currentTheme)) {
+    if ($currentTheme === 'dark') $htmlDataTheme = 'dark';
+    elseif ($currentTheme === 'light') $htmlDataTheme = 'light';
+    else $htmlDataTheme = 'sync';
+}
 
 // 7. BUFFER DE SALIDA
 ob_start();
@@ -58,7 +69,7 @@ $contentHtml = ob_get_clean();
 
     <script>
         (function() {
-            const savedTheme = '<?php echo $currentTheme; ?>';
+            const savedTheme = '<?php echo $currentTheme ?? "sync"; ?>';
             if (savedTheme === 'sync') {
                 const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                 document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
@@ -93,23 +104,21 @@ $contentHtml = ob_get_clean();
                         <div class="header-right">
 
                             <div class="header-item">
-        <?php if (!$isLoggedIn): ?>
-            <a href="<?php echo $basePath; ?>login" class="header-text-button ghost">
-                <span>Acceder</span>
-            </a>
-            
-            <div style="width: 8px;"></div> 
-            
-            <div class="header-button" data-action="toggleModuleOptions">
-                <span class="material-symbols-rounded">more_vert</span>
-            </div>
+                                <?php if (!$isLoggedIn): ?>
+                                    <a href="<?php echo $basePath; ?>login" class="header-text-button ghost">
+                                        <span>Acceder</span>
+                                    </a>
 
-        <?php else: ?>
-            <div class="header-profile-btn" data-action="toggleModuleOptions">
-                <img src="<?php echo $userPic ?? 'assets/img/default-user.png'; ?>" alt="<?php echo $userName; ?>" class="header-profile-img">
-            </div>
-        <?php endif; ?>
-    </div>
+                                    <div class="header-button" data-action="toggleModuleOptions">
+                                        <span class="material-symbols-rounded">more_vert</span>
+                                    </div>
+
+                                <?php else: ?>
+                                    <div class="header-profile-btn" data-action="toggleModuleOptions">
+                                        <img src="<?php echo $userPic ?? $basePath . 'assets/img/default-user.png'; ?>" alt="<?php echo $userName; ?>" class="header-profile-img">
+                                    </div>
+                                <?php endif; ?>
+                            </div>
 
                             <div class="module-content module-options disabled">
                                 <div class="menu-content">
@@ -122,13 +131,13 @@ $contentHtml = ob_get_clean();
                                             <div class="menu-link-icon"><span class="material-symbols-rounded">help</span></div>
                                             <div class="menu-link-text"><span><?php echo __('menu.help'); ?></span></div>
                                         </div>
-                                        
+
                                         <?php if ($isLoggedIn): ?>
-                                        <div style="width: 100%; height: 1px; background-color: #eee; margin: 4px 0;"></div>
-                                        <a href="<?php echo $basePath; ?>auth-action.php?action=logout" class="menu-link">
-                                            <div class="menu-link-icon"><span class="material-symbols-rounded" style="color: #ff4444;">logout</span></div>
-                                            <div class="menu-link-text"><span style="color: #ff4444;">Cerrar sesión</span></div>
-                                        </a>
+                                            <div style="width: 100%; height: 1px; background-color: #eee; margin: 4px 0;"></div>
+                                            <a href="<?php echo $basePath; ?>?action=logout" class="menu-link">
+                                                <div class="menu-link-icon"><span class="material-symbols-rounded" style="color: #ff4444;">logout</span></div>
+                                                <div class="menu-link-text"><span style="color: #ff4444;">Cerrar sesión</span></div>
+                                            </a>
                                         <?php endif; ?>
 
                                     </div>
@@ -159,4 +168,5 @@ $contentHtml = ob_get_clean();
     </div>
     <script type="module" src="<?php echo $basePath; ?>assets/js/app-init.js"></script>
 </body>
+
 </html>

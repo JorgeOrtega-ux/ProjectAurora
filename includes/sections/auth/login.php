@@ -11,7 +11,7 @@
             <?php endif; ?>
         </div>
         
-        <form action="<?php echo $basePath; ?>auth-action.php" method="POST" class="component-stage-form">
+        <form action="<?php echo $basePath; ?>" method="POST" class="component-stage-form">
             <input type="hidden" name="action" value="login">
             
             <div class="component-form-group">
