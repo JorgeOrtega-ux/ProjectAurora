@@ -6,6 +6,12 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// --- NUEVO: Generación de Token CSRF ---
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+// ---------------------------------------
+
 require_once __DIR__ . '/Translator.php';
 // Cargamos AuthServices globalmente
 require_once __DIR__ . '/../../api/services/AuthServices.php';

@@ -73,6 +73,13 @@ function validateUsernameRules(username) {
     }
 }
 
+// --- HELPER PARA CSRF ---
+function getCsrfToken(isRegister = true) {
+    const id = isRegister ? 'reg-csrf' : 'login-csrf';
+    const input = document.getElementById(id);
+    return input ? input.value : '';
+}
+
 // --- MANEJO DE REGISTRO (SPA) ---
 async function handleRegisterStep(e, step) {
     e.preventDefault(); 
@@ -89,6 +96,8 @@ async function handleRegisterStep(e, step) {
     if(errorContainer) errorContainer.style.display = 'none';
 
     const formData = new FormData();
+    // NUEVO: Agregar Token CSRF
+    formData.append('csrf_token', getCsrfToken(true));
 
     try {
         if (step === 1) {
@@ -172,8 +181,6 @@ async function handleRegisterStep(e, step) {
         }
 
     } catch (error) {
-        // CORRECCIÓN: Eliminado console.error para no mostrar errores de validación en consola
-        
         if (document.body.contains(btn)) {
             setLoading(btn, false, originalText);
         }
@@ -182,7 +189,6 @@ async function handleRegisterStep(e, step) {
             errorText.textContent = error.message;
             errorContainer.style.display = 'flex';
         } else {
-            // Solo usamos alert si no existe el contenedor de errores en el DOM
             alert(error.message);
         }
     }
@@ -203,6 +209,9 @@ async function handleLogin(e) {
     setLoading(btn, true);
 
     const formData = new FormData();
+    // NUEVO: Agregar Token CSRF
+    formData.append('csrf_token', getCsrfToken(false));
+
     const emailElem = document.getElementById('login-email');
     const passElem = document.getElementById('login-password');
 
@@ -225,7 +234,6 @@ async function handleLogin(e) {
             throw new Error(data.message || "Credenciales incorrectas");
         }
     } catch (error) {
-        // CORRECCIÓN: Eliminado console.error aquí también
         if(errorContainer && errorText) {
             errorText.textContent = error.message;
             errorContainer.style.display = 'flex';

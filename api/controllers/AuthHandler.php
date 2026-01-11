@@ -17,6 +17,11 @@ class AuthHandler {
         $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            
+            // --- NUEVO: Validación de Seguridad CSRF ---
+            $this->validateCSRF();
+            // -------------------------------------------
+
             switch ($action) {
                 case 'login':
                     $this->processLogin();
@@ -37,6 +42,20 @@ class AuthHandler {
             $this->processLogout();
         }
     }
+
+    // --- NUEVO: Método Helper de Validación CSRF ---
+    private function validateCSRF() {
+        // Verificar existencia en sesión y en POST
+        if (empty($_SESSION['csrf_token']) || empty($_POST['csrf_token'])) {
+            $this->sendJson(false, 'Error de seguridad: Token no encontrado. Recarga la página.');
+        }
+
+        // Comparación segura (timing attack resistant)
+        if (!hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+            $this->sendJson(false, 'Error de seguridad: Token inválido (CSRF). Por favor recarga la página.');
+        }
+    }
+    // -----------------------------------------------
 
     // --- HELPER: RESPUESTA JSON ---
     private function sendJson($status, $message, $redirect = null) {

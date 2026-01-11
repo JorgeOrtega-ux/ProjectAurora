@@ -12,7 +12,8 @@
         </div>
         
         <div class="component-stage-form">
-            
+            <input type="hidden" id="login-csrf" value="<?php echo $_SESSION['csrf_token']; ?>">
+
             <div class="component-form-group">
                 <div class="component-input-wrapper component-input-wrapper--floating">
                     <input type="email" id="login-email" class="component-text-input" required placeholder=" ">

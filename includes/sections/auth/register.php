@@ -34,6 +34,8 @@ if (($step === 2 || $step === 3) && !isset($_SESSION['reg_temp_email'])) {
         
         <div class="component-stage-form">
             
+            <input type="hidden" id="reg-csrf" value="<?php echo $_SESSION['csrf_token']; ?>">
+
             <?php if ($step === 1): ?>
                 <div class="component-form-group">
                     <div class="component-input-wrapper component-input-wrapper--floating">
