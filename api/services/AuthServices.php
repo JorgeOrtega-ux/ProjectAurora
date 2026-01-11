@@ -39,15 +39,19 @@ class AuthServices {
         $passwordHash = password_hash($password, PASSWORD_BCRYPT);
         $uuid = $this->generateUuid();
 
+        // Generar Avatar Automático
+        $avatarWebPath = $this->downloadAndSaveAvatar($username, $uuid);
+
         // 4. Insertar en la BD
-        $query = "INSERT INTO users (uuid, username, email, password, account_role, created_at) 
-                  VALUES (:uuid, :username, :email, :password, 'user', NOW())";
+        $query = "INSERT INTO users (uuid, username, email, password, profile_picture_url, account_role, created_at) 
+                  VALUES (:uuid, :username, :email, :password, :profile_picture_url, 'user', NOW())";
         
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(':uuid', $uuid);
         $stmt->bindParam(':username', $username);
         $stmt->bindParam(':email', $email);
         $stmt->bindParam(':password', $passwordHash);
+        $stmt->bindParam(':profile_picture_url', $avatarWebPath);
 
         if ($stmt->execute()) {
             // Iniciar sesión automáticamente tras el registro
@@ -99,6 +103,42 @@ class AuthServices {
     }
 
     /**
+     * NUEVO: Refresca los datos de la sesión desde la BD en cada carga
+     */
+    public function refreshSessionData() {
+        // Si no hay usuario logueado, salir
+        if (!isset($_SESSION['user_id'])) {
+            return;
+        }
+
+        $id = $_SESSION['user_id'];
+
+        // Consultamos los datos más recientes
+        $stmt = $this->db->prepare("SELECT username, profile_picture_url, account_role, account_status FROM users WHERE id = :id LIMIT 1");
+        $stmt->bindParam(':id', $id);
+        $stmt->execute();
+
+        if ($stmt->rowCount() > 0) {
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // 1. Seguridad: Si la cuenta ya no está activa, forzar logout
+            if ($row['account_status'] !== 'active') {
+                $this->logout();
+                return;
+            }
+
+            // 2. Actualizar variables de sesión con datos frescos
+            $_SESSION['username'] = $row['username'];
+            $_SESSION['user_role'] = $row['account_role']; // Esto actualiza el borde del avatar
+            $_SESSION['user_pic'] = $row['profile_picture_url'];
+            
+        } else {
+            // El usuario fue borrado de la BD mientras navegaba
+            $this->logout();
+        }
+    }
+
+    /**
      * Cierra la sesión
      */
     public function logout() {
@@ -120,6 +160,33 @@ class AuthServices {
             mt_rand(0, 0x3fff) | 0x8000,
             mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
         );
+    }
+
+    /**
+     * Descarga y guarda el avatar
+     */
+    private function downloadAndSaveAvatar($username, $uuid) {
+        $uploadDir = __DIR__ . '/../../public/assets/img/avatars/';
+        $webBasePath = '/ProjectAurora/public/assets/img/avatars/';
+        $fileName = $uuid . '.png';
+        $savePath = $uploadDir . $fileName;
+
+        if (!file_exists($uploadDir)) {
+            if (!mkdir($uploadDir, 0777, true)) return null;
+        }
+
+        $apiUrl = "https://ui-avatars.com/api/?name=" . urlencode($username) . "&background=random&color=fff&size=128&font-size=0.5";
+
+        try {
+            $imageData = file_get_contents($apiUrl);
+            if ($imageData !== false) {
+                file_put_contents($savePath, $imageData);
+                return $webBasePath . $fileName;
+            }
+        } catch (Exception $e) {
+            return null;
+        }
+        return null;
     }
 }
 ?>

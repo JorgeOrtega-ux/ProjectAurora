@@ -10,18 +10,18 @@ $basePath = '/ProjectAurora/';
 require_once PROJECT_ROOT . '/includes/core/boot.php';
 
 // --- NUEVO: INTERCEPTOR DE AUTH ---
-// Si hay una acción (login, register, logout), el Handler se encarga y termina la ejecución (exit).
 if (isset($_REQUEST['action'])) {
     require_once PROJECT_ROOT . '/api/controllers/AuthHandler.php';
     $handler = new AuthHandler($basePath);
     $handler->handleRequest();
 }
-// ----------------------------------
 
 // Variables de sesión (para la vista)
 $isLoggedIn = isset($_SESSION['user_id']);
 $userPic = $_SESSION['user_pic'] ?? null;
 $userName = $_SESSION['username'] ?? 'Usuario';
+// --- NUEVO: Obtenemos el rol para el CSS ---
+$userRole = $_SESSION['user_role'] ?? 'user'; 
 
 // 3. DETECTAR SECCIÓN ACTUAL
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -114,7 +114,9 @@ $contentHtml = ob_get_clean();
                                     </div>
 
                                 <?php else: ?>
-                                    <div class="header-profile-btn" data-action="toggleModuleOptions">
+                                    <div class="header-button profile-button" 
+                                         data-role="<?php echo htmlspecialchars($userRole); ?>" 
+                                         data-action="toggleModuleOptions">
                                         <img src="<?php echo $userPic ?? $basePath . 'assets/img/default-user.png'; ?>" alt="<?php echo $userName; ?>" class="header-profile-img">
                                     </div>
                                 <?php endif; ?>

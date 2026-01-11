@@ -7,8 +7,16 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/Translator.php';
-// Cargamos AuthServices para que esté disponible globalmente (Reemplaza a Auth.php)
+// Cargamos AuthServices globalmente
 require_once __DIR__ . '/../../api/services/AuthServices.php';
+
+// --- NUEVO: Sincronización de datos ---
+// Si hay un usuario, refrescamos sus datos (rol, foto, estado) desde la BD
+if (isset($_SESSION['user_id'])) {
+    $auth = new AuthServices();
+    $auth->refreshSessionData();
+}
+// --------------------------------------
 
 // 1. Obtener preferencias de Cookie
 $cookies = json_decode($_COOKIE['project_aurora_prefs'] ?? '{}', true);
