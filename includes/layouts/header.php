@@ -19,7 +19,7 @@
         <div class="header-item">
             <?php if (!$isLoggedIn): ?>
                 <a href="<?php echo $basePath; ?>login" class="header-text-button ghost">
-                    <span>Acceder</span>
+                    <span><?php echo __('header.login_btn'); ?></span>
                 </a>
 
                 <div class="header-button" data-action="toggleModuleOptions">

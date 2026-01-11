@@ -14,7 +14,7 @@
                 <div style="width: 100%; height: 1px; background-color: #eee; margin: 4px 0;"></div>
                 <a href="<?php echo $basePath; ?>?action=logout" class="menu-link">
                     <div class="menu-link-icon"><span class="material-symbols-rounded" style="color: #ff4444;">logout</span></div>
-                    <div class="menu-link-text"><span style="color: #ff4444;">Cerrar sesión</span></div>
+                    <div class="menu-link-text"><span style="color: #ff4444;"><?php echo __('menu.logout'); ?></span></div>
                 </a>
             <?php endif; ?>
 

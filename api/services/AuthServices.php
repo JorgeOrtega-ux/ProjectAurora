@@ -24,7 +24,7 @@ class AuthServices {
     public function register($username, $email, $password) {
         // 1. Validar datos vacíos
         if (empty($username) || empty($email) || empty($password)) {
-            return ['status' => false, 'message' => 'Por favor complete todos los campos.'];
+            return ['status' => false, 'message' => __('auth.service.empty_fields')];
         }
 
         // 2. Verificar si el correo ya existe
@@ -33,7 +33,7 @@ class AuthServices {
         $stmt->execute();
         
         if ($stmt->rowCount() > 0) {
-            return ['status' => false, 'message' => 'El correo electrónico ya está registrado.'];
+            return ['status' => false, 'message' => __('auth.service.email_exists')];
         }
 
         // 3. Preparar datos (Hash y UUID)
@@ -57,9 +57,9 @@ class AuthServices {
         if ($stmt->execute()) {
             // Iniciar sesión automáticamente tras el registro
             $this->login($email, $password);
-            return ['status' => true, 'message' => 'Registro exitoso.'];
+            return ['status' => true, 'message' => __('auth.service.register_success')];
         } else {
-            return ['status' => false, 'message' => 'Error al registrar el usuario en la base de datos.'];
+            return ['status' => false, 'message' => __('auth.service.register_db_error')];
         }
     }
 
@@ -68,7 +68,7 @@ class AuthServices {
      */
     public function login($email, $password) {
         if (empty($email) || empty($password)) {
-            return ['status' => false, 'message' => 'Ingrese correo y contraseña.'];
+            return ['status' => false, 'message' => __('auth.service.login_empty')];
         }
 
         // Buscamos usuario por email
@@ -84,7 +84,7 @@ class AuthServices {
                 
                 // Verificar si la cuenta está activa
                 if ($row['account_status'] !== 'active') {
-                    return ['status' => false, 'message' => 'Tu cuenta está suspendida o desactivada.'];
+                    return ['status' => false, 'message' => __('auth.service.account_suspended')];
                 }
 
                 // Guardar datos en sesión
@@ -94,12 +94,12 @@ class AuthServices {
                 $_SESSION['user_role'] = $row['account_role'];
                 $_SESSION['user_pic'] = $row['profile_picture_url']; 
 
-                return ['status' => true, 'message' => 'Bienvenido.'];
+                return ['status' => true, 'message' => __('auth.service.welcome')];
             } else {
-                return ['status' => false, 'message' => 'Contraseña incorrecta.'];
+                return ['status' => false, 'message' => __('auth.service.password_incorrect')];
             }
         } else {
-            return ['status' => false, 'message' => 'No existe una cuenta con ese correo.'];
+            return ['status' => false, 'message' => __('auth.service.email_not_found')];
         }
     }
 

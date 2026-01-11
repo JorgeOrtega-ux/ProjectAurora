@@ -2,6 +2,9 @@
     "app": {
         "title": "Project Aurora"
     },
+    "header": {
+        "login_btn": "Acceder"
+    },
     "menu": {
         "back_home": "Volver al inicio",
         "home": "Página principal",
@@ -13,13 +16,22 @@
         "privacy": "Privacidad",
         "terms": "Términos y Condiciones",
         "cookies": "Cookies",
-        "feedback": "Comentarios"
+        "feedback": "Comentarios",
+        "account_header": "Cuenta",
+        "profile": "Tu perfil",
+        "security": "Seguridad",
+        "logout": "Cerrar sesión"
     },
     "main": {
         "header": "Página Principal",
         "welcome": "Bienvenido al Dashboard de Project Aurora.",
         "recent_activity": "Actividad Reciente",
         "system_ok": "El sistema está funcionando correctamente."
+    },
+    "trends": {
+        "title": "Explorar Tendencias",
+        "no_data_title": "Sin datos de tendencias",
+        "debug_info": "Esta sección se cargó desde"
     },
     "settings": {
         "page_title": "Preferencias",
@@ -30,7 +42,13 @@
         "theme_title": "Tema",
         "theme_desc": "Define la apariencia de la aplicación.",
         "nav_title": "Navegación",
-        "nav_desc": "Abrir enlaces externos en una nueva pestaña."
+        "nav_desc": "Abrir enlaces externos en una nueva pestaña.",
+        "security_title": "Inicio de sesión y seguridad",
+        "security_desc": "Actualiza tu contraseña y protege tu cuenta.",
+        "security_coming_soon": "Próximamente: Cambio de contraseña y verificación en dos pasos.",
+        "profile_title": "Tu perfil",
+        "profile_desc": "Gestiona tu información personal y pública.",
+        "profile_coming_soon": "Próximamente: Edición de avatar, nombre de usuario y biografía."
     },
     "help": {
         "main_title": "Centro de Ayuda",
@@ -44,6 +62,41 @@
         "feedback_title": "Enviar Comentarios",
         "feedback_desc": "Reporta un error, sugiere una mejora o contáctanos."
     },
+    "auth": {
+        "login": {
+            "title": "Iniciar sesión",
+            "subtitle": "Bienvenido de nuevo"
+        },
+        "register": {
+            "title": "Crear cuenta",
+            "subtitle": "Únete a nosotros hoy"
+        },
+        "field": {
+            "email": "Correo electrónico",
+            "password": "Contraseña",
+            "username": "Nombre de usuario"
+        },
+        "btn": {
+            "login": "Acceder",
+            "register": "Crear cuenta"
+        },
+        "forgot_password": "¿Olvidaste tu contraseña?",
+        "no_account": "¿No tienes cuenta?",
+        "has_account": "¿Ya tienes cuenta?",
+        "register_link": "Regístrate",
+        "login_link": "Inicia sesión",
+        "service": {
+            "empty_fields": "Por favor complete todos los campos.",
+            "email_exists": "El correo electrónico ya está registrado.",
+            "register_success": "Registro exitoso.",
+            "register_db_error": "Error al registrar el usuario en la base de datos.",
+            "login_empty": "Ingrese correo y contraseña.",
+            "account_suspended": "Tu cuenta está suspendida o desactivada.",
+            "welcome": "Bienvenido.",
+            "password_incorrect": "Contraseña incorrecta.",
+            "email_not_found": "No existe una cuenta con ese correo."
+        }
+    },
     "theme": {
         "sync": "Sincronizar con el sistema",
         "light": "Tema claro",
@@ -51,6 +104,11 @@
     },
     "search": {
         "placeholder": "Buscar..."
+    },
+    "system": {
+        "error_404": "Error 404",
+        "page_not_found": "No pudimos encontrar la sección solicitada.",
+        "path_info": "Ruta del sistema:"
     },
     "lang": {
         "es-latam": "Español (Latinoamérica)",
