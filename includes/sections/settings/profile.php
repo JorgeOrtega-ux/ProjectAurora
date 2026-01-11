@@ -1,7 +1,6 @@
 <?php
 // includes/sections/settings/profile.php
 
-// Usamos el NUEVO servicio
 require_once __DIR__ . '/../../../api/services/SettingsServices.php';
 $settingsService = new SettingsServices();
 
@@ -10,7 +9,6 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-// Obtener datos reales
 $userData = $settingsService->getUserProfile($_SESSION['user_id']);
 
 $currentAvatar = $userData['profile_picture_url'] ?? 'public/assets/img/avatars/default.png';
@@ -18,8 +16,10 @@ $currentUsername = $userData['username'];
 $currentEmail = $userData['email'];
 $userRole = $userData['account_role'];
 
-// Determinar botones (Default vs Custom)
-$isDefaultAvatar = strpos($currentAvatar, 'ui-avatars.com') !== false;
+// --- NUEVA LÓGICA DE ESTADO ---
+// Se considera "Default" si la URL contiene '/defaults/' O si es un link externo de UI Avatars antiguo
+$isDefaultAvatar = (strpos($currentAvatar, '/defaults/') !== false) || (strpos($currentAvatar, 'ui-avatars.com') !== false);
+
 $classDefault = $isDefaultAvatar ? 'active' : 'disabled'; 
 $classCustom  = $isDefaultAvatar ? 'disabled' : 'active'; 
 ?>

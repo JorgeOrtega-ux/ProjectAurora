@@ -37,7 +37,7 @@
     text-align: center;
 }
 
-/* Card Compacta (Login/Register) */
+/* Card Compacta */
 .component-card--compact {
     width: 100%;
     max-width: 365px;
@@ -126,6 +126,7 @@
 .component-card__text {
     display: flex;
     flex-direction: column;
+    gap: 4px;
     width: 100%;
 }
 
@@ -230,8 +231,16 @@
     justify-content: flex-end;
 }
 
-/* Fix para ocultar acciones desactivadas */
-.component-card__actions.disabled {
+/* FIX: Clase agregada para agrupar botones internos (Eliminar/Cambiar) */
+.component-action-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* FIX: Ocultar correctamente cuando está disabled */
+.component-card__actions.disabled,
+.component-action-group.disabled {
     display: none;
 }
 
@@ -254,12 +263,20 @@
     min-width: 200px;
 }
 
-/* Grupo responsivo (Input + Botones) con Gap arreglado */
+/* Grupo responsivo (Input + Botones) */
 .input-group-responsive {
-    gap: 8px; /* Separación entre input y botones */
+    gap: 8px; 
     align-items: center;
     width: 100%;
-    /* display: flex; se aplica via clase .active */
+}
+
+/* Texto de solo lectura (Perfil) */
+.text-display-value {
+    font-size: 14px;
+    color: #000000;
+    font-weight: 400;
+    line-height: 1.5;
+    display: block;
 }
 
 .component-text-input {
@@ -523,7 +540,7 @@ input:checked+.component-toggle-slider:before {
     z-index: 2;
 }
 
-/* --- COLORES DE ROLES (Corregido) --- */
+/* --- COLORES DE ROLES --- */
 .component-card__profile-picture[data-role="user"]::before { 
     border-color: rgba(0,0,0,0.1); 
 }
@@ -531,7 +548,7 @@ input:checked+.component-toggle-slider:before {
     border-color: #206BD3; 
 }
 .component-card__profile-picture[data-role="administrator"]::before { 
-    border-color: #D32029; /* CORREGIDO: Rojo en vez de Negro */
+    border-color: #D32029; 
 }
 .component-card__profile-picture[data-role="founder"]::before {
     border: none;
@@ -571,31 +588,41 @@ input:checked+.component-toggle-slider:before {
    5. UTILIDADES Y RESPONSIVE
    ========================================= */
 @media (max-width: 600px) {
+    /* 1. Stack vertical para los items del grupo */
     .component-group-item {
         flex-direction: column;
         align-items: stretch;
-        gap: 12px;
+        gap: 16px;
     }
     
-    .component-card__actions.actions-right {
+    /* 2. Contenedores de acciones ocupan todo el ancho */
+    .component-card__actions.actions-right,
+    .component-action-group {
         width: 100%;
+        justify-content: space-between; 
+        gap: 12px; 
+    }
+
+    /* 3. BOTONES RESPONSIVOS: 
+       flex: 1 hace que crezcan equitativamente.
+    */
+    .component-card__actions .component-button,
+    .component-action-group .component-button {
+        flex: 1;
+        justify-content: center; 
+        width: auto;
     }
     
-    /* Responsive para Input + Botones */
+    /* 4. Responsive para Input + Botones (Edit Mode) */
     .input-group-responsive {
         flex-direction: column;
         align-items: stretch;
         gap: 12px;
     }
     
+    /* Aseguramos que el grupo de botones dentro del input-group también se expanda */
     .input-group-responsive .component-card__actions {
+        width: 100%;
         justify-content: flex-end;
     }
-}/* Estilo para los valores de texto en modo lectura (Perfil) */
-.text-display-value {
-    font-size: 14px;      /* Igual que .component-text-input */
-    color: #000000;       /* Color de texto principal */
-    font-weight: 400;     /* Peso normal */
-    line-height: 1.5;     /* Buena legibilidad */
-    display: block;       /* Asegura que ocupe su espacio correctamente */
 }

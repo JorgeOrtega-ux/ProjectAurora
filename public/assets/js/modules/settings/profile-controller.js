@@ -55,8 +55,11 @@ function initAvatarInteractions() {
         if (action === 'profile-picture-cancel') {
             previewImg.src = originalSrc;
             fileInput.value = ''; 
-            const state = originalSrc.includes('ui-avatars') ? 'default' : 'custom';
-            toggleAvatarActions(state);
+            // NUEVA LÓGICA DE DETECCIÓN
+            // Si la URL contiene 'defaults' o es externa (ui-avatars), es estado default.
+            // Si contiene 'uploads', es estado custom.
+            const isDefault = originalSrc.includes('/defaults/') || originalSrc.includes('ui-avatars');
+            toggleAvatarActions(isDefault ? 'default' : 'custom');
         }
 
         if (action === 'profile-picture-save') {
@@ -77,7 +80,8 @@ function initAvatarInteractions() {
                 if (data.status) {
                     originalSrc = data.newUrl;
                     previewImg.src = data.newUrl;
-                    toggleAvatarActions('custom');
+                    // Al guardar exitosamente, ahora es custom (está en uploads)
+                    toggleAvatarActions('custom'); 
                     updateGlobalHeaderAvatar(data.newUrl);
                     alert('Foto actualizada.');
                 } else {
@@ -106,7 +110,8 @@ function initAvatarInteractions() {
                     if (data.status) {
                         originalSrc = data.newUrl;
                         previewImg.src = data.newUrl;
-                        toggleAvatarActions('default');
+                        // Al eliminar, vuelve a default (está en defaults)
+                        toggleAvatarActions('default'); 
                         updateGlobalHeaderAvatar(data.newUrl);
                     } else {
                         alert(data.message);
@@ -161,9 +166,6 @@ function initIdentityInteractions() {
     });
 }
 
-/**
- * AQUÍ ESTÁ EL CAMBIO: toggleEditState
- */
 function toggleEditState(fieldId, isEditing) {
     const parent = document.querySelector(`[data-component="${fieldId}-section"]`);
     if (!parent) return;
@@ -178,17 +180,11 @@ function toggleEditState(fieldId, isEditing) {
         hide(viewState); hide(actionsView);
         show(editState); show(actionsEdit);
         if (input) {
-            // Guardamos valor original por si cancela
             input.dataset.originalValue = input.value;
-            
-            // --- TRUCO DEL CURSOR ---
-            // 1. Guardamos el valor actual en una variable
+            // Truco del cursor
             const val = input.value;
-            // 2. Vaciamos el input
             input.value = '';
-            // 3. Volvemos a poner el valor (esto empuja el cursor al final)
             input.value = val;
-            
             input.focus();
         }
     } else {
