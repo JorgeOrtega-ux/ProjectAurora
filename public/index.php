@@ -93,16 +93,23 @@ $contentHtml = ob_get_clean();
                         <div class="header-right">
 
                             <div class="header-item">
-                                <?php if (!$isLoggedIn): ?>
-                                    <a href="<?php echo $basePath; ?>login" class="header-text-button ghost">
-                                        <span>Acceder</span>
-                                    </a>
-                                <?php else: ?>
-                                    <div class="header-profile-btn" data-action="toggleModuleOptions">
-                                        <img src="<?php echo $userPic ?? 'assets/img/default-user.png'; ?>" alt="<?php echo $userName; ?>" class="header-profile-img">
-                                    </div>
-                                <?php endif; ?>
-                            </div>
+        <?php if (!$isLoggedIn): ?>
+            <a href="<?php echo $basePath; ?>login" class="header-text-button ghost">
+                <span>Acceder</span>
+            </a>
+            
+            <div style="width: 8px;"></div> 
+            
+            <div class="header-button" data-action="toggleModuleOptions">
+                <span class="material-symbols-rounded">more_vert</span>
+            </div>
+
+        <?php else: ?>
+            <div class="header-profile-btn" data-action="toggleModuleOptions">
+                <img src="<?php echo $userPic ?? 'assets/img/default-user.png'; ?>" alt="<?php echo $userName; ?>" class="header-profile-img">
+            </div>
+        <?php endif; ?>
+    </div>
 
                             <div class="module-content module-options disabled">
                                 <div class="menu-content">
