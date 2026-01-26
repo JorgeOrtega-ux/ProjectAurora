@@ -1,39 +1,26 @@
 <?php
 // api/settings-handler.php
 
-// Carga del Autoloader de Composer
-require_once __DIR__ . '/../vendor/autoload.php';
+// 1. BOOTSTRAP (Carga Redis, PDO, I18n y Configuración de Sesión correcta)
+$services = require_once __DIR__ . '/../includes/bootstrap.php';
+extract($services); // Extrae $pdo, $i18n, $redis
 
-// CONFIGURACIÓN DE SEGURIDAD PARA LA SESIÓN
-$cookieParams = session_get_cookie_params();
-session_set_cookie_params([
-    'lifetime' => $cookieParams['lifetime'],
-    'path' => '/',
-    'domain' => $cookieParams['domain'],
-    'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
-    'httponly' => true,
-    'samesite' => 'Strict'
-]);
-session_start();
-
-require_once __DIR__ . '/../config/database/db.php';
-require_once __DIR__ . '/../includes/libs/Utils.php';
+// 2. Cargamos el servicio
 require_once __DIR__ . '/services/SettingsService.php';
 
-// Inicializar I18n usando Utils
-$i18n = Utils::initI18n();
+// 3. Validación de seguridad CSRF centralizada
+Utils::validateCsrf($i18n);
 
-// 1. Verificar Autenticación (Esto es específico de este handler, se queda aquí)
+// 4. Verificar Autenticación
 if (!isset($_SESSION['user_id'])) {
     Utils::jsonResponse(['success' => false, 'message' => $i18n->t('api.session_expired')]);
 }
 
-// 2. Validación de seguridad CSRF centralizada
-Utils::validateCsrf($i18n);
-
-// Inicializar Servicio
+// 5. Inicializar Servicio pasando REDIS
 $userId = $_SESSION['user_id'];
-$settingsService = new SettingsService($pdo, $i18n, $userId);
+// [CAMBIO] Agregamos $redis al constructor
+$settingsService = new SettingsService($pdo, $i18n, $userId, $redis);
+
 $action = $_POST['action'] ?? '';
 
 // === DISPATCHER ===
@@ -53,7 +40,6 @@ switch ($action) {
         Utils::jsonResponse($settingsService->updateProfile($field, $value));
         break;
 
-    // --- VERIFICACIÓN CAMBIO DE EMAIL ---
     case 'get_email_edit_status':
         Utils::jsonResponse($settingsService->getEmailEditStatus());
         break;
@@ -67,7 +53,6 @@ switch ($action) {
         $code = trim($_POST['code'] ?? '');
         Utils::jsonResponse($settingsService->verifyEmailChangeCode($code));
         break;
-    // ------------------------------------
 
     case 'validate_current_password':
         $currentPass = $_POST['current_password'] ?? '';

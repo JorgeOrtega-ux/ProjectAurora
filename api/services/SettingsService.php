@@ -1,7 +1,6 @@
 <?php
 // api/services/SettingsService.php
 
-// Carga de librerías
 use Google\Authenticator\GoogleAuthenticator;
 
 require_once __DIR__ . '/../../includes/libs/MailService.php';
@@ -10,11 +9,14 @@ class SettingsService {
     private $pdo;
     private $i18n;
     private $userId;
+    private $redis; // [NUEVO]
 
-    public function __construct($pdo, $i18n, $userId) {
+    // [CAMBIO] Recibir instancia de Redis
+    public function __construct($pdo, $i18n, $userId, $redis) {
         $this->pdo = $pdo;
         $this->i18n = $i18n;
         $this->userId = $userId;
+        $this->redis = $redis;
     }
 
     public function uploadAvatar($files) {
@@ -23,21 +25,18 @@ class SettingsService {
         }
         $file = $files['avatar'];
         
-        // CONFIGURACIÓN DINÁMICA: Tamaño Máximo (bytes)
         $maxSize = (int)Utils::getServerConfig($this->pdo, 'upload_avatar_max_size', '2097152');
         if ($file['size'] > $maxSize) {
             $maxSizeMB = round($maxSize / 1048576, 1);
             return ['success' => false, 'message' => $this->i18n->t('api.avatar_size_limit', [$maxSizeMB])]; 
         }
 
-        // CONFIGURACIÓN DINÁMICA: Dimensión Máxima (px)
         $maxDim = (int)Utils::getServerConfig($this->pdo, 'upload_avatar_max_dim', '4096');
         list($width, $height) = getimagesize($file['tmp_name']);
         if ($width > $maxDim || $height > $maxDim) { 
             return ['success' => false, 'message' => $this->i18n->t('api.avatar_dimensions_limit', [$maxDim])]; 
         }
 
-        // Rate Limit Genérico
         if ($this->checkRateLimitExceeded('avatar_update', 24, 3)) { 
             return ['success' => false, 'message' => $this->i18n->t('api.avatar_rate_limit')]; 
         }
@@ -75,10 +74,8 @@ class SettingsService {
                 $this->deleteOldAvatar($oldPath);
                 $_SESSION['avatar'] = $dbPath;
                 
-                // === FIX: Devolver Base64 para consistencia y evitar errores al "Cancelar" ===
                 $newContent = file_get_contents($targetPath);
                 $base64 = 'data:' . $mime . ';base64,' . base64_encode($newContent);
-                // ============================================================================
 
                 return ['success' => true, 'message' => $this->i18n->t('api.pic_updated'), 'new_src' => $base64, 'type' => 'custom'];
             } else { @unlink($targetPath); return ['success' => false, 'message' => $this->i18n->t('api.pic_db_error')]; }
@@ -164,7 +161,6 @@ class SettingsService {
             }
         }
 
-        // Rate Limit General
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_general_rate_limit', '10');
         if ($this->checkSecurityLimit('email_change_req', 3, 10)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
@@ -183,7 +179,6 @@ class SettingsService {
 
         $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
         
-        // Expiración Dinámica
         $expiryMinutes = (int)Utils::getServerConfig($this->pdo, 'auth_verification_code_expiry', '15');
         $expiresAt = date('Y-m-d H:i:s', strtotime("+$expiryMinutes minutes"));
 
@@ -234,7 +229,6 @@ class SettingsService {
         if (!in_array($field, ['username', 'email'])) return ['success' => false, 'message' => $this->i18n->t('api.field_invalid')];
         if (empty($value)) return ['success' => false, 'message' => $this->i18n->t('api.field_empty')];
         
-        // VALIDACIÓN: Longitud de Usuario
         if ($field === 'username') {
             $minUserLen = (int)Utils::getServerConfig($this->pdo, 'username_min_length', '4');
             $maxUserLen = (int)Utils::getServerConfig($this->pdo, 'username_max_length', '20');
@@ -246,7 +240,6 @@ class SettingsService {
         if ($field === 'email') { 
             if (!filter_var($value, FILTER_VALIDATE_EMAIL)) return ['success' => false, 'message' => $this->i18n->t('api.email_invalid')];
             
-            // VALIDACIÓN: Dominios Permitidos en Email (Update)
             $allowedDomainsStr = Utils::getServerConfig($this->pdo, 'email_allowed_domains', '*');
             if ($allowedDomainsStr !== '*' && trim($allowedDomainsStr) !== '') {
                 $allowedDomains = array_map('trim', explode(',', strtolower($allowedDomainsStr)));
@@ -294,7 +287,6 @@ class SettingsService {
     }
 
     public function validateCurrentPassword($currentPass) {
-        // Rate Limits Dinámicos
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
         
@@ -323,7 +315,6 @@ class SettingsService {
         }
         if (empty($currentPass) || empty($newPass)) return ['success' => false, 'message' => $this->i18n->t('api.missing_data')];
         
-        // VALIDACIÓN: Longitud Mínima en Cambio
         $minPassLen = (int)Utils::getServerConfig($this->pdo, 'password_min_length', '6');
         if (strlen($newPass) < $minPassLen) {
              return ['success' => false, 'message' => $this->i18n->t('api.pass_short', [$minPassLen])];
@@ -538,8 +529,12 @@ class SettingsService {
         $stmt->execute([$tokenId, $this->userId]);
         
         if ($stmt->rowCount() > 0) {
-            // === KICK EN VIVO: Dispositivo único ===
-            $this->notifyWebSocketServer("KICK_SESSION:{$this->userId}:{$tokenId}");
+            // [CAMBIO] Pub/Sub KICK (Dispositivo específico)
+            $this->redis->publish('aurora_ws_control', json_encode([
+                'cmd' => 'KICK_SESSION',
+                'user_id' => $this->userId,
+                'session_id' => $tokenId
+            ]));
             
             return ['success' => true, 'message' => $this->i18n->t('api.session_revoked')];
         }
@@ -551,8 +546,11 @@ class SettingsService {
         $stmt->execute([$this->userId]);
         setcookie('auth_persistence_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
         
-        // === KICK EN VIVO: Todos los dispositivos ===
-        $this->notifyWebSocketServer("KICK_ALL:{$this->userId}");
+        // [CAMBIO] Pub/Sub KICK (Todos)
+        $this->redis->publish('aurora_ws_control', json_encode([
+            'cmd' => 'KICK_ALL',
+            'user_id' => $this->userId
+        ]));
 
         return ['success' => true, 'message' => $this->i18n->t('api.all_sessions_revoked'), 'logout' => true];
     }
@@ -581,8 +579,11 @@ class SettingsService {
             $this->logProfileChange('account_status', 'active', 'deleted');
             $this->pdo->commit();
             
-            // === KICK EN VIVO: Cierre total por eliminación ===
-            $this->notifyWebSocketServer("KICK_ALL:{$this->userId}");
+            // [CAMBIO] Pub/Sub KICK (Todos por borrado)
+            $this->redis->publish('aurora_ws_control', json_encode([
+                'cmd' => 'KICK_ALL',
+                'user_id' => $this->userId
+            ]));
 
             setcookie('auth_persistence_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
             session_destroy();
@@ -590,23 +591,6 @@ class SettingsService {
         } catch (Exception $e) {
             $this->pdo->rollBack();
             return ['success' => false, 'message' => $this->i18n->t('api.internal_error')];
-        }
-    }
-
-    // === MÉTODO PRIVADO: Puente TCP con servidor Python ===
-    private function notifyWebSocketServer($message) {
-        $host = '127.0.0.1';
-        $port = 8766; // Puerto interno del servidor Python
-        $timeout = 2; // Timeout corto para no bloquear PHP
-
-        try {
-            $fp = @fsockopen($host, $port, $errno, $errstr, $timeout);
-            if ($fp) {
-                fwrite($fp, $message);
-                fclose($fp);
-            }
-        } catch (Exception $e) {
-            // Silenciar error si el servidor WS está apagado
         }
     }
 

@@ -2,6 +2,7 @@
 // public/index.php
 
 // 1. BOOTSTRAP
+// Esto devuelve ['pdo' => ..., 'i18n' => ..., 'redis' => ...]
 $services = require_once __DIR__ . '/../includes/bootstrap.php';
 extract($services); 
 
@@ -11,7 +12,8 @@ $cspNonce = Utils::applySecurityHeaders();
 // 3. AUTO-LOGIN
 if (!isset($_SESSION['user_id'])) {
     require_once __DIR__ . '/../api/services/AuthService.php';
-    $authService = new AuthService($pdo, $i18n); 
+    // [CORRECCIÓN] Pasamos $redis al constructor
+    $authService = new AuthService($pdo, $i18n, $redis); 
     $authService->attemptAutoLogin();
 }
 
@@ -123,9 +125,8 @@ $jsUserPrefs = json_encode($_SESSION['preferences'] ?? new stdClass());
 $jsTranslations = json_encode($i18n->getAll());
 
 if ($showMaintenanceScreen) {
-    // [MODIFICADO] Cargar status-screen en lugar de maintenance.php
     $fileToLoad = __DIR__ . '/../includes/sections/system/status-screen.php';
-    $isMaintenanceContext = true; // [NUEVO] Bandera para la vista
+    $isMaintenanceContext = true; 
     $showInterface = false; 
 } else {
     $routesMap = require __DIR__ . '/../config/routes.php';
