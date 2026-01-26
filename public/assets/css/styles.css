@@ -97,10 +97,23 @@ html {
     color: var(--text-primary);
 }
 
+/* --- CENTRADO ABSOLUTO CON FLEXBOX TRICK --- */
+/* Forzamos que los lados tengan el mismo ancho base (0px) y crezcan igual (flex: 1)
+   Esto asegura que el espacio restante se divida equitativamente y el centro quede
+   geométricamente centrado. */
 .header-left,
 .header-right {
     display: flex;
-    flex: 0 0 auto;
+    flex: 1 1 0px; 
+    align-items: center;
+}
+
+.header-left {
+    justify-content: flex-start;
+}
+
+.header-right {
+    justify-content: flex-end;
 }
 
 .header-center {
@@ -110,7 +123,10 @@ html {
     align-items: center;
     padding: 0 16px;
     height: 100%;
-    flex: 1;
+    /* flex: 0 1 500px permite encogerse pero no crecer infinitamente, 
+       manteniendo la estructura de 3 columnas */
+    flex: 0 1 500px;
+    width: 100%;
     z-index: 0;
 }
 
@@ -584,6 +600,10 @@ html {
 
 @media (max-width: 725px) {
     .header { gap: 0; justify-content: space-between; }
+    
+    /* RESET FLEX PARA MÓVIL: Evita que el truco de centrado afecte en pantallas pequeñas */
+    .header-left, .header-right { flex: 0 0 auto; width: auto; }
+    
     .header-left { order: 1; }
     .header-right { order: 2; }
     .header-center {

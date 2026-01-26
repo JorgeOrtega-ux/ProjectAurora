@@ -48,7 +48,7 @@
             <?php else: ?>
                 <a href="<?php echo $basePath; ?>login" 
                    class="component-button primary" 
-                   style="text-decoration: none; height: 36px; padding: 0 16px; border: none; display: flex; align-items: center; justify-content: center;">
+                   style="text-decoration: none; padding: 0 16px;">
                     <span style="font-weight: 600;">Acceder</span>
                 </a>
 

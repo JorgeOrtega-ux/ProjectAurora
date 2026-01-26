@@ -17,7 +17,8 @@ export const Dialog = {
 
     init: () => {
         Dialog.elements.overlay = document.getElementById('dialog-overlay');
-        Dialog.elements.container = document.querySelector('.dialog-container');
+        // Actualizado a la nueva clase component-
+        Dialog.elements.container = document.querySelector('.component-dialog-wrapper');
         Dialog.elements.wrapper = document.getElementById('dialog-content-wrapper');
         Dialog.elements.templates = document.getElementById('dialog-templates');
         
@@ -25,7 +26,7 @@ export const Dialog = {
             Dialog._initDragLogic();
         }
 
-        console.log("DialogManager: Inicializado");
+        console.log("DialogManager: Inicializado (Component Class Mode)");
     },
 
     alert: ({ title = 'Atención', message = '' }) => {
@@ -44,9 +45,6 @@ export const Dialog = {
         });
     },
 
-    /**
-     * MODIFICADO: Añadido soporte para onReady callback
-     */
     confirm: ({ title, message, type = 'default', confirmText, cancelText, onReady }) => {
         return new Promise((resolve) => {
             let templateId = 'template-confirm';
@@ -90,7 +88,6 @@ export const Dialog = {
                 setTimeout(() => btnConfirm.focus(), 50);
             }
 
-            // Ejecutar callback cuando el diálogo esté listo (para bindear eventos extra)
             if (typeof onReady === 'function') {
                 onReady(Dialog.elements.wrapper);
             }
@@ -129,17 +126,19 @@ export const Dialog = {
         const template = Dialog.elements.templates.querySelector(`#${templateId}`);
         if (!template) return;
 
+        // Estructura actualizada a component-dialog-drag-zone
         const pillHTML = `
-            <div class="dialog-pill-container">
-                <div class="dialog-drag-handle"></div>
+            <div class="component-dialog-drag-zone">
+                <div class="component-dialog-drag-handle"></div>
             </div>
         `;
 
         Dialog.elements.wrapper.innerHTML = pillHTML + template.innerHTML;
         Dialog._bindDragEvents();
 
-        const elTitle = Dialog.elements.wrapper.querySelector('.dialog-title');
-        const elMsg = Dialog.elements.wrapper.querySelector('.dialog-message');
+        // Selectores actualizados
+        const elTitle = Dialog.elements.wrapper.querySelector('.component-dialog-title');
+        const elMsg = Dialog.elements.wrapper.querySelector('.component-dialog-message');
         const card = Dialog.elements.wrapper;
 
         if (elTitle && data.title) elTitle.innerText = data.title;
@@ -148,7 +147,7 @@ export const Dialog = {
             elMsg.style.display = 'block';
         }
 
-        card.className = 'dialog-card';
+        card.className = 'component-dialog';
     },
 
     _show: () => {
@@ -160,7 +159,8 @@ export const Dialog = {
     },
 
     _bindDragEvents: () => {
-        const handle = Dialog.elements.wrapper.querySelector('.dialog-pill-container');
+        // Selector actualizado
+        const handle = Dialog.elements.wrapper.querySelector('.component-dialog-drag-zone');
         const container = Dialog.elements.container;
 
         if (!handle || !container) return;

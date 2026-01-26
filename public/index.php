@@ -171,7 +171,6 @@ if ($showMaintenanceScreen) {
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/root.css">
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/styles.css">
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components.css">
-    <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/dialogs.css">
     <script type="module" src="<?php echo $basePath; ?>public/assets/js/app-init.js"></script>
 </head>
 <body>
