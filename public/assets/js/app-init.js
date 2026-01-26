@@ -74,8 +74,12 @@ const App = {
 
 function initGlobalSocketListeners() {
     document.addEventListener('socket:force_logout', (e) => {
+        // [NUEVO] Si el usuario está saliendo manualmente, ignorar este evento
+        if (window.isManualLogout) return;
+
         console.warn("Seguridad: Sesión revocada remotamente.");
         if (window.location.pathname.includes('/login')) return;
+        
         Toast.show('Tu sesión ha sido cerrada remotamente.', 'warning', 5000);
         setTimeout(() => {
             window.location.href = window.BASE_PATH + 'login';

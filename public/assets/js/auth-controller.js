@@ -33,8 +33,8 @@ export function initAuthController() {
         const btnLogin = target.closest('#btn-login');
         if (btnLogin) {
             e.preventDefault();
-            hideError('login-error'); 
-            handleLoginStep1(btnLogin); 
+            hideError('login-error');
+            handleLoginStep1(btnLogin);
             return;
         }
 
@@ -51,17 +51,17 @@ export function initAuthController() {
         if (btnNext1) {
             e.preventDefault();
             hideError('register-step1-error');
-            
+
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const tsToken = getTurnstileToken();
 
-            if(!email || !password) { 
-                showError(btnNext1, 'register-step1-error', I18n.t('js.auth.fill_all')); 
-                return; 
+            if (!email || !password) {
+                showError(btnNext1, 'register-step1-error', I18n.t('js.auth.fill_all'));
+                return;
             }
 
-            if(!tsToken) {
+            if (!tsToken) {
                 showError(btnNext1, 'register-step1-error', 'Verificando seguridad...');
                 return;
             }
@@ -77,9 +77,9 @@ export function initAuthController() {
             try {
                 // Mira qué elegante:
                 const res = await ApiService.post(AuthAPI.RegisterStep1, formData);
-                
+
                 if (res.success) {
-                    navigateTo(res.next_url); 
+                    navigateTo(res.next_url);
                 } else {
                     showError(btnNext1, 'register-step1-error', res.message);
                     setLoading(btnNext1, false);
@@ -101,10 +101,10 @@ export function initAuthController() {
             hideError('register-step2-error');
 
             const username = document.getElementById('username').value;
-            
-            if(!username) { 
-                showError(btnNext2, 'register-step2-error', I18n.t('js.auth.choose_username')); 
-                return; 
+
+            if (!username) {
+                showError(btnNext2, 'register-step2-error', I18n.t('js.auth.choose_username'));
+                return;
             }
 
             const formData = new FormData();
@@ -114,10 +114,10 @@ export function initAuthController() {
 
             try {
                 const res = await ApiService.post(AuthAPI.RegisterStep2, formData);
-                
+
                 if (res.success) {
-                    Toast.show(I18n.t('js.auth.code_sent'), 'info'); 
-                    navigateTo(res.next_url); 
+                    Toast.show(I18n.t('js.auth.code_sent'), 'info');
+                    navigateTo(res.next_url);
                     setTimeout(() => startResendTimer(60), 500);
                 } else {
                     showError(btnNext2, 'register-step2-error', res.message);
@@ -137,9 +137,9 @@ export function initAuthController() {
             hideError('register-step3-error');
 
             const code = document.getElementById('verification_code').value;
-            if(!code) { 
-                showError(btnFinish, 'register-step3-error', I18n.t('js.auth.enter_code')); 
-                return; 
+            if (!code) {
+                showError(btnFinish, 'register-step3-error', I18n.t('js.auth.enter_code'));
+                return;
             }
 
             const formData = new FormData();
@@ -149,7 +149,7 @@ export function initAuthController() {
 
             try {
                 const res = await ApiService.post(AuthAPI.RegisterComplete, formData);
-                
+
                 if (res.success) {
                     window.location.href = res.redirect;
                 } else {
@@ -168,18 +168,18 @@ export function initAuthController() {
         if (btnResend) {
             e.preventDefault();
             hideError('register-step3-error');
-            
+
             if (btnResend.classList.contains('link-disabled') || btnResend.style.pointerEvents === 'none') {
                 return;
             }
 
             const targetErrorNode = document.getElementById('btn-finish') || btnResend;
-            
+
             // FormData vacío, el ApiService inyectará la acción 'resend_code'
-            const formData = new FormData(); 
+            const formData = new FormData();
 
             btnResend.style.opacity = '0.5';
-            
+
             try {
                 const res = await ApiService.post(AuthAPI.ResendCode, formData);
                 btnResend.style.opacity = '1';
@@ -202,9 +202,9 @@ export function initAuthController() {
         if (btnRequestReset) {
             e.preventDefault();
             hideError('recovery-error');
-            
+
             const email = document.getElementById('email_recovery').value;
-            if(!email) {
+            if (!email) {
                 showError(btnRequestReset, 'recovery-error', I18n.t('js.auth.enter_email'));
                 return;
             }
@@ -235,13 +235,13 @@ export function initAuthController() {
         const linkResendRecovery = target.closest('#link-resend-recovery');
         if (linkResendRecovery) {
             e.preventDefault();
-            
+
             if (linkResendRecovery.classList.contains('link-disabled') || linkResendRecovery.style.pointerEvents === 'none') {
                 return;
             }
 
             const email = document.getElementById('email_recovery').value;
-            if(!email) return;
+            if (!email) return;
 
             const formData = new FormData();
             formData.append('email', email);
@@ -309,6 +309,7 @@ export function initAuthController() {
         }
 
         // LOGOUT
+        // LOGOUT
         const logoutBtn = target.closest('[data-action="logout"]');
         if (logoutBtn) {
             e.preventDefault();
@@ -319,12 +320,17 @@ export function initAuthController() {
 
             addSpinnerToButton(logoutBtn);
 
+            // [NUEVO] Marcar que estamos saliendo intencionalmente
+            window.isManualLogout = true;
+
             try {
                 // Logout no lleva datos extra, solo la acción (inyectada por el servicio)
                 await ApiService.post(AuthAPI.Logout);
                 window.location.href = window.BASE_PATH + 'login';
             } catch (err) {
                 console.error("Logout error:", err);
+                // Si falla, quitamos la bandera por si el usuario quiere reintentar
+                window.isManualLogout = false;
                 removeSpinnerFromButton(logoutBtn);
                 logoutBtn.dataset.processing = "false";
             }
@@ -346,23 +352,23 @@ export function initAuthController() {
 async function handleLoginStep1(btn) {
     const inputs = document.querySelectorAll('#login-stage-1 input');
     const formData = new FormData();
-    
+
     const tsToken = getTurnstileToken();
     let hasEmpty = false;
 
     inputs.forEach(input => {
-        if(input.name && input.name !== 'cf-turnstile-response') { 
+        if (input.name && input.name !== 'cf-turnstile-response') {
             formData.append(input.name, input.value);
-            if(input.required && !input.value) hasEmpty = true;
+            if (input.required && !input.value) hasEmpty = true;
         }
     });
 
-    if(hasEmpty) { 
-        showError(btn, 'login-error', I18n.t('js.auth.fill_all')); 
-        return; 
+    if (hasEmpty) {
+        showError(btn, 'login-error', I18n.t('js.auth.fill_all'));
+        return;
     }
-    
-    if(!tsToken) {
+
+    if (!tsToken) {
         showError(btn, 'login-error', 'Verificando seguridad...');
         return;
     }
@@ -371,7 +377,7 @@ async function handleLoginStep1(btn) {
     setLoading(btn, true);
     try {
         const res = await ApiService.post(AuthAPI.Login, formData);
-        
+
         if (res.success) {
             if (res.require_2fa) {
                 transitionTo2FA();
@@ -383,16 +389,16 @@ async function handleLoginStep1(btn) {
             setLoading(btn, false);
             resetTurnstile();
         }
-    } catch(e) { 
+    } catch (e) {
         showError(btn, 'login-error', I18n.t('js.auth.connection_error'));
-        setLoading(btn, false); 
+        setLoading(btn, false);
         resetTurnstile();
     }
 }
 
 async function handleLoginStep2(btn) {
     const code = document.getElementById('2fa-code').value;
-    if(!code) return;
+    if (!code) return;
 
     const formData = new FormData();
     formData.append('code', code);
@@ -404,7 +410,7 @@ async function handleLoginStep2(btn) {
         if (res.success) {
             window.location.href = res.redirect;
         } else {
-            Toast.show(res.message, 'error'); 
+            Toast.show(res.message, 'error');
             setLoading(btn, false);
             document.getElementById('2fa-code').value = '';
         }
@@ -419,21 +425,21 @@ async function handleLoginStep2(btn) {
 function transitionTo2FA() {
     const stage1 = document.getElementById('login-stage-1');
     stage1.classList.add('disabled');
-    
+
     const stage2 = document.getElementById('login-stage-2');
     stage2.classList.remove('disabled');
 
     document.getElementById('auth-title').innerText = I18n.t('auth.2fa.title');
     document.getElementById('auth-subtitle').innerText = I18n.t('auth.2fa.subtitle');
-    
+
     const inputCode = document.getElementById('2fa-code');
-    if(inputCode) inputCode.focus();
+    if (inputCode) inputCode.focus();
 }
 
 function handleUiActions(btn, e) {
     e.preventDefault();
     const action = btn.dataset.action;
-    
+
     if (action === 'toggle-password') {
         const input = btn.parentElement.querySelector('input');
         const icon = btn.querySelector('.material-symbols-rounded');
@@ -449,7 +455,7 @@ function handleUiActions(btn, e) {
         const input = document.getElementById('username');
         if (input) {
             const now = new Date();
-            const suffix = now.getTime().toString().slice(-6); 
+            const suffix = now.getTime().toString().slice(-6);
             input.value = `User${suffix}`;
         }
     }
@@ -460,12 +466,12 @@ function handleEnterKey(e) {
         const activeInput = document.activeElement;
         if (activeInput && activeInput.closest('.component-card')) {
             const stage2 = document.getElementById('login-stage-2');
-            if(stage2 && !stage2.classList.contains('disabled')) {
+            if (stage2 && !stage2.classList.contains('disabled')) {
                 const btn2 = document.getElementById('btn-verify-2fa');
-                if(btn2) btn2.click();
+                if (btn2) btn2.click();
             } else {
                 const btn1 = document.getElementById('btn-login');
-                if(btn1) btn1.click();
+                if (btn1) btn1.click();
             }
         }
     }
@@ -474,9 +480,9 @@ function handleEnterKey(e) {
 function setLoading(btn, isLoading) {
     if (isLoading) {
         btn.dataset.originalText = btn.innerText;
-        btn.innerHTML = '<div class="spinner-sm"></div>'; 
+        btn.innerHTML = '<div class="spinner-sm"></div>';
         btn.disabled = true;
-        btn.style.opacity = '0.8'; 
+        btn.style.opacity = '0.8';
     } else {
         btn.innerText = btn.dataset.originalText || I18n.t('js.auth.continue');
         btn.disabled = false;
@@ -486,9 +492,9 @@ function setLoading(btn, isLoading) {
 
 function addSpinnerToButton(btn) {
     const spinnerContainer = document.createElement('div');
-    spinnerContainer.className = 'menu-link-icon'; 
+    spinnerContainer.className = 'menu-link-icon';
     spinnerContainer.id = 'logout-spinner';
-    
+
     const spinner = document.createElement('div');
     spinner.className = 'spinner-sm';
     // Estilos inline para el spinner específico de logout
@@ -516,7 +522,7 @@ function showError(referenceNode, errorId, message) {
         errorDiv = document.createElement('div');
         errorDiv.id = errorId;
         errorDiv.className = 'component-message component-message--error';
-        if(referenceNode.nextSibling) referenceNode.parentNode.insertBefore(errorDiv, referenceNode.nextSibling);
+        if (referenceNode.nextSibling) referenceNode.parentNode.insertBefore(errorDiv, referenceNode.nextSibling);
         else referenceNode.parentNode.appendChild(errorDiv);
     }
     errorDiv.innerText = message;
@@ -524,19 +530,19 @@ function showError(referenceNode, errorId, message) {
 
 function hideError(errorId) {
     const el = document.getElementById(errorId);
-    if (el) el.remove(); 
+    if (el) el.remove();
 }
 
 function renderTurnstile() {
     const container = document.getElementById('turnstile-container');
     if (container && window.turnstile) {
-        container.innerHTML = ''; 
+        container.innerHTML = '';
         try {
             turnstileWidgetId = turnstile.render('#turnstile-container', {
-                sitekey: window.TURNSTILE_SITE_KEY, 
+                sitekey: window.TURNSTILE_SITE_KEY,
                 theme: 'auto'
             });
-        } catch(e) {}
+        } catch (e) { }
     }
 }
 
@@ -570,8 +576,8 @@ function startResendTimer(seconds) {
             clearInterval(resendTimerInterval);
             btn.classList.remove('link-disabled');
             btn.style.pointerEvents = 'auto';
-            btn.style.color = ''; 
-            timerSpan.textContent = ''; 
+            btn.style.color = '';
+            timerSpan.textContent = '';
         }
     }, 1000);
 }
@@ -582,10 +588,10 @@ function startRecoveryTimer(seconds) {
     const linkResend = document.getElementById('link-resend-recovery');
     const timerSpan = document.getElementById('recovery-timer');
     const inputEmail = document.getElementById('email_recovery');
-    
+
     if (btnRequest) { btnRequest.disabled = true; btnRequest.style.opacity = '0.5'; }
     if (linkBack) linkBack.style.display = 'none';
-    
+
     if (linkResend) {
         linkResend.style.display = 'inline-block';
         linkResend.classList.add('link-disabled');

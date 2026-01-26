@@ -8,10 +8,10 @@ require_once __DIR__ . '/../../includes/libs/MailService.php';
 class AuthService {
     private $pdo;
     private $i18n;
-    private $redis; // Nueva propiedad
+    private $redis; // Propiedad Redis
     private $turnstileSecret;
 
-    // Actualizamos el constructor para aceptar Redis
+    // Constructor con inyección de Redis
     public function __construct($pdo, $i18n, $redis) {
         $this->pdo = $pdo;
         $this->i18n = $i18n;
@@ -44,10 +44,13 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_register_max_attempts', '10');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
+        // [MODIFICADO] Verificación optimizada con Redis
         if ($this->checkSecurityBlock('register_attempt', $limit, $duration)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
-        $this->logSecurityEvent($email, 'register_attempt');
+        
+        // [MODIFICADO] Pasamos duración para el TTL de Redis
+        $this->logSecurityEvent($email, 'register_attempt', $duration);
 
         if (empty($email) || empty($password)) {
             return ['success' => false, 'message' => $this->i18n->t('api.fill_all')];
@@ -104,6 +107,7 @@ class AuthService {
         
         $email = $_SESSION['temp_register']['email'];
         
+        // [MODIFICADO] Redis check
         if ($this->checkSecurityBlock('register_code_req', 3, 15, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
@@ -148,7 +152,9 @@ class AuthService {
 
         try {
             $stmt->execute([$email, $code, $payload, $expiresAt]);
-            $this->logSecurityEvent($email, 'register_code_req');
+            
+            // [MODIFICADO] Loguear con TTL explícito (15 min)
+            $this->logSecurityEvent($email, 'register_code_req', 15);
 
             $_SESSION['pending_verification_email'] = $email;
 
@@ -184,6 +190,7 @@ class AuthService {
         $configCheck = $this->checkRegistrationStatus();
         if (!$configCheck['success']) return $configCheck;
         
+        // [MODIFICADO] Redis check (3 intentos, 10 min)
         if ($this->checkSecurityBlock('resend_code_req', 3, 10, $email)) {
              return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
@@ -215,7 +222,9 @@ class AuthService {
         
         try {
             $insert->execute([$email, $newCode, $payload, $expiresAt]);
-            $this->logSecurityEvent($email, 'resend_code_req');
+            
+            // [MODIFICADO] Log con TTL 10 min
+            $this->logSecurityEvent($email, 'resend_code_req', 10);
 
             $subject = "Nuevo código de verificación - Project Aurora";
             $body = "<p>Has solicitado un nuevo código. Tu código es:</p>
@@ -242,6 +251,7 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5'); 
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
+        // [MODIFICADO] Redis check
         if ($this->checkSecurityBlock('register_verify_fail', $limit, $duration, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
@@ -253,7 +263,8 @@ class AuthService {
         $verification = $stmt->fetch();
 
         if (!$verification) {
-            $this->logSecurityEvent($email, 'register_verify_fail');
+            // [MODIFICADO] Log fail con duración
+            $this->logSecurityEvent($email, 'register_verify_fail', $duration);
             return ['success' => false, 'message' => $this->i18n->t('api.code_invalid_expired')];
         }
 
@@ -327,6 +338,7 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
+        // [MODIFICADO] Redis Check
         if ($this->checkSecurityBlock('login_fail', $limit, $duration, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
@@ -370,7 +382,8 @@ class AuthService {
 
             return $this->completeLogin($user);
         } else {
-            $this->logSecurityEvent($email, 'login_fail');
+            // [MODIFICADO] Log con duración
+            $this->logSecurityEvent($email, 'login_fail', $duration);
             return ['success' => false, 'message' => $this->i18n->t('api.credentials_invalid')];
         }
     }
@@ -385,6 +398,7 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
         
+        // [MODIFICADO] Redis check
         if ($this->checkSecurityBlock('2fa_login_fail', $limit, $duration, "user:$userId")) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
@@ -442,7 +456,8 @@ class AuthService {
             unset($_SESSION['2fa_pending_user_id']);
             return $this->completeLogin($user);
         } else {
-            $this->logSecurityEvent("user:$userId", '2fa_login_fail');
+            // [MODIFICADO] Log con duración
+            $this->logSecurityEvent("user:$userId", '2fa_login_fail', $duration);
             return ['success' => false, 'message' => $this->i18n->t('api.code_invalid')];
         }
     }
@@ -455,10 +470,12 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
+        // [MODIFICADO] Redis check (Failures)
         if ($this->checkSecurityBlock('recovery_fail', $limit, $duration, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.recovery_limit')];
         }
 
+        // [MODIFICADO] Redis check (Success Limit) - 60 minutes
         if ($this->checkSecurityBlock('recovery_success', $limit, 60)) {
             return ['success' => false, 'message' => $this->i18n->t('api.recovery_limit')];
         }
@@ -467,7 +484,8 @@ class AuthService {
         $stmt->execute([$email]);
         
         if (!$stmt->fetch()) {
-            $this->logSecurityEvent($email, 'recovery_fail');
+            // [MODIFICADO] Log fail
+            $this->logSecurityEvent($email, 'recovery_fail', $duration);
             return ['success' => false, 'message' => $this->i18n->t('api.email_not_found')];
         }
 
@@ -487,7 +505,9 @@ class AuthService {
         
         try {
             $this->pdo->prepare($sql)->execute([$email, $token, $expiresAt]);
-            $this->logSecurityEvent($email, 'recovery_success');
+            
+            // [MODIFICADO] Log success con 60 min TTL
+            $this->logSecurityEvent($email, 'recovery_success', 60);
 
             $resetLink = "https://tudominio.com/ProjectAurora/reset-password?token=" . $token; 
             
@@ -544,7 +564,6 @@ class AuthService {
                 $this->pdo->prepare("DELETE FROM user_auth_tokens WHERE user_id = ?")->execute([$uData['id']]);
                 
                 // [IMPORTANTE] Desconectar websockets activos
-                // Publicamos en el canal 'aurora_ws_control' que escuchen todos los nodos
                 $this->redis->publish('aurora_ws_control', json_encode([
                     'cmd' => 'KICK_ALL',
                     'user_id' => $uData['id']
@@ -570,7 +589,6 @@ class AuthService {
         }
         
         // [IMPORTANTE] WebSocket Kick (Sesión específica)
-        // Obtenemos el ID del token de sesión que guardamos al hacer login
         if (isset($_SESSION['user_id']) && isset($_SESSION['current_token_id'])) {
              $this->redis->publish('aurora_ws_control', json_encode([
                 'cmd' => 'KICK_SESSION',
@@ -626,6 +644,92 @@ class AuthService {
             }
         }
     }
+
+    // =========================================================
+    // NUEVA LÓGICA DE RATE LIMITING (HÍBRIDO REDIS/SQL)
+    // =========================================================
+
+    /**
+     * Incrementa el contador en Redis con expiración automática
+     */
+    private function incrementRedisCounter($key, $minutes) {
+        if (!$this->redis) return;
+        try {
+            $current = $this->redis->incr($key);
+            if ($current === 1) {
+                $this->redis->expire($key, $minutes * 60);
+            }
+        } catch (Exception $e) {
+            // Fallback silencioso si Redis falla
+            error_log("Redis RateLimit Error (INCR): " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Verifica bloqueo leyendo SOLAMENTE de Redis (Lectura Rápida)
+     */
+    private function checkSecurityBlock($actionType, $limit, $minutes, $identifier = '') {
+        if (!$this->redis) {
+            // Fallback a SQL si Redis no está disponible (Lógica original como respaldo)
+            return $this->checkSecurityBlockSQL($actionType, $limit, $minutes, $identifier);
+        }
+
+        $ip = $this->getClientIp();
+        $ipKey = "rate_limit:{$actionType}:ip:{$ip}";
+        $userKey = $identifier ? "rate_limit:{$actionType}:user:{$identifier}" : null;
+
+        try {
+            $ipCount = $this->redis->get($ipKey);
+            if ($ipCount && (int)$ipCount >= $limit) return true;
+
+            if ($userKey) {
+                $userCount = $this->redis->get($userKey);
+                if ($userCount && (int)$userCount >= $limit) return true;
+            }
+        } catch (Exception $e) {
+            return $this->checkSecurityBlockSQL($actionType, $limit, $minutes, $identifier);
+        }
+
+        return false;
+    }
+
+    /**
+     * Registra el evento en SQL (Auditoría) E incrementa Redis (Bloqueo)
+     */
+    private function logSecurityEvent($identifier, $actionType, $minutes = 15) {
+        $ip = $this->getClientIp();
+        
+        // 1. Auditoría Permanente en MySQL (Write-only prácticamente)
+        try {
+            $stmt = $this->pdo->prepare("INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)");
+            $stmt->execute([$identifier, $actionType, $ip]);
+        } catch (Exception $e) {
+            error_log("Audit Log Error: " . $e->getMessage());
+        }
+
+        // 2. Control de Bloqueo en Redis (Incrementar contadores)
+        $ipKey = "rate_limit:{$actionType}:ip:{$ip}";
+        $userKey = $identifier ? "rate_limit:{$actionType}:user:{$identifier}" : null;
+
+        $this->incrementRedisCounter($ipKey, $minutes);
+        if ($userKey) {
+            $this->incrementRedisCounter($userKey, $minutes);
+        }
+    }
+
+    /**
+     * Método original SQL (Renombrado para fallback)
+     */
+    private function checkSecurityBlockSQL($actionType, $limit, $minutes, $identifier = '') {
+        $ip = $this->getClientIp();
+        $sql = "SELECT COUNT(*) as failures FROM security_logs WHERE (ip_address = ? OR user_identifier = ?) AND action_type = ? AND created_at > (NOW() - INTERVAL $minutes MINUTE)";     
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$ip, $identifier, $actionType]);
+        $result = $stmt->fetch();
+        return ($result && $result['failures'] >= $limit);
+    }
+
+    // =========================================================
 
     private function verifyTurnstile($token) {
         if (empty($token)) return ['success' => false, 'message' => 'Por favor completa el captcha.'];
@@ -698,24 +802,6 @@ class AuthService {
         return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';
     }
 
-    private function logSecurityEvent($identifier, $actionType) {
-        $ip = $this->getClientIp();
-        $stmt = $this->pdo->prepare("INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)");
-        $stmt->execute([$identifier, $actionType, $ip]);
-    }
-
-    private function checkSecurityBlock($actionType, $limit, $minutes, $identifier = '') {
-        $ip = $this->getClientIp();
-        
-        $sql = "SELECT COUNT(*) as failures FROM security_logs WHERE (ip_address = ? OR user_identifier = ?) AND action_type = ? AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
-                
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$ip, $identifier, $actionType]);
-        $result = $stmt->fetch();
-        
-        return ($result && $result['failures'] >= $limit);
-    }
-
     private function createPersistenceToken($userId) {
         $selector = bin2hex(random_bytes(12)); 
         $validator = bin2hex(random_bytes(32));
@@ -782,7 +868,6 @@ class AuthService {
         return ['success' => true, 'message' => $this->i18n->t('api.welcome'), 'redirect' => '/ProjectAurora/'];
     }
 
-    // === TOKEN WEBSOCKET OPTIMIZADO PARA REDIS ===
     public function generateWebSocketToken() {
         if (!isset($_SESSION['user_id'])) {
             return ['success' => false, 'message' => 'No autenticado'];
@@ -791,18 +876,13 @@ class AuthService {
         $userId = $_SESSION['user_id'];
         $sessionId = $_SESSION['current_token_id'] ?? 0;
 
-        // Generar token seguro
         $token = bin2hex(random_bytes(32)); 
         
-        // Guardar en Redis con expiración de 15 segundos
-        // Formato clave: "ws_token:{token}" -> Valor: "{user_id}:{session_id}"
         $key = "ws_token:$token";
         $value = "$userId:$sessionId";
         
         try {
-            // setex: Set with Expiration (clave, segundos, valor)
             $this->redis->setex($key, 15, $value);
-            
             return ['success' => true, 'ws_token' => $token];
         } catch (Exception $e) {
             return ['success' => false, 'message' => 'Error Redis: ' . $e->getMessage()];
