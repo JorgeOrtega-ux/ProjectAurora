@@ -8,7 +8,7 @@ export const SocketClient = {
     socket: null,
     reconnectInterval: 5000,
     // URL base (sin token). Asegúrate de usar tu IP local o dominio.
-    baseUrl: 'ws://192.168.8.2:8765', 
+    baseUrl: 'ws://192.168.1.159:8765', 
     
     init: () => {
         console.log("SocketClient: Inicializando...");
