@@ -1,9 +1,10 @@
 <?php
-// api/services/AuthService.php
+namespace Aurora\Services;
 
 use Google\Authenticator\GoogleAuthenticator;
-
-require_once __DIR__ . '/../../includes/libs/MailService.php';
+use Aurora\Libs\Utils;
+use Aurora\Libs\MailService;
+use Exception; // Importar Exception global
 
 class AuthService {
     private $pdo;
@@ -264,6 +265,7 @@ class AuthService {
         $randomBg = $bgColors[array_rand($bgColors)];
         $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($firstLetter) . "&background=" . $randomBg . "&color=fff&size=512&format=png&bold=true";
 
+        // Ajuste de ruta por namespace
         $storageDir = __DIR__ . '/../../storage/profilePicture/default/';
         if (!is_dir($storageDir)) { mkdir($storageDir, 0777, true); }
         
@@ -334,22 +336,16 @@ class AuthService {
 
         if ($user && password_verify($password, $user['password'])) {
             
-            // === LÓGICA DE CUENTA RESTRINGIDA (NO CREA SESIÓN) ===
             if ($user['account_status'] === 'deleted' || $user['account_status'] === 'suspended') {
                 $isPermanent = empty($user['suspension_ends_at']);
                 $isActiveSuspension = $isPermanent || (strtotime($user['suspension_ends_at']) > time());
 
                 if ($user['account_status'] === 'deleted' || $isActiveSuspension) {
-                    // Guardamos los datos en una variable de sesión TEMPORAL, no de auth
                     $_SESSION['account_status_data'] = [
                         'status' => $user['account_status'],
                         'reason' => $user['status_reason'],
                         'suspension_ends_at' => $user['suspension_ends_at']
                     ];
-                    
-                    // IMPORTANTE: No llamamos a fillSession ni createPersistenceToken
-                    // El usuario NO tendrá $_SESSION['user_id']
-                    
                     return [
                         'success' => true, 
                         'message' => 'Redirigiendo a estado de cuenta...',
@@ -357,7 +353,6 @@ class AuthService {
                     ];
                 }
             }
-            // ======================================================
             
             $allowLogin = Utils::getServerConfig($this->pdo, 'allow_login', '1');
             $userRole = $user['role'] ?? 'user';
@@ -401,7 +396,6 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.user_not_found')];
         }
 
-        // === CHEQUEO DE ESTADO EN 2FA (IGUAL QUE LOGIN) ===
         if ($user['account_status'] === 'deleted' || $user['account_status'] === 'suspended') {
             $isPermanent = empty($user['suspension_ends_at']);
             $isActiveSuspension = $isPermanent || (strtotime($user['suspension_ends_at']) > time());
@@ -422,7 +416,6 @@ class AuthService {
                 ];
             }
         }
-        // ================================================
 
         $isValid = false;
         
@@ -593,8 +586,6 @@ class AuthService {
             $user = $stmtUser->fetch();
 
             if ($user) {
-                // CHEQUEO DE ESTADO EN AUTO-LOGIN
-                // Si está suspendido o borrado, INVALIDAMOS el token y no iniciamos sesión
                 if ($user['account_status'] !== 'active') {
                     $isPermanent = empty($user['suspension_ends_at']);
                     $isActiveSuspension = $isPermanent || (strtotime($user['suspension_ends_at']) > time());
@@ -602,25 +593,18 @@ class AuthService {
                     if ($user['account_status'] === 'deleted' || $isActiveSuspension) {
                         $this->pdo->prepare("DELETE FROM user_auth_tokens WHERE id = ?")->execute([$authToken['id']]);
                         setcookie('auth_persistence_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
-                        return; // Se queda como guest
+                        return;
                     }
                 }
 
                 $this->fillSession($user);
                 
-                // [NUEVO] Eliminamos el token viejo y creamos uno nuevo, guardando su ID
                 $this->pdo->prepare("DELETE FROM user_auth_tokens WHERE id = ?")->execute([$authToken['id']]);
                 $newTokenId = $this->createPersistenceToken($user['id']);
                 
-                // [NUEVO] Guardamos el ID del nuevo token en la sesión
                 $_SESSION['current_token_id'] = $newTokenId;
             }
         }
-    }
-
-    private function rotatePersistenceToken($oldTokenId, $userId) {
-        $this->pdo->prepare("DELETE FROM user_auth_tokens WHERE id = ?")->execute([$oldTokenId]);
-        $this->createPersistenceToken($userId);
     }
 
     private function verifyTurnstile($token) {
@@ -724,7 +708,6 @@ class AuthService {
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$userId, $selector, $hashedValidator, $ip, $userAgent, $expiresAt]);
         
-        // [NUEVO] Obtenemos y retornamos el ID
         $tokenId = $this->pdo->lastInsertId();
 
         $cookieName = 'auth_persistence_token';
@@ -773,40 +756,27 @@ class AuthService {
     private function completeLogin($user) {
         $this->fillSession($user);
         
-        // [NUEVO] Guardamos el ID del token en la sesión
         $tokenId = $this->createPersistenceToken($user['id']);
         $_SESSION['current_token_id'] = $tokenId;
         
         return ['success' => true, 'message' => $this->i18n->t('api.welcome'), 'redirect' => '/ProjectAurora/'];
     }
 
-    // === AGREGAR ESTE MÉTODO ===
     public function generateWebSocketToken() {
-        // 1. Verificar sesión
         if (!isset($_SESSION['user_id'])) {
             return ['success' => false, 'message' => 'No autenticado'];
         }
 
         $userId = $_SESSION['user_id'];
-        
-        // 2. Obtener el ID de la sesión actual (token de persistencia)
-        // Esto se seteó en login/autoLogin como $_SESSION['current_token_id']
         $sessionId = $_SESSION['current_token_id'] ?? null;
 
-        // 3. Limpieza: Borrar tokens viejos o expirados de este usuario
         try {
             $this->pdo->prepare("DELETE FROM ws_auth_tokens WHERE user_id = ? OR expires_at < NOW()")->execute([$userId]);
-        } catch (Exception $e) {
-            // Ignoramos error de limpieza para no detener el flujo
-        }
+        } catch (Exception $e) { }
 
-        // 4. Generar token criptográficamente seguro
-        $token = bin2hex(random_bytes(32)); // 64 caracteres
-        
-        // 5. Expiración CORTA (15 segundos es suficiente para conectar)
+        $token = bin2hex(random_bytes(32)); 
         $expiresAt = date('Y-m-d H:i:s', time() + 15); 
 
-        // 6. Guardar en BD con session_id
         try {
             $stmt = $this->pdo->prepare("INSERT INTO ws_auth_tokens (user_id, token, session_id, expires_at) VALUES (?, ?, ?, ?)");
             $stmt->execute([$userId, $token, $sessionId, $expiresAt]);

@@ -1,8 +1,8 @@
 <?php
-// includes/libs/Utils.php
+namespace Aurora\Libs;
 
-require_once __DIR__ . '/I18n.php';
-require_once __DIR__ . '/Logger.php';
+// Ya no necesitamos require manual de I18n ni Logger
+// Al estar en el mismo namespace, se llaman directamente.
 
 class Utils {
 
@@ -103,18 +103,14 @@ class Utils {
             $stmt->execute([$key]);
             $val = $stmt->fetchColumn();
             return $val !== false ? $val : $default;
-        } catch (Exception $e) {
+        } catch (\Exception $e) { // Agregamos \ para indicar Exception global
             return $default;
         }
     }
 
     public static function initI18n() {
-        // [FIX] Prioridad: 1. Sesión (Usuario) 2. Cookie (Invitado) 3. Default
         $userLang = $_SESSION['preferences']['language'] ?? $_COOKIE['guest_language'] ?? 'es-latam';
-        
-        // Limpieza de seguridad básica para evitar Path Traversal
         $userLang = basename($userLang);
-        
         return new I18n($userLang);
     }
 
@@ -140,6 +136,7 @@ class Utils {
         $src = '';
         if (isset($_SESSION['user_id'])) {
             if (!empty($_SESSION['avatar'])) {
+                // Ajuste de ruta por cambio de namespace
                 $avatarFile = __DIR__ . '/../../' . $_SESSION['avatar'];
                 if (file_exists($avatarFile)) {
                     $mimeType = mime_content_type($avatarFile);

@@ -1,11 +1,12 @@
 <?php
 // includes/bootstrap.php
 
-// 1. Carga del Autoloader de Composer
+// 1. CARGA DEL AUTOLOADER DE COMPOSER
 require_once __DIR__ . '/../vendor/autoload.php';
 
+use Aurora\Libs\Utils;
+
 // 2. CONFIGURACIÓN DE SEGURIDAD PARA LA SESIÓN
-// Centralizamos aquí los parámetros de cookies seguras
 $cookieParams = session_get_cookie_params();
 session_set_cookie_params([
     'lifetime' => $cookieParams['lifetime'],
@@ -16,24 +17,22 @@ session_set_cookie_params([
     'samesite' => 'Strict'
 ]);
 
-// Iniciamos la sesión
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 // 3. Carga de Utilidades y Manejo de Errores
-require_once __DIR__ . '/libs/Utils.php';
+// Utils ya está cargada por Composer, solo llamamos al método
 Utils::initErrorHandlers();
 
 // 4. Conexión a Base de Datos
-// (Nota: db.php ya hace el require de Logger.php y carga el .env)
-require_once __DIR__ . '/../config/database/db.php';
+// Ya está cargada automáticamente por Composer ("files": ["config/database/db.php"])
+// $pdo está disponible en el scope global.
 
 // 5. Inicializar Sistema de Internacionalización (I18n)
 $i18n = Utils::initI18n();
 
-// 6. Retornar las variables globales críticas para quien use este bootstrap
-// Esto permite usar extract() en los archivos públicos
+// 6. Retornar las variables globales críticas
 return [
     'pdo'  => $pdo,
     'i18n' => $i18n

@@ -1,8 +1,12 @@
 <?php
 // api/auth-handler.php
 
-// Carga del Autoloader de Composer
+// 1. CARGA AUTOMÁTICA
 require_once __DIR__ . '/../vendor/autoload.php';
+
+// 2. IMPORTACIONES (Namespaces)
+use Aurora\Services\AuthService;
+use Aurora\Libs\Utils;
 
 // CONFIGURACIÓN DE SEGURIDAD PARA LA SESIÓN
 $cookieParams = session_get_cookie_params();
@@ -16,15 +20,13 @@ session_set_cookie_params([
 ]);
 session_start();
 
-require_once __DIR__ . '/../config/database/db.php';
-// Utils carga I18n internamente, pero el servicio AuthService necesita I18n
-require_once __DIR__ . '/../includes/libs/Utils.php';
-require_once __DIR__ . '/services/AuthService.php';
+// Nota: db.php se carga automáticamente gracias a composer "files",
+// así que $pdo ya está disponible.
 
 // Inicializar I18n usando Utils
 $i18n = Utils::initI18n();
 
-// Validación de seguridad CSRF centralizada
+// Validación
 Utils::validateCsrf($i18n);
 
 // Inicializar Servicio
@@ -40,7 +42,6 @@ switch ($action) {
     case 'register_step_1':
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
-        // Pasamos el token
         Utils::jsonResponse($authService->registerStep1($email, $password, $turnstileToken));
         break;
 
@@ -61,7 +62,6 @@ switch ($action) {
     case 'login':
         $email = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
-        // Pasamos el token
         Utils::jsonResponse($authService->login($email, $password, $turnstileToken));
         break;
 
@@ -85,7 +85,7 @@ switch ($action) {
         Utils::jsonResponse($authService->logout());
         break;
 
-        case 'get_ws_token':
+    case 'get_ws_token':
         Utils::jsonResponse($authService->generateWebSocketToken());
         break;
 
