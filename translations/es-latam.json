@@ -98,11 +98,6 @@
         "placeholder": "Contenido próximamente...",
         "feedback_placeholder": "Formulario de contacto próximamente."
     },
-    "notifications": {
-        "title": "Notificaciones",
-        "mark_all_read": "Marcar todo como leído",
-        "empty": "No tienes notificaciones nuevas."
-    },
     "auth": {
         "login": {
             "title": "Iniciar Sesión",

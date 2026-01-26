@@ -35,7 +35,8 @@ function initModuleSystem() {
 
     const closeModuleWithAnimation = (mod) => {
         const isMobile = window.innerWidth <= 468;
-        const isSheetModule = mod.dataset.module === 'moduleProfile' || mod.dataset.module === 'moduleNotifications';
+        // Modificado: Ya solo verificamos moduleProfile
+        const isSheetModule = mod.dataset.module === 'moduleProfile';
 
         if (isMobile && isSheetModule && mod.classList.contains('active')) {
             mod.classList.add('closing');
@@ -74,7 +75,7 @@ function initModuleSystem() {
                 let targetModuleName = '';
                 if (action === 'toggleModuleProfile') targetModuleName = 'moduleProfile';
                 if (action === 'toggleModuleSurface') targetModuleName = 'moduleSurface';
-                if (action === 'toggleModuleNotifications') targetModuleName = 'moduleNotifications';
+                // Eliminada la línea de toggleModuleNotifications
 
                 if (targetModuleName) {
                     const targetModule = document.querySelector(`[data-module="${targetModuleName}"]`);
@@ -137,7 +138,8 @@ function initModuleSystem() {
         });
     }
 
-    const sheetModules = document.querySelectorAll('[data-module="moduleProfile"], [data-module="moduleNotifications"]');
+    // Modificado: Solo seleccionamos moduleProfile
+    const sheetModules = document.querySelectorAll('[data-module="moduleProfile"]');
     sheetModules.forEach(mod => {
         initMobileDrag(mod, closeModuleWithAnimation);
     });
