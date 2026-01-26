@@ -91,9 +91,22 @@ function initGlobalSocketListeners() {
 function routeDispatcher(section) {
     updateSidebarState(section);
     switch (section) {
-        case 'settings/your-profile': ProfileController.init(); SettingsController.sync(); break;
-        case 'settings/accessibility': SettingsController.sync(); break;
-        case 'settings/preferences': SettingsController.init(); SettingsController.sync(); break;
+        case 'settings/your-profile': 
+            ProfileController.init(); 
+            SettingsController.init(); // [CORREGIDO] Reinicializar listeners de settings
+            SettingsController.sync(); 
+            break;
+            
+        case 'settings/accessibility': 
+            SettingsController.init(); // [CORREGIDO] Reinicializar listeners de settings
+            SettingsController.sync(); 
+            break;
+            
+        case 'settings/preferences': 
+            SettingsController.init(); 
+            SettingsController.sync(); 
+            break;
+            
         case 'settings/login-security': SecurityController.init(); break;
         case 'settings/devices': DevicesController.init(); break;
         case 'settings/delete-account': DeleteAccountController.init(); break;
