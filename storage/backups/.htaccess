@@ -1,0 +1,9 @@
+# storage/backups/.htaccess
+# Bloquear acceso HTTP directo a los archivos de respaldo
+Order Deny,Allow
+Deny from all
+
+<Files "*">
+    Order Deny,Allow
+    Deny from all
+</Files>

@@ -1,0 +1,16 @@
+# storage/.htaccess
+
+# Permitir acceso directo a las imágenes (png, jpg, jpeg, gif, webp)
+<FilesMatch "\.(png|jpg|jpeg|gif|webp)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+
+# Bloquear ejecución de scripts PHP (seguridad crítica para uploads)
+<FilesMatch "\.(php|php5|phtml)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Deshabilitar listado de directorio
+Options -Indexes
