@@ -2,9 +2,8 @@
 // public/index.php
 
 // 1. BOOTSTRAP
-// Esto devuelve ['pdo' => ..., 'i18n' => ..., 'redis' => ...]
 $services = require_once __DIR__ . '/../includes/bootstrap.php';
-extract($services); 
+extract($services); // $pdo, $i18n, $redis
 
 // 2. SEGURIDAD HTTP
 $cspNonce = Utils::applySecurityHeaders();
@@ -12,7 +11,6 @@ $cspNonce = Utils::applySecurityHeaders();
 // 3. AUTO-LOGIN
 if (!isset($_SESSION['user_id'])) {
     require_once __DIR__ . '/../api/services/AuthService.php';
-    // [CORRECCIÓN] Pasamos $redis al constructor
     $authService = new AuthService($pdo, $i18n, $redis); 
     $authService->attemptAutoLogin();
 }
@@ -25,23 +23,19 @@ if (empty($_SESSION['csrf_token'])) {
 // 5. RUTEO Y CONTROL DE ACCESO
 require_once __DIR__ . '/../config/routers/router.php';
 
-// === CARGA DE REGLAS DE SEGURIDAD ===
+// Carga de reglas de seguridad
 $securityRules = require __DIR__ . '/../config/security.php';
 $authRoutes = $securityRules['auth_routes'];
 $protectedRoutes = $securityRules['protected_routes'];
 
-// === CONFIGURACIÓN DE MANTENIMIENTO ===
+// Configuración de mantenimiento
 $maintenanceMode = Utils::getServerConfig($pdo, 'maintenance_mode', '0');
 $userRole = $_SESSION['role'] ?? 'guest';
 $allowedRoles = ['founder', 'administrator', 'moderator'];
 
-// Comprobar si es ruta de admin
 $isAdminRoute = strpos($currentSection, 'admin/') === 0;
-
-// Estado de sesión
 $isLoggedIn = isset($_SESSION['user_id']);
 
-// LÓGICA DE MANTENIMIENTO
 $showMaintenanceScreen = (
     $maintenanceMode === '1' && 
     !in_array($userRole, $allowedRoles) && 
@@ -49,8 +43,7 @@ $showMaintenanceScreen = (
     $currentSection !== 'account-status'
 );
 
-// 6. GESTIÓN DE REDIRECCIONES (ACCESO ABIERTO)
-
+// 6. GESTIÓN DE REDIRECCIONES
 if (!$showMaintenanceScreen) {
     if (($isAdminRoute || in_array($currentSection, $protectedRoutes)) && !$isLoggedIn) {
         header("Location: " . $basePath . "login");
@@ -62,7 +55,7 @@ if (!$showMaintenanceScreen) {
     }
 }
 
-// Refrescar datos de sesión y CHEQUEO DE ESTADO
+// Refrescar datos de sesión
 if ($isLoggedIn && !$showMaintenanceScreen) {
     try {
         if (isset($_SESSION['current_token_id'])) {
@@ -80,7 +73,7 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
         $freshUser = $stmt->fetch();
 
         if ($freshUser) {
-            // LÓGICA DE BLOQUEO (ACCOUNT STATUS)
+            // Lógica de Bloqueo
             $isRestricted = false;
             
             if ($freshUser['account_status'] === 'deleted') {
@@ -116,7 +109,6 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
 }
 
 // 7. PREPARAR VISTA
-$userRole = $_SESSION['role'] ?? 'guest';
 $globalAvatarSrc = Utils::getGlobalAvatarSrc();
 $userLang = $_SESSION['preferences']['language'] ?? 'es-latam';
 $turnstileSiteKey = $_ENV['TURNSTILE_SITE_KEY'] ?? '';

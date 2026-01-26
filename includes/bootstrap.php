@@ -5,7 +5,6 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 
 // 2. Carga de Variables de Entorno (.env)
-// Lo hacemos antes de iniciar sesión para tener acceso a credenciales de Redis
 $envFile = __DIR__ . '/../.env';
 if (file_exists($envFile)) {
     $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -23,7 +22,6 @@ if (file_exists($envFile)) {
 }
 
 // 3. Configuración de Redis
-// Usamos Redis tanto para sesiones como para la lógica de Websockets
 $redisHost = $_ENV['REDIS_HOST'] ?? '127.0.0.1';
 $redisPort = $_ENV['REDIS_PORT'] ?? 6379;
 $redisPass = $_ENV['REDIS_PASSWORD'] ?? null;
@@ -40,49 +38,47 @@ if (!empty($redisPass)) {
 
 try {
     $redis = new Predis\Client($redisConfig);
-    // Verificar conexión básica (opcional, pero recomendado en dev)
-    // $redis->connect(); 
 } catch (Exception $e) {
-    // Si falla Redis crítico, registramos y detenemos, ya que no habrá sesiones
     error_log("Fallo crítico: No se pudo conectar a Redis. " . $e->getMessage());
-    die("Error interno del sistema de sesiones.");
+    // Fallback silencioso o die() dependiendo de la severidad deseada
+    die("Error interno del sistema de sesiones (Redis).");
 }
 
-// 4. Configuración del Handler de Sesiones de PHP para usar Redis
+// 4. Registrar Redis como Handler de Sesiones
+// IMPORTANTE: Esto debe ocurrir ANTES de session_start()
 $sessionHandler = new Predis\Session\Handler($redis, ['gc_maxlifetime' => 86400]);
 $sessionHandler->register();
 
-// 5. CONFIGURACIÓN DE SEGURIDAD PARA LA SESIÓN
+// 5. Configuración de Cookies de Sesión
 $cookieParams = session_get_cookie_params();
 session_set_cookie_params([
-    'lifetime' => $cookieParams['lifetime'],
+    'lifetime' => 86400, // 1 día
     'path'     => '/',
-    'domain'   => $cookieParams['domain'],
+    'domain'   => $cookieParams['domain'], // O dejar null para automático
     'secure'   => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
     'httponly' => true,
     'samesite' => 'Strict'
 ]);
 
-// Iniciamos la sesión (Ahora se guarda en Redis automáticamente)
+// 6. Iniciar Sesión (Si no está iniciada)
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// 6. Carga de Utilidades y Manejo de Errores
+// 7. Carga de Utilidades y Manejo de Errores
 require_once __DIR__ . '/libs/Utils.php';
 Utils::initErrorHandlers();
 
-// 7. Conexión a Base de Datos (MySQL)
+// 8. Conexión a Base de Datos (MySQL)
 require_once __DIR__ . '/../config/database/db.php';
 
-// 8. Inicializar Sistema de Internacionalización (I18n)
+// 9. Inicializar I18n
 $i18n = Utils::initI18n();
 
-// 9. Retornar variables globales críticas
-// Agregamos 'redis' al array retornado para inyectarlo en los servicios
+// 10. Retornar servicios globales para uso en los handlers
 return [
-    'pdo'  => $pdo,
-    'i18n' => $i18n,
+    'pdo'   => $pdo,
+    'i18n'  => $i18n,
     'redis' => $redis
 ];
 ?>

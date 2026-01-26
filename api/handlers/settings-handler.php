@@ -1,29 +1,26 @@
 <?php
-// api/settings-handler.php
+// api/handlers/settings-handler.php
 
-// 1. BOOTSTRAP (Carga Redis, PDO, I18n y Configuración de Sesión correcta)
-$services = require_once __DIR__ . '/../includes/bootstrap.php';
-extract($services); // Extrae $pdo, $i18n, $redis
+// 1. BOOTSTRAP: Subimos dos niveles (../../)
+$services = require_once __DIR__ . '/../../includes/bootstrap.php';
+extract($services); // $pdo, $i18n, $redis
 
-// 2. Cargamos el servicio
-require_once __DIR__ . '/services/SettingsService.php';
+// 2. Cargar Servicio: Subimos un nivel (../)
+require_once __DIR__ . '/../services/SettingsService.php';
 
-// 3. Validación de seguridad CSRF centralizada
+// 3. Validar CSRF
 Utils::validateCsrf($i18n);
 
-// 4. Verificar Autenticación
+// 4. Verificar Sesión
 if (!isset($_SESSION['user_id'])) {
     Utils::jsonResponse(['success' => false, 'message' => $i18n->t('api.session_expired')]);
 }
 
-// 5. Inicializar Servicio pasando REDIS
+// 5. Inicializar Servicio (Inyectamos Redis)
 $userId = $_SESSION['user_id'];
-// [CAMBIO] Agregamos $redis al constructor
 $settingsService = new SettingsService($pdo, $i18n, $userId, $redis);
 
 $action = $_POST['action'] ?? '';
-
-// === DISPATCHER ===
 
 switch ($action) {
     case 'upload_avatar':

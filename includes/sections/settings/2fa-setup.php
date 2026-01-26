@@ -1,11 +1,13 @@
 <?php
 // includes/sections/settings/2fa-setup.php
 
-// CORRECCIÓN: Ruta ajustada para subir 3 niveles hasta la raíz
 require_once __DIR__ . '/../../../api/services/SettingsService.php';
 
-// Instanciar el servicio y verificar el límite
-$settingsService = new SettingsService($pdo, $i18n, $_SESSION['user_id']);
+// [CORRECCIÓN] Pasamos $redis al constructor
+// La variable $redis ya existe porque viene del extract($services) en public/loader.php
+$settingsService = new SettingsService($pdo, $i18n, $_SESSION['user_id'], $redis);
+
+// Verificar límite de seguridad para mostrar/ocultar el QR
 $isRateLimited = $settingsService->checkSecurityLimit('2fa_init_attempt', 10, 60);
 
 // Definir clases y estilos basados en el límite

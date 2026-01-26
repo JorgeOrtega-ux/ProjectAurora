@@ -1,28 +1,21 @@
 <?php
-// api/auth-handler.php
+// api/handlers/auth-handler.php
 
-// [CORRECCIÓN] Usamos bootstrap para asegurar que Redis maneje las sesiones
-// Esto reemplaza todos los require manuales y la configuración de sesión manual
-$services = require_once __DIR__ . '/../includes/bootstrap.php';
+// 1. BOOTSTRAP: Subimos dos niveles (../../) para llegar a includes
+$services = require_once __DIR__ . '/../../includes/bootstrap.php';
+extract($services); // $pdo, $i18n, $redis
 
-// Extraemos $pdo, $i18n y $redis
-extract($services); 
+// 2. Cargar Servicio: Subimos un nivel (../) para llegar a services
+require_once __DIR__ . '/../services/AuthService.php';
 
-// Cargamos el servicio (bootstrap no carga servicios automáticamente)
-require_once __DIR__ . '/services/AuthService.php';
-
-// Validación de seguridad CSRF centralizada
+// 3. Validar CSRF
 Utils::validateCsrf($i18n);
 
-// [CORRECCIÓN] Inicializar Servicio pasando $redis
+// 4. Inicializar Servicio (Inyectamos Redis)
 $authService = new AuthService($pdo, $i18n, $redis);
 
 $action = $_POST['action'] ?? '';
-
-// CAPTURAR EL TOKEN DE TURNSTILE
 $turnstileToken = $_POST['cf-turnstile-response'] ?? '';
-
-// === DISPATCHER ===
 
 switch ($action) {
     case 'register_step_1':

@@ -1,38 +1,29 @@
 <?php
-// api/admin-handler.php
+// api/handlers/admin-handler.php
 
-require_once __DIR__ . '/../vendor/autoload.php';
+// 1. BOOTSTRAP: Subimos dos niveles (../../)
+$services = require_once __DIR__ . '/../../includes/bootstrap.php';
+extract($services); // $pdo, $i18n, $redis
 
-$cookieParams = session_get_cookie_params();
-session_set_cookie_params([
-    'lifetime' => $cookieParams['lifetime'],
-    'path' => '/',
-    'domain' => $cookieParams['domain'],
-    'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
-    'httponly' => true,
-    'samesite' => 'Strict'
-]);
-session_start();
+// 2. Cargar Servicios: Subimos un nivel (../)
+require_once __DIR__ . '/../services/AdminService.php';
+require_once __DIR__ . '/../services/BackupService.php';
 
-require_once __DIR__ . '/../config/database/db.php';
-require_once __DIR__ . '/../includes/libs/Utils.php';
-require_once __DIR__ . '/services/AdminService.php';
-require_once __DIR__ . '/services/BackupService.php';
-
-$i18n = Utils::initI18n();
-
+// 3. Verificar Sesión
 if (!isset($_SESSION['user_id'])) {
     Utils::jsonResponse(['success' => false, 'message' => $i18n->t('api.session_expired')]);
 }
 
+// 4. Validar CSRF
 Utils::validateCsrf($i18n);
 
+// 5. Verificar Rol
 $role = $_SESSION['role'] ?? 'user';
 if (!in_array($role, ['founder', 'administrator'])) {
     Utils::jsonResponse(['success' => false, 'message' => $i18n->t('errors.access_denied')]);
 }
 
-// Servicios
+// 6. Inicializar Servicios
 $adminService = new AdminService($pdo, $i18n, $_SESSION['user_id']);
 $backupService = new BackupService($pdo, $i18n, $_SESSION['user_id']);
 
@@ -121,7 +112,7 @@ switch ($action) {
         Utils::jsonResponse($backupService->updateAutoConfig($enabled, $freq, $ret));
         break;
 
-    // === [NUEVO] AUDITORÍA ===
+    // === AUDITORÍA ===
     case 'get_audit_logs':
         $page = (int)($_POST['page'] ?? 1);
         $limit = (int)($_POST['limit'] ?? 50);
