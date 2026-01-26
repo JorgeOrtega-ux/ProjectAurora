@@ -4,7 +4,7 @@
 // Carga de librerías
 use Google\Authenticator\GoogleAuthenticator;
 
-// Se eliminó el require manual de MailService porque el Classmap Autoloader lo carga automáticamente.
+require_once __DIR__ . '/../../includes/libs/MailService.php';
 
 class SettingsService {
     private $pdo;

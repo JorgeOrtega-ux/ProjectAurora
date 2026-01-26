@@ -1,6 +1,9 @@
 <?php
 // includes/libs/Utils.php
 
+require_once __DIR__ . '/I18n.php';
+require_once __DIR__ . '/Logger.php';
+
 class Utils {
 
     public static function initErrorHandlers() {
@@ -106,8 +109,12 @@ class Utils {
     }
 
     public static function initI18n() {
+        // [FIX] Prioridad: 1. Sesión (Usuario) 2. Cookie (Invitado) 3. Default
         $userLang = $_SESSION['preferences']['language'] ?? $_COOKIE['guest_language'] ?? 'es-latam';
+        
+        // Limpieza de seguridad básica para evitar Path Traversal
         $userLang = basename($userLang);
+        
         return new I18n($userLang);
     }
 
@@ -133,7 +140,6 @@ class Utils {
         $src = '';
         if (isset($_SESSION['user_id'])) {
             if (!empty($_SESSION['avatar'])) {
-                // Ajuste de ruta por cambio de namespace
                 $avatarFile = __DIR__ . '/../../' . $_SESSION['avatar'];
                 if (file_exists($avatarFile)) {
                     $mimeType = mime_content_type($avatarFile);

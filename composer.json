@@ -2,14 +2,5 @@
     "require": {
         "phpmailer/phpmailer": "^7.0",
         "sonata-project/google-authenticator": "^2.3"
-    },
-    "autoload": {
-        "psr-4": {
-            "Aurora\\Services\\": "api/services/",
-            "Aurora\\Libs\\": "includes/libs/"
-        },
-        "files": [
-            "config/database/db.php"
-        ]
     }
 }

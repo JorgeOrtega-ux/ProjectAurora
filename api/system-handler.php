@@ -2,10 +2,11 @@
 // api/system-handler.php
 
 require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../config/database/db.php';
+require_once __DIR__ . '/../includes/libs/Utils.php';
+require_once __DIR__ . '/services/BackupService.php';
 
-// Nota: db.php se carga automáticamente por Composer.
-
-// 1. Cargar Entorno (Variables de entorno)
+// 1. Cargar Entorno
 $envFile = __DIR__ . '/../.env';
 if (file_exists($envFile)) {
     $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -26,7 +27,7 @@ if (empty($systemKey) || $requestKey !== $systemKey) {
 }
 
 // 3. Inicializar Servicios (UserId 0 = System)
-$i18n = new I18n('es-latam'); 
+$i18n = new I18n('es-latam'); // Idioma default para logs
 $backupService = new BackupService($pdo, $i18n, 0);
 
 $action = $_POST['action'] ?? '';
