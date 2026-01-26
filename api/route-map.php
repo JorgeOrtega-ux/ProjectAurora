@@ -59,5 +59,10 @@ return [
 
     // SYSTEM (PYTHON WORKER)
     'system.create_backup'    => ['file' => 'handlers/system-handler.php', 'action' => 'create_backup_auto'],
+
+    // [NUEVO] GESTIÓN DE ARCHIVOS LOG
+    'admin.get_log_files'     => ['file' => 'handlers/admin-handler.php', 'action' => 'get_log_files'],
+    'admin.delete_log_files'  => ['file' => 'handlers/admin-handler.php', 'action' => 'delete_log_files'],
+    'admin.download_log_file' => ['file' => 'handlers/admin-handler.php', 'action' => 'download_log_file'], // Opcional si se hace vía GET directo o handler
 ];
 ?>

@@ -27,6 +27,7 @@ import { BackupsController } from './modules/admin/backups-controller.js';
 import { BackupConfigController } from './modules/admin/backup-config-controller.js';
 // [NUEVO] Importar el controlador de auditoría
 import { AuditLogController } from './modules/admin/audit-log-controller.js';
+import { LogFilesController } from './modules/admin/log-files-controller.js';
 
 const App = {
     init: () => {
@@ -127,7 +128,7 @@ function routeDispatcher(section) {
         
         // [NUEVO] Inicializar controlador de auditoría
         case 'admin/audit-log': AuditLogController.init(); break;
-        
+        case 'admin/log-files': LogFilesController.init(); break;
         default: break;
     }
 }

@@ -38,14 +38,14 @@ export const ApiRoutes = {
     },
 
     Admin: {
-        GetUsers:         { route: 'admin.get_users' },
-        GetDetails:       { route: 'admin.get_details' },
-        UpdateProfile:    { route: 'admin.update_profile' },
-        UpdateRole:       { route: 'admin.update_role' },
-        UpdateStatus:     { route: 'admin.update_status' },
-        UpdatePreference: { route: 'admin.update_pref' },
-        UploadAvatar:     { route: 'admin.upload_avatar' },
-        DeleteAvatar:     { route: 'admin.delete_avatar' },
+        GetUsers:           { route: 'admin.get_users' },
+        GetDetails:         { route: 'admin.get_details' },
+        UpdateProfile:      { route: 'admin.update_profile' },
+        UpdateRole:         { route: 'admin.update_role' },
+        UpdateStatus:       { route: 'admin.update_status' },
+        UpdatePreference:   { route: 'admin.update_pref' },
+        UploadAvatar:       { route: 'admin.upload_avatar' },
+        DeleteAvatar:       { route: 'admin.delete_avatar' },
         GetServerConfig:    { route: 'admin.get_server_config' },
         UpdateServerConfig: { route: 'admin.update_server_config' },
         
@@ -58,7 +58,11 @@ export const ApiRoutes = {
             UpdateConfig: { route: 'admin.upd_backup_config' }
         },
 
-        // [NUEVO] Auditoría
-        GetAuditLogs:     { route: 'admin.get_audit_logs' }
+        // Auditoría (Audit Logs)
+        GetAuditLogs:     { route: 'admin.get_audit_logs' },
+
+        // [NUEVO] Logs de Archivo (System Logs)
+        GetLogFiles:      { route: 'admin.get_log_files' },
+        DeleteLogFiles:   { route: 'admin.delete_log_files' }
     }
 };

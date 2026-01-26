@@ -8,6 +8,8 @@ extract($services); // $pdo, $i18n, $redis
 // 2. Cargar Servicios: Subimos un nivel (../)
 require_once __DIR__ . '/../services/AdminService.php';
 require_once __DIR__ . '/../services/BackupService.php';
+// [NUEVO] Importante: Cargar el servicio de Logs
+require_once __DIR__ . '/../services/LogFileService.php';
 
 // 3. Verificar Sesión
 if (!isset($_SESSION['user_id'])) {
@@ -26,6 +28,7 @@ if (!in_array($role, ['founder', 'administrator'])) {
 // 6. Inicializar Servicios
 $adminService = new AdminService($pdo, $i18n, $_SESSION['user_id']);
 $backupService = new BackupService($pdo, $i18n, $_SESSION['user_id']);
+$logFileService = new LogFileService(); // [NUEVO] Inicializar
 
 $action = $_POST['action'] ?? '';
 
@@ -112,17 +115,26 @@ switch ($action) {
         Utils::jsonResponse($backupService->updateAutoConfig($enabled, $freq, $ret));
         break;
 
-    // === AUDITORÍA ===
+    // === AUDITORÍA (Base de datos) ===
     case 'get_audit_logs':
         $page = (int)($_POST['page'] ?? 1);
         $limit = (int)($_POST['limit'] ?? 50);
-        
         $filters = [];
         if (!empty($_POST['target_type'])) $filters['target_type'] = $_POST['target_type'];
         if (!empty($_POST['target_id'])) $filters['target_id'] = $_POST['target_id'];
-        if (!empty($_POST['admin_id'])) $filters['admin_id'] = $_POST['admin_id'];
-
+        
         Utils::jsonResponse($adminService->getAuditLogs($page, $limit, $filters));
+        break;
+
+    // === [NUEVO] LOGS DE ARCHIVO (File System) ===
+    case 'get_log_files':
+        Utils::jsonResponse($logFileService->getAllLogFiles());
+        break;
+
+    case 'delete_log_files':
+        $paths = $_POST['paths'] ?? '';
+        $pathsArray = is_array($paths) ? $paths : explode(',', $paths);
+        Utils::jsonResponse($logFileService->deleteLogFiles($pathsArray));
         break;
 
     default:

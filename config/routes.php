@@ -43,7 +43,7 @@ return [
     
     // [NUEVO] AUDITORÍA
     'admin/audit-log'              => __DIR__ . '/../includes/sections/admin/audit-log.php',
-
+'admin/log-files'              => __DIR__ . '/../includes/sections/admin/log-files.php',
     // === SYSTEM ===
     '404'      => __DIR__ . '/../includes/sections/system/404.php',
 ];

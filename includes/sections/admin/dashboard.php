@@ -5,25 +5,21 @@
             <div class="toolbar-group">
                 
                 <div class="component-toolbar__side component-toolbar__side--left">
-                    </div>
+                </div>
 
                 <div class="component-toolbar__side component-toolbar__side--right">
-                    <button class="component-button" data-nav="admin/audit-log">
+                    <button class="component-button" data-nav="admin/audit-log" style="margin-right: 8px;">
                         <span class="material-symbols-rounded">receipt_long</span>
                         <?php echo $i18n->t('menu.admin.audit'); ?>
+                    </button>
+
+                    <button class="component-button primary" data-nav="admin/log-files">
+                        <span class="material-symbols-rounded">folder_open</span>
+                        Explorador de Logs
                     </button>
                 </div>
 
             </div>
         </div>
     </div>
-
-    <div class="component-header-card">
-        <h1 class="component-page-title"><?php echo $i18n->t('menu.admin.dashboard'); ?></h1>
-        <p class="component-page-description">Vista general del sistema</p>
     </div>
-    
-    <div class="component-card mt-4">
-        <p style="color: var(--text-secondary);">Contenido del Dashboard próximamente...</p>
-    </div>
-</div>

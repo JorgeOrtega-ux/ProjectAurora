@@ -1,0 +1,268 @@
+/**
+ * public/assets/js/modules/admin/log-files-controller.js
+ */
+
+import { ApiService } from '../../core/api-service.js';
+import { Toast } from '../../core/toast-manager.js';
+import { Dialog } from '../../core/dialog-manager.js';
+
+let _container = null;
+let _filesData = [];
+let _selectedPaths = new Set(); // Usamos el path relativo como ID único
+let _viewMode = 'grid'; // 'grid' | 'table'
+
+export const LogFilesController = {
+    init: () => {
+        _container = document.querySelector('[data-section="admin-log-files"]');
+        if (!_container) return;
+
+        console.log("LogFilesController: Inicializado");
+        
+        _filesData = [];
+        _selectedPaths = new Set();
+        _viewMode = 'grid';
+
+        initEvents();
+        loadFiles();
+    }
+};
+
+function initEvents() {
+    // Toolbar: Vista
+    const btnView = _container.querySelector('[data-action="change-view"]');
+    if(btnView) btnView.addEventListener('click', toggleView);
+
+    // Toolbar: Buscar
+    const btnSearch = _container.querySelector('[data-action="toggle-search"]');
+    const searchPanel = _container.querySelector('[data-element="search-panel"]');
+    const inputSearch = _container.querySelector('[data-element="search-input"]');
+    
+    if(btnSearch && searchPanel) {
+        btnSearch.addEventListener('click', () => {
+            searchPanel.classList.toggle('active');
+            btnSearch.classList.toggle('active');
+            if(searchPanel.classList.contains('active') && inputSearch) inputSearch.focus();
+        });
+    }
+
+    if(inputSearch) {
+        inputSearch.addEventListener('input', (e) => {
+            renderList(e.target.value.toLowerCase());
+        });
+    }
+
+    // Acciones de Selección
+    _container.querySelector('[data-action="close-selection"]')?.addEventListener('click', clearSelection);
+    _container.querySelector('[data-action="delete-selected"]')?.addEventListener('click', deleteSelected);
+    
+    // Botones "sin función por ahora"
+    _container.querySelector('[data-action="view-log-content"]')?.addEventListener('click', () => {
+        Toast.show('Visualización de contenido próximamente.', 'info');
+    });
+    _container.querySelector('[data-action="download-selected"]')?.addEventListener('click', () => {
+        Toast.show('Descarga próximamente.', 'info');
+    });
+}
+
+async function loadFiles() {
+    const list = _container.querySelector('[data-component="file-list"]');
+    list.innerHTML = '<div class="state-loading"><div class="spinner-sm"></div></div>';
+
+    try {
+        const res = await ApiService.post(ApiService.Routes.Admin.GetLogFiles);
+        
+        if(res.success) {
+            _filesData = res.files;
+            renderList();
+        } else {
+            list.innerHTML = `<div class="state-error">${res.message}</div>`;
+        }
+    } catch(e) {
+        list.innerHTML = '<div class="state-error">Error de conexión</div>';
+    }
+}
+
+function renderList(query = '') {
+    const list = _container.querySelector('[data-component="file-list"]');
+    const countLabel = _container.querySelector('[data-element="count-wrapper"]');
+    
+    // Filtrado local
+    const filtered = _filesData.filter(f => f.filename.toLowerCase().includes(query));
+
+    if(countLabel) countLabel.innerText = `${filtered.length} archivos`;
+
+    if(filtered.length === 0) {
+        list.innerHTML = '<div class="state-empty">No se encontraron archivos de log.</div>';
+        return;
+    }
+
+    let html = (_viewMode === 'grid') ? buildGridHtml(filtered) : buildTableHtml(filtered);
+    list.innerHTML = html;
+
+    // Listeners de selección
+    const items = list.querySelectorAll('.component-card, .table-row-item');
+    items.forEach(el => {
+        el.addEventListener('click', () => toggleSelection(el.dataset.path));
+    });
+}
+
+function getFileIcon(category) {
+    // Iconos según carpeta
+    switch(category) {
+        case 'app': return 'terminal'; // O 'bug_report'
+        case 'database': return 'database';
+        case 'security': return 'shield';
+        default: return 'description';
+    }
+}
+
+function getFileColor(category) {
+    // Colores simulados para el avatar (Hex o Var)
+    switch(category) {
+        case 'app': return 'background-color: #e3f2fd; color: #1976d2;'; // Azul
+        case 'database': return 'background-color: #fff3e0; color: #ed6c02;'; // Naranja
+        case 'security': return 'background-color: #ffebee; color: #d32f2f;'; // Rojo
+        default: return 'background-color: #f5f5f5; color: #666;';
+    }
+}
+
+function buildGridHtml(files) {
+    return files.map(file => {
+        const isSel = _selectedPaths.has(file.path) ? 'is-selected' : '';
+        const icon = getFileIcon(file.category);
+        const style = getFileColor(file.category);
+
+        // Usamos la estructura EXACTA que pediste
+        return `
+        <div class="component-card ${isSel}" data-path="${file.path}">
+            <div class="component-list-item-content">
+                
+                <div class="component-card__profile-picture component-avatar--list" 
+                     style="display:flex; align-items:center; justify-content:center; ${style}">
+                    <span class="material-symbols-rounded" style="font-size:24px;">${icon}</span>
+                </div>
+
+                <span class="component-badge" data-tooltip="Nombre Archivo" style="font-family: monospace;">
+                    ${file.filename}
+                </span>
+
+                <span class="component-badge" data-tooltip="Carpeta/Categoría">
+                    ${file.category}
+                </span>
+
+                <span class="component-badge" data-tooltip="Tamaño">
+                    ${file.size}
+                </span>
+
+                <span class="component-badge" data-tooltip="Fecha Modificación">
+                    ${file.modified_at}
+                </span>
+
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function buildTableHtml(files) {
+    const rows = files.map(file => {
+        const isSel = _selectedPaths.has(file.path) ? 'is-selected' : '';
+        const icon = getFileIcon(file.category);
+        const style = getFileColor(file.category);
+
+        return `
+        <tr class="table-row-item ${isSel}" data-path="${file.path}" style="cursor:pointer;">
+            <td style="width:50px">
+                <div class="component-card__profile-picture component-avatar--list" 
+                     style="width:32px; height:32px; display:flex; align-items:center; justify-content:center; ${style}">
+                    <span class="material-symbols-rounded" style="font-size:18px;">${icon}</span>
+                </div>
+            </td>
+            <td style="font-family:monospace; font-weight:600;">${file.filename}</td>
+            <td>${file.category}</td>
+            <td>${file.size}</td>
+            <td>${file.modified_at}</td>
+        </tr>`;
+    }).join('');
+
+    return `
+    <div class="component-table-wrapper">
+        <table class="component-table">
+            <thead>
+                <tr>
+                    <th style="width:50px"></th>
+                    <th>Archivo</th>
+                    <th>Categoría</th>
+                    <th>Tamaño</th>
+                    <th>Fecha</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+    </div>`;
+}
+
+function toggleSelection(path) {
+    if(_selectedPaths.has(path)) _selectedPaths.delete(path);
+    else _selectedPaths.add(path);
+    
+    updateToolbarState();
+    renderList(document.querySelector('[data-element="search-input"]')?.value || '');
+}
+
+function clearSelection() {
+    _selectedPaths.clear();
+    updateToolbarState();
+    renderList(document.querySelector('[data-element="search-input"]')?.value || '');
+}
+
+function updateToolbarState() {
+    const defGroup = _container.querySelector('[data-element="toolbar-group-default"]');
+    const actGroup = _container.querySelector('[data-element="toolbar-group-actions"]');
+    const indicator = _container.querySelector('[data-element="selection-indicator"]');
+
+    if(_selectedPaths.size > 0) {
+        defGroup.classList.add('d-none');
+        actGroup.classList.remove('d-none');
+        indicator.innerText = `${_selectedPaths.size} seleccionados`;
+    } else {
+        defGroup.classList.remove('d-none');
+        actGroup.classList.add('d-none');
+    }
+}
+
+function toggleView() {
+    _viewMode = (_viewMode === 'grid') ? 'table' : 'grid';
+    
+    const btn = _container.querySelector('[data-action="change-view"] span');
+    const header = _container.querySelector('[data-element="page-header"]');
+    
+    if(_viewMode === 'table') {
+        btn.innerText = 'table_rows';
+        _container.classList.add('component-wrapper--full');
+        header.classList.add('d-none');
+    } else {
+        btn.innerText = 'grid_view';
+        _container.classList.remove('component-wrapper--full');
+        header.classList.remove('d-none');
+    }
+    renderList(document.querySelector('[data-element="search-input"]')?.value || '');
+}
+
+async function deleteSelected() {
+    if(!await Dialog.confirm({ title: '¿Eliminar archivos?', message: 'Esta acción borrará los logs físicamente del servidor.', type: 'danger' })) return;
+
+    const paths = Array.from(_selectedPaths);
+    const formData = new FormData();
+    formData.append('paths', paths.join(','));
+
+    try {
+        const res = await ApiService.post(ApiService.Routes.Admin.DeleteLogFiles, formData);
+        if(res.success) {
+            Toast.show('Archivos eliminados', 'success');
+            clearSelection();
+            loadFiles();
+        } else {
+            Toast.show(res.message, 'error');
+        }
+    } catch(e) { Toast.show('Error al eliminar', 'error'); }
+}
