@@ -4,34 +4,36 @@
 // Carga del Autoloader de Composer
 require_once __DIR__ . '/../vendor/autoload.php';
 
+// Importaciones
+use Aurora\Libs\Utils;
+use Aurora\Services\SettingsService;
+
 // CONFIGURACIÓN DE SEGURIDAD PARA LA SESIÓN
 $cookieParams = session_get_cookie_params();
 session_set_cookie_params([
     'lifetime' => $cookieParams['lifetime'],
-    'path' => '/',
-    'domain' => $cookieParams['domain'],
-    'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+    'path'     => '/',
+    'domain'   => $cookieParams['domain'],
+    'secure'   => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
     'httponly' => true,
     'samesite' => 'Strict'
 ]);
 session_start();
 
-require_once __DIR__ . '/../config/database/db.php';
-require_once __DIR__ . '/../includes/libs/Utils.php';
-require_once __DIR__ . '/services/SettingsService.php';
+// Nota: db.php se carga automáticamente por Composer.
 
 // Inicializar I18n usando Utils
 $i18n = Utils::initI18n();
 
-// 1. Verificar Autenticación (Esto es específico de este handler, se queda aquí)
+// 1. Verificar Autenticación
 if (!isset($_SESSION['user_id'])) {
     Utils::jsonResponse(['success' => false, 'message' => $i18n->t('api.session_expired')]);
 }
 
-// 2. Validación de seguridad CSRF centralizada
+// 2. Validación de seguridad CSRF
 Utils::validateCsrf($i18n);
 
-// Inicializar Servicio
+// Inicializar Servicio (Autoload)
 $userId = $_SESSION['user_id'];
 $settingsService = new SettingsService($pdo, $i18n, $userId);
 $action = $_POST['action'] ?? '';

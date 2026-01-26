@@ -3,21 +3,25 @@
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+// Importamos las clases necesarias para que el Autoloader las encuentre
+use Aurora\Libs\Utils;
+use Aurora\Services\AdminService;
+use Aurora\Services\BackupService;
+
+// CONFIGURACIÓN DE SEGURIDAD PARA LA SESIÓN
 $cookieParams = session_get_cookie_params();
 session_set_cookie_params([
     'lifetime' => $cookieParams['lifetime'],
-    'path' => '/',
-    'domain' => $cookieParams['domain'],
-    'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
+    'path'     => '/',
+    'domain'   => $cookieParams['domain'],
+    'secure'   => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
     'httponly' => true,
     'samesite' => 'Strict'
 ]);
 session_start();
 
-require_once __DIR__ . '/../config/database/db.php';
-require_once __DIR__ . '/../includes/libs/Utils.php';
-require_once __DIR__ . '/services/AdminService.php';
-require_once __DIR__ . '/services/BackupService.php';
+// Nota: db.php se carga automáticamente por Composer ("files"),
+// por lo que la variable $pdo debe estar disponible en el scope global.
 
 $i18n = Utils::initI18n();
 
@@ -32,7 +36,7 @@ if (!in_array($role, ['founder', 'administrator'])) {
     Utils::jsonResponse(['success' => false, 'message' => $i18n->t('errors.access_denied')]);
 }
 
-// Servicios
+// Servicios (Instanciados usando Autoload)
 $adminService = new AdminService($pdo, $i18n, $_SESSION['user_id']);
 $backupService = new BackupService($pdo, $i18n, $_SESSION['user_id']);
 
@@ -121,7 +125,7 @@ switch ($action) {
         Utils::jsonResponse($backupService->updateAutoConfig($enabled, $freq, $ret));
         break;
 
-    // === [NUEVO] AUDITORÍA ===
+    // === AUDITORÍA ===
     case 'get_audit_logs':
         $page = (int)($_POST['page'] ?? 1);
         $limit = (int)($_POST['limit'] ?? 50);
