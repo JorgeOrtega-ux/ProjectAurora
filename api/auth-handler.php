@@ -4,10 +4,6 @@
 // 1. CARGA AUTOMÁTICA
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// 2. IMPORTACIONES (Namespaces)
-use Aurora\Services\AuthService;
-use Aurora\Libs\Utils;
-
 // CONFIGURACIÓN DE SEGURIDAD PARA LA SESIÓN
 $cookieParams = session_get_cookie_params();
 session_set_cookie_params([

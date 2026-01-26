@@ -1,8 +1,5 @@
 <?php
-namespace Aurora\Libs;
-
-// Ya no necesitamos require manual de I18n ni Logger
-// Al estar en el mismo namespace, se llaman directamente.
+// includes/libs/Utils.php
 
 class Utils {
 
@@ -103,7 +100,7 @@ class Utils {
             $stmt->execute([$key]);
             $val = $stmt->fetchColumn();
             return $val !== false ? $val : $default;
-        } catch (\Exception $e) { // Agregamos \ para indicar Exception global
+        } catch (Exception $e) {
             return $default;
         }
     }

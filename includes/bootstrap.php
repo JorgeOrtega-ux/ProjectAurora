@@ -4,8 +4,6 @@
 // 1. CARGA DEL AUTOLOADER DE COMPOSER
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use Aurora\Libs\Utils;
-
 // 2. CONFIGURACIÓN DE SEGURIDAD PARA LA SESIÓN
 $cookieParams = session_get_cookie_params();
 session_set_cookie_params([

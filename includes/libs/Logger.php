@@ -1,9 +1,9 @@
 <?php
-namespace Aurora\Libs;
+// includes/libs/Logger.php
 
 class Logger {
     
-    // Ajuste de ruta: subimos un nivel más porque ahora estamos en namespace
+    // Ruta ajustada para salir de includes/libs/ hacia logs/
     private const LOG_DIR = __DIR__ . '/../../logs/';
 
     public static function log($channel, $message, $context = [], $level = 'ERROR') {

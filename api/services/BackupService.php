@@ -39,13 +39,11 @@ class BackupService {
             $source = 'unknown';
             try {
                 // Buscamos en los logs quién creó este archivo específico
-                // El formato guardado es "Created: nombre_archivo.sql"
                 $stmt = $this->pdo->prepare("SELECT user_identifier FROM security_logs WHERE action_type = 'backup_create' AND user_identifier LIKE ? LIMIT 1");
                 $stmt->execute(["%Created: $filename%"]);
                 $logIdentifier = $stmt->fetchColumn();
 
                 if ($logIdentifier) {
-                    // [MODIFICADO] Usamos stripos para que detecte 'SYSTEM' (antiguos) y 'System' (nuevos)
                     if (stripos($logIdentifier, 'System') === 0) {
                         $source = 'system';
                     } elseif (strpos($logIdentifier, 'Admin') === 0) {
@@ -53,7 +51,7 @@ class BackupService {
                     }
                 }
             } catch (Exception $e) {
-                // Si falla la consulta de logs, no rompemos la lista, simplemente queda 'unknown'
+                // Si falla la consulta de logs, no rompemos la lista
             }
 
             $backups[] = [
@@ -213,15 +211,12 @@ class BackupService {
         $files = glob($this->backupDir . '*.sql');
         if (count($files) <= $limit) return;
 
-        // Ordenar por fecha (más reciente primero)
         usort($files, function($a, $b) {
             return filemtime($b) - filemtime($a);
         });
 
-        // Eliminar los sobrantes (desde el índice $limit en adelante)
         for ($i = $limit; $i < count($files); $i++) {
             @unlink($files[$i]);
-            // No logueamos cada borrado automático para no saturar
         }
         $deletedCount = count($files) - $limit;
         $this->logAction('backup_auto_cleanup', "Cleaned $deletedCount old backups", true);
@@ -261,7 +256,6 @@ class BackupService {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         $stmt = $this->pdo->prepare("INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)");
         
-        // [MODIFICADO] Texto ajustado a "System" en lugar de "SYSTEM"
         $identifier = $isSystem ? "System | $details" : "Admin:{$this->userId} | $details"; 
         
         $stmt->execute([$identifier, $actionType, $ip]);

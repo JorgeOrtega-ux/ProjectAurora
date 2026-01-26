@@ -3,11 +3,6 @@
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// Importaciones
-use Aurora\Libs\Utils;
-use Aurora\Libs\I18n;
-use Aurora\Services\BackupService;
-
 // Nota: db.php se carga automáticamente por Composer.
 
 // 1. Cargar Entorno (Variables de entorno)
@@ -31,7 +26,6 @@ if (empty($systemKey) || $requestKey !== $systemKey) {
 }
 
 // 3. Inicializar Servicios (UserId 0 = System)
-// Usamos la clase I18n importada via use Aurora\Libs\I18n;
 $i18n = new I18n('es-latam'); 
 $backupService = new BackupService($pdo, $i18n, 0);
 

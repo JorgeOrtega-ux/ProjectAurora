@@ -1,10 +1,10 @@
 <?php
-namespace Aurora\Services;
+// api/services/AuthService.php
 
+// Mantenemos el use de GoogleAuthenticator porque viene de vendor y sí tiene namespace
 use Google\Authenticator\GoogleAuthenticator;
-use Aurora\Libs\Utils;
-use Aurora\Libs\MailService;
-use Exception; // Importar Exception global
+
+// Utils, MailService y Exception son globales, no requieren use.
 
 class AuthService {
     private $pdo;

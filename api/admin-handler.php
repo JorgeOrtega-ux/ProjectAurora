@@ -3,11 +3,6 @@
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// Importamos las clases necesarias para que el Autoloader las encuentre
-use Aurora\Libs\Utils;
-use Aurora\Services\AdminService;
-use Aurora\Services\BackupService;
-
 // CONFIGURACIÓN DE SEGURIDAD PARA LA SESIÓN
 $cookieParams = session_get_cookie_params();
 session_set_cookie_params([
@@ -36,7 +31,7 @@ if (!in_array($role, ['founder', 'administrator'])) {
     Utils::jsonResponse(['success' => false, 'message' => $i18n->t('errors.access_denied')]);
 }
 
-// Servicios (Instanciados usando Autoload)
+// Servicios (Instanciados automáticamente gracias al Classmap)
 $adminService = new AdminService($pdo, $i18n, $_SESSION['user_id']);
 $backupService = new BackupService($pdo, $i18n, $_SESSION['user_id']);
 
