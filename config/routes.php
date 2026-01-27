@@ -1,4 +1,6 @@
 <?php
+// config/routes.php
+
 return [
     // === APP ===
     'main'     => __DIR__ . '/../includes/sections/app/main.php',
@@ -41,9 +43,13 @@ return [
     'admin/backups/config'         => __DIR__ . '/../includes/sections/admin/backup-config.php',
     'admin/server'                 => __DIR__ . '/../includes/sections/admin/server-config.php',
     
-    // [NUEVO] AUDITORÍA
+    // AUDITORÍA Y LOGS
     'admin/audit-log'              => __DIR__ . '/../includes/sections/admin/audit-log.php',
-'admin/log-files'              => __DIR__ . '/../includes/sections/admin/log-files.php',
+    'admin/log-files'              => __DIR__ . '/../includes/sections/admin/log-files.php',
+    
+    // [NUEVO] VISOR DE ARCHIVOS
+    'admin/file-viewer'            => __DIR__ . '/../includes/sections/admin/file-viewer.php',
+
     // === SYSTEM ===
     '404'      => __DIR__ . '/../includes/sections/system/404.php',
 ];

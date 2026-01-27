@@ -5,11 +5,12 @@
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { Dialog } from '../../core/dialog-manager.js';
+import { navigateTo } from '../../core/url-manager.js'; // Importar navigateTo
 
 let _container = null;
 let _filesData = [];
-let _selectedPaths = new Set(); // Usamos el path relativo como ID único
-let _viewMode = 'grid'; // 'grid' | 'table'
+let _selectedPaths = new Set();
+let _viewMode = 'grid';
 
 export const LogFilesController = {
     init: () => {
@@ -28,11 +29,9 @@ export const LogFilesController = {
 };
 
 function initEvents() {
-    // Toolbar: Vista
     const btnView = _container.querySelector('[data-action="change-view"]');
     if(btnView) btnView.addEventListener('click', toggleView);
 
-    // Toolbar: Buscar
     const btnSearch = _container.querySelector('[data-action="toggle-search"]');
     const searchPanel = _container.querySelector('[data-element="search-panel"]');
     const inputSearch = _container.querySelector('[data-element="search-input"]');
@@ -51,14 +50,17 @@ function initEvents() {
         });
     }
 
-    // Acciones de Selección
     _container.querySelector('[data-action="close-selection"]')?.addEventListener('click', clearSelection);
     _container.querySelector('[data-action="delete-selected"]')?.addEventListener('click', deleteSelected);
     
-    // Botones "sin función por ahora"
+    // [MODIFICADO] Botón VER LOGS -> Navegar al visor
     _container.querySelector('[data-action="view-log-content"]')?.addEventListener('click', () => {
-        Toast.show('Visualización de contenido próximamente.', 'info');
+        if (_selectedPaths.size === 0) return;
+        
+        const paths = Array.from(_selectedPaths).join(',');
+        navigateTo('admin/file-viewer', { files: paths });
     });
+
     _container.querySelector('[data-action="download-selected"]')?.addEventListener('click', () => {
         Toast.show('Descarga próximamente.', 'info');
     });
@@ -70,7 +72,6 @@ async function loadFiles() {
 
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.GetLogFiles);
-        
         if(res.success) {
             _filesData = res.files;
             renderList();
@@ -86,7 +87,6 @@ function renderList(query = '') {
     const list = _container.querySelector('[data-component="file-list"]');
     const countLabel = _container.querySelector('[data-element="count-wrapper"]');
     
-    // Filtrado local
     const filtered = _filesData.filter(f => f.filename.toLowerCase().includes(query));
 
     if(countLabel) countLabel.innerText = `${filtered.length} archivos`;
@@ -99,7 +99,6 @@ function renderList(query = '') {
     let html = (_viewMode === 'grid') ? buildGridHtml(filtered) : buildTableHtml(filtered);
     list.innerHTML = html;
 
-    // Listeners de selección
     const items = list.querySelectorAll('.component-card, .table-row-item');
     items.forEach(el => {
         el.addEventListener('click', () => toggleSelection(el.dataset.path));
@@ -107,9 +106,8 @@ function renderList(query = '') {
 }
 
 function getFileIcon(category) {
-    // Iconos según carpeta
     switch(category) {
-        case 'app': return 'terminal'; // O 'bug_report'
+        case 'app': return 'terminal'; 
         case 'database': return 'database';
         case 'security': return 'shield';
         default: return 'description';
@@ -117,11 +115,10 @@ function getFileIcon(category) {
 }
 
 function getFileColor(category) {
-    // Colores simulados para el avatar (Hex o Var)
     switch(category) {
-        case 'app': return 'background-color: #e3f2fd; color: #1976d2;'; // Azul
-        case 'database': return 'background-color: #fff3e0; color: #ed6c02;'; // Naranja
-        case 'security': return 'background-color: #ffebee; color: #d32f2f;'; // Rojo
+        case 'app': return 'background-color: #e3f2fd; color: #1976d2;';
+        case 'database': return 'background-color: #fff3e0; color: #ed6c02;';
+        case 'security': return 'background-color: #ffebee; color: #d32f2f;';
         default: return 'background-color: #f5f5f5; color: #666;';
     }
 }
@@ -132,32 +129,17 @@ function buildGridHtml(files) {
         const icon = getFileIcon(file.category);
         const style = getFileColor(file.category);
 
-        // Usamos la estructura EXACTA que pediste
         return `
         <div class="component-card ${isSel}" data-path="${file.path}">
             <div class="component-list-item-content">
-                
                 <div class="component-card__profile-picture component-avatar--list" 
                      style="display:flex; align-items:center; justify-content:center; ${style}">
                     <span class="material-symbols-rounded" style="font-size:24px;">${icon}</span>
                 </div>
-
-                <span class="component-badge" data-tooltip="Nombre Archivo" style="font-family: monospace;">
-                    ${file.filename}
-                </span>
-
-                <span class="component-badge" data-tooltip="Carpeta/Categoría">
-                    ${file.category}
-                </span>
-
-                <span class="component-badge" data-tooltip="Tamaño">
-                    ${file.size}
-                </span>
-
-                <span class="component-badge" data-tooltip="Fecha Modificación">
-                    ${file.modified_at}
-                </span>
-
+                <span class="component-badge" data-tooltip="Nombre Archivo" style="font-family: monospace;">${file.filename}</span>
+                <span class="component-badge" data-tooltip="Carpeta/Categoría">${file.category}</span>
+                <span class="component-badge" data-tooltip="Tamaño">${file.size}</span>
+                <span class="component-badge" data-tooltip="Fecha Modificación">${file.modified_at}</span>
             </div>
         </div>`;
     }).join('');
@@ -204,7 +186,6 @@ function buildTableHtml(files) {
 function toggleSelection(path) {
     if(_selectedPaths.has(path)) _selectedPaths.delete(path);
     else _selectedPaths.add(path);
-    
     updateToolbarState();
     renderList(document.querySelector('[data-element="search-input"]')?.value || '');
 }
@@ -232,7 +213,6 @@ function updateToolbarState() {
 
 function toggleView() {
     _viewMode = (_viewMode === 'grid') ? 'table' : 'grid';
-    
     const btn = _container.querySelector('[data-action="change-view"] span');
     const header = _container.querySelector('[data-element="page-header"]');
     

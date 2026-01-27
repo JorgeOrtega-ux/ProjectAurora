@@ -25,9 +25,10 @@ import { UserStatusController } from './modules/admin/user-status-controller.js'
 import { ServerConfigController } from './modules/admin/server-config-controller.js';
 import { BackupsController } from './modules/admin/backups-controller.js';
 import { BackupConfigController } from './modules/admin/backup-config-controller.js';
-// [NUEVO] Importar el controlador de auditoría
 import { AuditLogController } from './modules/admin/audit-log-controller.js';
 import { LogFilesController } from './modules/admin/log-files-controller.js';
+// [NUEVO]
+import { FileViewerController } from './modules/admin/file-viewer-controller.js';
 
 const App = {
     init: () => {
@@ -75,7 +76,6 @@ const App = {
 
 function initGlobalSocketListeners() {
     document.addEventListener('socket:force_logout', (e) => {
-        // [NUEVO] Si el usuario está saliendo manualmente, ignorar este evento
         if (window.isManualLogout) return;
 
         console.warn("Seguridad: Sesión revocada remotamente.");
@@ -98,12 +98,12 @@ function routeDispatcher(section) {
     switch (section) {
         case 'settings/your-profile': 
             ProfileController.init(); 
-            SettingsController.init(); // [CORREGIDO] Reinicializar listeners de settings
+            SettingsController.init(); 
             SettingsController.sync(); 
             break;
             
         case 'settings/accessibility': 
-            SettingsController.init(); // [CORREGIDO] Reinicializar listeners de settings
+            SettingsController.init(); 
             SettingsController.sync(); 
             break;
             
@@ -126,9 +126,12 @@ function routeDispatcher(section) {
         case 'admin/backups': BackupsController.init(); break;
         case 'admin/backups/config': BackupConfigController.init(); break;
         
-        // [NUEVO] Inicializar controlador de auditoría
         case 'admin/audit-log': AuditLogController.init(); break;
         case 'admin/log-files': LogFilesController.init(); break;
+        
+        // [NUEVO] Visor de Archivos
+        case 'admin/file-viewer': FileViewerController.init(); break;
+        
         default: break;
     }
 }

@@ -1,7 +1,7 @@
 /* public/assets/css/components.css */
 
 /* =========================================
-   1. ESTRUCTURA DE COMPONENTE (Cards & Groups)
+   1. ESTRUCTURA DE COMPONENTE
    ========================================= */
 .component-wrapper {
     width: 100%;
@@ -12,14 +12,13 @@
     flex-direction: column;
     gap: 16px;
     font-family: var(--sl-font-sans);
-    transition: max-width 0.3s ease; /* Transición suave para cambio de vista */
+    transition: max-width 0.3s ease;
 }
 
 .component-wrapper.component-wrapper--full {
     max-width: 100%;
 }
 
-/* Utilidad general */
 .d-none {
     display: none !important;
 }
@@ -30,7 +29,7 @@
     border-radius: var(--radius-md);
     padding: 24px;
     background-color: var(--bg-surface);
-    transition: all 0.2s ease; 
+    transition: all 0.2s ease;
 }
 
 .component-card {
@@ -38,11 +37,9 @@
 }
 
 .component-card:hover {
-    /* [CORREGIDO] Usar variable adaptativa en lugar de #000 */
     border-color: var(--border-color-hover);
 }
 
-/* ESTADO SELECCIONADO (Grid) */
 .component-card.is-selected {
     border-color: var(--action-primary);
     background-color: var(--bg-hover-light);
@@ -216,7 +213,7 @@
 }
 
 /* =========================================
-   3. CONTROLES DE COMPONENTE
+   3. CONTROLES
    ========================================= */
 .component-card__actions {
     display: flex;
@@ -267,13 +264,13 @@
     background-color: var(--action-primary-hover);
 }
 
-/* Estilos de botones para modo oscuro */
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) .component-button.primary {
         background-color: transparent;
         border: 1px solid var(--border-light);
         color: var(--text-primary);
     }
+
     :root:not([data-theme="light"]) .component-button.primary:hover {
         background-color: var(--bg-hover-light);
     }
@@ -284,6 +281,7 @@
     border: 1px solid var(--border-light);
     color: var(--text-primary);
 }
+
 [data-theme="dark"] .component-button.primary:hover {
     background-color: var(--bg-hover-light);
 }
@@ -316,7 +314,8 @@
     min-width: 200px;
 }
 
-.component-stage-form {
+.component-stage-form,
+.component-form-group {
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -325,17 +324,9 @@
 }
 
 .component-form-group {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
     margin-bottom: 8px;
-    width: 100%;
 }
 
-/* =========================================
-   4. ELEMENTOS AUXILIARES
-   ========================================= */
 .component-toggle-switch {
     position: relative;
     display: inline-block;
@@ -418,7 +409,6 @@ input:checked+.component-toggle-slider:before {
     text-overflow: ellipsis;
 }
 
-/* === MODIFICACIÓN POPOVER === */
 .popover-module {
     position: absolute;
     top: calc(100% + 6px);
@@ -440,84 +430,100 @@ input:checked+.component-toggle-slider:before {
 }
 
 @keyframes fadeInPopover {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* CAJAS VISUALES */
-.component-visual-box {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 24px;
-    border-radius: 12px;
-    background-color: transparent;
-    border: 1px solid var(--border-transparent-20);
-    position: relative;
-}
-
-.component-visual-box.box-grow {
-    flex: 1;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 12px;
-}
-
-.component-visual-box.box-qr {
-    width: auto;
-    flex-shrink: 0;
-    background-color: var(--bg-surface); 
-    transition: background-color 0.2s ease;
-}
-
-/* Listas visuales */
-.visual-step-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.visual-step-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 13px;
-    color: var(--text-secondary);
-    line-height: 1.4;
-}
-
-.visual-step-icon {
-    width: 28px;
-    height: 28px;
-    border-radius: var(--sl-border-radius-circle);
-    background-color: transparent;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    border: 1px solid var(--border-transparent-20);
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 600;
-    flex-shrink: 0;
-}
-
-@media (max-width: 600px) {
-    .component-visual-group {
-        flex-direction: column-reverse;
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
     }
-    .component-visual-box {
-        width: 100%;
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
 /* =========================================
-   5. EXTENSIONES DE LAYOUT
+   4. PESTAÑAS (TABS)
+   ========================================= */
+.viewer-tabs-wrapper {
+    width: 100%;
+    overflow: hidden;
+}
+
+.viewer-tabs-scroll {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    /* Firefox */
+    padding-bottom: 0;
+}
+
+.viewer-tabs-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.viewer-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-bottom: none;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    transition: all 0.2s;
+    user-select: none;
+    margin-bottom: -1px;
+    /* Solapar con borde inferior */
+    position: relative;
+    z-index: 1;
+}
+
+.viewer-tab:hover {
+    background-color: var(--bg-hover-light);
+    color: var(--text-primary);
+}
+
+.viewer-tab.active {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+    font-weight: 600;
+    border-top: 2px solid var(--action-primary);
+    z-index: 3;
+    /* Encima del contenedor */
+    /* El truco del borde inferior transparente para unirlo al card */
+    box-shadow: 0 1px 0 var(--bg-surface);
+}
+
+.viewer-tab .material-symbols-rounded {
+    font-size: 16px;
+}
+
+.file-content-area {
+    width: 100%;
+    height: 100%;
+    min-height: 400px;
+    max-height: 70vh;
+    overflow: auto;
+    background-color: var(--bg-app);
+    /* Fondo de código */
+    padding: 16px;
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    font-family: var(--sl-font-mono);
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* =========================================
+   5. EXTENSIONES LAYOUT
    ========================================= */
 .component-layout-centered {
     width: 100%;
@@ -680,13 +686,36 @@ input:checked+.component-toggle-slider:before {
     text-decoration: underline;
 }
 
-.w-100 { width: 100%; }
-.m-0 { margin: 0 !important; }
-.mt-16 { margin-top: 16px; }
-.mt-24 { margin-top: 24px; }
+.w-100 {
+    width: 100%;
+}
+
+.m-0 {
+    margin: 0 !important;
+}
+
+.mt-16 {
+    margin-top: 16px;
+}
+
+.mt-24 {
+    margin-top: 24px;
+}
+
+.mb-0 {
+    margin-bottom: 0;
+}
+
+.flex-1 {
+    flex: 1;
+}
+
+.pill-container {
+    display: none;
+}
 
 /* =========================================
-   6. RESPONSIVE Y EXTENSIONES
+   6. RESPONSIVE
    ========================================= */
 .component-group-item--stacked {
     flex-direction: column !important;
@@ -771,21 +800,26 @@ input:checked+.component-toggle-slider:before {
         align-items: stretch;
         gap: 12px;
     }
+
     .component-card__actions.actions-right {
         width: 100%;
     }
+
     .input-group-responsive.active {
         flex-direction: column !important;
         align-items: stretch !important;
         gap: 8px;
     }
+
     .input-group-responsive .component-card__actions {
         margin-top: 4px;
     }
+
     .component-group-item .component-button,
     .input-group-responsive .component-button {
         flex: 1;
     }
+
     .component-group-item>.component-card__actions>.active {
         width: 100%;
         display: flex;
@@ -800,6 +834,7 @@ input:checked+.component-toggle-slider:before {
         height: auto;
         min-height: 100%;
     }
+
     .component-card--compact {
         padding: 0;
     }
@@ -853,8 +888,15 @@ input:checked+.component-toggle-slider:before {
 }
 
 @keyframes slideDownAccordion {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .disabled-interactive {
@@ -862,24 +904,23 @@ input:checked+.component-toggle-slider:before {
     pointer-events: none;
 }
 
-/* FIX: Borde redondeado para acordeones en grupo */
-.component-card--grouped > .component-accordion-item:first-child .component-accordion-header {
+.component-card--grouped>.component-accordion-item:first-child .component-accordion-header {
     border-top-left-radius: var(--radius-md);
     border-top-right-radius: var(--radius-md);
 }
 
-.component-card--grouped > .component-accordion-item:last-child .component-accordion-header {
+.component-card--grouped>.component-accordion-item:last-child .component-accordion-header {
     border-bottom-left-radius: var(--radius-md);
     border-bottom-right-radius: var(--radius-md);
 }
 
-.component-card--grouped > .component-accordion-item:last-child.active .component-accordion-header {
+.component-card--grouped>.component-accordion-item:last-child.active .component-accordion-header {
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
 }
 
 /* =========================================
-   10. LISTAS Y BADGES (GENÉRICO)
+   10. LISTAS Y BADGES
    ========================================= */
 .component-list {
     display: flex;
@@ -908,7 +949,6 @@ input:checked+.component-toggle-slider:before {
     color: var(--text-secondary);
 }
 
-/* Elemento contenedor genérico para items en lista */
 .component-list-item-content {
     display: flex;
     flex-wrap: wrap;
@@ -916,7 +956,6 @@ input:checked+.component-toggle-slider:before {
     gap: 8px;
 }
 
-/* Modificador para avatar en listas */
 .component-avatar--list {
     width: 38px;
     height: 38px;
@@ -950,20 +989,20 @@ input:checked+.component-toggle-slider:before {
     font-weight: 700;
     font-size: 13px;
     background-color: transparent;
-    border: 1px solid var(--border-transparent-20); 
+    border: 1px solid var(--border-transparent-20);
     color: var(--text-primary);
     margin-bottom: 16px;
 }
 
 /* =========================================
-   11. COMPONENT TOOLBAR & GROUPS
+   11. TOOLBAR
    ========================================= */
 .component-toolbar-wrapper {
     position: sticky;
     width: 100%;
     max-width: 425px;
     top: 16px;
-    margin: 0 auto 0 auto; 
+    margin: 0 auto;
     z-index: 50;
 }
 
@@ -973,16 +1012,14 @@ input:checked+.component-toggle-slider:before {
     justify-content: space-between;
     width: 100%;
     height: 56px;
-    padding: 8px; 
+    padding: 8px;
     background-color: var(--bg-surface);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
-    /* Se elimina gap para que los grupos controlen el espacio */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
     transition: all 0.2s ease;
 }
 
-/* NUEVO: Grupos de toolbar (Hermanos para alternar) */
 .toolbar-group {
     width: 100%;
     height: 100%;
@@ -994,11 +1031,17 @@ input:checked+.component-toggle-slider:before {
 }
 
 @keyframes fadeInGroup {
-    from { opacity: 0; transform: translateY(2px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(2px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-/* --- Variantes --- */
 .component-toolbar--primary {
     position: relative;
     z-index: 2;
@@ -1020,19 +1063,17 @@ input:checked+.component-toggle-slider:before {
     transform: translateY(0);
     pointer-events: auto;
     visibility: visible;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-/* --- Elementos Internos --- */
 .component-toolbar__side {
     display: flex;
     align-items: center;
     gap: 8px;
 }
 
-/* Título dinámico en toolbar */
 .component-toolbar-title {
-    padding: 0 16px; 
+    padding: 0 16px;
     border: 1px solid var(--border-light);
     border-radius: 8px;
     font-weight: 600;
@@ -1040,13 +1081,11 @@ input:checked+.component-toggle-slider:before {
     color: var(--text-primary);
     background: transparent;
     white-space: nowrap;
-    height: 40px; 
+    height: 40px;
     display: flex;
     align-items: center;
-    /* Margin eliminado según instrucción */
 }
 
-/* Texto indicador de selección (1 seleccionado) */
 .selection-info-text {
     font-size: 13px;
     font-weight: 500;
@@ -1054,10 +1093,10 @@ input:checked+.component-toggle-slider:before {
     margin-right: 4px;
 }
 
-/* Texto responsivo para botones de acción (Cuenta, Rol...) */
 .btn-text-responsive {
     display: none;
 }
+
 @media (min-width: 600px) {
     .btn-text-responsive {
         display: inline-block;
@@ -1066,7 +1105,7 @@ input:checked+.component-toggle-slider:before {
 }
 
 /* =========================================
-   12. TABLAS GENERALES
+   12. TABLAS
    ========================================= */
 .component-table-wrapper {
     width: 100%;
@@ -1074,7 +1113,7 @@ input:checked+.component-toggle-slider:before {
     background-color: var(--bg-surface);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
 }
 
 .component-table {
@@ -1087,7 +1126,7 @@ input:checked+.component-toggle-slider:before {
 }
 
 .component-table thead {
-    background-color: transparent; /* Fondo transparente */
+    background-color: transparent;
     border-bottom: 1px solid var(--border-light);
 }
 
@@ -1114,50 +1153,44 @@ input:checked+.component-toggle-slider:before {
     background-color: var(--bg-hover-light);
 }
 
-/* ESTADO SELECCIONADO (Tabla) */
 .component-table tr.is-selected td {
-    background-color: var(--bg-hover-light); 
+    background-color: var(--bg-hover-light);
     color: var(--text-primary);
 }
 
 .component-table tr.is-selected {
-    box-shadow: inset 3px 0 0 var(--action-primary); /* Indicador visual izquierdo */
+    box-shadow: inset 3px 0 0 var(--action-primary);
 }
 
 /* =========================================
    OVERRIDES DARK MODE (UNIFICADOS)
    ========================================= */
-
-/* A) Cuando el sistema pide Dark Mode y no se fuerza Light */
 @media (prefers-color-scheme: dark) {
+
     :root:not([data-theme="light"]) .general-content,
     :root:not([data-theme="light"]) .module-surface .menu-content,
     :root:not([data-theme="light"]) .module-profile .menu-content,
     :root:not([data-theme="light"]) .module-notifications .menu-content,
     :root:not([data-theme="light"]) .popover-module {
-        box-shadow: none !important; 
-        border: 1px solid var(--border-light); /* #ffffff20 */
+        box-shadow: none !important;
+        border: 1px solid var(--border-light);
     }
 
-    /* FIX: Scroll Shadow en Dark Mode (Solo Borde, Sin Sombra) */
     :root:not([data-theme="light"]) .general-content-top.shadow {
         box-shadow: none !important;
         border-bottom: 1px solid var(--border-transparent-20) !important;
     }
 
-    /* FIX: Popover Search Header Shadow en Dark Mode */
     :root:not([data-theme="light"]) .menu-search-header.shadow {
         box-shadow: none !important;
         border-bottom: 1px solid var(--border-transparent-20) !important;
     }
 
-    /* FIX: Drag Handle visibility in Dark Mode (#FFFFFF80) */
     :root:not([data-theme="light"]) .drag-handle {
         background-color: #FFFFFF80;
     }
 }
 
-/* B) Cuando se fuerza Dark Mode manualmente */
 [data-theme="dark"] .general-content,
 [data-theme="dark"] .module-surface .menu-content,
 [data-theme="dark"] .module-profile .menu-content,
@@ -1167,25 +1200,22 @@ input:checked+.component-toggle-slider:before {
     border: 1px solid var(--border-light);
 }
 
-/* FIX: Scroll Shadow en Dark Mode (Solo Borde, Sin Sombra) */
 [data-theme="dark"] .general-content-top.shadow {
     box-shadow: none !important;
     border-bottom: 1px solid var(--border-transparent-20) !important;
 }
 
-/* FIX: Popover Search Header Shadow en Dark Mode */
 [data-theme="dark"] .menu-search-header.shadow {
     box-shadow: none !important;
     border-bottom: 1px solid var(--border-transparent-20) !important;
 }
 
-/* FIX: Drag Handle visibility in Dark Mode (#FFFFFF80) */
 [data-theme="dark"] .drag-handle {
     background-color: #FFFFFF80;
 }
 
 /* =========================================
-   13. STEPPER CONTROL
+   13. STEPPERS & DOMAIN MANAGER
    ========================================= */
 .stepper-control {
     display: flex;
@@ -1223,9 +1253,21 @@ input:checked+.component-toggle-slider:before {
     color: var(--text-primary);
 }
 
-.stepper-input:focus { outline: none; border: none; box-shadow: none; }
-.stepper-input::-webkit-inner-spin-button, .stepper-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-.stepper-input { -moz-appearance: textfield; }
+.stepper-input:focus {
+    outline: none;
+    border: none;
+    box-shadow: none;
+}
+
+.stepper-input::-webkit-inner-spin-button,
+.stepper-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.stepper-input {
+    -moz-appearance: textfield;
+}
 
 .stepper-btn {
     width: 28px;
@@ -1252,11 +1294,10 @@ input:checked+.component-toggle-slider:before {
     background-color: var(--border-light);
 }
 
-.stepper-btn .material-symbols-rounded { font-size: 18px; }
+.stepper-btn .material-symbols-rounded {
+    font-size: 18px;
+}
 
-/* =========================================
-   14. DOMAIN MANAGER (SERVER CONFIG)
-   ========================================= */
 .domain-manager-wrapper {
     width: 100%;
     display: flex;
@@ -1270,7 +1311,6 @@ input:checked+.component-toggle-slider:before {
     flex-wrap: wrap;
     gap: 8px;
     width: 100%;
-    /* Transición de opacidad si se desea, pero d-none es más directo */
 }
 
 .domain-chip {
@@ -1287,7 +1327,9 @@ input:checked+.component-toggle-slider:before {
     transition: all 0.2s;
 }
 
-.domain-chip:hover { border-color: var(--border-color-hover); }
+.domain-chip:hover {
+    border-color: var(--border-color-hover);
+}
 
 .domain-chip-remove {
     cursor: pointer;
@@ -1305,10 +1347,9 @@ input:checked+.component-toggle-slider:before {
     background-color: var(--action-danger-bg);
 }
 
-/* GRUPO DE INPUT MODIFICADO */
 .domain-input-group {
     display: flex;
-    flex-direction: column; /* Botones abajo */
+    flex-direction: column;
     gap: 8px;
     width: 100%;
     max-width: 320px;
@@ -1318,22 +1359,31 @@ input:checked+.component-toggle-slider:before {
 .domain-input-actions {
     display: flex;
     gap: 8px;
-    justify-content: flex-end; /* Alinear a la derecha */
+    justify-content: flex-end;
     width: 100%;
 }
 
 .domain-input-actions .component-button {
-    min-width: 90px; /* Ancho mínimo para los botones */
+    min-width: 90px;
 }
 
 @media (max-width: 400px) {
-    .stepper-control { gap: 4px; }
-    .stepper-btn { width: 28px; height: 28px; }
-    .stepper-btn .material-symbols-rounded { font-size: 16px; }
+    .stepper-control {
+        gap: 4px;
+    }
+
+    .stepper-btn {
+        width: 28px;
+        height: 28px;
+    }
+
+    .stepper-btn .material-symbols-rounded {
+        font-size: 16px;
+    }
 }
 
 /* =========================================
-   15. COMPONENT DIALOGS (Antes dialogs.css)
+   15. DIALOGS
    ========================================= */
 .component-overlay {
     position: fixed;
@@ -1345,7 +1395,7 @@ input:checked+.component-toggle-slider:before {
     z-index: 2000;
     display: flex;
     justify-content: center;
-    align-items: center; /* Centrado por defecto en Desktop */
+    align-items: center;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s ease, visibility 0.2s ease;
@@ -1357,12 +1407,12 @@ input:checked+.component-toggle-slider:before {
 }
 
 .component-dialog-wrapper {
-    width: 525px; 
+    width: 525px;
     max-width: 90%;
     padding: 16px;
     transform: scale(0.95) translateY(10px);
     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    position: relative; 
+    position: relative;
 }
 
 .component-overlay.active .component-dialog-wrapper {
@@ -1372,9 +1422,9 @@ input:checked+.component-toggle-slider:before {
 .component-dialog {
     background-color: var(--bg-surface);
     border: 1px solid var(--border-light);
-    border-radius: 16px; 
-    padding: 32px; 
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     display: flex;
     flex-direction: column;
     gap: 24px;
@@ -1382,9 +1432,8 @@ input:checked+.component-toggle-slider:before {
     overflow: hidden;
 }
 
-/* DRAG HANDLE (Píldora para móvil) */
 .component-dialog-drag-zone {
-    display: none; /* Oculto en Desktop */
+    display: none;
     justify-content: center;
     width: 100%;
     cursor: grab;
@@ -1398,7 +1447,6 @@ input:checked+.component-toggle-slider:before {
     border-radius: 10px;
 }
 
-/* Elementos internos */
 .component-dialog-body {
     text-align: left;
     display: flex;
@@ -1430,7 +1478,7 @@ input:checked+.component-toggle-slider:before {
 }
 
 .component-dialog-footer .component-button {
-    flex: 1; 
+    flex: 1;
     justify-content: center;
 }
 
@@ -1444,17 +1492,16 @@ input:checked+.component-toggle-slider:before {
     flex-shrink: 0;
 }
 
-/* MOBILE BOTTOM SHEET BEHAVIOR */
 @media (max-width: 468px) {
     .component-overlay {
-        align-items: flex-end; /* Alinear al fondo */
+        align-items: flex-end;
     }
 
     .component-dialog-wrapper {
         width: 100%;
         max-width: 100%;
         padding: 0;
-        transform: translateY(100%); /* Empieza abajo */
+        transform: translateY(100%);
         transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         border-radius: 16px 16px 0 0;
     }
@@ -1462,8 +1509,7 @@ input:checked+.component-toggle-slider:before {
     .component-overlay.active .component-dialog-wrapper {
         transform: translateY(0);
     }
-    
-    /* Clase auxiliar para cierre manual (Drag) */
+
     .component-overlay.active .component-dialog-wrapper.closing {
         transform: translateY(100%) !important;
         transition: transform 0.2s ease-in;
@@ -1490,7 +1536,6 @@ input:checked+.component-toggle-slider:before {
     }
 }
 
-/* OVERRIDES DARK MODE */
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) .component-dialog-drag-handle {
         background-color: rgba(255, 255, 255, 0.5);

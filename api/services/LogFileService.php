@@ -5,7 +5,7 @@ class LogFileService {
     private $logsBaseDir;
 
     public function __construct() {
-        // Ruta absoluta a la carpeta logs
+        // Ruta absoluta a la carpeta logs. Ajusta si tu estructura es diferente.
         $this->logsBaseDir = realpath(__DIR__ . '/../../logs/');
     }
 
@@ -22,11 +22,10 @@ class LogFileService {
                     $size = filesize($filePath);
                     $mtime = filemtime($filePath);
                     
-                    // Identificamos el "tipo" por la carpeta
                     $filesList[] = [
-                        'id' => md5($filePath), // ID único para el frontend
+                        'id' => md5($filePath),
                         'filename' => $filename,
-                        'path' => $dir . '/' . $filename, // Ruta relativa para API
+                        'path' => $dir . '/' . $filename, // Ruta relativa segura
                         'category' => $dir,
                         'size' => $this->formatSize($size),
                         'size_bytes' => $size,
@@ -63,6 +62,62 @@ class LogFileService {
             'success' => true, 
             'message' => "Se eliminaron $deleted archivos correctamente."
         ];
+    }
+
+    public function getFilesContent($paths = []) {
+        $results = [];
+
+        foreach ($paths as $relativePath) {
+            // 1. Limpieza básica
+            $cleanPath = str_replace('..', '', $relativePath);
+            $fullPath = $this->logsBaseDir . '/' . $cleanPath;
+            
+            // 2. Validación estricta de ruta (Sandbox)
+            $realFullPath = realpath($fullPath);
+            // Verificar que la ruta resuelta esté dentro de la carpeta logs
+            if ($realFullPath === false || strpos($realFullPath, $this->logsBaseDir) !== 0) {
+                $results[] = [
+                    'path' => $relativePath,
+                    'filename' => basename($relativePath),
+                    'error' => 'Acceso denegado o archivo no encontrado.',
+                    'content' => ''
+                ];
+                continue;
+            }
+
+            // 3. Lectura segura
+            if (file_exists($realFullPath) && is_file($realFullPath)) {
+                $size = filesize($realFullPath);
+                $isTruncated = false;
+                $content = '';
+
+                // Límite de 1MB para evitar colgar el navegador
+                if ($size > 1048576) { 
+                    $content = $this->tailCustom($realFullPath, 50000); // ~50KB del final
+                    $isTruncated = true;
+                } else {
+                    $content = file_get_contents($realFullPath);
+                }
+
+                $results[] = [
+                    'path' => $relativePath,
+                    'filename' => basename($relativePath),
+                    'content' => $content,
+                    'is_truncated' => $isTruncated,
+                    'size' => $this->formatSize($size)
+                ];
+            }
+        }
+
+        return ['success' => true, 'files' => $results];
+    }
+
+    private function tailCustom($filepath, $bytes = 50000) {
+        $f = fopen($filepath, "rb");
+        fseek($f, -min(filesize($filepath), $bytes), SEEK_END);
+        $data = fread($f, $bytes);
+        fclose($f);
+        return "... (Archivo grande, mostrando los últimos bytes) ...\n" . $data;
     }
 
     private function formatSize($bytes) {

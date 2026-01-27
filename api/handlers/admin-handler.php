@@ -1,34 +1,27 @@
 <?php
 // api/handlers/admin-handler.php
 
-// 1. BOOTSTRAP: Subimos dos niveles (../../)
 $services = require_once __DIR__ . '/../../includes/bootstrap.php';
 extract($services); // $pdo, $i18n, $redis
 
-// 2. Cargar Servicios: Subimos un nivel (../)
 require_once __DIR__ . '/../services/AdminService.php';
 require_once __DIR__ . '/../services/BackupService.php';
-// [NUEVO] Importante: Cargar el servicio de Logs
 require_once __DIR__ . '/../services/LogFileService.php';
 
-// 3. Verificar Sesión
 if (!isset($_SESSION['user_id'])) {
     Utils::jsonResponse(['success' => false, 'message' => $i18n->t('api.session_expired')]);
 }
 
-// 4. Validar CSRF
 Utils::validateCsrf($i18n);
 
-// 5. Verificar Rol
 $role = $_SESSION['role'] ?? 'user';
 if (!in_array($role, ['founder', 'administrator'])) {
     Utils::jsonResponse(['success' => false, 'message' => $i18n->t('errors.access_denied')]);
 }
 
-// 6. Inicializar Servicios
 $adminService = new AdminService($pdo, $i18n, $_SESSION['user_id']);
 $backupService = new BackupService($pdo, $i18n, $_SESSION['user_id']);
-$logFileService = new LogFileService(); // [NUEVO] Inicializar
+$logFileService = new LogFileService(); 
 
 $action = $_POST['action'] ?? '';
 
@@ -115,7 +108,7 @@ switch ($action) {
         Utils::jsonResponse($backupService->updateAutoConfig($enabled, $freq, $ret));
         break;
 
-    // === AUDITORÍA (Base de datos) ===
+    // === AUDITORÍA ===
     case 'get_audit_logs':
         $page = (int)($_POST['page'] ?? 1);
         $limit = (int)($_POST['limit'] ?? 50);
@@ -126,7 +119,7 @@ switch ($action) {
         Utils::jsonResponse($adminService->getAuditLogs($page, $limit, $filters));
         break;
 
-    // === [NUEVO] LOGS DE ARCHIVO (File System) ===
+    // === LOGS DE ARCHIVO ===
     case 'get_log_files':
         Utils::jsonResponse($logFileService->getAllLogFiles());
         break;
@@ -135,6 +128,13 @@ switch ($action) {
         $paths = $_POST['paths'] ?? '';
         $pathsArray = is_array($paths) ? $paths : explode(',', $paths);
         Utils::jsonResponse($logFileService->deleteLogFiles($pathsArray));
+        break;
+
+    case 'get_log_content':
+        $paths = $_POST['files'] ?? '';
+        // Si viene como string separado por comas, lo convertimos
+        $pathsArray = is_array($paths) ? $paths : explode(',', $paths);
+        Utils::jsonResponse($logFileService->getFilesContent($pathsArray));
         break;
 
     default:

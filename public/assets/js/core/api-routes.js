@@ -58,11 +58,14 @@ export const ApiRoutes = {
             UpdateConfig: { route: 'admin.upd_backup_config' }
         },
 
-        // Auditoría (Audit Logs)
+        // Auditoría
         GetAuditLogs:     { route: 'admin.get_audit_logs' },
 
-        // [NUEVO] Logs de Archivo (System Logs)
+        // Logs de Archivo
         GetLogFiles:      { route: 'admin.get_log_files' },
-        DeleteLogFiles:   { route: 'admin.delete_log_files' }
+        DeleteLogFiles:   { route: 'admin.delete_log_files' },
+        
+        // [NUEVO] Visor
+        GetFileContent:   { route: 'admin.get_log_content' }
     }
 };
