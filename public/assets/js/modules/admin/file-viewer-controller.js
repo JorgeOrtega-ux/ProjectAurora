@@ -1,6 +1,6 @@
 /**
  * public/assets/js/modules/admin/file-viewer-controller.js
- * Versión: Full Height + Theme Aware
+ * Versión: Full Height + Theme Aware + Safe Highlighting
  */
 
 import { ApiService } from '../../core/api-service.js';
@@ -138,6 +138,7 @@ function renderTabs() {
         if (file.filename.endsWith('.log')) icon = 'text_snippet';
         else if (file.filename.endsWith('.php')) icon = 'php';
         else if (file.filename.endsWith('.js')) icon = 'javascript';
+        else if (file.filename.endsWith('.sql')) icon = 'database';
         
         tab.innerHTML = `<span class="material-symbols-rounded">${icon}</span><span>${file.filename}</span>`;
         tab.onclick = () => {
@@ -175,7 +176,9 @@ function renderActiveContent() {
 
         if (ext === 'log') {
             coloredCode = highlightLogs(safeCode);
-        } else if (['php', 'js', 'json', 'css', 'sql'].includes(ext)) {
+        } else if (ext === 'sql') {
+            coloredCode = highlightSql(safeCode);
+        } else if (['php', 'js', 'json', 'css'].includes(ext)) {
             coloredCode = highlightCode(safeCode);
         } else {
             coloredCode = safeCode;
@@ -192,32 +195,101 @@ function renderActiveContent() {
     }
 }
 
-// === MOTOR DE RESALTADO ===
+// === MOTOR DE RESALTADO MEJORADO ===
 
-function highlightCode(code) {
-    return code
-        .replace(/(['"`])(.*?)\1/g, '<span class="token-string">$&</span>')
-        .replace(/(\/\/.*)/g, '<span class="token-comment">$1</span>')
-        .replace(/\b(\d+)\b/g, '<span class="token-number">$1</span>')
-        .replace(/\b(function|return|if|else|while|for|foreach|class|public|private|protected|const|var|let|async|await)\b/g, '<span class="token-keyword">$1</span>')
-        .replace(/\b(true|false|null|new|echo|print|include|require)\b/g, '<span class="token-logic">$1</span>')
-        .replace(/(\$[a-zA-Z_]\w*)/g, '<span class="token-attr">$1</span>');
+/**
+ * Sistema de protección de tokens:
+ * Extrae cadenas y comentarios primero para evitar que otras regex 
+ * rompan el HTML generado dentro de ellos.
+ */
+function safeHighlight(code, grammar) {
+    const placeholders = [];
+    let processed = code;
+
+    // 1. Extraer Cadenas y Comentarios (guardar como placeholders)
+    grammar.extraction.forEach(rule => {
+        processed = processed.replace(rule.regex, (match) => {
+            const placeholder = `___TOKEN_${placeholders.length}___`;
+            placeholders.push({
+                placeholder: placeholder,
+                content: `<span class="${rule.class}">${match}</span>`
+            });
+            return placeholder;
+        });
+    });
+
+    // 2. Resaltar Palabras Clave y Números (en el texto restante)
+    grammar.keywords.forEach(rule => {
+        processed = processed.replace(rule.regex, `<span class="${rule.class}">$1</span>`);
+    });
+
+    // 3. Restaurar placeholders
+    placeholders.forEach(item => {
+        processed = processed.replace(item.placeholder, item.content);
+    });
+
+    return processed;
 }
 
 function highlightLogs(code) {
+    // Corrección: Añadido [\w\\.-] para permitir guiones y puntos en carpetas y archivos
     return code
-        // Fechas
+        // Fechas: [2026-01-01 10:00:00]
         .replace(/(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})/g, '<span class="token-date">$1</span>')
-        // Corchetes [INFO] etc
+        // Etiquetas: [INFO], [ERROR], [USER:1]
         .replace(/(\[.*?\])/g, (match) => {
-            if (match.includes('ERROR')) return `<span class="token-error">${match}</span>`;
+            if (match.includes('ERROR') || match.includes('CRITICAL')) return `<span class="token-error">${match}</span>`;
             if (match.includes('WARNING')) return `<span class="token-bracket" style="color:var(--color-toast-warning);">${match}</span>`;
             return `<span class="token-bracket">${match}</span>`;
         })
-        // Rutas
-        .replace(/([a-zA-Z]:\\[\w\\]+|\/[\w\/]+\.\w+)/g, '<span class="token-string">$1</span>')
-        // Errores
-        .replace(/(Undefined variable|Uncaught Exception|Fatal Error)/g, '<span class="token-error" style="font-weight:bold;">$1</span>');
+        // Rutas de archivo (Windows y Unix)
+        .replace(/([a-zA-Z]:\\[\w\\.-]+|\/[\w\/.-]+\.\w+)/g, '<span class="token-string">$1</span>')
+        // Errores comunes de PHP
+        .replace(/(Undefined variable|Uncaught Exception|Fatal Error|Call to a member function)/g, '<span class="token-error" style="font-weight:bold;">$1</span>');
+}
+
+function highlightSql(code) {
+    const sqlGrammar = {
+        extraction: [
+            // Comentarios SQL (-- comentario) y (# comentario)
+            { regex: /(--.*)|(#.*)/g, class: 'token-comment' },
+            // Comentarios bloque /* ... */
+            { regex: /(\/\*[\s\S]*?\*\/)/g, class: 'token-comment' },
+            // Strings 'texto' y "texto" y `backticks`
+            { regex: /(['"`])(.*?)\1/g, class: 'token-string' }
+        ],
+        keywords: [
+            // Números
+            { regex: /\b(\d+)\b/g, class: 'token-number' },
+            // Palabras clave SQL
+            { regex: /\b(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|AND|OR|LIMIT|ORDER BY|GROUP BY|LEFT JOIN|INNER JOIN|CREATE TABLE|DROP TABLE|ALTER TABLE|VALUES|SET|IS NULL|NOT NULL|PRIMARY KEY|AUTO_INCREMENT|DEFAULT|INTO|IF EXISTS)\b/gi, class: 'token-keyword' },
+            // Tipos de datos
+            { regex: /\b(INT|VARCHAR|TEXT|DATETIME|TIMESTAMP|TINYINT|ENUM|JSON)\b/gi, class: 'token-logic' }
+        ]
+    };
+    return safeHighlight(code, sqlGrammar);
+}
+
+function highlightCode(code) {
+    const genericGrammar = {
+        extraction: [
+            // Comentarios // y /* */
+            { regex: /(\/\/.*)|(\/\*[\s\S]*?\*\/)/g, class: 'token-comment' },
+            // Strings
+            { regex: /(['"`])(.*?)\1/g, class: 'token-string' }
+        ],
+        keywords: [
+            // Números
+            { regex: /\b(\d+)\b/g, class: 'token-number' },
+            // Keywords PHP/JS
+            { regex: /\b(function|return|if|else|while|for|foreach|class|public|private|protected|const|var|let|async|await|switch|case|break)\b/g, class: 'token-keyword' },
+            // Lógica y valores
+            { regex: /\b(true|false|null|new|echo|print|include|require)\b/g, class: 'token-logic' },
+            // Variables PHP ($variable)
+            { regex: /(\$[a-zA-Z_][\w]*)/g, class: 'token-attr' }
+        ]
+    };
+    return safeHighlight(code, genericGrammar);
 }
 
 function escapeHtml(text) {

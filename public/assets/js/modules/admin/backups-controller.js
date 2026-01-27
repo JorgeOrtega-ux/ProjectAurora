@@ -5,21 +5,21 @@
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { Dialog } from '../../core/dialog-manager.js';
-import { I18n } from '../../core/i18n-manager.js';
+import { navigateTo } from '../../core/url-manager.js';
 
 let _container = null;
-let _selectedFilename = null;
+let _selectedFilenames = new Set(); // Ahora es un Set para múltiples archivos
 let _backupsData = [];
-let _viewMode = 'grid'; // Estado de la vista: 'grid' o 'table'
+let _viewMode = 'grid'; 
 
 export const BackupsController = {
     init: () => {
-        console.log("BackupsController: Inicializado");
+        console.log("BackupsController: Inicializado (Multi-Select)");
         
         _container = document.querySelector('[data-section="admin-backups"]');
         if (!_container) return;
 
-        _selectedFilename = null;
+        _selectedFilenames = new Set();
         _backupsData = [];
         _viewMode = 'grid';
 
@@ -32,7 +32,6 @@ function initToolbarEvents() {
     const btnCreate = _container.querySelector('#btn-create-backup');
     if (btnCreate) btnCreate.addEventListener('click', createBackup);
 
-    // Botón de Cambiar Vista
     const btnChangeView = _container.querySelector('[data-action="change-view"]');
     if (btnChangeView) {
         btnChangeView.addEventListener('click', () => {
@@ -42,37 +41,13 @@ function initToolbarEvents() {
         });
     }
 
-    const btnRestore = _container.querySelector('[data-action="restore-selected"]');
-    if (btnRestore) btnRestore.addEventListener('click', () => { if (_selectedFilename) handleRestore(_selectedFilename); });
-
-    const btnDelete = _container.querySelector('[data-action="delete-selected"]');
-    if (btnDelete) btnDelete.addEventListener('click', () => { if (_selectedFilename) handleDelete(_selectedFilename); });
-
-    const btnClose = _container.querySelector('[data-action="close-selection"]');
-    if (btnClose) btnClose.addEventListener('click', deselectBackup);
-}
-
-function updateViewUI(btnElement) {
-    if (!_container) return;
+    // Botones de acción grupal
+    _container.querySelector('[data-action="restore-selected"]')?.addEventListener('click', handleRestoreSelected);
+    _container.querySelector('[data-action="delete-selected"]')?.addEventListener('click', handleDeleteSelected);
+    _container.querySelector('[data-action="close-selection"]')?.addEventListener('click', deselectAll);
     
-    const wrapper = _container;
-    const headerCard = _container.querySelector('[data-element="page-header"]');
-    const iconSpan = btnElement.querySelector('.material-symbols-rounded');
-    const toolbarTitle = _container.querySelector('[data-element="toolbar-title"]');
-
-    if (_viewMode === 'table') {
-        if (wrapper) wrapper.classList.add('component-wrapper--full');
-        if (headerCard) headerCard.classList.add('d-none');
-        if (toolbarTitle) toolbarTitle.classList.remove('d-none'); 
-        if (iconSpan) iconSpan.textContent = 'table_rows'; 
-        btnElement.dataset.tooltip = 'Vista en Cuadrícula';
-    } else {
-        if (wrapper) wrapper.classList.remove('component-wrapper--full');
-        if (headerCard) headerCard.classList.remove('d-none');
-        if (toolbarTitle) toolbarTitle.classList.add('d-none'); 
-        if (iconSpan) iconSpan.textContent = 'grid_view';
-        btnElement.dataset.tooltip = 'Vista en Tabla';
-    }
+    // [NUEVO] Botón Ver
+    _container.querySelector('[data-action="view-selected"]')?.addEventListener('click', handleViewSelected);
 }
 
 // === LÓGICA DE CARGA Y RENDERIZADO ===
@@ -109,7 +84,7 @@ function renderList() {
         renderListAsGrid(container);
     }
 
-    // Attach listeners comunes
+    // Listeners de selección
     container.querySelectorAll('.component-card, .table-row-item').forEach(item => {
         item.addEventListener('click', () => toggleSelection(item.dataset.filename));
     });
@@ -119,48 +94,32 @@ function renderListAsGrid(container) {
     let html = '';
     
     _backupsData.forEach(file => {
-        const isSelected = (_selectedFilename === file.filename);
+        const isSelected = _selectedFilenames.has(file.filename);
         const selectedClass = isSelected ? 'is-selected' : '';
-        
         let sourceLabel = (file.source === 'system') ? 'Automático' : 'Manual';
         
         html += `
         <div class="component-card ${selectedClass}" data-filename="${file.filename}">
             <div class="component-list-item-content">
-                
                 <div class="component-card__icon-container component-card__icon-container--bordered">
                     <span class="material-symbols-rounded">database</span>
                 </div>
-
-                <span class="component-badge" data-tooltip="Archivo" style="font-family: monospace;">
-                    ${file.filename}
-                </span>
-
-                <span class="component-badge" data-tooltip="Tamaño"> 
-                    ${file.size}
-                </span>
-
-                <span class="component-badge" data-tooltip="Fecha">
-                    ${file.date}
-                </span>
-
-                <span class="component-badge" data-tooltip="Origen">
-                    ${sourceLabel}
-                </span>
-
+                <span class="component-badge" data-tooltip="Archivo" style="font-family: monospace;">${file.filename}</span>
+                <span class="component-badge" data-tooltip="Tamaño">${file.size}</span>
+                <span class="component-badge" data-tooltip="Fecha">${file.date}</span>
+                <span class="component-badge" data-tooltip="Origen">${sourceLabel}</span>
             </div>
         </div>`;
     });
 
     container.innerHTML = html;
-    container.scrollTop = 0;
 }
 
 function renderListAsTable(container) {
     let rows = '';
     
     _backupsData.forEach(file => {
-        const isSelected = (_selectedFilename === file.filename);
+        const isSelected = _selectedFilenames.has(file.filename);
         const selectedClass = isSelected ? 'is-selected' : '';
         let sourceLabel = (file.source === 'system') ? 'Automático' : 'Manual';
 
@@ -178,57 +137,83 @@ function renderListAsTable(container) {
         </tr>`;
     });
 
-    const tableHtml = `
+    container.innerHTML = `
     <div class="component-table-wrapper">
         <table class="component-table">
             <thead>
-                <tr>
-                    <th style="width: 50px;"></th>
-                    <th>Archivo</th>
-                    <th>Tamaño</th>
-                    <th>Fecha</th>
-                    <th>Origen</th>
-                </tr>
+                <tr><th style="width: 50px;"></th><th>Archivo</th><th>Tamaño</th><th>Fecha</th><th>Origen</th></tr>
             </thead>
-            <tbody>
-                ${rows}
-            </tbody>
+            <tbody>${rows}</tbody>
         </table>
-    </div>
-    `;
-
-    container.innerHTML = tableHtml;
-    container.scrollTop = 0;
+    </div>`;
 }
 
-// === ACCIONES ===
+// === GESTIÓN DE SELECCIÓN ===
 
 function toggleSelection(filename) {
-    _selectedFilename = (_selectedFilename === filename) ? null : filename;
+    if (_selectedFilenames.has(filename)) {
+        _selectedFilenames.delete(filename);
+    } else {
+        _selectedFilenames.add(filename);
+    }
     
+    updateToolbarState();
+    renderList(); // Re-renderizar para actualizar estilos visuales
+}
+
+function deselectAll() {
+    _selectedFilenames.clear();
+    updateToolbarState();
+    renderList();
+}
+
+function updateToolbarState() {
     const groupDefault = _container.querySelector('[data-element="toolbar-group-default"]');
     const groupActions = _container.querySelector('[data-element="toolbar-group-actions"]');
+    const indicator = _container.querySelector('[data-element="selection-indicator"]');
     
-    // Actualizar indicador de selección
-    const selectionIndicator = _container.querySelector('[data-element="selection-indicator"]');
-    if (selectionIndicator) selectionIndicator.textContent = _selectedFilename ? '1 seleccionado' : '';
+    const count = _selectedFilenames.size;
 
-    if (_selectedFilename) {
+    if (count > 0) {
         groupDefault.classList.add('d-none');
         groupActions.classList.remove('d-none');
+        indicator.textContent = `${count} seleccionado(s)`;
+
+        // Controlar botón RESTAURAR (Solo activo si hay exactamente 1 seleccionado)
+        const btnRestore = groupActions.querySelector('[data-action="restore-selected"]');
+        if (btnRestore) {
+            btnRestore.disabled = (count !== 1);
+            btnRestore.style.opacity = (count !== 1) ? '0.5' : '1';
+        }
+
     } else {
         groupDefault.classList.remove('d-none');
         groupActions.classList.add('d-none');
     }
-    
-    // Re-renderizar para actualizar clases visuales sin recargar datos
-    renderList();
 }
 
-function deselectBackup() {
-    _selectedFilename = null;
-    toggleSelection(null); 
+function updateViewUI(btnElement) {
+    const wrapper = _container;
+    const headerCard = _container.querySelector('[data-element="page-header"]');
+    const iconSpan = btnElement.querySelector('.material-symbols-rounded');
+    const toolbarTitle = _container.querySelector('[data-element="toolbar-title"]');
+
+    if (_viewMode === 'table') {
+        wrapper.classList.add('component-wrapper--full');
+        headerCard.classList.add('d-none');
+        toolbarTitle.classList.remove('d-none'); 
+        iconSpan.textContent = 'table_rows'; 
+        btnElement.dataset.tooltip = 'Vista en Cuadrícula';
+    } else {
+        wrapper.classList.remove('component-wrapper--full');
+        headerCard.classList.remove('d-none');
+        toolbarTitle.classList.add('d-none'); 
+        iconSpan.textContent = 'grid_view';
+        btnElement.dataset.tooltip = 'Vista en Tabla';
+    }
 }
+
+// === ACCIONES ===
 
 async function createBackup() {
     const btn = document.getElementById('btn-create-backup');
@@ -240,23 +225,56 @@ async function createBackup() {
     finally { btn.disabled = false; btn.innerHTML = '<span class="material-symbols-rounded">add</span> Crear Copia'; }
 }
 
-async function handleRestore(filename) {
-    if (!await Dialog.confirm({ title: '¿Restaurar?', message: 'Se sobrescribirán los datos actuales.', type: 'danger' })) return;
+async function handleRestoreSelected() {
+    // Seguridad: Solo permitir si es 1
+    if (_selectedFilenames.size !== 1) return;
+    
+    const filename = Array.from(_selectedFilenames)[0];
+    
+    if (!await Dialog.confirm({ title: '¿Restaurar?', message: 'Se sobrescribirán los datos actuales con este respaldo.', type: 'danger' })) return;
+    
     Dialog.showLoading('Restaurando...');
     try {
         const formData = new FormData();
         formData.append('filename', filename);
         const res = await ApiService.post(ApiService.Routes.Admin.Backups.Restore, formData); 
         Dialog.close();
-        if(res.success) { Toast.show('Restaurado', 'success'); setTimeout(() => window.location.reload(), 1500); } else Toast.show(res.message, 'error');
+        if(res.success) { 
+            Toast.show('Restaurado correctamente', 'success'); 
+            setTimeout(() => window.location.reload(), 1500); 
+        } else Toast.show(res.message, 'error');
     } catch(e) { Dialog.close(); Toast.show('Error', 'error'); }
 }
 
-async function handleDelete(filename) {
-    if (!await Dialog.confirm({ title: '¿Eliminar?', message: 'Esta acción es irreversible.', type: 'danger' })) return;
-    const formData = new FormData(); formData.append('filename', filename);
+async function handleDeleteSelected() {
+    if (_selectedFilenames.size === 0) return;
+
+    if (!await Dialog.confirm({ title: `¿Eliminar ${_selectedFilenames.size} archivos?`, message: 'Esta acción es irreversible.', type: 'danger' })) return;
+    
+    const filesArray = Array.from(_selectedFilenames);
+    const formData = new FormData();
+    formData.append('filenames', filesArray.join(',')); // Enviar lista separada por comas
+
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.Backups.Delete, formData);
-        res.success ? (Toast.show('Eliminado', 'success'), deselectBackup(), loadBackups()) : Toast.show(res.message, 'error');
-    } catch(e) { Toast.show('Error', 'error'); }
+        if (res.success) {
+            Toast.show(res.message, 'success');
+            deselectAll();
+            loadBackups();
+        } else {
+            Toast.show(res.message, 'error');
+        }
+    } catch(e) { Toast.show('Error al eliminar', 'error'); }
+}
+
+// [NUEVO] Acción Ver
+function handleViewSelected() {
+    if (_selectedFilenames.size === 0) return;
+    
+    const filesArray = Array.from(_selectedFilenames);
+    // Navegar al visor pasando los archivos y EL TIPO DE FUENTE
+    navigateTo('admin/file-viewer', { 
+        files: filesArray.join(','),
+        source: 'backup' // Importante para que el visor sepa qué API usar
+    });
 }

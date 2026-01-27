@@ -34,17 +34,22 @@
 
             <div class="toolbar-group d-none" data-element="toolbar-group-actions">
                 <div class="component-toolbar__side component-toolbar__side--left">
+                    
+                    <button class="header-button" data-action="view-selected" data-tooltip="Ver contenido">
+                        <span class="material-symbols-rounded">visibility</span>
+                    </button>
+
                     <button class="header-button" data-action="restore-selected" data-tooltip="Restaurar backup seleccionado">
                         <span class="material-symbols-rounded">history</span>
                     </button>
                     
-                    <button class="header-button" data-action="delete-selected" data-tooltip="Eliminar backup seleccionado" style="color: var(--color-error);">
+                    <button class="header-button" data-action="delete-selected" data-tooltip="Eliminar seleccionados" style="color: var(--color-error);">
                         <span class="material-symbols-rounded">delete</span>
                     </button>
                 </div>
 
                 <div class="component-toolbar__side component-toolbar__side--right">
-                    <span class="selection-info-text" data-element="selection-indicator">1 seleccionado</span>
+                    <span class="selection-info-text" data-element="selection-indicator">0 seleccionados</span>
                     <button class="header-button" data-action="close-selection" data-tooltip="Cancelar selección">
                         <span class="material-symbols-rounded">close</span>
                     </button>

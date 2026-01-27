@@ -12,18 +12,20 @@ class BackupService {
         $this->i18n = $i18n;
         $this->userId = $userId;
         
-        $this->backupDir = __DIR__ . '/../../storage/backups/';
+        // Ruta absoluta a la carpeta de backups
+        $this->backupDir = realpath(__DIR__ . '/../../storage/backups/');
         
+        // Asegurar que exista y tenga protección
         if (!is_dir($this->backupDir)) {
             mkdir($this->backupDir, 0755, true);
         }
-        if (!file_exists($this->backupDir . '.htaccess')) {
-            file_put_contents($this->backupDir . '.htaccess', "Order Deny,Allow\nDeny from all");
+        if (!file_exists($this->backupDir . '/.htaccess')) {
+            file_put_contents($this->backupDir . '/.htaccess', "Order Deny,Allow\nDeny from all");
         }
     }
 
     public function getAllBackups() {
-        $files = glob($this->backupDir . '*.sql');
+        $files = glob($this->backupDir . '/*.sql');
         $backups = [];
 
         usort($files, function($a, $b) {
@@ -39,22 +41,18 @@ class BackupService {
             $source = 'unknown';
             try {
                 // Buscamos en los logs quién creó este archivo específico
-                // El formato guardado es "Created: nombre_archivo.sql"
                 $stmt = $this->pdo->prepare("SELECT user_identifier FROM security_logs WHERE action_type = 'backup_create' AND user_identifier LIKE ? LIMIT 1");
                 $stmt->execute(["%Created: $filename%"]);
                 $logIdentifier = $stmt->fetchColumn();
 
                 if ($logIdentifier) {
-                    // [MODIFICADO] Usamos stripos para que detecte 'SYSTEM' (antiguos) y 'System' (nuevos)
                     if (stripos($logIdentifier, 'System') === 0) {
                         $source = 'system';
                     } elseif (strpos($logIdentifier, 'Admin') === 0) {
                         $source = 'manual';
                     }
                 }
-            } catch (Exception $e) {
-                // Si falla la consulta de logs, no rompemos la lista, simplemente queda 'unknown'
-            }
+            } catch (Exception $e) {}
 
             $backups[] = [
                 'filename' => $filename,
@@ -69,7 +67,6 @@ class BackupService {
     }
 
     public function createBackup($isSystemAction = false) {
-        // Si es acción del sistema (Python), saltamos el rate limit de usuario
         if (!$isSystemAction && $this->checkRateLimit('backup_create', 5, 60)) {
             return ['success' => false, 'message' => 'Límite de copias de seguridad excedido.'];
         }
@@ -80,7 +77,7 @@ class BackupService {
         $name = getenv('DB_NAME') ?: 'project_aurora_db';
 
         $filename = 'backup_' . date('Y-m-d_H-i-s') . '_' . substr(md5(time()), 0, 6) . '.sql';
-        $filePath = $this->backupDir . $filename;
+        $filePath = $this->backupDir . '/' . $filename;
 
         $dumpPath = $this->getExecutablePath('mysqldump');
 
@@ -101,7 +98,6 @@ class BackupService {
         if ($returnVar === 0 && file_exists($filePath) && filesize($filePath) > 0) {
             $this->logAction('backup_create', "Created: $filename", $isSystemAction);
             
-            // Lógica de Retención (Limpieza automática)
             if ($isSystemAction) {
                 $this->enforceRetentionPolicy();
             }
@@ -119,7 +115,7 @@ class BackupService {
             return ['success' => false, 'message' => 'Nombre de archivo inválido.'];
         }
 
-        $filePath = $this->backupDir . $filename;
+        $filePath = $this->backupDir . '/' . $filename;
         if (!file_exists($filePath)) {
             return ['success' => false, 'message' => 'Archivo no encontrado.'];
         }
@@ -154,18 +150,98 @@ class BackupService {
         }
     }
 
-    public function deleteBackup($filename) {
-        if (!$this->isValidFilename($filename)) return ['success' => false, 'message' => 'Nombre inválido.'];
-        
-        $filePath = $this->backupDir . $filename;
-        if (file_exists($filePath)) {
-            if (unlink($filePath)) {
-                $this->logAction('backup_delete', "Deleted: $filename");
-                return ['success' => true, 'message' => 'Archivo eliminado.'];
+    /**
+     * Elimina uno o varios backups
+     * @param string|array $filenames
+     */
+    public function deleteBackup($filenames) {
+        $filesToDelete = is_array($filenames) ? $filenames : explode(',', $filenames);
+        $deletedCount = 0;
+        $errors = 0;
+
+        foreach ($filesToDelete as $filename) {
+            $filename = trim($filename);
+            if (!$this->isValidFilename($filename)) continue;
+
+            $filePath = $this->backupDir . '/' . $filename;
+            
+            // Validación extra de seguridad
+            if (realpath($filePath) === false || strpos(realpath($filePath), $this->backupDir) !== 0) {
+                continue;
             }
-            return ['success' => false, 'message' => 'Error de permisos al eliminar.'];
+
+            if (file_exists($filePath)) {
+                if (unlink($filePath)) {
+                    $this->logAction('backup_delete', "Deleted: $filename");
+                    $deletedCount++;
+                } else {
+                    $errors++;
+                }
+            }
         }
-        return ['success' => false, 'message' => 'Archivo no encontrado.'];
+
+        if ($deletedCount > 0) {
+            return ['success' => true, 'message' => "Se eliminaron $deletedCount archivos."];
+        } else {
+            return ['success' => false, 'message' => 'No se pudieron eliminar los archivos seleccionados.'];
+        }
+    }
+
+    /**
+     * Obtiene el contenido de los backups para el visor
+     */
+    public function getBackupContent($filenames) {
+        $filesToRead = is_array($filenames) ? $filenames : explode(',', $filenames);
+        $results = [];
+
+        foreach ($filesToRead as $filename) {
+            $filename = trim($filename);
+            
+            if (!$this->isValidFilename($filename)) {
+                $results[] = ['filename' => $filename, 'error' => 'Nombre inválido', 'content' => ''];
+                continue;
+            }
+
+            $fullPath = $this->backupDir . '/' . $filename;
+            $realPath = realpath($fullPath);
+            
+            if ($realPath === false || strpos($realPath, $this->backupDir) !== 0) {
+                $results[] = ['filename' => $filename, 'error' => 'Acceso denegado', 'content' => ''];
+                continue;
+            }
+
+            if (file_exists($realPath)) {
+                $size = filesize($realPath);
+                $content = '';
+                $isTruncated = false;
+
+                // Límite de 1MB para visualización
+                if ($size > 1048576) {
+                    $handle = fopen($realPath, 'r');
+                    $head = fread($handle, 20000); // 20KB inicio
+                    fseek($handle, -20000, SEEK_END);
+                    $tail = fread($handle, 20000); // 20KB fin
+                    fclose($handle);
+                    
+                    $content = $head . "\n\n... [CONTENIDO TRUNCADO POR TAMAÑO] ...\n\n" . $tail;
+                    $isTruncated = true;
+                } else {
+                    $content = file_get_contents($realPath);
+                }
+
+                $results[] = [
+                    'filename' => $filename,
+                    'path' => $filename, 
+                    'content' => $content,
+                    'size' => $this->formatSize($size),
+                    'is_truncated' => $isTruncated
+                ];
+            } else {
+                $results[] = ['filename' => $filename, 'error' => 'Archivo no encontrado', 'content' => ''];
+            }
+        }
+
+        return ['success' => true, 'files' => $results];
     }
 
     // === GESTIÓN DE CONFIGURACIÓN AUTOMÁTICA ===
@@ -210,18 +286,15 @@ class BackupService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'auto_backup_retention', '10');
         if ($limit <= 0) return;
 
-        $files = glob($this->backupDir . '*.sql');
+        $files = glob($this->backupDir . '/*.sql');
         if (count($files) <= $limit) return;
 
-        // Ordenar por fecha (más reciente primero)
         usort($files, function($a, $b) {
             return filemtime($b) - filemtime($a);
         });
 
-        // Eliminar los sobrantes (desde el índice $limit en adelante)
         for ($i = $limit; $i < count($files); $i++) {
             @unlink($files[$i]);
-            // No logueamos cada borrado automático para no saturar
         }
         $deletedCount = count($files) - $limit;
         $this->logAction('backup_auto_cleanup', "Cleaned $deletedCount old backups", true);
@@ -260,10 +333,7 @@ class BackupService {
     private function logAction($actionType, $details = '', $isSystem = false) {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         $stmt = $this->pdo->prepare("INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)");
-        
-        // [MODIFICADO] Texto ajustado a "System" en lugar de "SYSTEM"
         $identifier = $isSystem ? "System | $details" : "Admin:{$this->userId} | $details"; 
-        
         $stmt->execute([$identifier, $actionType, $ip]);
     }
 

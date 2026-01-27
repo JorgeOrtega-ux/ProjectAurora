@@ -93,8 +93,14 @@ switch ($action) {
         break;
 
     case 'delete_backup':
-        $filename = $_POST['filename'] ?? '';
-        Utils::jsonResponse($backupService->deleteBackup($filename));
+        // Soporte para array o string
+        $filenames = $_POST['filenames'] ?? $_POST['filename'] ?? '';
+        Utils::jsonResponse($backupService->deleteBackup($filenames));
+        break;
+    
+    case 'get_backup_content':
+        $filenames = $_POST['files'] ?? '';
+        Utils::jsonResponse($backupService->getBackupContent($filenames));
         break;
 
     case 'get_backup_config':
@@ -132,7 +138,6 @@ switch ($action) {
 
     case 'get_log_content':
         $paths = $_POST['files'] ?? '';
-        // Si viene como string separado por comas, lo convertimos
         $pathsArray = is_array($paths) ? $paths : explode(',', $paths);
         Utils::jsonResponse($logFileService->getFilesContent($pathsArray));
         break;

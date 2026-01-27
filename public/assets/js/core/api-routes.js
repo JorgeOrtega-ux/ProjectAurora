@@ -54,6 +54,8 @@ export const ApiRoutes = {
             Create:       { route: 'admin.create_backup' },
             Restore:      { route: 'admin.restore_backup' },
             Delete:       { route: 'admin.delete_backup' },
+            // [NUEVO]
+            GetContent:   { route: 'admin.get_backup_content' },
             GetConfig:    { route: 'admin.get_backup_config' },
             UpdateConfig: { route: 'admin.upd_backup_config' }
         },
@@ -65,7 +67,7 @@ export const ApiRoutes = {
         GetLogFiles:      { route: 'admin.get_log_files' },
         DeleteLogFiles:   { route: 'admin.delete_log_files' },
         
-        // [NUEVO] Visor
+        // Visor
         GetFileContent:   { route: 'admin.get_log_content' }
     }
 };
