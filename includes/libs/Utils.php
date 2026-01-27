@@ -55,13 +55,15 @@ class Utils {
         ini_set('log_errors', '1');
     }
 
-    public static function applySecurityHeaders() {
+   public static function applySecurityHeaders() {
         $cspNonce = base64_encode(random_bytes(16));
 
         header("Content-Security-Policy: " .
             "default-src 'self'; " .
-            "script-src 'self' https://challenges.cloudflare.com https://unpkg.com 'nonce-$cspNonce'; " .
-            "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; " .
+            // AGREGADO: https://cdnjs.cloudflare.com en script-src
+            "script-src 'self' https://challenges.cloudflare.com https://unpkg.com https://cdnjs.cloudflare.com 'nonce-$cspNonce'; " .
+            // AGREGADO: https://cdnjs.cloudflare.com en style-src
+            "style-src 'self' https://fonts.googleapis.com https://cdnjs.cloudflare.com 'unsafe-inline'; " .
             "img-src 'self' data: https://ui-avatars.com; " .
             "font-src 'self' https://fonts.gstatic.com; " .
             "frame-src https://challenges.cloudflare.com; " .
@@ -76,7 +78,6 @@ class Utils {
 
         return $cspNonce;
     }
-
     public static function showGenericErrorPage() {
         if (!headers_sent()) {
             http_response_code(500);

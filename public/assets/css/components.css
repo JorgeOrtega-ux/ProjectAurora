@@ -1544,4 +1544,118 @@ input:checked+.component-toggle-slider:before {
 
 [data-theme="dark"] .component-dialog-drag-handle {
     background-color: rgba(255, 255, 255, 0.5);
+}/* public/assets/css/components.css */
+
+/* ... (otros estilos anteriores) ... */
+
+/* =========================================
+   VISOR DE ARCHIVOS: LAYOUT FULL HEIGHT
+   ========================================= */
+
+/* 1. Forzar que el contenedor principal ocupe toda la altura disponible */
+.component-wrapper[data-section="admin-file-viewer"] {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
+
+/* 2. La tarjeta del visor debe crecer para llenar el espacio */
+.file-viewer-card {
+    flex: 1; /* Ocupar espacio restante */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Evitar scroll en la tarjeta, queremos scroll en el código */
+    min-height: 0; /* Fix para Flexbox scroll */
+}
+
+/* 3. El contenedor del contenido debe ser flexible */
+.file-content-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* El scroll lo maneja el hijo .syntax-container */
+    padding: 0 !important; /* Forzamos padding 0 para que el borde toque los lados */
+    background-color: var(--bg-code-editor); /* Color de fondo dinámico */
+    color: var(--text-code-base);
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* =========================================
+   VISOR DE ARCHIVOS: SYNTAX HIGHLIGHTING (THEMING)
+   ========================================= */
+
+/* --- VARIABLES POR DEFECTO (MODO CLARO - VS Code Light) --- */
+:root {
+    --bg-code-editor: #ffffff;
+    --text-code-base: #000000;
+    
+    --token-comment: #008000;
+    --token-string: #a31515;
+    --token-number: #098658;
+    --token-keyword: #0000ff;
+    --token-logic: #af00db;
+    --token-tag: #800000;
+    --token-attr: #ff0000;
+    --token-bracket: #0451a5; /* Azul oscuro para corchetes en light */
+    --token-date: #098658;
+    --token-error: #cd3131;
+}
+
+/* --- VARIABLES MODO OSCURO (VS Code Dark) --- */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --bg-code-editor: #1e1e1e;
+        --text-code-base: #d4d4d4;
+        
+        --token-comment: #6a9955;
+        --token-string: #ce9178;
+        --token-number: #b5cea8;
+        --token-keyword: #569cd6;
+        --token-logic: #c586c0;
+        --token-tag: #569cd6;
+        --token-attr: #9cdcfe;
+        --token-bracket: #ffd700;
+        --token-date: #4ec9b0;
+        --token-error: #f44747;
+    }
+}
+
+[data-theme="dark"] {
+    --bg-code-editor: #1e1e1e;
+    --text-code-base: #d4d4d4;
+    
+    --token-comment: #6a9955;
+    --token-string: #ce9178;
+    --token-number: #b5cea8;
+    --token-keyword: #569cd6;
+    --token-logic: #c586c0;
+    --token-tag: #569cd6;
+    --token-attr: #9cdcfe;
+    --token-bracket: #ffd700;
+    --token-date: #4ec9b0;
+    --token-error: #f44747;
+}
+
+/* --- CONTENEDOR DEL CÓDIGO --- */
+.syntax-container {
+    padding: 16px;
+    font-family: 'Fira Code', Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre;
+    overflow: auto; /* Scroll aquí */
+    height: 100%;   /* Ocupar todo el alto del padre */
+    width: 100%;
+}
+
+/* Aplicación de colores a los tokens */
+.token-comment { color: var(--token-comment); font-style: italic; }
+.token-string  { color: var(--token-string); }
+.token-number  { color: var(--token-number); }
+.token-keyword { color: var(--token-keyword); font-weight: bold; }
+.token-logic   { color: var(--token-logic); }
+.token-tag     { color: var(--token-tag); }
+.token-attr    { color: var(--token-attr); }
+.token-bracket { color: var(--token-bracket); }
+.token-date    { color: var(--token-date); }
+.token-error   { color: var(--token-error); font-weight: bold; }
