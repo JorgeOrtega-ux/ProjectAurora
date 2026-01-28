@@ -5,11 +5,14 @@ class AdminService {
     private $pdo;
     private $i18n;
     private $requestingUserId;
+    private $redis; // [MODIFICADO] Propiedad para Redis
 
-    public function __construct($pdo, $i18n, $userId) {
+    // [MODIFICADO] Constructor acepta Redis opcionalmente
+    public function __construct($pdo, $i18n, $userId, $redis = null) {
         $this->pdo = $pdo;
         $this->i18n = $i18n;
         $this->requestingUserId = $userId;
+        $this->redis = $redis;
     }
 
     // === GESTIÓN DE AUDITORÍA ===
@@ -513,6 +516,8 @@ class AdminService {
     public function getServerConfigAll() {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
         try {
+            // [OPTIMIZACIÓN] Seguimos usando la BD para la pantalla de admin para asegurar frescura total
+            // aunqueUtils::getServerConfig use caché.
             $stmt = $this->pdo->prepare("SELECT config_key, config_value FROM server_config");
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -543,6 +548,7 @@ class AdminService {
             $stmt = $this->pdo->prepare("INSERT INTO server_config (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
 
             $maintenanceActivated = false;
+            $hasChanges = false;
 
             foreach ($data as $key => $value) {
                 if (in_array($key, $allowedKeys)) {
@@ -565,10 +571,20 @@ class AdminService {
                         if ($key === 'maintenance_mode' && $strValue === '1') {
                             $maintenanceActivated = true;
                         }
+                        $hasChanges = true;
                     }
                 }
             }
             $this->pdo->commit();
+
+            // [OPTIMIZACIÓN] Invalidar Caché Redis (Cache Invalidation)
+            if ($hasChanges && $this->redis) {
+                try {
+                    $this->redis->del('server:config:all');
+                } catch (Exception $e) {
+                    error_log("Error invalidando caché de config: " . $e->getMessage());
+                }
+            }
 
             if ($maintenanceActivated) {
                 $this->notifyWebSocketServer('BROADCAST_ALL:MAINTENANCE_START');

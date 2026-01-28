@@ -19,8 +19,8 @@ if (!in_array($role, ['founder', 'administrator'])) {
     Utils::jsonResponse(['success' => false, 'message' => $i18n->t('errors.access_denied')]);
 }
 
-$adminService = new AdminService($pdo, $i18n, $_SESSION['user_id']);
-// [MODIFICADO] Inyectamos $redis aquí
+// [MODIFICADO] Inyectamos $redis aquí para la gestión de caché de configuración
+$adminService = new AdminService($pdo, $i18n, $_SESSION['user_id'], $redis);
 $backupService = new BackupService($pdo, $i18n, $_SESSION['user_id'], $redis);
 $logFileService = new LogFileService(); 
 

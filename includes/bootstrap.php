@@ -67,6 +67,8 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // 7. Carga de Utilidades y Manejo de Errores
 require_once __DIR__ . '/libs/Utils.php';
+// [NUEVO] Inyectar Redis en Utils para caché global de configuración
+Utils::setRedis($redis);
 Utils::initErrorHandlers();
 
 // 8. Conexión a Base de Datos (MySQL)
