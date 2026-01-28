@@ -8,13 +8,13 @@ import { Dialog } from '../../core/dialog-manager.js';
 import { navigateTo } from '../../core/url-manager.js';
 
 let _container = null;
-let _selectedFilenames = new Set(); // Ahora es un Set para múltiples archivos
+let _selectedFilenames = new Set();
 let _backupsData = [];
 let _viewMode = 'grid'; 
 
 export const BackupsController = {
     init: () => {
-        console.log("BackupsController: Inicializado (Multi-Select)");
+        console.log("BackupsController: Inicializado (Realtime)");
         
         _container = document.querySelector('[data-section="admin-backups"]');
         if (!_container) return;
@@ -25,8 +25,26 @@ export const BackupsController = {
 
         initToolbarEvents();
         loadBackups();
+
+        // [NUEVO] Escuchar evento de actualización remota (Worker)
+        // Removemos primero para evitar duplicados al navegar entre pestañas
+        document.removeEventListener('socket:action', handleRemoteRefresh);
+        document.addEventListener('socket:action', handleRemoteRefresh);
     }
 };
+
+// [NUEVO] Manejador de eventos del Socket
+function handleRemoteRefresh(e) {
+    // Validar que el contenedor siga existiendo en el DOM (que estemos en la página)
+    if (!document.body.contains(_container)) return;
+
+    const payload = e.detail.message; // { action: 'refresh_backups' }
+    
+    if (payload && payload.action === 'refresh_backups') {
+        console.log("BackupsController: Recibida señal de actualización remota.");
+        loadBackups();
+    }
+}
 
 function initToolbarEvents() {
     const btnCreate = _container.querySelector('#btn-create-backup');
@@ -41,12 +59,9 @@ function initToolbarEvents() {
         });
     }
 
-    // Botones de acción grupal
     _container.querySelector('[data-action="restore-selected"]')?.addEventListener('click', handleRestoreSelected);
     _container.querySelector('[data-action="delete-selected"]')?.addEventListener('click', handleDeleteSelected);
     _container.querySelector('[data-action="close-selection"]')?.addEventListener('click', deselectAll);
-    
-    // [NUEVO] Botón Ver
     _container.querySelector('[data-action="view-selected"]')?.addEventListener('click', handleViewSelected);
 }
 
@@ -55,6 +70,11 @@ function initToolbarEvents() {
 async function loadBackups() {
     const listContainer = _container.querySelector('[data-component="backup-list"]');
     if (!listContainer) return;
+
+    // Solo mostrar loader si está vacío, para evitar parpadeos en actualizaciones en vivo
+    if (_backupsData.length === 0) {
+        listContainer.innerHTML = '<div class="state-loading"><div class="spinner-sm"></div><p class="state-text">Cargando copias de seguridad...</p></div>';
+    }
 
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.Backups.Get);
@@ -158,7 +178,7 @@ function toggleSelection(filename) {
     }
     
     updateToolbarState();
-    renderList(); // Re-renderizar para actualizar estilos visuales
+    renderList(); 
 }
 
 function deselectAll() {
@@ -179,7 +199,6 @@ function updateToolbarState() {
         groupActions.classList.remove('d-none');
         indicator.textContent = `${count} seleccionado(s)`;
 
-        // Controlar botón RESTAURAR (Solo activo si hay exactamente 1 seleccionado)
         const btnRestore = groupActions.querySelector('[data-action="restore-selected"]');
         if (btnRestore) {
             btnRestore.disabled = (count !== 1);
@@ -217,16 +236,38 @@ function updateViewUI(btnElement) {
 
 async function createBackup() {
     const btn = document.getElementById('btn-create-backup');
-    btn.disabled = true; btn.innerHTML = '<div class="spinner-sm"></div> Creando...';
+    const originalText = btn.innerHTML;
+    
+    btn.disabled = true; 
+    btn.innerHTML = '<div class="spinner-sm"></div> Iniciando...';
+    
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.Backups.Create);
-        res.success ? (Toast.show('Backup creado', 'success'), loadBackups()) : Toast.show(res.message, 'error');
-    } catch(e) { Toast.show('Error', 'error'); } 
-    finally { btn.disabled = false; btn.innerHTML = '<span class="material-symbols-rounded">add</span> Crear Copia'; }
+        
+        if (res.success) {
+            if (res.queued) {
+                // [MODIFICADO] Estado Asíncrono
+                // 1. Mostrar feedback inmediato
+                Toast.show('Solicitud enviada. Procesando en segundo plano...', 'info');
+                // 2. NO recargamos la lista aún. Esperamos al WebSocket.
+            } else {
+                // Estado Síncrono (Fallback)
+                Toast.show('Backup creado exitosamente', 'success');
+                loadBackups();
+            }
+        } else {
+            Toast.show(res.message, 'error');
+        }
+    } catch(e) { 
+        Toast.show('Error al solicitar backup', 'error'); 
+    } finally { 
+        // Restaurar botón inmediatamente
+        btn.disabled = false; 
+        btn.innerHTML = originalText; 
+    }
 }
 
 async function handleRestoreSelected() {
-    // Seguridad: Solo permitir si es 1
     if (_selectedFilenames.size !== 1) return;
     
     const filename = Array.from(_selectedFilenames)[0];
@@ -253,7 +294,7 @@ async function handleDeleteSelected() {
     
     const filesArray = Array.from(_selectedFilenames);
     const formData = new FormData();
-    formData.append('filenames', filesArray.join(',')); // Enviar lista separada por comas
+    formData.append('filenames', filesArray.join(','));
 
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.Backups.Delete, formData);
@@ -267,14 +308,11 @@ async function handleDeleteSelected() {
     } catch(e) { Toast.show('Error al eliminar', 'error'); }
 }
 
-// [NUEVO] Acción Ver
 function handleViewSelected() {
     if (_selectedFilenames.size === 0) return;
-    
     const filesArray = Array.from(_selectedFilenames);
-    // Navegar al visor pasando los archivos y EL TIPO DE FUENTE
     navigateTo('admin/file-viewer', { 
         files: filesArray.join(','),
-        source: 'backup' // Importante para que el visor sepa qué API usar
+        source: 'backup'
     });
 }

@@ -3,7 +3,7 @@
 
 // 1. BOOTSTRAP: Subimos dos niveles (../../)
 $services = require_once __DIR__ . '/../../includes/bootstrap.php';
-extract($services); // $pdo, $i18n
+extract($services); // $pdo, $i18n, $redis
 
 // 2. Cargar Servicio: Subimos un nivel (../)
 require_once __DIR__ . '/../services/BackupService.php';
@@ -18,7 +18,8 @@ if (empty($systemKey) || $requestKey !== $systemKey) {
 }
 
 // 4. Inicializar Servicios (UserId 0 = System)
-$backupService = new BackupService($pdo, $i18n, 0);
+// [MODIFICADO] Inyectamos Redis
+$backupService = new BackupService($pdo, $i18n, 0, $redis);
 
 $action = $_POST['action'] ?? '';
 

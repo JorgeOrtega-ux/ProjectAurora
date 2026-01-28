@@ -5,17 +5,18 @@ class BackupService {
     private $pdo;
     private $i18n;
     private $userId;
+    private $redis; // [MODIFICADO]
     private $backupDir;
 
-    public function __construct($pdo, $i18n, $userId) {
+    // [MODIFICADO] Constructor recibe Redis
+    public function __construct($pdo, $i18n, $userId, $redis = null) {
         $this->pdo = $pdo;
         $this->i18n = $i18n;
         $this->userId = $userId;
+        $this->redis = $redis;
         
-        // Ruta absoluta a la carpeta de backups
         $this->backupDir = realpath(__DIR__ . '/../../storage/backups/');
         
-        // Asegurar que exista y tenga protección
         if (!is_dir($this->backupDir)) {
             mkdir($this->backupDir, 0755, true);
         }
@@ -37,10 +38,8 @@ class BackupService {
             $size = filesize($file);
             $date = filemtime($file);
 
-            // === Detección de Origen (Sistema vs Manual) ===
             $source = 'unknown';
             try {
-                // Buscamos en los logs quién creó este archivo específico
                 $stmt = $this->pdo->prepare("SELECT user_identifier FROM security_logs WHERE action_type = 'backup_create' AND user_identifier LIKE ? LIMIT 1");
                 $stmt->execute(["%Created: $filename%"]);
                 $logIdentifier = $stmt->fetchColumn();
@@ -71,6 +70,38 @@ class BackupService {
             return ['success' => false, 'message' => 'Límite de copias de seguridad excedido.'];
         }
 
+        // [MODIFICADO] En lugar de ejecutar exec(), enviamos trabajo a Redis
+        if ($this->redis) {
+            try {
+                $jobData = [
+                    'task' => 'create_backup',
+                    'payload' => [
+                        'requested_by' => $this->userId,
+                        'is_system' => $isSystemAction,
+                        'timestamp' => time()
+                    ]
+                ];
+
+                // Empujamos a la cola "aurora_task_queue"
+                $this->redis->rpush('aurora_task_queue', json_encode($jobData));
+
+                return [
+                    'success' => true, 
+                    'message' => 'Solicitud de backup encolada. Recibirás una notificación al finalizar.',
+                    'queued' => true
+                ];
+
+            } catch (Exception $e) {
+                return ['success' => false, 'message' => 'Error al conectar con el gestor de tareas (Redis).'];
+            }
+        } else {
+            // Fallback si Redis no está disponible (Lógica Legacy)
+            return $this->createBackupLegacy($isSystemAction);
+        }
+    }
+
+    // Método original movido a Legacy para fallback
+    private function createBackupLegacy($isSystemAction) {
         $host = getenv('DB_HOST') ?: 'localhost';
         $user = getenv('DB_USER') ?: 'root';
         $pass = getenv('DB_PASS') ?: '';
@@ -78,17 +109,11 @@ class BackupService {
 
         $filename = 'backup_' . date('Y-m-d_H-i-s') . '_' . substr(md5(time()), 0, 6) . '.sql';
         $filePath = $this->backupDir . '/' . $filename;
-
         $dumpPath = $this->getExecutablePath('mysqldump');
 
         $cmd = sprintf(
             '"%s" --host=%s --user=%s --password=%s %s > %s 2>&1',
-            $dumpPath,
-            escapeshellarg($host),
-            escapeshellarg($user),
-            escapeshellarg($pass),
-            escapeshellarg($name),
-            escapeshellarg($filePath)
+            $dumpPath, escapeshellarg($host), escapeshellarg($user), escapeshellarg($pass), escapeshellarg($name), escapeshellarg($filePath)
         );
 
         $output = [];
@@ -97,20 +122,17 @@ class BackupService {
 
         if ($returnVar === 0 && file_exists($filePath) && filesize($filePath) > 0) {
             $this->logAction('backup_create', "Created: $filename", $isSystemAction);
-            
-            if ($isSystemAction) {
-                $this->enforceRetentionPolicy();
-            }
-
-            return ['success' => true, 'message' => 'Copia de seguridad creada exitosamente.', 'filename' => $filename];
+            if ($isSystemAction) $this->enforceRetentionPolicy();
+            return ['success' => true, 'message' => 'Copia de seguridad creada (Modo síncrono).', 'filename' => $filename];
         } else {
             if (file_exists($filePath)) @unlink($filePath);
-            error_log("Backup Error (Cmd: $dumpPath): " . implode("\n", $output));
-            return ['success' => false, 'message' => "Error al generar backup. Verifica la ruta de mysqldump en el servidor."];
+            return ['success' => false, 'message' => "Error al generar backup síncrono."];
         }
     }
 
     public function restoreBackup($filename) {
+        // [NOTA] Restore sigue siendo síncrono por seguridad y control inmediato,
+        // pero podría moverse al worker si la BD es muy grande.
         if (!$this->isValidFilename($filename)) {
             return ['success' => false, 'message' => 'Nombre de archivo inválido.'];
         }
@@ -150,85 +172,49 @@ class BackupService {
         }
     }
 
-    /**
-     * Elimina uno o varios backups
-     * @param string|array $filenames
-     */
     public function deleteBackup($filenames) {
         $filesToDelete = is_array($filenames) ? $filenames : explode(',', $filenames);
         $deletedCount = 0;
-        $errors = 0;
-
         foreach ($filesToDelete as $filename) {
             $filename = trim($filename);
             if (!$this->isValidFilename($filename)) continue;
-
             $filePath = $this->backupDir . '/' . $filename;
-            
-            // Validación extra de seguridad
-            if (realpath($filePath) === false || strpos(realpath($filePath), $this->backupDir) !== 0) {
-                continue;
-            }
-
-            if (file_exists($filePath)) {
-                if (unlink($filePath)) {
-                    $this->logAction('backup_delete', "Deleted: $filename");
-                    $deletedCount++;
-                } else {
-                    $errors++;
-                }
+            if (file_exists($filePath) && unlink($filePath)) {
+                $this->logAction('backup_delete', "Deleted: $filename");
+                $deletedCount++;
             }
         }
-
-        if ($deletedCount > 0) {
-            return ['success' => true, 'message' => "Se eliminaron $deletedCount archivos."];
-        } else {
-            return ['success' => false, 'message' => 'No se pudieron eliminar los archivos seleccionados.'];
-        }
+        return ($deletedCount > 0) 
+            ? ['success' => true, 'message' => "Se eliminaron $deletedCount archivos."]
+            : ['success' => false, 'message' => 'No se pudieron eliminar los archivos.'];
     }
 
-    /**
-     * Obtiene el contenido de los backups para el visor
-     */
     public function getBackupContent($filenames) {
         $filesToRead = is_array($filenames) ? $filenames : explode(',', $filenames);
         $results = [];
 
         foreach ($filesToRead as $filename) {
             $filename = trim($filename);
-            
             if (!$this->isValidFilename($filename)) {
                 $results[] = ['filename' => $filename, 'error' => 'Nombre inválido', 'content' => ''];
                 continue;
             }
-
             $fullPath = $this->backupDir . '/' . $filename;
-            $realPath = realpath($fullPath);
-            
-            if ($realPath === false || strpos($realPath, $this->backupDir) !== 0) {
-                $results[] = ['filename' => $filename, 'error' => 'Acceso denegado', 'content' => ''];
-                continue;
-            }
-
-            if (file_exists($realPath)) {
-                $size = filesize($realPath);
+            if (file_exists($fullPath)) {
+                $size = filesize($fullPath);
                 $content = '';
                 $isTruncated = false;
-
-                // Límite de 1MB para visualización
                 if ($size > 1048576) {
-                    $handle = fopen($realPath, 'r');
-                    $head = fread($handle, 20000); // 20KB inicio
+                    $handle = fopen($fullPath, 'r');
+                    $head = fread($handle, 20000); 
                     fseek($handle, -20000, SEEK_END);
-                    $tail = fread($handle, 20000); // 20KB fin
+                    $tail = fread($handle, 20000); 
                     fclose($handle);
-                    
                     $content = $head . "\n\n... [CONTENIDO TRUNCADO POR TAMAÑO] ...\n\n" . $tail;
                     $isTruncated = true;
                 } else {
-                    $content = file_get_contents($realPath);
+                    $content = file_get_contents($fullPath);
                 }
-
                 $results[] = [
                     'filename' => $filename,
                     'path' => $filename, 
@@ -237,21 +223,17 @@ class BackupService {
                     'is_truncated' => $isTruncated
                 ];
             } else {
-                $results[] = ['filename' => $filename, 'error' => 'Archivo no encontrado', 'content' => ''];
+                $results[] = ['filename' => $filename, 'error' => 'No encontrado', 'content' => ''];
             }
         }
-
         return ['success' => true, 'files' => $results];
     }
-
-    // === GESTIÓN DE CONFIGURACIÓN AUTOMÁTICA ===
 
     public function getAutoConfig() {
         try {
             $stmt = $this->pdo->prepare("SELECT config_key, config_value FROM server_config WHERE config_key LIKE 'auto_backup_%'");
             $stmt->execute();
             $config = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-            
             return [
                 'success' => true,
                 'enabled' => ($config['auto_backup_enabled'] ?? '0') === '1',
@@ -267,35 +249,27 @@ class BackupService {
         try {
             $this->pdo->beginTransaction();
             $stmt = $this->pdo->prepare("INSERT INTO server_config (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
-            
             $stmt->execute(['auto_backup_enabled', $enabled ? '1' : '0']);
             $stmt->execute(['auto_backup_frequency', (int)$frequency]);
             $stmt->execute(['auto_backup_retention', (int)$retention]);
-            
             $this->pdo->commit();
-            return ['success' => true, 'message' => 'Configuración automática guardada.'];
+            return ['success' => true, 'message' => 'Configuración guardada.'];
         } catch (Exception $e) {
             $this->pdo->rollBack();
             return ['success' => false, 'message' => 'Error guardando configuración.'];
         }
     }
 
-    // --- Helpers ---
-
     private function enforceRetentionPolicy() {
+        // [NOTA] Esta lógica ahora debería moverse también a Python si se desea que el sistema
+        // limpie después de un backup automático generado por Python.
+        // Por ahora, se mantiene aquí por si se usa el método legacy.
         $limit = (int)Utils::getServerConfig($this->pdo, 'auto_backup_retention', '10');
         if ($limit <= 0) return;
-
         $files = glob($this->backupDir . '/*.sql');
         if (count($files) <= $limit) return;
-
-        usort($files, function($a, $b) {
-            return filemtime($b) - filemtime($a);
-        });
-
-        for ($i = $limit; $i < count($files); $i++) {
-            @unlink($files[$i]);
-        }
+        usort($files, function($a, $b) { return filemtime($b) - filemtime($a); });
+        for ($i = $limit; $i < count($files); $i++) { @unlink($files[$i]); }
         $deletedCount = count($files) - $limit;
         $this->logAction('backup_auto_cleanup', "Cleaned $deletedCount old backups", true);
     }
@@ -304,18 +278,12 @@ class BackupService {
         $configKey = 'sys_' . $binary . '_path';
         $configPath = Utils::getServerConfig($this->pdo, $configKey, '');
         if (!empty($configPath)) return $configPath;
-
         $commonPaths = [
             'C:/xampp/mysql/bin/' . $binary . '.exe',
-            'C:/laragon/bin/mysql/mysql-8.0.30-winx64/bin/' . $binary . '.exe', 
             '/usr/bin/' . $binary,
-            '/usr/local/bin/' . $binary,
-            '/opt/lampp/bin/' . $binary
+            '/usr/local/bin/' . $binary
         ];
-
-        foreach ($commonPaths as $path) {
-            if (file_exists($path)) return $path;
-        }
+        foreach ($commonPaths as $path) { if (file_exists($path)) return $path; }
         return $binary;
     }
 

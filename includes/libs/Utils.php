@@ -67,7 +67,7 @@ class Utils {
             "img-src 'self' data: https://ui-avatars.com; " .
             "font-src 'self' https://fonts.gstatic.com; " .
             "frame-src https://challenges.cloudflare.com; " .
-            "connect-src 'self' https://challenges.cloudflare.com https://unpkg.com ws://localhost:8765 ws://192.168.1.159:8765; " . 
+            "connect-src 'self' https://challenges.cloudflare.com https://unpkg.com ws://localhost:8765 ws://192.168.1.157:8765; " . 
             "object-src 'none'; " .
             "base-uri 'self';"
         );

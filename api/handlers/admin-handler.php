@@ -20,7 +20,8 @@ if (!in_array($role, ['founder', 'administrator'])) {
 }
 
 $adminService = new AdminService($pdo, $i18n, $_SESSION['user_id']);
-$backupService = new BackupService($pdo, $i18n, $_SESSION['user_id']);
+// [MODIFICADO] Inyectamos $redis aquí
+$backupService = new BackupService($pdo, $i18n, $_SESSION['user_id'], $redis);
 $logFileService = new LogFileService(); 
 
 $action = $_POST['action'] ?? '';

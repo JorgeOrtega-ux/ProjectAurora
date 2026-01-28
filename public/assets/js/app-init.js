@@ -75,6 +75,7 @@ const App = {
 };
 
 function initGlobalSocketListeners() {
+    // Escuchar expulsiones forzadas
     document.addEventListener('socket:force_logout', (e) => {
         if (window.isManualLogout) return;
 
@@ -87,9 +88,19 @@ function initGlobalSocketListeners() {
         }, 1500);
     });
 
+    // Escuchar inicio de mantenimiento
     document.addEventListener('socket:maintenance_start', (e) => {
         console.warn("Sistema: Mantenimiento iniciado.");
         window.location.reload();
+    });
+
+    // [NUEVO] Escuchar notificaciones globales del Worker (Python)
+    // Esto mostrará el Toast de "Éxito" cuando el backup termine
+    document.addEventListener('socket:notification', (e) => {
+        const msgData = e.detail.message; // { type: 'success', text: '...' }
+        if (msgData && msgData.text) {
+            Toast.show(msgData.text, msgData.type || 'info');
+        }
     });
 }
 
