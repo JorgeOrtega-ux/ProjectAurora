@@ -40,6 +40,7 @@ return [
     'admin.update_profile'    => ['file' => 'handlers/admin-handler.php', 'action' => 'update_user_profile'],
     'admin.update_role'       => ['file' => 'handlers/admin-handler.php', 'action' => 'update_user_role'],
     'admin.update_status'     => ['file' => 'handlers/admin-handler.php', 'action' => 'update_user_status'],
+    'admin.disable_2fa'       => ['file' => 'handlers/admin-handler.php', 'action' => 'disable_user_2fa'], // [NUEVO]
     'admin.update_pref'       => ['file' => 'handlers/admin-handler.php', 'action' => 'update_user_preference'],
     'admin.upload_avatar'     => ['file' => 'handlers/admin-handler.php', 'action' => 'upload_user_avatar'],
     'admin.delete_avatar'     => ['file' => 'handlers/admin-handler.php', 'action' => 'delete_user_avatar'],
@@ -51,7 +52,7 @@ return [
     'admin.create_backup'     => ['file' => 'handlers/admin-handler.php', 'action' => 'create_backup'],
     'admin.restore_backup'    => ['file' => 'handlers/admin-handler.php', 'action' => 'restore_backup'],
     'admin.delete_backup'     => ['file' => 'handlers/admin-handler.php', 'action' => 'delete_backup'],
-    // [NUEVO]
+    
     'admin.get_backup_content'=> ['file' => 'handlers/admin-handler.php', 'action' => 'get_backup_content'],
     'admin.get_backup_config' => ['file' => 'handlers/admin-handler.php', 'action' => 'get_backup_config'],
     'admin.upd_backup_config' => ['file' => 'handlers/admin-handler.php', 'action' => 'update_backup_config'],

@@ -6,6 +6,7 @@
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { navigateTo } from '../../core/url-manager.js';
+import { Dialog } from '../../core/dialog-manager.js'; // Importante para confirmación
 
 let _container = null;
 let _targetUserId = null;
@@ -63,13 +64,6 @@ function initEvents() {
     const btnBack = _container.querySelector('[data-action="back-to-list"]');
     if (btnBack) btnBack.addEventListener('click', goBack);
 
-    // [NUEVO] Listener para ver historial
-    const btnHistory = _container.querySelector('[data-action="view-history"]');
-    if (btnHistory) btnHistory.addEventListener('click', toggleHistorySection);
-
-    const btnCloseHistory = _container.querySelector('[data-action="close-history"]');
-    if (btnCloseHistory) btnCloseHistory.addEventListener('click', toggleHistorySection);
-
     // === AVATAR ===
     const btnTriggerUpload = _container.querySelector('#admin-btn-trigger-upload');
     const inputUpload = _container.querySelector('#admin-upload-avatar');
@@ -103,81 +97,56 @@ function initEvents() {
             updatePreference(type, value);
         });
     });
-}
 
-// [NUEVO] Lógica de Historial
-async function toggleHistorySection() {
-    const section = document.getElementById('user-audit-history-container');
-    if (!section) return;
-
-    if (section.classList.contains('d-none')) {
-        section.classList.remove('d-none');
-        await loadUserAuditLogs();
-        // Scroll suave hacia la sección
-        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else {
-        section.classList.add('d-none');
+    // [NUEVO] DESACTIVAR 2FA
+    const btnDisable2FA = _container.querySelector('[data-action="disable-2fa"]');
+    if (btnDisable2FA) {
+        btnDisable2FA.addEventListener('click', disable2FA);
     }
 }
 
-async function loadUserAuditLogs() {
-    const list = document.getElementById('user-audit-list');
-    list.innerHTML = '<div class="state-loading"><div class="spinner-sm"></div></div>';
+// [NUEVO] Lógica Desactivar 2FA
+async function disable2FA(e) {
+    const btn = e.target;
+    
+    // Diálogo de confirmación
+    const confirmed = await Dialog.confirm({
+        title: '¿Desactivar 2FA?',
+        message: 'Esto reducirá la seguridad de la cuenta del usuario.',
+        type: 'danger',
+        confirmText: 'Desactivar',
+        cancelText: 'Cancelar'
+    });
+
+    if (!confirmed) return;
+
+    btn.disabled = true;
+    const originalText = btn.innerText;
+    btn.innerText = 'Procesando...';
 
     const formData = new FormData();
     formData.append('target_id', _targetUserId);
-    formData.append('target_type', 'user');
-    formData.append('limit', 20); // Traer los últimos 20
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.GetAuditLogs, formData);
-        
-        if (res.success && res.logs.length > 0) {
-            renderHistoryList(list, res.logs);
+        // Usar la ruta definida en api-routes.js
+        const res = await ApiService.post(ApiService.Routes.Admin.Disable2FA, formData);
+
+        if (res.success) {
+            Toast.show(res.message, 'success');
+            // Recargar para actualizar la vista
+            setTimeout(() => window.location.reload(), 1000);
         } else {
-            list.innerHTML = `<div class="state-empty" style="font-size: 13px;">No hay registros de auditoría para este usuario.</div>`;
+            Toast.show(res.message, 'error');
+            btn.disabled = false;
+            btn.innerText = originalText;
         }
-    } catch (e) {
-        list.innerHTML = `<div class="state-error" style="font-size: 13px;">Error cargando historial.</div>`;
+    } catch (err) {
+        console.error(err);
+        Toast.show('Error de conexión', 'error');
+        btn.disabled = false;
+        btn.innerText = originalText;
     }
 }
-
-function renderHistoryList(container, logs) {
-    let html = '';
-    
-    logs.forEach(log => {
-        const date = new Date(log.created_at).toLocaleString();
-        
-        // Formatear cambios
-        let changesHtml = '';
-        if (log.changes) {
-            changesHtml = Object.entries(log.changes)
-                .map(([k, v]) => `<div><strong style="color:var(--text-secondary);">${k}:</strong> ${v}</div>`)
-                .join('');
-        }
-
-        html += `
-        <div class="component-group-item" style="padding: 16px; align-items: flex-start; gap: 8px;">
-            <div style="flex: 1;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                    <span class="component-badge" style="height: 24px; font-size: 11px;">${log.action}</span>
-                    <span style="font-size: 11px; color: var(--text-tertiary);">${date}</span>
-                </div>
-                <div style="font-size: 13px; color: var(--text-primary); font-family: monospace; background: var(--bg-hover-light); padding: 8px; border-radius: 6px;">
-                    ${changesHtml || 'Sin detalles adicionales'}
-                </div>
-                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">
-                    Por: <strong>${log.admin_name || 'Sistema'}</strong>
-                </div>
-            </div>
-        </div>
-        <hr class="component-divider" style="margin: 0;">`;
-    });
-
-    container.innerHTML = html;
-}
-
-// ... (Resto de funciones de edición de perfil: setupFieldEdit, uploadAvatar, etc. permanecen igual) ...
 
 function setupFieldEdit(field, sectionKey) {
     const section = _container.querySelector(`[data-component="${sectionKey}"]`);
@@ -190,6 +159,9 @@ function setupFieldEdit(field, sectionKey) {
     const viewState = section.querySelector('[data-state="view"]');
     const editState = section.querySelector('[data-state="edit"]');
     const viewActions = section.querySelector('[data-state="view-actions"]');
+    const actionsEdit = section.querySelector('[data-state="actions-edit"]'); // Possible typo in HTML or here, checking HTML
+    // Correct selector from HTML logic used previously:
+    const actionsEditWrapper = section.querySelector('.component-card__actions.m-0'); // Wrapper inside edit state
     const input = section.querySelector('input');
 
     const toggleState = (isEditing) => {

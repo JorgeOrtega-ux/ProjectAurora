@@ -27,7 +27,6 @@ $action = $_POST['action'] ?? '';
 
 switch ($action) {
     case 'get_all_users':
-        // [MODIFICADO] Parámetros de paginación y búsqueda
         $page = (int)($_POST['page'] ?? 1);
         $limit = (int)($_POST['limit'] ?? 20);
         $search = trim($_POST['search'] ?? '');
@@ -55,6 +54,12 @@ switch ($action) {
     case 'update_user_status':
         $targetId = $_POST['target_id'] ?? 0;
         Utils::jsonResponse($adminService->updateUserStatus($targetId, $_POST));
+        break;
+
+    // [NUEVO] Acción para desactivar 2FA
+    case 'disable_user_2fa':
+        $targetId = $_POST['target_id'] ?? 0;
+        Utils::jsonResponse($adminService->disableUser2FA($targetId));
         break;
 
     case 'update_user_preference':

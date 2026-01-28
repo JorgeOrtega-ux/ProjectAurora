@@ -26,6 +26,9 @@ if (!$response['success']) {
 
 $user = $response['user'];
 $prefs = $user['preferences'];
+
+// [NUEVO] Lógica 2FA
+$is2FAActive = isset($user['two_factor_enabled']) && $user['two_factor_enabled'] === 1;
 ?>
 
 <div class="component-wrapper" data-section="admin-user-details" data-user-id="<?php echo htmlspecialchars($user['id']); ?>">
@@ -47,10 +50,7 @@ $prefs = $user['preferences'];
                 </div>
 
                 <div class="component-toolbar__side component-toolbar__side--right">
-                    <button class="header-button" data-action="view-history" data-tooltip="Ver Historial de Auditoría">
-                        <span class="material-symbols-rounded">history</span>
-                    </button>
-                </div>
+                    </div>
             </div>
         </div>
     </div>
@@ -58,28 +58,6 @@ $prefs = $user['preferences'];
     <div class="component-header-card">
         <h1 class="component-page-title" data-element="user-fullname"><?php echo htmlspecialchars($user['username']); ?></h1>
         <p class="component-page-description"><?php echo $i18n->t('settings.profile.desc'); ?></p>
-    </div>
-
-    <div id="user-audit-history-container" class="component-card component-card--grouped mt-4 d-none" style="border-color: var(--action-primary);">
-        <div class="component-group-item">
-            <div class="component-card__content">
-                <div class="component-card__icon-container component-card__icon-container--bordered">
-                    <span class="material-symbols-rounded">receipt_long</span>
-                </div>
-                <div class="component-card__text">
-                    <h2 class="component-card__title">Historial de Cambios</h2>
-                    <p class="component-card__description">Registro de acciones administrativas sobre este usuario.</p>
-                </div>
-            </div>
-            <div class="component-card__actions">
-                <button class="header-button" data-action="close-history">
-                    <span class="material-symbols-rounded">close</span>
-                </button>
-            </div>
-        </div>
-        <div class="component-list" id="user-audit-list" style="max-height: 400px; overflow-y: auto; border-top: 1px solid var(--border-light);">
-            <div class="state-loading"><div class="spinner-sm"></div></div>
-        </div>
     </div>
 
     <div class="component-card component-card--grouped mt-4">
@@ -182,6 +160,38 @@ $prefs = $user['preferences'];
                 <button type="button" class="component-button" data-action="start-edit-field" data-target="email"><?php echo $i18n->t('settings.profile.btn_edit'); ?></button>
             </div>
         </div>
+
+        <hr class="component-divider">
+
+        <div class="component-group-item">
+            <div class="component-card__content">
+                <div class="component-card__icon-container component-card__icon-container--bordered">
+                    <span class="material-symbols-rounded">shield</span>
+                </div>
+
+                <div class="component-card__text">
+                    <h2 class="component-card__title">Autenticación en dos pasos</h2>
+                    <?php if ($is2FAActive): ?>
+                        <p class="component-card__description" style="color: var(--color-success);">
+                            Habilitada
+                        </p>
+                    <?php else: ?>
+                        <p class="component-card__description" style="color: var(--text-secondary);">
+                            El usuario no tiene 2FA activo.
+                        </p>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="component-card__actions actions-right">
+                <?php if ($is2FAActive): ?>
+                    <button type="button" class="component-button" data-action="disable-2fa" style="color: #d32f2f; border-color: rgba(211, 47, 47, 0.3);">
+                        Desactivar
+                    </button>
+                <?php endif; ?>
+            </div>
+        </div>
+
     </div>
 
     <div class="component-card component-card--grouped mt-4">

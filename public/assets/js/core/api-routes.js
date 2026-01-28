@@ -46,6 +46,7 @@ export const ApiRoutes = {
         UpdatePreference:   { route: 'admin.update_pref' },
         UploadAvatar:       { route: 'admin.upload_avatar' },
         DeleteAvatar:       { route: 'admin.delete_avatar' },
+        Disable2FA:         { route: 'admin.disable_2fa' }, // [NUEVO]
         GetServerConfig:    { route: 'admin.get_server_config' },
         UpdateServerConfig: { route: 'admin.update_server_config' },
         
@@ -54,7 +55,6 @@ export const ApiRoutes = {
             Create:       { route: 'admin.create_backup' },
             Restore:      { route: 'admin.restore_backup' },
             Delete:       { route: 'admin.delete_backup' },
-            // [NUEVO]
             GetContent:   { route: 'admin.get_backup_content' },
             GetConfig:    { route: 'admin.get_backup_config' },
             UpdateConfig: { route: 'admin.upd_backup_config' }

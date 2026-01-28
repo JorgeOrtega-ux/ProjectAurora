@@ -124,17 +124,12 @@ class AdminService {
             $totalItems = $countStmt->fetchColumn();
 
             // 2. Obtener los registros de la página actual
-            // Agregamos LIMIT y OFFSET a los parámetros para la consulta principal
             $sql = "SELECT id, uuid, username, email, role, avatar_path, account_status, suspension_ends_at, created_at 
                     FROM users 
                     $whereClause
                     ORDER BY created_at DESC 
                     LIMIT ? OFFSET ?";
             
-            // PDO LIMIT/OFFSET a veces requiere enteros estrictos si emulación está apagada, 
-            // pero si está encendida strings funcionan. Por seguridad bindValue es mejor, 
-            // pero pasarlo al array de execute suele funcionar en config default.
-            // Para máxima compatibilidad, lo agregamos al array de params:
             $params[] = $limit;
             $params[] = $offset;
 
@@ -169,8 +164,9 @@ class AdminService {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
         try {
+            // [MODIFICADO] Se agregó u.two_factor_enabled
             $sql = "SELECT u.id, u.uuid, u.username, u.email, u.role, u.avatar_path, 
-                           u.account_status, u.suspension_ends_at, u.status_reason,
+                           u.account_status, u.suspension_ends_at, u.status_reason, u.two_factor_enabled,
                            p.language, p.theme, p.open_links_new_tab, p.extended_toast
                     FROM users u
                     LEFT JOIN user_preferences p ON u.id = p.user_id
@@ -191,6 +187,7 @@ class AdminService {
                 'account_status' => $user['account_status'],
                 'suspension_ends_at' => $user['suspension_ends_at'],
                 'status_reason' => $user['status_reason'],
+                'two_factor_enabled' => (int)$user['two_factor_enabled'],
                 'avatar_src' => $this->resolveAvatarSrc($user['avatar_path'], $user['username']),
                 'is_custom_avatar' => (strpos($user['avatar_path'] ?? '', 'custom/') !== false),
                 'preferences' => [
@@ -277,6 +274,32 @@ class AdminService {
             ]);
 
             return ['success' => true, 'message' => 'Rol de usuario actualizado correctamente.'];
+
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $this->i18n->t('api.update_error')];
+        }
+    }
+
+    // [NUEVO] Función para desactivar 2FA de un usuario
+    public function disableUser2FA($targetId) {
+        if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+
+        try {
+            $stmt = $this->pdo->prepare("SELECT two_factor_enabled FROM users WHERE id = ?");
+            $stmt->execute([$targetId]);
+            $enabled = $stmt->fetchColumn();
+
+            if (!$enabled) return ['success' => false, 'message' => '2FA ya está desactivado.'];
+
+            $update = $this->pdo->prepare("UPDATE users SET two_factor_enabled = 0, two_factor_secret = NULL, two_factor_recovery_codes = NULL WHERE id = ?");
+            $update->execute([$targetId]);
+
+            // [AUDIT]
+            $this->logAudit('user', $targetId, 'DISABLE_2FA', [
+                'action' => 'admin_override'
+            ]);
+
+            return ['success' => true, 'message' => 'Autenticación en dos pasos desactivada.'];
 
         } catch (Exception $e) {
             return ['success' => false, 'message' => $this->i18n->t('api.update_error')];
