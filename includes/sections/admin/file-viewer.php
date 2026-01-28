@@ -26,12 +26,16 @@
 
                         <div id="viewer-options-menu" class="popover-module" style="width: 260px; right: 0; left: auto; top: 100%; margin-top: 8px;">
                             <div class="menu-list">
-                                <div class="menu-link" data-action="toggle-highlight-mode" style="justify-content: space-between; cursor: pointer;">
+                                <div class="menu-link" 
+                                     data-action="toggle-highlight-mode" 
+                                     data-label="Modo Profesional" 
+                                     style="justify-content: space-between; cursor: pointer;">
+                                    
                                     <div style="display:flex; align-items:center; gap:12px;">
                                         <div class="menu-link-icon">
                                             <span class="material-symbols-rounded">code</span>
                                         </div>
-                                        <div class="menu-link-text">Modo Colorido</div>
+                                        <div class="menu-link-text">Modo Profesional</div>
                                     </div>
                                     <label class="component-toggle-switch" style="pointer-events: none;">
                                         <input type="checkbox" id="check-highlight-mode">
@@ -53,22 +57,24 @@
         </div>
     </div>
 
-    <div class="viewer-tabs-wrapper mt-4">
-        <div class="viewer-tabs-scroll" id="file-viewer-tabs">
-            </div>
-    </div>
-
-    <div class="component-card file-viewer-card" style="padding: 0; min-height: 400px; border-top-left-radius: 0; display: flex; flex-direction: column;">
-        
-        <div id="viewer-loading" class="state-loading d-none">
-            <div class="spinner-sm"></div>
-            <p class="state-text">Cargando contenido...</p>
+    <div class="file-viewer-group mt-4">
+        <div class="viewer-tabs-wrapper">
+            <div class="viewer-tabs-scroll" id="file-viewer-tabs">
+                </div>
         </div>
 
-        <div id="viewer-error" class="state-error d-none" style="padding: 40px;"></div>
+        <div class="component-card file-viewer-card">
+            
+            <div id="viewer-loading" class="state-loading d-none">
+                <div class="spinner-sm"></div>
+                <p class="state-text">Cargando contenido...</p>
+            </div>
 
-        <div id="file-content-container" class="file-content-area" style="flex: 1;"></div>
+            <div id="viewer-error" class="state-error d-none" style="padding: 40px;"></div>
 
+            <div id="file-content-container" class="file-content-area"></div>
+
+        </div>
     </div>
 
 </div>

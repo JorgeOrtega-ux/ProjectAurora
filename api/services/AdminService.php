@@ -12,7 +12,7 @@ class AdminService {
         $this->requestingUserId = $userId;
     }
 
-    // === GESTIÓN DE AUDITORÍA (NUEVO) ===
+    // === GESTIÓN DE AUDITORÍA ===
 
     /**
      * Registra una acción administrativa en la tabla audit_logs
@@ -96,18 +96,50 @@ class AdminService {
 
     // === GESTIÓN DE USUARIOS ===
 
-    public function getAllUsers() {
+    /**
+     * [OPTIMIZADO] Obtiene usuarios con paginación y búsqueda en servidor
+     */
+    public function getAllUsers($page = 1, $limit = 20, $search = '') {
         if (!$this->isAdmin()) {
             return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
         }
 
+        $offset = ($page - 1) * $limit;
+        $params = [];
+        $whereClause = "WHERE 1=1";
+
+        // Búsqueda Server-Side
+        if (!empty($search)) {
+            $whereClause .= " AND (username LIKE ? OR email LIKE ? OR uuid LIKE ?)";
+            $searchTerm = "%$search%";
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+            $params[] = $searchTerm;
+        }
+
         try {
+            // 1. Contar total de resultados (para la paginación)
+            $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM users $whereClause");
+            $countStmt->execute($params);
+            $totalItems = $countStmt->fetchColumn();
+
+            // 2. Obtener los registros de la página actual
+            // Agregamos LIMIT y OFFSET a los parámetros para la consulta principal
             $sql = "SELECT id, uuid, username, email, role, avatar_path, account_status, suspension_ends_at, created_at 
                     FROM users 
-                    ORDER BY created_at DESC";
+                    $whereClause
+                    ORDER BY created_at DESC 
+                    LIMIT ? OFFSET ?";
             
+            // PDO LIMIT/OFFSET a veces requiere enteros estrictos si emulación está apagada, 
+            // pero si está encendida strings funcionan. Por seguridad bindValue es mejor, 
+            // pero pasarlo al array de execute suele funcionar en config default.
+            // Para máxima compatibilidad, lo agregamos al array de params:
+            $params[] = $limit;
+            $params[] = $offset;
+
             $stmt = $this->pdo->prepare($sql);
-            $stmt->execute();
+            $stmt->execute($params);
             $users = $stmt->fetchAll();
 
             $formattedUsers = [];
@@ -116,9 +148,19 @@ class AdminService {
                 $formattedUsers[] = $user;
             }
 
-            return ['success' => true, 'users' => $formattedUsers];
+            return [
+                'success' => true, 
+                'users' => $formattedUsers,
+                'pagination' => [
+                    'current' => (int)$page,
+                    'total_pages' => ceil($totalItems / $limit),
+                    'total_items' => (int)$totalItems,
+                    'limit' => (int)$limit
+                ]
+            ];
 
         } catch (Exception $e) {
+            error_log("Error getAllUsers: " . $e->getMessage());
             return ['success' => false, 'message' => $this->i18n->t('api.db_error')];
         }
     }
@@ -256,13 +298,13 @@ class AdminService {
             // [AUDIT] Leer anterior
             $stmtCheck = $this->pdo->prepare("SELECT $key FROM user_preferences WHERE user_id = ?");
             $stmtCheck->execute([$targetId]);
-            $oldValue = $stmtCheck->fetchColumn(); // Puede ser false si no existe registro previo
+            $oldValue = $stmtCheck->fetchColumn(); 
 
             $sql = "INSERT INTO user_preferences (user_id, $key) VALUES (?, ?) ON DUPLICATE KEY UPDATE $key = VALUES($key)";
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$targetId, $dbValue]);
 
-            // [AUDIT] Registrar (convertir a string para consistencia)
+            // [AUDIT] Registrar
             $this->logAudit('user', $targetId, 'UPDATE_PREFERENCE', [
                 'key' => $key,
                 'old' => ($oldValue === false) ? 'NULL' : (string)$oldValue,

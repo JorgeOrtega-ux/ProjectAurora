@@ -8,14 +8,12 @@
                 </div>
 
                 <div class="component-toolbar__side component-toolbar__side--right">
-                    <button class="component-button" data-nav="admin/audit-log" style="margin-right: 8px;">
+                    <button class="header-button" data-nav="admin/audit-log">
                         <span class="material-symbols-rounded">receipt_long</span>
-                        <?php echo $i18n->t('menu.admin.audit'); ?>
                     </button>
 
-                    <button class="component-button primary" data-nav="admin/log-files">
+                    <button class="header-button" data-nav="admin/log-files">
                         <span class="material-symbols-rounded">folder_open</span>
-                        Explorador de Logs
                     </button>
                 </div>
 

@@ -1,6 +1,6 @@
 /**
  * public/assets/js/modules/admin/file-viewer-controller.js
- * Versión: Full Height + Theme Aware + Safe Highlighting
+ * Versión: Full Height + Theme Aware + Safe Highlighting + Close Tabs + URL Sync
  */
 
 import { ApiService } from '../../core/api-service.js';
@@ -18,7 +18,7 @@ export const FileViewerController = {
         _container = document.querySelector('[data-section="admin-file-viewer"]');
         if (!_container) return;
 
-        // Leer preferencia
+        // Leer preferencia de resaltado
         const savedPref = localStorage.getItem('viewer_highlight_mode');
         _isHighlightMode = savedPref === 'true';
 
@@ -35,6 +35,7 @@ export const FileViewerController = {
         }
 
         initEvents();
+        // Cargar los archivos iniciales
         loadContent(filesParam.split(','));
     }
 };
@@ -73,6 +74,7 @@ function initEvents() {
     if (btnRefresh) {
         btnRefresh.addEventListener('click', () => {
             if (_currentFiles.length > 0) {
+                // Recargar solo los archivos que siguen abiertos
                 loadContent(_currentFiles.map(f => f.path));
             }
         });
@@ -111,9 +113,13 @@ async function loadContent(paths) {
 
         if (res.success) {
             _currentFiles = res.files;
+            // Asegurar que el índice sea válido
             if (_activeFileIndex >= _currentFiles.length) _activeFileIndex = 0;
             renderTabs();
             renderActiveContent();
+            
+            // Sincronizar URL inicial (por si hubo redirección o limpieza)
+            updateUrlState(); 
         } else {
             showError(res.message);
         }
@@ -140,26 +146,97 @@ function renderTabs() {
         else if (file.filename.endsWith('.js')) icon = 'javascript';
         else if (file.filename.endsWith('.sql')) icon = 'database';
         
-        tab.innerHTML = `<span class="material-symbols-rounded">${icon}</span><span>${file.filename}</span>`;
-        tab.onclick = () => {
+        tab.innerHTML = `
+            <span class="material-symbols-rounded tab-icon">${icon}</span>
+            <span class="tab-label">${file.filename}</span>
+            <span class="material-symbols-rounded tab-close" title="Cerrar archivo">close</span>
+        `;
+        
+        // Click en la pestaña (cambiar archivo)
+        tab.onclick = (e) => {
+            if (e.target.closest('.tab-close')) return;
             _activeFileIndex = index;
             renderTabs();
             renderActiveContent();
         };
+
+        // Click en el botón de cerrar (X)
+        const btnClose = tab.querySelector('.tab-close');
+        if (btnClose) {
+            btnClose.onclick = (e) => {
+                e.stopPropagation();
+                closeFile(index);
+            };
+        }
+
         container.appendChild(tab);
     });
 }
 
+function closeFile(indexToRemove) {
+    // Eliminar archivo del array local
+    _currentFiles.splice(indexToRemove, 1);
+
+    // Ajustar el índice activo
+    if (_currentFiles.length === 0) {
+        // No quedan archivos
+        _activeFileIndex = -1;
+    } else {
+        if (indexToRemove === _activeFileIndex) {
+            // Si cerramos el activo, ir al anterior (o al 0 si era el primero)
+            _activeFileIndex = Math.max(0, indexToRemove - 1);
+        } else if (indexToRemove < _activeFileIndex) {
+            // Si cerramos uno anterior al activo, restar 1 al índice
+            _activeFileIndex--;
+        }
+        // Si cerramos uno posterior, el índice activo no cambia
+    }
+
+    // Actualizar UI y URL
+    renderTabs();
+    renderActiveContent();
+    updateUrlState();
+}
+
+/**
+ * Actualiza la URL del navegador sin recargar la página
+ * para reflejar la lista actual de archivos abiertos.
+ */
+function updateUrlState() {
+    const url = new URL(window.location);
+    
+    if (_currentFiles.length > 0) {
+        // Extraemos los paths originales para reconstruir el parámetro 'files'
+        // 'f.path' viene de la API GetFileContent
+        const paths = _currentFiles.map(f => f.path).join(',');
+        url.searchParams.set('files', paths);
+    } else {
+        // Si no hay archivos, limpiamos el parámetro
+        url.searchParams.delete('files');
+    }
+
+    // Usamos replaceState para no llenar el historial de navegación con cada cierre
+    window.history.replaceState({}, '', url);
+}
+
 function renderActiveContent() {
     const container = document.getElementById('file-content-container');
-    if (!container || !_currentFiles[_activeFileIndex]) return;
+    if (!container) return;
+
+    container.removeAttribute('style');
+    container.style.flex = '1';
+    
+    // CASO: No quedan archivos
+    if (_activeFileIndex === -1 || !_currentFiles[_activeFileIndex]) {
+        container.innerHTML = `
+            <div class="state-empty" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--text-secondary);">
+                <span class="material-symbols-rounded" style="font-size: 48px; opacity: 0.5; margin-bottom: 16px;">folder_off</span>
+                <p>No hay archivos abiertos.</p>
+            </div>`;
+        return;
+    }
 
     const file = _currentFiles[_activeFileIndex];
-    
-    // Resetear estilos inline que puedan haber quedado
-    container.removeAttribute('style');
-    // Forzamos flex:1 para el layout full height
-    container.style.flex = '1';
     
     if (file.error) {
         container.innerHTML = `<div class="state-error" style="text-align:left;">Error: ${file.error}</div>`;
@@ -184,29 +261,20 @@ function renderActiveContent() {
             coloredCode = safeCode;
         }
 
-        // Renderizar con syntax-container (El CSS maneja el fondo y el color)
         container.innerHTML = `${warning}<div class="syntax-container">${coloredCode}</div>`;
         
     } else {
-        // Modo texto plano: Usamos syntax-container pero sin coloreado regex, 
-        // para aprovechar el layout y colores de fondo del tema.
         let safeCode = escapeHtml(rawContent);
         container.innerHTML = `${warning}<div class="syntax-container">${safeCode}</div>`;
     }
 }
 
-// === MOTOR DE RESALTADO MEJORADO ===
+// === MOTOR DE RESALTADO ===
 
-/**
- * Sistema de protección de tokens:
- * Extrae cadenas y comentarios primero para evitar que otras regex 
- * rompan el HTML generado dentro de ellos.
- */
 function safeHighlight(code, grammar) {
     const placeholders = [];
     let processed = code;
 
-    // 1. Extraer Cadenas y Comentarios (guardar como placeholders)
     grammar.extraction.forEach(rule => {
         processed = processed.replace(rule.regex, (match) => {
             const placeholder = `___TOKEN_${placeholders.length}___`;
@@ -218,12 +286,10 @@ function safeHighlight(code, grammar) {
         });
     });
 
-    // 2. Resaltar Palabras Clave y Números (en el texto restante)
     grammar.keywords.forEach(rule => {
         processed = processed.replace(rule.regex, `<span class="${rule.class}">$1</span>`);
     });
 
-    // 3. Restaurar placeholders
     placeholders.forEach(item => {
         processed = processed.replace(item.placeholder, item.content);
     });
@@ -232,38 +298,27 @@ function safeHighlight(code, grammar) {
 }
 
 function highlightLogs(code) {
-    // Corrección: Añadido [\w\\.-] para permitir guiones y puntos en carpetas y archivos
     return code
-        // Fechas: [2026-01-01 10:00:00]
         .replace(/(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})/g, '<span class="token-date">$1</span>')
-        // Etiquetas: [INFO], [ERROR], [USER:1]
         .replace(/(\[.*?\])/g, (match) => {
             if (match.includes('ERROR') || match.includes('CRITICAL')) return `<span class="token-error">${match}</span>`;
             if (match.includes('WARNING')) return `<span class="token-bracket" style="color:var(--color-toast-warning);">${match}</span>`;
             return `<span class="token-bracket">${match}</span>`;
         })
-        // Rutas de archivo (Windows y Unix)
         .replace(/([a-zA-Z]:\\[\w\\.-]+|\/[\w\/.-]+\.\w+)/g, '<span class="token-string">$1</span>')
-        // Errores comunes de PHP
         .replace(/(Undefined variable|Uncaught Exception|Fatal Error|Call to a member function)/g, '<span class="token-error" style="font-weight:bold;">$1</span>');
 }
 
 function highlightSql(code) {
     const sqlGrammar = {
         extraction: [
-            // Comentarios SQL (-- comentario) y (# comentario)
             { regex: /(--.*)|(#.*)/g, class: 'token-comment' },
-            // Comentarios bloque /* ... */
             { regex: /(\/\*[\s\S]*?\*\/)/g, class: 'token-comment' },
-            // Strings 'texto' y "texto" y `backticks`
             { regex: /(['"`])(.*?)\1/g, class: 'token-string' }
         ],
         keywords: [
-            // Números
             { regex: /\b(\d+)\b/g, class: 'token-number' },
-            // Palabras clave SQL
             { regex: /\b(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|AND|OR|LIMIT|ORDER BY|GROUP BY|LEFT JOIN|INNER JOIN|CREATE TABLE|DROP TABLE|ALTER TABLE|VALUES|SET|IS NULL|NOT NULL|PRIMARY KEY|AUTO_INCREMENT|DEFAULT|INTO|IF EXISTS)\b/gi, class: 'token-keyword' },
-            // Tipos de datos
             { regex: /\b(INT|VARCHAR|TEXT|DATETIME|TIMESTAMP|TINYINT|ENUM|JSON)\b/gi, class: 'token-logic' }
         ]
     };
@@ -273,19 +328,13 @@ function highlightSql(code) {
 function highlightCode(code) {
     const genericGrammar = {
         extraction: [
-            // Comentarios // y /* */
             { regex: /(\/\/.*)|(\/\*[\s\S]*?\*\/)/g, class: 'token-comment' },
-            // Strings
             { regex: /(['"`])(.*?)\1/g, class: 'token-string' }
         ],
         keywords: [
-            // Números
             { regex: /\b(\d+)\b/g, class: 'token-number' },
-            // Keywords PHP/JS
             { regex: /\b(function|return|if|else|while|for|foreach|class|public|private|protected|const|var|let|async|await|switch|case|break)\b/g, class: 'token-keyword' },
-            // Lógica y valores
             { regex: /\b(true|false|null|new|echo|print|include|require)\b/g, class: 'token-logic' },
-            // Variables PHP ($variable)
             { regex: /(\$[a-zA-Z_][\w]*)/g, class: 'token-attr' }
         ]
     };

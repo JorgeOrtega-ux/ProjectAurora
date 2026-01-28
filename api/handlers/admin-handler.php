@@ -27,7 +27,11 @@ $action = $_POST['action'] ?? '';
 
 switch ($action) {
     case 'get_all_users':
-        Utils::jsonResponse($adminService->getAllUsers());
+        // [MODIFICADO] Parámetros de paginación y búsqueda
+        $page = (int)($_POST['page'] ?? 1);
+        $limit = (int)($_POST['limit'] ?? 20);
+        $search = trim($_POST['search'] ?? '');
+        Utils::jsonResponse($adminService->getAllUsers($page, $limit, $search));
         break;
 
     case 'get_user_details':

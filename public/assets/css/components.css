@@ -264,28 +264,6 @@
     background-color: var(--action-primary-hover);
 }
 
-@media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .component-button.primary {
-        background-color: transparent;
-        border: 1px solid var(--border-light);
-        color: var(--text-primary);
-    }
-
-    :root:not([data-theme="light"]) .component-button.primary:hover {
-        background-color: var(--bg-hover-light);
-    }
-}
-
-[data-theme="dark"] .component-button.primary {
-    background-color: transparent;
-    border: 1px solid var(--border-light);
-    color: var(--text-primary);
-}
-
-[data-theme="dark"] .component-button.primary:hover {
-    background-color: var(--bg-hover-light);
-}
-
 .component-button--large {
     height: 56px;
     padding: 0 24px;
@@ -442,11 +420,31 @@ input:checked+.component-toggle-slider:before {
 }
 
 /* =========================================
-   4. PESTAÑAS (TABS)
+   VISOR DE ARCHIVOS: LAYOUT & STYLES
    ========================================= */
+
+/* 1. Layout del Visor: Ocupar todo el alto */
+.component-wrapper[data-section="admin-file-viewer"] {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 2. Grupo Padre (Tabs + Card) - SIN GAP */
+.file-viewer-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1; /* Crecer para ocupar el espacio restante */
+    gap: 0; /* Unir pestañas y tarjeta */
+    min-height: 0; /* Fix flexbox scrolling */
+}
+
+/* 3. Wrapper de Pestañas */
 .viewer-tabs-wrapper {
     width: 100%;
     overflow: hidden;
+    flex: 0 0 auto; /* Altura fija según contenido */
+    z-index: 2; /* Por encima del borde de la tarjeta */
 }
 
 .viewer-tabs-scroll {
@@ -454,7 +452,6 @@ input:checked+.component-toggle-slider:before {
     gap: 4px;
     overflow-x: auto;
     scrollbar-width: none;
-    /* Firefox */
     padding-bottom: 0;
 }
 
@@ -462,6 +459,7 @@ input:checked+.component-toggle-slider:before {
     display: none;
 }
 
+/* Estilo Base de Pestaña */
 .viewer-tab {
     display: flex;
     align-items: center;
@@ -478,15 +476,15 @@ input:checked+.component-toggle-slider:before {
     white-space: nowrap;
     transition: all 0.2s;
     user-select: none;
-    margin-bottom: -1px;
-    /* Solapar con borde inferior */
+    margin-bottom: -1px; /* Solapar con la tarjeta */
     position: relative;
-    z-index: 1;
+    opacity: 0.8;
 }
 
 .viewer-tab:hover {
     background-color: var(--bg-hover-light);
     color: var(--text-primary);
+    opacity: 1;
 }
 
 .viewer-tab.active {
@@ -494,33 +492,108 @@ input:checked+.component-toggle-slider:before {
     color: var(--text-primary);
     font-weight: 600;
     border-top: 2px solid var(--action-primary);
+    opacity: 1;
     z-index: 3;
-    /* Encima del contenedor */
-    /* El truco del borde inferior transparente para unirlo al card */
-    box-shadow: 0 1px 0 var(--bg-surface);
+    /* Truco: Borde inferior del mismo color del fondo para "borrar" la línea */
+    box-shadow: 0 1px 0 var(--bg-surface); 
 }
 
 .viewer-tab .material-symbols-rounded {
     font-size: 16px;
 }
 
+/* [NUEVO] Botón Cerrar (X) */
+.viewer-tab .tab-close {
+    font-size: 14px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 4px;
+    color: var(--text-tertiary);
+    transition: all 0.2s ease;
+    opacity: 0.7;
+}
+
+.viewer-tab .tab-close:hover {
+    background-color: rgba(0,0,0,0.08);
+    color: var(--color-error);
+    opacity: 1;
+}
+
+[data-theme="dark"] .viewer-tab .tab-close:hover {
+    background-color: rgba(255,255,255,0.15);
+    color: var(--color-error);
+}
+
+/* 4. Tarjeta del Visor (Contenedor del Código) */
+.file-viewer-card {
+    flex: 1; /* Ocupar el resto de la altura */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; 
+    padding: 0 !important; /* Sin padding interno, el editor maneja el suyo */
+    border-top-left-radius: 0; /* Conectar con la primera pestaña */
+    min-height: 0; /* Fix flexbox */
+}
+
+/* 5. Área de Contenido del Código */
 .file-content-area {
     width: 100%;
-    height: 100%;
-    min-height: 400px;
-    max-height: 70vh;
-    overflow: auto;
-    background-color: var(--bg-app);
-    /* Fondo de código */
-    padding: 16px;
-    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    flex: 1; /* Crecer para llenar la tarjeta */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* El scroll lo tiene .syntax-container */
+    background-color: var(--bg-code-editor);
+    color: var(--text-code-base);
     font-family: var(--sl-font-mono);
     font-size: 13px;
-    color: var(--text-primary);
-    line-height: 1.5;
-    white-space: pre-wrap;
-    word-break: break-all;
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
+
+/* 6. Contenedor de Sintaxis (Scrollable) */
+.syntax-container {
+    padding: 16px;
+    font-family: 'Fira Code', Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre; /* Respetar espacios */
+    overflow: auto; /* Scroll aquí */
+    flex: 1; /* Llenar altura */
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 100%;
+}
+
+/* --- THEME TOKENS (Syntax Highlighting) --- */
+:root {
+    --bg-code-editor: #ffffff;
+    --text-code-base: #000000;
+    --token-comment: #008000;
+    --token-string: #a31515;
+    --token-number: #098658;
+    --token-keyword: #0000ff;
+    --token-logic: #af00db;
+    --token-tag: #800000;
+    --token-attr: #ff0000;
+    --token-bracket: #0451a5;
+    --token-date: #098658;
+    --token-error: #cd3131;
+}
+
+/* Tokens */
+.token-comment { color: var(--token-comment); font-style: italic; }
+.token-string  { color: var(--token-string); }
+.token-number  { color: var(--token-number); }
+.token-keyword { color: var(--token-keyword); font-weight: bold; }
+.token-logic   { color: var(--token-logic); }
+.token-tag     { color: var(--token-tag); }
+.token-attr    { color: var(--token-attr); }
+.token-bracket { color: var(--token-bracket); }
+.token-date    { color: var(--token-date); }
+.token-error   { color: var(--token-error); font-weight: bold; }
 
 /* =========================================
    5. EXTENSIONES LAYOUT
@@ -686,33 +759,13 @@ input:checked+.component-toggle-slider:before {
     text-decoration: underline;
 }
 
-.w-100 {
-    width: 100%;
-}
-
-.m-0 {
-    margin: 0 !important;
-}
-
-.mt-16 {
-    margin-top: 16px;
-}
-
-.mt-24 {
-    margin-top: 24px;
-}
-
-.mb-0 {
-    margin-bottom: 0;
-}
-
-.flex-1 {
-    flex: 1;
-}
-
-.pill-container {
-    display: none;
-}
+.w-100 { width: 100%; }
+.m-0 { margin: 0 !important; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+.mb-0 { margin-bottom: 0; }
+.flex-1 { flex: 1; }
+.pill-container { display: none; }
 
 /* =========================================
    6. RESPONSIVE
@@ -888,15 +941,8 @@ input:checked+.component-toggle-slider:before {
 }
 
 @keyframes slideDownAccordion {
-    from {
-        opacity: 0;
-        transform: translateY(-5px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .disabled-interactive {
@@ -1031,15 +1077,8 @@ input:checked+.component-toggle-slider:before {
 }
 
 @keyframes fadeInGroup {
-    from {
-        opacity: 0;
-        transform: translateY(2px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(2px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .component-toolbar--primary {
@@ -1160,58 +1199,6 @@ input:checked+.component-toggle-slider:before {
 
 .component-table tr.is-selected {
     box-shadow: inset 3px 0 0 var(--action-primary);
-}
-
-/* =========================================
-   OVERRIDES DARK MODE (UNIFICADOS)
-   ========================================= */
-@media (prefers-color-scheme: dark) {
-
-    :root:not([data-theme="light"]) .general-content,
-    :root:not([data-theme="light"]) .module-surface .menu-content,
-    :root:not([data-theme="light"]) .module-profile .menu-content,
-    :root:not([data-theme="light"]) .module-notifications .menu-content,
-    :root:not([data-theme="light"]) .popover-module {
-        box-shadow: none !important;
-        border: 1px solid var(--border-light);
-    }
-
-    :root:not([data-theme="light"]) .general-content-top.shadow {
-        box-shadow: none !important;
-        border-bottom: 1px solid var(--border-transparent-20) !important;
-    }
-
-    :root:not([data-theme="light"]) .menu-search-header.shadow {
-        box-shadow: none !important;
-        border-bottom: 1px solid var(--border-transparent-20) !important;
-    }
-
-    :root:not([data-theme="light"]) .drag-handle {
-        background-color: #FFFFFF80;
-    }
-}
-
-[data-theme="dark"] .general-content,
-[data-theme="dark"] .module-surface .menu-content,
-[data-theme="dark"] .module-profile .menu-content,
-[data-theme="dark"] .module-notifications .menu-content,
-[data-theme="dark"] .popover-module {
-    box-shadow: none !important;
-    border: 1px solid var(--border-light);
-}
-
-[data-theme="dark"] .general-content-top.shadow {
-    box-shadow: none !important;
-    border-bottom: 1px solid var(--border-transparent-20) !important;
-}
-
-[data-theme="dark"] .menu-search-header.shadow {
-    box-shadow: none !important;
-    border-bottom: 1px solid var(--border-transparent-20) !important;
-}
-
-[data-theme="dark"] .drag-handle {
-    background-color: #FFFFFF80;
 }
 
 /* =========================================
@@ -1368,22 +1355,13 @@ input:checked+.component-toggle-slider:before {
 }
 
 @media (max-width: 400px) {
-    .stepper-control {
-        gap: 4px;
-    }
-
-    .stepper-btn {
-        width: 28px;
-        height: 28px;
-    }
-
-    .stepper-btn .material-symbols-rounded {
-        font-size: 16px;
-    }
+    .stepper-control { gap: 4px; }
+    .stepper-btn { width: 28px; height: 28px; }
+    .stepper-btn .material-symbols-rounded { font-size: 16px; }
 }
 
 /* =========================================
-   15. DIALOGS
+   14. DIALOGS
    ========================================= */
 .component-overlay {
     position: fixed;
@@ -1536,77 +1514,14 @@ input:checked+.component-toggle-slider:before {
     }
 }
 
-@media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .component-dialog-drag-handle {
-        background-color: rgba(255, 255, 255, 0.5);
-    }
-}
-
-[data-theme="dark"] .component-dialog-drag-handle {
-    background-color: rgba(255, 255, 255, 0.5);
-}/* public/assets/css/components.css */
-
-/* ... (otros estilos anteriores) ... */
-
 /* =========================================
-   VISOR DE ARCHIVOS: LAYOUT FULL HEIGHT
+   15. OVERRIDES DARK MODE (CONSOLIDATED)
    ========================================= */
-
-/* 1. Forzar que el contenedor principal ocupe toda la altura disponible */
-.component-wrapper[data-section="admin-file-viewer"] {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
-
-/* 2. La tarjeta del visor debe crecer para llenar el espacio */
-.file-viewer-card {
-    flex: 1; /* Ocupar espacio restante */
-    display: flex;
-    flex-direction: column;
-    overflow: hidden; /* Evitar scroll en la tarjeta, queremos scroll en el código */
-    min-height: 0; /* Fix para Flexbox scroll */
-}
-
-/* 3. El contenedor del contenido debe ser flexible */
-.file-content-area {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden; /* El scroll lo maneja el hijo .syntax-container */
-    padding: 0 !important; /* Forzamos padding 0 para que el borde toque los lados */
-    background-color: var(--bg-code-editor); /* Color de fondo dinámico */
-    color: var(--text-code-base);
-    transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-/* =========================================
-   VISOR DE ARCHIVOS: SYNTAX HIGHLIGHTING (THEMING)
-   ========================================= */
-
-/* --- VARIABLES POR DEFECTO (MODO CLARO - VS Code Light) --- */
-:root {
-    --bg-code-editor: #ffffff;
-    --text-code-base: #000000;
-    
-    --token-comment: #008000;
-    --token-string: #a31515;
-    --token-number: #098658;
-    --token-keyword: #0000ff;
-    --token-logic: #af00db;
-    --token-tag: #800000;
-    --token-attr: #ff0000;
-    --token-bracket: #0451a5; /* Azul oscuro para corchetes en light */
-    --token-date: #098658;
-    --token-error: #cd3131;
-}
-
-/* --- VARIABLES MODO OSCURO (VS Code Dark) --- */
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
+        /* Dialogs */
         --bg-code-editor: #1e1e1e;
         --text-code-base: #d4d4d4;
-        
         --token-comment: #6a9955;
         --token-string: #ce9178;
         --token-number: #b5cea8;
@@ -1618,12 +1533,41 @@ input:checked+.component-toggle-slider:before {
         --token-date: #4ec9b0;
         --token-error: #f44747;
     }
+
+    :root:not([data-theme="light"]) .component-dialog-drag-handle,
+    :root:not([data-theme="light"]) .drag-handle {
+        background-color: rgba(255, 255, 255, 0.5);
+    }
+
+    :root:not([data-theme="light"]) .general-content,
+    :root:not([data-theme="light"]) .module-surface .menu-content,
+    :root:not([data-theme="light"]) .module-profile .menu-content,
+    :root:not([data-theme="light"]) .module-notifications .menu-content,
+    :root:not([data-theme="light"]) .popover-module {
+        box-shadow: none !important;
+        border: 1px solid var(--border-light);
+    }
+
+    :root:not([data-theme="light"]) .general-content-top.shadow,
+    :root:not([data-theme="light"]) .menu-search-header.shadow {
+        box-shadow: none !important;
+        border-bottom: 1px solid var(--border-transparent-20) !important;
+    }
+
+    :root:not([data-theme="light"]) .component-button.primary {
+        background-color: transparent;
+        border: 1px solid var(--border-light);
+        color: var(--text-primary);
+    }
+
+    :root:not([data-theme="light"]) .component-button.primary:hover {
+        background-color: var(--bg-hover-light);
+    }
 }
 
 [data-theme="dark"] {
     --bg-code-editor: #1e1e1e;
     --text-code-base: #d4d4d4;
-    
     --token-comment: #6a9955;
     --token-string: #ce9178;
     --token-number: #b5cea8;
@@ -1636,26 +1580,32 @@ input:checked+.component-toggle-slider:before {
     --token-error: #f44747;
 }
 
-/* --- CONTENEDOR DEL CÓDIGO --- */
-.syntax-container {
-    padding: 16px;
-    font-family: 'Fira Code', Consolas, monospace;
-    font-size: 13px;
-    line-height: 1.5;
-    white-space: pre;
-    overflow: auto; /* Scroll aquí */
-    height: 100%;   /* Ocupar todo el alto del padre */
-    width: 100%;
+[data-theme="dark"] .component-dialog-drag-handle,
+[data-theme="dark"] .drag-handle {
+    background-color: rgba(255, 255, 255, 0.5);
 }
 
-/* Aplicación de colores a los tokens */
-.token-comment { color: var(--token-comment); font-style: italic; }
-.token-string  { color: var(--token-string); }
-.token-number  { color: var(--token-number); }
-.token-keyword { color: var(--token-keyword); font-weight: bold; }
-.token-logic   { color: var(--token-logic); }
-.token-tag     { color: var(--token-tag); }
-.token-attr    { color: var(--token-attr); }
-.token-bracket { color: var(--token-bracket); }
-.token-date    { color: var(--token-date); }
-.token-error   { color: var(--token-error); font-weight: bold; }
+[data-theme="dark"] .general-content,
+[data-theme="dark"] .module-surface .menu-content,
+[data-theme="dark"] .module-profile .menu-content,
+[data-theme="dark"] .module-notifications .menu-content,
+[data-theme="dark"] .popover-module {
+    box-shadow: none !important;
+    border: 1px solid var(--border-light);
+}
+
+[data-theme="dark"] .general-content-top.shadow,
+[data-theme="dark"] .menu-search-header.shadow {
+    box-shadow: none !important;
+    border-bottom: 1px solid var(--border-transparent-20) !important;
+}
+
+[data-theme="dark"] .component-button.primary {
+    background-color: transparent;
+    border: 1px solid var(--border-light);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .component-button.primary:hover {
+    background-color: var(--bg-hover-light);
+}
