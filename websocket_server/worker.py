@@ -15,7 +15,7 @@ logging.basicConfig(
     format='%(asctime)s - WORKER - %(levelname)s - %(message)s'
 )
 
-# Cargar variables de entorno (asumiendo que .env está en la raíz del proyecto)
+# Cargar variables de entorno
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../.env'))
 
 # Configuración Base de Datos
@@ -35,6 +35,20 @@ PUBSUB_CHANNEL = 'aurora_ws_control'
 # Directorio de Backups (Ruta absoluta)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BACKUP_DIR = os.path.join(BASE_DIR, 'storage', 'backups')
+
+# --- INICIALIZACIÓN GLOBAL DE REDIS (CORRECCIÓN IMPORTANTE) ---
+try:
+    r_client = redis.Redis(
+        host=REDIS_HOST, 
+        port=REDIS_PORT, 
+        password=REDIS_PASS, 
+        decode_responses=True
+    )
+    r_client.ping() # Verificar conexión
+    logging.info("Conexión a Redis establecida correctamente.")
+except Exception as e:
+    logging.error(f"Error fatal conectando a Redis: {e}")
+    exit(1)
 
 # --- FUNCIONES AUXILIARES ---
 
@@ -72,11 +86,13 @@ def get_server_config(key, default):
 def notify_frontend(msg_type, message):
     """Envía un mensaje al servidor WebSocket vía Redis PubSub"""
     try:
+        # r_client ahora es accesible globalmente
         r_client.publish(PUBSUB_CHANNEL, json.dumps({
             'cmd': 'BROADCAST',
             'msg_type': msg_type,
             'message': message
         }))
+        logging.info(f"Notificación enviada: {msg_type}")
     except Exception as e:
         logging.error(f"Error publicando en Redis: {e}")
 
@@ -101,30 +117,25 @@ def enforce_retention_policy():
     except Exception as e:
         logging.error(f"Error en política de retención: {e}")
 
-# --- TAREAS ---
-
-# ... (código anterior sin cambios) ...
-
-# --- Helper nuevo para encontrar mysqldump ---
 def resolve_mysqldump_path():
-    # 1. Intentar leer desde la configuración guardada en BD (Panel Admin)
-    # Si guardaste la ruta en el panel admin (Configuración del Servidor), la usará.
+    # 1. Intentar leer desde la configuración guardada en BD
     db_config_path = get_server_config('sys_mysqldump_path', '')
     if db_config_path and os.path.isfile(db_config_path):
         return db_config_path
 
-    # 2. Buscar en rutas comunes de XAMPP (E: y C:)
+    # 2. Buscar en rutas comunes
     common_paths = [
-        r"E:\xampp\mysql\bin\mysqldump.exe",  # Tu ruta probable
+        r"E:\xampp\mysql\bin\mysqldump.exe",
         r"C:\xampp\mysql\bin\mysqldump.exe",
-        r"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqldump.exe"
+        r"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqldump.exe",
+        "/usr/bin/mysqldump",
+        "/usr/local/bin/mysqldump"
     ]
 
     for path in common_paths:
         if os.path.isfile(path):
             return path
 
-    # 3. Último recurso: Asumir que está en el PATH de Windows
     return "mysqldump"
 
 # --- TAREAS ---
@@ -137,19 +148,13 @@ def task_create_backup(payload):
     filename = f"backup_{timestamp}_{hash_suffix}.sql"
     filepath = os.path.join(BACKUP_DIR, filename)
 
-    # Asegurar directorio
     os.makedirs(BACKUP_DIR, exist_ok=True)
-
-    # Obtener la ruta correcta del ejecutable
     mysqldump_bin = resolve_mysqldump_path()
     
-    # Construir comando
     dump_cmd = [
         mysqldump_bin,
         f'--host={DB_HOST}',
-        f'--user={DB_USER}',
-        # Nota: Si el password está vacío en XAMPP, mysqldump a veces prefiere no recibir el flag --password vacío.
-        # Si DB_PASS tiene valor, lo agregamos:
+        f'--user={DB_USER}'
     ]
     
     if DB_PASS:
@@ -161,7 +166,6 @@ def task_create_backup(payload):
     ])
 
     try:
-        # Ejecutar proceso
         process = subprocess.run(dump_cmd, capture_output=True, text=True)
 
         if process.returncode == 0 and os.path.exists(filepath) and os.path.getsize(filepath) > 0:
@@ -179,34 +183,22 @@ def task_create_backup(payload):
             if is_system:
                 enforce_retention_policy()
 
-            # 3. Notificar al Frontend
+            # 3. Notificar al Frontend (TOAST)
             notify_frontend('notification', {
                 'type': 'success',
-                'text': f'Copia de seguridad completada: {filename}'
+                'text': f'Respaldo finalizado: {filename}'
             })
             
-            # Recargar lista
+            # 4. Notificar al Frontend (RECARGAR LISTA)
             notify_frontend('action', {'action': 'refresh_backups'})
 
         else:
             logging.error(f"Error en mysqldump (Code {process.returncode}): {process.stderr}")
-            # Mensaje de error más descriptivo
-            error_msg = 'Fallo al crear copia.'
-            if process.returncode != 0:
-                error_msg += f' Código: {process.returncode}.'
-            notify_frontend('notification', {'type': 'error', 'text': error_msg})
+            notify_frontend('notification', {'type': 'error', 'text': 'Fallo al crear el respaldo.'})
 
-    except FileNotFoundError:
-        logging.error(f"No se encontró el ejecutable: {mysqldump_bin}")
-        notify_frontend('notification', {'type': 'error', 'text': 'Error: Ejecutable mysqldump no encontrado en el servidor.'})
-        
     except Exception as e:
         logging.error(f"Excepción al ejecutar backup: {e}")
-        notify_frontend('notification', {'type': 'error', 'text': 'Error crítico en proceso de backup.'})
-
-# ... (resto del archivo igual) ...
-
-# --- DISPATCHER ---
+        notify_frontend('notification', {'type': 'error', 'text': 'Error crítico en el Worker.'})
 
 TASKS = {
     'create_backup': task_create_backup
@@ -217,12 +209,9 @@ TASKS = {
 if __name__ == "__main__":
     logging.info("🚀 Aurora Worker iniciado. Esperando trabajos en Redis...")
     
-    r_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASS, decode_responses=True)
-
     while True:
         try:
-            # BLPOP bloquea hasta que haya un elemento en la lista
-            # Retorna una tupla (nombre_cola, valor)
+            # BLPOP bloquea hasta que haya un elemento
             item = r_client.blpop(QUEUE_NAME, timeout=0) 
             
             if item:

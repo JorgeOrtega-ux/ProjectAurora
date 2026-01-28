@@ -24,25 +24,26 @@ export const BackupsController = {
         _viewMode = 'grid';
 
         initToolbarEvents();
-        loadBackups();
+        loadBackups(); // Carga inicial
 
-        // [NUEVO] Escuchar evento de actualización remota (Worker)
-        // Removemos primero para evitar duplicados al navegar entre pestañas
+        // Escuchar evento de actualización remota (Worker -> Server -> Cliente)
         document.removeEventListener('socket:action', handleRemoteRefresh);
         document.addEventListener('socket:action', handleRemoteRefresh);
     }
 };
 
-// [NUEVO] Manejador de eventos del Socket
+// Manejador de eventos del Socket
 function handleRemoteRefresh(e) {
-    // Validar que el contenedor siga existiendo en el DOM (que estemos en la página)
+    // 1. Validar que seguimos en la página de backups
     if (!document.body.contains(_container)) return;
 
     const payload = e.detail.message; // { action: 'refresh_backups' }
     
     if (payload && payload.action === 'refresh_backups') {
         console.log("BackupsController: Recibida señal de actualización remota.");
-        loadBackups();
+        
+        // Cargar backups pasando 'true' para indicar que es una actualización silenciosa
+        loadBackups(true);
     }
 }
 
@@ -67,12 +68,12 @@ function initToolbarEvents() {
 
 // === LÓGICA DE CARGA Y RENDERIZADO ===
 
-async function loadBackups() {
+async function loadBackups(isSilentRefresh = false) {
     const listContainer = _container.querySelector('[data-component="backup-list"]');
     if (!listContainer) return;
 
-    // Solo mostrar loader si está vacío, para evitar parpadeos en actualizaciones en vivo
-    if (_backupsData.length === 0) {
+    // Solo mostrar loader si NO es un refresh silencioso (Websocket) y la lista está vacía
+    if (!isSilentRefresh && _backupsData.length === 0) {
         listContainer.innerHTML = '<div class="state-loading"><div class="spinner-sm"></div><p class="state-text">Cargando copias de seguridad...</p></div>';
     }
 
@@ -81,6 +82,15 @@ async function loadBackups() {
         if (res.success) {
             _backupsData = res.backups;
             renderList();
+            
+            // Si fue silencioso, quizás restaurar el estado del botón de crear si estaba bloqueado
+            if (isSilentRefresh) {
+                const btnCreate = _container.querySelector('#btn-create-backup');
+                if (btnCreate && btnCreate.disabled) {
+                    btnCreate.disabled = false;
+                    btnCreate.innerHTML = '<span class="material-symbols-rounded">add</span> Crear Copia';
+                }
+            }
         } else {
             listContainer.innerHTML = `<div class="state-error">${res.message}</div>`;
         }
@@ -98,6 +108,9 @@ function renderList() {
         return;
     }
 
+    // Mantener la posición del scroll si es posible
+    const scrollTop = container.scrollTop;
+
     if (_viewMode === 'table') {
         renderListAsTable(container);
     } else {
@@ -108,6 +121,9 @@ function renderList() {
     container.querySelectorAll('.component-card, .table-row-item').forEach(item => {
         item.addEventListener('click', () => toggleSelection(item.dataset.filename));
     });
+    
+    // Restaurar scroll (útil para actualizaciones en vivo)
+    if (scrollTop > 0) container.scrollTop = scrollTop;
 }
 
 function renderListAsGrid(container) {
@@ -239,32 +255,36 @@ async function createBackup() {
     const originalText = btn.innerHTML;
     
     btn.disabled = true; 
-    btn.innerHTML = '<div class="spinner-sm"></div> Iniciando...';
+    btn.innerHTML = '<div class="spinner-sm"></div> Procesando...';
     
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.Backups.Create);
         
         if (res.success) {
             if (res.queued) {
-                // [MODIFICADO] Estado Asíncrono
-                // 1. Mostrar feedback inmediato
-                Toast.show('Solicitud enviada. Procesando en segundo plano...', 'info');
-                // 2. NO recargamos la lista aún. Esperamos al WebSocket.
+                // Estado Asíncrono (Python Worker)
+                Toast.show('Solicitud enviada. Esperando al servidor...', 'info');
+                // IMPORTANTE: NO restauramos el botón ni recargamos la lista aquí.
+                // Esperamos al evento 'socket:action' -> 'refresh_backups' que llegará desde el worker.
+                // El worker se encargará de mandar el Toast de "Éxito" y la acción de refrescar.
             } else {
-                // Estado Síncrono (Fallback)
+                // Estado Síncrono (Legacy Fallback)
                 Toast.show('Backup creado exitosamente', 'success');
                 loadBackups();
+                btn.disabled = false; 
+                btn.innerHTML = originalText; 
             }
         } else {
             Toast.show(res.message, 'error');
+            btn.disabled = false; 
+            btn.innerHTML = originalText; 
         }
     } catch(e) { 
         Toast.show('Error al solicitar backup', 'error'); 
-    } finally { 
-        // Restaurar botón inmediatamente
         btn.disabled = false; 
         btn.innerHTML = originalText; 
-    }
+    } 
+    // Nota: Quitamos el 'finally' para mantener el botón en estado "Procesando" hasta que llegue el socket.
 }
 
 async function handleRestoreSelected() {
