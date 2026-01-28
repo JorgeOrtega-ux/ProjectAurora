@@ -26,23 +26,30 @@ export const BackupsController = {
         initToolbarEvents();
         loadBackups(); // Carga inicial
 
-        // Escuchar evento de actualización remota (Worker -> Server -> Cliente)
+        // === LISTENER DE SOCKET ===
+        // Limpiamos listener previo para evitar duplicados al navegar
         document.removeEventListener('socket:action', handleRemoteRefresh);
         document.addEventListener('socket:action', handleRemoteRefresh);
+        
+        // [DEBUG] Ver notificaciones crudas en consola
+        document.addEventListener('socket:notification', (e) => {
+            console.log("🔔 Socket Notification:", e.detail);
+        });
     }
 };
 
 // Manejador de eventos del Socket
 function handleRemoteRefresh(e) {
-    // 1. Validar que seguimos en la página de backups
-    if (!document.body.contains(_container)) return;
-
     const payload = e.detail.message; // { action: 'refresh_backups' }
-    
+    console.log("⚡ Socket Action Recibida:", payload);
+
+    // Verificación flexible: Si el contenedor existe en el DOM, actualizamos
+    if (!_container || !document.body.contains(_container)) return;
+
     if (payload && payload.action === 'refresh_backups') {
-        console.log("BackupsController: Recibida señal de actualización remota.");
+        console.log("🔄 Actualizando lista de backups...");
         
-        // Cargar backups pasando 'true' para indicar que es una actualización silenciosa
+        // Cargar backups pasando 'true' (modo silencioso)
         loadBackups(true);
     }
 }
@@ -72,7 +79,7 @@ async function loadBackups(isSilentRefresh = false) {
     const listContainer = _container.querySelector('[data-component="backup-list"]');
     if (!listContainer) return;
 
-    // Solo mostrar loader si NO es un refresh silencioso (Websocket) y la lista está vacía
+    // Solo mostrar loader si NO es un refresh silencioso y la lista está vacía
     if (!isSilentRefresh && _backupsData.length === 0) {
         listContainer.innerHTML = '<div class="state-loading"><div class="spinner-sm"></div><p class="state-text">Cargando copias de seguridad...</p></div>';
     }
@@ -83,7 +90,7 @@ async function loadBackups(isSilentRefresh = false) {
             _backupsData = res.backups;
             renderList();
             
-            // Si fue silencioso, quizás restaurar el estado del botón de crear si estaba bloqueado
+            // IMPORTANTE: Restaurar botón si estaba bloqueado por "Procesando..."
             if (isSilentRefresh) {
                 const btnCreate = _container.querySelector('#btn-create-backup');
                 if (btnCreate && btnCreate.disabled) {
@@ -108,7 +115,7 @@ function renderList() {
         return;
     }
 
-    // Mantener la posición del scroll si es posible
+    // Mantener la posición del scroll
     const scrollTop = container.scrollTop;
 
     if (_viewMode === 'table') {
@@ -122,13 +129,12 @@ function renderList() {
         item.addEventListener('click', () => toggleSelection(item.dataset.filename));
     });
     
-    // Restaurar scroll (útil para actualizaciones en vivo)
+    // Restaurar scroll
     if (scrollTop > 0) container.scrollTop = scrollTop;
 }
 
 function renderListAsGrid(container) {
     let html = '';
-    
     _backupsData.forEach(file => {
         const isSelected = _selectedFilenames.has(file.filename);
         const selectedClass = isSelected ? 'is-selected' : '';
@@ -147,13 +153,11 @@ function renderListAsGrid(container) {
             </div>
         </div>`;
     });
-
     container.innerHTML = html;
 }
 
 function renderListAsTable(container) {
     let rows = '';
-    
     _backupsData.forEach(file => {
         const isSelected = _selectedFilenames.has(file.filename);
         const selectedClass = isSelected ? 'is-selected' : '';
@@ -184,15 +188,9 @@ function renderListAsTable(container) {
     </div>`;
 }
 
-// === GESTIÓN DE SELECCIÓN ===
-
 function toggleSelection(filename) {
-    if (_selectedFilenames.has(filename)) {
-        _selectedFilenames.delete(filename);
-    } else {
-        _selectedFilenames.add(filename);
-    }
-    
+    if (_selectedFilenames.has(filename)) _selectedFilenames.delete(filename);
+    else _selectedFilenames.add(filename);
     updateToolbarState();
     renderList(); 
 }
@@ -207,20 +205,17 @@ function updateToolbarState() {
     const groupDefault = _container.querySelector('[data-element="toolbar-group-default"]');
     const groupActions = _container.querySelector('[data-element="toolbar-group-actions"]');
     const indicator = _container.querySelector('[data-element="selection-indicator"]');
-    
     const count = _selectedFilenames.size;
 
     if (count > 0) {
         groupDefault.classList.add('d-none');
         groupActions.classList.remove('d-none');
         indicator.textContent = `${count} seleccionado(s)`;
-
         const btnRestore = groupActions.querySelector('[data-action="restore-selected"]');
         if (btnRestore) {
             btnRestore.disabled = (count !== 1);
             btnRestore.style.opacity = (count !== 1) ? '0.5' : '1';
         }
-
     } else {
         groupDefault.classList.remove('d-none');
         groupActions.classList.add('d-none');
@@ -248,12 +243,11 @@ function updateViewUI(btnElement) {
     }
 }
 
-// === ACCIONES ===
-
 async function createBackup() {
     const btn = document.getElementById('btn-create-backup');
     const originalText = btn.innerHTML;
     
+    // Bloquear botón
     btn.disabled = true; 
     btn.innerHTML = '<div class="spinner-sm"></div> Procesando...';
     
@@ -262,13 +256,11 @@ async function createBackup() {
         
         if (res.success) {
             if (res.queued) {
-                // Estado Asíncrono (Python Worker)
+                // Modo Asíncrono (Python Worker)
                 Toast.show('Solicitud enviada. Esperando al servidor...', 'info');
-                // IMPORTANTE: NO restauramos el botón ni recargamos la lista aquí.
-                // Esperamos al evento 'socket:action' -> 'refresh_backups' que llegará desde el worker.
-                // El worker se encargará de mandar el Toast de "Éxito" y la acción de refrescar.
+                // NOTA: El botón sigue bloqueado hasta que llegue la notificación
             } else {
-                // Estado Síncrono (Legacy Fallback)
+                // Modo Síncrono (Fallback)
                 Toast.show('Backup creado exitosamente', 'success');
                 loadBackups();
                 btn.disabled = false; 
@@ -284,16 +276,12 @@ async function createBackup() {
         btn.disabled = false; 
         btn.innerHTML = originalText; 
     } 
-    // Nota: Quitamos el 'finally' para mantener el botón en estado "Procesando" hasta que llegue el socket.
 }
 
 async function handleRestoreSelected() {
     if (_selectedFilenames.size !== 1) return;
-    
     const filename = Array.from(_selectedFilenames)[0];
-    
     if (!await Dialog.confirm({ title: '¿Restaurar?', message: 'Se sobrescribirán los datos actuales con este respaldo.', type: 'danger' })) return;
-    
     Dialog.showLoading('Restaurando...');
     try {
         const formData = new FormData();
@@ -309,13 +297,10 @@ async function handleRestoreSelected() {
 
 async function handleDeleteSelected() {
     if (_selectedFilenames.size === 0) return;
-
     if (!await Dialog.confirm({ title: `¿Eliminar ${_selectedFilenames.size} archivos?`, message: 'Esta acción es irreversible.', type: 'danger' })) return;
-    
     const filesArray = Array.from(_selectedFilenames);
     const formData = new FormData();
     formData.append('filenames', filesArray.join(','));
-
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.Backups.Delete, formData);
         if (res.success) {

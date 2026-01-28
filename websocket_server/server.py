@@ -8,7 +8,7 @@ from urllib.parse import parse_qs, urlparse
 from dotenv import load_dotenv
 
 # Configuración de Logs
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - SERVER - %(levelname)s - %(message)s')
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../.env'))
 
@@ -33,34 +33,25 @@ async def get_redis_client():
     )
 
 async def validate_and_consume_token(path, r_client):
-    """
-    Valida el token contra Redis.
-    Retorna (user_id, session_id)
-    """
     try:
         if not path: return None, None
         parsed_url = urlparse(path)
         params = parse_qs(parsed_url.query)
         
-        # 1. Verificar si es invitado
         type_param = params.get('type')
         if type_param and type_param[0] == 'guest':
             return 'GUEST', 'GUEST'
 
-        # 2. Verificar usuario normal (Token)
         token_list = params.get('token')
         if not token_list: return None, None
         token = token_list[0]
         
-        # 3. Consultar Redis (ws_token:{token})
-        # El formato guardado por PHP es "user_id:session_id"
         redis_key = f"ws_token:{token}"
         data = await r_client.get(redis_key)
         
         if not data:
             return None, None
             
-        # Consumir el token (borrarlo para que sea de un solo uso)
         await r_client.delete(redis_key)
         
         parts = data.split(':')
@@ -75,8 +66,7 @@ async def validate_and_consume_token(path, r_client):
 
 async def redis_listener_loop():
     """
-    Escucha mensajes Pub/Sub de Redis enviados por PHP (o cualquier otro nodo).
-    Maneja KICK y BROADCAST globalmente.
+    Escucha mensajes Pub/Sub de Redis enviados por el Worker.
     """
     r_sub = await get_redis_client()
     pubsub = r_sub.pubsub()
@@ -91,19 +81,19 @@ async def redis_listener_loop():
                 cmd = data.get('cmd')
                 
                 if cmd == 'KICK_SESSION':
-                    # Kick específico (Usuario X en Dispositivo Y)
                     u_id = str(data.get('user_id'))
                     s_id = str(data.get('session_id'))
                     await kick_session_local(u_id, s_id)
                     
                 elif cmd == 'KICK_ALL':
-                    # Kick global (Usuario X en todos sus dispositivos)
                     u_id = str(data.get('user_id'))
                     await kick_all_sessions_local(u_id)
                     
                 elif cmd == 'BROADCAST':
                     msg_type = data.get('msg_type')
                     msg_content = data.get('message')
+                    # Log para confirmar que el servidor recibió la orden del worker
+                    logging.info(f"📨 Retransmitiendo BROADCAST: {msg_type}")
                     await broadcast_to_everyone_local(msg_type, msg_content)
                     
             except Exception as e:
@@ -112,7 +102,6 @@ async def redis_listener_loop():
 async def kick_session_local(user_id, session_id):
     if user_id in connected_users and session_id in connected_users[user_id]:
         payload = json.dumps({"type": "force_logout", "reason": "Sesión revocada"})
-        # Copiamos el set para iterar seguro
         sockets_to_close = list(connected_users[user_id][session_id])
         for ws in sockets_to_close:
             try:
@@ -136,17 +125,24 @@ async def kick_all_sessions_local(user_id):
 async def broadcast_to_everyone_local(msg_type, content=None):
     payload = json.dumps({"type": msg_type, "message": content})
     
+    count = 0
     # Usuarios
     for uid, sessions in connected_users.items():
         for sid, sockets in sessions.items():
             for ws in list(sockets):
-                try: await ws.send(payload)
+                try: 
+                    await ws.send(payload)
+                    count += 1
                 except: pass
     
     # Invitados
     for ws in list(connected_guests):
-        try: await ws.send(payload)
+        try: 
+            await ws.send(payload)
+            count += 1
         except: pass
+    
+    logging.info(f"📢 Mensaje enviado a {count} clientes conectados.")
 
 async def ws_handler(websocket):
     path = ""
@@ -155,7 +151,6 @@ async def ws_handler(websocket):
         elif hasattr(websocket, 'path'): path = websocket.path
     except: pass
 
-    # Cliente Redis para validación (se abre y cierra por conexión)
     r_client = await get_redis_client()
     user_id, session_id = await validate_and_consume_token(path, r_client)
     await r_client.close()
@@ -164,7 +159,6 @@ async def ws_handler(websocket):
         await websocket.close(code=1008, reason="Authentication Failed")
         return
 
-    # === CASO INVITADO ===
     if user_id == 'GUEST':
         connected_guests.add(websocket)
         logging.info(f"Invitado conectado. Total invitados: {len(connected_guests)}")
@@ -177,7 +171,6 @@ async def ws_handler(websocket):
                 connected_guests.remove(websocket)
         return
 
-    # === CASO USUARIO REGISTRADO ===
     user_id = str(user_id)
     session_id = str(session_id)
     
@@ -209,7 +202,7 @@ async def main():
     
     # 2. Iniciar servidor WebSocket
     async with websockets.serve(ws_handler, "0.0.0.0", WS_PORT):
-        await asyncio.Future() # Mantener corriendo forever
+        await asyncio.Future()
 
 if __name__ == "__main__":
     try: asyncio.run(main())

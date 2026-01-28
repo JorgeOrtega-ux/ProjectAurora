@@ -36,7 +36,7 @@ PUBSUB_CHANNEL = 'aurora_ws_control'
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BACKUP_DIR = os.path.join(BASE_DIR, 'storage', 'backups')
 
-# --- INICIALIZACIÓN GLOBAL DE REDIS (CORRECCIÓN IMPORTANTE) ---
+# --- INICIALIZACIÓN GLOBAL DE REDIS ---
 try:
     r_client = redis.Redis(
         host=REDIS_HOST, 
@@ -45,9 +45,9 @@ try:
         decode_responses=True
     )
     r_client.ping() # Verificar conexión
-    logging.info("Conexión a Redis establecida correctamente.")
+    logging.info("✅ Conexión a Redis establecida correctamente.")
 except Exception as e:
-    logging.error(f"Error fatal conectando a Redis: {e}")
+    logging.error(f"❌ Error fatal conectando a Redis: {e}")
     exit(1)
 
 # --- FUNCIONES AUXILIARES ---
@@ -86,15 +86,22 @@ def get_server_config(key, default):
 def notify_frontend(msg_type, message):
     """Envía un mensaje al servidor WebSocket vía Redis PubSub"""
     try:
-        # r_client ahora es accesible globalmente
-        r_client.publish(PUBSUB_CHANNEL, json.dumps({
+        payload = json.dumps({
             'cmd': 'BROADCAST',
             'msg_type': msg_type,
             'message': message
-        }))
-        logging.info(f"Notificación enviada: {msg_type}")
+        })
+        
+        # Publicar y contar receptores para diagnóstico
+        receivers = r_client.publish(PUBSUB_CHANNEL, payload)
+        
+        if receivers > 0:
+            logging.info(f"📢 Notificación enviada ({msg_type}). Receptores: {receivers}")
+        else:
+            logging.warning(f"⚠️ Notificación enviada pero NADIE escuchó. ¿server.py está corriendo?")
+            
     except Exception as e:
-        logging.error(f"Error publicando en Redis: {e}")
+        logging.error(f"❌ Error publicando en Redis: {e}")
 
 def enforce_retention_policy():
     try:
@@ -141,7 +148,7 @@ def resolve_mysqldump_path():
 # --- TAREAS ---
 
 def task_create_backup(payload):
-    logging.info("Iniciando tarea: Crear Backup...")
+    logging.info("⚙️ Iniciando tarea: Crear Backup...")
     
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     hash_suffix = str(int(time.time()))[-6:] 
@@ -169,7 +176,7 @@ def task_create_backup(payload):
         process = subprocess.run(dump_cmd, capture_output=True, text=True)
 
         if process.returncode == 0 and os.path.exists(filepath) and os.path.getsize(filepath) > 0:
-            logging.info(f"Backup creado exitosamente: {filename}")
+            logging.info(f"✅ Backup creado exitosamente: {filename}")
             
             is_system = payload.get('is_system', False)
             user_id = payload.get('requested_by', 0)
@@ -183,21 +190,22 @@ def task_create_backup(payload):
             if is_system:
                 enforce_retention_policy()
 
-            # 3. Notificar al Frontend (TOAST)
+            # 3. Notificar al Frontend (TOAST de Éxito)
             notify_frontend('notification', {
                 'type': 'success',
                 'text': f'Respaldo finalizado: {filename}'
             })
             
             # 4. Notificar al Frontend (RECARGAR LISTA)
+            # Esta es la parte clave para que la tabla se actualice sola
             notify_frontend('action', {'action': 'refresh_backups'})
 
         else:
-            logging.error(f"Error en mysqldump (Code {process.returncode}): {process.stderr}")
+            logging.error(f"❌ Error en mysqldump (Code {process.returncode}): {process.stderr}")
             notify_frontend('notification', {'type': 'error', 'text': 'Fallo al crear el respaldo.'})
 
     except Exception as e:
-        logging.error(f"Excepción al ejecutar backup: {e}")
+        logging.error(f"❌ Excepción al ejecutar backup: {e}")
         notify_frontend('notification', {'type': 'error', 'text': 'Error crítico en el Worker.'})
 
 TASKS = {
