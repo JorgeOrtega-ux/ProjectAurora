@@ -15,6 +15,9 @@ let recoveryTimerInterval = null;
 let turnstileWidgetId = null;
 let isRecoveryMode = false; // Estado local para el tipo de código
 
+// [NUEVO] Variable de estado para controlar el bloqueo (Igual que en ProfileController)
+let isResendCooldownActive = false;
+
 export function initAuthController() {
     renderTurnstile();
 
@@ -177,19 +180,21 @@ export function initAuthController() {
             return;
         }
 
-        // REENVIAR CÓDIGO
+        // REENVIAR CÓDIGO (ACTUALIZADO)
         const btnResend = target.closest('#btn-resend-code');
         if (btnResend) {
             e.preventDefault();
             hideError('register-step3-error');
 
-            if (btnResend.classList.contains('link-disabled') || btnResend.style.pointerEvents === 'none') {
+            // [MEJORA] Verificación robusta usando la variable de estado
+            if (isResendCooldownActive) {
                 return;
             }
 
             const targetErrorNode = document.getElementById('btn-finish') || btnResend;
             const formData = new FormData();
 
+            // Bloqueo visual inmediato (opcional, pero buena práctica)
             btnResend.style.opacity = '0.5';
 
             try {
@@ -602,11 +607,16 @@ function resetTurnstile() {
     if (window.turnstile && turnstileWidgetId !== null) turnstile.reset(turnstileWidgetId);
 }
 
+// [ACTUALIZADO] Función del temporizador usando la variable de estado
 function startResendTimer(seconds) {
     const btn = document.getElementById('btn-resend-code');
     const timerSpan = document.getElementById('register-timer');
     if (!btn || !timerSpan) return;
 
+    // 1. Activar bloqueo lógico
+    isResendCooldownActive = true;
+
+    // 2. Aplicar estado visual
     let timeLeft = seconds;
     btn.classList.add('link-disabled');
     btn.style.pointerEvents = 'none';
@@ -618,8 +628,13 @@ function startResendTimer(seconds) {
     resendTimerInterval = setInterval(() => {
         timeLeft--;
         timerSpan.textContent = `(${timeLeft})`;
+        
         if (timeLeft <= 0) {
             clearInterval(resendTimerInterval);
+            
+            // 3. Liberar bloqueo lógico y visual
+            isResendCooldownActive = false;
+            
             btn.classList.remove('link-disabled');
             btn.style.pointerEvents = 'auto';
             btn.style.color = '';
