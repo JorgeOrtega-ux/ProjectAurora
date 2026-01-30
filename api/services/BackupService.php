@@ -5,10 +5,9 @@ class BackupService {
     private $pdo;
     private $i18n;
     private $userId;
-    private $redis; // [MODIFICADO]
+    private $redis;
     private $backupDir;
 
-    // [MODIFICADO] Constructor recibe Redis
     public function __construct($pdo, $i18n, $userId, $redis = null) {
         $this->pdo = $pdo;
         $this->i18n = $i18n;
@@ -70,7 +69,6 @@ class BackupService {
             return ['success' => false, 'message' => 'Límite de copias de seguridad excedido.'];
         }
 
-        // [MODIFICADO] En lugar de ejecutar exec(), enviamos trabajo a Redis
         if ($this->redis) {
             try {
                 $jobData = [
@@ -82,7 +80,6 @@ class BackupService {
                     ]
                 ];
 
-                // Empujamos a la cola "aurora_task_queue"
                 $this->redis->rpush('aurora_task_queue', json_encode($jobData));
 
                 return [
@@ -95,12 +92,10 @@ class BackupService {
                 return ['success' => false, 'message' => 'Error al conectar con el gestor de tareas (Redis).'];
             }
         } else {
-            // Fallback si Redis no está disponible (Lógica Legacy)
             return $this->createBackupLegacy($isSystemAction);
         }
     }
 
-    // Método original movido a Legacy para fallback
     private function createBackupLegacy($isSystemAction) {
         $host = getenv('DB_HOST') ?: 'localhost';
         $user = getenv('DB_USER') ?: 'root';
@@ -131,8 +126,6 @@ class BackupService {
     }
 
     public function restoreBackup($filename) {
-        // [NOTA] Restore sigue siendo síncrono por seguridad y control inmediato,
-        // pero podría moverse al worker si la BD es muy grande.
         if (!$this->isValidFilename($filename)) {
             return ['success' => false, 'message' => 'Nombre de archivo inválido.'];
         }
@@ -231,14 +224,47 @@ class BackupService {
 
     public function getAutoConfig() {
         try {
+            // Obtener configuración base
             $stmt = $this->pdo->prepare("SELECT config_key, config_value FROM server_config WHERE config_key LIKE 'auto_backup_%'");
             $stmt->execute();
             $config = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+            
+            $enabled = ($config['auto_backup_enabled'] ?? '0') === '1';
+            $frequency = (int)($config['auto_backup_frequency'] ?? 24);
+            $retention = (int)($config['auto_backup_retention'] ?? 10);
+
+            // Calcular datos en vivo (Próxima ejecución)
+            $lastRun = null;
+            $nextRunEstimate = null;
+            $secondsRemaining = 0;
+
+            // Buscar último log de backup
+            $stmtLog = $this->pdo->prepare("SELECT created_at FROM security_logs WHERE action_type = 'backup_create' ORDER BY id DESC LIMIT 1");
+            $stmtLog->execute();
+            $lastRunStr = $stmtLog->fetchColumn();
+
+            if ($lastRunStr) {
+                $lastRun = $lastRunStr;
+                if ($enabled) {
+                    $lastTimestamp = strtotime($lastRunStr);
+                    $nextTimestamp = $lastTimestamp + ($frequency * 3600);
+                    $secondsRemaining = $nextTimestamp - time();
+                    
+                    if ($secondsRemaining < 0) $secondsRemaining = 0;
+                    $nextRunEstimate = date('Y-m-d H:i:s', $nextTimestamp);
+                }
+            }
+
             return [
                 'success' => true,
-                'enabled' => ($config['auto_backup_enabled'] ?? '0') === '1',
-                'frequency' => (int)($config['auto_backup_frequency'] ?? 24),
-                'retention' => (int)($config['auto_backup_retention'] ?? 10)
+                'enabled' => $enabled,
+                'frequency' => $frequency,
+                'retention' => $retention,
+                'meta' => [
+                    'last_run' => $lastRun,
+                    'next_run_estimate' => $nextRunEstimate,
+                    'seconds_remaining' => $secondsRemaining
+                ]
             ];
         } catch (Exception $e) {
             return ['success' => false, 'message' => 'Error leyendo configuración.'];
@@ -261,9 +287,6 @@ class BackupService {
     }
 
     private function enforceRetentionPolicy() {
-        // [NOTA] Esta lógica ahora debería moverse también a Python si se desea que el sistema
-        // limpie después de un backup automático generado por Python.
-        // Por ahora, se mantiene aquí por si se usa el método legacy.
         $limit = (int)Utils::getServerConfig($this->pdo, 'auto_backup_retention', '10');
         if ($limit <= 0) return;
         $files = glob($this->backupDir . '/*.sql');

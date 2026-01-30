@@ -5,8 +5,11 @@
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { navigateTo } from '../../core/url-manager.js';
+import { Dialog } from '../../core/dialog-manager.js';
 
 let _container = null;
+let _countdownInterval = null;
+let _secondsRemaining = 0;
 
 export const BackupConfigController = {
     init: async () => {
@@ -24,11 +27,13 @@ function initEvents() {
     const btnBack = _container.querySelector('[data-action="back-to-backups"]');
     if (btnBack) btnBack.addEventListener('click', () => navigateTo('admin/backups'));
 
-    // CORRECCIÓN: Usar querySelector con el selector de ID (#)
     const btnSave = _container.querySelector('#btn-save-backup-config');
     if (btnSave) btnSave.addEventListener('click', saveConfig);
 
-    // Lógica de Steppers (Reutilizable)
+    const btnTrigger = _container.querySelector('#btn-trigger-now');
+    if (btnTrigger) btnTrigger.addEventListener('click', triggerNow);
+
+    // Lógica de Steppers
     _container.addEventListener('click', (e) => {
         const btn = e.target.closest('.stepper-btn');
         if (!btn) return;
@@ -52,13 +57,12 @@ function initEvents() {
             case 'inc-large': currentValue += stepLarge; break;
         }
 
-        if (currentValue < 1) currentValue = 1; // Mínimo 1 para estos campos
+        if (currentValue < 1) currentValue = 1;
         input.value = currentValue;
     });
 }
 
 async function loadConfig() {
-    // Aquí podemos usar querySelector sobre el contenedor para mayor seguridad
     const loading = _container.querySelector('#config-loading-state');
     const content = _container.querySelector('#config-content-area');
 
@@ -70,9 +74,13 @@ async function loadConfig() {
             const inputFreq = _container.querySelector('#input-frequency');
             const inputRet = _container.querySelector('#input-retention');
 
+            // Inputs
             if (checkEnabled) checkEnabled.checked = res.enabled;
             if (inputFreq) inputFreq.value = res.frequency;
             if (inputRet) inputRet.value = res.retention;
+
+            // Stats Vivos
+            updateStats(res);
 
             if(loading) loading.classList.add('d-none');
             if(content) content.classList.remove('d-none');
@@ -82,6 +90,86 @@ async function loadConfig() {
     } catch (e) {
         console.error(e);
         Toast.show('Error de conexión', 'error');
+    }
+}
+
+function updateStats(data) {
+    if (!data.meta) return;
+
+    // 1. Ultimo Run
+    const elLastRun = _container.querySelector('#stat-last-run');
+    if (elLastRun) {
+        if (data.meta.last_run) {
+            // Convertir a formato amigable (ej. Hoy 14:00 o fecha)
+            const date = new Date(data.meta.last_run);
+            elLastRun.textContent = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            elLastRun.style.fontSize = '1.2rem';
+        } else {
+            elLastRun.textContent = "Nunca";
+        }
+    }
+
+    // 2. Status Badge
+    const elBadge = _container.querySelector('#stat-status-badge');
+    if (elBadge) {
+        if (data.enabled) {
+            elBadge.className = 'component-trend-badge success';
+            elBadge.innerHTML = '<span class="material-symbols-rounded" style="font-size:14px;">check_circle</span> Activo';
+        } else {
+            elBadge.className = 'component-trend-badge error';
+            elBadge.innerHTML = '<span class="material-symbols-rounded" style="font-size:14px;">pause_circle</span> Pausado';
+        }
+    }
+
+    // 3. Countdown Timer
+    if (data.enabled && data.meta.seconds_remaining !== null) {
+        _secondsRemaining = parseInt(data.meta.seconds_remaining);
+        
+        const elNextDate = _container.querySelector('#stat-next-date');
+        if (elNextDate && data.meta.next_run_estimate) {
+            elNextDate.textContent = "Previsto: " + data.meta.next_run_estimate;
+        }
+
+        startTimer();
+    } else {
+        stopTimer();
+        const elCountdown = _container.querySelector('#stat-countdown');
+        const elNextDate = _container.querySelector('#stat-next-date');
+        if(elCountdown) elCountdown.textContent = "--:--:--";
+        if(elNextDate) elNextDate.textContent = data.enabled ? "Calculando..." : "Programación desactivada";
+    }
+}
+
+function startTimer() {
+    stopTimer();
+    const elCountdown = _container.querySelector('#stat-countdown');
+    
+    _countdownInterval = setInterval(() => {
+        if (_secondsRemaining <= 0) {
+            if(elCountdown) elCountdown.textContent = "En cola...";
+            return;
+        }
+
+        _secondsRemaining--;
+
+        // Formatear HH:MM:SS
+        const h = Math.floor(_secondsRemaining / 3600);
+        const m = Math.floor((_secondsRemaining % 3600) / 60);
+        const s = _secondsRemaining % 60;
+
+        const hStr = h.toString().padStart(2, '0');
+        const mStr = m.toString().padStart(2, '0');
+        const sStr = s.toString().padStart(2, '0');
+
+        if(elCountdown) elCountdown.textContent = `${hStr}:${mStr}:${sStr}`;
+
+    }, 1000);
+}
+
+function stopTimer() {
+    if (_countdownInterval) {
+        clearInterval(_countdownInterval);
+        _countdownInterval = null;
     }
 }
 
@@ -105,11 +193,48 @@ async function saveConfig() {
         const res = await ApiService.post(ApiService.Routes.Admin.Backups.UpdateConfig, formData);
         if (res.success) {
             Toast.show('Configuración guardada correctamente', 'success');
+            // Recargar para actualizar timers
+            await loadConfig();
         } else {
             Toast.show(res.message, 'error');
         }
     } catch (e) {
         Toast.show('Error al guardar', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+async function triggerNow() {
+    const btn = _container.querySelector('#btn-trigger-now');
+    
+    const confirmed = await Dialog.confirm(
+        '¿Adelantar Respaldo?', 
+        'Esto creará una copia de seguridad inmediatamente y reiniciará el contador del temporizador automático.'
+    );
+
+    if (!confirmed) return;
+
+    btn.disabled = true;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<div class="spinner-sm"></div>';
+
+    try {
+        // Usamos la ruta estándar de creación, ya que al crearse, el Scheduler
+        // verá el nuevo log en la BD y reseteará su conteo automáticamente.
+        const res = await ApiService.post(ApiService.Routes.Admin.Backups.Create);
+        
+        if (res.success) {
+            Toast.show('Respaldo iniciado correctamente', 'success');
+            // Esperar un poco para que el servidor procese y actualice el timestamp
+            setTimeout(() => loadConfig(), 2000); 
+        } else {
+            Toast.show(res.message || 'Error al iniciar respaldo', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        Toast.show('Error de comunicación', 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;
