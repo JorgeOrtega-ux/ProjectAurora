@@ -1356,7 +1356,7 @@ input:checked+.component-toggle-slider:before {
 }
 
 /* =========================================
-   14. DIALOGS
+   14. DIALOGS (ESCRITORIO & GENERAL)
    ========================================= */
 .component-overlay {
     position: fixed;
@@ -1364,14 +1364,16 @@ input:checked+.component-toggle-slider:before {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: #0f121ab2;
+    background-color: var(--overlay-dark);
     z-index: 2000;
     display: flex;
     justify-content: center;
     align-items: center;
+    
+    /* Estado inicial invisible */
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
 }
 
 .component-overlay.active {
@@ -1383,11 +1385,14 @@ input:checked+.component-toggle-slider:before {
     width: 525px;
     max-width: 90%;
     padding: 16px;
+    position: relative;
+    
+    /* Animación Desktop (Escala y Fade) */
     transform: scale(0.95) translateY(10px);
     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    position: relative;
 }
 
+/* Estado activo en Desktop */
 .component-overlay.active .component-dialog-wrapper {
     transform: scale(1) translateY(0);
 }
@@ -1405,9 +1410,10 @@ input:checked+.component-toggle-slider:before {
 }
 
 .component-dialog-drag-zone {
-    display: none;
+    display: none; /* Oculto en escritorio */
     justify-content: center;
     width: 100%;
+    padding-bottom: 24px;
     cursor: grab;
     touch-action: none;
 }
@@ -1446,12 +1452,68 @@ input:checked+.component-toggle-slider:before {
     gap: 12px;
     width: 100%;
     justify-content: flex-start;
-    margin-top: 8px;
+    margin-top: 24px;
 }
 
 .component-dialog-footer .component-button {
-    flex: 1;
+    width: 100%;
     justify-content: center;
+}
+
+/* =========================================
+   14.b DIALOGS MOBILE (BOTTOM SHEET)
+   ========================================= */
+@media (max-width: 468px) {
+    .component-overlay {
+        align-items: flex-end; /* Alinear al fondo */
+    }
+
+    .component-dialog-wrapper {
+        width: 100%;
+        max-width: 100%;
+        padding: 0;
+        
+        /* ESTADO INICIAL: Escondido abajo */
+        transform: translateY(100%);
+        /* Transición suave tipo iOS/Android */
+        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        
+        border-radius: 16px 16px 0 0;
+    }
+
+    /* ESTADO ACTIVO: Sube a su posición natural */
+    .component-overlay.active .component-dialog-wrapper {
+        transform: translateY(0);
+    }
+
+    /* ESTADO CERRANDO: Baja de nuevo (activado por JS antes de destruir) */
+    .component-overlay.active .component-dialog-wrapper.closing {
+        transform: translateY(100%) !important;
+        transition: transform 0.25s ease-in;
+    }
+
+    .component-dialog {
+        border-radius: 16px 16px 0 0;
+        border-bottom: none;
+        padding: 16px 24px 32px 24px;
+        gap: 0;
+        border: none;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .component-dialog-drag-zone {
+        display: flex; /* Visible solo en móvil */
+    }
+
+    .component-dialog-footer {
+        flex-direction: column;
+        margin-top: 32px;
+    }
+
+    .component-dialog-footer .component-button {
+        height: 48px;
+        font-size: 16px;
+    }
 }
 
 /* Spinner Styles */
@@ -1494,51 +1556,6 @@ input:checked+.component-toggle-slider:before {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
-}
-
-/* Dialog Mobile */
-@media (max-width: 468px) {
-    .component-overlay {
-        align-items: flex-end;
-    }
-
-    .component-dialog-wrapper {
-        width: 100%;
-        max-width: 100%;
-        padding: 0;
-        transform: translateY(100%);
-        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-        border-radius: 16px 16px 0 0;
-    }
-
-    .component-overlay.active .component-dialog-wrapper {
-        transform: translateY(0);
-    }
-
-    .component-overlay.active .component-dialog-wrapper.closing {
-        transform: translateY(100%) !important;
-        transition: transform 0.2s ease-in;
-    }
-
-    .component-dialog {
-        border-radius: 16px 16px 0 0;
-        border-bottom: none;
-        padding: 16px 24px 32px 24px;
-        gap: 16px;
-    }
-
-    .component-dialog-drag-zone {
-        display: flex;
-    }
-
-    .component-dialog-footer {
-        flex-direction: column;
-    }
-
-    .component-dialog-footer .component-button {
-        height: 48px;
-        font-size: 16px;
-    }
 }
 
 /* =========================================
@@ -1707,44 +1724,7 @@ input:checked+.component-toggle-slider:before {
     .component-visual-box {
         width: 100%;
     }
-}/* Añadir al final o en la sección de Dialogs */
-
-/* Animación de entrada para el overlay */
-.component-overlay {
-    /* ... estilos existentes ... */
-    /* Aseguramos que la transición funcione al agregar la clase .active */
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
 }
-
-.component-overlay.active {
-    opacity: 1;
-    visibility: visible;
-}
-
-/* Animación de entrada para el wrapper */
-.component-dialog-wrapper {
-    /* ... estilos existentes ... */
-    transform: scale(0.95) translateY(10px);
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.component-overlay.active .component-dialog-wrapper {
-    transform: scale(1) translateY(0);
-}
-
-/* Fix para modo oscuro en botones generados dinámicamente */
-[data-theme="dark"] .component-button.primary {
-    background-color: transparent;
-    border: 1px solid var(--border-light);
-    color: var(--text-primary);
-}
-[data-theme="dark"] .component-button.primary:hover {
-    background-color: var(--bg-hover-light);
-}/* public/assets/css/components.css */
-
-/* ... (MANTENER TODO EL CÓDIGO ANTERIOR INTACTO HASTA EL FINAL) ... */
 
 /* =========================================
    16. COMPONENTES DE DATOS Y ESTRUCTURA (REUTILIZABLES)
@@ -1877,9 +1857,7 @@ input:checked+.component-toggle-slider:before {
 .font-mono { font-family: var(--sl-font-mono); }
 .w-60 { width: 60px; }
 .w-80 { width: 80px; }
-.text-right { text-align: right; }/* public/assets/css/components.css */
-
-/* ... (MANTENER TODO EL CONTENIDO ANTERIOR) ... */
+.text-right { text-align: right; }
 
 /* =========================================
    17. DASHBOARD CARDS & TRENDS

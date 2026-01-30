@@ -1,8 +1,3 @@
-/**
- * public/assets/js/core/dialog-manager.js
- * Sistema de Diálogos Dinámicos (On-Demand)
- * Se crea el DOM al abrir y se elimina al cerrar.
- */
 
 import { DialogTemplates } from './dialog-definitions.js';
 
@@ -15,14 +10,12 @@ export const Dialog = {
     
     cleanupTimer: null,
 
-    // 1. MODIFICADO: init ya no inyecta nada al cargar la página
     init: () => {
         console.log("DialogManager: Listo (Modo On-Demand)");
     },
 
     // Crea el HTML solo cuando se necesita
     _injectDOM: () => {
-        // Verificar si ya existe para no duplicar
         if (document.getElementById('dialog-overlay')) return;
 
         const overlay = document.createElement('div');
@@ -35,18 +28,15 @@ export const Dialog = {
         `;
         document.body.appendChild(overlay);
         
-        // Guardar referencias
         Dialog.elements.overlay = overlay;
         Dialog.elements.container = overlay.querySelector('.component-dialog-wrapper');
         Dialog.elements.wrapper = overlay.querySelector('.component-dialog');
     },
 
-    // Verifica si el DOM existe, si no, lo crea
     _ensureReady: () => {
         if (!Dialog.elements.wrapper || !document.body.contains(Dialog.elements.overlay)) {
             Dialog._injectDOM();
         }
-        // Doble verificación por seguridad
         return !!Dialog.elements.wrapper;
     },
 
@@ -58,11 +48,9 @@ export const Dialog = {
                 title, 
                 message, 
                 confirmText: 'Aceptar',
-                // Ocultar cancelar para alertas simples
                 cancelText: null 
             });
             
-            // Ocultar botón cancelar manualmente si es alerta
             const btnCancel = Dialog.elements.wrapper.querySelector('[data-action="cancel"]');
             if (btnCancel) btnCancel.style.display = 'none';
 
@@ -95,12 +83,9 @@ export const Dialog = {
                     btnConfirm.style.color = '#fff';
                 }
                 
-                // [CORREGIDO] Lógica para devolver el valor del input si existe (caso verify-email)
                 btnConfirm.onclick = () => { 
                     const input = Dialog.elements.wrapper.querySelector('#verify-email-code');
-                    // Si existe el input, devolvemos su valor. Si no, devolvemos true (confirmación estándar).
                     const resolution = input ? input.value : true;
-                    
                     Dialog.close(); 
                     resolve(resolution); 
                 };
@@ -138,24 +123,33 @@ export const Dialog = {
         const container = Dialog.elements.container;
 
         if (overlay) {
-            overlay.classList.remove('active');
-            if (container) {
-                container.classList.remove('closing');
-                container.style.transform = ''; 
+            // Lógica de cierre móvil (animación de salida)
+            const isMobile = window.innerWidth <= 468;
+            
+            if (isMobile && container) {
+                // Activar la clase .closing que fuerza translateY(100%)
+                container.classList.add('closing');
+                
+                // Esperar a que termine la animación CSS (0.25s) antes de destruir el DOM
+                setTimeout(() => {
+                    destroyDOM();
+                }, 280); 
+            } else {
+                // Desktop: cierre inmediato (fade out via overlay)
+                overlay.classList.remove('active');
+                setTimeout(() => {
+                    destroyDOM();
+                }, 200);
             }
-            
-            if (Dialog.cleanupTimer) clearTimeout(Dialog.cleanupTimer);
-            
-            // 2. MODIFICADO: Destrucción total al cerrar
-            Dialog.cleanupTimer = setTimeout(() => {
-                if (overlay && overlay.parentNode) {
-                    overlay.parentNode.removeChild(overlay);
-                }
-                // Limpiar referencias
-                Dialog.elements.overlay = null;
-                Dialog.elements.container = null;
-                Dialog.elements.wrapper = null;
-            }, 200); // Esperar que termine la transición CSS (0.2s)
+        }
+
+        function destroyDOM() {
+            if (overlay && overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
+            Dialog.elements.overlay = null;
+            Dialog.elements.container = null;
+            Dialog.elements.wrapper = null;
         }
     },
 
@@ -179,15 +173,17 @@ export const Dialog = {
 
     _show: () => {
         if (Dialog.cleanupTimer) clearTimeout(Dialog.cleanupTimer);
-        // Forzar reflow para que la animación CSS funcione en elementos recién creados
+        // Forzar reflow para que la animación CSS (translateY 100% -> 0%) funcione
         void Dialog.elements.overlay.offsetWidth; 
         Dialog.elements.overlay.classList.add('active');
     },
 
+    // LÓGICA DE ARRASTRE IDÉNTICA AL MÓDULO DE PERFIL
     _bindDragEvents: () => {
-        // ... (Tu lógica de arrastre existente se mantiene igual) ...
         const handle = Dialog.elements.wrapper.querySelector('.component-dialog-drag-zone');
-        const container = Dialog.elements.container;
+        // Importante: Movemos el 'container' (component-dialog-wrapper), no el 'wrapper' (contenido interno)
+        const container = Dialog.elements.container; 
+        
         if (!handle || !container) return;
 
         let startY = 0;
@@ -200,12 +196,15 @@ export const Dialog = {
             startY = clientY;
             containerHeight = container.offsetHeight;
             isDragging = true;
+            // Desactivar transición para seguimiento 1:1
             container.style.transition = 'none'; 
         };
 
         const moveDrag = (clientY, event) => {
             if (!isDragging) return;
             const deltaY = clientY - startY;
+            
+            // Solo permitir arrastrar hacia abajo (delta positivo)
             if (deltaY > 0) {
                 if (event.cancelable) event.preventDefault(); 
                 container.style.transform = `translateY(${deltaY}px)`;
@@ -216,20 +215,28 @@ export const Dialog = {
         const endDrag = () => {
             if (!isDragging) return;
             isDragging = false;
+            
+            // Restaurar transición suave para el rebote o cierre
             container.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
-            if (currentY > Math.min(containerHeight * 0.3, 100)) {
-                container.classList.add('closing');
-                Dialog.close(); 
+            
+            // Umbral de cierre (40% de la altura o 100px)
+            const threshold = Math.min(containerHeight * 0.4, 150);
+            
+            if (currentY > threshold) {
+                Dialog.close(); // Esto activará la clase .closing
             } else {
+                // Rebotar de vuelta a 0
                 container.style.transform = '';
             }
             currentY = 0;
         };
 
+        // Touch events
         handle.addEventListener('touchstart', (e) => startDrag(e.touches[0].clientY), { passive: false });
         handle.addEventListener('touchmove', (e) => moveDrag(e.touches[0].clientY, e), { passive: false });
         handle.addEventListener('touchend', endDrag);
         
+        // Mouse events (para pruebas en desktop con modo móvil)
         handle.addEventListener('mousedown', (e) => {
             startDrag(e.clientY);
             const onMove = (ev) => moveDrag(ev.clientY, ev);
@@ -241,7 +248,5 @@ export const Dialog = {
             document.addEventListener('mousemove', onMove);
             document.addEventListener('mouseup', onUp);
         });
-    },
-
-    _initDragLogic: () => {}
+    }
 };
