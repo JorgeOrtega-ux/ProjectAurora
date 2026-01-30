@@ -31,7 +31,27 @@ class AuthService {
         }
         return ['success' => true];
     }
+// [NUEVO] Obtener estado del cooldown de registro
+    public function getRegistrationStatus($email) {
+        if (empty($email)) return ['success' => false];
 
+        // Misma clave de cooldown usada en initiateVerification
+        $cooldownKey = "verify:cooldown:activation:{$email}";
+        
+        // Consultar tiempo restante en Redis
+        $ttl = 0;
+        if ($this->redis) {
+            $ttl = $this->redis->ttl($cooldownKey);
+        }
+
+        // Si ttl es -2 (no existe) o -1 (infinito), lo tratamos como 0
+        if ($ttl < 0) $ttl = 0;
+
+        return [
+            'success' => true,
+            'cooldown' => $ttl
+        ];
+    }
     public function registerStep1($email, $password, $turnstileToken) {
         $configCheck = $this->checkRegistrationStatus();
         if (!$configCheck['success']) return $configCheck;
@@ -44,12 +64,11 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_register_max_attempts', '10');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        // [MODIFICADO] Verificación optimizada con Redis
+        // Verificación optimizada con Redis
         if ($this->checkSecurityBlock('register_attempt', $limit, $duration)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
         
-        // [MODIFICADO] Pasamos duración para el TTL de Redis
         $this->logSecurityEvent($email, 'register_attempt', $duration);
 
         if (empty($email) || empty($password)) {
@@ -107,7 +126,7 @@ class AuthService {
         
         $email = $_SESSION['temp_register']['email'];
         
-        // [MODIFICADO] Redis check
+        // Bloqueo general de seguridad
         if ($this->checkSecurityBlock('register_code_req', 3, 15, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
@@ -131,29 +150,39 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.user_taken')];
         }
 
+        // [MODIFICADO] Verificación de Cooldown (60s) usando Redis
+        // Clave: verify:cooldown:activation:{email}
+        $cooldownKey = "verify:cooldown:activation:{$email}";
+        if ($this->redis->exists($cooldownKey)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
+        }
+
         $_SESSION['temp_register']['username'] = $username;
         
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+        
+        // Datos a guardar en Redis
+        $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
         $payload = json_encode([
             'username' => $username,
             'email' => $email,
-            'password_hash' => $passwordHash
+            'password_hash' => $passwordHash,
+            'code' => $code // Guardamos el código dentro del JSON para validarlo luego
         ]);
 
-        $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
         $expiryMinutes = (int)Utils::getServerConfig($this->pdo, 'auth_verification_code_expiry', '15');
-        $expiresAt = date('Y-m-d H:i:s', strtotime("+$expiryMinutes minutes"));
-
-        $del = $this->pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation'");
-        $del->execute([$email]);
-
-        $sql = "INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, 'account_activation', ?, ?, ?)";
-        $stmt = $this->pdo->prepare($sql);
+        
+        // Clave principal: verify:activation:{email}
+        $mainKey = "verify:activation:{$email}";
 
         try {
-            $stmt->execute([$email, $code, $payload, $expiresAt]);
+            // 1. Guardar datos principales (Expiran en X minutos)
+            $this->redis->setex($mainKey, $expiryMinutes * 60, $payload);
             
-            // [MODIFICADO] Loguear con TTL explícito (15 min)
+            // 2. Establecer Cooldown (Expira en 60 segundos)
+            $this->redis->setex($cooldownKey, 60, '1');
+            
+            // Log de seguridad
             $this->logSecurityEvent($email, 'register_code_req', 15);
 
             $_SESSION['pending_verification_email'] = $email;
@@ -190,40 +219,40 @@ class AuthService {
         $configCheck = $this->checkRegistrationStatus();
         if (!$configCheck['success']) return $configCheck;
         
-        // [MODIFICADO] Redis check (3 intentos, 10 min)
+        // Check de seguridad general (intentos excesivos)
         if ($this->checkSecurityBlock('resend_code_req', 3, 10, $email)) {
              return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
 
-        $checkTime = $this->pdo->prepare("SELECT created_at FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation' AND created_at > (NOW() - INTERVAL 60 SECOND) ORDER BY id DESC LIMIT 1");
-        $checkTime->execute([$email]);
-        
-        if ($checkTime->fetch()) {
+        // [MODIFICADO] Check de Cooldown en Redis
+        $cooldownKey = "verify:cooldown:activation:{$email}";
+        if ($this->redis->exists($cooldownKey)) {
             return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
 
-        $stmt = $this->pdo->prepare("SELECT payload FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation' ORDER BY id DESC LIMIT 1");
-        $stmt->execute([$email]);
-        $lastCode = $stmt->fetch();
+        // [MODIFICADO] Obtener datos anteriores desde Redis
+        $mainKey = "verify:activation:{$email}";
+        $existingDataJson = $this->redis->get($mainKey);
 
-        if (!$lastCode) {
+        if (!$existingDataJson) {
             return ['success' => false, 'message' => $this->i18n->t('api.no_data')];
         }
 
-        $payload = $lastCode['payload'];
-        $newCode = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
-        $expiryMinutes = (int)Utils::getServerConfig($this->pdo, 'auth_verification_code_expiry', '15');
-        $expiresAt = date('Y-m-d H:i:s', strtotime("+$expiryMinutes minutes"));
-
-        $del = $this->pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'account_activation'");
-        $del->execute([$email]);
-
-        $insert = $this->pdo->prepare("INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, 'account_activation', ?, ?, ?)");
+        $data = json_decode($existingDataJson, true);
         
+        // Generar nuevo código
+        $newCode = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
+        $data['code'] = $newCode; // Actualizar código en el payload
+        
+        $expiryMinutes = (int)Utils::getServerConfig($this->pdo, 'auth_verification_code_expiry', '15');
+
         try {
-            $insert->execute([$email, $newCode, $payload, $expiresAt]);
+            // Actualizar Redis (Resetea el TTL a 15 min)
+            $this->redis->setex($mainKey, $expiryMinutes * 60, json_encode($data));
             
-            // [MODIFICADO] Log con TTL 10 min
+            // Poner nuevo cooldown
+            $this->redis->setex($cooldownKey, 60, '1');
+            
             $this->logSecurityEvent($email, 'resend_code_req', 10);
 
             $subject = "Nuevo código de verificación - Project Aurora";
@@ -251,26 +280,31 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5'); 
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        // [MODIFICADO] Redis check
         if ($this->checkSecurityBlock('register_verify_fail', $limit, $duration, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
 
-        $sql = "SELECT * FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'account_activation' AND expires_at > NOW() ORDER BY id DESC LIMIT 1";
-        
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$email, $code]);
-        $verification = $stmt->fetch();
+        // [MODIFICADO] Validar código contra Redis
+        $mainKey = "verify:activation:{$email}";
+        $dataJson = $this->redis->get($mainKey);
 
-        if (!$verification) {
-            // [MODIFICADO] Log fail con duración
+        if (!$dataJson) {
             $this->logSecurityEvent($email, 'register_verify_fail', $duration);
             return ['success' => false, 'message' => $this->i18n->t('api.code_invalid_expired')];
         }
 
-        $payload = json_decode($verification['payload'], true);
-        $username = $payload['username'];
-        $passwordHash = $payload['password_hash']; 
+        $data = json_decode($dataJson, true);
+        $storedCode = $data['code'] ?? '';
+
+        // Comparación estricta
+        if ($storedCode !== $code) {
+            $this->logSecurityEvent($email, 'register_verify_fail', $duration);
+            return ['success' => false, 'message' => $this->i18n->t('api.code_invalid')];
+        }
+
+        // Extraer datos para crear usuario
+        $username = $data['username'];
+        $passwordHash = $data['password_hash']; 
         $uuid = $this->generateUuid();
 
         $firstLetter = substr($username, 0, 1);
@@ -299,7 +333,9 @@ class AuthService {
             $prefStmt = $this->pdo->prepare("INSERT INTO user_preferences (user_id, language, open_links_new_tab, theme, extended_toast) VALUES (?, ?, 1, 'sync', 0)");
             $prefStmt->execute([$newUserId, $detectedLang]);
 
-            $this->pdo->prepare("DELETE FROM verification_codes WHERE id = ?")->execute([$verification['id']]);
+            // [MODIFICADO] Eliminar datos de Redis tras éxito
+            $this->redis->del($mainKey);
+            $this->redis->del("verify:cooldown:activation:{$email}");
 
             $this->pdo->commit();
 
@@ -338,7 +374,6 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        // [MODIFICADO] Redis Check
         if ($this->checkSecurityBlock('login_fail', $limit, $duration, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
@@ -382,7 +417,6 @@ class AuthService {
 
             return $this->completeLogin($user);
         } else {
-            // [MODIFICADO] Log con duración
             $this->logSecurityEvent($email, 'login_fail', $duration);
             return ['success' => false, 'message' => $this->i18n->t('api.credentials_invalid')];
         }
@@ -398,7 +432,6 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
         
-        // [MODIFICADO] Redis check
         if ($this->checkSecurityBlock('2fa_login_fail', $limit, $duration, "user:$userId")) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
@@ -456,7 +489,6 @@ class AuthService {
             unset($_SESSION['2fa_pending_user_id']);
             return $this->completeLogin($user);
         } else {
-            // [MODIFICADO] Log con duración
             $this->logSecurityEvent("user:$userId", '2fa_login_fail', $duration);
             return ['success' => false, 'message' => $this->i18n->t('api.code_invalid')];
         }
@@ -470,12 +502,10 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        // [MODIFICADO] Redis check (Failures)
         if ($this->checkSecurityBlock('recovery_fail', $limit, $duration, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.recovery_limit')];
         }
 
-        // [MODIFICADO] Redis check (Success Limit) - 60 minutes
         if ($this->checkSecurityBlock('recovery_success', $limit, 60)) {
             return ['success' => false, 'message' => $this->i18n->t('api.recovery_limit')];
         }
@@ -484,7 +514,6 @@ class AuthService {
         $stmt->execute([$email]);
         
         if (!$stmt->fetch()) {
-            // [MODIFICADO] Log fail
             $this->logSecurityEvent($email, 'recovery_fail', $duration);
             return ['success' => false, 'message' => $this->i18n->t('api.email_not_found')];
         }
@@ -506,7 +535,6 @@ class AuthService {
         try {
             $this->pdo->prepare($sql)->execute([$email, $token, $expiresAt]);
             
-            // [MODIFICADO] Log success con 60 min TTL
             $this->logSecurityEvent($email, 'recovery_success', 60);
 
             $resetLink = "https://tudominio.com/ProjectAurora/reset-password?token=" . $token; 
@@ -649,9 +677,6 @@ class AuthService {
     // NUEVA LÓGICA DE RATE LIMITING (HÍBRIDO REDIS/SQL)
     // =========================================================
 
-    /**
-     * Incrementa el contador en Redis con expiración automática
-     */
     private function incrementRedisCounter($key, $minutes) {
         if (!$this->redis) return;
         try {
@@ -660,17 +685,12 @@ class AuthService {
                 $this->redis->expire($key, $minutes * 60);
             }
         } catch (Exception $e) {
-            // Fallback silencioso si Redis falla
             error_log("Redis RateLimit Error (INCR): " . $e->getMessage());
         }
     }
 
-    /**
-     * Verifica bloqueo leyendo SOLAMENTE de Redis (Lectura Rápida)
-     */
     private function checkSecurityBlock($actionType, $limit, $minutes, $identifier = '') {
         if (!$this->redis) {
-            // Fallback a SQL si Redis no está disponible (Lógica original como respaldo)
             return $this->checkSecurityBlockSQL($actionType, $limit, $minutes, $identifier);
         }
 
@@ -693,13 +713,9 @@ class AuthService {
         return false;
     }
 
-    /**
-     * Registra el evento en SQL (Auditoría) E incrementa Redis (Bloqueo)
-     */
     private function logSecurityEvent($identifier, $actionType, $minutes = 15) {
         $ip = $this->getClientIp();
         
-        // 1. Auditoría Permanente en MySQL (Write-only prácticamente)
         try {
             $stmt = $this->pdo->prepare("INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)");
             $stmt->execute([$identifier, $actionType, $ip]);
@@ -707,7 +723,6 @@ class AuthService {
             error_log("Audit Log Error: " . $e->getMessage());
         }
 
-        // 2. Control de Bloqueo en Redis (Incrementar contadores)
         $ipKey = "rate_limit:{$actionType}:ip:{$ip}";
         $userKey = $identifier ? "rate_limit:{$actionType}:user:{$identifier}" : null;
 
@@ -717,9 +732,6 @@ class AuthService {
         }
     }
 
-    /**
-     * Método original SQL (Renombrado para fallback)
-     */
     private function checkSecurityBlockSQL($actionType, $limit, $minutes, $identifier = '') {
         $ip = $this->getClientIp();
         $sql = "SELECT COUNT(*) as failures FROM security_logs WHERE (ip_address = ? OR user_identifier = ?) AND action_type = ? AND created_at > (NOW() - INTERVAL $minutes MINUTE)";     

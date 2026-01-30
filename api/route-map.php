@@ -62,7 +62,7 @@ return [
 
     // SYSTEM
     'system.create_backup'    => ['file' => 'handlers/system-handler.php', 'action' => 'create_backup_auto'],
-
+'auth.get_status'         => ['file' => 'handlers/auth-handler.php', 'action' => 'get_registration_status'],
     // LOGS DE ARCHIVO Y VISOR
     'admin.get_log_files'     => ['file' => 'handlers/admin-handler.php', 'action' => 'get_log_files'],
     'admin.delete_log_files'  => ['file' => 'handlers/admin-handler.php', 'action' => 'delete_log_files'],

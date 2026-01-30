@@ -82,7 +82,7 @@ if ($isStep2 && !$hasDataForStep2) {
 
             <div class="component-text-footer">
                 <a href="#" id="btn-resend-code" class="link-disabled" style="pointer-events: none; color: rgb(153, 153, 153); text-decoration: none; font-size: 14px;">
-                    <?php echo $i18n->t('auth.register.resend_code'); ?> <span id="register-timer">(60)</span>
+                    <?php echo $i18n->t('auth.register.resend_code'); ?> <span id="register-timer"></span>
                 </a>
             </div>
 

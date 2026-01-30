@@ -94,7 +94,16 @@ export const Dialog = {
                     btnConfirm.style.borderColor = 'var(--color-error)';
                     btnConfirm.style.color = '#fff';
                 }
-                btnConfirm.onclick = () => { Dialog.close(); resolve(true); };
+                
+                // [CORREGIDO] Lógica para devolver el valor del input si existe (caso verify-email)
+                btnConfirm.onclick = () => { 
+                    const input = Dialog.elements.wrapper.querySelector('#verify-email-code');
+                    // Si existe el input, devolvemos su valor. Si no, devolvemos true (confirmación estándar).
+                    const resolution = input ? input.value : true;
+                    
+                    Dialog.close(); 
+                    resolve(resolution); 
+                };
             }
 
             cancelButtons.forEach(btn => {

@@ -66,6 +66,10 @@ switch ($action) {
 
     case 'get_ws_token':
         Utils::jsonResponse($authService->generateWebSocketToken());
+        break;case 'get_registration_status':
+        // Obtenemos el email de la sesión temporal de registro
+        $email = $_SESSION['pending_verification_email'] ?? '';
+        Utils::jsonResponse($authService->getRegistrationStatus($email));
         break;
 
     default:

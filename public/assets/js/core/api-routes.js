@@ -12,7 +12,7 @@ export const ApiRoutes = {
         Verify2FA:        { route: 'auth.verify_2fa' },
         RequestReset:     { route: 'auth.request_reset' },
         ResetPassword:    { route: 'auth.reset_password' },
-        Logout:           { route: 'auth.logout' },
+        Logout:           { route: 'auth.logout' },GetStatus:        { route: 'auth.get_status' }, // [NUEVO]
         GetWsToken:       { route: 'auth.get_ws_token' }
     },
     

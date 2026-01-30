@@ -30,9 +30,16 @@ export function initAuthController() {
         }
     });
 
+    // LÓGICA REEMPLAZADA: Detección inteligente del timer
     const resendBtn = document.getElementById('btn-resend-code');
+    
+    // Solo si estamos en la pantalla de verificación (existe el botón)
     if (resendBtn) {
-        startResendTimer(60);
+        // 1. Iniciar con bloqueo visual inmediato para evitar clicks prematuros
+        resendBtn.classList.add('link-disabled'); 
+        
+        // 2. Consultar al servidor el tiempo real
+        checkServerTimer();
     }
 
     document.body.addEventListener('click', async (e) => {
@@ -135,7 +142,8 @@ export function initAuthController() {
                 if (res.success) {
                     Toast.show(I18n.t('js.auth.code_sent'), 'info');
                     navigateTo(res.next_url);
-                    setTimeout(() => startResendTimer(60), 500);
+                    // Aquí ya no llamamos a startResendTimer manualmente,
+                    // al cargar la vista se ejecutará checkServerTimer
                 } else {
                     showError(btnNext2, 'register-step2-error', res.message);
                     setLoading(btnNext2, false);
@@ -683,4 +691,30 @@ function startRecoveryTimer(seconds) {
             if (inputEmail) { inputEmail.disabled = false; inputEmail.style.opacity = '1'; }
         }
     }, 1000);
+}
+
+async function checkServerTimer() {
+    try {
+        // Llamamos al nuevo endpoint
+        const res = await ApiService.post(AuthAPI.GetStatus);
+        
+        if (res.success && res.cooldown > 0) {
+            // Si hay cooldown en el servidor, iniciamos el timer con ese tiempo exacto
+            startResendTimer(res.cooldown);
+        } else {
+            // Si no hay cooldown (es 0), desbloqueamos el botón inmediatamente
+            const btn = document.getElementById('btn-resend-code');
+            const timerSpan = document.getElementById('register-timer');
+            if (btn) {
+                btn.classList.remove('link-disabled');
+                btn.style.pointerEvents = 'auto';
+                btn.style.color = '';
+            }
+            if (timerSpan) timerSpan.textContent = '';
+        }
+    } catch (e) {
+        console.error("Error sincronizando timer:", e);
+        // Fallback: Si falla la red, asumimos 0 para no bloquear al usuario eternamente
+        startResendTimer(0); 
+    }
 }

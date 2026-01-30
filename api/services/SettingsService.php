@@ -120,24 +120,18 @@ class SettingsService {
         $stmt->execute([$this->userId]);
         $email = $stmt->fetchColumn();
 
-        // [MODIFICADO] Calcular el tiempo restante en SQL para evitar problemas de timezone entre PHP y DB
-        $stmtCode = $this->pdo->prepare("
-            SELECT created_at, (60 - TIMESTAMPDIFF(SECOND, created_at, NOW())) as remaining_seconds 
-            FROM verification_codes 
-            WHERE identifier = ? AND code_type = 'email_update_auth' AND expires_at > NOW() 
-            ORDER BY id DESC LIMIT 1
-        ");
-        $stmtCode->execute([$email]);
-        $lastCode = $stmtCode->fetch();
+        // [MODIFICADO] Verificar cooldown en Redis
+        // Clave: verify:cooldown:email_update:{email}
+        $cooldownKey = "verify:cooldown:email_update:{$email}";
+        
+        // TTL devuelve -2 si no existe, -1 si no tiene exp, o los segundos restantes
+        $ttl = $this->redis->ttl($cooldownKey);
 
-        if ($lastCode) {
-            // Usamos el cálculo de la DB. Si es negativo, significa que ya pasaron los 60s.
-            $cooldown = (int)$lastCode['remaining_seconds'];
-            
+        if ($ttl > 0) {
             return [
                 'success' => true, 
                 'status' => 'pending_code',
-                'cooldown' => ($cooldown > 0) ? $cooldown : 0
+                'cooldown' => $ttl
             ];
         }
 
@@ -157,10 +151,11 @@ class SettingsService {
         $currentEmail = $user['email'];
         $username = $user['username'];
 
+        // [MODIFICADO] Verificar clave principal en Redis
+        $mainKey = "verify:email_update:{$currentEmail}";
+        
         if (!$forceResend) {
-            $stmtCheck = $this->pdo->prepare("SELECT id FROM verification_codes WHERE identifier = ? AND code_type = 'email_update_auth' AND expires_at > NOW()");
-            $stmtCheck->execute([$currentEmail]);
-            if ($stmtCheck->fetch()) {
+            if ($this->redis->exists($mainKey)) {
                 return ['success' => true, 'message' => 'Código ya enviado previamente.'];
             }
         }
@@ -171,29 +166,24 @@ class SettingsService {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
 
-        // [MODIFICADO] Validación de tiempo estricta en SQL
-        // Verifica si existe algún código creado en los últimos 60 segundos
-        $stmtTime = $this->pdo->prepare("SELECT id FROM verification_codes WHERE identifier = ? AND code_type = 'email_update_auth' AND created_at > (NOW() - INTERVAL 60 SECOND)");
-        $stmtTime->execute([$currentEmail]);
-        
-        if ($stmtTime->fetch()) {
-            // Si encuentra uno, bloquea inmediatamente, independientemente de la hora de PHP
+        // [MODIFICADO] Verificar Cooldown en Redis
+        $cooldownKey = "verify:cooldown:email_update:{$currentEmail}";
+        if ($this->redis->exists($cooldownKey)) {
             return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
 
         $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
-        
         $expiryMinutes = (int)Utils::getServerConfig($this->pdo, 'auth_verification_code_expiry', '15');
-        $expiresAt = date('Y-m-d H:i:s', strtotime("+$expiryMinutes minutes"));
-
-        $del = $this->pdo->prepare("DELETE FROM verification_codes WHERE identifier = ? AND code_type = 'email_update_auth'");
-        $del->execute([$currentEmail]);
-
-        $sql = "INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) VALUES (?, 'email_update_auth', ?, '{}', ?)";
-        $insert = $this->pdo->prepare($sql);
         
+        // Payload simple (solo código, pues el email es la clave)
+        $payload = json_encode(['code' => $code]);
+
         try {
-            $insert->execute([$currentEmail, $code, $expiresAt]);
+            // Guardar en Redis (15 min de validez)
+            $this->redis->setex($mainKey, $expiryMinutes * 60, $payload);
+            
+            // Establecer Cooldown (60s)
+            $this->redis->setex($cooldownKey, 60, '1');
             
             $this->logSecurityAction('email_change_req', 10);
 
@@ -217,17 +207,24 @@ class SettingsService {
         $stmtEmail->execute([$this->userId]);
         $currentEmail = $stmtEmail->fetchColumn();
 
-        $stmt = $this->pdo->prepare("SELECT id FROM verification_codes WHERE identifier = ? AND code = ? AND code_type = 'email_update_auth' AND expires_at > NOW()");
-        $stmt->execute([$currentEmail, $code]);
-        $verification = $stmt->fetch();
+        // [MODIFICADO] Validar contra Redis
+        $mainKey = "verify:email_update:{$currentEmail}";
+        $dataJson = $this->redis->get($mainKey);
 
-        if ($verification) {
-            $_SESSION['email_change_auth'] = time() + 300;
-            $this->pdo->prepare("DELETE FROM verification_codes WHERE id = ?")->execute([$verification['id']]);
-            return ['success' => true, 'message' => 'Código verificado.'];
-        } else {
-            return ['success' => false, 'message' => $this->i18n->t('api.code_invalid')];
+        if ($dataJson) {
+            $data = json_decode($dataJson, true);
+            if ($data['code'] === $code) {
+                $_SESSION['email_change_auth'] = time() + 300;
+                
+                // Borrar clave tras éxito
+                $this->redis->del($mainKey);
+                $this->redis->del("verify:cooldown:email_update:{$currentEmail}");
+                
+                return ['success' => true, 'message' => 'Código verificado.'];
+            }
         }
+        
+        return ['success' => false, 'message' => $this->i18n->t('api.code_invalid')];
     }
 
     public function updateProfile($field, $value) {
