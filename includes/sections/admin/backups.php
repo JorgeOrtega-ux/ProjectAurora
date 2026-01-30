@@ -21,9 +21,8 @@
                     <button class="header-button" data-nav="admin/backups/config" data-tooltip="Configuración Automática">
                         <span class="material-symbols-rounded">settings_motion_mode</span>
                     </button>
-                    <button class="component-button primary" id="btn-create-backup">
+                    <button class="header-button" id="btn-create-backup">
                         <span class="material-symbols-rounded">add</span>
-                        Crear Copia
                     </button>
                 </div>
             </div>
