@@ -7,9 +7,6 @@
         <div class="component-toolbar component-toolbar--primary">
             <div class="toolbar-group">
                 <div class="component-toolbar__side component-toolbar__side--left">
-                    <button class="header-button" data-action="back-to-backups" data-tooltip="Volver a Copias de Seguridad">
-                        <span class="material-symbols-rounded">arrow_back</span>
-                    </button>
                     <div class="component-toolbar-title">Configuración Automática</div>
                 </div>
                 <div class="component-toolbar__side component-toolbar__side--right">

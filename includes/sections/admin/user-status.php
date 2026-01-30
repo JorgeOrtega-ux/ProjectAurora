@@ -38,9 +38,6 @@ $suspensionData = [
         <div class="component-toolbar component-toolbar--primary">
             <div class="toolbar-group">
                 <div class="component-toolbar__side component-toolbar__side--left">
-                    <button class="header-button" data-action="back-to-list" data-tooltip="Volver a la lista">
-                        <span class="material-symbols-rounded">arrow_back</span>
-                    </button>
                     <div class="component-toolbar-title">
                         Gestionar Estado de Cuenta
                     </div>

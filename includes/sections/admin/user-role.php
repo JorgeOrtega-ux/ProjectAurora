@@ -37,9 +37,6 @@ $user = $response['user'];
         <div class="component-toolbar component-toolbar--primary">
             <div class="toolbar-group">
                 <div class="component-toolbar__side component-toolbar__side--left">
-                    <button class="header-button" data-action="back-to-list" data-tooltip="<?php echo $i18n->t('admin.users_module.toolbar.back_list'); ?>">
-                        <span class="material-symbols-rounded">arrow_back</span>
-                    </button>
                     <div class="component-toolbar-title">
                         Gestionar Rol: <?php echo htmlspecialchars($user['username']); ?>
                     </div>

@@ -8,10 +8,6 @@
             
             <div class="toolbar-group" data-element="toolbar-group-default">
                 <div class="component-toolbar__side component-toolbar__side--left">
-                    <button class="header-button" data-action="back-to-dashboard" data-tooltip="Volver al Dashboard" onclick="history.back()">
-                        <span class="material-symbols-rounded">arrow_back</span>
-                    </button>
-                    
                     <button class="header-button" data-action="change-view" data-tooltip="Cambiar vista">
                         <span class="material-symbols-rounded">grid_view</span>
                     </button>

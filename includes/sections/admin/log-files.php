@@ -8,10 +8,6 @@
             
             <div class="toolbar-group" data-element="toolbar-group-default">
                 <div class="component-toolbar__side component-toolbar__side--left">
-                    <button class="header-button" data-action="back-to-dashboard" onclick="history.back()" data-tooltip="Volver">
-                        <span class="material-symbols-rounded">arrow_back</span>
-                    </button>
-                    
                     <button class="header-button" data-action="toggle-search" data-tooltip="Buscar archivos">
                         <span class="material-symbols-rounded">search</span>
                     </button>

@@ -8,10 +8,6 @@
             
             <div class="toolbar-group">
                 <div class="component-toolbar__side component-toolbar__side--left">
-                    <button class="header-button" onclick="history.back()" data-tooltip="Volver">
-                        <span class="material-symbols-rounded">arrow_back</span>
-                    </button>
-                    
                     <div class="component-toolbar-title">
                         <?php echo $i18n->t('admin.audit.title'); ?>
                     </div>

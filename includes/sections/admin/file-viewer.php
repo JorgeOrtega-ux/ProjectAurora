@@ -8,10 +8,6 @@
             
             <div class="toolbar-group">
                 <div class="component-toolbar__side component-toolbar__side--left">
-                    <button class="header-button" data-action="back-history" data-tooltip="Volver" onclick="history.back()">
-                        <span class="material-symbols-rounded">arrow_back</span>
-                    </button>
-                    
                     <div class="component-toolbar-title">
                         Visor de Archivos
                     </div>

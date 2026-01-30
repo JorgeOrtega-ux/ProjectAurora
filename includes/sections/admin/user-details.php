@@ -41,9 +41,6 @@ $is2FAActive = isset($user['two_factor_enabled']) && $user['two_factor_enabled']
         <div class="component-toolbar component-toolbar--primary">
             <div class="toolbar-group">
                 <div class="component-toolbar__side component-toolbar__side--left">
-                    <button class="header-button" data-action="back-to-list" data-tooltip="<?php echo $i18n->t('admin.users_module.toolbar.back_list'); ?>">
-                        <span class="material-symbols-rounded">arrow_back</span>
-                    </button>
                     <div class="component-toolbar-title">
                         <?php echo $i18n->t('admin.users_module.toolbar.manage_account'); ?>
                     </div>
