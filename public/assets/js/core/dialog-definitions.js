@@ -17,16 +17,19 @@ export const DialogTemplates = {
             <button type="button" class="component-button primary btn-confirm" data-action="confirm">${data.confirmText || 'Confirmar'}</button>
         </div>
     `,
-    'verify-email': (data) => `
+  'verify-email': (data) => `
         <div class="component-dialog-body">
             <h1 class="component-dialog-title" data-element="title">${data.title || ''}</h1>
             <p class="component-dialog-message" data-element="message">${data.message || ''}</p>
             
             <div class="component-input-wrapper mt-16">
-                <input type="text" id="verify-email-code" class="component-text-input" placeholder="000 000" maxlength="6" style="text-align: center; letter-spacing: 4px; font-size: 18px;" autocomplete="off">
+                <input type="text" id="verify-email-code" class="component-text-input" 
+                       placeholder="Ingresa el código" 
+                       maxlength="6" 
+                       autocomplete="off">
             </div>
             
-            <p style="text-align: center; font-size: 13px; margin-top: 12px;">
+            <p style="text-align: right; font-size: 12px;">
                 <span data-action="resend-code" id="btn-dialog-resend" class="component-link-action" role="button" tabindex="0" style="color: var(--action-primary);">
                     Reenviar código de verificación <span data-element="resend-timer" id="dialog-resend-timer" style="margin-left: 4px;"></span>
                 </span>

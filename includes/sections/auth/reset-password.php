@@ -4,23 +4,26 @@
 $token = $_GET['token'] ?? '';
 $isValidToken = false;
 $errorMessage = "";
+$targetEmail = ""; 
 
 // Verificación Server-Side
 if (!empty($token) && isset($pdo)) {
     try {
-        $stmt = $pdo->prepare("SELECT id FROM password_resets WHERE token = ? AND expires_at > NOW() LIMIT 1");
+        $stmt = $pdo->prepare("SELECT email FROM password_resets WHERE token = ? AND expires_at > NOW() LIMIT 1");
         $stmt->execute([$token]);
-        if ($stmt->fetch()) {
+        $result = $stmt->fetch();
+        
+        if ($result) {
             $isValidToken = true;
+            $targetEmail = $result['email'];
         }
     } catch (Exception $e) {
         error_log("Error validating reset token: " . $e->getMessage());
     }
 }
 
-// Si no es válido, preparamos el JSON de error
+// ... (Bloque de manejo de errores JSON si no es válido) ...
 if (!$isValidToken) {
-    // Usamos 400 Bad Request o 404 Not Found, aquí usaremos estructura similar al registro
     $errorData = [
         "error" => [
             "message" => "Invalid request. Token not found or expired.",
@@ -54,7 +57,11 @@ if (!$isValidToken) {
         <?php else: ?>
             <div class="component-header-centered">
                 <h1><?php echo $i18n->t('auth.reset.title'); ?></h1>
-                <p><?php echo $i18n->t('auth.reset.desc'); ?></p>
+                
+                <p>
+                    <?php echo $i18n->t('auth.reset.desc'); ?> para: <br>
+                    <strong style="color: var(--text-primary);"><?php echo htmlspecialchars($targetEmail); ?></strong>
+                </p>
             </div>
             
             <input type="hidden" id="reset_token" value="<?php echo htmlspecialchars($token); ?>">
@@ -70,8 +77,12 @@ if (!$isValidToken) {
                     </div>
                     
                     <div class="component-input-wrapper component-input-wrapper--floating">
-                        <input type="password" id="confirm_password" class="component-text-input" required placeholder=" ">
+                        <input type="password" id="confirm_password" class="component-text-input has-action" required placeholder=" ">
                         <label for="confirm_password" class="component-label-floating"><?php echo $i18n->t('auth.reset.field_confirm'); ?></label>
+                        
+                        <button type="button" class="component-input-action" data-action="toggle-password" tabindex="-1">
+                            <span class="material-symbols-rounded">visibility</span>
+                        </button>
                     </div>
                 </div>
             </div>

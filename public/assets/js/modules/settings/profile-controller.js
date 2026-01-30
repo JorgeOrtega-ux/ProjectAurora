@@ -229,14 +229,21 @@ async function handleEmailVerification(targetField) {
 }
 
 async function showVerificationDialog(targetField, initialCooldown) {
+    // 1. Obtener el correo actual desde la interfaz para mostrarlo en el mensaje
+    const currentEmail = document.getElementById('display-email')?.innerText.trim() || 'tu correo';
+
+    // 2. Sobrescribir título y mensaje en las opciones del diálogo
     const dialogOptions = {
         ...DialogDefinitions.Profile.VERIFY_EMAIL,
+        title: 'Busca el código que te enviamos',
+        message: `Para poder hacer cambios en tu cuenta, primero debes ingresar el código que te enviamos a ${currentEmail}.`,
         onReady: (dialogElement) => bindResendLogic(dialogElement, initialCooldown)
     };
 
     const result = await Dialog.confirm(dialogOptions);
     
     if (result) {
+        // ... resto de la lógica de verificación (sin cambios) ...
         const code = (typeof result === 'string') ? result.trim() : '';
 
         if (!code) {
