@@ -101,6 +101,31 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
             $_SESSION['username'] = $freshUser['username'];
             $_SESSION['email'] = $freshUser['email'];
             $_SESSION['two_factor_enabled'] = $freshUser['two_factor_enabled'];
+
+            // [FIX 1] Forzar recarga de preferencias desde la BD en cada petición
+            // Esto soluciona que los cambios manuales en BD no se vean hasta reloguear
+            $stmtPrefs = $pdo->prepare("SELECT language, open_links_new_tab, theme, extended_toast FROM user_preferences WHERE user_id = ?");
+            $stmtPrefs->execute([$_SESSION['user_id']]);
+            $freshPrefs = $stmtPrefs->fetch(PDO::FETCH_ASSOC);
+
+            if ($freshPrefs) {
+                // Guardar el idioma actual antes de actualizar, para comparar
+                $previousLang = $_SESSION['preferences']['language'] ?? 'es-latam';
+
+                $_SESSION['preferences'] = [
+                    'language' => $freshPrefs['language'],
+                    'open_links_new_tab' => (bool)$freshPrefs['open_links_new_tab'],
+                    'theme' => $freshPrefs['theme'],
+                    'extended_toast' => (bool)$freshPrefs['extended_toast']
+                ];
+
+                // [FIX 2] Recarga en caliente del sistema de traducciones
+                // Si el idioma en BD es diferente al que cargó bootstrap.php, reinicializamos $i18n
+                if ($freshPrefs['language'] !== $previousLang) {
+                    $i18n = new I18n($freshPrefs['language']);
+                }
+            }
+
         } else {
             session_unset(); session_destroy();
             header("Location: " . $basePath . "login"); exit;
