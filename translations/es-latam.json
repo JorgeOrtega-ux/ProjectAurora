@@ -406,6 +406,7 @@
             "btn_revoke": "Cerrar sesión",
             "revoke_success": "Sesión cerrada correctamente.",
             "confirm_revoke_all": "¿Seguro que quieres cerrar sesión en TODOS los dispositivos? Deberás iniciar sesión de nuevo.",
+            "confirm_revoke_one": "¿Estás seguro de cerrar la sesión en este dispositivo?",
             "label_ip": "IP:",
             "label_started": "Iniciado:"
         },

@@ -31,6 +31,13 @@ export const DialogDefinitions = {
             type: 'danger',
             confirmText: 'Cerrar todas',
             cancelText: 'Cancelar'
+        },
+        REVOKE_ONE: {
+            title: '¿Cerrar sesión?',
+            get message() { return I18n.t('js.devices.confirm_revoke_one'); },
+            type: 'danger',
+            confirmText: 'Cerrar sesión',
+            cancelText: 'Cancelar'
         }
     },
 

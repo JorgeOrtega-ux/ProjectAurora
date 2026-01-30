@@ -115,6 +115,11 @@ function _bindListEvents() {
             const id = e.target.dataset.id;
             if(!id) return;
 
+            // --- CONFIRMACIÓN AGREGADA AQUÍ ---
+            const confirmed = await Dialog.confirm(DialogDefinitions.Devices.REVOKE_ONE);
+            if (!confirmed) return;
+            // ----------------------------------
+
             const originalText = e.target.innerText;
             e.target.innerText = '...';
             e.target.disabled = true;
