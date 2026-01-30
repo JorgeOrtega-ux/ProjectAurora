@@ -1,206 +1,238 @@
 /**
  * public/assets/js/core/dialog-manager.js
- * Sistema de Diálogos Dinámico (Just-in-Time Injection).
+ * Sistema de Diálogos Dinámicos (On-Demand)
+ * Se crea el DOM al abrir y se elimina al cerrar.
  */
 
 import { DialogTemplates } from './dialog-definitions.js';
 
 export const Dialog = {
-    _overlay: null,
-    _cleanupTimer: null,
+    elements: {
+        overlay: null,
+        container: null, 
+        wrapper: null
+    },
+    
+    cleanupTimer: null,
 
+    // 1. MODIFICADO: init ya no inyecta nada al cargar la página
     init: () => {
-        console.log("DialogManager: Inicializado (JIT Mode)");
+        console.log("DialogManager: Listo (Modo On-Demand)");
     },
 
-    /**
-     * Muestra un diálogo de alerta simple.
-     */
-    alert: ({ title = 'Atención', message = '' }) => {
-        return Dialog._createDialog({
-            title,
-            message,
-            buttons: [{ text: 'Aceptar', action: 'confirm', class: 'primary' }]
-        });
-    },
-
-    /**
-     * Muestra un diálogo de confirmación o acción compleja.
-     */
-    confirm: ({ title, message, type = 'default', confirmText = 'Confirmar', cancelText = 'Cancelar', onReady }) => {
-        const isDanger = type === 'danger';
-        
-        return Dialog._createDialog({
-            title,
-            message,
-            type,
-            onReady, // Callback para inicializar lógica custom (ej: timers)
-            buttons: [
-                { text: cancelText, action: 'cancel', class: '' },
-                { text: confirmText, action: 'confirm', class: isDanger ? 'primary' : 'primary' } // CSS class handler
-            ]
-        });
-    },
-
-    /**
-     * Muestra un diálogo de carga bloqueante.
-     */
-    showLoading: (text = 'Procesando...') => {
-        Dialog._createOverlay();
-        const wrapper = Dialog._overlay.querySelector('.component-dialog-wrapper');
-        
-        // Renderizado simplificado para Loading
-        wrapper.innerHTML = `<div class="component-dialog">${DialogTemplates.LOADING}</div>`;
-        const titleEl = wrapper.querySelector('[data-element="title"]');
-        if (titleEl) titleEl.textContent = text;
-
-        requestAnimationFrame(() => Dialog._overlay.classList.add('active'));
-    },
-
-    /**
-     * Cierra el diálogo actual y limpia el DOM.
-     */
-    close: () => {
-        if (!Dialog._overlay) return;
-
-        Dialog._overlay.classList.remove('active');
-        
-        // Esperar animación CSS (0.2s) antes de eliminar del DOM
-        Dialog._cleanupTimer = setTimeout(() => {
-            if (Dialog._overlay) {
-                Dialog._overlay.remove();
-                Dialog._overlay = null;
-            }
-        }, 200);
-    },
-
-    // --- MÉTODOS PRIVADOS ---
-
-    _createOverlay: () => {
-        if (Dialog._overlay) return; // Ya existe
+    // Crea el HTML solo cuando se necesita
+    _injectDOM: () => {
+        // Verificar si ya existe para no duplicar
+        if (document.getElementById('dialog-overlay')) return;
 
         const overlay = document.createElement('div');
-        overlay.id = 'dialog-overlay'; // ID solo para el contenedor raíz por CSS
+        overlay.id = 'dialog-overlay';
         overlay.className = 'component-overlay';
-        
         overlay.innerHTML = `
             <div class="component-dialog-wrapper">
-                </div>
+                <div class="component-dialog" id="dialog-content-wrapper"></div>
+            </div>
         `;
-        
         document.body.appendChild(overlay);
-        Dialog._overlay = overlay;
         
-        // Setup Drag para Mobile
-        Dialog._initDragLogic(overlay.querySelector('.component-dialog-wrapper'));
+        // Guardar referencias
+        Dialog.elements.overlay = overlay;
+        Dialog.elements.container = overlay.querySelector('.component-dialog-wrapper');
+        Dialog.elements.wrapper = overlay.querySelector('.component-dialog');
     },
 
-    _createDialog: ({ title, message, type, buttons, onReady }) => {
+    // Verifica si el DOM existe, si no, lo crea
+    _ensureReady: () => {
+        if (!Dialog.elements.wrapper || !document.body.contains(Dialog.elements.overlay)) {
+            Dialog._injectDOM();
+        }
+        // Doble verificación por seguridad
+        return !!Dialog.elements.wrapper;
+    },
+
+    alert: ({ title = 'Atención', message = '' }) => {
         return new Promise((resolve) => {
-            Dialog._createOverlay();
-            const wrapper = Dialog._overlay.querySelector('.component-dialog-wrapper');
+            if (!Dialog._ensureReady()) return resolve(true);
+
+            Dialog._render('default', { 
+                title, 
+                message, 
+                confirmText: 'Aceptar',
+                // Ocultar cancelar para alertas simples
+                cancelText: null 
+            });
             
-            // 1. Inyectar Estructura Base
-            wrapper.innerHTML = `<div class="component-dialog">${DialogTemplates.BASE}</div>`;
-            const dialog = wrapper.querySelector('.component-dialog');
+            // Ocultar botón cancelar manualmente si es alerta
+            const btnCancel = Dialog.elements.wrapper.querySelector('[data-action="cancel"]');
+            if (btnCancel) btnCancel.style.display = 'none';
 
-            // 2. Llenar Datos
-            const elTitle = dialog.querySelector('[data-element="title"]');
-            const elMsg = dialog.querySelector('[data-element="message"]');
-            const elContent = dialog.querySelector('[data-element="content-area"]');
-            const elFooter = dialog.querySelector('[data-element="footer"]');
+            const btnConfirm = Dialog.elements.wrapper.querySelector('[data-action="confirm"]');
+            if (btnConfirm) {
+                btnConfirm.onclick = () => { Dialog.close(); resolve(true); };
+                setTimeout(() => btnConfirm.focus(), 50);
+            }
+            Dialog._show();
+        });
+    },
 
-            if (elTitle) elTitle.textContent = title || '';
-            if (elMsg) {
-                if (message) elMsg.textContent = message;
-                else elMsg.style.display = 'none';
+    confirm: ({ title, message, type = 'default', confirmText, cancelText, onReady }) => {
+        return new Promise((resolve) => {
+            if (!Dialog._ensureReady()) return resolve(false);
+
+            let templateKey = 'default';
+            if (type === 'regen-codes') templateKey = 'regen-codes';
+            if (type === 'verify-email') templateKey = 'verify-email';
+            
+            Dialog._render(templateKey, { title, message, confirmText, cancelText });
+
+            const btnConfirm = Dialog.elements.wrapper.querySelector('[data-action="confirm"]');
+            const cancelButtons = Dialog.elements.wrapper.querySelectorAll('[data-action="cancel"]');
+
+            if (btnConfirm) {
+                if (type === 'danger') {
+                    btnConfirm.style.backgroundColor = 'var(--color-error)';
+                    btnConfirm.style.borderColor = 'var(--color-error)';
+                    btnConfirm.style.color = '#fff';
+                }
+                btnConfirm.onclick = () => { Dialog.close(); resolve(true); };
             }
 
-            // 3. Inyectar Contenido Específico (Templates)
+            cancelButtons.forEach(btn => {
+                btn.onclick = () => { Dialog.close(); resolve(false); };
+            });
+
+            Dialog._show();
+            
             if (type === 'verify-email') {
-                elContent.innerHTML = DialogTemplates.VERIFY_EMAIL;
-            } else if (type === 'regen-codes') {
-                elContent.innerHTML = ''; // Si se necesita template específico
+                setTimeout(() => {
+                    const input = Dialog.elements.wrapper.querySelector('input');
+                    if (input) input.focus();
+                }, 50);
+            } else if (btnConfirm) {
+                setTimeout(() => btnConfirm.focus(), 50);
             }
 
-            // 4. Generar Botones
-            buttons.forEach(btnConfig => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = `component-button ${btnConfig.class}`;
-                btn.textContent = btnConfig.text;
-                btn.dataset.action = btnConfig.action;
-                
-                // Evento Click
-                btn.onclick = () => {
-                    if (btnConfig.action === 'cancel') {
-                        Dialog.close();
-                        resolve(false);
-                    } else {
-                        // Capturar input si existe (para verify-email)
-                        const input = dialog.querySelector('[data-element="input-code"]');
-                        const result = input ? input.value : true;
-                        
-                        Dialog.close();
-                        resolve(result);
-                    }
-                };
-                elFooter.appendChild(btn);
-            });
-
-            // 5. Animación de Entrada
-            requestAnimationFrame(() => {
-                Dialog._overlay.classList.add('active');
-                
-                // Auto-foco inteligente
-                const input = dialog.querySelector('input');
-                const confirmBtn = dialog.querySelector('[data-action="confirm"]');
-                const cancelBtn = dialog.querySelector('[data-action="cancel"]');
-
-                if (input) input.focus();
-                else if (type === 'danger' && cancelBtn) cancelBtn.focus();
-                else if (confirmBtn) confirmBtn.focus();
-            });
-
-            // 6. Callback de inicialización (para lógica custom como timers)
             if (typeof onReady === 'function') {
-                onReady(dialog);
+                onReady(Dialog.elements.wrapper);
             }
         });
     },
 
-    _initDragLogic: (container) => {
-        // Lógica de arrastre móvil (Swipe to close)
-        let startY = 0, currentY = 0, isDragging = false;
+    showLoading: (text = 'Procesando...') => {
+        if (!Dialog._ensureReady()) return;
+        Dialog._render('loading', { title: text });
+        Dialog._show();
+    },
 
-        container.addEventListener('touchstart', (e) => {
-            if (window.innerWidth > 468 || !e.target.closest('[data-action="drag-handle"]')) return;
-            startY = e.touches[0].clientY;
+    close: () => {
+        const overlay = Dialog.elements.overlay;
+        const container = Dialog.elements.container;
+
+        if (overlay) {
+            overlay.classList.remove('active');
+            if (container) {
+                container.classList.remove('closing');
+                container.style.transform = ''; 
+            }
+            
+            if (Dialog.cleanupTimer) clearTimeout(Dialog.cleanupTimer);
+            
+            // 2. MODIFICADO: Destrucción total al cerrar
+            Dialog.cleanupTimer = setTimeout(() => {
+                if (overlay && overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+                // Limpiar referencias
+                Dialog.elements.overlay = null;
+                Dialog.elements.container = null;
+                Dialog.elements.wrapper = null;
+            }, 200); // Esperar que termine la transición CSS (0.2s)
+        }
+    },
+
+    _render: (templateKey, data) => {
+        const wrapper = Dialog.elements.wrapper;
+        const pillHTML = `<div class="component-dialog-drag-zone" data-action="drag-handle"><div class="component-dialog-drag-handle"></div></div>`;
+        
+        let renderFn = DialogTemplates[templateKey];
+        if (!renderFn) renderFn = DialogTemplates['default'];
+        
+        wrapper.innerHTML = pillHTML + renderFn(data);
+        Dialog._bindDragEvents();
+
+        const elMsg = wrapper.querySelector('[data-element="message"]');
+        if (elMsg) {
+            elMsg.style.display = data.message ? 'block' : 'none';
+        }
+        
+        wrapper.className = 'component-dialog';
+    },
+
+    _show: () => {
+        if (Dialog.cleanupTimer) clearTimeout(Dialog.cleanupTimer);
+        // Forzar reflow para que la animación CSS funcione en elementos recién creados
+        void Dialog.elements.overlay.offsetWidth; 
+        Dialog.elements.overlay.classList.add('active');
+    },
+
+    _bindDragEvents: () => {
+        // ... (Tu lógica de arrastre existente se mantiene igual) ...
+        const handle = Dialog.elements.wrapper.querySelector('.component-dialog-drag-zone');
+        const container = Dialog.elements.container;
+        if (!handle || !container) return;
+
+        let startY = 0;
+        let currentY = 0;
+        let isDragging = false;
+        let containerHeight = 0;
+
+        const startDrag = (clientY) => {
+            if (window.innerWidth > 468) return;
+            startY = clientY;
+            containerHeight = container.offsetHeight;
             isDragging = true;
-            container.style.transition = 'none';
-        }, { passive: false });
+            container.style.transition = 'none'; 
+        };
 
-        container.addEventListener('touchmove', (e) => {
+        const moveDrag = (clientY, event) => {
             if (!isDragging) return;
-            const deltaY = e.touches[0].clientY - startY;
+            const deltaY = clientY - startY;
             if (deltaY > 0) {
-                if(e.cancelable) e.preventDefault();
+                if (event.cancelable) event.preventDefault(); 
                 container.style.transform = `translateY(${deltaY}px)`;
                 currentY = deltaY;
             }
-        }, { passive: false });
+        };
 
-        container.addEventListener('touchend', () => {
+        const endDrag = () => {
             if (!isDragging) return;
             isDragging = false;
             container.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
-            
-            if (currentY > 100) {
-                Dialog.close(); // Se considera cancelación
+            if (currentY > Math.min(containerHeight * 0.3, 100)) {
+                container.classList.add('closing');
+                Dialog.close(); 
             } else {
                 container.style.transform = '';
             }
             currentY = 0;
+        };
+
+        handle.addEventListener('touchstart', (e) => startDrag(e.touches[0].clientY), { passive: false });
+        handle.addEventListener('touchmove', (e) => moveDrag(e.touches[0].clientY, e), { passive: false });
+        handle.addEventListener('touchend', endDrag);
+        
+        handle.addEventListener('mousedown', (e) => {
+            startDrag(e.clientY);
+            const onMove = (ev) => moveDrag(ev.clientY, ev);
+            const onUp = () => {
+                endDrag();
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
         });
-    }
+    },
+
+    _initDragLogic: () => {}
 };

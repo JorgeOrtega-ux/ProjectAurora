@@ -1,55 +1,104 @@
 /**
  * public/assets/js/core/dialog-definitions.js
- * Definiciones de plantillas HTML y configuraciones de diálogos.
  */
 
+import { I18n } from './i18n-manager.js';
+
+// 1. PLANTILLAS HTML (Estructura)
 export const DialogTemplates = {
-    BASE: `
-        <div class="component-dialog-drag-zone" data-action="drag-handle">
-            <div class="component-dialog-drag-handle"></div>
-        </div>
+    default: (data) => `
         <div class="component-dialog-body">
-            <h1 class="component-dialog-title" data-element="title"></h1>
-            <p class="component-dialog-message" data-element="message"></p>
+            <h1 class="component-dialog-title" data-element="title">${data.title || ''}</h1>
+            <p class="component-dialog-message" data-element="message">${data.message || ''}</p>
             <div data-element="content-area"></div>
         </div>
-        <div class="component-dialog-footer" data-element="footer"></div>
-    `,
-    
-    // Contenidos específicos para inyectar en content-area
-    VERIFY_EMAIL: `
-        <div class="component-input-wrapper mt-16">
-            <input type="text" data-element="input-code" class="component-text-input" placeholder="000 000" maxlength="6" style="text-align: center; letter-spacing: 4px; font-size: 18px;" autocomplete="off">
+        <div class="component-dialog-footer">
+            <button type="button" class="component-button btn-cancel" data-action="cancel">${data.cancelText || 'Cancelar'}</button>
+            <button type="button" class="component-button primary btn-confirm" data-action="confirm">${data.confirmText || 'Confirmar'}</button>
         </div>
-        <p style="text-align: center; font-size: 13px; margin-top: 8px;">
-            <a href="#" data-action="resend-code" style="text-decoration: none; color: var(--action-primary); font-weight: 500;">Reenviar código</a> 
-            <span data-element="resend-timer" style="color: var(--text-secondary);"></span>
-        </p>
     `,
-
-    LOADING: `
-        <div style="display: flex; align-items: center; gap: 16px;">
+    'verify-email': (data) => `
+        <div class="component-dialog-body">
+            <h1 class="component-dialog-title" data-element="title">${data.title || ''}</h1>
+            <p class="component-dialog-message" data-element="message">${data.message || ''}</p>
+            <div class="component-input-wrapper mt-16">
+                <input type="text" id="verify-email-code" class="component-text-input" placeholder="000 000" maxlength="6" style="text-align: center; letter-spacing: 4px; font-size: 18px;">
+            </div>
+            <p style="text-align: center; font-size: 13px; margin-top: 8px;">
+                <a href="#" id="btn-dialog-resend" style="text-decoration: none; color: var(--action-primary); font-weight: 500;">Reenviar código</a> 
+                <span id="dialog-resend-timer" style="color: var(--text-secondary);"></span>
+            </p>
+        </div>
+        <div class="component-dialog-footer">
+            <button type="button" class="component-button btn-cancel" data-action="cancel">Cancelar</button>
+            <button type="button" class="component-button primary btn-confirm" data-action="confirm">Verificar</button>
+        </div>
+    `,
+    loading: (data) => `
+        <div style="display: flex; align-items: center; gap: 16px; padding: 10px 0;">
             <div class="component-spinner-large"></div>
-            <h1 class="component-dialog-title" data-element="title">Cargando...</h1>
+            <h1 class="component-dialog-title" style="font-size: 18px; margin:0;">${data.title || 'Cargando...'}</h1>
         </div>
     `
 };
 
+// 2. DEFINICIONES DE DATOS (Textos) -> ¡AQUÍ FALTABAN LOS TÍTULOS!
 export const DialogDefinitions = {
-    // Configuraciones predefinidas
     Profile: {
-        DELETE_AVATAR: { type: 'danger', confirmText: 'Sí, eliminar', cancelText: 'Cancelar' },
-        VERIFY_EMAIL: { type: 'verify-email', confirmText: 'Verificar', cancelText: 'Cancelar' }
+        DELETE_AVATAR: {
+            title: '¿Eliminar foto de perfil?',
+            get message() { return I18n.t('js.profile.confirm_delete'); },
+            type: 'danger',
+            confirmText: 'Sí, eliminar',
+            cancelText: 'Cancelar'
+        },
+        VERIFY_EMAIL: {
+            get title() { return I18n.t('settings.profile.verify_email_title'); },
+            get message() { return I18n.t('settings.profile.verify_email_msg'); },
+            type: 'verify-email', // Usa el template 'verify-email' de arriba
+            confirmText: 'Verificar',
+            cancelText: 'Cancelar'
+        }
     },
     Devices: {
-        REVOKE_ALL: { type: 'danger', confirmText: 'Cerrar todas', cancelText: 'Cancelar' },
-        REVOKE_ONE: { type: 'danger', confirmText: 'Cerrar sesión', cancelText: 'Cancelar' }
+        REVOKE_ALL: {
+            title: '¿Cerrar todas las sesiones?',
+            get message() { return I18n.t('js.devices.confirm_revoke_all'); },
+            type: 'danger',
+            confirmText: 'Cerrar todas',
+            cancelText: 'Cancelar'
+        },
+        REVOKE_ONE: {
+            title: '¿Cerrar sesión?',
+            get message() { return I18n.t('js.devices.confirm_revoke_one'); },
+            type: 'danger',
+            confirmText: 'Cerrar sesión',
+            cancelText: 'Cancelar'
+        }
     },
     Account: {
-        DELETE: { type: 'danger', confirmText: 'SÍ, ELIMINAR', cancelText: 'Cancelar' }
+        DELETE: {
+            title: '¿Eliminar cuenta permanentemente?',
+            get message() { return I18n.t('js.delete.confirm_final'); },
+            type: 'danger',
+            confirmText: 'SÍ, ELIMINAR',
+            cancelText: 'Cancelar'
+        }
     },
     TwoFactor: {
-        DISABLE: { type: 'danger', confirmText: 'Desactivar', cancelText: 'Cancelar' },
-        REGENERATE: { type: 'default', confirmText: 'Generar nuevos', cancelText: 'Mantener actuales' }
+        DISABLE: {
+            title: '¿Desactivar 2FA?',
+            get message() { return I18n.t('js.2fa.confirm_disable'); },
+            type: 'danger',
+            confirmText: 'Desactivar',
+            cancelText: 'Cancelar'
+        },
+        REGENERATE: {
+            title: '¿Generar nuevos códigos?',
+            message: 'Ya generaste códigos anteriormente. Si generas nuevos, los anteriores dejarán de funcionar.',
+            type: 'default',
+            confirmText: 'Generar nuevos',
+            cancelText: 'Mantener actuales'
+        }
     }
 };
