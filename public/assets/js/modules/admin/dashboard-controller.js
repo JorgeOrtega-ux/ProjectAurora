@@ -28,6 +28,36 @@ function initEvents() {
             });
         });
     }
+
+    // [NUEVO] Escuchar actualizaciones en tiempo real desde Python (Socket)
+    // Esto corrige la "Paradoja del Refresh" actualizando la UI instantáneamente
+    document.removeEventListener('socket:stats_update', handleRealtimeUpdate);
+    document.addEventListener('socket:stats_update', handleRealtimeUpdate);
+}
+
+// Función separada para manejar la actualización en vivo
+function handleRealtimeUpdate(e) {
+    // Si el usuario ya no está en el dashboard (cambió de pestaña), no hacemos nada
+    if (!_container || !document.body.contains(_container)) return;
+
+    const stats = e.detail.message;
+    console.log("⚡ Dashboard: Actualización en tiempo real recibida", stats);
+
+    if (stats) {
+        // Actualizamos solo los contadores de conexión
+        // Usamos updateValue que ya existe abajo
+        updateValue('online_total', stats.online_total);
+        updateValue('online_users', stats.online_users);
+        updateValue('online_guests', stats.online_guests);
+        
+        // Efecto visual opcional: parpadeo suave para indicar cambio
+        const card = _container.querySelector('[data-stat="online_total"]')?.closest('.component-stat-card');
+        if (card) {
+            card.style.transition = 'background-color 0.3s';
+            card.style.backgroundColor = 'var(--bg-hover-light)';
+            setTimeout(() => { card.style.backgroundColor = ''; }, 300);
+        }
+    }
 }
 
 async function loadStats() {
@@ -59,6 +89,9 @@ function renderStats(stats) {
 }
 
 function updateValue(key, value) {
+    // Verificamos que el valor no sea undefined para no borrar datos si faltan en el payload
+    if (value === undefined || value === null) return;
+
     const el = _container.querySelector(`[data-stat="${key}"]`);
     if (el) el.textContent = value;
 }

@@ -125,7 +125,7 @@ async def broadcast_to_everyone_local(msg_type, content=None):
             count += 1
         except: pass
     
-    logging.info(f"📢 Mensaje enviado a {count} clientes conectados.")
+    # logging.info(f"📢 Mensaje enviado a {count} clientes conectados.")
 
 async def redis_listener_loop():
     """
@@ -148,7 +148,7 @@ async def redis_listener_loop():
                     s_id = str(data.get('session_id'))
                     await kick_session_local(u_id, s_id)
 
-                elif cmd == 'LOGOUT_SESSION': # [NUEVO] Manejador de Logout Manual
+                elif cmd == 'LOGOUT_SESSION': 
                     u_id = str(data.get('user_id'))
                     s_id = str(data.get('session_id'))
                     await logout_session_local(u_id, s_id)
@@ -166,6 +166,38 @@ async def redis_listener_loop():
             except Exception as e:
                 logging.error(f"Error procesando mensaje Pub/Sub: {e}")
 
+# --- ACTUALIZACIÓN DE ESTADÍSTICAS (Con Push en vivo) ---
+async def update_stats_in_redis():
+    """Actualiza los contadores en Redis Y envía los datos nuevos al Frontend (Push)"""
+    try:
+        r_client = await get_redis_client()
+        
+        # Contar usuarios únicos (no sockets, sino IDs únicos)
+        total_users = len(connected_users)
+        total_guests = len(connected_guests)
+        
+        # 1. Guardar en Redis (Persistencia)
+        await r_client.hset('aurora:stats:realtime', mapping={
+            'online_users': total_users,
+            'online_guests': total_guests
+        })
+        
+        await r_client.aclose() 
+        
+        # logging.info(f"📊 Stats actualizados: Usuarios {total_users} | Invitados {total_guests}")
+
+        # 2. ENVIAR A TODOS LOS CLIENTES (Push en Vivo)
+        # Esto arregla el problema de que al refrescar veas "0"
+        stats_payload = {
+            'online_users': total_users,
+            'online_guests': total_guests,
+            'online_total': total_users + total_guests
+        }
+        await broadcast_to_everyone_local("stats_update", stats_payload)
+
+    except Exception as e:
+        logging.error(f"Error actualizando stats: {e}")
+
 async def ws_handler(websocket):
     path = ""
     try:
@@ -175,14 +207,18 @@ async def ws_handler(websocket):
 
     r_client = await get_redis_client()
     user_id, session_id = await validate_and_consume_token(path, r_client)
-    await r_client.close()
+    
+    await r_client.aclose()
 
     if not user_id:
         await websocket.close(code=1008, reason="Authentication Failed")
         return
 
+    # --- LÓGICA INVITADO ---
     if user_id == 'GUEST':
         connected_guests.add(websocket)
+        await update_stats_in_redis() # Actualizar al conectar
+        
         logging.info(f"Invitado conectado. Total invitados: {len(connected_guests)}")
         try:
             await websocket.send(json.dumps({"type": "connection_established", "mode": "guest"}))
@@ -191,8 +227,10 @@ async def ws_handler(websocket):
         finally:
             if websocket in connected_guests:
                 connected_guests.remove(websocket)
+                await update_stats_in_redis() # Actualizar al desconectar
         return
 
+    # --- LÓGICA USUARIO REGISTRADO ---
     user_id = str(user_id)
     session_id = str(session_id)
     
@@ -200,6 +238,8 @@ async def ws_handler(websocket):
     if session_id not in connected_users[user_id]: connected_users[user_id][session_id] = set()
     
     connected_users[user_id][session_id].add(websocket)
+    await update_stats_in_redis() # Actualizar al conectar
+    
     logging.info(f"User {user_id} (Session {session_id}) conectado.")
 
     try:
@@ -210,20 +250,29 @@ async def ws_handler(websocket):
         if user_id in connected_users and session_id in connected_users[user_id]:
             if websocket in connected_users[user_id][session_id]:
                 connected_users[user_id][session_id].remove(websocket)
+            
+            # Limpieza de estructuras vacías
             if not connected_users[user_id][session_id]:
                 del connected_users[user_id][session_id]
             if not connected_users[user_id]:
                 del connected_users[user_id]
+                
+        # Actualizar stats solo si el usuario ya no tiene conexiones activas
+        # o simplemente actualizar siempre para asegurar consistencia
+        await update_stats_in_redis() 
+        
         logging.info(f"User {user_id} desconectado.")
 
 async def main():
-    logging.info(f"🚀 WS Servidor con Redis Backend iniciando en puerto {WS_PORT}...")
+    logging.info(f"🚀 WS Servidor iniciando en puerto {WS_PORT}...")
     
     # 1. Iniciar el listener de Pub/Sub en background
     asyncio.create_task(redis_listener_loop())
     
-    # 2. Iniciar servidor WebSocket
-    async with websockets.serve(ws_handler, "0.0.0.0", WS_PORT):
+    # 2. Iniciar servidor WebSocket con Heartbeat (Mata-Fantasmas)
+    # ping_interval=20: Envía ping cada 20s
+    # ping_timeout=20: Si no responde en 20s, cierra la conexión y limpia memoria
+    async with websockets.serve(ws_handler, "0.0.0.0", WS_PORT, ping_interval=20, ping_timeout=20):
         await asyncio.Future()
 
 if __name__ == "__main__":
