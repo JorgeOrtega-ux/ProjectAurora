@@ -1702,4 +1702,39 @@ input:checked+.component-toggle-slider:before {
     .component-visual-box {
         width: 100%;
     }
+}/* Añadir al final o en la sección de Dialogs */
+
+/* Animación de entrada para el overlay */
+.component-overlay {
+    /* ... estilos existentes ... */
+    /* Aseguramos que la transición funcione al agregar la clase .active */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.component-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Animación de entrada para el wrapper */
+.component-dialog-wrapper {
+    /* ... estilos existentes ... */
+    transform: scale(0.95) translateY(10px);
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.component-overlay.active .component-dialog-wrapper {
+    transform: scale(1) translateY(0);
+}
+
+/* Fix para modo oscuro en botones generados dinámicamente */
+[data-theme="dark"] .component-button.primary {
+    background-color: transparent;
+    border: 1px solid var(--border-light);
+    color: var(--text-primary);
+}
+[data-theme="dark"] .component-button.primary:hover {
+    background-color: var(--bg-hover-light);
 }

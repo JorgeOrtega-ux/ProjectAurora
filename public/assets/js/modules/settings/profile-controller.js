@@ -6,7 +6,7 @@ import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { I18n } from '../../core/i18n-manager.js';
 import { Dialog } from '../../core/dialog-manager.js';
-import { DialogDefinitions } from '../../core/dialog-definitions.js';
+import { DialogDefinitions, DialogTemplates } from '../../core/dialog-definitions.js';
 
 // Atajo
 const SettingsAPI = ApiService.Routes.Settings;
@@ -232,16 +232,20 @@ async function handleEmailVerification(targetField) {
 }
 
 async function showVerificationDialog(targetField, initialCooldown) {
+    // Configuración del diálogo
     const dialogOptions = {
         ...DialogDefinitions.Profile.VERIFY_EMAIL,
-        onReady: (wrapper) => bindResendLogic(wrapper, initialCooldown)
+        // Callback para vincular lógica interna (Timer y Reenvío)
+        onReady: (dialogElement) => bindResendLogic(dialogElement, initialCooldown)
     };
 
-    const confirmed = await Dialog.confirm(dialogOptions);
+    // Esperar respuesta (puede ser el valor del input o false)
+    const result = await Dialog.confirm(dialogOptions);
     
-    if (confirmed) {
-        const inputCode = document.getElementById('verify-email-code');
-        const code = inputCode ? inputCode.value.trim() : '';
+    // Si hay resultado (no es false/cancelado)
+    if (result) {
+        // En el nuevo DialogManager, si hay input, 'result' es el valor string del input
+        const code = (typeof result === 'string') ? result.trim() : '';
 
         if (!code) {
             Toast.show(I18n.t('js.profile.email_code_req'), 'warning');
@@ -253,7 +257,6 @@ async function showVerificationDialog(targetField, initialCooldown) {
         const verifyData = new FormData();
         verifyData.append('code', code);
 
-        // USO DE API ROUTES
         const verifyRes = await ApiService.post(SettingsAPI.VerifyEmailCode, verifyData);
         Dialog.close();
 
@@ -267,8 +270,12 @@ async function showVerificationDialog(targetField, initialCooldown) {
 }
 
 function bindResendLogic(wrapper, initialCooldown) {
-    const btnResend = wrapper.querySelector('#btn-dialog-resend');
-    const timerSpan = wrapper.querySelector('#dialog-resend-timer');
+    // ACTUALIZACIÓN: Selectores data-action/data-element
+    const btnResend = wrapper.querySelector('[data-action="resend-code"]');
+    const timerSpan = wrapper.querySelector('[data-element="resend-timer"]');
+    
+    if (!btnResend || !timerSpan) return;
+
     let resendInterval = null;
 
     const startTimer = (seconds) => {
@@ -298,14 +305,12 @@ function bindResendLogic(wrapper, initialCooldown) {
 
     btnResend.addEventListener('click', async (e) => {
         e.preventDefault();
-        
         btnResend.innerText = 'Enviando...';
         
         const formData = new FormData();
         formData.append('force_resend', 'true');
 
         try {
-            // USO DE API ROUTES
             const res = await ApiService.post(SettingsAPI.RequestEmailVerification, formData);
             btnResend.innerText = 'Reenviar código';
 

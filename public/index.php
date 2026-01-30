@@ -192,6 +192,5 @@ if ($showMaintenanceScreen) {
             </div>
         </div>
     </div>
-    <?php include __DIR__ . '/../includes/layouts/dialogs.php'; ?>
 </body>
 </html>
