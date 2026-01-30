@@ -36,8 +36,6 @@ class SettingsService {
             return ['success' => false, 'message' => $this->i18n->t('api.avatar_dimensions_limit', [$maxDim])]; 
         }
 
-        // [NOTA] Este rate limit usa otra tabla (profile_changes), no security_logs.
-        // Si quisieras migrar este, se requeriría una lógica diferente.
         if ($this->checkRateLimitExceeded('avatar_update', 24, 3)) { 
             return ['success' => false, 'message' => $this->i18n->t('api.avatar_rate_limit')]; 
         }
@@ -122,14 +120,19 @@ class SettingsService {
         $stmt->execute([$this->userId]);
         $email = $stmt->fetchColumn();
 
-        $stmtCode = $this->pdo->prepare("SELECT created_at FROM verification_codes WHERE identifier = ? AND code_type = 'email_update_auth' AND expires_at > NOW() ORDER BY id DESC LIMIT 1");
+        // [MODIFICADO] Calcular el tiempo restante en SQL para evitar problemas de timezone entre PHP y DB
+        $stmtCode = $this->pdo->prepare("
+            SELECT created_at, (60 - TIMESTAMPDIFF(SECOND, created_at, NOW())) as remaining_seconds 
+            FROM verification_codes 
+            WHERE identifier = ? AND code_type = 'email_update_auth' AND expires_at > NOW() 
+            ORDER BY id DESC LIMIT 1
+        ");
         $stmtCode->execute([$email]);
         $lastCode = $stmtCode->fetch();
 
         if ($lastCode) {
-            $createdAt = strtotime($lastCode['created_at']);
-            $elapsed = time() - $createdAt;
-            $cooldown = 60 - $elapsed;
+            // Usamos el cálculo de la DB. Si es negativo, significa que ya pasaron los 60s.
+            $cooldown = (int)$lastCode['remaining_seconds'];
             
             return [
                 'success' => true, 
@@ -164,20 +167,18 @@ class SettingsService {
 
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_general_rate_limit', '10');
         
-        // [MODIFICADO] Redis check
         if ($this->checkSecurityLimit('email_change_req', 3, 10)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
 
-        $stmtTime = $this->pdo->prepare("SELECT created_at FROM verification_codes WHERE identifier = ? AND code_type = 'email_update_auth' ORDER BY id DESC LIMIT 1");
+        // [MODIFICADO] Validación de tiempo estricta en SQL
+        // Verifica si existe algún código creado en los últimos 60 segundos
+        $stmtTime = $this->pdo->prepare("SELECT id FROM verification_codes WHERE identifier = ? AND code_type = 'email_update_auth' AND created_at > (NOW() - INTERVAL 60 SECOND)");
         $stmtTime->execute([$currentEmail]);
-        $lastRequest = $stmtTime->fetch();
         
-        if ($lastRequest) {
-            $secondsSince = time() - strtotime($lastRequest['created_at']);
-            if ($secondsSince < 60) {
-                return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
-            }
+        if ($stmtTime->fetch()) {
+            // Si encuentra uno, bloquea inmediatamente, independientemente de la hora de PHP
+            return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
 
         $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
@@ -194,7 +195,6 @@ class SettingsService {
         try {
             $insert->execute([$currentEmail, $code, $expiresAt]);
             
-            // [MODIFICADO] Log con TTL 10 min
             $this->logSecurityAction('email_change_req', 10);
 
             $subject = "Verifica tu identidad - Project Aurora";
@@ -295,7 +295,6 @@ class SettingsService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
         
-        // [MODIFICADO] Redis Check
         if ($this->checkSecurityLimit('password_verify_fail', $limit, $duration)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
@@ -309,7 +308,6 @@ class SettingsService {
             return ['success' => true, 'message' => $this->i18n->t('api.pass_correct')];
         }
         
-        // [MODIFICADO] Log con duración
         $this->logSecurityAction('password_verify_fail', $duration);
         return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
     }
@@ -318,7 +316,6 @@ class SettingsService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
         
-        // [MODIFICADO] Redis check
         if ($this->checkSecurityLimit('password_verify_fail', $limit, $duration)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
@@ -334,7 +331,6 @@ class SettingsService {
         $user = $stmt->fetch();
         
         if (!$user || !password_verify($currentPass, $user['password'])) {
-            // [MODIFICADO] Log con duración
             $this->logSecurityAction('password_verify_fail', $duration);
             return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
         }
@@ -353,7 +349,6 @@ class SettingsService {
     public function updatePreference($key, $value) {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_general_rate_limit', '10');
         
-        // [MODIFICADO] Redis check
         if ($this->checkSecurityLimit('pref_update', $limit, 1)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
@@ -392,7 +387,6 @@ class SettingsService {
             if (!isset($_SESSION['preferences'])) $_SESSION['preferences'] = [];
             $_SESSION['preferences'][$key] = ($key === 'open_links_new_tab' || $key === 'extended_toast') ? (bool)$dbValue : $dbValue;
 
-            // [MODIFICADO] Log con duración 1 min
             $this->logSecurityAction('pref_update', 1); 
 
             return ['success' => true, 'message' => $this->i18n->t('api.pref_saved')];
@@ -402,7 +396,6 @@ class SettingsService {
     }
 
     public function init2fa() {
-        // [MODIFICADO] Redis check (TTL 60 min)
         if ($this->checkSecurityLimit('2fa_init_attempt', 10, 60)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
@@ -419,7 +412,6 @@ class SettingsService {
 
         $otpauthUrl = "otpauth://totp/{$encodedIssuer}:{$encodedUser}?secret={$secret}&issuer={$encodedIssuer}";
 
-        // [MODIFICADO] Log con duración 60 min
         $this->logSecurityAction('2fa_init_attempt', 60);
         
         return ['success' => true, 'message' => $this->i18n->t('api.qr_scan'), 'otpauth_url' => $otpauthUrl, 'secret' => $secret];
@@ -429,7 +421,6 @@ class SettingsService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        // [MODIFICADO] Redis check
         if ($this->checkSecurityLimit('2fa_verify_attempt', $limit, $duration)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
@@ -456,7 +447,6 @@ class SettingsService {
             return ['success' => false, 'message' => $this->i18n->t('api.pic_db_error')];
         }
         
-        // [MODIFICADO] Log con duración
         $this->logSecurityAction('2fa_verify_attempt', $duration);
         return ['success' => false, 'message' => $this->i18n->t('api.code_invalid')];
     }
@@ -489,7 +479,6 @@ class SettingsService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        // [MODIFICADO] Redis check
         if ($this->checkSecurityLimit('2fa_regen_codes', 3, $duration)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
@@ -498,7 +487,6 @@ class SettingsService {
         $stmt->execute([$this->userId]);
         $user = $stmt->fetch();
         if (!$user || !password_verify($password, $user['password'])) {
-            // [MODIFICADO] Log con duración
             $this->logSecurityAction('2fa_regen_codes_fail', $duration);
             return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
         }
@@ -512,7 +500,6 @@ class SettingsService {
         $jsonCodes = json_encode($hashedCodes);
         $update = $this->pdo->prepare("UPDATE users SET two_factor_recovery_codes = ? WHERE id = ?");
         if ($update->execute([$jsonCodes, $this->userId])) {
-            // [MODIFICADO] Log con duración
             $this->logSecurityAction('2fa_regen_codes', $duration);
             return ['success' => true, 'message' => $this->i18n->t('api.recovery_regenerated'), 'recovery_codes' => $recoveryCodes];
         } else {
@@ -579,7 +566,6 @@ class SettingsService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        // [MODIFICADO] Redis check
         if ($this->checkSecurityLimit('account_delete_attempt', $limit, $duration * 2)) { 
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration * 2])];
         }
@@ -588,7 +574,6 @@ class SettingsService {
         $stmt->execute([$this->userId]);
         $user = $stmt->fetch();
         if (!$user || !password_verify($password, $user['password'])) {
-            // [MODIFICADO] Log con duración
             $this->logSecurityAction('account_delete_attempt', $duration * 2);
             return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
         }
@@ -621,10 +606,6 @@ class SettingsService {
         return ($stmt->fetchColumn() >= $limit);
     }
     
-    // =========================================================
-    // NUEVA LÓGICA DE RATE LIMITING (HÍBRIDO REDIS/SQL)
-    // =========================================================
-
     private function incrementRedisCounter($key, $minutes) {
         if (!$this->redis) return;
         try {
@@ -638,7 +619,6 @@ class SettingsService {
     }
 
     public function checkSecurityLimit($actionType, $limit, $minutes) {
-        // Redis First Strategy
         if ($this->redis) {
             $ip = $this->getClientIp();
             $ipKey = "rate_limit:{$actionType}:ip:{$ip}";
@@ -653,11 +633,9 @@ class SettingsService {
                 
                 return false;
             } catch (Exception $e) {
-                // Fallback to SQL
             }
         }
 
-        // Fallback SQL
         $ip = $this->getClientIp();
         $sql = "SELECT COUNT(*) FROM security_logs WHERE (user_identifier = ? OR ip_address = ?) AND action_type = ? AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
         $stmt = $this->pdo->prepare($sql);
@@ -668,14 +646,12 @@ class SettingsService {
     private function logSecurityAction($actionType, $minutes = 15) {
         $ip = $this->getClientIp();
         
-        // 1. Audit Log (SQL)
         try {
             $sql = "INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)";
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$this->userId, $actionType, $ip]);
         } catch (Exception $e) { /* Log error */ }
 
-        // 2. Redis Counters
         $ipKey = "rate_limit:{$actionType}:ip:{$ip}";
         $userKey = "rate_limit:{$actionType}:user:{$this->userId}";
 
@@ -683,8 +659,6 @@ class SettingsService {
         $this->incrementRedisCounter($userKey, $minutes);
     }
     
-    // =========================================================
-
     private function deleteOldAvatar($currentPath) {
         if ($currentPath && file_exists(__DIR__ . '/../../' . $currentPath)) {
             @unlink(__DIR__ . '/../../' . $currentPath);
