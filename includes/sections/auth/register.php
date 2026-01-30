@@ -81,9 +81,9 @@ if ($isStep2 && !$hasDataForStep2) {
             <button type="button" id="btn-finish" class="component-button component-button--large primary"><?php echo $i18n->t('auth.register.btn.finish'); ?></button>
 
             <div class="component-text-footer">
-                <a href="#" id="btn-resend-code" class="link-disabled" style="pointer-events: none; color: rgb(153, 153, 153); text-decoration: none; font-size: 14px;">
+                <span id="btn-resend-code" class="component-link-action link-disabled" role="button" tabindex="0" style="pointer-events: none; color: rgb(153, 153, 153); font-size: 14px;">
                     <?php echo $i18n->t('auth.register.resend_code'); ?> <span id="register-timer"></span>
-                </a>
+                </span>
             </div>
 
         <?php elseif ($isStep2): ?>

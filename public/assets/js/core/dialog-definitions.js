@@ -27,9 +27,9 @@ export const DialogTemplates = {
             </div>
             
             <p style="text-align: center; font-size: 13px; margin-top: 12px;">
-                <a href="#" data-action="resend-code" id="btn-dialog-resend" style="text-decoration: none; color: var(--action-primary); font-weight: 500;">
+                <span data-action="resend-code" id="btn-dialog-resend" class="component-link-action" role="button" tabindex="0" style="color: var(--action-primary);">
                     Reenviar código de verificación <span data-element="resend-timer" id="dialog-resend-timer" style="margin-left: 4px;"></span>
-                </a>
+                </span>
             </p>
         </div>
         <div class="component-dialog-footer">

@@ -20,9 +20,9 @@
         <div class="component-text-footer">
             <a href="<?php echo $basePath; ?>login" id="link-back-login" data-nav="login"><?php echo $i18n->t('auth.recover.back_login'); ?></a>
 
-            <a href="#" id="link-resend-recovery" class="link-disabled" style="display: none; pointer-events: none; color: rgb(153, 153, 153); text-decoration: none; font-size: 14px;">
+            <span id="link-resend-recovery" class="component-link-action link-disabled" role="button" tabindex="0" style="display: none; pointer-events: none; color: rgb(153, 153, 153); font-size: 14px;">
                 Reenviar correo de restablecimiento <span id="recovery-timer">(60)</span>
-            </a>
+            </span>
         </div>
     </div>
 </div>
