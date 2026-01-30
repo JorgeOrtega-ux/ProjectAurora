@@ -7,15 +7,11 @@
         <div class="component-toolbar component-toolbar--primary">
             <div class="toolbar-group">
                 <div class="component-toolbar__side component-toolbar__side--left">
-                    <button class="component-button ghost icon-only" data-action="back-to-backups" title="Volver">
-                        <span class="material-symbols-rounded">arrow_back</span>
-                    </button>
                     <div class="component-toolbar-title">Configuración Automática</div>
                 </div>
                 <div class="component-toolbar__side component-toolbar__side--right">
-                    <button class="component-button primary" id="btn-save-backup-config">
+                    <button class="header-button" id="btn-save-backup-config">
                         <span class="material-symbols-rounded">save</span>
-                        Guardar
                     </button>
                 </div>
             </div>

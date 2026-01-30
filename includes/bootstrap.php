@@ -21,6 +21,11 @@ if (file_exists($envFile)) {
     }
 }
 
+// [CORRECCIÓN] Establecer la Zona Horaria de PHP
+// Usa la variable APP_TIMEZONE del .env o 'America/Mexico_City' por defecto
+$timezone = $_ENV['APP_TIMEZONE'] ?? 'America/Mexico_City';
+date_default_timezone_set($timezone);
+
 // 3. Configuración de Redis
 $redisHost = $_ENV['REDIS_HOST'] ?? '127.0.0.1';
 $redisPort = $_ENV['REDIS_PORT'] ?? 6379;

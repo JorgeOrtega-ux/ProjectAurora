@@ -26,11 +26,23 @@ $user = $_ENV['DB_USER'] ?? 'root';
 $pass = $_ENV['DB_PASS'] ?? '';
 $charset = 'utf8mb4';
 
+// [CORRECCIÓN] Calcular el offset de la zona horaria actual de PHP (ej: "-06:00")
+// Esto asegura que MySQL use la misma zona horaria que configuraste en bootstrap.php
+$now = new DateTime();
+$mins = $now->getOffset() / 60;
+$sgn = ($mins < 0 ? -1 : 1);
+$mins = abs($mins);
+$hrs = floor($mins / 60);
+$mins -= $hrs * 60;
+$offset = sprintf('%+d:%02d', $hrs*$sgn, $mins);
+
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     PDO::ATTR_EMULATE_PREPARES   => false,
+    // [NUEVO] Sincronizar la sesión de MySQL con la zona horaria de PHP
+    PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '$offset'"
 ];
 
 try {
