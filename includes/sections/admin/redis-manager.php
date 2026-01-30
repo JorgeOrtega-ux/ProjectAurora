@@ -8,9 +8,6 @@
             
             <div class="toolbar-group">
                 <div class="component-toolbar__side component-toolbar__side--left">
-                    <button class="header-button" data-nav="admin/server" data-tooltip="Volver a Configuración">
-                        <span class="material-symbols-rounded">arrow_back</span>
-                    </button>
                     <div class="component-toolbar-title">
                         Gestor de Redis
                     </div>

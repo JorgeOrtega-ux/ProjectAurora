@@ -297,7 +297,15 @@ async function uploadAvatar() {
 }
 
 async function deleteAvatar() {
-    if (!confirm('¿Eliminar avatar personalizado de este usuario?')) return;
+    const confirmed = await Dialog.confirm({
+        title: '¿Eliminar avatar?',
+        message: 'Se eliminará el avatar personalizado de este usuario y se generará uno por defecto.',
+        type: 'danger',
+        confirmText: 'Eliminar',
+        cancelText: 'Cancelar'
+    });
+
+    if (!confirmed) return;
 
     const formData = new FormData();
     formData.append('target_id', _targetUserId);
