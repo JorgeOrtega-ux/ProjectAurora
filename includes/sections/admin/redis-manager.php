@@ -29,31 +29,60 @@
         </div>
     </div>
 
-    <div class="component-card component-card--grouped mt-4" id="redis-stats-container">
-        <div class="component-group-item">
-            <div class="component-stats-grid">
-                <div class="component-stat-box">
-                    <span class="component-stat-label">Versión</span>
-                    <strong class="component-stat-value" data-stat="version">...</strong>
-                </div>
-                <div class="component-stat-box">
-                    <span class="component-stat-label">Uptime</span>
-                    <strong class="component-stat-value" data-stat="uptime">...</strong>
-                </div>
-                <div class="component-stat-box">
-                    <span class="component-stat-label">Memoria</span>
-                    <strong class="component-stat-value" data-stat="memory_used">...</strong>
-                </div>
-                <div class="component-stat-box">
-                    <span class="component-stat-label">Clientes</span>
-                    <strong class="component-stat-value" data-stat="connected_clients">...</strong>
-                </div>
-                <div class="component-stat-box">
-                    <span class="component-stat-label">Claves Totales</span>
-                    <strong class="component-stat-value" data-stat="total_keys">...</strong>
-                </div>
+    <div class="component-dashboard-grid mt-4" id="redis-stats-container">
+        
+        <div class="component-stat-card">
+            <div class="component-stat-header">
+                <span class="component-stat-title">Versión Redis</span>
+                <span class="material-symbols-rounded component-stat-icon">info</span>
+            </div>
+            <div class="component-stat-main-value" data-stat="version">...</div>
+            <div class="component-stat-footer">
+                <span class="component-trend-badge neutral">Estable</span>
             </div>
         </div>
+
+        <div class="component-stat-card">
+            <div class="component-stat-header">
+                <span class="component-stat-title">Tiempo Activo</span>
+                <span class="material-symbols-rounded component-stat-icon">timer</span>
+            </div>
+            <div class="component-stat-main-value" data-stat="uptime" style="font-size: 1.1rem; line-height: 1.4;">...</div>
+        </div>
+
+        <div class="component-stat-card">
+            <div class="component-stat-header">
+                <span class="component-stat-title">Memoria Usada</span>
+                <span class="material-symbols-rounded component-stat-icon" style="color: #0288d1;">memory</span>
+            </div>
+            <div class="component-stat-main-value" data-stat="memory_used">...</div>
+            <div class="component-stat-footer">
+                <span class="component-trend-text">Pico máx: <strong data-stat="memory_peak">...</strong></span>
+            </div>
+        </div>
+
+        <div class="component-stat-card">
+            <div class="component-stat-header">
+                <span class="component-stat-title">Conexiones</span>
+                <span class="material-symbols-rounded component-stat-icon">hub</span>
+            </div>
+            <div class="component-stat-main-value" data-stat="connected_clients">...</div>
+            <div class="component-stat-footer">
+                <span class="component-trend-text">Clientes activos</span>
+            </div>
+        </div>
+
+        <div class="component-stat-card">
+            <div class="component-stat-header">
+                <span class="component-stat-title">Total Claves</span>
+                <span class="material-symbols-rounded component-stat-icon" style="color: var(--action-primary);">vpn_key</span>
+            </div>
+            <div class="component-stat-main-value" data-stat="total_keys">...</div>
+            <div class="component-stat-footer">
+                <span class="component-trend-text">En base de datos actual</span>
+            </div>
+        </div>
+
     </div>
 
     <div class="component-card component-card--fill mt-4">

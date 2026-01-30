@@ -53,6 +53,7 @@ async function loadStats() {
             updateStat('version', res.stats.version);
             updateStat('uptime', res.stats.uptime);
             updateStat('memory_used', res.stats.memory_used);
+            updateStat('memory_peak', res.stats.memory_peak); // [NUEVO] Dato extra para el footer
             updateStat('connected_clients', res.stats.connected_clients);
             updateStat('total_keys', res.stats.total_keys);
         }
