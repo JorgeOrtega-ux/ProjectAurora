@@ -7,7 +7,7 @@ extract($services); // $pdo, $i18n, $redis
 require_once __DIR__ . '/../services/AdminService.php';
 require_once __DIR__ . '/../services/BackupService.php';
 require_once __DIR__ . '/../services/LogFileService.php';
-require_once __DIR__ . '/../services/RedisService.php'; // [NUEVO]
+require_once __DIR__ . '/../services/RedisService.php';
 
 if (!isset($_SESSION['user_id'])) {
     Utils::jsonResponse(['success' => false, 'message' => $i18n->t('api.session_expired')]);
@@ -20,16 +20,21 @@ if (!in_array($role, ['founder', 'administrator'])) {
     Utils::jsonResponse(['success' => false, 'message' => $i18n->t('errors.access_denied')]);
 }
 
-// Inyección de servicios
 $adminService = new AdminService($pdo, $i18n, $_SESSION['user_id'], $redis);
 $backupService = new BackupService($pdo, $i18n, $_SESSION['user_id'], $redis);
 $logFileService = new LogFileService(); 
-$redisService = new RedisService($redis); // [NUEVO]
+$redisService = new RedisService($redis);
 
 $action = $_POST['action'] ?? '';
 
 switch ($action) {
-    // ... (CASOS EXISTENTES: get_all_users, get_user_details, etc.) ...
+    // === NUEVO: DASHBOARD STATS ===
+    case 'get_dashboard_stats':
+        Utils::jsonResponse($adminService->getDashboardStats());
+        break;
+
+    // ... (MANTENER TODOS LOS CASOS EXISTENTES: get_all_users, etc.) ...
+    
     case 'get_all_users':
         $page = (int)($_POST['page'] ?? 1);
         $limit = (int)($_POST['limit'] ?? 20);
@@ -153,15 +158,13 @@ switch ($action) {
         Utils::jsonResponse($logFileService->getFilesContent($pathsArray));
         break;
 
-    // === [NUEVO] REDIS ===
+    // === REDIS ===
     case 'get_redis_stats':
         Utils::jsonResponse($redisService->getStats());
         break;
 
     case 'get_redis_keys':
         $pattern = $_POST['pattern'] ?? '*';
-        // Si el usuario no pone asteriscos, asumimos búsqueda exacta o parcial simple?
-        // Mejor dejar que el usuario use wildcards, pero default a *
         if (empty($pattern)) $pattern = '*';
         Utils::jsonResponse($redisService->getKeys($pattern));
         break;

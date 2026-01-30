@@ -3,6 +3,7 @@
  */
 
 export const ApiRoutes = {
+    // ... (Auth y Settings sin cambios) ...
     Auth: {
         RegisterStep1:    { route: 'auth.register_step_1' },
         RegisterStep2:    { route: 'auth.initiate_verify' },
@@ -39,6 +40,9 @@ export const ApiRoutes = {
     },
 
     Admin: {
+        // [NUEVO]
+        GetDashboardStats:  { route: 'admin.dashboard_stats' },
+
         GetUsers:           { route: 'admin.get_users' },
         GetDetails:         { route: 'admin.get_details' },
         UpdateProfile:      { route: 'admin.update_profile' },
@@ -71,7 +75,7 @@ export const ApiRoutes = {
         // Visor
         GetFileContent:   { route: 'admin.get_log_content' },
 
-        // [NUEVO] REDIS MANAGER
+        // REDIS MANAGER
         Redis: {
             GetStats:     { route: 'admin.redis_stats' },
             GetKeys:      { route: 'admin.redis_keys' },

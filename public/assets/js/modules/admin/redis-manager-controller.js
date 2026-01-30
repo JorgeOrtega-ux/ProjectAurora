@@ -93,29 +93,32 @@ async function loadKeys(pattern) {
 
 function renderKeysTable(keys, tbody) {
     if (keys.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="state-empty" style="text-align:center;">No se encontraron claves.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="state-empty" style="text-align:center; padding: 20px;">No se encontraron claves.</td></tr>`;
         return;
     }
 
     let html = '';
     keys.forEach(k => {
-        let typeColor = '#666';
-        if (k.type === 'string') typeColor = '#2e7d32'; // verde
-        if (k.type === 'hash') typeColor = '#1976d2';   // azul
-        if (k.type === 'list') typeColor = '#ed6c02';   // naranja
-        if (k.type === 'set') typeColor = '#9c27b0';    // morado
+        // Mapeo a clases genéricas component-badge--*
+        let colorClass = 'component-badge--gray';
+        if (k.type === 'string') colorClass = 'component-badge--green';
+        else if (k.type === 'hash') colorClass = 'component-badge--blue';
+        else if (k.type === 'list') colorClass = 'component-badge--orange';
+        else if (k.type === 'set') colorClass = 'component-badge--purple';
+        else if (k.type === 'zset') colorClass = 'component-badge--pink';
+        else if (k.type === 'stream') colorClass = 'component-badge--cyan';
 
-        const badgeType = `<span class="component-badge" style="height:20px; font-size:11px; color:${typeColor}; border-color:${typeColor}40;">${k.type}</span>`;
+        const badgeType = `<span class="component-badge ${colorClass}" style="height:20px; font-size:11px;">${k.type}</span>`;
         
         let ttlDisplay = k.ttl === -1 ? 'Infinito' : `${k.ttl}s`;
         if (k.ttl === -2) ttlDisplay = 'Expirada';
 
         html += `
         <tr class="table-row-item" style="cursor: pointer;" data-key="${k.key}">
-            <td style="font-family:monospace; font-size:13px; word-break:break-all;">${k.key}</td>
+            <td class="font-mono" style="font-size:13px; word-break:break-all;">${k.key}</td>
             <td>${badgeType}</td>
             <td style="font-size:12px; color:var(--text-secondary);">${ttlDisplay}</td>
-            <td style="text-align:right;">
+            <td class="text-right">
                 <button class="component-button btn-delete-key" data-key="${k.key}" style="width:28px; height:28px; padding:0; border:none; color:var(--text-tertiary);" title="Eliminar">
                     <span class="material-symbols-rounded" style="font-size:18px;">delete</span>
                 </button>
@@ -128,7 +131,6 @@ function renderKeysTable(keys, tbody) {
     // Listeners
     tbody.querySelectorAll('tr').forEach(row => {
         row.addEventListener('click', (e) => {
-            // Evitar disparar si se clicó el botón de borrar
             if (e.target.closest('.btn-delete-key')) return;
             showValueDialog(row.dataset.key);
         });
@@ -162,29 +164,27 @@ async function showValueDialog(key) {
                 displayValue = JSON.stringify(data.value, null, 2);
             }
 
-            // Crear contenido HTML para el diálogo
-            // Usamos un textarea de solo lectura para mostrar el valor grande
-            // y resaltamos con clases de estilo de código si es JSON
             const htmlContent = `
-                <div style="display:flex; flex-direction:column; gap:12px; max-height:400px;">
-                    <div style="font-size:12px; color:var(--text-secondary);">
-                        <strong>Tipo:</strong> ${data.type} &nbsp;|&nbsp; <strong>Tamaño:</strong> ${data.size} items/bytes
+                <div class="component-data-viewer">
+                    <div class="component-data-meta">
+                        <span><strong>Tipo:</strong> ${data.type}</span>
+                        <span><strong>Tamaño:</strong> ${data.size} items/bytes</span>
+                        <span><strong>TTL:</strong> ${data.ttl}</span>
                     </div>
-                    <textarea class="component-text-input" readonly style="height:300px; font-family:monospace; font-size:12px; resize:vertical;">${displayValue}</textarea>
+                    <textarea class="component-textarea-read" readonly>${displayValue}</textarea>
                 </div>
             `;
 
-            // Usamos Dialog.alert modificado (o confirm sin cancel) para mostrar info
             Dialog.confirm({
                 title: `Clave: ${key}`,
-                message: '', // Usamos HTML custom abajo
+                message: '', 
                 confirmText: 'Cerrar',
-                cancelText: null, // Ocultar cancelar
+                cancelText: null, 
                 onReady: (wrapper) => {
                     const contentArea = wrapper.querySelector('[data-element="message"]');
                     if(contentArea) {
                         contentArea.innerHTML = htmlContent;
-                        contentArea.style.whiteSpace = 'normal'; // Reset
+                        contentArea.style.whiteSpace = 'normal'; 
                     }
                 }
             });
@@ -208,10 +208,9 @@ async function deleteKey(key) {
         const res = await ApiService.post(ApiService.Routes.Admin.Redis.DeleteKey, formData);
         if (res.success) {
             Toast.show('Eliminado', 'success');
-            // Recargar búsqueda actual
             const pattern = document.getElementById('redis-search-input').value || '*';
             loadKeys(pattern);
-            loadStats(); // Actualizar contador total
+            loadStats(); 
         } else {
             Toast.show(res.message, 'error');
         }
@@ -219,7 +218,6 @@ async function deleteKey(key) {
 }
 
 async function handleFlushDB() {
-    // Doble confirmación por seguridad
     const confirm1 = await Dialog.confirm({ 
         title: 'PELIGRO: ¿VACIAR REDIS?', 
         message: 'Esto eliminará TODAS las claves de la base de datos actual. Sesiones, caché, tokens temporales... TODO.', 
@@ -229,7 +227,6 @@ async function handleFlushDB() {
 
     if (!confirm1) return;
 
-    // Segunda confirmación
     const confirm2 = await Dialog.confirm({ 
         title: '¿Estás absolutamente seguro?', 
         message: 'Esta acción no se puede deshacer. Los usuarios serán desconectados.', 

@@ -36,6 +36,9 @@ return [
     'settings.change_pass'    => ['file' => 'handlers/settings-handler.php', 'action' => 'change_password'],
 
     // === ADMIN ===
+    // [NUEVO] DASHBOARD
+    'admin.dashboard_stats'   => ['file' => 'handlers/admin-handler.php', 'action' => 'get_dashboard_stats'],
+
     'admin.get_users'         => ['file' => 'handlers/admin-handler.php', 'action' => 'get_all_users'],
     'admin.get_details'       => ['file' => 'handlers/admin-handler.php', 'action' => 'get_user_details'],
     'admin.update_profile'    => ['file' => 'handlers/admin-handler.php', 'action' => 'update_user_profile'],
@@ -65,7 +68,7 @@ return [
     'admin.delete_log_files'  => ['file' => 'handlers/admin-handler.php', 'action' => 'delete_log_files'],
     'admin.get_log_content'   => ['file' => 'handlers/admin-handler.php', 'action' => 'get_log_content'],
 
-    // [NUEVO] REDIS MANAGER
+    // REDIS MANAGER
     'admin.redis_stats'       => ['file' => 'handlers/admin-handler.php', 'action' => 'get_redis_stats'],
     'admin.redis_keys'        => ['file' => 'handlers/admin-handler.php', 'action' => 'get_redis_keys'],
     'admin.redis_get'         => ['file' => 'handlers/admin-handler.php', 'action' => 'get_redis_value'],

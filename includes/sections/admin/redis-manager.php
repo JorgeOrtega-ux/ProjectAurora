@@ -1,7 +1,7 @@
 <?php
 // includes/sections/admin/redis-manager.php
 ?>
-<div class="component-wrapper component-wrapper--full" data-section="admin-redis-manager">
+<div class="component-wrapper component-wrapper--full component-wrapper--flex" data-section="admin-redis-manager">
     
     <div class="component-toolbar-wrapper">
         <div class="component-toolbar component-toolbar--primary">
@@ -31,34 +31,34 @@
 
     <div class="component-card component-card--grouped mt-4" id="redis-stats-container">
         <div class="component-group-item">
-            <div style="display:flex; justify-content:space-between; width:100%; flex-wrap:wrap; gap:16px;">
-                <div class="stat-item" style="flex:1; min-width:120px; text-align:center;">
-                    <span style="font-size:12px; color:var(--text-secondary); display:block;">Versión</span>
-                    <strong style="font-size:16px; color:var(--text-primary);" data-stat="version">...</strong>
+            <div class="component-stats-grid">
+                <div class="component-stat-box">
+                    <span class="component-stat-label">Versión</span>
+                    <strong class="component-stat-value" data-stat="version">...</strong>
                 </div>
-                <div class="stat-item" style="flex:1; min-width:120px; text-align:center;">
-                    <span style="font-size:12px; color:var(--text-secondary); display:block;">Uptime</span>
-                    <strong style="font-size:16px; color:var(--text-primary);" data-stat="uptime">...</strong>
+                <div class="component-stat-box">
+                    <span class="component-stat-label">Uptime</span>
+                    <strong class="component-stat-value" data-stat="uptime">...</strong>
                 </div>
-                <div class="stat-item" style="flex:1; min-width:120px; text-align:center;">
-                    <span style="font-size:12px; color:var(--text-secondary); display:block;">Memoria</span>
-                    <strong style="font-size:16px; color:var(--text-primary);" data-stat="memory_used">...</strong>
+                <div class="component-stat-box">
+                    <span class="component-stat-label">Memoria</span>
+                    <strong class="component-stat-value" data-stat="memory_used">...</strong>
                 </div>
-                <div class="stat-item" style="flex:1; min-width:120px; text-align:center;">
-                    <span style="font-size:12px; color:var(--text-secondary); display:block;">Clientes</span>
-                    <strong style="font-size:16px; color:var(--text-primary);" data-stat="connected_clients">...</strong>
+                <div class="component-stat-box">
+                    <span class="component-stat-label">Clientes</span>
+                    <strong class="component-stat-value" data-stat="connected_clients">...</strong>
                 </div>
-                <div class="stat-item" style="flex:1; min-width:120px; text-align:center;">
-                    <span style="font-size:12px; color:var(--text-secondary); display:block;">Claves Totales</span>
-                    <strong style="font-size:16px; color:var(--text-primary);" data-stat="total_keys">...</strong>
+                <div class="component-stat-box">
+                    <span class="component-stat-label">Claves Totales</span>
+                    <strong class="component-stat-value" data-stat="total_keys">...</strong>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="component-card mt-4" style="padding: 0; overflow: hidden; display: flex; flex-direction: column; height: 600px;">
+    <div class="component-card component-card--fill mt-4">
         
-        <div style="padding: 12px; border-bottom: 1px solid var(--border-light); background: var(--bg-surface); display: flex; gap: 8px;">
+        <div class="component-toolbar-internal">
             <div class="component-input-wrapper flex-1">
                 <input type="text" class="component-text-input" id="redis-search-input" placeholder="Buscar clave (ej: user:*, *token*)..." value="*">
             </div>
@@ -67,14 +67,14 @@
             </button>
         </div>
 
-        <div class="component-table-wrapper" style="flex: 1; overflow-y: auto; border:none; box-shadow:none; border-radius:0;">
+        <div class="component-table-wrapper component-table-scrollable">
             <table class="component-table" id="redis-keys-table">
-                <thead style="position: sticky; top: 0; background: var(--bg-surface); z-index: 10;">
+                <thead class="component-table-sticky-header">
                     <tr>
                         <th>Clave</th>
-                        <th style="width: 80px;">Tipo</th>
-                        <th style="width: 80px;">TTL</th>
-                        <th style="width: 60px;"></th>
+                        <th class="w-80">Tipo</th>
+                        <th class="w-80">TTL</th>
+                        <th class="w-60"></th>
                     </tr>
                 </thead>
                 <tbody id="redis-keys-body">

@@ -37,6 +37,94 @@ class AdminService {
     /**
      * Obtiene el historial de auditoría con paginación
      */
+
+    public function getDashboardStats() {
+        if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+
+        try {
+            // 1. USUARIOS EN LÍNEA (Desde Redis escrito por Python)
+            $onlineUsers = 0;
+            $onlineGuests = 0;
+            
+            if ($this->redis) {
+                $realtimeStats = $this->redis->hgetall('aurora:stats:realtime');
+                $onlineUsers = (int)($realtimeStats['online_users'] ?? 0);
+                $onlineGuests = (int)($realtimeStats['online_guests'] ?? 0);
+            }
+
+            // 2. REGISTROS HOY vs AYER (Tendencia)
+            $today = date('Y-m-d');
+            $yesterday = date('Y-m-d', strtotime('-1 day'));
+
+            // Count Hoy
+            $stmtToday = $this->pdo->prepare("SELECT COUNT(*) FROM users WHERE DATE(created_at) = ?");
+            $stmtToday->execute([$today]);
+            $usersToday = $stmtToday->fetchColumn();
+
+            // Count Ayer
+            $stmtYest = $this->pdo->prepare("SELECT COUNT(*) FROM users WHERE DATE(created_at) = ?");
+            $stmtYest->execute([$yesterday]);
+            $usersYesterday = $stmtYest->fetchColumn();
+
+            $usersTrend = $this->calculateTrend($usersToday, $usersYesterday);
+
+            // 3. TOTAL USUARIOS vs MES PASADO
+            // Total Actual
+            $stmtTotal = $this->pdo->query("SELECT COUNT(*) FROM users");
+            $totalUsers = $stmtTotal->fetchColumn();
+
+            // Total Hace 30 días (Aproximación)
+            $date30DaysAgo = date('Y-m-d H:i:s', strtotime('-30 days'));
+            $stmtTotalOld = $this->pdo->prepare("SELECT COUNT(*) FROM users WHERE created_at < ?");
+            $stmtTotalOld->execute([$date30DaysAgo]);
+            $totalUsersOld = $stmtTotalOld->fetchColumn();
+
+            $totalTrend = $this->calculateTrend($totalUsers, $totalUsersOld);
+
+            // 4. ACTIVIDAD SISTEMA (Logs hoy)
+            $stmtLogs = $this->pdo->prepare("SELECT COUNT(*) FROM security_logs WHERE DATE(created_at) = ?");
+            $stmtLogs->execute([$today]);
+            $logsToday = $stmtLogs->fetchColumn();
+
+            return [
+                'success' => true,
+                'stats' => [
+                    'online_total' => $onlineUsers + $onlineGuests,
+                    'online_users' => $onlineUsers,
+                    'online_guests' => $onlineGuests,
+                    
+                    'new_users_today' => $usersToday,
+                    'new_users_trend' => $usersTrend, // { percent: 12, direction: 'up' }
+                    
+                    'total_users' => $totalUsers,
+                    'total_users_trend' => $totalTrend,
+
+                    'system_activity' => $logsToday
+                ]
+            ];
+
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Error calculando estadísticas: ' . $e->getMessage()];
+        }
+    }
+
+    private function calculateTrend($current, $previous) {
+        if ($previous == 0) {
+            return [
+                'value' => $current > 0 ? 100 : 0,
+                'direction' => $current > 0 ? 'up' : 'neutral',
+                'infinite' => $current > 0 // Flag para indicar "Nuevo" o infinito
+            ];
+        }
+
+        $diff = $current - $previous;
+        $percent = ($diff / $previous) * 100;
+        
+        return [
+            'value' => abs(round($percent, 1)),
+            'direction' => $percent > 0 ? 'up' : ($percent < 0 ? 'down' : 'neutral')
+        ];
+    }
     public function getAuditLogs($page = 1, $limit = 50, $filters = []) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 

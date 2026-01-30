@@ -1742,4 +1742,238 @@ input:checked+.component-toggle-slider:before {
 }
 [data-theme="dark"] .component-button.primary:hover {
     background-color: var(--bg-hover-light);
+}/* public/assets/css/components.css */
+
+/* ... (MANTENER TODO EL CÓDIGO ANTERIOR INTACTO HASTA EL FINAL) ... */
+
+/* =========================================
+   16. COMPONENTES DE DATOS Y ESTRUCTURA (REUTILIZABLES)
+   ========================================= */
+
+/* --- Grid de Estadísticas --- */
+.component-stats-grid {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.component-stat-box {
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+    padding: 4px;
+}
+
+.component-stat-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: block;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.component-stat-value {
+    font-size: 18px;
+    color: var(--text-primary);
+    font-weight: 700;
+    font-family: var(--sl-font-mono);
+}
+
+/* --- Layout Flex de Altura Completa --- */
+/* Aplicar al wrapper principal para que ocupe el 100% del alto */
+.component-wrapper--flex {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+/* Tarjeta que crece para llenar el espacio restante */
+.component-card--fill {
+    flex: 1;
+    min-height: 0; /* Crítico para que el scroll interno funcione en Flexbox */
+    display: flex;
+    flex-direction: column;
+    padding: 0; /* Sin padding para que la tabla toque los bordes */
+    overflow: hidden;
+    border: 1px solid var(--border-light);
+}
+
+/* --- Toolbar Interna (dentro de tarjeta) --- */
+.component-toolbar-internal {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-light);
+    background: var(--bg-surface);
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+    align-items: center;
+}
+
+/* --- Contenedor de Tabla con Scroll --- */
+.component-table-scrollable {
+    flex: 1;
+    overflow-y: auto;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    position: relative;
+    background-color: var(--bg-surface);
+}
+
+.component-table-sticky-header {
+    position: sticky;
+    top: 0;
+    background: var(--bg-surface);
+    z-index: 10;
+    box-shadow: 0 1px 0 var(--border-light);
+}
+
+/* --- Variantes de Badges (Colores Genéricos) --- */
+.component-badge--green { color: var(--sl-color-green-600); border-color: rgba(22, 163, 74, 0.3); }
+.component-badge--blue  { color: var(--sl-color-blue-600); border-color: rgba(37, 99, 235, 0.3); }
+.component-badge--orange{ color: var(--sl-color-orange-600); border-color: rgba(234, 88, 12, 0.3); }
+.component-badge--purple{ color: var(--sl-color-purple-600); border-color: rgba(147, 51, 234, 0.3); }
+.component-badge--pink  { color: var(--sl-color-pink-600); border-color: rgba(219, 39, 119, 0.3); }
+.component-badge--cyan  { color: var(--sl-color-cyan-600); border-color: rgba(8, 145, 178, 0.3); }
+.component-badge--gray  { color: var(--text-secondary); border-color: var(--border-light); }
+
+/* --- Visor de Datos (Dialogs) --- */
+.component-data-viewer {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 60vh;
+}
+
+.component-data-meta {
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    gap: 16px;
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 8px;
+}
+
+.component-textarea-read {
+    width: 100%;
+    height: 300px;
+    font-family: var(--sl-font-mono);
+    font-size: 13px;
+    resize: none;
+    background-color: var(--bg-hover-light);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 12px;
+    color: var(--text-primary);
+    outline: none;
+}
+
+/* --- Utilidades --- */
+.font-mono { font-family: var(--sl-font-mono); }
+.w-60 { width: 60px; }
+.w-80 { width: 80px; }
+.text-right { text-align: right; }/* public/assets/css/components.css */
+
+/* ... (MANTENER TODO EL CONTENIDO ANTERIOR) ... */
+
+/* =========================================
+   17. DASHBOARD CARDS & TRENDS
+   ========================================= */
+
+.component-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    width: 100%;
+}
+
+.component-stat-card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.component-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--sl-shadow-medium);
+    border-color: var(--border-color-hover);
+}
+
+.component-stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.component-stat-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.component-stat-icon {
+    color: var(--text-tertiary);
+    background-color: var(--bg-hover-light);
+    padding: 6px;
+    border-radius: 8px;
+    font-size: 20px;
+}
+
+.component-stat-main-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: var(--sl-font-sans);
+    line-height: 1.2;
+}
+
+.component-stat-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    margin-top: auto;
+}
+
+/* Indicadores de Tendencia */
+.component-trend-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 11px;
+}
+
+.component-trend-badge.positive {
+    background-color: var(--color-success-bg);
+    color: var(--color-toast-success-text);
+}
+
+.component-trend-badge.negative {
+    background-color: var(--color-error-bg);
+    color: var(--color-toast-error-text);
+}
+
+.component-trend-badge.neutral {
+    background-color: var(--bg-hover-light);
+    color: var(--text-secondary);
+}
+
+.component-trend-text {
+    color: var(--text-tertiary);
 }

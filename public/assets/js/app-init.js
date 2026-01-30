@@ -28,8 +28,9 @@ import { BackupConfigController } from './modules/admin/backup-config-controller
 import { AuditLogController } from './modules/admin/audit-log-controller.js';
 import { LogFilesController } from './modules/admin/log-files-controller.js';
 import { FileViewerController } from './modules/admin/file-viewer-controller.js';
-// [NUEVO] Importar controlador de Redis
 import { RedisManagerController } from './modules/admin/redis-manager-controller.js';
+// [NUEVO] Dashboard
+import { DashboardController } from './modules/admin/dashboard-controller.js';
 
 const App = {
     init: () => {
@@ -76,7 +77,6 @@ const App = {
 };
 
 function initGlobalSocketListeners() {
-    // ... (Mantener listeners existentes igual) ...
     document.addEventListener('socket:force_logout', (e) => {
         if (window.isManualLogout) return;
         if (window.location.pathname.includes('/login')) return;
@@ -121,6 +121,9 @@ function routeDispatcher(section) {
         case 'settings/2fa-setup': TwoFactorController.init(); break;
         
         // Admin Modules
+        // [NUEVO] Dashboard
+        case 'admin/dashboard': DashboardController.init(); break;
+
         case 'admin/users': UsersController.init(); break;
         case 'admin/user-details': UserDetailsController.init(); break;
         case 'admin/user-role': UserRoleController.init(); break;
@@ -132,8 +135,6 @@ function routeDispatcher(section) {
         case 'admin/audit-log': AuditLogController.init(); break;
         case 'admin/log-files': LogFilesController.init(); break;
         case 'admin/file-viewer': FileViewerController.init(); break;
-        
-        // [NUEVO] Inicializar controlador de Redis
         case 'admin/redis': RedisManagerController.init(); break;
         
         default: break;

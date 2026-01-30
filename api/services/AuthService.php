@@ -616,10 +616,10 @@ class AuthService {
             }
         }
         
-        // [IMPORTANTE] WebSocket Kick (Sesión específica)
+        // [MODIFICADO] Usar comando específico para Logout Manual
         if (isset($_SESSION['user_id']) && isset($_SESSION['current_token_id'])) {
              $this->redis->publish('aurora_ws_control', json_encode([
-                'cmd' => 'KICK_SESSION',
+                'cmd' => 'LOGOUT_SESSION', // Antes KICK_SESSION
                 'user_id' => $_SESSION['user_id'],
                 'session_id' => $_SESSION['current_token_id']
             ]));

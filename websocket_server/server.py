@@ -64,51 +64,34 @@ async def validate_and_consume_token(path, r_client):
         logging.error(f"Error validando token: {e}")
         return None, None
 
-async def redis_listener_loop():
+# --- Función Auxiliar para Desconectar Sesiones ---
+async def _disconnect_session(user_id, session_id, reason_msg, log_prefix):
     """
-    Escucha mensajes Pub/Sub de Redis enviados por el Worker.
+    Lógica centralizada para cerrar sockets de una sesión específica.
     """
-    r_sub = await get_redis_client()
-    pubsub = r_sub.pubsub()
-    await pubsub.subscribe('aurora_ws_control')
-    
-    logging.info("🎧 Escuchando canal Redis: aurora_ws_control")
-
-    async for message in pubsub.listen():
-        if message['type'] == 'message':
-            try:
-                data = json.loads(message['data'])
-                cmd = data.get('cmd')
-                
-                if cmd == 'KICK_SESSION':
-                    u_id = str(data.get('user_id'))
-                    s_id = str(data.get('session_id'))
-                    await kick_session_local(u_id, s_id)
-                    
-                elif cmd == 'KICK_ALL':
-                    u_id = str(data.get('user_id'))
-                    await kick_all_sessions_local(u_id)
-                    
-                elif cmd == 'BROADCAST':
-                    msg_type = data.get('msg_type')
-                    msg_content = data.get('message')
-                    # Log para confirmar que el servidor recibió la orden del worker
-                    logging.info(f"📨 Retransmitiendo BROADCAST: {msg_type}")
-                    await broadcast_to_everyone_local(msg_type, msg_content)
-                    
-            except Exception as e:
-                logging.error(f"Error procesando mensaje Pub/Sub: {e}")
-
-async def kick_session_local(user_id, session_id):
     if user_id in connected_users and session_id in connected_users[user_id]:
-        payload = json.dumps({"type": "force_logout", "reason": "Sesión revocada"})
+        payload = json.dumps({"type": "force_logout", "reason": reason_msg})
+        
+        # Crear copia de la lista para iterar sin problemas de concurrencia al remover
         sockets_to_close = list(connected_users[user_id][session_id])
+        
         for ws in sockets_to_close:
             try:
                 await ws.send(payload)
                 await ws.close()
             except: pass
-        logging.info(f"KICK EJECUTADO: User {user_id}, Session {session_id}")
+            
+        logging.info(f"{log_prefix}: User {user_id}, Session {session_id}")
+
+# --- Funciones Específicas llamadas por Redis Listener ---
+
+async def kick_session_local(user_id, session_id):
+    """Acción administrativa o forzosa (KICK)"""
+    await _disconnect_session(user_id, session_id, "Has sido expulsado", "KICK EJECUTADO")
+
+async def logout_session_local(user_id, session_id):
+    """Acción voluntaria del usuario (LOGOUT)"""
+    await _disconnect_session(user_id, session_id, "Sesión cerrada correctamente", "LOGOUT MANUAL")
 
 async def kick_all_sessions_local(user_id):
     if user_id in connected_users:
@@ -143,6 +126,45 @@ async def broadcast_to_everyone_local(msg_type, content=None):
         except: pass
     
     logging.info(f"📢 Mensaje enviado a {count} clientes conectados.")
+
+async def redis_listener_loop():
+    """
+    Escucha mensajes Pub/Sub de Redis enviados por el Worker o la API.
+    """
+    r_sub = await get_redis_client()
+    pubsub = r_sub.pubsub()
+    await pubsub.subscribe('aurora_ws_control')
+    
+    logging.info("🎧 Escuchando canal Redis: aurora_ws_control")
+
+    async for message in pubsub.listen():
+        if message['type'] == 'message':
+            try:
+                data = json.loads(message['data'])
+                cmd = data.get('cmd')
+                
+                if cmd == 'KICK_SESSION':
+                    u_id = str(data.get('user_id'))
+                    s_id = str(data.get('session_id'))
+                    await kick_session_local(u_id, s_id)
+
+                elif cmd == 'LOGOUT_SESSION': # [NUEVO] Manejador de Logout Manual
+                    u_id = str(data.get('user_id'))
+                    s_id = str(data.get('session_id'))
+                    await logout_session_local(u_id, s_id)
+                    
+                elif cmd == 'KICK_ALL':
+                    u_id = str(data.get('user_id'))
+                    await kick_all_sessions_local(u_id)
+                    
+                elif cmd == 'BROADCAST':
+                    msg_type = data.get('msg_type')
+                    msg_content = data.get('message')
+                    logging.info(f"📨 Retransmitiendo BROADCAST: {msg_type}")
+                    await broadcast_to_everyone_local(msg_type, msg_content)
+                    
+            except Exception as e:
+                logging.error(f"Error procesando mensaje Pub/Sub: {e}")
 
 async def ws_handler(websocket):
     path = ""
