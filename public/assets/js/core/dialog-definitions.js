@@ -4,7 +4,7 @@
 
 import { I18n } from './i18n-manager.js';
 
-// 1. PLANTILLAS HTML (Estructura)
+// 1. PLANTILLAS HTML
 export const DialogTemplates = {
     default: (data) => `
         <div class="component-dialog-body">
@@ -21,12 +21,15 @@ export const DialogTemplates = {
         <div class="component-dialog-body">
             <h1 class="component-dialog-title" data-element="title">${data.title || ''}</h1>
             <p class="component-dialog-message" data-element="message">${data.message || ''}</p>
+            
             <div class="component-input-wrapper mt-16">
-                <input type="text" id="verify-email-code" class="component-text-input" placeholder="000 000" maxlength="6" style="text-align: center; letter-spacing: 4px; font-size: 18px;">
+                <input type="text" id="verify-email-code" class="component-text-input" placeholder="000 000" maxlength="6" style="text-align: center; letter-spacing: 4px; font-size: 18px;" autocomplete="off">
             </div>
-            <p style="text-align: center; font-size: 13px; margin-top: 8px;">
-                <a href="#" id="btn-dialog-resend" style="text-decoration: none; color: var(--action-primary); font-weight: 500;">Reenviar código</a> 
-                <span id="dialog-resend-timer" style="color: var(--text-secondary);"></span>
+            
+            <p style="text-align: center; font-size: 13px; margin-top: 12px;">
+                <a href="#" data-action="resend-code" id="btn-dialog-resend" style="text-decoration: none; color: var(--action-primary); font-weight: 500;">
+                    Reenviar código de verificación <span data-element="resend-timer" id="dialog-resend-timer" style="margin-left: 4px;"></span>
+                </a>
             </p>
         </div>
         <div class="component-dialog-footer">
@@ -42,7 +45,7 @@ export const DialogTemplates = {
     `
 };
 
-// 2. DEFINICIONES DE DATOS (Textos) -> ¡AQUÍ FALTABAN LOS TÍTULOS!
+// ... (Resto de DialogDefinitions igual que antes) ...
 export const DialogDefinitions = {
     Profile: {
         DELETE_AVATAR: {
@@ -55,11 +58,12 @@ export const DialogDefinitions = {
         VERIFY_EMAIL: {
             get title() { return I18n.t('settings.profile.verify_email_title'); },
             get message() { return I18n.t('settings.profile.verify_email_msg'); },
-            type: 'verify-email', // Usa el template 'verify-email' de arriba
+            type: 'verify-email', 
             confirmText: 'Verificar',
             cancelText: 'Cancelar'
         }
     },
+    // ... otros ...
     Devices: {
         REVOKE_ALL: {
             title: '¿Cerrar todas las sesiones?',

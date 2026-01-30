@@ -8,11 +8,9 @@ import { I18n } from '../../core/i18n-manager.js';
 import { Dialog } from '../../core/dialog-manager.js';
 import { DialogDefinitions, DialogTemplates } from '../../core/dialog-definitions.js';
 
-// Atajo
 const SettingsAPI = ApiService.Routes.Settings;
 
 export const ProfileController = {
-    
     init: () => {
         console.log("ProfileController: Inicializado (Full)");
         initAvatarLogic();
@@ -20,6 +18,7 @@ export const ProfileController = {
     }
 };
 
+// ... (initAvatarLogic y funciones de avatar se mantienen igual) ...
 function initAvatarLogic() {
     const fileInput = document.getElementById('upload-avatar');
     const previewImg = document.getElementById('preview-avatar');
@@ -45,7 +44,7 @@ function initAvatarLogic() {
             const reader = new FileReader();
             reader.onload = (evt) => {
                 previewImg.src = evt.target.result;
-                toggleProfileActions('preview');
+                showAvatarActions('preview');
             };
             reader.readAsDataURL(file);
         }
@@ -59,7 +58,7 @@ function initAvatarLogic() {
             previewImg.src = originalSrc;
             fileInput.value = ''; 
             const isCustom = originalSrc.includes('/custom/');
-            toggleProfileActions(isCustom ? 'custom' : 'default');
+            showAvatarActions(isCustom ? 'custom' : 'default');
         }
 
         if (action === 'profile-picture-save') {
@@ -75,14 +74,13 @@ function initAvatarLogic() {
             formData.append('avatar', file);
 
             try {
-                // USO DE API ROUTES
                 const res = await ApiService.post(SettingsAPI.UploadAvatar, formData);
                 if (res.success) {
                     Toast.show(I18n.t('js.profile.pic_updated'), 'success');
                     
                     const newAvatarSrc = previewImg.src; 
                     originalSrc = res.new_src || newAvatarSrc; 
-                    toggleProfileActions('custom');
+                    showAvatarActions('custom');
                     fileInput.value = ''; 
 
                     const event = new CustomEvent('user:avatar_update', { 
@@ -111,7 +109,6 @@ function initAvatarLogic() {
             btn.disabled = true;
 
             try {
-                // USO DE API ROUTES
                 const res = await ApiService.post(SettingsAPI.DeleteAvatar);
                 if (res.success) {
                     Toast.show(I18n.t('js.profile.pic_deleted'), 'info');
@@ -120,7 +117,7 @@ function initAvatarLogic() {
                         const newUrl = res.new_src;
                         previewImg.src = newUrl;
                         originalSrc = newUrl;
-                        toggleProfileActions('default');
+                        showAvatarActions('default');
 
                         const event = new CustomEvent('user:avatar_update', { 
                             detail: { src: newUrl } 
@@ -143,7 +140,7 @@ function initAvatarLogic() {
     });
 }
 
-function toggleProfileActions(state) {
+function showAvatarActions(state) {
     const actionsDefault = document.querySelector('[data-state="profile-picture-actions-default"]'); 
     const actionsPreview = document.querySelector('[data-state="profile-picture-actions-preview"]'); 
     const actionsCustom  = document.querySelector('[data-state="profile-picture-actions-custom"]'); 
@@ -190,7 +187,6 @@ async function handleEmailVerification(targetField) {
     Dialog.showLoading('Comprobando estado...');
     
     try {
-        // USO DE API ROUTES
         const statusRes = await ApiService.post(SettingsAPI.GetEmailStatus);
         
         Dialog.close();
@@ -200,7 +196,7 @@ async function handleEmailVerification(targetField) {
             return;
         }
 
-        const { status, cooldown } = statusRes;
+        let { status, cooldown } = statusRes;
 
         if (status === 'authorized') {
             toggleEditState(targetField, true);
@@ -209,7 +205,6 @@ async function handleEmailVerification(targetField) {
 
         if (status === 'none') {
             Dialog.showLoading('Enviando código...');
-            // USO DE API ROUTES
             const reqRes = await ApiService.post(SettingsAPI.RequestEmailVerification);
             Dialog.close();
 
@@ -218,6 +213,8 @@ async function handleEmailVerification(targetField) {
                 return;
             }
             Toast.show('Código enviado', 'success');
+            // Forzar cooldown visualmente
+            cooldown = 60; 
         } else {
             Toast.show('Ya tienes un código activo', 'info');
         }
@@ -232,19 +229,14 @@ async function handleEmailVerification(targetField) {
 }
 
 async function showVerificationDialog(targetField, initialCooldown) {
-    // Configuración del diálogo
     const dialogOptions = {
         ...DialogDefinitions.Profile.VERIFY_EMAIL,
-        // Callback para vincular lógica interna (Timer y Reenvío)
         onReady: (dialogElement) => bindResendLogic(dialogElement, initialCooldown)
     };
 
-    // Esperar respuesta (puede ser el valor del input o false)
     const result = await Dialog.confirm(dialogOptions);
     
-    // Si hay resultado (no es false/cancelado)
     if (result) {
-        // En el nuevo DialogManager, si hay input, 'result' es el valor string del input
         const code = (typeof result === 'string') ? result.trim() : '';
 
         if (!code) {
@@ -270,30 +262,44 @@ async function showVerificationDialog(targetField, initialCooldown) {
 }
 
 function bindResendLogic(wrapper, initialCooldown) {
-    // ACTUALIZACIÓN: Selectores data-action/data-element
     const btnResend = wrapper.querySelector('[data-action="resend-code"]');
     const timerSpan = wrapper.querySelector('[data-element="resend-timer"]');
     
     if (!btnResend || !timerSpan) return;
 
     let resendInterval = null;
+    let isCooldownActive = false; // [SEGURIDAD] Estado interno inmune al DOM
 
     const startTimer = (seconds) => {
+        isCooldownActive = true; // Activar bloqueo lógico
         let timeLeft = seconds;
+        
+        // Estilos visuales
         btnResend.style.pointerEvents = 'none';
         btnResend.style.opacity = '0.5';
-        btnResend.style.textDecoration = 'none';
-        timerSpan.innerText = `(${timeLeft}s)`;
+        btnResend.style.color = 'rgb(153, 153, 153)'; 
+        
+        // Resetear texto si quedó de "Enviando..."
+        if (btnResend.innerText === 'Enviando...') {
+             btnResend.childNodes[0].textContent = 'Reenviar código de verificación '; 
+        }
+        
+        timerSpan.innerText = `(${timeLeft})`;
 
         if (resendInterval) clearInterval(resendInterval);
 
         resendInterval = setInterval(() => {
             timeLeft--;
-            timerSpan.innerText = `(${timeLeft}s)`;
+            timerSpan.innerText = `(${timeLeft})`;
+            
             if (timeLeft <= 0) {
                 clearInterval(resendInterval);
+                isCooldownActive = false; // Liberar bloqueo lógico
+                
+                // Restaurar UI
                 btnResend.style.pointerEvents = 'auto';
                 btnResend.style.opacity = '1';
+                btnResend.style.color = ''; 
                 timerSpan.innerText = '';
             }
         }, 1000);
@@ -305,23 +311,31 @@ function bindResendLogic(wrapper, initialCooldown) {
 
     btnResend.addEventListener('click', async (e) => {
         e.preventDefault();
-        btnResend.innerText = 'Enviando...';
+        
+        // [SEGURIDAD] Chequeo de variable interna, no de estilos
+        if (isCooldownActive) return;
+
+        // Guardar contenido original del nodo de texto del enlace (sin borrar el span)
+        const originalText = btnResend.childNodes[0].textContent;
+        btnResend.childNodes[0].textContent = 'Enviando... ';
         
         const formData = new FormData();
         formData.append('force_resend', 'true');
 
         try {
             const res = await ApiService.post(SettingsAPI.RequestEmailVerification, formData);
-            btnResend.innerText = 'Reenviar código';
+            
+            // Restaurar texto
+            btnResend.childNodes[0].textContent = 'Reenviar código de verificación ';
 
             if (res.success) {
                 Toast.show('Nuevo código enviado', 'success');
-                startTimer(60);
+                startTimer(60); 
             } else {
                 Toast.show(res.message, 'error');
             }
         } catch(err) {
-            btnResend.innerText = 'Reenviar código';
+            btnResend.childNodes[0].textContent = 'Reenviar código de verificación ';
             Toast.show(I18n.t('js.core.connection_error'), 'error');
         }
     });
@@ -388,7 +402,6 @@ async function saveFieldData(fieldId, btnSave) {
     formData.append('value', newValue);
 
     try {
-        // USO DE API ROUTES
         const res = await ApiService.post(SettingsAPI.UpdateProfile, formData);
 
         if (res.success) {
