@@ -423,28 +423,25 @@ input:checked+.component-toggle-slider:before {
    VISOR DE ARCHIVOS: LAYOUT & STYLES
    ========================================= */
 
-/* 1. Layout del Visor: Ocupar todo el alto */
 .component-wrapper[data-section="admin-file-viewer"] {
     height: 100%;
     display: flex;
     flex-direction: column;
 }
 
-/* 2. Grupo Padre (Tabs + Card) - SIN GAP */
 .file-viewer-group {
     display: flex;
     flex-direction: column;
-    flex: 1; /* Crecer para ocupar el espacio restante */
-    gap: 0; /* Unir pestañas y tarjeta */
-    min-height: 0; /* Fix flexbox scrolling */
+    flex: 1; 
+    gap: 0; 
+    min-height: 0; 
 }
 
-/* 3. Wrapper de Pestañas */
 .viewer-tabs-wrapper {
     width: 100%;
     overflow: hidden;
-    flex: 0 0 auto; /* Altura fija según contenido */
-    z-index: 2; /* Por encima del borde de la tarjeta */
+    flex: 0 0 auto; 
+    z-index: 2; 
 }
 
 .viewer-tabs-scroll {
@@ -459,7 +456,6 @@ input:checked+.component-toggle-slider:before {
     display: none;
 }
 
-/* Estilo Base de Pestaña */
 .viewer-tab {
     display: flex;
     align-items: center;
@@ -476,7 +472,7 @@ input:checked+.component-toggle-slider:before {
     white-space: nowrap;
     transition: all 0.2s;
     user-select: none;
-    margin-bottom: -1px; /* Solapar con la tarjeta */
+    margin-bottom: -1px;
     position: relative;
     opacity: 0.8;
 }
@@ -494,7 +490,6 @@ input:checked+.component-toggle-slider:before {
     border-top: 2px solid var(--action-primary);
     opacity: 1;
     z-index: 3;
-    /* Truco: Borde inferior del mismo color del fondo para "borrar" la línea */
     box-shadow: 0 1px 0 var(--bg-surface); 
 }
 
@@ -502,7 +497,6 @@ input:checked+.component-toggle-slider:before {
     font-size: 16px;
 }
 
-/* [NUEVO] Botón Cerrar (X) */
 .viewer-tab .tab-close {
     font-size: 14px;
     width: 20px;
@@ -528,24 +522,22 @@ input:checked+.component-toggle-slider:before {
     color: var(--color-error);
 }
 
-/* 4. Tarjeta del Visor (Contenedor del Código) */
 .file-viewer-card {
-    flex: 1; /* Ocupar el resto de la altura */
+    flex: 1; 
     display: flex;
     flex-direction: column;
     overflow: hidden; 
-    padding: 0 !important; /* Sin padding interno, el editor maneja el suyo */
-    border-top-left-radius: 0; /* Conectar con la primera pestaña */
-    min-height: 0; /* Fix flexbox */
+    padding: 0 !important; 
+    border-top-left-radius: 0; 
+    min-height: 0; 
 }
 
-/* 5. Área de Contenido del Código */
 .file-content-area {
     width: 100%;
-    flex: 1; /* Crecer para llenar la tarjeta */
+    flex: 1; 
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* El scroll lo tiene .syntax-container */
+    overflow: hidden; 
     background-color: var(--bg-code-editor);
     color: var(--text-code-base);
     font-family: var(--sl-font-mono);
@@ -553,21 +545,19 @@ input:checked+.component-toggle-slider:before {
     transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* 6. Contenedor de Sintaxis (Scrollable) */
 .syntax-container {
     padding: 16px;
     font-family: 'Fira Code', Consolas, monospace;
     font-size: 13px;
     line-height: 1.5;
-    white-space: pre; /* Respetar espacios */
-    overflow: auto; /* Scroll aquí */
-    flex: 1; /* Llenar altura */
+    white-space: pre; 
+    overflow: auto; 
+    flex: 1; 
     width: 100%;
     box-sizing: border-box;
     min-height: 100%;
 }
 
-/* --- THEME TOKENS (Syntax Highlighting) --- */
 :root {
     --bg-code-editor: #ffffff;
     --text-code-base: #000000;
@@ -583,7 +573,6 @@ input:checked+.component-toggle-slider:before {
     --token-error: #cd3131;
 }
 
-/* Tokens */
 .token-comment { color: var(--token-comment); font-style: italic; }
 .token-string  { color: var(--token-string); }
 .token-number  { color: var(--token-number); }
@@ -1460,6 +1449,7 @@ input:checked+.component-toggle-slider:before {
     justify-content: center;
 }
 
+/* Spinner Styles */
 .component-spinner-large {
     width: 32px;
     height: 32px;
@@ -1470,6 +1460,38 @@ input:checked+.component-toggle-slider:before {
     flex-shrink: 0;
 }
 
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-left-color: var(--text-primary);
+    border-radius: var(--sl-border-radius-circle);
+    animation: spin 1s linear infinite;
+}
+
+.spinner-sm {
+    width: 24px;
+    height: 24px;
+    border: 3px solid var(--border-lighter);
+    border-left-color: var(--text-primary);
+    border-radius: var(--sl-border-radius-circle);
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
+/* [NUEVO] Fix para el spinner dentro del botón primario en modo Light.
+   Fuerza el spinner a ser blanco para que contraste con el fondo oscuro. */
+.component-button.primary .spinner-sm {
+    border-color: rgba(255, 255, 255, 0.2);
+    border-left-color: #ffffff;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Dialog Mobile */
 @media (max-width: 468px) {
     .component-overlay {
         align-items: flex-end;

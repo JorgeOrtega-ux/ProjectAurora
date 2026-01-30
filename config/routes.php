@@ -8,6 +8,9 @@ return [
     
     // === AUTH ===
     'login'                         => __DIR__ . '/../includes/sections/auth/login.php',
+    // [NUEVO] Ruta dedicada para el paso 2 del login
+    'login/verification-aditional'  => __DIR__ . '/../includes/sections/auth/login.php',
+    
     'register'                      => __DIR__ . '/../includes/sections/auth/register.php',
     'register/aditional-data'       => __DIR__ . '/../includes/sections/auth/register.php',
     'register/verification-account' => __DIR__ . '/../includes/sections/auth/register.php',

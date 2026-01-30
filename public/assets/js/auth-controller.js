@@ -7,18 +7,24 @@ import { Toast } from './core/toast-manager.js';
 import { ApiService } from './core/api-service.js';
 import { I18n } from './core/i18n-manager.js';
 
-// Atajo para escribir menos (opcional, pero recomendado)
+// Atajo
 const AuthAPI = ApiService.Routes.Auth;
 
 let resendTimerInterval = null;
 let recoveryTimerInterval = null;
 let turnstileWidgetId = null;
+let isRecoveryMode = false; // Estado local para el tipo de código
 
 export function initAuthController() {
     renderTurnstile();
 
     document.addEventListener('spa:view_loaded', () => {
         setTimeout(renderTurnstile, 100);
+        // Si cargamos directamente la vista de 2FA, poner foco
+        if (window.location.pathname.includes('/verification-aditional')) {
+            const input2fa = document.getElementById('2fa-code');
+            if (input2fa) input2fa.focus();
+        }
     });
 
     const resendBtn = document.getElementById('btn-resend-code');
@@ -42,7 +48,17 @@ export function initAuthController() {
         const btnVerify2FA = target.closest('#btn-verify-2fa');
         if (btnVerify2FA) {
             e.preventDefault();
+            // [CORRECCIÓN] Limpiar error previo antes de validar
+            hideError('login-step2-error'); 
             handleLoginStep2(btnVerify2FA);
+            return;
+        }
+
+        // [NUEVO] Toggle entre App y Código de Recuperación
+        const btnToggleRecovery = target.closest('#toggle-recovery-mode');
+        if (btnToggleRecovery) {
+            e.preventDefault();
+            toggleRecoveryMode(btnToggleRecovery);
             return;
         }
 
@@ -67,7 +83,6 @@ export function initAuthController() {
             }
 
             const formData = new FormData();
-            // ¡YA NO NECESITAS APPEND ACTION AQUÍ!
             formData.append('email', email);
             formData.append('password', password);
             formData.append('cf-turnstile-response', tsToken);
@@ -75,7 +90,6 @@ export function initAuthController() {
             setLoading(btnNext1, true);
 
             try {
-                // Mira qué elegante:
                 const res = await ApiService.post(AuthAPI.RegisterStep1, formData);
 
                 if (res.success) {
@@ -174,8 +188,6 @@ export function initAuthController() {
             }
 
             const targetErrorNode = document.getElementById('btn-finish') || btnResend;
-
-            // FormData vacío, el ApiService inyectará la acción 'resend_code'
             const formData = new FormData();
 
             btnResend.style.opacity = '0.5';
@@ -309,7 +321,6 @@ export function initAuthController() {
         }
 
         // LOGOUT
-        // LOGOUT
         const logoutBtn = target.closest('[data-action="logout"]');
         if (logoutBtn) {
             e.preventDefault();
@@ -319,17 +330,13 @@ export function initAuthController() {
             logoutBtn.dataset.processing = "true";
 
             addSpinnerToButton(logoutBtn);
-
-            // [NUEVO] Marcar que estamos saliendo intencionalmente
             window.isManualLogout = true;
 
             try {
-                // Logout no lleva datos extra, solo la acción (inyectada por el servicio)
                 await ApiService.post(AuthAPI.Logout);
                 window.location.href = window.BASE_PATH + 'login';
             } catch (err) {
                 console.error("Logout error:", err);
-                // Si falla, quitamos la bandera por si el usuario quiere reintentar
                 window.isManualLogout = false;
                 removeSpinnerFromButton(logoutBtn);
                 logoutBtn.dataset.processing = "false";
@@ -345,6 +352,34 @@ export function initAuthController() {
     });
 
     document.body.addEventListener('keypress', handleEnterKey);
+}
+
+// === Lógica de Toggle Recovery (Visual) ===
+function toggleRecoveryMode(btn) {
+    const input = document.getElementById('2fa-code');
+    const label = document.getElementById('label-2fa-code');
+    
+    isRecoveryMode = !isRecoveryMode;
+
+    if (isRecoveryMode) {
+        input.placeholder = ' ';
+        // Los códigos de recuperación son más largos
+        input.maxLength = 10;
+        input.value = '';
+        input.focus();
+        
+        // Cambiar textos
+        label.textContent = "Código de Recuperación";
+        btn.textContent = "Usar aplicación de autenticación";
+    } else {
+        input.placeholder = ' ';
+        input.maxLength = 6;
+        input.value = '';
+        input.focus();
+        
+        label.textContent = I18n.t('auth.2fa.field_code');
+        btn.textContent = "Usar código de recuperación";
+    }
 }
 
 // === HELPERS DE LOGICA LOGIN ===
@@ -380,6 +415,10 @@ async function handleLoginStep1(btn) {
 
         if (res.success) {
             if (res.require_2fa) {
+                // Cambio de URL sin recargar
+                const newUrl = window.BASE_PATH + 'login/verification-aditional';
+                window.history.pushState({ section: 'login/verification-aditional' }, '', newUrl);
+                
                 transitionTo2FA();
             } else {
                 window.location.href = res.redirect;
@@ -397,8 +436,15 @@ async function handleLoginStep1(btn) {
 }
 
 async function handleLoginStep2(btn) {
-    const code = document.getElementById('2fa-code').value;
-    if (!code) return;
+    const input2fa = document.getElementById('2fa-code');
+    const code = input2fa.value.trim();
+    
+    // [CORRECCIÓN] Validar vacío y mostrar error en DIV (no hacer return silencioso)
+    if (!code) {
+        showError(btn, 'login-step2-error', I18n.t('js.auth.enter_code'));
+        input2fa.focus();
+        return;
+    }
 
     const formData = new FormData();
     formData.append('code', code);
@@ -410,17 +456,19 @@ async function handleLoginStep2(btn) {
         if (res.success) {
             window.location.href = res.redirect;
         } else {
-            Toast.show(res.message, 'error');
+            // [CORRECCIÓN] Usar showError en lugar de Toast para mantener consistencia con Step 1
+            showError(btn, 'login-step2-error', res.message);
             setLoading(btn, false);
-            document.getElementById('2fa-code').value = '';
+            
+            // [CORRECCIÓN] NO borrar el código, solo dar foco
+            input2fa.focus();
         }
     } catch (e) {
-        Toast.show(I18n.t('js.auth.connection_error'), 'error');
+        // [CORRECCIÓN] Usar showError en lugar de Toast
+        showError(btn, 'login-step2-error', I18n.t('js.auth.connection_error'));
         setLoading(btn, false);
     }
 }
-
-// === UTILS UI ===
 
 function transitionTo2FA() {
     const stage1 = document.getElementById('login-stage-1');
@@ -497,7 +545,6 @@ function addSpinnerToButton(btn) {
 
     const spinner = document.createElement('div');
     spinner.className = 'spinner-sm';
-    // Estilos inline para el spinner específico de logout
     Object.assign(spinner.style, {
         borderColor: 'rgba(0, 0, 0, 0.1)',
         borderLeftColor: 'var(--text-primary)',
@@ -515,7 +562,6 @@ function removeSpinnerFromButton(btn) {
     if (spinner) spinner.remove();
 }
 
-// === FUNCIONES DE ERRORES Y TURNSTILE (IGUAL QUE ANTES) ===
 function showError(referenceNode, errorId, message) {
     let errorDiv = document.getElementById(errorId);
     if (!errorDiv) {

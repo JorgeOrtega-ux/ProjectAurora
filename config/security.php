@@ -5,6 +5,7 @@ return [
     // Rutas estrictamente de autenticación 
     'auth_routes' => [
         'login', 
+        'login/verification-aditional', // [NUEVO] Permitir acceso público (validado por sesión)
         'register', 
         'register/aditional-data', 
         'register/verification-account', 
@@ -19,7 +20,7 @@ return [
         'settings/devices',
         'settings/delete-account',
         'settings/2fa-setup',
-        'settings/accessibility', // <--- AGREGADO AQUÍ
+        'settings/accessibility', 
         'logout'
     ]
 ];
