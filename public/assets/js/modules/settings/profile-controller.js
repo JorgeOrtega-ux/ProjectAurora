@@ -184,14 +184,17 @@ function initIdentityLogic() {
 }
 
 async function handleEmailVerification(targetField) {
+    // 1. Abre el primer diálogo (Spinner)
     Dialog.showLoading('Comprobando estado...');
     
     try {
         const statusRes = await ApiService.post(SettingsAPI.GetEmailStatus);
         
-        Dialog.close();
+        // [CORRECCIÓN] NO cerramos el diálogo aquí. Mantenemos el spinner girando.
+        // Dialog.close(); <--- ELIMINAR ESTA LÍNEA
 
         if (!statusRes.success) {
+            Dialog.close(); // Aquí SÍ cerramos porque hubo error y el flujo termina
             Toast.show(statusRes.message, 'error');
             return;
         }
@@ -199,31 +202,37 @@ async function handleEmailVerification(targetField) {
         let { status, cooldown } = statusRes;
 
         if (status === 'authorized') {
+            Dialog.close(); // Aquí SÍ cerramos porque el usuario ya puede editar (fin del flujo de diálogo)
             toggleEditState(targetField, true);
             return;
         }
 
         if (status === 'none') {
-            Dialog.showLoading('Enviando código...');
+            // [OPTIMIZACIÓN] Reutilizamos el diálogo abierto cambiando el texto
+            Dialog.showLoading('Enviando código...'); 
             const reqRes = await ApiService.post(SettingsAPI.RequestEmailVerification);
-            Dialog.close();
+            
+            // [CORRECCIÓN] NO cerramos aquí tampoco.
+            // Dialog.close(); <--- ELIMINAR ESTA LÍNEA
 
             if (!reqRes.success) {
+                Dialog.close(); // Cerrar por error
                 Toast.show(reqRes.message, 'error');
                 return;
             }
             Toast.show('Código enviado', 'success');
-            // Forzar cooldown visualmente
             cooldown = 60; 
         } else {
             Toast.show('Ya tienes un código activo', 'info');
         }
 
+        // 3. Transición directa: El DialogManager reemplazará el contenido del spinner 
+        // por el formulario de verificación sin cerrar la ventana.
         showVerificationDialog(targetField, cooldown || 0);
 
     } catch (e) {
         console.error(e);
-        Dialog.close();
+        Dialog.close(); // Cerrar por error crítico (catch)
         Toast.show(I18n.t('js.core.connection_error'), 'error');
     }
 }

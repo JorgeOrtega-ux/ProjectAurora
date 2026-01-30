@@ -1452,7 +1452,6 @@ input:checked+.component-toggle-slider:before {
     gap: 12px;
     width: 100%;
     justify-content: flex-start;
-    margin-top: 24px;
 }
 
 .component-dialog-footer .component-button {
@@ -1904,7 +1903,8 @@ input:checked+.component-toggle-slider:before {
 
 .component-stat-icon {
     color: var(--text-tertiary);
-    background-color: var(--bg-hover-light);
+    background-color: transparent;
+    border: 1px solid #00000020;
     padding: 6px;
     border-radius: 8px;
     font-size: 20px;

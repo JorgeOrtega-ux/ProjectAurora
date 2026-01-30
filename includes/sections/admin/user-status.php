@@ -47,6 +47,10 @@ $suspensionData = [
                     <button class="header-button" style="cursor: help; border-color: transparent;" data-tooltip="Auditoría Activa: Sus cambios quedarán registrados.">
                         <span class="material-symbols-rounded" style="color: var(--text-secondary);">history_edu</span>
                     </button>
+
+                    <button class="component-button primary" id="btn-save-status" disabled>
+                        Guardar
+                    </button>
                 </div>
             </div>
         </div>
@@ -218,12 +222,6 @@ $suspensionData = [
                 </div>
             </div>
         </div>
-    </div>
-
-    <div class="component-actions-footer mt-4 d-none" id="footer-actions">
-        <button class="component-button primary w-100" id="btn-save-status">
-            Guardar Cambios
-        </button>
     </div>
 
 </div>

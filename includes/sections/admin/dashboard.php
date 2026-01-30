@@ -13,7 +13,18 @@
                     </div>
                 </div>
 
-                <div class="component-toolbar__side component-toolbar__side--right">
+               <div class="component-toolbar__side component-toolbar__side--right">
+                    
+                    <button class="header-button" data-nav="admin/log-files" data-tooltip="Logs del Sistema">
+                        <span class="material-symbols-rounded">description</span>
+                    </button>
+
+                    <button class="header-button" data-nav="admin/audit-log" data-tooltip="Registro de Actividad">
+                        <span class="material-symbols-rounded">history_edu</span>
+                    </button>
+
+                    <div class="component-divider-vertical" style="height: 24px; border-left: 1px solid var(--border-light); margin: 0 4px;"></div>
+
                     <button class="header-button" data-action="refresh-dashboard" data-tooltip="Actualizar datos">
                         <span class="material-symbols-rounded">refresh</span>
                     </button>

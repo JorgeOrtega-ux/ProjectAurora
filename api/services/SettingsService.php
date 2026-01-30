@@ -120,21 +120,23 @@ class SettingsService {
         $stmt->execute([$this->userId]);
         $email = $stmt->fetchColumn();
 
-        // [MODIFICADO] Verificar cooldown en Redis
-        // Clave: verify:cooldown:email_update:{email}
-        $cooldownKey = "verify:cooldown:email_update:{$email}";
-        
-        // TTL devuelve -2 si no existe, -1 si no tiene exp, o los segundos restantes
-        $ttl = $this->redis->ttl($cooldownKey);
+        // Definir ambas claves
+        $mainKey = "verify:email_update:{$email}";         // Dura 15 min (la que contiene el código)
+        $cooldownKey = "verify:cooldown:email_update:{$email}"; // Dura 60 seg (el bloqueo)
 
-        if ($ttl > 0) {
+        // [CORRECCIÓN] Verificar primero si existe el proceso activo (Main Key)
+        if ($this->redis->exists($mainKey)) {
+            // Si existe el proceso, verificamos cuánto le queda al cooldown
+            $ttl = $this->redis->ttl($cooldownKey);
+
             return [
                 'success' => true, 
-                'status' => 'pending_code',
-                'cooldown' => $ttl
+                'status' => 'pending_code', // Decimos que YA hay un código pendiente
+                'cooldown' => ($ttl > 0) ? $ttl : 0
             ];
         }
 
+        // Si no existe la Main Key, entonces realmente no hay nada activo
         return ['success' => true, 'status' => 'none'];
     }
 

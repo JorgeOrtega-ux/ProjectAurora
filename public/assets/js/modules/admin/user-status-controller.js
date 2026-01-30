@@ -66,6 +66,7 @@ function initEvents() {
     const btnBack = _container.querySelector('[data-action="back-to-list"]');
     if (btnBack) btnBack.addEventListener('click', () => navigateTo('admin/users'));
 
+    // Seleccionamos el botón en el toolbar
     const btnSave = _container.querySelector('#btn-save-status');
     if (btnSave) btnSave.addEventListener('click', saveStatus);
 
@@ -77,6 +78,12 @@ function initEvents() {
     if (_state.status === 'deleted') populateReasons('deletion');
 }
 
+// [NUEVO] Helper para habilitar/deshabilitar el botón del toolbar
+function toggleSaveButton(enable) {
+    const btn = document.getElementById('btn-save-status');
+    if (btn) btn.disabled = !enable;
+}
+
 function handleDropdownSelection(e) {
     if (!_container || _container.style.display === 'none') return;
     
@@ -86,7 +93,6 @@ function handleDropdownSelection(e) {
         _state.status = value;
         updateLabel('current-status-label', label);
         processMainStatusChange(value);
-        showSection('footer-actions');
     }
 
     if (type === 'suspension_type') {
@@ -100,6 +106,7 @@ function handleDropdownSelection(e) {
         updateLabel('days-label', label);
         showSection('group-reason');
         populateReasons('suspension');
+        // El botón sigue deshabilitado hasta elegir razón
     }
 
     if (type === 'deletion_source') {
@@ -112,7 +119,8 @@ function handleDropdownSelection(e) {
     if (type === 'reason') {
         _state.reason = label;
         updateLabel('reason-label', label);
-        showSection('footer-actions');
+        // Habilitamos el botón al tener la razón
+        toggleSaveButton(true);
     }
 }
 
@@ -121,7 +129,9 @@ function processMainStatusChange(status) {
     hideSection('group-suspension-days');
     hideSection('group-deletion-source');
     hideSection('group-reason');
-    hideSection('footer-actions');
+    
+    // Resetear botón al cambiar estado principal
+    toggleSaveButton(false); 
 
     updateLabel('suspension-type-label', 'Seleccionar tipo...');
     updateLabel('days-label', 'Seleccionar días...');
@@ -129,7 +139,8 @@ function processMainStatusChange(status) {
     updateLabel('reason-label', 'Seleccionar razón...');
 
     if (status === 'active') {
-        showSection('footer-actions');
+        // Activar directamente si es "Active"
+        toggleSaveButton(true);
     } 
     else if (status === 'suspended') {
         showSection('group-suspension-type');
@@ -142,7 +153,9 @@ function processMainStatusChange(status) {
 function processSuspensionTypeChange(type) {
     hideSection('group-suspension-days');
     hideSection('group-reason');
-    hideSection('footer-actions');
+    
+    // Deshabilitar hasta que se complete el flujo
+    toggleSaveButton(false);
     
     updateLabel('days-label', 'Seleccionar días...');
     updateLabel('reason-label', 'Seleccionar razón...');
@@ -211,8 +224,6 @@ async function saveStatus() {
     btn.textContent = 'Guardando...';
 
     const formData = new FormData();
-    // [MODIFICADO] Ya no añadimos 'action' manualmente.
-    // El router (api/index.php) lo inferirá de la ruta Admin.UpdateStatus
     formData.append('target_id', _targetUserId);
     formData.append('status', _state.status);
     
@@ -222,7 +233,6 @@ async function saveStatus() {
     if (_state.deletionSource) formData.append('deletion_source', _state.deletionSource);
 
     try {
-        // [MODIFICADO] Usamos post() con la ruta definida en ApiRoutes.Admin.UpdateStatus
         const res = await ApiService.post(ApiService.Routes.Admin.UpdateStatus, formData);
         
         if (res.success) {
