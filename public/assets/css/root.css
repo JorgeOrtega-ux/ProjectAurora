@@ -418,9 +418,9 @@
     --role-administrator: #FF0000;
     --role-user-border: #cccccc;
     
-    /* --- Dimensions & Effects --- */
-    --radius-md: var(--sl-border-radius-large); /* 12px aprox */
-    --shadow-card: var(--sl-shadow-medium);
+/* --- Dimensions & Effects --- */
+--radius-md: 0.75rem; /* 12px */
+--shadow-card: var(--sl-shadow-medium);
 }
 
 /* ========================================================================
