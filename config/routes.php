@@ -8,9 +8,7 @@ return [
     
     // === AUTH ===
     'login'                         => __DIR__ . '/../includes/sections/auth/login.php',
-    // [NUEVO] Ruta dedicada para el paso 2 del login
     'login/verification-aditional'  => __DIR__ . '/../includes/sections/auth/login.php',
-    
     'register'                      => __DIR__ . '/../includes/sections/auth/register.php',
     'register/aditional-data'       => __DIR__ . '/../includes/sections/auth/register.php',
     'register/verification-account' => __DIR__ . '/../includes/sections/auth/register.php',
@@ -25,8 +23,6 @@ return [
     'settings/2fa-setup'       => __DIR__ . '/../includes/sections/settings/2fa-setup.php',
     'settings/devices'         => __DIR__ . '/../includes/sections/settings/devices.php',
     'settings/delete-account'  => __DIR__ . '/../includes/sections/settings/delete-account.php',
-    
-    // Ruta para invitados
     'settings/preferences'     => __DIR__ . '/../includes/sections/settings/guest-preferences.php',
     
     // === SITE POLICY ===
@@ -46,11 +42,11 @@ return [
     'admin/backups/config'         => __DIR__ . '/../includes/sections/admin/backup-config.php',
     'admin/server'                 => __DIR__ . '/../includes/sections/admin/server-config.php',
     
-    // AUDITORÍA Y LOGS
+    // [NUEVO] REDIS MANAGER
+    'admin/redis'                  => __DIR__ . '/../includes/sections/admin/redis-manager.php',
+
     'admin/audit-log'              => __DIR__ . '/../includes/sections/admin/audit-log.php',
     'admin/log-files'              => __DIR__ . '/../includes/sections/admin/log-files.php',
-    
-    // [NUEVO] VISOR DE ARCHIVOS
     'admin/file-viewer'            => __DIR__ . '/../includes/sections/admin/file-viewer.php',
 
     // === SYSTEM ===

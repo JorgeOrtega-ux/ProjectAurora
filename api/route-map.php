@@ -13,6 +13,7 @@ return [
     'auth.reset_password'     => ['file' => 'handlers/auth-handler.php', 'action' => 'reset_password'],
     'auth.logout'             => ['file' => 'handlers/auth-handler.php', 'action' => 'logout'],
     'auth.get_ws_token'       => ['file' => 'handlers/auth-handler.php', 'action' => 'get_ws_token'],
+    'auth.get_status'         => ['file' => 'handlers/auth-handler.php', 'action' => 'get_registration_status'],
 
     // === SETTINGS ===
     'settings.update_pref'    => ['file' => 'handlers/settings-handler.php', 'action' => 'update_preference'],
@@ -40,7 +41,7 @@ return [
     'admin.update_profile'    => ['file' => 'handlers/admin-handler.php', 'action' => 'update_user_profile'],
     'admin.update_role'       => ['file' => 'handlers/admin-handler.php', 'action' => 'update_user_role'],
     'admin.update_status'     => ['file' => 'handlers/admin-handler.php', 'action' => 'update_user_status'],
-    'admin.disable_2fa'       => ['file' => 'handlers/admin-handler.php', 'action' => 'disable_user_2fa'], // [NUEVO]
+    'admin.disable_2fa'       => ['file' => 'handlers/admin-handler.php', 'action' => 'disable_user_2fa'], 
     'admin.update_pref'       => ['file' => 'handlers/admin-handler.php', 'action' => 'update_user_preference'],
     'admin.upload_avatar'     => ['file' => 'handlers/admin-handler.php', 'action' => 'upload_user_avatar'],
     'admin.delete_avatar'     => ['file' => 'handlers/admin-handler.php', 'action' => 'delete_user_avatar'],
@@ -52,7 +53,6 @@ return [
     'admin.create_backup'     => ['file' => 'handlers/admin-handler.php', 'action' => 'create_backup'],
     'admin.restore_backup'    => ['file' => 'handlers/admin-handler.php', 'action' => 'restore_backup'],
     'admin.delete_backup'     => ['file' => 'handlers/admin-handler.php', 'action' => 'delete_backup'],
-    
     'admin.get_backup_content'=> ['file' => 'handlers/admin-handler.php', 'action' => 'get_backup_content'],
     'admin.get_backup_config' => ['file' => 'handlers/admin-handler.php', 'action' => 'get_backup_config'],
     'admin.upd_backup_config' => ['file' => 'handlers/admin-handler.php', 'action' => 'update_backup_config'],
@@ -60,12 +60,19 @@ return [
     // AUDITORÍA
     'admin.get_audit_logs'    => ['file' => 'handlers/admin-handler.php', 'action' => 'get_audit_logs'],
 
-    // SYSTEM
-    'system.create_backup'    => ['file' => 'handlers/system-handler.php', 'action' => 'create_backup_auto'],
-'auth.get_status'         => ['file' => 'handlers/auth-handler.php', 'action' => 'get_registration_status'],
     // LOGS DE ARCHIVO Y VISOR
     'admin.get_log_files'     => ['file' => 'handlers/admin-handler.php', 'action' => 'get_log_files'],
     'admin.delete_log_files'  => ['file' => 'handlers/admin-handler.php', 'action' => 'delete_log_files'],
     'admin.get_log_content'   => ['file' => 'handlers/admin-handler.php', 'action' => 'get_log_content'],
+
+    // [NUEVO] REDIS MANAGER
+    'admin.redis_stats'       => ['file' => 'handlers/admin-handler.php', 'action' => 'get_redis_stats'],
+    'admin.redis_keys'        => ['file' => 'handlers/admin-handler.php', 'action' => 'get_redis_keys'],
+    'admin.redis_get'         => ['file' => 'handlers/admin-handler.php', 'action' => 'get_redis_value'],
+    'admin.redis_del'         => ['file' => 'handlers/admin-handler.php', 'action' => 'delete_redis_key'],
+    'admin.redis_flush'       => ['file' => 'handlers/admin-handler.php', 'action' => 'flush_redis_db'],
+
+    // SYSTEM
+    'system.create_backup'    => ['file' => 'handlers/system-handler.php', 'action' => 'create_backup_auto'],
 ];
 ?>

@@ -64,6 +64,10 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
                     <div class="component-toolbar-title">Configuración del Servidor</div>
                 </div>
                 <div class="component-toolbar__side component-toolbar__side--right">
+                    <button class="header-button" data-nav="admin/redis" data-tooltip="Gestor de Redis">
+                        <span class="material-symbols-rounded" style="color: #d32f2f;">memory</span>
+                    </button>
+
                     <button class="component-button primary" id="btn-save-server-config">
                         <span class="material-symbols-rounded" style="font-size: 18px;">save</span>
                         Guardar
@@ -79,7 +83,6 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
     </div>
 
     <div class="component-card component-card--grouped mt-4">
-
         <div class="component-accordion-item" data-accordion-id="access">
             <div class="component-group-item component-accordion-header">
                 <div class="component-card__content">

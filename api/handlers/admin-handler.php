@@ -7,6 +7,7 @@ extract($services); // $pdo, $i18n, $redis
 require_once __DIR__ . '/../services/AdminService.php';
 require_once __DIR__ . '/../services/BackupService.php';
 require_once __DIR__ . '/../services/LogFileService.php';
+require_once __DIR__ . '/../services/RedisService.php'; // [NUEVO]
 
 if (!isset($_SESSION['user_id'])) {
     Utils::jsonResponse(['success' => false, 'message' => $i18n->t('api.session_expired')]);
@@ -19,14 +20,16 @@ if (!in_array($role, ['founder', 'administrator'])) {
     Utils::jsonResponse(['success' => false, 'message' => $i18n->t('errors.access_denied')]);
 }
 
-// [MODIFICADO] Inyectamos $redis aquí para la gestión de caché de configuración
+// Inyección de servicios
 $adminService = new AdminService($pdo, $i18n, $_SESSION['user_id'], $redis);
 $backupService = new BackupService($pdo, $i18n, $_SESSION['user_id'], $redis);
 $logFileService = new LogFileService(); 
+$redisService = new RedisService($redis); // [NUEVO]
 
 $action = $_POST['action'] ?? '';
 
 switch ($action) {
+    // ... (CASOS EXISTENTES: get_all_users, get_user_details, etc.) ...
     case 'get_all_users':
         $page = (int)($_POST['page'] ?? 1);
         $limit = (int)($_POST['limit'] ?? 20);
@@ -57,7 +60,6 @@ switch ($action) {
         Utils::jsonResponse($adminService->updateUserStatus($targetId, $_POST));
         break;
 
-    // [NUEVO] Acción para desactivar 2FA
     case 'disable_user_2fa':
         $targetId = $_POST['target_id'] ?? 0;
         Utils::jsonResponse($adminService->disableUser2FA($targetId));
@@ -103,7 +105,6 @@ switch ($action) {
         break;
 
     case 'delete_backup':
-        // Soporte para array o string
         $filenames = $_POST['filenames'] ?? $_POST['filename'] ?? '';
         Utils::jsonResponse($backupService->deleteBackup($filenames));
         break;
@@ -150,6 +151,33 @@ switch ($action) {
         $paths = $_POST['files'] ?? '';
         $pathsArray = is_array($paths) ? $paths : explode(',', $paths);
         Utils::jsonResponse($logFileService->getFilesContent($pathsArray));
+        break;
+
+    // === [NUEVO] REDIS ===
+    case 'get_redis_stats':
+        Utils::jsonResponse($redisService->getStats());
+        break;
+
+    case 'get_redis_keys':
+        $pattern = $_POST['pattern'] ?? '*';
+        // Si el usuario no pone asteriscos, asumimos búsqueda exacta o parcial simple?
+        // Mejor dejar que el usuario use wildcards, pero default a *
+        if (empty($pattern)) $pattern = '*';
+        Utils::jsonResponse($redisService->getKeys($pattern));
+        break;
+
+    case 'get_redis_value':
+        $key = $_POST['key'] ?? '';
+        Utils::jsonResponse($redisService->getValue($key));
+        break;
+
+    case 'delete_redis_key':
+        $key = $_POST['key'] ?? '';
+        Utils::jsonResponse($redisService->deleteKey($key));
+        break;
+
+    case 'flush_redis_db':
+        Utils::jsonResponse($redisService->flushDB());
         break;
 
     default:

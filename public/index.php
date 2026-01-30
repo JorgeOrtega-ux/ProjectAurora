@@ -30,7 +30,7 @@ $protectedRoutes = $securityRules['protected_routes'];
 
 // Configuración de mantenimiento
 $maintenanceMode = Utils::getServerConfig($pdo, 'maintenance_mode', '0');
-$userRole = $_SESSION['role'] ?? 'guest';
+$userRole = $_SESSION['role'] ?? 'guest'; // Valor inicial (puede ser viejo)
 $allowedRoles = ['founder', 'administrator', 'moderator'];
 
 $isAdminRoute = strpos($currentSection, 'admin/') === 0;
@@ -43,21 +43,13 @@ $showMaintenanceScreen = (
     $currentSection !== 'account-status'
 );
 
-// 6. GESTIÓN DE REDIRECCIONES
-if (!$showMaintenanceScreen) {
-    if (($isAdminRoute || in_array($currentSection, $protectedRoutes)) && !$isLoggedIn) {
-        header("Location: " . $basePath . "login");
-        exit;
-    }
-    if ($isLoggedIn && in_array($currentSection, $authRoutes)) {
-        header("Location: " . $basePath);
-        exit;
-    }
-}
-
-// Refrescar datos de sesión
+// =========================================================================
+// [MOVIDO] 6. REFRESCAR DATOS DE SESIÓN (ANTES DE REDIRECCIONES)
+// =========================================================================
+// Esto asegura que si cambiaste algo en la BD, se aplique ANTES de decidir si puedes ver la página.
 if ($isLoggedIn && !$showMaintenanceScreen) {
     try {
+        // Verificar token de persistencia (seguridad extra)
         if (isset($_SESSION['current_token_id'])) {
             $stmtToken = $pdo->prepare("SELECT id FROM user_auth_tokens WHERE id = ?");
             $stmtToken->execute([$_SESSION['current_token_id']]);
@@ -68,12 +60,13 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
             }
         }
         
+        // Obtener datos frescos del usuario
         $stmt = $pdo->prepare("SELECT role, avatar_path, username, email, two_factor_enabled, account_status, suspension_ends_at, status_reason FROM users WHERE id = ? LIMIT 1");
         $stmt->execute([$_SESSION['user_id']]);
         $freshUser = $stmt->fetch();
 
         if ($freshUser) {
-            // Lógica de Bloqueo
+            // Lógica de Bloqueo / Suspensión
             $isRestricted = false;
             
             if ($freshUser['account_status'] === 'deleted') {
@@ -96,20 +89,22 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
                 header("Location: " . $basePath . "account-status"); exit;
             }
 
+            // [CRÍTICO] Actualizar la sesión
             $_SESSION['role'] = $freshUser['role'];
             $_SESSION['avatar'] = $freshUser['avatar_path'];
             $_SESSION['username'] = $freshUser['username'];
             $_SESSION['email'] = $freshUser['email'];
             $_SESSION['two_factor_enabled'] = $freshUser['two_factor_enabled'];
 
-            // [FIX 1] Forzar recarga de preferencias desde la BD en cada petición
-            // Esto soluciona que los cambios manuales en BD no se vean hasta reloguear
+            // [CRÍTICO] Actualizar la variable local para que el resto del script la vea YA
+            $userRole = $freshUser['role']; 
+
+            // Recargar preferencias desde BD
             $stmtPrefs = $pdo->prepare("SELECT language, open_links_new_tab, theme, extended_toast FROM user_preferences WHERE user_id = ?");
             $stmtPrefs->execute([$_SESSION['user_id']]);
             $freshPrefs = $stmtPrefs->fetch(PDO::FETCH_ASSOC);
 
             if ($freshPrefs) {
-                // Guardar el idioma actual antes de actualizar, para comparar
                 $previousLang = $_SESSION['preferences']['language'] ?? 'es-latam';
 
                 $_SESSION['preferences'] = [
@@ -119,21 +114,36 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
                     'extended_toast' => (bool)$freshPrefs['extended_toast']
                 ];
 
-                // [FIX 2] Recarga en caliente del sistema de traducciones
-                // Si el idioma en BD es diferente al que cargó bootstrap.php, reinicializamos $i18n
+                // Recarga en caliente del idioma si cambió
                 if ($freshPrefs['language'] !== $previousLang) {
                     $i18n = new I18n($freshPrefs['language']);
                 }
             }
 
         } else {
+            // Usuario no existe en BD (borrado manualmente?)
             session_unset(); session_destroy();
             header("Location: " . $basePath . "login"); exit;
         }
     } catch (Exception $e) { error_log("Error sesión: " . $e->getMessage()); }
 }
 
-// 7. PREPARAR VISTA
+// =========================================================================
+// 7. GESTIÓN DE REDIRECCIONES (AHORA CON DATOS FRESCOS)
+// =========================================================================
+if (!$showMaintenanceScreen) {
+    // Verificar permisos de Admin usando el $userRole actualizado arriba
+    if (($isAdminRoute || in_array($currentSection, $protectedRoutes)) && !$isLoggedIn) {
+        header("Location: " . $basePath . "login");
+        exit;
+    }
+    if ($isLoggedIn && in_array($currentSection, $authRoutes)) {
+        header("Location: " . $basePath);
+        exit;
+    }
+}
+
+// 8. PREPARAR VISTA
 $globalAvatarSrc = Utils::getGlobalAvatarSrc();
 $userLang = $_SESSION['preferences']['language'] ?? 'es-latam';
 $turnstileSiteKey = $_ENV['TURNSTILE_SITE_KEY'] ?? '';
@@ -147,11 +157,14 @@ if ($showMaintenanceScreen) {
     $showInterface = false; 
 } else {
     $routesMap = require __DIR__ . '/../config/routes.php';
+    
+    // Verificación final de rol para rutas Admin
     if (strpos($currentSection, 'admin/') === 0 && !in_array($userRole, ['founder', 'administrator'])) {
         $fileToLoad = $routesMap['404'];
     } else {
         $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
     }
+    
     $noInterfaceRoutes = array_merge($authRoutes, ['account-status']);
     $showInterface = !in_array($currentSection, $noInterfaceRoutes); 
 }

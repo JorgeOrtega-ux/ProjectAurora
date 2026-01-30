@@ -27,8 +27,9 @@ import { BackupsController } from './modules/admin/backups-controller.js';
 import { BackupConfigController } from './modules/admin/backup-config-controller.js';
 import { AuditLogController } from './modules/admin/audit-log-controller.js';
 import { LogFilesController } from './modules/admin/log-files-controller.js';
-// [NUEVO]
 import { FileViewerController } from './modules/admin/file-viewer-controller.js';
+// [NUEVO] Importar controlador de Redis
+import { RedisManagerController } from './modules/admin/redis-manager-controller.js';
 
 const App = {
     init: () => {
@@ -75,29 +76,20 @@ const App = {
 };
 
 function initGlobalSocketListeners() {
-    // Escuchar expulsiones forzadas
+    // ... (Mantener listeners existentes igual) ...
     document.addEventListener('socket:force_logout', (e) => {
         if (window.isManualLogout) return;
-
-        console.warn("Seguridad: Sesión revocada remotamente.");
         if (window.location.pathname.includes('/login')) return;
-        
         Toast.show('Tu sesión ha sido cerrada remotamente.', 'warning', 5000);
-        setTimeout(() => {
-            window.location.href = window.BASE_PATH + 'login';
-        }, 1500);
+        setTimeout(() => { window.location.href = window.BASE_PATH + 'login'; }, 1500);
     });
 
-    // Escuchar inicio de mantenimiento
     document.addEventListener('socket:maintenance_start', (e) => {
-        console.warn("Sistema: Mantenimiento iniciado.");
         window.location.reload();
     });
 
-    // [NUEVO] Escuchar notificaciones globales del Worker (Python)
-    // Esto mostrará el Toast de "Éxito" cuando el backup termine
     document.addEventListener('socket:notification', (e) => {
-        const msgData = e.detail.message; // { type: 'success', text: '...' }
+        const msgData = e.detail.message; 
         if (msgData && msgData.text) {
             Toast.show(msgData.text, msgData.type || 'info');
         }
@@ -139,9 +131,10 @@ function routeDispatcher(section) {
         
         case 'admin/audit-log': AuditLogController.init(); break;
         case 'admin/log-files': LogFilesController.init(); break;
-        
-        // [NUEVO] Visor de Archivos
         case 'admin/file-viewer': FileViewerController.init(); break;
+        
+        // [NUEVO] Inicializar controlador de Redis
+        case 'admin/redis': RedisManagerController.init(); break;
         
         default: break;
     }

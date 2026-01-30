@@ -842,6 +842,13 @@ input:checked+.component-toggle-slider:before {
         gap: 12px;
     }
 
+    /* [FIX] Forzar fila para headers de acordeón para que la flecha no caiga */
+    .component-group-item.component-accordion-header {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: nowrap;
+    }
+
     .component-card__actions.actions-right {
         width: 100%;
     }

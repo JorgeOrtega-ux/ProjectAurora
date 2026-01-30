@@ -1,0 +1,158 @@
+<?php
+// api/services/RedisService.php
+
+class RedisService {
+    private $redis;
+
+    public function __construct($redis) {
+        $this->redis = $redis;
+    }
+
+    public function getStats() {
+        if (!$this->redis) return ['success' => false, 'message' => 'Redis no disponible'];
+
+        try {
+            $info = $this->redis->info();
+            $dbSize = $this->redis->dbsize();
+
+            return [
+                'success' => true,
+                'stats' => [
+                    'version' => $info['Server']['redis_version'],
+                    'uptime' => $this->formatUptime($info['Server']['uptime_in_seconds']),
+                    'memory_used' => $info['Memory']['used_memory_human'],
+                    'memory_peak' => $info['Memory']['used_memory_peak_human'],
+                    'connected_clients' => $info['Clients']['connected_clients'],
+                    'total_keys' => $dbSize
+                ]
+            ];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    public function getKeys($pattern = '*', $limit = 100) {
+        if (!$this->redis) return ['success' => false, 'message' => 'Redis no disponible'];
+
+        try {
+            $foundKeys = [];
+            $count = 0;
+            
+            if (empty($pattern)) $pattern = '*';
+
+            // [CORRECCIÓN] Usar el iterador nativo de Predis para SCAN
+            // Esto maneja el cursor automáticamente y es seguro para producción.
+            // La ruta completa es necesaria si no usamos un 'use' arriba.
+            $iterator = new \Predis\Collection\Iterator\Keyspace($this->redis, $pattern);
+
+            foreach ($iterator as $key) {
+                // Obtenemos metadatos básicos para cada clave encontrada
+                $type = $this->redis->type($key);
+                $ttl = $this->redis->ttl($key);
+                
+                $foundKeys[] = [
+                    'key' => $key,
+                    'type' => (string)$type,
+                    'ttl' => $ttl
+                ];
+                
+                $count++;
+                // Limitar resultados para no saturar la interfaz
+                if ($count >= $limit) break;
+            }
+
+            // Ordenar alfabéticamente
+            usort($foundKeys, function($a, $b) {
+                return strcmp($a['key'], $b['key']);
+            });
+
+            return ['success' => true, 'keys' => $foundKeys];
+
+        } catch (Exception $e) {
+            // Logueamos el error real para debugging
+            error_log("Redis Scan Error: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Error al leer claves: ' . $e->getMessage()];
+        }
+    }
+
+    public function getValue($key) {
+        if (!$this->redis) return ['success' => false, 'message' => 'Redis no disponible'];
+
+        try {
+            if (!$this->redis->exists($key)) {
+                return ['success' => false, 'message' => 'La clave no existe'];
+            }
+
+            $type = $this->redis->type($key);
+            $value = null;
+            $size = 0;
+
+            switch ($type) {
+                case 'string':
+                    $value = $this->redis->get($key);
+                    $size = strlen($value);
+                    break;
+                case 'list':
+                    $value = $this->redis->lrange($key, 0, -1);
+                    $size = count($value);
+                    break;
+                case 'hash':
+                    $value = $this->redis->hgetall($key);
+                    $size = count($value);
+                    break;
+                case 'set':
+                    $value = $this->redis->smembers($key);
+                    $size = count($value);
+                    break;
+                case 'zset':
+                    $value = $this->redis->zrange($key, 0, -1, ['withscores' => true]);
+                    $size = count($value);
+                    break;
+                default:
+                    $value = 'Tipo no soportado para visualización';
+            }
+
+            return [
+                'success' => true, 
+                'data' => [
+                    'key' => $key,
+                    'type' => (string)$type,
+                    'ttl' => $this->redis->ttl($key),
+                    'size' => $size,
+                    'value' => $value
+                ]
+            ];
+
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    public function deleteKey($key) {
+        if (!$this->redis) return ['success' => false, 'message' => 'Redis no disponible'];
+        
+        try {
+            $deleted = $this->redis->del($key);
+            return ['success' => $deleted > 0, 'message' => $deleted ? 'Clave eliminada' : 'Clave no encontrada'];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    public function flushDB() {
+        if (!$this->redis) return ['success' => false, 'message' => 'Redis no disponible'];
+        try {
+            $this->redis->flushdb();
+            return ['success' => true, 'message' => 'Base de datos Redis vaciada correctamente'];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    private function formatUptime($seconds) {
+        $dtF = new \DateTime('@0');
+        $dtT = new \DateTime("@$seconds");
+        return $dtF->diff($dtT)->format('%a días, %h horas, %i min');
+    }
+}
+?>

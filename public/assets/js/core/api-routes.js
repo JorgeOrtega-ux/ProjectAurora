@@ -12,7 +12,8 @@ export const ApiRoutes = {
         Verify2FA:        { route: 'auth.verify_2fa' },
         RequestReset:     { route: 'auth.request_reset' },
         ResetPassword:    { route: 'auth.reset_password' },
-        Logout:           { route: 'auth.logout' },GetStatus:        { route: 'auth.get_status' }, // [NUEVO]
+        Logout:           { route: 'auth.logout' },
+        GetStatus:        { route: 'auth.get_status' },
         GetWsToken:       { route: 'auth.get_ws_token' }
     },
     
@@ -46,7 +47,7 @@ export const ApiRoutes = {
         UpdatePreference:   { route: 'admin.update_pref' },
         UploadAvatar:       { route: 'admin.upload_avatar' },
         DeleteAvatar:       { route: 'admin.delete_avatar' },
-        Disable2FA:         { route: 'admin.disable_2fa' }, // [NUEVO]
+        Disable2FA:         { route: 'admin.disable_2fa' }, 
         GetServerConfig:    { route: 'admin.get_server_config' },
         UpdateServerConfig: { route: 'admin.update_server_config' },
         
@@ -68,6 +69,15 @@ export const ApiRoutes = {
         DeleteLogFiles:   { route: 'admin.delete_log_files' },
         
         // Visor
-        GetFileContent:   { route: 'admin.get_log_content' }
+        GetFileContent:   { route: 'admin.get_log_content' },
+
+        // [NUEVO] REDIS MANAGER
+        Redis: {
+            GetStats:     { route: 'admin.redis_stats' },
+            GetKeys:      { route: 'admin.redis_keys' },
+            GetValue:     { route: 'admin.redis_get' },
+            DeleteKey:    { route: 'admin.redis_del' },
+            FlushDB:      { route: 'admin.redis_flush' }
+        }
     }
 };
