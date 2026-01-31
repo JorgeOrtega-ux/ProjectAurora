@@ -1021,6 +1021,12 @@ input:checked+.component-toggle-slider:before {
     text-transform: capitalize;
 }
 
+.component-badge--sm {
+    height: 24px;
+    font-size: 12px;
+    padding: 0 8px;
+}
+
 .component-badge-ghost {
     display: inline-block;
     padding: 4px 12px;

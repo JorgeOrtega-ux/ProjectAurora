@@ -107,12 +107,8 @@ function renderTable(logs, tbody) {
             details = formatChanges(log.changes);
         }
 
-        let actionColor = 'var(--text-primary)';
-        if (log.action.includes('DELETE')) actionColor = '#d32f2f';
-        else if (log.action.includes('CREATE')) actionColor = '#2e7d32';
-        else if (log.action.includes('UPDATE')) actionColor = '#ed6c02';
-
-        const actionBadge = `<span class="component-badge" style="font-size: 11px; border-color: ${actionColor}40; color: ${actionColor}; height: 22px;">${log.action}</span>`;
+        // Se usa la nueva variante --sm para la acción
+        const actionBadge = `<span class="component-badge component-badge--sm">${log.action}</span>`;
 
         // Avatar fallback si no viene definido
         const avatarSrc = log.admin_avatar_src || `https://ui-avatars.com/api/?name=${encodeURIComponent(log.admin_name || 'System')}&background=random&color=fff&size=128`;
@@ -134,7 +130,7 @@ function renderTable(logs, tbody) {
             </td>
             <td>${actionBadge}</td>
             <td>
-                <span style="font-family: monospace; font-size: 12px; background: var(--bg-hover-light); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-transparent-20);">
+                <span class="component-badge component-badge--sm">
                     ${log.target_type}:${log.target_id || '?'}
                 </span>
             </td>
