@@ -127,44 +127,59 @@ async def broadcast_to_everyone_local(msg_type, content=None):
     
     # logging.info(f"📢 Mensaje enviado a {count} clientes conectados.")
 
+# --- EN EL TOP DEL ARCHIVO ---
+# Crea un conjunto global para evitar que el Garbage Collector mate las tareas
+background_tasks = set()
+
+# --- MODIFICA ESTA FUNCIÓN ---
 async def redis_listener_loop():
     """
     Escucha mensajes Pub/Sub de Redis enviados por el Worker o la API.
     """
-    r_sub = await get_redis_client()
-    pubsub = r_sub.pubsub()
-    await pubsub.subscribe('aurora_ws_control')
+    logging.info("🎧 INTENTANDO conectar al canal Pub/Sub...") # LOG DE DEBUG
     
-    logging.info("🎧 Escuchando canal Redis: aurora_ws_control")
-
-    async for message in pubsub.listen():
-        if message['type'] == 'message':
-            try:
-                data = json.loads(message['data'])
-                cmd = data.get('cmd')
+    try:
+        r_sub = await get_redis_client()
+        pubsub = r_sub.pubsub()
+        await pubsub.subscribe('aurora_ws_control')
+        
+        logging.info("🎧 AHORA SÍ: Escuchando canal Redis: aurora_ws_control") # SI NO VES ESTO, FALLÓ
+    
+        async for message in pubsub.listen():
+            # Loguear CUALQUIER cosa que llegue para debug
+            if message['type'] == 'message':
+                logging.info(f"🔎 DEBUG: Mensaje crudo recibido en Redis: {message['data']}")
                 
-                if cmd == 'KICK_SESSION':
-                    u_id = str(data.get('user_id'))
-                    s_id = str(data.get('session_id'))
-                    await kick_session_local(u_id, s_id)
+                try:
+                    data = json.loads(message['data'])
+                    cmd = data.get('cmd')
+                    
+                    if cmd == 'KICK_SESSION':
+                        u_id = str(data.get('user_id'))
+                        s_id = str(data.get('session_id'))
+                        await kick_session_local(u_id, s_id)
+    
+                    elif cmd == 'LOGOUT_SESSION': 
+                        u_id = str(data.get('user_id'))
+                        s_id = str(data.get('session_id'))
+                        await logout_session_local(u_id, s_id)
+                        
+                    elif cmd == 'KICK_ALL':
+                        u_id = str(data.get('user_id'))
+                        await kick_all_sessions_local(u_id)
+                        
+                    elif cmd == 'BROADCAST':
+                        msg_type = data.get('msg_type')
+                        msg_content = data.get('message')
+                        logging.info(f"📨 Retransmitiendo BROADCAST: {msg_type}")
+                        await broadcast_to_everyone_local(msg_type, msg_content)
+                        
+                except Exception as e:
+                    logging.error(f"Error procesando mensaje Pub/Sub: {e}")
+    except Exception as e:
+        # Aquí capturamos si falla la conexión inicial al canal
+        logging.error(f"❌ ERROR FATAL en redis_listener_loop: {e}")
 
-                elif cmd == 'LOGOUT_SESSION': 
-                    u_id = str(data.get('user_id'))
-                    s_id = str(data.get('session_id'))
-                    await logout_session_local(u_id, s_id)
-                    
-                elif cmd == 'KICK_ALL':
-                    u_id = str(data.get('user_id'))
-                    await kick_all_sessions_local(u_id)
-                    
-                elif cmd == 'BROADCAST':
-                    msg_type = data.get('msg_type')
-                    msg_content = data.get('message')
-                    logging.info(f"📨 Retransmitiendo BROADCAST: {msg_type}")
-                    await broadcast_to_everyone_local(msg_type, msg_content)
-                    
-            except Exception as e:
-                logging.error(f"Error procesando mensaje Pub/Sub: {e}")
 
 # --- ACTUALIZACIÓN DE ESTADÍSTICAS (Con Push en vivo) ---
 async def update_stats_in_redis():
@@ -282,17 +297,19 @@ async def ws_handler(websocket):
         
         logging.info(f"User {user_id} desconectado.")
 
+# --- MODIFICA EL MAIN ---
 async def main():
     logging.info(f"🚀 WS Servidor iniciando en puerto {WS_PORT}...")
     
-    # 1. Iniciar el listener de Pub/Sub en background
-    asyncio.create_task(redis_listener_loop())
+    # CORRECCIÓN: Guardamos la referencia de la tarea en el set global
+    task = asyncio.create_task(redis_listener_loop())
+    background_tasks.add(task)
+    task.add_done_callback(background_tasks.discard)
     
-    # 2. Iniciar servidor WebSocket con Heartbeat (Mata-Fantasmas)
-    # ping_interval=20: Envía ping cada 20s
-    # ping_timeout=20: Si no responde en 20s, cierra la conexión y limpia memoria
+    # Iniciar servidor WebSocket
     async with websockets.serve(ws_handler, "0.0.0.0", WS_PORT, ping_interval=20, ping_timeout=20):
         await asyncio.Future()
+
 
 if __name__ == "__main__":
     try: asyncio.run(main())
