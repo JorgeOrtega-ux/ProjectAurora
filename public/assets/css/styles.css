@@ -835,3 +835,13 @@ html {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* =========================================
+   10. HEADER POPOVER (Ajuste de posición)
+   ========================================= */
+/* Ajuste para que el popover en el header se posicione correctamente */
+.header .popover-module {
+    top: calc(100% + 8px); 
+    right: 0;
+    width: 220px;
+}

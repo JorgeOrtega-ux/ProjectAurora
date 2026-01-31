@@ -7,9 +7,10 @@
 const SELECTORS = {
     // Dropdowns
     dropdown: {
-        wrapper: '[data-trigger="dropdown"]', // MODIFICADO: Ahora usa el atributo, no la clase de estilo
+        wrapper: '[data-trigger="dropdown"]', 
         popover: '.popover-module',
-        triggerSelector: '.trigger-selector',
+        // MODIFICADO: Ahora acepta .header-button como disparador válido
+        triggerSelector: '.trigger-selector, .header-button', 
         triggerText: '.trigger-select-text',
         triggerIcon: '.trigger-select-icon',
         optionClass: '.menu-link',
@@ -78,7 +79,9 @@ function _initDropdowns() {
 function _handleDropdownToggle(wrapper, event, S) {
     event.stopPropagation();
     const menu = wrapper.querySelector(S.popover);
-    const trigger = wrapper.querySelector(S.triggerSelector);
+    // Buscamos el trigger específico que fue clickeado o el primero válido
+    const trigger = event.target.closest(S.triggerSelector) || wrapper.querySelector(S.triggerSelector);
+    
     if (!menu || !trigger) return;
 
     const isActive = menu.classList.contains(S.activeClass);
@@ -170,6 +173,7 @@ function _closeDropdowns(S = SELECTORS.dropdown) {
         // === AHORA SÍ OCULTAMOS ===
         el.classList.remove(S.activeClass);
     });
+    // Quitamos la clase active de todos los triggers posibles
     document.querySelectorAll(S.triggerSelector).forEach(el => el.classList.remove(S.activeClass));
     document.querySelectorAll(S.wrapper).forEach(el => el.classList.remove('dropdown-active'));
 }

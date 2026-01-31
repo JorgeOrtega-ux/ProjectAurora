@@ -87,14 +87,27 @@ async function handleDownload() {
         const route = ApiService.Routes.Admin.request_download || { route: 'admin.request_download' };
         const res = await ApiService.post(route, formData);
         
-        if (res.success && res.download_url) {
-            // [SOLUCIÓN] Usar elemento <a> temporal
+      if (res.success && res.download_url) {
+            // [SOLUCIÓN ULTRA A FONDO]
             const downloadLink = document.createElement('a');
             downloadLink.href = window.BASE_PATH + 'public/' + res.download_url;
+            
+            // 1. Forzar atributo download (ayuda al navegador a entender la intención)
+            downloadLink.setAttribute('download', '');
+            
+            // 2. IMPORTANTE: target="_blank"
+            // Si la descarga falla (ej. PHP devuelve error de texto), se abre en nueva pestaña
+            // sin matar la aplicación actual. Si es exitosa, Chrome/Firefox cierran la pestaña al instante.
+            downloadLink.setAttribute('target', '_blank'); 
+            
             downloadLink.style.display = 'none';
             document.body.appendChild(downloadLink);
             downloadLink.click();
-            document.body.removeChild(downloadLink);
+            
+            // Pequeño delay antes de remover para asegurar que el evento click se propague en todos los navegadores
+            setTimeout(() => {
+                document.body.removeChild(downloadLink);
+            }, 100);
 
             Toast.show('Descarga iniciada.', 'success');
             clearSelection();

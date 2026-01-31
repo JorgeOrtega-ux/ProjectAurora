@@ -361,14 +361,21 @@ async function handleDownloadSelected() {
         const route = ApiService.Routes.Admin.request_download || { route: 'admin.request_download' };
         const res = await ApiService.post(route, formData);
         
-        if (res.success && res.download_url) {
-            // [SOLUCIÓN] Usar un <a> invisible evita que la página parpadee o se recargue
+       if (res.success && res.download_url) {
             const downloadLink = document.createElement('a');
             downloadLink.href = window.BASE_PATH + 'public/' + res.download_url;
+            
+            // [SOLUCIÓN] Atributos de seguridad contra recarga
+            downloadLink.setAttribute('download', '');
+            downloadLink.setAttribute('target', '_blank');
+            
             downloadLink.style.display = 'none';
             document.body.appendChild(downloadLink);
             downloadLink.click();
-            document.body.removeChild(downloadLink);
+            
+            setTimeout(() => {
+                document.body.removeChild(downloadLink);
+            }, 100);
             
             if (filesArray.length === 1) {
                 Toast.show('Descarga iniciada.', 'success');
