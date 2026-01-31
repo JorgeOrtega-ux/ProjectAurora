@@ -10,16 +10,24 @@ export const SystemAlertsController = {
         const btnDeactivate = document.getElementById('btn-deactivate-alert');
         const btnRefresh = document.querySelector('[data-action="refresh-status"]');
 
-        // Referencias a los valores seleccionados
+        // Referencias de estado
         let selectedMainType = 'performance';
+        let selectedPerfMsgType = 'degradation';
         let selectedMaintType = 'scheduled';
         let selectedPolicyDoc = 'terms';
+        let selectedPolicyStatus = 'future';
 
-        // Mapas de Configuración Visual para los Triggers
+        // --- CONFIGURACIÓN DE UI ---
         const configMainType = {
             'performance': { icon: 'speed', text: 'Rendimiento' },
             'maintenance': { icon: 'build', text: 'Mantenimiento' },
-            'policy':      { icon: 'policy', text: 'Políticas' }
+            'policy':      { icon: 'policy', text: 'Políticas y Legal' }
+        };
+
+        const configPerfMsg = {
+            'degradation': { icon: 'troubleshoot', text: 'Degradación de Servicio', message: 'Estamos experimentando lentitud en algunos servicios. Trabajamos en ello.' },
+            'latency':     { icon: 'network_check', text: 'Latencia Alta Detectada', message: 'Se ha detectado una latencia alta en la conexión. Su experiencia podría verse afectada.' },
+            'overload':    { icon: 'memory', text: 'Sobrecarga Temporal',     message: 'El sistema presenta una carga inusual. Algunas funciones podrían no responder.' }
         };
 
         const configMaintType = {
@@ -28,13 +36,123 @@ export const SystemAlertsController = {
         };
 
         const configPolicyDoc = {
-            'terms':   { text: 'Términos y Condiciones' },
-            'privacy': { text: 'Política de Privacidad' },
-            'cookies': { text: 'Política de Cookies' }
+            'terms':   { icon: 'description', text: 'Términos y Condiciones' },
+            'privacy': { icon: 'lock', text: 'Política de Privacidad' },
+            'cookies': { icon: 'cookie', text: 'Política de Cookies' }
         };
 
-        // 1. INICIALIZAR TRIGGERS
-        // Helper para configurar triggers
+        const configPolicyStatus = {
+            'future':    { text: 'Actualización Futura', icon: 'calendar_month' },
+            'immediate': { text: 'Ya Disponible',        icon: 'publish' }
+        };
+
+        // --- FUNCIONES DE PREVIEW DINÁMICO ---
+        const updatePreview = () => {
+            const iconEl = document.getElementById('preview-icon');
+            const titleEl = document.getElementById('preview-title');
+            const msgEl = document.getElementById('preview-message');
+            const textContainer = document.getElementById('preview-text-container');
+            
+            // 1. Icono base
+            iconEl.textContent = configMainType[selectedMainType].icon;
+            
+            let metaHtml = '';
+
+            // 2. Lógica por tipo
+            if (selectedMainType === 'performance') {
+                const conf = configPerfMsg[selectedPerfMsgType];
+                titleEl.textContent = conf.text;
+                msgEl.textContent = conf.message;
+                metaHtml = ''; // Sin meta
+                iconEl.textContent = conf.icon;
+            
+            } else if (selectedMainType === 'maintenance') {
+                if (selectedMaintType === 'scheduled') {
+                    titleEl.textContent = "Mantenimiento Programado";
+                    const startDate = document.getElementById('maint-start-time').value || '--/-- --:--';
+                    const duration = document.getElementById('maint-duration').value || '60';
+                    
+                    let dateStr = startDate;
+                    if (startDate !== '--/-- --:--') {
+                        const d = new Date(startDate);
+                        dateStr = d.toLocaleString();
+                    }
+
+                    msgEl.textContent = `Nuestros servicios no estarán disponibles a partir del ${dateStr} por aprox. ${duration} min.`;
+                    metaHtml = `<span class="material-symbols-rounded" style="font-size:14px">timer</span> ${duration} min`;
+                } else {
+                    titleEl.textContent = "Mantenimiento de Emergencia";
+                    const time = document.getElementById('maint-emergency-time').value || '--:--';
+                    msgEl.textContent = `Atención: Se realizará un corte de servicio inminente a las ${time}. Guarde su trabajo.`;
+                    metaHtml = `<span class="material-symbols-rounded" style="font-size:14px; color:var(--color-error)">warning</span> Urgente`;
+                    iconEl.textContent = 'warning';
+                }
+
+            } else if (selectedMainType === 'policy') {
+                const docName = configPolicyDoc[selectedPolicyDoc].text;
+                const link = document.getElementById('policy-link').value || '#';
+                
+                titleEl.textContent = "Actualización Legal";
+                iconEl.textContent = 'gavel';
+
+                if (selectedPolicyStatus === 'future') {
+                    const date = document.getElementById('policy-effective-date').value || '--/--/----';
+                    msgEl.innerHTML = `Nuestros <b>${docName}</b> se actualizarán el día ${date}.`;
+                } else {
+                    msgEl.innerHTML = `Hemos actualizado nuestros <b>${docName}</b>.`;
+                }
+                
+                metaHtml = `<span class="material-symbols-rounded" style="font-size:14px">link</span> <span style="text-decoration:underline">${link}</span>`;
+            }
+
+            // 3. Manejo dinámico del elemento META
+            let metaEl = document.getElementById('preview-meta');
+
+            if (metaHtml) {
+                // Si necesitamos meta y no existe, lo creamos
+                if (!metaEl) {
+                    metaEl = document.createElement('div');
+                    metaEl.id = 'preview-meta';
+                    // Estilos dinámicos solicitados
+                    metaEl.style.cssText = "display: flex; gap: 8px; margin-top: 4px; font-size: 12px; color: var(--text-tertiary);";
+                    textContainer.appendChild(metaEl);
+                }
+                metaEl.innerHTML = metaHtml;
+            } else {
+                // Si no necesitamos meta y existe, lo eliminamos
+                if (metaEl) {
+                    metaEl.remove();
+                }
+            }
+        };
+
+        // Listeners para inputs de texto/fecha
+        ['maint-start-time', 'maint-duration', 'maint-emergency-time', 'policy-link', 'policy-effective-date'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.addEventListener('input', updatePreview);
+        });
+
+        // --- MANEJO SEGURO DE STEPPER ---
+        const btnDurDec = document.getElementById('btn-duration-dec');
+        const btnDurInc = document.getElementById('btn-duration-inc');
+        const inputDur = document.getElementById('maint-duration');
+
+        if (btnDurDec && inputDur) {
+            btnDurDec.addEventListener('click', () => {
+                inputDur.stepDown(15);
+                updatePreview(); 
+            });
+        }
+
+        if (btnDurInc && inputDur) {
+            btnDurInc.addEventListener('click', () => {
+                inputDur.stepUp(15);
+                updatePreview(); 
+            });
+        }
+
+
+        // --- TRIGGERS ---
         const setupTrigger = (triggerId, popoverId, actionName, onSelectCallback) => {
             const trigger = document.getElementById(triggerId);
             const popover = document.getElementById(popoverId);
@@ -42,14 +160,8 @@ export const SystemAlertsController = {
 
             trigger.onclick = (e) => {
                 e.stopPropagation();
-                // Cerrar otros popovers abiertos
-                document.querySelectorAll('.popover-module').forEach(p => {
-                    if (p !== popover) p.classList.remove('active');
-                });
-                document.querySelectorAll('.trigger-selector').forEach(t => {
-                    if (t !== trigger) t.classList.remove('active');
-                });
-                
+                document.querySelectorAll('.popover-module').forEach(p => { if (p !== popover) p.classList.remove('active'); });
+                document.querySelectorAll('.trigger-selector').forEach(t => { if (t !== trigger) t.classList.remove('active'); });
                 popover.classList.toggle('active');
                 trigger.classList.toggle('active');
             };
@@ -61,42 +173,49 @@ export const SystemAlertsController = {
                     onSelectCallback(value, trigger);
                     popover.classList.remove('active');
                     trigger.classList.remove('active');
+                    updatePreview();
                 };
             });
         };
 
-        // Trigger 1: Tipo Principal
-        setupTrigger('trigger-alert-type', 'popover-alert-type', 'select-main-type', (val, triggerEl) => {
+        // Inicializar Triggers
+        setupTrigger('trigger-alert-type', 'popover-alert-type', 'select-main-type', (val) => {
             selectedMainType = val;
-            // Actualizar UI Trigger
             document.getElementById('text-alert-type').textContent = configMainType[val].text;
             document.getElementById('icon-alert-type').textContent = configMainType[val].icon;
-            
-            // Mostrar/Ocultar Grupos
             document.querySelectorAll('.config-group').forEach(el => el.style.display = 'none');
             const group = document.getElementById(`group-${val}`);
             if (group) group.style.display = 'block';
         });
 
-        // Trigger 2: Tipo Mantenimiento
-        setupTrigger('trigger-maint-type', 'popover-maint-type', 'select-maint-type', (val, triggerEl) => {
+        setupTrigger('trigger-perf-msg', 'popover-perf-msg', 'select-perf-msg', (val) => {
+            selectedPerfMsgType = val;
+            document.getElementById('text-perf-msg').textContent = configPerfMsg[val].text;
+            document.getElementById('icon-perf-msg').textContent = configPerfMsg[val].icon;
+        });
+
+        setupTrigger('trigger-maint-type', 'popover-maint-type', 'select-maint-type', (val) => {
             selectedMaintType = val;
-            // Actualizar UI Trigger
             document.getElementById('text-maint-type').textContent = configMaintType[val].text;
             document.getElementById('icon-maint-type').textContent = configMaintType[val].icon;
-
-            // Mostrar/Ocultar Subgrupos
             document.getElementById('subgroup-maint-scheduled').style.display = (val === 'scheduled') ? 'block' : 'none';
             document.getElementById('subgroup-maint-emergency').style.display = (val === 'emergency') ? 'block' : 'none';
         });
 
-        // Trigger 3: Documento de Política
-        setupTrigger('trigger-policy-doc', 'popover-policy-doc', 'select-policy-doc', (val, triggerEl) => {
+        setupTrigger('trigger-policy-doc', 'popover-policy-doc', 'select-policy-doc', (val) => {
             selectedPolicyDoc = val;
             document.getElementById('text-policy-doc').textContent = configPolicyDoc[val].text;
+            document.getElementById('icon-policy-doc').textContent = configPolicyDoc[val].icon;
         });
 
-        // Clic global para cerrar popovers
+        setupTrigger('trigger-policy-status', 'popover-policy-status', 'select-policy-status', (val) => {
+            selectedPolicyStatus = val;
+            document.getElementById('text-policy-status').textContent = configPolicyStatus[val].text;
+            document.getElementById('icon-policy-status').textContent = configPolicyStatus[val].icon;
+            const dateGroup = document.getElementById('subgroup-policy-date');
+            dateGroup.style.display = (val === 'immediate') ? 'none' : 'block';
+        });
+
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.trigger-select-wrapper')) {
                 document.querySelectorAll('.popover-module.active').forEach(el => el.classList.remove('active'));
@@ -104,56 +223,65 @@ export const SystemAlertsController = {
             }
         });
 
-        // 2. LOGICA DE ACCIONES
+        // Init inicial
+        updatePreview();
+
+        // --- LÓGICA DE EMISIÓN ---
         if (btnEmit) {
             btnEmit.onclick = async () => {
                 let payload = { type: selectedMainType, message: '', meta: {} };
 
-                if (selectedMainType === 'performance') {
-                    payload.message = document.getElementById('perf-message').value;
-                }
-                else if (selectedMainType === 'maintenance') {
-                    payload.meta.subtype = selectedMaintType;
-                    if (selectedMaintType === 'scheduled') {
-                        payload.message = "Mantenimiento Programado";
-                        payload.meta.start = document.getElementById('maint-start-time').value;
-                        payload.meta.duration = document.getElementById('maint-duration').value;
-                    } else {
-                        payload.message = "Mantenimiento de Emergencia";
-                        payload.meta.cutoff = document.getElementById('maint-emergency-time').value;
-                    }
-                }
-                else if (selectedMainType === 'policy') {
-                    payload.message = "Actualización de Políticas";
-                    payload.meta.status = 'future';
-                    payload.meta.doc = selectedPolicyDoc;
-                    payload.meta.link = document.getElementById('policy-link').value;
-                    payload.meta.date = document.getElementById('policy-effective-date').value;
+                switch (selectedMainType) {
+                    case 'performance':
+                        payload.message = configPerfMsg[selectedPerfMsgType].message;
+                        payload.meta.code = selectedPerfMsgType;
+                        break;
+                    case 'maintenance':
+                        payload.meta.subtype = selectedMaintType;
+                        if (selectedMaintType === 'scheduled') {
+                            payload.message = "Mantenimiento Programado";
+                            payload.meta.start = document.getElementById('maint-start-time').value;
+                            payload.meta.duration = document.getElementById('maint-duration').value;
+                        } else {
+                            payload.message = "Mantenimiento de Emergencia";
+                            payload.meta.cutoff = document.getElementById('maint-emergency-time').value;
+                        }
+                        break;
+                    case 'policy':
+                        payload.message = "Actualización Legal";
+                        payload.meta.doc = selectedPolicyDoc;
+                        payload.meta.update_type = selectedPolicyStatus;
+                        payload.meta.link = document.getElementById('policy-link').value;
+                        if (selectedPolicyStatus === 'future') {
+                            payload.meta.date = document.getElementById('policy-effective-date').value;
+                        } else {
+                            payload.meta.date = new Date().toISOString().split('T')[0];
+                        }
+                        break;
                 }
 
                 try {
                     const formData = new FormData();
                     formData.append('alert_data', JSON.stringify(payload));
-
                     const res = await ApiService.post(ApiService.Routes.Admin.CreateSystemAlert, formData);
-
                     if (res.success) {
-                        Toast.show('Alerta emitida globalmente', 'success');
+                        Toast.show('Difusión emitida correctamente', 'success');
                         checkActiveAlertStatus();
                     } else {
-                        Toast.show(res.message || 'Error', 'error');
+                        Toast.show(res.message || 'Error al emitir', 'error');
                     }
                 } catch (e) { console.error(e); }
             };
         }
 
+        // --- DESACTIVACIÓN ---
         if (btnDeactivate) {
             btnDeactivate.onclick = async () => {
-                if (!confirm('¿Detener alerta actual?')) return;
+                if (!confirm('¿Detener alerta/difusión actual?')) return;
                 try {
                     const res = await ApiService.post(ApiService.Routes.Admin.DeactivateSystemAlert);
                     if (res.success) {
-                        Toast.show('Alerta desactivada', 'success');
+                        Toast.show('Sistema normalizado', 'success');
                         checkActiveAlertStatus();
                     }
                 } catch (e) { console.error(e); }
@@ -161,34 +289,30 @@ export const SystemAlertsController = {
         }
 
         if (btnRefresh) btnRefresh.onclick = checkActiveAlertStatus;
-
-        // Init Check
         checkActiveAlertStatus();
 
-        // 3. ESTADO DEL SISTEMA
         async function checkActiveAlertStatus() {
             const iconEl = document.getElementById('status-icon');
             const textEl = document.getElementById('status-text');
             const iconContainer = iconEl.parentElement;
 
             try {
-                textEl.textContent = "Verificando...";
+                textEl.textContent = "Sincronizando...";
                 const res = await ApiService.post(ApiService.Routes.Admin.GetActiveAlert);
                 
                 if (res.success && res.alert) {
                     btnDeactivate.style.display = 'flex';
                     const color = res.alert.severity === 'critical' ? 'var(--color-error)' : 'var(--color-warning)';
-                    
                     iconEl.textContent = 'warning';
                     iconEl.style.color = color;
                     iconContainer.style.borderColor = color;
-                    textEl.innerHTML = `<strong style="color:${color}">Activa:</strong> ${res.alert.type}`;
+                    textEl.innerHTML = `<strong style="color:${color}">Activa:</strong> ${res.alert.type} - ${res.alert.message}`;
                 } else {
                     btnDeactivate.style.display = 'none';
                     iconEl.textContent = 'check_circle';
                     iconEl.style.color = 'var(--color-success)';
                     iconContainer.style.borderColor = 'var(--border-transparent-20)';
-                    textEl.textContent = "Sistema Normal";
+                    textEl.textContent = "Todos los sistemas operativos";
                 }
             } catch (e) { console.error(e); }
         }
