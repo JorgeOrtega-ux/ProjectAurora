@@ -10,19 +10,19 @@
         </div>
 
         <div class="menu-list">
-            <a href="#" class="menu-link">
+            <div class="menu-link" data-action="create-canvas">
                 <div class="menu-link-icon">
                     <span class="material-symbols-rounded">add_circle</span>
                 </div>
                 <div class="menu-link-text">Crear un lienzo</div>
-            </a>
+            </div>
             
-            <a href="#" class="menu-link">
+            <div class="menu-link" data-action="join-canvas">
                 <div class="menu-link-icon">
                     <span class="material-symbols-rounded">link</span>
                 </div>
                 <div class="menu-link-text">Unirme a un lienzo</div>
-            </a>
+            </div>
         </div>
     </div>
 </div>

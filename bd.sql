@@ -174,3 +174,22 @@ CREATE TABLE IF NOT EXISTS `system_alerts` (
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX `idx_active` (`is_active`)
 );
+
+-- Agregar al final de bd.sql
+
+CREATE TABLE IF NOT EXISTS canvases (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    uuid CHAR(36) NOT NULL UNIQUE,
+    user_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    slug VARCHAR(100) NOT NULL, -- Para la URL amigable
+    width INT NOT NULL DEFAULT 64,
+    height INT NOT NULL DEFAULT 64,
+    privacy ENUM('public', 'private') DEFAULT 'public',
+    access_code CHAR(12) DEFAULT NULL, -- Código de 12 dígitos si es privado
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX (slug),
+    INDEX (privacy)
+);
