@@ -15,16 +15,16 @@
 
                 <div class="component-toolbar__side component-toolbar__side--right">
                     
-                    <div data-element="pagination-wrapper" style="display: flex; align-items: center; gap: 2px; border: 1px solid var(--border-light); border-radius: 10px; padding: 3px; margin-right: 8px;">
+                    <div data-element="pagination-wrapper" class="component-pagination component-pagination--spaced">
                         
-                        <button class="header-button" data-action="prev-page" data-tooltip="Página anterior" disabled style="width: 32px; height: 32px; border: none;">
-                            <span class="material-symbols-rounded" style="font-size: 1.2rem;">chevron_left</span>
+                        <button class="header-button component-pagination-btn" data-action="prev-page" data-tooltip="Página anterior" disabled>
+                            <span class="material-symbols-rounded">chevron_left</span>
                         </button>
 
-                        <span data-element="pagination-info" style="font-size: 0.85rem; color: var(--text-primary); font-weight: 500; padding: 0 10px; min-width: 60px; text-align: center;">1/1</span>
+                        <span data-element="pagination-info" class="component-pagination-info">1/1</span>
 
-                        <button class="header-button" data-action="next-page" data-tooltip="Página siguiente" disabled style="width: 32px; height: 32px; border: none;">
-                            <span class="material-symbols-rounded" style="font-size: 1.2rem;">chevron_right</span>
+                        <button class="header-button component-pagination-btn" data-action="next-page" data-tooltip="Página siguiente" disabled>
+                            <span class="material-symbols-rounded">chevron_right</span>
                         </button>
                     </div>
 

@@ -25,19 +25,18 @@
                 
                 <div class="component-toolbar__side component-toolbar__side--right">
                     
-                    <div data-element="pagination-wrapper" 
-                         style="display: none; align-items: center; gap: 2px; border: 1px solid #00000020; border-radius: 10px; padding: 3px;">
+                    <div data-element="pagination-wrapper" class="component-pagination">
                         
-                        <button class="header-button" data-action="prev-page" data-tooltip="<?php echo $i18n->t('admin.users_module.toolbar.prev_page'); ?>" disabled style="width: 32px; height: 32px;">
-                            <span class="material-symbols-rounded" style="font-size: 1.2rem;">chevron_left</span>
+                        <button class="header-button component-pagination-btn" data-action="prev-page" data-tooltip="<?php echo $i18n->t('admin.users_module.toolbar.prev_page'); ?>" disabled>
+                            <span class="material-symbols-rounded">chevron_left</span>
                         </button>
 
-                        <span data-element="pagination-info" style="font-size: 0.85rem; color: var(--text-primary); font-weight: 500; padding: 0 10px; min-width: 60px; text-align: center;">
-                            0/0
+                        <span data-element="pagination-info" class="component-pagination-info">
+                            1/1
                         </span>
 
-                        <button class="header-button" data-action="next-page" data-tooltip="<?php echo $i18n->t('admin.users_module.toolbar.next_page'); ?>" disabled style="width: 32px; height: 32px;">
-                            <span class="material-symbols-rounded" style="font-size: 1.2rem;">chevron_right</span>
+                        <button class="header-button component-pagination-btn" data-action="next-page" data-tooltip="<?php echo $i18n->t('admin.users_module.toolbar.next_page'); ?>" disabled>
+                            <span class="material-symbols-rounded">chevron_right</span>
                         </button>
                     </div>
 

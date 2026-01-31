@@ -1961,3 +1961,42 @@ input:checked+.component-toggle-slider:before {
 .component-trend-text {
     color: var(--text-tertiary);
 }
+
+/* =========================================
+   18. PAGINACIÓN (NUEVO)
+   ========================================= */
+.component-pagination {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 3px;
+}
+
+.component-pagination--spaced {
+    margin-right: 8px;
+}
+
+.component-pagination-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.component-pagination-btn .material-symbols-rounded {
+    font-size: 1.2rem;
+}
+
+.component-pagination-info {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    font-weight: 500;
+    padding: 0 10px;
+    min-width: 60px;
+    text-align: center;
+}

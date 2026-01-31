@@ -237,6 +237,9 @@ async function loadUsers() {
                 _currentPage = res.pagination.current;
                 _totalPages = res.pagination.total_pages;
                 updatePaginationUI(res.pagination.total_items);
+            } else {
+                // Fallback por seguridad
+                 updatePaginationUI(0);
             }
 
             renderList();
@@ -257,16 +260,19 @@ function updatePaginationUI(totalItems) {
     const btnNext = _container.querySelector('[data-action="next-page"]');
 
     if (paginationPanel) {
-        if (totalItems > 0) {
-            paginationPanel.style.display = 'flex';
-            if (infoText) {
-                infoText.textContent = `${_currentPage}/${_totalPages}`;
-            }
-            if (btnPrev) btnPrev.disabled = (_currentPage <= 1);
-            if (btnNext) btnNext.disabled = (_currentPage >= _totalPages);
-        } else {
-            paginationPanel.style.display = 'none';
+        // [MODIFICADO] Siempre visible, sin importar la cantidad de items
+        paginationPanel.classList.remove('d-none');
+        paginationPanel.style.display = 'flex';
+
+        if (infoText) {
+            // Si no hay páginas (0 items), mostramos 1/1 o 0/0 según prefieras. 
+            // Usaré 1/1 para mantener consistencia visual si así lo deseas, o current/total.
+            const displayTotal = _totalPages > 0 ? _totalPages : 1;
+            infoText.textContent = `${_currentPage}/${displayTotal}`;
         }
+
+        if (btnPrev) btnPrev.disabled = (_currentPage <= 1);
+        if (btnNext) btnNext.disabled = (_currentPage >= _totalPages);
     }
 }
 
