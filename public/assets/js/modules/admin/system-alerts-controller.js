@@ -7,7 +7,7 @@ import { Toast } from '../../core/toast-manager.js';
 export const SystemAlertsController = {
     init: () => {
         const btnEmit = document.getElementById('btn-emit-alert');
-        const btnDeactivate = document.getElementById('btn-deactivate-alert');
+        const btnDeactivateMini = document.getElementById('btn-deactivate-alert-mini'); // Botón en la card
         const btnRefresh = document.querySelector('[data-action="refresh-status"]');
 
         // Referencias de estado
@@ -275,44 +275,89 @@ export const SystemAlertsController = {
         }
 
         // --- DESACTIVACIÓN ---
-        if (btnDeactivate) {
-            btnDeactivate.onclick = async () => {
-                if (!confirm('¿Detener alerta/difusión actual?')) return;
-                try {
-                    const res = await ApiService.post(ApiService.Routes.Admin.DeactivateSystemAlert);
-                    if (res.success) {
-                        Toast.show('Sistema normalizado', 'success');
-                        checkActiveAlertStatus();
-                    }
-                } catch (e) { console.error(e); }
-            };
-        }
+        const handleDeactivate = async () => {
+            if (!confirm('¿Detener alerta/difusión actual?')) return;
+            try {
+                const res = await ApiService.post(ApiService.Routes.Admin.DeactivateSystemAlert);
+                if (res.success) {
+                    Toast.show('Sistema normalizado', 'success');
+                    checkActiveAlertStatus();
+                }
+            } catch (e) { console.error(e); }
+        };
 
-        if (btnRefresh) btnRefresh.onclick = checkActiveAlertStatus;
+        if (btnDeactivateMini) btnDeactivateMini.onclick = handleDeactivate;
+
+        if (btnRefresh) btnRefresh.onclick = () => {
+             checkActiveAlertStatus();
+             Toast.show('Métricas actualizadas', 'info');
+        };
+
         checkActiveAlertStatus();
 
         async function checkActiveAlertStatus() {
-            const iconEl = document.getElementById('status-icon');
-            const textEl = document.getElementById('status-text');
-            const iconContainer = iconEl.parentElement;
+            // Referencias Cards Dashboard
+            const statOnline = document.getElementById('stat-online-users');
+            const statToday = document.getElementById('stat-alerts-today');
+            const badgeTotal = document.getElementById('badge-alerts-total');
+            
+            const statIcon = document.getElementById('stat-active-icon');
+            const statText = document.getElementById('stat-active-text');
+            const cardStatus = document.getElementById('card-status-indicator');
+            const btnMini = document.getElementById('btn-deactivate-alert-mini');
+
+            const impactIcon = document.getElementById('stat-impact-icon');
+            const impactVal = document.getElementById('stat-last-severity');
+            const impactTime = document.getElementById('stat-last-time');
 
             try {
-                textEl.textContent = "Sincronizando...";
+                statText.textContent = "Sincronizando...";
                 const res = await ApiService.post(ApiService.Routes.Admin.GetActiveAlert);
                 
+                // 1. Actualizar Stats (Siempre disponibles)
+                if (res.stats) {
+                    statOnline.textContent = res.stats.online_users;
+                    statToday.textContent = res.stats.alerts_today;
+                    badgeTotal.innerHTML = `<span class="material-symbols-rounded" style="font-size:14px;">history</span> Total: ${res.stats.alerts_total}`;
+                }
+
+                // 2. Actualizar Estado de Alerta
                 if (res.success && res.alert) {
-                    btnDeactivate.style.display = 'flex';
+                    // Hay alerta activa
                     const color = res.alert.severity === 'critical' ? 'var(--color-error)' : 'var(--color-warning)';
-                    iconEl.textContent = 'warning';
-                    iconEl.style.color = color;
-                    iconContainer.style.borderColor = color;
-                    textEl.innerHTML = `<strong style="color:${color}">Activa:</strong> ${res.alert.type} - ${res.alert.message}`;
+                    
+                    // Card Estado
+                    statIcon.textContent = 'warning';
+                    statIcon.style.color = color;
+                    statText.textContent = "Activa";
+                    statText.style.color = color;
+                    cardStatus.style.borderLeftColor = color;
+                    btnMini.style.display = 'flex';
+
+                    // Card Impacto
+                    impactVal.textContent = res.alert.severity === 'critical' ? 'Crítico' : 'Moderado';
+                    impactIcon.style.color = color;
+                    impactTime.textContent = res.alert.type.toUpperCase(); // Mostrar tipo en vez de tiempo
+                    
                 } else {
-                    btnDeactivate.style.display = 'none';
-                    iconEl.textContent = 'check_circle';
-                    iconEl.style.color = 'var(--color-success)';
-                    iconContainer.style.borderColor = 'var(--border-transparent-20)';
-                    textEl.textContent = "Todos los sistemas operativos";
+                    // Sistema Normal
+                    statIcon.textContent = 'check_circle';
+                    statIcon.style.color = 'var(--color-success)';
+                    statText.textContent = "Operativo";
+                    statText.style.color = 'var(--text-primary)';
+                    cardStatus.style.borderLeftColor = 'var(--color-success)';
+                    btnMini.style.display = 'none';
+
+                    // Impacto Normal
+                    impactVal.textContent = "Normal";
+                    impactIcon.style.color = 'var(--text-tertiary)';
+                    
+                    // Mostrar tiempo desde última alerta si existe
+                    if (res.stats && res.stats.last_alert_time) {
+                        impactTime.textContent = "Última: " + res.stats.last_alert_time;
+                    } else {
+                        impactTime.textContent = "Sin incidentes recientes";
+                    }
                 }
             } catch (e) { console.error(e); }
         }

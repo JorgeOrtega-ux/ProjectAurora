@@ -10,35 +10,72 @@
                     <div class="component-toolbar-title">Sistema de Alertas Globales</div>
                 </div>
                 <div class="component-toolbar__side component-toolbar__side--right" style="gap: 12px; align-items: center;">
-                    <button class="header-button" id="btn-emit-alert">
+                    <button class="header-button" id="btn-emit-alert" data-tooltip="Emitir Comunicado">
                         <span class="material-symbols-rounded">campaign</span>
+                    </button>
+                    <div class="component-divider-vertical" style="height: 24px; border-left: 1px solid var(--border-light); margin: 0 4px;"></div>
+                    <button class="header-button" data-action="refresh-status" data-tooltip="Actualizar Métricas">
+                        <span class="material-symbols-rounded">refresh</span>
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="component-card component-card--grouped mt-24">
+    <div class="component-dashboard-grid mt-4">
         
-        <div class="component-group-item">
-            <div class="component-card__content">
-                <div class="component-card__icon-container component-card__icon-container--bordered">
-                    <span class="material-symbols-rounded" id="status-icon">check_circle</span>
-                </div>
-                <div class="component-card__text">
-                    <span class="component-card__title">Estado del Sistema</span>
-                    <span class="component-card__description" id="status-text">Verificando servicios...</span>
-                </div>
+        <div class="component-stat-card">
+            <div class="component-stat-header">
+                <span class="component-stat-title">Alcance Potencial</span>
+                <span class="material-symbols-rounded component-stat-icon" style="color: var(--primary-color);">group_add</span>
             </div>
-            <div class="component-card__actions">
-                <button class="component-button danger" id="btn-deactivate-alert" style="display: none;">
+            <div class="component-stat-main-value" id="stat-online-users">...</div>
+            <div class="component-stat-footer">
+                <span class="component-trend-text">Usuarios conectados ahora</span>
+            </div>
+        </div>
+
+        <div class="component-stat-card">
+            <div class="component-stat-header">
+                <span class="component-stat-title">Difusiones Hoy</span>
+                <span class="material-symbols-rounded component-stat-icon">today</span>
+            </div>
+            <div class="component-stat-main-value" id="stat-alerts-today">...</div>
+            <div class="component-stat-footer">
+                <span class="component-trend-badge neutral" id="badge-alerts-total">
+                    <span class="material-symbols-rounded" style="font-size:14px;">history</span> Total: 0
+                </span>
+            </div>
+        </div>
+
+        <div class="component-stat-card">
+            <div class="component-stat-header">
+                <span class="component-stat-title">Nivel de Impacto</span>
+                <span class="material-symbols-rounded component-stat-icon" id="stat-impact-icon">monitor_heart</span>
+            </div>
+            <div class="component-stat-main-value" id="stat-last-severity" style="font-size: 1.5rem;">Normal</div>
+            <div class="component-stat-footer">
+                <span class="component-trend-text" id="stat-last-time">Sin actividad reciente</span>
+            </div>
+        </div>
+
+        <div class="component-stat-card" id="card-status-indicator" style="border-left: 4px solid var(--color-success);">
+            <div class="component-stat-header">
+                <span class="component-stat-title">Estado Global</span>
+                <span class="material-symbols-rounded component-stat-icon" id="stat-active-icon" style="color:var(--color-success);">check_circle</span>
+            </div>
+            <div class="component-stat-main-value" style="font-size: 1.2rem;" id="stat-active-text">Operativo</div>
+            <div class="component-stat-footer">
+                 <button class="component-button danger small" id="btn-deactivate-alert-mini" style="display: none; width: 100%; justify-content: center;">
                     Desactivar Alerta
                 </button>
             </div>
         </div>
-        
-        <hr class="component-divider">
 
+    </div>
+
+    <div class="component-card component-card--grouped mt-4">
+        
         <div class="component-group-item">
             <div class="component-card__text">
                 <span class="component-card__title">Categoría de Alerta</span>
