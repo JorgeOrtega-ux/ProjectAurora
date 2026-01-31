@@ -37,13 +37,9 @@ return [
 
     // === ADMIN ===
     'admin.dashboard_stats'   => ['file' => 'handlers/admin-handler.php', 'action' => 'get_dashboard_stats'],
-
-    // [CORRECCIÓN APLICADA AQUÍ]
-    // Ahora usamos el formato de array ['file' => ..., 'action' => ...] que espera tu api/index.php
     'admin.create_system_alert'     => ['file' => 'handlers/admin-handler.php', 'action' => 'create_system_alert'],
     'admin.deactivate_system_alert' => ['file' => 'handlers/admin-handler.php', 'action' => 'deactivate_system_alert'],
     'admin.get_active_alert'        => ['file' => 'handlers/admin-handler.php', 'action' => 'get_active_alert'],
-    // ---------------------------
 
     'admin.get_users'         => ['file' => 'handlers/admin-handler.php', 'action' => 'get_all_users'],
     'admin.get_details'       => ['file' => 'handlers/admin-handler.php', 'action' => 'get_user_details'],
@@ -57,6 +53,9 @@ return [
     'admin.get_server_config' => ['file' => 'handlers/admin-handler.php', 'action' => 'get_server_config'],
     'admin.update_server_config' => ['file' => 'handlers/admin-handler.php', 'action' => 'update_server_config'],
     
+    // [NUEVO] Endpoint unificado para solicitar descargas seguras
+    'admin.request_download'  => ['file' => 'handlers/admin-handler.php', 'action' => 'request_download_token'],
+
     // BACKUPS ADMIN
     'admin.get_backups'       => ['file' => 'handlers/admin-handler.php', 'action' => 'get_backups'],
     'admin.create_backup'     => ['file' => 'handlers/admin-handler.php', 'action' => 'create_backup'],

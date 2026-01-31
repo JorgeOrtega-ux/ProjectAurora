@@ -5,7 +5,7 @@
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { Dialog } from '../../core/dialog-manager.js';
-import { navigateTo } from '../../core/url-manager.js'; // Importar navigateTo
+import { navigateTo } from '../../core/url-manager.js';
 
 let _container = null;
 let _filesData = [];
@@ -53,7 +53,6 @@ function initEvents() {
     _container.querySelector('[data-action="close-selection"]')?.addEventListener('click', clearSelection);
     _container.querySelector('[data-action="delete-selected"]')?.addEventListener('click', deleteSelected);
     
-    // [MODIFICADO] Botón VER LOGS -> Navegar al visor
     _container.querySelector('[data-action="view-log-content"]')?.addEventListener('click', () => {
         if (_selectedPaths.size === 0) return;
         
@@ -61,9 +60,50 @@ function initEvents() {
         navigateTo('admin/file-viewer', { files: paths });
     });
 
-    _container.querySelector('[data-action="download-selected"]')?.addEventListener('click', () => {
-        Toast.show('Descarga próximamente.', 'info');
-    });
+    // Listener para botón de descarga
+    _container.querySelector('[data-action="download-selected"]')?.addEventListener('click', handleDownload);
+}
+
+// === Lógica de descarga SIN RECARGAR ===
+async function handleDownload() {
+    if (_selectedPaths.size === 0) {
+        return;
+    }
+
+    const pathsArray = Array.from(_selectedPaths);
+    const pathsString = pathsArray.join(','); 
+    
+    if (pathsArray.length > 1) {
+        Toast.show('Comprimiendo logs en ZIP...', 'info');
+    } else {
+        Toast.show('Preparando descarga...', 'info');
+    }
+
+    const formData = new FormData();
+    formData.append('file', pathsString);
+    formData.append('type', 'log'); 
+
+    try {
+        const route = ApiService.Routes.Admin.request_download || { route: 'admin.request_download' };
+        const res = await ApiService.post(route, formData);
+        
+        if (res.success && res.download_url) {
+            // [SOLUCIÓN] Usar elemento <a> temporal
+            const downloadLink = document.createElement('a');
+            downloadLink.href = window.BASE_PATH + 'public/' + res.download_url;
+            downloadLink.style.display = 'none';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+
+            Toast.show('Descarga iniciada.', 'success');
+            clearSelection();
+        } else {
+            Toast.show(res.message || 'Error al obtener token de descarga.', 'error');
+        }
+    } catch (e) {
+        Toast.show('Error de conexión.', 'error');
+    }
 }
 
 async function loadFiles() {
@@ -205,6 +245,17 @@ function updateToolbarState() {
         defGroup.classList.add('d-none');
         actGroup.classList.remove('d-none');
         indicator.innerText = `${_selectedPaths.size} seleccionados`;
+        
+        // Habilitar botón descargar (permitir múltiples)
+        const btnDownload = _container.querySelector('[data-action="download-selected"]');
+        if (btnDownload) {
+            btnDownload.style.opacity = '1';
+            btnDownload.disabled = false;
+            btnDownload.dataset.tooltip = _selectedPaths.size > 1 
+                ? `Descargar ZIP (${_selectedPaths.size})` 
+                : 'Descargar Log';
+        }
+
     } else {
         defGroup.classList.remove('d-none');
         actGroup.classList.add('d-none');

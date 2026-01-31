@@ -24,32 +24,23 @@ export const BackupsController = {
         _viewMode = 'grid';
 
         initToolbarEvents();
-        loadBackups(); // Carga inicial
+        loadBackups(); 
 
         // === LISTENER DE SOCKET ===
-        // Limpiamos listener previo para evitar duplicados al navegar
         document.removeEventListener('socket:action', handleRemoteRefresh);
         document.addEventListener('socket:action', handleRemoteRefresh);
         
-        // [DEBUG] Ver notificaciones crudas en consola
         document.addEventListener('socket:notification', (e) => {
             console.log("🔔 Socket Notification:", e.detail);
         });
     }
 };
 
-// Manejador de eventos del Socket
 function handleRemoteRefresh(e) {
-    const payload = e.detail.message; // { action: 'refresh_backups' }
-    console.log("⚡ Socket Action Recibida:", payload);
-
-    // Verificación flexible: Si el contenedor existe en el DOM, actualizamos
+    const payload = e.detail.message;
     if (!_container || !document.body.contains(_container)) return;
 
     if (payload && payload.action === 'refresh_backups') {
-        console.log("🔄 Actualizando lista de backups...");
-        
-        // Cargar backups pasando 'true' (modo silencioso)
         loadBackups(true);
     }
 }
@@ -71,15 +62,39 @@ function initToolbarEvents() {
     _container.querySelector('[data-action="delete-selected"]')?.addEventListener('click', handleDeleteSelected);
     _container.querySelector('[data-action="close-selection"]')?.addEventListener('click', deselectAll);
     _container.querySelector('[data-action="view-selected"]')?.addEventListener('click', handleViewSelected);
+    
+    // Botón descargar
+    const btnDownload = _container.querySelector('[data-action="download-selected"]');
+    if (btnDownload) {
+        btnDownload.addEventListener('click', handleDownloadSelected);
+    } else {
+        injectDownloadButton();
+    }
 }
 
-// === LÓGICA DE CARGA Y RENDERIZADO ===
+function injectDownloadButton() {
+    const actionGroup = _container.querySelector('[data-element="toolbar-group-actions"] .component-toolbar__side--left');
+    if (actionGroup && !actionGroup.querySelector('[data-action="download-selected"]')) {
+        const btn = document.createElement('button');
+        btn.className = 'header-button';
+        btn.dataset.action = 'download-selected';
+        btn.dataset.tooltip = 'Descargar';
+        btn.innerHTML = '<span class="material-symbols-rounded">download</span>';
+        btn.addEventListener('click', handleDownloadSelected);
+        
+        const deleteBtn = actionGroup.querySelector('[data-action="delete-selected"]');
+        if (deleteBtn) {
+            actionGroup.insertBefore(btn, deleteBtn);
+        } else {
+            actionGroup.appendChild(btn);
+        }
+    }
+}
 
 async function loadBackups(isSilentRefresh = false) {
     const listContainer = _container.querySelector('[data-component="backup-list"]');
     if (!listContainer) return;
 
-    // Solo mostrar loader si NO es un refresh silencioso y la lista está vacía
     if (!isSilentRefresh && _backupsData.length === 0) {
         listContainer.innerHTML = '<div class="state-loading"><div class="spinner-sm"></div><p class="state-text">Cargando copias de seguridad...</p></div>';
     }
@@ -90,7 +105,6 @@ async function loadBackups(isSilentRefresh = false) {
             _backupsData = res.backups;
             renderList();
             
-            // IMPORTANTE: Restaurar botón si estaba bloqueado por "Procesando..."
             if (isSilentRefresh) {
                 const btnCreate = _container.querySelector('#btn-create-backup');
                 if (btnCreate && btnCreate.disabled) {
@@ -115,7 +129,6 @@ function renderList() {
         return;
     }
 
-    // Mantener la posición del scroll
     const scrollTop = container.scrollTop;
 
     if (_viewMode === 'table') {
@@ -124,12 +137,10 @@ function renderList() {
         renderListAsGrid(container);
     }
 
-    // Listeners de selección
     container.querySelectorAll('.component-card, .table-row-item').forEach(item => {
         item.addEventListener('click', () => toggleSelection(item.dataset.filename));
     });
     
-    // Restaurar scroll
     if (scrollTop > 0) container.scrollTop = scrollTop;
 }
 
@@ -211,11 +222,22 @@ function updateToolbarState() {
         groupDefault.classList.add('d-none');
         groupActions.classList.remove('d-none');
         indicator.textContent = `${count} seleccionado(s)`;
+        
         const btnRestore = groupActions.querySelector('[data-action="restore-selected"]');
         if (btnRestore) {
             btnRestore.disabled = (count !== 1);
             btnRestore.style.opacity = (count !== 1) ? '0.5' : '1';
         }
+        
+        const btnDownload = groupActions.querySelector('[data-action="download-selected"]');
+        if (btnDownload) {
+            btnDownload.disabled = false;
+            btnDownload.style.opacity = '1';
+            btnDownload.dataset.tooltip = count > 1 
+                ? `Descargar ${count} archivos (ZIP)` 
+                : 'Descargar archivo';
+        }
+
     } else {
         groupDefault.classList.remove('d-none');
         groupActions.classList.add('d-none');
@@ -247,7 +269,6 @@ async function createBackup() {
     const btn = document.getElementById('btn-create-backup');
     const originalText = btn.innerHTML;
     
-    // Bloquear botón
     btn.disabled = true; 
     btn.innerHTML = '<div class="spinner-sm"></div> Procesando...';
     
@@ -256,11 +277,8 @@ async function createBackup() {
         
         if (res.success) {
             if (res.queued) {
-                // Modo Asíncrono (Python Worker)
                 Toast.show('Solicitud enviada. Esperando al servidor...', 'info');
-                // NOTA: El botón sigue bloqueado hasta que llegue la notificación
             } else {
-                // Modo Síncrono (Fallback)
                 Toast.show('Backup creado exitosamente', 'success');
                 loadBackups();
                 btn.disabled = false; 
@@ -320,4 +338,49 @@ function handleViewSelected() {
         files: filesArray.join(','),
         source: 'backup'
     });
+}
+
+// === LÓGICA DE DESCARGA SIN RECARGAR PAGINA ===
+async function handleDownloadSelected() {
+    if (_selectedFilenames.size === 0) return;
+
+    const filesArray = Array.from(_selectedFilenames);
+    const filesString = filesArray.join(',');
+    
+    if (filesArray.length > 1) {
+        Toast.show('Generando ZIP, por favor espera...', 'info');
+    } else {
+        Toast.show('Solicitando descarga...', 'info');
+    }
+
+    const formData = new FormData();
+    formData.append('file', filesString);
+    formData.append('type', 'backup');
+
+    try {
+        const route = ApiService.Routes.Admin.request_download || { route: 'admin.request_download' };
+        const res = await ApiService.post(route, formData);
+        
+        if (res.success && res.download_url) {
+            // [SOLUCIÓN] Usar un <a> invisible evita que la página parpadee o se recargue
+            const downloadLink = document.createElement('a');
+            downloadLink.href = window.BASE_PATH + 'public/' + res.download_url;
+            downloadLink.style.display = 'none';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            
+            if (filesArray.length === 1) {
+                Toast.show('Descarga iniciada.', 'success');
+            } else {
+                Toast.show('Archivo ZIP generado.', 'success');
+            }
+            deselectAll();
+        } else {
+            Toast.show(res.message || 'No se pudo obtener el enlace seguro.', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        Toast.show('Error de conexión al solicitar descarga.', 'error');
+    }
 }

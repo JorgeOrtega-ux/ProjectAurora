@@ -5,9 +5,8 @@ class AdminService {
     private $pdo;
     private $i18n;
     private $requestingUserId;
-    private $redis; // [MODIFICADO] Propiedad para Redis
+    private $redis; 
 
-    // [MODIFICADO] Constructor acepta Redis opcionalmente
     public function __construct($pdo, $i18n, $userId, $redis = null) {
         $this->pdo = $pdo;
         $this->i18n = $i18n;
@@ -15,11 +14,135 @@ class AdminService {
         $this->redis = $redis;
     }
 
+    // === GENERACIÓN DE TOKEN DE DESCARGA (Soporte ZIP y Subcarpetas) ===
+    public function requestDownloadToken($inputFiles, $type) {
+        if (!$this->isAdmin()) {
+            return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+        }
+
+        if (!$this->redis) {
+            return ['success' => false, 'message' => 'Redis no disponible para generar tokens seguros.'];
+        }
+
+        // 1. Convertir entrada a array siempre
+        $filesToProcess = is_array($inputFiles) ? $inputFiles : explode(',', $inputFiles);
+        $filesToProcess = array_map('trim', $filesToProcess);
+        $filesToProcess = array_filter($filesToProcess); 
+
+        if (empty($filesToProcess)) {
+            return ['success' => false, 'message' => 'No se seleccionaron archivos.'];
+        }
+
+        // 2. Definir directorios base (Sandbox)
+        $baseDir = '';
+        if ($type === 'backup') {
+            $baseDir = realpath(__DIR__ . '/../../storage/backups');
+        } elseif ($type === 'log') {
+            $baseDir = realpath(__DIR__ . '/../../logs');
+        } else {
+            return ['success' => false, 'message' => 'Tipo de archivo inválido.'];
+        }
+
+        if (!$baseDir) {
+             return ['success' => false, 'message' => 'El directorio base no existe en el servidor.'];
+        }
+
+        // 3. Validar TODOS los archivos antes de procesar
+        $validPaths = [];
+        foreach ($filesToProcess as $relativePath) {
+            // [CORRECCIÓN] Permitimos '/' y '\' para subcarpetas (logs/app/...), pero eliminamos '..'
+            $cleanPath = str_replace('..', '', $relativePath);
+            
+            // Limpiamos barras al inicio para evitar rutas absolutas confusas
+            $cleanPath = ltrim($cleanPath, '/\\');
+            
+            $fullPath = $baseDir . '/' . $cleanPath;
+            $realPath = realpath($fullPath);
+            
+            // Verificamos que el archivo exista y que su ruta real siga estando dentro del baseDir (Sandbox)
+            if ($realPath && file_exists($realPath) && strpos($realPath, $baseDir) === 0) {
+                $validPaths[] = [
+                    'full' => $realPath,
+                    'name' => $cleanPath // Usamos la ruta relativa limpia como nombre (mantiene estructura carpetas en ZIP)
+                ];
+            }
+        }
+
+        if (empty($validPaths)) {
+            return ['success' => false, 'message' => 'Ninguno de los archivos solicitados es válido o existe.'];
+        }
+
+        // 4. Lógica: 1 Archivo vs Múltiples (ZIP)
+        $targetFile = '';
+        $targetName = '';
+        $isTempFile = false; // Flag para borrar después de descargar
+
+        if (count($validPaths) === 1) {
+            // CASO INDIVIDUAL
+            $targetFile = $validPaths[0]['full'];
+            $targetName = basename($validPaths[0]['name']); // Al descargar 1 solo, mejor nombre corto
+        } else {
+            // CASO MÚLTIPLE -> CREAR ZIP
+            if (!extension_loaded('zip')) {
+                return ['success' => false, 'message' => 'La extensión ZIP de PHP no está habilitada en el servidor.'];
+            }
+
+            $zipName = 'aurora_batch_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.zip';
+            $tempDir = __DIR__ . '/../../storage/temp';
+            if (!is_dir($tempDir)) mkdir($tempDir, 0755, true);
+            
+            $zipPath = $tempDir . '/' . $zipName;
+            
+            $zip = new ZipArchive();
+            if ($zip->open($zipPath, ZipArchive::CREATE) !== TRUE) {
+                return ['success' => false, 'message' => 'No se pudo crear el archivo temporal ZIP.'];
+            }
+
+            foreach ($validPaths as $fileInfo) {
+                // Agregamos al ZIP manteniendo su estructura relativa (ej: app/log.txt)
+                $zip->addFile($fileInfo['full'], $fileInfo['name']);
+            }
+            $zip->close();
+
+            $targetFile = $zipPath;
+            $targetName = $zipName;
+            $isTempFile = true; // Importante: Marcar para borrado automático
+        }
+
+        // 5. Generar Token y Guardar en Redis
+        $token = bin2hex(random_bytes(32));
+        
+        $data = [
+            'filepath' => $targetFile,
+            'filename' => $targetName,
+            'is_temp'  => $isTempFile,
+            'user_id'  => $this->requestingUserId,
+            'ip'       => $_SERVER['REMOTE_ADDR'] ?? 'Unknown'
+        ];
+
+        try {
+            // "download:token:XYZ" expira en 60s
+            $this->redis->setex("download:token:$token", 60, json_encode($data));
+            
+            // Log de auditoría
+            $actionDetails = count($validPaths) > 1 
+                ? ['zip_mode' => true, 'count' => count($validPaths)] 
+                : ['file' => $targetName];
+                
+            $this->logAudit('download', $type, 'DOWNLOAD_REQUEST', $actionDetails);
+
+            return [
+                'success' => true,
+                'download_url' => "download.php?token=$token"
+            ];
+
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Error Redis: ' . $e->getMessage()];
+        }
+    }
+
     // === GESTIÓN DE AUDITORÍA ===
 
-    /**
-     * Registra una acción administrativa en la tabla audit_logs
-     */
     private function logAudit($targetType, $targetId, $action, $changes = []) {
         try {
             $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
@@ -29,20 +152,14 @@ class AdminService {
             $stmt = $this->pdo->prepare("INSERT INTO audit_logs (admin_id, target_type, target_id, action, changes, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([$this->requestingUserId, $targetType, $targetId, $action, $changesJson, $ip, $ua]);
         } catch (Exception $e) {
-            // Silenciamos error de auditoría para no interrumpir la acción principal, pero lo logueamos en archivo
             error_log("Error escribiendo Audit Log: " . $e->getMessage());
         }
     }
-
-    /**
-     * Obtiene el historial de auditoría con paginación
-     */
 
     public function getDashboardStats() {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
         try {
-            // 1. USUARIOS EN LÍNEA (Desde Redis escrito por Python)
             $onlineUsers = 0;
             $onlineGuests = 0;
             
@@ -52,28 +169,22 @@ class AdminService {
                 $onlineGuests = (int)($realtimeStats['online_guests'] ?? 0);
             }
 
-            // 2. REGISTROS HOY vs AYER (Tendencia)
             $today = date('Y-m-d');
             $yesterday = date('Y-m-d', strtotime('-1 day'));
 
-            // Count Hoy
             $stmtToday = $this->pdo->prepare("SELECT COUNT(*) FROM users WHERE DATE(created_at) = ?");
             $stmtToday->execute([$today]);
             $usersToday = $stmtToday->fetchColumn();
 
-            // Count Ayer
             $stmtYest = $this->pdo->prepare("SELECT COUNT(*) FROM users WHERE DATE(created_at) = ?");
             $stmtYest->execute([$yesterday]);
             $usersYesterday = $stmtYest->fetchColumn();
 
             $usersTrend = $this->calculateTrend($usersToday, $usersYesterday);
 
-            // 3. TOTAL USUARIOS vs MES PASADO
-            // Total Actual
             $stmtTotal = $this->pdo->query("SELECT COUNT(*) FROM users");
             $totalUsers = $stmtTotal->fetchColumn();
 
-            // Total Hace 30 días (Aproximación)
             $date30DaysAgo = date('Y-m-d H:i:s', strtotime('-30 days'));
             $stmtTotalOld = $this->pdo->prepare("SELECT COUNT(*) FROM users WHERE created_at < ?");
             $stmtTotalOld->execute([$date30DaysAgo]);
@@ -81,7 +192,6 @@ class AdminService {
 
             $totalTrend = $this->calculateTrend($totalUsers, $totalUsersOld);
 
-            // 4. ACTIVIDAD SISTEMA (Logs hoy)
             $stmtLogs = $this->pdo->prepare("SELECT COUNT(*) FROM security_logs WHERE DATE(created_at) = ?");
             $stmtLogs->execute([$today]);
             $logsToday = $stmtLogs->fetchColumn();
@@ -92,13 +202,10 @@ class AdminService {
                     'online_total' => $onlineUsers + $onlineGuests,
                     'online_users' => $onlineUsers,
                     'online_guests' => $onlineGuests,
-                    
                     'new_users_today' => $usersToday,
-                    'new_users_trend' => $usersTrend, // { percent: 12, direction: 'up' }
-                    
+                    'new_users_trend' => $usersTrend, 
                     'total_users' => $totalUsers,
                     'total_users_trend' => $totalTrend,
-
                     'system_activity' => $logsToday
                 ]
             ];
@@ -113,18 +220,17 @@ class AdminService {
             return [
                 'value' => $current > 0 ? 100 : 0,
                 'direction' => $current > 0 ? 'up' : 'neutral',
-                'infinite' => $current > 0 // Flag para indicar "Nuevo" o infinito
+                'infinite' => $current > 0
             ];
         }
-
         $diff = $current - $previous;
         $percent = ($diff / $previous) * 100;
-        
         return [
             'value' => abs(round($percent, 1)),
             'direction' => $percent > 0 ? 'up' : ($percent < 0 ? 'down' : 'neutral')
         ];
     }
+
     public function getAuditLogs($page = 1, $limit = 50, $filters = []) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
@@ -146,12 +252,10 @@ class AdminService {
         }
 
         try {
-            // Contar total
             $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM audit_logs a $whereClause");
             $countStmt->execute($params);
             $total = $countStmt->fetchColumn();
 
-            // Obtener datos enriquecidos con el nombre del admin
             $sql = "SELECT a.*, u.username as admin_name, u.role as admin_role 
                     FROM audit_logs a 
                     LEFT JOIN users u ON a.admin_id = u.id 
@@ -163,7 +267,6 @@ class AdminService {
             $stmt->execute($params);
             $logs = $stmt->fetchAll();
 
-            // Decodificar JSON de cambios para el frontend
             foreach ($logs as &$log) {
                 if ($log['changes']) {
                     $log['changes'] = json_decode($log['changes'], true);
@@ -185,11 +288,6 @@ class AdminService {
         }
     }
 
-    // === GESTIÓN DE USUARIOS ===
-
-    /**
-     * [OPTIMIZADO] Obtiene usuarios con paginación y búsqueda en servidor
-     */
     public function getAllUsers($page = 1, $limit = 20, $search = '') {
         if (!$this->isAdmin()) {
             return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
@@ -199,7 +297,6 @@ class AdminService {
         $params = [];
         $whereClause = "WHERE 1=1";
 
-        // Búsqueda Server-Side
         if (!empty($search)) {
             $whereClause .= " AND (username LIKE ? OR email LIKE ? OR uuid LIKE ?)";
             $searchTerm = "%$search%";
@@ -209,12 +306,10 @@ class AdminService {
         }
 
         try {
-            // 1. Contar total de resultados (para la paginación)
             $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM users $whereClause");
             $countStmt->execute($params);
             $totalItems = $countStmt->fetchColumn();
 
-            // 2. Obtener los registros de la página actual
             $sql = "SELECT id, uuid, username, email, role, avatar_path, account_status, suspension_ends_at, created_at 
                     FROM users 
                     $whereClause
@@ -246,7 +341,6 @@ class AdminService {
             ];
 
         } catch (Exception $e) {
-            error_log("Error getAllUsers: " . $e->getMessage());
             return ['success' => false, 'message' => $this->i18n->t('api.db_error')];
         }
     }
@@ -255,7 +349,6 @@ class AdminService {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
         try {
-            // [MODIFICADO] Se agregó u.two_factor_enabled
             $sql = "SELECT u.id, u.uuid, u.username, u.email, u.role, u.avatar_path, 
                            u.account_status, u.suspension_ends_at, u.status_reason, u.two_factor_enabled,
                            p.language, p.theme, p.open_links_new_tab, p.extended_toast
@@ -313,17 +406,15 @@ class AdminService {
         if ($stmt->fetch()) return ['success' => false, 'message' => $this->i18n->t('api.field_in_use')];
 
         try {
-            // [AUDIT] Leer valor anterior
             $stmtOld = $this->pdo->prepare("SELECT $field FROM users WHERE id = ?");
             $stmtOld->execute([$targetId]);
             $oldValue = $stmtOld->fetchColumn();
 
-            if ($oldValue === $value) return ['success' => true, 'message' => $this->i18n->t('api.field_updated')]; // Sin cambios
+            if ($oldValue === $value) return ['success' => true, 'message' => $this->i18n->t('api.field_updated')];
 
             $update = $this->pdo->prepare("UPDATE users SET $field = ? WHERE id = ?");
             $update->execute([$value, $targetId]);
 
-            // [AUDIT] Registrar
             $this->logAudit('user', $targetId, 'UPDATE_PROFILE', [
                 'field' => $field,
                 'old' => $oldValue,
@@ -358,7 +449,6 @@ class AdminService {
             $update = $this->pdo->prepare("UPDATE users SET role = ? WHERE id = ?");
             $update->execute([$newRole, $targetId]);
 
-            // [AUDIT] Registrar
             $this->logAudit('user', $targetId, 'UPDATE_ROLE', [
                 'old' => $currentRole,
                 'new' => $newRole
@@ -371,7 +461,6 @@ class AdminService {
         }
     }
 
-    // [NUEVO] Función para desactivar 2FA de un usuario
     public function disableUser2FA($targetId) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
@@ -385,7 +474,6 @@ class AdminService {
             $update = $this->pdo->prepare("UPDATE users SET two_factor_enabled = 0, two_factor_secret = NULL, two_factor_recovery_codes = NULL WHERE id = ?");
             $update->execute([$targetId]);
 
-            // [AUDIT]
             $this->logAudit('user', $targetId, 'DISABLE_2FA', [
                 'action' => 'admin_override'
             ]);
@@ -409,7 +497,6 @@ class AdminService {
         }
 
         try {
-            // [AUDIT] Leer anterior
             $stmtCheck = $this->pdo->prepare("SELECT $key FROM user_preferences WHERE user_id = ?");
             $stmtCheck->execute([$targetId]);
             $oldValue = $stmtCheck->fetchColumn(); 
@@ -418,7 +505,6 @@ class AdminService {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$targetId, $dbValue]);
 
-            // [AUDIT] Registrar
             $this->logAudit('user', $targetId, 'UPDATE_PREFERENCE', [
                 'key' => $key,
                 'old' => ($oldValue === false) ? 'NULL' : (string)$oldValue,
@@ -476,7 +562,6 @@ class AdminService {
                     @unlink(__DIR__ . '/../../' . $oldPath);
                 }
                 
-                // [AUDIT]
                 $this->logAudit('user', $targetId, 'UPDATE_AVATAR', [
                     'old' => $oldPath,
                     'new' => $dbPath
@@ -518,7 +603,6 @@ class AdminService {
                 @unlink(__DIR__ . '/../../' . $oldPath);
             }
             
-            // [AUDIT]
             $this->logAudit('user', $targetId, 'DELETE_AVATAR', [
                 'old' => $oldPath,
                 'new' => 'default_generated'
@@ -582,7 +666,6 @@ class AdminService {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$newStatus, $suspensionEndsAt, $finalReason, $targetId]);
 
-            // [AUDIT] Registrar cambios de estado
             if ($userData['account_status'] !== $newStatus || $userData['status_reason'] !== $finalReason) {
                 $this->logAudit('user', $targetId, 'UPDATE_STATUS', [
                     'old_status' => $userData['account_status'],
@@ -599,13 +682,9 @@ class AdminService {
         }
     }
 
-    // === CONFIGURACIÓN DEL SERVIDOR ===
-
     public function getServerConfigAll() {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
         try {
-            // [OPTIMIZACIÓN] Seguimos usando la BD para la pantalla de admin para asegurar frescura total
-            // aunqueUtils::getServerConfig use caché.
             $stmt = $this->pdo->prepare("SELECT config_key, config_value FROM server_config");
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -629,7 +708,6 @@ class AdminService {
         ];
 
         try {
-            // [AUDIT] 1. Obtener configuración actual
             $currentConfig = $this->getServerConfigAll()['config'] ?? [];
 
             $this->pdo->beginTransaction();
@@ -646,11 +724,9 @@ class AdminService {
                     $strValue = (string)$value;
                     $oldValue = $currentConfig[$key] ?? null;
 
-                    // Si hay cambio, actualizar y auditar
                     if ($oldValue !== $strValue) {
                         $stmt->execute([$key, $strValue]);
                         
-                        // [AUDIT] Registrar cada clave cambiada individualmente para trazabilidad
                         $this->logAudit('server_config', $key, 'UPDATE_CONFIG', [
                             'old' => $oldValue,
                             'new' => $strValue
@@ -665,7 +741,6 @@ class AdminService {
             }
             $this->pdo->commit();
 
-            // [OPTIMIZACIÓN] Invalidar Caché Redis (Cache Invalidation)
             if ($hasChanges && $this->redis) {
                 try {
                     $this->redis->del('server:config:all');

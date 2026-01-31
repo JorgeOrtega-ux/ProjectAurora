@@ -8,9 +8,9 @@ require_once __DIR__ . '/../services/AdminService.php';
 require_once __DIR__ . '/../services/BackupService.php';
 require_once __DIR__ . '/../services/LogFileService.php';
 require_once __DIR__ . '/../services/RedisService.php';
-require_once __DIR__ . '/../services/AlertService.php'; // <--- AÑADIR ESTO
+require_once __DIR__ . '/../services/AlertService.php';
 
-$alertService = new AlertService($pdo, $redis, $_SESSION['user_id']); // <--- AÑADIR ESTO
+$alertService = new AlertService($pdo, $redis, $_SESSION['user_id']);
 
 if (!isset($_SESSION['user_id'])) {
     Utils::jsonResponse(['success' => false, 'message' => $i18n->t('api.session_expired')]);
@@ -31,13 +31,19 @@ $redisService = new RedisService($redis);
 $action = $_POST['action'] ?? '';
 
 switch ($action) {
-    // === NUEVO: DASHBOARD STATS ===
+    // === DASHBOARD & GENERAL ===
     case 'get_dashboard_stats':
         Utils::jsonResponse($adminService->getDashboardStats());
         break;
 
-    // ... (MANTENER TODOS LOS CASOS EXISTENTES: get_all_users, etc.) ...
-    
+    // === [NUEVO] GESTIÓN DE DESCARGAS SEGURAS ===
+    case 'request_download_token':
+        $file = $_POST['file'] ?? '';
+        $type = $_POST['type'] ?? ''; // 'backup' o 'log'
+        Utils::jsonResponse($adminService->requestDownloadToken($file, $type));
+        break;
+
+    // === USUARIOS ===
     case 'get_all_users':
         $page = (int)($_POST['page'] ?? 1);
         $limit = (int)($_POST['limit'] ?? 20);
@@ -186,9 +192,8 @@ switch ($action) {
         Utils::jsonResponse($redisService->flushDB());
         break;
 
-        // === GESTIÓN DE ALERTAS ===
+    // === GESTIÓN DE ALERTAS ===
     case 'create_system_alert':
-        // Decodificar el JSON complejo que enviará el JS
         $data = json_decode($_POST['alert_data'], true);
         Utils::jsonResponse($alertService->createAlert($data));
         break;
