@@ -42,7 +42,8 @@ return [
     'admin/backups/config'         => __DIR__ . '/../includes/sections/admin/backup-config.php',
     'admin/server'                 => __DIR__ . '/../includes/sections/admin/server-config.php',
     
-    // [NUEVO] REDIS MANAGER
+    // [NUEVO] SYSTEM ALERTS & REDIS
+    'admin/alerts'                 => __DIR__ . '/../includes/sections/admin/system-alerts.php',
     'admin/redis'                  => __DIR__ . '/../includes/sections/admin/redis-manager.php',
 
     'admin/audit-log'              => __DIR__ . '/../includes/sections/admin/audit-log.php',

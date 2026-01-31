@@ -31,8 +31,8 @@ import { FileViewerController } from './modules/admin/file-viewer-controller.js'
 import { RedisManagerController } from './modules/admin/redis-manager-controller.js';
 import { DashboardController } from './modules/admin/dashboard-controller.js';
 
-// [NUEVO] Importar AlertController
-import { AlertController } from './modules/admin/alert-controller.js';
+// [NUEVO] Importar el nuevo controlador de alertas del sistema
+import { SystemAlertsController } from './modules/admin/system-alerts-controller.js';
 
 const App = {
     init: () => {
@@ -101,6 +101,7 @@ function initGlobalSocketListeners() {
 function routeDispatcher(section) {
     updateSidebarState(section);
     switch (section) {
+        // === SETTINGS ===
         case 'settings/your-profile': 
             ProfileController.init(); 
             SettingsController.init(); 
@@ -122,10 +123,14 @@ function routeDispatcher(section) {
         case 'settings/delete-account': DeleteAccountController.init(); break;
         case 'settings/2fa-setup': TwoFactorController.init(); break;
         
-        // Admin Modules
+        // === ADMIN MODULES ===
         case 'admin/dashboard': 
             DashboardController.init(); 
-            AlertController.init(); // [NUEVO] Inicializar aquí
+            // AlertController ya no se inicializa aquí porque ya no es un modal
+            break;
+
+        case 'admin/alerts': 
+            SystemAlertsController.init(); // [NUEVO] Inicialización de la nueva sección
             break;
 
         case 'admin/users': UsersController.init(); break;

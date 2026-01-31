@@ -23,7 +23,7 @@
                         <span class="material-symbols-rounded">history_edu</span>
                     </button>
 
-                    <button class="header-button" id="btn-open-alert-modal" data-tooltip="Emitir Alerta">
+                    <button class="header-button" data-nav="admin/alerts" data-tooltip="Sistema de Alertas">
                         <span class="material-symbols-rounded">campaign</span>
                     </button>
                     
@@ -98,12 +98,3 @@
     </div>
 
 </div>
-
-<?php 
-/**
- * CORRECCIÓN APLICADA:
- * Incluimos el modal de alertas aquí para que exista en el DOM
- * y el botón 'btn-open-alert-modal' pueda encontrarlo.
- */
-include_once __DIR__ . '/modals/alert-modal.php'; 
-?>
