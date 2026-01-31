@@ -7,7 +7,7 @@
 const SELECTORS = {
     // Dropdowns
     dropdown: {
-        wrapper: '.trigger-select-wrapper',
+        wrapper: '[data-trigger="dropdown"]', // MODIFICADO: Ahora usa el atributo, no la clase de estilo
         popover: '.popover-module',
         triggerSelector: '.trigger-selector',
         triggerText: '.trigger-select-text',
@@ -101,7 +101,7 @@ function _handleDropdownToggle(wrapper, event, S) {
         const header = menu.querySelector('.menu-search-header');
         
         if (list) {
-            // A. FORZAR SCROLL ARRIBA (Ahora que es visible, sí funciona)
+            // A. FORZAR SCROLL ARRIBA
             list.scrollTop = 0; 
             
             // B. Configurar evento de sombra
@@ -117,7 +117,6 @@ function _handleDropdownToggle(wrapper, event, S) {
                 };
             }
         }
-        // ==================================
     }
 }
 
@@ -155,7 +154,7 @@ function _handleOptionSelect(option, event, S) {
 
 function _closeDropdowns(S = SELECTORS.dropdown) {
     document.querySelectorAll(S.popover).forEach(el => {
-        // === LIMPIEZA PREVIA (Antes de ocultar) ===
+        // === LIMPIEZA PREVIA ===
         const input = el.querySelector('input');
         if(input) { input.value = ''; _handleDropdownSearch(input, S); }
 
@@ -164,8 +163,8 @@ function _closeDropdowns(S = SELECTORS.dropdown) {
         
         const list = el.querySelector('.menu-list');
         if (list) {
-            list.scrollTop = 0; // Intento de reset
-            list.onscroll = null; // Liberar memoria del evento
+            list.scrollTop = 0;
+            list.onscroll = null;
         }
 
         // === AHORA SÍ OCULTAMOS ===

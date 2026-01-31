@@ -30,7 +30,7 @@ $protectedRoutes = $securityRules['protected_routes'];
 
 // Configuración de mantenimiento
 $maintenanceMode = Utils::getServerConfig($pdo, 'maintenance_mode', '0');
-$userRole = $_SESSION['role'] ?? 'guest'; // Valor inicial (puede ser viejo)
+$userRole = $_SESSION['role'] ?? 'guest'; 
 $allowedRoles = ['founder', 'administrator', 'moderator'];
 
 $isAdminRoute = strpos($currentSection, 'admin/') === 0;
@@ -43,13 +43,10 @@ $showMaintenanceScreen = (
     $currentSection !== 'account-status'
 );
 
-// =========================================================================
-// [MOVIDO] 6. REFRESCAR DATOS DE SESIÓN (ANTES DE REDIRECCIONES)
-// =========================================================================
-// Esto asegura que si cambiaste algo en la BD, se aplique ANTES de decidir si puedes ver la página.
+// 6. REFRESCAR DATOS DE SESIÓN
 if ($isLoggedIn && !$showMaintenanceScreen) {
     try {
-        // Verificar token de persistencia (seguridad extra)
+        // Verificar token de persistencia
         if (isset($_SESSION['current_token_id'])) {
             $stmtToken = $pdo->prepare("SELECT id FROM user_auth_tokens WHERE id = ?");
             $stmtToken->execute([$_SESSION['current_token_id']]);
@@ -60,15 +57,14 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
             }
         }
         
-        // Obtener datos frescos del usuario
+        // Obtener datos frescos
         $stmt = $pdo->prepare("SELECT role, avatar_path, username, email, two_factor_enabled, account_status, suspension_ends_at, status_reason FROM users WHERE id = ? LIMIT 1");
         $stmt->execute([$_SESSION['user_id']]);
         $freshUser = $stmt->fetch();
 
         if ($freshUser) {
-            // Lógica de Bloqueo / Suspensión
+            // Lógica de Bloqueo
             $isRestricted = false;
-            
             if ($freshUser['account_status'] === 'deleted') {
                 $isRestricted = true;
             } elseif ($freshUser['account_status'] === 'suspended') {
@@ -89,17 +85,15 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
                 header("Location: " . $basePath . "account-status"); exit;
             }
 
-            // [CRÍTICO] Actualizar la sesión
             $_SESSION['role'] = $freshUser['role'];
             $_SESSION['avatar'] = $freshUser['avatar_path'];
             $_SESSION['username'] = $freshUser['username'];
             $_SESSION['email'] = $freshUser['email'];
             $_SESSION['two_factor_enabled'] = $freshUser['two_factor_enabled'];
 
-            // [CRÍTICO] Actualizar la variable local para que el resto del script la vea YA
             $userRole = $freshUser['role']; 
 
-            // Recargar preferencias desde BD
+            // Recargar preferencias
             $stmtPrefs = $pdo->prepare("SELECT language, open_links_new_tab, theme, extended_toast FROM user_preferences WHERE user_id = ?");
             $stmtPrefs->execute([$_SESSION['user_id']]);
             $freshPrefs = $stmtPrefs->fetch(PDO::FETCH_ASSOC);
@@ -114,25 +108,19 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
                     'extended_toast' => (bool)$freshPrefs['extended_toast']
                 ];
 
-                // Recarga en caliente del idioma si cambió
                 if ($freshPrefs['language'] !== $previousLang) {
                     $i18n = new I18n($freshPrefs['language']);
                 }
             }
-
         } else {
-            // Usuario no existe en BD (borrado manualmente?)
             session_unset(); session_destroy();
             header("Location: " . $basePath . "login"); exit;
         }
     } catch (Exception $e) { error_log("Error sesión: " . $e->getMessage()); }
 }
 
-// =========================================================================
-// 7. GESTIÓN DE REDIRECCIONES (AHORA CON DATOS FRESCOS)
-// =========================================================================
+// 7. GESTIÓN DE REDIRECCIONES
 if (!$showMaintenanceScreen) {
-    // Verificar permisos de Admin usando el $userRole actualizado arriba
     if (($isAdminRoute || in_array($currentSection, $protectedRoutes)) && !$isLoggedIn) {
         header("Location: " . $basePath . "login");
         exit;
@@ -158,7 +146,6 @@ if ($showMaintenanceScreen) {
 } else {
     $routesMap = require __DIR__ . '/../config/routes.php';
     
-    // Verificación final de rol para rutas Admin
     if (strpos($currentSection, 'admin/') === 0 && !in_array($userRole, ['founder', 'administrator'])) {
         $fileToLoad = $routesMap['404'];
     } else {
@@ -217,6 +204,7 @@ if ($showMaintenanceScreen) {
                     <?php if ($showInterface): ?>
                         <?php include __DIR__ . '/../includes/modules/module-surface.php'; ?>
                     <?php endif; ?>
+                    
                     <div class="general-content-scrolleable overflow-y" data-container="main-section">
                         <?php
                         if (file_exists($fileToLoad)) {
@@ -226,6 +214,28 @@ if ($showMaintenanceScreen) {
                         }
                         ?>
                     </div>
+
+                    <?php if ($showInterface): ?>
+                        <div class="fab-wrapper" data-trigger="dropdown">
+                            <button class="fab-button trigger-selector">
+                                <span class="material-symbols-rounded">help</span>
+                            </button>
+
+                            <div class="popover-module">
+                                <div class="menu-list">
+                                    <div class="menu-link" data-nav="site-policy/send-feedback">
+                                        <div class="menu-link-icon">
+                                            <span class="material-symbols-rounded">support_agent</span>
+                                        </div>
+                                        <div class="menu-link-text">
+                                            <?php echo $i18n->t('menu.contact_support'); ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
                 </div>
             </div>
         </div>

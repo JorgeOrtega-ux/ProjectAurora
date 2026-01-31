@@ -98,9 +98,6 @@ html {
 }
 
 /* --- CENTRADO ABSOLUTO CON FLEXBOX TRICK --- */
-/* Forzamos que los lados tengan el mismo ancho base (0px) y crezcan igual (flex: 1)
-   Esto asegura que el espacio restante se divida equitativamente y el centro quede
-   geométricamente centrado. */
 .header-left,
 .header-right {
     display: flex;
@@ -123,8 +120,6 @@ html {
     align-items: center;
     padding: 0 16px;
     height: 100%;
-    /* flex: 0 1 500px permite encogerse pero no crecer infinitamente, 
-       manteniendo la estructura de 3 columnas */
     flex: 0 1 500px;
     width: 100%;
     z-index: 0;
@@ -302,15 +297,12 @@ html {
 .module-surface .menu-content { 
     width: 280px; 
     height: 100%; 
-    /* El surface suele ser 100% height, su contenido interno debe scrollear */
 }
 
 .module-profile .menu-content { 
     width: 280px; 
     height: auto; 
     padding: 8px; 
-    
-    /* FIX: Scroll en Perfil si la pantalla es baja */
     max-height: calc(100vh - 80px);
     overflow-y: auto;
 }
@@ -319,11 +311,7 @@ html {
     width: 425px; 
     height: 525px; 
     padding: 0; 
-    
-    /* FIX: Scroll en Notificaciones si la pantalla es baja */
     max-height: calc(100vh - 80px);
-    /* Notificaciones ya tiene un div interno con scroll, 
-       pero esto asegura que el contenedor no se corte */
 }
 
 .module-content.module-profile,
@@ -348,12 +336,12 @@ html {
 .menu-content-bottom {
     flex: 1 1 auto;
     position: relative;
-    overflow-y: auto; /* Scroll principal de módulos */
+    overflow-y: auto; 
     padding: 8px;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
-    min-height: 0; /* FIX: Evita desbordamiento en Flexbox */
+    min-height: 0; 
 }
 
 .module-notifications .menu-content-bottom {
@@ -383,7 +371,7 @@ html {
     cursor: pointer;
     text-decoration: none;
     color: var(--text-primary);
-    border: 1px solid transparent; /* Borde base */
+    border: 1px solid transparent; 
     transition: background-color 0.2s ease;
     align-items: center;
 }
@@ -393,7 +381,6 @@ html {
     background-color: var(--bg-hover-light);
 }
 
-/* === CLASES AUXILIARES DE BORDE (DARK MODE COMPATIBLE) === */
 .menu-link.menu-link--bordered {
     border: 1px solid var(--border-transparent-20);
 }
@@ -403,7 +390,6 @@ html {
     border-bottom: 1px solid var(--border-transparent-20);
     margin: 4px 0;
 }
-/* ======================================================== */
 
 .menu-link-icon {
     display: flex;
@@ -433,8 +419,6 @@ html {
 /* =========================================
    OVERRIDES DARK MODE (UNIFICADOS)
    ========================================= */
-
-/* A) Cuando el sistema pide Dark Mode y no se fuerza Light */
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) .general-content,
     :root:not([data-theme="light"]) .module-surface .menu-content,
@@ -442,22 +426,19 @@ html {
     :root:not([data-theme="light"]) .module-notifications .menu-content,
     :root:not([data-theme="light"]) .popover-module {
         box-shadow: none !important; 
-        border: 1px solid var(--border-light); /* #ffffff20 */
+        border: 1px solid var(--border-light); 
     }
 
-    /* FIX: Scroll Shadow en Dark Mode (Solo Borde, Sin Sombra) */
     :root:not([data-theme="light"]) .general-content-top.shadow {
         box-shadow: none !important;
         border-bottom: 1px solid var(--border-transparent-20) !important;
     }
 
-    /* FIX: Drag Handle visibility in Dark Mode (#FFFFFF80) */
     :root:not([data-theme="light"]) .drag-handle {
         background-color: #FFFFFF80;
     }
 }
 
-/* B) Cuando se fuerza Dark Mode manualmente */
 [data-theme="dark"] .general-content,
 [data-theme="dark"] .module-surface .menu-content,
 [data-theme="dark"] .module-profile .menu-content,
@@ -467,13 +448,11 @@ html {
     border: 1px solid var(--border-light);
 }
 
-/* FIX: Scroll Shadow en Dark Mode (Solo Borde, Sin Sombra) */
 [data-theme="dark"] .general-content-top.shadow {
     box-shadow: none !important;
     border-bottom: 1px solid var(--border-transparent-20) !important;
 }
 
-/* FIX: Drag Handle visibility in Dark Mode (#FFFFFF80) */
 [data-theme="dark"] .drag-handle {
     background-color: #FFFFFF80;
 }
@@ -601,7 +580,6 @@ html {
 @media (max-width: 725px) {
     .header { gap: 0; justify-content: space-between; }
     
-    /* RESET FLEX PARA MÓVIL: Evita que el truco de centrado afecte en pantallas pequeñas */
     .header-left, .header-right { flex: 0 0 auto; width: auto; }
     
     .header-left { order: 1; }
@@ -620,7 +598,6 @@ html {
     .main-content { padding: 0; }
     .general-content { border-radius: 0; border: none; }
     .module-content.module-surface { width: 100%; padding: 0; }
-    /* FIX: Forzar eliminación de borde en móvil para evitar doble borde con General Content Top */
     .module-surface .menu-content { width: 100%; border-radius: 0; border: none !important; }
     .general-content:has(.module-surface.active) .general-content-top {
         box-shadow: none !important;
@@ -803,4 +780,58 @@ html {
 .disabled-interactive {
     opacity: 0.5;
     pointer-events: none;
+}
+
+/* =========================================
+   9. BOTÓN FLOTANTE DE AYUDA (FAB)
+   ========================================= */
+.fab-wrapper {
+    position: absolute;
+    bottom: 8px; /* MODIFICADO: 8px de separación */
+    right: 8px;  /* MODIFICADO: 8px de separación */
+    z-index: 100;
+}
+
+/* Forzamos estilos sobre .trigger-selector de components.css */
+.fab-button.trigger-selector {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    box-shadow: var(--sl-shadow-medium);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: transform 0.2s, background-color 0.2s;
+    padding: 0; 
+}
+
+.fab-button.trigger-selector:hover,
+.fab-button.trigger-selector.active {
+    background-color: var(--bg-hover-light);
+    transform: scale(1.05);
+    border-color: var(--action-primary);
+}
+
+/* Ajuste específico del Popover para que salga hacia ARRIBA */
+.fab-wrapper .popover-module {
+    bottom: calc(100% + 12px); /* Aparece encima del botón */
+    top: auto; /* Anula el top: 100% del CSS base */
+    right: 0;
+    width: 240px; 
+    transform-origin: bottom right;
+    border: 1px solid var(--border-light);
+}
+
+/* Animación de entrada hacia arriba */
+.fab-wrapper .popover-module.active {
+    animation: slideUpPopover 0.2s ease-out forwards;
+}
+
+@keyframes slideUpPopover {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
