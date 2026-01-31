@@ -3,13 +3,13 @@
  * Versión Refactorizada: Paginación y Búsqueda Server-Side
  */
 
-import { ApiService } from '../../core/api-service.js';
-import { Toast } from '../../core/toast-manager.js';
-import { I18n } from '../../core/i18n-manager.js';
+import { ApiService } from '../../../core/api-service.js';
+import { Toast } from '../../../core/toast-manager.js';
+import { I18n } from '../../../core/i18n-manager.js';
 import { UserDetailsController } from './user-details-controller.js'; 
 import { UserRoleController } from './user-role-controller.js'; 
 import { UserStatusController } from './user-status-controller.js';
-import { navigateTo } from '../../core/url-manager.js';
+import { navigateTo } from '../../../core/url-manager.js';
 
 const AdminAPI = ApiService.Routes.Admin;
 

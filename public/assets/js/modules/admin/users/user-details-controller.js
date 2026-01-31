@@ -3,10 +3,10 @@
  * Controlador para la edición detallada de usuarios.
  */
 
-import { ApiService } from '../../core/api-service.js';
-import { Toast } from '../../core/toast-manager.js';
-import { navigateTo } from '../../core/url-manager.js';
-import { Dialog } from '../../core/dialog-manager.js'; // Importante para confirmación
+import { ApiService } from '../../../core/api-service.js';
+import { Toast } from '../../../core/toast-manager.js';
+import { navigateTo } from '../../../core/url-manager.js';
+import { Dialog } from '../../../core/dialog-manager.js'; // Importante para confirmación
 
 let _container = null;
 let _targetUserId = null;

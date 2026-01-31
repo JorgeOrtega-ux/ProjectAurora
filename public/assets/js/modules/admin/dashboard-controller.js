@@ -15,10 +15,6 @@ export const DashboardController = {
 
         initEvents();
         loadStats();
-
-        // CORRECCIÓN APLICADA: Inicializar el controlador de alertas
-        // Esto activa los listeners del botón y del modal
-        AlertController.init();
     }
 };
 

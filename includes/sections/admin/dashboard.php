@@ -26,12 +26,6 @@
                     <button class="header-button" data-nav="admin/alerts" data-tooltip="Sistema de Alertas">
                         <span class="material-symbols-rounded">campaign</span>
                     </button>
-                    
-                    <div class="component-divider-vertical" style="height: 24px; border-left: 1px solid var(--border-light); margin: 0 4px;"></div>
-
-                    <button class="header-button" data-action="refresh-dashboard" data-tooltip="Actualizar datos">
-                        <span class="material-symbols-rounded">refresh</span>
-                    </button>
                 </div>
             </div>
 

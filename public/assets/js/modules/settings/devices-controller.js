@@ -74,8 +74,9 @@ function _renderList(sessions) {
         const safeIp = escapeHtml(s.ip);
         const safeDate = escapeHtml(s.created_at);
 
+        // [MODIFICADO] Se reemplazaron los estilos inline por las clases del componente
         const activeBadge = s.is_current 
-            ? `<span style="font-size:11px; background:#e8f5e9; color:#2e7d32; padding:2px 6px; border-radius:4px; font-weight:600; margin-left:8px;">${I18n.t('js.devices.current_device')}</span>` 
+            ? `<span class="component-badge component-badge--sm" style="margin-left: 8px;">${I18n.t('js.devices.current_device')}</span>` 
             : '';
 
         html += `
@@ -115,10 +116,8 @@ function _bindListEvents() {
             const id = e.target.dataset.id;
             if(!id) return;
 
-            // --- CONFIRMACIÓN AGREGADA AQUÍ ---
             const confirmed = await Dialog.confirm(DialogDefinitions.Devices.REVOKE_ONE);
             if (!confirmed) return;
-            // ----------------------------------
 
             const originalText = e.target.innerText;
             e.target.innerText = '...';
@@ -149,7 +148,6 @@ function _bindListEvents() {
 function _initRevokeAllButton() {
     const btnAll = document.getElementById('btn-revoke-all');
     if(btnAll) {
-        // Clonar para limpiar listeners previos si se reinicializa
         const newBtnAll = btnAll.cloneNode(true);
         btnAll.parentNode.replaceChild(newBtnAll, btnAll);
         
@@ -173,8 +171,6 @@ function _initRevokeAllButton() {
         });
     }
 }
-
-// --- OBJETO SINGLETON PÚBLICO ---
 
 export const DevicesController = {
     init: () => {

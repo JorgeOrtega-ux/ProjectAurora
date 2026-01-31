@@ -2,9 +2,9 @@
  * public/assets/js/modules/admin/user-role-controller.js
  */
 
-import { ApiService } from '../../core/api-service.js';
-import { Toast } from '../../core/toast-manager.js';
-import { navigateTo } from '../../core/url-manager.js';
+import { ApiService } from '../../../core/api-service.js';
+import { Toast } from '../../../core/toast-manager.js';
+import { navigateTo } from '../../../core/url-manager.js';
 
 let _container = null;
 let _targetUserId = null;

@@ -81,13 +81,6 @@ function visibility($isVisible) {
 
                 <div class="menu-divider"></div>
 
-                <div class="menu-link <?php echo ($currentSection === 'site-policy') ? 'active' : ''; ?>" data-nav="site-policy">
-                    <div class="menu-link-icon">
-                        <span class="material-symbols-rounded">dashboard</span>
-                    </div>
-                    <div class="menu-link-text">General</div>
-                </div>
-
                 <div class="menu-link <?php echo ($currentSection === 'site-policy/privacy-policy') ? 'active' : ''; ?>" data-nav="site-policy/privacy-policy">
                     <div class="menu-link-icon">
                         <span class="material-symbols-rounded">policy</span>
