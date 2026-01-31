@@ -4,6 +4,8 @@
 
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
+// CORRECCIÓN APLICADA: Importar el controlador de alertas
+import { AlertController } from './alert-controller.js';
 
 let _container = null;
 
@@ -15,6 +17,10 @@ export const DashboardController = {
 
         initEvents();
         loadStats();
+
+        // CORRECCIÓN APLICADA: Inicializar el controlador de alertas
+        // Esto activa los listeners del botón y del modal
+        AlertController.init();
     }
 };
 

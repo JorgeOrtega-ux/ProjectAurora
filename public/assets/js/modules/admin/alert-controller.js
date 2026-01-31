@@ -1,6 +1,8 @@
 /**
  * public/assets/js/modules/admin/alert-controller.js
  */
+import { ApiService } from '../../core/api-service.js';
+import { Toast } from '../../core/toast-manager.js'; // Asegúrate de importar Toast si lo usas
 
 export const AlertController = {
     init: () => {
@@ -10,15 +12,7 @@ export const AlertController = {
         const btnEmit = document.getElementById('btn-emit-alert');
         const btnDeactivate = document.getElementById('btn-deactivate-alert');
 
-        // Si no existen los elementos (ej. no estamos en dashboard), salir
         if (!btnOpen || !modal) return;
-
-        // Limpiar listeners previos (clonando el nodo) para evitar duplicados al navegar
-        // O simplemente asumimos que al cambiar de vista el DOM se destruye.
-        // Aquí usaremos la asignación directa onclick para simplificar el manejo de eventos en SPA
-        // o addEventListener asegurándonos de que es una inicialización fresca.
-
-        // --- HANDLERS ---
 
         // Abrir Modal
         btnOpen.onclick = () => {
@@ -59,7 +53,7 @@ export const AlertController = {
             };
         });
 
-        // Emitir
+        // Emitir Alerta
         if (btnEmit) {
             btnEmit.onclick = async () => {
                 const type = typeSelector.value;
@@ -93,52 +87,51 @@ export const AlertController = {
 
                 try {
                     const formData = new FormData();
-                    formData.append('action', 'create_system_alert');
+                    // ApiService inyecta 'csrf_token' y 'route' automáticamente, 
+                    // solo necesitamos los datos del payload.
                     formData.append('alert_data', JSON.stringify(payload));
-                    formData.append('csrf_token', window.CSRF_TOKEN || '');
+                    // 'action' ya no es necesario aquí, se define en ApiRoutes
 
-                    // Usando ApiService si existe, o fetch nativo
-                    const response = await fetch('api/handlers/admin-handler.php', { method: 'POST', body: formData });
-                    const res = await response.json();
+                    // CORRECCIÓN: Usar ApiService
+                    const res = await ApiService.post(ApiService.Routes.Admin.CreateSystemAlert, formData);
 
                     if (res.success) {
-                        // Usar tu Toast Manager si está disponible
-                        if (window.Toast) window.Toast.show('Alerta emitida correctamente', 'success');
-                        else alert('Alerta emitida');
+                        Toast.show('Alerta emitida correctamente', 'success');
                         modal.style.display = 'none';
                     } else {
-                        alert('Error: ' + res.message);
+                        Toast.show(res.message || 'Error al emitir alerta', 'error');
                     }
                 } catch (e) { console.error(e); }
             };
         }
 
-        // Desactivar
+        // Desactivar Alerta
         if (btnDeactivate) {
             btnDeactivate.onclick = async () => {
                 if (!confirm('¿Seguro que quieres quitar la alerta actual?')) return;
-                const formData = new FormData();
-                formData.append('action', 'deactivate_system_alert');
-                formData.append('csrf_token', window.CSRF_TOKEN || '');
-
-                await fetch('api/handlers/admin-handler.php', { method: 'POST', body: formData });
-                modal.style.display = 'none';
-                if (window.Toast) window.Toast.show('Alerta desactivada', 'success');
+                
+                // CORRECCIÓN: Usar ApiService
+                const res = await ApiService.post(ApiService.Routes.Admin.DeactivateSystemAlert);
+                
+                if (res.success) {
+                    Toast.show('Alerta desactivada', 'success');
+                    modal.style.display = 'none';
+                } else {
+                    Toast.show('Error al desactivar', 'error');
+                }
             };
         }
 
-        // Helpers
+        // Verificar estado activo
         async function checkActiveAlertStatus() {
-            const formData = new FormData();
-            formData.append('action', 'get_active_alert');
-            formData.append('csrf_token', window.CSRF_TOKEN || '');
-
             try {
-                const res = await (await fetch('api/handlers/admin-handler.php', { method: 'POST', body: formData })).json();
+                // CORRECCIÓN: Usar ApiService
+                const res = await ApiService.post(ApiService.Routes.Admin.GetActiveAlert);
+                
                 if (res.success && res.alert) {
                     btnDeactivate.style.display = 'block';
                     btnEmit.textContent = 'Sobrescribir Alerta';
-                    btnEmit.classList.add('warning'); // Opcional: cambiar estilo
+                    btnEmit.classList.add('warning');
                 } else {
                     btnDeactivate.style.display = 'none';
                     btnEmit.textContent = 'Emitir Alerta';

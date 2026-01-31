@@ -3,7 +3,7 @@
  */
 
 export const ApiRoutes = {
-    // ... (Auth y Settings sin cambios) ...
+    // ... (Auth y Settings igual que antes) ...
     Auth: {
         RegisterStep1:    { route: 'auth.register_step_1' },
         RegisterStep2:    { route: 'auth.initiate_verify' },
@@ -40,8 +40,13 @@ export const ApiRoutes = {
     },
 
     Admin: {
-        // [NUEVO]
         GetDashboardStats:  { route: 'admin.dashboard_stats' },
+        
+        // === [NUEVO] RUTAS DE ALERTAS ===
+        CreateSystemAlert:     { route: 'admin.create_system_alert' },
+        DeactivateSystemAlert: { route: 'admin.deactivate_system_alert' },
+        GetActiveAlert:        { route: 'admin.get_active_alert' },
+        // ================================
 
         GetUsers:           { route: 'admin.get_users' },
         GetDetails:         { route: 'admin.get_details' },
@@ -65,17 +70,11 @@ export const ApiRoutes = {
             UpdateConfig: { route: 'admin.upd_backup_config' }
         },
 
-        // Auditoría
         GetAuditLogs:     { route: 'admin.get_audit_logs' },
-
-        // Logs de Archivo
         GetLogFiles:      { route: 'admin.get_log_files' },
         DeleteLogFiles:   { route: 'admin.delete_log_files' },
-        
-        // Visor
         GetFileContent:   { route: 'admin.get_log_content' },
 
-        // REDIS MANAGER
         Redis: {
             GetStats:     { route: 'admin.redis_stats' },
             GetKeys:      { route: 'admin.redis_keys' },
