@@ -7,7 +7,7 @@ export function initMainController() {
 
     initModuleSystem();
     initScrollEffects();
-    initGlobalStateListeners(); // Importante: Activamos la escucha de eventos
+    initGlobalStateListeners();
 }
 
 function initScrollEffects() {
@@ -35,8 +35,9 @@ function initModuleSystem() {
 
     const closeModuleWithAnimation = (mod) => {
         const isMobile = window.innerWidth <= 468;
-        // Modificado: Ya solo verificamos moduleProfile
-        const isSheetModule = mod.dataset.module === 'moduleProfile';
+        
+        // Incluimos moduleOptions en la lógica de 'Sheet' para móviles
+        const isSheetModule = ['moduleProfile', 'moduleOptions'].includes(mod.dataset.module);
 
         if (isMobile && isSheetModule && mod.classList.contains('active')) {
             mod.classList.add('closing');
@@ -75,7 +76,7 @@ function initModuleSystem() {
                 let targetModuleName = '';
                 if (action === 'toggleModuleProfile') targetModuleName = 'moduleProfile';
                 if (action === 'toggleModuleSurface') targetModuleName = 'moduleSurface';
-                // Eliminada la línea de toggleModuleNotifications
+                if (action === 'toggleModuleOptions') targetModuleName = 'moduleOptions';
 
                 if (targetModuleName) {
                     const targetModule = document.querySelector(`[data-module="${targetModuleName}"]`);
@@ -90,10 +91,8 @@ function initModuleSystem() {
                             closeModuleWithAnimation(targetModule);
                         } else {
                             targetModule.classList.remove('disabled');
-                            targetModule.style.display = 'flex';
-                            void targetModule.offsetHeight; 
+                            targetModule.style.display = ''; // Limpiamos display inline por si acaso
                             targetModule.classList.add('active');
-                            targetModule.style.display = '';
                         }
                     }
                 }
@@ -138,8 +137,7 @@ function initModuleSystem() {
         });
     }
 
-    // Modificado: Solo seleccionamos moduleProfile
-    const sheetModules = document.querySelectorAll('[data-module="moduleProfile"]');
+    const sheetModules = document.querySelectorAll('[data-module="moduleProfile"], [data-module="moduleOptions"]');
     sheetModules.forEach(mod => {
         initMobileDrag(mod, closeModuleWithAnimation);
     });
@@ -207,23 +205,13 @@ function initMobileDrag(moduleElement, closeCallback) {
     });
 }
 
-/**
- * Escucha eventos globales de la aplicación para sincronizar UI (Avatar y otros)
- */
 function initGlobalStateListeners() {
-    // Escuchar evento 'user:avatar_update' disparado desde ProfileController
     document.addEventListener('user:avatar_update', (e) => {
         const newSrc = e.detail.src;
         if (!newSrc) return;
-
-        console.log("MainController: Sincronizando avatar global...", newSrc);
-
-        // Actualizar imagen en el Header
         const headerImg = document.querySelector('.header .profile-button .profile-img');
         if (headerImg) {
             headerImg.src = newSrc;
-            
-            // Animación de feedback
             if (headerImg.animate) {
                 headerImg.animate([
                     { transform: 'scale(0.8)', opacity: 0.5 },

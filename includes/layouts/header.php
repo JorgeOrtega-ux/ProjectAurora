@@ -32,30 +32,18 @@
 
             <?php if (isset($_SESSION['user_id'])): ?>
                 
-                <div class="header-item" style="position: relative;" data-trigger="dropdown">
+                <div class="header-item" style="position: relative;">
                     
-                    <div class="header-button" data-tooltip="Crear nuevo">
+                    <div class="header-button" 
+                         data-action="toggleModuleOptions"
+                         data-tooltip="Crear nuevo">
                         <span class="material-symbols-rounded">add</span>
                     </div>
 
-                    <div class="popover-module">
-                        <div class="menu-list">
-                            <a href="#" class="menu-link">
-                                <div class="menu-link-icon">
-                                    <span class="material-symbols-rounded">add_circle</span>
-                                </div>
-                                <div class="menu-link-text">Crear un lienzo</div>
-                            </a>
-                            
-                            <a href="#" class="menu-link">
-                                <div class="menu-link-icon">
-                                    <span class="material-symbols-rounded">link</span>
-                                </div>
-                                <div class="menu-link-text">Unirme a un lienzo</div>
-                            </a>
-                        </div>
-                    </div>
+                    <?php include '../includes/modules/module-options.php'; ?>
+                    
                 </div>
+
                 <div class="header-button profile-button" 
                      data-action="toggleModuleProfile"
                      data-role="<?php echo htmlspecialchars($userRole ?? 'guest'); ?>"
@@ -79,6 +67,7 @@
             <?php endif; ?>
 
         </div>
+        
         <?php include '../includes/modules/module-profile.php'; ?>
     </div>
 </div>

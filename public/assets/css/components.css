@@ -1999,4 +1999,96 @@ input:checked+.component-toggle-slider:before {
     padding: 0 10px;
     min-width: 60px;
     text-align: center;
+}/* ... (MANTÉN EL CÓDIGO ANTERIOR DEL ARCHIVO) ... */
+
+/* =========================================
+   19. MODULE OPTIONS (Estilo idéntico a Profile)
+   ========================================= */
+
+/* Desktop: Dropdown flotante */
+.module-content.module-options {
+    position: absolute;
+    /* Ajustado a 5px para coincidir exactamente con module-profile en styles.css */
+    top: calc(100% + 5px); 
+    right: 0;
+    z-index: 1000;
+    width: 240px;
+    display: none;
+    flex-direction: column;
+}
+
+.module-options .menu-content {
+    background-color: var(--bg-surface);
+    border-radius: var(--radius-md);
+    
+    /* ESTILO IGUAL A MODULOS NATIVOS (styles.css) */
+    /* En light mode: Sombra suave, sin borde visible */
+    box-shadow: 0 4px 12px var(--border-transparent-20);
+    border: 1px solid transparent;
+    
+    padding: 6px; 
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.module-options.active {
+    display: flex;
+    /* SIN ANIMACIÓN EN DESKTOP PARA COINCIDIR CON OTROS MÓDULOS */
+}
+
+[data-theme="dark"] .module-options .menu-content {
+    box-shadow: none !important;
+    border: 1px solid var(--border-light);
+}
+
+/* Mobile: Bottom Sheet (Mismo comportamiento que Profile) */
+@media (max-width: 468px) {
+    .module-content.module-options {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        background-color: var(--overlay-dark);
+        z-index: 9999;
+        align-items: flex-end;
+    }
+
+    .module-options .menu-content {
+        width: 100%;
+        border-radius: 16px 16px 0 0;
+        padding: 0;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+        transform: translateY(100%);
+        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        border: none;
+    }
+    
+    .module-options .menu-list {
+        padding: 4px 8px 16px 8px;
+    }
+
+    /* En móvil SI lleva animación de slide y fade */
+    .module-content.module-options.active {
+        animation: fadeInOverlay 0.3s ease forwards;
+    }
+
+    .module-content.module-options.active .menu-content {
+        transform: translateY(0%);
+    }
+
+    .module-content.module-options.closing .menu-content {
+        transform: translateY(100%) !important;
+    }
+    
+    .module-content.module-options.closing {
+        animation: fadeOutOverlay 0.3s ease forwards;
+    }
+    
+    .module-options .pill-container {
+        display: flex;
+    }
 }
