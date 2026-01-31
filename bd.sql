@@ -160,3 +160,17 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     INDEX (target_type, target_id),
     INDEX (action)
 );
+
+CREATE TABLE IF NOT EXISTS `system_alerts` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `uuid` VARCHAR(36) NOT NULL,
+  `type` ENUM('performance', 'maintenance', 'policy') NOT NULL,
+  `severity` ENUM('info', 'warning', 'critical') NOT NULL DEFAULT 'info',
+  `message` TEXT,
+  `meta_data` JSON,
+  `is_active` TINYINT(1) DEFAULT 1,
+  `created_by` INT,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_active` (`is_active`)
+);

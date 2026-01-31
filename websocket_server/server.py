@@ -214,6 +214,25 @@ async def ws_handler(websocket):
         await websocket.close(code=1008, reason="Authentication Failed")
         return
 
+    # === NUEVO: CHECK DE ALERTA ACTIVA ===
+    # Obtenemos un cliente nuevo o reusamos si prefieres reestructurar, 
+    # pero para simplicidad abrimos uno rápido para checar persistencia.
+    try:
+        r_temp = await get_redis_client()
+        active_alert_raw = await r_temp.get('system:active_alert')
+        await r_temp.aclose()
+        
+        if active_alert_raw:
+            # Enviamos la alerta inmediatamente al conectarse
+            alert_data = json.loads(active_alert_raw)
+            await websocket.send(json.dumps({
+                "type": "system_alert", 
+                "message": alert_data
+            }))
+    except Exception as e:
+        logging.error(f"Error enviando alerta persistente: {e}")
+    # ======================================
+
     # --- LÓGICA INVITADO ---
     if user_id == 'GUEST':
         connected_guests.add(websocket)

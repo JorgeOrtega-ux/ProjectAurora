@@ -58,3 +58,19 @@
         <?php include '../includes/modules/module-profile.php'; ?>
     </div>
 </div>
+
+<div id="system-alert-container" style="display:none; width: 100%; background: #0f0f0f; border-bottom: 2px solid #333; padding: 12px 24px; box-sizing: border-box; align-items: center; justify-content: space-between; position: relative; z-index: 9999;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <span id="sys-alert-icon" class="material-symbols-rounded" style="color: #ff9800;">warning</span>
+        <div>
+            <strong id="sys-alert-title" style="color: #fff; display: block; font-size: 14px;"></strong>
+            <span id="sys-alert-msg" style="color: #ccc; font-size: 13px;"></span>
+        </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <a id="sys-alert-link" href="#" target="_blank" style="color: #4a90e2; font-size: 13px; display: none;">Ver detalles</a>
+        <button id="sys-alert-close" style="background: none; border: none; color: #666; cursor: pointer;">
+            <span class="material-symbols-rounded">close</span>
+        </button>
+    </div>
+</div>

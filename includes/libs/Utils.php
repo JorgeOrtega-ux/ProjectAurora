@@ -207,5 +207,22 @@ class Utils {
         }
         return $src;
     }
+
+    /**
+     * Genera un UUID v4 (Identificador Único Universal)
+     * Utilizado para IDs de alertas, logs y sesiones.
+     */
+    public static function generateUUID() {
+        // Generar 16 bytes de datos pseudo-aleatorios con seguridad criptográfica
+        $data = random_bytes(16);
+
+        // Establecer la versión a 4 (bits 4-7 del byte 6 a 0100)
+        $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
+        // Establecer bits 6-7 del byte 8 a 01 (variante DCE 1.1)
+        $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
+
+        // Formatear como string hexadecimal estándar
+        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+    }
 }
 ?>

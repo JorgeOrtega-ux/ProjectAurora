@@ -8,8 +8,7 @@ export const SocketClient = {
     socket: null,
     reconnectInterval: 5000,
     
-    // [CORRECCIÓN] Detección dinámica del host para evitar problemas de IP hardcodeada
-    // Se conectará al mismo host que la web, puerto 8765
+    // Detección dinámica del host
     get baseUrl() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.hostname;
@@ -30,7 +29,7 @@ export const SocketClient = {
 
         try {
             let urlToConnect = '';
-            const wsUrl = SocketClient.baseUrl; // Usamos el getter dinámico
+            const wsUrl = SocketClient.baseUrl;
 
             // Lógica Híbrida: Usuario Registrado vs Invitado
             if (window.IS_LOGGED_IN) {
@@ -64,10 +63,18 @@ export const SocketClient = {
             SocketClient.socket.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    // Log para depuración visual en consola del navegador
-                    console.log("📩 Socket Mensaje Recibido:", data); 
-
-                    // Despachar eventos globales
+                    
+                    // === NUEVA LÓGICA DE ALERTAS ===
+                    if (data.type === 'system_alert') {
+                        showSystemAlert(data.message);
+                    }
+                    else if (data.type === 'system_alert_clear') {
+                        const container = document.getElementById('system-alert-container');
+                        if (container) container.style.display = 'none';
+                        localStorage.removeItem('hidden_alert_id');
+                    }
+                    
+                    // Despachar eventos globales (para el resto de la app)
                     if (data.type) {
                         const customEvent = new CustomEvent(`socket:${data.type}`, { detail: data });
                         document.dispatchEvent(customEvent);
@@ -88,7 +95,7 @@ export const SocketClient = {
             };
 
             SocketClient.socket.onerror = (error) => {
-                console.error("Socket: Error de conexión. Asegúrate de que server.py esté corriendo.", error);
+                console.error("Socket: Error de conexión.", error);
                 SocketClient.socket.close();
             };
 
@@ -106,3 +113,84 @@ export const SocketClient = {
         }
     }
 };
+
+// === Helper para mostrar Alertas ===
+function showSystemAlert(alertData) {
+    const container = document.getElementById('system-alert-container');
+    if (!container) return;
+
+    // Verificar si el usuario la cerró previamente
+    const hiddenId = localStorage.getItem('hidden_alert_id');
+    if (hiddenId === alertData.id) return;
+
+    const icon = document.getElementById('sys-alert-icon');
+    const title = document.getElementById('sys-alert-title');
+    const msg = document.getElementById('sys-alert-msg');
+    const link = document.getElementById('sys-alert-link');
+    const closeBtn = document.getElementById('sys-alert-close');
+
+    if (!icon || !title || !msg) return; 
+
+    // Configurar Estilos según severidad
+    let borderColor = '#333';
+    let iconName = 'info';
+    let iconColor = '#3b82f6'; // Default azul
+    
+    if (alertData.severity === 'critical') {
+        borderColor = '#ef4444'; // Rojo
+        iconName = 'report';
+        iconColor = '#ef4444';
+    } else if (alertData.severity === 'warning') {
+        borderColor = '#f59e0b'; // Naranja
+        iconName = 'warning';
+        iconColor = '#f59e0b';
+    } else {
+        borderColor = '#3b82f6'; // Azul
+        iconName = 'info';
+        iconColor = '#3b82f6';
+    }
+
+    container.style.borderBottomColor = borderColor;
+    icon.textContent = iconName;
+    icon.style.color = iconColor;
+
+    // Configurar Texto
+    if (alertData.type === 'performance') {
+        title.textContent = 'Aviso de Rendimiento';
+        msg.textContent = alertData.message;
+    } else if (alertData.type === 'maintenance') {
+        title.textContent = 'Mantenimiento del Sistema';
+        if (alertData.meta && alertData.meta.subtype === 'scheduled') {
+            const date = new Date(alertData.meta.start).toLocaleString();
+            msg.textContent = `Programado para el ${date} (${alertData.meta.duration} min).`;
+        } else {
+            msg.textContent = `Emergencia: ${alertData.message}`;
+        }
+    } else if (alertData.type === 'policy') {
+        title.textContent = 'Actualización Legal';
+        const docName = (alertData.meta.doc || 'Documento').toUpperCase();
+        const dateStr = alertData.meta.status === 'future' ? 'Entra en vigor: ' + alertData.meta.date : 'Actualizado';
+        msg.textContent = `${docName} - ${dateStr}`;
+    } else {
+        // Fallback genérico
+        title.textContent = 'Aviso del Sistema';
+        msg.textContent = alertData.message;
+    }
+
+    // Link
+    if (alertData.meta && alertData.meta.link) {
+        link.href = alertData.meta.link;
+        link.style.display = 'inline';
+    } else {
+        link.style.display = 'none';
+    }
+
+    // Mostrar
+    container.style.display = 'flex';
+
+    // Evento Cerrar
+    closeBtn.onclick = () => {
+        container.style.display = 'none';
+        localStorage.setItem('hidden_alert_id', alertData.id);
+    };
+}

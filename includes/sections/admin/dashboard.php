@@ -22,7 +22,9 @@
                     <button class="header-button" data-nav="admin/audit-log" data-tooltip="Registro de Actividad">
                         <span class="material-symbols-rounded">history_edu</span>
                     </button>
-
+<button class="header-button" id="btn-open-alert-modal" data-tooltip="Emitir Alerta">
+    <span class="material-symbols-rounded">campaign</span>
+</button>
                     <div class="component-divider-vertical" style="height: 24px; border-left: 1px solid var(--border-light); margin: 0 4px;"></div>
 
                     <button class="header-button" data-action="refresh-dashboard" data-tooltip="Actualizar datos">

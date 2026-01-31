@@ -29,8 +29,10 @@ import { AuditLogController } from './modules/admin/audit-log-controller.js';
 import { LogFilesController } from './modules/admin/log-files-controller.js';
 import { FileViewerController } from './modules/admin/file-viewer-controller.js';
 import { RedisManagerController } from './modules/admin/redis-manager-controller.js';
-// [NUEVO] Dashboard
 import { DashboardController } from './modules/admin/dashboard-controller.js';
+
+// [NUEVO] Importar AlertController
+import { AlertController } from './modules/admin/alert-controller.js';
 
 const App = {
     init: () => {
@@ -121,8 +123,10 @@ function routeDispatcher(section) {
         case 'settings/2fa-setup': TwoFactorController.init(); break;
         
         // Admin Modules
-        // [NUEVO] Dashboard
-        case 'admin/dashboard': DashboardController.init(); break;
+        case 'admin/dashboard': 
+            DashboardController.init(); 
+            AlertController.init(); // [NUEVO] Inicializar aquí
+            break;
 
         case 'admin/users': UsersController.init(); break;
         case 'admin/user-details': UserDetailsController.init(); break;

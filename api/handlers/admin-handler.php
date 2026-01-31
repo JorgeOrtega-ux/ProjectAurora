@@ -8,6 +8,9 @@ require_once __DIR__ . '/../services/AdminService.php';
 require_once __DIR__ . '/../services/BackupService.php';
 require_once __DIR__ . '/../services/LogFileService.php';
 require_once __DIR__ . '/../services/RedisService.php';
+require_once __DIR__ . '/../services/AlertService.php'; // <--- AÑADIR ESTO
+
+$alertService = new AlertService($pdo, $redis, $_SESSION['user_id']); // <--- AÑADIR ESTO
 
 if (!isset($_SESSION['user_id'])) {
     Utils::jsonResponse(['success' => false, 'message' => $i18n->t('api.session_expired')]);
@@ -181,6 +184,21 @@ switch ($action) {
 
     case 'flush_redis_db':
         Utils::jsonResponse($redisService->flushDB());
+        break;
+
+        // === GESTIÓN DE ALERTAS ===
+    case 'create_system_alert':
+        // Decodificar el JSON complejo que enviará el JS
+        $data = json_decode($_POST['alert_data'], true);
+        Utils::jsonResponse($alertService->createAlert($data));
+        break;
+
+    case 'deactivate_system_alert':
+        Utils::jsonResponse($alertService->deactivateAlert());
+        break;
+        
+    case 'get_active_alert':
+        Utils::jsonResponse($alertService->getActiveAlert());
         break;
 
     default:
