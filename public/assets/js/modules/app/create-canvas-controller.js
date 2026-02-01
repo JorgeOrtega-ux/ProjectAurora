@@ -1,206 +1,184 @@
 /**
  * public/assets/js/modules/app/create-canvas-controller.js
- * Controlador para la creación de nuevos lienzos.
  */
-
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { ApiRoutes } from '../../core/api-routes.js';
 
-export class CreateCanvasController {
-    constructor() {
-        this.selectedSize = 64;
-        this.selectedPrivacy = 'public';
-        this.accessCode = '';
-        this.init();
-    }
+export const CreateCanvasController = {
+    
+    state: {
+        selectedSize: 64,
+        selectedPrivacy: 'public', // Valor por defecto
+        accessCode: ''
+    },
 
-    init() {
-        this.cacheDOM();
+    init: () => {
+        // 1. Buscamos el contenedor principal
+        const container = document.querySelector('[data-section="app/create-canvas"]');
         
-        // [CORRECCIÓN] Si el contenedor no existe (porque el HTML no está listo o estamos en otra vista),
-        // detenemos la ejecución para evitar el error "addEventListener of null".
-        if (!this.container) {
+        if (!container) {
+            console.warn('⚠️ CreateCanvasController: No se encontró [data-section="app/create-canvas"]');
             return;
         }
 
-        this.bindEvents();
-        // Generar un código inicial por si acaso
-        this.generateCode();
-    }
+        console.log("✅ CreateCanvasController: Iniciado.");
 
-    cacheDOM() {
-        // Busca el contenedor principal definido en create-canvas.php
-        this.container = document.querySelector('[data-section="app/create-canvas"]');
-        
-        // Si no encuentra el container, no tiene sentido buscar el resto
-        if (!this.container) return;
+        // 2. Cacheamos referencias (panelPublic puede ser null si lo borraste del HTML)
+        const dom = {
+            container: container,
+            btnCreate: document.getElementById('btn-create-canvas'),
+            displaySize: document.getElementById('display-size'),
+            displayPrivacy: document.getElementById('display-privacy'),
+            triggerPrivacy: document.getElementById('trigger-privacy'),
+            
+            // Estos pueden o no existir dependiendo de tu HTML
+            panelPublic: document.getElementById('privacy-info-public'), 
+            panelPrivate: document.getElementById('privacy-info-private'),
+            
+            inputCode: document.getElementById('access-code-display'),
+            btnRefreshCode: document.getElementById('btn-refresh-code')
+        };
 
-        this.btnCreate = document.getElementById('btn-create-canvas');
-        
-        // Elementos de UI
-        this.displaySize = document.getElementById('display-size');
-        this.displayPrivacy = document.getElementById('display-privacy');
-        this.triggerPrivacy = document.getElementById('trigger-privacy');
-        
-        this.panelPublic = document.getElementById('privacy-info-public');
-        this.panelPrivate = document.getElementById('privacy-info-private');
-        this.inputCode = document.getElementById('access-code-display');
-        this.btnRefreshCode = document.getElementById('btn-refresh-code');
-    }
+        // --- Funciones Internas ---
 
-    bindEvents() {
-        // Event Delegation para los menús desplegables (Trigger Selects)
-        // Aquí es donde ocurría el error si this.container era null
-        this.container.addEventListener('click', (e) => {
-            // Selector de Tamaño
-            const sizeOption = e.target.closest('[data-action="select-size"]');
-            if (sizeOption) {
-                this.handleSizeSelection(sizeOption);
+        const generateCode = () => {
+            let result = '';
+            const characters = '0123456789';
+            for (let i = 0; i < 12; i++) {
+                result += characters.charAt(Math.floor(Math.random() * characters.length));
+            }
+            CreateCanvasController.state.accessCode = result;
+            if (dom.inputCode) {
+                dom.inputCode.value = result.match(/.{1,4}/g).join('-'); 
+            }
+        };
+
+        const closeDropdowns = (element) => {
+            const wrapper = element.closest('.trigger-select-wrapper');
+            if(wrapper) {
+                const popover = wrapper.querySelector('.popover-module');
+                if(popover) popover.classList.remove('active');
+                const trigger = wrapper.querySelector('.trigger-selector');
+                if(trigger) trigger.classList.remove('active');
+            }
+        };
+
+        const togglePrivacyPanels = () => {
+            // [CORRECCIÓN] Ya no obligamos a que existan ambos. Verificamos uno por uno.
+
+            // 1. Panel Público (Si existe en el HTML, lo ocultamos/mostramos)
+            if (dom.panelPublic) {
+                if (CreateCanvasController.state.selectedPrivacy === 'private') {
+                    dom.panelPublic.classList.add('d-none');
+                } else {
+                    dom.panelPublic.classList.remove('d-none');
+                }
             }
 
-            // Selector de Privacidad
+            // 2. Panel Privado (El input del código)
+            if (dom.panelPrivate) {
+                if (CreateCanvasController.state.selectedPrivacy === 'private') {
+                    // Mostrar privado
+                    dom.panelPrivate.classList.remove('d-none');
+                    // Asegurar que hay código
+                    if (!CreateCanvasController.state.accessCode) generateCode();
+                } else {
+                    // Ocultar privado
+                    dom.panelPrivate.classList.add('d-none');
+                }
+            }
+        };
+
+        // --- Event Listeners ---
+
+        // Delegación de eventos en el container (más robusto que onclick)
+        container.addEventListener('click', (e) => {
+            
+            // A. Selección de Tamaño
+            const sizeOption = e.target.closest('[data-action="select-size"]');
+            if (sizeOption) {
+                container.querySelectorAll('[data-action="select-size"]').forEach(el => el.classList.remove('active'));
+                sizeOption.classList.add('active');
+
+                const val = parseInt(sizeOption.dataset.value);
+                CreateCanvasController.state.selectedSize = val;
+                if (dom.displaySize) dom.displaySize.textContent = `${val} x ${val} Píxeles`;
+                
+                closeDropdowns(sizeOption);
+            }
+
+            // B. Selección de Privacidad
             const privacyOption = e.target.closest('[data-action="select-privacy"]');
             if (privacyOption) {
-                this.handlePrivacySelection(privacyOption);
+                container.querySelectorAll('[data-action="select-privacy"]').forEach(el => el.classList.remove('active'));
+                privacyOption.classList.add('active');
+
+                const val = privacyOption.dataset.value;
+                const label = privacyOption.dataset.label;
+                const iconName = privacyOption.dataset.icon;
+
+                // Actualizar el trigger visualmente
+                if (dom.triggerPrivacy) {
+                    const iconSpan = dom.triggerPrivacy.querySelector('.trigger-select-icon');
+                    const textSpan = dom.triggerPrivacy.querySelector('.trigger-select-text');
+                    if (iconSpan) iconSpan.textContent = iconName;
+                    if (textSpan) textSpan.textContent = label;
+                }
+
+                // Actualizar estado y UI
+                CreateCanvasController.state.selectedPrivacy = val;
+                togglePrivacyPanels(); // <--- Ahora esto funcionará aunque falte el div público
+                
+                closeDropdowns(privacyOption);
             }
         });
 
-        // Botón Crear
-        if (this.btnCreate) {
-            this.btnCreate.addEventListener('click', () => this.createCanvas());
+        // C. Botón Crear
+        if (dom.btnCreate) {
+            dom.btnCreate.addEventListener('click', async () => {
+                const btnContent = dom.btnCreate.innerHTML;
+                dom.btnCreate.innerHTML = '<span class="spinner-sm"></span>';
+                dom.btnCreate.disabled = true;
+
+                try {
+                    const formData = new FormData();
+                    formData.append('size', CreateCanvasController.state.selectedSize);
+                    formData.append('privacy', CreateCanvasController.state.selectedPrivacy);
+                    
+                    if (CreateCanvasController.state.selectedPrivacy === 'private') {
+                        formData.append('access_code', CreateCanvasController.state.accessCode);
+                    }
+
+                    const response = await ApiService.post(ApiRoutes.Canvas.Create, formData);
+
+                    if (response.success) {
+                        Toast.show('Lienzo creado correctamente', 'success');
+                        setTimeout(() => window.location.href = response.data.redirect_url || '/app', 1000);
+                    } else {
+                        Toast.show(response.message || 'Error', 'error');
+                        dom.btnCreate.innerHTML = btnContent;
+                        dom.btnCreate.disabled = false;
+                    }
+                } catch (error) {
+                    console.error(error);
+                    Toast.show('Error de conexión', 'error');
+                    dom.btnCreate.innerHTML = btnContent;
+                    dom.btnCreate.disabled = false;
+                }
+            });
         }
 
-        // Regenerar código
-        if (this.btnRefreshCode) {
-            this.btnRefreshCode.addEventListener('click', (e) => {
-                e.stopPropagation(); // Evitar cerrar dropdowns si estuvieran abiertos
-                this.generateCode();
+        // D. Botón Refrescar Código
+        if (dom.btnRefreshCode) {
+            dom.btnRefreshCode.addEventListener('click', (e) => {
+                e.stopPropagation();
+                generateCode();
                 Toast.show('Nuevo código generado', 'info');
             });
         }
+
+        // Ejecución inicial: Generar un código por si acaso
+        generateCode();
     }
-
-    handleSizeSelection(element) {
-        // UI Update
-        document.querySelectorAll('[data-action="select-size"]').forEach(el => el.classList.remove('active'));
-        element.classList.add('active');
-
-        // Logic Update
-        this.selectedSize = parseInt(element.dataset.value);
-        if (this.displaySize) {
-            this.displaySize.textContent = `${this.selectedSize} x ${this.selectedSize} Píxeles`;
-        }
-        
-        // Cerrar popover
-        this.closeDropdowns(element);
-    }
-
-    handlePrivacySelection(element) {
-        // UI Update
-        document.querySelectorAll('[data-action="select-privacy"]').forEach(el => el.classList.remove('active'));
-        element.classList.add('active');
-
-        const value = element.dataset.value;
-        const label = element.dataset.label;
-        const iconName = element.dataset.icon;
-
-        // Actualizar el trigger principal
-        if (this.triggerPrivacy) {
-            const iconSpan = this.triggerPrivacy.querySelector('.trigger-select-icon');
-            const textSpan = this.triggerPrivacy.querySelector('.trigger-select-text');
-            
-            if (iconSpan) iconSpan.textContent = iconName;
-            if (textSpan) textSpan.textContent = label;
-        }
-
-        // Logic Update
-        this.selectedPrivacy = value;
-        this.togglePrivacyPanels();
-
-        // Cerrar popover
-        this.closeDropdowns(element);
-    }
-
-    closeDropdowns(element) {
-        const wrapper = element.closest('.trigger-select-wrapper');
-        if(wrapper) {
-            const popover = wrapper.querySelector('.popover-module');
-            if(popover) popover.classList.remove('active');
-            const trigger = wrapper.querySelector('.trigger-selector');
-            if(trigger) trigger.classList.remove('active');
-        }
-    }
-
-    togglePrivacyPanels() {
-        if (!this.panelPublic || !this.panelPrivate) return;
-
-        if (this.selectedPrivacy === 'private') {
-            this.panelPublic.classList.add('d-none');
-            this.panelPrivate.classList.remove('d-none');
-            // Asegurar que haya código
-            if (!this.accessCode) this.generateCode();
-        } else {
-            this.panelPublic.classList.remove('d-none');
-            this.panelPrivate.classList.add('d-none');
-        }
-    }
-
-    generateCode() {
-        // Generar 12 dígitos aleatorios
-        let result = '';
-        const characters = '0123456789';
-        for (let i = 0; i < 12; i++) {
-            result += characters.charAt(Math.floor(Math.random() * characters.length));
-        }
-        this.accessCode = result;
-        if (this.inputCode) {
-            this.inputCode.value = result.match(/.{1,4}/g).join('-'); // Formato XXXX-XXXX-XXXX para legibilidad
-        }
-    }
-
-    async createCanvas() {
-        if (!this.btnCreate) return;
-
-        const btnContent = this.btnCreate.innerHTML;
-        this.btnCreate.innerHTML = '<span class="spinner-sm"></span>';
-        this.btnCreate.disabled = true;
-
-        try {
-            const formData = new FormData();
-            formData.append('size', this.selectedSize);
-            formData.append('privacy', this.selectedPrivacy);
-            
-            if (this.selectedPrivacy === 'private') {
-                formData.append('access_code', this.accessCode);
-            }
-
-            const response = await ApiService.post(ApiRoutes.Canvas.Create, formData);
-
-            if (response.success) {
-                Toast.show('Lienzo creado correctamente', 'success');
-                // Redirigir al lienzo
-                setTimeout(() => {
-                    window.location.href = response.data.redirect_url || '/app';
-                }, 1000);
-            } else {
-                Toast.show(response.message || 'Error al crear el lienzo', 'error');
-                this.resetButton(btnContent);
-            }
-        } catch (error) {
-            console.error(error);
-            Toast.show('Error de conexión', 'error');
-            this.resetButton(btnContent);
-        }
-    }
-
-    resetButton(originalContent) {
-        if (this.btnCreate) {
-            this.btnCreate.innerHTML = originalContent;
-            this.btnCreate.disabled = false;
-        }
-    }
-}
-
-// Inicialización automática
-new CreateCanvasController();
+};
