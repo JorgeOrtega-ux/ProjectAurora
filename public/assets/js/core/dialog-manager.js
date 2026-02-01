@@ -1,3 +1,6 @@
+/**
+ * public/assets/js/core/dialog-manager.js
+ */
 
 import { DialogTemplates } from './dialog-definitions.js';
 
@@ -31,6 +34,15 @@ export const Dialog = {
         Dialog.elements.overlay = overlay;
         Dialog.elements.container = overlay.querySelector('.component-dialog-wrapper');
         Dialog.elements.wrapper = overlay.querySelector('.component-dialog');
+
+        // [NUEVO] Cerrar al hacer clic fuera (Overlay o Wrapper)
+        overlay.addEventListener('click', (e) => {
+            // Verificamos si lo que se clickeó fue exactamente el fondo o el contenedor vacío,
+            // y no el contenido interno (la tarjeta blanca).
+            if (e.target === overlay || e.target === Dialog.elements.container) {
+                Dialog.close();
+            }
+        });
     },
 
     _ensureReady: () => {
