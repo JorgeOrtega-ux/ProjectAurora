@@ -5,7 +5,6 @@ USE project_aurora_db;
 -- REINICIO DE TABLAS
 -- =========================================================
 DROP TABLE IF EXISTS audit_logs; 
-DROP TABLE IF EXISTS canvases; -- Eliminamos para recrear con nueva estructura
 DROP TABLE IF EXISTS ws_auth_tokens;
 DROP TABLE IF EXISTS user_auth_tokens;
 DROP TABLE IF EXISTS user_preferences;

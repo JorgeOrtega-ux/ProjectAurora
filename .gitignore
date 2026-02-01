@@ -14,6 +14,16 @@ logs/security/*.log
 storage/profilePicture/custom/*
 !storage/profilePicture/custom/.gitkeep
 
+# --- RESPALDOS DE BASE DE DATOS ---
+# Ignoramos todo el contenido de backups excepto el .htaccess de seguridad
+storage/backups/*
+!storage/backups/.htaccess
+!storage/backups/.gitkeep
+
+# --- ARCHIVOS TEMPORALES (Descargas Zips) ---
+storage/temp/*
+!storage/temp/.gitkeep
+
 # --- SISTEMA OPERATIVO E IDE ---
 .DS_Store
 Thumbs.db
