@@ -5,6 +5,7 @@ import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { Dialog } from '../../core/dialog-manager.js';
 import { DateTimePicker } from '../../core/date-time-picker.js';
+import { I18n } from '../../core/i18n-manager.js';
 
 export const SystemAlertsController = {
     init: () => {
@@ -43,23 +44,23 @@ export const SystemAlertsController = {
             format: 'YYYY-MM-DD'
         });
 
-        // --- CONFIGURACIÓN UI (ACTUALIZADA CON NUEVOS TEXTOS) ---
+        // --- CONFIGURACIÓN UI (TRANSLATED) ---
         const configMainType = {
-            'performance': { icon: 'speed', text: 'Reporte de Rendimiento' },
-            'maintenance': { icon: 'build', text: 'Gestión de Mantenimiento' },
-            'policy':      { icon: 'policy', text: 'Políticas y Asuntos Legales' }
+            'performance': { icon: 'speed', text: I18n.t('admin.alerts.type_perf') },
+            'maintenance': { icon: 'build', text: I18n.t('admin.alerts.type_maint') },
+            'policy':      { icon: 'policy', text: I18n.t('admin.alerts.type_policy') }
         };
 
         const configPerfMsg = {
-            'degradation': { icon: 'troubleshoot', text: 'Degradación de Servicio', message: 'Detectamos lentitud operativa. El equipo técnico ya está trabajando en la estabilización.' },
-            'latency':     { icon: 'network_check', text: 'Latencia Alta Detectada', message: 'La red presenta alta latencia. Es posible que notes demoras en la carga de contenido.' },
-            'overload':    { icon: 'memory', text: 'Sobrecarga Temporal',     message: 'El servidor está procesando un volumen inusual de solicitudes.' }
+            'degradation': { icon: 'troubleshoot', text: I18n.t('admin.alerts.perf_deg'), message: I18n.t('system_alerts.performance.degradation') },
+            'latency':     { icon: 'network_check', text: I18n.t('admin.alerts.perf_lat'), message: I18n.t('system_alerts.performance.latency') },
+            'overload':    { icon: 'memory', text: I18n.t('admin.alerts.perf_over'),     message: I18n.t('system_alerts.performance.overload') }
         };
 
         const configPolicyDoc = {
-            'terms':   { text: 'Términos y Condiciones de Uso' },
-            'privacy': { text: 'Política de Privacidad y Datos' },
-            'cookies': { text: 'Política de Cookies y Rastreo' }
+            'terms':   { text: I18n.t('system_alerts.policy.names.terms') },
+            'privacy': { text: I18n.t('system_alerts.policy.names.privacy') },
+            'cookies': { text: I18n.t('system_alerts.policy.names.cookies') }
         };
 
         // --- PREVIEW ---
@@ -83,7 +84,8 @@ export const SystemAlertsController = {
             
             } else if (selectedMainType === 'maintenance') {
                 if (selectedMaintType === 'scheduled') {
-                    titleEl.textContent = "Mantenimiento Programado";
+                    // "Intervención Planificada" matches admin.alerts.mode_sched
+                    titleEl.textContent = I18n.t('admin.alerts.mode_sched'); 
                     const startVal = document.getElementById('maint-start-time').value;
                     const duration = document.getElementById('maint-duration').value || '60';
                     
@@ -91,10 +93,12 @@ export const SystemAlertsController = {
                         ? new Date(startVal).toLocaleString([], {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) 
                         : '--/-- --:--';
 
-                    msgEl.textContent = `Mantenimiento Programado: Acceso interrumpido desde ${dateStr} (Duración aprox: ${duration} min).`;
+                    // "Mantenimiento Programado: Acceso interrumpido desde %s (Duración aprox: %s min)."
+                    msgEl.textContent = I18n.t('system_alerts.maintenance.scheduled', [dateStr, duration]);
                     metaHtml = `<span class="material-symbols-rounded" style="font-size:14px">timer</span> ${duration} min`;
                 } else {
-                    titleEl.textContent = "ALERTA CRÍTICA: Mantenimiento de Emergencia";
+                    // "Incidente Crítico / Urgente" matches admin.alerts.mode_emerg
+                    titleEl.textContent = I18n.t('admin.alerts.mode_emerg');
                     const timeVal = document.getElementById('maint-emergency-time').value;
                     
                     // Formato amigable para el preview
@@ -104,7 +108,8 @@ export const SystemAlertsController = {
                         timeStr = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                     }
 
-                    msgEl.textContent = `ALERTA CRÍTICA: Desconexión forzosa programada para las ${timeStr}. Guarda tu trabajo inmediatamente.`;
+                    // "ALERTA CRÍTICA: Desconexión forzosa programada para las %s. Guarda tu trabajo inmediatamente."
+                    msgEl.textContent = I18n.t('system_alerts.maintenance.emergency', [timeStr]);
                     metaHtml = `<span class="material-symbols-rounded" style="font-size:14px; color:var(--color-error)">warning</span> Desconexión Forzosa`;
                     iconEl.textContent = 'warning';
                 }
@@ -113,16 +118,19 @@ export const SystemAlertsController = {
                 const docName = configPolicyDoc[selectedPolicyDoc].text;
                 const link = document.getElementById('policy-link').value;
                 
-                titleEl.textContent = "Actualización Legal";
+                titleEl.textContent = "Actualización Legal"; // Keep generic or add key if needed
                 iconEl.textContent = 'gavel';
 
                 if (selectedPolicyStatus === 'future') {
                     const dateVal = document.getElementById('policy-effective-date').value;
                     const dateStr = dateVal ? new Date(dateVal).toLocaleDateString() : '--/--/----';
                     
-                    msgEl.innerHTML = `Aviso Legal: A partir del <b>${dateStr}</b> entrará en vigor la nueva versión de <b>${docName}</b>.`;
+                    // "Aviso Legal: A partir del %s entrará en vigor la nueva versión de %s."
+                    // Note: We inject HTML tags into the params since translation engine does simple replace
+                    msgEl.innerHTML = I18n.t('system_alerts.policy.future', [`<b>${dateStr}</b>`, `<b>${docName}</b>`]);
                 } else {
-                    msgEl.innerHTML = `Actualización Legal: Hemos modificado nuestros <b>${docName}</b>. Te recomendamos revisarlos.`;
+                    // "Actualización Legal: Hemos modificado nuestros %s. Te recomendamos revisarlos."
+                    msgEl.innerHTML = I18n.t('system_alerts.policy.immediate', [`<b>${docName}</b>`]);
                 }
                 
                 if (link) {
@@ -200,7 +208,7 @@ export const SystemAlertsController = {
 
         setupTrigger('trigger-maint-type', 'popover-maint-type', 'select-maint-type', (val) => {
             selectedMaintType = val;
-            const text = (val === 'scheduled' ? 'Intervención Planificada' : 'Incidente Crítico / Urgente');
+            const text = (val === 'scheduled' ? I18n.t('admin.alerts.mode_sched') : I18n.t('admin.alerts.mode_emerg'));
             document.getElementById('text-maint-type').textContent = text;
             document.getElementById('subgroup-maint-scheduled').style.display = (val === 'scheduled') ? 'block' : 'none';
             document.getElementById('subgroup-maint-emergency').style.display = (val === 'emergency') ? 'block' : 'none';
@@ -213,7 +221,7 @@ export const SystemAlertsController = {
 
         setupTrigger('trigger-policy-status', 'popover-policy-status', 'select-policy-status', (val) => {
             selectedPolicyStatus = val;
-            const text = (val === 'future' ? 'Programar Cambio Futuro' : 'Publicación Inmediata');
+            const text = (val === 'future' ? I18n.t('admin.alerts.status_future') : I18n.t('admin.alerts.status_immediate'));
             document.getElementById('text-policy-status').textContent = text;
             document.getElementById('subgroup-policy-date').style.display = (val === 'immediate') ? 'none' : 'block';
         });
@@ -251,7 +259,7 @@ export const SystemAlertsController = {
 
         // --- LÓGICA DE EMISIÓN ---
         const executeEmission = async () => {
-            Dialog.showLoading('Emitiendo alerta...');
+            Dialog.showLoading(I18n.t('admin.alerts.btn_emit') + '...');
 
             let payload = { type: selectedMainType, meta: {} };
 
@@ -303,7 +311,7 @@ export const SystemAlertsController = {
             btnEmit.onclick = async () => {
                 const validation = validateInputs();
                 if (!validation.valid) {
-                    Dialog.alert({ title: 'Datos incompletos', message: validation.msg });
+                    Dialog.alert({ title: I18n.t('js.auth.fill_all'), message: validation.msg });
                     return;
                 }
 
@@ -323,7 +331,7 @@ export const SystemAlertsController = {
 
         const handleDeactivate = async () => {
             const confirmed = await Dialog.confirm({
-                title: 'Desactivar Difusión',
+                title: I18n.t('admin.alerts.btn_deactivate'),
                 message: '¿Estás seguro de que deseas detener la alerta actual?',
                 type: 'danger',
                 confirmText: 'Detener',
@@ -345,7 +353,7 @@ export const SystemAlertsController = {
 
         if (btnRefresh) btnRefresh.onclick = () => {
              checkActiveAlertStatus();
-             Toast.show('Métricas actualizadas', 'info');
+             Toast.show(I18n.t('admin.alerts.btn_refresh'), 'info');
         };
 
         checkActiveAlertStatus();
@@ -363,7 +371,7 @@ export const SystemAlertsController = {
             const impactTime = document.getElementById('stat-last-time');
 
             try {
-                statText.textContent = "Sincronizando...";
+                statText.textContent = I18n.t('js.auth.loading');
                 const res = await ApiService.post(ApiService.Routes.Admin.GetActiveAlert);
                 
                 if (res.stats) {
@@ -377,7 +385,7 @@ export const SystemAlertsController = {
                     const color = res.alert.severity === 'critical' ? 'var(--color-error)' : 'var(--color-warning)';
                     statIcon.textContent = 'warning';
                     statIcon.style.color = color;
-                    statText.textContent = "Activa";
+                    statText.textContent = I18n.t('admin.alerts.stat_active'); // "Alerta Activa"
                     statText.style.color = color;
                     cardStatus.style.borderLeftColor = color;
                     btnMini.style.display = 'flex';
@@ -388,7 +396,7 @@ export const SystemAlertsController = {
                     isAlertActive = false;
                     statIcon.textContent = 'check_circle';
                     statIcon.style.color = 'var(--color-success)';
-                    statText.textContent = "Operativo";
+                    statText.textContent = I18n.t('admin.alerts.stat_operational'); // "Operativo"
                     statText.style.color = 'var(--text-primary)';
                     cardStatus.style.borderLeftColor = 'var(--color-success)';
                     btnMini.style.display = 'none';
@@ -397,7 +405,7 @@ export const SystemAlertsController = {
                     if (res.stats && res.stats.last_alert_time) {
                         impactTime.textContent = "Última: " + res.stats.last_alert_time;
                     } else {
-                        impactTime.textContent = "Sin incidentes recientes";
+                        impactTime.textContent = I18n.t('admin.alerts.stat_none'); // "Sin incidentes recientes"
                     }
                 }
             } catch (e) { console.error(e); }
