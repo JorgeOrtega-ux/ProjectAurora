@@ -23,6 +23,70 @@ if (empty($_SESSION['csrf_token'])) {
 // 5. RUTEO Y CONTROL DE ACCESO
 require_once __DIR__ . '/../config/routers/router.php';
 
+// ============================================================================
+// [NUEVO] INTERCEPTOR DE DESCARGAS (Lógica movida desde download.php)
+// ============================================================================
+if ($currentSection === 'download') {
+    // Verificar si el servicio de Redis está activo
+    if (!$redis) {
+        http_response_code(500);
+        die("Servicio de descargas no disponible temporalmente.");
+    }
+
+    $token = $_GET['token'] ?? '';
+
+    if (empty($token)) {
+        http_response_code(400);
+        die("Solicitud inválida.");
+    }
+
+    // Verificar Token en Redis
+    $redisKey = "download:token:$token";
+    $dataJson = $redis->get($redisKey);
+
+    if (!$dataJson) {
+        http_response_code(403);
+        die("El enlace de descarga ha expirado o no es válido.");
+    }
+
+    $data = json_decode($dataJson, true);
+    $filepath = $data['filepath'];
+    $filename = $data['filename'];
+
+    // Validación de seguridad física
+    if (!file_exists($filepath)) {
+        http_response_code(404);
+        die("El archivo ya no existe en el servidor.");
+    }
+
+    // Limpiar buffer de salida para evitar corrupción de binarios
+    if (ob_get_level()) {
+        ob_end_clean();
+    }
+
+    // Cabeceras para forzar descarga
+    header('Content-Description: File Transfer');
+    header('Content-Type: application/octet-stream');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Expires: 0');
+    header('Cache-Control: must-revalidate');
+    header('Pragma: public');
+    header('Content-Length: ' . filesize($filepath));
+
+    // Leer y enviar archivo
+    readfile($filepath);
+
+    // Quemar el token (One-Time Use)
+    $redis->del($redisKey);
+
+    // Detener la ejecución para no cargar el resto del HTML
+    exit;
+}
+// ============================================================================
+// [FIN] INTERCEPTOR DE DESCARGAS
+// ============================================================================
+
+
 // Carga de reglas de seguridad
 $securityRules = require __DIR__ . '/../config/security.php';
 $authRoutes = $securityRules['auth_routes'];
@@ -166,7 +230,6 @@ if ($showMaintenanceScreen) {
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo htmlspecialchars($userLang); ?>">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -232,11 +295,9 @@ if ($showMaintenanceScreen) {
                     </div>
                 </div>
                 <style>
-                    /* ... código existente ... */
-
                     /* =========================================
-   SISTEMA DE ALERTAS (MODIFICADO)
-   ========================================= */
+                       SISTEMA DE ALERTAS
+                       ========================================= */
 
                     /* PADRE: Contenedor global con padding */
                     #system-alert-container {
@@ -365,26 +426,11 @@ if ($showMaintenanceScreen) {
                         ?>
                     </div>
 
-                    <?php if ($showInterface): ?>
-                        <div class="fab-wrapper" data-trigger="dropdown">
-                            <button class="fab-button trigger-selector">
-                                <span class="material-symbols-rounded">help</span>
-                            </button>
-
-                            <div class="popover-module">
-                                <div class="menu-list">
-                                    <div class="menu-link" data-nav="site-policy/send-feedback">
-                                        <div class="menu-link-icon">
-                                            <span class="material-symbols-rounded">support_agent</span>
-                                        </div>
-                                        <div class="menu-link-text">
-                                            <?php echo $i18n->t('menu.contact_support'); ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endif; ?>
+                    <?php 
+                    // CONDICIÓN MODIFICADA: Solo mostrar si hay interfaz Y estamos en sección de políticas/ayuda
+                    if ($showInterface && strpos($currentSection, 'site-policy') === 0): 
+                    ?>
+                        <?php endif; ?>
 
                 </div>
             </div>

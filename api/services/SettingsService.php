@@ -5,6 +5,7 @@ use Google\Authenticator\GoogleAuthenticator;
 
 require_once __DIR__ . '/../../includes/libs/MailService.php';
 require_once __DIR__ . '/../../includes/libs/Utils.php'; // Aseguramos inclusión de Utils
+require_once __DIR__ . '/../../includes/libs/EmailTemplates.php'; // [NUEVO] Importamos las plantillas
 
 class SettingsService {
     private $pdo;
@@ -201,9 +202,9 @@ class SettingsService {
             $this->logSecurityAction('email_change_req', 10);
 
             $subject = "Verifica tu identidad - Project Aurora";
-            $body = "<p>Hola $username,</p><p>Has solicitado cambiar tu correo electrónico. Para continuar, utiliza el siguiente código de seguridad:</p>
-                     <h2 style='letter-spacing: 4px;'>$code</h2>
-                     <p>Si no fuiste tú, cambia tu contraseña inmediatamente.</p>";
+            
+            // [MODIFICADO] Uso de EmailTemplates::emailChangeVerification
+            $body = EmailTemplates::emailChangeVerification($username, $code, $expiryMinutes);
             
             MailService::send($currentEmail, $subject, $body);
 

@@ -74,6 +74,27 @@ HTML;
     }
 
     /**
+     * Plantilla para Cambio de Correo Electrónico
+     */
+    public static function emailChangeVerification($username, $code, $minutes)
+    {
+        $bodyContent = <<<HTML
+            <h2 style="color: #333; margin-top: 0;">Verifica tu identidad</h2>
+            <p>Hola, <strong>$username</strong>:</p>
+            <p>Has solicitado cambiar tu dirección de correo electrónico en Project Aurora. Para confirmar este cambio, utiliza el siguiente código de seguridad:</p>
+            
+            <div class="code-box">
+                <span class="code">$code</span>
+            </div>
+            
+            <p class="text-small">Este código expirará en <strong>$minutes minutos</strong>.</p>
+            <p>Si no fuiste tú quien solicitó este cambio, por favor cambia tu contraseña inmediatamente.</p>
+HTML;
+
+        return self::getBaseTemplate($bodyContent);
+    }
+
+    /**
      * Plantilla para Recuperación de Contraseña
      */
     public static function passwordReset($link, $minutes)
