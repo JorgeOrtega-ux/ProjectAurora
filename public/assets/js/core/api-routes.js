@@ -38,7 +38,10 @@ export const ApiRoutes = {
         ValidatePassword:         { route: 'settings.val_password' },
         ChangePassword:           { route: 'settings.change_pass' }
     },
-
+// [NUEVO] Sección CANVAS
+    Canvas: {
+        Create: { route: 'canvas.create' }
+    },
     Admin: {
         GetDashboardStats:  { route: 'admin.dashboard_stats' },
         

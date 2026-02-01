@@ -175,3 +175,22 @@ CREATE TABLE IF NOT EXISTS `system_alerts` (
   INDEX `idx_active` (`is_active`)
 );
 
+-- [AGREGAR AL FINAL DE bd.sql]
+
+-- =========================================================
+-- TABLA DE LIENZOS (CANVASES)
+-- =========================================================
+CREATE TABLE IF NOT EXISTS canvases (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    width INT NOT NULL, -- 64 o 128
+    height INT NOT NULL, -- 64 o 128
+    privacy ENUM('public', 'private') DEFAULT 'public',
+    access_code VARCHAR(12) DEFAULT NULL, -- Código de 12 dígitos si es privado
+    status ENUM('active', 'archived') DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX (user_id),
+    INDEX (privacy)
+);

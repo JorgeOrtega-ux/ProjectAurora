@@ -31,8 +31,10 @@ import { FileViewerController } from './modules/admin/file-viewer-controller.js'
 import { RedisManagerController } from './modules/admin/redis-manager-controller.js';
 import { DashboardController } from './modules/admin/dashboard-controller.js';
 
-// [NUEVO] Importar el nuevo controlador de alertas del sistema
 import { SystemAlertsController } from './modules/admin/system-alerts-controller.js';
+
+// [NUEVO] Importar el controlador de creación de lienzos
+import { CreateCanvasController } from './modules/app/create-canvas-controller.js';
 
 const App = {
     init: () => {
@@ -101,6 +103,11 @@ function initGlobalSocketListeners() {
 function routeDispatcher(section) {
     updateSidebarState(section);
     switch (section) {
+        // === APP MODULES ===
+        case 'app/create-canvas': // [NUEVO] Caso para la creación de lienzo
+            new CreateCanvasController();
+            break;
+
         // === SETTINGS ===
         case 'settings/your-profile': 
             ProfileController.init(); 
@@ -126,11 +133,10 @@ function routeDispatcher(section) {
         // === ADMIN MODULES ===
         case 'admin/dashboard': 
             DashboardController.init(); 
-            // AlertController ya no se inicializa aquí porque ya no es un modal
             break;
 
         case 'admin/alerts': 
-            SystemAlertsController.init(); // [NUEVO] Inicialización de la nueva sección
+            SystemAlertsController.init();
             break;
 
         case 'admin/users': UsersController.init(); break;
