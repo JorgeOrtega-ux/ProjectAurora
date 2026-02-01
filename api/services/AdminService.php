@@ -1,6 +1,8 @@
 <?php
 // api/services/AdminService.php
 
+require_once __DIR__ . '/../../includes/libs/Utils.php'; // Aseguramos que Utils esté disponible
+
 class AdminService {
     private $pdo;
     private $i18n;
@@ -50,7 +52,7 @@ class AdminService {
         // 3. Validar TODOS los archivos antes de procesar
         $validPaths = [];
         foreach ($filesToProcess as $relativePath) {
-            // [CORRECCIÓN] Permitimos '/' y '\' para subcarpetas (logs/app/...), pero eliminamos '..'
+            // Permitimos '/' y '\' para subcarpetas (logs/app/...), pero eliminamos '..'
             $cleanPath = str_replace('..', '', $relativePath);
             
             // Limpiamos barras al inicio para evitar rutas absolutas confusas
@@ -582,20 +584,19 @@ class AdminService {
         $stmt = $this->pdo->prepare("SELECT avatar_path, username, uuid FROM users WHERE id = ?");
         $stmt->execute([$targetId]);
         $targetUser = $stmt->fetch();
+        
         $oldPath = $targetUser['avatar_path'];
+        $username = $targetUser['username'];
+        $uuid = $targetUser['uuid'];
 
-        $firstLetter = substr($targetUser['username'], 0, 1);
-        $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($firstLetter) . "&background=random&color=fff&size=512&format=png&bold=true";
-        
-        $baseDir = __DIR__ . '/../../storage/profilePicture/default/';
-        if (!is_dir($baseDir)) mkdir($baseDir, 0755, true);
-        
-        $newFileName = $targetUser['uuid'] . '-' . time() . '.png';
-        $targetPath = $baseDir . $newFileName;
+        // [MODIFICADO] Usar Utils::generateDefaultProfilePicture
+        $newFileName = $uuid . '-' . time() . '.png';
         $dbPath = 'storage/profilePicture/default/' . $newFileName;
-        
-        $imageContent = @file_get_contents($avatarUrl);
-        if ($imageContent && file_put_contents($targetPath, $imageContent)) {
+        $absolutePath = __DIR__ . '/../../' . $dbPath;
+
+        // Llamada centralizada que usa la paleta de colores y el length=1
+        if (Utils::generateDefaultProfilePicture($username, $absolutePath)) {
+            
             $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
             $update->execute([$dbPath, $targetId]);
             
@@ -608,9 +609,13 @@ class AdminService {
                 'new' => 'default_generated'
             ]);
 
+            // Devolver imagen generada
+            $imageContent = file_get_contents($absolutePath);
             $base64Image = 'data:image/png;base64,' . base64_encode($imageContent);
+            
             return ['success' => true, 'message' => $this->i18n->t('api.pic_deleted'), 'new_src' => $base64Image];
         }
+        
         return ['success' => false, 'message' => $this->i18n->t('api.pic_gen_error')];
     }
 
@@ -775,7 +780,8 @@ class AdminService {
             return 'data:' . $mime . ';base64,' . base64_encode($content);
         } else {
             $name = urlencode($username);
-            return "https://ui-avatars.com/api/?name={$name}&background=random&color=fff&size=128";
+            // [MODIFICADO] Agregar length=1 para consistencia
+            return "https://ui-avatars.com/api/?name={$name}&background=random&color=fff&size=128&length=1";
         }
     }
 

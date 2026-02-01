@@ -1,13 +1,15 @@
 /**
- * public/assets/js/modules/admin/user-status-controller.js
+ * public/assets/js/modules/admin/users/user-status-controller.js
  */
 
 import { ApiService } from '../../../core/api-service.js';
 import { Toast } from '../../../core/toast-manager.js';
 import { navigateTo } from '../../../core/url-manager.js';
+import { DateTimePicker } from '../../../core/date-time-picker.js';
 
 let _container = null;
 let _targetUserId = null;
+let _dateTimePicker = null; 
 
 let _state = {
     status: null,         
@@ -26,6 +28,7 @@ export const UserStatusController = {
         
         // 1. LIMPIEZA INICIAL
         _state = {};
+        _dateTimePicker = null;
         
         // 2. LEER DATOS DEL SERVIDOR
         loadServerData();
@@ -66,19 +69,69 @@ function initEvents() {
     const btnBack = _container.querySelector('[data-action="back-to-list"]');
     if (btnBack) btnBack.addEventListener('click', () => navigateTo('admin/users'));
 
-    // Seleccionamos el botón en el toolbar
     const btnSave = _container.querySelector('#btn-save-status');
     if (btnSave) btnSave.addEventListener('click', saveStatus);
 
     document.removeEventListener('ui:dropdown-selected', handleDropdownSelection);
     document.addEventListener('ui:dropdown-selected', handleDropdownSelection);
     
-    // Inicializar lista si ya está en un estado que la requiera
+    // [CORREGIDO] Inicializar el Calendario usando los IDs del wrapper y el input
+    // Verificamos primero que exista el wrapper para no dar error en consola
+    if (document.getElementById('suspension-picker-wrapper')) {
+        _dateTimePicker = new DateTimePicker('suspension-picker-wrapper', 'suspension-date-input', {
+            enableTime: false,
+            minDate: new Date(),
+            dateFormat: "Y-m-d",
+            onChange: (selectedDates, dateStr, instance) => {
+                // DateTimePicker dispara 'input' en el elemento oculto, pero también soporta callback
+                if (selectedDates.length > 0) {
+                    handleDateSelection(selectedDates[0], dateStr);
+                }
+            }
+        });
+
+        // Escuchar también el evento nativo del input por si el componente lo dispara
+        const hiddenInput = document.getElementById('suspension-date-input');
+        if (hiddenInput) {
+            hiddenInput.addEventListener('input', (e) => {
+                const dateVal = new Date(e.target.value);
+                if (!isNaN(dateVal)) {
+                    handleDateSelection(dateVal, e.target.value.split('T')[0]);
+                }
+            });
+        }
+    }
+
     if (_state.status === 'suspended') populateReasons('suspension');
     if (_state.status === 'deleted') populateReasons('deletion');
 }
 
-// [NUEVO] Helper para habilitar/deshabilitar el botón del toolbar
+function handleDateSelection(date, dateStr) {
+    const today = new Date();
+    today.setHours(0,0,0,0); 
+    date.setHours(0,0,0,0);
+
+    const diffTime = date.getTime() - today.getTime();
+    let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 1) diffDays = 1;
+
+    _state.durationDays = diffDays;
+    
+    // El texto del trigger lo actualiza el DateTimePicker internamente, 
+    // pero podemos forzar el texto adicional de días aquí si quisiéramos.
+    // DateTimePicker pone la fecha formateada. Vamos a agregarle los días.
+    setTimeout(() => {
+        const label = document.getElementById('suspension-date-label');
+        if (label && !label.textContent.includes('días')) {
+            label.textContent += ` (${diffDays} días)`;
+        }
+    }, 50); // Pequeño delay para que corra después del updateValue interno
+
+    showSection('group-reason');
+    populateReasons('suspension');
+}
+
 function toggleSaveButton(enable) {
     const btn = document.getElementById('btn-save-status');
     if (btn) btn.disabled = !enable;
@@ -100,15 +153,7 @@ function handleDropdownSelection(e) {
         updateLabel('suspension-type-label', label);
         processSuspensionTypeChange(value);
     }
-
-    if (type === 'duration') {
-        _state.durationDays = value;
-        updateLabel('days-label', label);
-        showSection('group-reason');
-        populateReasons('suspension');
-        // El botón sigue deshabilitado hasta elegir razón
-    }
-
+    
     if (type === 'deletion_source') {
         _state.deletionSource = value;
         updateLabel('deletion-source-label', label);
@@ -119,7 +164,6 @@ function handleDropdownSelection(e) {
     if (type === 'reason') {
         _state.reason = label;
         updateLabel('reason-label', label);
-        // Habilitamos el botón al tener la razón
         toggleSaveButton(true);
     }
 }
@@ -130,16 +174,17 @@ function processMainStatusChange(status) {
     hideSection('group-deletion-source');
     hideSection('group-reason');
     
-    // Resetear botón al cambiar estado principal
     toggleSaveButton(false); 
 
     updateLabel('suspension-type-label', 'Seleccionar tipo...');
-    updateLabel('days-label', 'Seleccionar días...');
     updateLabel('deletion-source-label', 'Seleccionar origen...');
     updateLabel('reason-label', 'Seleccionar razón...');
+    
+    if (document.getElementById('suspension-date-label')) {
+        document.getElementById('suspension-date-label').textContent = 'Seleccionar fecha...';
+    }
 
     if (status === 'active') {
-        // Activar directamente si es "Active"
         toggleSaveButton(true);
     } 
     else if (status === 'suspended') {
@@ -154,10 +199,8 @@ function processSuspensionTypeChange(type) {
     hideSection('group-suspension-days');
     hideSection('group-reason');
     
-    // Deshabilitar hasta que se complete el flujo
     toggleSaveButton(false);
     
-    updateLabel('days-label', 'Seleccionar días...');
     updateLabel('reason-label', 'Seleccionar razón...');
 
     if (type === 'temp') {

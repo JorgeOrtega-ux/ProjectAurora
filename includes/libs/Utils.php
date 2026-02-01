@@ -6,10 +6,10 @@ require_once __DIR__ . '/Logger.php';
 
 class Utils {
 
-    // [NUEVO] Propiedad estática para almacenar la instancia de Redis globalmente
+    // Propiedad estática para almacenar la instancia de Redis globalmente
     private static $redisInstance = null;
 
-    // [NUEVO] Setter para inyectar Redis desde el bootstrap
+    // Setter para inyectar Redis desde el bootstrap
     public static function setRedis($redis) {
         self::$redisInstance = $redis;
     }
@@ -106,8 +106,7 @@ class Utils {
     }
 
     /**
-     * [OPTIMIZADO] Obtiene configuración del servidor usando Redis Cache-Aside.
-     * Lee de 'server:config:all' (Hash). Si no existe, carga TODO de MySQL y lo guarda en Redis.
+     * Obtiene configuración del servidor usando Redis Cache-Aside.
      */
     public static function getServerConfig($pdo, $key, $default = '0') {
         $redisKey = 'server:config:all';
@@ -115,45 +114,35 @@ class Utils {
         // 1. Intentar leer de Redis
         if (self::$redisInstance) {
             try {
-                // HGET es muy rápido (O(1))
                 $cachedValue = self::$redisInstance->hget($redisKey, $key);
                 
                 if ($cachedValue !== null) {
                     return $cachedValue;
                 }
 
-                // Si llegamos aquí, la clave específica no está, O el hash entero no existe.
-                // Verificamos si el hash existe comprobando su longitud para evitar stampedes por claves inexistentes.
                 if (self::$redisInstance->hlen($redisKey) > 0) {
-                    // El hash existe pero la clave no -> La clave no existe en BD.
                     return $default;
                 }
 
             } catch (Exception $e) {
-                // Si falla Redis, silencio y fallback a DB
                 error_log("Redis Error in getServerConfig: " . $e->getMessage());
             }
         }
 
-        // 2. Fallback a MySQL (Cache Miss o Redis no disponible)
+        // 2. Fallback a MySQL
         try {
-            // [OPTIMIZACIÓN] Cargamos TODA la configuración de una vez para "calentar" el caché
             $stmt = $pdo->prepare("SELECT config_key, config_value FROM server_config");
             $stmt->execute();
-            $allConfig = $stmt->fetchAll(PDO::FETCH_KEY_PAIR); // Retorna ['key' => 'val', ...]
+            $allConfig = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
             if ($allConfig && self::$redisInstance) {
                 try {
-                    // Guardamos todo en Redis de una sola vez
                     self::$redisInstance->hmset($redisKey, $allConfig);
-                    // Expiración de seguridad (ej. 24 horas) para evitar datos zombies eternos
                     self::$redisInstance->expire($redisKey, 86400); 
                 } catch (Exception $e) {
-                    // Ignorar error de escritura en caché
                 }
             }
 
-            // Retornamos el valor solicitado o el default
             return isset($allConfig[$key]) ? $allConfig[$key] : $default;
 
         } catch (Exception $e) {
@@ -162,12 +151,8 @@ class Utils {
     }
 
     public static function initI18n() {
-        // [FIX] Prioridad: 1. Sesión (Usuario) 2. Cookie (Invitado) 3. Default
         $userLang = $_SESSION['preferences']['language'] ?? $_COOKIE['guest_language'] ?? 'es-latam';
-        
-        // Limpieza de seguridad básica para evitar Path Traversal
         $userLang = basename($userLang);
-        
         return new I18n($userLang);
     }
 
@@ -202,36 +187,23 @@ class Utils {
             }
             if (empty($src)) {
                 $name = $_SESSION['username'] ?? 'User';
-                // Mantenemos esto como fallback visual, pero la idea es usar la nueva funcion generateDefaultProfilePicture
-                // para crear el archivo físico cuando se registre el usuario.
-                $src = "https://ui-avatars.com/api/?name=" . urlencode($name) . "&background=random&color=fff";
+                // Fallback visual con length=1
+                $src = "https://ui-avatars.com/api/?name=" . urlencode($name) . "&background=random&color=fff&length=1";
             }
         }
         return $src;
     }
 
-    /**
-     * Genera un UUID v4 (Identificador Único Universal)
-     * Utilizado para IDs de alertas, logs y sesiones.
-     */
     public static function generateUUID() {
-        // Generar 16 bytes de datos pseudo-aleatorios con seguridad criptográfica
         $data = random_bytes(16);
-
-        // Establecer la versión a 4 (bits 4-7 del byte 6 a 0100)
         $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
-        // Establecer bits 6-7 del byte 8 a 01 (variante DCE 1.1)
         $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
-
-        // Formatear como string hexadecimal estándar
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
     }
 
     /**
-     * [NUEVO] Genera y guarda una imagen de perfil por defecto usando una paleta de colores específica.
-     * * @param string $name El nombre o username para las iniciales.
-     * @param string $outputPath La ruta completa del sistema de archivos donde se guardará la imagen (ej: .../storage/profilePicture/default/xyz.png).
-     * @return bool True si se generó con éxito, False si falló.
+     * Genera y guarda una imagen de perfil por defecto usando una paleta de colores específica.
+     * [MODIFICADO]: Ahora incluye '&length=1' para generar solo una inicial.
      */
     public static function generateDefaultProfilePicture($name, $outputPath) {
         // Lista estricta de colores permitidos
@@ -251,8 +223,8 @@ class Utils {
         $encodedName = urlencode($name);
 
         // Construir la URL de ui-avatars con el color seleccionado
-        // size=512 para buena calidad, background=color seleccionado, color=fff (blanco)
-        $url = "https://ui-avatars.com/api/?name={$encodedName}&background={$selectedColor}&color=fff&size=512&font-size=0.5&bold=true";
+        // [CAMBIO]: Se agregó &length=1 al final
+        $url = "https://ui-avatars.com/api/?name={$encodedName}&background={$selectedColor}&color=fff&size=512&font-size=0.5&bold=true&length=1";
 
         try {
             // Obtener el contenido de la imagen

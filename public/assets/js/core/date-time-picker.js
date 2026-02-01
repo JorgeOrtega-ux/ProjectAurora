@@ -30,15 +30,20 @@ export class DateTimePicker {
         
         // Si el input ya tiene valor, lo cargamos
         if (this.input.value) {
-            this.selectedDate = new Date(this.input.value);
-            this.currentDate = new Date(this.selectedDate);
-            this.updateTriggerDisplay();
-            this.renderCalendar();
-        } else {
-            // Estado inicial vacío
-            this.wrapper.querySelector('.trigger-select-text').textContent = "Seleccionar fecha...";
-            this.renderCalendar();
+            // Intentar parsear la fecha (soporta ISO strings)
+            const d = new Date(this.input.value);
+            if (!isNaN(d.getTime())) {
+                this.selectedDate = d;
+                this.currentDate = new Date(this.selectedDate);
+                this.updateTriggerDisplay();
+            }
         }
+        
+        // Render inicial
+        if (!this.selectedDate) {
+             this.wrapper.querySelector('.trigger-select-text').textContent = "Seleccionar fecha...";
+        }
+        this.renderCalendar();
     }
 
     renderDOM() {
@@ -91,8 +96,8 @@ export class DateTimePicker {
             this.hourInput = this.wrapper.querySelector('.time-input.hour');
             this.minuteInput = this.wrapper.querySelector('.time-input.minute');
             
-            // Valores por defecto hora actual
-            const now = new Date();
+            // Valores por defecto hora actual o la seleccionada
+            const now = this.selectedDate || new Date();
             this.hourInput.value = String(now.getHours()).padStart(2, '0');
             this.minuteInput.value = String(now.getMinutes()).padStart(2, '0');
         }
@@ -113,6 +118,14 @@ export class DateTimePicker {
         const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 (Domingo) - 6
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         
+        // Preparar fecha mínima (resetear horas para comparar solo días)
+        let minDateTimestamp = 0;
+        if (this.options.minDate) {
+            const m = new Date(this.options.minDate);
+            m.setHours(0, 0, 0, 0);
+            minDateTimestamp = m.getTime();
+        }
+
         // Rellenar espacios vacíos al inicio
         for (let i = 0; i < firstDayOfMonth; i++) {
             const emptyCell = document.createElement('div');
@@ -122,6 +135,8 @@ export class DateTimePicker {
 
         // Crear días
         const today = new Date();
+        today.setHours(0,0,0,0);
+
         for (let day = 1; day <= daysInMonth; day++) {
             const dateCell = document.createElement('div');
             dateCell.className = 'calendar-day';
@@ -129,6 +144,7 @@ export class DateTimePicker {
             
             // Fecha que representa esta celda
             const cellDate = new Date(year, month, day);
+            const cellTimestamp = cellDate.getTime();
 
             // Estilos: Hoy
             if (cellDate.toDateString() === today.toDateString()) {
@@ -140,9 +156,11 @@ export class DateTimePicker {
                 dateCell.classList.add('selected');
             }
 
-            // Deshabilitar pasado si es requerido
-            if (this.options.minDate && cellDate < new Date(this.options.minDate.setHours(0,0,0,0))) {
-                dateCell.classList.add('disabled');
+            // Lógica de deshabilitado (Días pasados)
+            // Usamos 'is-disabled' en lugar de 'disabled' para evitar que CSS globales lo oculten
+            if (minDateTimestamp > 0 && cellTimestamp < minDateTimestamp) {
+                dateCell.classList.add('is-disabled');
+                // IMPORTANTE: No asignamos onclick
             } else {
                 dateCell.onclick = () => this.selectDate(day);
             }
@@ -221,15 +239,22 @@ export class DateTimePicker {
         this.selectedDate.setMonth(this.currentDate.getMonth());
         this.selectedDate.setDate(day);
 
-        // Si no hay hora, usar la actual
+        // Si no hay hora, preservar la que tenga o usar 00:00
         if (this.options.enableTime) {
             const h = parseInt(this.hourInput.value) || 0;
             const m = parseInt(this.minuteInput.value) || 0;
             this.selectedDate.setHours(h, m, 0, 0);
+        } else {
+             this.selectedDate.setHours(0, 0, 0, 0);
         }
 
         this.updateValue();
         this.renderCalendar(); // Para refrescar la clase .selected
+        
+        // Si no es selector de hora, cerrar al elegir fecha
+        if (!this.options.enableTime) {
+            this.close();
+        }
     }
 
     updateValue() {
@@ -248,6 +273,11 @@ export class DateTimePicker {
         
         // Disparar evento 'input' para que el controlador lo detecte
         this.input.dispatchEvent(new Event('input'));
+        
+        // Disparar callback de opciones si existe
+        if (typeof this.options.onChange === 'function') {
+            this.options.onChange([this.selectedDate], isoString, this);
+        }
 
         this.updateTriggerDisplay();
     }
@@ -256,19 +286,29 @@ export class DateTimePicker {
         if (!this.selectedDate) return;
         const textEl = this.wrapper.querySelector('.trigger-select-text');
         
-        // Formato legible: 30 ene 2026, 14:00
-        const options = { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+        // Formato legible
+        const options = { day: 'numeric', month: 'short', year: 'numeric' };
+        if (this.options.enableTime) {
+            options.hour = '2-digit';
+            options.minute = '2-digit';
+        }
         textEl.textContent = this.selectedDate.toLocaleString('es-MX', options);
         textEl.style.color = 'var(--text-primary)';
     }
 
     toLocalISOString(date) {
         const pad = (n) => n < 10 ? '0' + n : n;
-        return date.getFullYear() +
-            '-' + pad(date.getMonth() + 1) +
-            '-' + pad(date.getDate()) +
-            'T' + pad(date.getHours()) +
-            ':' + pad(date.getMinutes());
+        const d = date.getDate();
+        const m = date.getMonth() + 1;
+        const y = date.getFullYear();
+        const h = date.getHours();
+        const min = date.getMinutes();
+        
+        let str = `${y}-${pad(m)}-${pad(d)}`;
+        if (this.options.enableTime) {
+            str += `T${pad(h)}:${pad(min)}`;
+        }
+        return str;
     }
 
     close() {

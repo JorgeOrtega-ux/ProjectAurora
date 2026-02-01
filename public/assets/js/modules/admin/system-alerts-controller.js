@@ -30,7 +30,7 @@ export const SystemAlertsController = {
             enableTime: true
         });
 
-        // 2. Mantenimiento Emergencia (Fecha + Hora) - NUEVO
+        // 2. Mantenimiento Emergencia (Fecha + Hora)
         const emergencyPicker = new DateTimePicker('wrapper-maint-emergency', 'maint-emergency-time', {
             minDate: new Date(),
             enableTime: true
@@ -97,7 +97,7 @@ export const SystemAlertsController = {
                     titleEl.textContent = "Mantenimiento de Emergencia";
                     const timeVal = document.getElementById('maint-emergency-time').value;
                     
-                    // Formato amigable para el preview (solo hora si es hoy, o fecha+hora)
+                    // Formato amigable para el preview
                     let timeStr = '--:--';
                     if (timeVal) {
                         const d = new Date(timeVal);
@@ -118,7 +118,11 @@ export const SystemAlertsController = {
 
                 if (selectedPolicyStatus === 'future') {
                     const dateVal = document.getElementById('policy-effective-date').value;
-                    const dateStr = dateVal ? new Date(dateVal + 'T00:00:00').toLocaleDateString() : '--/--/----';
+                    
+                    // [CORREGIDO] Eliminada la concatenación 'T00:00:00' que causaba el error Invalid Date.
+                    // El DateTimePicker ya entrega una fecha formateada compatible.
+                    const dateStr = dateVal ? new Date(dateVal).toLocaleDateString() : '--/--/----';
+                    
                     msgEl.innerHTML = `A partir del <b>${dateStr}</b> entrarán en vigor los nuevos <b>${docName}</b>.`;
                 } else {
                     msgEl.innerHTML = `Hemos actualizado nuestros <b>${docName}</b>. Revisa los cambios.`;

@@ -134,27 +134,18 @@ $suspensionData = [
         <div class="component-group-item component-group-item--stacked">
             <div class="component-card__content">
                 <div class="component-card__text">
-                    <h2 class="component-card__title">Duración</h2>
-                    <p class="component-card__description">Tiempo en días que durará la suspensión.</p>
+                    <h2 class="component-card__title">Fecha de finalización</h2>
+                    <p class="component-card__description">Selecciona hasta cuándo estará suspendido el usuario.</p>
                 </div>
             </div>
             <div class="component-card__actions">
-                <div class="trigger-select-wrapper" data-trigger="dropdown">
-                    <div class="trigger-selector">
-                        <span class="material-symbols-rounded trigger-select-icon">calendar_today</span>
-                        <span class="trigger-select-text" data-element="days-label">Seleccionar días...</span>
-                        <span class="material-symbols-rounded">expand_more</span>
-                    </div>
-                    <div class="popover-module">
-                        <div class="menu-list overflow-y" style="max-height: 200px;">
-                            <?php 
-                            $daysOptions = [1, 3, 7, 14, 30, 90, 180, 365];
-                            foreach($daysOptions as $day): ?>
-                            <div class="menu-link" data-action="select-option" data-type="duration" data-value="<?php echo $day; ?>" data-label="<?php echo $day; ?> días">
-                                <div class="menu-link-text"><?php echo $day; ?> días</div>
-                            </div>
-                            <?php endforeach; ?>
-                        </div>
+                <div class="date-time-picker-wrapper" id="suspension-picker-wrapper" style="position: relative;">
+                    <input type="hidden" id="suspension-date-input" name="suspension_ends_at">
+                    
+                    <div class="trigger-selector" style="cursor: pointer;">
+                        <span class="material-symbols-rounded trigger-select-icon">calendar_month</span>
+                        <span class="trigger-select-text" id="suspension-date-label">Seleccionar fecha...</span>
+                        <span class="material-symbols-rounded" style="font-size: 18px;">edit_calendar</span>
                     </div>
                 </div>
             </div>
