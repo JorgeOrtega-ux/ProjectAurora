@@ -1566,21 +1566,7 @@ input:checked+.component-toggle-slider:before {
    15. OVERRIDES DARK MODE (CONSOLIDATED)
    ========================================= */
 @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-        /* Dialogs */
-        --bg-code-editor: #1e1e1e;
-        --text-code-base: #d4d4d4;
-        --token-comment: #6a9955;
-        --token-string: #ce9178;
-        --token-number: #b5cea8;
-        --token-keyword: #569cd6;
-        --token-logic: #c586c0;
-        --token-tag: #569cd6;
-        --token-attr: #9cdcfe;
-        --token-bracket: #ffd700;
-        --token-date: #4ec9b0;
-        --token-error: #f44747;
-    }
+ 
 
     :root:not([data-theme="light"]) .component-dialog-drag-handle,
     :root:not([data-theme="light"]) .drag-handle {
