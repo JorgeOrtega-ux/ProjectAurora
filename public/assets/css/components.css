@@ -1999,3 +1999,119 @@ input:checked+.component-toggle-slider:before {
     min-width: 60px;
     text-align: center;
 }
+
+                    /* =========================================
+                       SISTEMA DE ALERTAS
+                       ========================================= */
+
+                    /* PADRE: Contenedor global con padding */
+                    #system-alert-container {
+                        position: relative;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        padding: 8px 8px 0 8px;
+                        /* El padding solicitado */
+                        z-index: 499;
+                        display: none;
+                        /* Controlado por JS */
+                        pointer-events: none;
+                        /* Permite clicks fuera de la alerta */
+                        border: none !important;
+                        /* Asegura que no haya bordes antiguos */
+                    }
+
+                    /* HIJO: La tarjeta de alerta en sí */
+                    .system-alert-box {
+                        width: 100%;
+                        max-width: 100%;
+                        /* Opcional: max-width: 600px; para que no sea tan larga en monitores grandes */
+                        margin: 0 auto;
+                        border-radius: 12px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        padding: 12px 16px;
+                        color: #ffffff;
+                        /* Texto blanco para contraste */
+                        pointer-events: auto;
+                        /* Reactivar clicks en la alerta */
+                        gap: 12px;
+                    }
+
+                    /* Colores de fondo según severidad */
+                    .alert-bg-critical {
+                        background-color: #ef4444;
+                    }
+
+                    /* Rojo */
+                    .alert-bg-warning {
+                        background-color: #f59e0b;
+                    }
+
+                    /* Naranja */
+                    .alert-bg-info {
+                        background-color: #3b82f6;
+                    }
+
+                    /* Azul */
+
+                    /* DIV 1: Contenido (Icono + Texto) */
+                    .alert-content-left {
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        flex: 1;
+                        min-width: 0;
+                        /* Necesario para que el text-overflow funcione en flex */
+                    }
+
+                    .alert-content-left .material-symbols-rounded {
+                        font-size: 20px;
+                        color: rgba(255, 255, 255, 0.9) !important;
+                        /* Forzar blanco */
+                    }
+
+                    #sys-alert-msg {
+                        font-size: 14px;
+                        font-weight: 500;
+                        white-space: nowrap;
+                        /* Una sola línea */
+                        overflow: hidden;
+                        /* Ocultar desbordamiento */
+                        text-overflow: ellipsis;
+                        /* Puntos suspensivos (...) */
+                        color: #ffffff;
+                        margin: 0;
+                    }
+
+                    /* Ocultar elementos que ya no usamos visualmente pero el JS busca */
+                    #sys-alert-title,
+                    #sys-alert-link {
+                        display: none !important;
+                    }
+
+                    /* DIV 2: Botón de cerrar */
+                    .alert-content-right {
+                        display: flex;
+                        align-items: center;
+                        flex-shrink: 0;
+                    }
+
+                    #sys-alert-close {
+                        background: rgba(255, 255, 255, 0.2);
+                        border: none;
+                        color: white;
+                        border-radius: 50%;
+                        width: 28px;
+                        height: 28px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: pointer;
+                        transition: background 0.2s;
+                    }
+
+                    #sys-alert-close:hover {
+                        background: rgba(255, 255, 255, 0.4);
+                    }
