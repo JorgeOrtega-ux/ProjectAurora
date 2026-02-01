@@ -10,7 +10,7 @@ export const SystemAlertsController = {
         const btnDeactivateMini = document.getElementById('btn-deactivate-alert-mini'); // Botón en la card
         const btnRefresh = document.querySelector('[data-action="refresh-status"]');
 
-        // Referencias de estado
+        // Referencias de estado iniciales
         let selectedMainType = 'performance';
         let selectedPerfMsgType = 'degradation';
         let selectedMaintType = 'scheduled';
@@ -30,20 +30,10 @@ export const SystemAlertsController = {
             'overload':    { icon: 'memory', text: 'Sobrecarga Temporal',     message: 'El sistema presenta una carga inusual. Algunas funciones podrían no responder.' }
         };
 
-        const configMaintType = {
-            'scheduled': { icon: 'event', text: 'Programado' },
-            'emergency': { icon: 'warning', text: 'Emergencia' }
-        };
-
         const configPolicyDoc = {
-            'terms':   { icon: 'description', text: 'Términos y Condiciones' },
-            'privacy': { icon: 'lock', text: 'Política de Privacidad' },
-            'cookies': { icon: 'cookie', text: 'Política de Cookies' }
-        };
-
-        const configPolicyStatus = {
-            'future':    { text: 'Actualización Futura', icon: 'calendar_month' },
-            'immediate': { text: 'Ya Disponible',        icon: 'publish' }
+            'terms':   { text: 'Términos y Condiciones' },
+            'privacy': { text: 'Política de Privacidad' },
+            'cookies': { text: 'Política de Cookies' }
         };
 
         // --- FUNCIONES DE PREVIEW DINÁMICO ---
@@ -58,27 +48,24 @@ export const SystemAlertsController = {
             
             let metaHtml = '';
 
-            // 2. Lógica por tipo
+            // 2. Lógica por tipo (Espejo de AlertService.php)
             if (selectedMainType === 'performance') {
                 const conf = configPerfMsg[selectedPerfMsgType];
                 titleEl.textContent = conf.text;
                 msgEl.textContent = conf.message;
-                metaHtml = ''; // Sin meta
                 iconEl.textContent = conf.icon;
             
             } else if (selectedMainType === 'maintenance') {
                 if (selectedMaintType === 'scheduled') {
                     titleEl.textContent = "Mantenimiento Programado";
-                    const startDate = document.getElementById('maint-start-time').value || '--/-- --:--';
+                    const startVal = document.getElementById('maint-start-time').value;
                     const duration = document.getElementById('maint-duration').value || '60';
                     
-                    let dateStr = startDate;
-                    if (startDate !== '--/-- --:--') {
-                        const d = new Date(startDate);
-                        dateStr = d.toLocaleString();
-                    }
+                    const dateStr = startVal 
+                        ? new Date(startVal).toLocaleString([], {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) 
+                        : '--/-- --:--';
 
-                    msgEl.textContent = `Nuestros servicios no estarán disponibles a partir del ${dateStr} por aprox. ${duration} min.`;
+                    msgEl.textContent = `Mantenimiento Programado: Los servicios no estarán disponibles desde el ${dateStr} por aprox. ${duration} min.`;
                     metaHtml = `<span class="material-symbols-rounded" style="font-size:14px">timer</span> ${duration} min`;
                 } else {
                     titleEl.textContent = "Mantenimiento de Emergencia";
@@ -90,69 +77,62 @@ export const SystemAlertsController = {
 
             } else if (selectedMainType === 'policy') {
                 const docName = configPolicyDoc[selectedPolicyDoc].text;
-                const link = document.getElementById('policy-link').value || '#';
+                const link = document.getElementById('policy-link').value;
                 
                 titleEl.textContent = "Actualización Legal";
                 iconEl.textContent = 'gavel';
 
                 if (selectedPolicyStatus === 'future') {
-                    const date = document.getElementById('policy-effective-date').value || '--/--/----';
-                    msgEl.innerHTML = `Nuestros <b>${docName}</b> se actualizarán el día ${date}.`;
+                    const dateVal = document.getElementById('policy-effective-date').value;
+                    // Ajuste simple de zona horaria para preview visual
+                    const dateStr = dateVal ? new Date(dateVal + 'T00:00:00').toLocaleDateString() : '--/--/----';
+                    msgEl.innerHTML = `A partir del <b>${dateStr}</b> entrarán en vigor los nuevos <b>${docName}</b>. Ponte al día con lo nuevo.`;
                 } else {
-                    msgEl.innerHTML = `Hemos actualizado nuestros <b>${docName}</b>.`;
+                    msgEl.innerHTML = `Hemos actualizado nuestros <b>${docName}</b>. Te invitamos a revisar los cambios realizados.`;
                 }
                 
-                metaHtml = `<span class="material-symbols-rounded" style="font-size:14px">link</span> <span style="text-decoration:underline">${link}</span>`;
+                if (link) {
+                    metaHtml = `<span class="material-symbols-rounded" style="font-size:14px">link</span> <span style="text-decoration:underline">Ver más</span>`;
+                } else {
+                    metaHtml = `<span class="material-symbols-rounded" style="font-size:14px">link</span> Enlace pendiente`;
+                }
             }
 
-            // 3. Manejo dinámico del elemento META
+            // 3. Manejo dinámico del elemento META (debajo del texto)
             let metaEl = document.getElementById('preview-meta');
 
             if (metaHtml) {
-                // Si necesitamos meta y no existe, lo creamos
                 if (!metaEl) {
                     metaEl = document.createElement('div');
                     metaEl.id = 'preview-meta';
-                    // Estilos dinámicos solicitados
-                    metaEl.style.cssText = "display: flex; gap: 8px; margin-top: 4px; font-size: 12px; color: var(--text-tertiary);";
+                    metaEl.style.cssText = "display: flex; gap: 8px; margin-top: 4px; font-size: 12px; color: var(--primary-color); font-weight: 600; align-items: center;";
                     textContainer.appendChild(metaEl);
                 }
                 metaEl.innerHTML = metaHtml;
             } else {
-                // Si no necesitamos meta y existe, lo eliminamos
-                if (metaEl) {
-                    metaEl.remove();
-                }
+                if (metaEl) metaEl.remove();
             }
         };
 
-        // Listeners para inputs de texto/fecha
+        // Listeners
         ['maint-start-time', 'maint-duration', 'maint-emergency-time', 'policy-link', 'policy-effective-date'].forEach(id => {
             const el = document.getElementById(id);
             if(el) el.addEventListener('input', updatePreview);
         });
 
-        // --- MANEJO SEGURO DE STEPPER ---
         const btnDurDec = document.getElementById('btn-duration-dec');
         const btnDurInc = document.getElementById('btn-duration-inc');
         const inputDur = document.getElementById('maint-duration');
 
         if (btnDurDec && inputDur) {
-            btnDurDec.addEventListener('click', () => {
-                inputDur.stepDown(15);
-                updatePreview(); 
-            });
+            btnDurDec.addEventListener('click', () => { inputDur.stepDown(15); updatePreview(); });
         }
-
         if (btnDurInc && inputDur) {
-            btnDurInc.addEventListener('click', () => {
-                inputDur.stepUp(15);
-                updatePreview(); 
-            });
+            btnDurInc.addEventListener('click', () => { inputDur.stepUp(15); updatePreview(); });
         }
 
 
-        // --- TRIGGERS ---
+        // --- TRIGGERS & POPOVERS ---
         const setupTrigger = (triggerId, popoverId, actionName, onSelectCallback) => {
             const trigger = document.getElementById(triggerId);
             const popover = document.getElementById(popoverId);
@@ -162,15 +142,21 @@ export const SystemAlertsController = {
                 e.stopPropagation();
                 document.querySelectorAll('.popover-module').forEach(p => { if (p !== popover) p.classList.remove('active'); });
                 document.querySelectorAll('.trigger-selector').forEach(t => { if (t !== trigger) t.classList.remove('active'); });
+                
                 popover.classList.toggle('active');
                 trigger.classList.toggle('active');
             };
 
+            // Selector con soporte para .menu-link
             const options = popover.querySelectorAll(`[data-action="${actionName}"]`);
             options.forEach(opt => {
                 opt.onclick = () => {
+                    options.forEach(o => o.classList.remove('active'));
+                    opt.classList.add('active');
+
                     const value = opt.dataset.value;
                     onSelectCallback(value, trigger);
+
                     popover.classList.remove('active');
                     trigger.classList.remove('active');
                     updatePreview();
@@ -183,6 +169,7 @@ export const SystemAlertsController = {
             selectedMainType = val;
             document.getElementById('text-alert-type').textContent = configMainType[val].text;
             document.getElementById('icon-alert-type').textContent = configMainType[val].icon;
+            
             document.querySelectorAll('.config-group').forEach(el => el.style.display = 'none');
             const group = document.getElementById(`group-${val}`);
             if (group) group.style.display = 'block';
@@ -196,8 +183,7 @@ export const SystemAlertsController = {
 
         setupTrigger('trigger-maint-type', 'popover-maint-type', 'select-maint-type', (val) => {
             selectedMaintType = val;
-            document.getElementById('text-maint-type').textContent = configMaintType[val].text;
-            document.getElementById('icon-maint-type').textContent = configMaintType[val].icon;
+            document.getElementById('text-maint-type').textContent = (val === 'scheduled' ? 'Programado' : 'Emergencia');
             document.getElementById('subgroup-maint-scheduled').style.display = (val === 'scheduled') ? 'block' : 'none';
             document.getElementById('subgroup-maint-emergency').style.display = (val === 'emergency') ? 'block' : 'none';
         });
@@ -205,13 +191,11 @@ export const SystemAlertsController = {
         setupTrigger('trigger-policy-doc', 'popover-policy-doc', 'select-policy-doc', (val) => {
             selectedPolicyDoc = val;
             document.getElementById('text-policy-doc').textContent = configPolicyDoc[val].text;
-            document.getElementById('icon-policy-doc').textContent = configPolicyDoc[val].icon;
         });
 
         setupTrigger('trigger-policy-status', 'popover-policy-status', 'select-policy-status', (val) => {
             selectedPolicyStatus = val;
-            document.getElementById('text-policy-status').textContent = configPolicyStatus[val].text;
-            document.getElementById('icon-policy-status').textContent = configPolicyStatus[val].icon;
+            document.getElementById('text-policy-status').textContent = (val === 'future' ? 'Actualización Futura' : 'Ya Disponible');
             const dateGroup = document.getElementById('subgroup-policy-date');
             dateGroup.style.display = (val === 'immediate') ? 'none' : 'block';
         });
@@ -229,26 +213,22 @@ export const SystemAlertsController = {
         // --- LÓGICA DE EMISIÓN ---
         if (btnEmit) {
             btnEmit.onclick = async () => {
-                let payload = { type: selectedMainType, message: '', meta: {} };
+                let payload = { type: selectedMainType, meta: {} };
 
                 switch (selectedMainType) {
                     case 'performance':
-                        payload.message = configPerfMsg[selectedPerfMsgType].message;
                         payload.meta.code = selectedPerfMsgType;
                         break;
                     case 'maintenance':
                         payload.meta.subtype = selectedMaintType;
                         if (selectedMaintType === 'scheduled') {
-                            payload.message = "Mantenimiento Programado";
                             payload.meta.start = document.getElementById('maint-start-time').value;
                             payload.meta.duration = document.getElementById('maint-duration').value;
                         } else {
-                            payload.message = "Mantenimiento de Emergencia";
                             payload.meta.cutoff = document.getElementById('maint-emergency-time').value;
                         }
                         break;
                     case 'policy':
-                        payload.message = "Actualización Legal";
                         payload.meta.doc = selectedPolicyDoc;
                         payload.meta.update_type = selectedPolicyStatus;
                         payload.meta.link = document.getElementById('policy-link').value;
@@ -274,7 +254,6 @@ export const SystemAlertsController = {
             };
         }
 
-        // --- DESACTIVACIÓN ---
         const handleDeactivate = async () => {
             if (!confirm('¿Detener alerta/difusión actual?')) return;
             try {
@@ -296,16 +275,13 @@ export const SystemAlertsController = {
         checkActiveAlertStatus();
 
         async function checkActiveAlertStatus() {
-            // Referencias Cards Dashboard
             const statOnline = document.getElementById('stat-online-users');
             const statToday = document.getElementById('stat-alerts-today');
             const badgeTotal = document.getElementById('badge-alerts-total');
-            
             const statIcon = document.getElementById('stat-active-icon');
             const statText = document.getElementById('stat-active-text');
             const cardStatus = document.getElementById('card-status-indicator');
             const btnMini = document.getElementById('btn-deactivate-alert-mini');
-
             const impactIcon = document.getElementById('stat-impact-icon');
             const impactVal = document.getElementById('stat-last-severity');
             const impactTime = document.getElementById('stat-last-time');
@@ -314,19 +290,14 @@ export const SystemAlertsController = {
                 statText.textContent = "Sincronizando...";
                 const res = await ApiService.post(ApiService.Routes.Admin.GetActiveAlert);
                 
-                // 1. Actualizar Stats (Siempre disponibles)
                 if (res.stats) {
                     statOnline.textContent = res.stats.online_users;
                     statToday.textContent = res.stats.alerts_today;
                     badgeTotal.innerHTML = `<span class="material-symbols-rounded" style="font-size:14px;">history</span> Total: ${res.stats.alerts_total}`;
                 }
 
-                // 2. Actualizar Estado de Alerta
                 if (res.success && res.alert) {
-                    // Hay alerta activa
                     const color = res.alert.severity === 'critical' ? 'var(--color-error)' : 'var(--color-warning)';
-                    
-                    // Card Estado
                     statIcon.textContent = 'warning';
                     statIcon.style.color = color;
                     statText.textContent = "Activa";
@@ -334,13 +305,11 @@ export const SystemAlertsController = {
                     cardStatus.style.borderLeftColor = color;
                     btnMini.style.display = 'flex';
 
-                    // Card Impacto
                     impactVal.textContent = res.alert.severity === 'critical' ? 'Crítico' : 'Moderado';
                     impactIcon.style.color = color;
-                    impactTime.textContent = res.alert.type.toUpperCase(); // Mostrar tipo en vez de tiempo
+                    impactTime.textContent = res.alert.type.toUpperCase(); 
                     
                 } else {
-                    // Sistema Normal
                     statIcon.textContent = 'check_circle';
                     statIcon.style.color = 'var(--color-success)';
                     statText.textContent = "Operativo";
@@ -348,11 +317,9 @@ export const SystemAlertsController = {
                     cardStatus.style.borderLeftColor = 'var(--color-success)';
                     btnMini.style.display = 'none';
 
-                    // Impacto Normal
                     impactVal.textContent = "Normal";
                     impactIcon.style.color = 'var(--text-tertiary)';
                     
-                    // Mostrar tiempo desde última alerta si existe
                     if (res.stats && res.stats.last_alert_time) {
                         impactTime.textContent = "Última: " + res.stats.last_alert_time;
                     } else {

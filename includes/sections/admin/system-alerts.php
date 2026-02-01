@@ -86,21 +86,27 @@
                 <div class="trigger-selector" id="trigger-alert-type">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <span class="material-symbols-rounded" id="icon-alert-type">speed</span>
-                        <span class="trigger-select-text" id="text-alert-type">Problemas de Rendimiento</span>
+                        <span class="trigger-select-text" id="text-alert-type">Rendimiento</span>
                     </div>
                     <span class="material-symbols-rounded">expand_more</span>
                 </div>
 
                 <div class="popover-module" id="popover-alert-type">
-                    <div class="menu-list menu-list--scrollable">
-                        <div class="component-button" style="justify-content: flex-start; border:none;" data-action="select-main-type" data-value="performance">
-                            <span class="material-symbols-rounded">speed</span> Rendimiento
+                    <div class="menu-list">
+                        <div class="menu-link active" data-action="select-main-type" data-value="performance">
+                            <span class="material-symbols-rounded menu-link-icon">speed</span>
+                            <span class="menu-link-text">Rendimiento</span>
+                            <div class="radio-indicator"></div>
                         </div>
-                        <div class="component-button" style="justify-content: flex-start; border:none;" data-action="select-main-type" data-value="maintenance">
-                            <span class="material-symbols-rounded">build</span> Mantenimiento
+                        <div class="menu-link" data-action="select-main-type" data-value="maintenance">
+                            <span class="material-symbols-rounded menu-link-icon">build</span>
+                            <span class="menu-link-text">Mantenimiento</span>
+                            <div class="radio-indicator"></div>
                         </div>
-                        <div class="component-button" style="justify-content: flex-start; border:none;" data-action="select-main-type" data-value="policy">
-                            <span class="material-symbols-rounded">policy</span> Políticas y Legal
+                        <div class="menu-link" data-action="select-main-type" data-value="policy">
+                            <span class="material-symbols-rounded menu-link-icon">policy</span>
+                            <span class="menu-link-text">Políticas y Legal</span>
+                            <div class="radio-indicator"></div>
                         </div>
                     </div>
                 </div>
@@ -126,14 +132,20 @@
 
                     <div class="popover-module" id="popover-perf-msg">
                         <div class="menu-list">
-                            <div class="component-button" style="justify-content: flex-start; border:none;" data-action="select-perf-msg" data-value="degradation">
-                                <span class="material-symbols-rounded">troubleshoot</span> Degradación de Servicio
+                            <div class="menu-link active" data-action="select-perf-msg" data-value="degradation">
+                                <span class="material-symbols-rounded menu-link-icon">troubleshoot</span>
+                                <span class="menu-link-text">Degradación de Servicio</span>
+                                <div class="radio-indicator"></div>
                             </div>
-                            <div class="component-button" style="justify-content: flex-start; border:none;" data-action="select-perf-msg" data-value="latency">
-                                <span class="material-symbols-rounded">network_check</span> Latencia Alta Detectada
+                            <div class="menu-link" data-action="select-perf-msg" data-value="latency">
+                                <span class="material-symbols-rounded menu-link-icon">network_check</span>
+                                <span class="menu-link-text">Latencia Alta Detectada</span>
+                                <div class="radio-indicator"></div>
                             </div>
-                            <div class="component-button" style="justify-content: flex-start; border:none;" data-action="select-perf-msg" data-value="overload">
-                                <span class="material-symbols-rounded">memory</span> Sobrecarga Temporal
+                            <div class="menu-link" data-action="select-perf-msg" data-value="overload">
+                                <span class="material-symbols-rounded menu-link-icon">memory</span>
+                                <span class="menu-link-text">Sobrecarga Temporal</span>
+                                <div class="radio-indicator"></div>
                             </div>
                         </div>
                     </div>
@@ -161,11 +173,15 @@
 
                     <div class="popover-module" id="popover-maint-type">
                         <div class="menu-list">
-                            <div class="component-button" style="justify-content: flex-start; border:none;" data-action="select-maint-type" data-value="scheduled">
-                                <span class="material-symbols-rounded">event</span> Programado
+                            <div class="menu-link active" data-action="select-maint-type" data-value="scheduled">
+                                <span class="material-symbols-rounded menu-link-icon">event</span>
+                                <span class="menu-link-text">Programado</span>
+                                <div class="radio-indicator"></div>
                             </div>
-                            <div class="component-button" style="justify-content: flex-start; border:none; color: var(--color-error);" data-action="select-maint-type" data-value="emergency">
-                                <span class="material-symbols-rounded">warning</span> Emergencia
+                            <div class="menu-link" style="color: var(--color-error);" data-action="select-maint-type" data-value="emergency">
+                                <span class="material-symbols-rounded menu-link-icon">warning</span>
+                                <span class="menu-link-text">Emergencia</span>
+                                <div class="radio-indicator"></div>
                             </div>
                         </div>
                     </div>
@@ -242,14 +258,20 @@
 
                     <div class="popover-module" id="popover-policy-doc">
                         <div class="menu-list">
-                            <div class="component-button" style="justify-content: flex-start; border:none;" data-action="select-policy-doc" data-value="terms">
-                                <span class="material-symbols-rounded">description</span> Términos y Condiciones
+                            <div class="menu-link active" data-action="select-policy-doc" data-value="terms">
+                                <span class="material-symbols-rounded menu-link-icon">description</span>
+                                <span class="menu-link-text">Términos y Condiciones</span>
+                                <div class="radio-indicator"></div>
                             </div>
-                            <div class="component-button" style="justify-content: flex-start; border:none;" data-action="select-policy-doc" data-value="privacy">
-                                <span class="material-symbols-rounded">lock</span> Política de Privacidad
+                            <div class="menu-link" data-action="select-policy-doc" data-value="privacy">
+                                <span class="material-symbols-rounded menu-link-icon">lock</span>
+                                <span class="menu-link-text">Política de Privacidad</span>
+                                <div class="radio-indicator"></div>
                             </div>
-                            <div class="component-button" style="justify-content: flex-start; border:none;" data-action="select-policy-doc" data-value="cookies">
-                                <span class="material-symbols-rounded">cookie</span> Política de Cookies
+                            <div class="menu-link" data-action="select-policy-doc" data-value="cookies">
+                                <span class="material-symbols-rounded menu-link-icon">cookie</span>
+                                <span class="menu-link-text">Política de Cookies</span>
+                                <div class="radio-indicator"></div>
                             </div>
                         </div>
                     </div>
@@ -274,11 +296,15 @@
 
                     <div class="popover-module" id="popover-policy-status">
                         <div class="menu-list">
-                            <div class="component-button" style="justify-content: flex-start; border:none;" data-action="select-policy-status" data-value="future">
-                                <span class="material-symbols-rounded">calendar_month</span> Actualización Futura
+                            <div class="menu-link active" data-action="select-policy-status" data-value="future">
+                                <span class="material-symbols-rounded menu-link-icon">calendar_month</span>
+                                <span class="menu-link-text">Actualización Futura</span>
+                                <div class="radio-indicator"></div>
                             </div>
-                            <div class="component-button" style="justify-content: flex-start; border:none;" data-action="select-policy-status" data-value="immediate">
-                                <span class="material-symbols-rounded">publish</span> Ya Disponible
+                            <div class="menu-link" data-action="select-policy-status" data-value="immediate">
+                                <span class="material-symbols-rounded menu-link-icon">publish</span>
+                                <span class="menu-link-text">Ya Disponible</span>
+                                <div class="radio-indicator"></div>
                             </div>
                         </div>
                     </div>
@@ -317,7 +343,7 @@
                 <span class="component-card__description">Simulación de cómo lo verán los usuarios.</span>
             </div>
             
-            <div style="width: 100%; background: var(--bg-surface); border: 1px solid #00000020; border-radius: 12px; padding: 8px; display: flex; align-items: center; gap: 16px;">
+            <div style="width: 100%; background: var(--bg-surface); border: 1px solid #00000020; border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 16px;">
                 <div style="background: var(--primary-color-10); color: var(--primary-color); padding: 8px; border-radius: 50%; display: flex;">
                     <span class="material-symbols-rounded" id="preview-icon">info</span>
                 </div>

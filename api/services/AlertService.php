@@ -14,21 +14,19 @@ class AlertService {
 
     public function createAlert($data) {
         try {
-            // 1. Desactivar cualquier alerta activa anterior
             $this->deactivateCurrentAlerts();
 
-            // 2. Preparar datos
             $uuid = Utils::generateUUID();
             $type = $data['type'];
             $severity = $this->determineSeverity($type, $data);
-            $message = $data['message'] ?? '';
+            
+            // Construcción del mensaje enriquecido basado en metadata
+            $message = $this->buildFormattedMessage($type, $data['meta'] ?? []);
             $metaData = json_encode($data['meta'] ?? []);
 
-            // 3. Insertar en MySQL
             $stmt = $this->pdo->prepare("INSERT INTO system_alerts (uuid, type, severity, message, meta_data, created_by, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)");
             $stmt->execute([$uuid, $type, $severity, $message, $metaData, $this->userId]);
 
-            // 4. Estructurar Payload para el Cliente
             $alertPayload = [
                 'id' => $uuid,
                 'type' => $type,
@@ -37,11 +35,8 @@ class AlertService {
                 'meta' => $data['meta'] ?? []
             ];
 
-            // 5. Guardar en Redis (Persistencia para nuevos usuarios)
-            // Clave: system:active_alert
             $this->redis->set('system:active_alert', json_encode($alertPayload));
 
-            // 6. Publicar evento para WebSocket (Usuarios conectados ahora)
             $wsMessage = [
                 'cmd' => 'BROADCAST',
                 'msg_type' => 'system_alert',
@@ -56,13 +51,51 @@ class AlertService {
         }
     }
 
+    /**
+     * Construye el texto legible para el usuario final según el contexto
+     */
+    private function buildFormattedMessage($type, $meta) {
+        switch ($type) {
+            case 'performance':
+                $codes = [
+                    'degradation' => 'Estamos experimentando lentitud en algunos servicios. Trabajamos en ello.',
+                    'latency' => 'Se ha detectado una latencia alta en la conexión. Su experiencia podría verse afectada.',
+                    'overload' => 'El sistema presenta una carga inusual. Algunas funciones podrían no responder.'
+                ];
+                return $codes[$meta['code'] ?? 'degradation'] ?? 'Problemas de rendimiento detectados.';
+
+            case 'maintenance':
+                if (($meta['subtype'] ?? '') === 'emergency') {
+                    $time = $meta['cutoff'] ?? '--:--';
+                    return "Atención: Se realizará un corte de servicio inminente a las {$time}. Guarde su trabajo.";
+                }
+                $start = !empty($meta['start']) ? date("d/m H:i", strtotime($meta['start'])) : '--/--';
+                $duration = $meta['duration'] ?? '60';
+                return "Mantenimiento Programado: Los servicios no estarán disponibles desde el {$start} por aprox. {$duration} min.";
+
+            case 'policy':
+                $docs = [
+                    'terms' => 'Términos y Condiciones',
+                    'privacy' => 'Política de Privacidad',
+                    'cookies' => 'Política de Cookies'
+                ];
+                $docName = $docs[$meta['doc'] ?? 'terms'];
+                
+                if (($meta['update_type'] ?? '') === 'future') {
+                    $date = !empty($meta['date']) ? date("d/m/Y", strtotime($meta['date'])) : '--/--/----';
+                    return "A partir del {$date} entrarán en vigor los nuevos {$docName}. Ponte al día con lo nuevo.";
+                }
+                return "Hemos actualizado nuestros {$docName}. Te invitamos a revisar los cambios realizados.";
+
+            default:
+                return "Nueva actualización del sistema disponible.";
+        }
+    }
+
     public function deactivateAlert() {
         $this->deactivateCurrentAlerts();
-        
-        // Limpiar Redis
         $this->redis->del('system:active_alert');
         
-        // Avisar a usuarios conectados que cierren la alerta
         $wsMessage = [
             'cmd' => 'BROADCAST',
             'msg_type' => 'system_alert_clear',
@@ -77,12 +110,10 @@ class AlertService {
         $stats = $this->getAlertPageStats();
         $alertData = null;
 
-        // Intentar leer de Redis primero (más rápido)
         $cached = $this->redis->get('system:active_alert');
         if ($cached) {
             $alertData = json_decode($cached, true);
         } else {
-            // Fallback a DB si Redis está vacío pero DB dice activo (consistencia)
             $stmt = $this->pdo->prepare("SELECT * FROM system_alerts WHERE is_active = 1 LIMIT 1");
             $stmt->execute();
             $dbAlert = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -96,39 +127,26 @@ class AlertService {
             }
         }
 
-        return [
-            'success' => true, 
-            'alert' => $alertData,
-            'stats' => $stats
-        ];
+        return ['success' => true, 'alert' => $alertData, 'stats' => $stats];
     }
 
     private function getAlertPageStats() {
-        // 1. Usuarios Online (Alcance Potencial)
         $onlineUsers = 0;
         try {
             $realtimeStats = $this->redis->hgetall('aurora:stats:realtime');
-            // Sumamos usuarios registrados + invitados
             $onlineUsers = (int)($realtimeStats['online_users'] ?? 0) + (int)($realtimeStats['online_guests'] ?? 0);
         } catch (Exception $e) { $onlineUsers = 0; }
 
-        // 2. Alertas emitidas hoy
         $stmtToday = $this->pdo->prepare("SELECT COUNT(*) FROM system_alerts WHERE DATE(created_at) = CURDATE()");
         $stmtToday->execute();
         $alertsToday = $stmtToday->fetchColumn();
 
-        // 3. Total histórico
         $stmtTotal = $this->pdo->query("SELECT COUNT(*) FROM system_alerts");
         $total = $stmtTotal->fetchColumn();
 
-        // 4. Última alerta (para calcular tiempo)
         $stmtLast = $this->pdo->query("SELECT created_at FROM system_alerts ORDER BY created_at DESC LIMIT 1");
         $lastDate = $stmtLast->fetchColumn();
-        $timeAgo = "N/A";
-
-        if ($lastDate) {
-            $timeAgo = $this->timeElapsedString($lastDate);
-        }
+        $timeAgo = $lastDate ? $this->timeElapsedString($lastDate) : "N/A";
 
         return [
             'online_users' => $onlineUsers,
@@ -142,12 +160,9 @@ class AlertService {
         $now = new DateTime;
         $ago = new DateTime($datetime);
         $diff = $now->diff($ago);
-
-        // Cálculo seguro de semanas sin modificar el objeto DateInterval
         $weeks = floor($diff->d / 7);
         $days = $diff->d - ($weeks * 7);
 
-        // Mapeo de valores
         $timeMap = [
             'y' => ['val' => $diff->y, 'label' => 'año'],
             'm' => ['val' => $diff->m, 'label' => 'mes'],
@@ -164,7 +179,6 @@ class AlertService {
                 $string[] = $v['val'] . ' ' . $v['label'] . ($v['val'] > 1 ? 's' : '');
             }
         }
-
         if (!$full) $string = array_slice($string, 0, 1);
         return $string ? 'Hace ' . implode(', ', $string) : 'Hace un momento';
     }
