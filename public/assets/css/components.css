@@ -1,4 +1,3 @@
-
 /* public/assets/css/components.css */
 
 /* =========================================
@@ -568,21 +567,6 @@ input:checked+.component-toggle-slider:before {
     width: 100%;
     box-sizing: border-box;
     min-height: 100%;
-}
-
-:root {
-    --bg-code-editor: #ffffff;
-    --text-code-base: #000000;
-    --token-comment: #008000;
-    --token-string: #a31515;
-    --token-number: #098658;
-    --token-keyword: #0000ff;
-    --token-logic: #af00db;
-    --token-tag: #800000;
-    --token-attr: #ff0000;
-    --token-bracket: #0451a5;
-    --token-date: #098658;
-    --token-error: #cd3131;
 }
 
 .token-comment {
@@ -1332,12 +1316,6 @@ input:checked+.component-toggle-slider:before {
     -moz-appearance: textfield;
 }
 
-/* * [REMOVIDO] .stepper-btn
- * Se reemplaza por .component-button.square
- * Se mantiene la clase en HTML/JS solo para lógica si es necesario, 
- * pero sin estilos conflictivos.
- */
-
 .domain-manager-wrapper {
     width: 100%;
     display: flex;
@@ -1652,8 +1630,8 @@ input:checked+.component-toggle-slider:before {
     transition: background-color 0.2s ease;
 }
 
-/* Listas visuales */
-.visual-step-list {
+/* [MODIFICADO] Listas visuales con prefijo 'component-' */
+.component-step-list {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -1663,7 +1641,7 @@ input:checked+.component-toggle-slider:before {
     list-style: none;
 }
 
-.visual-step-item {
+.component-step-item {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -1672,7 +1650,7 @@ input:checked+.component-toggle-slider:before {
     line-height: 1.4;
 }
 
-.visual-step-icon {
+.component-step-icon {
     width: 28px;
     height: 28px;
     border-radius: var(--sl-border-radius-circle);

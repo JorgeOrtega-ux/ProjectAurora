@@ -130,13 +130,13 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
                         <hr class="component-divider"> <div class="component-group-item component-group-item--stacked">
                             <div class="component-visual-group">
                                 <div class="component-visual-box box-grow">
-                                    <ul class="visual-step-list">
-                                        <li class="visual-step-item">
-                                            <div class="visual-step-icon">1</div>
+                                    <ul class="component-step-list">
+                                        <li class="component-step-item">
+                                            <div class="component-step-icon">1</div>
                                             <span>Descarga <strong>Google Authenticator</strong> o <strong>Authy</strong>.</span>
                                         </li>
-                                        <li class="visual-step-item">
-                                            <div class="visual-step-icon">2</div>
+                                        <li class="component-step-item">
+                                            <div class="component-step-icon">2</div>
                                             <span>Selecciona <strong>"Escanear código QR"</strong>.</span>
                                         </li>
                                     </ul>
