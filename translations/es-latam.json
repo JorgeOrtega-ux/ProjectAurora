@@ -82,6 +82,56 @@
                 "date": "Fecha",
                 "details": "Detalles"
             }
+        },
+        "alerts": {
+            "title": "Sistema de Alertas Globales",
+            "btn_emit": "Emitir Comunicado",
+            "btn_refresh": "Actualizar Métricas",
+            "stat_reach": "Alcance Potencial",
+            "stat_reach_desc": "Usuarios conectados ahora",
+            "stat_today": "Difusiones Hoy",
+            "stat_impact": "Nivel de Impacto",
+            "stat_status": "Estado Global",
+            "stat_operational": "Operativo",
+            "stat_active": "Alerta Activa",
+            "stat_none": "Sin actividad reciente",
+            "btn_deactivate": "Desactivar Alerta",
+            "cat_title": "Categoría de Alerta",
+            "cat_desc": "Define la naturaleza del comunicado global.",
+            "type_perf": "Reporte de Rendimiento",
+            "type_maint": "Gestión de Mantenimiento",
+            "type_policy": "Políticas y Asuntos Legales",
+            "diag_title": "Diagnóstico del Sistema",
+            "diag_desc": "Seleccione el mensaje predefinido para los usuarios.",
+            "perf_deg": "Degradación de Servicio",
+            "perf_lat": "Latencia Alta Detectada",
+            "perf_over": "Sobrecarga Temporal",
+            "mode_title": "Modalidad de Intervención",
+            "mode_desc": "Determine la urgencia de la operación técnica.",
+            "mode_sched": "Intervención Planificada",
+            "mode_emerg": "Incidente Crítico / Urgente",
+            "start_title": "Fecha de Inicio",
+            "start_desc": "Cuándo comenzará la desconexión.",
+            "dur_title": "Duración Estimada",
+            "dur_desc": "Tiempo aproximado de inactividad (minutos).",
+            "emerg_warn_title": "Acción Destructiva",
+            "emerg_warn_desc": "Esta acción forzará la desconexión inmediata de los usuarios. Úselo solo en casos críticos.",
+            "cutoff_title": "Hora de Desconexión Forzosa",
+            "cutoff_desc": "Momento exacto en que el sistema expulsará a los usuarios.",
+            "doc_title": "Documento Legal",
+            "doc_desc": "Seleccione el documento que requiere actualización.",
+            "update_type_title": "Tipo de Implementación",
+            "update_type_desc": "Defina cuándo se aplicarán los cambios legales.",
+            "status_future": "Programar Cambio Futuro",
+            "status_immediate": "Publicación Inmediata",
+            "link_title": "Enlace al Documento",
+            "link_desc": "URL pública donde se aloja el nuevo documento.",
+            "date_title": "Entrada en Vigor",
+            "date_desc": "Fecha efectiva de validez de los cambios.",
+            "preview_title": "Vista Previa",
+            "preview_desc": "Simulación de cómo lo verán los usuarios.",
+            "preview_default_title": "Título de la Alerta",
+            "preview_default_msg": "El contenido del mensaje aparecerá aquí..."
         }
     },
     "help": {
@@ -446,24 +496,24 @@
     },
     "system_alerts": {
         "performance": {
-            "degradation": "Estamos experimentando lentitud en algunos servicios. Trabajamos en ello.",
-            "latency": "Se ha detectado una latencia alta en la conexión. Su experiencia podría verse afectada.",
-            "overload": "El sistema presenta una carga inusual. Algunas funciones podrían no responder.",
-            "default": "Problemas de rendimiento detectados."
+            "degradation": "Detectamos lentitud operativa. El equipo técnico ya está trabajando en la estabilización.",
+            "latency": "La red presenta alta latencia. Es posible que notes demoras en la carga de contenido.",
+            "overload": "El servidor está procesando un volumen inusual de solicitudes. Agradecemos tu paciencia.",
+            "default": "Aviso de rendimiento."
         },
         "maintenance": {
-            "emergency": "Atención: Se realizará un corte de servicio inminente a las %s. Guarde su trabajo.",
-            "scheduled": "Mantenimiento Programado: Los servicios no estarán disponibles desde el %s por aprox. %s min."
+            "emergency": "ALERTA CRÍTICA: Desconexión forzosa programada para las %s. Guarda tu trabajo inmediatamente.",
+            "scheduled": "Mantenimiento Programado: Acceso interrumpido desde %s (Duración aprox: %s min)."
         },
         "policy": {
             "names": {
-                "terms": "Términos y Condiciones",
-                "privacy": "Política de Privacidad",
-                "cookies": "Política de Cookies"
+                "terms": "Términos y Condiciones de Uso",
+                "privacy": "Política de Privacidad y Datos",
+                "cookies": "Política de Cookies y Rastreo"
             },
-            "future": "A partir del %s entrarán en vigor los nuevos %s. Ponte al día con lo nuevo.",
-            "immediate": "Hemos actualizado nuestros %s. Te invitamos a revisar los cambios realizados.",
-            "default": "Nueva actualización del sistema disponible."
+            "future": "Aviso Legal: A partir del %s entrará en vigor la nueva versión de %s.",
+            "immediate": "Actualización Legal: Hemos modificado nuestros %s. Te recomendamos revisarlos.",
+            "default": "Actualización de documentos legales."
         }
     }
 }

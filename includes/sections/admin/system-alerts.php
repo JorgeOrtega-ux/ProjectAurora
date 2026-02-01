@@ -1,5 +1,6 @@
 <?php
 // includes/sections/admin/system-alerts.php
+// Se asume que $i18n está disponible en este ámbito y es instancia de I18n
 ?>
 <div class="component-wrapper" data-section="admin-system-alerts">
     
@@ -7,14 +8,14 @@
         <div class="component-toolbar component-toolbar--primary">
             <div class="toolbar-group">
                 <div class="component-toolbar__side component-toolbar__side--left">
-                    <div class="component-toolbar-title">Sistema de Alertas Globales</div>
+                    <div class="component-toolbar-title"><?= $i18n->t('admin.alerts.title') ?></div>
                 </div>
                 <div class="component-toolbar__side component-toolbar__side--right" style="gap: 12px; align-items: center;">
-                    <button class="header-button" id="btn-emit-alert" data-tooltip="Emitir Comunicado">
+                    <button class="header-button" id="btn-emit-alert" data-tooltip="<?= $i18n->t('admin.alerts.btn_emit') ?>">
                         <span class="material-symbols-rounded">campaign</span>
                     </button>
                     <div class="component-divider-vertical" style="height: 24px; border-left: 1px solid var(--border-light); margin: 0 4px;"></div>
-                    <button class="header-button" data-action="refresh-status" data-tooltip="Actualizar Métricas">
+                    <button class="header-button" data-action="refresh-status" data-tooltip="<?= $i18n->t('admin.alerts.btn_refresh') ?>">
                         <span class="material-symbols-rounded">refresh</span>
                     </button>
                 </div>
@@ -26,18 +27,18 @@
         
         <div class="component-stat-card">
             <div class="component-stat-header">
-                <span class="component-stat-title">Alcance Potencial</span>
+                <span class="component-stat-title"><?= $i18n->t('admin.alerts.stat_reach') ?></span>
                 <span class="material-symbols-rounded component-stat-icon" style="color: var(--primary-color);">group_add</span>
             </div>
             <div class="component-stat-main-value" id="stat-online-users">...</div>
             <div class="component-stat-footer">
-                <span class="component-trend-text">Usuarios conectados ahora</span>
+                <span class="component-trend-text"><?= $i18n->t('admin.alerts.stat_reach_desc') ?></span>
             </div>
         </div>
 
         <div class="component-stat-card">
             <div class="component-stat-header">
-                <span class="component-stat-title">Difusiones Hoy</span>
+                <span class="component-stat-title"><?= $i18n->t('admin.alerts.stat_today') ?></span>
                 <span class="material-symbols-rounded component-stat-icon">today</span>
             </div>
             <div class="component-stat-main-value" id="stat-alerts-today">...</div>
@@ -50,24 +51,24 @@
 
         <div class="component-stat-card">
             <div class="component-stat-header">
-                <span class="component-stat-title">Nivel de Impacto</span>
+                <span class="component-stat-title"><?= $i18n->t('admin.alerts.stat_impact') ?></span>
                 <span class="material-symbols-rounded component-stat-icon" id="stat-impact-icon">monitor_heart</span>
             </div>
-            <div class="component-stat-main-value" id="stat-last-severity" style="font-size: 1.5rem;">Normal</div>
+            <div class="component-stat-main-value" id="stat-last-severity" style="font-size: 1.5rem;"><?= $i18n->t('admin.alerts.stat_none') ?></div>
             <div class="component-stat-footer">
-                <span class="component-trend-text" id="stat-last-time">Sin actividad reciente</span>
+                <span class="component-trend-text" id="stat-last-time"><?= $i18n->t('admin.alerts.stat_none') ?></span>
             </div>
         </div>
 
         <div class="component-stat-card" id="card-status-indicator" style="border-left: 4px solid var(--color-success);">
             <div class="component-stat-header">
-                <span class="component-stat-title">Estado Global</span>
+                <span class="component-stat-title"><?= $i18n->t('admin.alerts.stat_status') ?></span>
                 <span class="material-symbols-rounded component-stat-icon" id="stat-active-icon" style="color:var(--color-success);">check_circle</span>
             </div>
-            <div class="component-stat-main-value" style="font-size: 1.2rem;" id="stat-active-text">Operativo</div>
+            <div class="component-stat-main-value" style="font-size: 1.2rem;" id="stat-active-text"><?= $i18n->t('admin.alerts.stat_operational') ?></div>
             <div class="component-stat-footer">
                  <button class="component-button danger small" id="btn-deactivate-alert-mini" style="display: none; width: 100%; justify-content: center;">
-                    Desactivar Alerta
+                    <?= $i18n->t('admin.alerts.btn_deactivate') ?>
                 </button>
             </div>
         </div>
@@ -79,8 +80,8 @@
         <div class="component-group-item component-group-item--stacked">
             <div class="component-card__content">
                 <div class="component-card__text">
-                    <span class="component-card__title">Categoría de Alerta</span>
-                    <span class="component-card__description">Define la naturaleza del comunicado global.</span>
+                    <span class="component-card__title"><?= $i18n->t('admin.alerts.cat_title') ?></span>
+                    <span class="component-card__description"><?= $i18n->t('admin.alerts.cat_desc') ?></span>
                 </div>
             </div>
             
@@ -89,7 +90,7 @@
                     <div class="trigger-selector" id="trigger-alert-type">
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span class="material-symbols-rounded" id="icon-alert-type">speed</span>
-                            <span class="trigger-select-text" id="text-alert-type">Rendimiento</span>
+                            <span class="trigger-select-text" id="text-alert-type"><?= $i18n->t('admin.alerts.type_perf') ?></span>
                         </div>
                         <span class="material-symbols-rounded">expand_more</span>
                     </div>
@@ -98,17 +99,17 @@
                         <div class="menu-list">
                             <div class="menu-link active" data-action="select-main-type" data-value="performance">
                                 <span class="material-symbols-rounded menu-link-icon">speed</span>
-                                <span class="menu-link-text">Rendimiento</span>
+                                <span class="menu-link-text"><?= $i18n->t('admin.alerts.type_perf') ?></span>
                                 <div class="radio-indicator"></div>
                             </div>
                             <div class="menu-link" data-action="select-main-type" data-value="maintenance">
                                 <span class="material-symbols-rounded menu-link-icon">build</span>
-                                <span class="menu-link-text">Mantenimiento</span>
+                                <span class="menu-link-text"><?= $i18n->t('admin.alerts.type_maint') ?></span>
                                 <div class="radio-indicator"></div>
                             </div>
                             <div class="menu-link" data-action="select-main-type" data-value="policy">
                                 <span class="material-symbols-rounded menu-link-icon">policy</span>
-                                <span class="menu-link-text">Políticas y Legal</span>
+                                <span class="menu-link-text"><?= $i18n->t('admin.alerts.type_policy') ?></span>
                                 <div class="radio-indicator"></div>
                             </div>
                         </div>
@@ -122,8 +123,8 @@
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <span class="component-card__title">Diagnóstico</span>
-                        <span class="component-card__description">Seleccione el mensaje predefinido para los usuarios.</span>
+                        <span class="component-card__title"><?= $i18n->t('admin.alerts.diag_title') ?></span>
+                        <span class="component-card__description"><?= $i18n->t('admin.alerts.diag_desc') ?></span>
                     </div>
                 </div>
                 
@@ -132,7 +133,7 @@
                         <div class="trigger-selector" id="trigger-perf-msg">
                              <div style="display: flex; align-items: center; gap: 8px;">
                                 <span class="material-symbols-rounded" id="icon-perf-msg">troubleshoot</span>
-                                <span class="trigger-select-text" id="text-perf-msg">Degradación de Servicio</span>
+                                <span class="trigger-select-text" id="text-perf-msg"><?= $i18n->t('admin.alerts.perf_deg') ?></span>
                             </div>
                             <span class="material-symbols-rounded">expand_more</span>
                         </div>
@@ -141,17 +142,17 @@
                             <div class="menu-list">
                                 <div class="menu-link active" data-action="select-perf-msg" data-value="degradation">
                                     <span class="material-symbols-rounded menu-link-icon">troubleshoot</span>
-                                    <span class="menu-link-text">Degradación de Servicio</span>
+                                    <span class="menu-link-text"><?= $i18n->t('admin.alerts.perf_deg') ?></span>
                                     <div class="radio-indicator"></div>
                                 </div>
                                 <div class="menu-link" data-action="select-perf-msg" data-value="latency">
                                     <span class="material-symbols-rounded menu-link-icon">network_check</span>
-                                    <span class="menu-link-text">Latencia Alta Detectada</span>
+                                    <span class="menu-link-text"><?= $i18n->t('admin.alerts.perf_lat') ?></span>
                                     <div class="radio-indicator"></div>
                                 </div>
                                 <div class="menu-link" data-action="select-perf-msg" data-value="overload">
                                     <span class="material-symbols-rounded menu-link-icon">memory</span>
-                                    <span class="menu-link-text">Sobrecarga Temporal</span>
+                                    <span class="menu-link-text"><?= $i18n->t('admin.alerts.perf_over') ?></span>
                                     <div class="radio-indicator"></div>
                                 </div>
                             </div>
@@ -167,8 +168,8 @@
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <span class="component-card__title">Modalidad</span>
-                        <span class="component-card__description">Tipo de intervención técnica.</span>
+                        <span class="component-card__title"><?= $i18n->t('admin.alerts.mode_title') ?></span>
+                        <span class="component-card__description"><?= $i18n->t('admin.alerts.mode_desc') ?></span>
                     </div>
                 </div>
                 
@@ -177,7 +178,7 @@
                         <div class="trigger-selector" id="trigger-maint-type">
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <span class="material-symbols-rounded" id="icon-maint-type">event</span>
-                                <span class="trigger-select-text" id="text-maint-type">Programado</span>
+                                <span class="trigger-select-text" id="text-maint-type"><?= $i18n->t('admin.alerts.mode_sched') ?></span>
                             </div>
                             <span class="material-symbols-rounded">expand_more</span>
                         </div>
@@ -186,12 +187,12 @@
                             <div class="menu-list">
                                 <div class="menu-link active" data-action="select-maint-type" data-value="scheduled">
                                     <span class="material-symbols-rounded menu-link-icon">event</span>
-                                    <span class="menu-link-text">Programado</span>
+                                    <span class="menu-link-text"><?= $i18n->t('admin.alerts.mode_sched') ?></span>
                                     <div class="radio-indicator"></div>
                                 </div>
                                 <div class="menu-link" style="color: var(--color-error);" data-action="select-maint-type" data-value="emergency">
                                     <span class="material-symbols-rounded menu-link-icon">warning</span>
-                                    <span class="menu-link-text">Emergencia</span>
+                                    <span class="menu-link-text"><?= $i18n->t('admin.alerts.mode_emerg') ?></span>
                                     <div class="radio-indicator"></div>
                                 </div>
                             </div>
@@ -205,8 +206,8 @@
                 <div class="component-group-item component-group-item--stacked">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <span class="component-card__title">Fecha de Inicio</span>
-                            <span class="component-card__description">Cuándo comenzará la desconexión.</span>
+                            <span class="component-card__title"><?= $i18n->t('admin.alerts.start_title') ?></span>
+                            <span class="component-card__description"><?= $i18n->t('admin.alerts.start_desc') ?></span>
                         </div>
                     </div>
                     
@@ -228,8 +229,8 @@
                 <div class="component-group-item component-group-item--stacked">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <span class="component-card__title">Duración Estimada</span>
-                            <span class="component-card__description">Tiempo en minutos.</span>
+                            <span class="component-card__title"><?= $i18n->t('admin.alerts.dur_title') ?></span>
+                            <span class="component-card__description"><?= $i18n->t('admin.alerts.dur_desc') ?></span>
                         </div>
                     </div>
                     <div class="component-card__actions">
@@ -250,7 +251,8 @@
                 <hr class="component-divider">
                 <div class="component-group-item component-group-item--stacked">
                     <div class="component-message component-message--error w-100 m-0">
-                        <span style="font-weight: 600;">Atención:</span> Esta acción notificará un cierre inminente a todos los usuarios conectados.
+                        <span style="font-weight: 600;"><?= $i18n->t('admin.alerts.emerg_warn_title') ?>:</span> 
+                        <?= $i18n->t('admin.alerts.emerg_warn_desc') ?>
                     </div>
                 </div>
                 
@@ -258,8 +260,8 @@
                 <div class="component-group-item component-group-item--stacked">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <span class="component-card__title">Hora de Corte</span>
-                            <span class="component-card__description">Hora límite para cerrar sesión.</span>
+                            <span class="component-card__title"><?= $i18n->t('admin.alerts.cutoff_title') ?></span>
+                            <span class="component-card__description"><?= $i18n->t('admin.alerts.cutoff_desc') ?></span>
                         </div>
                     </div>
                     
@@ -285,8 +287,8 @@
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <span class="component-card__title">Documento Legal</span>
-                        <span class="component-card__description">Seleccione el documento a actualizar.</span>
+                        <span class="component-card__title"><?= $i18n->t('admin.alerts.doc_title') ?></span>
+                        <span class="component-card__description"><?= $i18n->t('admin.alerts.doc_desc') ?></span>
                     </div>
                 </div>
                 
@@ -295,7 +297,7 @@
                         <div class="trigger-selector" id="trigger-policy-doc">
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <span class="material-symbols-rounded" id="icon-policy-doc">description</span>
-                                <span class="trigger-select-text" id="text-policy-doc">Términos y Condiciones</span>
+                                <span class="trigger-select-text" id="text-policy-doc"><?= $i18n->t('system_alerts.policy.names.terms') ?></span>
                             </div>
                             <span class="material-symbols-rounded">expand_more</span>
                         </div>
@@ -304,17 +306,17 @@
                             <div class="menu-list">
                                 <div class="menu-link active" data-action="select-policy-doc" data-value="terms">
                                     <span class="material-symbols-rounded menu-link-icon">description</span>
-                                    <span class="menu-link-text">Términos y Condiciones</span>
+                                    <span class="menu-link-text"><?= $i18n->t('system_alerts.policy.names.terms') ?></span>
                                     <div class="radio-indicator"></div>
                                 </div>
                                 <div class="menu-link" data-action="select-policy-doc" data-value="privacy">
                                     <span class="material-symbols-rounded menu-link-icon">lock</span>
-                                    <span class="menu-link-text">Política de Privacidad</span>
+                                    <span class="menu-link-text"><?= $i18n->t('system_alerts.policy.names.privacy') ?></span>
                                     <div class="radio-indicator"></div>
                                 </div>
                                 <div class="menu-link" data-action="select-policy-doc" data-value="cookies">
                                     <span class="material-symbols-rounded menu-link-icon">cookie</span>
-                                    <span class="menu-link-text">Política de Cookies</span>
+                                    <span class="menu-link-text"><?= $i18n->t('system_alerts.policy.names.cookies') ?></span>
                                     <div class="radio-indicator"></div>
                                 </div>
                             </div>
@@ -328,8 +330,8 @@
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <span class="component-card__title">Tipo de Actualización</span>
-                        <span class="component-card__description">Cuándo se aplicarán los cambios.</span>
+                        <span class="component-card__title"><?= $i18n->t('admin.alerts.update_type_title') ?></span>
+                        <span class="component-card__description"><?= $i18n->t('admin.alerts.update_type_desc') ?></span>
                     </div>
                 </div>
                 
@@ -338,7 +340,7 @@
                         <div class="trigger-selector" id="trigger-policy-status">
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <span class="material-symbols-rounded" id="icon-policy-status">calendar_month</span>
-                                <span class="trigger-select-text" id="text-policy-status">Actualización Futura</span>
+                                <span class="trigger-select-text" id="text-policy-status"><?= $i18n->t('admin.alerts.status_future') ?></span>
                             </div>
                             <span class="material-symbols-rounded">expand_more</span>
                         </div>
@@ -347,12 +349,12 @@
                             <div class="menu-list">
                                 <div class="menu-link active" data-action="select-policy-status" data-value="future">
                                     <span class="material-symbols-rounded menu-link-icon">calendar_month</span>
-                                    <span class="menu-link-text">Actualización Futura</span>
+                                    <span class="menu-link-text"><?= $i18n->t('admin.alerts.status_future') ?></span>
                                     <div class="radio-indicator"></div>
                                 </div>
                                 <div class="menu-link" data-action="select-policy-status" data-value="immediate">
                                     <span class="material-symbols-rounded menu-link-icon">publish</span>
-                                    <span class="menu-link-text">Ya Disponible</span>
+                                    <span class="menu-link-text"><?= $i18n->t('admin.alerts.status_immediate') ?></span>
                                     <div class="radio-indicator"></div>
                                 </div>
                             </div>
@@ -366,8 +368,8 @@
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content">
                     <div class="component-card__text">
-                        <span class="component-card__title">Enlace al Documento</span>
-                        <span class="component-card__description">URL pública del documento actualizado.</span>
+                        <span class="component-card__title"><?= $i18n->t('admin.alerts.link_title') ?></span>
+                        <span class="component-card__description"><?= $i18n->t('admin.alerts.link_desc') ?></span>
                     </div>
                 </div>
                 <div class="component-card__actions">
@@ -382,8 +384,8 @@
                 <div class="component-group-item component-group-item--stacked">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <span class="component-card__title">Entra en Vigor</span>
-                            <span class="component-card__description">Fecha efectiva de los cambios.</span>
+                            <span class="component-card__title"><?= $i18n->t('admin.alerts.date_title') ?></span>
+                            <span class="component-card__description"><?= $i18n->t('admin.alerts.date_desc') ?></span>
                         </div>
                     </div>
                     
@@ -408,8 +410,8 @@
         <div class="component-group-item component-group-item--stacked">
             <div class="component-card__content">
                 <div class="component-card__text">
-                    <span class="component-card__title">Vista Previa</span>
-                    <span class="component-card__description">Simulación de cómo lo verán los usuarios.</span>
+                    <span class="component-card__title"><?= $i18n->t('admin.alerts.preview_title') ?></span>
+                    <span class="component-card__description"><?= $i18n->t('admin.alerts.preview_desc') ?></span>
                 </div>
             </div>
             
@@ -419,9 +421,9 @@
                         <span class="material-symbols-rounded" id="preview-icon">info</span>
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 4px;" id="preview-text-container">
-                        <strong style="font-size: 15px; color: var(--text-primary);" id="preview-title">Título de la Alerta</strong>
+                        <strong style="font-size: 15px; color: var(--text-primary);" id="preview-title"><?= $i18n->t('admin.alerts.preview_default_title') ?></strong>
                         <span style="font-size: 14px; color: var(--text-secondary); line-height: 1.4;" id="preview-message">
-                            El contenido del mensaje aparecerá aquí...
+                            <?= $i18n->t('admin.alerts.preview_default_msg') ?>
                         </span>
                     </div>
                 </div>

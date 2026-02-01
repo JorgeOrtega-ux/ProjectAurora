@@ -43,23 +43,23 @@ export const SystemAlertsController = {
             format: 'YYYY-MM-DD'
         });
 
-        // --- CONFIGURACIÓN UI ---
+        // --- CONFIGURACIÓN UI (ACTUALIZADA CON NUEVOS TEXTOS) ---
         const configMainType = {
-            'performance': { icon: 'speed', text: 'Rendimiento' },
-            'maintenance': { icon: 'build', text: 'Mantenimiento' },
-            'policy':      { icon: 'policy', text: 'Políticas y Legal' }
+            'performance': { icon: 'speed', text: 'Reporte de Rendimiento' },
+            'maintenance': { icon: 'build', text: 'Gestión de Mantenimiento' },
+            'policy':      { icon: 'policy', text: 'Políticas y Asuntos Legales' }
         };
 
         const configPerfMsg = {
-            'degradation': { icon: 'troubleshoot', text: 'Degradación de Servicio', message: 'Estamos experimentando lentitud en algunos servicios.' },
-            'latency':     { icon: 'network_check', text: 'Latencia Alta Detectada', message: 'Se ha detectado una latencia alta en la conexión.' },
-            'overload':    { icon: 'memory', text: 'Sobrecarga Temporal',     message: 'El sistema presenta una carga inusual.' }
+            'degradation': { icon: 'troubleshoot', text: 'Degradación de Servicio', message: 'Detectamos lentitud operativa. El equipo técnico ya está trabajando en la estabilización.' },
+            'latency':     { icon: 'network_check', text: 'Latencia Alta Detectada', message: 'La red presenta alta latencia. Es posible que notes demoras en la carga de contenido.' },
+            'overload':    { icon: 'memory', text: 'Sobrecarga Temporal',     message: 'El servidor está procesando un volumen inusual de solicitudes.' }
         };
 
         const configPolicyDoc = {
-            'terms':   { text: 'Términos y Condiciones' },
-            'privacy': { text: 'Política de Privacidad' },
-            'cookies': { text: 'Política de Cookies' }
+            'terms':   { text: 'Términos y Condiciones de Uso' },
+            'privacy': { text: 'Política de Privacidad y Datos' },
+            'cookies': { text: 'Política de Cookies y Rastreo' }
         };
 
         // --- PREVIEW ---
@@ -91,10 +91,10 @@ export const SystemAlertsController = {
                         ? new Date(startVal).toLocaleString([], {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) 
                         : '--/-- --:--';
 
-                    msgEl.textContent = `Los servicios no estarán disponibles desde el ${dateStr} por aprox. ${duration} min.`;
+                    msgEl.textContent = `Mantenimiento Programado: Acceso interrumpido desde ${dateStr} (Duración aprox: ${duration} min).`;
                     metaHtml = `<span class="material-symbols-rounded" style="font-size:14px">timer</span> ${duration} min`;
                 } else {
-                    titleEl.textContent = "Mantenimiento de Emergencia";
+                    titleEl.textContent = "ALERTA CRÍTICA: Mantenimiento de Emergencia";
                     const timeVal = document.getElementById('maint-emergency-time').value;
                     
                     // Formato amigable para el preview
@@ -104,8 +104,8 @@ export const SystemAlertsController = {
                         timeStr = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                     }
 
-                    msgEl.textContent = `Atención: Se realizará un corte de servicio inminente a las ${timeStr}.`;
-                    metaHtml = `<span class="material-symbols-rounded" style="font-size:14px; color:var(--color-error)">warning</span> Urgente`;
+                    msgEl.textContent = `ALERTA CRÍTICA: Desconexión forzosa programada para las ${timeStr}. Guarda tu trabajo inmediatamente.`;
+                    metaHtml = `<span class="material-symbols-rounded" style="font-size:14px; color:var(--color-error)">warning</span> Desconexión Forzosa`;
                     iconEl.textContent = 'warning';
                 }
 
@@ -118,14 +118,11 @@ export const SystemAlertsController = {
 
                 if (selectedPolicyStatus === 'future') {
                     const dateVal = document.getElementById('policy-effective-date').value;
-                    
-                    // [CORREGIDO] Eliminada la concatenación 'T00:00:00' que causaba el error Invalid Date.
-                    // El DateTimePicker ya entrega una fecha formateada compatible.
                     const dateStr = dateVal ? new Date(dateVal).toLocaleDateString() : '--/--/----';
                     
-                    msgEl.innerHTML = `A partir del <b>${dateStr}</b> entrarán en vigor los nuevos <b>${docName}</b>.`;
+                    msgEl.innerHTML = `Aviso Legal: A partir del <b>${dateStr}</b> entrará en vigor la nueva versión de <b>${docName}</b>.`;
                 } else {
-                    msgEl.innerHTML = `Hemos actualizado nuestros <b>${docName}</b>. Revisa los cambios.`;
+                    msgEl.innerHTML = `Actualización Legal: Hemos modificado nuestros <b>${docName}</b>. Te recomendamos revisarlos.`;
                 }
                 
                 if (link) {
@@ -203,7 +200,8 @@ export const SystemAlertsController = {
 
         setupTrigger('trigger-maint-type', 'popover-maint-type', 'select-maint-type', (val) => {
             selectedMaintType = val;
-            document.getElementById('text-maint-type').textContent = (val === 'scheduled' ? 'Programado' : 'Emergencia');
+            const text = (val === 'scheduled' ? 'Intervención Planificada' : 'Incidente Crítico / Urgente');
+            document.getElementById('text-maint-type').textContent = text;
             document.getElementById('subgroup-maint-scheduled').style.display = (val === 'scheduled') ? 'block' : 'none';
             document.getElementById('subgroup-maint-emergency').style.display = (val === 'emergency') ? 'block' : 'none';
         });
@@ -215,7 +213,8 @@ export const SystemAlertsController = {
 
         setupTrigger('trigger-policy-status', 'popover-policy-status', 'select-policy-status', (val) => {
             selectedPolicyStatus = val;
-            document.getElementById('text-policy-status').textContent = (val === 'future' ? 'Actualización Futura' : 'Ya Disponible');
+            const text = (val === 'future' ? 'Programar Cambio Futuro' : 'Publicación Inmediata');
+            document.getElementById('text-policy-status').textContent = text;
             document.getElementById('subgroup-policy-date').style.display = (val === 'immediate') ? 'none' : 'block';
         });
 
@@ -238,7 +237,7 @@ export const SystemAlertsController = {
                     if (!duration || duration <= 0) return { valid: false, msg: 'La duración debe ser mayor a 0 minutos.' };
                 } else {
                     const cutoff = document.getElementById('maint-emergency-time').value;
-                    if (!cutoff) return { valid: false, msg: 'Debes especificar la hora del corte inminente.' };
+                    if (!cutoff) return { valid: false, msg: 'Debes especificar la hora de la desconexión inminente.' };
                 }
             }
             if (selectedMainType === 'policy') {
