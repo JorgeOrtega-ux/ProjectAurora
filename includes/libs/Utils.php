@@ -202,6 +202,8 @@ class Utils {
             }
             if (empty($src)) {
                 $name = $_SESSION['username'] ?? 'User';
+                // Mantenemos esto como fallback visual, pero la idea es usar la nueva funcion generateDefaultProfilePicture
+                // para crear el archivo físico cuando se registre el usuario.
                 $src = "https://ui-avatars.com/api/?name=" . urlencode($name) . "&background=random&color=fff";
             }
         }
@@ -223,6 +225,56 @@ class Utils {
 
         // Formatear como string hexadecimal estándar
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+    }
+
+    /**
+     * [NUEVO] Genera y guarda una imagen de perfil por defecto usando una paleta de colores específica.
+     * * @param string $name El nombre o username para las iniciales.
+     * @param string $outputPath La ruta completa del sistema de archivos donde se guardará la imagen (ej: .../storage/profilePicture/default/xyz.png).
+     * @return bool True si se generó con éxito, False si falló.
+     */
+    public static function generateDefaultProfilePicture($name, $outputPath) {
+        // Lista estricta de colores permitidos
+        $colors = [
+            '2563EB', // Azul
+            '16A34A', // Verde
+            '7C3AED', // Morado
+            'DC2626', // Rojo
+            'EA580C', // Naranja
+            '374151'  // Gris oscuro
+        ];
+
+        // Seleccionar color aleatorio
+        $selectedColor = $colors[array_rand($colors)];
+
+        // Preparar el nombre para la URL
+        $encodedName = urlencode($name);
+
+        // Construir la URL de ui-avatars con el color seleccionado
+        // size=512 para buena calidad, background=color seleccionado, color=fff (blanco)
+        $url = "https://ui-avatars.com/api/?name={$encodedName}&background={$selectedColor}&color=fff&size=512&font-size=0.5&bold=true";
+
+        try {
+            // Obtener el contenido de la imagen
+            $imageData = file_get_contents($url);
+
+            if ($imageData !== false) {
+                // Asegurarse de que el directorio de destino exista
+                $dir = dirname($outputPath);
+                if (!is_dir($dir)) {
+                    mkdir($dir, 0755, true);
+                }
+
+                // Guardar la imagen en el disco
+                if (file_put_contents($outputPath, $imageData) !== false) {
+                    return true;
+                }
+            }
+        } catch (Exception $e) {
+            Logger::log('app', 'Error generando avatar default: ' . $e->getMessage(), ['path' => $outputPath], 'ERROR');
+        }
+
+        return false;
     }
 }
 ?>

@@ -4,6 +4,7 @@
 use Google\Authenticator\GoogleAuthenticator;
 
 require_once __DIR__ . '/../../includes/libs/MailService.php';
+require_once __DIR__ . '/../../includes/libs/Utils.php'; // Aseguramos que Utils esté incluido
 
 class AuthService {
     private $pdo;
@@ -31,7 +32,8 @@ class AuthService {
         }
         return ['success' => true];
     }
-// [NUEVO] Obtener estado del cooldown de registro
+
+    // [NUEVO] Obtener estado del cooldown de registro
     public function getRegistrationStatus($email) {
         if (empty($email)) return ['success' => false];
 
@@ -52,6 +54,7 @@ class AuthService {
             'cooldown' => $ttl
         ];
     }
+
     public function registerStep1($email, $password, $turnstileToken) {
         $configCheck = $this->checkRegistrationStatus();
         if (!$configCheck['success']) return $configCheck;
@@ -307,21 +310,21 @@ class AuthService {
         $passwordHash = $data['password_hash']; 
         $uuid = $this->generateUuid();
 
-        $firstLetter = substr($username, 0, 1);
-        $bgColors = ['40a060', 'a73d3d', '3d3da7', '3d9da7', '9d3da7'];
-        $randomBg = $bgColors[array_rand($bgColors)];
-        $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($firstLetter) . "&background=" . $randomBg . "&color=fff&size=512&format=png&bold=true";
-
-        $storageDir = __DIR__ . '/../../storage/profilePicture/default/';
-        if (!is_dir($storageDir)) { mkdir($storageDir, 0777, true); }
-        
+        // -----------------------------------------------------
+        // [MODIFICADO] Integración de Utils::generateDefaultProfilePicture
+        // -----------------------------------------------------
         $fileName = $uuid . '.png';
-        $filePath = $storageDir . $fileName;
-        $imageContent = @file_get_contents($avatarUrl);
+        // Ruta relativa para la BD
+        $dbPath = 'storage/profilePicture/default/' . $fileName;
+        // Ruta absoluta para guardar el archivo
+        $absolutePath = __DIR__ . '/../../' . $dbPath;
+
+        // Intentamos generar el avatar con los colores permitidos definidos en Utils
+        $avatarGenerated = Utils::generateDefaultProfilePicture($username, $absolutePath);
         
-        $dbAvatarPath = ($imageContent !== false && file_put_contents($filePath, $imageContent)) 
-            ? 'storage/profilePicture/default/' . $fileName 
-            : null;
+        // Si se generó correctamente, guardamos la ruta, si no, null
+        $dbAvatarPath = $avatarGenerated ? $dbPath : null;
+        // -----------------------------------------------------
 
         $this->pdo->beginTransaction();
         try {

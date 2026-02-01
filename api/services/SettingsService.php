@@ -4,6 +4,7 @@
 use Google\Authenticator\GoogleAuthenticator;
 
 require_once __DIR__ . '/../../includes/libs/MailService.php';
+require_once __DIR__ . '/../../includes/libs/Utils.php'; // Aseguramos inclusión de Utils
 
 class SettingsService {
     private $pdo;
@@ -86,28 +87,38 @@ class SettingsService {
         $stmt = $this->pdo->prepare("SELECT avatar_path, username, uuid FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
         $currentUser = $stmt->fetch();
+        
         $oldPath = $currentUser['avatar_path'];
-        $firstLetter = substr($currentUser['username'], 0, 1);
-        $bgColors = ['40a060', 'a73d3d', '3d3da7', '3d9da7', '9d3da7'];
-        $randomBg = $bgColors[array_rand($bgColors)];
-        $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($firstLetter) . "&background=" . $randomBg . "&color=fff&size=512&format=png&bold=true";
-        $baseDir = __DIR__ . '/../../storage/profilePicture/default/';
-        if (!is_dir($baseDir)) mkdir($baseDir, 0755, true);
-        $newFileName = $currentUser['uuid'] . '-' . time() . '.png';
-        $targetPath = $baseDir . $newFileName;
+        $username = $currentUser['username'];
+        $uuid = $currentUser['uuid']; // Usamos el UUID para el nombre del archivo
+
+        // -----------------------------------------------------
+        // [MODIFICADO] Usar Utils::generateDefaultProfilePicture
+        // -----------------------------------------------------
+        $newFileName = $uuid . '-' . time() . '.png';
         $dbPath = 'storage/profilePicture/default/' . $newFileName;
-        $imageContent = @file_get_contents($avatarUrl);
-        if ($imageContent !== false && file_put_contents($targetPath, $imageContent)) {
+        $absolutePath = __DIR__ . '/../../' . $dbPath;
+
+        // Llamamos a la función centralizada que usa la nueva paleta de colores
+        if (Utils::generateDefaultProfilePicture($username, $absolutePath)) {
+            
             $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
             if ($update->execute([$dbPath, $this->userId])) {
+                
                 $this->logProfileChange('avatar_delete', $oldPath, $dbPath . ' (Default)');
                 $this->deleteOldAvatar($oldPath);
                 $_SESSION['avatar'] = $dbPath;
+                
+                // Leemos la imagen generada para enviarla al frontend en Base64
+                // Esto asegura que la UI se actualice inmediatamente sin recargar
+                $imageContent = file_get_contents($absolutePath);
                 $base64Image = 'data:image/png;base64,' . base64_encode($imageContent);
+                
                 return ['success' => true, 'message' => $this->i18n->t('api.pic_deleted'), 'type' => 'default', 'new_src' => $base64Image];
             }
             return ['success' => false, 'message' => $this->i18n->t('api.pic_db_error')];
         }
+        
         return ['success' => false, 'message' => $this->i18n->t('api.pic_gen_error')];
     }
 
@@ -121,7 +132,7 @@ class SettingsService {
         $email = $stmt->fetchColumn();
 
         // Definir ambas claves
-        $mainKey = "verify:email_update:{$email}";         // Dura 15 min (la que contiene el código)
+        $mainKey = "verify:email_update:{$email}";        // Dura 15 min (la que contiene el código)
         $cooldownKey = "verify:cooldown:email_update:{$email}"; // Dura 60 seg (el bloqueo)
 
         // [CORRECCIÓN] Verificar primero si existe el proceso activo (Main Key)
