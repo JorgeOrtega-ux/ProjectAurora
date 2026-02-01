@@ -4,7 +4,7 @@
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { Dialog } from '../../core/dialog-manager.js';
-import { DateTimePicker } from '../../core/date-time-picker.js'; // <--- Importamos el Calendario
+import { DateTimePicker } from '../../core/date-time-picker.js';
 
 export const SystemAlertsController = {
     init: () => {
@@ -22,13 +22,28 @@ export const SystemAlertsController = {
         let selectedPolicyDoc = 'terms';
         let selectedPolicyStatus = 'future';
 
-        // --- INICIALIZAR COMPONENTES (Calendario) ---
-        // Se vincula al wrapper y al input hidden definidos en el HTML
+        // --- INICIALIZAR CALENDARIOS ---
+        
+        // 1. Mantenimiento Programado (Fecha + Hora)
         const maintPicker = new DateTimePicker('wrapper-maint-start', 'maint-start-time', {
-            minDate: new Date() // No permitir fechas pasadas
+            minDate: new Date(),
+            enableTime: true
         });
 
-        // --- CONFIGURACIÓN UI (Textos visuales para el Admin) ---
+        // 2. Mantenimiento Emergencia (Fecha + Hora) - NUEVO
+        const emergencyPicker = new DateTimePicker('wrapper-maint-emergency', 'maint-emergency-time', {
+            minDate: new Date(),
+            enableTime: true
+        });
+
+        // 3. Políticas (Solo Fecha)
+        const policyPicker = new DateTimePicker('wrapper-policy-date', 'policy-effective-date', {
+            minDate: new Date(),
+            enableTime: false, 
+            format: 'YYYY-MM-DD'
+        });
+
+        // --- CONFIGURACIÓN UI ---
         const configMainType = {
             'performance': { icon: 'speed', text: 'Rendimiento' },
             'maintenance': { icon: 'build', text: 'Mantenimiento' },
@@ -54,7 +69,6 @@ export const SystemAlertsController = {
             const msgEl = document.getElementById('preview-message');
             const textContainer = document.getElementById('preview-text-container');
             
-            // Limpiar metadatos previos
             const existingMeta = document.getElementById('preview-meta');
             if (existingMeta) existingMeta.remove();
 
@@ -70,11 +84,9 @@ export const SystemAlertsController = {
             } else if (selectedMainType === 'maintenance') {
                 if (selectedMaintType === 'scheduled') {
                     titleEl.textContent = "Mantenimiento Programado";
-                    // Obtenemos el valor del input hidden que actualiza el DateTimePicker
                     const startVal = document.getElementById('maint-start-time').value;
                     const duration = document.getElementById('maint-duration').value || '60';
                     
-                    // Formatear fecha para el preview
                     const dateStr = startVal 
                         ? new Date(startVal).toLocaleString([], {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) 
                         : '--/-- --:--';
@@ -83,8 +95,16 @@ export const SystemAlertsController = {
                     metaHtml = `<span class="material-symbols-rounded" style="font-size:14px">timer</span> ${duration} min`;
                 } else {
                     titleEl.textContent = "Mantenimiento de Emergencia";
-                    const time = document.getElementById('maint-emergency-time').value || '--:--';
-                    msgEl.textContent = `Atención: Se realizará un corte de servicio inminente a las ${time}.`;
+                    const timeVal = document.getElementById('maint-emergency-time').value;
+                    
+                    // Formato amigable para el preview (solo hora si es hoy, o fecha+hora)
+                    let timeStr = '--:--';
+                    if (timeVal) {
+                        const d = new Date(timeVal);
+                        timeStr = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    }
+
+                    msgEl.textContent = `Atención: Se realizará un corte de servicio inminente a las ${timeStr}.`;
                     metaHtml = `<span class="material-symbols-rounded" style="font-size:14px; color:var(--color-error)">warning</span> Urgente`;
                     iconEl.textContent = 'warning';
                 }
@@ -119,7 +139,6 @@ export const SystemAlertsController = {
         };
 
         // Listeners UI
-        // Incluimos 'maint-start-time' porque el DateTimePicker dispara evento 'input' al cambiar
         ['maint-start-time', 'maint-duration', 'maint-emergency-time', 'policy-link', 'policy-effective-date'].forEach(id => {
             const el = document.getElementById(id);
             if(el) el.addEventListener('input', updatePreview);
@@ -229,7 +248,7 @@ export const SystemAlertsController = {
 
         // --- LÓGICA DE EMISIÓN ---
         const executeEmission = async () => {
-            Dialog.showLoading('Emitiendo alerta...'); // Feedback visual
+            Dialog.showLoading('Emitiendo alerta...');
 
             let payload = { type: selectedMainType, meta: {} };
 
@@ -263,7 +282,7 @@ export const SystemAlertsController = {
                 formData.append('alert_data', JSON.stringify(payload));
                 const res = await ApiService.post(ApiService.Routes.Admin.CreateSystemAlert, formData);
                 
-                Dialog.close(); // Cerrar loading
+                Dialog.close();
 
                 if (res.success) {
                     Toast.show('Difusión emitida correctamente', 'success');
@@ -279,27 +298,21 @@ export const SystemAlertsController = {
 
         if (btnEmit) {
             btnEmit.onclick = async () => {
-                // 1. Validar
                 const validation = validateInputs();
                 if (!validation.valid) {
                     Dialog.alert({ title: 'Datos incompletos', message: validation.msg });
                     return;
                 }
 
-                // 2. Comprobar conflicto (Alerta activa)
                 if (isAlertActive) {
                     const confirmed = await Dialog.confirm({
                         title: 'Alerta en curso detectada',
-                        message: 'Ya existe una alerta transmitiéndose actualmente. Si emites esta nueva, la anterior se desactivará. ¿Deseas continuar?',
+                        message: 'Ya existe una alerta transmitiéndose. ¿Deseas reemplazarla?',
                         confirmText: 'Reemplazar',
                         cancelText: 'Cancelar'
                     });
-
-                    if (confirmed) {
-                        await executeEmission();
-                    }
+                    if (confirmed) await executeEmission();
                 } else {
-                    // 3. Emitir Directamente
                     await executeEmission();
                 }
             };
@@ -308,7 +321,7 @@ export const SystemAlertsController = {
         const handleDeactivate = async () => {
             const confirmed = await Dialog.confirm({
                 title: 'Desactivar Difusión',
-                message: '¿Estás seguro de que deseas detener la alerta actual y normalizar el sistema?',
+                message: '¿Estás seguro de que deseas detener la alerta actual?',
                 type: 'danger',
                 confirmText: 'Detener',
                 cancelText: 'Cancelar'
@@ -359,14 +372,12 @@ export const SystemAlertsController = {
                 if (res.success && res.alert) {
                     isAlertActive = true; 
                     const color = res.alert.severity === 'critical' ? 'var(--color-error)' : 'var(--color-warning)';
-                    
                     statIcon.textContent = 'warning';
                     statIcon.style.color = color;
                     statText.textContent = "Activa";
                     statText.style.color = color;
                     cardStatus.style.borderLeftColor = color;
                     btnMini.style.display = 'flex';
-
                     impactVal.textContent = res.alert.severity === 'critical' ? 'Crítico' : 'Moderado';
                     impactIcon.style.color = color;
                     impactTime.textContent = res.alert.type.toUpperCase(); 
@@ -378,10 +389,8 @@ export const SystemAlertsController = {
                     statText.style.color = 'var(--text-primary)';
                     cardStatus.style.borderLeftColor = 'var(--color-success)';
                     btnMini.style.display = 'none';
-
                     impactVal.textContent = "Normal";
                     impactIcon.style.color = 'var(--text-tertiary)';
-                    
                     if (res.stats && res.stats.last_alert_time) {
                         impactTime.textContent = "Última: " + res.stats.last_alert_time;
                     } else {

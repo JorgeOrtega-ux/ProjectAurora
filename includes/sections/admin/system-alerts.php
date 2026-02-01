@@ -222,7 +222,7 @@
                             <input type="hidden" id="maint-start-time">
                         </div>
                     </div>
-                    </div>
+                </div>
 
                 <hr class="component-divider">
                 <div class="component-group-item component-group-item--stacked">
@@ -262,12 +262,20 @@
                             <span class="component-card__description">Hora límite para cerrar sesión.</span>
                         </div>
                     </div>
+                    
                     <div class="component-card__actions">
-                        <div class="component-input-wrapper" style="width: auto;">
-                            <input type="time" id="maint-emergency-time" class="component-text-input">
+                        <div class="date-time-picker-wrapper" id="wrapper-maint-emergency">
+                            <div class="trigger-selector">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="material-symbols-rounded" style="color: var(--text-tertiary);">schedule</span>
+                                    <span class="trigger-select-text">Seleccionar hora...</span>
+                                </div>
+                                <span class="material-symbols-rounded">expand_more</span>
+                            </div>
+                            <input type="hidden" id="maint-emergency-time">
                         </div>
                     </div>
-                </div>
+                    </div>
             </div>
         </div>
 
@@ -378,12 +386,20 @@
                             <span class="component-card__description">Fecha efectiva de los cambios.</span>
                         </div>
                     </div>
+                    
                     <div class="component-card__actions">
-                        <div class="component-input-wrapper" style="width: auto;">
-                            <input type="date" id="policy-effective-date" class="component-text-input">
+                        <div class="date-time-picker-wrapper" id="wrapper-policy-date">
+                            <div class="trigger-selector">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="material-symbols-rounded" style="color: var(--text-tertiary);">calendar_month</span>
+                                    <span class="trigger-select-text">Seleccionar fecha...</span>
+                                </div>
+                                <span class="material-symbols-rounded">expand_more</span>
+                            </div>
+                            <input type="hidden" id="policy-effective-date">
                         </div>
                     </div>
-                </div>
+                    </div>
             </div>
         </div>
         
