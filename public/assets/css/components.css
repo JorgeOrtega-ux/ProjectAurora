@@ -42,7 +42,6 @@
 
 .component-card.is-selected {
     border-color: var(--action-primary);
-    background-color: var(--bg-hover-light);
     box-shadow: 0 0 0 1px var(--action-primary);
 }
 
