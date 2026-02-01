@@ -22,7 +22,6 @@
         window.TURNSTILE_SITE_KEY = '<?php echo $turnstileSiteKey; ?>';
         window.IS_LOGGED_IN = <?php echo $isLoggedIn ? 'true' : 'false'; ?>;
         
-        // Aplicación inmediata del tema (antes de cargar módulos)
         (function() {
             try {
                 var localPrefs = localStorage.getItem('guest_prefs');
@@ -54,15 +53,14 @@
                     </div>
                 <?php endif; ?>
 
-                <div id="system-alert-container">
-                    <div class="system-alert-box">
-                        <div class="alert-content-left">
-                            <span id="sys-alert-icon" class="material-symbols-rounded">info</span>
-                            <span id="sys-alert-msg">Mensaje de alerta...</span>
-                            <a id="sys-alert-link" style="display:none"></a>
+                <div class="component-system-alert-wrapper" style="display: none;" data-element="system-alert-wrapper">
+                    <div class="component-system-alert-box">
+                        <div class="component-system-alert__content">
+                            <span class="material-symbols-rounded" data-element="alert-icon">info</span>
+                            <span class="component-system-alert__message" data-element="alert-message">...</span>
                         </div>
-                        <div class="alert-content-right">
-                            <button id="sys-alert-close">
+                        <div class="component-system-alert__actions">
+                            <button class="component-system-alert__close" data-action="close-system-alert">
                                 <span class="material-symbols-rounded" style="font-size: 18px;">close</span>
                             </button>
                         </div>

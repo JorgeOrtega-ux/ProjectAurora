@@ -17,7 +17,7 @@ export const SocketClient = {
     },
     
     init: () => {
-        console.log("SocketClient: Inicializando...");
+        console.log("SocketClient: Inicializado...");
         SocketClient.connect();
     },
 
@@ -53,8 +53,8 @@ export const SocketClient = {
                         showSystemAlert(data.message);
                     }
                     else if (data.type === 'system_alert_clear') {
-                        const container = document.getElementById('system-alert-container');
-                        if (container) container.style.display = 'none';
+                        const wrapper = document.querySelector('[data-element="system-alert-wrapper"]');
+                        if (wrapper) wrapper.style.display = 'none';
                         localStorage.removeItem('hidden_alert_id');
                     }
                     
@@ -80,50 +80,44 @@ export const SocketClient = {
     }
 };
 
-// === Helper para mostrar Alertas con TRADUCCIÓN ===
+// === Helper para mostrar Alertas REFACTORIZADO (Sin IDs) ===
 function showSystemAlert(alertData) {
-    const container = document.getElementById('system-alert-container');
-    if (!container) return;
+    // 1. Seleccionar el Wrapper Global
+    const wrapper = document.querySelector('[data-element="system-alert-wrapper"]');
+    if (!wrapper) return;
 
     const hiddenId = localStorage.getItem('hidden_alert_id');
     if (hiddenId === alertData.id) return;
 
-    let alertBox = container.querySelector('.system-alert-box');
-    if (!alertBox) {
-        alertBox = document.createElement('div');
-        alertBox.className = 'system-alert-box';
-        while (container.firstChild) alertBox.appendChild(container.firstChild);
-        container.appendChild(alertBox);
-    }
+    // 2. Selectores internos usando Data Attributes
+    const box = wrapper.querySelector('.component-system-alert-box');
+    const icon = wrapper.querySelector('[data-element="alert-icon"]');
+    const msg = wrapper.querySelector('[data-element="alert-message"]');
+    const closeBtn = wrapper.querySelector('[data-action="close-system-alert"]');
 
-    const icon = document.getElementById('sys-alert-icon');
-    const msg = document.getElementById('sys-alert-msg');
-    const closeBtn = document.getElementById('sys-alert-close');
+    if (!box || !icon || !msg) return; 
 
-    if (!icon || !msg) return; 
-
-    // Estilos
-    alertBox.classList.remove('alert-bg-critical', 'alert-bg-warning', 'alert-bg-info');
-    let bgClass = 'alert-bg-info';
+    // 3. Estilos de Estado (BEM-like classes)
+    box.classList.remove('type--critical', 'type--warning', 'type--info');
+    let modClass = 'type--info';
     let iconName = 'info';
     
     if (alertData.severity === 'critical') {
-        bgClass = 'alert-bg-critical';
+        modClass = 'type--critical';
         iconName = 'report';
     } else if (alertData.severity === 'warning') {
-        bgClass = 'alert-bg-warning';
+        modClass = 'type--warning';
         iconName = 'warning';
     }
 
-    alertBox.classList.add(bgClass);
+    box.classList.add(modClass);
     icon.textContent = iconName;
 
-    // === LÓGICA DE TRADUCCIÓN ===
+    // 4. Lógica de Traducción
     const translationKey = alertData.message;
     const meta = alertData.meta || {};
     let params = [];
 
-    // Preparamos los parámetros
     if (alertData.type === 'maintenance') {
         if (meta.subtype === 'emergency') {
             params.push(meta.cutoff || '--:--');
@@ -136,10 +130,8 @@ function showSystemAlert(alertData) {
     else if (alertData.type === 'policy') {
         const docKey = `system_alerts.policy.names.${meta.doc || 'terms'}`;
         const docName = I18n.t(docKey); 
-
         if (meta.update_type === 'future') {
             const dateStr = meta.date ? new Date(meta.date + 'T00:00:00').toLocaleDateString() : '--/--';
-            // Usamos <strong> para resaltar fechas y nombres ya que usaremos innerHTML
             params.push(`<strong>${dateStr}</strong>`);
             params.push(`<strong>${docName}</strong>`);
         } else {
@@ -147,24 +139,22 @@ function showSystemAlert(alertData) {
         }
     }
 
-    // 1. Traducción base
     let fullText = I18n.t(translationKey, params);
 
-    // 2. [CORRECCIÓN] Agregar el Link si existe en la metadata
     if (meta.link) {
         const textVerMas = I18n.t('js.core.view_more') || 'Ver más';
-        // Agregamos el enlace con estilos inline para asegurar que se vea blanco y subrayado
-        fullText += ` <a href="${meta.link}" target="_blank" style="color: inherit; text-decoration: underline; font-weight: bold; margin-left: 6px;">${textVerMas}</a>`;
+        fullText += ` <a href="${meta.link}" target="_blank">${textVerMas}</a>`;
     }
 
-    // 3. [CORRECCIÓN] Usar innerHTML para que funcionen los enlaces y negritas
     msg.innerHTML = fullText;
-    msg.title = msg.textContent; // Tooltip con texto plano
+    msg.title = msg.textContent;
     
-    container.style.display = 'block';
+    wrapper.style.display = 'block';
 
-    closeBtn.onclick = () => {
-        container.style.display = 'none';
-        localStorage.setItem('hidden_alert_id', alertData.id);
-    };
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            wrapper.style.display = 'none';
+            localStorage.setItem('hidden_alert_id', alertData.id);
+        };
+    }
 }

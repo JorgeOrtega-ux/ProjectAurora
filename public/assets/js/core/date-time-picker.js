@@ -1,25 +1,40 @@
 /**
  * public/assets/js/core/date-time-picker.js
- * Componente de Calendario y Hora Profesional para Project Aurora
+ * Componente Refactorizado: Sin IDs, soporta Selectores de Clase y Elementos DOM
  */
 
 export class DateTimePicker {
-    constructor(wrapperId, inputId, options = {}) {
-        this.wrapper = document.getElementById(wrapperId);
-        this.input = document.getElementById(inputId); // El input hidden
+    /**
+     * @param {string|HTMLElement} wrapperSelector - Selector CSS o Elemento del contenedor
+     * @param {string|HTMLElement} inputSelector - Selector CSS o Elemento del input hidden
+     * @param {Object} options - Configuración opcional
+     */
+    constructor(wrapperSelector, inputSelector, options = {}) {
+        // Soporte híbrido: string selector o elemento DOM directo
+        this.wrapper = (typeof wrapperSelector === 'string') 
+            ? document.querySelector(wrapperSelector) 
+            : wrapperSelector;
+
+        this.input = (typeof inputSelector === 'string') 
+            ? document.querySelector(inputSelector) 
+            : inputSelector;
+
         this.options = {
             enableTime: true,
-            minDate: new Date(), // Por defecto no permite pasado
-            format: 'YYYY-MM-DDTHH:mm', // Formato para el value del input
+            minDate: new Date(),
+            format: 'YYYY-MM-DDTHH:mm',
             displayFormat: { date: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' },
             ...options
         };
 
-        if (!this.wrapper || !this.input) return;
+        if (!this.wrapper || !this.input) {
+            console.error("DateTimePicker: Wrapper o Input no encontrado", wrapperSelector);
+            return;
+        }
 
         // Estado interno
-        this.currentDate = new Date(); // Fecha navegada (mes/año visible)
-        this.selectedDate = null;      // Fecha seleccionada
+        this.currentDate = new Date(); 
+        this.selectedDate = null;      
         
         this.init();
     }
@@ -30,7 +45,6 @@ export class DateTimePicker {
         
         // Si el input ya tiene valor, lo cargamos
         if (this.input.value) {
-            // Intentar parsear la fecha (soporta ISO strings)
             const d = new Date(this.input.value);
             if (!isNaN(d.getTime())) {
                 this.selectedDate = d;
@@ -39,15 +53,15 @@ export class DateTimePicker {
             }
         }
         
-        // Render inicial
+        // Texto inicial si no hay fecha seleccionada
         if (!this.selectedDate) {
-             this.wrapper.querySelector('.trigger-select-text').textContent = "Seleccionar fecha...";
+             const triggerText = this.wrapper.querySelector('.trigger-select-text');
+             if(triggerText) triggerText.textContent = "Seleccionar fecha...";
         }
         this.renderCalendar();
     }
 
     renderDOM() {
-        // Estructura del popover
         const popoverHTML = `
             <div class="calendar-popover">
                 <div class="calendar-header">
@@ -83,10 +97,10 @@ export class DateTimePicker {
             </div>
         `;
 
-        // Inyectar el popover dentro del wrapper (que debe tener position: relative)
+        // Inyectar el popover dentro del wrapper
         this.wrapper.insertAdjacentHTML('beforeend', popoverHTML);
 
-        // Referencias a elementos creados
+        // Referencias a elementos internos usando querySelector (scoped)
         this.popover = this.wrapper.querySelector('.calendar-popover');
         this.grid = this.wrapper.querySelector('.calendar-grid');
         this.monthLabel = this.wrapper.querySelector('.calendar-month-label');
@@ -96,7 +110,7 @@ export class DateTimePicker {
             this.hourInput = this.wrapper.querySelector('.time-input.hour');
             this.minuteInput = this.wrapper.querySelector('.time-input.minute');
             
-            // Valores por defecto hora actual o la seleccionada
+            // Valores por defecto
             const now = this.selectedDate || new Date();
             this.hourInput.value = String(now.getHours()).padStart(2, '0');
             this.minuteInput.value = String(now.getMinutes()).padStart(2, '0');
@@ -105,20 +119,15 @@ export class DateTimePicker {
 
     renderCalendar() {
         this.grid.innerHTML = '';
-        
-        // Actualizar Header
         const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
         this.monthLabel.textContent = monthNames[this.currentDate.getMonth()];
         this.yearInput.value = this.currentDate.getFullYear();
 
-        // Calcular días
         const year = this.currentDate.getFullYear();
         const month = this.currentDate.getMonth();
-        
         const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 (Domingo) - 6
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         
-        // Preparar fecha mínima (resetear horas para comparar solo días)
         let minDateTimestamp = 0;
         if (this.options.minDate) {
             const m = new Date(this.options.minDate);
@@ -126,41 +135,35 @@ export class DateTimePicker {
             minDateTimestamp = m.getTime();
         }
 
-        // Rellenar espacios vacíos al inicio
+        // Espacios vacíos
         for (let i = 0; i < firstDayOfMonth; i++) {
             const emptyCell = document.createElement('div');
             emptyCell.className = 'calendar-day empty';
             this.grid.appendChild(emptyCell);
         }
 
-        // Crear días
         const today = new Date();
         today.setHours(0,0,0,0);
 
+        // Días del mes
         for (let day = 1; day <= daysInMonth; day++) {
             const dateCell = document.createElement('div');
             dateCell.className = 'calendar-day';
             dateCell.textContent = day;
             
-            // Fecha que representa esta celda
             const cellDate = new Date(year, month, day);
             const cellTimestamp = cellDate.getTime();
 
-            // Estilos: Hoy
             if (cellDate.toDateString() === today.toDateString()) {
                 dateCell.classList.add('today');
             }
 
-            // Estilos: Seleccionado
             if (this.selectedDate && cellDate.toDateString() === this.selectedDate.toDateString()) {
                 dateCell.classList.add('selected');
             }
 
-            // Lógica de deshabilitado (Días pasados)
-            // Usamos 'is-disabled' en lugar de 'disabled' para evitar que CSS globales lo oculten
             if (minDateTimestamp > 0 && cellTimestamp < minDateTimestamp) {
                 dateCell.classList.add('is-disabled');
-                // IMPORTANTE: No asignamos onclick
             } else {
                 dateCell.onclick = () => this.selectDate(day);
             }
@@ -172,15 +175,13 @@ export class DateTimePicker {
     bindEvents() {
         const trigger = this.wrapper.querySelector('.trigger-selector');
         
-        // Toggle Popover
         trigger.onclick = (e) => {
             e.stopPropagation();
-            this.closeAllPopovers(); // Cerrar otros
+            this.closeAllPopovers();
             this.wrapper.classList.toggle('active');
             this.popover.classList.toggle('active');
         };
 
-        // Navegación Mes
         this.wrapper.querySelector('[data-action="prev-month"]').onclick = (e) => {
             e.stopPropagation();
             this.currentDate.setMonth(this.currentDate.getMonth() - 1);
@@ -193,13 +194,11 @@ export class DateTimePicker {
             this.renderCalendar();
         };
 
-        // Cambio Año Input
         this.yearInput.onchange = (e) => {
             this.currentDate.setFullYear(parseInt(e.target.value));
             this.renderCalendar();
         };
 
-        // Confirmar Hora y Cerrar
         if (this.options.enableTime) {
             const btn = this.wrapper.querySelector('.calendar-confirm-btn');
             btn.onclick = (e) => {
@@ -208,7 +207,6 @@ export class DateTimePicker {
                 this.close();
             };
             
-            // Validar inputs de hora
             [this.hourInput, this.minuteInput].forEach(inp => {
                 inp.onchange = () => {
                     let val = parseInt(inp.value);
@@ -217,13 +215,11 @@ export class DateTimePicker {
                     const max = inp.classList.contains('hour') ? 23 : 59;
                     if (val > max) val = max;
                     inp.value = String(val).padStart(2, '0');
-                    // Actualizar en tiempo real si ya hay fecha seleccionada
                     if (this.selectedDate) this.updateValue();
                 };
             });
         }
 
-        // Click fuera para cerrar
         document.addEventListener('click', (e) => {
             if (!this.wrapper.contains(e.target)) {
                 this.close();
@@ -232,14 +228,12 @@ export class DateTimePicker {
     }
 
     selectDate(day) {
-        // Establecer fecha seleccionada
         if (!this.selectedDate) this.selectedDate = new Date();
         
         this.selectedDate.setFullYear(this.currentDate.getFullYear());
         this.selectedDate.setMonth(this.currentDate.getMonth());
         this.selectedDate.setDate(day);
 
-        // Si no hay hora, preservar la que tenga o usar 00:00
         if (this.options.enableTime) {
             const h = parseInt(this.hourInput.value) || 0;
             const m = parseInt(this.minuteInput.value) || 0;
@@ -249,9 +243,8 @@ export class DateTimePicker {
         }
 
         this.updateValue();
-        this.renderCalendar(); // Para refrescar la clase .selected
+        this.renderCalendar();
         
-        // Si no es selector de hora, cerrar al elegir fecha
         if (!this.options.enableTime) {
             this.close();
         }
@@ -260,21 +253,18 @@ export class DateTimePicker {
     updateValue() {
         if (!this.selectedDate) return;
 
-        // Actualizar horas en el objeto fecha
         if (this.options.enableTime) {
              const h = parseInt(this.hourInput.value);
              const m = parseInt(this.minuteInput.value);
              this.selectedDate.setHours(h, m);
         }
 
-        // Formato ISO para el input hidden: YYYY-MM-DDTHH:mm
         const isoString = this.toLocalISOString(this.selectedDate);
         this.input.value = isoString;
         
-        // Disparar evento 'input' para que el controlador lo detecte
+        // Disparar evento nativo
         this.input.dispatchEvent(new Event('input'));
         
-        // Disparar callback de opciones si existe
         if (typeof this.options.onChange === 'function') {
             this.options.onChange([this.selectedDate], isoString, this);
         }
@@ -286,7 +276,6 @@ export class DateTimePicker {
         if (!this.selectedDate) return;
         const textEl = this.wrapper.querySelector('.trigger-select-text');
         
-        // Formato legible
         const options = { day: 'numeric', month: 'short', year: 'numeric' };
         if (this.options.enableTime) {
             options.hour = '2-digit';
