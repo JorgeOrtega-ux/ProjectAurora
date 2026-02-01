@@ -113,7 +113,6 @@ export const SocketClient = {
         }
     }
 };
-
 // === Helper para mostrar Alertas ===
 function showSystemAlert(alertData) {
     const container = document.getElementById('system-alert-container');
@@ -123,70 +122,62 @@ function showSystemAlert(alertData) {
     const hiddenId = localStorage.getItem('hidden_alert_id');
     if (hiddenId === alertData.id) return;
 
+    // Elementos internos
+    // Asegúrate de que tu HTML tenga un div hijo con clase .system-alert-box
+    let alertBox = container.querySelector('.system-alert-box');
+    
+    // Si no existe el hijo (estructura antigua), lo creamos al vuelo o lo seleccionamos si ya actualizaste el HTML
+    if (!alertBox) {
+        // Fallback simple por si el HTML no se ha actualizado manualmente
+        alertBox = document.createElement('div');
+        alertBox.className = 'system-alert-box';
+        while (container.firstChild) alertBox.appendChild(container.firstChild);
+        container.appendChild(alertBox);
+    }
+
     const icon = document.getElementById('sys-alert-icon');
-    const title = document.getElementById('sys-alert-title');
     const msg = document.getElementById('sys-alert-msg');
-    const link = document.getElementById('sys-alert-link');
     const closeBtn = document.getElementById('sys-alert-close');
 
-    if (!icon || !title || !msg) return; 
+    if (!icon || !msg) return; 
 
-    // Configurar Estilos según severidad
-    let borderColor = '#333';
+    // Reset de clases de color
+    alertBox.classList.remove('alert-bg-critical', 'alert-bg-warning', 'alert-bg-info');
+
+    // Configuración Simplificada
+    let bgClass = 'alert-bg-info';
     let iconName = 'info';
-    let iconColor = '#3b82f6'; // Default azul
     
     if (alertData.severity === 'critical') {
-        borderColor = '#ef4444'; // Rojo
+        bgClass = 'alert-bg-critical';
         iconName = 'report';
-        iconColor = '#ef4444';
     } else if (alertData.severity === 'warning') {
-        borderColor = '#f59e0b'; // Naranja
+        bgClass = 'alert-bg-warning';
         iconName = 'warning';
-        iconColor = '#f59e0b';
-    } else {
-        borderColor = '#3b82f6'; // Azul
-        iconName = 'info';
-        iconColor = '#3b82f6';
     }
 
-    container.style.borderBottomColor = borderColor;
+    // Aplicar estilos
+    alertBox.classList.add(bgClass);
     icon.textContent = iconName;
-    icon.style.color = iconColor;
+    // Ya no cambiamos icon.style.color porque por CSS ahora es blanco fijo
 
-    // Configurar Texto
-    if (alertData.type === 'performance') {
-        title.textContent = 'Aviso de Rendimiento';
-        msg.textContent = alertData.message;
-    } else if (alertData.type === 'maintenance') {
-        title.textContent = 'Mantenimiento del Sistema';
-        if (alertData.meta && alertData.meta.subtype === 'scheduled') {
-            const date = new Date(alertData.meta.start).toLocaleString();
-            msg.textContent = `Programado para el ${date} (${alertData.meta.duration} min).`;
-        } else {
-            msg.textContent = `Emergencia: ${alertData.message}`;
-        }
+    // Configurar Texto (Una sola línea: Título + Mensaje)
+    let fullText = alertData.message;
+    
+    // Si hay metadatos específicos, construimos una frase corta
+    if (alertData.type === 'maintenance' && alertData.meta?.subtype === 'scheduled') {
+        const time = new Date(alertData.meta.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        fullText = `Mantenimiento programado: ${time} (${alertData.meta.duration} min)`;
     } else if (alertData.type === 'policy') {
-        title.textContent = 'Actualización Legal';
-        const docName = (alertData.meta.doc || 'Documento').toUpperCase();
-        const dateStr = alertData.meta.status === 'future' ? 'Entra en vigor: ' + alertData.meta.date : 'Actualizado';
-        msg.textContent = `${docName} - ${dateStr}`;
-    } else {
-        // Fallback genérico
-        title.textContent = 'Aviso del Sistema';
-        msg.textContent = alertData.message;
+        fullText = `Actualización legal: ${alertData.meta.doc || 'Documentos'}`;
     }
 
-    // Link
-    if (alertData.meta && alertData.meta.link) {
-        link.href = alertData.meta.link;
-        link.style.display = 'inline';
-    } else {
-        link.style.display = 'none';
-    }
+    // Insertar texto
+    msg.textContent = fullText;
+    msg.title = fullText; // Tooltip nativo por si se corta con "..."
 
-    // Mostrar
-    container.style.display = 'flex';
+    // Mostrar contenedor padre
+    container.style.display = 'block'; // Usamos block porque el hijo ya tiene flex
 
     // Evento Cerrar
     closeBtn.onclick = () => {

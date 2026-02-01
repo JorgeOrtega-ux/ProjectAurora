@@ -11,7 +11,7 @@ $cspNonce = Utils::applySecurityHeaders();
 // 3. AUTO-LOGIN
 if (!isset($_SESSION['user_id'])) {
     require_once __DIR__ . '/../api/services/AuthService.php';
-    $authService = new AuthService($pdo, $i18n, $redis); 
+    $authService = new AuthService($pdo, $i18n, $redis);
     $authService->attemptAutoLogin();
 }
 
@@ -30,15 +30,15 @@ $protectedRoutes = $securityRules['protected_routes'];
 
 // Configuración de mantenimiento
 $maintenanceMode = Utils::getServerConfig($pdo, 'maintenance_mode', '0');
-$userRole = $_SESSION['role'] ?? 'guest'; 
+$userRole = $_SESSION['role'] ?? 'guest';
 $allowedRoles = ['founder', 'administrator', 'moderator'];
 
 $isAdminRoute = strpos($currentSection, 'admin/') === 0;
 $isLoggedIn = isset($_SESSION['user_id']);
 
 $showMaintenanceScreen = (
-    $maintenanceMode === '1' && 
-    !in_array($userRole, $allowedRoles) && 
+    $maintenanceMode === '1' &&
+    !in_array($userRole, $allowedRoles) &&
     !in_array($currentSection, $authRoutes) &&
     $currentSection !== 'account-status'
 );
@@ -51,12 +51,14 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
             $stmtToken = $pdo->prepare("SELECT id FROM user_auth_tokens WHERE id = ?");
             $stmtToken->execute([$_SESSION['current_token_id']]);
             if (!$stmtToken->fetch()) {
-                session_unset(); session_destroy();
+                session_unset();
+                session_destroy();
                 setcookie('auth_persistence_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
-                header("Location: " . $basePath . "login"); exit;
+                header("Location: " . $basePath . "login");
+                exit;
             }
         }
-        
+
         // Obtener datos frescos
         $stmt = $pdo->prepare("SELECT role, avatar_path, username, email, two_factor_enabled, account_status, suspension_ends_at, status_reason FROM users WHERE id = ? LIMIT 1");
         $stmt->execute([$_SESSION['user_id']]);
@@ -79,10 +81,12 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
                     'reason' => $freshUser['status_reason'],
                     'suspension_ends_at' => $freshUser['suspension_ends_at']
                 ];
-                session_unset(); session_destroy();
+                session_unset();
+                session_destroy();
                 session_start();
                 $_SESSION['account_status_data'] = $restrictionData;
-                header("Location: " . $basePath . "account-status"); exit;
+                header("Location: " . $basePath . "account-status");
+                exit;
             }
 
             $_SESSION['role'] = $freshUser['role'];
@@ -91,7 +95,7 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
             $_SESSION['email'] = $freshUser['email'];
             $_SESSION['two_factor_enabled'] = $freshUser['two_factor_enabled'];
 
-            $userRole = $freshUser['role']; 
+            $userRole = $freshUser['role'];
 
             // Recargar preferencias
             $stmtPrefs = $pdo->prepare("SELECT language, open_links_new_tab, theme, extended_toast FROM user_preferences WHERE user_id = ?");
@@ -113,10 +117,14 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
                 }
             }
         } else {
-            session_unset(); session_destroy();
-            header("Location: " . $basePath . "login"); exit;
+            session_unset();
+            session_destroy();
+            header("Location: " . $basePath . "login");
+            exit;
         }
-    } catch (Exception $e) { error_log("Error sesión: " . $e->getMessage()); }
+    } catch (Exception $e) {
+        error_log("Error sesión: " . $e->getMessage());
+    }
 }
 
 // 7. GESTIÓN DE REDIRECCIONES
@@ -141,23 +149,24 @@ $jsTranslations = json_encode($i18n->getAll());
 
 if ($showMaintenanceScreen) {
     $fileToLoad = __DIR__ . '/../includes/sections/system/status-screen.php';
-    $isMaintenanceContext = true; 
-    $showInterface = false; 
+    $isMaintenanceContext = true;
+    $showInterface = false;
 } else {
     $routesMap = require __DIR__ . '/../config/routes.php';
-    
+
     if (strpos($currentSection, 'admin/') === 0 && !in_array($userRole, ['founder', 'administrator'])) {
         $fileToLoad = $routesMap['404'];
     } else {
         $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
     }
-    
+
     $noInterfaceRoutes = array_merge($authRoutes, ['account-status']);
-    $showInterface = !in_array($currentSection, $noInterfaceRoutes); 
+    $showInterface = !in_array($currentSection, $noInterfaceRoutes);
 }
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo htmlspecialchars($userLang); ?>">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -175,7 +184,10 @@ if ($showMaintenanceScreen) {
                 var localPrefs = localStorage.getItem('guest_prefs');
                 var prefs = window.USER_PREFS || {};
                 if (!window.IS_LOGGED_IN && localPrefs) {
-                    try { var parsed = JSON.parse(localPrefs); if (parsed.theme) prefs.theme = parsed.theme; } catch(e){}
+                    try {
+                        var parsed = JSON.parse(localPrefs);
+                        if (parsed.theme) prefs.theme = parsed.theme;
+                    } catch (e) {}
                 }
                 var theme = prefs.theme || 'sync';
                 if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
@@ -191,6 +203,7 @@ if ($showMaintenanceScreen) {
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components.css">
     <script type="module" src="<?php echo $basePath; ?>public/assets/js/app-init.js"></script>
 </head>
+
 <body>
     <div class="page-wrapper">
         <div class="main-content">
@@ -200,135 +213,148 @@ if ($showMaintenanceScreen) {
                         <?php include __DIR__ . '/../includes/layouts/header.php'; ?>
                     </div>
                 <?php endif; ?>
-                <div id="system-alert-container" class="system-alert" data-visible="false" data-type="warning">
-    <div class="system-alert__content">
-        <span id="sys-alert-icon" class="material-symbols-rounded system-alert__icon">warning</span>
-        <div class="system-alert__text-group">
-            <strong id="sys-alert-title" class="system-alert__title"></strong>
-            <span id="sys-alert-msg" class="system-alert__message"></span>
-        </div>
-    </div>
-    <div class="system-alert__actions">
-        <a id="sys-alert-link" href="#" target="_blank" class="system-alert__link d-none">Ver detalles</a>
-        <button id="sys-alert-close" class="system-alert__close">
-            <span class="material-symbols-rounded">close</span>
-        </button>
-    </div>
-</div>
+                <div id="system-alert-container">
+                    <div class="system-alert-box">
 
-<style>
-    /* =========================================
-   SYSTEM ALERT (Barra de Notificación)
+                        <div class="alert-content-left">
+                            <span id="sys-alert-icon" class="material-symbols-rounded">info</span>
+                            <span id="sys-alert-msg">Mensaje de alerta...</span>
+                            <span id="sys-alert-title" style="display:none"></span>
+                            <a id="sys-alert-link" style="display:none"></a>
+                        </div>
+
+                        <div class="alert-content-right">
+                            <button id="sys-alert-close">
+                                <span class="material-symbols-rounded" style="font-size: 18px;">close</span>
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+                <style>
+                    /* ... código existente ... */
+
+                    /* =========================================
+   SISTEMA DE ALERTAS (MODIFICADO)
    ========================================= */
-.system-alert {
-    display: none; /* Oculto por defecto, se activa con data-visible="true" */
-    width: 100%;
-    /* Mapeo del #0f0f0f original a la variable más cercana del sistema */
-    background-color: var(--sl-color-gray-950); 
-    border-bottom: 1px solid var(--border-light);
-    padding: 12px 24px;
-    align-items: center;
-    justify-content: space-between;
-    position: relative;
-    z-index: 9999;
-    box-sizing: border-box;
-    /* Forzamos modo oscuro dentro de la barra para mantener el diseño original */
-    color: var(--sl-color-neutral-0); 
-}
 
-/* Control de visibilidad mediante atributo data */
-.system-alert[data-visible="true"] {
-    display: flex;
-}
+                    /* PADRE: Contenedor global con padding */
+                    #system-alert-container {
+                        position: relative;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        padding: 8px 8px 0 8px;
+                        /* El padding solicitado */
+                        z-index: 9999;
+                        display: none;
+                        /* Controlado por JS */
+                        pointer-events: none;
+                        /* Permite clicks fuera de la alerta */
+                        border: none !important;
+                        /* Asegura que no haya bordes antiguos */
+                    }
 
-.system-alert__content {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
+                    /* HIJO: La tarjeta de alerta en sí */
+                    .system-alert-box {
+                        width: 100%;
+                        max-width: 100%;
+                        /* Opcional: max-width: 600px; para que no sea tan larga en monitores grandes */
+                        margin: 0 auto;
+                        border-radius: 12px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        padding: 12px 16px;
+                        color: #ffffff;
+                        /* Texto blanco para contraste */
+                        pointer-events: auto;
+                        /* Reactivar clicks en la alerta */
+                        gap: 12px;
+                    }
 
-.system-alert__text-group {
-    display: flex;
-    flex-direction: column;
-}
+                    /* Colores de fondo según severidad */
+                    .alert-bg-critical {
+                        background-color: #ef4444;
+                    }
 
-.system-alert__title {
-    color: var(--sl-color-neutral-0); /* #fff */
-    font-size: 14px;
-    font-weight: var(--sl-font-weight-bold);
-    display: block;
-}
+                    /* Rojo */
+                    .alert-bg-warning {
+                        background-color: #f59e0b;
+                    }
 
-.system-alert__message {
-    color: var(--sl-color-gray-300); /* Similar a #ccc */
-    font-size: 13px;
-}
+                    /* Naranja */
+                    .alert-bg-info {
+                        background-color: #3b82f6;
+                    }
 
-/* Acciones y Botones */
-.system-alert__actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
+                    /* Azul */
 
-.system-alert__link {
-    color: var(--sl-color-blue-400); /* Similar a #4a90e2 */
-    font-size: 13px;
-    text-decoration: none;
-    font-weight: 500;
-}
+                    /* DIV 1: Contenido (Icono + Texto) */
+                    .alert-content-left {
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        flex: 1;
+                        min-width: 0;
+                        /* Necesario para que el text-overflow funcione en flex */
+                    }
 
-.system-alert__link:hover {
-    text-decoration: underline;
-    color: var(--sl-color-blue-300);
-}
+                    .alert-content-left .material-symbols-rounded {
+                        font-size: 20px;
+                        color: rgba(255, 255, 255, 0.9) !important;
+                        /* Forzar blanco */
+                    }
 
-.system-alert__close {
-    background: none;
-    border: none;
-    color: var(--sl-color-gray-400); /* #666 */
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 4px;
-    border-radius: var(--sl-border-radius-circle);
-    transition: color 0.2s, background-color 0.2s;
-}
+                    #sys-alert-msg {
+                        font-size: 14px;
+                        font-weight: 500;
+                        white-space: nowrap;
+                        /* Una sola línea */
+                        overflow: hidden;
+                        /* Ocultar desbordamiento */
+                        text-overflow: ellipsis;
+                        /* Puntos suspensivos (...) */
+                        color: #ffffff;
+                        margin: 0;
+                    }
 
-.system-alert__close:hover {
-    color: var(--sl-color-neutral-0);
-    background-color: rgba(255, 255, 255, 0.1);
-}
+                    /* Ocultar elementos que ya no usamos visualmente pero el JS busca */
+                    #sys-alert-title,
+                    #sys-alert-link {
+                        display: none !important;
+                    }
 
-/* =========================================
-   VARIANTES POR TIPO (data-type)
-   ========================================= */
-/* Warning (Por defecto en tu HTML original) */
-.system-alert[data-type="warning"] .system-alert__icon {
-    color: var(--sl-color-warning-500); /* #ff9800 aprox */
-}
+                    /* DIV 2: Botón de cerrar */
+                    .alert-content-right {
+                        display: flex;
+                        align-items: center;
+                        flex-shrink: 0;
+                    }
 
-/* Error */
-.system-alert[data-type="error"] .system-alert__icon {
-    color: var(--sl-color-danger-500);
-}
+                    #sys-alert-close {
+                        background: rgba(255, 255, 255, 0.2);
+                        border: none;
+                        color: white;
+                        border-radius: 50%;
+                        width: 28px;
+                        height: 28px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: pointer;
+                        transition: background 0.2s;
+                    }
 
-/* Info */
-.system-alert[data-type="info"] .system-alert__icon {
-    color: var(--sl-color-info-500);
-}
-
-/* Success */
-.system-alert[data-type="success"] .system-alert__icon {
-    color: var(--sl-color-success-500);
-}
-</style>
+                    #sys-alert-close:hover {
+                        background: rgba(255, 255, 255, 0.4);
+                    }
+                </style>
                 <div class="general-content-bottom">
                     <?php if ($showInterface): ?>
                         <?php include __DIR__ . '/../includes/modules/module-surface.php'; ?>
                     <?php endif; ?>
-                    
+
                     <div class="general-content-scrolleable overflow-y" data-container="main-section">
                         <?php
                         if (file_exists($fileToLoad)) {
@@ -365,4 +391,5 @@ if ($showMaintenanceScreen) {
         </div>
     </div>
 </body>
+
 </html>
