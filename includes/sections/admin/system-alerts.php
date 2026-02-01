@@ -216,7 +216,7 @@
                             <div class="trigger-selector">
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span class="material-symbols-rounded" style="color: var(--text-tertiary);">calendar_today</span>
-                                    <span class="trigger-select-text">Seleccionar fecha...</span>
+                                    <span class="trigger-select-text"><?= $i18n->t('global.select_date') ?></span>
                                 </div>
                                 <span class="material-symbols-rounded">expand_more</span>
                             </div>
@@ -270,7 +270,7 @@
                             <div class="trigger-selector">
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span class="material-symbols-rounded" style="color: var(--text-tertiary);">schedule</span>
-                                    <span class="trigger-select-text">Seleccionar hora...</span>
+                                    <span class="trigger-select-text"><?= $i18n->t('global.select_time') ?></span>
                                 </div>
                                 <span class="material-symbols-rounded">expand_more</span>
                             </div>
@@ -394,7 +394,7 @@
                             <div class="trigger-selector">
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span class="material-symbols-rounded" style="color: var(--text-tertiary);">calendar_month</span>
-                                    <span class="trigger-select-text">Seleccionar fecha...</span>
+                                    <span class="trigger-select-text"><?= $i18n->t('global.select_date') ?></span>
                                 </div>
                                 <span class="material-symbols-rounded">expand_more</span>
                             </div>

@@ -3,6 +3,19 @@
         "name": "ProjectAurora",
         "tagline": "Modularidad y Seguridad"
     },
+    "global": {
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "add": "Agregar",
+        "search": "Buscar...",
+        "refresh": "Actualizar",
+        "loading": "Cargando...",
+        "disable": "Desactivar",
+        "pagination_prev": "Página anterior",
+        "pagination_next": "Página siguiente",
+        "select_date": "Seleccionar fecha...",
+        "select_time": "Seleccionar hora..."
+    },
     "header": {
         "search_placeholder": "Buscar..."
     },
@@ -38,6 +51,229 @@
         "contact_support": "Si crees que esto es un error, contacta a soporte."
     },
     "admin": {
+        "audit_active_tooltip": "Auditoría Activa: Sus cambios quedarán registrados.",
+        "role": {
+            "user": "Usuario",
+            "moderator": "Moderador",
+            "administrator": "Administrador"
+        },
+        "dashboard": {
+            "title": "Dashboard",
+            "nav": {
+                "logs": "Logs del Sistema",
+                "audit": "Registro de Actividad",
+                "alerts": "Sistema de Alertas"
+            },
+            "stats": {
+                "total_users": "Usuarios Totales",
+                "vs_last_month": "vs mes pasado",
+                "new_today": "Registros Hoy",
+                "vs_yesterday": "vs ayer",
+                "online_now": "En Línea (Ahora)",
+                "users": "Usuarios",
+                "guests": "Invitados",
+                "alerts": "Alertas de Sistema",
+                "events_today": "Eventos registrados hoy"
+            }
+        },
+        "server": {
+            "title": "Configuración del Servidor",
+            "desc": "Ajusta las variables globales y el comportamiento del sistema.",
+            "toolbar": {
+                "redis": "Gestor de Redis"
+            },
+            "access": {
+                "title": "Control de Acceso y Mantenimiento",
+                "desc": "Gestiona la disponibilidad de la plataforma.",
+                "maintenance_mode": "Modo Mantenimiento",
+                "maintenance_desc": "Si se activa, solo los administradores y fundadores podrán acceder al sistema.",
+                "registrations": "Permitir Nuevos Registros",
+                "registrations_desc": "Habilita o deshabilita la creación de nuevas cuentas de usuario.",
+                "login": "Permitir Inicio de Sesión",
+                "login_desc": "Control global para el acceso de usuarios existentes (no afecta a Staff)."
+            },
+            "security": {
+                "title": "Seguridad y Límites",
+                "desc": "Configura protecciones contra fuerza bruta y rate limits.",
+                "login_attempts": "Intentos de Login Máximos",
+                "login_attempts_desc": "Número de intentos fallidos antes de bloquear temporalmente.",
+                "block_duration": "Duración del Bloqueo (Minutos)",
+                "block_duration_desc": "Tiempo que debe esperar un usuario bloqueado por seguridad.",
+                "rate_limit": "Rate Limit General (Peticiones/Min)",
+                "rate_limit_desc": "Límite de solicitudes para acciones sensibles."
+            },
+            "accounts": {
+                "title": "Requisitos de Cuenta",
+                "desc": "Reglas para nombres de usuario, contraseñas y correos.",
+                "password_min": "Longitud Mínima de Contraseña",
+                "password_min_desc": "Mínimo de caracteres requeridos para la clave.",
+                "username_min": "Longitud Mínima de Usuario",
+                "username_min_desc": "Longitud mínima permitida para el nombre de usuario.",
+                "username_max": "Longitud Máxima de Usuario",
+                "username_max_desc": "Longitud máxima permitida para el nombre de usuario.",
+                "email_prefix": "Longitud Mínima Prefijo Email",
+                "email_prefix_desc": "Caracteres requeridos antes del @.",
+                "domains": "Dominios de Correo Permitidos",
+                "domains_desc": "Solo se permitirán registros con estos dominios. Usa * para todos.",
+                "btn_add_domain": "Agregar dominio"
+            },
+            "uploads": {
+                "title": "Carga de Archivos",
+                "desc": "Límites para avatares y archivos multimedia.",
+                "avatar_size": "Tamaño Máximo de Avatar (MB)",
+                "avatar_size_desc": "Límite de peso para la imagen de perfil en Megabytes.",
+                "avatar_dim": "Dimensión Máxima (Píxeles)",
+                "avatar_dim_desc": "Alto o ancho máximo permitido para la imagen."
+            },
+            "tokens": {
+                "title": "Expiración de Tokens",
+                "desc": "Controla la validez de enlaces y códigos temporales.",
+                "verify_expiry": "Expiración Código Verificación (Minutos)",
+                "verify_expiry_desc": "Tiempo de validez para códigos de email.",
+                "reset_expiry": "Expiración Token Contraseña (Minutos)",
+                "reset_expiry_desc": "Tiempo de validez para enlaces de recuperación."
+            }
+        },
+        "backup_config": {
+            "title": "Automatización",
+            "toolbar_title": "Configuración Automática",
+            "desc": "Supervisa y configura las tareas programadas de copia de seguridad.",
+            "loading": "Cargando estado...",
+            "btn_trigger": "Adelantar Respaldo",
+            "trigger_desc": "Reinicia el ciclo del temporizador",
+            "stats": {
+                "next_run": "Próxima Ejecución",
+                "calculating": "Calculando...",
+                "last_run": "Último Respaldo",
+                "active": "Activo",
+                "quick_actions": "Acciones Rápidas"
+            },
+            "enable": {
+                "title": "Habilitar Backups Automáticos",
+                "desc": "El scheduler revisará esta configuración cada 60 segundos."
+            },
+            "frequency": {
+                "title": "Frecuencia (Horas)",
+                "desc": "Tiempo a esperar después del último backup exitoso."
+            },
+            "retention": {
+                "title": "Política de Retención",
+                "desc": "Archivos a conservar antes de limpiar los más antiguos."
+            }
+        },
+        "redis": {
+            "title": "Gestor de Redis",
+            "refresh": "Actualizar Todo",
+            "flush": "VACIAR BASE DE DATOS",
+            "loading": "Escaneando Redis...",
+            "search_placeholder": "Buscar clave (ej: user:*, *token*)...",
+            "stats": {
+                "version": "Versión Redis",
+                "uptime": "Tiempo Activo",
+                "memory": "Memoria Usada",
+                "connections": "Conexiones",
+                "keys": "Total Claves",
+                "stable": "Estable",
+                "peak": "Pico máx:",
+                "clients": "Clientes activos",
+                "db_current": "En base de datos actual"
+            },
+            "table": {
+                "key": "Clave",
+                "type": "Tipo",
+                "ttl": "TTL"
+            }
+        },
+        "user_status": {
+            "title": "Gestionar Estado de Cuenta",
+            "header_user": "Estado: %s",
+            "desc": "Configura el acceso y suspensiones.",
+            "select_status": "Seleccionar estado...",
+            "select_type": "Seleccionar tipo...",
+            "select_date": "Seleccionar fecha...",
+            "select_source": "Seleccionar origen...",
+            "select_reason": "Seleccionar razón...",
+            "account_status": {
+                "title": "Estado de cuenta",
+                "desc": "Define si el usuario está activo, suspendido o eliminado."
+            },
+            "status": {
+                "active": "Activo",
+                "suspended": "Suspendido",
+                "deleted": "Eliminado"
+            },
+            "suspension_type": {
+                "title": "Tipo de Suspensión",
+                "desc": "Elige entre temporal o permanente.",
+                "temp": "Temporal",
+                "perm": "Permanente"
+            },
+            "end_date": {
+                "title": "Fecha de finalización",
+                "desc": "Selecciona hasta cuándo estará suspendido el usuario."
+            },
+            "decision": {
+                "title": "Decisión",
+                "desc": "¿Quién solicitó la eliminación?",
+                "user": "Decisión del Usuario",
+                "admin": "Decisión Administrativa"
+            },
+            "reason": {
+                "title": "Razón",
+                "desc": "Motivo del cambio de estado."
+            }
+        },
+        "user_role": {
+            "toolbar_title": "Gestionar Rol: %s",
+            "card_title": "Rol de Usuario",
+            "card_desc": "Selecciona el nivel de acceso para este usuario.",
+            "founder_warn": "Este usuario es Founder. Su rol no puede ser degradado desde esta interfaz."
+        },
+        "backups": {
+            "desc": "Gestiona los puntos de restauración de la base de datos.",
+            "loading": "Cargando copias de seguridad...",
+            "selected_count": "%s seleccionados",
+            "toolbar": {
+                "view": "Cambiar vista",
+                "config": "Configuración Automática",
+                "create": "Crear backup manual"
+            },
+            "actions": {
+                "view": "Ver contenido",
+                "restore": "Restaurar backup seleccionado",
+                "delete": "Eliminar seleccionados"
+            }
+        },
+        "logs": {
+            "title": "Archivos de Log",
+            "explorer_title": "Explorador de Logs",
+            "desc": "Gestión física de los archivos de registro del servidor (logs/).",
+            "scanning": "Escaneando directorio logs/...",
+            "search_placeholder": "Buscar por nombre de archivo...",
+            "selected_count": "%s seleccionados",
+            "toolbar": {
+                "search": "Buscar archivos",
+                "view": "Cambiar vista"
+            },
+            "actions": {
+                "delete": "Eliminar archivos",
+                "download": "Descargar (Zip)",
+                "view": "Ver contenido del log"
+            }
+        },
+        "viewer": {
+            "title": "Visor de Archivos",
+            "loading": "Cargando contenido...",
+            "mode_pro": "Modo Profesional",
+            "options": "Opciones de visualización",
+            "refresh": "Recargar archivo actual",
+            "copy": "Copiar contenido"
+        },
+        "user_details": {
+            "2fa_title": "Autenticación en dos pasos",
+            "2fa_enabled": "Habilitada",
+            "2fa_disabled_desc": "El usuario no tiene 2FA activo."
+        },
         "users_module": {
             "title": "Gestión de Usuarios",
             "subtitle": "Administración y control de usuarios registrados en la plataforma.",
@@ -51,7 +287,7 @@
                 "next_page": "Página siguiente",
                 "actions_group": "Acciones de lote",
                 "manage_account": "Gestionar Cuenta",
-                "manage_role": "Cambiar Rol",
+                "manage_role": "Gestionar Rol",
                 "account_status": "Estado de Cuenta",
                 "cancel_selection": "Cancelar selección",
                 "selected_count": "%s seleccionado(s)",
@@ -75,6 +311,7 @@
             "title": "Registro de Actividad",
             "desc": "Historial de acciones administrativas y eventos del sistema.",
             "empty": "No hay registros de actividad recientes.",
+            "loading": "Cargando actividad...",
             "table": {
                 "actor": "Actor",
                 "action": "Acción",

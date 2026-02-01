@@ -61,16 +61,16 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
         <div class="component-toolbar component-toolbar--primary">
             <div class="toolbar-group">
                 <div class="component-toolbar__side component-toolbar__side--left">
-                    <div class="component-toolbar-title">Configuración del Servidor</div>
+                    <div class="component-toolbar-title"><?php echo $i18n->t('admin.server.title'); ?></div>
                 </div>
                 <div class="component-toolbar__side component-toolbar__side--right">
-                    <button class="header-button" data-nav="admin/redis" data-tooltip="Gestor de Redis">
+                    <button class="header-button" data-nav="admin/redis" data-tooltip="<?php echo $i18n->t('admin.server.toolbar.redis'); ?>">
                         <span class="material-symbols-rounded" style="color: #d32f2f;">memory</span>
                     </button>
 
                     <button class="component-button primary" id="btn-save-server-config">
                         <span class="material-symbols-rounded" style="font-size: 18px;">save</span>
-                        Guardar
+                        <?php echo $i18n->t('global.save'); ?>
                     </button>
                 </div>
             </div>
@@ -79,7 +79,7 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
 
     <div class="component-header-card mt-4">
         <h1 class="component-page-title"><?php echo $i18n->t('menu.admin.server'); ?></h1>
-        <p class="component-page-description">Ajusta las variables globales y el comportamiento del sistema.</p>
+        <p class="component-page-description"><?php echo $i18n->t('admin.server.desc'); ?></p>
     </div>
 
     <div class="component-card component-card--grouped mt-4">
@@ -90,8 +90,8 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
                         <span class="material-symbols-rounded">admin_panel_settings</span>
                     </div>
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Control de Acceso y Mantenimiento</h2>
-                        <p class="component-card__description">Gestiona la disponibilidad de la plataforma.</p>
+                        <h2 class="component-card__title"><?php echo $i18n->t('admin.server.access.title'); ?></h2>
+                        <p class="component-card__description"><?php echo $i18n->t('admin.server.access.desc'); ?></p>
                     </div>
                 </div>
                 <span class="material-symbols-rounded component-accordion-chevron">expand_more</span>
@@ -103,8 +103,8 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title">Modo Mantenimiento</h2>
-                            <p class="component-card__description">Si se activa, solo los administradores y fundadores podrán acceder al sistema.</p>
+                            <h2 class="component-card__title"><?php echo $i18n->t('admin.server.access.maintenance_mode'); ?></h2>
+                            <p class="component-card__description"><?php echo $i18n->t('admin.server.access.maintenance_desc'); ?></p>
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
@@ -120,8 +120,8 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title">Permitir Nuevos Registros</h2>
-                            <p class="component-card__description">Habilita o deshabilita la creación de nuevas cuentas de usuario.</p>
+                            <h2 class="component-card__title"><?php echo $i18n->t('admin.server.access.registrations'); ?></h2>
+                            <p class="component-card__description"><?php echo $i18n->t('admin.server.access.registrations_desc'); ?></p>
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
@@ -137,8 +137,8 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
                 <div class="component-group-item">
                     <div class="component-card__content">
                         <div class="component-card__text">
-                            <h2 class="component-card__title">Permitir Inicio de Sesión</h2>
-                            <p class="component-card__description">Control global para el acceso de usuarios existentes (no afecta a Staff).</p>
+                            <h2 class="component-card__title"><?php echo $i18n->t('admin.server.access.login'); ?></h2>
+                            <p class="component-card__description"><?php echo $i18n->t('admin.server.access.login_desc'); ?></p>
                         </div>
                     </div>
                     <div class="component-card__actions actions-right">
@@ -160,8 +160,8 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
                         <span class="material-symbols-rounded">shield</span>
                     </div>
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Seguridad y Límites</h2>
-                        <p class="component-card__description">Configura protecciones contra fuerza bruta y rate limits.</p>
+                        <h2 class="component-card__title"><?php echo $i18n->t('admin.server.security.title'); ?></h2>
+                        <p class="component-card__description"><?php echo $i18n->t('admin.server.security.desc'); ?></p>
                     </div>
                 </div>
                 <span class="material-symbols-rounded component-accordion-chevron">expand_more</span>
@@ -171,9 +171,24 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
                 <hr class="component-divider">
 
                 <?php 
-                renderStepper('Intentos de Login Máximos', 'Número de intentos fallidos antes de bloquear temporalmente.', 'security_login_max_attempts', conf('security_login_max_attempts', 5, $config), 1, 5);
-                renderStepper('Duración del Bloqueo (Minutos)', 'Tiempo que debe esperar un usuario bloqueado por seguridad.', 'security_block_duration', conf('security_block_duration', 15, $config), 1, 15);
-                renderStepper('Rate Limit General (Peticiones/Min)', 'Límite de solicitudes para acciones sensibles.', 'security_general_rate_limit', conf('security_general_rate_limit', 10, $config), 1, 10);
+                renderStepper(
+                    $i18n->t('admin.server.security.login_attempts'), 
+                    $i18n->t('admin.server.security.login_attempts_desc'), 
+                    'security_login_max_attempts', 
+                    conf('security_login_max_attempts', 5, $config), 1, 5
+                );
+                renderStepper(
+                    $i18n->t('admin.server.security.block_duration'), 
+                    $i18n->t('admin.server.security.block_duration_desc'), 
+                    'security_block_duration', 
+                    conf('security_block_duration', 15, $config), 1, 15
+                );
+                renderStepper(
+                    $i18n->t('admin.server.security.rate_limit'), 
+                    $i18n->t('admin.server.security.rate_limit_desc'), 
+                    'security_general_rate_limit', 
+                    conf('security_general_rate_limit', 10, $config), 1, 10
+                );
                 ?>
             </div>
         </div>
@@ -187,8 +202,8 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
                         <span class="material-symbols-rounded">badge</span>
                     </div>
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Requisitos de Cuenta</h2>
-                        <p class="component-card__description">Reglas para nombres de usuario, contraseñas y correos.</p>
+                        <h2 class="component-card__title"><?php echo $i18n->t('admin.server.accounts.title'); ?></h2>
+                        <p class="component-card__description"><?php echo $i18n->t('admin.server.accounts.desc'); ?></p>
                     </div>
                 </div>
                 <span class="material-symbols-rounded component-accordion-chevron">expand_more</span>
@@ -198,17 +213,37 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
                 <hr class="component-divider">
 
                 <?php
-                renderStepper('Longitud Mínima de Contraseña', 'Mínimo de caracteres requeridos para la clave.', 'password_min_length', conf('password_min_length', 8, $config), 1, 4);
-                renderStepper('Longitud Mínima de Usuario', 'Longitud mínima permitida para el nombre de usuario.', 'username_min_length', conf('username_min_length', 4, $config), 1, 2);
-                renderStepper('Longitud Máxima de Usuario', 'Longitud máxima permitida para el nombre de usuario.', 'username_max_length', conf('username_max_length', 20, $config), 1, 5);
-                renderStepper('Longitud Mínima Prefijo Email', 'Caracteres requeridos antes del @.', 'email_min_prefix_length', conf('email_min_prefix_length', 3, $config), 1, 3);
+                renderStepper(
+                    $i18n->t('admin.server.accounts.password_min'), 
+                    $i18n->t('admin.server.accounts.password_min_desc'), 
+                    'password_min_length', 
+                    conf('password_min_length', 8, $config), 1, 4
+                );
+                renderStepper(
+                    $i18n->t('admin.server.accounts.username_min'), 
+                    $i18n->t('admin.server.accounts.username_min_desc'), 
+                    'username_min_length', 
+                    conf('username_min_length', 4, $config), 1, 2
+                );
+                renderStepper(
+                    $i18n->t('admin.server.accounts.username_max'), 
+                    $i18n->t('admin.server.accounts.username_max_desc'), 
+                    'username_max_length', 
+                    conf('username_max_length', 20, $config), 1, 5
+                );
+                renderStepper(
+                    $i18n->t('admin.server.accounts.email_prefix'), 
+                    $i18n->t('admin.server.accounts.email_prefix_desc'), 
+                    'email_min_prefix_length', 
+                    conf('email_min_prefix_length', 3, $config), 1, 3
+                );
                 ?>
 
                 <div class="component-group-item component-group-item--stacked">
                     <div class="component-card__content w-100">
                         <div class="component-card__text">
-                            <h2 class="component-card__title">Dominios de Correo Permitidos</h2>
-                            <p class="component-card__description">Solo se permitirán registros con estos dominios. Usa <strong>*</strong> para todos.</p>
+                            <h2 class="component-card__title"><?php echo $i18n->t('admin.server.accounts.domains'); ?></h2>
+                            <p class="component-card__description"><?php echo $i18n->t('admin.server.accounts.domains_desc'); ?></p>
                         </div>
                     </div>
                     
@@ -223,18 +258,18 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
                                 
                                 <div class="domain-input-actions">
                                     <button type="button" class="component-button" id="btn-cancel-domain">
-                                        Cancelar
+                                        <?php echo $i18n->t('global.cancel'); ?>
                                     </button>
                                     <button type="button" class="component-button primary" id="btn-confirm-domain">
                                         <span class="material-symbols-rounded">check</span>
-                                        Agregar
+                                        <?php echo $i18n->t('global.add'); ?>
                                     </button>
                                 </div>
                             </div>
 
                             <button type="button" class="component-button" id="btn-add-domain">
                                 <span class="material-symbols-rounded">add</span>
-                                Agregar dominio
+                                <?php echo $i18n->t('admin.server.accounts.btn_add_domain'); ?>
                             </button>
                         </div>
                     </div>
@@ -251,8 +286,8 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
                         <span class="material-symbols-rounded">cloud_upload</span>
                     </div>
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Carga de Archivos</h2>
-                        <p class="component-card__description">Límites para avatares y archivos multimedia.</p>
+                        <h2 class="component-card__title"><?php echo $i18n->t('admin.server.uploads.title'); ?></h2>
+                        <p class="component-card__description"><?php echo $i18n->t('admin.server.uploads.desc'); ?></p>
                     </div>
                 </div>
                 <span class="material-symbols-rounded component-accordion-chevron">expand_more</span>
@@ -263,8 +298,16 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
                 <?php
                 $bytesVal = (int)conf('upload_avatar_max_size', 2097152, $config);
                 $mbVal = $bytesVal / 1048576;
-                renderStepper('Tamaño Máximo de Avatar (MB)', 'Límite de peso para la imagen de perfil en Megabytes.', 'upload_avatar_max_size', $mbVal, 1, 5);
-                renderStepper('Dimensión Máxima (Píxeles)', 'Alto o ancho máximo permitido para la imagen.', 'upload_avatar_max_dim', conf('upload_avatar_max_dim', 4096, $config), 128, 1024);
+                renderStepper(
+                    $i18n->t('admin.server.uploads.avatar_size'), 
+                    $i18n->t('admin.server.uploads.avatar_size_desc'), 
+                    'upload_avatar_max_size', $mbVal, 1, 5
+                );
+                renderStepper(
+                    $i18n->t('admin.server.uploads.avatar_dim'), 
+                    $i18n->t('admin.server.uploads.avatar_dim_desc'), 
+                    'upload_avatar_max_dim', conf('upload_avatar_max_dim', 4096, $config), 128, 1024
+                );
                 ?>
             </div>
         </div>
@@ -278,8 +321,8 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
                         <span class="material-symbols-rounded">timer</span>
                     </div>
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Expiración de Tokens</h2>
-                        <p class="component-card__description">Controla la validez de enlaces y códigos temporales.</p>
+                        <h2 class="component-card__title"><?php echo $i18n->t('admin.server.tokens.title'); ?></h2>
+                        <p class="component-card__description"><?php echo $i18n->t('admin.server.tokens.desc'); ?></p>
                     </div>
                 </div>
                 <span class="material-symbols-rounded component-accordion-chevron">expand_more</span>
@@ -288,8 +331,16 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
             <div class="component-accordion-content">
                 <hr class="component-divider">
                 <?php
-                renderStepper('Expiración Código Verificación (Minutos)', 'Tiempo de validez para códigos de email.', 'auth_verification_code_expiry', conf('auth_verification_code_expiry', 15, $config), 1, 5);
-                renderStepper('Expiración Token Contraseña (Minutos)', 'Tiempo de validez para enlaces de recuperación.', 'auth_reset_token_expiry', conf('auth_reset_token_expiry', 60, $config), 5, 30);
+                renderStepper(
+                    $i18n->t('admin.server.tokens.verify_expiry'), 
+                    $i18n->t('admin.server.tokens.verify_expiry_desc'), 
+                    'auth_verification_code_expiry', conf('auth_verification_code_expiry', 15, $config), 1, 5
+                );
+                renderStepper(
+                    $i18n->t('admin.server.tokens.reset_expiry'), 
+                    $i18n->t('admin.server.tokens.reset_expiry_desc'), 
+                    'auth_reset_token_expiry', conf('auth_reset_token_expiry', 60, $config), 5, 30
+                );
                 ?>
             </div>
         </div>

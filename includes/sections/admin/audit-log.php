@@ -17,18 +17,18 @@
                     
                     <div data-element="pagination-wrapper" class="component-pagination component-pagination--spaced">
                         
-                        <button class="header-button component-pagination-btn" data-action="prev-page" data-tooltip="Página anterior" disabled>
+                        <button class="header-button component-pagination-btn" data-action="prev-page" data-tooltip="<?php echo $i18n->t('global.pagination_prev'); ?>" disabled>
                             <span class="material-symbols-rounded">chevron_left</span>
                         </button>
 
                         <span data-element="pagination-info" class="component-pagination-info">1/1</span>
 
-                        <button class="header-button component-pagination-btn" data-action="next-page" data-tooltip="Página siguiente" disabled>
+                        <button class="header-button component-pagination-btn" data-action="next-page" data-tooltip="<?php echo $i18n->t('global.pagination_next'); ?>" disabled>
                             <span class="material-symbols-rounded">chevron_right</span>
                         </button>
                     </div>
 
-                    <button class="header-button" data-action="refresh-log" data-tooltip="Actualizar">
+                    <button class="header-button" data-action="refresh-log" data-tooltip="<?php echo $i18n->t('global.refresh'); ?>">
                         <span class="material-symbols-rounded">refresh</span>
                     </button>
                 </div>
@@ -61,7 +61,7 @@
         
         <div id="audit-loading" class="state-loading">
             <div class="spinner-sm"></div>
-            <p class="state-text">Cargando actividad...</p>
+            <p class="state-text"><?php echo $i18n->t('admin.audit.loading'); ?></p>
         </div>
     </div>
 

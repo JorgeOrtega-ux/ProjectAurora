@@ -7,7 +7,7 @@
         <div class="component-toolbar component-toolbar--primary">
             <div class="toolbar-group">
                 <div class="component-toolbar__side component-toolbar__side--left">
-                    <div class="component-toolbar-title">Configuración Automática</div>
+                    <div class="component-toolbar-title"><?php echo $i18n->t('admin.backup_config.toolbar_title'); ?></div>
                 </div>
                 <div class="component-toolbar__side component-toolbar__side--right">
                     <button class="header-button" id="btn-save-backup-config">
@@ -19,13 +19,13 @@
     </div>
 
     <div class="component-header-card">
-        <h1 class="component-page-title">Automatización</h1>
-        <p class="component-page-description">Supervisa y configura las tareas programadas de copia de seguridad.</p>
+        <h1 class="component-page-title"><?php echo $i18n->t('admin.backup_config.title'); ?></h1>
+        <p class="component-page-description"><?php echo $i18n->t('admin.backup_config.desc'); ?></p>
     </div>
 
     <div id="config-loading-state" class="state-loading">
         <div class="spinner-sm"></div>
-        <p class="state-text">Cargando estado...</p>
+        <p class="state-text"><?php echo $i18n->t('admin.backup_config.loading'); ?></p>
     </div>
 
     <div id="config-content-area" class="d-none">
@@ -34,41 +34,41 @@
             
             <div class="component-stat-card">
                 <div class="component-stat-header">
-                    <span class="component-stat-title">Próxima Ejecución</span>
+                    <span class="component-stat-title"><?php echo $i18n->t('admin.backup_config.stats.next_run'); ?></span>
                     <span class="material-symbols-rounded component-stat-icon" style="color: var(--color-primary);">timer</span>
                 </div>
                 <div class="component-stat-main-value" id="stat-countdown" style="font-feature-settings: 'tnum';">--:--:--</div>
                 <div class="component-stat-footer">
-                    <span class="component-trend-text" id="stat-next-date">Calculando...</span>
+                    <span class="component-trend-text" id="stat-next-date"><?php echo $i18n->t('admin.backup_config.stats.calculating'); ?></span>
                 </div>
             </div>
 
             <div class="component-stat-card">
                 <div class="component-stat-header">
-                    <span class="component-stat-title">Último Respaldo</span>
+                    <span class="component-stat-title"><?php echo $i18n->t('admin.backup_config.stats.last_run'); ?></span>
                     <span class="material-symbols-rounded component-stat-icon">history</span>
                 </div>
                 <div class="component-stat-main-value" style="font-size: 1.5rem;" id="stat-last-run">...</div>
                 <div class="component-stat-footer">
                     <span class="component-trend-badge success" id="stat-status-badge">
-                        <span class="material-symbols-rounded" style="font-size:14px;">check_circle</span> Activo
+                        <span class="material-symbols-rounded" style="font-size:14px;">check_circle</span> <?php echo $i18n->t('admin.backup_config.stats.active'); ?>
                     </span>
                 </div>
             </div>
 
             <div class="component-stat-card" style="background: var(--bg-surface-2); border: 1px dashed var(--border-light);">
                 <div class="component-stat-header">
-                    <span class="component-stat-title">Acciones Rápidas</span>
+                    <span class="component-stat-title"><?php echo $i18n->t('admin.backup_config.stats.quick_actions'); ?></span>
                     <span class="material-symbols-rounded component-stat-icon">bolt</span>
                 </div>
                 <div style="flex-grow: 1; display: flex; align-items: center;">
                     <button class="component-button secondary w-100" id="btn-trigger-now">
                         <span class="material-symbols-rounded">play_arrow</span>
-                        Adelantar Respaldo
+                        <?php echo $i18n->t('admin.backup_config.btn_trigger'); ?>
                     </button>
                 </div>
                 <div class="component-stat-footer">
-                    <span class="component-trend-text">Reinicia el ciclo del temporizador</span>
+                    <span class="component-trend-text"><?php echo $i18n->t('admin.backup_config.trigger_desc'); ?></span>
                 </div>
             </div>
 
@@ -82,8 +82,8 @@
                         <span class="material-symbols-rounded">schedule</span>
                     </div>
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Habilitar Backups Automáticos</h2>
-                        <p class="component-card__description">El scheduler revisará esta configuración cada 60 segundos.</p>
+                        <h2 class="component-card__title"><?php echo $i18n->t('admin.backup_config.enable.title'); ?></h2>
+                        <p class="component-card__description"><?php echo $i18n->t('admin.backup_config.enable.desc'); ?></p>
                     </div>
                 </div>
                 <div class="component-card__actions actions-right">
@@ -99,8 +99,8 @@
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content w-100">
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Frecuencia (Horas)</h2>
-                        <p class="component-card__description">Tiempo a esperar después del último backup exitoso.</p>
+                        <h2 class="component-card__title"><?php echo $i18n->t('admin.backup_config.frequency.title'); ?></h2>
+                        <p class="component-card__description"><?php echo $i18n->t('admin.backup_config.frequency.desc'); ?></p>
                     </div>
                 </div>
                 <div class="component-card__actions w-100">
@@ -133,8 +133,8 @@
             <div class="component-group-item component-group-item--stacked">
                 <div class="component-card__content w-100">
                     <div class="component-card__text">
-                        <h2 class="component-card__title">Política de Retención</h2>
-                        <p class="component-card__description">Archivos a conservar antes de limpiar los más antiguos.</p>
+                        <h2 class="component-card__title"><?php echo $i18n->t('admin.backup_config.retention.title'); ?></h2>
+                        <p class="component-card__description"><?php echo $i18n->t('admin.backup_config.retention.desc'); ?></p>
                     </div>
                 </div>
                 <div class="component-card__actions w-100">

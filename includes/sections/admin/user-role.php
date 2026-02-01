@@ -38,17 +38,17 @@ $user = $response['user'];
             <div class="toolbar-group">
                 <div class="component-toolbar__side component-toolbar__side--left">
                     <div class="component-toolbar-title">
-                        Gestionar Rol: <?php echo htmlspecialchars($user['username']); ?>
+                        <?php echo sprintf($i18n->t('admin.user_role.toolbar_title'), htmlspecialchars($user['username'])); ?>
                     </div>
                 </div>
 
                 <div class="component-toolbar__side component-toolbar__side--right">
-                    <button class="header-button" style="cursor: help; border-color: transparent;" data-tooltip="Auditoría Activa: Sus cambios quedarán registrados.">
+                    <button class="header-button" style="cursor: help; border-color: transparent;" data-tooltip="<?php echo $i18n->t('admin.audit_active_tooltip'); ?>">
                         <span class="material-symbols-rounded" style="color: var(--text-secondary);">history_edu</span>
                     </button>
 
                     <button class="component-button primary" data-action="save-role" disabled>
-                        Guardar
+                        <?php echo $i18n->t('global.save'); ?>
                     </button>
                 </div>
             </div>
@@ -59,8 +59,8 @@ $user = $response['user'];
         <div class="component-group-item component-group-item--stacked">
             <div class="component-card__content">
                 <div class="component-card__text">
-                    <h2 class="component-card__title">Rol de Usuario</h2>
-                    <p class="component-card__description">Selecciona el nivel de acceso para este usuario.</p>
+                    <h2 class="component-card__title"><?php echo $i18n->t('admin.user_role.card_title'); ?></h2>
+                    <p class="component-card__description"><?php echo $i18n->t('admin.user_role.card_desc'); ?></p>
                 </div>
             </div>
             <div class="component-card__actions">
@@ -69,9 +69,9 @@ $user = $response['user'];
                     <?php 
                         // Definición de Roles permitidos
                         $roles = [
-                            'user' => ['label' => 'Usuario', 'icon' => 'person'],
-                            'moderator' => ['label' => 'Moderador', 'icon' => 'gpp_maybe'],
-                            'administrator' => ['label' => 'Administrador', 'icon' => 'security']
+                            'user' => ['label' => $i18n->t('admin.role.user'), 'icon' => 'person'],
+                            'moderator' => ['label' => $i18n->t('admin.role.moderator'), 'icon' => 'gpp_maybe'],
+                            'administrator' => ['label' => $i18n->t('admin.role.administrator'), 'icon' => 'security']
                         ];
 
                         $currentRoleKey = $user['role'];
@@ -117,7 +117,7 @@ $user = $response['user'];
     <div class="state-empty mt-2">
         <p class="state-text" style="color: var(--warning-color);">
             <span class="material-symbols-rounded" style="vertical-align: middle;">warning</span>
-            Este usuario es <strong>Founder</strong>. Su rol no puede ser degradado desde esta interfaz.
+            <?php echo $i18n->t('admin.user_role.founder_warn'); ?>
         </p>
     </div>
     <?php endif; ?>

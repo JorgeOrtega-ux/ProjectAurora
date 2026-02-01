@@ -167,14 +167,14 @@ $is2FAActive = isset($user['two_factor_enabled']) && $user['two_factor_enabled']
                 </div>
 
                 <div class="component-card__text">
-                    <h2 class="component-card__title">Autenticación en dos pasos</h2>
+                    <h2 class="component-card__title"><?php echo $i18n->t('admin.user_details.2fa_title'); ?></h2>
                     <?php if ($is2FAActive): ?>
                         <p class="component-card__description" style="color: var(--color-success);">
-                            Habilitada
+                            <?php echo $i18n->t('admin.user_details.2fa_enabled'); ?>
                         </p>
                     <?php else: ?>
                         <p class="component-card__description" style="color: var(--text-secondary);">
-                            El usuario no tiene 2FA activo.
+                            <?php echo $i18n->t('admin.user_details.2fa_disabled_desc'); ?>
                         </p>
                     <?php endif; ?>
                 </div>
@@ -183,7 +183,7 @@ $is2FAActive = isset($user['two_factor_enabled']) && $user['two_factor_enabled']
             <div class="component-card__actions actions-right">
                 <?php if ($is2FAActive): ?>
                     <button type="button" class="component-button" data-action="disable-2fa" style="color: #d32f2f; border-color: rgba(211, 47, 47, 0.3);">
-                        Desactivar
+                        <?php echo $i18n->t('global.disable'); ?>
                     </button>
                 <?php endif; ?>
             </div>
