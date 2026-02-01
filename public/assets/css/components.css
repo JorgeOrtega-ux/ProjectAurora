@@ -431,16 +431,16 @@ input:checked+.component-toggle-slider:before {
 .file-viewer-group {
     display: flex;
     flex-direction: column;
-    flex: 1; 
-    gap: 0; 
-    min-height: 0; 
+    flex: 1;
+    gap: 0;
+    min-height: 0;
 }
 
 .viewer-tabs-wrapper {
     width: 100%;
     overflow: hidden;
-    flex: 0 0 auto; 
-    z-index: 2; 
+    flex: 0 0 auto;
+    z-index: 2;
 }
 
 .viewer-tabs-scroll {
@@ -489,7 +489,7 @@ input:checked+.component-toggle-slider:before {
     border-top: 2px solid var(--action-primary);
     opacity: 1;
     z-index: 3;
-    box-shadow: 0 1px 0 var(--bg-surface); 
+    box-shadow: 0 1px 0 var(--bg-surface);
 }
 
 .viewer-tab .material-symbols-rounded {
@@ -511,32 +511,32 @@ input:checked+.component-toggle-slider:before {
 }
 
 .viewer-tab .tab-close:hover {
-    background-color: rgba(0,0,0,0.08);
+    background-color: rgba(0, 0, 0, 0.08);
     color: var(--color-error);
     opacity: 1;
 }
 
 [data-theme="dark"] .viewer-tab .tab-close:hover {
-    background-color: rgba(255,255,255,0.15);
+    background-color: rgba(255, 255, 255, 0.15);
     color: var(--color-error);
 }
 
 .file-viewer-card {
-    flex: 1; 
+    flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden; 
-    padding: 0 !important; 
-    border-top-left-radius: 0; 
-    min-height: 0; 
+    overflow: hidden;
+    padding: 0 !important;
+    border-top-left-radius: 0;
+    min-height: 0;
 }
 
 .file-content-area {
     width: 100%;
-    flex: 1; 
+    flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden; 
+    overflow: hidden;
     background-color: var(--bg-code-editor);
     color: var(--text-code-base);
     font-family: var(--sl-font-mono);
@@ -549,9 +549,9 @@ input:checked+.component-toggle-slider:before {
     font-family: 'Fira Code', Consolas, monospace;
     font-size: 13px;
     line-height: 1.5;
-    white-space: pre; 
-    overflow: auto; 
-    flex: 1; 
+    white-space: pre;
+    overflow: auto;
+    flex: 1;
     width: 100%;
     box-sizing: border-box;
     min-height: 100%;
@@ -572,16 +572,48 @@ input:checked+.component-toggle-slider:before {
     --token-error: #cd3131;
 }
 
-.token-comment { color: var(--token-comment); font-style: italic; }
-.token-string  { color: var(--token-string); }
-.token-number  { color: var(--token-number); }
-.token-keyword { color: var(--token-keyword); font-weight: bold; }
-.token-logic   { color: var(--token-logic); }
-.token-tag     { color: var(--token-tag); }
-.token-attr    { color: var(--token-attr); }
-.token-bracket { color: var(--token-bracket); }
-.token-date    { color: var(--token-date); }
-.token-error   { color: var(--token-error); font-weight: bold; }
+.token-comment {
+    color: var(--token-comment);
+    font-style: italic;
+}
+
+.token-string {
+    color: var(--token-string);
+}
+
+.token-number {
+    color: var(--token-number);
+}
+
+.token-keyword {
+    color: var(--token-keyword);
+    font-weight: bold;
+}
+
+.token-logic {
+    color: var(--token-logic);
+}
+
+.token-tag {
+    color: var(--token-tag);
+}
+
+.token-attr {
+    color: var(--token-attr);
+}
+
+.token-bracket {
+    color: var(--token-bracket);
+}
+
+.token-date {
+    color: var(--token-date);
+}
+
+.token-error {
+    color: var(--token-error);
+    font-weight: bold;
+}
 
 /* =========================================
    5. EXTENSIONES LAYOUT
@@ -747,12 +779,29 @@ input:checked+.component-toggle-slider:before {
     text-decoration: underline;
 }
 
-.w-100 { width: 100%; }
-.m-0 { margin: 0 !important; }
-.mt-16 { margin-top: 16px; }
-.mt-24 { margin-top: 24px; }
-.mb-0 { margin-bottom: 0; }
-.flex-1 { flex: 1; }
+.w-100 {
+    width: 100%;
+}
+
+.m-0 {
+    margin: 0 !important;
+}
+
+.mt-16 {
+    margin-top: 16px;
+}
+
+.mt-24 {
+    margin-top: 24px;
+}
+
+.mb-0 {
+    margin-bottom: 0;
+}
+
+.flex-1 {
+    flex: 1;
+}
 
 /* =========================================
    6. RESPONSIVE
@@ -935,8 +984,15 @@ input:checked+.component-toggle-slider:before {
 }
 
 @keyframes slideDownAccordion {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .disabled-interactive {
@@ -1077,8 +1133,15 @@ input:checked+.component-toggle-slider:before {
 }
 
 @keyframes fadeInGroup {
-    from { opacity: 0; transform: translateY(2px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(2px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .component-toolbar--primary {
@@ -1355,9 +1418,18 @@ input:checked+.component-toggle-slider:before {
 }
 
 @media (max-width: 400px) {
-    .stepper-control { gap: 4px; }
-    .stepper-btn { width: 28px; height: 28px; }
-    .stepper-btn .material-symbols-rounded { font-size: 16px; }
+    .stepper-control {
+        gap: 4px;
+    }
+
+    .stepper-btn {
+        width: 28px;
+        height: 28px;
+    }
+
+    .stepper-btn .material-symbols-rounded {
+        font-size: 16px;
+    }
 }
 
 /* =========================================
@@ -1374,7 +1446,7 @@ input:checked+.component-toggle-slider:before {
     display: flex;
     justify-content: center;
     align-items: center;
-    
+
     /* Estado inicial invisible */
     opacity: 0;
     visibility: hidden;
@@ -1391,7 +1463,7 @@ input:checked+.component-toggle-slider:before {
     max-width: 90%;
     padding: 16px;
     position: relative;
-    
+
     /* Animación Desktop (Escala y Fade) */
     transform: scale(0.95) translateY(10px);
     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -1415,7 +1487,8 @@ input:checked+.component-toggle-slider:before {
 }
 
 .component-dialog-drag-zone {
-    display: none; /* Oculto en escritorio */
+    display: none;
+    /* Oculto en escritorio */
     justify-content: center;
     width: 100%;
     padding-bottom: 24px;
@@ -1469,19 +1542,20 @@ input:checked+.component-toggle-slider:before {
    ========================================= */
 @media (max-width: 468px) {
     .component-overlay {
-        align-items: flex-end; /* Alinear al fondo */
+        align-items: flex-end;
+        /* Alinear al fondo */
     }
 
     .component-dialog-wrapper {
         width: 100%;
         max-width: 100%;
         padding: 0;
-        
+
         /* ESTADO INICIAL: Escondido abajo */
         transform: translateY(100%);
         /* Transición suave tipo iOS/Android */
         transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-        
+
         border-radius: 16px 16px 0 0;
     }
 
@@ -1506,7 +1580,8 @@ input:checked+.component-toggle-slider:before {
     }
 
     .component-dialog-drag-zone {
-        display: flex; /* Visible solo en móvil */
+        display: flex;
+        /* Visible solo en móvil */
     }
 
     .component-dialog-footer {
@@ -1558,8 +1633,13 @@ input:checked+.component-toggle-slider:before {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* CAJAS VISUALES */
@@ -1586,7 +1666,7 @@ input:checked+.component-toggle-slider:before {
 .component-visual-box.box-qr {
     width: auto;
     flex-shrink: 0;
-    background-color: var(--bg-surface); 
+    background-color: var(--bg-surface);
     transition: background-color 0.2s ease;
 }
 
@@ -1629,6 +1709,7 @@ input:checked+.component-toggle-slider:before {
     .component-visual-group {
         flex-direction: column-reverse;
     }
+
     .component-visual-box {
         width: 100%;
     }
@@ -1681,10 +1762,12 @@ input:checked+.component-toggle-slider:before {
 /* Tarjeta que crece para llenar el espacio restante */
 .component-card--fill {
     flex: 1;
-    min-height: 0; /* Crítico para que el scroll interno funcione en Flexbox */
+    min-height: 0;
+    /* Crítico para que el scroll interno funcione en Flexbox */
     display: flex;
     flex-direction: column;
-    padding: 0; /* Sin padding para que la tabla toque los bordes */
+    padding: 0;
+    /* Sin padding para que la tabla toque los bordes */
     overflow: hidden;
     border: 1px solid var(--border-light);
 }
@@ -1751,10 +1834,21 @@ input:checked+.component-toggle-slider:before {
 }
 
 /* --- Utilidades --- */
-.font-mono { font-family: var(--sl-font-mono); }
-.w-60 { width: 60px; }
-.w-80 { width: 80px; }
-.text-right { text-align: right; }
+.font-mono {
+    font-family: var(--sl-font-mono);
+}
+
+.w-60 {
+    width: 60px;
+}
+
+.w-80 {
+    width: 80px;
+}
+
+.text-right {
+    text-align: right;
+}
 
 /* =========================================
    17. DASHBOARD CARDS & TRENDS
@@ -1893,118 +1987,118 @@ input:checked+.component-toggle-slider:before {
     text-align: center;
 }
 
-                    /* =========================================
+/* =========================================
                        SISTEMA DE ALERTAS
                        ========================================= */
 
-                    /* PADRE: Contenedor global con padding */
-                    #system-alert-container {
-                        position: relative;
-                        top: 0;
-                        left: 0;
-                        width: 100%;
-                        padding: 8px 8px 0 8px;
-                        /* El padding solicitado */
-                        z-index: 499;
-                        display: none;
-                        /* Controlado por JS */
-                        pointer-events: none;
-                        /* Permite clicks fuera de la alerta */
-                        border: none !important;
-                        /* Asegura que no haya bordes antiguos */
-                    }
+/* PADRE: Contenedor global con padding */
+#system-alert-container {
+    position: relative;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 8px 8px 0 8px;
+    /* El padding solicitado */
+    z-index: 499;
+    display: none;
+    /* Controlado por JS */
+    pointer-events: none;
+    /* Permite clicks fuera de la alerta */
+    border: none !important;
+    /* Asegura que no haya bordes antiguos */
+}
 
-                    /* HIJO: La tarjeta de alerta en sí */
-                    .system-alert-box {
-                        width: 100%;
-                        max-width: 100%;
-                        /* Opcional: max-width: 600px; para que no sea tan larga en monitores grandes */
-                        margin: 0 auto;
-                        border-radius: 12px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: space-between;
-                        padding: 12px 16px;
-                        color: #ffffff;
-                        /* Texto blanco para contraste */
-                        pointer-events: auto;
-                        /* Reactivar clicks en la alerta */
-                        gap: 12px;
-                    }
+/* HIJO: La tarjeta de alerta en sí */
+.system-alert-box {
+    width: 100%;
+    max-width: 100%;
+    /* Opcional: max-width: 600px; para que no sea tan larga en monitores grandes */
+    margin: 0 auto;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    color: #ffffff;
+    /* Texto blanco para contraste */
+    pointer-events: auto;
+    /* Reactivar clicks en la alerta */
+    gap: 12px;
+}
 
-                    /* Colores de fondo según severidad */
-                    .alert-bg-critical {
-                        background-color: #ef4444;
-                    }
+/* Colores de fondo según severidad */
+.alert-bg-critical {
+    background-color: #ef4444;
+}
 
-                    /* Rojo */
-                    .alert-bg-warning {
-                        background-color: #f59e0b;
-                    }
+/* Rojo */
+.alert-bg-warning {
+    background-color: #f59e0b;
+}
 
-                    /* Naranja */
-                    .alert-bg-info {
-                        background-color: #3b82f6;
-                    }
+/* Naranja */
+.alert-bg-info {
+    background-color: #3b82f6;
+}
 
-                    /* Azul */
+/* Azul */
 
-                    /* DIV 1: Contenido (Icono + Texto) */
-                    .alert-content-left {
-                        display: flex;
-                        align-items: center;
-                        gap: 12px;
-                        flex: 1;
-                        min-width: 0;
-                        /* Necesario para que el text-overflow funcione en flex */
-                    }
+/* DIV 1: Contenido (Icono + Texto) */
+.alert-content-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+    /* Necesario para que el text-overflow funcione en flex */
+}
 
-                    .alert-content-left .material-symbols-rounded {
-                        font-size: 20px;
-                        color: rgba(255, 255, 255, 0.9) !important;
-                        /* Forzar blanco */
-                    }
+.alert-content-left .material-symbols-rounded {
+    font-size: 20px;
+    color: rgba(255, 255, 255, 0.9) !important;
+    /* Forzar blanco */
+}
 
-                    #sys-alert-msg {
-                        font-size: 14px;
-                        font-weight: 500;
-                        white-space: nowrap;
-                        /* Una sola línea */
-                        overflow: hidden;
-                        /* Ocultar desbordamiento */
-                        text-overflow: ellipsis;
-                        /* Puntos suspensivos (...) */
-                        color: #ffffff;
-                        margin: 0;
-                    }
+#sys-alert-msg {
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    /* Una sola línea */
+    overflow: hidden;
+    /* Ocultar desbordamiento */
+    text-overflow: ellipsis;
+    /* Puntos suspensivos (...) */
+    color: #ffffff;
+    margin: 0;
+}
 
-                    /* Ocultar elementos que ya no usamos visualmente pero el JS busca */
-                    #sys-alert-title,
-                    #sys-alert-link {
-                        display: none !important;
-                    }
+/* Ocultar elementos que ya no usamos visualmente pero el JS busca */
+#sys-alert-title,
+#sys-alert-link {
+    display: none !important;
+}
 
-                    /* DIV 2: Botón de cerrar */
-                    .alert-content-right {
-                        display: flex;
-                        align-items: center;
-                        flex-shrink: 0;
-                    }
+/* DIV 2: Botón de cerrar */
+.alert-content-right {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
 
-                    #sys-alert-close {
-                        background: rgba(255, 255, 255, 0.2);
-                        border: none;
-                        color: white;
-                        border-radius: 50%;
-                        width: 28px;
-                        height: 28px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        cursor: pointer;
-                        transition: background 0.2s;
-                    }
+#sys-alert-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s;
+}
 
-                    #sys-alert-close:hover {
-                        background: rgba(255, 255, 255, 0.4);
-                    }
+#sys-alert-close:hover {
+    background: rgba(255, 255, 255, 0.4);
+}

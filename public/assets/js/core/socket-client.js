@@ -139,22 +139,28 @@ function showSystemAlert(alertData) {
 
         if (meta.update_type === 'future') {
             const dateStr = meta.date ? new Date(meta.date + 'T00:00:00').toLocaleDateString() : '--/--';
-            params.push(dateStr);
-            params.push(docName);
+            // Usamos <strong> para resaltar fechas y nombres ya que usaremos innerHTML
+            params.push(`<strong>${dateStr}</strong>`);
+            params.push(`<strong>${docName}</strong>`);
         } else {
-            params.push(docName);
+            params.push(`<strong>${docName}</strong>`);
         }
     }
 
-    // Traducción final
+    // 1. Traducción base
     let fullText = I18n.t(translationKey, params);
 
-    // === CAMBIO REALIZADO AQUÍ ===
-    // Se ha eliminado el bloque "if (fullText === translationKey) { ... }"
-    // Ahora, si la traducción falta, mostrará la clave (ej: system_alerts.performance.degradation)
+    // 2. [CORRECCIÓN] Agregar el Link si existe en la metadata
+    if (meta.link) {
+        const textVerMas = I18n.t('js.core.view_more') || 'Ver más';
+        // Agregamos el enlace con estilos inline para asegurar que se vea blanco y subrayado
+        fullText += ` <a href="${meta.link}" target="_blank" style="color: inherit; text-decoration: underline; font-weight: bold; margin-left: 6px;">${textVerMas}</a>`;
+    }
 
-    msg.textContent = fullText;
-    msg.title = fullText;
+    // 3. [CORRECCIÓN] Usar innerHTML para que funcionen los enlaces y negritas
+    msg.innerHTML = fullText;
+    msg.title = msg.textContent; // Tooltip con texto plano
+    
     container.style.display = 'block';
 
     closeBtn.onclick = () => {

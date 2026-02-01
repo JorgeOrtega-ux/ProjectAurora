@@ -59,7 +59,6 @@
                         <div class="alert-content-left">
                             <span id="sys-alert-icon" class="material-symbols-rounded">info</span>
                             <span id="sys-alert-msg">Mensaje de alerta...</span>
-                            <span id="sys-alert-title" style="display:none"></span>
                             <a id="sys-alert-link" style="display:none"></a>
                         </div>
                         <div class="alert-content-right">
