@@ -32,18 +32,6 @@
 
             <?php if (isset($_SESSION['user_id'])): ?>
                 
-                <div class="header-item" style="position: relative;">
-                    
-                    <div class="header-button" 
-                         data-action="toggleModuleOptions"
-                         data-tooltip="Crear nuevo">
-                        <span class="material-symbols-rounded">add</span>
-                    </div>
-
-                    <?php include '../includes/modules/module-options.php'; ?>
-                    
-                </div>
-
                 <div class="header-button profile-button" 
                      data-action="toggleModuleProfile"
                      data-role="<?php echo htmlspecialchars($userRole ?? 'guest'); ?>"
@@ -67,7 +55,6 @@
             <?php endif; ?>
 
         </div>
-        
         <?php include '../includes/modules/module-profile.php'; ?>
     </div>
 </div>

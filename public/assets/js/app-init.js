@@ -11,15 +11,13 @@ import { Dialog } from './core/dialog-manager.js';
 import { UiManager } from './core/ui-manager.js';
 import { SocketClient } from './core/socket-client.js'; 
 
-// === Módulos de Configuración ===
+// Módulos
 import { SettingsController } from './modules/settings/settings-controller.js'; 
 import { ProfileController } from './modules/settings/profile-controller.js'; 
 import { DevicesController } from './modules/settings/devices-controller.js';
 import { DeleteAccountController } from './modules/settings/delete-account-controller.js';
 import { TwoFactorController } from './modules/settings/2fa-controller.js';
 import { SecurityController } from './modules/settings/security-controller.js';
-
-// === Módulos de Admin ===
 import { UsersController } from './modules/admin/users/users-controller.js';
 import { UserDetailsController } from './modules/admin/users/user-details-controller.js';
 import { UserRoleController } from './modules/admin/users/user-role-controller.js';
@@ -32,10 +30,9 @@ import { LogFilesController } from './modules/admin/log-files-controller.js';
 import { FileViewerController } from './modules/admin/file-viewer-controller.js';
 import { RedisManagerController } from './modules/admin/redis-manager-controller.js';
 import { DashboardController } from './modules/admin/dashboard-controller.js';
-import { SystemAlertsController } from './modules/admin/system-alerts-controller.js';
 
-// === Módulos de App ===
-import { CreateCanvasController } from './modules/app/create-canvas-controller.js';
+// [NUEVO] Importar el nuevo controlador de alertas del sistema
+import { SystemAlertsController } from './modules/admin/system-alerts-controller.js';
 
 const App = {
     init: () => {
@@ -45,7 +42,9 @@ const App = {
             try {
                 const localPrefs = JSON.parse(localStorage.getItem('guest_prefs') || '{}');
                 window.USER_PREFS = { ...window.USER_PREFS, ...localPrefs };
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error("Error leyendo localStorage", e);
+            }
         }
 
         if (window.USER_PREFS && window.USER_PREFS.theme) {
@@ -70,17 +69,11 @@ const App = {
              initUrlManager();
         }
 
-        // Router Inicial
         const path = window.location.pathname.replace(window.BASE_PATH, '').replace(/^\/+|\/+$/g, '');
         routeDispatcher(path || 'main');
 
-        // Router SPA (Evento)
         document.addEventListener('spa:view_loaded', (e) => {
-            console.log("SPA View Loaded:", e.detail.section);
-            // Pequeño timeout para asegurar que el DOM esté pintado (fix race conditions)
-            setTimeout(() => {
-                routeDispatcher(e.detail.section);
-            }, 10);
+            routeDispatcher(e.detail.section);
         });
     }
 };
@@ -89,32 +82,25 @@ function initGlobalSocketListeners() {
     document.addEventListener('socket:force_logout', (e) => {
         if (window.isManualLogout) return;
         if (window.location.pathname.includes('/login')) return;
-        Toast.show('Tu sesión ha sido cerrada remotamente.', 'warning');
+        Toast.show('Tu sesión ha sido cerrada remotamente.', 'warning', 5000);
         setTimeout(() => { window.location.href = window.BASE_PATH + 'login'; }, 1500);
     });
-    document.addEventListener('socket:maintenance_start', () => window.location.reload());
+
+    document.addEventListener('socket:maintenance_start', (e) => {
+        window.location.reload();
+    });
+
     document.addEventListener('socket:notification', (e) => {
-        if (e.detail.message && e.detail.message.text) {
-            Toast.show(e.detail.message.text, e.detail.message.type || 'info');
+        const msgData = e.detail.message; 
+        if (msgData && msgData.text) {
+            Toast.show(msgData.text, msgData.type || 'info');
         }
     });
 }
 
 function routeDispatcher(section) {
-    // Normalizar: eliminar barras al inicio/final
-    const cleanSection = section.replace(/^\/+|\/+$/g, '');
-    
-    updateSidebarState(cleanSection);
-
-    console.log("Dispatcher routing to:", cleanSection); // DEBUG
-
-    switch (cleanSection) {
-        // === APP MODULES ===
-        case 'create-canvas':      // <--- AGREGADO: Caso sin prefijo
-        case 'app/create-canvas': 
-            CreateCanvasController.init();
-            break;
-
+    updateSidebarState(section);
+    switch (section) {
         // === SETTINGS ===
         case 'settings/your-profile': 
             ProfileController.init(); 
@@ -123,6 +109,10 @@ function routeDispatcher(section) {
             break;
             
         case 'settings/accessibility': 
+            SettingsController.init(); 
+            SettingsController.sync(); 
+            break;
+            
         case 'settings/preferences': 
             SettingsController.init(); 
             SettingsController.sync(); 
@@ -134,8 +124,15 @@ function routeDispatcher(section) {
         case 'settings/2fa-setup': TwoFactorController.init(); break;
         
         // === ADMIN MODULES ===
-        case 'admin/dashboard': DashboardController.init(); break;
-        case 'admin/alerts': SystemAlertsController.init(); break;
+        case 'admin/dashboard': 
+            DashboardController.init(); 
+            // AlertController ya no se inicializa aquí porque ya no es un modal
+            break;
+
+        case 'admin/alerts': 
+            SystemAlertsController.init(); // [NUEVO] Inicialización de la nueva sección
+            break;
+
         case 'admin/users': UsersController.init(); break;
         case 'admin/user-details': UserDetailsController.init(); break;
         case 'admin/user-role': UserRoleController.init(); break;
@@ -143,22 +140,19 @@ function routeDispatcher(section) {
         case 'admin/server': ServerConfigController.init(); break;
         case 'admin/backups': BackupsController.init(); break;
         case 'admin/backups/config': BackupConfigController.init(); break;
+        
         case 'admin/audit-log': AuditLogController.init(); break;
         case 'admin/log-files': LogFilesController.init(); break;
         case 'admin/file-viewer': FileViewerController.init(); break;
         case 'admin/redis': RedisManagerController.init(); break;
         
-        default: 
-            console.log("No controller mapped for:", cleanSection);
-            break;
+        default: break;
     }
 }
 
 function updateSidebarState(section) {
     const sidebar = document.querySelector('.module-surface');
     if (!sidebar) return;
-    
-    // Limpiar activos previos
     sidebar.querySelectorAll('.menu-link').forEach(link => link.classList.remove('active'));
 
     const menus = {
@@ -170,16 +164,12 @@ function updateSidebarState(section) {
     
     Object.values(menus).forEach(el => { if(el) el.style.display = 'none'; });
 
-    // Lógica de visualización de menús
     if (section.startsWith('settings/')) menus.settings.style.display = 'flex';
     else if (section.startsWith('admin/')) menus.admin.style.display = 'flex';
     else if (section.startsWith('site-policy')) menus.help.style.display = 'flex';
-    else if (menus.main) menus.main.style.display = 'flex'; // Default a Main
+    else if (menus.main) menus.main.style.display = 'flex';
 
-    // Activar link específico (busca coincidencia exacta o parcial)
-    const activeLink = sidebar.querySelector(`.menu-link[data-nav="${section}"]`) 
-                    || sidebar.querySelector(`.menu-link[data-nav="app/${section}"]`); // Intento de fallback
-                    
+    const activeLink = sidebar.querySelector(`.menu-link[data-nav="${section}"]`);
     if (activeLink) activeLink.classList.add('active');
 }
 

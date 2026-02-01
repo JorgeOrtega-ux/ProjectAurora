@@ -4,7 +4,8 @@ USE project_aurora_db;
 -- =========================================================
 -- REINICIO DE TABLAS
 -- =========================================================
-DROP TABLE IF EXISTS audit_logs; -- [NUEVO] Limpieza para la nueva tabla
+DROP TABLE IF EXISTS audit_logs; 
+DROP TABLE IF EXISTS canvases; -- Eliminamos para recrear con nueva estructura
 DROP TABLE IF EXISTS ws_auth_tokens;
 DROP TABLE IF EXISTS user_auth_tokens;
 DROP TABLE IF EXISTS user_preferences;
@@ -143,16 +144,13 @@ CREATE TABLE IF NOT EXISTS ws_auth_tokens (
     INDEX (token)
 );
 
--- =========================================================
--- [NUEVO] TABLA DE AUDITORÍA (AUDIT LOGS)
--- =========================================================
 CREATE TABLE IF NOT EXISTS audit_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     admin_id INT NOT NULL,
-    target_type VARCHAR(50) NOT NULL, -- 'user', 'server_config', 'system'
-    target_id VARCHAR(100) DEFAULT NULL, -- ID del usuario afectado o clave de config
-    action VARCHAR(50) NOT NULL, -- 'UPDATE_ROLE', 'BAN_USER', etc.
-    changes JSON DEFAULT NULL, -- Snapshot: { "field": "role", "old": "user", "new": "admin" }
+    target_type VARCHAR(50) NOT NULL, 
+    target_id VARCHAR(100) DEFAULT NULL, 
+    action VARCHAR(50) NOT NULL, 
+    changes JSON DEFAULT NULL, 
     ip_address VARCHAR(45),
     user_agent TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -175,22 +173,22 @@ CREATE TABLE IF NOT EXISTS `system_alerts` (
   INDEX `idx_active` (`is_active`)
 );
 
--- [AGREGAR AL FINAL DE bd.sql]
-
 -- =========================================================
--- TABLA DE LIENZOS (CANVASES)
+-- TABLA DE LIENZOS (CANVASES) - ACTUALIZADA
 -- =========================================================
 CREATE TABLE IF NOT EXISTS canvases (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
+    canvas_index TINYINT NOT NULL, -- 1, 2, o 3
     width INT NOT NULL, -- 64 o 128
     height INT NOT NULL, -- 64 o 128
     privacy ENUM('public', 'private') DEFAULT 'public',
-    access_code VARCHAR(12) DEFAULT NULL, -- Código de 12 dígitos si es privado
-    status ENUM('active', 'archived') DEFAULT 'active',
+    access_code VARCHAR(12) DEFAULT NULL, 
+    status ENUM('active', 'archived', 'deleted') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_index (user_id, canvas_index), -- Evita duplicados de índice
     INDEX (user_id),
     INDEX (privacy)
 );
