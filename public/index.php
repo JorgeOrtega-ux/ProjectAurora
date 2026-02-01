@@ -200,6 +200,130 @@ if ($showMaintenanceScreen) {
                         <?php include __DIR__ . '/../includes/layouts/header.php'; ?>
                     </div>
                 <?php endif; ?>
+                <div id="system-alert-container" class="system-alert" data-visible="false" data-type="warning">
+    <div class="system-alert__content">
+        <span id="sys-alert-icon" class="material-symbols-rounded system-alert__icon">warning</span>
+        <div class="system-alert__text-group">
+            <strong id="sys-alert-title" class="system-alert__title"></strong>
+            <span id="sys-alert-msg" class="system-alert__message"></span>
+        </div>
+    </div>
+    <div class="system-alert__actions">
+        <a id="sys-alert-link" href="#" target="_blank" class="system-alert__link d-none">Ver detalles</a>
+        <button id="sys-alert-close" class="system-alert__close">
+            <span class="material-symbols-rounded">close</span>
+        </button>
+    </div>
+</div>
+
+<style>
+    /* =========================================
+   SYSTEM ALERT (Barra de Notificación)
+   ========================================= */
+.system-alert {
+    display: none; /* Oculto por defecto, se activa con data-visible="true" */
+    width: 100%;
+    /* Mapeo del #0f0f0f original a la variable más cercana del sistema */
+    background-color: var(--sl-color-gray-950); 
+    border-bottom: 1px solid var(--border-light);
+    padding: 12px 24px;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    z-index: 9999;
+    box-sizing: border-box;
+    /* Forzamos modo oscuro dentro de la barra para mantener el diseño original */
+    color: var(--sl-color-neutral-0); 
+}
+
+/* Control de visibilidad mediante atributo data */
+.system-alert[data-visible="true"] {
+    display: flex;
+}
+
+.system-alert__content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.system-alert__text-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.system-alert__title {
+    color: var(--sl-color-neutral-0); /* #fff */
+    font-size: 14px;
+    font-weight: var(--sl-font-weight-bold);
+    display: block;
+}
+
+.system-alert__message {
+    color: var(--sl-color-gray-300); /* Similar a #ccc */
+    font-size: 13px;
+}
+
+/* Acciones y Botones */
+.system-alert__actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.system-alert__link {
+    color: var(--sl-color-blue-400); /* Similar a #4a90e2 */
+    font-size: 13px;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.system-alert__link:hover {
+    text-decoration: underline;
+    color: var(--sl-color-blue-300);
+}
+
+.system-alert__close {
+    background: none;
+    border: none;
+    color: var(--sl-color-gray-400); /* #666 */
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: var(--sl-border-radius-circle);
+    transition: color 0.2s, background-color 0.2s;
+}
+
+.system-alert__close:hover {
+    color: var(--sl-color-neutral-0);
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* =========================================
+   VARIANTES POR TIPO (data-type)
+   ========================================= */
+/* Warning (Por defecto en tu HTML original) */
+.system-alert[data-type="warning"] .system-alert__icon {
+    color: var(--sl-color-warning-500); /* #ff9800 aprox */
+}
+
+/* Error */
+.system-alert[data-type="error"] .system-alert__icon {
+    color: var(--sl-color-danger-500);
+}
+
+/* Info */
+.system-alert[data-type="info"] .system-alert__icon {
+    color: var(--sl-color-info-500);
+}
+
+/* Success */
+.system-alert[data-type="success"] .system-alert__icon {
+    color: var(--sl-color-success-500);
+}
+</style>
                 <div class="general-content-bottom">
                     <?php if ($showInterface): ?>
                         <?php include __DIR__ . '/../includes/modules/module-surface.php'; ?>

@@ -172,23 +172,3 @@ CREATE TABLE IF NOT EXISTS `system_alerts` (
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX `idx_active` (`is_active`)
 );
-
--- =========================================================
--- TABLA DE LIENZOS (CANVASES) - ACTUALIZADA
--- =========================================================
-CREATE TABLE IF NOT EXISTS canvases (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    canvas_index TINYINT NOT NULL, -- 1, 2, o 3
-    width INT NOT NULL, -- 64 o 128
-    height INT NOT NULL, -- 64 o 128
-    privacy ENUM('public', 'private') DEFAULT 'public',
-    access_code VARCHAR(12) DEFAULT NULL, 
-    status ENUM('active', 'archived', 'deleted') DEFAULT 'active',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_user_index (user_id, canvas_index), -- Evita duplicados de índice
-    INDEX (user_id),
-    INDEX (privacy)
-);
