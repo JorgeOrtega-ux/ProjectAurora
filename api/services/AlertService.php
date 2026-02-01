@@ -14,13 +14,16 @@ class AlertService {
 
     public function createAlert($data) {
         try {
+            // 1. Validar integridad de datos antes de proceder
+            $this->validatePayload($data);
+
             $this->deactivateCurrentAlerts();
 
             $uuid = Utils::generateUUID();
             $type = $data['type'];
             $severity = $this->determineSeverity($type, $data);
             
-            // Construcción del mensaje enriquecido basado en metadata
+            // Construcción del mensaje (Clave de traducción)
             $message = $this->buildFormattedMessage($type, $data['meta'] ?? []);
             $metaData = json_encode($data['meta'] ?? []);
 
@@ -47,18 +50,44 @@ class AlertService {
             return ['success' => true, 'message' => 'Alerta emitida correctamente'];
 
         } catch (Exception $e) {
-            return ['success' => false, 'message' => 'Error DB: ' . $e->getMessage()];
+            return ['success' => false, 'message' => 'Error: ' . $e->getMessage()];
         }
     }
 
     /**
-     * Construye el texto legible para el usuario final según el contexto
+     * Valida que vengan los campos obligatorios según el tipo
      */
-   private function buildFormattedMessage($type, $meta) {
+    private function validatePayload($data) {
+        $type = $data['type'] ?? '';
+        $meta = $data['meta'] ?? [];
+
+        if (empty($type)) throw new Exception("Tipo de alerta no especificado.");
+
+        if ($type === 'maintenance') {
+            $subtype = $meta['subtype'] ?? '';
+            if ($subtype === 'scheduled') {
+                if (empty($meta['start'])) throw new Exception("La fecha de inicio es requerida para mantenimiento programado.");
+                if (empty($meta['duration'])) throw new Exception("La duración es requerida.");
+            } elseif ($subtype === 'emergency') {
+                if (empty($meta['cutoff'])) throw new Exception("La hora de corte es requerida para emergencias.");
+            }
+        }
+
+        if ($type === 'policy') {
+            $status = $meta['update_type'] ?? '';
+            if ($status === 'future') {
+                if (empty($meta['date'])) throw new Exception("La fecha de entrada en vigor es obligatoria.");
+            }
+        }
+    }
+
+    /**
+     * Retorna la CLAVE de traducción.
+     */
+    private function buildFormattedMessage($type, $meta) {
         switch ($type) {
             case 'performance':
                 $code = $meta['code'] ?? 'degradation';
-                // Retorna ej: system_alerts.performance.degradation
                 return "system_alerts.performance." . $code;
 
             case 'maintenance':
@@ -69,7 +98,6 @@ class AlertService {
 
             case 'policy':
                 $updateType = $meta['update_type'] ?? 'immediate';
-                // Retorna ej: system_alerts.policy.future
                 return "system_alerts.policy." . $updateType;
 
             default:
@@ -107,7 +135,9 @@ class AlertService {
                     'id' => $dbAlert['uuid'],
                     'type' => $dbAlert['type'],
                     'severity' => $dbAlert['severity'],
-                    'message' => $dbAlert['message']
+                    'message' => $dbAlert['message'],
+                    // Importante: decodificar metadata si viene de DB
+                    'meta' => json_decode($dbAlert['meta_data'], true)
                 ];
             }
         }

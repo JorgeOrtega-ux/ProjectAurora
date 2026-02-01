@@ -76,37 +76,41 @@
 
     <div class="component-card component-card--grouped mt-4">
         
-        <div class="component-group-item">
-            <div class="component-card__text">
-                <span class="component-card__title">Categoría de Alerta</span>
-                <span class="component-card__description">Define la naturaleza del comunicado global.</span>
+        <div class="component-group-item component-group-item--stacked">
+            <div class="component-card__content">
+                <div class="component-card__text">
+                    <span class="component-card__title">Categoría de Alerta</span>
+                    <span class="component-card__description">Define la naturaleza del comunicado global.</span>
+                </div>
             </div>
             
-            <div class="trigger-select-wrapper">
-                <div class="trigger-selector" id="trigger-alert-type">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span class="material-symbols-rounded" id="icon-alert-type">speed</span>
-                        <span class="trigger-select-text" id="text-alert-type">Rendimiento</span>
+            <div class="component-card__actions">
+                <div class="trigger-select-wrapper">
+                    <div class="trigger-selector" id="trigger-alert-type">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="material-symbols-rounded" id="icon-alert-type">speed</span>
+                            <span class="trigger-select-text" id="text-alert-type">Rendimiento</span>
+                        </div>
+                        <span class="material-symbols-rounded">expand_more</span>
                     </div>
-                    <span class="material-symbols-rounded">expand_more</span>
-                </div>
 
-                <div class="popover-module" id="popover-alert-type">
-                    <div class="menu-list">
-                        <div class="menu-link active" data-action="select-main-type" data-value="performance">
-                            <span class="material-symbols-rounded menu-link-icon">speed</span>
-                            <span class="menu-link-text">Rendimiento</span>
-                            <div class="radio-indicator"></div>
-                        </div>
-                        <div class="menu-link" data-action="select-main-type" data-value="maintenance">
-                            <span class="material-symbols-rounded menu-link-icon">build</span>
-                            <span class="menu-link-text">Mantenimiento</span>
-                            <div class="radio-indicator"></div>
-                        </div>
-                        <div class="menu-link" data-action="select-main-type" data-value="policy">
-                            <span class="material-symbols-rounded menu-link-icon">policy</span>
-                            <span class="menu-link-text">Políticas y Legal</span>
-                            <div class="radio-indicator"></div>
+                    <div class="popover-module" id="popover-alert-type">
+                        <div class="menu-list">
+                            <div class="menu-link active" data-action="select-main-type" data-value="performance">
+                                <span class="material-symbols-rounded menu-link-icon">speed</span>
+                                <span class="menu-link-text">Rendimiento</span>
+                                <div class="radio-indicator"></div>
+                            </div>
+                            <div class="menu-link" data-action="select-main-type" data-value="maintenance">
+                                <span class="material-symbols-rounded menu-link-icon">build</span>
+                                <span class="menu-link-text">Mantenimiento</span>
+                                <div class="radio-indicator"></div>
+                            </div>
+                            <div class="menu-link" data-action="select-main-type" data-value="policy">
+                                <span class="material-symbols-rounded menu-link-icon">policy</span>
+                                <span class="menu-link-text">Políticas y Legal</span>
+                                <div class="radio-indicator"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -115,37 +119,41 @@
 
         <div id="group-performance" class="config-group">
             <hr class="component-divider">
-            <div class="component-group-item">
-                <div class="component-card__text">
-                    <span class="component-card__title">Diagnóstico</span>
-                    <span class="component-card__description">Seleccione el mensaje predefinido para los usuarios.</span>
+            <div class="component-group-item component-group-item--stacked">
+                <div class="component-card__content">
+                    <div class="component-card__text">
+                        <span class="component-card__title">Diagnóstico</span>
+                        <span class="component-card__description">Seleccione el mensaje predefinido para los usuarios.</span>
+                    </div>
                 </div>
                 
-                <div class="trigger-select-wrapper">
-                    <div class="trigger-selector" id="trigger-perf-msg">
-                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <span class="material-symbols-rounded" id="icon-perf-msg">troubleshoot</span>
-                            <span class="trigger-select-text" id="text-perf-msg">Degradación de Servicio</span>
+                <div class="component-card__actions">
+                    <div class="trigger-select-wrapper">
+                        <div class="trigger-selector" id="trigger-perf-msg">
+                             <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="material-symbols-rounded" id="icon-perf-msg">troubleshoot</span>
+                                <span class="trigger-select-text" id="text-perf-msg">Degradación de Servicio</span>
+                            </div>
+                            <span class="material-symbols-rounded">expand_more</span>
                         </div>
-                        <span class="material-symbols-rounded">expand_more</span>
-                    </div>
 
-                    <div class="popover-module" id="popover-perf-msg">
-                        <div class="menu-list">
-                            <div class="menu-link active" data-action="select-perf-msg" data-value="degradation">
-                                <span class="material-symbols-rounded menu-link-icon">troubleshoot</span>
-                                <span class="menu-link-text">Degradación de Servicio</span>
-                                <div class="radio-indicator"></div>
-                            </div>
-                            <div class="menu-link" data-action="select-perf-msg" data-value="latency">
-                                <span class="material-symbols-rounded menu-link-icon">network_check</span>
-                                <span class="menu-link-text">Latencia Alta Detectada</span>
-                                <div class="radio-indicator"></div>
-                            </div>
-                            <div class="menu-link" data-action="select-perf-msg" data-value="overload">
-                                <span class="material-symbols-rounded menu-link-icon">memory</span>
-                                <span class="menu-link-text">Sobrecarga Temporal</span>
-                                <div class="radio-indicator"></div>
+                        <div class="popover-module" id="popover-perf-msg">
+                            <div class="menu-list">
+                                <div class="menu-link active" data-action="select-perf-msg" data-value="degradation">
+                                    <span class="material-symbols-rounded menu-link-icon">troubleshoot</span>
+                                    <span class="menu-link-text">Degradación de Servicio</span>
+                                    <div class="radio-indicator"></div>
+                                </div>
+                                <div class="menu-link" data-action="select-perf-msg" data-value="latency">
+                                    <span class="material-symbols-rounded menu-link-icon">network_check</span>
+                                    <span class="menu-link-text">Latencia Alta Detectada</span>
+                                    <div class="radio-indicator"></div>
+                                </div>
+                                <div class="menu-link" data-action="select-perf-msg" data-value="overload">
+                                    <span class="material-symbols-rounded menu-link-icon">memory</span>
+                                    <span class="menu-link-text">Sobrecarga Temporal</span>
+                                    <div class="radio-indicator"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -156,32 +164,36 @@
         <div id="group-maintenance" class="config-group" style="display: none;">
             <hr class="component-divider">
             
-            <div class="component-group-item">
-                <div class="component-card__text">
-                    <span class="component-card__title">Modalidad</span>
-                    <span class="component-card__description">Tipo de intervención técnica.</span>
+            <div class="component-group-item component-group-item--stacked">
+                <div class="component-card__content">
+                    <div class="component-card__text">
+                        <span class="component-card__title">Modalidad</span>
+                        <span class="component-card__description">Tipo de intervención técnica.</span>
+                    </div>
                 </div>
                 
-                <div class="trigger-select-wrapper">
-                    <div class="trigger-selector" id="trigger-maint-type">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span class="material-symbols-rounded" id="icon-maint-type">event</span>
-                            <span class="trigger-select-text" id="text-maint-type">Programado</span>
-                        </div>
-                        <span class="material-symbols-rounded">expand_more</span>
-                    </div>
-
-                    <div class="popover-module" id="popover-maint-type">
-                        <div class="menu-list">
-                            <div class="menu-link active" data-action="select-maint-type" data-value="scheduled">
-                                <span class="material-symbols-rounded menu-link-icon">event</span>
-                                <span class="menu-link-text">Programado</span>
-                                <div class="radio-indicator"></div>
+                <div class="component-card__actions">
+                    <div class="trigger-select-wrapper">
+                        <div class="trigger-selector" id="trigger-maint-type">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="material-symbols-rounded" id="icon-maint-type">event</span>
+                                <span class="trigger-select-text" id="text-maint-type">Programado</span>
                             </div>
-                            <div class="menu-link" style="color: var(--color-error);" data-action="select-maint-type" data-value="emergency">
-                                <span class="material-symbols-rounded menu-link-icon">warning</span>
-                                <span class="menu-link-text">Emergencia</span>
-                                <div class="radio-indicator"></div>
+                            <span class="material-symbols-rounded">expand_more</span>
+                        </div>
+
+                        <div class="popover-module" id="popover-maint-type">
+                            <div class="menu-list">
+                                <div class="menu-link active" data-action="select-maint-type" data-value="scheduled">
+                                    <span class="material-symbols-rounded menu-link-icon">event</span>
+                                    <span class="menu-link-text">Programado</span>
+                                    <div class="radio-indicator"></div>
+                                </div>
+                                <div class="menu-link" style="color: var(--color-error);" data-action="select-maint-type" data-value="emergency">
+                                    <span class="material-symbols-rounded menu-link-icon">warning</span>
+                                    <span class="menu-link-text">Emergencia</span>
+                                    <div class="radio-indicator"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -190,50 +202,70 @@
 
             <div id="subgroup-maint-scheduled">
                 <hr class="component-divider">
-                <div class="component-group-item">
-                    <div class="component-card__text">
-                        <span class="component-card__title">Fecha de Inicio</span>
-                        <span class="component-card__description">Cuándo comenzará la desconexión.</span>
+                <div class="component-group-item component-group-item--stacked">
+                    <div class="component-card__content">
+                        <div class="component-card__text">
+                            <span class="component-card__title">Fecha de Inicio</span>
+                            <span class="component-card__description">Cuándo comenzará la desconexión.</span>
+                        </div>
                     </div>
-                    <div class="component-input-wrapper" style="width: auto;">
-                        <input type="datetime-local" id="maint-start-time" class="component-text-input">
+                    
+                    <div class="component-card__actions">
+                        <div class="date-time-picker-wrapper" id="wrapper-maint-start">
+                            <div class="trigger-selector">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="material-symbols-rounded" style="color: var(--text-tertiary);">calendar_today</span>
+                                    <span class="trigger-select-text">Seleccionar fecha...</span>
+                                </div>
+                                <span class="material-symbols-rounded">expand_more</span>
+                            </div>
+                            <input type="hidden" id="maint-start-time">
+                        </div>
                     </div>
-                </div>
+                    </div>
 
                 <hr class="component-divider">
-                <div class="component-group-item">
-                    <div class="component-card__text">
-                        <span class="component-card__title">Duración Estimada</span>
-                        <span class="component-card__description">Tiempo en minutos.</span>
+                <div class="component-group-item component-group-item--stacked">
+                    <div class="component-card__content">
+                        <div class="component-card__text">
+                            <span class="component-card__title">Duración Estimada</span>
+                            <span class="component-card__description">Tiempo en minutos.</span>
+                        </div>
                     </div>
-                    <div class="stepper-control">
-                        <button class="stepper-btn" id="btn-duration-dec" type="button">
-                            <span class="material-symbols-rounded">remove</span>
-                        </button>
-                        <input type="number" id="maint-duration" class="stepper-input" value="60" step="15">
-                        <button class="stepper-btn" id="btn-duration-inc" type="button">
-                            <span class="material-symbols-rounded">add</span>
-                        </button>
+                    <div class="component-card__actions">
+                        <div class="stepper-control">
+                            <button class="stepper-btn" id="btn-duration-dec" type="button">
+                                <span class="material-symbols-rounded">remove</span>
+                            </button>
+                            <input type="number" id="maint-duration" class="stepper-input" value="60" step="15">
+                            <button class="stepper-btn" id="btn-duration-inc" type="button">
+                                <span class="material-symbols-rounded">add</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div id="subgroup-maint-emergency" style="display: none;">
                 <hr class="component-divider">
-                <div class="component-group-item">
+                <div class="component-group-item component-group-item--stacked">
                     <div class="component-message component-message--error w-100 m-0">
                         <span style="font-weight: 600;">Atención:</span> Esta acción notificará un cierre inminente a todos los usuarios conectados.
                     </div>
                 </div>
                 
                 <hr class="component-divider">
-                <div class="component-group-item">
-                    <div class="component-card__text">
-                        <span class="component-card__title">Hora de Corte</span>
-                        <span class="component-card__description">Hora límite para cerrar sesión.</span>
+                <div class="component-group-item component-group-item--stacked">
+                    <div class="component-card__content">
+                        <div class="component-card__text">
+                            <span class="component-card__title">Hora de Corte</span>
+                            <span class="component-card__description">Hora límite para cerrar sesión.</span>
+                        </div>
                     </div>
-                    <div class="component-input-wrapper" style="width: auto;">
-                        <input type="time" id="maint-emergency-time" class="component-text-input">
+                    <div class="component-card__actions">
+                        <div class="component-input-wrapper" style="width: auto;">
+                            <input type="time" id="maint-emergency-time" class="component-text-input">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -242,36 +274,41 @@
         <div id="group-policy" class="config-group" style="display: none;">
             <hr class="component-divider">
             
-            <div class="component-group-item">
-                <div class="component-card__text">
-                    <span class="component-card__title">Documento Legal</span>
+            <div class="component-group-item component-group-item--stacked">
+                <div class="component-card__content">
+                    <div class="component-card__text">
+                        <span class="component-card__title">Documento Legal</span>
+                        <span class="component-card__description">Seleccione el documento a actualizar.</span>
+                    </div>
                 </div>
                 
-                <div class="trigger-select-wrapper">
-                    <div class="trigger-selector" id="trigger-policy-doc">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span class="material-symbols-rounded" id="icon-policy-doc">description</span>
-                            <span class="trigger-select-text" id="text-policy-doc">Términos y Condiciones</span>
+                <div class="component-card__actions">
+                    <div class="trigger-select-wrapper">
+                        <div class="trigger-selector" id="trigger-policy-doc">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="material-symbols-rounded" id="icon-policy-doc">description</span>
+                                <span class="trigger-select-text" id="text-policy-doc">Términos y Condiciones</span>
+                            </div>
+                            <span class="material-symbols-rounded">expand_more</span>
                         </div>
-                        <span class="material-symbols-rounded">expand_more</span>
-                    </div>
 
-                    <div class="popover-module" id="popover-policy-doc">
-                        <div class="menu-list">
-                            <div class="menu-link active" data-action="select-policy-doc" data-value="terms">
-                                <span class="material-symbols-rounded menu-link-icon">description</span>
-                                <span class="menu-link-text">Términos y Condiciones</span>
-                                <div class="radio-indicator"></div>
-                            </div>
-                            <div class="menu-link" data-action="select-policy-doc" data-value="privacy">
-                                <span class="material-symbols-rounded menu-link-icon">lock</span>
-                                <span class="menu-link-text">Política de Privacidad</span>
-                                <div class="radio-indicator"></div>
-                            </div>
-                            <div class="menu-link" data-action="select-policy-doc" data-value="cookies">
-                                <span class="material-symbols-rounded menu-link-icon">cookie</span>
-                                <span class="menu-link-text">Política de Cookies</span>
-                                <div class="radio-indicator"></div>
+                        <div class="popover-module" id="popover-policy-doc">
+                            <div class="menu-list">
+                                <div class="menu-link active" data-action="select-policy-doc" data-value="terms">
+                                    <span class="material-symbols-rounded menu-link-icon">description</span>
+                                    <span class="menu-link-text">Términos y Condiciones</span>
+                                    <div class="radio-indicator"></div>
+                                </div>
+                                <div class="menu-link" data-action="select-policy-doc" data-value="privacy">
+                                    <span class="material-symbols-rounded menu-link-icon">lock</span>
+                                    <span class="menu-link-text">Política de Privacidad</span>
+                                    <div class="radio-indicator"></div>
+                                </div>
+                                <div class="menu-link" data-action="select-policy-doc" data-value="cookies">
+                                    <span class="material-symbols-rounded menu-link-icon">cookie</span>
+                                    <span class="menu-link-text">Política de Cookies</span>
+                                    <div class="radio-indicator"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -280,31 +317,36 @@
 
             <hr class="component-divider">
             
-            <div class="component-group-item">
-                <div class="component-card__text">
-                    <span class="component-card__title">Tipo de Actualización</span>
+            <div class="component-group-item component-group-item--stacked">
+                <div class="component-card__content">
+                    <div class="component-card__text">
+                        <span class="component-card__title">Tipo de Actualización</span>
+                        <span class="component-card__description">Cuándo se aplicarán los cambios.</span>
+                    </div>
                 </div>
                 
-                <div class="trigger-select-wrapper">
-                    <div class="trigger-selector" id="trigger-policy-status">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span class="material-symbols-rounded" id="icon-policy-status">calendar_month</span>
-                            <span class="trigger-select-text" id="text-policy-status">Actualización Futura</span>
-                        </div>
-                        <span class="material-symbols-rounded">expand_more</span>
-                    </div>
-
-                    <div class="popover-module" id="popover-policy-status">
-                        <div class="menu-list">
-                            <div class="menu-link active" data-action="select-policy-status" data-value="future">
-                                <span class="material-symbols-rounded menu-link-icon">calendar_month</span>
-                                <span class="menu-link-text">Actualización Futura</span>
-                                <div class="radio-indicator"></div>
+                <div class="component-card__actions">
+                    <div class="trigger-select-wrapper">
+                        <div class="trigger-selector" id="trigger-policy-status">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="material-symbols-rounded" id="icon-policy-status">calendar_month</span>
+                                <span class="trigger-select-text" id="text-policy-status">Actualización Futura</span>
                             </div>
-                            <div class="menu-link" data-action="select-policy-status" data-value="immediate">
-                                <span class="material-symbols-rounded menu-link-icon">publish</span>
-                                <span class="menu-link-text">Ya Disponible</span>
-                                <div class="radio-indicator"></div>
+                            <span class="material-symbols-rounded">expand_more</span>
+                        </div>
+
+                        <div class="popover-module" id="popover-policy-status">
+                            <div class="menu-list">
+                                <div class="menu-link active" data-action="select-policy-status" data-value="future">
+                                    <span class="material-symbols-rounded menu-link-icon">calendar_month</span>
+                                    <span class="menu-link-text">Actualización Futura</span>
+                                    <div class="radio-indicator"></div>
+                                </div>
+                                <div class="menu-link" data-action="select-policy-status" data-value="immediate">
+                                    <span class="material-symbols-rounded menu-link-icon">publish</span>
+                                    <span class="menu-link-text">Ya Disponible</span>
+                                    <div class="radio-indicator"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -313,23 +355,33 @@
 
             <hr class="component-divider">
 
-            <div class="component-group-item">
-                <div class="component-card__text">
-                    <span class="component-card__title">Enlace al Documento</span>
+            <div class="component-group-item component-group-item--stacked">
+                <div class="component-card__content">
+                    <div class="component-card__text">
+                        <span class="component-card__title">Enlace al Documento</span>
+                        <span class="component-card__description">URL pública del documento actualizado.</span>
+                    </div>
                 </div>
-                <div class="component-input-wrapper" style="max-width: 300px;">
-                    <input type="url" id="policy-link" class="component-text-input" placeholder="https://...">
+                <div class="component-card__actions">
+                    <div class="component-input-wrapper" style="max-width: 300px;">
+                        <input type="url" id="policy-link" class="component-text-input" placeholder="https://...">
+                    </div>
                 </div>
             </div>
 
             <div id="subgroup-policy-date">
                 <hr class="component-divider">
-                <div class="component-group-item">
-                    <div class="component-card__text">
-                        <span class="component-card__title">Entra en Vigor</span>
+                <div class="component-group-item component-group-item--stacked">
+                    <div class="component-card__content">
+                        <div class="component-card__text">
+                            <span class="component-card__title">Entra en Vigor</span>
+                            <span class="component-card__description">Fecha efectiva de los cambios.</span>
+                        </div>
                     </div>
-                    <div class="component-input-wrapper" style="width: auto;">
-                        <input type="date" id="policy-effective-date" class="component-text-input">
+                    <div class="component-card__actions">
+                        <div class="component-input-wrapper" style="width: auto;">
+                            <input type="date" id="policy-effective-date" class="component-text-input">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -337,22 +389,26 @@
         
         <hr class="component-divider">
 
-        <div class="component-group-item" style="flex-direction: column; align-items: flex-start; gap: 16px;">
-            <div class="component-card__text">
-                <span class="component-card__title">Vista Previa</span>
-                <span class="component-card__description">Simulación de cómo lo verán los usuarios.</span>
+        <div class="component-group-item component-group-item--stacked">
+            <div class="component-card__content">
+                <div class="component-card__text">
+                    <span class="component-card__title">Vista Previa</span>
+                    <span class="component-card__description">Simulación de cómo lo verán los usuarios.</span>
+                </div>
             </div>
             
-            <div style="width: 100%; background: var(--bg-surface); border: 1px solid #00000020; border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 16px;">
-                <div style="background: var(--primary-color-10); color: var(--primary-color); padding: 8px; border-radius: 50%; display: flex;">
-                    <span class="material-symbols-rounded" id="preview-icon">info</span>
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 4px;" id="preview-text-container">
-                    <strong style="font-size: 15px; color: var(--text-primary);" id="preview-title">Título de la Alerta</strong>
-                    <span style="font-size: 14px; color: var(--text-secondary); line-height: 1.4;" id="preview-message">
-                        El contenido del mensaje aparecerá aquí...
-                    </span>
+            <div class="component-card__actions" style="width: 100%; justify-content: flex-start; margin-top: 12px;">
+                <div style="width: 100%; background: var(--bg-surface); border: 1px solid #00000020; border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 16px;">
+                    <div style="background: var(--primary-color-10); color: var(--primary-color); padding: 8px; border-radius: 50%; display: flex;">
+                        <span class="material-symbols-rounded" id="preview-icon">info</span>
                     </div>
+                    <div style="display: flex; flex-direction: column; gap: 4px;" id="preview-text-container">
+                        <strong style="font-size: 15px; color: var(--text-primary);" id="preview-title">Título de la Alerta</strong>
+                        <span style="font-size: 14px; color: var(--text-secondary); line-height: 1.4;" id="preview-message">
+                            El contenido del mensaje aparecerá aquí...
+                        </span>
+                    </div>
+                </div>
             </div>
         </div>
 
