@@ -415,7 +415,7 @@
                 </div>
             </div>
             
-            <div class="component-card__actions" style="width: 100%; justify-content: flex-start; margin-top: 12px;">
+            <div class="component-card__actions">
                 <div style="width: 100%; background: var(--bg-surface); border: 1px solid #00000020; border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 16px;">
                     <div style="background: var(--primary-color-10); color: var(--primary-color); padding: 8px; border-radius: 50%; display: flex;">
                         <span class="material-symbols-rounded" id="preview-icon">info</span>
