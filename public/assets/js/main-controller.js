@@ -34,27 +34,16 @@ function initModuleSystem() {
     const allModules = document.querySelectorAll('.module-content');
 
     const closeModuleWithAnimation = (mod) => {
-        const isMobile = window.innerWidth <= 468;
+        // Lógica simplificada: Solo quitamos 'active'.
+        // El CSS con transition (opacity/visibility/transform) hace el resto automáticamente.
+        mod.classList.remove('active');
+        mod.classList.add('disabled'); 
         
-        // Incluimos moduleOptions en la lógica de 'Sheet' para móviles
-        const isSheetModule = ['moduleProfile', 'moduleOptions'].includes(mod.dataset.module);
-
-        if (isMobile && isSheetModule && mod.classList.contains('active')) {
-            mod.classList.add('closing');
-            
-            setTimeout(() => {
-                mod.classList.remove('active', 'closing');
-                mod.classList.add('disabled');
-                
-                const content = mod.querySelector('.menu-content');
-                if(content) {
-                    content.style.transform = '';
-                    content.style.transition = ''; 
-                }
-            }, 280); 
-        } else {
-            mod.classList.remove('active');
-            mod.classList.add('disabled');
+        // Limpiamos estilos inline que pudieron quedar del arrastre (drag)
+        const content = mod.querySelector('.menu-content');
+        if(content) {
+            content.style.transform = '';
+            content.style.transition = ''; 
         }
     };
 
@@ -161,12 +150,14 @@ function initMobileDrag(moduleElement, closeCallback) {
         startY = clientY;
         menuHeight = content.offsetHeight;
         isDragging = true;
+        // Desactivamos transición para que el arrastre sea instantáneo (1:1)
         content.style.transition = 'none';
     };
 
     const moveDrag = (clientY, event) => {
         if (!isDragging) return;
         const deltaY = clientY - startY;
+        // Solo permitir arrastrar hacia abajo
         if (deltaY > 0) {
             if (event.cancelable) event.preventDefault();
             content.style.transform = `translateY(${deltaY}px)`;
@@ -177,11 +168,15 @@ function initMobileDrag(moduleElement, closeCallback) {
     const endDrag = () => {
         if (!isDragging) return;
         isDragging = false;
+        
+        // Restauramos la transición para el rebote o cierre suave
         content.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
-        const threshold = menuHeight * 0.4;
+        
+        const threshold = menuHeight * 0.4; // 40% de altura para cerrar
         if (currentY > threshold) {
             closeCallback(moduleElement);
         } else {
+            // Si no cruzó el umbral, vuelve a 0 (rebote)
             content.style.transform = '';
         }
         currentY = 0;
@@ -191,6 +186,7 @@ function initMobileDrag(moduleElement, closeCallback) {
     handle.addEventListener('touchmove', (e) => moveDrag(e.touches[0].clientY, e), { passive: false });
     handle.addEventListener('touchend', endDrag);
 
+    // Soporte para mouse (pruebas en desktop con modo responsive)
     const onMouseMove = (e) => moveDrag(e.clientY, e);
     const onMouseUp = () => {
         endDrag();

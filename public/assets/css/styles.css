@@ -1,3 +1,5 @@
+/* public/assets/css/styles.css */
+
 /* =========================================
    1. BASE Y RESET
    ========================================= */
@@ -282,7 +284,7 @@ html {
 /* Unificación de Contenedores de Módulos (Base Light Mode) */
 .module-surface .menu-content,
 .module-profile .menu-content,
-.module-options .menu-content, /* [NUEVO] Agregado */
+.module-options .menu-content,
 .module-notifications .menu-content {
     display: flex;
     flex-direction: column;
@@ -300,7 +302,6 @@ html {
     height: 100%; 
 }
 
-/* [MODIFICADO] Profile y Options comparten dimensiones */
 .module-profile .menu-content,
 .module-options .menu-content { 
     width: 280px; 
@@ -317,7 +318,7 @@ html {
     max-height: calc(100vh - 80px);
 }
 
-/* [MODIFICADO] Agrupación de Módulos Flotantes Derechos */
+/* Agrupación de Módulos Flotantes Derechos */
 .module-content.module-profile,
 .module-content.module-options,
 .module-content.module-notifications {
@@ -428,7 +429,7 @@ html {
     :root:not([data-theme="light"]) .general-content,
     :root:not([data-theme="light"]) .module-surface .menu-content,
     :root:not([data-theme="light"]) .module-profile .menu-content,
-    :root:not([data-theme="light"]) .module-options .menu-content, /* [NUEVO] */
+    :root:not([data-theme="light"]) .module-options .menu-content,
     :root:not([data-theme="light"]) .module-notifications .menu-content,
     :root:not([data-theme="light"]) .popover-module {
         box-shadow: none !important; 
@@ -448,7 +449,7 @@ html {
 [data-theme="dark"] .general-content,
 [data-theme="dark"] .module-surface .menu-content,
 [data-theme="dark"] .module-profile .menu-content,
-[data-theme="dark"] .module-options .menu-content, /* [NUEVO] */
+[data-theme="dark"] .module-options .menu-content,
 [data-theme="dark"] .module-notifications .menu-content,
 [data-theme="dark"] .popover-module {
     box-shadow: none !important;
@@ -621,7 +622,7 @@ html {
    7. MOBILE PROFILE, OPTIONS & NOTIFICATIONS (BOTTOM SHEET)
    ========================================= */
 @media (max-width: 468px) {
-    /* [MODIFICADO] Se agrega module-options a la lista */
+    /* 1. CONTENEDOR (Overlay oscuro) */
     .module-content.module-profile,
     .module-content.module-options,
     .module-content.module-notifications {
@@ -634,11 +635,25 @@ html {
         left: 0;
         bottom: 0;
         z-index: 9999;
-        display: none;
+        
+        /* Sistema de visibilidad limpio */
+        display: flex !important;
+        visibility: hidden; 
+        opacity: 0;
+        
         align-items: flex-end;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
     }
 
-    /* [MODIFICADO] Se agrega module-options a la lista */
+    /* 2. ESTADO ACTIVO DEL CONTENEDOR */
+    .module-content.module-profile.active,
+    .module-content.module-options.active,
+    .module-content.module-notifications.active {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    /* 3. PANEL INTERNO (Tarjeta blanca) */
     .module-profile .menu-content,
     .module-options .menu-content,
     .module-notifications .menu-content {
@@ -653,40 +668,23 @@ html {
         box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
         display: flex;
         flex-direction: column;
-        transform: translateY(100%);
-        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         border: none;
-    }
-    
-    /* [MODIFICADO] Se agrega module-options a la lista */
-    .module-content.module-profile.active,
-    .module-content.module-options.active,
-    .module-content.module-notifications.active {
-        display: flex !important;
-        animation: fadeInOverlay 0.3s ease forwards;
+
+        /* Posición inicial (abajo) */
+        transform: translateY(100%);
+        
+        /* Transición suave siempre activa */
+        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
     }
 
-    /* [MODIFICADO] Se agrega module-options a la lista */
+    /* 4. ESTADO ACTIVO DEL PANEL */
     .module-content.module-profile.active .menu-content,
     .module-content.module-options.active .menu-content,
     .module-content.module-notifications.active .menu-content {
+        /* Subir a la vista */
         transform: translateY(0%);
     }
-
-    /* [MODIFICADO] Se agrega module-options a la lista */
-    .module-content.module-profile.closing .menu-content,
-    .module-content.module-options.closing .menu-content,
-    .module-content.module-notifications.closing .menu-content {
-        transform: translateY(100%) !important;
-    }
     
-    /* [MODIFICADO] Se agrega module-options a la lista */
-    .module-content.module-profile.closing,
-    .module-content.module-options.closing,
-    .module-content.module-notifications.closing {
-        animation: fadeOutOverlay 0.3s ease forwards;
-    }
-
     .pill-container {
         display: flex;
         justify-content: center;
@@ -703,16 +701,6 @@ html {
         background-color: var(--bg-hover-light);
         border-radius: 10px;
     }
-}
-
-@keyframes fadeInOverlay {
-    from { background-color: rgba(0, 0, 0, 0); }
-    to { background-color: var(--overlay-dark); }
-}
-
-@keyframes fadeOutOverlay {
-    from { background-color: var(--overlay-dark); }
-    to { background-color: rgba(0, 0, 0, 0); }
 }
 
 /* =========================================
