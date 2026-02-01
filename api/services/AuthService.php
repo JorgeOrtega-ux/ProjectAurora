@@ -5,6 +5,7 @@ use Google\Authenticator\GoogleAuthenticator;
 
 require_once __DIR__ . '/../../includes/libs/MailService.php';
 require_once __DIR__ . '/../../includes/libs/Utils.php'; // Aseguramos que Utils esté incluido
+require_once __DIR__ . '/../../includes/libs/EmailTemplates.php'; // Importamos las plantillas
 
 class AuthService {
     private $pdo;
@@ -190,11 +191,10 @@ class AuthService {
 
             $_SESSION['pending_verification_email'] = $email;
 
-            $subject = "Verifica tu cuenta en Project Aurora";
-            $body = "<h1>Hola, $username</h1>
-                     <p>Gracias por registrarte. Tu código de verificación es:</p>
-                     <p style='font-size: 24px; font-weight: bold; color: #333; letter-spacing: 4px;'>$code</p>
-                     <p><small>Este código expirará en $expiryMinutes minutos.</small></p>";
+            $subject = "Verifica tu cuenta - Project Aurora";
+            
+            // [MODIFICADO] Uso de EmailTemplates
+            $body = EmailTemplates::verificationCode($username, $code, $expiryMinutes);
 
             $emailResult = MailService::send($email, $subject, $body);
 
@@ -258,9 +258,10 @@ class AuthService {
             
             $this->logSecurityEvent($email, 'resend_code_req', 10);
 
+            // [MODIFICADO] Recuperar nombre de usuario y usar template
+            $username = $data['username'] ?? 'Usuario';
             $subject = "Nuevo código de verificación - Project Aurora";
-            $body = "<p>Has solicitado un nuevo código. Tu código es:</p>
-                     <p style='font-size: 24px; font-weight: bold; color: #333; letter-spacing: 4px;'>$newCode</p>";
+            $body = EmailTemplates::verificationCode($username, $newCode, $expiryMinutes);
             
             MailService::send($email, $subject, $body);
             
@@ -543,10 +544,9 @@ class AuthService {
             $resetLink = "https://tudominio.com/ProjectAurora/reset-password?token=" . $token; 
             
             $subject = "Recuperar contraseña - Project Aurora";
-            $body = "<p>Has solicitado restablecer tu contraseña. Haz clic en el siguiente enlace:</p>
-                     <p><a href='$resetLink'>$resetLink</a></p>
-                     <p>Si no fuiste tú, ignora este mensaje.</p>
-                     <p><small>Este enlace expirará en $expiryMinutes minutos.</small></p>";
+            
+            // [MODIFICADO] Uso de EmailTemplates
+            $body = EmailTemplates::passwordReset($resetLink, $expiryMinutes);
             
             MailService::send($email, $subject, $body);
             
