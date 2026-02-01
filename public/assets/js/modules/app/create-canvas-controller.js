@@ -17,13 +17,25 @@ export class CreateCanvasController {
 
     init() {
         this.cacheDOM();
+        
+        // [CORRECCIÓN] Si el contenedor no existe (porque el HTML no está listo o estamos en otra vista),
+        // detenemos la ejecución para evitar el error "addEventListener of null".
+        if (!this.container) {
+            return;
+        }
+
         this.bindEvents();
         // Generar un código inicial por si acaso
         this.generateCode();
     }
 
     cacheDOM() {
+        // Busca el contenedor principal definido en create-canvas.php
         this.container = document.querySelector('[data-section="app/create-canvas"]');
+        
+        // Si no encuentra el container, no tiene sentido buscar el resto
+        if (!this.container) return;
+
         this.btnCreate = document.getElementById('btn-create-canvas');
         
         // Elementos de UI
@@ -39,6 +51,7 @@ export class CreateCanvasController {
 
     bindEvents() {
         // Event Delegation para los menús desplegables (Trigger Selects)
+        // Aquí es donde ocurría el error si this.container era null
         this.container.addEventListener('click', (e) => {
             // Selector de Tamaño
             const sizeOption = e.target.closest('[data-action="select-size"]');
@@ -75,7 +88,9 @@ export class CreateCanvasController {
 
         // Logic Update
         this.selectedSize = parseInt(element.dataset.value);
-        this.displaySize.textContent = `${this.selectedSize} x ${this.selectedSize} Píxeles`;
+        if (this.displaySize) {
+            this.displaySize.textContent = `${this.selectedSize} x ${this.selectedSize} Píxeles`;
+        }
         
         // Cerrar popover
         this.closeDropdowns(element);
@@ -91,11 +106,13 @@ export class CreateCanvasController {
         const iconName = element.dataset.icon;
 
         // Actualizar el trigger principal
-        const iconSpan = this.triggerPrivacy.querySelector('.trigger-select-icon');
-        const textSpan = this.triggerPrivacy.querySelector('.trigger-select-text');
-        
-        iconSpan.textContent = iconName;
-        textSpan.textContent = label;
+        if (this.triggerPrivacy) {
+            const iconSpan = this.triggerPrivacy.querySelector('.trigger-select-icon');
+            const textSpan = this.triggerPrivacy.querySelector('.trigger-select-text');
+            
+            if (iconSpan) iconSpan.textContent = iconName;
+            if (textSpan) textSpan.textContent = label;
+        }
 
         // Logic Update
         this.selectedPrivacy = value;
@@ -116,6 +133,8 @@ export class CreateCanvasController {
     }
 
     togglePrivacyPanels() {
+        if (!this.panelPublic || !this.panelPrivate) return;
+
         if (this.selectedPrivacy === 'private') {
             this.panelPublic.classList.add('d-none');
             this.panelPrivate.classList.remove('d-none');
@@ -141,12 +160,13 @@ export class CreateCanvasController {
     }
 
     async createCanvas() {
+        if (!this.btnCreate) return;
+
         const btnContent = this.btnCreate.innerHTML;
         this.btnCreate.innerHTML = '<span class="spinner-sm"></span>';
         this.btnCreate.disabled = true;
 
         try {
-            // [CORRECCIÓN CRÍTICA] Usar FormData en lugar de objeto simple
             const formData = new FormData();
             formData.append('size', this.selectedSize);
             formData.append('privacy', this.selectedPrivacy);
@@ -155,7 +175,6 @@ export class CreateCanvasController {
                 formData.append('access_code', this.accessCode);
             }
 
-            // ApiService inyectará 'route' ('canvas.create') automáticamente al detectar FormData
             const response = await ApiService.post(ApiRoutes.Canvas.Create, formData);
 
             if (response.success) {
@@ -176,9 +195,12 @@ export class CreateCanvasController {
     }
 
     resetButton(originalContent) {
-        this.btnCreate.innerHTML = originalContent;
-        this.btnCreate.disabled = false;
+        if (this.btnCreate) {
+            this.btnCreate.innerHTML = originalContent;
+            this.btnCreate.disabled = false;
+        }
     }
 }
-// Inicialización automática si se carga dinámicamente
+
+// Inicialización automática
 new CreateCanvasController();

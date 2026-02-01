@@ -1,12 +1,21 @@
 <?php
 // api/handlers/canvas-handler.php
 
+// 1. BOOTSTRAP: Cargar configuración, base de datos y utilidades
+// Subimos dos niveles para llegar a 'includes'
+$services = require_once __DIR__ . '/../../includes/bootstrap.php';
+extract($services); // Esto extrae $pdo, $i18n, $redis para usarlos aquí
+
+// 2. Cargar el Servicio
 require_once __DIR__ . '/../services/CanvasService.php';
 
-// Asegurarse de que $pdo y $i18n estén disponibles (generalmente vienen del index o bootstrap)
-global $pdo, $i18n;
+// 3. Validar seguridad (CSRF) - Importante agregarlo como en auth-handler
+Utils::validateCsrf($i18n);
 
-if (!isset($action)) {
+// 4. Obtener la acción desde el POST (inyectada por api/index.php)
+$action = $_POST['action'] ?? '';
+
+if (!$action) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Acción no especificada']);
     exit;
@@ -19,11 +28,11 @@ switch ($action) {
         // Verificar autenticación
         if (!isset($_SESSION['user_id'])) {
             http_response_code(401);
-            echo json_encode(['success' => false, 'message' => 'No autorizado']);
+            echo json_encode(['success' => false, 'message' => $i18n->t('auth.unauthorized') ?? 'No autorizado']);
             exit;
         }
 
-        // [CORRECCIÓN CRÍTICA] Leer desde $_POST ya que ApiService envía FormData
+        // Leer datos (ApiService envía FormData, así que están en $_POST)
         $size = $_POST['size'] ?? null;
         $privacy = $_POST['privacy'] ?? null;
         $accessCode = $_POST['access_code'] ?? null;
@@ -49,3 +58,4 @@ switch ($action) {
         echo json_encode(['success' => false, 'message' => 'Acción no encontrada en CanvasHandler']);
         break;
 }
+?>
