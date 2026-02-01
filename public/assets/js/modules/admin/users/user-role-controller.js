@@ -1,10 +1,11 @@
 /**
- * public/assets/js/modules/admin/user-role-controller.js
+ * public/assets/js/modules/admin/users/user-role-controller.js
  */
 
 import { ApiService } from '../../../core/api-service.js';
 import { Toast } from '../../../core/toast-manager.js';
 import { navigateTo } from '../../../core/url-manager.js';
+import { I18n } from '../../../core/i18n-manager.js'; // Importación añadida
 
 let _container = null;
 let _targetUserId = null;
@@ -32,8 +33,6 @@ export const UserRoleController = {
         }
 
         initEvents();
-        
-        // Escuchar evento global del dropdown UI
         document.addEventListener('ui:dropdown-selected', handleDropdownSelection);
     }
 };
@@ -62,11 +61,9 @@ function handleDropdownSelection(e) {
         _selectedRole = value;
         updateSaveButtonState();
         
-        // Actualizar UI del selector (Icono y Texto)
         const labelEl = _container.querySelector('[data-element="current-role-label"]');
         const iconEl = _container.querySelector('[data-element="current-role-icon"]');
         
-        // Map de iconos simple basado en el valor
         const iconMap = {
             'user': 'person',
             'moderator': 'gpp_maybe',
@@ -82,7 +79,6 @@ function updateSaveButtonState() {
     const btnSave = _container.querySelector('[data-action="save-role"]');
     if (!btnSave) return;
 
-    // Habilitar solo si el rol cambió y no es el original
     if (_selectedRole !== _originalRole) {
         btnSave.disabled = false;
     } else {
@@ -96,32 +92,28 @@ async function saveRole() {
     const btnSave = _container.querySelector('[data-action="save-role"]');
     btnSave.disabled = true;
     const originalText = btnSave.textContent;
-    btnSave.textContent = 'Guardando...';
+    
+    // "Guardando..."
+    btnSave.textContent = (I18n.t('js.core.saving') || 'Guardando') + '...';
 
     const formData = new FormData();
-    // [CORREGIDO] Eliminado append 'action' manual. El router lo inyecta automáticamente.
     formData.append('target_id', _targetUserId);
     formData.append('new_role', _selectedRole);
 
     try {
-        // [CORREGIDO] Usamos ApiService.post con la ruta correcta definida en api-routes.js
-        // Antes apuntaba a .Base (que era undefined), ahora apunta a .UpdateRole
         const res = await ApiService.post(ApiService.Routes.Admin.UpdateRole, formData);
         
         if (res.success) {
             Toast.show(res.message, 'success');
-            _originalRole = _selectedRole; // Actualizar estado
+            _originalRole = _selectedRole;
             updateSaveButtonState();
-            
-            // Opcional: Volver a la lista automáticamente
-            // setTimeout(() => navigateTo('admin/users'), 1000);
         } else {
             Toast.show(res.message, 'error');
-            updateSaveButtonState(); // Reactivar si falló
+            updateSaveButtonState();
         }
     } catch (error) {
         console.error(error);
-        Toast.show('Error de conexión', 'error');
+        Toast.show(I18n.t('js.core.connection_error') || 'Error de conexión', 'error');
         updateSaveButtonState();
     } finally {
         btnSave.textContent = originalText;

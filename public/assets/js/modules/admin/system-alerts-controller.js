@@ -110,7 +110,7 @@ export const SystemAlertsController = {
 
                     // "ALERTA CRÍTICA: Desconexión forzosa programada para las %s. Guarda tu trabajo inmediatamente."
                     msgEl.textContent = I18n.t('system_alerts.maintenance.emergency', [timeStr]);
-                    metaHtml = `<span class="material-symbols-rounded" style="font-size:14px; color:var(--color-error)">warning</span> Desconexión Forzosa`;
+                    metaHtml = `<span class="material-symbols-rounded" style="font-size:14px; color:var(--color-error)">warning</span> ${I18n.t('admin.alerts.forced_disconnect') || 'Desconexión Forzosa'}`;
                     iconEl.textContent = 'warning';
                 }
 
@@ -118,7 +118,7 @@ export const SystemAlertsController = {
                 const docName = configPolicyDoc[selectedPolicyDoc].text;
                 const link = document.getElementById('policy-link').value;
                 
-                titleEl.textContent = "Actualización Legal"; // Keep generic or add key if needed
+                titleEl.textContent = I18n.t('admin.alerts.legal_update') || "Actualización Legal"; 
                 iconEl.textContent = 'gavel';
 
                 if (selectedPolicyStatus === 'future') {
@@ -134,7 +134,7 @@ export const SystemAlertsController = {
                 }
                 
                 if (link) {
-                    metaHtml = `<span class="material-symbols-rounded" style="font-size:14px">link</span> <span style="text-decoration:underline">Ver más</span>`;
+                    metaHtml = `<span class="material-symbols-rounded" style="font-size:14px">link</span> <span style="text-decoration:underline">${I18n.t('js.core.view_more') || 'Ver más'}</span>`;
                 }
             }
 
@@ -241,17 +241,17 @@ export const SystemAlertsController = {
                 if (selectedMaintType === 'scheduled') {
                     const start = document.getElementById('maint-start-time').value;
                     const duration = document.getElementById('maint-duration').value;
-                    if (!start) return { valid: false, msg: 'Debes especificar la fecha y hora de inicio.' };
-                    if (!duration || duration <= 0) return { valid: false, msg: 'La duración debe ser mayor a 0 minutos.' };
+                    if (!start) return { valid: false, msg: I18n.t('admin.alerts.error_start_date') || 'Debes especificar la fecha y hora de inicio.' };
+                    if (!duration || duration <= 0) return { valid: false, msg: I18n.t('admin.alerts.error_duration') || 'La duración debe ser mayor a 0 minutos.' };
                 } else {
                     const cutoff = document.getElementById('maint-emergency-time').value;
-                    if (!cutoff) return { valid: false, msg: 'Debes especificar la hora de la desconexión inminente.' };
+                    if (!cutoff) return { valid: false, msg: I18n.t('admin.alerts.error_cutoff') || 'Debes especificar la hora de la desconexión inminente.' };
                 }
             }
             if (selectedMainType === 'policy') {
                 if (selectedPolicyStatus === 'future') {
                     const date = document.getElementById('policy-effective-date').value;
-                    if (!date) return { valid: false, msg: 'Debes indicar la fecha de entrada en vigor.' };
+                    if (!date) return { valid: false, msg: I18n.t('admin.alerts.error_effective_date') || 'Debes indicar la fecha de entrada en vigor.' };
                 }
             }
             return { valid: true };
@@ -296,10 +296,10 @@ export const SystemAlertsController = {
                 Dialog.close();
 
                 if (res.success) {
-                    Toast.show('Difusión emitida correctamente', 'success');
+                    Toast.show(I18n.t('admin.alerts.emit_success') || 'Difusión emitida correctamente', 'success');
                     checkActiveAlertStatus();
                 } else {
-                    Toast.show(res.message || 'Error al emitir', 'error');
+                    Toast.show(res.message || (I18n.t('admin.alerts.emit_error') || 'Error al emitir'), 'error');
                 }
             } catch (e) { 
                 Dialog.close();
@@ -317,10 +317,10 @@ export const SystemAlertsController = {
 
                 if (isAlertActive) {
                     const confirmed = await Dialog.confirm({
-                        title: 'Alerta en curso detectada',
-                        message: 'Ya existe una alerta transmitiéndose. ¿Deseas reemplazarla?',
-                        confirmText: 'Reemplazar',
-                        cancelText: 'Cancelar'
+                        title: I18n.t('admin.alerts.active_detected') || 'Alerta en curso detectada',
+                        message: I18n.t('admin.alerts.replace_confirm') || 'Ya existe una alerta transmitiéndose. ¿Deseas reemplazarla?',
+                        confirmText: I18n.t('admin.alerts.btn_replace') || 'Reemplazar',
+                        cancelText: I18n.t('js.core.cancel') || 'Cancelar'
                     });
                     if (confirmed) await executeEmission();
                 } else {
@@ -332,17 +332,17 @@ export const SystemAlertsController = {
         const handleDeactivate = async () => {
             const confirmed = await Dialog.confirm({
                 title: I18n.t('admin.alerts.btn_deactivate'),
-                message: '¿Estás seguro de que deseas detener la alerta actual?',
+                message: I18n.t('admin.alerts.stop_confirm') || '¿Estás seguro de que deseas detener la alerta actual?',
                 type: 'danger',
-                confirmText: 'Detener',
-                cancelText: 'Cancelar'
+                confirmText: I18n.t('admin.alerts.btn_stop') || 'Detener',
+                cancelText: I18n.t('js.core.cancel') || 'Cancelar'
             });
 
             if (confirmed) {
                 try {
                     const res = await ApiService.post(ApiService.Routes.Admin.DeactivateSystemAlert);
                     if (res.success) {
-                        Toast.show('Sistema normalizado', 'success');
+                        Toast.show(I18n.t('admin.alerts.system_normalized') || 'Sistema normalizado', 'success');
                         checkActiveAlertStatus();
                     }
                 } catch (e) { console.error(e); }
@@ -389,7 +389,11 @@ export const SystemAlertsController = {
                     statText.style.color = color;
                     cardStatus.style.borderLeftColor = color;
                     btnMini.style.display = 'flex';
-                    impactVal.textContent = res.alert.severity === 'critical' ? 'Crítico' : 'Moderado';
+                    
+                    const sevCritical = I18n.t('admin.alerts.sev_critical') || 'Crítico';
+                    const sevModerate = I18n.t('admin.alerts.sev_moderate') || 'Moderado';
+                    impactVal.textContent = res.alert.severity === 'critical' ? sevCritical : sevModerate;
+                    
                     impactIcon.style.color = color;
                     impactTime.textContent = res.alert.type.toUpperCase(); 
                 } else {
@@ -400,10 +404,10 @@ export const SystemAlertsController = {
                     statText.style.color = 'var(--text-primary)';
                     cardStatus.style.borderLeftColor = 'var(--color-success)';
                     btnMini.style.display = 'none';
-                    impactVal.textContent = "Normal";
+                    impactVal.textContent = I18n.t('admin.alerts.sev_normal') || "Normal";
                     impactIcon.style.color = 'var(--text-tertiary)';
                     if (res.stats && res.stats.last_alert_time) {
-                        impactTime.textContent = "Última: " + res.stats.last_alert_time;
+                        impactTime.textContent = (I18n.t('admin.alerts.last_alert') || "Última: ") + res.stats.last_alert_time;
                     } else {
                         impactTime.textContent = I18n.t('admin.alerts.stat_none'); // "Sin incidentes recientes"
                     }

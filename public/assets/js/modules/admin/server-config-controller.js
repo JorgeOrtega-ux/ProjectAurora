@@ -4,6 +4,7 @@
 
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
+import { I18n } from '../../core/i18n-manager.js'; // Importación añadida
 
 export const ServerConfigController = {
     init: () => {
@@ -72,7 +73,7 @@ function _initDomainManager() {
                 if (!domains.includes(val)) {
                     domains.push(val);
                 } else {
-                    Toast.show('El dominio ya existe', 'warning');
+                    Toast.show(I18n.t('admin.server.domain_exists') || 'El dominio ya existe', 'warning');
                     return;
                 }
             }
@@ -162,7 +163,7 @@ async function saveConfig() {
 
     const originalContent = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<div class="spinner-sm"></div> Guardando...';
+    btn.innerHTML = `<div class="spinner-sm"></div> ${I18n.t('js.core.saving') || 'Guardando...'}`;
 
     const inputs = container.querySelectorAll('input[name], select[name], textarea[name]');
     const formData = new FormData();
@@ -192,7 +193,7 @@ async function saveConfig() {
         }
     } catch (error) {
         console.error(error);
-        Toast.show('Error de conexión', 'error');
+        Toast.show(I18n.t('js.core.connection_error') || 'Error de conexión', 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalContent;

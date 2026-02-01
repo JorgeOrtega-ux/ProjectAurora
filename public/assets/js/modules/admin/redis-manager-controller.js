@@ -6,6 +6,7 @@ import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { Dialog } from '../../core/dialog-manager.js';
 import { navigateTo } from '../../core/url-manager.js';
+import { I18n } from '../../core/i18n-manager.js'; // Importación añadida
 
 let _container = null;
 
@@ -88,13 +89,13 @@ async function loadKeys(pattern) {
         }
     } catch (e) {
         loader.classList.add('d-none');
-        tbody.innerHTML = `<tr><td colspan="4" class="state-error">Error de conexión</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="state-error">${I18n.t('js.core.connection_error')}</td></tr>`;
     }
 }
 
 function renderKeysTable(keys, tbody) {
     if (keys.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="state-empty" style="text-align:center; padding: 20px;">No se encontraron claves.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="state-empty" style="text-align:center; padding: 20px;">${I18n.t('admin.redis.no_keys') || 'No se encontraron claves.'}</td></tr>`;
         return;
     }
 
@@ -111,8 +112,10 @@ function renderKeysTable(keys, tbody) {
 
         const badgeType = `<span class="component-badge ${colorClass}" style="height:20px; font-size:11px;">${k.type}</span>`;
         
-        let ttlDisplay = k.ttl === -1 ? 'Infinito' : `${k.ttl}s`;
-        if (k.ttl === -2) ttlDisplay = 'Expirada';
+        let ttlDisplay = k.ttl === -1 ? (I18n.t('admin.redis.ttl_infinite') || 'Infinito') : `${k.ttl}s`;
+        if (k.ttl === -2) ttlDisplay = (I18n.t('admin.redis.ttl_expired') || 'Expirada');
+
+        const deleteTitle = I18n.t('js.core.delete') || 'Eliminar';
 
         html += `
         <tr class="table-row-item" style="cursor: pointer;" data-key="${k.key}">
@@ -120,7 +123,7 @@ function renderKeysTable(keys, tbody) {
             <td>${badgeType}</td>
             <td style="font-size:12px; color:var(--text-secondary);">${ttlDisplay}</td>
             <td class="text-right">
-                <button class="component-button btn-delete-key" data-key="${k.key}" style="width:28px; height:28px; padding:0; border:none; color:var(--text-tertiary);" title="Eliminar">
+                <button class="component-button btn-delete-key" data-key="${k.key}" style="width:28px; height:28px; padding:0; border:none; color:var(--text-tertiary);" title="${deleteTitle}">
                     <span class="material-symbols-rounded" style="font-size:18px;">delete</span>
                 </button>
             </td>
@@ -146,7 +149,7 @@ function renderKeysTable(keys, tbody) {
 }
 
 async function showValueDialog(key) {
-    Dialog.showLoading('Cargando valor...');
+    Dialog.showLoading(I18n.t('admin.redis.loading_value') || 'Cargando valor...');
     
     const formData = new FormData();
     formData.append('key', key);
@@ -168,8 +171,8 @@ async function showValueDialog(key) {
             const htmlContent = `
                 <div class="component-data-viewer">
                     <div class="component-data-meta">
-                        <span><strong>Tipo:</strong> ${data.type}</span>
-                        <span><strong>Tamaño:</strong> ${data.size} items/bytes</span>
+                        <span><strong>${I18n.t('admin.redis.meta_type') || 'Tipo:'}</strong> ${data.type}</span>
+                        <span><strong>${I18n.t('admin.redis.meta_size') || 'Tamaño:'}</strong> ${data.size} items/bytes</span>
                         <span><strong>TTL:</strong> ${data.ttl}</span>
                     </div>
                     <textarea class="component-textarea-read" readonly>${displayValue}</textarea>
@@ -177,9 +180,9 @@ async function showValueDialog(key) {
             `;
 
             Dialog.confirm({
-                title: `Clave: ${key}`,
+                title: `${I18n.t('admin.redis.key_label') || 'Clave'}: ${key}`,
                 message: '', 
-                confirmText: 'Cerrar',
+                confirmText: I18n.t('js.core.close') || 'Cerrar',
                 cancelText: null, 
                 onReady: (wrapper) => {
                     const contentArea = wrapper.querySelector('[data-element="message"]');
@@ -195,12 +198,12 @@ async function showValueDialog(key) {
         }
     } catch (e) {
         Dialog.close();
-        Toast.show('Error al obtener valor', 'error');
+        Toast.show(I18n.t('admin.redis.value_error') || 'Error al obtener valor', 'error');
     }
 }
 
 async function deleteKey(key) {
-    if (!await Dialog.confirm({ title: '¿Eliminar clave?', message: key, type: 'danger' })) return;
+    if (!await Dialog.confirm({ title: I18n.t('admin.redis.delete_confirm') || '¿Eliminar clave?', message: key, type: 'danger' })) return;
 
     const formData = new FormData();
     formData.append('key', key);
@@ -208,36 +211,36 @@ async function deleteKey(key) {
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.Redis.DeleteKey, formData);
         if (res.success) {
-            Toast.show('Eliminado', 'success');
+            Toast.show(I18n.t('js.core.deleted') || 'Eliminado', 'success');
             const pattern = document.getElementById('redis-search-input').value || '*';
             loadKeys(pattern);
             loadStats(); 
         } else {
             Toast.show(res.message, 'error');
         }
-    } catch (e) { Toast.show('Error al eliminar', 'error'); }
+    } catch (e) { Toast.show(I18n.t('admin.redis.delete_error') || 'Error al eliminar', 'error'); }
 }
 
 async function handleFlushDB() {
     const confirm1 = await Dialog.confirm({ 
-        title: 'PELIGRO: ¿VACIAR REDIS?', 
-        message: 'Esto eliminará TODAS las claves de la base de datos actual. Sesiones, caché, tokens temporales... TODO.', 
+        title: I18n.t('admin.redis.flush_title') || 'PELIGRO: ¿VACIAR REDIS?', 
+        message: I18n.t('admin.redis.flush_message') || 'Esto eliminará TODAS las claves de la base de datos actual. Sesiones, caché, tokens temporales... TODO.', 
         type: 'danger', 
-        confirmText: 'SÍ, VACIAR TODO' 
+        confirmText: I18n.t('admin.redis.flush_confirm_1') || 'SÍ, VACIAR TODO' 
     });
 
     if (!confirm1) return;
 
     const confirm2 = await Dialog.confirm({ 
-        title: '¿Estás absolutamente seguro?', 
-        message: 'Esta acción no se puede deshacer. Los usuarios serán desconectados.', 
+        title: I18n.t('admin.redis.flush_sure') || '¿Estás absolutamente seguro?', 
+        message: I18n.t('admin.redis.flush_warning') || 'Esta acción no se puede deshacer. Los usuarios serán desconectados.', 
         type: 'danger', 
-        confirmText: 'ESTOY SEGURO' 
+        confirmText: I18n.t('admin.redis.flush_confirm_2') || 'ESTOY SEGURO' 
     });
 
     if (!confirm2) return;
 
-    Dialog.showLoading('Vaciando base de datos...');
+    Dialog.showLoading(I18n.t('admin.redis.flushing') || 'Vaciando base de datos...');
 
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.Redis.FlushDB);
@@ -251,6 +254,6 @@ async function handleFlushDB() {
         }
     } catch (e) {
         Dialog.close();
-        Toast.show('Error crítico', 'error');
+        Toast.show(I18n.t('admin.redis.critical_error') || 'Error crítico', 'error');
     }
 }

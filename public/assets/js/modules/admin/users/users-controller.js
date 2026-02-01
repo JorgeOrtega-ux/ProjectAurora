@@ -1,6 +1,6 @@
 /**
- * public/assets/js/modules/admin/users-controller.js
- * Versión Refactorizada: Paginación y Búsqueda Server-Side
+ * public/assets/js/modules/admin/users/users-controller.js
+ * Versión Refactorizada con I18n
  */
 
 import { ApiService } from '../../../core/api-service.js';
@@ -14,7 +14,7 @@ import { navigateTo } from '../../../core/url-manager.js';
 const AdminAPI = ApiService.Routes.Admin;
 
 let _container = null;    
-let _usersData = [];      // Datos de la página actual
+let _usersData = [];      
 let _currentPage = 1;     
 let _totalPages = 1;
 const _itemsPerPage = 20; 
@@ -22,13 +22,12 @@ const _itemsPerPage = 20;
 let _viewMode = 'grid'; 
 let _selectedUserId = null; 
 let _searchQuery = '';
-let _searchTimeout = null; // Para debounce
+let _searchTimeout = null;
 
 export const UsersController = {
     init: () => {
         console.log("UsersController: Inicializado (Server-Side Pagination)");
         
-        // 1. Delegación de sub-vistas
         if (document.querySelector('[data-section="admin-user-details"]')) {
             UserDetailsController.init();
             return;
@@ -45,7 +44,6 @@ export const UsersController = {
         _container = document.querySelector('[data-section="admin-users"]');
         if (!_container) return;
 
-        // Limpieza de estado
         _usersData = [];
         _currentPage = 1;
         _totalPages = 1;
@@ -53,11 +51,9 @@ export const UsersController = {
         _selectedUserId = null;
         _searchQuery = '';
 
-        // Recuperar parámetros de URL iniciales
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('q')) {
             _searchQuery = urlParams.get('q');
-            // Pre-llenar el input y abrir la barra
             const searchInput = _container.querySelector('[data-element="search-input"]');
             const toolbarSearch = _container.querySelector('[data-element="search-panel"]');
             const btnToggleSearch = _container.querySelector('[data-action="toggle-search"]');
@@ -94,7 +90,6 @@ function initToolbarEvents() {
         btnCloseSelection.addEventListener('click', deselectUser);
     }
 
-    // Gestionar acciones de la toolbar
     const groupActions = _container.querySelector('[data-element="toolbar-group-actions"]');
     if (groupActions) {
         const buttons = groupActions.querySelectorAll('.header-button');
@@ -125,10 +120,6 @@ function initToolbarEvents() {
     const closeSearch = () => {
         toolbarSearch.classList.remove('active');
         btnToggleSearch.classList.remove('active');
-        // Opcional: Limpiar búsqueda al cerrar
-        // _searchQuery = '';
-        // searchInput.value = '';
-        // loadUsers();
     };
 
     btnToggleSearch.addEventListener('click', (e) => {
@@ -152,7 +143,6 @@ function initToolbarEvents() {
             if (e.key === 'Escape') closeSearch();
         });
 
-        // BÚSQUEDA CON DEBOUNCE
         searchInput.addEventListener('input', (e) => {
             const query = e.target.value.trim();
             
@@ -161,11 +151,11 @@ function initToolbarEvents() {
             _searchTimeout = setTimeout(() => {
                 if (query !== _searchQuery) {
                     _searchQuery = query;
-                    _currentPage = 1; // Reset a primera página al buscar
+                    _currentPage = 1; 
                     updateURL(query);
                     loadUsers();
                 }
-            }, 400); // 400ms de espera
+            }, 400); 
         });
     }
 }
@@ -205,20 +195,16 @@ function updateURL(query) {
     window.history.replaceState(history.state, '', url);
 }
 
-// === LÓGICA DE CARGA ===
-
 async function loadUsers() {
     if (!_container) return;
     
     const listContainer = _container.querySelector('[data-component="user-list"]');
     if (!listContainer) return;
 
-    // Mostrar loader solo si es carga inicial o cambio de página drástico
-    // Para búsquedas rápidas se puede optimizar, pero mantenemos simple por ahora
     listContainer.innerHTML = `
         <div class="state-loading">
             <div class="spinner-sm"></div>
-            <p class="state-text">${I18n.t('admin.users_module.list.loading')}</p>
+            <p class="state-text">${I18n.t('admin.users_module.list.loading') || 'Cargando usuarios...'}</p>
         </div>`;
 
     const formData = new FormData();
@@ -232,13 +218,11 @@ async function loadUsers() {
         if (res.success) {
             _usersData = res.users;
             
-            // Actualizar metadatos de paginación
             if (res.pagination) {
                 _currentPage = res.pagination.current;
                 _totalPages = res.pagination.total_pages;
                 updatePaginationUI(res.pagination.total_items);
             } else {
-                // Fallback por seguridad
                  updatePaginationUI(0);
             }
 
@@ -249,7 +233,7 @@ async function loadUsers() {
         }
     } catch (error) {
         console.error(error);
-        listContainer.innerHTML = `<div class="state-error">${I18n.t('js.core.connection_error')}</div>`;
+        listContainer.innerHTML = `<div class="state-error">${I18n.t('js.core.connection_error') || 'Error de conexión'}</div>`;
     }
 }
 
@@ -260,13 +244,10 @@ function updatePaginationUI(totalItems) {
     const btnNext = _container.querySelector('[data-action="next-page"]');
 
     if (paginationPanel) {
-        // [MODIFICADO] Siempre visible, sin importar la cantidad de items
         paginationPanel.classList.remove('d-none');
         paginationPanel.style.display = 'flex';
 
         if (infoText) {
-            // Si no hay páginas (0 items), mostramos 1/1 o 0/0 según prefieras. 
-            // Usaré 1/1 para mantener consistencia visual si así lo deseas, o current/total.
             const displayTotal = _totalPages > 0 ? _totalPages : 1;
             infoText.textContent = `${_currentPage}/${displayTotal}`;
         }
@@ -282,7 +263,7 @@ function renderList() {
     if (!listContainer) return;
 
     if (_usersData.length === 0) {
-        listContainer.innerHTML = `<div class="state-empty">${I18n.t('admin.users_module.list.empty')}</div>`;
+        listContainer.innerHTML = `<div class="state-empty">${I18n.t('admin.users_module.list.empty') || 'No se encontraron usuarios.'}</div>`;
         return;
     }
 
@@ -295,8 +276,6 @@ function renderList() {
     attachSelectionListeners(listContainer);
 }
 
-// === RENDERS VISUALES (IGUAL QUE ANTES) ===
-
 function renderListAsGrid(users, listContainer) {
     let html = '';
 
@@ -304,6 +283,9 @@ function renderListAsGrid(users, listContainer) {
         const date = new Date(user.created_at);
         const formattedDate = date.toLocaleDateString();
         const selectedClass = (_selectedUserId == user.id) ? 'is-selected' : '';
+        
+        // Traducción del Status si es posible
+        const statusLabel = I18n.t(`admin.user_status.status.${user.account_status}`) || user.account_status;
 
         html += `
         <div class="component-card ${selectedClass}" data-user-id="${user.id}">
@@ -314,27 +296,27 @@ function renderListAsGrid(users, listContainer) {
                     <img src="${user.avatar_src}" class="component-card__avatar-image" loading="lazy">
                 </div>
 
-                <span class="component-badge" data-tooltip="Username">
+                <span class="component-badge" data-tooltip="${I18n.t('admin.users_module.list.headers.user')}">
                     ${escapeHtml(user.username)}
                 </span>
 
-                <span class="component-badge" data-tooltip="Email"> 
+                <span class="component-badge" data-tooltip="${I18n.t('admin.users_module.list.headers.email')}"> 
                     ${escapeHtml(user.email)}
                 </span>
 
-                <span class="component-badge" data-tooltip="Rol">
+                <span class="component-badge" data-tooltip="${I18n.t('admin.users_module.list.headers.role')}">
                     ${user.role} 
                 </span>
 
-                <span class="component-badge" data-tooltip="Estado">
-                    ${user.account_status}
+                <span class="component-badge" data-tooltip="${I18n.t('admin.users_module.list.headers.status')}">
+                    ${statusLabel}
                 </span>
 
-                <span class="component-badge" data-tooltip="UUID">
+                <span class="component-badge" data-tooltip="${I18n.t('admin.users_module.list.headers.uuid')}">
                     ${user.uuid}
                 </span>
 
-                <span class="component-badge" data-tooltip="Fecha Registro">
+                <span class="component-badge" data-tooltip="${I18n.t('admin.users_module.list.headers.created')}">
                     ${formattedDate}
                 </span>
 
@@ -353,6 +335,7 @@ function renderListAsTable(users, listContainer) {
         const date = new Date(user.created_at);
         const formattedDate = date.toLocaleDateString();
         const selectedClass = (_selectedUserId == user.id) ? 'is-selected' : '';
+        const statusLabel = I18n.t(`admin.user_status.status.${user.account_status}`) || user.account_status;
 
         rows += `
         <tr class="table-row-item ${selectedClass}" data-user-id="${user.id}" style="cursor: pointer;">
@@ -365,7 +348,7 @@ function renderListAsTable(users, listContainer) {
             <td><strong>${escapeHtml(user.username)}</strong></td>
             <td>${escapeHtml(user.email)}</td>
             <td><span class="component-badge" style="height: 24px; font-size: 12px;">${user.role}</span></td>
-            <td>${user.account_status}</td>
+            <td>${statusLabel}</td>
             <td style="font-family: monospace; font-size: 12px;">${user.uuid}</td>
             <td>${formattedDate}</td>
         </tr>`;
@@ -396,8 +379,6 @@ function renderListAsTable(users, listContainer) {
     listContainer.scrollTop = 0;
 }
 
-// === GESTIÓN DE SELECCIÓN ===
-
 function selectUser(userId) {
     if (_selectedUserId === userId) {
         deselectUser();
@@ -421,7 +402,7 @@ function toggleToolbarGroups(isSelectionActive) {
     const selectionIndicator = _container.querySelector('[data-element="selection-indicator"]');
 
     if (selectionIndicator) {
-        const text = I18n.t('admin.users_module.toolbar.selected_count').replace('%s', '1');
+        const text = (I18n.t('admin.users_module.toolbar.selected_count') || '%s seleccionados').replace('%s', '1');
         selectionIndicator.textContent = text;
     }
 
@@ -467,13 +448,13 @@ function updateViewUI(btnElement) {
         if (headerCard) headerCard.classList.add('d-none');
         if (toolbarTitle) toolbarTitle.classList.remove('d-none'); 
         if (iconSpan) iconSpan.textContent = 'table_rows'; 
-        btnElement.dataset.tooltip = I18n.t('admin.users_module.toolbar.view_grid');
+        btnElement.dataset.tooltip = I18n.t('admin.users_module.toolbar.view_grid') || 'Vista en Cuadrícula';
     } else {
         if (wrapper) wrapper.classList.remove('component-wrapper--full');
         if (headerCard) headerCard.classList.remove('d-none');
         if (toolbarTitle) toolbarTitle.classList.add('d-none'); 
         if (iconSpan) iconSpan.textContent = 'grid_view';
-        btnElement.dataset.tooltip = I18n.t('admin.users_module.toolbar.view_table');
+        btnElement.dataset.tooltip = I18n.t('admin.users_module.toolbar.view_table') || 'Vista en Tabla';
     }
 }
 

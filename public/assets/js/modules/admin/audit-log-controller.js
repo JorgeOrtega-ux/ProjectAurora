@@ -111,7 +111,13 @@ function renderTable(logs, tbody) {
         const actionBadge = `<span class="component-badge component-badge--sm">${log.action}</span>`;
 
         // Avatar fallback si no viene definido
-        const avatarSrc = log.admin_avatar_src || `https://ui-avatars.com/api/?name=${encodeURIComponent(log.admin_name || 'System')}&background=random&color=fff&size=128`;
+        // Usamos I18n para 'System' si es necesario
+        const systemName = I18n.t('admin.audit.system_actor') || 'System';
+        const adminName = log.admin_name || systemName;
+        
+        const avatarSrc = log.admin_avatar_src || `https://ui-avatars.com/api/?name=${encodeURIComponent(adminName)}&background=random&color=fff&size=128`;
+
+        const displayAdminName = log.admin_name || I18n.t('admin.audit.system_default') || 'Sistema';
 
         html += `
         <tr class="table-row-item">
@@ -124,7 +130,7 @@ function renderTable(logs, tbody) {
             </td>
             <td>
                 <div style="display: flex; flex-direction: column;">
-                    <span style="font-weight: 600; font-size: 13px;">${log.admin_name || 'Sistema'}</span>
+                    <span style="font-weight: 600; font-size: 13px;">${displayAdminName}</span>
                     <span style="font-size: 11px; color: var(--text-tertiary);">ID: ${log.admin_id}</span>
                 </div>
             </td>
@@ -152,7 +158,7 @@ function formatChanges(changesObj) {
 
     return Object.entries(changesObj)
         .map(([key, val]) => {
-            const safeVal = (val === null) ? 'NULL' : String(val);
+            const safeVal = (val === null) ? (I18n.t('admin.audit.value_null') || 'NULL') : String(val);
             // Uso de clases utilitarias para texto truncado si es muy largo
             return `<div style="display:flex; gap:4px;"><span style="color:var(--text-tertiary); font-weight:500;">${key}:</span> <span style="color:var(--text-primary); word-break: break-all;">${safeVal}</span></div>`;
         })

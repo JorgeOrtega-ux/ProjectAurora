@@ -6,6 +6,7 @@ import { ApiService } from '../../../core/api-service.js';
 import { Toast } from '../../../core/toast-manager.js';
 import { navigateTo } from '../../../core/url-manager.js';
 import { DateTimePicker } from '../../../core/date-time-picker.js';
+import { I18n } from '../../../core/i18n-manager.js'; // Importación añadida
 
 let _container = null;
 let _targetUserId = null;
@@ -26,14 +27,10 @@ export const UserStatusController = {
 
         _targetUserId = _container.dataset.userId;
         
-        // 1. LIMPIEZA INICIAL
         _state = {};
         _dateTimePicker = null;
         
-        // 2. LEER DATOS DEL SERVIDOR
         loadServerData();
-
-        // 3. INICIALIZAR EVENTOS
         initEvents();
     }
 };
@@ -48,13 +45,11 @@ function loadServerData() {
         if (data.status) {
             _state.status = data.status;
             
-            const statusLabels = {
-                'active': 'Activo',
-                'suspended': 'Suspendido',
-                'deleted': 'Eliminado'
-            };
+            // Usamos I18n para los labels iniciales
+            const key = `admin.user_status.status.${data.status}`;
+            const label = I18n.t(key) || data.status;
             
-            updateLabel('current-status-label', statusLabels[data.status] || data.status);
+            updateLabel('current-status-label', label);
             processMainStatusChange(data.status);
         }
         
@@ -75,22 +70,18 @@ function initEvents() {
     document.removeEventListener('ui:dropdown-selected', handleDropdownSelection);
     document.addEventListener('ui:dropdown-selected', handleDropdownSelection);
     
-    // [CORREGIDO] Inicializar el Calendario usando los IDs del wrapper y el input
-    // Verificamos primero que exista el wrapper para no dar error en consola
     if (document.getElementById('suspension-picker-wrapper')) {
         _dateTimePicker = new DateTimePicker('suspension-picker-wrapper', 'suspension-date-input', {
             enableTime: false,
             minDate: new Date(),
             dateFormat: "Y-m-d",
             onChange: (selectedDates, dateStr, instance) => {
-                // DateTimePicker dispara 'input' en el elemento oculto, pero también soporta callback
                 if (selectedDates.length > 0) {
                     handleDateSelection(selectedDates[0], dateStr);
                 }
             }
         });
 
-        // Escuchar también el evento nativo del input por si el componente lo dispara
         const hiddenInput = document.getElementById('suspension-date-input');
         if (hiddenInput) {
             hiddenInput.addEventListener('input', (e) => {
@@ -118,15 +109,14 @@ function handleDateSelection(date, dateStr) {
 
     _state.durationDays = diffDays;
     
-    // El texto del trigger lo actualiza el DateTimePicker internamente, 
-    // pero podemos forzar el texto adicional de días aquí si quisiéramos.
-    // DateTimePicker pone la fecha formateada. Vamos a agregarle los días.
     setTimeout(() => {
         const label = document.getElementById('suspension-date-label');
         if (label && !label.textContent.includes('días')) {
+            // "días" no está en I18n globalmente, pero podemos usar un string seguro o agregarlo.
+            // Por ahora hardcodeamos "días" para mantener consistencia con el original
             label.textContent += ` (${diffDays} días)`;
         }
-    }, 50); // Pequeño delay para que corra después del updateValue interno
+    }, 50);
 
     showSection('group-reason');
     populateReasons('suspension');
@@ -176,12 +166,12 @@ function processMainStatusChange(status) {
     
     toggleSaveButton(false); 
 
-    updateLabel('suspension-type-label', 'Seleccionar tipo...');
-    updateLabel('deletion-source-label', 'Seleccionar origen...');
-    updateLabel('reason-label', 'Seleccionar razón...');
+    updateLabel('suspension-type-label', I18n.t('admin.user_status.select_type') || 'Seleccionar tipo...');
+    updateLabel('deletion-source-label', I18n.t('admin.user_status.select_source') || 'Seleccionar origen...');
+    updateLabel('reason-label', I18n.t('admin.user_status.select_reason') || 'Seleccionar razón...');
     
     if (document.getElementById('suspension-date-label')) {
-        document.getElementById('suspension-date-label').textContent = 'Seleccionar fecha...';
+        document.getElementById('suspension-date-label').textContent = I18n.t('global.select_date') || 'Seleccionar fecha...';
     }
 
     if (status === 'active') {
@@ -201,7 +191,7 @@ function processSuspensionTypeChange(type) {
     
     toggleSaveButton(false);
     
-    updateLabel('reason-label', 'Seleccionar razón...');
+    updateLabel('reason-label', I18n.t('admin.user_status.select_reason') || 'Seleccionar razón...');
 
     if (type === 'temp') {
         showSection('group-suspension-days');
@@ -230,6 +220,9 @@ function populateReasons(context) {
     const list = document.getElementById('reason-list-container');
     if (!list) return;
 
+    // Estos textos se usan como "value" para enviar a DB, así que no se deben traducir 
+    // a menos que el backend soporte códigos de error. 
+    // Se mantienen en español por consistencia con la lógica existente.
     let reasons = [];
     if (context === 'suspension') {
         reasons = [
@@ -251,6 +244,8 @@ function populateReasons(context) {
 
     let html = '';
     reasons.forEach(r => {
+        // Podríamos intentar traducir la visualización si existiera la key, 
+        // pero mantenemos el label igual al valor para no romper datos.
         html += `
             <div class="menu-link" data-action="select-option" data-type="reason" data-value="${r}" data-label="${r}">
                 <div class="menu-link-text">${r}</div>
@@ -264,7 +259,7 @@ async function saveStatus() {
     const btn = _container.querySelector('#btn-save-status');
     btn.disabled = true;
     const originalText = btn.textContent;
-    btn.textContent = 'Guardando...';
+    btn.textContent = (I18n.t('js.core.saving') || 'Guardando') + '...';
 
     const formData = new FormData();
     formData.append('target_id', _targetUserId);
@@ -290,7 +285,7 @@ async function saveStatus() {
         }
     } catch (e) {
         console.error(e);
-        Toast.show('Error de conexión', 'error');
+        Toast.show(I18n.t('js.core.connection_error') || 'Error de conexión', 'error');
         btn.disabled = false;
         btn.textContent = originalText;
     }

@@ -1,12 +1,13 @@
 /**
- * public/assets/js/modules/admin/user-details-controller.js
+ * public/assets/js/modules/admin/users/user-details-controller.js
  * Controlador para la edición detallada de usuarios.
  */
 
 import { ApiService } from '../../../core/api-service.js';
 import { Toast } from '../../../core/toast-manager.js';
 import { navigateTo } from '../../../core/url-manager.js';
-import { Dialog } from '../../../core/dialog-manager.js'; // Importante para confirmación
+import { Dialog } from '../../../core/dialog-manager.js';
+import { I18n } from '../../../core/i18n-manager.js'; // Importación añadida
 
 let _container = null;
 let _targetUserId = null;
@@ -26,13 +27,13 @@ export const UserDetailsController = {
                 dataScript.remove();
             } catch (e) {
                 console.error("Error al parsear datos de usuario:", e);
-                Toast.show('Error de datos del servidor', 'error');
+                Toast.show(I18n.t('js.core.error') || 'Error de datos del servidor', 'error');
                 return;
             }
         }
 
         if (!_targetUserId) {
-            Toast.show('Error: ID de usuario no encontrado', 'error');
+            Toast.show(I18n.t('api.user_not_found') || 'Error: ID de usuario no encontrado', 'error');
             goBack();
             return;
         }
@@ -41,7 +42,6 @@ export const UserDetailsController = {
         document.addEventListener('ui:dropdown-selected', _handleGlobalDropdown);
     },
     
-    // Método público auxiliar para recargar la vista si es necesario
     refresh: () => {
         // ...
     }
@@ -98,42 +98,46 @@ function initEvents() {
         });
     });
 
-    // [NUEVO] DESACTIVAR 2FA
+    // DESACTIVAR 2FA
     const btnDisable2FA = _container.querySelector('[data-action="disable-2fa"]');
     if (btnDisable2FA) {
         btnDisable2FA.addEventListener('click', disable2FA);
     }
 }
 
-// [NUEVO] Lógica Desactivar 2FA
 async function disable2FA(e) {
     const btn = e.target;
     
-    // Diálogo de confirmación
+    // "Desactivar 2FA?"
+    const title = I18n.t('admin.user_details.2fa_title') ? 
+                  `${I18n.t('global.disable')} ${I18n.t('admin.user_details.2fa_title')}` : 
+                  '¿Desactivar 2FA?';
+
+    // "Esto reducirá la seguridad..."
+    const message = I18n.t('js.2fa.confirm_disable') || 'Esto reducirá la seguridad de la cuenta del usuario.';
+
     const confirmed = await Dialog.confirm({
-        title: '¿Desactivar 2FA?',
-        message: 'Esto reducirá la seguridad de la cuenta del usuario.',
+        title: title,
+        message: message,
         type: 'danger',
-        confirmText: 'Desactivar',
-        cancelText: 'Cancelar'
+        confirmText: I18n.t('global.disable') || 'Desactivar',
+        cancelText: I18n.t('global.cancel') || 'Cancelar'
     });
 
     if (!confirmed) return;
 
     btn.disabled = true;
     const originalText = btn.innerText;
-    btn.innerText = 'Procesando...';
+    btn.innerText = (I18n.t('js.core.processing') || 'Procesando') + '...';
 
     const formData = new FormData();
     formData.append('target_id', _targetUserId);
 
     try {
-        // Usar la ruta definida en api-routes.js
         const res = await ApiService.post(ApiService.Routes.Admin.Disable2FA, formData);
 
         if (res.success) {
             Toast.show(res.message, 'success');
-            // Recargar para actualizar la vista
             setTimeout(() => window.location.reload(), 1000);
         } else {
             Toast.show(res.message, 'error');
@@ -142,7 +146,7 @@ async function disable2FA(e) {
         }
     } catch (err) {
         console.error(err);
-        Toast.show('Error de conexión', 'error');
+        Toast.show(I18n.t('js.core.connection_error') || 'Error de conexión', 'error');
         btn.disabled = false;
         btn.innerText = originalText;
     }
@@ -159,9 +163,6 @@ function setupFieldEdit(field, sectionKey) {
     const viewState = section.querySelector('[data-state="view"]');
     const editState = section.querySelector('[data-state="edit"]');
     const viewActions = section.querySelector('[data-state="view-actions"]');
-    const actionsEdit = section.querySelector('[data-state="actions-edit"]'); // Possible typo in HTML or here, checking HTML
-    // Correct selector from HTML logic used previously:
-    const actionsEditWrapper = section.querySelector('.component-card__actions.m-0'); // Wrapper inside edit state
     const input = section.querySelector('input');
 
     const toggleState = (isEditing) => {
@@ -269,7 +270,7 @@ async function uploadAvatar() {
     const originalText = btnSave.dataset.originalText || btnSave.textContent;
     if (!btnSave.dataset.originalText) btnSave.dataset.originalText = originalText;
     
-    btnSave.textContent = 'Guardando...';
+    btnSave.textContent = (I18n.t('js.core.saving') || 'Guardando') + '...';
     btnSave.disabled = true; 
 
     const formData = new FormData();
@@ -289,7 +290,7 @@ async function uploadAvatar() {
         }
     } catch (e) {
         console.error(e);
-        Toast.show('Error de conexión', 'error');
+        Toast.show(I18n.t('js.core.connection_error') || 'Error de conexión', 'error');
     } finally {
         btnSave.textContent = originalText;
         btnSave.disabled = false;
@@ -297,12 +298,14 @@ async function uploadAvatar() {
 }
 
 async function deleteAvatar() {
+    // "¿Eliminar avatar?"
+    // "Se eliminará el avatar personalizado..."
     const confirmed = await Dialog.confirm({
-        title: '¿Eliminar avatar?',
-        message: 'Se eliminará el avatar personalizado de este usuario y se generará uno por defecto.',
+        title: I18n.t('js.profile.confirm_delete') || '¿Eliminar avatar?',
+        message: I18n.t('js.profile.pic_deleted') || 'Se eliminará el avatar personalizado y se restaurará el defecto.',
         type: 'danger',
-        confirmText: 'Eliminar',
-        cancelText: 'Cancelar'
+        confirmText: I18n.t('js.core.delete') || 'Eliminar',
+        cancelText: I18n.t('global.cancel') || 'Cancelar'
     });
 
     if (!confirmed) return;
@@ -339,6 +342,6 @@ async function updatePreference(key, value) {
         }
     } catch (error) {
         console.error(error);
-        Toast.show('Error de conexión', 'error');
+        Toast.show(I18n.t('js.core.connection_error') || 'Error de conexión', 'error');
     }
 }

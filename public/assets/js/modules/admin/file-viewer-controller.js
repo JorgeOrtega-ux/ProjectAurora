@@ -5,6 +5,7 @@
 
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
+import { I18n } from '../../core/i18n-manager.js'; // Importación añadida
 
 let _container = null;
 let _currentFiles = [];
@@ -30,7 +31,7 @@ export const FileViewerController = {
         const filesParam = urlParams.get('files');
 
         if (!filesParam) {
-            showError('No se especificaron archivos.');
+            showError(I18n.t('admin.file_viewer.no_files') || 'No se especificaron archivos.');
             return;
         }
 
@@ -85,8 +86,8 @@ function initEvents() {
             const content = _currentFiles[_activeFileIndex]?.content || '';
             if (content) {
                 navigator.clipboard.writeText(content)
-                    .then(() => Toast.show('Copiado', 'info'))
-                    .catch(() => Toast.show('Error al copiar', 'error'));
+                    .then(() => Toast.show(I18n.t('js.core.copied') || 'Copiado', 'info'))
+                    .catch(() => Toast.show(I18n.t('js.core.copy_error') || 'Error al copiar', 'error'));
             }
         });
     }
@@ -126,7 +127,7 @@ async function loadContent(paths) {
     } catch (e) {
         console.error(e);
         if (loader) loader.classList.add('d-none');
-        showError('Error de conexión.');
+        showError(I18n.t('js.core.connection_error') || 'Error de conexión.');
     }
 }
 
@@ -146,10 +147,13 @@ function renderTabs() {
         else if (file.filename.endsWith('.js')) icon = 'javascript';
         else if (file.filename.endsWith('.sql')) icon = 'database';
         
+        // title="Cerrar archivo"
+        const closeTitle = I18n.t('admin.file_viewer.close_file') || 'Cerrar archivo';
+        
         tab.innerHTML = `
             <span class="material-symbols-rounded tab-icon">${icon}</span>
             <span class="tab-label">${file.filename}</span>
-            <span class="material-symbols-rounded tab-close" title="Cerrar archivo">close</span>
+            <span class="material-symbols-rounded tab-close" title="${closeTitle}">close</span>
         `;
         
         // Click en la pestaña (cambiar archivo)
@@ -231,7 +235,7 @@ function renderActiveContent() {
         container.innerHTML = `
             <div class="state-empty" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--text-secondary);">
                 <span class="material-symbols-rounded" style="font-size: 48px; opacity: 0.5; margin-bottom: 16px;">folder_off</span>
-                <p>No hay archivos abiertos.</p>
+                <p>${I18n.t('admin.file_viewer.no_files_open') || 'No hay archivos abiertos.'}</p>
             </div>`;
         return;
     }
@@ -239,12 +243,13 @@ function renderActiveContent() {
     const file = _currentFiles[_activeFileIndex];
     
     if (file.error) {
-        container.innerHTML = `<div class="state-error" style="text-align:left;">Error: ${file.error}</div>`;
+        container.innerHTML = `<div class="state-error" style="text-align:left;">${I18n.t('js.core.error') || 'Error'}: ${file.error}</div>`;
         return;
     }
 
     const rawContent = file.content;
-    const warning = file.is_truncated ? `<div class="component-message component-message--warning mb-0" style="margin:16px;">Archivo truncado (${file.size})</div>` : '';
+    const warningMsg = I18n.t('admin.file_viewer.truncated', [file.size]) || `Archivo truncado (${file.size})`;
+    const warning = file.is_truncated ? `<div class="component-message component-message--warning mb-0" style="margin:16px;">${warningMsg}</div>` : '';
 
     if (_isHighlightMode) {
         const ext = file.filename.split('.').pop().toLowerCase();

@@ -6,6 +6,7 @@ import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { Dialog } from '../../core/dialog-manager.js';
 import { navigateTo } from '../../core/url-manager.js';
+import { I18n } from '../../core/i18n-manager.js'; // Importación añadida
 
 let _container = null;
 let _filesData = [];
@@ -74,9 +75,9 @@ async function handleDownload() {
     const pathsString = pathsArray.join(','); 
     
     if (pathsArray.length > 1) {
-        Toast.show('Comprimiendo logs en ZIP...', 'info');
+        Toast.show(I18n.t('admin.logs.zip_compressing') || 'Comprimiendo logs en ZIP...', 'info');
     } else {
-        Toast.show('Preparando descarga...', 'info');
+        Toast.show(I18n.t('admin.logs.download_preparing') || 'Preparando descarga...', 'info');
     }
 
     const formData = new FormData();
@@ -109,13 +110,13 @@ async function handleDownload() {
                 document.body.removeChild(downloadLink);
             }, 100);
 
-            Toast.show('Descarga iniciada.', 'success');
+            Toast.show(I18n.t('admin.logs.download_started') || 'Descarga iniciada.', 'success');
             clearSelection();
         } else {
-            Toast.show(res.message || 'Error al obtener token de descarga.', 'error');
+            Toast.show(res.message || (I18n.t('admin.logs.download_token_error') || 'Error al obtener token de descarga.'), 'error');
         }
     } catch (e) {
-        Toast.show('Error de conexión.', 'error');
+        Toast.show(I18n.t('js.core.connection_error') || 'Error de conexión.', 'error');
     }
 }
 
@@ -132,7 +133,7 @@ async function loadFiles() {
             list.innerHTML = `<div class="state-error">${res.message}</div>`;
         }
     } catch(e) {
-        list.innerHTML = '<div class="state-error">Error de conexión</div>';
+        list.innerHTML = `<div class="state-error">${I18n.t('js.core.connection_error') || 'Error de conexión'}</div>`;
     }
 }
 
@@ -142,10 +143,10 @@ function renderList(query = '') {
     
     const filtered = _filesData.filter(f => f.filename.toLowerCase().includes(query));
 
-    if(countLabel) countLabel.innerText = `${filtered.length} archivos`;
+    if(countLabel) countLabel.innerText = `${filtered.length} ${I18n.t('admin.logs.files_count') || 'archivos'}`;
 
     if(filtered.length === 0) {
-        list.innerHTML = '<div class="state-empty">No se encontraron archivos de log.</div>';
+        list.innerHTML = `<div class="state-empty">${I18n.t('admin.logs.empty') || 'No se encontraron archivos de log.'}</div>`;
         return;
     }
 
@@ -189,10 +190,10 @@ function buildGridHtml(files) {
                      style="display:flex; align-items:center; justify-content:center; ${style}">
                     <span class="material-symbols-rounded" style="font-size:24px;">${icon}</span>
                 </div>
-                <span class="component-badge" data-tooltip="Nombre Archivo" style="font-family: monospace;">${file.filename}</span>
-                <span class="component-badge" data-tooltip="Carpeta/Categoría">${file.category}</span>
-                <span class="component-badge" data-tooltip="Tamaño">${file.size}</span>
-                <span class="component-badge" data-tooltip="Fecha Modificación">${file.modified_at}</span>
+                <span class="component-badge" data-tooltip="${I18n.t('admin.logs.col_filename') || 'Nombre Archivo'}" style="font-family: monospace;">${file.filename}</span>
+                <span class="component-badge" data-tooltip="${I18n.t('admin.logs.col_category') || 'Carpeta/Categoría'}">${file.category}</span>
+                <span class="component-badge" data-tooltip="${I18n.t('admin.logs.col_size') || 'Tamaño'}">${file.size}</span>
+                <span class="component-badge" data-tooltip="${I18n.t('admin.logs.col_date') || 'Fecha Modificación'}">${file.modified_at}</span>
             </div>
         </div>`;
     }).join('');
@@ -225,10 +226,10 @@ function buildTableHtml(files) {
             <thead>
                 <tr>
                     <th style="width:50px"></th>
-                    <th>Archivo</th>
-                    <th>Categoría</th>
-                    <th>Tamaño</th>
-                    <th>Fecha</th>
+                    <th>${I18n.t('admin.logs.col_filename') || 'Archivo'}</th>
+                    <th>${I18n.t('admin.logs.col_category') || 'Categoría'}</th>
+                    <th>${I18n.t('admin.logs.col_size') || 'Tamaño'}</th>
+                    <th>${I18n.t('admin.logs.col_date') || 'Fecha'}</th>
                 </tr>
             </thead>
             <tbody>${rows}</tbody>
@@ -257,7 +258,7 @@ function updateToolbarState() {
     if(_selectedPaths.size > 0) {
         defGroup.classList.add('d-none');
         actGroup.classList.remove('d-none');
-        indicator.innerText = `${_selectedPaths.size} seleccionados`;
+        indicator.innerText = `${_selectedPaths.size} ${I18n.t('admin.logs.selected_count') || 'seleccionados'}`;
         
         // Habilitar botón descargar (permitir múltiples)
         const btnDownload = _container.querySelector('[data-action="download-selected"]');
@@ -265,8 +266,8 @@ function updateToolbarState() {
             btnDownload.style.opacity = '1';
             btnDownload.disabled = false;
             btnDownload.dataset.tooltip = _selectedPaths.size > 1 
-                ? `Descargar ZIP (${_selectedPaths.size})` 
-                : 'Descargar Log';
+                ? I18n.t('admin.logs.download_zip_count', [_selectedPaths.size]) || `Descargar ZIP (${_selectedPaths.size})` 
+                : I18n.t('admin.logs.download_log') || 'Descargar Log';
         }
 
     } else {
@@ -293,7 +294,11 @@ function toggleView() {
 }
 
 async function deleteSelected() {
-    if(!await Dialog.confirm({ title: '¿Eliminar archivos?', message: 'Esta acción borrará los logs físicamente del servidor.', type: 'danger' })) return;
+    if(!await Dialog.confirm({ 
+        title: I18n.t('admin.logs.delete_title') || '¿Eliminar archivos?', 
+        message: I18n.t('admin.logs.delete_message') || 'Esta acción borrará los logs físicamente del servidor.', 
+        type: 'danger' 
+    })) return;
 
     const paths = Array.from(_selectedPaths);
     const formData = new FormData();
@@ -302,11 +307,11 @@ async function deleteSelected() {
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.DeleteLogFiles, formData);
         if(res.success) {
-            Toast.show('Archivos eliminados', 'success');
+            Toast.show(I18n.t('admin.logs.delete_success') || 'Archivos eliminados', 'success');
             clearSelection();
             loadFiles();
         } else {
             Toast.show(res.message, 'error');
         }
-    } catch(e) { Toast.show('Error al eliminar', 'error'); }
+    } catch(e) { Toast.show(I18n.t('admin.logs.delete_error') || 'Error al eliminar', 'error'); }
 }
