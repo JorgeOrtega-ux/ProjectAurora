@@ -54,41 +54,26 @@ class AlertService {
     /**
      * Construye el texto legible para el usuario final según el contexto
      */
-    private function buildFormattedMessage($type, $meta) {
+   private function buildFormattedMessage($type, $meta) {
         switch ($type) {
             case 'performance':
-                $codes = [
-                    'degradation' => 'Estamos experimentando lentitud en algunos servicios. Trabajamos en ello.',
-                    'latency' => 'Se ha detectado una latencia alta en la conexión. Su experiencia podría verse afectada.',
-                    'overload' => 'El sistema presenta una carga inusual. Algunas funciones podrían no responder.'
-                ];
-                return $codes[$meta['code'] ?? 'degradation'] ?? 'Problemas de rendimiento detectados.';
+                $code = $meta['code'] ?? 'degradation';
+                // Retorna ej: system_alerts.performance.degradation
+                return "system_alerts.performance." . $code;
 
             case 'maintenance':
                 if (($meta['subtype'] ?? '') === 'emergency') {
-                    $time = $meta['cutoff'] ?? '--:--';
-                    return "Atención: Se realizará un corte de servicio inminente a las {$time}. Guarde su trabajo.";
+                    return "system_alerts.maintenance.emergency";
                 }
-                $start = !empty($meta['start']) ? date("d/m H:i", strtotime($meta['start'])) : '--/--';
-                $duration = $meta['duration'] ?? '60';
-                return "Mantenimiento Programado: Los servicios no estarán disponibles desde el {$start} por aprox. {$duration} min.";
+                return "system_alerts.maintenance.scheduled";
 
             case 'policy':
-                $docs = [
-                    'terms' => 'Términos y Condiciones',
-                    'privacy' => 'Política de Privacidad',
-                    'cookies' => 'Política de Cookies'
-                ];
-                $docName = $docs[$meta['doc'] ?? 'terms'];
-                
-                if (($meta['update_type'] ?? '') === 'future') {
-                    $date = !empty($meta['date']) ? date("d/m/Y", strtotime($meta['date'])) : '--/--/----';
-                    return "A partir del {$date} entrarán en vigor los nuevos {$docName}. Ponte al día con lo nuevo.";
-                }
-                return "Hemos actualizado nuestros {$docName}. Te invitamos a revisar los cambios realizados.";
+                $updateType = $meta['update_type'] ?? 'immediate';
+                // Retorna ej: system_alerts.policy.future
+                return "system_alerts.policy." . $updateType;
 
             default:
-                return "Nueva actualización del sistema disponible.";
+                return "system_alerts.policy.default";
         }
     }
 

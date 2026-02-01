@@ -443,5 +443,27 @@
             "connection_error": "Error de conexión con el servidor.",
             "loading_error": "Error al cargar la sección."
         }
+    },
+    "system_alerts": {
+        "performance": {
+            "degradation": "Estamos experimentando lentitud en algunos servicios. Trabajamos en ello.",
+            "latency": "Se ha detectado una latencia alta en la conexión. Su experiencia podría verse afectada.",
+            "overload": "El sistema presenta una carga inusual. Algunas funciones podrían no responder.",
+            "default": "Problemas de rendimiento detectados."
+        },
+        "maintenance": {
+            "emergency": "Atención: Se realizará un corte de servicio inminente a las %s. Guarde su trabajo.",
+            "scheduled": "Mantenimiento Programado: Los servicios no estarán disponibles desde el %s por aprox. %s min."
+        },
+        "policy": {
+            "names": {
+                "terms": "Términos y Condiciones",
+                "privacy": "Política de Privacidad",
+                "cookies": "Política de Cookies"
+            },
+            "future": "A partir del %s entrarán en vigor los nuevos %s. Ponte al día con lo nuevo.",
+            "immediate": "Hemos actualizado nuestros %s. Te invitamos a revisar los cambios realizados.",
+            "default": "Nueva actualización del sistema disponible."
+        }
     }
 }

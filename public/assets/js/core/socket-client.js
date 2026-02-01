@@ -3,12 +3,12 @@
  */
 
 import { ApiService } from './api-service.js';
+import { I18n } from './i18n-manager.js';
 
 export const SocketClient = {
     socket: null,
     reconnectInterval: 5000,
     
-    // Detección dinámica del host
     get baseUrl() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.hostname;
@@ -22,7 +22,6 @@ export const SocketClient = {
     },
 
     connect: async () => {
-        // Evitar duplicados
         if (SocketClient.socket && (SocketClient.socket.readyState === WebSocket.OPEN || SocketClient.socket.readyState === WebSocket.CONNECTING)) {
             return;
         }
@@ -31,28 +30,14 @@ export const SocketClient = {
             let urlToConnect = '';
             const wsUrl = SocketClient.baseUrl;
 
-            // Lógica Híbrida: Usuario Registrado vs Invitado
             if (window.IS_LOGGED_IN) {
-                console.log(`Socket: (User) Solicitando ticket para ${wsUrl}...`);
-                
-                // 1. Pedir Token al PHP (Solo usuarios)
                 const res = await ApiService.post(ApiService.Routes.Auth.GetWsToken);
-
-                if (!res.success || !res.ws_token) {
-                    console.warn("Socket: No se pudo obtener autorización.", res.message);
-                    return;
-                }
+                if (!res.success || !res.ws_token) return;
                 urlToConnect = `${wsUrl}?token=${res.ws_token}`;
-            
             } else {
-                console.log(`Socket: (Guest) Conectando modo invitado a ${wsUrl}...`);
-                // Conexión anónima
                 urlToConnect = `${wsUrl}?type=guest`;
             }
 
-            // 2. Conectar
-            console.log("Socket: Conectando...");
-            
             SocketClient.socket = new WebSocket(urlToConnect);
 
             SocketClient.socket.onopen = () => {
@@ -64,7 +49,6 @@ export const SocketClient = {
                 try {
                     const data = JSON.parse(event.data);
                     
-                    // === NUEVA LÓGICA DE ALERTAS ===
                     if (data.type === 'system_alert') {
                         showSystemAlert(data.message);
                     }
@@ -74,61 +58,38 @@ export const SocketClient = {
                         localStorage.removeItem('hidden_alert_id');
                     }
                     
-                    // Despachar eventos globales (para el resto de la app)
                     if (data.type) {
-                        const customEvent = new CustomEvent(`socket:${data.type}`, { detail: data });
-                        document.dispatchEvent(customEvent);
+                        document.dispatchEvent(new CustomEvent(`socket:${data.type}`, { detail: data }));
                     }
                 } catch (e) {
                     console.error("Socket: Error leyendo mensaje", e);
                 }
             };
 
-            SocketClient.socket.onclose = (event) => {
-                console.log("Socket: Desconectado ❌", event.reason);
-                
-                // Reintentar conexión
-                setTimeout(() => {
-                    console.log("Socket: Reintentando...");
-                    SocketClient.connect();
-                }, SocketClient.reconnectInterval);
+            SocketClient.socket.onclose = () => {
+                setTimeout(() => SocketClient.connect(), SocketClient.reconnectInterval);
             };
 
-            SocketClient.socket.onerror = (error) => {
-                console.error("Socket: Error de conexión.", error);
-                SocketClient.socket.close();
-            };
-
-        } catch (e) {
-            console.error("Socket: Error en flujo de conexión", e);
-        }
+        } catch (e) { console.error(e); }
     },
 
     send: (type, payload = {}) => {
-        if (SocketClient.socket && SocketClient.socket.readyState === WebSocket.OPEN) {
-            const message = JSON.stringify({ type, ...payload });
-            SocketClient.socket.send(message);
-        } else {
-            console.warn("Socket: No se puede enviar (Desconectado).");
+        if (SocketClient.socket?.readyState === WebSocket.OPEN) {
+            SocketClient.socket.send(JSON.stringify({ type, ...payload }));
         }
     }
 };
-// === Helper para mostrar Alertas ===
+
+// === Helper para mostrar Alertas con TRADUCCIÓN ===
 function showSystemAlert(alertData) {
     const container = document.getElementById('system-alert-container');
     if (!container) return;
 
-    // Verificar si el usuario la cerró previamente
     const hiddenId = localStorage.getItem('hidden_alert_id');
     if (hiddenId === alertData.id) return;
 
-    // Elementos internos
-    // Asegúrate de que tu HTML tenga un div hijo con clase .system-alert-box
     let alertBox = container.querySelector('.system-alert-box');
-    
-    // Si no existe el hijo (estructura antigua), lo creamos al vuelo o lo seleccionamos si ya actualizaste el HTML
     if (!alertBox) {
-        // Fallback simple por si el HTML no se ha actualizado manualmente
         alertBox = document.createElement('div');
         alertBox.className = 'system-alert-box';
         while (container.firstChild) alertBox.appendChild(container.firstChild);
@@ -141,10 +102,8 @@ function showSystemAlert(alertData) {
 
     if (!icon || !msg) return; 
 
-    // Reset de clases de color
+    // Estilos
     alertBox.classList.remove('alert-bg-critical', 'alert-bg-warning', 'alert-bg-info');
-
-    // Configuración Simplificada
     let bgClass = 'alert-bg-info';
     let iconName = 'info';
     
@@ -156,30 +115,48 @@ function showSystemAlert(alertData) {
         iconName = 'warning';
     }
 
-    // Aplicar estilos
     alertBox.classList.add(bgClass);
     icon.textContent = iconName;
-    // Ya no cambiamos icon.style.color porque por CSS ahora es blanco fijo
 
-    // Configurar Texto (Una sola línea: Título + Mensaje)
-    let fullText = alertData.message;
-    
-    // Si hay metadatos específicos, construimos una frase corta
-    if (alertData.type === 'maintenance' && alertData.meta?.subtype === 'scheduled') {
-        const time = new Date(alertData.meta.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        fullText = `Mantenimiento programado: ${time} (${alertData.meta.duration} min)`;
-    } else if (alertData.type === 'policy') {
-        fullText = `Actualización legal: ${alertData.meta.doc || 'Documentos'}`;
+    // === LÓGICA DE TRADUCCIÓN ===
+    const translationKey = alertData.message;
+    const meta = alertData.meta || {};
+    let params = [];
+
+    // Preparamos los parámetros
+    if (alertData.type === 'maintenance') {
+        if (meta.subtype === 'emergency') {
+            params.push(meta.cutoff || '--:--');
+        } else {
+            const dateStr = meta.start ? new Date(meta.start).toLocaleString([], {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : '--/--';
+            params.push(dateStr);
+            params.push(meta.duration || '60');
+        }
+    } 
+    else if (alertData.type === 'policy') {
+        const docKey = `system_alerts.policy.names.${meta.doc || 'terms'}`;
+        const docName = I18n.t(docKey); 
+
+        if (meta.update_type === 'future') {
+            const dateStr = meta.date ? new Date(meta.date + 'T00:00:00').toLocaleDateString() : '--/--';
+            params.push(dateStr);
+            params.push(docName);
+        } else {
+            params.push(docName);
+        }
     }
 
-    // Insertar texto
+    // Traducción final
+    let fullText = I18n.t(translationKey, params);
+
+    // === CAMBIO REALIZADO AQUÍ ===
+    // Se ha eliminado el bloque "if (fullText === translationKey) { ... }"
+    // Ahora, si la traducción falta, mostrará la clave (ej: system_alerts.performance.degradation)
+
     msg.textContent = fullText;
-    msg.title = fullText; // Tooltip nativo por si se corta con "..."
+    msg.title = fullText;
+    container.style.display = 'block';
 
-    // Mostrar contenedor padre
-    container.style.display = 'block'; // Usamos block porque el hijo ya tiene flex
-
-    // Evento Cerrar
     closeBtn.onclick = () => {
         container.style.display = 'none';
         localStorage.setItem('hidden_alert_id', alertData.id);

@@ -246,7 +246,7 @@ if ($showMaintenanceScreen) {
                         width: 100%;
                         padding: 8px 8px 0 8px;
                         /* El padding solicitado */
-                        z-index: 9999;
+                        z-index: 499;
                         display: none;
                         /* Controlado por JS */
                         pointer-events: none;
