@@ -1,6 +1,3 @@
-<?php
-// includes/sections/admin/system-alerts.php
-?>
 <div class="component-wrapper" data-section="admin-system-alerts">
     
     <div class="component-toolbar-wrapper">
@@ -234,11 +231,11 @@
                     </div>
                     <div class="component-card__actions">
                         <div class="stepper-control">
-                            <button class="stepper-btn" data-action="duration-dec" type="button">
+                            <button class="component-button square" data-action="duration-dec" type="button">
                                 <span class="material-symbols-rounded">remove</span>
                             </button>
                             <input type="number" data-input="maint-duration" class="stepper-input" value="60" step="15">
-                            <button class="stepper-btn" data-action="duration-inc" type="button">
+                            <button class="component-button square" data-action="duration-inc" type="button">
                                 <span class="material-symbols-rounded">add</span>
                             </button>
                         </div>

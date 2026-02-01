@@ -1,3 +1,4 @@
+
 <?php
 // includes/sections/admin/server-config.php
 
@@ -29,10 +30,10 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
         <div class="component-card__actions w-100">
             <div class="stepper-control" data-role="stepper" data-step-small="<?php echo $stepSmall; ?>" data-step-large="<?php echo $stepLarge; ?>">
                 <div class="stepper-side left">
-                    <button type="button" class="component-button stepper-btn" data-action="dec-large" title="-<?php echo $stepLarge; ?>">
+                    <button type="button" class="component-button square" data-action="dec-large" title="-<?php echo $stepLarge; ?>">
                         <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
                     </button>
-                    <button type="button" class="component-button stepper-btn" data-action="dec-small" title="-<?php echo $stepSmall; ?>">
+                    <button type="button" class="component-button square" data-action="dec-small" title="-<?php echo $stepSmall; ?>">
                         <span class="material-symbols-rounded">chevron_left</span>
                     </button>
                 </div>
@@ -40,10 +41,10 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
                     <input type="number" class="component-text-input stepper-input" name="<?php echo $name; ?>" value="<?php echo $value; ?>">
                 </div>
                 <div class="stepper-side right">
-                    <button type="button" class="component-button stepper-btn" data-action="inc-small" title="+<?php echo $stepSmall; ?>">
+                    <button type="button" class="component-button square" data-action="inc-small" title="+<?php echo $stepSmall; ?>">
                         <span class="material-symbols-rounded">chevron_right</span>
                     </button>
-                    <button type="button" class="component-button stepper-btn" data-action="inc-large" title="+<?php echo $stepLarge; ?>">
+                    <button type="button" class="component-button square" data-action="inc-large" title="+<?php echo $stepLarge; ?>">
                         <span class="material-symbols-rounded">keyboard_double_arrow_right</span>
                     </button>
                 </div>

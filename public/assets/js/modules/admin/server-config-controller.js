@@ -1,6 +1,3 @@
-/**
- * public/assets/js/modules/admin/server-config-controller.js
- */
 
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
@@ -126,7 +123,7 @@ function _initSteppers() {
     if (!container) return;
 
     container.addEventListener('click', (e) => {
-        const btn = e.target.closest('.stepper-btn');
+        const btn = e.target.closest('button'); // Updated selector
         if (!btn) return;
 
         const wrapper = btn.closest('.stepper-control');

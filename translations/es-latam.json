@@ -360,7 +360,7 @@
             "2fa_disabled_desc": "El usuario no tiene 2FA activo."
         },
         "users_module": {
-            "title": "Gestión de Usuarios",
+            "title": "Gestionar Usuarios",
             "subtitle": "Administración y control de usuarios registrados en la plataforma.",
             "search_placeholder": "Buscar por nombre, email o UUID...",
             "toolbar": {
@@ -812,6 +812,7 @@
             "empty": "No hay sesiones activas registradas.",
             "current_device": "Este dispositivo",
             "btn_revoke": "Cerrar sesión",
+            "btn_revoke_all": "Cerrar todas",
             "revoke_success": "Sesión cerrada correctamente.",
             "confirm_revoke_all": "¿Seguro que quieres cerrar sesión en TODOS los dispositivos? Deberás iniciar sesión de nuevo.",
             "confirm_revoke_one": "¿Estás seguro de cerrar la sesión en este dispositivo?",
@@ -850,14 +851,14 @@
     },
     "system_alerts": {
         "performance": {
-            "degradation": "Detectamos lentitud operativa. El equipo técnico ya está trabajando en la estabilización.",
-            "latency": "La red presenta alta latencia. Es posible que notes demoras en la carga de contenido.",
-            "overload": "El servidor está procesando un volumen inusual de solicitudes. Agradecemos tu paciencia.",
+            "degradation": "El sistema presenta lentitud operativa. Estamos trabajando en la estabilización.",
+            "latency": "Se presenta latencia alta en la red. La carga de contenido podría demorar.",
+            "overload": "El servidor presenta un alto volumen de solicitudes. El servicio podría verse afectado.",
             "default": "Aviso de rendimiento."
         },
         "maintenance": {
-            "emergency": "ALERTA CRÍTICA: Desconexión forzosa programada para las %s. Guarda tu trabajo inmediatamente.",
-            "scheduled": "Mantenimiento Programado: Acceso interrumpido desde %s (Duración aprox: %s min)."
+            "emergency": "Desconexión programada del sistema a las %s por motivos técnicos.",
+            "scheduled": "El acceso al sistema se interrumpirá desde %s (Duración est: %s min)."
         },
         "policy": {
             "names": {
@@ -865,8 +866,8 @@
                 "privacy": "Política de Privacidad y Datos",
                 "cookies": "Política de Cookies y Rastreo"
             },
-            "future": "Aviso Legal: A partir del %s entrará en vigor la nueva versión de %s.",
-            "immediate": "Actualización Legal: Hemos modificado nuestros %s. Te recomendamos revisarlos.",
+            "future": "A partir del %s entrará en vigor la nueva versión de: %s.",
+            "immediate": "Se han modificado los documentos de: %s. Recomendamos su revisión.",
             "default": "Actualización de documentos legales."
         }
     }

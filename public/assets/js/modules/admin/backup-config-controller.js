@@ -1,6 +1,3 @@
-/**
- * public/assets/js/modules/admin/backup-config-controller.js
- */
 
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
@@ -36,7 +33,7 @@ function initEvents() {
 
     // Lógica de Steppers
     _container.addEventListener('click', (e) => {
-        const btn = e.target.closest('.stepper-btn');
+        const btn = e.target.closest('button'); // Updated selector
         if (!btn) return;
 
         const wrapper = btn.closest('.stepper-control');

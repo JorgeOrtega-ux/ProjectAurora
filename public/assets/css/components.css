@@ -1,3 +1,4 @@
+
 /* public/assets/css/components.css */
 
 /* =========================================
@@ -247,6 +248,18 @@
     gap: 8px;
     white-space: nowrap;
     transition: background-color 0.2s;
+}
+
+/* [NUEVO] Modificador Square para botones cuadrados (Steppers, Icon buttons) */
+.component-button.square {
+    width: 36px;        /* Igual que el height estándar */
+    padding: 0;         /* Sin padding lateral */
+    flex-shrink: 0;     /* Evita que se aplaste en Flexbox */
+    aspect-ratio: 1 / 1;
+}
+
+.component-button.square .material-symbols-rounded {
+    font-size: 20px; /* Tamaño de icono ajustado */
 }
 
 .component-button:hover {
@@ -1319,34 +1332,11 @@ input:checked+.component-toggle-slider:before {
     -moz-appearance: textfield;
 }
 
-.stepper-btn {
-    width: 28px;
-    height: 32px;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    background-color: transparent;
-    border-radius: 6px;
-    color: var(--text-secondary);
-    transition: all 0.1s ease;
-    cursor: pointer;
-}
-
-.stepper-btn:hover {
-    background-color: var(--bg-hover-light);
-    color: var(--text-primary);
-}
-
-.stepper-btn:active {
-    transform: scale(0.95);
-    background-color: var(--border-light);
-}
-
-.stepper-btn .material-symbols-rounded {
-    font-size: 18px;
-}
+/* * [REMOVIDO] .stepper-btn
+ * Se reemplaza por .component-button.square
+ * Se mantiene la clase en HTML/JS solo para lógica si es necesario, 
+ * pero sin estilos conflictivos.
+ */
 
 .domain-manager-wrapper {
     width: 100%;
@@ -1421,20 +1411,12 @@ input:checked+.component-toggle-slider:before {
     .stepper-control {
         gap: 4px;
     }
-
-    .stepper-btn {
-        width: 28px;
-        height: 28px;
-    }
-
-    .stepper-btn .material-symbols-rounded {
-        font-size: 16px;
-    }
 }
 
 /* =========================================
    14. DIALOGS (ESCRITORIO & GENERAL)
    ========================================= */
+/* ... (Resto del CSS igual) ... */
 .component-overlay {
     position: fixed;
     top: 0;
