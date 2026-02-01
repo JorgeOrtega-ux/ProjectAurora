@@ -483,7 +483,20 @@
         --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
     }
 }
-
+[data-theme="dark"] {
+    --bg-code-editor: #1e1e1e;
+    --text-code-base: #d4d4d4;
+    --token-comment: #6a9955;
+    --token-string: #ce9178;
+    --token-number: #b5cea8;
+    --token-keyword: #569cd6;
+    --token-logic: #c586c0;
+    --token-tag: #569cd6;
+    --token-attr: #9cdcfe;
+    --token-bracket: #ffd700;
+    --token-date: #4ec9b0;
+    --token-error: #f44747;
+}
 [data-theme="dark"] {
     /* Mismas definiciones que arriba para forzado manual */
     --bg-app: var(--sl-color-gray-950);
