@@ -6,7 +6,7 @@ import { ApiService } from '../../../core/api-service.js';
 import { Toast } from '../../../core/toast-manager.js';
 import { navigateTo } from '../../../core/url-manager.js';
 import { DateTimePicker } from '../../../core/date-time-picker.js';
-import { I18n } from '../../../core/i18n-manager.js'; // Importación añadida
+import { I18n } from '../../../core/i18n-manager.js';
 
 let _container = null;
 let _targetUserId = null;
@@ -71,7 +71,8 @@ function initEvents() {
     document.addEventListener('ui:dropdown-selected', handleDropdownSelection);
     
     if (document.getElementById('suspension-picker-wrapper')) {
-        _dateTimePicker = new DateTimePicker('suspension-picker-wrapper', 'suspension-date-input', {
+        // [CORRECCIÓN CRÍTICA]: Se agregaron los '#' para que el querySelector funcione
+        _dateTimePicker = new DateTimePicker('#suspension-picker-wrapper', '#suspension-date-input', {
             enableTime: false,
             minDate: new Date(),
             dateFormat: "Y-m-d",
@@ -111,10 +112,10 @@ function handleDateSelection(date, dateStr) {
     
     setTimeout(() => {
         const label = document.getElementById('suspension-date-label');
-        if (label && !label.textContent.includes('días')) {
-            // "días" no está en I18n globalmente, pero podemos usar un string seguro o agregarlo.
-            // Por ahora hardcodeamos "días" para mantener consistencia con el original
-            label.textContent += ` (${diffDays} días)`;
+        if (label) {
+            // Se actualiza el texto con los días, manteniendo el formato limpio
+            label.textContent = `${dateStr} (${diffDays} días)`;
+            label.style.color = 'var(--text-primary)'; // Asegurar que se vea activo
         }
     }, 50);
 
@@ -220,9 +221,6 @@ function populateReasons(context) {
     const list = document.getElementById('reason-list-container');
     if (!list) return;
 
-    // Estos textos se usan como "value" para enviar a DB, así que no se deben traducir 
-    // a menos que el backend soporte códigos de error. 
-    // Se mantienen en español por consistencia con la lógica existente.
     let reasons = [];
     if (context === 'suspension') {
         reasons = [
@@ -244,8 +242,6 @@ function populateReasons(context) {
 
     let html = '';
     reasons.forEach(r => {
-        // Podríamos intentar traducir la visualización si existiera la key, 
-        // pero mantenemos el label igual al valor para no romper datos.
         html += `
             <div class="menu-link" data-action="select-option" data-type="reason" data-value="${r}" data-label="${r}">
                 <div class="menu-link-text">${r}</div>
