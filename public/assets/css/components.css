@@ -1690,7 +1690,7 @@ input:checked+.component-toggle-slider:before {
 }
 
 /* Listas visuales */
-.visual-step-list {
+.component-step-list {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -1700,7 +1700,7 @@ input:checked+.component-toggle-slider:before {
     list-style: none;
 }
 
-.visual-step-item {
+.component-step-item {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -1709,7 +1709,7 @@ input:checked+.component-toggle-slider:before {
     line-height: 1.4;
 }
 
-.visual-step-icon {
+.component-step-icon {
     width: 28px;
     height: 28px;
     border-radius: var(--sl-border-radius-circle);
@@ -1723,7 +1723,6 @@ input:checked+.component-toggle-slider:before {
     font-weight: 600;
     flex-shrink: 0;
 }
-
 @media (max-width: 600px) {
     .component-visual-group {
         flex-direction: column-reverse;
