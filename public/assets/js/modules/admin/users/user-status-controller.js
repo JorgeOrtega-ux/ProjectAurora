@@ -30,35 +30,13 @@ export const UserStatusController = {
         _state = {};
         _dateTimePicker = null;
         
-        loadServerData();
+        // 1. Primero inicializamos eventos y componentes (Calendario)
         initEvents();
+
+        // 2. Luego cargamos y rellenamos la información
+        loadServerData();
     }
 };
-
-function loadServerData() {
-    const dataScript = document.getElementById('server-status-data');
-    if (!dataScript) return;
-
-    try {
-        const data = JSON.parse(dataScript.textContent);
-        
-        if (data.status) {
-            _state.status = data.status;
-            
-            // Usamos I18n para los labels iniciales
-            const key = `admin.user_status.status.${data.status}`;
-            const label = I18n.t(key) || data.status;
-            
-            updateLabel('current-status-label', label);
-            processMainStatusChange(data.status);
-        }
-        
-        dataScript.remove();
-
-    } catch (e) {
-        console.error("Error parseando datos del servidor", e);
-    }
-}
 
 function initEvents() {
     const btnBack = _container.querySelector('[data-action="back-to-list"]');
@@ -70,8 +48,8 @@ function initEvents() {
     document.removeEventListener('ui:dropdown-selected', handleDropdownSelection);
     document.addEventListener('ui:dropdown-selected', handleDropdownSelection);
     
+    // Inicializar el calendario
     if (document.getElementById('suspension-picker-wrapper')) {
-        // [CORRECCIÓN CRÍTICA]: Se agregaron los '#' para que el querySelector funcione
         _dateTimePicker = new DateTimePicker('#suspension-picker-wrapper', '#suspension-date-input', {
             enableTime: false,
             minDate: new Date(),
@@ -83,19 +61,93 @@ function initEvents() {
             }
         });
 
+        // Escuchar cambios manuales en el input hidden (por si se setea vía JS)
         const hiddenInput = document.getElementById('suspension-date-input');
         if (hiddenInput) {
             hiddenInput.addEventListener('input', (e) => {
-                const dateVal = new Date(e.target.value);
-                if (!isNaN(dateVal)) {
-                    handleDateSelection(dateVal, e.target.value.split('T')[0]);
+                const val = e.target.value;
+                if (val) {
+                    const dateVal = new Date(val);
+                    if (!isNaN(dateVal.getTime())) {
+                        handleDateSelection(dateVal, val.split('T')[0]);
+                    }
                 }
             });
         }
     }
+}
 
-    if (_state.status === 'suspended') populateReasons('suspension');
-    if (_state.status === 'deleted') populateReasons('deletion');
+function loadServerData() {
+    const dataScript = document.getElementById('server-status-data');
+    if (!dataScript) return;
+
+    try {
+        const data = JSON.parse(dataScript.textContent);
+        
+        // 1. Restaurar Estado Principal
+        if (data.status) {
+            _state.status = data.status;
+            
+            // Texto del label principal
+            const key = `admin.user_status.status.${data.status}`;
+            const label = I18n.t(key) || data.status;
+            updateLabel('current-status-label', label);
+            
+            // Desplegar secciones correspondientes
+            processMainStatusChange(data.status);
+            
+            // 2. Lógica Específica para SUSPENDIDO
+            if (data.status === 'suspended') {
+                populateReasons('suspension');
+
+                if (data.suspension_ends_at) {
+                    // Es Temporal
+                    _state.suspensionType = 'temp';
+                    updateLabel('suspension-type-label', I18n.t('admin.user_status.suspension_type.temp'));
+                    processSuspensionTypeChange('temp');
+
+                    // Setear fecha en el calendario y calcular días
+                    if (_dateTimePicker) {
+                        const endDate = new Date(data.suspension_ends_at);
+                        // Ajustamos el input, esto disparará la lógica visual
+                        const isoDate = endDate.toISOString().split('T')[0];
+                        
+                        // Forzamos actualización visual del componente
+                        const input = document.getElementById('suspension-date-input');
+                        if (input) input.value = isoDate;
+                        
+                        handleDateSelection(endDate, isoDate);
+                    }
+                } else {
+                    // Es Permanente
+                    _state.suspensionType = 'perm';
+                    updateLabel('suspension-type-label', I18n.t('admin.user_status.suspension_type.perm'));
+                    processSuspensionTypeChange('perm');
+                }
+            } 
+            // 3. Lógica Específica para ELIMINADO
+            else if (data.status === 'deleted') {
+                populateReasons('deletion');
+                // Asumimos 'Admin' como fuente para visualización si ya está eliminado
+                _state.deletionSource = 'admin'; 
+                updateLabel('deletion-source-label', I18n.t('admin.user_status.decision.admin'));
+                showSection('group-reason');
+            }
+
+            // 4. Restaurar Razón
+            if (data.reason) {
+                _state.reason = data.reason;
+                updateLabel('reason-label', data.reason);
+                // Si todo está cargado, habilitamos guardar
+                toggleSaveButton(true);
+            }
+        }
+        
+        dataScript.remove();
+
+    } catch (e) {
+        console.error("Error parseando datos del servidor", e);
+    }
 }
 
 function handleDateSelection(date, dateStr) {
@@ -106,21 +158,25 @@ function handleDateSelection(date, dateStr) {
     const diffTime = date.getTime() - today.getTime();
     let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    if (diffDays < 1) diffDays = 1;
+    // Si es una fecha pasada o hoy, mínimo 1 día para lógica visual
+    if (diffDays < 1) diffDays = 0; 
 
     _state.durationDays = diffDays;
     
     setTimeout(() => {
         const label = document.getElementById('suspension-date-label');
         if (label) {
-            // Se actualiza el texto con los días, manteniendo el formato limpio
-            label.textContent = `${dateStr} (${diffDays} días)`;
-            label.style.color = 'var(--text-primary)'; // Asegurar que se vea activo
+            const daysText = diffDays === 1 ? 'día' : 'días';
+            label.textContent = `${dateStr} (${diffDays} ${daysText})`;
+            label.style.color = 'var(--text-primary)';
         }
     }, 50);
 
     showSection('group-reason');
     populateReasons('suspension');
+    
+    // Si ya hay razón seleccionada (al cargar datos), habilitar guardar
+    if (_state.reason) toggleSaveButton(true);
 }
 
 function toggleSaveButton(enable) {
@@ -160,6 +216,7 @@ function handleDropdownSelection(e) {
 }
 
 function processMainStatusChange(status) {
+    // Reset visual
     hideSection('group-suspension-type');
     hideSection('group-suspension-days');
     hideSection('group-deletion-source');
@@ -167,12 +224,12 @@ function processMainStatusChange(status) {
     
     toggleSaveButton(false); 
 
-    updateLabel('suspension-type-label', I18n.t('admin.user_status.select_type') || 'Seleccionar tipo...');
-    updateLabel('deletion-source-label', I18n.t('admin.user_status.select_source') || 'Seleccionar origen...');
-    updateLabel('reason-label', I18n.t('admin.user_status.select_reason') || 'Seleccionar razón...');
-    
-    if (document.getElementById('suspension-date-label')) {
-        document.getElementById('suspension-date-label').textContent = I18n.t('global.select_date') || 'Seleccionar fecha...';
+    // Reset labels internos solo si el usuario está cambiando manualmente
+    // (Si estamos en loadServerData, los valores se sobreescriben después)
+    if (!_state.reason) { // Check simple para saber si es carga inicial o interacción
+         updateLabel('suspension-type-label', I18n.t('admin.user_status.select_type') || 'Seleccionar tipo...');
+         updateLabel('deletion-source-label', I18n.t('admin.user_status.select_source') || 'Seleccionar origen...');
+         updateLabel('reason-label', I18n.t('admin.user_status.select_reason') || 'Seleccionar razón...');
     }
 
     if (status === 'active') {
@@ -190,13 +247,17 @@ function processSuspensionTypeChange(type) {
     hideSection('group-suspension-days');
     hideSection('group-reason');
     
-    toggleSaveButton(false);
+    // Si estamos cambiando tipo manualmente, deshabilitar guardar hasta completar flujo
+    if (!_state.reason) toggleSaveButton(false);
     
-    updateLabel('reason-label', I18n.t('admin.user_status.select_reason') || 'Seleccionar razón...');
-
     if (type === 'temp') {
         showSection('group-suspension-days');
+        // Si ya había fecha cargada, mostrar razón también
+        if (_state.durationDays !== null && _state.durationDays !== undefined) {
+             showSection('group-reason');
+        }
     } else {
+        // Permanente
         showSection('group-reason');
         populateReasons('suspension');
     }
