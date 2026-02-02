@@ -1,9 +1,12 @@
+/**
+ * public/assets/js/modules/admin/backup-config-controller.js
+ */
 
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { navigateTo } from '../../core/url-manager.js';
 import { Dialog } from '../../core/dialog-manager.js';
-import { I18n } from '../../core/i18n-manager.js'; // Importación añadida
+import { I18n } from '../../core/i18n-manager.js';
 
 let _container = null;
 let _countdownInterval = null;
@@ -31,12 +34,13 @@ function initEvents() {
     const btnTrigger = _container.querySelector('#btn-trigger-now');
     if (btnTrigger) btnTrigger.addEventListener('click', triggerNow);
 
-    // Lógica de Steppers
+    // Lógica de Steppers (Actualizada para BEM: .component-stepper)
     _container.addEventListener('click', (e) => {
-        const btn = e.target.closest('button'); // Updated selector
+        const btn = e.target.closest('button');
         if (!btn) return;
 
-        const wrapper = btn.closest('.stepper-control');
+        // [MODIFICADO] Selector actualizado a .component-stepper
+        const wrapper = btn.closest('.component-stepper');
         if (!wrapper) return;
 
         const input = wrapper.querySelector('input');
@@ -98,7 +102,6 @@ function updateStats(data) {
     const elLastRun = _container.querySelector('#stat-last-run');
     if (elLastRun) {
         if (data.meta.last_run) {
-            // Convertir a formato amigable (ej. Hoy 14:00 o fecha)
             const date = new Date(data.meta.last_run);
             elLastRun.textContent = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             elLastRun.style.fontSize = '1.2rem';
@@ -150,7 +153,6 @@ function startTimer() {
 
         _secondsRemaining--;
 
-        // Formatear HH:MM:SS
         const h = Math.floor(_secondsRemaining / 3600);
         const m = Math.floor((_secondsRemaining % 3600) / 60);
         const s = _secondsRemaining % 60;
@@ -191,7 +193,6 @@ async function saveConfig() {
         const res = await ApiService.post(ApiService.Routes.Admin.Backups.UpdateConfig, formData);
         if (res.success) {
             Toast.show(I18n.t('admin.backups.config_saved') || 'Configuración guardada correctamente', 'success');
-            // Recargar para actualizar timers
             await loadConfig();
         } else {
             Toast.show(res.message, 'error');
@@ -219,13 +220,10 @@ async function triggerNow() {
     btn.innerHTML = '<div class="spinner-sm"></div>';
 
     try {
-        // Usamos la ruta estándar de creación, ya que al crearse, el Scheduler
-        // verá el nuevo log en la BD y reseteará su conteo automáticamente.
         const res = await ApiService.post(ApiService.Routes.Admin.Backups.Create);
         
         if (res.success) {
             Toast.show(I18n.t('admin.backups.trigger_success') || 'Respaldo iniciado correctamente', 'success');
-            // Esperar un poco para que el servidor procese y actualice el timestamp
             setTimeout(() => loadConfig(), 2000); 
         } else {
             Toast.show(res.message || (I18n.t('admin.backups.trigger_error') || 'Error al iniciar respaldo'), 'error');

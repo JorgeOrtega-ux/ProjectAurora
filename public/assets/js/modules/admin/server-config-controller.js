@@ -1,7 +1,10 @@
+/**
+ * public/assets/js/modules/admin/server-config-controller.js
+ */
 
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
-import { I18n } from '../../core/i18n-manager.js'; // Importación añadida
+import { I18n } from '../../core/i18n-manager.js';
 
 export const ServerConfigController = {
     init: () => {
@@ -29,7 +32,6 @@ function _initDomainManager() {
 
     if (!hiddenInput || !listContainer) return;
 
-    // Estado local de dominios
     let domains = hiddenInput.value.split(',').map(d => d.trim()).filter(d => d !== '');
     if (domains.length === 0) domains = ['*']; 
 
@@ -37,11 +39,9 @@ function _initDomainManager() {
 
     // === ACTIVAR MODO EDICIÓN ===
     btnAdd.addEventListener('click', () => {
-        // Ocultar botón + y lista
         btnAdd.style.display = 'none';
-        listContainer.classList.add('d-none'); // Ocultar lista
+        listContainer.classList.add('d-none');
         
-        // Mostrar input y foco
         inputGroup.style.display = 'flex';
         inputNew.value = '';
         inputNew.focus();
@@ -50,10 +50,8 @@ function _initDomainManager() {
     // === SALIR MODO EDICIÓN ===
     const hideInput = () => {
         inputGroup.style.display = 'none';
-        
-        // Restaurar botón + y lista
         btnAdd.style.display = 'inline-flex';
-        listContainer.classList.remove('d-none'); // Mostrar lista de nuevo
+        listContainer.classList.remove('d-none');
     };
 
     btnCancel.addEventListener('click', hideInput);
@@ -85,7 +83,6 @@ function _initDomainManager() {
         if (e.key === 'Enter') addDomain();
     });
 
-    // Borrar chips (siempre visible cuando la lista es visible)
     listContainer.addEventListener('click', (e) => {
         const removeBtn = e.target.closest('.domain-chip-remove');
         if (removeBtn) {
@@ -117,16 +114,17 @@ function _initDomainManager() {
     }
 }
 
-// --- STEPPERS ---
+// --- STEPPERS (Actualizado para .component-stepper) ---
 function _initSteppers() {
     const container = document.querySelector('[data-section="admin-server-config"]');
     if (!container) return;
 
     container.addEventListener('click', (e) => {
-        const btn = e.target.closest('button'); // Updated selector
+        const btn = e.target.closest('button');
         if (!btn) return;
 
-        const wrapper = btn.closest('.stepper-control');
+        // [MODIFICADO] Selector actualizado
+        const wrapper = btn.closest('.component-stepper');
         if (!wrapper) return;
 
         const input = wrapper.querySelector('input');
@@ -172,7 +170,6 @@ async function saveConfig() {
             value = input.checked ? '1' : '0';
         }
 
-        // CONVERSIÓN MB -> BYTES
         if (input.name === 'upload_avatar_max_size') {
             const mbValue = parseInt(value) || 0;
             value = mbValue * 1048576; 

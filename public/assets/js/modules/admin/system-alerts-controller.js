@@ -1,6 +1,5 @@
 /**
  * public/assets/js/modules/admin/system-alerts-controller.js
- * Refactorizado: 0 IDs, Data-Attributes, Scoped Queries
  */
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
@@ -12,11 +11,9 @@ let _container = null;
 
 export const SystemAlertsController = {
     init: () => {
-        // Selector principal de la sección
         _container = document.querySelector('[data-section="admin-system-alerts"]');
         if (!_container) return;
 
-        // Referencias a botones principales
         const btnEmit = _container.querySelector('[data-action="emit-alert"]');
         const btnDeactivateMini = _container.querySelector('[data-action="deactivate-alert-mini"]');
         const btnRefresh = _container.querySelector('[data-action="refresh-status"]');
@@ -29,7 +26,6 @@ export const SystemAlertsController = {
         let selectedPolicyStatus = 'future';
 
         // --- INICIALIZAR CALENDARIOS ---
-        // Usamos selectores de atributo data-element y data-input
         const wrapperStart = _container.querySelector('[data-element="wrapper-maint-start"]');
         const inputStart = _container.querySelector('[data-input="maint-start-time"]');
         new DateTimePicker(wrapperStart, inputStart, { minDate: new Date(), enableTime: true });
@@ -152,7 +148,6 @@ export const SystemAlertsController = {
 
             trigger.onclick = (e) => {
                 e.stopPropagation();
-                // Cerrar otros
                 document.querySelectorAll('.popover-module').forEach(p => { if (p !== popover) p.classList.remove('active'); });
                 document.querySelectorAll('.trigger-selector').forEach(t => { if (t !== trigger) t.classList.remove('active'); });
                 
@@ -174,7 +169,6 @@ export const SystemAlertsController = {
             });
         };
 
-        // Configurar selectores
         setupTrigger('alert-type', 'select-main-type', (val) => {
             selectedMainType = val;
             _container.querySelector('[data-preview="text-type"]').textContent = configMainType[val].text;
@@ -211,7 +205,6 @@ export const SystemAlertsController = {
             _container.querySelector('[data-subgroup="policy-date"]').style.display = (val === 'immediate') ? 'none' : 'block';
         });
 
-        // Click outside para cerrar popovers
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.trigger-select-wrapper')) {
                 document.querySelectorAll('.popover-module.active').forEach(el => el.classList.remove('active'));
