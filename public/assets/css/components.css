@@ -249,16 +249,15 @@
     transition: background-color 0.2s;
 }
 
-/* [NUEVO] Modificador Square para botones cuadrados (Steppers, Icon buttons) */
 .component-button.square {
-    width: 36px;        /* Igual que el height estándar */
-    padding: 0;         /* Sin padding lateral */
-    flex-shrink: 0;     /* Evita que se aplaste en Flexbox */
+    width: 36px;        
+    padding: 0;         
+    flex-shrink: 0;     
     aspect-ratio: 1 / 1;
 }
 
 .component-button.square .material-symbols-rounded {
-    font-size: 20px; /* Tamaño de icono ajustado */
+    font-size: 20px; 
 }
 
 .component-button:hover {
@@ -567,6 +566,21 @@ input:checked+.component-toggle-slider:before {
     width: 100%;
     box-sizing: border-box;
     min-height: 100%;
+}
+
+:root {
+    --bg-code-editor: #ffffff;
+    --text-code-base: #000000;
+    --token-comment: #008000;
+    --token-string: #a31515;
+    --token-number: #098658;
+    --token-keyword: #0000ff;
+    --token-logic: #af00db;
+    --token-tag: #800000;
+    --token-attr: #ff0000;
+    --token-bracket: #0451a5;
+    --token-date: #098658;
+    --token-error: #cd3131;
 }
 
 .token-comment {
@@ -1394,7 +1408,6 @@ input:checked+.component-toggle-slider:before {
 /* =========================================
    14. DIALOGS (ESCRITORIO & GENERAL)
    ========================================= */
-/* ... (Resto del CSS igual) ... */
 .component-overlay {
     position: fixed;
     top: 0;
@@ -1555,17 +1568,78 @@ input:checked+.component-toggle-slider:before {
     }
 }
 
-/* Spinner Styles */
-.component-spinner-large {
-    width: 32px;
-    height: 32px;
-    border: 3px solid var(--border-light);
-    border-left-color: var(--text-primary);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    flex-shrink: 0;
+/* =========================================
+   5. UTILIDADES Y EXTRAS (TOASTS) - MONOCROMÁTICO
+   ========================================= */
+#toast-container {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: var(--sl-z-index-toast);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
 }
 
+.toast-item {
+    pointer-events: auto;
+    min-width: 300px;
+    max-width: 400px;
+    
+    /* Alto contraste (Invertido): Texto primario como fondo, Superficie como texto */
+    background-color: var(--text-primary); 
+    color: var(--bg-surface);
+    
+    padding: 12px 16px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    
+    /* Animación de entrada */
+    transform: translateX(-120%);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+    opacity: 0;
+    
+    /* Sin bordes de color */
+    border: none; 
+}
+
+.toast-item.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.toast-icon { 
+    font-size: 24px; 
+    /* Hereda el color del contenedor (blanco o negro invertido) */
+    color: inherit; 
+}
+
+.toast-message {
+    font-size: 14px;
+    font-weight: var(--sl-font-weight-semibold);
+    flex: 1;
+    /* Hereda el color del contenedor */
+    color: inherit;
+}
+
+.toast-close {
+    font-size: 18px;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+    color: inherit;
+    opacity: 0.6;
+}
+
+.toast-close:hover { 
+    opacity: 1; 
+}
+
+/* Loaders */
 .spinner {
     width: 40px;
     height: 40px;
@@ -1630,8 +1704,8 @@ input:checked+.component-toggle-slider:before {
     transition: background-color 0.2s ease;
 }
 
-/* [MODIFICADO] Listas visuales con prefijo 'component-' */
-.component-step-list {
+/* Listas visuales */
+.visual-step-list {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -1641,7 +1715,7 @@ input:checked+.component-toggle-slider:before {
     list-style: none;
 }
 
-.component-step-item {
+.visual-step-item {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -1650,7 +1724,7 @@ input:checked+.component-toggle-slider:before {
     line-height: 1.4;
 }
 
-.component-step-icon {
+.visual-step-icon {
     width: 28px;
     height: 28px;
     border-radius: var(--sl-border-radius-circle);
