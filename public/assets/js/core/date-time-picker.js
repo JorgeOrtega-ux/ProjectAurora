@@ -1,11 +1,11 @@
 /**
  * public/assets/js/core/date-time-picker.js
- * Componente Refactorizado: Sin IDs, soporta Selectores de Clase y Elementos DOM
+ * Componente Refactorizado BEM: .component-datepicker-wrapper y .component-calendar
  */
 
 export class DateTimePicker {
     /**
-     * @param {string|HTMLElement} wrapperSelector - Selector CSS o Elemento del contenedor
+     * @param {string|HTMLElement} wrapperSelector - Selector CSS o Elemento del contenedor (.component-datepicker-wrapper)
      * @param {string|HTMLElement} inputSelector - Selector CSS o Elemento del input hidden
      * @param {Object} options - Configuración opcional
      */
@@ -62,36 +62,37 @@ export class DateTimePicker {
     }
 
     renderDOM() {
+        // Estructura HTML actualizada con clases BEM (.component-calendar...)
         const popoverHTML = `
-            <div class="calendar-popover">
-                <div class="calendar-header">
-                    <button type="button" class="calendar-nav-btn" data-action="prev-month">
+            <div class="component-calendar">
+                <div class="component-calendar__header">
+                    <button type="button" class="component-calendar__nav-btn" data-action="prev-month">
                         <span class="material-symbols-rounded">chevron_left</span>
                     </button>
-                    <div class="calendar-current-period">
-                        <span class="calendar-month-label"></span>
-                        <input type="number" class="calendar-year-input" min="2024" max="2030">
+                    <div class="component-calendar__period">
+                        <span class="component-calendar__month-label"></span>
+                        <input type="number" class="component-calendar__year-input" min="2024" max="2030">
                     </div>
-                    <button type="button" class="calendar-nav-btn" data-action="next-month">
+                    <button type="button" class="component-calendar__nav-btn" data-action="next-month">
                         <span class="material-symbols-rounded">chevron_right</span>
                     </button>
                 </div>
                 
-                <div class="calendar-weekdays">
+                <div class="component-calendar__weekdays">
                     <span>Do</span><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sa</span>
                 </div>
                 
-                <div class="calendar-grid"></div>
+                <div class="component-calendar__grid"></div>
                 
                 ${this.options.enableTime ? `
-                <div class="calendar-time-footer">
-                    <div class="time-picker-group">
+                <div class="component-calendar__footer">
+                    <div class="component-timepicker">
                         <span class="material-symbols-rounded">schedule</span>
-                        <input type="number" class="time-input hour" min="0" max="23" placeholder="HH">
-                        <span class="time-separator">:</span>
-                        <input type="number" class="time-input minute" min="0" max="59" placeholder="MM">
+                        <input type="number" class="component-timepicker__input hour" min="0" max="23" placeholder="HH">
+                        <span class="component-timepicker__separator">:</span>
+                        <input type="number" class="component-timepicker__input minute" min="0" max="59" placeholder="MM">
                     </div>
-                    <button type="button" class="calendar-confirm-btn">Aplicar</button>
+                    <button type="button" class="component-calendar__confirm-btn">Aplicar</button>
                 </div>
                 ` : ''}
             </div>
@@ -101,14 +102,14 @@ export class DateTimePicker {
         this.wrapper.insertAdjacentHTML('beforeend', popoverHTML);
 
         // Referencias a elementos internos usando querySelector (scoped)
-        this.popover = this.wrapper.querySelector('.calendar-popover');
-        this.grid = this.wrapper.querySelector('.calendar-grid');
-        this.monthLabel = this.wrapper.querySelector('.calendar-month-label');
-        this.yearInput = this.wrapper.querySelector('.calendar-year-input');
+        this.popover = this.wrapper.querySelector('.component-calendar');
+        this.grid = this.wrapper.querySelector('.component-calendar__grid');
+        this.monthLabel = this.wrapper.querySelector('.component-calendar__month-label');
+        this.yearInput = this.wrapper.querySelector('.component-calendar__year-input');
         
         if (this.options.enableTime) {
-            this.hourInput = this.wrapper.querySelector('.time-input.hour');
-            this.minuteInput = this.wrapper.querySelector('.time-input.minute');
+            this.hourInput = this.wrapper.querySelector('.component-timepicker__input.hour');
+            this.minuteInput = this.wrapper.querySelector('.component-timepicker__input.minute');
             
             // Valores por defecto
             const now = this.selectedDate || new Date();
@@ -138,7 +139,8 @@ export class DateTimePicker {
         // Espacios vacíos
         for (let i = 0; i < firstDayOfMonth; i++) {
             const emptyCell = document.createElement('div');
-            emptyCell.className = 'calendar-day empty';
+            // Clase BEM para estado vacío
+            emptyCell.className = 'component-calendar__day is-empty';
             this.grid.appendChild(emptyCell);
         }
 
@@ -148,18 +150,19 @@ export class DateTimePicker {
         // Días del mes
         for (let day = 1; day <= daysInMonth; day++) {
             const dateCell = document.createElement('div');
-            dateCell.className = 'calendar-day';
+            dateCell.className = 'component-calendar__day';
             dateCell.textContent = day;
             
             const cellDate = new Date(year, month, day);
             const cellTimestamp = cellDate.getTime();
 
+            // Clases de estado: is-today, is-selected, is-disabled
             if (cellDate.toDateString() === today.toDateString()) {
-                dateCell.classList.add('today');
+                dateCell.classList.add('is-today');
             }
 
             if (this.selectedDate && cellDate.toDateString() === this.selectedDate.toDateString()) {
-                dateCell.classList.add('selected');
+                dateCell.classList.add('is-selected');
             }
 
             if (minDateTimestamp > 0 && cellTimestamp < minDateTimestamp) {
@@ -173,6 +176,7 @@ export class DateTimePicker {
     }
 
     bindEvents() {
+        // Mantiene .trigger-selector (clase compartida de controles)
         const trigger = this.wrapper.querySelector('.trigger-selector');
         
         trigger.onclick = (e) => {
@@ -200,7 +204,7 @@ export class DateTimePicker {
         };
 
         if (this.options.enableTime) {
-            const btn = this.wrapper.querySelector('.calendar-confirm-btn');
+            const btn = this.wrapper.querySelector('.component-calendar__confirm-btn');
             btn.onclick = (e) => {
                 e.stopPropagation();
                 this.updateValue();
@@ -221,7 +225,7 @@ export class DateTimePicker {
         }
 
         document.addEventListener('click', (e) => {
-            if (!this.wrapper.contains(e.target)) {
+            if (this.wrapper && !this.wrapper.contains(e.target)) {
                 this.close();
             }
         });
@@ -301,12 +305,13 @@ export class DateTimePicker {
     }
 
     close() {
-        this.wrapper.classList.remove('active');
-        this.popover.classList.remove('active');
+        if(this.wrapper) this.wrapper.classList.remove('active');
+        if(this.popover) this.popover.classList.remove('active');
     }
     
     closeAllPopovers() {
-        document.querySelectorAll('.calendar-popover.active').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.date-time-picker-wrapper.active').forEach(el => el.classList.remove('active'));
+        // [MODIFICADO] Cierra popovers con las nuevas clases
+        document.querySelectorAll('.component-calendar.active').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.component-datepicker-wrapper.active').forEach(el => el.classList.remove('active'));
     }
 }

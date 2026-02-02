@@ -139,7 +139,7 @@ $suspensionData = [
                 </div>
             </div>
             <div class="component-card__actions">
-                <div class="date-time-picker-wrapper" id="suspension-picker-wrapper" style="position: relative;">
+                <div class="component-datepicker-wrapper" id="suspension-picker-wrapper" style="position: relative;">
                     <input type="hidden" id="suspension-date-input" name="suspension_ends_at">
                     
                     <div class="trigger-selector" style="cursor: pointer;">
