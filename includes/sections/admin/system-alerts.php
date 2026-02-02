@@ -230,14 +230,20 @@
                         </div>
                     </div>
                     <div class="component-card__actions">
-                        <div class="stepper-control">
-                            <button class="component-button square" data-action="duration-dec" type="button">
-                                <span class="material-symbols-rounded">remove</span>
-                            </button>
-                            <input type="number" data-input="maint-duration" class="stepper-input" value="60" step="15">
-                            <button class="component-button square" data-action="duration-inc" type="button">
-                                <span class="material-symbols-rounded">add</span>
-                            </button>
+                        <div class="component-stepper">
+                            <div class="component-stepper__side">
+                                <button class="component-button square" data-action="duration-dec" type="button">
+                                    <span class="material-symbols-rounded">remove</span>
+                                </button>
+                            </div>
+                            <div class="component-stepper__center">
+                                <input type="number" data-input="maint-duration" class="component-stepper__input" value="60" step="15">
+                            </div>
+                            <div class="component-stepper__side">
+                                <button class="component-button square" data-action="duration-inc" type="button">
+                                    <span class="material-symbols-rounded">add</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

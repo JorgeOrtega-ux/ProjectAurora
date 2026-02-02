@@ -1,4 +1,3 @@
-
 <?php
 // includes/sections/admin/backup-config.php
 ?>
@@ -105,8 +104,8 @@
                     </div>
                 </div>
                 <div class="component-card__actions w-100">
-                    <div class="stepper-control w-100" data-role="stepper" data-step-small="1" data-step-large="6">
-                        <div class="stepper-side left">
+                    <div class="component-stepper w-100" data-role="stepper" data-step-small="1" data-step-large="6">
+                        <div class="component-stepper__side">
                             <button type="button" class="component-button square" data-action="dec-large" title="-6">
                                 <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
                             </button>
@@ -114,10 +113,10 @@
                                 <span class="material-symbols-rounded">chevron_left</span>
                             </button>
                         </div>
-                        <div class="stepper-center">
-                            <input type="number" class="component-text-input stepper-input" id="input-frequency" value="24" min="1">
+                        <div class="component-stepper__center">
+                            <input type="number" class="component-stepper__input" id="input-frequency" value="24" min="1">
                         </div>
-                        <div class="stepper-side right">
+                        <div class="component-stepper__side">
                             <button type="button" class="component-button square" data-action="inc-small" title="+1">
                                 <span class="material-symbols-rounded">chevron_right</span>
                             </button>
@@ -139,8 +138,8 @@
                     </div>
                 </div>
                 <div class="component-card__actions w-100">
-                    <div class="stepper-control w-100" data-role="stepper" data-step-small="1" data-step-large="5">
-                        <div class="stepper-side left">
+                    <div class="component-stepper w-100" data-role="stepper" data-step-small="1" data-step-large="5">
+                        <div class="component-stepper__side">
                             <button type="button" class="component-button square" data-action="dec-large" title="-5">
                                 <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
                             </button>
@@ -148,10 +147,10 @@
                                 <span class="material-symbols-rounded">chevron_left</span>
                             </button>
                         </div>
-                        <div class="stepper-center">
-                            <input type="number" class="component-text-input stepper-input" id="input-retention" value="10" min="1">
+                        <div class="component-stepper__center">
+                            <input type="number" class="component-stepper__input" id="input-retention" value="10" min="1">
                         </div>
-                        <div class="stepper-side right">
+                        <div class="component-stepper__side">
                             <button type="button" class="component-button square" data-action="inc-small" title="+1">
                                 <span class="material-symbols-rounded">chevron_right</span>
                             </button>

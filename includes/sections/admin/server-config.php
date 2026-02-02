@@ -1,4 +1,3 @@
-
 <?php
 // includes/sections/admin/server-config.php
 
@@ -28,8 +27,8 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
             </div>
         </div>
         <div class="component-card__actions w-100">
-            <div class="stepper-control" data-role="stepper" data-step-small="<?php echo $stepSmall; ?>" data-step-large="<?php echo $stepLarge; ?>">
-                <div class="stepper-side left">
+            <div class="component-stepper" data-role="stepper" data-step-small="<?php echo $stepSmall; ?>" data-step-large="<?php echo $stepLarge; ?>">
+                <div class="component-stepper__side">
                     <button type="button" class="component-button square" data-action="dec-large" title="-<?php echo $stepLarge; ?>">
                         <span class="material-symbols-rounded">keyboard_double_arrow_left</span>
                     </button>
@@ -37,10 +36,10 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
                         <span class="material-symbols-rounded">chevron_left</span>
                     </button>
                 </div>
-                <div class="stepper-center">
-                    <input type="number" class="component-text-input stepper-input" name="<?php echo $name; ?>" value="<?php echo $value; ?>">
+                <div class="component-stepper__center">
+                    <input type="number" class="component-stepper__input" name="<?php echo $name; ?>" value="<?php echo $value; ?>">
                 </div>
-                <div class="stepper-side right">
+                <div class="component-stepper__side">
                     <button type="button" class="component-button square" data-action="inc-small" title="+<?php echo $stepSmall; ?>">
                         <span class="material-symbols-rounded">chevron_right</span>
                     </button>
