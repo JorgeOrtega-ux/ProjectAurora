@@ -755,7 +755,8 @@ class AdminService {
             }
 
             if ($maintenanceActivated) {
-                $this->notifyWebSocketServer('BROADCAST_ALL:MAINTENANCE_START');
+                // [MODIFICADO] Envío correcto de señal de mantenimiento
+                $this->notifyWebSocketServer('maintenance_start', ['text' => 'El sistema ha entrado en mantenimiento.']);
                 $this->logAudit('system', 'global', 'MAINTENANCE_STARTED', []);
             }
 
@@ -785,19 +786,19 @@ class AdminService {
         }
     }
 
-    private function notifyWebSocketServer($message) {
-        $host = '127.0.0.1';
-        $port = 8766; 
-        $timeout = 2; 
-
-        try {
-            $fp = @fsockopen($host, $port, $errno, $errstr, $timeout);
-            if ($fp) {
-                fwrite($fp, $message);
-                fclose($fp);
+   private function notifyWebSocketServer($messageType, $payload = []) {
+        if ($this->redis) {
+            try {
+                // Estructura compatible con server.py
+                $msg = [
+                    'cmd' => 'BROADCAST',
+                    'msg_type' => $messageType,
+                    'message' => $payload
+                ];
+                $this->redis->publish('aurora_ws_control', json_encode($msg));
+            } catch (Exception $e) {
+                error_log("Error publicando en Redis (WS Notify): " . $e->getMessage());
             }
-        } catch (Exception $e) {
-            // Silenciar error
         }
     }
 }

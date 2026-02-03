@@ -79,17 +79,42 @@ const App = {
 };
 
 function initGlobalSocketListeners() {
+    // 1. KICK (Expulsión forzosa - Suspended/Deleted/Kick Manual)
     document.addEventListener('socket:force_logout', (e) => {
         if (window.isManualLogout) return;
         if (window.location.pathname.includes('/login')) return;
-        Toast.show('Tu sesión ha sido cerrada remotamente.', 'warning', 5000);
-        setTimeout(() => { window.location.href = window.BASE_PATH + 'login'; }, 1500);
+        
+        Toast.show('Tu sesión ha cambiado de estado.', 'warning', 5000);
+        
+        // Recargar para que PHP detecte el cambio de estado en BD
+        setTimeout(() => { 
+            window.location.reload(); 
+        }, 1500);
     });
 
+    // 2. MANTENIMIENTO (La corrección está aquí)
     document.addEventListener('socket:maintenance_start', (e) => {
-        window.location.reload();
+        // [NUEVO] Verificar rol antes de recargar
+        const profileBtn = document.querySelector('.header-button.profile-button');
+        const currentRole = profileBtn ? profileBtn.dataset.role : 'guest';
+        
+        // Roles que tienen permiso de "Bypass" al mantenimiento
+        const staffRoles = ['founder', 'administrator', 'moderator'];
+
+        if (staffRoles.includes(currentRole)) {
+            // Si es Staff, NO recargamos. Solo avisamos.
+            Toast.show('El sistema ha entrado en modo mantenimiento (Acceso Staff activo).', 'info', 5000);
+            console.log('Maintenance signal received. Ignored due to staff privileges.');
+            return;
+        }
+
+        // Si es usuario normal o invitado, recargamos con delay para asegurar consistencia
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000); 
     });
 
+    // 3. NOTIFICACIONES GENERALES
     document.addEventListener('socket:notification', (e) => {
         const msgData = e.detail.message; 
         if (msgData && msgData.text) {
@@ -97,7 +122,6 @@ function initGlobalSocketListeners() {
         }
     });
 }
-
 function routeDispatcher(section) {
     updateSidebarState(section);
     switch (section) {
