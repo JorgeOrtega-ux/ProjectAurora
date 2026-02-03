@@ -19,11 +19,16 @@ class AuthService {
         $this->i18n = $i18n;
         $this->redis = $redis;
         
-        $secret = $_ENV['TURNSTILE_SECRET_KEY'] ?? null;
+        // [SEGURIDAD] Zero Fallback: Obtener clave real estrictamente.
+        $secret = $_ENV['TURNSTILE_SECRET_KEY'] ?? getenv('TURNSTILE_SECRET_KEY');
+        
         if (empty($secret)) {
-            $secret = getenv('TURNSTILE_SECRET_KEY');
+            // Detener ejecución si no hay clave secreta configurada.
+            error_log("CRITICAL ERROR: TURNSTILE_SECRET_KEY no está configurada en el entorno.");
+            throw new Exception("Error crítico de seguridad: Falta configuración de Turnstile.");
         }
-        $this->turnstileSecret = !empty($secret) ? $secret : '1x0000000000000000000000000000000AA';
+        
+        $this->turnstileSecret = $secret;
     }
 
     private function checkRegistrationStatus() {

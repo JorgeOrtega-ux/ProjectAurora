@@ -10,11 +10,28 @@ from datetime import datetime, timedelta
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - WORKER - %(message)s')
 load_dotenv()
 
-DB_HOST = os.getenv('DB_HOST', 'localhost')
-DB_USER = os.getenv('DB_USER', 'root')
-DB_PASS = os.getenv('DB_PASS', '')
-DB_NAME = os.getenv('DB_NAME', 'project_aurora_db')
-SYSTEM_KEY = os.getenv('SYSTEM_API_KEY', 'tu_clave_secreta_aqui')
+# [SEGURIDAD] Validación estricta de TODAS las variables
+# Si falta alguna, el programa se detiene intencionalmente.
+
+DB_HOST = os.getenv('DB_HOST')
+if not DB_HOST:
+    raise ValueError("Error crítico: Falta la variable DB_HOST.")
+
+DB_USER = os.getenv('DB_USER')
+if not DB_USER:
+    raise ValueError("Error crítico: Falta la variable DB_USER.")
+
+DB_PASS = os.getenv('DB_PASS')
+if DB_PASS is None:
+    raise ValueError("Error crítico: Falta la variable DB_PASS.")
+
+DB_NAME = os.getenv('DB_NAME')
+if not DB_NAME:
+    raise ValueError("Error crítico: Falta la variable DB_NAME.")
+
+SYSTEM_KEY = os.getenv('SYSTEM_API_KEY')
+if not SYSTEM_KEY:
+    raise ValueError("Error crítico: Falta la variable SYSTEM_API_KEY.")
 
 # URL de la API (Ajustar según tu entorno real)
 API_URL = "http://192.168.8.2/ProjectAurora/api/"

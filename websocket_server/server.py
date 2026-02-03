@@ -12,10 +12,21 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - SERVER - %(levelna
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../.env'))
 
-# Configuración Redis
-REDIS_HOST = os.getenv('REDIS_HOST', '127.0.0.1')
-REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
-REDIS_PASS = os.getenv('REDIS_PASSWORD', None)
+# [SEGURIDAD] Validación estricta de Redis (Zero Fallback)
+REDIS_HOST = os.getenv('REDIS_HOST')
+if not REDIS_HOST:
+    logging.error("❌ Error fatal: REDIS_HOST no está definido en el archivo .env")
+    exit(1)
+
+REDIS_PORT = os.getenv('REDIS_PORT')
+if not REDIS_PORT:
+    logging.error("❌ Error fatal: REDIS_PORT no está definido en el archivo .env")
+    exit(1)
+REDIS_PORT = int(REDIS_PORT)
+
+REDIS_PASS = os.getenv('REDIS_PASSWORD')
+# Nota: REDIS_PASS puede ser None si tu servidor Redis no requiere contraseña,
+# pero no asumimos un valor por defecto.
 
 # Estructura de Usuarios Logueados: { user_id: { session_id: set(sockets) } }
 connected_users = {}

@@ -18,16 +18,42 @@ logging.basicConfig(
 # Cargar variables de entorno
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../.env'))
 
-# Configuración Base de Datos
-DB_HOST = os.getenv('DB_HOST', 'localhost')
-DB_USER = os.getenv('DB_USER', 'root')
-DB_PASS = os.getenv('DB_PASS', '')
-DB_NAME = os.getenv('DB_NAME', 'project_aurora_db')
+# [SEGURIDAD] Validación estricta de Base de Datos
+DB_HOST = os.getenv('DB_HOST')
+if not DB_HOST:
+    logging.error("❌ Error fatal: DB_HOST no definido.")
+    exit(1)
 
-# Configuración Redis
-REDIS_HOST = os.getenv('REDIS_HOST', '127.0.0.1')
-REDIS_PORT = int(os.getenv('REDIS_PORT', 6379))
-REDIS_PASS = os.getenv('REDIS_PASSWORD', None)
+DB_USER = os.getenv('DB_USER')
+if not DB_USER:
+    logging.error("❌ Error fatal: DB_USER no definido.")
+    exit(1)
+
+DB_PASS = os.getenv('DB_PASS')
+if DB_PASS is None:
+    logging.error("❌ Error fatal: DB_PASS no definido.")
+    exit(1)
+
+DB_NAME = os.getenv('DB_NAME')
+if not DB_NAME:
+    logging.error("❌ Error fatal: DB_NAME no definido.")
+    exit(1)
+
+# [SEGURIDAD] Validación estricta de Redis
+REDIS_HOST = os.getenv('REDIS_HOST')
+if not REDIS_HOST:
+    logging.error("❌ Error fatal: REDIS_HOST no definido.")
+    exit(1)
+
+REDIS_PORT = os.getenv('REDIS_PORT')
+if not REDIS_PORT:
+    logging.error("❌ Error fatal: REDIS_PORT no definido.")
+    exit(1)
+REDIS_PORT = int(REDIS_PORT)
+
+REDIS_PASS = os.getenv('REDIS_PASSWORD')
+# Redis password puede ser None si el servidor no tiene clave, pero es mejor ser explícito
+# Si tu Redis NO tiene clave, comenta esta validación o configura una clave vacía en .env
 
 QUEUE_NAME = 'aurora_task_queue'
 PUBSUB_CHANNEL = 'aurora_ws_control'
