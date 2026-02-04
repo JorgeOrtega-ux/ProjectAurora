@@ -213,7 +213,9 @@ class AuthService {
                 'next_url' => 'register/verification-account'
             ]; 
         } catch (Exception $e) {
-            return ['success' => false, 'message' => $this->i18n->t('api.internal_error') . ': ' . $e->getMessage()];
+            // [CORRECCIÓN SEGURIDAD] Log interno y mensaje genérico
+            Logger::app('Auth Error (initVerify)', ['error' => $e->getMessage()]);
+            return ['success' => false, 'message' => $this->i18n->t('api.internal_error')];
         }
     }
 
@@ -272,7 +274,9 @@ class AuthService {
             
             return ['success' => true, 'message' => $this->i18n->t('api.code_generated')];
         } catch (Exception $e) {
-            return ['success' => false, 'message' => $this->i18n->t('api.code_save_error') . ': ' . $e->getMessage()];
+            // [CORRECCIÓN SEGURIDAD] Log interno y mensaje genérico
+            Logger::app('Auth Error (resendCode)', ['error' => $e->getMessage()]);
+            return ['success' => false, 'message' => $this->i18n->t('api.code_save_error')];
         }
     }
 
@@ -370,7 +374,9 @@ class AuthService {
 
         } catch (Exception $e) {
             $this->pdo->rollBack();
-            return ['success' => false, 'message' => $this->i18n->t('api.db_error') . ': ' . $e->getMessage()];
+            // [CORRECCIÓN SEGURIDAD] Log interno y mensaje genérico
+            Logger::app('Auth Error (completeRegister)', ['error' => $e->getMessage()]);
+            return ['success' => false, 'message' => $this->i18n->t('api.db_error')];
         }
     }
 
@@ -560,7 +566,9 @@ class AuthService {
                 'message_user' => $this->i18n->t('api.message_email_sent')
             ];
         } catch (Exception $e) {
-            return ['success' => false, 'message' => $this->i18n->t('api.internal_error') . ': ' . $e->getMessage()];
+            // [CORRECCIÓN SEGURIDAD] Log interno y mensaje genérico
+            Logger::app('Auth Error (requestReset)', ['error' => $e->getMessage()]);
+            return ['success' => false, 'message' => $this->i18n->t('api.internal_error')];
         }
     }
 
@@ -610,7 +618,9 @@ class AuthService {
             return ['success' => true, 'message' => $this->i18n->t('api.pass_updated'), 'redirect' => '/ProjectAurora/login'];
         } catch (Exception $e) {
             $this->pdo->rollBack();
-            return ['success' => false, 'message' => $this->i18n->t('api.update_error') . ': ' . $e->getMessage()];
+            // [CORRECCIÓN SEGURIDAD] Log interno y mensaje genérico
+            Logger::app('Auth Error (resetPassword)', ['error' => $e->getMessage()]);
+            return ['success' => false, 'message' => $this->i18n->t('api.update_error')];
         }
     }
 

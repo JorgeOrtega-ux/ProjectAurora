@@ -1,6 +1,8 @@
 <?php
 // api/services/RedisService.php
 
+require_once __DIR__ . '/../../includes/libs/Utils.php'; // Aseguramos que Utils esté disponible para el Logger
+
 class RedisService {
     private $redis;
 
@@ -27,7 +29,9 @@ class RedisService {
                 ]
             ];
         } catch (Exception $e) {
-            return ['success' => false, 'message' => $e->getMessage()];
+            // [CORRECCIÓN SEGURIDAD]
+            Logger::app('Redis Error (getStats)', ['msg' => $e->getMessage()]);
+            return ['success' => false, 'message' => 'Error de conexión con el servicio de caché (Redis).'];
         }
     }
 
@@ -69,9 +73,9 @@ class RedisService {
             return ['success' => true, 'keys' => $foundKeys];
 
         } catch (Exception $e) {
-            // Logueamos el error real para debugging
-            error_log("Redis Scan Error: " . $e->getMessage());
-            return ['success' => false, 'message' => 'Error al leer claves: ' . $e->getMessage()];
+            // [CORRECCIÓN SEGURIDAD]
+            Logger::app('Redis Error (getKeys)', ['msg' => $e->getMessage()]);
+            return ['success' => false, 'message' => 'Error de conexión con el servicio de caché (Redis).'];
         }
     }
 
@@ -124,7 +128,9 @@ class RedisService {
             ];
 
         } catch (Exception $e) {
-            return ['success' => false, 'message' => $e->getMessage()];
+            // [CORRECCIÓN SEGURIDAD]
+            Logger::app('Redis Error (getValue)', ['msg' => $e->getMessage()]);
+            return ['success' => false, 'message' => 'Error de conexión con el servicio de caché (Redis).'];
         }
     }
 
@@ -135,7 +141,9 @@ class RedisService {
             $deleted = $this->redis->del($key);
             return ['success' => $deleted > 0, 'message' => $deleted ? 'Clave eliminada' : 'Clave no encontrada'];
         } catch (Exception $e) {
-            return ['success' => false, 'message' => $e->getMessage()];
+            // [CORRECCIÓN SEGURIDAD]
+            Logger::app('Redis Error (deleteKey)', ['msg' => $e->getMessage()]);
+            return ['success' => false, 'message' => 'Error de conexión con el servicio de caché (Redis).'];
         }
     }
 
@@ -145,7 +153,9 @@ class RedisService {
             $this->redis->flushdb();
             return ['success' => true, 'message' => 'Base de datos Redis vaciada correctamente'];
         } catch (Exception $e) {
-            return ['success' => false, 'message' => $e->getMessage()];
+            // [CORRECCIÓN SEGURIDAD]
+            Logger::app('Redis Error (flushDB)', ['msg' => $e->getMessage()]);
+            return ['success' => false, 'message' => 'Error de conexión con el servicio de caché (Redis).'];
         }
     }
 

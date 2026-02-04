@@ -139,7 +139,9 @@ class AdminService {
             ];
 
         } catch (Exception $e) {
-            return ['success' => false, 'message' => 'Error Redis: ' . $e->getMessage()];
+            // [CORRECCIÓN SEGURIDAD]
+            Logger::app('Admin Download Token Error', ['error' => $e->getMessage()]);
+            return ['success' => false, 'message' => 'Error interno al generar descarga.'];
         }
     }
 
@@ -213,7 +215,9 @@ class AdminService {
             ];
 
         } catch (Exception $e) {
-            return ['success' => false, 'message' => 'Error calculando estadísticas: ' . $e->getMessage()];
+            // [CORRECCIÓN SEGURIDAD]
+            Logger::app('Dashboard Stats Error', ['error' => $e->getMessage()]);
+            return ['success' => false, 'message' => 'Error calculando estadísticas.'];
         }
     }
 

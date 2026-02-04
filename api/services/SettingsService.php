@@ -298,7 +298,9 @@ class SettingsService {
 
             return ['success' => true, 'message' => $this->i18n->t('api.field_updated')];
         } catch (Exception $e) {
-            return ['success' => false, 'message' => $this->i18n->t('api.update_error') . ': ' . $e->getMessage()];
+            // [CORRECCIÓN SEGURIDAD] Log interno y mensaje genérico
+            Logger::app('Settings Error (updateProfile)', ['error' => $e->getMessage()]);
+            return ['success' => false, 'message' => $this->i18n->t('api.update_error')];
         }
     }
 
@@ -402,7 +404,9 @@ class SettingsService {
 
             return ['success' => true, 'message' => $this->i18n->t('api.pref_saved')];
         } catch (Exception $e) {
-            return ['success' => false, 'message' => $this->i18n->t('api.pref_save_error') . ': ' . $e->getMessage()];
+            // [CORRECCIÓN SEGURIDAD] Log interno y mensaje genérico
+            Logger::app('Settings Error (updatePreference)', ['error' => $e->getMessage()]);
+            return ['success' => false, 'message' => $this->i18n->t('api.pref_save_error')];
         }
     }
 
