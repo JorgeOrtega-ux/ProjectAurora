@@ -8,319 +8,211 @@ from urllib.parse import parse_qs, urlparse
 from dotenv import load_dotenv
 
 # Configuración de Logs
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - SERVER - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - WS_SERVER - %(levelname)s - %(message)s')
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../.env'))
 
-# [SEGURIDAD] Validación estricta de Redis (Zero Fallback)
+# Configuración Redis
 REDIS_HOST = os.getenv('REDIS_HOST')
-if not REDIS_HOST:
-    logging.error("❌ Error fatal: REDIS_HOST no está definido en el archivo .env")
-    exit(1)
-
 REDIS_PORT = os.getenv('REDIS_PORT')
-if not REDIS_PORT:
-    logging.error("❌ Error fatal: REDIS_PORT no está definido en el archivo .env")
-    exit(1)
-REDIS_PORT = int(REDIS_PORT)
-
 REDIS_PASS = os.getenv('REDIS_PASSWORD')
-# Nota: REDIS_PASS puede ser None si tu servidor Redis no requiere contraseña,
-# pero no asumimos un valor por defecto.
 
-# Estructura de Usuarios Logueados: { user_id: { session_id: set(sockets) } }
-connected_users = {}
-# Estructura de Invitados: set(sockets)
-connected_guests = set()
+if not REDIS_HOST or not REDIS_PORT:
+    logging.error("❌ Error fatal: Configuración Redis incompleta.")
+    exit(1)
 
+REDIS_PORT = int(REDIS_PORT)
 WS_PORT = 8765
+
+# Almacenamiento en memoria de conexiones
+# Estructura: { 'user_id': { 'session_id': set(websockets) } }
+connected_users = {}
+connected_guests = set()
+background_tasks = set()
 
 async def get_redis_client():
     return redis.Redis(
-        host=REDIS_HOST, 
-        port=REDIS_PORT, 
-        password=REDIS_PASS, 
-        decode_responses=True
+        host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASS, decode_responses=True
     )
 
 async def validate_and_consume_token(path, r_client):
+    """Valida el token de un solo uso para la conexión WS"""
     try:
         if not path: return None, None
-        parsed_url = urlparse(path)
-        params = parse_qs(parsed_url.query)
+        parsed = urlparse(path)
+        params = parse_qs(parsed.query)
         
-        type_param = params.get('type')
-        if type_param and type_param[0] == 'guest':
+        # Modo Invitado
+        if params.get('type') == ['guest']:
             return 'GUEST', 'GUEST'
 
-        token_list = params.get('token')
-        if not token_list: return None, None
-        token = token_list[0]
+        # Modo Usuario (Token único uso)
+        token = params.get('token', [None])[0]
+        if not token: return None, None
         
-        redis_key = f"ws_token:{token}"
-        data = await r_client.get(redis_key)
+        key = f"ws_token:{token}"
+        data = await r_client.get(key)
         
-        if not data:
-            return None, None
+        if data:
+            await r_client.delete(key)
+            parts = data.split(':')
+            return parts[0], (parts[1] if len(parts) > 1 else '0')
             
-        await r_client.delete(redis_key)
-        
-        parts = data.split(':')
-        user_id = parts[0]
-        session_id = parts[1] if len(parts) > 1 else 0
-        
-        return user_id, session_id
-
+        return None, None
     except Exception as e:
         logging.error(f"Error validando token: {e}")
         return None, None
 
-# --- Función Auxiliar para Desconectar Sesiones ---
-async def _disconnect_session(user_id, session_id, reason_msg, log_prefix):
-    """
-    Lógica centralizada para cerrar sockets de una sesión específica.
-    """
+# --- FUNCIONES DE GESTIÓN DE CONEXIONES ---
+
+async def broadcast_message(msg_type, content=None):
+    """Envía mensaje a TODOS (Usuarios e Invitados)"""
+    payload = json.dumps({"type": msg_type, "message": content})
+    
+    # Recolectar todos los sockets activos
+    all_sockets = set(connected_guests)
+    for sessions in connected_users.values():
+        for sockets in sessions.values():
+            all_sockets.update(sockets)
+            
+    # Enviar masivamente
+    for ws in all_sockets:
+        try: await ws.send(payload)
+        except: pass
+
+async def disconnect_user_session(user_id, session_id, reason="Desconectado"):
+    """Cierra sockets de una sesión específica"""
     if user_id in connected_users and session_id in connected_users[user_id]:
-        payload = json.dumps({"type": "force_logout", "reason": reason_msg})
+        payload = json.dumps({"type": "force_logout", "reason": reason})
+        sockets = list(connected_users[user_id][session_id]) # Copia segura para iterar
         
-        # Crear copia de la lista para iterar sin problemas de concurrencia al remover
-        sockets_to_close = list(connected_users[user_id][session_id])
-        
-        for ws in sockets_to_close:
+        for ws in sockets:
             try:
                 await ws.send(payload)
                 await ws.close()
             except: pass
-            
-        logging.info(f"{log_prefix}: User {user_id}, Session {session_id}")
+        logging.info(f"Sesión cerrada: User {user_id} / Session {session_id}")
 
-# --- Funciones Específicas llamadas por Redis Listener ---
-
-async def kick_session_local(user_id, session_id):
-    """Acción administrativa o forzosa (KICK)"""
-    await _disconnect_session(user_id, session_id, "Has sido expulsado", "KICK EJECUTADO")
-
-async def logout_session_local(user_id, session_id):
-    """Acción voluntaria del usuario (LOGOUT)"""
-    await _disconnect_session(user_id, session_id, "Sesión cerrada correctamente", "LOGOUT MANUAL")
-
-async def kick_all_sessions_local(user_id):
+async def disconnect_user_all(user_id, reason="Cuenta cerrada"):
+    """Cierra TODAS las sesiones de un usuario (Ej: Cambio de contraseña)"""
     if user_id in connected_users:
-        payload = json.dumps({"type": "force_logout", "reason": "Cuenta cerrada"})
-        sessions = list(connected_users[user_id].items())
-        for sid, sockets in sessions:
-            for ws in list(sockets):
-                try:
-                    await ws.send(payload)
-                    await ws.close()
-                except: pass
-        logging.info(f"KICK ALL EJECUTADO: User {user_id}")
+        sessions = list(connected_users[user_id].keys())
+        for sid in sessions:
+            await disconnect_user_session(user_id, sid, reason)
 
-async def broadcast_to_everyone_local(msg_type, content=None):
-    payload = json.dumps({"type": msg_type, "message": content})
-    
-    count = 0
-    # Usuarios
-    for uid, sessions in connected_users.items():
-        for sid, sockets in sessions.items():
-            for ws in list(sockets):
-                try: 
-                    await ws.send(payload)
-                    count += 1
-                except: pass
-    
-    # Invitados
-    for ws in list(connected_guests):
-        try: 
-            await ws.send(payload)
-            count += 1
-        except: pass
-    
-    # logging.info(f"📢 Mensaje enviado a {count} clientes conectados.")
-
-# --- EN EL TOP DEL ARCHIVO ---
-# Crea un conjunto global para evitar que el Garbage Collector mate las tareas
-background_tasks = set()
-
-# --- MODIFICA ESTA FUNCIÓN ---
-async def redis_listener_loop():
-    """
-    Escucha mensajes Pub/Sub de Redis enviados por el Worker o la API.
-    """
-    logging.info("🎧 INTENTANDO conectar al canal Pub/Sub...") # LOG DE DEBUG
-    
-    try:
-        r_sub = await get_redis_client()
-        pubsub = r_sub.pubsub()
-        await pubsub.subscribe('aurora_ws_control')
-        
-        logging.info("🎧 AHORA SÍ: Escuchando canal Redis: aurora_ws_control") # SI NO VES ESTO, FALLÓ
-    
-        async for message in pubsub.listen():
-            # Loguear CUALQUIER cosa que llegue para debug
-            if message['type'] == 'message':
-                logging.info(f"🔎 DEBUG: Mensaje crudo recibido en Redis: {message['data']}")
-                
-                try:
-                    data = json.loads(message['data'])
-                    cmd = data.get('cmd')
-                    
-                    if cmd == 'KICK_SESSION':
-                        u_id = str(data.get('user_id'))
-                        s_id = str(data.get('session_id'))
-                        await kick_session_local(u_id, s_id)
-    
-                    elif cmd == 'LOGOUT_SESSION': 
-                        u_id = str(data.get('user_id'))
-                        s_id = str(data.get('session_id'))
-                        await logout_session_local(u_id, s_id)
-                        
-                    elif cmd == 'KICK_ALL':
-                        u_id = str(data.get('user_id'))
-                        await kick_all_sessions_local(u_id)
-                        
-                    elif cmd == 'BROADCAST':
-                        msg_type = data.get('msg_type')
-                        msg_content = data.get('message')
-                        logging.info(f"📨 Retransmitiendo BROADCAST: {msg_type}")
-                        await broadcast_to_everyone_local(msg_type, msg_content)
-                        
-                except Exception as e:
-                    logging.error(f"Error procesando mensaje Pub/Sub: {e}")
-    except Exception as e:
-        # Aquí capturamos si falla la conexión inicial al canal
-        logging.error(f"❌ ERROR FATAL en redis_listener_loop: {e}")
-
-
-# --- ACTUALIZACIÓN DE ESTADÍSTICAS (Con Push en vivo) ---
-async def update_stats_in_redis():
-    """Actualiza los contadores en Redis Y envía los datos nuevos al Frontend (Push)"""
+async def update_stats_broadcast():
+    """Actualiza contadores en Redis y notifica al frontend en tiempo real"""
     try:
         r_client = await get_redis_client()
-        
-        # Contar usuarios únicos (no sockets, sino IDs únicos)
-        total_users = len(connected_users)
-        total_guests = len(connected_guests)
-        
-        # 1. Guardar en Redis (Persistencia)
-        await r_client.hset('aurora:stats:realtime', mapping={
-            'online_users': total_users,
-            'online_guests': total_guests
-        })
-        
-        await r_client.aclose() 
-        
-        # logging.info(f"📊 Stats actualizados: Usuarios {total_users} | Invitados {total_guests}")
-
-        # 2. ENVIAR A TODOS LOS CLIENTES (Push en Vivo)
-        # Esto arregla el problema de que al refrescar veas "0"
-        stats_payload = {
-            'online_users': total_users,
-            'online_guests': total_guests,
-            'online_total': total_users + total_guests
+        stats = {
+            'online_users': len(connected_users),
+            'online_guests': len(connected_guests),
+            'online_total': len(connected_users) + len(connected_guests)
         }
-        await broadcast_to_everyone_local("stats_update", stats_payload)
-
+        
+        # Persistir en Redis para API (lectura estática)
+        await r_client.hset('aurora:stats:realtime', mapping=stats)
+        await r_client.aclose()
+        
+        # Push a clientes (actualización en vivo)
+        await broadcast_message("stats_update", stats)
     except Exception as e:
         logging.error(f"Error actualizando stats: {e}")
 
-async def ws_handler(websocket):
-    path = ""
-    try:
-        if hasattr(websocket, 'request') and websocket.request: path = websocket.request.path
-        elif hasattr(websocket, 'path'): path = websocket.path
-    except: pass
+# --- LISTENER DE REDIS (PUBSUB) ---
 
+async def redis_listener():
+    """Escucha mensajes del Worker o la API PHP"""
+    logging.info("🎧 Iniciando Listener Redis Pub/Sub...")
+    while True:
+        try:
+            r_sub = await get_redis_client()
+            pubsub = r_sub.pubsub()
+            await pubsub.subscribe('aurora_ws_control')
+            
+            logging.info("✅ Suscrito al canal: aurora_ws_control")
+            
+            async for message in pubsub.listen():
+                if message['type'] == 'message':
+                    try:
+                        data = json.loads(message['data'])
+                        cmd = data.get('cmd')
+                        
+                        if cmd == 'BROADCAST':
+                            await broadcast_message(data.get('msg_type'), data.get('message'))
+                        elif cmd == 'KICK_SESSION' or cmd == 'LOGOUT_SESSION':
+                            await disconnect_user_session(str(data.get('user_id')), str(data.get('session_id')))
+                        elif cmd == 'KICK_ALL':
+                            await disconnect_user_all(str(data.get('user_id')))
+                            
+                    except Exception as e:
+                        logging.error(f"Error procesando mensaje PubSub: {e}")
+                        
+        except Exception as e:
+            logging.error(f"❌ Error conexión Redis Listener: {e}. Reintentando en 5s...")
+            await asyncio.sleep(5)
+
+# --- HANDLER WEBSOCKET ---
+
+async def ws_handler(websocket):
+    path = getattr(getattr(websocket, 'request', None), 'path', '') or getattr(websocket, 'path', '')
+    
     r_client = await get_redis_client()
     user_id, session_id = await validate_and_consume_token(path, r_client)
+    
+    # Check alerta persistente del sistema al conectar
+    try:
+        alert = await r_client.get('system:active_alert')
+        if alert: await websocket.send(json.dumps({"type": "system_alert", "message": json.loads(alert)}))
+    except: pass
     
     await r_client.aclose()
 
     if not user_id:
-        await websocket.close(code=1008, reason="Authentication Failed")
+        await websocket.close(code=1008, reason="Auth Failed")
         return
 
-    # === NUEVO: CHECK DE ALERTA ACTIVA ===
-    # Obtenemos un cliente nuevo o reusamos si prefieres reestructurar, 
-    # pero para simplicidad abrimos uno rápido para checar persistencia.
-    try:
-        r_temp = await get_redis_client()
-        active_alert_raw = await r_temp.get('system:active_alert')
-        await r_temp.aclose()
-        
-        if active_alert_raw:
-            # Enviamos la alerta inmediatamente al conectarse
-            alert_data = json.loads(active_alert_raw)
-            await websocket.send(json.dumps({
-                "type": "system_alert", 
-                "message": alert_data
-            }))
-    except Exception as e:
-        logging.error(f"Error enviando alerta persistente: {e}")
-    # ======================================
-
-    # --- LÓGICA INVITADO ---
-    if user_id == 'GUEST':
-        connected_guests.add(websocket)
-        await update_stats_in_redis() # Actualizar al conectar
-        
-        logging.info(f"Invitado conectado. Total invitados: {len(connected_guests)}")
-        try:
-            await websocket.send(json.dumps({"type": "connection_established", "mode": "guest"}))
-            async for message in websocket: pass 
-        except: pass
-        finally:
-            if websocket in connected_guests:
-                connected_guests.remove(websocket)
-                await update_stats_in_redis() # Actualizar al desconectar
-        return
-
-    # --- LÓGICA USUARIO REGISTRADO ---
+    # REGISTRO DE CONEXIÓN
     user_id = str(user_id)
-    session_id = str(session_id)
+    is_guest = (user_id == 'GUEST')
     
-    if user_id not in connected_users: connected_users[user_id] = {}
-    if session_id not in connected_users[user_id]: connected_users[user_id][session_id] = set()
-    
-    connected_users[user_id][session_id].add(websocket)
-    await update_stats_in_redis() # Actualizar al conectar
-    
-    logging.info(f"User {user_id} (Session {session_id}) conectado.")
+    if is_guest:
+        connected_guests.add(websocket)
+    else:
+        session_id = str(session_id)
+        if user_id not in connected_users: connected_users[user_id] = {}
+        if session_id not in connected_users[user_id]: connected_users[user_id][session_id] = set()
+        connected_users[user_id][session_id].add(websocket)
 
+    await update_stats_broadcast()
+    
     try:
-        await websocket.send(json.dumps({"type": "connection_established", "mode": "user"}))
-        async for message in websocket: pass 
-    except: pass
+        mode = "guest" if is_guest else "user"
+        await websocket.send(json.dumps({"type": "connection_established", "mode": mode}))
+        await websocket.wait_closed()
     finally:
-        if user_id in connected_users and session_id in connected_users[user_id]:
-            if websocket in connected_users[user_id][session_id]:
-                connected_users[user_id][session_id].remove(websocket)
-            
-            # Limpieza de estructuras vacías
-            if not connected_users[user_id][session_id]:
-                del connected_users[user_id][session_id]
-            if not connected_users[user_id]:
-                del connected_users[user_id]
-                
-        # Actualizar stats solo si el usuario ya no tiene conexiones activas
-        # o simplemente actualizar siempre para asegurar consistencia
-        await update_stats_in_redis() 
+        # LIMPIEZA AL DESCONECTAR
+        if is_guest:
+            if websocket in connected_guests: connected_guests.remove(websocket)
+        else:
+            if user_id in connected_users and session_id in connected_users[user_id]:
+                s_set = connected_users[user_id][session_id]
+                if websocket in s_set: s_set.remove(websocket)
+                if not s_set: del connected_users[user_id][session_id]
+                if not connected_users[user_id]: del connected_users[user_id]
         
-        logging.info(f"User {user_id} desconectado.")
+        await update_stats_broadcast()
 
-# --- MODIFICA EL MAIN ---
 async def main():
     logging.info(f"🚀 WS Servidor iniciando en puerto {WS_PORT}...")
     
-    # CORRECCIÓN: Guardamos la referencia de la tarea en el set global
-    task = asyncio.create_task(redis_listener_loop())
+    # Iniciar Listener en background como tarea para que no bloquee el servidor
+    task = asyncio.create_task(redis_listener())
     background_tasks.add(task)
     task.add_done_callback(background_tasks.discard)
     
-    # Iniciar servidor WebSocket
-    async with websockets.serve(ws_handler, "0.0.0.0", WS_PORT, ping_interval=20, ping_timeout=20):
+    async with websockets.serve(ws_handler, "0.0.0.0", WS_PORT):
         await asyncio.Future()
-
 
 if __name__ == "__main__":
     try: asyncio.run(main())

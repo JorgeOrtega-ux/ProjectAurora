@@ -8,6 +8,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 import time
 import glob
+from concurrent.futures import ThreadPoolExecutor
 
 # --- CONFIGURACIÓN ---
 logging.basicConfig(
@@ -20,47 +21,29 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../.env'))
 
 # [SEGURIDAD] Validación estricta de Base de Datos
 DB_HOST = os.getenv('DB_HOST')
-if not DB_HOST:
-    logging.error("❌ Error fatal: DB_HOST no definido.")
-    exit(1)
-
 DB_USER = os.getenv('DB_USER')
-if not DB_USER:
-    logging.error("❌ Error fatal: DB_USER no definido.")
-    exit(1)
-
 DB_PASS = os.getenv('DB_PASS')
-if DB_PASS is None:
-    logging.error("❌ Error fatal: DB_PASS no definido.")
-    exit(1)
-
 DB_NAME = os.getenv('DB_NAME')
-if not DB_NAME:
-    logging.error("❌ Error fatal: DB_NAME no definido.")
-    exit(1)
-
-# [SEGURIDAD] Validación estricta de Redis
 REDIS_HOST = os.getenv('REDIS_HOST')
-if not REDIS_HOST:
-    logging.error("❌ Error fatal: REDIS_HOST no definido.")
-    exit(1)
-
 REDIS_PORT = os.getenv('REDIS_PORT')
-if not REDIS_PORT:
-    logging.error("❌ Error fatal: REDIS_PORT no definido.")
-    exit(1)
-REDIS_PORT = int(REDIS_PORT)
-
 REDIS_PASS = os.getenv('REDIS_PASSWORD')
-# Redis password puede ser None si el servidor no tiene clave, pero es mejor ser explícito
-# Si tu Redis NO tiene clave, comenta esta validación o configura una clave vacía en .env
 
+# Validación de arranque
+if not all([DB_HOST, DB_USER, DB_PASS is not None, DB_NAME, REDIS_HOST, REDIS_PORT]):
+    logging.error("❌ Error fatal: Faltan variables de entorno críticas en .env")
+    exit(1)
+
+REDIS_PORT = int(REDIS_PORT)
 QUEUE_NAME = 'aurora_task_queue'
 PUBSUB_CHANNEL = 'aurora_ws_control'
 
 # Directorio de Backups (Ruta absoluta)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BACKUP_DIR = os.path.join(BASE_DIR, 'storage', 'backups')
+
+# [FIX BLOQUEO] Executor para tareas pesadas (Backups/IO)
+# Esto permite que el worker siga escuchando Redis mientras hace un backup en otro hilo
+EXECUTOR = ThreadPoolExecutor(max_workers=2)
 
 # --- INICIALIZACIÓN GLOBAL DE REDIS ---
 try:
@@ -80,14 +63,11 @@ except Exception as e:
 
 def get_db_connection():
     return mysql.connector.connect(
-        host=DB_HOST, 
-        user=DB_USER, 
-        password=DB_PASS, 
-        database=DB_NAME
+        host=DB_HOST, user=DB_USER, password=DB_PASS, database=DB_NAME
     )
 
 def log_security_event(action, details, ip='127.0.0.1'):
-    """Registra el evento en MySQL para que aparezca en el panel de admin"""
+    """Registra el evento en MySQL"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -117,15 +97,7 @@ def notify_frontend(msg_type, message):
             'msg_type': msg_type,
             'message': message
         })
-        
-        # Publicar y contar receptores para diagnóstico
-        receivers = r_client.publish(PUBSUB_CHANNEL, payload)
-        
-        if receivers > 0:
-            logging.info(f"📢 Notificación enviada ({msg_type}). Receptores: {receivers}")
-        else:
-            logging.warning(f"⚠️ Notificación enviada pero NADIE escuchó. ¿server.py está corriendo?")
-            
+        r_client.publish(PUBSUB_CHANNEL, payload)
     except Exception as e:
         logging.error(f"❌ Error publicando en Redis: {e}")
 
@@ -137,44 +109,55 @@ def enforce_retention_policy():
         files = glob.glob(os.path.join(BACKUP_DIR, '*.sql'))
         if len(files) <= limit: return
 
-        # Ordenar por fecha de modificación (descendente)
+        # Ordenar por fecha de modificación (descendente) y eliminar excedentes
         files.sort(key=os.path.getmtime, reverse=True)
-
-        # Eliminar los excedentes
         to_delete = files[limit:]
+        
         for f in to_delete:
-            os.remove(f)
+            try: os.remove(f)
+            except: pass
         
         logging.info(f"Limpieza: Se eliminaron {len(to_delete)} backups antiguos.")
-        
     except Exception as e:
         logging.error(f"Error en política de retención: {e}")
 
-def resolve_mysqldump_path():
-    # 1. Intentar leer desde la configuración guardada en BD
-    db_config_path = get_server_config('sys_mysqldump_path', '')
-    if db_config_path and os.path.isfile(db_config_path):
-        return db_config_path
+# En websocket_server/worker.py
 
-    # 2. Buscar en rutas comunes
+def secure_resolve_mysqldump():
+    """
+    Resuelve la ruta de mysqldump buscando en config, rutas comunes de Windows y PATH.
+    """
+    # 1. Intentar ruta desde configuración de BD
+    config_path = get_server_config('sys_mysqldump_path', '')
+    valid_names = ['mysqldump', 'mysqldump.exe']
+    
+    if config_path and os.path.isfile(config_path):
+        if os.path.basename(config_path).lower() in valid_names:
+            return config_path
+        else:
+            logging.warning(f"⚠️ Ruta config inválida: {config_path}")
+
+    # 2. Búsqueda automática en rutas comunes (XAMPP/MySQL/WAMP)
+    # Agrega aquí las rutas donde podría estar tu mysqldump
     common_paths = [
-        r"E:\xampp\mysql\bin\mysqldump.exe",
         r"C:\xampp\mysql\bin\mysqldump.exe",
+        r"E:\xampp\mysql\bin\mysqldump.exe",
         r"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysqldump.exe",
-        "/usr/bin/mysqldump",
-        "/usr/local/bin/mysqldump"
+        r"C:\wamp64\bin\mysql\mysql5.7.31\bin\mysqldump.exe"
     ]
 
     for path in common_paths:
         if os.path.isfile(path):
+            logging.info(f"✅ Mysqldump encontrado en: {path}")
             return path
 
+    # 3. Fallback al PATH del sistema
     return "mysqldump"
 
-# --- TAREAS ---
+# --- TAREAS (EJECUTADAS EN HILOS) ---
 
 def task_create_backup(payload):
-    logging.info("⚙️ Iniciando tarea: Crear Backup...")
+    logging.info("⚙️ [Thread] Iniciando tarea: Crear Backup...")
     
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     hash_suffix = str(int(time.time()))[-6:] 
@@ -182,7 +165,7 @@ def task_create_backup(payload):
     filepath = os.path.join(BACKUP_DIR, filename)
 
     os.makedirs(BACKUP_DIR, exist_ok=True)
-    mysqldump_bin = resolve_mysqldump_path()
+    mysqldump_bin = secure_resolve_mysqldump()
     
     dump_cmd = [
         mysqldump_bin,
@@ -193,84 +176,87 @@ def task_create_backup(payload):
     if DB_PASS:
         dump_cmd.append(f'--password={DB_PASS}')
     
-    dump_cmd.extend([
-        DB_NAME,
-        f'--result-file={filepath}'
-    ])
+    dump_cmd.extend([DB_NAME, '--single-transaction', '--quick'])
 
     try:
-        process = subprocess.run(dump_cmd, capture_output=True, text=True)
+        # [FIX MEMORIA] Usar stdout=outfile para streaming directo al disco
+        # Esto evita cargar gigabytes en la RAM
+        with open(filepath, 'w') as outfile:
+            process = subprocess.Popen(
+                dump_cmd,
+                stdout=outfile,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            _, stderr = process.communicate()
 
         if process.returncode == 0 and os.path.exists(filepath) and os.path.getsize(filepath) > 0:
             logging.info(f"✅ Backup creado exitosamente: {filename}")
             
             is_system = payload.get('is_system', False)
             user_id = payload.get('requested_by', 0)
-            
             identifier = f"System | Created: {filename}" if is_system else f"Admin:{user_id} | Created: {filename}"
             
-            # 1. Log en DB
             log_security_event('backup_create', identifier)
             
-            # 2. Limpieza si es automático
             if is_system:
                 enforce_retention_policy()
 
-            # 3. Notificar al Frontend (TOAST de Éxito)
-            notify_frontend('notification', {
-                'type': 'success',
-                'text': f'Respaldo finalizado: {filename}'
-            })
-            
-            # 4. Notificar al Frontend (RECARGAR LISTA)
-            # Esta es la parte clave para que la tabla se actualice sola
+            notify_frontend('notification', {'type': 'success', 'text': f'Respaldo finalizado: {filename}'})
             notify_frontend('action', {'action': 'refresh_backups'})
 
         else:
-            logging.error(f"❌ Error en mysqldump (Code {process.returncode}): {process.stderr}")
+            # Si falló, borrar archivo vacío/corrupto
+            if os.path.exists(filepath): os.remove(filepath)
+            logging.error(f"❌ Error en mysqldump (Code {process.returncode}): {stderr}")
             notify_frontend('notification', {'type': 'error', 'text': 'Fallo al crear el respaldo.'})
 
     except Exception as e:
         logging.error(f"❌ Excepción al ejecutar backup: {e}")
         notify_frontend('notification', {'type': 'error', 'text': 'Error crítico en el Worker.'})
 
+# Mapa de tareas
 TASKS = {
     'create_backup': task_create_backup
 }
 
+# Wrapper para ejecutar la tarea
+def run_job(raw_data):
+    try:
+        job = json.loads(raw_data)
+        task_name = job.get('task')
+        payload = job.get('payload', {})
+
+        if task_name in TASKS:
+            TASKS[task_name](payload)
+        else:
+            logging.warning(f"Tarea desconocida recibida: {task_name}")
+    except Exception as e:
+        logging.error(f"Error procesando job: {e}")
+
 # --- MAIN LOOP ---
 
 if __name__ == "__main__":
-    logging.info("🚀 Aurora Worker iniciado. Esperando trabajos en Redis...")
+    logging.info(f"🚀 Aurora Worker iniciado. Esperando trabajos en '{QUEUE_NAME}'...")
     
-    while True:
-        try:
-            # BLPOP bloquea hasta que haya un elemento
-            item = r_client.blpop(QUEUE_NAME, timeout=0) 
-            
-            if item:
-                _, raw_data = item
-                try:
-                    job = json.loads(raw_data)
-                    task_name = job.get('task')
-                    payload = job.get('payload', {})
+    try:
+        while True:
+            try:
+                # BLPOP bloquea hasta que haya un elemento (Timeout 5s para permitir interrupción limpia)
+                item = r_client.blpop(QUEUE_NAME, timeout=5)
+                
+                if item:
+                    _, raw_data = item
+                    # [FIX BLOQUEO] Delegar al ThreadPool inmediatamente
+                    EXECUTOR.submit(run_job, raw_data)
 
-                    if task_name in TASKS:
-                        TASKS[task_name](payload)
-                    else:
-                        logging.warning(f"Tarea desconocida recibida: {task_name}")
-
-                except json.JSONDecodeError:
-                    logging.error("Error decodificando JSON del trabajo.")
-                except Exception as e:
-                    logging.error(f"Error procesando trabajo: {e}")
-
-        except redis.exceptions.ConnectionError:
-            logging.error("Conexión con Redis perdida. Reintentando en 5s...")
-            time.sleep(5)
-        except KeyboardInterrupt:
-            logging.info("Worker detenido por usuario.")
-            break
-        except Exception as e:
-            logging.error(f"Error fatal en loop principal: {e}")
-            time.sleep(1)
+            except redis.exceptions.ConnectionError:
+                logging.error("Conexión con Redis perdida. Reintentando en 5s...")
+                time.sleep(5)
+            except Exception as e:
+                logging.error(f"Error en loop principal: {e}")
+                time.sleep(1)
+                
+    except KeyboardInterrupt:
+        logging.info("Deteniendo Worker...")
+        EXECUTOR.shutdown(wait=True)
