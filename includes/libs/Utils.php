@@ -16,7 +16,6 @@ class Utils {
 
     /**
      * Obtiene la dirección IP del cliente de manera segura y centralizada.
-     * Utilizar esta función en lugar de acceder a $_SERVER['REMOTE_ADDR'] directamente.
      */
     public static function getClientIp() {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
@@ -120,25 +119,20 @@ class Utils {
     public static function getServerConfig($pdo, $key, $default = '0') {
         $redisKey = 'server:config:all';
 
-        // 1. Intentar leer de Redis
         if (self::$redisInstance) {
             try {
                 $cachedValue = self::$redisInstance->hget($redisKey, $key);
-                
                 if ($cachedValue !== null) {
                     return $cachedValue;
                 }
-
                 if (self::$redisInstance->hlen($redisKey) > 0) {
                     return $default;
                 }
-
             } catch (Exception $e) {
                 error_log("Redis Error in getServerConfig: " . $e->getMessage());
             }
         }
 
-        // 2. Fallback a MySQL
         try {
             $stmt = $pdo->prepare("SELECT config_key, config_value FROM server_config");
             $stmt->execute();
@@ -148,8 +142,7 @@ class Utils {
                 try {
                     self::$redisInstance->hmset($redisKey, $allConfig);
                     self::$redisInstance->expire($redisKey, 86400); 
-                } catch (Exception $e) {
-                }
+                } catch (Exception $e) {}
             }
 
             return isset($allConfig[$key]) ? $allConfig[$key] : $default;
@@ -196,7 +189,6 @@ class Utils {
             }
             if (empty($src)) {
                 $name = $_SESSION['username'] ?? 'User';
-                // Fallback visual con length=1
                 $src = "https://ui-avatars.com/api/?name=" . urlencode($name) . "&background=random&color=fff&length=1";
             }
         }
@@ -210,50 +202,153 @@ class Utils {
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
     }
 
-    /**
-     * Genera y guarda una imagen de perfil por defecto usando una paleta de colores específica.
-     */
     public static function generateDefaultProfilePicture($name, $outputPath) {
-        // Lista estricta de colores permitidos
-        $colors = [
-            '2563EB', // Azul
-            '16A34A', // Verde
-            '7C3AED', // Morado
-            'DC2626', // Rojo
-            'EA580C', // Naranja
-            '374151'  // Gris oscuro
-        ];
-
-        // Seleccionar color aleatorio
+        $colors = ['2563EB', '16A34A', '7C3AED', 'DC2626', 'EA580C', '374151'];
         $selectedColor = $colors[array_rand($colors)];
-
-        // Preparar el nombre para la URL
         $encodedName = urlencode($name);
-
-        // Construir la URL de ui-avatars con el color seleccionado
         $url = "https://ui-avatars.com/api/?name={$encodedName}&background={$selectedColor}&color=fff&size=512&font-size=0.5&bold=true&length=1";
 
         try {
-            // Obtener el contenido de la imagen
             $imageData = file_get_contents($url);
-
             if ($imageData !== false) {
-                // Asegurarse de que el directorio de destino exista
                 $dir = dirname($outputPath);
-                if (!is_dir($dir)) {
-                    mkdir($dir, 0755, true);
-                }
-
-                // Guardar la imagen en el disco
-                if (file_put_contents($outputPath, $imageData) !== false) {
-                    return true;
-                }
+                if (!is_dir($dir)) mkdir($dir, 0755, true);
+                if (file_put_contents($outputPath, $imageData) !== false) return true;
             }
         } catch (Exception $e) {
             Logger::log('app', 'Error generando avatar default: ' . $e->getMessage(), ['path' => $outputPath], 'ERROR');
         }
-
         return false;
+    }
+
+    // =========================================================
+    // NUEVAS FUNCIONES CENTRALIZADAS
+    // =========================================================
+
+    /**
+     * Verifica si se ha excedido el límite de seguridad (Rate Limit).
+     * Soporta Redis y MySQL como fallback.
+     */
+    public static function checkSecurityLimit($pdo, $actionType, $limit, $minutes, $identifier = '') {
+        $ip = self::getClientIp();
+
+        if (self::$redisInstance) {
+            try {
+                $ipKey = "rate_limit:{$actionType}:ip:{$ip}";
+                // Si identifier es numérico (ID de usuario) o string (email), creamos una clave específica
+                $userKey = $identifier ? "rate_limit:{$actionType}:user:{$identifier}" : null;
+
+                $ipCount = self::$redisInstance->get($ipKey);
+                if ($ipCount && (int)$ipCount >= $limit) return true;
+
+                if ($userKey) {
+                    $userCount = self::$redisInstance->get($userKey);
+                    if ($userCount && (int)$userCount >= $limit) return true;
+                }
+                return false; // Redis check passed
+            } catch (Exception $e) {
+                // Fallback a SQL si Redis falla
+                error_log("Redis checkSecurityLimit Error: " . $e->getMessage());
+            }
+        }
+
+        // Fallback SQL
+        $sql = "SELECT COUNT(*) as failures FROM security_logs WHERE (ip_address = ? OR user_identifier = ?) AND action_type = ? AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$ip, $identifier, $actionType]);
+        $result = $stmt->fetch();
+        return ($result && $result['failures'] >= $limit);
+    }
+
+    /**
+     * Registra un evento de seguridad y actualiza los contadores de Rate Limit.
+     */
+    public static function logSecurityAction($pdo, $actionType, $minutes = 15, $identifier = null) {
+        $ip = self::getClientIp();
+        
+        try {
+            // Log en Base de Datos
+            $sql = "INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)";
+            $stmt = $pdo->prepare($sql);
+            // Si no hay identificador (ej: email/ID), guardamos 'Anonymous' o NULL según lógica de negocio,
+            // pero para compatibilidad usamos el ID si existe.
+            $logId = $identifier ?? 'Anonymous';
+            $stmt->execute([$logId, $actionType, $ip]);
+        } catch (Exception $e) { 
+            error_log("DB logSecurityAction Error: " . $e->getMessage());
+        }
+
+        // Actualizar Contadores Redis
+        if (self::$redisInstance) {
+            $ipKey = "rate_limit:{$actionType}:ip:{$ip}";
+            $userKey = $identifier ? "rate_limit:{$actionType}:user:{$identifier}" : null;
+
+            self::incrementRedisCounter($ipKey, $minutes);
+            if ($userKey) {
+                self::incrementRedisCounter($userKey, $minutes);
+            }
+        }
+    }
+
+    private static function incrementRedisCounter($key, $minutes) {
+        if (!self::$redisInstance) return;
+        try {
+            $current = self::$redisInstance->incr($key);
+            if ($current === 1) {
+                self::$redisInstance->expire($key, $minutes * 60);
+            }
+        } catch (Exception $e) {
+            error_log("Redis RateLimit Error (INCR): " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Analiza el User Agent para obtener Plataforma y Navegador.
+     */
+    public static function parseUserAgent($ua) {
+        $platform = 'Desconocido'; 
+        $browser = 'Desconocido';
+        
+        if (preg_match('/windows|win32/i', $ua)) $platform = 'Windows';
+        elseif (preg_match('/macintosh|mac os x/i', $ua)) $platform = 'Mac OS';
+        elseif (preg_match('/linux/i', $ua)) $platform = 'Linux';
+        elseif (preg_match('/android/i', $ua)) $platform = 'Android';
+        elseif (preg_match('/iphone|ipad|ipod/i', $ua)) $platform = 'iOS';
+        
+        if (preg_match('/MSIE|Trident/i', $ua)) $browser = 'Internet Explorer';
+        elseif (preg_match('/Firefox/i', $ua)) $browser = 'Firefox';
+        elseif (preg_match('/Chrome/i', $ua)) $browser = 'Chrome';
+        elseif (preg_match('/Safari/i', $ua)) $browser = 'Safari';
+        elseif (preg_match('/Opera|OPR/i', $ua)) $browser = 'Opera';
+        elseif (preg_match('/Edge/i', $ua)) $browser = 'Edge';
+        
+        return ['platform' => $platform, 'browser' => $browser];
+    }
+
+    /**
+     * Envía una notificación al servidor WebSocket mediante Redis Pub/Sub.
+     */
+    public static function notifyWebSocket($type, $payload = []) {
+        if (!self::$redisInstance) return false;
+        
+        try {
+            $msg = array_merge(['cmd' => $type], $payload);
+            self::$redisInstance->publish('aurora_ws_control', json_encode($msg));
+            return true;
+        } catch (Exception $e) {
+            error_log("Error publicando en Redis (WS Notify): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Formatea bytes a tamaño legible por humanos.
+     */
+    public static function formatSize($bytes) {
+        if ($bytes >= 1073741824) return number_format($bytes / 1073741824, 2) . ' GB';
+        if ($bytes >= 1048576) return number_format($bytes / 1048576, 2) . ' MB';
+        if ($bytes >= 1024) return number_format($bytes / 1024, 2) . ' KB';
+        return $bytes . ' bytes';
     }
 }
 ?>

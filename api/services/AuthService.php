@@ -4,26 +4,23 @@
 use Google\Authenticator\GoogleAuthenticator;
 
 require_once __DIR__ . '/../../includes/libs/MailService.php';
-require_once __DIR__ . '/../../includes/libs/Utils.php'; // Aseguramos que Utils esté incluido
-require_once __DIR__ . '/../../includes/libs/EmailTemplates.php'; // Importamos las plantillas
+require_once __DIR__ . '/../../includes/libs/Utils.php'; 
+require_once __DIR__ . '/../../includes/libs/EmailTemplates.php';
 
 class AuthService {
     private $pdo;
     private $i18n;
-    private $redis; // Propiedad Redis
+    private $redis; 
     private $turnstileSecret;
 
-    // Constructor con inyección de Redis
     public function __construct($pdo, $i18n, $redis) {
         $this->pdo = $pdo;
         $this->i18n = $i18n;
         $this->redis = $redis;
         
-        // [SEGURIDAD] Zero Fallback: Obtener clave real estrictamente.
         $secret = $_ENV['TURNSTILE_SECRET_KEY'] ?? getenv('TURNSTILE_SECRET_KEY');
         
         if (empty($secret)) {
-            // Detener ejecución si no hay clave secreta configurada.
             error_log("CRITICAL ERROR: TURNSTILE_SECRET_KEY no está configurada en el entorno.");
             throw new Exception("Error crítico de seguridad: Falta configuración de Turnstile.");
         }
@@ -39,20 +36,16 @@ class AuthService {
         return ['success' => true];
     }
 
-    // [NUEVO] Obtener estado del cooldown de registro
     public function getRegistrationStatus($email) {
         if (empty($email)) return ['success' => false];
 
-        // Misma clave de cooldown usada en initiateVerification
         $cooldownKey = "verify:cooldown:activation:{$email}";
         
-        // Consultar tiempo restante en Redis
         $ttl = 0;
         if ($this->redis) {
             $ttl = $this->redis->ttl($cooldownKey);
         }
 
-        // Si ttl es -2 (no existe) o -1 (infinito), lo tratamos como 0
         if ($ttl < 0) $ttl = 0;
 
         return [
@@ -73,12 +66,13 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_register_max_attempts', '10');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        // Verificación optimizada con Redis
-        if ($this->checkSecurityBlock('register_attempt', $limit, $duration)) {
+        // [REFACTOR] Usando Utils para Rate Limit
+        if (Utils::checkSecurityLimit($this->pdo, 'register_attempt', $limit, $duration)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
         
-        $this->logSecurityEvent($email, 'register_attempt', $duration);
+        // [REFACTOR] Usando Utils para Log
+        Utils::logSecurityAction($this->pdo, 'register_attempt', $duration, $email);
 
         if (empty($email) || empty($password)) {
             return ['success' => false, 'message' => $this->i18n->t('api.fill_all')];
@@ -135,8 +129,8 @@ class AuthService {
         
         $email = $_SESSION['temp_register']['email'];
         
-        // Bloqueo general de seguridad
-        if ($this->checkSecurityBlock('register_code_req', 3, 15, $email)) {
+        // [REFACTOR] Usando Utils
+        if (Utils::checkSecurityLimit($this->pdo, 'register_code_req', 3, 15, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
 
@@ -159,8 +153,6 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.user_taken')];
         }
 
-        // [MODIFICADO] Verificación de Cooldown (60s) usando Redis
-        // Clave: verify:cooldown:activation:{email}
         $cooldownKey = "verify:cooldown:activation:{$email}";
         if ($this->redis->exists($cooldownKey)) {
             return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
@@ -170,35 +162,28 @@ class AuthService {
         
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
         
-        // Datos a guardar en Redis
         $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
         $payload = json_encode([
             'username' => $username,
             'email' => $email,
             'password_hash' => $passwordHash,
-            'code' => $code // Guardamos el código dentro del JSON para validarlo luego
+            'code' => $code 
         ]);
 
         $expiryMinutes = (int)Utils::getServerConfig($this->pdo, 'auth_verification_code_expiry', '15');
         
-        // Clave principal: verify:activation:{email}
         $mainKey = "verify:activation:{$email}";
 
         try {
-            // 1. Guardar datos principales (Expiran en X minutos)
             $this->redis->setex($mainKey, $expiryMinutes * 60, $payload);
-            
-            // 2. Establecer Cooldown (Expira en 60 segundos)
             $this->redis->setex($cooldownKey, 60, '1');
             
-            // Log de seguridad
-            $this->logSecurityEvent($email, 'register_code_req', 15);
+            // [REFACTOR] Usando Utils
+            Utils::logSecurityAction($this->pdo, 'register_code_req', 15, $email);
 
             $_SESSION['pending_verification_email'] = $email;
 
             $subject = "Verifica tu cuenta - Project Aurora";
-            
-            // [MODIFICADO] Uso de EmailTemplates
             $body = EmailTemplates::verificationCode($username, $code, $expiryMinutes);
 
             $emailResult = MailService::send($email, $subject, $body);
@@ -213,7 +198,6 @@ class AuthService {
                 'next_url' => 'register/verification-account'
             ]; 
         } catch (Exception $e) {
-            // [CORRECCIÓN SEGURIDAD] Log interno y mensaje genérico
             Logger::app('Auth Error (initVerify)', ['error' => $e->getMessage()]);
             return ['success' => false, 'message' => $this->i18n->t('api.internal_error')];
         }
@@ -229,18 +213,16 @@ class AuthService {
         $configCheck = $this->checkRegistrationStatus();
         if (!$configCheck['success']) return $configCheck;
         
-        // Check de seguridad general (intentos excesivos)
-        if ($this->checkSecurityBlock('resend_code_req', 3, 10, $email)) {
+        // [REFACTOR] Usando Utils
+        if (Utils::checkSecurityLimit($this->pdo, 'resend_code_req', 3, 10, $email)) {
              return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
 
-        // [MODIFICADO] Check de Cooldown en Redis
         $cooldownKey = "verify:cooldown:activation:{$email}";
         if ($this->redis->exists($cooldownKey)) {
             return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
 
-        // [MODIFICADO] Obtener datos anteriores desde Redis
         $mainKey = "verify:activation:{$email}";
         $existingDataJson = $this->redis->get($mainKey);
 
@@ -250,22 +232,18 @@ class AuthService {
 
         $data = json_decode($existingDataJson, true);
         
-        // Generar nuevo código
         $newCode = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
-        $data['code'] = $newCode; // Actualizar código en el payload
+        $data['code'] = $newCode; 
         
         $expiryMinutes = (int)Utils::getServerConfig($this->pdo, 'auth_verification_code_expiry', '15');
 
         try {
-            // Actualizar Redis (Resetea el TTL a 15 min)
             $this->redis->setex($mainKey, $expiryMinutes * 60, json_encode($data));
-            
-            // Poner nuevo cooldown
             $this->redis->setex($cooldownKey, 60, '1');
             
-            $this->logSecurityEvent($email, 'resend_code_req', 10);
+            // [REFACTOR] Usando Utils
+            Utils::logSecurityAction($this->pdo, 'resend_code_req', 10, $email);
 
-            // [MODIFICADO] Recuperar nombre de usuario y usar template
             $username = $data['username'] ?? 'Usuario';
             $subject = "Nuevo código de verificación - Project Aurora";
             $body = EmailTemplates::verificationCode($username, $newCode, $expiryMinutes);
@@ -274,7 +252,6 @@ class AuthService {
             
             return ['success' => true, 'message' => $this->i18n->t('api.code_generated')];
         } catch (Exception $e) {
-            // [CORRECCIÓN SEGURIDAD] Log interno y mensaje genérico
             Logger::app('Auth Error (resendCode)', ['error' => $e->getMessage()]);
             return ['success' => false, 'message' => $this->i18n->t('api.code_save_error')];
         }
@@ -293,48 +270,42 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5'); 
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        if ($this->checkSecurityBlock('register_verify_fail', $limit, $duration, $email)) {
+        // [REFACTOR] Usando Utils
+        if (Utils::checkSecurityLimit($this->pdo, 'register_verify_fail', $limit, $duration, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
 
-        // [MODIFICADO] Validar código contra Redis
         $mainKey = "verify:activation:{$email}";
         $dataJson = $this->redis->get($mainKey);
 
         if (!$dataJson) {
-            $this->logSecurityEvent($email, 'register_verify_fail', $duration);
+            // [REFACTOR] Usando Utils
+            Utils::logSecurityAction($this->pdo, 'register_verify_fail', $duration, $email);
             return ['success' => false, 'message' => $this->i18n->t('api.code_invalid_expired')];
         }
 
         $data = json_decode($dataJson, true);
         $storedCode = $data['code'] ?? '';
 
-        // Comparación estricta
         if ($storedCode !== $code) {
-            $this->logSecurityEvent($email, 'register_verify_fail', $duration);
+            // [REFACTOR] Usando Utils
+            Utils::logSecurityAction($this->pdo, 'register_verify_fail', $duration, $email);
             return ['success' => false, 'message' => $this->i18n->t('api.code_invalid')];
         }
 
-        // Extraer datos para crear usuario
         $username = $data['username'];
         $passwordHash = $data['password_hash']; 
-        $uuid = $this->generateUuid();
+        
+        // [REFACTOR] Usando Utils
+        $uuid = Utils::generateUUID();
 
-        // -----------------------------------------------------
-        // [MODIFICADO] Integración de Utils::generateDefaultProfilePicture
-        // -----------------------------------------------------
         $fileName = $uuid . '.png';
-        // Ruta relativa para la BD
         $dbPath = 'storage/profilePicture/default/' . $fileName;
-        // Ruta absoluta para guardar el archivo
         $absolutePath = __DIR__ . '/../../' . $dbPath;
 
-        // Intentamos generar el avatar con los colores permitidos definidos en Utils
+        // [REFACTOR] Usando Utils
         $avatarGenerated = Utils::generateDefaultProfilePicture($username, $absolutePath);
-        
-        // Si se generó correctamente, guardamos la ruta, si no, null
         $dbAvatarPath = $avatarGenerated ? $dbPath : null;
-        // -----------------------------------------------------
 
         $this->pdo->beginTransaction();
         try {
@@ -346,7 +317,6 @@ class AuthService {
             $prefStmt = $this->pdo->prepare("INSERT INTO user_preferences (user_id, language, open_links_new_tab, theme, extended_toast) VALUES (?, ?, 1, 'sync', 0)");
             $prefStmt->execute([$newUserId, $detectedLang]);
 
-            // [MODIFICADO] Eliminar datos de Redis tras éxito
             $this->redis->del($mainKey);
             $this->redis->del("verify:cooldown:activation:{$email}");
 
@@ -374,7 +344,6 @@ class AuthService {
 
         } catch (Exception $e) {
             $this->pdo->rollBack();
-            // [CORRECCIÓN SEGURIDAD] Log interno y mensaje genérico
             Logger::app('Auth Error (completeRegister)', ['error' => $e->getMessage()]);
             return ['success' => false, 'message' => $this->i18n->t('api.db_error')];
         }
@@ -389,7 +358,8 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        if ($this->checkSecurityBlock('login_fail', $limit, $duration, $email)) {
+        // [REFACTOR] Usando Utils
+        if (Utils::checkSecurityLimit($this->pdo, 'login_fail', $limit, $duration, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
 
@@ -432,7 +402,8 @@ class AuthService {
 
             return $this->completeLogin($user);
         } else {
-            $this->logSecurityEvent($email, 'login_fail', $duration);
+            // [REFACTOR] Usando Utils
+            Utils::logSecurityAction($this->pdo, 'login_fail', $duration, $email);
             return ['success' => false, 'message' => $this->i18n->t('api.credentials_invalid')];
         }
     }
@@ -447,7 +418,8 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
         
-        if ($this->checkSecurityBlock('2fa_login_fail', $limit, $duration, "user:$userId")) {
+        // [REFACTOR] Usando Utils
+        if (Utils::checkSecurityLimit($this->pdo, '2fa_login_fail', $limit, $duration, "user:$userId")) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
 
@@ -504,7 +476,8 @@ class AuthService {
             unset($_SESSION['2fa_pending_user_id']);
             return $this->completeLogin($user);
         } else {
-            $this->logSecurityEvent("user:$userId", '2fa_login_fail', $duration);
+            // [REFACTOR] Usando Utils
+            Utils::logSecurityAction($this->pdo, '2fa_login_fail', $duration, "user:$userId");
             return ['success' => false, 'message' => $this->i18n->t('api.code_invalid')];
         }
     }
@@ -517,11 +490,12 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        if ($this->checkSecurityBlock('recovery_fail', $limit, $duration, $email)) {
+        // [REFACTOR] Usando Utils
+        if (Utils::checkSecurityLimit($this->pdo, 'recovery_fail', $limit, $duration, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.recovery_limit')];
         }
 
-        if ($this->checkSecurityBlock('recovery_success', $limit, 60)) {
+        if (Utils::checkSecurityLimit($this->pdo, 'recovery_success', $limit, 60, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.recovery_limit')];
         }
 
@@ -529,7 +503,8 @@ class AuthService {
         $stmt->execute([$email]);
         
         if (!$stmt->fetch()) {
-            $this->logSecurityEvent($email, 'recovery_fail', $duration);
+            // [REFACTOR] Usando Utils
+            Utils::logSecurityAction($this->pdo, 'recovery_fail', $duration, $email);
             return ['success' => false, 'message' => $this->i18n->t('api.email_not_found')];
         }
 
@@ -550,13 +525,12 @@ class AuthService {
         try {
             $this->pdo->prepare($sql)->execute([$email, $token, $expiresAt]);
             
-            $this->logSecurityEvent($email, 'recovery_success', 60);
+            // [REFACTOR] Usando Utils
+            Utils::logSecurityAction($this->pdo, 'recovery_success', 60, $email);
 
             $resetLink = "https://tudominio.com/ProjectAurora/reset-password?token=" . $token; 
             
             $subject = "Recuperar contraseña - Project Aurora";
-            
-            // [MODIFICADO] Uso de EmailTemplates
             $body = EmailTemplates::passwordReset($resetLink, $expiryMinutes);
             
             MailService::send($email, $subject, $body);
@@ -566,7 +540,6 @@ class AuthService {
                 'message_user' => $this->i18n->t('api.message_email_sent')
             ];
         } catch (Exception $e) {
-            // [CORRECCIÓN SEGURIDAD] Log interno y mensaje genérico
             Logger::app('Auth Error (requestReset)', ['error' => $e->getMessage()]);
             return ['success' => false, 'message' => $this->i18n->t('api.internal_error')];
         }
@@ -604,21 +577,18 @@ class AuthService {
             $stmtUser->execute([$email]);
             $uData = $stmtUser->fetch();
             if($uData) {
-                // Borrar tokens de persistencia
                 $this->pdo->prepare("DELETE FROM user_auth_tokens WHERE user_id = ?")->execute([$uData['id']]);
                 
-                // [IMPORTANTE] Desconectar websockets activos
-                $this->redis->publish('aurora_ws_control', json_encode([
-                    'cmd' => 'KICK_ALL',
+                // [REFACTOR] Usando Utils para WebSockets
+                Utils::notifyWebSocket('KICK_ALL', [
                     'user_id' => $uData['id']
-                ]));
+                ]);
             }
 
             $this->pdo->commit();
             return ['success' => true, 'message' => $this->i18n->t('api.pass_updated'), 'redirect' => '/ProjectAurora/login'];
         } catch (Exception $e) {
             $this->pdo->rollBack();
-            // [CORRECCIÓN SEGURIDAD] Log interno y mensaje genérico
             Logger::app('Auth Error (resetPassword)', ['error' => $e->getMessage()]);
             return ['success' => false, 'message' => $this->i18n->t('api.update_error')];
         }
@@ -634,13 +604,12 @@ class AuthService {
             }
         }
         
-        // [MODIFICADO] Usar comando específico para Logout Manual
+        // [REFACTOR] Usando Utils para WebSockets
         if (isset($_SESSION['user_id']) && isset($_SESSION['current_token_id'])) {
-             $this->redis->publish('aurora_ws_control', json_encode([
-                'cmd' => 'LOGOUT_SESSION', // Antes KICK_SESSION
+             Utils::notifyWebSocket('LOGOUT_SESSION', [
                 'user_id' => $_SESSION['user_id'],
                 'session_id' => $_SESSION['current_token_id']
-            ]));
+            ]);
         }
 
         setcookie('auth_persistence_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
@@ -691,85 +660,12 @@ class AuthService {
         }
     }
 
-    // =========================================================
-    // NUEVA LÓGICA DE RATE LIMITING (HÍBRIDO REDIS/SQL)
-    // =========================================================
-
-    private function incrementRedisCounter($key, $minutes) {
-        if (!$this->redis) return;
-        try {
-            $current = $this->redis->incr($key);
-            if ($current === 1) {
-                $this->redis->expire($key, $minutes * 60);
-            }
-        } catch (Exception $e) {
-            error_log("Redis RateLimit Error (INCR): " . $e->getMessage());
-        }
-    }
-
-    private function checkSecurityBlock($actionType, $limit, $minutes, $identifier = '') {
-        if (!$this->redis) {
-            return $this->checkSecurityBlockSQL($actionType, $limit, $minutes, $identifier);
-        }
-
-        // [MODIFICADO] Usar Utils::getClientIp
-        $ip = Utils::getClientIp();
-        $ipKey = "rate_limit:{$actionType}:ip:{$ip}";
-        $userKey = $identifier ? "rate_limit:{$actionType}:user:{$identifier}" : null;
-
-        try {
-            $ipCount = $this->redis->get($ipKey);
-            if ($ipCount && (int)$ipCount >= $limit) return true;
-
-            if ($userKey) {
-                $userCount = $this->redis->get($userKey);
-                if ($userCount && (int)$userCount >= $limit) return true;
-            }
-        } catch (Exception $e) {
-            return $this->checkSecurityBlockSQL($actionType, $limit, $minutes, $identifier);
-        }
-
-        return false;
-    }
-
-    private function logSecurityEvent($identifier, $actionType, $minutes = 15) {
-        // [MODIFICADO] Usar Utils::getClientIp
-        $ip = Utils::getClientIp();
-        
-        try {
-            $stmt = $this->pdo->prepare("INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)");
-            $stmt->execute([$identifier, $actionType, $ip]);
-        } catch (Exception $e) {
-            error_log("Audit Log Error: " . $e->getMessage());
-        }
-
-        $ipKey = "rate_limit:{$actionType}:ip:{$ip}";
-        $userKey = $identifier ? "rate_limit:{$actionType}:user:{$identifier}" : null;
-
-        $this->incrementRedisCounter($ipKey, $minutes);
-        if ($userKey) {
-            $this->incrementRedisCounter($userKey, $minutes);
-        }
-    }
-
-    private function checkSecurityBlockSQL($actionType, $limit, $minutes, $identifier = '') {
-        // [MODIFICADO] Usar Utils::getClientIp
-        $ip = Utils::getClientIp();
-        $sql = "SELECT COUNT(*) as failures FROM security_logs WHERE (ip_address = ? OR user_identifier = ?) AND action_type = ? AND created_at > (NOW() - INTERVAL $minutes MINUTE)";     
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$ip, $identifier, $actionType]);
-        $result = $stmt->fetch();
-        return ($result && $result['failures'] >= $limit);
-    }
-
-    // =========================================================
-
     private function verifyTurnstile($token) {
         if (empty($token)) return ['success' => false, 'message' => 'Por favor completa el captcha.'];
 
         $url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
         
-        // [MODIFICADO] Usar Utils::getClientIp
+        // [REFACTOR] Usando Utils
         $ip = Utils::getClientIp();
 
         $data = [
@@ -795,14 +691,6 @@ class AuthService {
 
         if ($response['success']) return ['success' => true];
         else return ['success' => false, 'message' => 'Validación fallida. Inténtalo de nuevo.'];
-    }
-
-    private function generateUuid() {
-        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff),
-            mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000,
-            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
-        );
     }
 
     private function getBestMatchLanguage() {
@@ -838,7 +726,7 @@ class AuthService {
         $hashedValidator = hash('sha256', $validator);
         $expiresAt = date('Y-m-d H:i:s', time() + (86400 * 30)); 
         
-        // [MODIFICADO] Usar Utils::getClientIp
+        // [REFACTOR] Usando Utils
         $ip = Utils::getClientIp();
         
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';

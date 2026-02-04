@@ -4,8 +4,8 @@
 use Google\Authenticator\GoogleAuthenticator;
 
 require_once __DIR__ . '/../../includes/libs/MailService.php';
-require_once __DIR__ . '/../../includes/libs/Utils.php'; // Aseguramos inclusión de Utils
-require_once __DIR__ . '/../../includes/libs/EmailTemplates.php'; // [NUEVO] Importamos las plantillas
+require_once __DIR__ . '/../../includes/libs/Utils.php'; 
+require_once __DIR__ . '/../../includes/libs/EmailTemplates.php';
 
 class SettingsService {
     private $pdo;
@@ -91,16 +91,12 @@ class SettingsService {
         
         $oldPath = $currentUser['avatar_path'];
         $username = $currentUser['username'];
-        $uuid = $currentUser['uuid']; // Usamos el UUID para el nombre del archivo
+        $uuid = $currentUser['uuid']; 
 
-        // -----------------------------------------------------
-        // [MODIFICADO] Usar Utils::generateDefaultProfilePicture
-        // -----------------------------------------------------
         $newFileName = $uuid . '-' . time() . '.png';
         $dbPath = 'storage/profilePicture/default/' . $newFileName;
         $absolutePath = __DIR__ . '/../../' . $dbPath;
 
-        // Llamamos a la función centralizada que usa la nueva paleta de colores
         if (Utils::generateDefaultProfilePicture($username, $absolutePath)) {
             
             $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
@@ -110,8 +106,6 @@ class SettingsService {
                 $this->deleteOldAvatar($oldPath);
                 $_SESSION['avatar'] = $dbPath;
                 
-                // Leemos la imagen generada para enviarla al frontend en Base64
-                // Esto asegura que la UI se actualice inmediatamente sin recargar
                 $imageContent = file_get_contents($absolutePath);
                 $base64Image = 'data:image/png;base64,' . base64_encode($imageContent);
                 
@@ -132,23 +126,18 @@ class SettingsService {
         $stmt->execute([$this->userId]);
         $email = $stmt->fetchColumn();
 
-        // Definir ambas claves
-        $mainKey = "verify:email_update:{$email}";        // Dura 15 min (la que contiene el código)
-        $cooldownKey = "verify:cooldown:email_update:{$email}"; // Dura 60 seg (el bloqueo)
+        $mainKey = "verify:email_update:{$email}";
+        $cooldownKey = "verify:cooldown:email_update:{$email}"; 
 
-        // [CORRECCIÓN] Verificar primero si existe el proceso activo (Main Key)
         if ($this->redis->exists($mainKey)) {
-            // Si existe el proceso, verificamos cuánto le queda al cooldown
             $ttl = $this->redis->ttl($cooldownKey);
-
             return [
                 'success' => true, 
-                'status' => 'pending_code', // Decimos que YA hay un código pendiente
+                'status' => 'pending_code', 
                 'cooldown' => ($ttl > 0) ? $ttl : 0
             ];
         }
 
-        // Si no existe la Main Key, entonces realmente no hay nada activo
         return ['success' => true, 'status' => 'none'];
     }
 
@@ -165,7 +154,6 @@ class SettingsService {
         $currentEmail = $user['email'];
         $username = $user['username'];
 
-        // [MODIFICADO] Verificar clave principal en Redis
         $mainKey = "verify:email_update:{$currentEmail}";
         
         if (!$forceResend) {
@@ -176,11 +164,11 @@ class SettingsService {
 
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_general_rate_limit', '10');
         
-        if ($this->checkSecurityLimit('email_change_req', 3, 10)) {
+        // [REFACTOR] Usando Utils
+        if (Utils::checkSecurityLimit($this->pdo, 'email_change_req', 3, 10, $this->userId)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
 
-        // [MODIFICADO] Verificar Cooldown en Redis
         $cooldownKey = "verify:cooldown:email_update:{$currentEmail}";
         if ($this->redis->exists($cooldownKey)) {
             return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
@@ -189,21 +177,16 @@ class SettingsService {
         $code = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
         $expiryMinutes = (int)Utils::getServerConfig($this->pdo, 'auth_verification_code_expiry', '15');
         
-        // Payload simple (solo código, pues el email es la clave)
         $payload = json_encode(['code' => $code]);
 
         try {
-            // Guardar en Redis (15 min de validez)
             $this->redis->setex($mainKey, $expiryMinutes * 60, $payload);
-            
-            // Establecer Cooldown (60s)
             $this->redis->setex($cooldownKey, 60, '1');
             
-            $this->logSecurityAction('email_change_req', 10);
+            // [REFACTOR] Usando Utils
+            Utils::logSecurityAction($this->pdo, 'email_change_req', 10, $this->userId);
 
             $subject = "Verifica tu identidad - Project Aurora";
-            
-            // [MODIFICADO] Uso de EmailTemplates::emailChangeVerification
             $body = EmailTemplates::emailChangeVerification($username, $code, $expiryMinutes);
             
             MailService::send($currentEmail, $subject, $body);
@@ -221,7 +204,6 @@ class SettingsService {
         $stmtEmail->execute([$this->userId]);
         $currentEmail = $stmtEmail->fetchColumn();
 
-        // [MODIFICADO] Validar contra Redis
         $mainKey = "verify:email_update:{$currentEmail}";
         $dataJson = $this->redis->get($mainKey);
 
@@ -230,7 +212,6 @@ class SettingsService {
             if ($data['code'] === $code) {
                 $_SESSION['email_change_auth'] = time() + 300;
                 
-                // Borrar clave tras éxito
                 $this->redis->del($mainKey);
                 $this->redis->del("verify:cooldown:email_update:{$currentEmail}");
                 
@@ -298,7 +279,6 @@ class SettingsService {
 
             return ['success' => true, 'message' => $this->i18n->t('api.field_updated')];
         } catch (Exception $e) {
-            // [CORRECCIÓN SEGURIDAD] Log interno y mensaje genérico
             Logger::app('Settings Error (updateProfile)', ['error' => $e->getMessage()]);
             return ['success' => false, 'message' => $this->i18n->t('api.update_error')];
         }
@@ -308,7 +288,8 @@ class SettingsService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
         
-        if ($this->checkSecurityLimit('password_verify_fail', $limit, $duration)) {
+        // [REFACTOR] Usando Utils
+        if (Utils::checkSecurityLimit($this->pdo, 'password_verify_fail', $limit, $duration, $this->userId)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
         if (empty($currentPass)) return ['success' => false, 'message' => $this->i18n->t('api.pass_current_req')];
@@ -321,7 +302,8 @@ class SettingsService {
             return ['success' => true, 'message' => $this->i18n->t('api.pass_correct')];
         }
         
-        $this->logSecurityAction('password_verify_fail', $duration);
+        // [REFACTOR] Usando Utils
+        Utils::logSecurityAction($this->pdo, 'password_verify_fail', $duration, $this->userId);
         return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
     }
 
@@ -329,7 +311,8 @@ class SettingsService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
         
-        if ($this->checkSecurityLimit('password_verify_fail', $limit, $duration)) {
+        // [REFACTOR] Usando Utils
+        if (Utils::checkSecurityLimit($this->pdo, 'password_verify_fail', $limit, $duration, $this->userId)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
         if (empty($currentPass) || empty($newPass)) return ['success' => false, 'message' => $this->i18n->t('api.missing_data')];
@@ -344,7 +327,8 @@ class SettingsService {
         $user = $stmt->fetch();
         
         if (!$user || !password_verify($currentPass, $user['password'])) {
-            $this->logSecurityAction('password_verify_fail', $duration);
+            // [REFACTOR] Usando Utils
+            Utils::logSecurityAction($this->pdo, 'password_verify_fail', $duration, $this->userId);
             return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
         }
         
@@ -362,7 +346,8 @@ class SettingsService {
     public function updatePreference($key, $value) {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_general_rate_limit', '10');
         
-        if ($this->checkSecurityLimit('pref_update', $limit, 1)) {
+        // [REFACTOR] Usando Utils
+        if (Utils::checkSecurityLimit($this->pdo, 'pref_update', $limit, 1, $this->userId)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
         $allowedKeys = ['language', 'open_links_new_tab', 'theme', 'extended_toast'];
@@ -400,18 +385,19 @@ class SettingsService {
             if (!isset($_SESSION['preferences'])) $_SESSION['preferences'] = [];
             $_SESSION['preferences'][$key] = ($key === 'open_links_new_tab' || $key === 'extended_toast') ? (bool)$dbValue : $dbValue;
 
-            $this->logSecurityAction('pref_update', 1); 
+            // [REFACTOR] Usando Utils
+            Utils::logSecurityAction($this->pdo, 'pref_update', 1, $this->userId); 
 
             return ['success' => true, 'message' => $this->i18n->t('api.pref_saved')];
         } catch (Exception $e) {
-            // [CORRECCIÓN SEGURIDAD] Log interno y mensaje genérico
             Logger::app('Settings Error (updatePreference)', ['error' => $e->getMessage()]);
             return ['success' => false, 'message' => $this->i18n->t('api.pref_save_error')];
         }
     }
 
     public function init2fa() {
-        if ($this->checkSecurityLimit('2fa_init_attempt', 10, 60)) {
+        // [REFACTOR] Usando Utils
+        if (Utils::checkSecurityLimit($this->pdo, '2fa_init_attempt', 10, 60, $this->userId)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
 
@@ -427,7 +413,8 @@ class SettingsService {
 
         $otpauthUrl = "otpauth://totp/{$encodedIssuer}:{$encodedUser}?secret={$secret}&issuer={$encodedIssuer}";
 
-        $this->logSecurityAction('2fa_init_attempt', 60);
+        // [REFACTOR] Usando Utils
+        Utils::logSecurityAction($this->pdo, '2fa_init_attempt', 60, $this->userId);
         
         return ['success' => true, 'message' => $this->i18n->t('api.qr_scan'), 'otpauth_url' => $otpauthUrl, 'secret' => $secret];
     }
@@ -436,7 +423,8 @@ class SettingsService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        if ($this->checkSecurityLimit('2fa_verify_attempt', $limit, $duration)) {
+        // [REFACTOR] Usando Utils
+        if (Utils::checkSecurityLimit($this->pdo, '2fa_verify_attempt', $limit, $duration, $this->userId)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
         if (!isset($_SESSION['temp_2fa_secret'])) return ['success' => false, 'message' => $this->i18n->t('api.session_config_expired')];
@@ -462,7 +450,8 @@ class SettingsService {
             return ['success' => false, 'message' => $this->i18n->t('api.pic_db_error')];
         }
         
-        $this->logSecurityAction('2fa_verify_attempt', $duration);
+        // [REFACTOR] Usando Utils
+        Utils::logSecurityAction($this->pdo, '2fa_verify_attempt', $duration, $this->userId);
         return ['success' => false, 'message' => $this->i18n->t('api.code_invalid')];
     }
 
@@ -494,7 +483,8 @@ class SettingsService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        if ($this->checkSecurityLimit('2fa_regen_codes', 3, $duration)) {
+        // [REFACTOR] Usando Utils
+        if (Utils::checkSecurityLimit($this->pdo, '2fa_regen_codes', 3, $duration, $this->userId)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
         if (empty($password)) return ['success' => false, 'message' => $this->i18n->t('api.pass_req_confirm')];
@@ -502,7 +492,8 @@ class SettingsService {
         $stmt->execute([$this->userId]);
         $user = $stmt->fetch();
         if (!$user || !password_verify($password, $user['password'])) {
-            $this->logSecurityAction('2fa_regen_codes_fail', $duration);
+            // [REFACTOR] Usando Utils
+            Utils::logSecurityAction($this->pdo, '2fa_regen_codes_fail', $duration, $this->userId);
             return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
         }
         $recoveryCodes = []; 
@@ -515,7 +506,8 @@ class SettingsService {
         $jsonCodes = json_encode($hashedCodes);
         $update = $this->pdo->prepare("UPDATE users SET two_factor_recovery_codes = ? WHERE id = ?");
         if ($update->execute([$jsonCodes, $this->userId])) {
-            $this->logSecurityAction('2fa_regen_codes', $duration);
+            // [REFACTOR] Usando Utils
+            Utils::logSecurityAction($this->pdo, '2fa_regen_codes', $duration, $this->userId);
             return ['success' => true, 'message' => $this->i18n->t('api.recovery_regenerated'), 'recovery_codes' => $recoveryCodes];
         } else {
              return ['success' => false, 'message' => $this->i18n->t('api.db_error')];
@@ -533,7 +525,8 @@ class SettingsService {
         }
         $formatted = [];
         foreach($sessions as $s) {
-            $info = $this->parseUserAgent($s['user_agent'] ?? '');
+            // [REFACTOR] Usando Utils
+            $info = Utils::parseUserAgent($s['user_agent'] ?? '');
             $isCurrent = ($s['selector'] === $currentSelector);
             $formatted[] = [
                 'id' => $s['id'],
@@ -553,11 +546,11 @@ class SettingsService {
         $stmt->execute([$tokenId, $this->userId]);
         
         if ($stmt->rowCount() > 0) {
-            $this->redis->publish('aurora_ws_control', json_encode([
-                'cmd' => 'KICK_SESSION',
+            // [REFACTOR] Usando Utils
+            Utils::notifyWebSocket('KICK_SESSION', [
                 'user_id' => $this->userId,
                 'session_id' => $tokenId
-            ]));
+            ]);
             
             return ['success' => true, 'message' => $this->i18n->t('api.session_revoked')];
         }
@@ -569,10 +562,10 @@ class SettingsService {
         $stmt->execute([$this->userId]);
         setcookie('auth_persistence_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
         
-        $this->redis->publish('aurora_ws_control', json_encode([
-            'cmd' => 'KICK_ALL',
+        // [REFACTOR] Usando Utils
+        Utils::notifyWebSocket('KICK_ALL', [
             'user_id' => $this->userId
-        ]));
+        ]);
 
         return ['success' => true, 'message' => $this->i18n->t('api.all_sessions_revoked'), 'logout' => true];
     }
@@ -581,7 +574,8 @@ class SettingsService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        if ($this->checkSecurityLimit('account_delete_attempt', $limit, $duration * 2)) { 
+        // [REFACTOR] Usando Utils
+        if (Utils::checkSecurityLimit($this->pdo, 'account_delete_attempt', $limit, $duration * 2, $this->userId)) { 
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration * 2])];
         }
         if (empty($password)) return ['success' => false, 'message' => $this->i18n->t('api.pass_req_confirm')];
@@ -589,7 +583,8 @@ class SettingsService {
         $stmt->execute([$this->userId]);
         $user = $stmt->fetch();
         if (!$user || !password_verify($password, $user['password'])) {
-            $this->logSecurityAction('account_delete_attempt', $duration * 2);
+            // [REFACTOR] Usando Utils
+            Utils::logSecurityAction($this->pdo, 'account_delete_attempt', $duration * 2, $this->userId);
             return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
         }
         try {
@@ -601,10 +596,10 @@ class SettingsService {
             $this->logProfileChange('account_status', 'active', 'deleted');
             $this->pdo->commit();
             
-            $this->redis->publish('aurora_ws_control', json_encode([
-                'cmd' => 'KICK_ALL',
+            // [REFACTOR] Usando Utils
+            Utils::notifyWebSocket('KICK_ALL', [
                 'user_id' => $this->userId
-            ]));
+            ]);
 
             setcookie('auth_persistence_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
             session_destroy();
@@ -621,83 +616,14 @@ class SettingsService {
         return ($stmt->fetchColumn() >= $limit);
     }
     
-    private function incrementRedisCounter($key, $minutes) {
-        if (!$this->redis) return;
-        try {
-            $current = $this->redis->incr($key);
-            if ($current === 1) {
-                $this->redis->expire($key, $minutes * 60);
-            }
-        } catch (Exception $e) {
-            error_log("Redis RateLimit Error (INCR): " . $e->getMessage());
-        }
-    }
-
-    public function checkSecurityLimit($actionType, $limit, $minutes) {
-        // [MODIFICADO] Usar Utils::getClientIp
-        $ip = Utils::getClientIp();
-
-        if ($this->redis) {
-            $ipKey = "rate_limit:{$actionType}:ip:{$ip}";
-            $userKey = "rate_limit:{$actionType}:user:{$this->userId}";
-
-            try {
-                $ipCount = $this->redis->get($ipKey);
-                if ($ipCount && (int)$ipCount >= $limit) return true;
-
-                $userCount = $this->redis->get($userKey);
-                if ($userCount && (int)$userCount >= $limit) return true;
-                
-                return false;
-            } catch (Exception $e) {
-            }
-        }
-
-        $sql = "SELECT COUNT(*) FROM security_logs WHERE (user_identifier = ? OR ip_address = ?) AND action_type = ? AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([$this->userId, $ip, $actionType]); 
-        return ($stmt->fetchColumn() >= $limit);
-    }
-    
-    private function logSecurityAction($actionType, $minutes = 15) {
-        // [MODIFICADO] Usar Utils::getClientIp
-        $ip = Utils::getClientIp();
-        
-        try {
-            $sql = "INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)";
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute([$this->userId, $actionType, $ip]);
-        } catch (Exception $e) { /* Log error */ }
-
-        $ipKey = "rate_limit:{$actionType}:ip:{$ip}";
-        $userKey = "rate_limit:{$actionType}:user:{$this->userId}";
-
-        $this->incrementRedisCounter($ipKey, $minutes);
-        $this->incrementRedisCounter($userKey, $minutes);
-    }
-    
     private function deleteOldAvatar($currentPath) {
         if ($currentPath && file_exists(__DIR__ . '/../../' . $currentPath)) {
             @unlink(__DIR__ . '/../../' . $currentPath);
         }
     }
-    private function parseUserAgent($ua) {
-        $platform = 'Desconocido'; $browser = 'Desconocido';
-        if (preg_match('/windows|win32/i', $ua)) $platform = 'Windows';
-        elseif (preg_match('/macintosh|mac os x/i', $ua)) $platform = 'Mac OS';
-        elseif (preg_match('/linux/i', $ua)) $platform = 'Linux';
-        elseif (preg_match('/android/i', $ua)) $platform = 'Android';
-        elseif (preg_match('/iphone|ipad|ipod/i', $ua)) $platform = 'iOS';
-        if (preg_match('/MSIE|Trident/i', $ua)) $browser = 'Internet Explorer';
-        elseif (preg_match('/Firefox/i', $ua)) $browser = 'Firefox';
-        elseif (preg_match('/Chrome/i', $ua)) $browser = 'Chrome';
-        elseif (preg_match('/Safari/i', $ua)) $browser = 'Safari';
-        elseif (preg_match('/Opera|OPR/i', $ua)) $browser = 'Opera';
-        elseif (preg_match('/Edge/i', $ua)) $browser = 'Edge';
-        return ['platform' => $platform, 'browser' => $browser];
-    }
+
     private function logProfileChange($changeType, $oldValue, $newValue) {
-        // [MODIFICADO] Usar Utils::getClientIp
+        // [REFACTOR] Usando Utils
         $ip = Utils::getClientIp();
         $ua = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
         $sql = "INSERT INTO profile_changes (user_id, change_type, old_value, new_value, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)";

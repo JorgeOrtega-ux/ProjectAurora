@@ -1,7 +1,7 @@
 <?php
 // api/services/AdminService.php
 
-require_once __DIR__ . '/../../includes/libs/Utils.php'; // Aseguramos que Utils esté disponible
+require_once __DIR__ . '/../../includes/libs/Utils.php';
 
 class AdminService {
     private $pdo;
@@ -26,7 +26,6 @@ class AdminService {
             return ['success' => false, 'message' => 'Redis no disponible para generar tokens seguros.'];
         }
 
-        // 1. Convertir entrada a array siempre
         $filesToProcess = is_array($inputFiles) ? $inputFiles : explode(',', $inputFiles);
         $filesToProcess = array_map('trim', $filesToProcess);
         $filesToProcess = array_filter($filesToProcess); 
@@ -35,7 +34,6 @@ class AdminService {
             return ['success' => false, 'message' => 'No se seleccionaron archivos.'];
         }
 
-        // 2. Definir directorios base (Sandbox)
         $baseDir = '';
         if ($type === 'backup') {
             $baseDir = realpath(__DIR__ . '/../../storage/backups');
@@ -49,23 +47,18 @@ class AdminService {
              return ['success' => false, 'message' => 'El directorio base no existe en el servidor.'];
         }
 
-        // 3. Validar TODOS los archivos antes de procesar
         $validPaths = [];
         foreach ($filesToProcess as $relativePath) {
-            // Permitimos '/' y '\' para subcarpetas (logs/app/...), pero eliminamos '..'
             $cleanPath = str_replace('..', '', $relativePath);
-            
-            // Limpiamos barras al inicio para evitar rutas absolutas confusas
             $cleanPath = ltrim($cleanPath, '/\\');
             
             $fullPath = $baseDir . '/' . $cleanPath;
             $realPath = realpath($fullPath);
             
-            // Verificamos que el archivo exista y que su ruta real siga estando dentro del baseDir (Sandbox)
             if ($realPath && file_exists($realPath) && strpos($realPath, $baseDir) === 0) {
                 $validPaths[] = [
                     'full' => $realPath,
-                    'name' => $cleanPath // Usamos la ruta relativa limpia como nombre (mantiene estructura carpetas en ZIP)
+                    'name' => $cleanPath 
                 ];
             }
         }
@@ -74,17 +67,14 @@ class AdminService {
             return ['success' => false, 'message' => 'Ninguno de los archivos solicitados es válido o existe.'];
         }
 
-        // 4. Lógica: 1 Archivo vs Múltiples (ZIP)
         $targetFile = '';
         $targetName = '';
-        $isTempFile = false; // Flag para borrar después de descargar
+        $isTempFile = false; 
 
         if (count($validPaths) === 1) {
-            // CASO INDIVIDUAL
             $targetFile = $validPaths[0]['full'];
-            $targetName = basename($validPaths[0]['name']); // Al descargar 1 solo, mejor nombre corto
+            $targetName = basename($validPaths[0]['name']); 
         } else {
-            // CASO MÚLTIPLE -> CREAR ZIP
             if (!extension_loaded('zip')) {
                 return ['success' => false, 'message' => 'La extensión ZIP de PHP no está habilitada en el servidor.'];
             }
@@ -101,17 +91,15 @@ class AdminService {
             }
 
             foreach ($validPaths as $fileInfo) {
-                // Agregamos al ZIP manteniendo su estructura relativa (ej: app/log.txt)
                 $zip->addFile($fileInfo['full'], $fileInfo['name']);
             }
             $zip->close();
 
             $targetFile = $zipPath;
             $targetName = $zipName;
-            $isTempFile = true; // Importante: Marcar para borrado automático
+            $isTempFile = true; 
         }
 
-        // 5. Generar Token y Guardar en Redis
         $token = bin2hex(random_bytes(32));
         
         $data = [
@@ -119,14 +107,12 @@ class AdminService {
             'filename' => $targetName,
             'is_temp'  => $isTempFile,
             'user_id'  => $this->requestingUserId,
-            'ip'       => $_SERVER['REMOTE_ADDR'] ?? 'Unknown'
+            'ip'       => Utils::getClientIp()
         ];
 
         try {
-            // "download:token:XYZ" expira en 60s
             $this->redis->setex("download:token:$token", 60, json_encode($data));
             
-            // Log de auditoría
             $actionDetails = count($validPaths) > 1 
                 ? ['zip_mode' => true, 'count' => count($validPaths)] 
                 : ['file' => $targetName];
@@ -139,7 +125,6 @@ class AdminService {
             ];
 
         } catch (Exception $e) {
-            // [CORRECCIÓN SEGURIDAD]
             Logger::app('Admin Download Token Error', ['error' => $e->getMessage()]);
             return ['success' => false, 'message' => 'Error interno al generar descarga.'];
         }
@@ -149,7 +134,7 @@ class AdminService {
 
     private function logAudit($targetType, $targetId, $action, $changes = []) {
         try {
-            $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+            $ip = Utils::getClientIp();
             $ua = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
             $changesJson = !empty($changes) ? json_encode($changes) : null;
 
@@ -215,7 +200,6 @@ class AdminService {
             ];
 
         } catch (Exception $e) {
-            // [CORRECCIÓN SEGURIDAD]
             Logger::app('Dashboard Stats Error', ['error' => $e->getMessage()]);
             return ['success' => false, 'message' => 'Error calculando estadísticas.'];
         }
@@ -277,6 +261,8 @@ class AdminService {
                 if ($log['changes']) {
                     $log['changes'] = json_decode($log['changes'], true);
                 }
+                // Completar avatar si falta
+                $log['admin_avatar_src'] = $this->resolveAvatarSrc($log['admin_id'], $log['admin_name']);
             }
 
             return [
@@ -331,7 +317,8 @@ class AdminService {
 
             $formattedUsers = [];
             foreach ($users as $user) {
-                $user['avatar_src'] = $this->resolveAvatarSrc($user['avatar_path'], $user['username']);
+                // Para el listado de usuarios, pasamos el path directo
+                $user['avatar_src'] = $this->resolveAvatarSrcPath($user['avatar_path'], $user['username']);
                 $formattedUsers[] = $user;
             }
 
@@ -378,7 +365,7 @@ class AdminService {
                 'suspension_ends_at' => $user['suspension_ends_at'],
                 'status_reason' => $user['status_reason'],
                 'two_factor_enabled' => (int)$user['two_factor_enabled'],
-                'avatar_src' => $this->resolveAvatarSrc($user['avatar_path'], $user['username']),
+                'avatar_src' => $this->resolveAvatarSrcPath($user['avatar_path'], $user['username']),
                 'is_custom_avatar' => (strpos($user['avatar_path'] ?? '', 'custom/') !== false),
                 'preferences' => [
                     'language' => $user['language'] ?? 'es-latam',
@@ -593,12 +580,11 @@ class AdminService {
         $username = $targetUser['username'];
         $uuid = $targetUser['uuid'];
 
-        // [MODIFICADO] Usar Utils::generateDefaultProfilePicture
         $newFileName = $uuid . '-' . time() . '.png';
         $dbPath = 'storage/profilePicture/default/' . $newFileName;
         $absolutePath = __DIR__ . '/../../' . $dbPath;
 
-        // Llamada centralizada que usa la paleta de colores y el length=1
+        // [REFACTOR] Usando Utils
         if (Utils::generateDefaultProfilePicture($username, $absolutePath)) {
             
             $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
@@ -613,7 +599,6 @@ class AdminService {
                 'new' => 'default_generated'
             ]);
 
-            // Devolver imagen generada
             $imageContent = file_get_contents($absolutePath);
             $base64Image = 'data:image/png;base64,' . base64_encode($imageContent);
             
@@ -759,8 +744,8 @@ class AdminService {
             }
 
             if ($maintenanceActivated) {
-                // [MODIFICADO] Envío correcto de señal de mantenimiento
-                $this->notifyWebSocketServer('maintenance_start', ['text' => 'El sistema ha entrado en mantenimiento.']);
+                // [REFACTOR] Usando Utils
+                Utils::notifyWebSocket('maintenance_start', ['text' => 'El sistema ha entrado en mantenimiento.']);
                 $this->logAudit('system', 'global', 'MAINTENANCE_STARTED', []);
             }
 
@@ -778,31 +763,22 @@ class AdminService {
         return in_array($role, ['founder', 'administrator']);
     }
 
-    private function resolveAvatarSrc($path, $username) {
+    // Helper interno para resolver avatar por ID/Nombre si no está disponible el path
+    private function resolveAvatarSrc($userId, $username) {
+        $stmt = $this->pdo->prepare("SELECT avatar_path FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $path = $stmt->fetchColumn();
+        return $this->resolveAvatarSrcPath($path, $username);
+    }
+
+    private function resolveAvatarSrcPath($path, $username) {
         if (!empty($path) && file_exists(__DIR__ . '/../../' . $path)) {
             $mime = mime_content_type(__DIR__ . '/../../' . $path);
             $content = file_get_contents(__DIR__ . '/../../' . $path);
             return 'data:' . $mime . ';base64,' . base64_encode($content);
         } else {
             $name = urlencode($username);
-            // [MODIFICADO] Agregar length=1 para consistencia
             return "https://ui-avatars.com/api/?name={$name}&background=random&color=fff&size=128&length=1";
-        }
-    }
-
-   private function notifyWebSocketServer($messageType, $payload = []) {
-        if ($this->redis) {
-            try {
-                // Estructura compatible con server.py
-                $msg = [
-                    'cmd' => 'BROADCAST',
-                    'msg_type' => $messageType,
-                    'message' => $payload
-                ];
-                $this->redis->publish('aurora_ws_control', json_encode($msg));
-            } catch (Exception $e) {
-                error_log("Error publicando en Redis (WS Notify): " . $e->getMessage());
-            }
         }
     }
 }
