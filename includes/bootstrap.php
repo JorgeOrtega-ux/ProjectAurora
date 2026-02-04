@@ -21,12 +21,11 @@ if (file_exists($envFile)) {
     }
 }
 
-// [CORRECCIÓN] Establecer la Zona Horaria de PHP
-// Usa la variable APP_TIMEZONE del .env o 'America/Mexico_City' por defecto
+// Establecer la Zona Horaria de PHP
 $timezone = $_ENV['APP_TIMEZONE'] ?? 'America/Mexico_City';
 date_default_timezone_set($timezone);
 
-// 3. Configuración de Redis
+// 3. Configuración de Redis (Tolerante a Fallos)
 $redisHost = $_ENV['REDIS_HOST'] ?? '127.0.0.1';
 $redisPort = $_ENV['REDIS_PORT'] ?? 6379;
 $redisPass = $_ENV['REDIS_PASSWORD'] ?? null;
@@ -35,57 +34,78 @@ $redisConfig = [
     'scheme' => 'tcp',
     'host'   => $redisHost,
     'port'   => $redisPort,
+    'timeout'=> 2.0, // Importante: Timeout corto para no colgar la web si Redis muere
 ];
 
 if (!empty($redisPass)) {
     $redisConfig['password'] = $redisPass;
 }
 
+$redis = null; // Inicializamos como null por defecto
+
 try {
-    $redis = new Predis\Client($redisConfig);
+    // Intentamos conectar
+    $client = new Predis\Client($redisConfig);
+    $client->connect(); // Forzamos conexión para verificar estado
+    $redis = $client;
 } catch (Exception $e) {
-    error_log("Fallo crítico: No se pudo conectar a Redis. " . $e->getMessage());
-    // Fallback silencioso o die() dependiendo de la severidad deseada
-    die("Error interno del sistema de sesiones (Redis).");
+    // [FALLBACK ACTIVADO] 
+    // No matamos la app con die(). Solo logueamos y seguimos sin Redis.
+    error_log("ADVERTENCIA: Redis no disponible. El sistema usará la base de datos como respaldo. Error: " . $e->getMessage());
+    $redis = null;
 }
 
-// 4. Registrar Redis como Handler de Sesiones
-// IMPORTANTE: Esto debe ocurrir ANTES de session_start()
-$sessionHandler = new Predis\Session\Handler($redis, ['gc_maxlifetime' => 86400]);
-$sessionHandler->register();
+// 4. Gestión de Sesiones (Híbrida)
+if ($redis) {
+    // Si Redis está vivo, lo usamos para sesiones (Más rápido)
+    try {
+        $sessionHandler = new Predis\Session\Handler($redis, ['gc_maxlifetime' => 86400]);
+        $sessionHandler->register();
+    } catch (Exception $e) {
+        error_log("Fallo al registrar Session Handler de Redis. Usando almacenamiento nativo (archivos).");
+        // PHP usará automáticamente 'files' si esto falla
+    }
+} else {
+    // Si Redis está muerto, PHP usará el manejador por defecto (archivos en disco)
+    // Esto permite que los usuarios sigan logueados o puedan loguearse
+    ini_set('session.save_handler', 'files');
+    // Opcional: Definir ruta si es necesario, por defecto usa la del sistema
+    // session_save_path(__DIR__ . '/../storage/sessions'); 
+}
 
 // 5. Configuración de Cookies de Sesión
 $cookieParams = session_get_cookie_params();
 session_set_cookie_params([
     'lifetime' => 86400, // 1 día
     'path'     => '/',
-    'domain'   => $cookieParams['domain'], // O dejar null para automático
+    'domain'   => $cookieParams['domain'],
     'secure'   => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
     'httponly' => true,
     'samesite' => 'Strict'
 ]);
 
-// 6. Iniciar Sesión (Si no está iniciada)
+// 6. Iniciar Sesión
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 // 7. Carga de Utilidades y Manejo de Errores
 require_once __DIR__ . '/libs/Utils.php';
-// [NUEVO] Inyectar Redis en Utils para caché global de configuración
+
+// Inyectar Redis (puede ser null, Utils::setRedis lo soporta)
 Utils::setRedis($redis);
 Utils::initErrorHandlers();
 
-// 8. Conexión a Base de Datos (MySQL)
+// 8. Conexión a Base de Datos (MySQL) - CRÍTICO (Si esto falla, la app sí debe morir)
 require_once __DIR__ . '/../config/database/db.php';
 
 // 9. Inicializar I18n
 $i18n = Utils::initI18n();
 
-// 10. Retornar servicios globales para uso en los handlers
+// 10. Retornar servicios globales
 return [
     'pdo'   => $pdo,
     'i18n'  => $i18n,
-    'redis' => $redis
+    'redis' => $redis // Será null si falló la conexión
 ];
 ?>
