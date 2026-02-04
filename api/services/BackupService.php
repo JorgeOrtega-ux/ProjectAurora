@@ -1,6 +1,8 @@
 <?php
 // api/services/BackupService.php
 
+require_once __DIR__ . '/../../includes/libs/Utils.php'; // Aseguramos que Utils esté disponible
+
 class BackupService {
     private $pdo;
     private $i18n;
@@ -322,14 +324,16 @@ class BackupService {
     }
 
     private function logAction($actionType, $details = '', $isSystem = false) {
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        // [MODIFICADO] Usar Utils::getClientIp
+        $ip = Utils::getClientIp();
         $stmt = $this->pdo->prepare("INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)");
         $identifier = $isSystem ? "System | $details" : "Admin:{$this->userId} | $details"; 
         $stmt->execute([$identifier, $actionType, $ip]);
     }
 
     private function checkRateLimit($actionType, $limit, $minutes) {
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        // [MODIFICADO] Usar Utils::getClientIp
+        $ip = Utils::getClientIp();
         $sql = "SELECT COUNT(*) FROM security_logs WHERE action_type = ? AND ip_address = ? AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$actionType, $ip]);

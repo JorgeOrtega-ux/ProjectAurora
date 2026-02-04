@@ -712,7 +712,8 @@ class AuthService {
             return $this->checkSecurityBlockSQL($actionType, $limit, $minutes, $identifier);
         }
 
-        $ip = $this->getClientIp();
+        // [MODIFICADO] Usar Utils::getClientIp
+        $ip = Utils::getClientIp();
         $ipKey = "rate_limit:{$actionType}:ip:{$ip}";
         $userKey = $identifier ? "rate_limit:{$actionType}:user:{$identifier}" : null;
 
@@ -732,7 +733,8 @@ class AuthService {
     }
 
     private function logSecurityEvent($identifier, $actionType, $minutes = 15) {
-        $ip = $this->getClientIp();
+        // [MODIFICADO] Usar Utils::getClientIp
+        $ip = Utils::getClientIp();
         
         try {
             $stmt = $this->pdo->prepare("INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)");
@@ -751,7 +753,8 @@ class AuthService {
     }
 
     private function checkSecurityBlockSQL($actionType, $limit, $minutes, $identifier = '') {
-        $ip = $this->getClientIp();
+        // [MODIFICADO] Usar Utils::getClientIp
+        $ip = Utils::getClientIp();
         $sql = "SELECT COUNT(*) as failures FROM security_logs WHERE (ip_address = ? OR user_identifier = ?) AND action_type = ? AND created_at > (NOW() - INTERVAL $minutes MINUTE)";     
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$ip, $identifier, $actionType]);
@@ -765,7 +768,9 @@ class AuthService {
         if (empty($token)) return ['success' => false, 'message' => 'Por favor completa el captcha.'];
 
         $url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
-        $ip = $this->getClientIp();
+        
+        // [MODIFICADO] Usar Utils::getClientIp
+        $ip = Utils::getClientIp();
 
         $data = [
             'secret' => $this->turnstileSecret,
@@ -827,17 +832,15 @@ class AuthService {
         return $default_lang;
     }
 
-    private function getClientIp() {
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';
-    }
-
     private function createPersistenceToken($userId) {
         $selector = bin2hex(random_bytes(12)); 
         $validator = bin2hex(random_bytes(32));
         $hashedValidator = hash('sha256', $validator);
         $expiresAt = date('Y-m-d H:i:s', time() + (86400 * 30)); 
-        $ip = $this->getClientIp();
+        
+        // [MODIFICADO] Usar Utils::getClientIp
+        $ip = Utils::getClientIp();
+        
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
 
         $sql = "INSERT INTO user_auth_tokens (user_id, selector, hashed_validator, ip_address, user_agent, expires_at) VALUES (?, ?, ?, ?, ?, ?)";

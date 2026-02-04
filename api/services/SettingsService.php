@@ -634,8 +634,10 @@ class SettingsService {
     }
 
     public function checkSecurityLimit($actionType, $limit, $minutes) {
+        // [MODIFICADO] Usar Utils::getClientIp
+        $ip = Utils::getClientIp();
+
         if ($this->redis) {
-            $ip = $this->getClientIp();
             $ipKey = "rate_limit:{$actionType}:ip:{$ip}";
             $userKey = "rate_limit:{$actionType}:user:{$this->userId}";
 
@@ -651,7 +653,6 @@ class SettingsService {
             }
         }
 
-        $ip = $this->getClientIp();
         $sql = "SELECT COUNT(*) FROM security_logs WHERE (user_identifier = ? OR ip_address = ?) AND action_type = ? AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([$this->userId, $ip, $actionType]); 
@@ -659,7 +660,8 @@ class SettingsService {
     }
     
     private function logSecurityAction($actionType, $minutes = 15) {
-        $ip = $this->getClientIp();
+        // [MODIFICADO] Usar Utils::getClientIp
+        $ip = Utils::getClientIp();
         
         try {
             $sql = "INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)";
@@ -695,16 +697,12 @@ class SettingsService {
         return ['platform' => $platform, 'browser' => $browser];
     }
     private function logProfileChange($changeType, $oldValue, $newValue) {
-        $ip = $this->getClientIp();
+        // [MODIFICADO] Usar Utils::getClientIp
+        $ip = Utils::getClientIp();
         $ua = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
         $sql = "INSERT INTO profile_changes (user_id, change_type, old_value, new_value, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)";
         $stmt = $this->pdo->prepare($sql);
         try { $stmt->execute([$this->userId, $changeType, $oldValue, $newValue, $ip, $ua]); } catch (Exception $e) { error_log("Error logging profile change: " . $e->getMessage()); }
-    }
-    
-    private function getClientIp() {
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-        return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';
     }
 }
 ?>

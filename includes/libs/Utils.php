@@ -14,6 +14,15 @@ class Utils {
         self::$redisInstance = $redis;
     }
 
+    /**
+     * Obtiene la dirección IP del cliente de manera segura y centralizada.
+     * Utilizar esta función en lugar de acceder a $_SERVER['REMOTE_ADDR'] directamente.
+     */
+    public static function getClientIp() {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';
+    }
+
     public static function initErrorHandlers() {
         set_exception_handler(function ($e) {
             Logger::app('Uncaught Exception', [
@@ -203,7 +212,6 @@ class Utils {
 
     /**
      * Genera y guarda una imagen de perfil por defecto usando una paleta de colores específica.
-     * [MODIFICADO]: Ahora incluye '&length=1' para generar solo una inicial.
      */
     public static function generateDefaultProfilePicture($name, $outputPath) {
         // Lista estricta de colores permitidos
@@ -223,7 +231,6 @@ class Utils {
         $encodedName = urlencode($name);
 
         // Construir la URL de ui-avatars con el color seleccionado
-        // [CAMBIO]: Se agregó &length=1 al final
         $url = "https://ui-avatars.com/api/?name={$encodedName}&background={$selectedColor}&color=fff&size=512&font-size=0.5&bold=true&length=1";
 
         try {
