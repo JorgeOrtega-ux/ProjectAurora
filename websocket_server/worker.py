@@ -8,6 +8,8 @@ from datetime import datetime
 from dotenv import load_dotenv
 import time
 import glob
+import zipfile
+import secrets
 from concurrent.futures import ThreadPoolExecutor
 
 # --- CONFIGURACIÓN ---
@@ -37,12 +39,13 @@ REDIS_PORT = int(REDIS_PORT)
 QUEUE_NAME = 'aurora_task_queue'
 PUBSUB_CHANNEL = 'aurora_ws_control'
 
-# Directorio de Backups (Ruta absoluta)
+# Directorios (Ruta absoluta)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BACKUP_DIR = os.path.join(BASE_DIR, 'storage', 'backups')
+LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+TEMP_DIR = os.path.join(BASE_DIR, 'storage', 'temp')
 
 # [FIX BLOQUEO] Executor para tareas pesadas (Backups/IO)
-# Esto permite que el worker siga escuchando Redis mientras hace un backup en otro hilo
 EXECUTOR = ThreadPoolExecutor(max_workers=2)
 
 # --- INICIALIZACIÓN GLOBAL DE REDIS ---
@@ -121,13 +124,10 @@ def enforce_retention_policy():
     except Exception as e:
         logging.error(f"Error en política de retención: {e}")
 
-# En websocket_server/worker.py
-
 def secure_resolve_mysqldump():
     """
     Resuelve la ruta de mysqldump buscando en config, rutas comunes de Windows y PATH.
     """
-    # 1. Intentar ruta desde configuración de BD
     config_path = get_server_config('sys_mysqldump_path', '')
     valid_names = ['mysqldump', 'mysqldump.exe']
     
@@ -137,8 +137,6 @@ def secure_resolve_mysqldump():
         else:
             logging.warning(f"⚠️ Ruta config inválida: {config_path}")
 
-    # 2. Búsqueda automática en rutas comunes (XAMPP/MySQL/WAMP)
-    # Agrega aquí las rutas donde podría estar tu mysqldump
     common_paths = [
         r"C:\xampp\mysql\bin\mysqldump.exe",
         r"E:\xampp\mysql\bin\mysqldump.exe",
@@ -151,7 +149,6 @@ def secure_resolve_mysqldump():
             logging.info(f"✅ Mysqldump encontrado en: {path}")
             return path
 
-    # 3. Fallback al PATH del sistema
     return "mysqldump"
 
 # --- TAREAS (EJECUTADAS EN HILOS) ---
@@ -179,8 +176,6 @@ def task_create_backup(payload):
     dump_cmd.extend([DB_NAME, '--single-transaction', '--quick'])
 
     try:
-        # [FIX MEMORIA] Usar stdout=outfile para streaming directo al disco
-        # Esto evita cargar gigabytes en la RAM
         with open(filepath, 'w') as outfile:
             process = subprocess.Popen(
                 dump_cmd,
@@ -206,7 +201,6 @@ def task_create_backup(payload):
             notify_frontend('action', {'action': 'refresh_backups'})
 
         else:
-            # Si falló, borrar archivo vacío/corrupto
             if os.path.exists(filepath): os.remove(filepath)
             logging.error(f"❌ Error en mysqldump (Code {process.returncode}): {stderr}")
             notify_frontend('notification', {'type': 'error', 'text': 'Fallo al crear el respaldo.'})
@@ -215,9 +209,78 @@ def task_create_backup(payload):
         logging.error(f"❌ Excepción al ejecutar backup: {e}")
         notify_frontend('notification', {'type': 'error', 'text': 'Error crítico en el Worker.'})
 
+def task_create_zip(payload):
+    logging.info("⚙️ [Thread] Iniciando tarea: Compresión ZIP...")
+    
+    try:
+        files = payload.get('files', [])
+        source_type = payload.get('type', '')
+        user_id = payload.get('requested_by', 0)
+        
+        if not files:
+            raise ValueError("Lista de archivos vacía")
+
+        # Determinar directorio base
+        base_dir = LOGS_DIR if source_type == 'log' else BACKUP_DIR
+        
+        # Validar y resolver rutas
+        valid_files = []
+        for f_rel in files:
+            # Seguridad: Evitar path traversal
+            f_rel = f_rel.replace('..', '').strip('/')
+            full_path = os.path.join(base_dir, f_rel)
+            
+            if os.path.isfile(full_path) and full_path.startswith(base_dir):
+                valid_files.append((full_path, f_rel))
+        
+        if not valid_files:
+            notify_frontend('notification', {'type': 'warning', 'text': 'Ningún archivo válido para comprimir.'})
+            return
+
+        # Crear ZIP temporal
+        os.makedirs(TEMP_DIR, exist_ok=True)
+        zip_filename = f"aurora_batch_{int(time.time())}_{secrets.token_hex(4)}.zip"
+        zip_filepath = os.path.join(TEMP_DIR, zip_filename)
+
+        logging.info(f"📦 Comprimiendo {len(valid_files)} archivos en {zip_filename}...")
+
+        with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for abs_path, arc_name in valid_files:
+                zf.write(abs_path, arc_name)
+
+        # Generar Token de descarga seguro para Redis
+        token = secrets.token_hex(32)
+        redis_data = {
+            'filepath': zip_filepath,
+            'filename': zip_filename,
+            'is_temp': True,
+            'user_id': user_id,
+            'created_at': time.time()
+        }
+        
+        # Guardar token con expiración de 5 minutos (300s)
+        r_client.setex(f"download:token:{token}", 300, json.dumps(redis_data))
+        
+        # Notificar al usuario con el enlace
+        download_url = f"download.php?token={token}"
+        
+        notify_frontend('download_ready', {
+            'url': download_url,
+            'filename': zip_filename,
+            'type': source_type
+        })
+        
+        log_security_event('zip_create', f"Admin:{user_id} | Created: {zip_filename}")
+        logging.info(f"✅ ZIP creado y token generado: {token[:8]}...")
+
+    except Exception as e:
+        logging.error(f"❌ Error creando ZIP: {e}")
+        notify_frontend('notification', {'type': 'error', 'text': 'Error al generar el archivo comprimido.'})
+
 # Mapa de tareas
 TASKS = {
-    'create_backup': task_create_backup
+    'create_backup': task_create_backup,
+    'create_zip': task_create_zip
 }
 
 # Wrapper para ejecutar la tarea
@@ -242,12 +305,12 @@ if __name__ == "__main__":
     try:
         while True:
             try:
-                # BLPOP bloquea hasta que haya un elemento (Timeout 5s para permitir interrupción limpia)
+                # BLPOP bloquea hasta que haya un elemento (Timeout 5s)
                 item = r_client.blpop(QUEUE_NAME, timeout=5)
                 
                 if item:
                     _, raw_data = item
-                    # [FIX BLOQUEO] Delegar al ThreadPool inmediatamente
+                    # Delegar al ThreadPool inmediatamente
                     EXECUTOR.submit(run_job, raw_data)
 
             except redis.exceptions.ConnectionError:

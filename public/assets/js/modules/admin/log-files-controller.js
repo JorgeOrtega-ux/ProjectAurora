@@ -6,7 +6,7 @@ import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { Dialog } from '../../core/dialog-manager.js';
 import { navigateTo } from '../../core/url-manager.js';
-import { I18n } from '../../core/i18n-manager.js'; // Importación añadida
+import { I18n } from '../../core/i18n-manager.js'; 
 
 let _container = null;
 let _filesData = [];
@@ -26,8 +26,25 @@ export const LogFilesController = {
 
         initEvents();
         loadFiles();
+
+        // [NUEVO] Escuchar evento de descarga lista desde el Worker
+        document.removeEventListener('socket:download_ready', onDownloadReady);
+        document.addEventListener('socket:download_ready', onDownloadReady);
     }
 };
+
+function onDownloadReady(e) {
+    // Verificamos que el contenedor siga activo para evitar descargas fantasma
+    if (!_container || !document.body.contains(_container)) return;
+
+    const data = e.detail.message;
+    if (data && data.url) {
+        // Disparar descarga
+        triggerBrowserDownload(data.url);
+        Toast.show(I18n.t('admin.logs.download_started') || 'Descarga iniciada.', 'success');
+        clearSelection();
+    }
+}
 
 function initEvents() {
     const btnView = _container.querySelector('[data-action="change-view"]');
@@ -61,24 +78,18 @@ function initEvents() {
         navigateTo('admin/file-viewer', { files: paths });
     });
 
-    // Listener para botón de descarga
     _container.querySelector('[data-action="download-selected"]')?.addEventListener('click', handleDownload);
 }
 
-// === Lógica de descarga SIN RECARGAR ===
+// === Lógica de descarga ASÍNCRONA ===
 async function handleDownload() {
-    if (_selectedPaths.size === 0) {
-        return;
-    }
+    if (_selectedPaths.size === 0) return;
 
     const pathsArray = Array.from(_selectedPaths);
     const pathsString = pathsArray.join(','); 
     
-    if (pathsArray.length > 1) {
-        Toast.show(I18n.t('admin.logs.zip_compressing') || 'Comprimiendo logs en ZIP...', 'info');
-    } else {
-        Toast.show(I18n.t('admin.logs.download_preparing') || 'Preparando descarga...', 'info');
-    }
+    // Feedback visual inmediato
+    Toast.show(I18n.t('admin.logs.download_preparing') || 'Solicitando descarga...', 'info');
 
     const formData = new FormData();
     formData.append('file', pathsString);
@@ -88,36 +99,40 @@ async function handleDownload() {
         const route = ApiService.Routes.Admin.request_download || { route: 'admin.request_download' };
         const res = await ApiService.post(route, formData);
         
-      if (res.success && res.download_url) {
-            // [SOLUCIÓN ULTRA A FONDO]
-            const downloadLink = document.createElement('a');
-            downloadLink.href = window.BASE_PATH + 'public/' + res.download_url;
+        if (res.success) {
+            // [MODIFICADO] Manejo dual: Síncrono (inmediato) o Asíncrono (Worker)
             
-            // 1. Forzar atributo download (ayuda al navegador a entender la intención)
-            downloadLink.setAttribute('download', '');
-            
-            // 2. IMPORTANTE: target="_blank"
-            // Si la descarga falla (ej. PHP devuelve error de texto), se abre en nueva pestaña
-            // sin matar la aplicación actual. Si es exitosa, Chrome/Firefox cierran la pestaña al instante.
-            downloadLink.setAttribute('target', '_blank'); 
-            
-            downloadLink.style.display = 'none';
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            
-            // Pequeño delay antes de remover para asegurar que el evento click se propague en todos los navegadores
-            setTimeout(() => {
-                document.body.removeChild(downloadLink);
-            }, 100);
-
-            Toast.show(I18n.t('admin.logs.download_started') || 'Descarga iniciada.', 'success');
-            clearSelection();
+            if (res.queued) {
+                // Caso Worker: Esperar evento socket
+                Toast.show(res.message || 'Tu descarga se está generando en segundo plano...', 'info');
+                // No limpiamos selección todavía, esperamos al evento
+            } else if (res.download_url) {
+                // Caso PHP Directo (Archivos pequeños)
+                triggerBrowserDownload(res.download_url);
+                Toast.show(I18n.t('admin.logs.download_started') || 'Descarga iniciada.', 'success');
+                clearSelection();
+            }
         } else {
-            Toast.show(res.message || (I18n.t('admin.logs.download_token_error') || 'Error al obtener token de descarga.'), 'error');
+            Toast.show(res.message || (I18n.t('admin.logs.download_token_error') || 'Error al solicitar descarga.'), 'error');
         }
     } catch (e) {
         Toast.show(I18n.t('js.core.connection_error') || 'Error de conexión.', 'error');
     }
+}
+
+function triggerBrowserDownload(url) {
+    const downloadLink = document.createElement('a');
+    downloadLink.href = window.BASE_PATH + 'public/' + url;
+    downloadLink.setAttribute('download', '');
+    downloadLink.setAttribute('target', '_blank'); 
+    
+    downloadLink.style.display = 'none';
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    
+    setTimeout(() => {
+        document.body.removeChild(downloadLink);
+    }, 100);
 }
 
 async function loadFiles() {
@@ -260,7 +275,6 @@ function updateToolbarState() {
         actGroup.classList.remove('d-none');
         indicator.innerText = `${_selectedPaths.size} ${I18n.t('admin.logs.selected_count') || 'seleccionados'}`;
         
-        // Habilitar botón descargar (permitir múltiples)
         const btnDownload = _container.querySelector('[data-action="download-selected"]');
         if (btnDownload) {
             btnDownload.style.opacity = '1';

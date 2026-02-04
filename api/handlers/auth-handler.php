@@ -3,7 +3,10 @@
 
 // 1. BOOTSTRAP: Subimos dos niveles (../../) para llegar a includes
 $services = require_once __DIR__ . '/../../includes/bootstrap.php';
-extract($services); // $pdo, $i18n, $redis
+// [REFACTORIZADO] Asignación explícita de servicios
+$pdo = $services['pdo'];
+$i18n = $services['i18n'];
+$redis = $services['redis'];
 
 // 2. Cargar Servicio: Subimos un nivel (../) para llegar a services
 require_once __DIR__ . '/../services/AuthService.php';
@@ -66,7 +69,9 @@ switch ($action) {
 
     case 'get_ws_token':
         Utils::jsonResponse($authService->generateWebSocketToken());
-        break;case 'get_registration_status':
+        break;
+        
+    case 'get_registration_status':
         // Obtenemos el email de la sesión temporal de registro
         $email = $_SESSION['pending_verification_email'] ?? '';
         Utils::jsonResponse($authService->getRegistrationStatus($email));

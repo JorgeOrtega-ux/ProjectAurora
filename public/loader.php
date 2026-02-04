@@ -2,7 +2,10 @@
 // public/loader.php
 
 $services = require_once __DIR__ . '/../includes/bootstrap.php';
-extract($services); 
+// [REFACTORIZADO] Asignación explícita para el contexto de las vistas
+$pdo = $services['pdo'];
+$i18n = $services['i18n'];
+$redis = $services['redis'];
 
 $basePath = '/ProjectAurora/'; 
 $section = $_GET['section'] ?? 'main';

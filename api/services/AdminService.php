@@ -16,7 +16,7 @@ class AdminService {
         $this->redis = $redis;
     }
 
-    // === GENERACIÓN DE TOKEN DE DESCARGA (Soporte ZIP y Subcarpetas) ===
+    // === GENERACIÓN DE TOKEN DE DESCARGA (Soporte Híbrido: Directo/Worker) ===
     public function requestDownloadToken($inputFiles, $type) {
         if (!$this->isAdmin()) {
             return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
@@ -48,6 +48,8 @@ class AdminService {
         }
 
         $validPaths = [];
+        $relativePaths = []; // Lista limpia para el Worker
+
         foreach ($filesToProcess as $relativePath) {
             $cleanPath = str_replace('..', '', $relativePath);
             $cleanPath = ltrim($cleanPath, '/\\');
@@ -60,6 +62,7 @@ class AdminService {
                     'full' => $realPath,
                     'name' => $cleanPath 
                 ];
+                $relativePaths[] = $cleanPath;
             }
         }
 
@@ -67,66 +70,67 @@ class AdminService {
             return ['success' => false, 'message' => 'Ninguno de los archivos solicitados es válido o existe.'];
         }
 
-        $targetFile = '';
-        $targetName = '';
-        $isTempFile = false; 
+        // --- ESTRATEGIA DE DESCARGA ---
 
+        // CASO 1: Archivo Único (Rápido - Síncrono en PHP)
+        // No tiene sentido enviar al worker si es solo servir un archivo existente.
         if (count($validPaths) === 1) {
             $targetFile = $validPaths[0]['full'];
             $targetName = basename($validPaths[0]['name']); 
-        } else {
-            if (!extension_loaded('zip')) {
-                return ['success' => false, 'message' => 'La extensión ZIP de PHP no está habilitada en el servidor.'];
-            }
-
-            $zipName = 'aurora_batch_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.zip';
-            $tempDir = __DIR__ . '/../../storage/temp';
-            if (!is_dir($tempDir)) mkdir($tempDir, 0755, true);
             
-            $zipPath = $tempDir . '/' . $zipName;
+            $token = bin2hex(random_bytes(32));
             
-            $zip = new ZipArchive();
-            if ($zip->open($zipPath, ZipArchive::CREATE) !== TRUE) {
-                return ['success' => false, 'message' => 'No se pudo crear el archivo temporal ZIP.'];
-            }
-
-            foreach ($validPaths as $fileInfo) {
-                $zip->addFile($fileInfo['full'], $fileInfo['name']);
-            }
-            $zip->close();
-
-            $targetFile = $zipPath;
-            $targetName = $zipName;
-            $isTempFile = true; 
-        }
-
-        $token = bin2hex(random_bytes(32));
-        
-        $data = [
-            'filepath' => $targetFile,
-            'filename' => $targetName,
-            'is_temp'  => $isTempFile,
-            'user_id'  => $this->requestingUserId,
-            'ip'       => Utils::getClientIp()
-        ];
-
-        try {
-            $this->redis->setex("download:token:$token", 60, json_encode($data));
-            
-            $actionDetails = count($validPaths) > 1 
-                ? ['zip_mode' => true, 'count' => count($validPaths)] 
-                : ['file' => $targetName];
-                
-            $this->logAudit('download', $type, 'DOWNLOAD_REQUEST', $actionDetails);
-
-            return [
-                'success' => true,
-                'download_url' => "download.php?token=$token"
+            $data = [
+                'filepath' => $targetFile,
+                'filename' => $targetName,
+                'is_temp'  => false,
+                'user_id'  => $this->requestingUserId,
+                'ip'       => Utils::getClientIp()
             ];
 
-        } catch (Exception $e) {
-            Logger::app('Admin Download Token Error', ['error' => $e->getMessage()]);
-            return ['success' => false, 'message' => 'Error interno al generar descarga.'];
+            try {
+                $this->redis->setex("download:token:$token", 60, json_encode($data));
+                
+                $this->logAudit('download', $type, 'DOWNLOAD_REQUEST', ['file' => $targetName]);
+
+                return [
+                    'success' => true,
+                    'download_url' => "download.php?token=$token"
+                ];
+
+            } catch (Exception $e) {
+                Logger::app('Admin Download Token Error', ['error' => $e->getMessage()]);
+                return ['success' => false, 'message' => 'Error interno al generar token de descarga.'];
+            }
+        } 
+        
+        // CASO 2: Múltiples Archivos (Pesado - Asíncrono en Python Worker)
+        // Delegamos la creación del ZIP al worker para evitar Timeouts de PHP.
+        else {
+            try {
+                $jobData = [
+                    'task' => 'create_zip',
+                    'payload' => [
+                        'files' => $relativePaths,
+                        'type' => $type,
+                        'requested_by' => $this->requestingUserId
+                    ]
+                ];
+
+                $this->redis->rpush('aurora_task_queue', json_encode($jobData));
+                
+                $this->logAudit('download', $type, 'ZIP_REQUEST_QUEUED', ['count' => count($validPaths)]);
+
+                return [
+                    'success' => true,
+                    'queued' => true, // Bandera para que el frontend espere el evento socket
+                    'message' => 'Tu descarga se está generando en segundo plano. Te avisaremos cuando esté lista.'
+                ];
+
+            } catch (Exception $e) {
+                Logger::app('Admin Download Queue Error', ['error' => $e->getMessage()]);
+                return ['success' => false, 'message' => 'Error al conectar con el gestor de tareas.'];
+            }
         }
     }
 
@@ -584,7 +588,6 @@ class AdminService {
         $dbPath = 'storage/profilePicture/default/' . $newFileName;
         $absolutePath = __DIR__ . '/../../' . $dbPath;
 
-        // [REFACTOR] Usando Utils
         if (Utils::generateDefaultProfilePicture($username, $absolutePath)) {
             
             $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
@@ -744,7 +747,6 @@ class AdminService {
             }
 
             if ($maintenanceActivated) {
-                // [REFACTOR] Usando Utils
                 Utils::notifyWebSocket('maintenance_start', ['text' => 'El sistema ha entrado en mantenimiento.']);
                 $this->logAudit('system', 'global', 'MAINTENANCE_STARTED', []);
             }
@@ -763,7 +765,6 @@ class AdminService {
         return in_array($role, ['founder', 'administrator']);
     }
 
-    // Helper interno para resolver avatar por ID/Nombre si no está disponible el path
     private function resolveAvatarSrc($userId, $username) {
         $stmt = $this->pdo->prepare("SELECT avatar_path FROM users WHERE id = ?");
         $stmt->execute([$userId]);

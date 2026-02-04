@@ -3,7 +3,10 @@
 
 // 1. BOOTSTRAP: Subimos dos niveles (../../)
 $services = require_once __DIR__ . '/../../includes/bootstrap.php';
-extract($services); // $pdo, $i18n, $redis
+// [REFACTORIZADO] Asignación explícita de servicios
+$pdo = $services['pdo'];
+$i18n = $services['i18n'];
+$redis = $services['redis'];
 
 // 2. Cargar Servicio: Subimos un nivel (../)
 require_once __DIR__ . '/../services/SettingsService.php';

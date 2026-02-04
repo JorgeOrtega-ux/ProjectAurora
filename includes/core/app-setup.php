@@ -3,8 +3,10 @@
 
 // 1. BOOTSTRAP
 $services = require_once __DIR__ . '/../bootstrap.php';
-// Extraemos $pdo, $i18n, $redis para que estén disponibles en el ámbito global de index.php
-extract($services); 
+// [REFACTORIZADO] Asignación explícita para que index.php tenga acceso
+$pdo = $services['pdo'];
+$i18n = $services['i18n'];
+$redis = $services['redis'];
 
 // 2. SEGURIDAD HTTP
 $cspNonce = Utils::applySecurityHeaders();

@@ -6,7 +6,7 @@ import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { Dialog } from '../../core/dialog-manager.js';
 import { navigateTo } from '../../core/url-manager.js';
-import { I18n } from '../../core/i18n-manager.js'; // Importación añadida
+import { I18n } from '../../core/i18n-manager.js'; 
 
 let _container = null;
 let _selectedFilenames = new Set();
@@ -27,15 +27,26 @@ export const BackupsController = {
         initToolbarEvents();
         loadBackups(); 
 
-        // === LISTENER DE SOCKET ===
+        // === LISTENER DE SOCKET (Actualización remota) ===
         document.removeEventListener('socket:action', handleRemoteRefresh);
         document.addEventListener('socket:action', handleRemoteRefresh);
         
-        document.addEventListener('socket:notification', (e) => {
-            console.log("🔔 Socket Notification:", e.detail);
-        });
+        // === [NUEVO] LISTENER DE DESCARGA LISTA ===
+        document.removeEventListener('socket:download_ready', onDownloadReady);
+        document.addEventListener('socket:download_ready', onDownloadReady);
     }
 };
+
+function onDownloadReady(e) {
+    if (!_container || !document.body.contains(_container)) return;
+
+    const data = e.detail.message;
+    if (data && data.url) {
+        triggerBrowserDownload(data.url);
+        Toast.show(I18n.t('admin.backups.download_started') || 'Descarga iniciada.', 'success');
+        deselectAll();
+    }
+}
 
 function handleRemoteRefresh(e) {
     const payload = e.detail.message;
@@ -341,18 +352,14 @@ function handleViewSelected() {
     });
 }
 
-// === LÓGICA DE DESCARGA SIN RECARGAR PAGINA ===
+// === LÓGICA DE DESCARGA ASÍNCRONA ===
 async function handleDownloadSelected() {
     if (_selectedFilenames.size === 0) return;
 
     const filesArray = Array.from(_selectedFilenames);
     const filesString = filesArray.join(',');
     
-    if (filesArray.length > 1) {
-        Toast.show(I18n.t('admin.backups.zip_generating') || 'Generando ZIP, por favor espera...', 'info');
-    } else {
-        Toast.show(I18n.t('admin.backups.download_requesting') || 'Solicitando descarga...', 'info');
-    }
+    Toast.show(I18n.t('admin.backups.download_requesting') || 'Solicitando descarga...', 'info');
 
     const formData = new FormData();
     formData.append('file', filesString);
@@ -362,28 +369,19 @@ async function handleDownloadSelected() {
         const route = ApiService.Routes.Admin.request_download || { route: 'admin.request_download' };
         const res = await ApiService.post(route, formData);
         
-       if (res.success && res.download_url) {
-            const downloadLink = document.createElement('a');
-            downloadLink.href = window.BASE_PATH + 'public/' + res.download_url;
-            
-            // [SOLUCIÓN] Atributos de seguridad contra recarga
-            downloadLink.setAttribute('download', '');
-            downloadLink.setAttribute('target', '_blank');
-            
-            downloadLink.style.display = 'none';
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            
-            setTimeout(() => {
-                document.body.removeChild(downloadLink);
-            }, 100);
-            
-            if (filesArray.length === 1) {
-                Toast.show(I18n.t('admin.backups.download_started') || 'Descarga iniciada.', 'success');
-            } else {
-                Toast.show(I18n.t('admin.backups.zip_ready') || 'Archivo ZIP generado.', 'success');
+       if (res.success) {
+            // [MODIFICADO] Manejo dual
+            if (res.queued) {
+                Toast.show(res.message || 'Generando archivo ZIP en segundo plano...', 'info');
+            } else if (res.download_url) {
+                triggerBrowserDownload(res.download_url);
+                if (filesArray.length === 1) {
+                    Toast.show(I18n.t('admin.backups.download_started') || 'Descarga iniciada.', 'success');
+                } else {
+                    Toast.show(I18n.t('admin.backups.zip_ready') || 'Archivo ZIP generado.', 'success');
+                }
+                deselectAll();
             }
-            deselectAll();
         } else {
             Toast.show(res.message || (I18n.t('admin.backups.download_token_error') || 'No se pudo obtener el enlace seguro.'), 'error');
         }
@@ -391,4 +389,19 @@ async function handleDownloadSelected() {
         console.error(e);
         Toast.show(I18n.t('admin.backups.download_conn_error') || 'Error de conexión al solicitar descarga.', 'error');
     }
+}
+
+function triggerBrowserDownload(url) {
+    const downloadLink = document.createElement('a');
+    downloadLink.href = window.BASE_PATH + 'public/' + url;
+    downloadLink.setAttribute('download', '');
+    downloadLink.setAttribute('target', '_blank');
+    
+    downloadLink.style.display = 'none';
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    
+    setTimeout(() => {
+        document.body.removeChild(downloadLink);
+    }, 100);
 }

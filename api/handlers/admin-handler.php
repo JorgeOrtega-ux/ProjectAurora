@@ -2,7 +2,10 @@
 // api/handlers/admin-handler.php
 
 $services = require_once __DIR__ . '/../../includes/bootstrap.php';
-extract($services); // $pdo, $i18n, $redis
+// [REFACTORIZADO] Asignación explícita de servicios
+$pdo = $services['pdo'];
+$i18n = $services['i18n'];
+$redis = $services['redis'];
 
 require_once __DIR__ . '/../services/AdminService.php';
 require_once __DIR__ . '/../services/BackupService.php';
