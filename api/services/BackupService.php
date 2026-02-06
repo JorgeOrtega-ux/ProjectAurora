@@ -21,6 +21,7 @@ class BackupService {
         if (!is_dir($this->backupDir)) {
             mkdir($this->backupDir, 0755, true);
         }
+        // Nota: El .htaccess de esta carpeta se gestiona aparte, pero aseguramos su existencia básica
         if (!file_exists($this->backupDir . '/.htaccess')) {
             file_put_contents($this->backupDir . '/.htaccess', "Order Deny,Allow\nDeny from all");
         }
@@ -108,14 +109,25 @@ class BackupService {
         $filePath = $this->backupDir . '/' . $filename;
         $dumpPath = $this->getExecutablePath('mysqldump');
 
+        // [SEGURIDAD] Crear archivo de credenciales temporal
+        $tempConf = $this->createTempAuthFile($host, $user, $pass);
+        
+        // Usamos --defaults-extra-file para pasar las credenciales de forma segura
+        // El archivo temporal tiene permisos 0600
         $cmd = sprintf(
-            '"%s" --host=%s --user=%s --password=%s %s > %s 2>&1',
-            $dumpPath, escapeshellarg($host), escapeshellarg($user), escapeshellarg($pass), escapeshellarg($name), escapeshellarg($filePath)
+            '"%s" --defaults-extra-file=%s %s > %s 2>&1',
+            $dumpPath,
+            escapeshellarg($tempConf),
+            escapeshellarg($name),
+            escapeshellarg($filePath)
         );
 
         $output = [];
         $returnVar = null;
         exec($cmd, $output, $returnVar);
+
+        // Eliminamos el archivo de credenciales inmediatamente
+        if (file_exists($tempConf)) unlink($tempConf);
 
         if ($returnVar === 0 && file_exists($filePath) && filesize($filePath) > 0) {
             $this->logAction('backup_create', "Created: $filename", $isSystemAction);
@@ -144,12 +156,13 @@ class BackupService {
 
         $mysqlPath = $this->getExecutablePath('mysql');
 
+        // [SEGURIDAD] Crear archivo de credenciales temporal
+        $tempConf = $this->createTempAuthFile($host, $user, $pass);
+
         $cmd = sprintf(
-            '"%s" --host=%s --user=%s --password=%s %s < %s 2>&1',
+            '"%s" --defaults-extra-file=%s %s < %s 2>&1',
             $mysqlPath,
-            escapeshellarg($host),
-            escapeshellarg($user),
-            escapeshellarg($pass),
+            escapeshellarg($tempConf),
             escapeshellarg($name),
             escapeshellarg($filePath)
         );
@@ -158,6 +171,9 @@ class BackupService {
         $returnVar = null;
         exec($cmd, $output, $returnVar);
 
+        // Eliminamos el archivo de credenciales inmediatamente
+        if (file_exists($tempConf)) unlink($tempConf);
+
         if ($returnVar === 0) {
             $this->logAction('backup_restore', "Restored: $filename");
             return ['success' => true, 'message' => 'Base de datos restaurada correctamente.'];
@@ -165,6 +181,24 @@ class BackupService {
             error_log("Restore Error: " . implode("\n", $output));
             return ['success' => false, 'message' => 'Error al restaurar. Revisa los logs.'];
         }
+    }
+
+    /**
+     * [SEGURIDAD] Crea un archivo temporal .cnf para mysqldump/mysql
+     * Esto evita que la contraseña aparezca en la lista de procesos (ps aux).
+     */
+    private function createTempAuthFile($host, $user, $pass) {
+        $tempFile = tempnam(sys_get_temp_dir(), 'mycnf');
+        // Permisos estrictos: solo el dueño puede leer/escribir
+        chmod($tempFile, 0600);
+        
+        $content = "[client]\n" .
+                   "user=\"" . addslashes($user) . "\"\n" .
+                   "password=\"" . addslashes($pass) . "\"\n" .
+                   "host=\"" . addslashes($host) . "\"\n";
+                   
+        file_put_contents($tempFile, $content);
+        return $tempFile;
     }
 
     public function deleteBackup($filenames) {
@@ -226,7 +260,6 @@ class BackupService {
 
     public function getAutoConfig() {
         try {
-            // Obtener configuración base
             $stmt = $this->pdo->prepare("SELECT config_key, config_value FROM server_config WHERE config_key LIKE 'auto_backup_%'");
             $stmt->execute();
             $config = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -235,12 +268,10 @@ class BackupService {
             $frequency = (int)($config['auto_backup_frequency'] ?? 24);
             $retention = (int)($config['auto_backup_retention'] ?? 10);
 
-            // Calcular datos en vivo (Próxima ejecución)
             $lastRun = null;
             $nextRunEstimate = null;
             $secondsRemaining = 0;
 
-            // Buscar último log de backup
             $stmtLog = $this->pdo->prepare("SELECT created_at FROM security_logs WHERE action_type = 'backup_create' ORDER BY id DESC LIMIT 1");
             $stmtLog->execute();
             $lastRunStr = $stmtLog->fetchColumn();
@@ -324,7 +355,6 @@ class BackupService {
     }
 
     private function logAction($actionType, $details = '', $isSystem = false) {
-        // [MODIFICADO] Usar Utils::getClientIp
         $ip = Utils::getClientIp();
         $stmt = $this->pdo->prepare("INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)");
         $identifier = $isSystem ? "System | $details" : "Admin:{$this->userId} | $details"; 
@@ -332,7 +362,6 @@ class BackupService {
     }
 
     private function checkRateLimit($actionType, $limit, $minutes) {
-        // [MODIFICADO] Usar Utils::getClientIp
         $ip = Utils::getClientIp();
         $sql = "SELECT COUNT(*) FROM security_logs WHERE action_type = ? AND ip_address = ? AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
         $stmt = $this->pdo->prepare($sql);

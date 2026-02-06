@@ -1,16 +1,31 @@
 # storage/.htaccess
 
-# Permitir acceso directo a las imágenes (png, jpg, jpeg, gif, webp)
-<FilesMatch "\.(png|jpg|jpeg|gif|webp)$">
-    Order Allow,Deny
-    Allow from all
+# 1. [CRÍTICO] Deshabilitar el motor de PHP
+# Esto evita que CUALQUIER archivo se ejecute como script, sin importar su extensión
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+
+# 2. Deshabilitar listado de directorio
+Options -Indexes -ExecCGI
+
+# 3. LISTA BLANCA (WHITELIST)
+# Bloquear todo por defecto
+Require all denied
+
+# Permitir solo acceso a imágenes legítimas
+<FilesMatch "(?i)\.(png|jpg|jpeg|gif|webp|svg)$">
+    Require all granted
 </FilesMatch>
 
-# Bloquear ejecución de scripts PHP (seguridad crítica para uploads)
-<FilesMatch "\.(php|php5|phtml)$">
-    Order Allow,Deny
-    Deny from all
+# 4. Seguridad adicional contra dobles extensiones (ej: shell.php.jpg)
+# Si el nombre contiene .php en cualquier parte, bloquearlo aunque termine en .jpg
+<FilesMatch "(?i)\.php">
+    Require all denied
 </FilesMatch>
-
-# Deshabilitar listado de directorio
-Options -Indexes

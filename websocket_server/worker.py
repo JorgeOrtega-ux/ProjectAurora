@@ -10,6 +10,7 @@ import time
 import glob
 import zipfile
 import secrets
+import tempfile # [NUEVO] Para gestión segura de archivos
 from concurrent.futures import ThreadPoolExecutor
 
 # --- CONFIGURACIÓN ---
@@ -164,18 +165,24 @@ def task_create_backup(payload):
     os.makedirs(BACKUP_DIR, exist_ok=True)
     mysqldump_bin = secure_resolve_mysqldump()
     
-    dump_cmd = [
-        mysqldump_bin,
-        f'--host={DB_HOST}',
-        f'--user={DB_USER}'
-    ]
-    
-    if DB_PASS:
-        dump_cmd.append(f'--password={DB_PASS}')
-    
-    dump_cmd.extend([DB_NAME, '--single-transaction', '--quick'])
-
+    # [SEGURIDAD] Crear archivo temporal para credenciales
+    # Se elimina automáticamente al salir del bloque 'with' (si delete=True, pero en Windows a veces falla si el proceso sigue abierto)
+    # Por seguridad en todos los SO, usaremos delete=False y lo borraremos manualmente.
     try:
+        with tempfile.NamedTemporaryFile(mode='w', delete=False) as temp_conf:
+            # Escribir configuración estilo my.cnf
+            temp_conf.write(f"[client]\nuser=\"{DB_USER}\"\npassword=\"{DB_PASS}\"\nhost=\"{DB_HOST}\"\n")
+            conf_path = temp_conf.name
+        
+        # Ejecutar mysqldump usando el archivo de configuración
+        dump_cmd = [
+            mysqldump_bin,
+            f'--defaults-extra-file={conf_path}',
+            DB_NAME, 
+            '--single-transaction', 
+            '--quick'
+        ]
+
         with open(filepath, 'w') as outfile:
             process = subprocess.Popen(
                 dump_cmd,
@@ -184,6 +191,10 @@ def task_create_backup(payload):
                 text=True
             )
             _, stderr = process.communicate()
+
+        # [SEGURIDAD] Borrar archivo de credenciales INMEDIATAMENTE
+        if os.path.exists(conf_path):
+            os.remove(conf_path)
 
         if process.returncode == 0 and os.path.exists(filepath) and os.path.getsize(filepath) > 0:
             logging.info(f"✅ Backup creado exitosamente: {filename}")
@@ -206,6 +217,10 @@ def task_create_backup(payload):
             notify_frontend('notification', {'type': 'error', 'text': 'Fallo al crear el respaldo.'})
 
     except Exception as e:
+        # Asegurar limpieza en caso de crash
+        if 'conf_path' in locals() and os.path.exists(conf_path):
+            os.remove(conf_path)
+            
         logging.error(f"❌ Excepción al ejecutar backup: {e}")
         notify_frontend('notification', {'type': 'error', 'text': 'Error crítico en el Worker.'})
 
