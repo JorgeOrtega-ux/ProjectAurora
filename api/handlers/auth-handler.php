@@ -49,7 +49,17 @@ switch ($action) {
 
     case 'verify_2fa_login':
         $code = trim($_POST['code'] ?? '');
-        Utils::jsonResponse($authService->verify2faLogin($code));
+        
+        // [MODIFICACIÓN CRÍTICA] Capturamos el resultado antes de enviarlo
+        $result = $authService->verify2faLogin($code);
+        
+        // Si la verificación del servicio fue exitosa (código correcto),
+        // marcamos la sesión como verificada para que el Gatekeeper te deje pasar.
+        if (isset($result['success']) && $result['success'] === true) {
+            $_SESSION['is_2fa_verified'] = true;
+        }
+        
+        Utils::jsonResponse($result);
         break;
 
     case 'request_reset':

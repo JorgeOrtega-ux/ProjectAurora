@@ -2,10 +2,19 @@
 // config/security.php
 
 return [
+    // Definición de Roles y Permisos
+    'roles' => [
+        // Roles que pueden ignorar el modo mantenimiento
+        'maintenance_bypass' => ['founder', 'administrator', 'moderator'],
+        
+        // Roles que tienen acceso al panel de administración (Los mods NO están aquí, como pediste)
+        'admin_access' => ['founder', 'administrator']
+    ],
+
     // Rutas estrictamente de autenticación 
     'auth_routes' => [
         'login', 
-        'login/verification-aditional', // [NUEVO] Permitir acceso público (validado por sesión)
+        'login/verification-aditional', // Ruta para introducir el código 2FA
         'register', 
         'register/aditional-data', 
         'register/verification-account', 

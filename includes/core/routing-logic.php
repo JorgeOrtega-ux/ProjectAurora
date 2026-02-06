@@ -4,8 +4,11 @@
 // Variables globales requeridas: $pdo, $currentSection, $basePath, $i18n
 require_once __DIR__ . '/Gatekeeper.php';
 
-// [BLOQUE DE REFRESCAR SESIÓN - SE MANTIENE CRÍTICO]
-// Necesitamos datos frescos antes de preguntar al Gatekeeper
+// Cargar reglas de seguridad para definir permisos globales
+$securityRules = require __DIR__ . '/../../config/security.php';
+$adminRoles = $securityRules['roles']['admin_access'] ?? ['founder', 'administrator'];
+
+// [BLOQUE DE REFRESCAR SESIÓN]
 $isLoggedIn = isset($_SESSION['user_id']);
 
 if ($isLoggedIn) {
@@ -29,7 +32,7 @@ if ($isLoggedIn) {
         $freshUser = $stmt->fetch();
 
         if ($freshUser) {
-            // Lógica de Bloqueo de Cuenta (Deleted / Suspended)
+            // Lógica de Bloqueo de Cuenta
             $isRestricted = false;
             if ($freshUser['account_status'] === 'deleted') {
                 $isRestricted = true;
@@ -53,7 +56,7 @@ if ($isLoggedIn) {
                 exit;
             }
 
-            // Actualizar sesión con datos frescos (IMPORTANTE PARA EL GATEKEEPER)
+            // Actualizar sesión
             $_SESSION['role'] = $freshUser['role'];
             $_SESSION['avatar'] = $freshUser['avatar_path'];
             $_SESSION['username'] = $freshUser['username'];
@@ -73,14 +76,11 @@ if ($isLoggedIn) {
                     'theme' => $freshPrefs['theme'],
                     'extended_toast' => (bool)$freshPrefs['extended_toast']
                 ];
-
-                // Si cambió el idioma, reinstanciar i18n
                 if ($freshPrefs['language'] !== $previousLang) {
                     $i18n = new I18n($freshPrefs['language']);
                 }
             }
         } else {
-            // Usuario no encontrado en DB
             session_unset();
             session_destroy();
             header("Location: " . $basePath . "login");
@@ -91,8 +91,12 @@ if ($isLoggedIn) {
     }
 }
 
+// [CRÍTICO] Definir variables globales para las Vistas (Header, Sidebar, Profile)
+// Esto soluciona que no se vea el borde ni los links
+$userRole = $_SESSION['role'] ?? 'guest';
+$isAdmin = in_array($userRole, $adminRoles);
+
 // === PREGUNTAMOS AL PORTERO ===
-// $currentSection viene definida desde public/index.php
 $decision = Gatekeeper::check($currentSection, $pdo);
 
 $showInterface = true;
@@ -111,7 +115,6 @@ switch ($decision['action']) {
 
     case Gatekeeper::SHOW_LOCK:
         $fileToLoad = __DIR__ . '/../../includes/sections/system/security-lock.php';
-        // Mantenemos interface para que pueda ver el menú lateral e ir a configuración
         $showInterface = true; 
         break;
 
@@ -124,13 +127,10 @@ switch ($decision['action']) {
         $routesMap = require __DIR__ . '/../../config/routes.php';
         $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
         
-        // Verificación física del archivo
         if (!file_exists($fileToLoad)) {
             $fileToLoad = $routesMap['404'];
         }
         
-        // Decidir si mostrar interfaz (header/sidebar)
-        $securityRules = require __DIR__ . '/../../config/security.php';
         $noInterfaceRoutes = array_merge($securityRules['auth_routes'], ['account-status']);
         $showInterface = !in_array($currentSection, $noInterfaceRoutes);
         break;
