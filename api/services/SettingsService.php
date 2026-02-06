@@ -483,36 +483,64 @@ class SettingsService {
         return ['success' => true, 'message' => $this->i18n->t('api.recovery_status'), 'count' => $count];
     }
 
-    public function regenerateRecoveryCodes($password) {
-        $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
+   public function regenerateRecoveryCodes($password) {
+        // 1. Obtener configuraciones de seguridad
+        $limitFail = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        // [REFACTOR] Usando Utils
-        if (Utils::checkSecurityLimit($this->pdo, '2fa_regen_codes', 3, $duration, $this->userId)) {
+        // 2. CHECK 1: Protección contra Fuerza Bruta (Intentos fallidos de contraseña)
+        // Si el usuario ha fallado la contraseña muchas veces, se le bloquea con el mensaje de "Intentos fallidos".
+        if (Utils::checkSecurityLimit($this->pdo, '2fa_regen_codes_fail', $limitFail, $duration, $this->userId)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
-        if (empty($password)) return ['success' => false, 'message' => $this->i18n->t('api.pass_req_confirm')];
+
+        // 3. CHECK 2: Rate Limiting (Frecuencia de uso legítimo)
+        // Si el usuario ya generó códigos exitosamente 3 veces en 15 min, se le pide esperar sin acusarlo de fallar.
+        // Usamos 'api.recovery_limit' ("Has excedido el límite de solicitudes...") en lugar de login_block.
+        if (Utils::checkSecurityLimit($this->pdo, '2fa_regen_codes', 3, $duration, $this->userId)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.recovery_limit')];
+        }
+
+        // 4. Validar que se envió la contraseña
+        if (empty($password)) {
+            return ['success' => false, 'message' => $this->i18n->t('api.pass_req_confirm')];
+        }
+
+        // 5. Obtener contraseña actual de la BD
         $stmt = $this->pdo->prepare("SELECT password FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
         $user = $stmt->fetch();
+
+        // 6. Verificar contraseña
         if (!$user || !password_verify($password, $user['password'])) {
-            // [REFACTOR] Usando Utils
+            // [IMPORTANTE] Registramos el fallo en el contador de 'fail' (Fuerza Bruta)
             Utils::logSecurityAction($this->pdo, '2fa_regen_codes_fail', $duration, $this->userId);
             return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
         }
+
+        // 7. Generar nuevos códigos (Operación costosa)
         $recoveryCodes = []; 
         $hashedCodes = []; 
         for($i=0; $i<10; $i++) {
             $plainCode = bin2hex(random_bytes(4)); 
             $recoveryCodes[] = $plainCode;
+            // Hasheamos cada código para seguridad en reposo
             $hashedCodes[] = password_hash($plainCode, PASSWORD_DEFAULT);
         }
         $jsonCodes = json_encode($hashedCodes);
+        
+        // 8. Guardar en Base de Datos
         $update = $this->pdo->prepare("UPDATE users SET two_factor_recovery_codes = ? WHERE id = ?");
         if ($update->execute([$jsonCodes, $this->userId])) {
-            // [REFACTOR] Usando Utils
+            // [IMPORTANTE] Registramos el éxito en el contador de frecuencia (Rate Limit)
+            // Esto es lo que evita que un usuario sature el servidor pidiendo códigos infinitamente.
             Utils::logSecurityAction($this->pdo, '2fa_regen_codes', $duration, $this->userId);
-            return ['success' => true, 'message' => $this->i18n->t('api.recovery_regenerated'), 'recovery_codes' => $recoveryCodes];
+            
+            return [
+                'success' => true, 
+                'message' => $this->i18n->t('api.recovery_regenerated'), 
+                'recovery_codes' => $recoveryCodes
+            ];
         } else {
              return ['success' => false, 'message' => $this->i18n->t('api.db_error')];
         }
