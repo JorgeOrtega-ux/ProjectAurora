@@ -316,7 +316,7 @@ if __name__ == "__main__":
     try:
         while True:
             try:
-                item = r_client.blpop(QUEUE_NAME, timeout=5)
+                item = r_client.blpop(QUEUE_NAME, timeout=2)
                 
                 if item:
                     _, raw_data = item

@@ -444,6 +444,10 @@ class SettingsService {
             if ($stmt->execute([$secret, $jsonCodes, $this->userId])) {
                 unset($_SESSION['temp_2fa_secret']);
                 $_SESSION['two_factor_enabled'] = 1;
+
+                // [FIX CRÍTICO] Marcar sesión como verificada inmediatamente
+                $_SESSION['is_2fa_verified'] = true;
+                
                 $this->logProfileChange('2fa', 'disabled', 'enabled');
                 return ['success' => true, 'message' => $this->i18n->t('api.2fa_enabled'), 'recovery_codes' => $recoveryCodes];
             }

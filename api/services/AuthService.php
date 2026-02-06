@@ -492,6 +492,10 @@ class AuthService {
 
         if ($isValid) {
             unset($_SESSION['2fa_pending_user_id']);
+            
+            // [FIX CRÍTICO] Marcar sesión como verificada
+            $_SESSION['is_2fa_verified'] = true;
+
             return $this->completeLogin($user);
         } else {
             // [REFACTOR] Usando Utils

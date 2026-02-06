@@ -69,6 +69,14 @@ class Utils {
    public static function applySecurityHeaders() {
         $cspNonce = base64_encode(random_bytes(16));
 
+        // [MODIFICADO] Leemos la IP del archivo .env
+        // Si no está definida en .env, usamos 127.0.0.1 como fallback seguro
+        $wsIp = $_ENV['APP_HOST_IP'] ?? '127.0.0.1';
+
+        // Construimos las fuentes permitidas para WebSocket
+        // Permitimos localhost por defecto y añadimos la IP configurada
+        $wsSources = "ws://localhost:8765 ws://{$wsIp}:8765";
+
         header("Content-Security-Policy: " .
             "default-src 'self'; " .
             "script-src 'self' https://challenges.cloudflare.com https://unpkg.com https://cdnjs.cloudflare.com 'nonce-$cspNonce'; " .
@@ -76,7 +84,8 @@ class Utils {
             "img-src 'self' data: https://ui-avatars.com; " .
             "font-src 'self' https://fonts.gstatic.com; " .
             "frame-src https://challenges.cloudflare.com; " .
-            "connect-src 'self' https://challenges.cloudflare.com https://unpkg.com ws://localhost:8765 ws://192.168.1.157:8765; " . 
+            // [MODIFICADO] Inyectamos $wsSources aquí
+            "connect-src 'self' https://challenges.cloudflare.com https://unpkg.com {$wsSources}; " . 
             "object-src 'none'; " .
             "base-uri 'self';"
         );
@@ -313,9 +322,6 @@ class Utils {
         }
     }
 
-    // [NUEVO] Protección Anti-Flood Global Extremadamente Ligera
-    // Retorna TRUE si el usuario debe ser bloqueado.
-    // Solo usa Redis. Si Redis falla, retorna FALSE (permite el tráfico) para evitar apagar la web.
     public static function checkFirewallFlood($redis, $limit = 60, $seconds = 60) {
         if (!$redis) return false;
 
@@ -323,18 +329,14 @@ class Utils {
             $ip = self::getClientIp();
             $key = "firewall:flood:" . $ip;
             
-            // Operación atómica: Incrementa y obtiene el nuevo valor
             $requests = $redis->incr($key);
             
-            // Si es la primera petición, establecer TTL
             if ($requests === 1) {
                 $redis->expire($key, $seconds);
             }
             
             return $requests > $limit;
         } catch (Exception $e) {
-            // En caso de error de Redis, fallar "abierto" para no bloquear usuarios legítimos
-            // Podrías loguear esto en un archivo local si es crítico
             return false;
         }
     }
