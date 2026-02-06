@@ -48,8 +48,7 @@ $config = [
     'icon_color' => 'var(--text-primary)',
     'bg_color' => 'var(--bg-hover-light)',
     'show_reason' => false,
-    'show_timer' => false,
-    'actions' => []
+    'show_timer' => false
 ];
 
 switch ($mode) {
@@ -59,12 +58,6 @@ switch ($mode) {
         $config['icon'] = 'dns'; // Icono genérico de servidor
         $config['icon_color'] = '#dc2626'; // Rojo oscuro
         $config['bg_color'] = '#fef2f2';
-        $config['actions'][] = [
-            'type' => 'link',
-            'href' => $basePath,
-            'text' => 'Intentar volver al inicio',
-            'class' => 'primary'
-        ];
         break;
 
     case 'maintenance':
@@ -73,11 +66,6 @@ switch ($mode) {
         $config['icon'] = 'engineering';
         $config['icon_color'] = 'var(--text-primary)'; // Negro/Blanco según tema
         $config['bg_color'] = 'var(--bg-hover-light)';
-        $config['actions'][] = [
-            'type' => 'refresh',
-            'text' => 'Recargar página',
-            'class' => 'primary'
-        ];
         break;
 
     case 'suspended':
@@ -88,11 +76,6 @@ switch ($mode) {
         $config['bg_color'] = '#fff3e0';   // Fondo naranja muy claro
         $config['show_reason'] = true;
         $config['show_timer'] = true;
-        $config['actions'][] = [
-            'type' => 'logout',
-            'text' => $i18n->t('account_status.btn_logout'),
-            'class' => 'primary'
-        ];
         break;
 
     case 'deleted':
@@ -102,11 +85,6 @@ switch ($mode) {
         $config['icon_color'] = '#d32f2f'; // Rojo
         $config['bg_color'] = '#ffebee';   // Fondo rojo muy claro
         $config['show_reason'] = true;
-        $config['actions'][] = [
-            'type' => 'logout',
-            'text' => $i18n->t('account_status.btn_logout'),
-            'class' => 'primary'
-        ];
         break;
         
     default:
@@ -176,22 +154,6 @@ if ($mode === 'suspended' && $suspensionEnd) {
         <?php endif; ?>
 
         <div style="display: flex; flex-direction: column; gap: 12px;">
-            <?php foreach ($config['actions'] as $action): ?>
-                <?php if ($action['type'] === 'logout'): ?>
-                    <button type="button" class="component-button <?php echo $action['class']; ?> component-button--large" data-action="logout">
-                        <?php echo $action['text']; ?>
-                    </button>
-                <?php elseif ($action['type'] === 'refresh'): ?>
-                    <button type="button" class="component-button <?php echo $action['class']; ?> component-button--large" onclick="window.location.reload()">
-                        <?php echo $action['text']; ?>
-                    </button>
-                <?php elseif ($action['type'] === 'link'): ?>
-                    <a href="<?php echo $action['href']; ?>" class="component-button <?php echo $action['class']; ?> component-button--large" style="display:flex; justify-content:center; align-items:center; text-decoration:none;">
-                        <?php echo $action['text']; ?>
-                    </a>
-                <?php endif; ?>
-            <?php endforeach; ?>
-            
             <?php if ($mode !== 'maintenance' && $mode !== 'system_error'): ?>
                 <p style="font-size: 12px; color: var(--text-tertiary); margin-top: 8px;">
                     <?php echo $i18n->t('account_status.contact_support'); ?>
