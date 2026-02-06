@@ -5,6 +5,7 @@
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { I18n } from '../../core/i18n-manager.js';
+import { Dialog } from '../../core/dialog-manager.js'; // Necesario para el confirm
 
 export const ServerConfigController = {
     init: () => {
@@ -15,10 +16,86 @@ export const ServerConfigController = {
             btnSave.addEventListener('click', saveConfig);
         }
 
+        // [MODIFICADO] Listener para botón de pánico
+        const btnPanic = document.getElementById('btn-panic-mode');
+        if (btnPanic) {
+            btnPanic.addEventListener('click', togglePanicMode);
+        }
+
         _initSteppers();
         _initDomainManager();
     }
 };
+
+// [NUEVO] Función para alternar el Modo Pánico
+async function togglePanicMode() {
+    const btn = document.getElementById('btn-panic-mode');
+    const isActive = btn.dataset.active === 'true';
+    
+    // Títulos y mensajes dinámicos según estado actual
+    const title = isActive ? '¿Desactivar MODO PÁNICO?' : '¿ACTIVAR MODO PÁNICO?';
+    const msg = isActive 
+        ? 'Esto restaurará el acceso normal al servidor. Los usuarios podrán registrarse y conectarse de nuevo.'
+        : 'ESTA ES UNA ACCIÓN DESTRUCTIVA. Se cerrarán inmediatamente todas las conexiones de invitados y se bloquearán nuevos registros. Úselo solo bajo ataque o carga extrema.';
+    
+    const confirmText = isActive ? 'Desactivar y Restaurar' : 'SÍ, ACTIVAR PÁNICO';
+    
+    const confirmed = await Dialog.confirm({
+        title: title,
+        message: msg,
+        type: 'danger',
+        confirmText: confirmText,
+        cancelText: I18n.t('global.cancel')
+    });
+
+    if (!confirmed) return;
+
+    // Estado de carga
+    const originalContent = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner-sm"></div> Procesando...';
+
+    // Construir llamada (pasando el estado DESEADO: si estaba activo, ahora quiero false)
+    const formData = new FormData();
+    formData.append('activate', !isActive ? '1' : '0');
+
+    try {
+        // [MODIFICADO] Llamada directa usando objeto de ruta manual ya que api-routes.js no se edita en este lote
+        const res = await ApiService.post({ route: 'admin.toggle_panic' }, formData);
+        
+        if (res.success) {
+            Toast.show(res.message, 'success');
+            
+            // Actualizar UI del botón sin recargar
+            const newState = !isActive;
+            btn.dataset.active = newState ? 'true' : 'false';
+            
+            if (newState) {
+                // Activar Estilos Pánico
+                btn.style.cssText = 'background-color: var(--color-error); color: white; border-color: var(--color-error); animation: pulse-red 2s infinite;';
+                btn.innerHTML = '<span class="material-symbols-rounded" style="margin-right: 6px;">report_off</span><span style="font-weight: 700; font-size: 12px;">DESACTIVAR PÁNICO</span>';
+            } else {
+                // Restaurar Estilos Normales
+                btn.style.cssText = 'color: var(--color-error); border-color: rgba(211, 47, 47, 0.3); animation: none;';
+                btn.innerHTML = '<span class="material-symbols-rounded" style="margin-right: 6px;">report</span><span style="font-weight: 700; font-size: 12px;">MODO PÁNICO</span>';
+            }
+            
+            // Si hay inputs de config en pantalla (como allow_registrations), actualizarlos visualmente
+            const checkReg = document.querySelector('input[name="allow_registrations"]');
+            if (checkReg) checkReg.checked = !newState; // Si pánico activo -> registros off
+
+        } else {
+            Toast.show(res.message, 'error');
+            btn.innerHTML = originalContent; // Restaurar texto original si falló
+        }
+    } catch (e) {
+        console.error(e);
+        Toast.show(I18n.t('js.core.connection_error'), 'error');
+        btn.innerHTML = originalContent;
+    } finally {
+        btn.disabled = false;
+    }
+}
 
 // --- GESTIÓN DE DOMINIOS (CHIPS) ---
 function _initDomainManager() {

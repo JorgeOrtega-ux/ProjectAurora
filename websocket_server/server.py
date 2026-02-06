@@ -31,7 +31,6 @@ background_tasks = set()
 
 async def get_redis_client():
     # [SEGURIDAD DINÁMICA]
-    # Determina si usa SSL basado en la variable de entorno
     use_ssl = os.getenv('REDIS_SCHEME', 'tcp').lower() == 'tls'
     
     return redis.Redis(
@@ -109,6 +108,33 @@ async def disconnect_user_all(user_id, reason="Cuenta cerrada"):
         for sid in sessions:
             await disconnect_user_session(user_id, sid, reason)
 
+# [NUEVO] Función para desconectar invitados masivamente (PÁNICO)
+async def disconnect_guests():
+    if not connected_guests:
+        return
+
+    count = len(connected_guests)
+    logging.warning(f"🚨 EJECUTANDO PROTOCOLO DE PÁNICO: Expulsando a {count} invitados...")
+    
+    payload = json.dumps({
+        "type": "force_logout", 
+        "reason": "El sistema ha entrado en Modo de Seguridad. Solo usuarios registrados permitidos."
+    })
+    
+    # Crear copia para iterar con seguridad
+    guests_to_kick = list(connected_guests)
+    
+    for ws in guests_to_kick:
+        try:
+            await ws.send(payload)
+            await ws.close(code=1008, reason="Panic Mode Activated")
+        except:
+            pass
+            
+    connected_guests.clear()
+    await update_stats_broadcast()
+    logging.info("✅ Invitados purgados correctamente.")
+
 async def update_stats_broadcast():
     """Actualiza contadores en Redis y notifica al frontend en tiempo real"""
     try:
@@ -151,20 +177,22 @@ async def redis_listener():
                         if cmd == 'BROADCAST':
                             await broadcast_message(data.get('msg_type'), data.get('message'))
                         
-                        # 2. [FIX] Modo Mantenimiento
+                        # 2. Modo Mantenimiento
                         elif cmd == 'maintenance_start':
-                            # Reenviar la señal 'maintenance_start' a todos los clientes conectados
                             await broadcast_message('maintenance_start', data.get('message'))
 
                         # 3. Expulsión de una sesión específica
                         elif cmd == 'KICK_SESSION' or cmd == 'LOGOUT_SESSION':
                             await disconnect_user_session(str(data.get('user_id')), str(data.get('session_id')))
                         
-                        # 4. [FIX] Expulsión total (Suspensión/Eliminación)
+                        # 4. Expulsión total (Suspensión/Eliminación)
                         elif cmd == 'KICK_ALL':
-                            # Capturamos la razón enviada desde PHP (si existe)
                             reason = data.get('reason', "Cuenta cerrada")
                             await disconnect_user_all(str(data.get('user_id')), reason)
+
+                        # 5. [NUEVO] MODO PÁNICO (Expulsar Invitados)
+                        elif cmd == 'DROP_GUESTS':
+                            await disconnect_guests()
                             
                     except Exception as e:
                         logging.error(f"Error procesando mensaje PubSub: {e}")

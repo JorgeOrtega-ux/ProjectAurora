@@ -114,8 +114,10 @@ CREATE TABLE IF NOT EXISTS server_config (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- [MODIFICADO] Se agrega 'security_panic_mode'
 INSERT IGNORE INTO server_config (config_key, config_value) VALUES 
 ('maintenance_mode', '0'),
+('security_panic_mode', '0'),
 ('allow_registrations', '1'),
 ('allow_login', '1'),
 ('password_min_length', '8'),

@@ -53,7 +53,9 @@ return [
     'admin.get_server_config' => ['file' => 'handlers/admin-handler.php', 'action' => 'get_server_config'],
     'admin.update_server_config' => ['file' => 'handlers/admin-handler.php', 'action' => 'update_server_config'],
     
-    // [NUEVO] Endpoint unificado para solicitar descargas seguras
+    // [NUEVO] Toggle Panic Mode
+    'admin.toggle_panic'      => ['file' => 'handlers/admin-handler.php', 'action' => 'toggle_panic_mode'],
+
     'admin.request_download'  => ['file' => 'handlers/admin-handler.php', 'action' => 'request_download_token'],
 
     // BACKUPS ADMIN
@@ -79,7 +81,8 @@ return [
     'admin.redis_get'         => ['file' => 'handlers/admin-handler.php', 'action' => 'get_redis_value'],
     'admin.redis_del'         => ['file' => 'handlers/admin-handler.php', 'action' => 'delete_redis_key'],
     'admin.redis_flush'       => ['file' => 'handlers/admin-handler.php', 'action' => 'flush_redis_db'],
-'canvas.create' => ['file' => 'handlers/canvas-handler.php', 'action' => 'create_canvas'],
+    
+    'canvas.create'           => ['file' => 'handlers/canvas-handler.php', 'action' => 'create_canvas'],
     // SYSTEM
     'system.create_backup'    => ['file' => 'handlers/system-handler.php', 'action' => 'create_backup_auto'],
 ];

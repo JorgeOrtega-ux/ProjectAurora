@@ -17,6 +17,14 @@ function isChecked($key, $configArray) {
     return (isset($configArray[$key]) && $configArray[$key] == '1') ? 'checked' : '';
 }
 
+// [NUEVO] Helper para estado del botón de pánico
+$isPanicActive = (isset($config['security_panic_mode']) && $config['security_panic_mode'] == '1');
+$panicBtnStyle = $isPanicActive 
+    ? 'background-color: var(--color-error); color: white; border-color: var(--color-error); animation: pulse-red 2s infinite;' 
+    : 'color: var(--color-error); border-color: rgba(211, 47, 47, 0.3);';
+$panicBtnIcon = $isPanicActive ? 'report_off' : 'report';
+$panicBtnText = $isPanicActive ? 'DESACTIVAR PÁNICO' : 'MODO PÁNICO';
+
 function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge = 10) {
     ?>
     <div class="component-group-item component-group-item--stacked">
@@ -55,6 +63,14 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
 }
 ?>
 
+<style>
+    @keyframes pulse-red {
+        0% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(211, 47, 47, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0); }
+    }
+</style>
+
 <div class="component-wrapper" data-section="admin-server-config">
     
     <div class="component-toolbar-wrapper">
@@ -64,6 +80,14 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
                     <div class="component-toolbar-title"><?php echo $i18n->t('admin.server.title'); ?></div>
                 </div>
                 <div class="component-toolbar__side component-toolbar__side--right">
+                    
+                    <button class="component-button" id="btn-panic-mode" style="<?php echo $panicBtnStyle; ?>" data-active="<?php echo $isPanicActive ? 'true' : 'false'; ?>">
+                        <span class="material-symbols-rounded" style="margin-right: 6px;"><?php echo $panicBtnIcon; ?></span>
+                        <span style="font-weight: 700; font-size: 12px;"><?php echo $panicBtnText; ?></span>
+                    </button>
+
+                    <div class="component-divider-vertical" style="height: 24px; border-left: 1px solid var(--border-light); margin: 0 8px;"></div>
+
                     <button class="header-button" data-nav="admin/redis" data-tooltip="<?php echo $i18n->t('admin.server.toolbar.redis'); ?>">
                         <span class="material-symbols-rounded" style="color: #d32f2f;">memory</span>
                     </button>

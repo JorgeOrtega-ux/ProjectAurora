@@ -4,11 +4,63 @@
 use Aurora\Libs\Utils;
 use Aurora\Services\AuthService;
 
-// 1. BOOTSTRAP
+// 1. BOOTSTRAP (Aquí se inicia sesión y se conecta Redis/DB)
 $services = require_once __DIR__ . '/../bootstrap.php';
 $pdo = $services['pdo'];
 $i18n = $services['i18n'];
 $redis = $services['redis'];
+
+// ============================================================================
+// 1.1 [NUEVO] MODO PÁNICO (FIREWALL ESTRICTO)
+// Bloquea todo el tráfico no autenticado para salvar la base de datos.
+// Se ejecuta antes que el Rate Limiter normal.
+// ============================================================================
+if ($redis) {
+    try {
+        $isPanicMode = $redis->get('firewall:strict');
+        
+        // Si hay pánico y el usuario NO tiene sesión (es invitado)
+        if ($isPanicMode === 'true' && !isset($_SESSION['user_id'])) {
+            http_response_code(503); // Service Unavailable
+            header('Retry-After: 300'); // Sugerir reintento en 5 min
+            
+            // Renderizamos pantalla de bloqueo de emergencia (Ultra ligera)
+            ?>
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Sistema en Protección</title>
+                <style>
+                    body { background: #111; color: #fff; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
+                    .container { max-width: 400px; padding: 20px; }
+                    .icon { font-size: 48px; margin-bottom: 20px; display: block; }
+                    h1 { font-size: 24px; margin-bottom: 10px; color: #ff4444; }
+                    p { color: #aaa; line-height: 1.5; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <span class="icon">🛡️</span>
+                    <h1>Acceso Restringido Temporalmente</h1>
+                    <p>
+                        El sistema está experimentando una carga inusual y ha activado sus protocolos de seguridad.
+                        <br><br>
+                        El acceso para usuarios no registrados está pausado momentáneamente.
+                        Si ya tienes cuenta, por favor intenta acceder más tarde.
+                    </p>
+                </div>
+            </body>
+            </html>
+            <?php
+            exit; // DETENER EJECUCIÓN TOTAL
+        }
+    } catch (Exception $e) {
+        // Si falla Redis, fallar abierto (permitir tráfico) o loguear error silencioso
+        error_log("Error verificando Panic Mode: " . $e->getMessage());
+    }
+}
 
 // ============================================================================
 // 1.5 FIREWALL DE APLICACIÓN (RATE LIMITER) - VERSIÓN VISUAL
@@ -19,7 +71,6 @@ if (Utils::checkFirewallFlood($redis, 35, 60)) {
     header('Retry-After: 60');
     
     // Renderizamos una pantalla de error visual idéntica a status-screen.php
-    // Usamos estilos inline para que sea ultra-ligero y rápido.
     ?>
     <!DOCTYPE html>
     <html lang="es">

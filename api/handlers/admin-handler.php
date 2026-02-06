@@ -14,6 +14,7 @@ use Aurora\Services\RedisService;
 use Aurora\Services\AlertService;
 use Aurora\Libs\Utils;
 
+// Inicializamos AlertService aquí para pasarlo si es necesario
 $alertService = new AlertService($pdo, $redis, $_SESSION['user_id']);
 
 if (!isset($_SESSION['user_id'])) {
@@ -40,11 +41,19 @@ switch ($action) {
         Utils::jsonResponse($adminService->getDashboardStats());
         break;
 
-    // === [NUEVO] GESTIÓN DE DESCARGAS SEGURAS ===
+    // === GESTIÓN DE DESCARGAS SEGURAS ===
     case 'request_download_token':
         $file = $_POST['file'] ?? '';
         $type = $_POST['type'] ?? ''; // 'backup' o 'log'
         Utils::jsonResponse($adminService->requestDownloadToken($file, $type));
+        break;
+
+    // === [NUEVO] MODO PÁNICO ===
+    case 'toggle_panic_mode':
+        // Convertimos el string '1'/'0' a booleano
+        $shouldActivate = (isset($_POST['activate']) && $_POST['activate'] === '1');
+        // Pasamos el servicio de alertas para que AdminService pueda orquestar todo
+        Utils::jsonResponse($adminService->togglePanicMode($shouldActivate, $alertService));
         break;
 
     // === USUARIOS ===
@@ -196,7 +205,7 @@ switch ($action) {
         Utils::jsonResponse($redisService->flushDB());
         break;
 
-    // === GESTIÓN DE ALERTAS ===
+    // === GESTIÓN DE ALERTAS (Directas) ===
     case 'create_system_alert':
         $data = json_decode($_POST['alert_data'], true);
         Utils::jsonResponse($alertService->createAlert($data));

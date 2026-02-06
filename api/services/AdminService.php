@@ -7,7 +7,7 @@ use Aurora\Libs\Utils;
 use Aurora\Libs\Logger;
 use PDO;
 use Exception;
-use finfo; // Usado en uploadUserAvatar
+use finfo; 
 
 class AdminService {
     private $pdo;
@@ -26,18 +26,95 @@ class AdminService {
     }
 
     // ===============================================================================================
+    // [NUEVO] LOGICA DEL MODO PÁNICO
+    // ===============================================================================================
+
+    public function togglePanicMode($activate, AlertService $alertService) {
+        if (!$this->isAdmin()) {
+            return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+        }
+
+        if (!$this->redis) {
+            return ['success' => false, 'message' => 'Redis es requerido para ejecutar acciones de emergencia.'];
+        }
+
+        try {
+            $this->pdo->beginTransaction();
+
+            if ($activate) {
+                // === ACTIVAR PÁNICO ===
+                
+                // 1. SQL: Bloquear registros y activar bandera
+                $stmt = $this->pdo->prepare("
+                    INSERT INTO server_config (config_key, config_value) 
+                    VALUES ('allow_registrations', '0'), ('security_panic_mode', '1') 
+                    ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)
+                ");
+                $stmt->execute();
+
+                // 2. Redis: Activar Firewall estricto (para app-setup.php)
+                $this->redis->set('firewall:strict', 'true');
+
+                // 3. AlertService: Crear alerta visual roja
+                // "Sobrecarga Temporal" suele ser la mejor descripción genérica para pánico
+                $alertData = [
+                    'type' => 'performance',
+                    'meta' => ['code' => 'overload'] 
+                ];
+                $alertService->createAlert($alertData);
+
+                // 4. Redis PubSub: Ordenar a Python que mate los invitados
+                $wsMessage = [
+                    'cmd' => 'DROP_GUESTS'
+                ];
+                $this->redis->publish('aurora_ws_control', json_encode($wsMessage));
+
+                $this->logAudit('system', 'global', 'PANIC_MODE_ACTIVATED', ['reason' => 'Admin manual trigger']);
+                
+                $message = 'MODO PÁNICO ACTIVADO. Tráfico de invitados cortado y registros bloqueados.';
+
+            } else {
+                // === DESACTIVAR PÁNICO ===
+
+                // 1. SQL: Restaurar registros y quitar bandera
+                $stmt = $this->pdo->prepare("
+                    INSERT INTO server_config (config_key, config_value) 
+                    VALUES ('allow_registrations', '1'), ('security_panic_mode', '0') 
+                    ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)
+                ");
+                $stmt->execute();
+
+                // 2. Redis: Eliminar Firewall estricto
+                $this->redis->del('firewall:strict');
+
+                // 3. AlertService: Quitar alerta
+                $alertService->deactivateAlert();
+
+                $this->logAudit('system', 'global', 'PANIC_MODE_DEACTIVATED');
+
+                $message = 'Modo Pánico desactivado. Sistema restaurado a la normalidad.';
+            }
+
+            // Invalidar caché de configuración global para que PHP lea los nuevos valores DB
+            $this->redis->del('server:config:all');
+
+            $this->pdo->commit();
+
+            return ['success' => true, 'message' => $message];
+
+        } catch (Exception $e) {
+            $this->pdo->rollBack();
+            Logger::security('Panic Mode Error', ['error' => $e->getMessage()]);
+            return ['success' => false, 'message' => 'Error crítico al cambiar estado de emergencia.'];
+        }
+    }
+
+    // ===============================================================================================
     // SISTEMA DE SEGURIDAD JERÁRQUICA (CORE)
     // ===============================================================================================
 
     /**
      * Verifica si el usuario solicitante tiene autoridad jerárquica sobre el objetivo.
-     * Reglas:
-     * 1. Auto-modificación: PERMITIDA (salvo excepciones lógicas).
-     * 2. Jerarquía: El nivel del solicitante debe ser ESTRICTAMENTE MAYOR al del objetivo.
-     * - Founder (3) > Admin (2) > User (1)
-     * - Admin NO puede tocar a Admin (2 !> 2).
-     * - Admin NO puede tocar a Founder (2 < 3).
-     * - Founder puede tocar a todos los inferiores.
      */
     private function checkHierarchicalPermission($targetUserId) {
         // 1. Obtener datos del solicitante
@@ -420,9 +497,6 @@ class AdminService {
     public function getUserDetails($targetId) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
-        // NOTA: Visualización permitida entre Admins, pero se puede restringir si se desea.
-        // Por ahora, solo restringimos la MODIFICACIÓN según tus instrucciones.
-        
         try {
             $sql = "SELECT u.id, u.uuid, u.username, u.email, u.role, u.avatar_path, 
                            u.account_status, u.suspension_ends_at, u.status_reason, u.two_factor_enabled,
@@ -467,10 +541,8 @@ class AdminService {
     public function updateUserProfile($targetId, $field, $value) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
         
-        // --- VERIFICACIÓN DE JERARQUÍA ---
         $permCheck = $this->checkHierarchicalPermission($targetId);
         if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
-        // ---------------------------------
 
         if (!in_array($field, ['username', 'email'])) return ['success' => false, 'message' => $this->i18n->t('api.field_invalid')];
         
@@ -510,34 +582,25 @@ class AdminService {
     public function updateUserRole($targetId, $newRole) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
-        // --- VERIFICACIÓN DE JERARQUÍA ---
         $permCheck = $this->checkHierarchicalPermission($targetId);
         if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
-        // ---------------------------------
 
         $allowedRoles = ['user', 'moderator', 'administrator'];
-        // Si el que lo pide es Founder, podría teóricamente crear otro founder, 
-        // pero por seguridad bloqueamos crear Founders por API regular.
         
         if (!in_array($newRole, $allowedRoles)) {
             return ['success' => false, 'message' => 'Rol inválido o acción no permitida.'];
         }
 
-        // SEGURIDAD ADICIONAL:
-        // Un administrador NO puede ascender a nadie (ni a sí mismo) a un nivel igual o superior al suyo.
-        // Ej: Admin no puede crear otro Admin.
         $myRole = $this->getRequesterRole();
         $myLevel = $this->getRoleLevel($myRole);
         $newRoleLevel = $this->getRoleLevel($newRole);
 
-        // Si soy founder (3), puedo hacer lo que quiera con niveles inferiores.
-        // Si soy admin (2), no puedo crear un usuario de nivel 2 o superior.
         if ($myRole !== 'founder' && $newRoleLevel >= $myLevel) {
              return ['success' => false, 'message' => 'No tienes permisos para otorgar este nivel de autoridad.'];
         }
 
         try {
-            $currentRole = $permCheck['role']; // Ya lo obtuvimos en checkHierarchicalPermission
+            $currentRole = $permCheck['role']; 
             
             if ($currentRole === $newRole) return ['success' => true, 'message' => 'Sin cambios'];
 
@@ -559,10 +622,8 @@ class AdminService {
     public function disableUser2FA($targetId) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
-        // --- VERIFICACIÓN DE JERARQUÍA ---
         $permCheck = $this->checkHierarchicalPermission($targetId);
         if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
-        // ---------------------------------
 
         try {
             $stmt = $this->pdo->prepare("SELECT two_factor_enabled FROM users WHERE id = ?");
@@ -588,10 +649,8 @@ class AdminService {
     public function updateUserPreference($targetId, $key, $value) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
-        // --- VERIFICACIÓN DE JERARQUÍA ---
         $permCheck = $this->checkHierarchicalPermission($targetId);
         if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
-        // ---------------------------------
 
         $allowedKeys = ['language', 'open_links_new_tab', 'theme', 'extended_toast'];
         if (!in_array($key, $allowedKeys)) return ['success' => false, 'message' => $this->i18n->t('api.pref_invalid')];
@@ -625,10 +684,8 @@ class AdminService {
     public function uploadUserAvatar($targetId, $files) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
         
-        // --- VERIFICACIÓN DE JERARQUÍA ---
         $permCheck = $this->checkHierarchicalPermission($targetId);
         if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
-        // ---------------------------------
 
         if (!isset($files['avatar']) || $files['avatar']['error'] !== UPLOAD_ERR_OK) { 
             return ['success' => false, 'message' => $this->i18n->t('api.no_image')]; 
@@ -689,10 +746,8 @@ class AdminService {
     public function deleteUserAvatar($targetId) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
-        // --- VERIFICACIÓN DE JERARQUÍA ---
         $permCheck = $this->checkHierarchicalPermission($targetId);
         if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
-        // ---------------------------------
 
         $stmt = $this->pdo->prepare("SELECT avatar_path, username, uuid FROM users WHERE id = ?");
         $stmt->execute([$targetId]);
@@ -732,10 +787,8 @@ class AdminService {
     public function updateUserStatus($targetId, $statusData) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
-        // --- VERIFICACIÓN DE JERARQUÍA ---
         $permCheck = $this->checkHierarchicalPermission($targetId);
         if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
-        // ---------------------------------
 
         $newStatus = $statusData['status'] ?? 'active';
         $reason = $statusData['reason'] ?? null;
@@ -747,7 +800,6 @@ class AdminService {
             return ['success' => false, 'message' => 'Estado inválido'];
         }
 
-        // Recuperamos datos actuales (Rol ya lo verificamos en checkPermission, pero necesitamos el status actual)
         $checkStmt = $this->pdo->prepare("SELECT role, account_status, suspension_ends_at, status_reason FROM users WHERE id = ?");
         $checkStmt->execute([$targetId]);
         $userData = $checkStmt->fetch();
@@ -783,25 +835,23 @@ class AdminService {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$newStatus, $suspensionEndsAt, $finalReason, $targetId]);
 
-if ($userData['account_status'] !== $newStatus || $userData['status_reason'] !== $finalReason) {
-    $this->logAudit('user', $targetId, 'UPDATE_STATUS', [
-        'old_status' => $userData['account_status'],
-        'new_status' => $newStatus,
-        'old_reason' => $userData['status_reason'],
-        'new_reason' => $finalReason
-    ]);
+            if ($userData['account_status'] !== $newStatus || $userData['status_reason'] !== $finalReason) {
+                $this->logAudit('user', $targetId, 'UPDATE_STATUS', [
+                    'old_status' => $userData['account_status'],
+                    'new_status' => $newStatus,
+                    'old_reason' => $userData['status_reason'],
+                    'new_reason' => $finalReason
+                ]);
 
-    // [CORRECCIÓN CRÍTICA] - Notificar al WebSocket para expulsión inmediata
-    if ($newStatus === 'suspended' || $newStatus === 'deleted') {
-        // Usamos KICK_ALL que ya está programado en Python para cerrar todos los sockets de ese ID
-        Utils::notifyWebSocket('KICK_ALL', [
-            'user_id' => $targetId,
-            'reason'  => $finalReason // Opcional, para logs en Python
-        ]);
-    }
-}
+                if ($newStatus === 'suspended' || $newStatus === 'deleted') {
+                    Utils::notifyWebSocket('KICK_ALL', [
+                        'user_id' => $targetId,
+                        'reason'  => $finalReason 
+                    ]);
+                }
+            }
 
-return ['success' => true, 'message' => 'Estado de cuenta actualizado correctamente.'];
+            return ['success' => true, 'message' => 'Estado de cuenta actualizado correctamente.'];
 
         } catch (Exception $e) {
             return ['success' => false, 'message' => $this->i18n->t('api.update_error')];
@@ -888,7 +938,6 @@ return ['success' => true, 'message' => 'Estado de cuenta actualizado correctame
     }
 
     private function isAdmin() {
-        // [MODIFICADO] Verificación estricta de Rol + 2FA
         $stmt = $this->pdo->prepare("SELECT role, two_factor_enabled FROM users WHERE id = ?");
         $stmt->execute([$this->requestingUserId]);
         $user = $stmt->fetch();
@@ -898,7 +947,6 @@ return ['success' => true, 'message' => 'Estado de cuenta actualizado correctame
         $isRoleAllowed = in_array($user['role'], ['founder', 'administrator']);
         
         if ($isRoleAllowed) {
-            // Si el rol es admin/founder, ES OBLIGATORIO tener 2FA activado (valor 1)
             return (int)$user['two_factor_enabled'] === 1;
         }
 
