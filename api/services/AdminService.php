@@ -9,6 +9,9 @@ class AdminService {
     private $requestingUserId;
     private $redis; 
 
+    // Cache simple para evitar múltiples consultas del rol del solicitante
+    private $requesterRoleCache = null;
+
     public function __construct($pdo, $i18n, $userId, $redis = null) {
         $this->pdo = $pdo;
         $this->i18n = $i18n;
@@ -16,7 +19,81 @@ class AdminService {
         $this->redis = $redis;
     }
 
-    // === GENERACIÓN DE TOKEN DE DESCARGA (Soporte Híbrido: Directo/Worker) ===
+    // ===============================================================================================
+    // SISTEMA DE SEGURIDAD JERÁRQUICA (CORE)
+    // ===============================================================================================
+
+    /**
+     * Verifica si el usuario solicitante tiene autoridad jerárquica sobre el objetivo.
+     * Reglas:
+     * 1. Auto-modificación: PERMITIDA (salvo excepciones lógicas).
+     * 2. Jerarquía: El nivel del solicitante debe ser ESTRICTAMENTE MAYOR al del objetivo.
+     * - Founder (3) > Admin (2) > User (1)
+     * - Admin NO puede tocar a Admin (2 !> 2).
+     * - Admin NO puede tocar a Founder (2 < 3).
+     * - Founder puede tocar a todos los inferiores.
+     */
+    private function checkHierarchicalPermission($targetUserId) {
+        // 1. Obtener datos del solicitante
+        $myRole = $this->getRequesterRole();
+        $myLevel = $this->getRoleLevel($myRole);
+
+        // 2. Obtener datos del objetivo
+        $stmt = $this->pdo->prepare("SELECT role FROM users WHERE id = ?");
+        $stmt->execute([$targetUserId]);
+        $targetRole = $stmt->fetchColumn();
+
+        if (!$targetRole) {
+            return ['allowed' => false, 'message' => $this->i18n->t('api.id_invalid')];
+        }
+
+        $targetLevel = $this->getRoleLevel($targetRole);
+
+        // REGLA 1: Auto-modificación permitida
+        if ($this->requestingUserId == $targetUserId) {
+            return ['allowed' => true, 'role' => $targetRole];
+        }
+
+        // REGLA 2: Jerarquía Estricta (Solicitante > Objetivo)
+        if ($myLevel > $targetLevel) {
+            return ['allowed' => true, 'role' => $targetRole];
+        }
+
+        // Si llegamos aquí, permiso denegado
+        $msg = 'No tienes autoridad suficiente para modificar a este usuario.';
+        if ($targetRole === 'administrator' && $myRole === 'administrator') {
+            $msg = 'Los administradores no pueden modificar a otros administradores.';
+        } elseif ($targetRole === 'founder') {
+            $msg = 'Acción protegida: Solo el Founder puede modificarse a sí mismo.';
+        }
+
+        return ['allowed' => false, 'message' => $msg];
+    }
+
+    private function getRoleLevel($role) {
+        $hierarchy = [
+            'founder'       => 3,
+            'administrator' => 2,
+            'moderator'     => 1,
+            'user'          => 1
+        ];
+        return $hierarchy[$role] ?? 0;
+    }
+
+    private function getRequesterRole() {
+        if ($this->requesterRoleCache === null) {
+            $stmt = $this->pdo->prepare("SELECT role FROM users WHERE id = ?");
+            $stmt->execute([$this->requestingUserId]);
+            $this->requesterRoleCache = $stmt->fetchColumn();
+        }
+        return $this->requesterRoleCache;
+    }
+
+    // ===============================================================================================
+    // FUNCIONALIDADES
+    // ===============================================================================================
+
+    // === GENERACIÓN DE TOKEN DE DESCARGA ===
     public function requestDownloadToken($inputFiles, $type) {
         if (!$this->isAdmin()) {
             return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
@@ -48,7 +125,7 @@ class AdminService {
         }
 
         $validPaths = [];
-        $relativePaths = []; // Lista limpia para el Worker
+        $relativePaths = []; 
 
         foreach ($filesToProcess as $relativePath) {
             $cleanPath = str_replace('..', '', $relativePath);
@@ -70,9 +147,7 @@ class AdminService {
             return ['success' => false, 'message' => 'Ninguno de los archivos solicitados es válido o existe.'];
         }
 
-        // --- ESTRATEGIA DE DESCARGA ---
-
-        // CASO 1: Archivo Único (Rápido - Síncrono en PHP)
+        // CASO 1: Archivo Único (Síncrono)
         if (count($validPaths) === 1) {
             $targetFile = $validPaths[0]['full'];
             $targetName = basename($validPaths[0]['name']); 
@@ -89,7 +164,6 @@ class AdminService {
 
             try {
                 $this->redis->setex("download:token:$token", 60, json_encode($data));
-                
                 $this->logAudit('download', $type, 'DOWNLOAD_REQUEST', ['file' => $targetName]);
 
                 return [
@@ -103,7 +177,7 @@ class AdminService {
             }
         } 
         
-        // CASO 2: Múltiples Archivos (Pesado - Asíncrono en Python Worker)
+        // CASO 2: Múltiples Archivos (Asíncrono - Worker)
         else {
             try {
                 $jobData = [
@@ -116,12 +190,11 @@ class AdminService {
                 ];
 
                 $this->redis->rpush('aurora_task_queue', json_encode($jobData));
-                
                 $this->logAudit('download', $type, 'ZIP_REQUEST_QUEUED', ['count' => count($validPaths)]);
 
                 return [
                     'success' => true,
-                    'queued' => true, // Bandera para que el frontend espere el evento socket
+                    'queued' => true,
                     'message' => 'Tu descarga se está generando en segundo plano. Te avisaremos cuando esté lista.'
                 ];
 
@@ -263,7 +336,6 @@ class AdminService {
                 if ($log['changes']) {
                     $log['changes'] = json_decode($log['changes'], true);
                 }
-                // Completar avatar si falta
                 $log['admin_avatar_src'] = $this->resolveAvatarSrc($log['admin_id'], $log['admin_name']);
             }
 
@@ -319,7 +391,6 @@ class AdminService {
 
             $formattedUsers = [];
             foreach ($users as $user) {
-                // Para el listado de usuarios, pasamos el path directo
                 $user['avatar_src'] = $this->resolveAvatarSrcPath($user['avatar_path'], $user['username']);
                 $formattedUsers[] = $user;
             }
@@ -343,6 +414,9 @@ class AdminService {
     public function getUserDetails($targetId) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
+        // NOTA: Visualización permitida entre Admins, pero se puede restringir si se desea.
+        // Por ahora, solo restringimos la MODIFICACIÓN según tus instrucciones.
+        
         try {
             $sql = "SELECT u.id, u.uuid, u.username, u.email, u.role, u.avatar_path, 
                            u.account_status, u.suspension_ends_at, u.status_reason, u.two_factor_enabled,
@@ -387,6 +461,11 @@ class AdminService {
     public function updateUserProfile($targetId, $field, $value) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
         
+        // --- VERIFICACIÓN DE JERARQUÍA ---
+        $permCheck = $this->checkHierarchicalPermission($targetId);
+        if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
+        // ---------------------------------
+
         if (!in_array($field, ['username', 'email'])) return ['success' => false, 'message' => $this->i18n->t('api.field_invalid')];
         
         if ($field === 'username') {
@@ -425,19 +504,34 @@ class AdminService {
     public function updateUserRole($targetId, $newRole) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
+        // --- VERIFICACIÓN DE JERARQUÍA ---
+        $permCheck = $this->checkHierarchicalPermission($targetId);
+        if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
+        // ---------------------------------
+
         $allowedRoles = ['user', 'moderator', 'administrator'];
+        // Si el que lo pide es Founder, podría teóricamente crear otro founder, 
+        // pero por seguridad bloqueamos crear Founders por API regular.
+        
         if (!in_array($newRole, $allowedRoles)) {
             return ['success' => false, 'message' => 'Rol inválido o acción no permitida.'];
         }
 
-        try {
-            $checkStmt = $this->pdo->prepare("SELECT role FROM users WHERE id = ?");
-            $checkStmt->execute([$targetId]);
-            $currentRole = $checkStmt->fetchColumn();
+        // SEGURIDAD ADICIONAL:
+        // Un administrador NO puede ascender a nadie (ni a sí mismo) a un nivel igual o superior al suyo.
+        // Ej: Admin no puede crear otro Admin.
+        $myRole = $this->getRequesterRole();
+        $myLevel = $this->getRoleLevel($myRole);
+        $newRoleLevel = $this->getRoleLevel($newRole);
 
-            if ($currentRole === 'founder') {
-                return ['success' => false, 'message' => 'No se puede modificar el rol de un usuario Founder.'];
-            }
+        // Si soy founder (3), puedo hacer lo que quiera con niveles inferiores.
+        // Si soy admin (2), no puedo crear un usuario de nivel 2 o superior.
+        if ($myRole !== 'founder' && $newRoleLevel >= $myLevel) {
+             return ['success' => false, 'message' => 'No tienes permisos para otorgar este nivel de autoridad.'];
+        }
+
+        try {
+            $currentRole = $permCheck['role']; // Ya lo obtuvimos en checkHierarchicalPermission
             
             if ($currentRole === $newRole) return ['success' => true, 'message' => 'Sin cambios'];
 
@@ -458,6 +552,11 @@ class AdminService {
 
     public function disableUser2FA($targetId) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+
+        // --- VERIFICACIÓN DE JERARQUÍA ---
+        $permCheck = $this->checkHierarchicalPermission($targetId);
+        if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
+        // ---------------------------------
 
         try {
             $stmt = $this->pdo->prepare("SELECT two_factor_enabled FROM users WHERE id = ?");
@@ -482,6 +581,11 @@ class AdminService {
 
     public function updateUserPreference($targetId, $key, $value) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+
+        // --- VERIFICACIÓN DE JERARQUÍA ---
+        $permCheck = $this->checkHierarchicalPermission($targetId);
+        if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
+        // ---------------------------------
 
         $allowedKeys = ['language', 'open_links_new_tab', 'theme', 'extended_toast'];
         if (!in_array($key, $allowedKeys)) return ['success' => false, 'message' => $this->i18n->t('api.pref_invalid')];
@@ -515,6 +619,11 @@ class AdminService {
     public function uploadUserAvatar($targetId, $files) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
         
+        // --- VERIFICACIÓN DE JERARQUÍA ---
+        $permCheck = $this->checkHierarchicalPermission($targetId);
+        if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
+        // ---------------------------------
+
         if (!isset($files['avatar']) || $files['avatar']['error'] !== UPLOAD_ERR_OK) { 
             return ['success' => false, 'message' => $this->i18n->t('api.no_image')]; 
         }
@@ -574,6 +683,11 @@ class AdminService {
     public function deleteUserAvatar($targetId) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
+        // --- VERIFICACIÓN DE JERARQUÍA ---
+        $permCheck = $this->checkHierarchicalPermission($targetId);
+        if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
+        // ---------------------------------
+
         $stmt = $this->pdo->prepare("SELECT avatar_path, username, uuid FROM users WHERE id = ?");
         $stmt->execute([$targetId]);
         $targetUser = $stmt->fetch();
@@ -612,6 +726,11 @@ class AdminService {
     public function updateUserStatus($targetId, $statusData) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
+        // --- VERIFICACIÓN DE JERARQUÍA ---
+        $permCheck = $this->checkHierarchicalPermission($targetId);
+        if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
+        // ---------------------------------
+
         $newStatus = $statusData['status'] ?? 'active';
         $reason = $statusData['reason'] ?? null;
         $suspensionType = $statusData['suspension_type'] ?? null; 
@@ -622,14 +741,11 @@ class AdminService {
             return ['success' => false, 'message' => 'Estado inválido'];
         }
 
+        // Recuperamos datos actuales (Rol ya lo verificamos en checkPermission, pero necesitamos el status actual)
         $checkStmt = $this->pdo->prepare("SELECT role, account_status, suspension_ends_at, status_reason FROM users WHERE id = ?");
         $checkStmt->execute([$targetId]);
         $userData = $checkStmt->fetch();
         
-        if ($userData['role'] === 'founder') {
-            return ['success' => false, 'message' => 'No se puede alterar el estado de un Founder.'];
-        }
-
         try {
             $suspensionEndsAt = null;
             $finalReason = $reason;
