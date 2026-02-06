@@ -65,10 +65,10 @@
         <div class="component-stat-card">
             <div class="component-stat-header">
                 <span class="component-stat-title"><?php echo $i18n->t('admin.dashboard.stats.online_now'); ?></span>
-                <span class="material-symbols-rounded component-stat-icon" style="color:var(--color-success);">wifi</span>
+                <span class="material-symbols-rounded component-stat-icon">wifi</span>
             </div>
             <div class="component-stat-main-value" data-stat="online_total">...</div>
-            <div class="component-stat-footer" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+            <div class="component-stat-footer stat-footer-stacked">
                 <div style="font-size:11px; color:var(--text-secondary); display:flex; justify-content:space-between; width:100%;">
                     <span><?php echo $i18n->t('admin.dashboard.stats.users'); ?>:</span> <strong style="color:var(--text-primary);" data-stat="online_users">0</strong>
                 </div>

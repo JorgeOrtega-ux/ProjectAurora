@@ -274,6 +274,17 @@
     background-color: var(--action-primary-hover);
 }
 
+/* Variación: Botón Peligro (Ghost) */
+.component-button.component-button--danger-ghost {
+    color: var(--color-error);
+    border-color: rgba(211, 47, 47, 0.3);
+}
+
+.component-button.component-button--danger-ghost:hover {
+    background-color: var(--action-danger-bg);
+    border-color: var(--color-error);
+}
+
 .component-button--large {
     height: 56px;
     padding: 0 24px;
@@ -800,7 +811,7 @@ input:checked+.component-toggle-slider:before {
 }
 
 /* =========================================
-   6. RESPONSIVE
+   6. RESPONSIVE (LAYOUTS GENERALES)
    ========================================= */
 .component-group-item--stacked {
     flex-direction: column !important;
@@ -886,7 +897,6 @@ input:checked+.component-toggle-slider:before {
         gap: 12px;
     }
 
-    /* [FIX] Forzar fila para headers de acordeón para que la flecha no caiga */
     .component-group-item.component-accordion-header {
         flex-direction: row;
         align-items: center;
@@ -1261,7 +1271,7 @@ input:checked+.component-toggle-slider:before {
 }
 
 /* =========================================
-   13. STEPPERS & DOMAIN MANAGER (REFACTORIZADO)
+   13. STEPPERS & DOMAIN MANAGER
    ========================================= */
 .component-stepper {
     display: flex;
@@ -1312,7 +1322,6 @@ input:checked+.component-toggle-slider:before {
     margin: 0;
 }
 
-/* --- DOMAIN MANAGER --- */
 .domain-manager-wrapper {
     width: 100%;
     display: flex;
@@ -1403,7 +1412,6 @@ input:checked+.component-toggle-slider:before {
     justify-content: center;
     align-items: center;
 
-    /* Estado inicial invisible */
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.25s ease, visibility 0.25s ease;
@@ -1419,13 +1427,10 @@ input:checked+.component-toggle-slider:before {
     max-width: 90%;
     padding: 16px;
     position: relative;
-
-    /* Animación Desktop (Escala y Fade) */
     transform: scale(0.95) translateY(10px);
     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* Estado activo en Desktop */
 .component-overlay.active .component-dialog-wrapper {
     transform: scale(1) translateY(0);
 }
@@ -1444,7 +1449,6 @@ input:checked+.component-toggle-slider:before {
 
 .component-dialog-drag-zone {
     display: none;
-    /* Oculto en escritorio */
     justify-content: center;
     width: 100%;
     padding-bottom: 24px;
@@ -1493,34 +1497,24 @@ input:checked+.component-toggle-slider:before {
     justify-content: center;
 }
 
-/* =========================================
-   14.b DIALOGS MOBILE (BOTTOM SHEET)
-   ========================================= */
 @media (max-width: 468px) {
     .component-overlay {
         align-items: flex-end;
-        /* Alinear al fondo */
     }
 
     .component-dialog-wrapper {
         width: 100%;
         max-width: 100%;
         padding: 0;
-
-        /* ESTADO INICIAL: Escondido abajo */
         transform: translateY(100%);
-        /* Transición suave tipo iOS/Android */
         transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-
         border-radius: 16px 16px 0 0;
     }
 
-    /* ESTADO ACTIVO: Sube a su posición natural */
     .component-overlay.active .component-dialog-wrapper {
         transform: translateY(0);
     }
 
-    /* ESTADO CERRANDO: Baja de nuevo (activado por JS antes de destruir) */
     .component-overlay.active .component-dialog-wrapper.closing {
         transform: translateY(100%) !important;
         transition: transform 0.25s ease-in;
@@ -1537,7 +1531,6 @@ input:checked+.component-toggle-slider:before {
 
     .component-dialog-drag-zone {
         display: flex;
-        /* Visible solo en móvil */
     }
 
     .component-dialog-footer {
@@ -1552,7 +1545,7 @@ input:checked+.component-toggle-slider:before {
 }
 
 /* =========================================
-   5. UTILIDADES Y EXTRAS (TOASTS) - MONOCROMÁTICO
+   5. UTILIDADES Y EXTRAS (TOASTS)
    ========================================= */
 #toast-container {
     position: fixed;
@@ -1569,25 +1562,17 @@ input:checked+.component-toggle-slider:before {
     pointer-events: auto;
     min-width: 300px;
     max-width: 400px;
-    
-    /* Alto contraste (Invertido): Texto primario como fondo, Superficie como texto */
     background-color: var(--text-primary); 
     color: var(--bg-surface);
-    
     padding: 12px 16px;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    
     display: flex;
     align-items: center;
     gap: 12px;
-    
-    /* Animación de entrada */
     transform: translateX(-120%);
     transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
     opacity: 0;
-    
-    /* Sin bordes de color */
     border: none; 
 }
 
@@ -1598,7 +1583,6 @@ input:checked+.component-toggle-slider:before {
 
 .toast-icon { 
     font-size: 24px; 
-    /* Hereda el color del contenedor (blanco o negro invertido) */
     color: inherit; 
 }
 
@@ -1606,7 +1590,6 @@ input:checked+.component-toggle-slider:before {
     font-size: 14px;
     font-weight: var(--sl-font-weight-semibold);
     flex: 1;
-    /* Hereda el color del contenedor */
     color: inherit;
 }
 
@@ -1642,21 +1625,14 @@ input:checked+.component-toggle-slider:before {
     display: inline-block;
 }
 
-/* [NUEVO] Fix para el spinner dentro del botón primario en modo Light.
-   Fuerza el spinner a ser blanco para que contraste con el fondo oscuro. */
 .component-button.primary .spinner-sm {
     border-color: rgba(255, 255, 255, 0.2);
     border-left-color: #ffffff;
 }
 
 @keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-
-    100% {
-        transform: rotate(360deg);
-    }
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* CAJAS VISUALES */
@@ -1732,7 +1708,7 @@ input:checked+.component-toggle-slider:before {
 }
 
 /* =========================================
-   16. COMPONENTES DE DATOS Y ESTRUCTURA (REUTILIZABLES)
+   16. COMPONENTES DE DATOS Y ESTRUCTURA
    ========================================= */
 .component-stats-grid {
     display: flex;
@@ -1766,8 +1742,6 @@ input:checked+.component-toggle-slider:before {
     font-family: var(--sl-font-mono);
 }
 
-/* --- Layout Flex de Altura Completa --- */
-/* Aplicar al wrapper principal para que ocupe el 100% del alto */
 .component-wrapper--flex {
     display: flex;
     flex-direction: column;
@@ -1775,20 +1749,16 @@ input:checked+.component-toggle-slider:before {
     min-height: 0;
 }
 
-/* Tarjeta que crece para llenar el espacio restante */
 .component-card--fill {
     flex: 1;
     min-height: 0;
-    /* Crítico para que el scroll interno funcione en Flexbox */
     display: flex;
     flex-direction: column;
     padding: 0;
-    /* Sin padding para que la tabla toque los bordes */
     overflow: hidden;
     border: 1px solid var(--border-light);
 }
 
-/* --- Toolbar Interna (dentro de tarjeta) --- */
 .component-toolbar-internal {
     padding: 12px;
     border-bottom: 1px solid var(--border-light);
@@ -1799,7 +1769,6 @@ input:checked+.component-toggle-slider:before {
     align-items: center;
 }
 
-/* --- Contenedor de Tabla con Scroll --- */
 .component-table-scrollable {
     flex: 1;
     overflow-y: auto;
@@ -1818,7 +1787,6 @@ input:checked+.component-toggle-slider:before {
     box-shadow: 0 1px 0 var(--border-light);
 }
 
-/* --- Visor de Datos (Dialogs) --- */
 .component-data-viewer {
     display: flex;
     flex-direction: column;
@@ -1849,22 +1817,11 @@ input:checked+.component-toggle-slider:before {
     outline: none;
 }
 
-/* --- Utilidades --- */
-.font-mono {
-    font-family: var(--sl-font-mono);
-}
-
-.w-60 {
-    width: 60px;
-}
-
-.w-80 {
-    width: 80px;
-}
-
-.text-right {
-    text-align: right;
-}
+.font-mono { font-family: var(--sl-font-mono); }
+.w-60 { width: 60px; }
+.w-80 { width: 80px; }
+.text-right { text-align: right; }
+.text-size-md { font-size: 1.1rem; line-height: 1.4; }
 
 /* =========================================
    17. DASHBOARD CARDS & TRENDS
@@ -1890,9 +1847,9 @@ input:checked+.component-toggle-slider:before {
 }
 
 .component-stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--sl-shadow-medium);
-    border-color: var(--border-color-hover);
+    transform: none;
+    box-shadow: none;
+    border-color: var(--text-primary);
 }
 
 .component-stat-header {
@@ -1934,7 +1891,13 @@ input:checked+.component-toggle-slider:before {
     margin-top: auto;
 }
 
-/* Indicadores de Tendencia */
+/* Footer apilado para info compleja (ej. Online Users/Guests) */
+.component-stat-footer.stat-footer-stacked {
+    flex-direction: column; 
+    align-items: flex-start; 
+    gap: 4px;
+}
+
 .component-trend-badge {
     display: inline-flex;
     align-items: center;
@@ -1965,7 +1928,72 @@ input:checked+.component-toggle-slider:before {
 }
 
 /* =========================================
-   18. PAGINACIÓN (NUEVO)
+   [NUEVO] RESPONSIVE COMPACTO PARA CARDS
+   ========================================= */
+@media (max-width: 600px) {
+    /* Grilla de una columna, pero cards compactas */
+    .component-dashboard-grid {
+        grid-template-columns: 1fr; 
+        gap: 12px;
+    }
+
+    .component-stat-card {
+        padding: 12px 16px; /* Menos padding vertical */
+        min-height: auto;
+        
+        /* TRANSFORMACIÓN A GRID INTERNO */
+        display: grid;
+        grid-template-columns: 1fr auto; /* Columna Izq (Texto) | Columna Der (Icono/Footer) */
+        grid-template-rows: auto auto;   /* Fila Sup (Titulo) | Fila Inf (Valor) */
+        grid-template-areas: 
+            "title icon"
+            "value footer";
+        align-items: center;
+        gap: 4px 0; /* Sin gap horizontal, pequeño gap vertical */
+    }
+
+    /* Rompemos el contenedor header para que sus hijos (titulo e icono) fluyan al grid padre */
+    .component-stat-header {
+        display: contents; 
+    }
+
+    .component-stat-title {
+        grid-area: title;
+        align-self: center;
+        font-size: 12px;
+        margin-bottom: 0;
+    }
+
+    .component-stat-icon {
+        grid-area: icon;
+        justify-self: end; /* Icono a la derecha */
+        font-size: 18px; /* Icono un poco más pequeño */
+        padding: 4px;
+    }
+
+    .component-stat-main-value {
+        grid-area: value;
+        font-size: 22px; /* Valor un poco más compacto */
+        margin-top: 0;
+    }
+
+    .component-stat-footer {
+        grid-area: footer;
+        justify-self: end; /* Footer alineado a la derecha */
+        margin-top: 0;
+        justify-content: flex-end;
+        text-align: right;
+        width: auto;
+    }
+    
+    /* Ajuste especial para footer apilado en móvil */
+    .component-stat-footer.stat-footer-stacked {
+        align-items: flex-end; /* Alinear textos a la derecha */
+    }
+}
+
+/* =========================================
+   18. PAGINACIÓN
    ========================================= */
 .component-pagination {
     display: flex;
@@ -2002,10 +2030,10 @@ input:checked+.component-toggle-slider:before {
     min-width: 60px;
     text-align: center;
 }
-/* =========================================
-   SISTEMA DE ALERTAS (REFACTORIZADO)
-   ========================================= */
 
+/* =========================================
+   SISTEMA DE ALERTAS
+   ========================================= */
 .component-system-alert-wrapper {
     position: relative;
     top: 0;
@@ -2013,7 +2041,7 @@ input:checked+.component-toggle-slider:before {
     width: 100%;
     padding: 8px 8px 0 8px;
     z-index: 499;
-    pointer-events: none; /* Permite clicks passthrough */
+    pointer-events: none;
 }
 
 .component-system-alert-box {
@@ -2025,14 +2053,13 @@ input:checked+.component-toggle-slider:before {
     justify-content: space-between;
     padding: 12px 16px;
     color: #ffffff;
-    pointer-events: auto; /* Reactivar clicks */
+    pointer-events: auto;
     gap: 12px;
     transition: background-color 0.3s ease;
 }
 
-/* Modificadores de Severidad */
 .component-system-alert-box.type--critical {
-    background-color: var(--color-error); /* #ef4444 */
+    background-color: var(--color-error);
 }
 
 .component-system-alert-box.type--warning {
@@ -2066,7 +2093,6 @@ input:checked+.component-toggle-slider:before {
     margin: 0;
 }
 
-/* Enlaces dentro del mensaje */
 .component-system-alert__message a {
     color: inherit;
     text-decoration: underline;
@@ -2099,9 +2125,8 @@ input:checked+.component-toggle-slider:before {
 }
 
 /* =========================================
-   19. DATE TIME PICKER PROFESSIONAL (BEM REFACTOR)
+   19. DATE TIME PICKER PROFESSIONAL
    ========================================= */
-
 .component-datepicker-wrapper {
     position: relative;
     width: auto;
@@ -2112,20 +2137,16 @@ input:checked+.component-toggle-slider:before {
     position: absolute;
     top: calc(100% + 8px);
     left: 0;
-
     width: 280px;
     display: none; 
     flex-direction: column;
-    
     background: var(--bg-surface);
     border: 1px solid var(--border-light);
     color: var(--text-primary);
-    
     border-radius: 12px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.15);
     padding: 16px;
     z-index: 900;
-    
     animation: fadeInPopover 0.2s ease-out;
 }
 
@@ -2234,7 +2255,6 @@ input:checked+.component-toggle-slider:before {
 .component-calendar__day.is-empty { cursor: default; }
 .component-calendar__day.is-disabled { opacity: 0.3; cursor: not-allowed; }
 
-/* Time Section */
 .component-calendar__footer {
     border-top: 1px solid var(--border-light);
     margin-top: 12px;
@@ -2287,15 +2307,14 @@ input:checked+.component-toggle-slider:before {
 }
 .component-calendar__confirm-btn:hover {
     opacity: 0.9;
-}/* Ajuste para pantallas muy chicas (Móviles) */
+}
+
 @media (max-width: 480px) {
     .trigger-select-wrapper {
         width: 100%;
         min-width: 100%;
         max-width: 100%;
     }
-    
-    /* Opcional: Si el contenido interno también necesita ajuste */
     .trigger-select-wrapper .trigger-selector {
         width: 100%;
     }

@@ -50,7 +50,7 @@
         <div class="component-stat-card">
             <div class="component-stat-header">
                 <span class="component-stat-title"><?php echo $i18n->t('admin.redis.stats.memory'); ?></span>
-                <span class="material-symbols-rounded component-stat-icon" style="color: #0288d1;">memory</span>
+                <span class="material-symbols-rounded component-stat-icon">memory</span>
             </div>
             <div class="component-stat-main-value" data-stat="memory_used">...</div>
             <div class="component-stat-footer">
@@ -72,7 +72,7 @@
         <div class="component-stat-card">
             <div class="component-stat-header">
                 <span class="component-stat-title"><?php echo $i18n->t('admin.redis.stats.keys'); ?></span>
-                <span class="material-symbols-rounded component-stat-icon" style="color: var(--action-primary);">vpn_key</span>
+                <span class="material-symbols-rounded component-stat-icon">vpn_key</span>
             </div>
             <div class="component-stat-main-value" data-stat="total_keys">...</div>
             <div class="component-stat-footer">
