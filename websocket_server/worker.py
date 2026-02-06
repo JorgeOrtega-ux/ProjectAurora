@@ -10,7 +10,7 @@ import time
 import glob
 import zipfile
 import secrets
-import tempfile # [NUEVO] Para gestión segura de archivos
+import tempfile 
 from concurrent.futures import ThreadPoolExecutor
 
 # --- CONFIGURACIÓN ---
@@ -51,14 +51,25 @@ EXECUTOR = ThreadPoolExecutor(max_workers=2)
 
 # --- INICIALIZACIÓN GLOBAL DE REDIS ---
 try:
+    # [SEGURIDAD DINÁMICA]
+    # Si REDIS_SCHEME es 'tls' usamos SSL, si es 'tcp' no.
+    # Esto permite que funcione en XAMPP (local) y en Producción sin cambios de código.
+    use_ssl = os.getenv('REDIS_SCHEME', 'tcp').lower() == 'tls'
+    
     r_client = redis.Redis(
         host=REDIS_HOST, 
         port=REDIS_PORT, 
         password=REDIS_PASS, 
-        decode_responses=True
+        decode_responses=True,
+        ssl=use_ssl,           # True solo si es producción/TLS
+        ssl_cert_reqs=None,    # Ignorar errores de certificado (si usas SSL)
+        socket_timeout=5       # Timeout de seguridad para no colgar el script
     )
     r_client.ping() # Verificar conexión
-    logging.info("✅ Conexión a Redis establecida correctamente.")
+    
+    mode_msg = "🔒 CON SSL" if use_ssl else "🔓 SIN SSL (Modo Local)"
+    logging.info(f"✅ Conexión a Redis establecida correctamente [{mode_msg}].")
+
 except Exception as e:
     logging.error(f"❌ Error fatal conectando a Redis: {e}")
     exit(1)
@@ -165,9 +176,6 @@ def task_create_backup(payload):
     os.makedirs(BACKUP_DIR, exist_ok=True)
     mysqldump_bin = secure_resolve_mysqldump()
     
-    # [SEGURIDAD] Crear archivo temporal para credenciales
-    # Se elimina automáticamente al salir del bloque 'with' (si delete=True, pero en Windows a veces falla si el proceso sigue abierto)
-    # Por seguridad en todos los SO, usaremos delete=False y lo borraremos manualmente.
     try:
         with tempfile.NamedTemporaryFile(mode='w', delete=False) as temp_conf:
             # Escribir configuración estilo my.cnf
@@ -217,7 +225,6 @@ def task_create_backup(payload):
             notify_frontend('notification', {'type': 'error', 'text': 'Fallo al crear el respaldo.'})
 
     except Exception as e:
-        # Asegurar limpieza en caso de crash
         if 'conf_path' in locals() and os.path.exists(conf_path):
             os.remove(conf_path)
             
@@ -235,13 +242,10 @@ def task_create_zip(payload):
         if not files:
             raise ValueError("Lista de archivos vacía")
 
-        # Determinar directorio base
         base_dir = LOGS_DIR if source_type == 'log' else BACKUP_DIR
         
-        # Validar y resolver rutas
         valid_files = []
         for f_rel in files:
-            # Seguridad: Evitar path traversal
             f_rel = f_rel.replace('..', '').strip('/')
             full_path = os.path.join(base_dir, f_rel)
             
@@ -252,7 +256,6 @@ def task_create_zip(payload):
             notify_frontend('notification', {'type': 'warning', 'text': 'Ningún archivo válido para comprimir.'})
             return
 
-        # Crear ZIP temporal
         os.makedirs(TEMP_DIR, exist_ok=True)
         zip_filename = f"aurora_batch_{int(time.time())}_{secrets.token_hex(4)}.zip"
         zip_filepath = os.path.join(TEMP_DIR, zip_filename)
@@ -263,7 +266,6 @@ def task_create_zip(payload):
             for abs_path, arc_name in valid_files:
                 zf.write(abs_path, arc_name)
 
-        # Generar Token de descarga seguro para Redis
         token = secrets.token_hex(32)
         redis_data = {
             'filepath': zip_filepath,
@@ -273,10 +275,8 @@ def task_create_zip(payload):
             'created_at': time.time()
         }
         
-        # Guardar token con expiración de 5 minutos (300s)
         r_client.setex(f"download:token:{token}", 300, json.dumps(redis_data))
         
-        # Notificar al usuario con el enlace
         download_url = f"download.php?token={token}"
         
         notify_frontend('download_ready', {
@@ -292,13 +292,11 @@ def task_create_zip(payload):
         logging.error(f"❌ Error creando ZIP: {e}")
         notify_frontend('notification', {'type': 'error', 'text': 'Error al generar el archivo comprimido.'})
 
-# Mapa de tareas
 TASKS = {
     'create_backup': task_create_backup,
     'create_zip': task_create_zip
 }
 
-# Wrapper para ejecutar la tarea
 def run_job(raw_data):
     try:
         job = json.loads(raw_data)
@@ -312,20 +310,16 @@ def run_job(raw_data):
     except Exception as e:
         logging.error(f"Error procesando job: {e}")
 
-# --- MAIN LOOP ---
-
 if __name__ == "__main__":
     logging.info(f"🚀 Aurora Worker iniciado. Esperando trabajos en '{QUEUE_NAME}'...")
     
     try:
         while True:
             try:
-                # BLPOP bloquea hasta que haya un elemento (Timeout 5s)
                 item = r_client.blpop(QUEUE_NAME, timeout=5)
                 
                 if item:
                     _, raw_data = item
-                    # Delegar al ThreadPool inmediatamente
                     EXECUTOR.submit(run_job, raw_data)
 
             except redis.exceptions.ConnectionError:

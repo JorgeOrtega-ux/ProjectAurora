@@ -25,14 +25,23 @@ REDIS_PORT = int(REDIS_PORT)
 WS_PORT = 8765
 
 # Almacenamiento en memoria de conexiones
-# Estructura: { 'user_id': { 'session_id': set(websockets) } }
 connected_users = {}
 connected_guests = set()
 background_tasks = set()
 
 async def get_redis_client():
+    # [SEGURIDAD DINÁMICA]
+    # Determina si usa SSL basado en la variable de entorno
+    use_ssl = os.getenv('REDIS_SCHEME', 'tcp').lower() == 'tls'
+    
     return redis.Redis(
-        host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASS, decode_responses=True
+        host=REDIS_HOST, 
+        port=REDIS_PORT, 
+        password=REDIS_PASS, 
+        decode_responses=True,
+        ssl=use_ssl,
+        ssl_cert_reqs=None,
+        socket_timeout=5
     )
 
 async def validate_and_consume_token(path, r_client):
@@ -160,7 +169,6 @@ async def ws_handler(websocket):
     r_client = await get_redis_client()
     user_id, session_id = await validate_and_consume_token(path, r_client)
     
-    # Check alerta persistente del sistema al conectar
     try:
         alert = await r_client.get('system:active_alert')
         if alert: await websocket.send(json.dumps({"type": "system_alert", "message": json.loads(alert)}))
@@ -206,7 +214,6 @@ async def ws_handler(websocket):
 async def main():
     logging.info(f"🚀 WS Servidor iniciando en puerto {WS_PORT}...")
     
-    # Iniciar Listener en background como tarea para que no bloquee el servidor
     task = asyncio.create_task(redis_listener())
     background_tasks.add(task)
     task.add_done_callback(background_tasks.discard)

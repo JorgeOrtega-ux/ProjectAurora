@@ -30,11 +30,17 @@ $redisHost = $_ENV['REDIS_HOST'] ?? '127.0.0.1';
 $redisPort = $_ENV['REDIS_PORT'] ?? 6379;
 $redisPass = $_ENV['REDIS_PASSWORD'] ?? null;
 
+// [SEGURIDAD FIX] Cambio de esquema TCP -> TLS para encriptación
 $redisConfig = [
-    'scheme' => 'tcp',
-    'host'   => $redisHost,
-    'port'   => $redisPort,
-    'timeout'=> 2.0, 
+    'scheme'   => getenv('REDIS_SCHEME') ?: 'tls', // Forzamos TLS por defecto
+    'host'     => $redisHost,
+    'port'     => $redisPort,
+    'timeout'  => 2.0,
+    // Opciones SSL para evitar errores con certificados autofirmados
+    'ssl'      => [
+        'verify_peer' => false,
+        'verify_peer_name' => false
+    ]
 ];
 
 if (!empty($redisPass)) {
@@ -86,18 +92,15 @@ Utils::setRedis($redis);
 Utils::initErrorHandlers();
 
 // 8. [REFACTORIZADO] Conexión BD Controlada
-// Aquí decidimos cómo morir si la BD falla (JSON vs HTML)
 try {
     require_once __DIR__ . '/../config/database/db.php';
 } catch (Exception $e) {
-    // A) Si tenemos Logger, usamos Logger. Si no (porque falló carga), usamos error_log nativo.
     if (class_exists('Logger')) {
         Logger::db("Database Connection Critical Failure", ['msg' => $e->getMessage()]);
     } else {
         error_log("CRITICAL BOOTSTRAP DB ERROR: " . $e->getMessage());
     }
 
-    // B) Detección de Contexto (API vs Navegador)
     $isApi = (strpos($_SERVER['REQUEST_URI'] ?? '', '/api/') !== false) || 
              (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
 
@@ -106,7 +109,6 @@ try {
     }
 
     if ($isApi) {
-        // Respuesta JSON para el Frontend (evita que JS explote al parsear)
         header('Content-Type: application/json');
         echo json_encode([
             'success' => false, 
@@ -114,7 +116,6 @@ try {
             'error_code' => 'DB_CONN_FAIL'
         ]);
     } else {
-        // Respuesta HTML para el usuario
         echo '<!DOCTYPE html>
         <html>
         <head><title>Error de Servicio</title><style>body{font-family:sans-serif;text-align:center;padding:50px;background:#f9f9f9;color:#333;}</style></head>
@@ -126,7 +127,6 @@ try {
         </html>';
     }
     
-    // Detener ejecución totalmente
     exit;
 }
 
