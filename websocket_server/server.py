@@ -147,12 +147,24 @@ async def redis_listener():
                         data = json.loads(message['data'])
                         cmd = data.get('cmd')
                         
+                        # 1. Difusión General (Alertas, etc.)
                         if cmd == 'BROADCAST':
                             await broadcast_message(data.get('msg_type'), data.get('message'))
+                        
+                        # 2. [FIX] Modo Mantenimiento
+                        elif cmd == 'maintenance_start':
+                            # Reenviar la señal 'maintenance_start' a todos los clientes conectados
+                            await broadcast_message('maintenance_start', data.get('message'))
+
+                        # 3. Expulsión de una sesión específica
                         elif cmd == 'KICK_SESSION' or cmd == 'LOGOUT_SESSION':
                             await disconnect_user_session(str(data.get('user_id')), str(data.get('session_id')))
+                        
+                        # 4. [FIX] Expulsión total (Suspensión/Eliminación)
                         elif cmd == 'KICK_ALL':
-                            await disconnect_user_all(str(data.get('user_id')))
+                            # Capturamos la razón enviada desde PHP (si existe)
+                            reason = data.get('reason', "Cuenta cerrada")
+                            await disconnect_user_all(str(data.get('user_id')), reason)
                             
                     except Exception as e:
                         logging.error(f"Error procesando mensaje PubSub: {e}")

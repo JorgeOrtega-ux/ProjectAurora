@@ -777,16 +777,25 @@ class AdminService {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute([$newStatus, $suspensionEndsAt, $finalReason, $targetId]);
 
-            if ($userData['account_status'] !== $newStatus || $userData['status_reason'] !== $finalReason) {
-                $this->logAudit('user', $targetId, 'UPDATE_STATUS', [
-                    'old_status' => $userData['account_status'],
-                    'new_status' => $newStatus,
-                    'old_reason' => $userData['status_reason'],
-                    'new_reason' => $finalReason
-                ]);
-            }
+if ($userData['account_status'] !== $newStatus || $userData['status_reason'] !== $finalReason) {
+    $this->logAudit('user', $targetId, 'UPDATE_STATUS', [
+        'old_status' => $userData['account_status'],
+        'new_status' => $newStatus,
+        'old_reason' => $userData['status_reason'],
+        'new_reason' => $finalReason
+    ]);
 
-            return ['success' => true, 'message' => 'Estado de cuenta actualizado correctamente.'];
+    // [CORRECCIÓN CRÍTICA] - Notificar al WebSocket para expulsión inmediata
+    if ($newStatus === 'suspended' || $newStatus === 'deleted') {
+        // Usamos KICK_ALL que ya está programado en Python para cerrar todos los sockets de ese ID
+        Utils::notifyWebSocket('KICK_ALL', [
+            'user_id' => $targetId,
+            'reason'  => $finalReason // Opcional, para logs en Python
+        ]);
+    }
+}
+
+return ['success' => true, 'message' => 'Estado de cuenta actualizado correctamente.'];
 
         } catch (Exception $e) {
             return ['success' => false, 'message' => $this->i18n->t('api.update_error')];
