@@ -313,6 +313,32 @@ class Utils {
         }
     }
 
+    // [NUEVO] Protección Anti-Flood Global Extremadamente Ligera
+    // Retorna TRUE si el usuario debe ser bloqueado.
+    // Solo usa Redis. Si Redis falla, retorna FALSE (permite el tráfico) para evitar apagar la web.
+    public static function checkFirewallFlood($redis, $limit = 60, $seconds = 60) {
+        if (!$redis) return false;
+
+        try {
+            $ip = self::getClientIp();
+            $key = "firewall:flood:" . $ip;
+            
+            // Operación atómica: Incrementa y obtiene el nuevo valor
+            $requests = $redis->incr($key);
+            
+            // Si es la primera petición, establecer TTL
+            if ($requests === 1) {
+                $redis->expire($key, $seconds);
+            }
+            
+            return $requests > $limit;
+        } catch (Exception $e) {
+            // En caso de error de Redis, fallar "abierto" para no bloquear usuarios legítimos
+            // Podrías loguear esto en un archivo local si es crítico
+            return false;
+        }
+    }
+
     private static function incrementRedisCounter($key, $minutes) {
         if (!self::$redisInstance) return;
         try {
