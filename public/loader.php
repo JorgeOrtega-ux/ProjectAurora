@@ -7,49 +7,41 @@ $pdo = $services['pdo'];
 $i18n = $services['i18n'];
 $redis = $services['redis'];
 
+// Importamos el Portero Central
+require_once __DIR__ . '/../includes/core/Gatekeeper.php';
+
 $basePath = '/ProjectAurora/'; 
 $section = $_GET['section'] ?? 'main';
 $section = strtok($section, '?');
 
-// === CARGA DE REGLAS DE SEGURIDAD ===
-$securityRules = require __DIR__ . '/../config/security.php';
-$authRoutes = $securityRules['auth_routes'];
-$protectedRoutes = $securityRules['protected_routes'];
+// === PREGUNTAMOS AL PORTERO ===
+$decision = Gatekeeper::check($section, $pdo);
 
-// === 1. VERIFICACIÓN DE MANTENIMIENTO ===
-$maintenanceMode = Utils::getServerConfig($pdo, 'maintenance_mode', '0');
-$userRole = $_SESSION['role'] ?? 'guest';
-$allowedSystemRoles = ['founder', 'administrator', 'moderator'];
-
-if ($maintenanceMode === '1' && !in_array($userRole, $allowedSystemRoles) && !in_array($section, $authRoutes)) {
-    // [MODIFICADO] Cargar status-screen.php con bandera
-    $isMaintenanceContext = true;
-    include __DIR__ . '/../includes/sections/system/status-screen.php'; 
-    exit;
-}
-
-// === 2. VERIFICACIÓN DE SESIÓN (MODO ABIERTO) ===
-$isAdminRoute = strpos($section, 'admin/') === 0;
-
-if (!isset($_SESSION['user_id'])) {
-    if ($isAdminRoute || in_array($section, $protectedRoutes)) {
-        http_response_code(401);
-        echo "<div class='auth-container' style='padding: 24px; text-align: center;'>
-                <span class='material-symbols-rounded' style='font-size: 48px; color: var(--text-secondary);'>lock</span>
-                <h2 style='margin-top: 16px;'>" . $i18n->t('errors.access_denied') . "</h2>
-                <p style='color: var(--text-secondary); margin-top: 8px;'>Debes iniciar sesión para ver esta sección.</p>
-                <a href='".$basePath."login' class='component-button primary' style='margin-top: 16px; display: inline-flex;'>Iniciar Sesión</a>
-              </div>";
+switch ($decision['action']) {
+    case Gatekeeper::SHOW_MAINTENANCE:
+        $isMaintenanceContext = true;
+        include __DIR__ . '/../includes/sections/system/status-screen.php';
         exit;
-    }
-}
 
-// === 3. PROTECCIÓN ADMIN ===
-$allowedAdminRoles = ['founder', 'administrator'];
-if ($isAdminRoute) {
-    if (!in_array($userRole, $allowedAdminRoles)) {
-        $section = '404';
-    }
+    case Gatekeeper::REDIRECT:
+        // En AJAX no podemos usar header('Location'), enviamos script o 401
+        http_response_code(401);
+        $target = $decision['target'];
+        echo "<script>window.location.href = '{$basePath}{$target}';</script>";
+        exit;
+
+    case Gatekeeper::SHOW_LOCK:
+        // Cargamos el bloqueo inmediatamente
+        include __DIR__ . '/../includes/sections/system/security-lock.php';
+        exit;
+
+    case Gatekeeper::SHOW_404:
+        $section = '404'; // Dejamos que el flujo continúe para cargar el 404 abajo
+        break;
+        
+    case Gatekeeper::ALLOW:
+        // Todo bien, continuamos con la carga normal
+        break;
 }
 
 $isLoggedIn = isset($_SESSION['user_id']);
@@ -63,12 +55,11 @@ if (array_key_exists($section, $routes)) {
     $file = $routes['404'];
 }
 
-// [MODIFICADO] Lógica de carga robusta
+// Lógica de carga robusta
 if (file_exists($file)) {
     include $file;
 } else {
     // Si el archivo físico no existe (aunque esté en rutas), cargamos la vista 404
-    // Esto unifica el comportamiento con routing-logic.php
     $file404 = $routes['404'];
     
     if (file_exists($file404)) {

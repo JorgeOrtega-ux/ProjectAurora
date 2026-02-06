@@ -2,29 +2,13 @@
 // includes/core/routing-logic.php
 
 // Variables globales requeridas: $pdo, $currentSection, $basePath, $i18n
+require_once __DIR__ . '/Gatekeeper.php';
 
-// Carga de reglas de seguridad
-$securityRules = require __DIR__ . '/../../config/security.php';
-$authRoutes = $securityRules['auth_routes'];
-$protectedRoutes = $securityRules['protected_routes'];
-
-// Configuración de mantenimiento
-$maintenanceMode = Utils::getServerConfig($pdo, 'maintenance_mode', '0');
-$userRole = $_SESSION['role'] ?? 'guest';
-$allowedSystemRoles = ['founder', 'administrator', 'moderator'];
-
-$isAdminRoute = strpos($currentSection, 'admin/') === 0;
+// [BLOQUE DE REFRESCAR SESIÓN - SE MANTIENE CRÍTICO]
+// Necesitamos datos frescos antes de preguntar al Gatekeeper
 $isLoggedIn = isset($_SESSION['user_id']);
 
-$showMaintenanceScreen = (
-    $maintenanceMode === '1' &&
-    !in_array($userRole, $allowedSystemRoles) &&
-    !in_array($currentSection, $authRoutes) &&
-    $currentSection !== 'account-status'
-);
-
-// REFRESCAR DATOS DE SESIÓN Y VERIFICAR ESTADO DE CUENTA
-if ($isLoggedIn && !$showMaintenanceScreen) {
+if ($isLoggedIn) {
     try {
         // Verificar token de persistencia
         if (isset($_SESSION['current_token_id'])) {
@@ -39,13 +23,13 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
             }
         }
 
-        // Obtener datos frescos
+        // Obtener datos frescos del usuario
         $stmt = $pdo->prepare("SELECT role, avatar_path, username, email, two_factor_enabled, account_status, suspension_ends_at, status_reason FROM users WHERE id = ? LIMIT 1");
         $stmt->execute([$_SESSION['user_id']]);
         $freshUser = $stmt->fetch();
 
         if ($freshUser) {
-            // Lógica de Bloqueo (Deleted / Suspended)
+            // Lógica de Bloqueo de Cuenta (Deleted / Suspended)
             $isRestricted = false;
             if ($freshUser['account_status'] === 'deleted') {
                 $isRestricted = true;
@@ -69,14 +53,12 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
                 exit;
             }
 
-            // Actualizar sesión
+            // Actualizar sesión con datos frescos (IMPORTANTE PARA EL GATEKEEPER)
             $_SESSION['role'] = $freshUser['role'];
             $_SESSION['avatar'] = $freshUser['avatar_path'];
             $_SESSION['username'] = $freshUser['username'];
             $_SESSION['email'] = $freshUser['email'];
             $_SESSION['two_factor_enabled'] = $freshUser['two_factor_enabled'];
-
-            $userRole = $freshUser['role'];
 
             // Recargar preferencias
             $stmtPrefs = $pdo->prepare("SELECT language, open_links_new_tab, theme, extended_toast FROM user_preferences WHERE user_id = ?");
@@ -85,7 +67,6 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
 
             if ($freshPrefs) {
                 $previousLang = $_SESSION['preferences']['language'] ?? 'es-latam';
-
                 $_SESSION['preferences'] = [
                     'language' => $freshPrefs['language'],
                     'open_links_new_tab' => (bool)$freshPrefs['open_links_new_tab'],
@@ -99,6 +80,7 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
                 }
             }
         } else {
+            // Usuario no encontrado en DB
             session_unset();
             session_destroy();
             header("Location: " . $basePath . "login");
@@ -109,60 +91,49 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
     }
 }
 
-// GESTIÓN DE REDIRECCIONES (Protección de rutas)
-if (!$showMaintenanceScreen) {
-    if (($isAdminRoute || in_array($currentSection, $protectedRoutes)) && !$isLoggedIn) {
-        header("Location: " . $basePath . "login");
+// === PREGUNTAMOS AL PORTERO ===
+// $currentSection viene definida desde public/index.php
+$decision = Gatekeeper::check($currentSection, $pdo);
+
+$showInterface = true;
+$fileToLoad = '';
+
+switch ($decision['action']) {
+    case Gatekeeper::SHOW_MAINTENANCE:
+        $fileToLoad = __DIR__ . '/../../includes/sections/system/status-screen.php';
+        $isMaintenanceContext = true;
+        $showInterface = false;
+        break;
+
+    case Gatekeeper::REDIRECT:
+        header("Location: " . $basePath . $decision['target']);
         exit;
-    }
-    if ($isLoggedIn && in_array($currentSection, $authRoutes)) {
-        header("Location: " . $basePath);
-        exit;
-    }
-}
 
-// [NUEVO] Lógica de Bloqueo por 2FA (Sin redirección, carga vista de bloqueo)
-$force2FALock = false;
-if (!$showMaintenanceScreen && $isAdminRoute && $isLoggedIn && in_array($userRole, ['founder', 'administrator'])) {
-    // Verificamos el valor fresco de la sesión
-    if (empty($_SESSION['two_factor_enabled'])) {
-        $force2FALock = true;
-    }
-}
+    case Gatekeeper::SHOW_LOCK:
+        $fileToLoad = __DIR__ . '/../../includes/sections/system/security-lock.php';
+        // Mantenemos interface para que pueda ver el menú lateral e ir a configuración
+        $showInterface = true; 
+        break;
 
-// DETERMINAR ARCHIVO A CARGAR ($fileToLoad)
-if ($showMaintenanceScreen) {
-    $fileToLoad = __DIR__ . '/../../includes/sections/system/status-screen.php';
-    $isMaintenanceContext = true;
-    $showInterface = false;
-} elseif ($force2FALock) {
-    // [AQUÍ ESTÁ LA MAGIA]
-    // Si es admin sin 2FA, cargamos la pantalla de bloqueo en lugar del dashboard.
-    // Mantenemos $showInterface = true para que vea el menú lateral y pueda ir a Settings.
-    $fileToLoad = __DIR__ . '/../../includes/sections/system/security-lock.php';
-    $showInterface = true; 
-} else {
-    $routesMap = require __DIR__ . '/../../config/routes.php';
-
-    // Protección extra para Admin
-    $allowedAdminRoles = ['founder', 'administrator'];
-    
-    // 1. Determinamos cuál es el archivo "candidato" según la lógica de rutas
-    if (strpos($currentSection, 'admin/') === 0 && !in_array($userRole, $allowedAdminRoles)) {
-        $candidateFile = $routesMap['404'];
-    } else {
-        $candidateFile = $routesMap[$currentSection] ?? $routesMap['404'];
-    }
-
-    // 2. Validación física
-    if (file_exists($candidateFile)) {
-        $fileToLoad = $candidateFile;
-    } else {
+    case Gatekeeper::SHOW_404:
+        $routesMap = require __DIR__ . '/../../config/routes.php';
         $fileToLoad = $routesMap['404'];
-    }
+        break;
 
-    $noInterfaceRoutes = array_merge($authRoutes, ['account-status']);
-    $showInterface = !in_array($currentSection, $noInterfaceRoutes);
+    case Gatekeeper::ALLOW:
+        $routesMap = require __DIR__ . '/../../config/routes.php';
+        $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
+        
+        // Verificación física del archivo
+        if (!file_exists($fileToLoad)) {
+            $fileToLoad = $routesMap['404'];
+        }
+        
+        // Decidir si mostrar interfaz (header/sidebar)
+        $securityRules = require __DIR__ . '/../../config/security.php';
+        $noInterfaceRoutes = array_merge($securityRules['auth_routes'], ['account-status']);
+        $showInterface = !in_array($currentSection, $noInterfaceRoutes);
+        break;
 }
 
 // Variables JS globales

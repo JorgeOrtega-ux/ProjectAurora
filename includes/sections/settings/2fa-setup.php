@@ -8,8 +8,8 @@ require_once __DIR__ . '/../../../api/services/SettingsService.php';
 $settingsService = new SettingsService($pdo, $i18n, $_SESSION['user_id'], $redis);
 
 // Verificar límite de seguridad para mostrar/ocultar el QR
-$isRateLimited = $settingsService->checkSecurityLimit('2fa_init_attempt', 10, 60);
-
+// Usamos Utils estáticamente, pasando $pdo y el ID de usuario de la sesión
+$isRateLimited = Utils::checkSecurityLimit($pdo, '2fa_init_attempt', 10, 60, $_SESSION['user_id']);
 // Definir clases y estilos basados en el límite
 $containerClass = $isRateLimited ? 'disabled-interactive' : '';
 $qrBoxStyle = $isRateLimited ? 'display: none;' : '';
