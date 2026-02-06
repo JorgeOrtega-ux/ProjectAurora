@@ -1,23 +1,42 @@
 <?php
 // includes/sections/system/status-screen.php
 
-// 1. Detectar el contexto (Mantenimiento vs Estado de Cuenta)
+// === 0. INICIALIZACIÓN DE EMERGENCIA ===
+// Esto permite que este archivo funcione incluso si el sistema global ha fallado.
+$basePath = $basePath ?? '/ProjectAurora/';
+
+if (!isset($i18n)) {
+    // Si el sistema de idiomas murió, creamos un "doble" simple para que el código no falle.
+    $i18n = new class { 
+        public function t($k) { return $k; } 
+    };
+}
+
+// 1. Detectar el contexto (Mantenimiento vs Estado de Cuenta vs Error Crítico)
 $mode = 'unknown';
 $data = [];
 
-// A) Mantenimiento (Variable inyectada desde index.php o loader.php)
-if (isset($isMaintenanceContext) && $isMaintenanceContext === true) {
+// A) Error Crítico (Inyectado desde Utils::showGenericErrorPage)
+if (isset($isSystemError) && $isSystemError === true) {
+    $mode = 'system_error';
+}
+// B) Mantenimiento (Variable inyectada desde index.php o loader.php)
+elseif (isset($isMaintenanceContext) && $isMaintenanceContext === true) {
     $mode = 'maintenance';
 } 
-// B) Estado de Cuenta (Datos en sesión flash)
+// C) Estado de Cuenta (Datos en sesión flash)
 elseif (isset($_SESSION['account_status_data'])) {
     $data = $_SESSION['account_status_data'];
     $mode = $data['status']; // 'suspended' o 'deleted'
 } 
-// C) Fallback de seguridad
+// D) Fallback de seguridad
 else {
-    // Si se accede directamente sin contexto, redirigir al login
-    echo "<script>window.location.href = '" . $basePath . "login';</script>";
+    // Si se accede directamente sin contexto válido, redirigir al login
+    if (!headers_sent()) {
+        header("Location: " . $basePath . "login");
+    } else {
+        echo "<script>window.location.href = '" . $basePath . "login';</script>";
+    }
     exit;
 }
 
@@ -34,11 +53,25 @@ $config = [
 ];
 
 switch ($mode) {
+    case 'system_error':
+        $config['title'] = 'Error del Sistema';
+        $config['desc'] = 'Ha ocurrido un error inesperado. El incidente ha sido registrado y notificado automáticamente.';
+        $config['icon'] = 'dns'; // Icono genérico de servidor
+        $config['icon_color'] = '#dc2626'; // Rojo oscuro
+        $config['bg_color'] = '#fef2f2';
+        $config['actions'][] = [
+            'type' => 'link',
+            'href' => $basePath,
+            'text' => 'Intentar volver al inicio',
+            'class' => 'primary'
+        ];
+        break;
+
     case 'maintenance':
         $config['title'] = 'En Mantenimiento';
         $config['desc'] = 'Estamos realizando mejoras importantes en la plataforma.<br>Por favor, vuelve a intentarlo más tarde.';
         $config['icon'] = 'engineering';
-        $config['icon_color'] = 'var(--action-primary)'; // Negro/Blanco según tema
+        $config['icon_color'] = 'var(--text-primary)'; // Negro/Blanco según tema
         $config['bg_color'] = 'var(--bg-hover-light)';
         $config['actions'][] = [
             'type' => 'refresh',
@@ -77,7 +110,8 @@ switch ($mode) {
         break;
         
     default:
-        // Caso de error
+        // Caso de error en la lógica del switch
+        if ($mode === 'system_error') die("Error Crítico");
         echo "<script>window.location.href = '" . $basePath . "login';</script>";
         exit;
 }
@@ -93,7 +127,6 @@ if ($mode === 'suspended' && $suspensionEnd) {
     if ($isFuture) {
         $dateString = date('d/m/Y H:i', $ts);
     } else {
-        // Si ya expiró pero sigue aquí, es indefinida o error, tratamos como indefinida visualmente
         $suspensionEnd = null; 
     }
 }
@@ -110,7 +143,7 @@ if ($mode === 'suspended' && $suspensionEnd) {
             </div>
         </div>
 
-        <h1 class="component-page-title" style="margin-bottom: 12px; color: <?php echo ($mode === 'maintenance') ? 'var(--text-primary)' : $config['icon_color']; ?>;">
+        <h1 class="component-page-title" style="margin-bottom: 12px; color: <?php echo ($mode === 'maintenance' || $mode === 'system_error') ? 'var(--text-primary)' : $config['icon_color']; ?>;">
             <?php echo $config['title']; ?>
         </h1>
         
@@ -152,10 +185,14 @@ if ($mode === 'suspended' && $suspensionEnd) {
                     <button type="button" class="component-button <?php echo $action['class']; ?> component-button--large" onclick="window.location.reload()">
                         <?php echo $action['text']; ?>
                     </button>
+                <?php elseif ($action['type'] === 'link'): ?>
+                    <a href="<?php echo $action['href']; ?>" class="component-button <?php echo $action['class']; ?> component-button--large" style="display:flex; justify-content:center; align-items:center; text-decoration:none;">
+                        <?php echo $action['text']; ?>
+                    </a>
                 <?php endif; ?>
             <?php endforeach; ?>
             
-            <?php if ($mode !== 'maintenance'): ?>
+            <?php if ($mode !== 'maintenance' && $mode !== 'system_error'): ?>
                 <p style="font-size: 12px; color: var(--text-tertiary); margin-top: 8px;">
                     <?php echo $i18n->t('account_status.contact_support'); ?>
                 </p>

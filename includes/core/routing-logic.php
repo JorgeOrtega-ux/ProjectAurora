@@ -95,8 +95,6 @@ if ($isLoggedIn && !$showMaintenanceScreen) {
 
                 // Si cambió el idioma, reinstanciar i18n
                 if ($freshPrefs['language'] !== $previousLang) {
-                    // Nota: $i18n debe ser pasado por referencia o estar en scope global si se reasigna
-                    // Como estamos haciendo include en index.php, la variable $i18n se sobrescribirá.
                     $i18n = new I18n($freshPrefs['language']);
                 }
             }
@@ -133,10 +131,21 @@ if ($showMaintenanceScreen) {
 
     // Protección extra para Admin
     $allowedAdminRoles = ['founder', 'administrator'];
+    
+    // 1. Determinamos cuál es el archivo "candidato" según la lógica de rutas
     if (strpos($currentSection, 'admin/') === 0 && !in_array($userRole, $allowedAdminRoles)) {
-        $fileToLoad = $routesMap['404'];
+        $candidateFile = $routesMap['404'];
     } else {
-        $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
+        $candidateFile = $routesMap[$currentSection] ?? $routesMap['404'];
+    }
+
+    // 2. [MODIFICADO] Validación física: ¿El archivo existe realmente en el disco?
+    // Esto previene el error "Failed to open stream" en index.php si borraste un archivo (ej: main.php)
+    if (file_exists($candidateFile)) {
+        $fileToLoad = $candidateFile;
+    } else {
+        // Si no existe, forzamos la carga de la vista 404
+        $fileToLoad = $routesMap['404'];
     }
 
     $noInterfaceRoutes = array_merge($authRoutes, ['account-status']);

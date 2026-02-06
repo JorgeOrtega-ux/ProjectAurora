@@ -6,17 +6,12 @@ require_once __DIR__ . '/Logger.php';
 
 class Utils {
 
-    // Propiedad estática para almacenar la instancia de Redis globalmente
     private static $redisInstance = null;
 
-    // Setter para inyectar Redis desde el bootstrap
     public static function setRedis($redis) {
         self::$redisInstance = $redis;
     }
 
-    /**
-     * Obtiene la dirección IP del cliente de manera segura y centralizada.
-     */
     public static function getClientIp() {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';
@@ -93,29 +88,71 @@ class Utils {
         return $cspNonce;
     }
 
+    /**
+     * Muestra la página de error genérica (500).
+     * Intenta reutilizar el diseño de status-screen.php si es posible.
+     */
     public static function showGenericErrorPage() {
         if (!headers_sent()) {
             http_response_code(500);
         }
-        $isApi = (strpos($_SERVER['REQUEST_URI'], '/api/') !== false) || 
-                 (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
 
+        // 1. Detección de API/AJAX
+        $isApi = (strpos($_SERVER['REQUEST_URI'] ?? '', '/api/') !== false) || 
+                 (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
+        
         if ($isApi) {
-            header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'message' => 'Error interno del servidor (500). Contacte a soporte.']);
-        } else {
-            echo "<div style='font-family:sans-serif; text-align:center; padding:50px;'>";
-            echo "<h1 style='color:#333;'>Error del Sistema</h1>";
-            echo "<p style='color:#666;'>Ha ocurrido un error inesperado. El incidente ha sido registrado.</p>";
-            echo "<a href='/ProjectAurora/' style='color:#007bff;'>Volver al inicio</a>";
-            echo "</div>";
+            if (!headers_sent()) header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false, 
+                'message' => 'Error interno del sistema. El incidente ha sido registrado.',
+                'error_code' => 'CRITICAL_SYSTEM_ERROR'
+            ]);
+            exit;
         }
+
+        // 2. Intento de Carga Centralizada con status-screen.php
+        $statusFile = __DIR__ . '/../sections/system/status-screen.php';
+        
+        if (file_exists($statusFile)) {
+            // Definimos banderas para controlar status-screen
+            $isSystemError = true;
+            $showInterface = false; 
+            
+            // Inyectamos CSS Crítico Inline para asegurar que se vea bien sin styles.css
+            echo '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Error del Sistema</title>';
+            echo '<style>
+                :root { --text-primary: #111827; --text-secondary: #6b7280; --bg-hover-light: #f3f4f6; --border-light: #e5e7eb; --action-primary: #000; }
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; background: #f9fafb; min-height: 100vh; display: flex; flex-direction: column; }
+                .component-layout-centered { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+                .component-card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 32px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+                .component-page-title { margin: 0 0 10px; font-size: 24px; font-weight: 700; font-family: inherit; }
+                .component-page-description { color: var(--text-secondary); margin-bottom: 24px; line-height: 1.5; font-size: 15px; }
+                .component-button { display: inline-flex; justify-content: center; align-items: center; width: 100%; padding: 12px; background: #2563EB; color: white; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; box-sizing: border-box; text-decoration: none; font-size: 14px; transition: background 0.2s; }
+                .component-button:hover { background: #1d4ed8; }
+                .material-symbols-rounded { font-family: "Material Symbols Rounded", sans-serif; display: inline-block; }
+            </style>';
+            echo '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />';
+            echo '</head><body>';
+
+            try {
+                include $statusFile;
+                echo '</body></html>';
+                exit; 
+            } catch (Exception $e) {
+                // Si falla el include, el script sigue al fallback
+            }
+        }
+
+        // 3. Fallback de Emergencia (Si status-screen.php no existe)
+        echo "<div style='font-family:sans-serif; text-align:center; padding:50px;'>";
+        echo "<h1 style='color:#333;'>Error Crítico del Sistema</h1>";
+        echo "<p style='color:#666;'>Ha ocurrido un error irrecuperable. Contacte al administrador.</p>";
+        echo "<a href='/ProjectAurora/' style='color:#007bff;'>Volver al inicio</a>";
+        echo "</div>";
         exit;
     }
 
-    /**
-     * Obtiene configuración del servidor usando Redis Cache-Aside.
-     */
     public static function getServerConfig($pdo, $key, $default = '0') {
         $redisKey = 'server:config:all';
 
@@ -225,17 +262,12 @@ class Utils {
     // NUEVAS FUNCIONES CENTRALIZADAS
     // =========================================================
 
-    /**
-     * Verifica si se ha excedido el límite de seguridad (Rate Limit).
-     * Soporta Redis y MySQL como fallback.
-     */
     public static function checkSecurityLimit($pdo, $actionType, $limit, $minutes, $identifier = '') {
         $ip = self::getClientIp();
 
         if (self::$redisInstance) {
             try {
                 $ipKey = "rate_limit:{$actionType}:ip:{$ip}";
-                // Si identifier es numérico (ID de usuario) o string (email), creamos una clave específica
                 $userKey = $identifier ? "rate_limit:{$actionType}:user:{$identifier}" : null;
 
                 $ipCount = self::$redisInstance->get($ipKey);
@@ -245,14 +277,12 @@ class Utils {
                     $userCount = self::$redisInstance->get($userKey);
                     if ($userCount && (int)$userCount >= $limit) return true;
                 }
-                return false; // Redis check passed
+                return false; 
             } catch (Exception $e) {
-                // Fallback a SQL si Redis falla
                 error_log("Redis checkSecurityLimit Error: " . $e->getMessage());
             }
         }
 
-        // Fallback SQL
         $sql = "SELECT COUNT(*) as failures FROM security_logs WHERE (ip_address = ? OR user_identifier = ?) AND action_type = ? AND created_at > (NOW() - INTERVAL $minutes MINUTE)";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([$ip, $identifier, $actionType]);
@@ -260,25 +290,18 @@ class Utils {
         return ($result && $result['failures'] >= $limit);
     }
 
-    /**
-     * Registra un evento de seguridad y actualiza los contadores de Rate Limit.
-     */
     public static function logSecurityAction($pdo, $actionType, $minutes = 15, $identifier = null) {
         $ip = self::getClientIp();
         
         try {
-            // Log en Base de Datos
             $sql = "INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)";
             $stmt = $pdo->prepare($sql);
-            // Si no hay identificador (ej: email/ID), guardamos 'Anonymous' o NULL según lógica de negocio,
-            // pero para compatibilidad usamos el ID si existe.
             $logId = $identifier ?? 'Anonymous';
             $stmt->execute([$logId, $actionType, $ip]);
         } catch (Exception $e) { 
             error_log("DB logSecurityAction Error: " . $e->getMessage());
         }
 
-        // Actualizar Contadores Redis
         if (self::$redisInstance) {
             $ipKey = "rate_limit:{$actionType}:ip:{$ip}";
             $userKey = $identifier ? "rate_limit:{$actionType}:user:{$identifier}" : null;
@@ -302,9 +325,6 @@ class Utils {
         }
     }
 
-    /**
-     * Analiza el User Agent para obtener Plataforma y Navegador.
-     */
     public static function parseUserAgent($ua) {
         $platform = 'Desconocido'; 
         $browser = 'Desconocido';
@@ -325,9 +345,6 @@ class Utils {
         return ['platform' => $platform, 'browser' => $browser];
     }
 
-    /**
-     * Envía una notificación al servidor WebSocket mediante Redis Pub/Sub.
-     */
     public static function notifyWebSocket($type, $payload = []) {
         if (!self::$redisInstance) return false;
         
@@ -341,9 +358,6 @@ class Utils {
         }
     }
 
-    /**
-     * Formatea bytes a tamaño legible por humanos.
-     */
     public static function formatSize($bytes) {
         if ($bytes >= 1073741824) return number_format($bytes / 1073741824, 2) . ' GB';
         if ($bytes >= 1048576) return number_format($bytes / 1048576, 2) . ' MB';

@@ -2287,4 +2287,16 @@ input:checked+.component-toggle-slider:before {
 }
 .component-calendar__confirm-btn:hover {
     opacity: 0.9;
+}/* Ajuste para pantallas muy chicas (Móviles) */
+@media (max-width: 480px) {
+    .trigger-select-wrapper {
+        width: 100%;
+        min-width: 100%;
+        max-width: 100%;
+    }
+    
+    /* Opcional: Si el contenido interno también necesita ajuste */
+    .trigger-select-wrapper .trigger-selector {
+        width: 100%;
+    }
 }

@@ -63,9 +63,23 @@ if (array_key_exists($section, $routes)) {
     $file = $routes['404'];
 }
 
+// [MODIFICADO] Lógica de carga robusta
 if (file_exists($file)) {
     include $file;
 } else {
-    echo "<h1>Error 500</h1><p>" . $i18n->t('errors.server_error') . "</p>";
+    // Si el archivo físico no existe (aunque esté en rutas), cargamos la vista 404
+    // Esto unifica el comportamiento con routing-logic.php
+    $file404 = $routes['404'];
+    
+    if (file_exists($file404)) {
+        include $file404;
+    } else {
+        // Fallback de emergencia solo si el propio archivo 404 fue borrado
+        http_response_code(500);
+        echo "<div class='component-layout-centered'>
+                <h1 class='component-page-title'>Error Crítico</h1>
+                <p class='component-page-description'>No se pudo cargar el contenido solicitado ni la página de error.</p>
+              </div>";
+    }
 }
 ?>
