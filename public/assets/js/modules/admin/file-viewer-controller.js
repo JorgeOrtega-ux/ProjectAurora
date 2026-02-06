@@ -1,11 +1,11 @@
 /**
  * public/assets/js/modules/admin/file-viewer-controller.js
- * Versión: Full Height + Theme Aware + Safe Highlighting + Close Tabs + URL Sync
+ * Versión Segura (DOM API)
  */
 
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
-import { I18n } from '../../core/i18n-manager.js'; // Importación añadida
+import { I18n } from '../../core/i18n-manager.js'; 
 
 let _container = null;
 let _currentFiles = [];
@@ -14,7 +14,7 @@ let _isHighlightMode = false;
 
 export const FileViewerController = {
     init: () => {
-        console.log("FileViewerController: Inicializado");
+        console.log("FileViewerController: Inicializado (Safe Mode)");
         
         _container = document.querySelector('[data-section="admin-file-viewer"]');
         if (!_container) return;
@@ -119,7 +119,6 @@ async function loadContent(paths) {
             renderTabs();
             renderActiveContent();
             
-            // Sincronizar URL inicial (por si hubo redirección o limpieza)
             updateUrlState(); 
         } else {
             showError(res.message);
@@ -141,85 +140,73 @@ function renderTabs() {
         const tab = document.createElement('div');
         tab.className = `viewer-tab ${isActive ? 'active' : ''}`;
         
-        let icon = 'description';
-        if (file.filename.endsWith('.log')) icon = 'text_snippet';
-        else if (file.filename.endsWith('.php')) icon = 'php';
-        else if (file.filename.endsWith('.js')) icon = 'javascript';
-        else if (file.filename.endsWith('.sql')) icon = 'database';
+        let iconName = 'description';
+        if (file.filename.endsWith('.log')) iconName = 'text_snippet';
+        else if (file.filename.endsWith('.php')) iconName = 'php';
+        else if (file.filename.endsWith('.js')) iconName = 'javascript';
+        else if (file.filename.endsWith('.sql')) iconName = 'database';
         
-        // title="Cerrar archivo"
-        const closeTitle = I18n.t('admin.file_viewer.close_file') || 'Cerrar archivo';
+        const icon = document.createElement('span');
+        icon.className = 'material-symbols-rounded tab-icon';
+        icon.textContent = iconName;
+        tab.appendChild(icon);
+
+        const label = document.createElement('span');
+        label.className = 'tab-label';
+        label.textContent = file.filename; // [SEGURIDAD]
+        tab.appendChild(label);
+
+        const closeBtn = document.createElement('span');
+        closeBtn.className = 'material-symbols-rounded tab-close';
+        closeBtn.title = I18n.t('admin.file_viewer.close_file') || 'Cerrar archivo';
+        closeBtn.textContent = 'close';
         
-        tab.innerHTML = `
-            <span class="material-symbols-rounded tab-icon">${icon}</span>
-            <span class="tab-label">${file.filename}</span>
-            <span class="material-symbols-rounded tab-close" title="${closeTitle}">close</span>
-        `;
+        // Click en el botón de cerrar
+        closeBtn.onclick = (e) => {
+            e.stopPropagation();
+            closeFile(index);
+        };
+        tab.appendChild(closeBtn);
         
-        // Click en la pestaña (cambiar archivo)
-        tab.onclick = (e) => {
-            if (e.target.closest('.tab-close')) return;
+        // Click en la pestaña
+        tab.onclick = () => {
             _activeFileIndex = index;
             renderTabs();
             renderActiveContent();
         };
-
-        // Click en el botón de cerrar (X)
-        const btnClose = tab.querySelector('.tab-close');
-        if (btnClose) {
-            btnClose.onclick = (e) => {
-                e.stopPropagation();
-                closeFile(index);
-            };
-        }
 
         container.appendChild(tab);
     });
 }
 
 function closeFile(indexToRemove) {
-    // Eliminar archivo del array local
     _currentFiles.splice(indexToRemove, 1);
 
-    // Ajustar el índice activo
     if (_currentFiles.length === 0) {
-        // No quedan archivos
         _activeFileIndex = -1;
     } else {
         if (indexToRemove === _activeFileIndex) {
-            // Si cerramos el activo, ir al anterior (o al 0 si era el primero)
             _activeFileIndex = Math.max(0, indexToRemove - 1);
         } else if (indexToRemove < _activeFileIndex) {
-            // Si cerramos uno anterior al activo, restar 1 al índice
             _activeFileIndex--;
         }
-        // Si cerramos uno posterior, el índice activo no cambia
     }
 
-    // Actualizar UI y URL
     renderTabs();
     renderActiveContent();
     updateUrlState();
 }
 
-/**
- * Actualiza la URL del navegador sin recargar la página
- * para reflejar la lista actual de archivos abiertos.
- */
 function updateUrlState() {
     const url = new URL(window.location);
     
     if (_currentFiles.length > 0) {
-        // Extraemos los paths originales para reconstruir el parámetro 'files'
-        // 'f.path' viene de la API GetFileContent
         const paths = _currentFiles.map(f => f.path).join(',');
         url.searchParams.set('files', paths);
     } else {
-        // Si no hay archivos, limpiamos el parámetro
         url.searchParams.delete('files');
     }
 
-    // Usamos replaceState para no llenar el historial de navegación con cada cierre
     window.history.replaceState({}, '', url);
 }
 
@@ -227,6 +214,7 @@ function renderActiveContent() {
     const container = document.getElementById('file-content-container');
     if (!container) return;
 
+    container.innerHTML = '';
     container.removeAttribute('style');
     container.style.flex = '1';
     
@@ -243,13 +231,27 @@ function renderActiveContent() {
     const file = _currentFiles[_activeFileIndex];
     
     if (file.error) {
-        container.innerHTML = `<div class="state-error" style="text-align:left;">${I18n.t('js.core.error') || 'Error'}: ${file.error}</div>`;
+        const errDiv = document.createElement('div');
+        errDiv.className = 'state-error';
+        errDiv.style.textAlign = 'left';
+        errDiv.textContent = `${I18n.t('js.core.error') || 'Error'}: ${file.error}`;
+        container.appendChild(errDiv);
         return;
     }
 
     const rawContent = file.content;
     const warningMsg = I18n.t('admin.file_viewer.truncated', [file.size]) || `Archivo truncado (${file.size})`;
-    const warning = file.is_truncated ? `<div class="component-message component-message--warning mb-0" style="margin:16px;">${warningMsg}</div>` : '';
+    
+    if (file.is_truncated) {
+        const warnDiv = document.createElement('div');
+        warnDiv.className = 'component-message component-message--warning mb-0';
+        warnDiv.style.margin = '16px';
+        warnDiv.textContent = warningMsg;
+        container.appendChild(warnDiv);
+    }
+
+    const syntaxDiv = document.createElement('div');
+    syntaxDiv.className = 'syntax-container';
 
     if (_isHighlightMode) {
         const ext = file.filename.split('.').pop().toLowerCase();
@@ -265,16 +267,20 @@ function renderActiveContent() {
         } else {
             coloredCode = safeCode;
         }
-
-        container.innerHTML = `${warning}<div class="syntax-container">${coloredCode}</div>`;
         
+        // Aquí insertamos el código coloreado. Como el coloreado inserta spans HTML,
+        // usamos innerHTML, PERO el contenido 'rawContent' ha sido saneado previamente
+        // por 'escapeHtml' antes de ser procesado por los highlighters.
+        syntaxDiv.innerHTML = coloredCode; 
     } else {
-        let safeCode = escapeHtml(rawContent);
-        container.innerHTML = `${warning}<div class="syntax-container">${safeCode}</div>`;
+        // Modo plano: puro texto seguro
+        syntaxDiv.textContent = rawContent; 
     }
+    
+    container.appendChild(syntaxDiv);
 }
 
-// === MOTOR DE RESALTADO ===
+// === MOTOR DE RESALTADO (IMPORTANTE: escapeHtml primero) ===
 
 function safeHighlight(code, grammar) {
     const placeholders = [];

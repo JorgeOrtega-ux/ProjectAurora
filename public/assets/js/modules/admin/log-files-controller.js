@@ -1,5 +1,6 @@
 /**
  * public/assets/js/modules/admin/log-files-controller.js
+ * Versión Segura (DOM API)
  */
 
 import { ApiService } from '../../core/api-service.js';
@@ -18,7 +19,7 @@ export const LogFilesController = {
         _container = document.querySelector('[data-section="admin-log-files"]');
         if (!_container) return;
 
-        console.log("LogFilesController: Inicializado");
+        console.log("LogFilesController: Inicializado (Safe Mode)");
         
         _filesData = [];
         _selectedPaths = new Set();
@@ -27,19 +28,16 @@ export const LogFilesController = {
         initEvents();
         loadFiles();
 
-        // [NUEVO] Escuchar evento de descarga lista desde el Worker
         document.removeEventListener('socket:download_ready', onDownloadReady);
         document.addEventListener('socket:download_ready', onDownloadReady);
     }
 };
 
 function onDownloadReady(e) {
-    // Verificamos que el contenedor siga activo para evitar descargas fantasma
     if (!_container || !document.body.contains(_container)) return;
 
     const data = e.detail.message;
     if (data && data.url) {
-        // Disparar descarga
         triggerBrowserDownload(data.url);
         Toast.show(I18n.t('admin.logs.download_started') || 'Descarga iniciada.', 'success');
         clearSelection();
@@ -73,7 +71,6 @@ function initEvents() {
     
     _container.querySelector('[data-action="view-log-content"]')?.addEventListener('click', () => {
         if (_selectedPaths.size === 0) return;
-        
         const paths = Array.from(_selectedPaths).join(',');
         navigateTo('admin/file-viewer', { files: paths });
     });
@@ -81,14 +78,12 @@ function initEvents() {
     _container.querySelector('[data-action="download-selected"]')?.addEventListener('click', handleDownload);
 }
 
-// === Lógica de descarga ASÍNCRONA ===
 async function handleDownload() {
     if (_selectedPaths.size === 0) return;
 
     const pathsArray = Array.from(_selectedPaths);
     const pathsString = pathsArray.join(','); 
     
-    // Feedback visual inmediato
     Toast.show(I18n.t('admin.logs.download_preparing') || 'Solicitando descarga...', 'info');
 
     const formData = new FormData();
@@ -100,14 +95,9 @@ async function handleDownload() {
         const res = await ApiService.post(route, formData);
         
         if (res.success) {
-            // [MODIFICADO] Manejo dual: Síncrono (inmediato) o Asíncrono (Worker)
-            
             if (res.queued) {
-                // Caso Worker: Esperar evento socket
                 Toast.show(res.message || 'Tu descarga se está generando en segundo plano...', 'info');
-                // No limpiamos selección todavía, esperamos al evento
             } else if (res.download_url) {
-                // Caso PHP Directo (Archivos pequeños)
                 triggerBrowserDownload(res.download_url);
                 Toast.show(I18n.t('admin.logs.download_started') || 'Descarga iniciada.', 'success');
                 clearSelection();
@@ -125,14 +115,10 @@ function triggerBrowserDownload(url) {
     downloadLink.href = window.BASE_PATH + 'public/' + url;
     downloadLink.setAttribute('download', '');
     downloadLink.setAttribute('target', '_blank'); 
-    
     downloadLink.style.display = 'none';
     document.body.appendChild(downloadLink);
     downloadLink.click();
-    
-    setTimeout(() => {
-        document.body.removeChild(downloadLink);
-    }, 100);
+    setTimeout(() => { document.body.removeChild(downloadLink); }, 100);
 }
 
 async function loadFiles() {
@@ -160,18 +146,18 @@ function renderList(query = '') {
 
     if(countLabel) countLabel.innerText = `${filtered.length} ${I18n.t('admin.logs.files_count') || 'archivos'}`;
 
+    list.innerHTML = ''; // Limpieza segura
+
     if(filtered.length === 0) {
         list.innerHTML = `<div class="state-empty">${I18n.t('admin.logs.empty') || 'No se encontraron archivos de log.'}</div>`;
         return;
     }
 
-    let html = (_viewMode === 'grid') ? buildGridHtml(filtered) : buildTableHtml(filtered);
-    list.innerHTML = html;
-
-    const items = list.querySelectorAll('.component-card, .table-row-item');
-    items.forEach(el => {
-        el.addEventListener('click', () => toggleSelection(el.dataset.path));
-    });
+    if (_viewMode === 'grid') {
+        renderGrid(filtered, list);
+    } else {
+        renderTable(filtered, list);
+    }
 }
 
 function getFileIcon(category) {
@@ -183,73 +169,151 @@ function getFileIcon(category) {
     }
 }
 
-function getFileColor(category) {
+function getFileStyle(category) {
     switch(category) {
-        case 'app': return 'background-color: #e3f2fd; color: #1976d2;';
-        case 'database': return 'background-color: #fff3e0; color: #ed6c02;';
-        case 'security': return 'background-color: #ffebee; color: #d32f2f;';
-        default: return 'background-color: #f5f5f5; color: #666;';
+        case 'app': return { bg: '#e3f2fd', color: '#1976d2' };
+        case 'database': return { bg: '#fff3e0', color: '#ed6c02' };
+        case 'security': return { bg: '#ffebee', color: '#d32f2f' };
+        default: return { bg: '#f5f5f5', color: '#666' };
     }
 }
 
-function buildGridHtml(files) {
-    return files.map(file => {
-        const isSel = _selectedPaths.has(file.path) ? 'is-selected' : '';
-        const icon = getFileIcon(file.category);
-        const style = getFileColor(file.category);
+function renderGrid(files, container) {
+    files.forEach(file => {
+        const isSel = _selectedPaths.has(file.path);
+        const iconName = getFileIcon(file.category);
+        const styles = getFileStyle(file.category);
 
-        return `
-        <div class="component-card ${isSel}" data-path="${file.path}">
-            <div class="component-list-item-content">
-                <div class="component-card__profile-picture component-avatar--list" 
-                     style="display:flex; align-items:center; justify-content:center; ${style}">
-                    <span class="material-symbols-rounded" style="font-size:24px;">${icon}</span>
-                </div>
-                <span class="component-badge" data-tooltip="${I18n.t('admin.logs.col_filename') || 'Nombre Archivo'}" style="font-family: monospace;">${file.filename}</span>
-                <span class="component-badge" data-tooltip="${I18n.t('admin.logs.col_category') || 'Carpeta/Categoría'}">${file.category}</span>
-                <span class="component-badge" data-tooltip="${I18n.t('admin.logs.col_size') || 'Tamaño'}">${file.size}</span>
-                <span class="component-badge" data-tooltip="${I18n.t('admin.logs.col_date') || 'Fecha Modificación'}">${file.modified_at}</span>
-            </div>
-        </div>`;
-    }).join('');
+        const card = document.createElement('div');
+        card.className = `component-card ${isSel ? 'is-selected' : ''}`;
+        card.dataset.path = file.path;
+
+        const content = document.createElement('div');
+        content.className = 'component-list-item-content';
+
+        // Icono
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'component-card__profile-picture component-avatar--list';
+        iconDiv.style.display = 'flex';
+        iconDiv.style.alignItems = 'center';
+        iconDiv.style.justifyContent = 'center';
+        iconDiv.style.backgroundColor = styles.bg;
+        iconDiv.style.color = styles.color;
+        
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'material-symbols-rounded';
+        iconSpan.style.fontSize = '24px';
+        iconSpan.textContent = iconName;
+        iconDiv.appendChild(iconSpan);
+
+        content.appendChild(iconDiv);
+
+        // Badges helper
+        const createBadge = (text, tooltipKey, mono = false) => {
+            const span = document.createElement('span');
+            span.className = 'component-badge';
+            span.dataset.tooltip = I18n.t(tooltipKey);
+            if (mono) span.style.fontFamily = 'monospace';
+            span.textContent = text; // [SEGURIDAD]
+            return span;
+        };
+
+        content.appendChild(createBadge(file.filename, 'admin.logs.col_filename', true));
+        content.appendChild(createBadge(file.category, 'admin.logs.col_category'));
+        content.appendChild(createBadge(file.size, 'admin.logs.col_size'));
+        content.appendChild(createBadge(file.modified_at, 'admin.logs.col_date'));
+
+        card.appendChild(content);
+        
+        // Listener
+        card.addEventListener('click', () => toggleSelection(file.path));
+        
+        container.appendChild(card);
+    });
 }
 
-function buildTableHtml(files) {
-    const rows = files.map(file => {
-        const isSel = _selectedPaths.has(file.path) ? 'is-selected' : '';
-        const icon = getFileIcon(file.category);
-        const style = getFileColor(file.category);
+function renderTable(files, container) {
+    const tableWrapper = document.createElement('div');
+    tableWrapper.className = 'component-table-wrapper';
 
-        return `
-        <tr class="table-row-item ${isSel}" data-path="${file.path}" style="cursor:pointer;">
-            <td style="width:50px">
-                <div class="component-card__profile-picture component-avatar--list" 
-                     style="width:32px; height:32px; display:flex; align-items:center; justify-content:center; ${style}">
-                    <span class="material-symbols-rounded" style="font-size:18px;">${icon}</span>
-                </div>
-            </td>
-            <td style="font-family:monospace; font-weight:600;">${file.filename}</td>
-            <td>${file.category}</td>
-            <td>${file.size}</td>
-            <td>${file.modified_at}</td>
-        </tr>`;
-    }).join('');
+    const table = document.createElement('table');
+    table.className = 'component-table';
 
-    return `
-    <div class="component-table-wrapper">
-        <table class="component-table">
-            <thead>
-                <tr>
-                    <th style="width:50px"></th>
-                    <th>${I18n.t('admin.logs.col_filename') || 'Archivo'}</th>
-                    <th>${I18n.t('admin.logs.col_category') || 'Categoría'}</th>
-                    <th>${I18n.t('admin.logs.col_size') || 'Tamaño'}</th>
-                    <th>${I18n.t('admin.logs.col_date') || 'Fecha'}</th>
-                </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-        </table>
-    </div>`;
+    // THEAD
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    const headers = [
+        { w: '50px', t: '' },
+        { t: I18n.t('admin.logs.col_filename') || 'Archivo' },
+        { t: I18n.t('admin.logs.col_category') || 'Categoría' },
+        { t: I18n.t('admin.logs.col_size') || 'Tamaño' },
+        { t: I18n.t('admin.logs.col_date') || 'Fecha' }
+    ];
+    headers.forEach(h => {
+        const th = document.createElement('th');
+        if (h.w) th.style.width = h.w;
+        th.textContent = h.t;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // TBODY
+    const tbody = document.createElement('tbody');
+    files.forEach(file => {
+        const isSel = _selectedPaths.has(file.path);
+        const iconName = getFileIcon(file.category);
+        const styles = getFileStyle(file.category);
+
+        const tr = document.createElement('tr');
+        tr.className = `table-row-item ${isSel ? 'is-selected' : ''}`;
+        tr.style.cursor = 'pointer';
+        tr.dataset.path = file.path;
+
+        // Icon Cell
+        const tdIcon = document.createElement('td');
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'component-card__profile-picture component-avatar--list';
+        iconDiv.style.cssText = `width:32px; height:32px; display:flex; align-items:center; justify-content:center; background-color:${styles.bg}; color:${styles.color};`;
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'material-symbols-rounded';
+        iconSpan.style.fontSize = '18px';
+        iconSpan.textContent = iconName;
+        iconDiv.appendChild(iconSpan);
+        tdIcon.appendChild(iconDiv);
+        tr.appendChild(tdIcon);
+
+        // Name
+        const tdName = document.createElement('td');
+        tdName.style.fontFamily = 'monospace';
+        tdName.style.fontWeight = '600';
+        tdName.textContent = file.filename; // [SEGURIDAD]
+        tr.appendChild(tdName);
+
+        // Category
+        const tdCat = document.createElement('td');
+        tdCat.textContent = file.category;
+        tr.appendChild(tdCat);
+
+        // Size
+        const tdSize = document.createElement('td');
+        tdSize.textContent = file.size;
+        tr.appendChild(tdSize);
+
+        // Date
+        const tdDate = document.createElement('td');
+        tdDate.textContent = file.modified_at;
+        tr.appendChild(tdDate);
+
+        // Listener
+        tr.addEventListener('click', () => toggleSelection(file.path));
+
+        tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    tableWrapper.appendChild(table);
+    container.appendChild(tableWrapper);
 }
 
 function toggleSelection(path) {

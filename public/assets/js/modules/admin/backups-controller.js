@@ -1,5 +1,6 @@
 /**
  * public/assets/js/modules/admin/backups-controller.js
+ * Versión Segura (DOM API)
  */
 
 import { ApiService } from '../../core/api-service.js';
@@ -15,7 +16,7 @@ let _viewMode = 'grid';
 
 export const BackupsController = {
     init: () => {
-        console.log("BackupsController: Inicializado (Realtime)");
+        console.log("BackupsController: Inicializado (Safe Mode)");
         
         _container = document.querySelector('[data-section="admin-backups"]');
         if (!_container) return;
@@ -27,11 +28,9 @@ export const BackupsController = {
         initToolbarEvents();
         loadBackups(); 
 
-        // === LISTENER DE SOCKET (Actualización remota) ===
         document.removeEventListener('socket:action', handleRemoteRefresh);
         document.addEventListener('socket:action', handleRemoteRefresh);
         
-        // === [NUEVO] LISTENER DE DESCARGA LISTA ===
         document.removeEventListener('socket:download_ready', onDownloadReady);
         document.addEventListener('socket:download_ready', onDownloadReady);
     }
@@ -91,7 +90,12 @@ function injectDownloadButton() {
         btn.className = 'header-button';
         btn.dataset.action = 'download-selected';
         btn.dataset.tooltip = I18n.t('js.core.download') || 'Descargar';
-        btn.innerHTML = '<span class="material-symbols-rounded">download</span>';
+        
+        const icon = document.createElement('span');
+        icon.className = 'material-symbols-rounded';
+        icon.textContent = 'download';
+        btn.appendChild(icon);
+        
         btn.addEventListener('click', handleDownloadSelected);
         
         const deleteBtn = actionGroup.querySelector('[data-action="delete-selected"]');
@@ -108,7 +112,11 @@ async function loadBackups(isSilentRefresh = false) {
     if (!listContainer) return;
 
     if (!isSilentRefresh && _backupsData.length === 0) {
-        listContainer.innerHTML = `<div class="state-loading"><div class="spinner-sm"></div><p class="state-text">${I18n.t('admin.backups.list_loading') || 'Cargando copias de seguridad...'}</p></div>`;
+        listContainer.innerHTML = '';
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'state-loading';
+        loadingDiv.innerHTML = `<div class="spinner-sm"></div><p class="state-text">${I18n.t('admin.backups.list_loading') || 'Cargando copias de seguridad...'}</p>`;
+        listContainer.appendChild(loadingDiv);
     }
 
     try {
@@ -121,14 +129,27 @@ async function loadBackups(isSilentRefresh = false) {
                 const btnCreate = _container.querySelector('#btn-create-backup');
                 if (btnCreate && btnCreate.disabled) {
                     btnCreate.disabled = false;
-                    btnCreate.innerHTML = `<span class="material-symbols-rounded">add</span> ${I18n.t('admin.backups.btn_create') || 'Crear Copia'}`;
+                    btnCreate.innerHTML = ''; // Limpiar
+                    const icon = document.createElement('span');
+                    icon.className = 'material-symbols-rounded';
+                    icon.textContent = 'add';
+                    btnCreate.appendChild(icon);
+                    // Si hubiera texto, se añade aquí
                 }
             }
         } else {
-            listContainer.innerHTML = `<div class="state-error">${res.message}</div>`;
+            listContainer.innerHTML = '';
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'state-error';
+            errorDiv.textContent = res.message;
+            listContainer.appendChild(errorDiv);
         }
     } catch (error) {
-        listContainer.innerHTML = `<div class="state-error">${I18n.t('js.core.connection_error') || 'Error de conexión.'}</div>`;
+        listContainer.innerHTML = '';
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'state-error';
+        errorDiv.textContent = I18n.t('js.core.connection_error') || 'Error de conexión.';
+        listContainer.appendChild(errorDiv);
     }
 }
 
@@ -136,8 +157,15 @@ function renderList() {
     const container = _container.querySelector('[data-component="backup-list"]');
     if (!container) return;
 
+    container.innerHTML = ''; // Limpieza segura
+
     if (_backupsData.length === 0) {
-        container.innerHTML = `<div class="state-empty"><p>${I18n.t('admin.backups.list_empty') || 'No hay copias de seguridad disponibles.'}</p></div>`;
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'state-empty';
+        const p = document.createElement('p');
+        p.textContent = I18n.t('admin.backups.list_empty') || 'No hay copias de seguridad disponibles.';
+        emptyDiv.appendChild(p);
+        container.appendChild(emptyDiv);
         return;
     }
 
@@ -148,67 +176,141 @@ function renderList() {
     } else {
         renderListAsGrid(container);
     }
-
-    container.querySelectorAll('.component-card, .table-row-item').forEach(item => {
-        item.addEventListener('click', () => toggleSelection(item.dataset.filename));
-    });
     
     if (scrollTop > 0) container.scrollTop = scrollTop;
 }
 
 function renderListAsGrid(container) {
-    let html = '';
     _backupsData.forEach(file => {
         const isSelected = _selectedFilenames.has(file.filename);
-        const selectedClass = isSelected ? 'is-selected' : '';
         let sourceLabel = (file.source === 'system') ? (I18n.t('admin.backups.source_auto') || 'Automático') : (I18n.t('admin.backups.source_manual') || 'Manual');
         
-        html += `
-        <div class="component-card ${selectedClass}" data-filename="${file.filename}">
-            <div class="component-list-item-content">
-                <div class="component-card__icon-container component-card__icon-container--bordered">
-                    <span class="material-symbols-rounded">database</span>
-                </div>
-                <span class="component-badge" data-tooltip="${I18n.t('admin.backups.col_filename') || 'Archivo'}" style="font-family: monospace;">${file.filename}</span>
-                <span class="component-badge" data-tooltip="${I18n.t('admin.backups.col_size') || 'Tamaño'}">${file.size}</span>
-                <span class="component-badge" data-tooltip="${I18n.t('admin.backups.col_date') || 'Fecha'}">${file.date}</span>
-                <span class="component-badge" data-tooltip="${I18n.t('admin.backups.col_source') || 'Origen'}">${sourceLabel}</span>
-            </div>
-        </div>`;
+        const card = document.createElement('div');
+        card.className = `component-card ${isSelected ? 'is-selected' : ''}`;
+        card.dataset.filename = file.filename;
+
+        const content = document.createElement('div');
+        content.className = 'component-list-item-content';
+
+        // Icono
+        const iconContainer = document.createElement('div');
+        iconContainer.className = 'component-card__icon-container component-card__icon-container--bordered';
+        const icon = document.createElement('span');
+        icon.className = 'material-symbols-rounded';
+        icon.textContent = 'database';
+        iconContainer.appendChild(icon);
+        content.appendChild(iconContainer);
+
+        // Helper Badges
+        const createBadge = (text, tooltipKey, mono = false) => {
+            const span = document.createElement('span');
+            span.className = 'component-badge';
+            span.dataset.tooltip = I18n.t(tooltipKey);
+            if (mono) span.style.fontFamily = 'monospace';
+            span.textContent = text; // [SEGURIDAD]
+            return span;
+        };
+
+        content.appendChild(createBadge(file.filename, 'admin.backups.col_filename', true));
+        content.appendChild(createBadge(file.size, 'admin.backups.col_size'));
+        content.appendChild(createBadge(file.date, 'admin.backups.col_date'));
+        content.appendChild(createBadge(sourceLabel, 'admin.backups.col_source'));
+
+        card.appendChild(content);
+        
+        // Listener
+        card.addEventListener('click', () => toggleSelection(file.filename));
+        
+        container.appendChild(card);
     });
-    container.innerHTML = html;
 }
 
 function renderListAsTable(container) {
-    let rows = '';
+    const tableWrapper = document.createElement('div');
+    tableWrapper.className = 'component-table-wrapper';
+
+    const table = document.createElement('table');
+    table.className = 'component-table';
+
+    // THEAD
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    
+    const headers = [
+        { w: '50px', t: '' },
+        { t: I18n.t('admin.backups.col_filename') || 'Archivo' },
+        { t: I18n.t('admin.backups.col_size') || 'Tamaño' },
+        { t: I18n.t('admin.backups.col_date') || 'Fecha' },
+        { t: I18n.t('admin.backups.col_source') || 'Origen' }
+    ];
+
+    headers.forEach(h => {
+        const th = document.createElement('th');
+        if (h.w) th.style.width = h.w;
+        th.textContent = h.t;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // TBODY
+    const tbody = document.createElement('tbody');
+    
     _backupsData.forEach(file => {
         const isSelected = _selectedFilenames.has(file.filename);
-        const selectedClass = isSelected ? 'is-selected' : '';
         let sourceLabel = (file.source === 'system') ? (I18n.t('admin.backups.source_auto') || 'Automático') : (I18n.t('admin.backups.source_manual') || 'Manual');
 
-        rows += `
-        <tr class="table-row-item ${selectedClass}" data-filename="${file.filename}" style="cursor: pointer;">
-            <td style="width: 50px;">
-                <div class="component-card__icon-container component-card__icon-container--bordered" style="width: 32px; height: 32px; min-width: 32px;">
-                    <span class="material-symbols-rounded" style="font-size: 18px;">database</span>
-                </div>
-            </td>
-            <td style="font-family: monospace;">${file.filename}</td>
-            <td>${file.size}</td>
-            <td>${file.date}</td>
-            <td><span class="component-badge" style="height: 24px; font-size: 12px;">${sourceLabel}</span></td>
-        </tr>`;
+        const tr = document.createElement('tr');
+        tr.className = `table-row-item ${isSelected ? 'is-selected' : ''}`;
+        tr.dataset.filename = file.filename;
+        tr.style.cursor = 'pointer';
+
+        // Icon Cell
+        const tdIcon = document.createElement('td');
+        tdIcon.style.width = '50px';
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'component-card__icon-container component-card__icon-container--bordered';
+        iconDiv.style.cssText = "width: 32px; height: 32px; min-width: 32px;";
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'material-symbols-rounded';
+        iconSpan.style.fontSize = '18px';
+        iconSpan.textContent = 'database';
+        iconDiv.appendChild(iconSpan);
+        tdIcon.appendChild(iconDiv);
+        tr.appendChild(tdIcon);
+
+        // Filename
+        const tdName = document.createElement('td');
+        tdName.style.fontFamily = 'monospace';
+        tdName.textContent = file.filename; // [SEGURIDAD]
+        tr.appendChild(tdName);
+
+        // Size
+        const tdSize = document.createElement('td');
+        tdSize.textContent = file.size;
+        tr.appendChild(tdSize);
+
+        // Date
+        const tdDate = document.createElement('td');
+        tdDate.textContent = file.date;
+        tr.appendChild(tdDate);
+
+        // Source
+        const tdSource = document.createElement('td');
+        const badgeSource = document.createElement('span');
+        badgeSource.className = 'component-badge';
+        badgeSource.style.cssText = "height: 24px; font-size: 12px;";
+        badgeSource.textContent = sourceLabel;
+        tdSource.appendChild(badgeSource);
+        tr.appendChild(tdSource);
+
+        tr.addEventListener('click', () => toggleSelection(file.filename));
+        tbody.appendChild(tr);
     });
 
-    container.innerHTML = `
-    <div class="component-table-wrapper">
-        <table class="component-table">
-            <thead>
-                <tr><th style="width: 50px;"></th><th>${I18n.t('admin.backups.col_filename') || 'Archivo'}</th><th>${I18n.t('admin.backups.col_size') || 'Tamaño'}</th><th>${I18n.t('admin.backups.col_date') || 'Fecha'}</th><th>${I18n.t('admin.backups.col_source') || 'Origen'}</th></tr>
-            </thead>
-            <tbody>${rows}</tbody>
-        </table>
-    </div>`;
+    table.appendChild(tbody);
+    tableWrapper.appendChild(table);
+    container.appendChild(tableWrapper);
 }
 
 function toggleSelection(filename) {
@@ -279,10 +381,16 @@ function updateViewUI(btnElement) {
 
 async function createBackup() {
     const btn = document.getElementById('btn-create-backup');
-    const originalText = btn.innerHTML;
+    
+    // Guardar icono original
+    const iconSpan = btn.querySelector('.material-symbols-rounded');
+    const originalIcon = iconSpan ? iconSpan.textContent : 'add';
     
     btn.disabled = true; 
-    btn.innerHTML = `<div class="spinner-sm"></div> ${I18n.t('js.core.processing') || 'Procesando...'}`;
+    btn.innerHTML = '';
+    const spinner = document.createElement('div');
+    spinner.className = 'spinner-sm';
+    btn.appendChild(spinner);
     
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.Backups.Create);
@@ -293,19 +401,20 @@ async function createBackup() {
             } else {
                 Toast.show(I18n.t('admin.backups.create_success') || 'Backup creado exitosamente', 'success');
                 loadBackups();
-                btn.disabled = false; 
-                btn.innerHTML = originalText; 
             }
         } else {
             Toast.show(res.message, 'error');
-            btn.disabled = false; 
-            btn.innerHTML = originalText; 
         }
     } catch(e) { 
         Toast.show(I18n.t('admin.backups.create_error') || 'Error al solicitar backup', 'error'); 
+    } finally {
         btn.disabled = false; 
-        btn.innerHTML = originalText; 
-    } 
+        btn.innerHTML = '';
+        const newIcon = document.createElement('span');
+        newIcon.className = 'material-symbols-rounded';
+        newIcon.textContent = originalIcon;
+        btn.appendChild(newIcon);
+    }
 }
 
 async function handleRestoreSelected() {
@@ -370,7 +479,6 @@ async function handleDownloadSelected() {
         const res = await ApiService.post(route, formData);
         
        if (res.success) {
-            // [MODIFICADO] Manejo dual
             if (res.queued) {
                 Toast.show(res.message || 'Generando archivo ZIP en segundo plano...', 'info');
             } else if (res.download_url) {

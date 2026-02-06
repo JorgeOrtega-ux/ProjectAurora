@@ -1,6 +1,6 @@
 /**
  * public/assets/js/modules/admin/users/users-controller.js
- * Versión Refactorizada con I18n
+ * Versión Segura (DOM API / textContent) para prevenir XSS
  */
 
 import { ApiService } from '../../../core/api-service.js';
@@ -26,7 +26,7 @@ let _searchTimeout = null;
 
 export const UsersController = {
     init: () => {
-        console.log("UsersController: Inicializado (Server-Side Pagination)");
+        console.log("UsersController: Inicializado (Safe Mode)");
         
         if (document.querySelector('[data-section="admin-user-details"]')) {
             UserDetailsController.init();
@@ -276,106 +276,170 @@ function renderList() {
     attachSelectionListeners(listContainer);
 }
 
+/**
+ * Renderizado SEGURO usando creación de nodos DOM (evita XSS)
+ */
 function renderListAsGrid(users, listContainer) {
-    let html = '';
+    listContainer.innerHTML = ''; // Limpiar contenedor de forma segura
 
     users.forEach(user => {
         const date = new Date(user.created_at);
         const formattedDate = date.toLocaleDateString();
-        const selectedClass = (_selectedUserId == user.id) ? 'is-selected' : '';
-        
-        // Traducción del Status si es posible
         const statusLabel = I18n.t(`admin.user_status.status.${user.account_status}`) || user.account_status;
 
-        html += `
-        <div class="component-card ${selectedClass}" data-user-id="${user.id}">
-            <div class="component-list-item-content">
-                
-                <div class="component-card__profile-picture component-avatar--list" 
-                     data-role="${user.role}">
-                    <img src="${user.avatar_src}" class="component-card__avatar-image" loading="lazy">
-                </div>
+        // Crear Tarjeta
+        const card = document.createElement('div');
+        card.className = 'component-card';
+        if (_selectedUserId == user.id) card.classList.add('is-selected');
+        card.dataset.userId = user.id;
 
-                <span class="component-badge" data-tooltip="${I18n.t('admin.users_module.list.headers.user')}">
-                    ${escapeHtml(user.username)}
-                </span>
+        // Contenedor interno
+        const content = document.createElement('div');
+        content.className = 'component-list-item-content';
 
-                <span class="component-badge" data-tooltip="${I18n.t('admin.users_module.list.headers.email')}"> 
-                    ${escapeHtml(user.email)}
-                </span>
+        // 1. Avatar
+        const avatarDiv = document.createElement('div');
+        avatarDiv.className = 'component-card__profile-picture component-avatar--list';
+        avatarDiv.dataset.role = user.role;
+        
+        const img = document.createElement('img');
+        img.src = user.avatar_src;
+        img.className = 'component-card__avatar-image';
+        img.loading = 'lazy';
+        img.alt = user.username;
+        avatarDiv.appendChild(img);
+        content.appendChild(avatarDiv);
 
-                <span class="component-badge" data-tooltip="${I18n.t('admin.users_module.list.headers.role')}">
-                    ${user.role} 
-                </span>
+        // Helper para crear Badges seguros
+        const createBadge = (text, tooltipKey) => {
+            const span = document.createElement('span');
+            span.className = 'component-badge';
+            span.dataset.tooltip = I18n.t(tooltipKey);
+            span.textContent = text; // [SEGURIDAD] textContent evita inyección HTML
+            return span;
+        };
 
-                <span class="component-badge" data-tooltip="${I18n.t('admin.users_module.list.headers.status')}">
-                    ${statusLabel}
-                </span>
+        // 2. Datos (Badges)
+        content.appendChild(createBadge(user.username, 'admin.users_module.list.headers.user'));
+        content.appendChild(createBadge(user.email, 'admin.users_module.list.headers.email'));
+        content.appendChild(createBadge(user.role, 'admin.users_module.list.headers.role'));
+        content.appendChild(createBadge(statusLabel, 'admin.users_module.list.headers.status'));
+        content.appendChild(createBadge(user.uuid, 'admin.users_module.list.headers.uuid'));
+        content.appendChild(createBadge(formattedDate, 'admin.users_module.list.headers.created'));
 
-                <span class="component-badge" data-tooltip="${I18n.t('admin.users_module.list.headers.uuid')}">
-                    ${user.uuid}
-                </span>
-
-                <span class="component-badge" data-tooltip="${I18n.t('admin.users_module.list.headers.created')}">
-                    ${formattedDate}
-                </span>
-
-            </div>
-        </div>`;
+        card.appendChild(content);
+        listContainer.appendChild(card);
     });
 
-    listContainer.innerHTML = html;
     listContainer.scrollTop = 0;
 }
 
+/**
+ * Renderizado SEGURO de Tabla
+ */
 function renderListAsTable(users, listContainer) {
-    let rows = '';
+    listContainer.innerHTML = ''; 
+
+    const tableWrapper = document.createElement('div');
+    tableWrapper.className = 'component-table-wrapper';
+
+    const table = document.createElement('table');
+    table.className = 'component-table';
+
+    // -- THEAD --
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    
+    const headers = [
+        { width: '50px', text: I18n.t('admin.users_module.list.headers.avatar') },
+        { text: I18n.t('admin.users_module.list.headers.user') },
+        { text: I18n.t('admin.users_module.list.headers.email') },
+        { text: I18n.t('admin.users_module.list.headers.role') },
+        { text: I18n.t('admin.users_module.list.headers.status') },
+        { text: I18n.t('admin.users_module.list.headers.uuid') },
+        { text: I18n.t('admin.users_module.list.headers.created') }
+    ];
+
+    headers.forEach(h => {
+        const th = document.createElement('th');
+        if (h.width) th.style.width = h.width;
+        th.textContent = h.text;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // -- TBODY --
+    const tbody = document.createElement('tbody');
     
     users.forEach(user => {
         const date = new Date(user.created_at);
         const formattedDate = date.toLocaleDateString();
-        const selectedClass = (_selectedUserId == user.id) ? 'is-selected' : '';
         const statusLabel = I18n.t(`admin.user_status.status.${user.account_status}`) || user.account_status;
 
-        rows += `
-        <tr class="table-row-item ${selectedClass}" data-user-id="${user.id}" style="cursor: pointer;">
-            <td>
-                <div class="component-card__profile-picture component-avatar--list" 
-                     data-role="${user.role}" style="width: 32px; height: 32px; min-width: 32px;">
-                    <img src="${user.avatar_src}" class="component-card__avatar-image" loading="lazy">
-                </div>
-            </td>
-            <td><strong>${escapeHtml(user.username)}</strong></td>
-            <td>${escapeHtml(user.email)}</td>
-            <td><span class="component-badge" style="height: 24px; font-size: 12px;">${user.role}</span></td>
-            <td>${statusLabel}</td>
-            <td style="font-family: monospace; font-size: 12px;">${user.uuid}</td>
-            <td>${formattedDate}</td>
-        </tr>`;
+        const tr = document.createElement('tr');
+        tr.className = 'table-row-item';
+        if (_selectedUserId == user.id) tr.classList.add('is-selected');
+        tr.dataset.userId = user.id;
+        tr.style.cursor = 'pointer';
+
+        // 1. Celda Avatar
+        const tdAvatar = document.createElement('td');
+        const divAvatar = document.createElement('div');
+        divAvatar.className = 'component-card__profile-picture component-avatar--list';
+        divAvatar.dataset.role = user.role;
+        divAvatar.style.width = '32px';
+        divAvatar.style.height = '32px';
+        divAvatar.style.minWidth = '32px';
+        
+        const img = document.createElement('img');
+        img.src = user.avatar_src;
+        img.className = 'component-card__avatar-image';
+        img.loading = 'lazy';
+        
+        divAvatar.appendChild(img);
+        tdAvatar.appendChild(divAvatar);
+        tr.appendChild(tdAvatar);
+
+        // Helper para celdas de texto
+        const addCell = (text, isBold = false, isMono = false, isBadge = false) => {
+            const td = document.createElement('td');
+            if (isBadge) {
+                const span = document.createElement('span');
+                span.className = 'component-badge';
+                span.style.height = '24px';
+                span.style.fontSize = '12px';
+                span.textContent = text; // [SEGURIDAD]
+                td.appendChild(span);
+            } else if (isBold) {
+                const strong = document.createElement('strong');
+                strong.textContent = text; // [SEGURIDAD]
+                td.appendChild(strong);
+            } else {
+                td.textContent = text; // [SEGURIDAD]
+            }
+            
+            if (isMono) {
+                td.style.fontFamily = 'monospace';
+                td.style.fontSize = '12px';
+            }
+            tr.appendChild(td);
+        };
+
+        addCell(user.username, true);
+        addCell(user.email);
+        addCell(user.role, false, false, true); // Badge style for role
+        addCell(statusLabel);
+        addCell(user.uuid, false, true); // Mono font for UUID
+        addCell(formattedDate);
+
+        tbody.appendChild(tr);
     });
 
-    const tableHtml = `
-    <div class="component-table-wrapper">
-        <table class="component-table">
-            <thead>
-                <tr>
-                    <th style="width: 50px;">${I18n.t('admin.users_module.list.headers.avatar')}</th>
-                    <th>${I18n.t('admin.users_module.list.headers.user')}</th>
-                    <th>${I18n.t('admin.users_module.list.headers.email')}</th>
-                    <th>${I18n.t('admin.users_module.list.headers.role')}</th>
-                    <th>${I18n.t('admin.users_module.list.headers.status')}</th>
-                    <th>${I18n.t('admin.users_module.list.headers.uuid')}</th>
-                    <th>${I18n.t('admin.users_module.list.headers.created')}</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${rows}
-            </tbody>
-        </table>
-    </div>
-    `;
-
-    listContainer.innerHTML = tableHtml;
+    table.appendChild(tbody);
+    tableWrapper.appendChild(table);
+    listContainer.appendChild(tableWrapper);
+    
     listContainer.scrollTop = 0;
 }
 
@@ -456,9 +520,4 @@ function updateViewUI(btnElement) {
         if (iconSpan) iconSpan.textContent = 'grid_view';
         btnElement.dataset.tooltip = I18n.t('admin.users_module.toolbar.view_table') || 'Vista en Tabla';
     }
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }

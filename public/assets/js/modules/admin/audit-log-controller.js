@@ -1,5 +1,6 @@
 /**
  * public/assets/js/modules/admin/audit-log-controller.js
+ * Versión Segura (DOM API)
  */
 
 import { ApiService } from '../../core/api-service.js';
@@ -13,7 +14,7 @@ let _totalPages = 1;
 
 export const AuditLogController = {
     init: () => {
-        console.log("AuditLogController: Inicializado");
+        console.log("AuditLogController: Inicializado (Safe Mode)");
         _container = document.querySelector('[data-section="admin-audit-log"]');
         if (!_container) return;
 
@@ -58,7 +59,7 @@ async function loadLogs() {
 
     if (!tbody) return;
 
-    tbody.innerHTML = '';
+    tbody.innerHTML = ''; // Limpieza segura
     if (loading) loading.style.display = 'block';
 
     const formData = new FormData();
@@ -82,85 +83,158 @@ async function loadLogs() {
             if (btnNext) btnNext.disabled = (_currentPage >= _totalPages);
 
         } else {
-            tbody.innerHTML = `<tr><td colspan="6" class="state-error">${res.message}</td></tr>`;
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.colSpan = 6;
+            td.className = 'state-error';
+            td.textContent = res.message;
+            tr.appendChild(td);
+            tbody.appendChild(tr);
         }
 
     } catch (e) {
         console.error(e);
         if (loading) loading.style.display = 'none';
-        tbody.innerHTML = `<tr><td colspan="6" class="state-error">${I18n.t('js.core.connection_error')}</td></tr>`;
+        
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 6;
+        td.className = 'state-error';
+        td.textContent = I18n.t('js.core.connection_error');
+        tr.appendChild(td);
+        tbody.appendChild(tr);
     }
 }
 
 function renderTable(logs, tbody) {
     if (logs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="state-empty" style="text-align:center; padding: 20px;">${I18n.t('admin.audit.empty')}</td></tr>`;
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 6;
+        td.className = 'state-empty';
+        td.style.textAlign = 'center';
+        td.style.padding = '20px';
+        td.textContent = I18n.t('admin.audit.empty');
+        tr.appendChild(td);
+        tbody.appendChild(tr);
         return;
     }
 
-    let html = '';
     logs.forEach(log => {
+        const tr = document.createElement('tr');
+        tr.className = 'table-row-item';
+
         const date = new Date(log.created_at).toLocaleDateString() + ' ' + new Date(log.created_at).toLocaleTimeString();
-        
-        let details = '';
-        if (log.changes) {
-            details = formatChanges(log.changes);
-        }
-
-        // Se usa la nueva variante --sm para la acción
-        const actionBadge = `<span class="component-badge component-badge--sm">${log.action}</span>`;
-
-        // Avatar fallback si no viene definido
-        // Usamos I18n para 'System' si es necesario
         const systemName = I18n.t('admin.audit.system_actor') || 'System';
         const adminName = log.admin_name || systemName;
-        
         const avatarSrc = log.admin_avatar_src || `https://ui-avatars.com/api/?name=${encodeURIComponent(adminName)}&background=random&color=fff&size=128`;
-
         const displayAdminName = log.admin_name || I18n.t('admin.audit.system_default') || 'Sistema';
 
-        html += `
-        <tr class="table-row-item">
-            <td>
-                <div class="component-card__profile-picture component-avatar--list" 
-                     data-role="${log.admin_role || 'system'}" 
-                     style="width: 32px; height: 32px; min-width: 32px;">
-                    <img src="${avatarSrc}" class="component-card__avatar-image" loading="lazy">
-                </div>
-            </td>
-            <td>
-                <div style="display: flex; flex-direction: column;">
-                    <span style="font-weight: 600; font-size: 13px;">${displayAdminName}</span>
-                    <span style="font-size: 11px; color: var(--text-tertiary);">ID: ${log.admin_id}</span>
-                </div>
-            </td>
-            <td>${actionBadge}</td>
-            <td>
-                <span class="component-badge component-badge--sm">
-                    ${log.target_type}:${log.target_id || '?'}
-                </span>
-            </td>
-            <td style="white-space: normal;">
-                <div style="font-size: 12px; font-family: monospace; max-height: 80px; overflow-y: auto; color: var(--text-secondary);">
-                    ${details}
-                </div>
-            </td>
-            <td style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">${date}</td>
-        </tr>`;
-    });
+        // 1. Columna Avatar
+        const tdAvatar = document.createElement('td');
+        const divAvatar = document.createElement('div');
+        divAvatar.className = 'component-card__profile-picture component-avatar--list';
+        divAvatar.dataset.role = log.admin_role || 'system';
+        divAvatar.style.cssText = "width: 32px; height: 32px; min-width: 32px;";
+        
+        const img = document.createElement('img');
+        img.src = avatarSrc;
+        img.className = 'component-card__avatar-image';
+        img.loading = 'lazy';
+        
+        divAvatar.appendChild(img);
+        tdAvatar.appendChild(divAvatar);
+        tr.appendChild(tdAvatar);
 
-    tbody.innerHTML = html;
+        // 2. Columna Actor
+        const tdActor = document.createElement('td');
+        const divActor = document.createElement('div');
+        divActor.style.display = 'flex';
+        divActor.style.flexDirection = 'column';
+        
+        const spanName = document.createElement('span');
+        spanName.style.fontWeight = '600';
+        spanName.style.fontSize = '13px';
+        spanName.textContent = displayAdminName; // [SEGURIDAD] textContent
+        
+        const spanId = document.createElement('span');
+        spanId.style.fontSize = '11px';
+        spanId.style.color = 'var(--text-tertiary)';
+        spanId.textContent = `ID: ${log.admin_id}`;
+        
+        divActor.appendChild(spanName);
+        divActor.appendChild(spanId);
+        tdActor.appendChild(divActor);
+        tr.appendChild(tdActor);
+
+        // 3. Columna Acción
+        const tdAction = document.createElement('td');
+        const badgeAction = document.createElement('span');
+        badgeAction.className = 'component-badge component-badge--sm';
+        badgeAction.textContent = log.action; // [SEGURIDAD]
+        tdAction.appendChild(badgeAction);
+        tr.appendChild(tdAction);
+
+        // 4. Columna Target
+        const tdTarget = document.createElement('td');
+        const badgeTarget = document.createElement('span');
+        badgeTarget.className = 'component-badge component-badge--sm';
+        badgeTarget.textContent = `${log.target_type}:${log.target_id || '?'}`; // [SEGURIDAD]
+        tdTarget.appendChild(badgeTarget);
+        tr.appendChild(tdTarget);
+
+        // 5. Columna Detalles
+        const tdDetails = document.createElement('td');
+        tdDetails.style.whiteSpace = 'normal';
+        const divDetails = document.createElement('div');
+        divDetails.style.cssText = "font-size: 12px; font-family: monospace; max-height: 80px; overflow-y: auto; color: var(--text-secondary);";
+        
+        // Renderizar cambios de forma segura
+        if (log.changes) {
+            const changesNodes = formatChangesSafe(log.changes);
+            divDetails.appendChild(changesNodes);
+        }
+        
+        tdDetails.appendChild(divDetails);
+        tr.appendChild(tdDetails);
+
+        // 6. Columna Fecha
+        const tdDate = document.createElement('td');
+        tdDate.style.cssText = "font-size: 12px; color: var(--text-secondary); white-space: nowrap;";
+        tdDate.textContent = date;
+        tr.appendChild(tdDate);
+
+        tbody.appendChild(tr);
+    });
 }
 
-function formatChanges(changesObj) {
-    if (typeof changesObj !== 'object' || changesObj === null) return '';
-    if (Array.isArray(changesObj)) return JSON.stringify(changesObj);
+function formatChangesSafe(changesObj) {
+    const container = document.createDocumentFragment();
 
-    return Object.entries(changesObj)
-        .map(([key, val]) => {
-            const safeVal = (val === null) ? (I18n.t('admin.audit.value_null') || 'NULL') : String(val);
-            // Uso de clases utilitarias para texto truncado si es muy largo
-            return `<div style="display:flex; gap:4px;"><span style="color:var(--text-tertiary); font-weight:500;">${key}:</span> <span style="color:var(--text-primary); word-break: break-all;">${safeVal}</span></div>`;
-        })
-        .join('');
+    if (typeof changesObj !== 'object' || changesObj === null) return container;
+    
+    if (Array.isArray(changesObj)) {
+        const textNode = document.createTextNode(JSON.stringify(changesObj));
+        container.appendChild(textNode);
+        return container;
+    }
+
+    Object.entries(changesObj).forEach(([key, val]) => {
+        const row = document.createElement('div');
+        row.style.cssText = "display:flex; gap:4px;";
+
+        const keySpan = document.createElement('span');
+        keySpan.style.cssText = "color:var(--text-tertiary); font-weight:500;";
+        keySpan.textContent = `${key}:`;
+
+        const valSpan = document.createElement('span');
+        valSpan.style.cssText = "color:var(--text-primary); word-break: break-all;";
+        valSpan.textContent = (val === null) ? (I18n.t('admin.audit.value_null') || 'NULL') : String(val);
+
+        row.appendChild(keySpan);
+        row.appendChild(valSpan);
+        container.appendChild(row);
+    });
+
+    return container;
 }

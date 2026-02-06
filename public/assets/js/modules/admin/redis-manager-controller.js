@@ -1,18 +1,19 @@
 /**
  * public/assets/js/modules/admin/redis-manager-controller.js
+ * Versión Segura (DOM API)
  */
 
 import { ApiService } from '../../core/api-service.js';
 import { Toast } from '../../core/toast-manager.js';
 import { Dialog } from '../../core/dialog-manager.js';
 import { navigateTo } from '../../core/url-manager.js';
-import { I18n } from '../../core/i18n-manager.js'; // Importación añadida
+import { I18n } from '../../core/i18n-manager.js';
 
 let _container = null;
 
 export const RedisManagerController = {
     init: () => {
-        console.log("RedisManagerController: Inicializado");
+        console.log("RedisManagerController: Inicializado (Safe Mode)");
         _container = document.querySelector('[data-section="admin-redis-manager"]');
         if (!_container) return;
 
@@ -54,7 +55,7 @@ async function loadStats() {
             updateStat('version', res.stats.version);
             updateStat('uptime', res.stats.uptime);
             updateStat('memory_used', res.stats.memory_used);
-            updateStat('memory_peak', res.stats.memory_peak); // [NUEVO] Dato extra para el footer
+            updateStat('memory_peak', res.stats.memory_peak);
             updateStat('connected_clients', res.stats.connected_clients);
             updateStat('total_keys', res.stats.total_keys);
         }
@@ -85,23 +86,47 @@ async function loadKeys(pattern) {
         if (res.success) {
             renderKeysTable(res.keys, tbody);
         } else {
-            tbody.innerHTML = `<tr><td colspan="4" class="state-error">${res.message}</td></tr>`;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td colspan="4" class="state-error">${res.message}</td>`; // Mensaje de sistema seguro
+            tbody.appendChild(tr);
         }
     } catch (e) {
         loader.classList.add('d-none');
-        tbody.innerHTML = `<tr><td colspan="4" class="state-error">${I18n.t('js.core.connection_error')}</td></tr>`;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="4" class="state-error">${I18n.t('js.core.connection_error')}</td>`;
+        tbody.appendChild(tr);
     }
 }
 
 function renderKeysTable(keys, tbody) {
     if (keys.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="state-empty" style="text-align:center; padding: 20px;">${I18n.t('admin.redis.no_keys') || 'No se encontraron claves.'}</td></tr>`;
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 4;
+        td.className = 'state-empty';
+        td.style.textAlign = 'center';
+        td.style.padding = '20px';
+        td.textContent = I18n.t('admin.redis.no_keys') || 'No se encontraron claves.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
         return;
     }
 
-    let html = '';
     keys.forEach(k => {
-        // Mapeo a clases genéricas component-badge--*
+        const tr = document.createElement('tr');
+        tr.className = 'table-row-item';
+        tr.style.cursor = 'pointer';
+        tr.dataset.key = k.key; // Data attribute para el click handler
+
+        // 1. Columna Key
+        const tdKey = document.createElement('td');
+        tdKey.className = 'font-mono';
+        tdKey.style.fontSize = '13px';
+        tdKey.style.wordBreak = 'break-all';
+        tdKey.textContent = k.key; // [SEGURIDAD] Evita inyección en el nombre de la clave
+        tr.appendChild(tdKey);
+
+        // 2. Columna Tipo
         let colorClass = 'component-badge--gray';
         if (k.type === 'string') colorClass = 'component-badge--green';
         else if (k.type === 'hash') colorClass = 'component-badge--blue';
@@ -110,41 +135,54 @@ function renderKeysTable(keys, tbody) {
         else if (k.type === 'zset') colorClass = 'component-badge--pink';
         else if (k.type === 'stream') colorClass = 'component-badge--cyan';
 
-        const badgeType = `<span class="component-badge ${colorClass}" style="height:20px; font-size:11px;">${k.type}</span>`;
-        
+        const tdType = document.createElement('td');
+        const badge = document.createElement('span');
+        badge.className = `component-badge ${colorClass}`;
+        badge.style.height = '20px';
+        badge.style.fontSize = '11px';
+        badge.textContent = k.type;
+        tdType.appendChild(badge);
+        tr.appendChild(tdType);
+
+        // 3. Columna TTL
         let ttlDisplay = k.ttl === -1 ? (I18n.t('admin.redis.ttl_infinite') || 'Infinito') : `${k.ttl}s`;
         if (k.ttl === -2) ttlDisplay = (I18n.t('admin.redis.ttl_expired') || 'Expirada');
 
-        const deleteTitle = I18n.t('js.core.delete') || 'Eliminar';
+        const tdTTL = document.createElement('td');
+        tdTTL.style.fontSize = '12px';
+        tdTTL.style.color = 'var(--text-secondary)';
+        tdTTL.textContent = ttlDisplay;
+        tr.appendChild(tdTTL);
 
-        html += `
-        <tr class="table-row-item" style="cursor: pointer;" data-key="${k.key}">
-            <td class="font-mono" style="font-size:13px; word-break:break-all;">${k.key}</td>
-            <td>${badgeType}</td>
-            <td style="font-size:12px; color:var(--text-secondary);">${ttlDisplay}</td>
-            <td class="text-right">
-                <button class="component-button btn-delete-key" data-key="${k.key}" style="width:28px; height:28px; padding:0; border:none; color:var(--text-tertiary);" title="${deleteTitle}">
-                    <span class="material-symbols-rounded" style="font-size:18px;">delete</span>
-                </button>
-            </td>
-        </tr>`;
-    });
-
-    tbody.innerHTML = html;
-
-    // Listeners
-    tbody.querySelectorAll('tr').forEach(row => {
-        row.addEventListener('click', (e) => {
-            if (e.target.closest('.btn-delete-key')) return;
-            showValueDialog(row.dataset.key);
-        });
-    });
-
-    tbody.querySelectorAll('.btn-delete-key').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        // 4. Columna Acciones
+        const tdActions = document.createElement('td');
+        tdActions.className = 'text-right';
+        
+        const btnDelete = document.createElement('button');
+        btnDelete.className = 'component-button btn-delete-key';
+        btnDelete.style.cssText = "width:28px; height:28px; padding:0; border:none; color:var(--text-tertiary);";
+        btnDelete.title = I18n.t('js.core.delete') || 'Eliminar';
+        
+        const icon = document.createElement('span');
+        icon.className = 'material-symbols-rounded';
+        icon.style.fontSize = '18px';
+        icon.textContent = 'delete';
+        
+        btnDelete.appendChild(icon);
+        
+        // Listener directo
+        btnDelete.onclick = (e) => {
             e.stopPropagation();
-            deleteKey(btn.dataset.key);
-        });
+            deleteKey(k.key);
+        };
+
+        tdActions.appendChild(btnDelete);
+        tr.appendChild(tdActions);
+
+        // Listener de fila
+        tr.onclick = () => showValueDialog(k.key);
+
+        tbody.appendChild(tr);
     });
 }
 
@@ -175,12 +213,12 @@ async function showValueDialog(key) {
                         <span><strong>${I18n.t('admin.redis.meta_size') || 'Tamaño:'}</strong> ${data.size} items/bytes</span>
                         <span><strong>TTL:</strong> ${data.ttl}</span>
                     </div>
-                    <textarea class="component-textarea-read" readonly>${displayValue}</textarea>
+                    <textarea class="component-textarea-read" readonly></textarea>
                 </div>
             `;
 
             Dialog.confirm({
-                title: `${I18n.t('admin.redis.key_label') || 'Clave'}: ${key}`,
+                title: `${I18n.t('admin.redis.key_label') || 'Clave'}: ${key}`, // El título escapa autom en Dialog
                 message: '', 
                 confirmText: I18n.t('js.core.close') || 'Cerrar',
                 cancelText: null, 
@@ -189,6 +227,10 @@ async function showValueDialog(key) {
                     if(contentArea) {
                         contentArea.innerHTML = htmlContent;
                         contentArea.style.whiteSpace = 'normal'; 
+                        
+                        // Setear valor de forma segura en textarea
+                        const textarea = contentArea.querySelector('textarea');
+                        if (textarea) textarea.value = displayValue;
                     }
                 }
             });

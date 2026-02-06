@@ -1,6 +1,6 @@
 /**
  * public/assets/js/modules/settings/devices-controller.js
- * Refactorizado: Patrón Singleton (Objeto Literal)
+ * Versión Segura (DOM API)
  */
 
 import { ApiService } from '../../core/api-service.js';
@@ -15,17 +15,6 @@ const SettingsAPI = ApiService.Routes.Settings;
 // --- ESTADO PRIVADO DEL MÓDULO ---
 let isLoading = false;
 
-// --- UTILIDADES ---
-const escapeHtml = (text) => {
-    if (!text) return text;
-    return String(text)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-};
-
 // --- MÉTODOS PRIVADOS (Lógica Interna) ---
 
 async function _loadDevices() {
@@ -36,18 +25,25 @@ async function _loadDevices() {
     isLoading = true;
 
     try {
-        // USO DE API ROUTES
         const res = await ApiService.post(SettingsAPI.GetSessions);
 
         if (res.success) {
             _renderList(res.sessions);
         } else {
-            container.innerHTML = `<div style="padding:20px; text-align:center;">${I18n.t('js.devices.load_error')}</div>`;
+            container.innerHTML = '';
+            const msg = document.createElement('div');
+            msg.style.cssText = 'padding:20px; text-align:center;';
+            msg.textContent = I18n.t('js.devices.load_error');
+            container.appendChild(msg);
         }
 
     } catch (e) {
         console.error(e);
-        container.innerHTML = `<div style="padding:20px; text-align:center;">${I18n.t('js.devices.connection_error')}</div>`;
+        container.innerHTML = '';
+        const msg = document.createElement('div');
+        msg.style.cssText = 'padding:20px; text-align:center;';
+        msg.textContent = I18n.t('js.devices.connection_error');
+        container.appendChild(msg);
     } finally {
         isLoading = false;
     }
@@ -57,56 +53,104 @@ function _renderList(sessions) {
     const container = document.getElementById('devices-list-container');
     if (!container) return;
 
+    container.innerHTML = ''; // Limpieza segura
+
     if (sessions.length === 0) {
-        container.innerHTML = `<div style="padding:24px; text-align:center; color:#666;">${I18n.t('js.devices.empty')}</div>`;
+        const msg = document.createElement('div');
+        msg.style.cssText = 'padding:24px; text-align:center; color:#666;';
+        msg.textContent = I18n.t('js.devices.empty');
+        container.appendChild(msg);
         return;
     }
 
-    let html = '';
     sessions.forEach((s, index) => {
-        let icon = 'devices';
+        let iconName = 'devices';
         const plat = (s.platform || '').toLowerCase();
-        if (plat.includes('win') || plat.includes('mac') || plat.includes('linux')) icon = 'computer';
-        if (plat.includes('android') || plat.includes('iphone')) icon = 'smartphone';
+        if (plat.includes('win') || plat.includes('mac') || plat.includes('linux')) iconName = 'computer';
+        if (plat.includes('android') || plat.includes('iphone')) iconName = 'smartphone';
 
-        const safePlatform = escapeHtml(s.platform);
-        const safeBrowser = escapeHtml(s.browser);
-        const safeIp = escapeHtml(s.ip);
-        const safeDate = escapeHtml(s.created_at);
+        const itemWrapper = document.createElement('div');
+        
+        // Group Item
+        const groupItem = document.createElement('div');
+        groupItem.className = 'component-group-item';
 
-        // [MODIFICADO] Se reemplazaron los estilos inline por las clases del componente
-        const activeBadge = s.is_current 
-            ? `<span class="component-badge component-badge--sm" style="margin-left: 8px;">${I18n.t('js.devices.current_device')}</span>` 
-            : '';
+        // Content (Icon + Text)
+        const content = document.createElement('div');
+        content.className = 'component-card__content';
 
-        html += `
-            <div class="component-group-item">
-                <div class="component-card__content">
-                    <div class="component-card__icon-container component-card__icon-container--bordered">
-                        <span class="material-symbols-rounded">${icon}</span>
-                    </div>
-                    <div class="component-card__text">
-                        <h2 class="component-card__title">
-                            ${safePlatform} - ${safeBrowser} ${activeBadge}
-                        </h2>
-                        <p class="component-card__description">
-                            IP: ${safeIp} <br>
-                            <span style="font-size:12px; color:#999;">Iniciado: ${safeDate}</span>
-                        </p>
-                    </div>
-                </div>
-                <div class="component-card__actions actions-right">
-                    ${!s.is_current ? 
-                        `<button type="button" class="component-button btn-revoke-one" data-id="${escapeHtml(s.id)}">${I18n.t('js.devices.btn_revoke')}</button>` 
-                        : ''
-                    }
-                </div>
-            </div>
-            ${index < sessions.length - 1 ? '<hr class="component-divider">' : ''}
-        `;
+        // Icon Container
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'component-card__icon-container component-card__icon-container--bordered';
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'material-symbols-rounded';
+        iconSpan.textContent = iconName;
+        iconDiv.appendChild(iconSpan);
+        content.appendChild(iconDiv);
+
+        // Text Content
+        const textDiv = document.createElement('div');
+        textDiv.className = 'component-card__text';
+
+        const h2 = document.createElement('h2');
+        h2.className = 'component-card__title';
+        // [SEGURIDAD] Usamos textContent para los datos inseguros
+        h2.textContent = `${s.platform} - ${s.browser}`;
+
+        // Badge si es actual
+        if (s.is_current) {
+            const badge = document.createElement('span');
+            badge.className = 'component-badge component-badge--sm';
+            badge.style.marginLeft = '8px';
+            badge.textContent = I18n.t('js.devices.current_device');
+            h2.appendChild(badge);
+        }
+        textDiv.appendChild(h2);
+
+        const pDesc = document.createElement('p');
+        pDesc.className = 'component-card__description';
+        
+        // Construimos el texto "IP: ..." de forma segura
+        const ipText = document.createTextNode(`IP: ${s.ip} `);
+        pDesc.appendChild(ipText);
+        
+        const br = document.createElement('br');
+        pDesc.appendChild(br);
+
+        const dateSpan = document.createElement('span');
+        dateSpan.style.cssText = 'font-size:12px; color:#999;';
+        dateSpan.textContent = `Iniciado: ${s.created_at}`;
+        pDesc.appendChild(dateSpan);
+
+        textDiv.appendChild(pDesc);
+        content.appendChild(textDiv);
+        groupItem.appendChild(content);
+
+        // Actions
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'component-card__actions actions-right';
+
+        if (!s.is_current) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'component-button btn-revoke-one';
+            btn.dataset.id = s.id;
+            btn.textContent = I18n.t('js.devices.btn_revoke');
+            actionsDiv.appendChild(btn);
+        }
+        groupItem.appendChild(actionsDiv);
+        itemWrapper.appendChild(groupItem);
+
+        // Divider
+        if (index < sessions.length - 1) {
+            const hr = document.createElement('hr');
+            hr.className = 'component-divider';
+            itemWrapper.appendChild(hr);
+        }
+
+        container.appendChild(itemWrapper);
     });
 
-    container.innerHTML = html;
     _bindListEvents();
 }
 
@@ -177,7 +221,7 @@ export const DevicesController = {
         const container = document.getElementById('devices-list-container');
         if (!container) return;
 
-        console.log("DevicesController: Inicializado");
+        console.log("DevicesController: Inicializado (Safe Mode)");
         
         _loadDevices();
         _initRevokeAllButton();
