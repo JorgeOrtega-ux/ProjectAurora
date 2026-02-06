@@ -11,7 +11,7 @@ $redis = $services['redis'];
 // 1.5 FIREWALL DE APLICACIÓN (RATE LIMITER) - VERSIÓN VISUAL
 // Configuración: 35 peticiones cada 60 segundos.
 // ============================================================================
-if (Utils::checkFirewallFlood($redis, 5, 60)) {
+if (Utils::checkFirewallFlood($redis, 35, 60)) {
     http_response_code(429); // Too Many Requests
     header('Retry-After: 60');
     

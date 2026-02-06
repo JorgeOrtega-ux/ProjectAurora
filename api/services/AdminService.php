@@ -73,7 +73,6 @@ class AdminService {
         // --- ESTRATEGIA DE DESCARGA ---
 
         // CASO 1: Archivo Único (Rápido - Síncrono en PHP)
-        // No tiene sentido enviar al worker si es solo servir un archivo existente.
         if (count($validPaths) === 1) {
             $targetFile = $validPaths[0]['full'];
             $targetName = basename($validPaths[0]['name']); 
@@ -105,7 +104,6 @@ class AdminService {
         } 
         
         // CASO 2: Múltiples Archivos (Pesado - Asíncrono en Python Worker)
-        // Delegamos la creación del ZIP al worker para evitar Timeouts de PHP.
         else {
             try {
                 $jobData = [
@@ -759,10 +757,21 @@ class AdminService {
     }
 
     private function isAdmin() {
-        $stmt = $this->pdo->prepare("SELECT role FROM users WHERE id = ?");
+        // [MODIFICADO] Verificación estricta de Rol + 2FA
+        $stmt = $this->pdo->prepare("SELECT role, two_factor_enabled FROM users WHERE id = ?");
         $stmt->execute([$this->requestingUserId]);
-        $role = $stmt->fetchColumn();
-        return in_array($role, ['founder', 'administrator']);
+        $user = $stmt->fetch();
+
+        if (!$user) return false;
+
+        $isRoleAllowed = in_array($user['role'], ['founder', 'administrator']);
+        
+        if ($isRoleAllowed) {
+            // Si el rol es admin/founder, ES OBLIGATORIO tener 2FA activado (valor 1)
+            return (int)$user['two_factor_enabled'] === 1;
+        }
+
+        return false;
     }
 
     private function resolveAvatarSrc($userId, $username) {

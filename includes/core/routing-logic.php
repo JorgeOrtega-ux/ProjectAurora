@@ -121,11 +121,26 @@ if (!$showMaintenanceScreen) {
     }
 }
 
+// [NUEVO] Lógica de Bloqueo por 2FA (Sin redirección, carga vista de bloqueo)
+$force2FALock = false;
+if (!$showMaintenanceScreen && $isAdminRoute && $isLoggedIn && in_array($userRole, ['founder', 'administrator'])) {
+    // Verificamos el valor fresco de la sesión
+    if (empty($_SESSION['two_factor_enabled'])) {
+        $force2FALock = true;
+    }
+}
+
 // DETERMINAR ARCHIVO A CARGAR ($fileToLoad)
 if ($showMaintenanceScreen) {
     $fileToLoad = __DIR__ . '/../../includes/sections/system/status-screen.php';
     $isMaintenanceContext = true;
     $showInterface = false;
+} elseif ($force2FALock) {
+    // [AQUÍ ESTÁ LA MAGIA]
+    // Si es admin sin 2FA, cargamos la pantalla de bloqueo en lugar del dashboard.
+    // Mantenemos $showInterface = true para que vea el menú lateral y pueda ir a Settings.
+    $fileToLoad = __DIR__ . '/../../includes/sections/system/security-lock.php';
+    $showInterface = true; 
 } else {
     $routesMap = require __DIR__ . '/../../config/routes.php';
 
@@ -139,12 +154,10 @@ if ($showMaintenanceScreen) {
         $candidateFile = $routesMap[$currentSection] ?? $routesMap['404'];
     }
 
-    // 2. [MODIFICADO] Validación física: ¿El archivo existe realmente en el disco?
-    // Esto previene el error "Failed to open stream" en index.php si borraste un archivo (ej: main.php)
+    // 2. Validación física
     if (file_exists($candidateFile)) {
         $fileToLoad = $candidateFile;
     } else {
-        // Si no existe, forzamos la carga de la vista 404
         $fileToLoad = $routesMap['404'];
     }
 
@@ -158,3 +171,4 @@ $jsTranslations = json_encode($i18n->getAll());
 $globalAvatarSrc = Utils::getGlobalAvatarSrc();
 $turnstileSiteKey = $_ENV['TURNSTILE_SITE_KEY'] ?? '';
 $userLang = $_SESSION['preferences']['language'] ?? 'es-latam';
+?>

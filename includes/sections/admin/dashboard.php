@@ -89,6 +89,22 @@
             </div>
         </div>
 
+        <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'founder'): ?>
+        <div class="component-stat-card">
+            <div class="component-stat-header">
+                <span class="component-stat-title">Ganancias Estimadas</span> 
+                <span class="material-symbols-rounded component-stat-icon" style="color: #10b981;">payments</span>
+            </div>
+            <div class="component-stat-main-value">$ 15,420.50 USD</div>
+            <div class="component-stat-footer">
+                <span class="component-trend-badge positive">
+                    <span class="material-symbols-rounded" style="font-size:14px;">trending_up</span> +24%
+                </span>
+                <span class="component-trend-text"><?php echo $i18n->t('admin.dashboard.stats.vs_last_month'); ?></span>
+            </div>
+        </div>
+        <?php endif; ?>
+
     </div>
 
 </div>
