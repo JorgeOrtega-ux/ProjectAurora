@@ -94,7 +94,9 @@ async function loadContent(section) {
 
         const response = await fetch(fetchUrl);
         
-        if (!response.ok && response.status !== 404) {
+        // [CORRECCIÓN CRÍTICA]
+        // Permitimos el estado 409 (Conflict) para que se renderice la UI de error del Honeypot
+        if (!response.ok && response.status !== 404 && response.status !== 409) {
              throw new Error(`HTTP error! status: ${response.status}`);
         }
 

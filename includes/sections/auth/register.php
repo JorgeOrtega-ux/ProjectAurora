@@ -119,6 +119,10 @@ if ($isStep2 && !$hasDataForStep2) {
             <input type="hidden" id="register-action-1" name="action" value="register_step_1">
             
             <div class="component-stage-form">
+                <div style="opacity: 0; position: absolute; top: 0; left: 0; height: 0; width: 0; z-index: -1;">
+                    <label for="website_url">Website URL</label>
+                    <input type="text" id="website_url" name="website_url" tabindex="-1" autocomplete="off">
+                </div>
                 <div class="component-form-group">
                     <div class="component-input-wrapper component-input-wrapper--floating">
                         <input type="email" name="email" id="email" class="component-text-input" required placeholder=" ">

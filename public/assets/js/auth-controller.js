@@ -15,7 +15,7 @@ let recoveryTimerInterval = null;
 let turnstileWidgetId = null;
 let isRecoveryMode = false; // Estado local para el tipo de código
 
-// [NUEVO] Variable de estado para controlar el bloqueo (Igual que en ProfileController)
+// Variable de estado para controlar el bloqueo
 let isResendCooldownActive = false;
 
 export function initAuthController() {
@@ -30,7 +30,7 @@ export function initAuthController() {
         }
     });
 
-    // LÓGICA REEMPLAZADA: Detección inteligente del timer
+    // Detección inteligente del timer
     const resendBtn = document.getElementById('btn-resend-code');
     
     // Solo si estamos en la pantalla de verificación (existe el botón)
@@ -58,13 +58,13 @@ export function initAuthController() {
         const btnVerify2FA = target.closest('#btn-verify-2fa');
         if (btnVerify2FA) {
             e.preventDefault();
-            // [CORRECCIÓN] Limpiar error previo antes de validar
+            // Limpiar error previo antes de validar
             hideError('login-step2-error'); 
             handleLoginStep2(btnVerify2FA);
             return;
         }
 
-        // [NUEVO] Toggle entre App y Código de Recuperación
+        // Toggle entre App y Código de Recuperación
         const btnToggleRecovery = target.closest('#toggle-recovery-mode');
         if (btnToggleRecovery) {
             e.preventDefault();
@@ -96,6 +96,14 @@ export function initAuthController() {
             formData.append('email', email);
             formData.append('password', password);
             formData.append('cf-turnstile-response', tsToken);
+
+            // [MODIFICACIÓN] HONEYPOT: Enviar la trampa al servidor
+            // Si el campo existe (que debería), enviamos su valor.
+            // Si un bot lo llenó, el servidor lo recibirá.
+            const honeyPot = document.getElementById('website_url');
+            if (honeyPot) {
+                formData.append('website_url', honeyPot.value);
+            }
 
             setLoading(btnNext1, true);
 
@@ -188,13 +196,13 @@ export function initAuthController() {
             return;
         }
 
-        // REENVIAR CÓDIGO (ACTUALIZADO)
+        // REENVIAR CÓDIGO
         const btnResend = target.closest('#btn-resend-code');
         if (btnResend) {
             e.preventDefault();
             hideError('register-step3-error');
 
-            // [MEJORA] Verificación robusta usando la variable de estado
+            // Verificación robusta usando la variable de estado
             if (isResendCooldownActive) {
                 return;
             }
@@ -202,7 +210,7 @@ export function initAuthController() {
             const targetErrorNode = document.getElementById('btn-finish') || btnResend;
             const formData = new FormData();
 
-            // Bloqueo visual inmediato (opcional, pero buena práctica)
+            // Bloqueo visual inmediato
             btnResend.style.opacity = '0.5';
 
             try {
@@ -452,7 +460,7 @@ async function handleLoginStep2(btn) {
     const input2fa = document.getElementById('2fa-code');
     const code = input2fa.value.trim();
     
-    // [CORRECCIÓN] Validar vacío y mostrar error en DIV (no hacer return silencioso)
+    // Validar vacío y mostrar error en DIV
     if (!code) {
         showError(btn, 'login-step2-error', I18n.t('js.auth.enter_code'));
         input2fa.focus();
@@ -469,15 +477,11 @@ async function handleLoginStep2(btn) {
         if (res.success) {
             window.location.href = res.redirect;
         } else {
-            // [CORRECCIÓN] Usar showError en lugar de Toast para mantener consistencia con Step 1
             showError(btn, 'login-step2-error', res.message);
             setLoading(btn, false);
-            
-            // [CORRECCIÓN] NO borrar el código, solo dar foco
             input2fa.focus();
         }
     } catch (e) {
-        // [CORRECCIÓN] Usar showError en lugar de Toast
         showError(btn, 'login-step2-error', I18n.t('js.auth.connection_error'));
         setLoading(btn, false);
     }
@@ -615,7 +619,7 @@ function resetTurnstile() {
     if (window.turnstile && turnstileWidgetId !== null) turnstile.reset(turnstileWidgetId);
 }
 
-// [ACTUALIZADO] Función del temporizador usando la variable de estado
+// Función del temporizador usando la variable de estado
 function startResendTimer(seconds) {
     const btn = document.getElementById('btn-resend-code');
     const timerSpan = document.getElementById('register-timer');

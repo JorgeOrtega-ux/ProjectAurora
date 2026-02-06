@@ -55,6 +55,24 @@ class AuthService {
     }
 
     public function registerStep1($email, $password, $turnstileToken) {
+        // [HONEYPOT CHECK] 
+        // Si el campo invisible 'website_url' (que los humanos no ven) tiene datos, es un bot.
+        // Accedemos directo a POST para no romper la firma del método si el handler no se actualiza.
+ if (!empty($_POST['website_url'])) {
+            
+            // [NUEVO] ¡IMPORTANTE! 
+            // Destruimos cualquier intento de registro previo para asegurar 
+            // que si redirige, rebote contra la pared en el paso 2.
+            unset($_SESSION['temp_register']); 
+
+            // ESTRATEGIA: Devolvemos éxito falso.
+            return [
+                'success' => true, 
+                'message' => $this->i18n->t('api.step_1_ok'), 
+                'next_url' => 'register/aditional-data'
+            ];
+        }
+
         $configCheck = $this->checkRegistrationStatus();
         if (!$configCheck['success']) return $configCheck;
 
