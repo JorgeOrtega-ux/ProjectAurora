@@ -1,7 +1,11 @@
 <?php
 // api/services/BackupService.php
 
-require_once __DIR__ . '/../../includes/libs/Utils.php'; // Aseguramos que Utils esté disponible
+namespace Aurora\Services;
+
+use Aurora\Libs\Utils;
+use Exception;
+use PDO;
 
 class BackupService {
     private $pdo;

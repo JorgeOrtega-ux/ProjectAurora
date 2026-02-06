@@ -1,5 +1,11 @@
 <?php
 // api/services/AlertService.php
+namespace Aurora\Services;
+
+use Aurora\Libs\Utils;
+use Exception;
+use DateTime;
+use PDO;
 
 class AlertService {
     private $pdo;

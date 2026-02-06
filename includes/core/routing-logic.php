@@ -1,8 +1,11 @@
 <?php
 // includes/core/routing-logic.php
 
+use Aurora\Core\Gatekeeper;
+use Aurora\Libs\Utils;
+use Aurora\Libs\I18n;
+
 // Variables globales requeridas: $pdo, $currentSection, $basePath, $i18n
-require_once __DIR__ . '/Gatekeeper.php';
 
 // Cargar reglas de seguridad para definir permisos globales
 $securityRules = require __DIR__ . '/../../config/security.php';
@@ -77,6 +80,7 @@ if ($isLoggedIn) {
                     'extended_toast' => (bool)$freshPrefs['extended_toast']
                 ];
                 if ($freshPrefs['language'] !== $previousLang) {
+                    // [MODIFICADO] Namespace I18n
                     $i18n = new I18n($freshPrefs['language']);
                 }
             }
@@ -92,11 +96,11 @@ if ($isLoggedIn) {
 }
 
 // [CRÍTICO] Definir variables globales para las Vistas (Header, Sidebar, Profile)
-// Esto soluciona que no se vea el borde ni los links
 $userRole = $_SESSION['role'] ?? 'guest';
 $isAdmin = in_array($userRole, $adminRoles);
 
 // === PREGUNTAMOS AL PORTERO ===
+// [MODIFICADO] Namespace Gatekeeper
 $decision = Gatekeeper::check($currentSection, $pdo);
 
 $showInterface = true;
@@ -139,6 +143,7 @@ switch ($decision['action']) {
 // Variables JS globales
 $jsUserPrefs = json_encode($_SESSION['preferences'] ?? new stdClass());
 $jsTranslations = json_encode($i18n->getAll());
+// [MODIFICADO] Namespace Utils
 $globalAvatarSrc = Utils::getGlobalAvatarSrc();
 $turnstileSiteKey = $_ENV['TURNSTILE_SITE_KEY'] ?? '';
 $userLang = $_SESSION['preferences']['language'] ?? 'es-latam';

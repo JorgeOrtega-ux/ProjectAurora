@@ -1,7 +1,13 @@
 <?php
 // api/services/RedisService.php
 
-require_once __DIR__ . '/../../includes/libs/Utils.php'; // Aseguramos que Utils esté disponible para el Logger
+namespace Aurora\Services;
+
+use Aurora\Libs\Utils;
+use Aurora\Libs\Logger;
+use Predis\Collection\Iterator\Keyspace;
+use Exception;
+use DateTime;
 
 class RedisService {
     private $redis;

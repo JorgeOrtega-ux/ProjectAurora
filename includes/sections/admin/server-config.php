@@ -1,8 +1,8 @@
 <?php
 // includes/sections/admin/server-config.php
 
-require_once __DIR__ . '/../../libs/Utils.php';
-require_once __DIR__ . '/../../../api/services/AdminService.php';
+use Aurora\Services\AdminService;
+use Aurora\Libs\Utils;
 
 $currentAdminId = $_SESSION['user_id'] ?? 0;
 $adminService = new AdminService($pdo, $i18n, $currentAdminId);

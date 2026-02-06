@@ -7,11 +7,12 @@ $pdo = $services['pdo'];
 $i18n = $services['i18n'];
 $redis = $services['redis'];
 
-require_once __DIR__ . '/../services/AdminService.php';
-require_once __DIR__ . '/../services/BackupService.php';
-require_once __DIR__ . '/../services/LogFileService.php';
-require_once __DIR__ . '/../services/RedisService.php';
-require_once __DIR__ . '/../services/AlertService.php';
+use Aurora\Services\AdminService;
+use Aurora\Services\BackupService;
+use Aurora\Services\LogFileService;
+use Aurora\Services\RedisService;
+use Aurora\Services\AlertService;
+use Aurora\Libs\Utils;
 
 $alertService = new AlertService($pdo, $redis, $_SESSION['user_id']);
 

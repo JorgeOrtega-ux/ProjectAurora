@@ -1,15 +1,28 @@
 <?php
 // includes/sections/settings/2fa-setup.php
 
-require_once __DIR__ . '/../../../api/services/SettingsService.php';
+// === NAMESPACES & IMPORTS ===
+use Aurora\Services\SettingsService;
+use Aurora\Libs\Utils;
+
+// [CORRECCIÓN] Ya no hacemos require_once manual
+// require_once __DIR__ . '/../../../api/services/SettingsService.php';
+
+// Validar que tengamos las dependencias necesarias (por si se carga directo)
+if (!isset($pdo) || !isset($redis)) {
+    // Fallback o error silencioso si es necesario, 
+    // pero idealmente este archivo siempre se carga via routing-logic
+}
 
 // [CORRECCIÓN] Pasamos $redis al constructor
 // La variable $redis ya existe porque viene del extract($services) en public/loader.php
+// Ahora SettingsService se carga automáticamente gracias al Autoloader
 $settingsService = new SettingsService($pdo, $i18n, $_SESSION['user_id'], $redis);
 
 // Verificar límite de seguridad para mostrar/ocultar el QR
-// Usamos Utils estáticamente, pasando $pdo y el ID de usuario de la sesión
+// Usamos Utils estáticamente (importado arriba)
 $isRateLimited = Utils::checkSecurityLimit($pdo, '2fa_init_attempt', 10, 60, $_SESSION['user_id']);
+
 // Definir clases y estilos basados en el límite
 $containerClass = $isRateLimited ? 'disabled-interactive' : '';
 $qrBoxStyle = $isRateLimited ? 'display: none;' : '';

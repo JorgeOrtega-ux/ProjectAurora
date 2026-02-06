@@ -1,7 +1,13 @@
 <?php
 // api/services/AdminService.php
 
-require_once __DIR__ . '/../../includes/libs/Utils.php';
+namespace Aurora\Services;
+
+use Aurora\Libs\Utils;
+use Aurora\Libs\Logger;
+use PDO;
+use Exception;
+use finfo; // Usado en uploadUserAvatar
 
 class AdminService {
     private $pdo;

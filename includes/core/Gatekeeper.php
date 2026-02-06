@@ -1,6 +1,9 @@
 <?php
 // includes/core/Gatekeeper.php
+namespace Aurora\Core;
 
+use Aurora\Libs\Utils;
+use PDO;
 class Gatekeeper {
     // Definimos los resultados posibles de una verificación
     const ALLOW = 'ALLOW';

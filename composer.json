@@ -3,5 +3,12 @@
         "phpmailer/phpmailer": "^7.0",
         "sonata-project/google-authenticator": "^2.3",
         "predis/predis": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Aurora\\Services\\": "api/services/",
+            "Aurora\\Libs\\": "includes/libs/",
+            "Aurora\\Core\\": "includes/core/"
+        }
     }
 }

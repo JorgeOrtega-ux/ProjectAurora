@@ -1,8 +1,16 @@
 <?php
 // includes/libs/Utils.php
 
-require_once __DIR__ . '/I18n.php';
-require_once __DIR__ . '/Logger.php';
+namespace Aurora\Libs;
+
+use Aurora\Libs\I18n;
+use Aurora\Libs\Logger;
+use Predis\Client;
+use Predis\Session\Handler;
+use Exception;
+use PDO;
+use PDOException;
+use DateTime;
 
 class Utils {
 

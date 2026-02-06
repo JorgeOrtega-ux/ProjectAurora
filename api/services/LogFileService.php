@@ -1,6 +1,6 @@
 <?php
 // api/services/LogFileService.php
-
+namespace Aurora\Services;
 class LogFileService {
     /**
      * Lista de directorios base permitidos para lectura.

@@ -8,8 +8,8 @@ $pdo = $services['pdo'];
 $i18n = $services['i18n'];
 $redis = $services['redis'];
 
-// 2. Cargar Servicio: Subimos un nivel (../)
-require_once __DIR__ . '/../services/BackupService.php';
+use Aurora\Services\BackupService;
+use Aurora\Libs\Utils;
 
 // 3. Seguridad: Verificar API Key del Sistema
 $systemKey = getenv('SYSTEM_API_KEY');

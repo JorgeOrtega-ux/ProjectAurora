@@ -1,6 +1,6 @@
 <?php
 // includes/libs/EmailTemplates.php
-
+namespace Aurora\Libs;
 class EmailTemplates
 {
 

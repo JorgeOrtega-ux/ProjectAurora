@@ -1,8 +1,12 @@
 <?php
 // includes/libs/MailService.php
 
+namespace Aurora\Libs;
+
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
+use Aurora\Libs\Logger;
+
 
 // NOTA: Ya no necesitamos los require_once manuales, 
 // el autoload de Composer en index.php/loader.php se encarga.

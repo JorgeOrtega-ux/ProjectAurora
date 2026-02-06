@@ -8,7 +8,8 @@ $i18n = $services['i18n'];
 $redis = $services['redis'];
 
 // Importamos el Portero Central
-require_once __DIR__ . '/../includes/core/Gatekeeper.php';
+use Aurora\Core\Gatekeeper;
+use Aurora\Libs\Utils;
 
 $basePath = '/ProjectAurora/'; 
 $section = $_GET['section'] ?? 'main';

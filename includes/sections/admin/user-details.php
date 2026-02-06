@@ -1,8 +1,8 @@
 <?php
 // includes/sections/admin/user-details.php
 
-require_once __DIR__ . '/../../libs/Utils.php';
-require_once __DIR__ . '/../../../api/services/AdminService.php';
+use Aurora\Services\AdminService;
+use Aurora\Libs\Utils;
 
 // Validar ID
 $targetId = $_GET['id'] ?? null;

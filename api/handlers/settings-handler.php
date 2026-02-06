@@ -8,8 +8,8 @@ $pdo = $services['pdo'];
 $i18n = $services['i18n'];
 $redis = $services['redis'];
 
-// 2. Cargar Servicio: Subimos un nivel (../)
-require_once __DIR__ . '/../services/SettingsService.php';
+use Aurora\Services\SettingsService;
+use Aurora\Libs\Utils;
 
 // 3. Validar CSRF
 Utils::validateCsrf($i18n);

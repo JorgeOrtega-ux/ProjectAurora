@@ -1,6 +1,9 @@
 <?php
 // includes/core/app-setup.php
 
+use Aurora\Libs\Utils;
+use Aurora\Services\AuthService;
+
 // 1. BOOTSTRAP
 $services = require_once __DIR__ . '/../bootstrap.php';
 $pdo = $services['pdo'];
@@ -67,7 +70,7 @@ $cspNonce = Utils::applySecurityHeaders();
 
 // 3. AUTO-LOGIN
 if (!isset($_SESSION['user_id'])) {
-    require_once __DIR__ . '/../../api/services/AuthService.php';
+    // [MODIFICADO] Ya no hacemos require manual, usamos el namespace importado arriba
     $authService = new AuthService($pdo, $i18n, $redis);
     $authService->attemptAutoLogin();
 }

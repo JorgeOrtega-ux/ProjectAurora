@@ -1,11 +1,15 @@
 <?php
 // api/services/SettingsService.php
 
-use Google\Authenticator\GoogleAuthenticator;
+namespace Aurora\Services;
 
-require_once __DIR__ . '/../../includes/libs/MailService.php';
-require_once __DIR__ . '/../../includes/libs/Utils.php'; 
-require_once __DIR__ . '/../../includes/libs/EmailTemplates.php';
+use Google\Authenticator\GoogleAuthenticator;
+use Aurora\Libs\MailService;
+use Aurora\Libs\Utils; 
+use Aurora\Libs\EmailTemplates;
+use Aurora\Libs\Logger;
+use Exception;
+use finfo; // Clase nativa de PHP usada para avatares
 
 class SettingsService {
     private $pdo;

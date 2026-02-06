@@ -4,6 +4,13 @@
 // 1. Carga del Autoloader
 require_once __DIR__ . '/../vendor/autoload.php';
 
+// === IMPORTACIONES (Namespaces) ===
+use Aurora\Libs\Utils;
+use Aurora\Libs\Logger;
+use Aurora\Libs\I18n;
+use Predis\Client;
+use Predis\Session\Handler;
+
 // 2. Carga de Variables de Entorno
 $envFile = __DIR__ . '/../.env';
 if (file_exists($envFile)) {
@@ -30,13 +37,12 @@ $redisHost = $_ENV['REDIS_HOST'] ?? '127.0.0.1';
 $redisPort = $_ENV['REDIS_PORT'] ?? 6379;
 $redisPass = $_ENV['REDIS_PASSWORD'] ?? null;
 
-// [SEGURIDAD FIX] Cambio de esquema TCP -> TLS para encriptación
+// Configuración de conexión (TCP o TLS según entorno)
 $redisConfig = [
-    'scheme'   => getenv('REDIS_SCHEME') ?: 'tls', // Forzamos TLS por defecto
+    'scheme'   => getenv('REDIS_SCHEME') ?: 'tls',
     'host'     => $redisHost,
     'port'     => $redisPort,
     'timeout'  => 2.0,
-    // Opciones SSL para evitar errores con certificados autofirmados
     'ssl'      => [
         'verify_peer' => false,
         'verify_peer_name' => false
@@ -50,7 +56,8 @@ if (!empty($redisPass)) {
 $redis = null; 
 
 try {
-    $client = new Predis\Client($redisConfig);
+    // Usamos la clase importada via 'use Predis\Client'
+    $client = new Client($redisConfig);
     $client->connect(); 
     $redis = $client;
 } catch (Exception $e) {
@@ -61,7 +68,8 @@ try {
 // 4. Gestión de Sesiones
 if ($redis) {
     try {
-        $sessionHandler = new Predis\Session\Handler($redis, ['gc_maxlifetime' => 86400]);
+        // Usamos la clase importada via 'use Predis\Session\Handler'
+        $sessionHandler = new Handler($redis, ['gc_maxlifetime' => 86400]);
         $sessionHandler->register();
     } catch (Exception $e) {
         error_log("Fallo al registrar Session Handler de Redis.");
@@ -86,16 +94,21 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// 7. Utilidades
-require_once __DIR__ . '/libs/Utils.php';
+// 7. Utilidades e Inicialización
+// Ya no hacemos require manual de Utils.php gracias al Autoload
 Utils::setRedis($redis);
 Utils::initErrorHandlers();
 
-// 8. [REFACTORIZADO] Conexión BD Controlada
+// 8. Conexión BD Controlada
 try {
+    // El archivo de configuración de DB sigue siendo un script plano, 
+    // pero internamente usará las variables globales o instanciará PDO.
+    // Asegúrate de que config/database/db.php NO tenga 'use PDO' tampoco si no tiene namespace.
     require_once __DIR__ . '/../config/database/db.php';
 } catch (Exception $e) {
-    if (class_exists('Logger')) {
+    // Si falla, usamos el Logger (importado arriba) si la clase existe, 
+    // o un error_log nativo como fallback.
+    if (class_exists(Logger::class)) {
         Logger::db("Database Connection Critical Failure", ['msg' => $e->getMessage()]);
     } else {
         error_log("CRITICAL BOOTSTRAP DB ERROR: " . $e->getMessage());

@@ -1,6 +1,6 @@
 <?php
 // includes/libs/I18n.php
-
+namespace Aurora\Libs;
 class I18n {
     private $translations = [];
     private $languageCode;

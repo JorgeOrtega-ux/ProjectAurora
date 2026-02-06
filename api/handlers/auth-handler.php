@@ -8,8 +8,8 @@ $pdo = $services['pdo'];
 $i18n = $services['i18n'];
 $redis = $services['redis'];
 
-// 2. Cargar Servicio: Subimos un nivel (../) para llegar a services
-require_once __DIR__ . '/../services/AuthService.php';
+use Aurora\Services\AuthService;
+use Aurora\Libs\Utils;
 
 // 3. Validar CSRF
 Utils::validateCsrf($i18n);

@@ -1,6 +1,6 @@
 <?php
 // includes/libs/Logger.php
-
+namespace Aurora\Libs;
 class Logger {
     
     // Ruta base desde includes/libs/ hacia la raíz del proyecto

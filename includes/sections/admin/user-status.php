@@ -1,8 +1,8 @@
 <?php
 // includes/sections/admin/user-status.php
 
-require_once __DIR__ . '/../../libs/Utils.php';
-require_once __DIR__ . '/../../../api/services/AdminService.php';
+use Aurora\Services\AdminService;
+use Aurora\Libs\Utils;
 
 $targetId = $_GET['id'] ?? null;
 if (!$targetId) {

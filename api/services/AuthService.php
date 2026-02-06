@@ -1,11 +1,14 @@
 <?php
 // api/services/AuthService.php
 
-use Google\Authenticator\GoogleAuthenticator;
+namespace Aurora\Services;
 
-require_once __DIR__ . '/../../includes/libs/MailService.php';
-require_once __DIR__ . '/../../includes/libs/Utils.php'; 
-require_once __DIR__ . '/../../includes/libs/EmailTemplates.php';
+use Google\Authenticator\GoogleAuthenticator;
+use Aurora\Libs\MailService;
+use Aurora\Libs\Utils; 
+use Aurora\Libs\EmailTemplates;
+use Aurora\Libs\Logger;
+use Exception;
 
 class AuthService {
     private $pdo;
