@@ -1,7 +1,16 @@
 <?php
 // api/handlers/system-handler.php
 
-// 1. BOOTSTRAP: Subimos dos niveles (../../)
+// 1. SEGURIDAD DE RED (FIREWALL A NIVEL DE APLICACIÓN)
+// Este archivo solo debe ser ejecutado por CRON o scripts locales (Python).
+// Bloqueamos cualquier petición que no venga del propio servidor.
+$allowedIps = ['127.0.0.1', '::1'];
+if (!in_array($_SERVER['REMOTE_ADDR'], $allowedIps)) {
+    http_response_code(403);
+    die('System Access Denied: Origin not allowed.');
+}
+
+// 2. BOOTSTRAP: Subimos dos niveles (../../)
 $services = require_once __DIR__ . '/../../includes/bootstrap.php';
 // [REFACTORIZADO] Asignación explícita de servicios
 $pdo = $services['pdo'];

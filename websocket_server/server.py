@@ -17,6 +17,10 @@ REDIS_HOST = os.getenv('REDIS_HOST')
 REDIS_PORT = os.getenv('REDIS_PORT')
 REDIS_PASS = os.getenv('REDIS_PASSWORD')
 
+# [SEGURIDAD] Límite de tamaño para mensajes entrantes (8KB)
+# Esto previene ataques DoS por saturación de memoria con payloads gigantes
+MAX_PAYLOAD_SIZE = 8192 
+
 if not REDIS_HOST or not REDIS_PORT:
     logging.error("❌ Error fatal: Configuración Redis incompleta.")
     exit(1)
@@ -108,7 +112,6 @@ async def disconnect_user_all(user_id, reason="Cuenta cerrada"):
         for sid in sessions:
             await disconnect_user_session(user_id, sid, reason)
 
-# [NUEVO] Función para desconectar invitados masivamente (PÁNICO)
 async def disconnect_guests():
     if not connected_guests:
         return
@@ -173,24 +176,19 @@ async def redis_listener():
                         data = json.loads(message['data'])
                         cmd = data.get('cmd')
                         
-                        # 1. Difusión General (Alertas, etc.)
                         if cmd == 'BROADCAST':
                             await broadcast_message(data.get('msg_type'), data.get('message'))
                         
-                        # 2. Modo Mantenimiento
                         elif cmd == 'maintenance_start':
                             await broadcast_message('maintenance_start', data.get('message'))
 
-                        # 3. Expulsión de una sesión específica
                         elif cmd == 'KICK_SESSION' or cmd == 'LOGOUT_SESSION':
                             await disconnect_user_session(str(data.get('user_id')), str(data.get('session_id')))
                         
-                        # 4. Expulsión total (Suspensión/Eliminación)
                         elif cmd == 'KICK_ALL':
                             reason = data.get('reason', "Cuenta cerrada")
                             await disconnect_user_all(str(data.get('user_id')), reason)
 
-                        # 5. [NUEVO] MODO PÁNICO (Expulsar Invitados)
                         elif cmd == 'DROP_GUESTS':
                             await disconnect_guests()
                             
@@ -237,7 +235,33 @@ async def ws_handler(websocket):
     try:
         mode = "guest" if is_guest else "user"
         await websocket.send(json.dumps({"type": "connection_established", "mode": mode}))
-        await websocket.wait_closed()
+        
+        # [SEGURIDAD] Bucle de mensajes protegido
+        async for message in websocket:
+            # 1. Protección contra payloads gigantes
+            if len(message) > MAX_PAYLOAD_SIZE:
+                logging.warning(f"⚠️ Payload excedido ({len(message)} bytes) de User:{user_id}. Cerrando conexión.")
+                await websocket.close(code=1009, reason="Payload Too Large")
+                break
+
+            try:
+                # 2. Validación de estructura JSON
+                data = json.loads(message)
+                if not isinstance(data, dict):
+                    raise ValueError("JSON must be an object")
+                
+                # Aquí procesarías los mensajes entrantes si tu app tuviera chat/interacciones
+                # Por ahora solo logueamos o ignoramos para no consumir CPU
+                # logging.debug(f"Msg from {user_id}: {data.get('type')}")
+
+            except json.JSONDecodeError:
+                logging.warning(f"⚠️ JSON Malformado de User:{user_id}")
+                continue # Ignorar mensaje basura
+            except Exception as e:
+                logging.error(f"Error procesando mensaje: {e}")
+
+    except websockets.exceptions.ConnectionClosed:
+        pass
     finally:
         # LIMPIEZA AL DESCONECTAR
         if is_guest:

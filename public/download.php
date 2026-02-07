@@ -19,22 +19,26 @@ if (empty($token) || !ctype_alnum($token)) {
     die("Error: Solicitud inválida.");
 }
 
-// 3. Buscar el token en Redis
+// 3. [SEGURIDAD] CONSUMO ATÓMICO DEL TOKEN
+// Usamos GETSET para obtener el valor y "quemarlo" en una sola operación atómica.
+// Esto previene condiciones de carrera donde dos peticiones simultáneas podrían
+// descargar el archivo con el mismo token de un solo uso.
 $redisKey = "download:token:$token";
-$dataJson = $redis->get($redisKey);
+$dataJson = $redis->getset($redisKey, 'BURNED');
 
-if (!$dataJson) {
+// Si no existe (null), ha expirado (false) o ya fue quemado ('BURNED')
+if (!$dataJson || $dataJson === 'BURNED') {
     http_response_code(403);
-    die("Error: El enlace de descarga ha expirado o no es válido.");
+    die("Error: El enlace de descarga ha expirado, no es válido o ya fue utilizado.");
 }
 
 // 4. Decodificar datos
 $data = json_decode($dataJson, true);
-$filepath = $data['filepath'];
-$filename = $data['filename'];
+$filepath = $data['filepath'] ?? '';
+$filename = $data['filename'] ?? 'download';
 
 // Seguridad: Verificar que el archivo existe físicamente
-if (!file_exists($filepath)) {
+if (empty($filepath) || !file_exists($filepath)) {
     http_response_code(404);
     die("Error: El archivo ya no existe en el servidor.");
 }
@@ -62,9 +66,9 @@ header('Content-Length: ' . filesize($filepath));
 // 6. Enviar el archivo
 readfile($filepath);
 
-// 7. Quemar el token (Seguridad: un solo uso)
-// Si quieres permitir reintentos (ej. si falla la red), comenta esta línea.
-// Pero por seguridad estricta, se debe borrar.
+// 7. Limpieza final
+// Aunque GETSET ya invalidó el token (poniéndolo en 'BURNED'),
+// es buena práctica eliminar la clave completamente para liberar memoria en Redis.
 $redis->del($redisKey);
 
 exit;
