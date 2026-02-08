@@ -4,7 +4,7 @@
 
 import { DialogTemplates } from './dialog-definitions.js';
 
-export const Dialog = {
+export const DialogManager = {
     elements: {
         overlay: null,
         container: null, 
@@ -31,62 +31,62 @@ export const Dialog = {
         `;
         document.body.appendChild(overlay);
         
-        Dialog.elements.overlay = overlay;
-        Dialog.elements.container = overlay.querySelector('.component-dialog-wrapper');
-        Dialog.elements.wrapper = overlay.querySelector('.component-dialog');
+        DialogManager.elements.overlay = overlay;
+        DialogManager.elements.container = overlay.querySelector('.component-dialog-wrapper');
+        DialogManager.elements.wrapper = overlay.querySelector('.component-dialog');
 
         // [NUEVO] Cerrar al hacer clic fuera (Overlay o Wrapper)
         overlay.addEventListener('click', (e) => {
             // Verificamos si lo que se clickeó fue exactamente el fondo o el contenedor vacío,
             // y no el contenido interno (la tarjeta blanca).
-            if (e.target === overlay || e.target === Dialog.elements.container) {
-                Dialog.close();
+            if (e.target === overlay || e.target === DialogManager.elements.container) {
+                DialogManager.close();
             }
         });
     },
 
     _ensureReady: () => {
-        if (!Dialog.elements.wrapper || !document.body.contains(Dialog.elements.overlay)) {
-            Dialog._injectDOM();
+        if (!DialogManager.elements.wrapper || !document.body.contains(DialogManager.elements.overlay)) {
+            DialogManager._injectDOM();
         }
-        return !!Dialog.elements.wrapper;
+        return !!DialogManager.elements.wrapper;
     },
 
     alert: ({ title = 'Atención', message = '' }) => {
         return new Promise((resolve) => {
-            if (!Dialog._ensureReady()) return resolve(true);
+            if (!DialogManager._ensureReady()) return resolve(true);
 
-            Dialog._render('default', { 
+            DialogManager._render('default', { 
                 title, 
                 message, 
                 confirmText: 'Aceptar',
                 cancelText: null 
             });
             
-            const btnCancel = Dialog.elements.wrapper.querySelector('[data-action="cancel"]');
+            const btnCancel = DialogManager.elements.wrapper.querySelector('[data-action="cancel"]');
             if (btnCancel) btnCancel.style.display = 'none';
 
-            const btnConfirm = Dialog.elements.wrapper.querySelector('[data-action="confirm"]');
+            const btnConfirm = DialogManager.elements.wrapper.querySelector('[data-action="confirm"]');
             if (btnConfirm) {
-                btnConfirm.onclick = () => { Dialog.close(); resolve(true); };
+                btnConfirm.onclick = () => { DialogManager.close(); resolve(true); };
                 setTimeout(() => btnConfirm.focus(), 50);
             }
-            Dialog._show();
+            DialogManager._show();
         });
     },
 
     confirm: ({ title, message, type = 'default', confirmText, cancelText, onReady }) => {
         return new Promise((resolve) => {
-            if (!Dialog._ensureReady()) return resolve(false);
+            if (!DialogManager._ensureReady()) return resolve(false);
 
             let templateKey = 'default';
             if (type === 'regen-codes') templateKey = 'regen-codes';
             if (type === 'verify-email') templateKey = 'verify-email';
             
-            Dialog._render(templateKey, { title, message, confirmText, cancelText });
+            DialogManager._render(templateKey, { title, message, confirmText, cancelText });
 
-            const btnConfirm = Dialog.elements.wrapper.querySelector('[data-action="confirm"]');
-            const cancelButtons = Dialog.elements.wrapper.querySelectorAll('[data-action="cancel"]');
+            const btnConfirm = DialogManager.elements.wrapper.querySelector('[data-action="confirm"]');
+            const cancelButtons = DialogManager.elements.wrapper.querySelectorAll('[data-action="cancel"]');
 
             if (btnConfirm) {
                 if (type === 'danger') {
@@ -96,22 +96,22 @@ export const Dialog = {
                 }
                 
                 btnConfirm.onclick = () => { 
-                    const input = Dialog.elements.wrapper.querySelector('#verify-email-code');
+                    const input = DialogManager.elements.wrapper.querySelector('#verify-email-code');
                     const resolution = input ? input.value : true;
-                    Dialog.close(); 
+                    DialogManager.close(); 
                     resolve(resolution); 
                 };
             }
 
             cancelButtons.forEach(btn => {
-                btn.onclick = () => { Dialog.close(); resolve(false); };
+                btn.onclick = () => { DialogManager.close(); resolve(false); };
             });
 
-            Dialog._show();
+            DialogManager._show();
             
             if (type === 'verify-email') {
                 setTimeout(() => {
-                    const input = Dialog.elements.wrapper.querySelector('input');
+                    const input = DialogManager.elements.wrapper.querySelector('input');
                     if (input) input.focus();
                 }, 50);
             } else if (btnConfirm) {
@@ -119,20 +119,20 @@ export const Dialog = {
             }
 
             if (typeof onReady === 'function') {
-                onReady(Dialog.elements.wrapper);
+                onReady(DialogManager.elements.wrapper);
             }
         });
     },
 
     showLoading: (text = 'Procesando...') => {
-        if (!Dialog._ensureReady()) return;
-        Dialog._render('loading', { title: text });
-        Dialog._show();
+        if (!DialogManager._ensureReady()) return;
+        DialogManager._render('loading', { title: text });
+        DialogManager._show();
     },
 
     close: () => {
-        const overlay = Dialog.elements.overlay;
-        const container = Dialog.elements.container;
+        const overlay = DialogManager.elements.overlay;
+        const container = DialogManager.elements.container;
 
         if (overlay) {
             // Lógica de cierre móvil (animación de salida)
@@ -159,21 +159,21 @@ export const Dialog = {
             if (overlay && overlay.parentNode) {
                 overlay.parentNode.removeChild(overlay);
             }
-            Dialog.elements.overlay = null;
-            Dialog.elements.container = null;
-            Dialog.elements.wrapper = null;
+            DialogManager.elements.overlay = null;
+            DialogManager.elements.container = null;
+            DialogManager.elements.wrapper = null;
         }
     },
 
     _render: (templateKey, data) => {
-        const wrapper = Dialog.elements.wrapper;
+        const wrapper = DialogManager.elements.wrapper;
         const pillHTML = `<div class="component-dialog-drag-zone" data-action="drag-handle"><div class="component-dialog-drag-handle"></div></div>`;
         
         let renderFn = DialogTemplates[templateKey];
         if (!renderFn) renderFn = DialogTemplates['default'];
         
         wrapper.innerHTML = pillHTML + renderFn(data);
-        Dialog._bindDragEvents();
+        DialogManager._bindDragEvents();
 
         const elMsg = wrapper.querySelector('[data-element="message"]');
         if (elMsg) {
@@ -184,17 +184,17 @@ export const Dialog = {
     },
 
     _show: () => {
-        if (Dialog.cleanupTimer) clearTimeout(Dialog.cleanupTimer);
+        if (DialogManager.cleanupTimer) clearTimeout(DialogManager.cleanupTimer);
         // Forzar reflow para que la animación CSS (translateY 100% -> 0%) funcione
-        void Dialog.elements.overlay.offsetWidth; 
-        Dialog.elements.overlay.classList.add('active');
+        void DialogManager.elements.overlay.offsetWidth; 
+        DialogManager.elements.overlay.classList.add('active');
     },
 
     // LÓGICA DE ARRASTRE IDÉNTICA AL MÓDULO DE PERFIL
     _bindDragEvents: () => {
-        const handle = Dialog.elements.wrapper.querySelector('.component-dialog-drag-zone');
+        const handle = DialogManager.elements.wrapper.querySelector('.component-dialog-drag-zone');
         // Importante: Movemos el 'container' (component-dialog-wrapper), no el 'wrapper' (contenido interno)
-        const container = Dialog.elements.container; 
+        const container = DialogManager.elements.container; 
         
         if (!handle || !container) return;
 
@@ -235,7 +235,7 @@ export const Dialog = {
             const threshold = Math.min(containerHeight * 0.4, 150);
             
             if (currentY > threshold) {
-                Dialog.close(); // Esto activará la clase .closing
+                DialogManager.close(); // Esto activará la clase .closing
             } else {
                 // Rebotar de vuelta a 0
                 container.style.transform = '';

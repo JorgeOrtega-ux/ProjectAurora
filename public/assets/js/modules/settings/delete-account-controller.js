@@ -3,13 +3,10 @@
  */
 
 import { ApiService } from '../../core/api-service.js';
-import { Toast } from '../../core/toast-manager.js';
-import { I18n } from '../../core/i18n-manager.js';
-import { Dialog } from '../../core/dialog-manager.js';
+import { ToastManager } from '../../core/toast-manager.js';
+import { I18nManager } from '../../core/i18n-manager.js';
+import { DialogManager } from '../../core/dialog-manager.js';
 import { DialogDefinitions } from '../../core/dialog-definitions.js';
-
-// Atajo
-const SettingsAPI = ApiService.Routes.Settings;
 
 export const DeleteAccountController = {
     init: () => {
@@ -39,17 +36,17 @@ export const DeleteAccountController = {
             const password = inputPass.value;
 
             if (!password) {
-                Toast.show(I18n.t('js.delete.enter_pass'), 'warning');
+                ToastManager.show(I18nManager.t('js.delete.enter_pass'), 'warning');
                 inputPass.focus();
                 return;
             }
 
-            const confirmed = await Dialog.confirm(DialogDefinitions.Account.DELETE);
+            const confirmed = await DialogManager.confirm(DialogDefinitions.Account.DELETE);
 
             if (!confirmed) return;
 
             const originalText = btnDelete.innerText;
-            btnDelete.innerText = I18n.t('js.delete.processing');
+            btnDelete.innerText = I18nManager.t('js.delete.processing');
             btnDelete.disabled = true;
             toggleConfirm.disabled = true;
             inputPass.disabled = true;
@@ -58,16 +55,15 @@ export const DeleteAccountController = {
             formData.append('password', password);
 
             try {
-                // USO DE API ROUTES
-                const res = await ApiService.post(SettingsAPI.DeleteAccount, formData);
+                const res = await ApiService.post(ApiService.Routes.Settings.DeleteAccount, formData);
 
                 if (res.success) {
-                    Toast.show(I18n.t('js.delete.goodbye'), 'success');
+                    ToastManager.show(I18nManager.t('js.delete.goodbye'), 'success');
                     setTimeout(() => {
                         window.location.href = window.BASE_PATH + 'login';
                     }, 1500);
                 } else {
-                    Toast.show(res.message, 'error');
+                    ToastManager.show(res.message, 'error');
                     btnDelete.innerText = originalText;
                     btnDelete.disabled = false;
                     toggleConfirm.disabled = false;
@@ -76,7 +72,7 @@ export const DeleteAccountController = {
                 }
             } catch (error) {
                 console.error(error);
-                Toast.show(I18n.t('js.core.connection_error'), 'error');
+                ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
                 btnDelete.innerText = originalText;
                 btnDelete.disabled = false;
                 toggleConfirm.disabled = false;

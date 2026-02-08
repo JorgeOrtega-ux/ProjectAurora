@@ -3,12 +3,10 @@
  */
 
 import { ApiService } from '../../core/api-service.js';
-import { Toast } from '../../core/toast-manager.js';
-import { I18n } from '../../core/i18n-manager.js';
-import { Dialog } from '../../core/dialog-manager.js';
+import { ToastManager } from '../../core/toast-manager.js';
+import { I18nManager } from '../../core/i18n-manager.js';
+import { DialogManager } from '../../core/dialog-manager.js';
 import { DialogDefinitions, DialogTemplates } from '../../core/dialog-definitions.js';
-
-const SettingsAPI = ApiService.Routes.Settings;
 
 export const ProfileController = {
     init: () => {
@@ -38,7 +36,7 @@ function initAvatarLogic() {
         const file = e.target.files[0];
         if (file) {
             if (!file.type.startsWith('image/')) {
-                Toast.show(I18n.t('js.profile.invalid_image'), 'error');
+                ToastManager.show(I18nManager.t('js.profile.invalid_image'), 'error');
                 return;
             }
             const reader = new FileReader();
@@ -67,16 +65,16 @@ function initAvatarLogic() {
 
             const btn = e.target;
             const originalText = btn.innerText;
-            btn.innerText = I18n.t('js.profile.saving');
+            btn.innerText = I18nManager.t('js.profile.saving');
             btn.disabled = true;
 
             const formData = new FormData();
             formData.append('avatar', file);
 
             try {
-                const res = await ApiService.post(SettingsAPI.UploadAvatar, formData);
+                const res = await ApiService.post(ApiService.Routes.Settings.UploadAvatar, formData);
                 if (res.success) {
-                    Toast.show(I18n.t('js.profile.pic_updated'), 'success');
+                    ToastManager.show(I18nManager.t('js.profile.pic_updated'), 'success');
                     
                     const newAvatarSrc = previewImg.src; 
                     originalSrc = res.new_src || newAvatarSrc; 
@@ -89,11 +87,11 @@ function initAvatarLogic() {
                     document.dispatchEvent(event);
 
                 } else {
-                    Toast.show(res.message, 'error');
+                    ToastManager.show(res.message, 'error');
                 }
             } catch(err) {
                 console.error(err);
-                Toast.show(I18n.t('js.core.connection_error'), 'error');
+                ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
             } finally {
                 btn.innerText = originalText;
                 btn.disabled = false;
@@ -101,7 +99,7 @@ function initAvatarLogic() {
         }
 
         if (action === 'profile-picture-delete') {
-            const confirmed = await Dialog.confirm(DialogDefinitions.Profile.DELETE_AVATAR);
+            const confirmed = await DialogManager.confirm(DialogDefinitions.Profile.DELETE_AVATAR);
 
             if (!confirmed) return;
 
@@ -109,9 +107,9 @@ function initAvatarLogic() {
             btn.disabled = true;
 
             try {
-                const res = await ApiService.post(SettingsAPI.DeleteAvatar);
+                const res = await ApiService.post(ApiService.Routes.Settings.DeleteAvatar);
                 if (res.success) {
-                    Toast.show(I18n.t('js.profile.pic_deleted'), 'info');
+                    ToastManager.show(I18nManager.t('js.profile.pic_deleted'), 'info');
                     
                     if (res.new_src) {
                         const newUrl = res.new_src;
@@ -128,9 +126,9 @@ function initAvatarLogic() {
                     }
 
                 } else {
-                    Toast.show(res.message, 'error');
+                    ToastManager.show(res.message, 'error');
                 }
-            } catch(err) { Toast.show(I18n.t('js.core.connection_error'), 'error'); }
+            } catch(err) { ToastManager.show(I18nManager.t('js.core.connection_error'), 'error'); }
             finally { btn.disabled = false; }
         }
 
@@ -185,45 +183,43 @@ function initIdentityLogic() {
 
 async function handleEmailVerification(targetField) {
     // 1. Abre el primer diálogo (Spinner)
-    Dialog.showLoading('Comprobando estado...');
+    DialogManager.showLoading('Comprobando estado...');
     
     try {
-        const statusRes = await ApiService.post(SettingsAPI.GetEmailStatus);
+        const statusRes = await ApiService.post(ApiService.Routes.Settings.GetEmailStatus);
         
         // [CORRECCIÓN] NO cerramos el diálogo aquí. Mantenemos el spinner girando.
-        // Dialog.close(); <--- ELIMINAR ESTA LÍNEA
 
         if (!statusRes.success) {
-            Dialog.close(); // Aquí SÍ cerramos porque hubo error y el flujo termina
-            Toast.show(statusRes.message, 'error');
+            DialogManager.close(); // Aquí SÍ cerramos porque hubo error y el flujo termina
+            ToastManager.show(statusRes.message, 'error');
             return;
         }
 
         let { status, cooldown } = statusRes;
 
         if (status === 'authorized') {
-            Dialog.close(); // Aquí SÍ cerramos porque el usuario ya puede editar (fin del flujo de diálogo)
+            DialogManager.close(); // Aquí SÍ cerramos porque el usuario ya puede editar (fin del flujo de diálogo)
             toggleEditState(targetField, true);
             return;
         }
 
         if (status === 'none') {
             // [OPTIMIZACIÓN] Reutilizamos el diálogo abierto cambiando el texto
-            Dialog.showLoading('Enviando código...'); 
-            const reqRes = await ApiService.post(SettingsAPI.RequestEmailVerification);
+            DialogManager.showLoading('Enviando código...'); 
+            const reqRes = await ApiService.post(ApiService.Routes.Settings.RequestEmailVerification);
             
             // [CORRECCIÓN] NO cerramos aquí tampoco.
-            // Dialog.close(); <--- ELIMINAR ESTA LÍNEA
 
             if (!reqRes.success) {
-                Dialog.close(); // Cerrar por error
-                Toast.show(reqRes.message, 'error');
+                DialogManager.close(); // Cerrar por error
+                ToastManager.show(reqRes.message, 'error');
                 return;
             }
-            Toast.show('Código enviado', 'success');
+            ToastManager.show('Código enviado', 'success');
             cooldown = 60; 
         } else {
-            Toast.show('Ya tienes un código activo', 'info');
+            ToastManager.show('Ya tienes un código activo', 'info');
         }
 
         // 3. Transición directa: El DialogManager reemplazará el contenido del spinner 
@@ -232,8 +228,8 @@ async function handleEmailVerification(targetField) {
 
     } catch (e) {
         console.error(e);
-        Dialog.close(); // Cerrar por error crítico (catch)
-        Toast.show(I18n.t('js.core.connection_error'), 'error');
+        DialogManager.close(); // Cerrar por error crítico (catch)
+        ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
     }
 }
 
@@ -249,30 +245,30 @@ async function showVerificationDialog(targetField, initialCooldown) {
         onReady: (dialogElement) => bindResendLogic(dialogElement, initialCooldown)
     };
 
-    const result = await Dialog.confirm(dialogOptions);
+    const result = await DialogManager.confirm(dialogOptions);
     
     if (result) {
         // ... resto de la lógica de verificación (sin cambios) ...
         const code = (typeof result === 'string') ? result.trim() : '';
 
         if (!code) {
-            Toast.show(I18n.t('js.profile.email_code_req'), 'warning');
+            ToastManager.show(I18nManager.t('js.profile.email_code_req'), 'warning');
             return;
         }
 
-        Dialog.showLoading('Verificando...');
+        DialogManager.showLoading('Verificando...');
         
         const verifyData = new FormData();
         verifyData.append('code', code);
 
-        const verifyRes = await ApiService.post(SettingsAPI.VerifyEmailCode, verifyData);
-        Dialog.close();
+        const verifyRes = await ApiService.post(ApiService.Routes.Settings.VerifyEmailCode, verifyData);
+        DialogManager.close();
 
         if (verifyRes.success) {
-            Toast.show('Identidad verificada. Puedes cambiar tu correo.', 'success');
+            ToastManager.show('Identidad verificada. Puedes cambiar tu correo.', 'success');
             toggleEditState(targetField, true);
         } else {
-            Toast.show(verifyRes.message, 'error');
+            ToastManager.show(verifyRes.message, 'error');
         }
     }
 }
@@ -339,20 +335,20 @@ function bindResendLogic(wrapper, initialCooldown) {
         formData.append('force_resend', 'true');
 
         try {
-            const res = await ApiService.post(SettingsAPI.RequestEmailVerification, formData);
+            const res = await ApiService.post(ApiService.Routes.Settings.RequestEmailVerification, formData);
             
             // Restaurar texto
             btnResend.childNodes[0].textContent = 'Reenviar código de verificación ';
 
             if (res.success) {
-                Toast.show('Nuevo código enviado', 'success');
+                ToastManager.show('Nuevo código enviado', 'success');
                 startTimer(60); 
             } else {
-                Toast.show(res.message, 'error');
+                ToastManager.show(res.message, 'error');
             }
         } catch(err) {
             btnResend.childNodes[0].textContent = 'Reenviar código de verificación ';
-            Toast.show(I18n.t('js.core.connection_error'), 'error');
+            ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
         }
     });
 }
@@ -411,26 +407,26 @@ async function saveFieldData(fieldId, btnSave) {
 
     const originalText = btnSave.innerText;
     btnSave.disabled = true;
-    btnSave.innerText = I18n.t('js.settings.saving');
+    btnSave.innerText = I18nManager.t('js.settings.saving');
 
     const formData = new FormData();
     formData.append('field', fieldId); 
     formData.append('value', newValue);
 
     try {
-        const res = await ApiService.post(SettingsAPI.UpdateProfile, formData);
+        const res = await ApiService.post(ApiService.Routes.Settings.UpdateProfile, formData);
 
         if (res.success) {
             display.innerText = newValue;
             input.dataset.originalValue = newValue;
-            Toast.show(res.message, 'success');
+            ToastManager.show(res.message, 'success');
             toggleEditState(fieldId, false);
         } else {
-            Toast.show(res.message, 'error');
+            ToastManager.show(res.message, 'error');
             input.focus(); 
         }
     } catch (error) {
-        Toast.show(I18n.t('js.settings.processing_error'), 'error');
+        ToastManager.show(I18nManager.t('js.settings.processing_error'), 'error');
     } finally {
         btnSave.disabled = false;
         btnSave.innerText = originalText;

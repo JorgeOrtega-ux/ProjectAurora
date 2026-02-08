@@ -3,7 +3,8 @@
  */
 
 import { ApiService } from './api-service.js';
-import { I18n } from './i18n-manager.js';
+import { I18nManager } from './i18n-manager.js';
+import { ToastManager } from './toast-manager.js';
 
 export const SocketClient = {
     socket: null,
@@ -97,7 +98,7 @@ function showSystemAlert(alertData) {
 
     if (!box || !icon || !msg) return; 
 
-    // 3. Estilos de Estado (BEM-like classes)
+    // 3. Estilos de Estado
     box.classList.remove('type--critical', 'type--warning', 'type--info');
     let modClass = 'type--info';
     let iconName = 'info';
@@ -129,7 +130,7 @@ function showSystemAlert(alertData) {
     } 
     else if (alertData.type === 'policy') {
         const docKey = `system_alerts.policy.names.${meta.doc || 'terms'}`;
-        const docName = I18n.t(docKey); 
+        const docName = I18nManager.t(docKey); 
         if (meta.update_type === 'future') {
             const dateStr = meta.date ? new Date(meta.date + 'T00:00:00').toLocaleDateString() : '--/--';
             params.push(`<strong>${dateStr}</strong>`);
@@ -139,10 +140,10 @@ function showSystemAlert(alertData) {
         }
     }
 
-    let fullText = I18n.t(translationKey, params);
+    let fullText = I18nManager.t(translationKey, params);
 
     if (meta.link) {
-        const textVerMas = I18n.t('js.core.view_more') || 'Ver más';
+        const textVerMas = I18nManager.t('js.core.view_more') || 'Ver más';
         fullText += ` <a href="${meta.link}" target="_blank">${textVerMas}</a>`;
     }
 

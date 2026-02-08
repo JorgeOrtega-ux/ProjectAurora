@@ -4,7 +4,7 @@
  * Lógica: Creación y destrucción dinámica del contenedor #toast-container
  */
 
-export const Toast = {
+export const ToastManager = {
     init: () => {
         // Ya no creamos el contenedor al inicio.
         console.log("ToastManager: Inicializado (Dinámico - On Demand)");

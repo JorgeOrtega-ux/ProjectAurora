@@ -3,9 +3,9 @@
  */
 
 import { ApiService } from '../../core/api-service.js';
-import { Toast } from '../../core/toast-manager.js';
-import { I18n } from '../../core/i18n-manager.js';
-import { Dialog } from '../../core/dialog-manager.js'; // Necesario para el confirm
+import { ToastManager } from '../../core/toast-manager.js';
+import { I18nManager } from '../../core/i18n-manager.js';
+import { DialogManager } from '../../core/dialog-manager.js';
 
 export const ServerConfigController = {
     init: () => {
@@ -40,12 +40,12 @@ async function togglePanicMode() {
     
     const confirmText = isActive ? 'Desactivar y Restaurar' : 'SÍ, ACTIVAR PÁNICO';
     
-    const confirmed = await Dialog.confirm({
+    const confirmed = await DialogManager.confirm({
         title: title,
         message: msg,
         type: 'danger',
         confirmText: confirmText,
-        cancelText: I18n.t('global.cancel')
+        cancelText: I18nManager.t('global.cancel')
     });
 
     if (!confirmed) return;
@@ -64,7 +64,7 @@ async function togglePanicMode() {
         const res = await ApiService.post({ route: 'admin.toggle_panic' }, formData);
         
         if (res.success) {
-            Toast.show(res.message, 'success');
+            ToastManager.show(res.message, 'success');
             
             // Actualizar UI del botón sin recargar
             const newState = !isActive;
@@ -85,12 +85,12 @@ async function togglePanicMode() {
             if (checkReg) checkReg.checked = !newState; // Si pánico activo -> registros off
 
         } else {
-            Toast.show(res.message, 'error');
+            ToastManager.show(res.message, 'error');
             btn.innerHTML = originalContent; // Restaurar texto original si falló
         }
     } catch (e) {
         console.error(e);
-        Toast.show(I18n.t('js.core.connection_error'), 'error');
+        ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
         btn.innerHTML = originalContent;
     } finally {
         btn.disabled = false;
@@ -145,7 +145,7 @@ function _initDomainManager() {
                 if (!domains.includes(val)) {
                     domains.push(val);
                 } else {
-                    Toast.show(I18n.t('admin.server.domain_exists') || 'El dominio ya existe', 'warning');
+                    ToastManager.show(I18nManager.t('admin.server.domain_exists') || 'El dominio ya existe', 'warning');
                     return;
                 }
             }
@@ -235,7 +235,7 @@ async function saveConfig() {
 
     const originalContent = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = `<div class="spinner-sm"></div> ${I18n.t('js.core.saving') || 'Guardando...'}`;
+    btn.innerHTML = `<div class="spinner-sm"></div> ${I18nManager.t('js.core.saving') || 'Guardando...'}`;
 
     const inputs = container.querySelectorAll('input[name], select[name], textarea[name]');
     const formData = new FormData();
@@ -258,13 +258,13 @@ async function saveConfig() {
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.UpdateServerConfig, formData);
         if (res.success) {
-            Toast.show(res.message, 'success');
+            ToastManager.show(res.message, 'success');
         } else {
-            Toast.show(res.message, 'error');
+            ToastManager.show(res.message, 'error');
         }
     } catch (error) {
         console.error(error);
-        Toast.show(I18n.t('js.core.connection_error') || 'Error de conexión', 'error');
+        ToastManager.show(I18nManager.t('js.core.connection_error') || 'Error de conexión', 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalContent;

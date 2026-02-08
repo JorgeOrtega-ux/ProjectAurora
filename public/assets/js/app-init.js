@@ -5,9 +5,9 @@
 import { initMainController } from './main-controller.js';
 import { initUrlManager } from './core/url-manager.js';
 import { initAuthController } from './auth-controller.js'; 
-import { Toast } from './core/toast-manager.js'; 
+import { ToastManager } from './core/toast-manager.js'; 
 import { TooltipManager } from './core/tooltip-manager.js';
-import { Dialog } from './core/dialog-manager.js';
+import { DialogManager } from './core/dialog-manager.js';
 import { UiManager } from './core/ui-manager.js';
 import { SocketClient } from './core/socket-client.js'; 
 
@@ -51,9 +51,9 @@ const App = {
             SettingsController.applyTheme(window.USER_PREFS.theme);
         }
         
-        Toast.init();
+        ToastManager.init();
         TooltipManager.init();
-        Dialog.init();
+        DialogManager.init();
         UiManager.init();
         
         initMainController();
@@ -84,7 +84,7 @@ function initGlobalSocketListeners() {
         if (window.isManualLogout) return;
         if (window.location.pathname.includes('/login')) return;
         
-        Toast.show('Tu sesión ha cambiado de estado.', 'warning', 5000);
+        ToastManager.show('Tu sesión ha cambiado de estado.', 'warning', 5000);
         
         // Recargar para que PHP detecte el cambio de estado en BD
         setTimeout(() => { 
@@ -92,23 +92,19 @@ function initGlobalSocketListeners() {
         }, 1500);
     });
 
-    // 2. MANTENIMIENTO (La corrección está aquí)
+    // 2. MANTENIMIENTO
     document.addEventListener('socket:maintenance_start', (e) => {
-        // [NUEVO] Verificar rol antes de recargar
         const profileBtn = document.querySelector('.header-button.profile-button');
         const currentRole = profileBtn ? profileBtn.dataset.role : 'guest';
         
-        // Roles que tienen permiso de "Bypass" al mantenimiento
         const staffRoles = ['founder', 'administrator', 'moderator'];
 
         if (staffRoles.includes(currentRole)) {
-            // Si es Staff, NO recargamos. Solo avisamos.
-            Toast.show('El sistema ha entrado en modo mantenimiento (Acceso Staff activo).', 'info', 5000);
+            ToastManager.show('El sistema ha entrado en modo mantenimiento (Acceso Staff activo).', 'info', 5000);
             console.log('Maintenance signal received. Ignored due to staff privileges.');
             return;
         }
 
-        // Si es usuario normal o invitado, recargamos con delay para asegurar consistencia
         setTimeout(() => {
             window.location.reload();
         }, 1000); 
@@ -118,10 +114,11 @@ function initGlobalSocketListeners() {
     document.addEventListener('socket:notification', (e) => {
         const msgData = e.detail.message; 
         if (msgData && msgData.text) {
-            Toast.show(msgData.text, msgData.type || 'info');
+            ToastManager.show(msgData.text, msgData.type || 'info');
         }
     });
 }
+
 function routeDispatcher(section) {
     updateSidebarState(section);
     switch (section) {
@@ -150,11 +147,10 @@ function routeDispatcher(section) {
         // === ADMIN MODULES ===
         case 'admin/dashboard': 
             DashboardController.init(); 
-            // AlertController ya no se inicializa aquí porque ya no es un modal
             break;
 
         case 'admin/alerts': 
-            SystemAlertsController.init(); // [NUEVO] Inicialización de la nueva sección
+            SystemAlertsController.init(); 
             break;
 
         case 'admin/users': UsersController.init(); break;

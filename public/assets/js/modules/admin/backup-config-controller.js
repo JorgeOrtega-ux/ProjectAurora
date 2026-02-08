@@ -3,10 +3,10 @@
  */
 
 import { ApiService } from '../../core/api-service.js';
-import { Toast } from '../../core/toast-manager.js';
+import { ToastManager } from '../../core/toast-manager.js';
 import { navigateTo } from '../../core/url-manager.js';
-import { Dialog } from '../../core/dialog-manager.js';
-import { I18n } from '../../core/i18n-manager.js';
+import { DialogManager } from '../../core/dialog-manager.js';
+import { I18nManager } from '../../core/i18n-manager.js';
 
 let _container = null;
 let _countdownInterval = null;
@@ -87,11 +87,11 @@ async function loadConfig() {
             if(loading) loading.classList.add('d-none');
             if(content) content.classList.remove('d-none');
         } else {
-            Toast.show(res.message, 'error');
+            ToastManager.show(res.message, 'error');
         }
     } catch (e) {
         console.error(e);
-        Toast.show(I18n.t('js.core.connection_error'), 'error');
+        ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
     }
 }
 
@@ -106,7 +106,7 @@ function updateStats(data) {
             elLastRun.textContent = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             elLastRun.style.fontSize = '1.2rem';
         } else {
-            elLastRun.textContent = I18n.t('admin.backups.never') || "Nunca";
+            elLastRun.textContent = I18nManager.t('admin.backups.never') || "Nunca";
         }
     }
 
@@ -115,10 +115,10 @@ function updateStats(data) {
     if (elBadge) {
         if (data.enabled) {
             elBadge.className = 'component-trend-badge success';
-            elBadge.innerHTML = `<span class="material-symbols-rounded" style="font-size:14px;">check_circle</span> ${I18n.t('admin.backups.status_active') || 'Activo'}`;
+            elBadge.innerHTML = `<span class="material-symbols-rounded" style="font-size:14px;">check_circle</span> ${I18nManager.t('admin.backups.status_active') || 'Activo'}`;
         } else {
             elBadge.className = 'component-trend-badge error';
-            elBadge.innerHTML = `<span class="material-symbols-rounded" style="font-size:14px;">pause_circle</span> ${I18n.t('admin.backups.status_paused') || 'Pausado'}`;
+            elBadge.innerHTML = `<span class="material-symbols-rounded" style="font-size:14px;">pause_circle</span> ${I18nManager.t('admin.backups.status_paused') || 'Pausado'}`;
         }
     }
 
@@ -128,7 +128,7 @@ function updateStats(data) {
         
         const elNextDate = _container.querySelector('#stat-next-date');
         if (elNextDate && data.meta.next_run_estimate) {
-            elNextDate.textContent = (I18n.t('admin.backups.predicted') || "Previsto") + ": " + data.meta.next_run_estimate;
+            elNextDate.textContent = (I18nManager.t('admin.backups.predicted') || "Previsto") + ": " + data.meta.next_run_estimate;
         }
 
         startTimer();
@@ -137,7 +137,7 @@ function updateStats(data) {
         const elCountdown = _container.querySelector('#stat-countdown');
         const elNextDate = _container.querySelector('#stat-next-date');
         if(elCountdown) elCountdown.textContent = "--:--:--";
-        if(elNextDate) elNextDate.textContent = data.enabled ? (I18n.t('admin.backups.calculating') || "Calculando...") : (I18n.t('admin.backups.schedule_disabled') || "Programación desactivada");
+        if(elNextDate) elNextDate.textContent = data.enabled ? (I18nManager.t('admin.backups.calculating') || "Calculando...") : (I18nManager.t('admin.backups.schedule_disabled') || "Programación desactivada");
     }
 }
 
@@ -147,7 +147,7 @@ function startTimer() {
     
     _countdownInterval = setInterval(() => {
         if (_secondsRemaining <= 0) {
-            if(elCountdown) elCountdown.textContent = I18n.t('admin.backups.queued') || "En cola...";
+            if(elCountdown) elCountdown.textContent = I18nManager.t('admin.backups.queued') || "En cola...";
             return;
         }
 
@@ -182,7 +182,7 @@ async function saveConfig() {
     const retention = _container.querySelector('#input-retention').value;
 
     btn.disabled = true;
-    btn.innerHTML = `<div class="spinner-sm"></div> ${I18n.t('js.core.saving') || 'Guardando...'}`;
+    btn.innerHTML = `<div class="spinner-sm"></div> ${I18nManager.t('js.core.saving') || 'Guardando...'}`;
 
     const formData = new FormData();
     formData.append('enabled', enabled ? '1' : '0');
@@ -192,13 +192,13 @@ async function saveConfig() {
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.Backups.UpdateConfig, formData);
         if (res.success) {
-            Toast.show(I18n.t('admin.backups.config_saved') || 'Configuración guardada correctamente', 'success');
+            ToastManager.show(I18nManager.t('admin.backups.config_saved') || 'Configuración guardada correctamente', 'success');
             await loadConfig();
         } else {
-            Toast.show(res.message, 'error');
+            ToastManager.show(res.message, 'error');
         }
     } catch (e) {
-        Toast.show(I18n.t('admin.backups.save_error') || 'Error al guardar', 'error');
+        ToastManager.show(I18nManager.t('admin.backups.save_error') || 'Error al guardar', 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;
@@ -208,9 +208,9 @@ async function saveConfig() {
 async function triggerNow() {
     const btn = _container.querySelector('#btn-trigger-now');
     
-    const confirmed = await Dialog.confirm(
-        I18n.t('admin.backups.trigger_title') || '¿Adelantar Respaldo?', 
-        I18n.t('admin.backups.trigger_message') || 'Esto creará una copia de seguridad inmediatamente y reiniciará el contador del temporizador automático.'
+    const confirmed = await DialogManager.confirm(
+        I18nManager.t('admin.backups.trigger_title') || '¿Adelantar Respaldo?', 
+        I18nManager.t('admin.backups.trigger_message') || 'Esto creará una copia de seguridad inmediatamente y reiniciará el contador del temporizador automático.'
     );
 
     if (!confirmed) return;
@@ -223,14 +223,14 @@ async function triggerNow() {
         const res = await ApiService.post(ApiService.Routes.Admin.Backups.Create);
         
         if (res.success) {
-            Toast.show(I18n.t('admin.backups.trigger_success') || 'Respaldo iniciado correctamente', 'success');
+            ToastManager.show(I18nManager.t('admin.backups.trigger_success') || 'Respaldo iniciado correctamente', 'success');
             setTimeout(() => loadConfig(), 2000); 
         } else {
-            Toast.show(res.message || (I18n.t('admin.backups.trigger_error') || 'Error al iniciar respaldo'), 'error');
+            ToastManager.show(res.message || (I18nManager.t('admin.backups.trigger_error') || 'Error al iniciar respaldo'), 'error');
         }
     } catch (e) {
         console.error(e);
-        Toast.show(I18n.t('js.core.communication_error') || 'Error de comunicación', 'error');
+        ToastManager.show(I18nManager.t('js.core.communication_error') || 'Error de comunicación', 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;

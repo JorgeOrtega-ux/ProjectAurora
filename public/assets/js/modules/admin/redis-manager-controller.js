@@ -4,10 +4,10 @@
  */
 
 import { ApiService } from '../../core/api-service.js';
-import { Toast } from '../../core/toast-manager.js';
-import { Dialog } from '../../core/dialog-manager.js';
+import { ToastManager } from '../../core/toast-manager.js';
+import { DialogManager } from '../../core/dialog-manager.js';
 import { navigateTo } from '../../core/url-manager.js';
-import { I18n } from '../../core/i18n-manager.js';
+import { I18nManager } from '../../core/i18n-manager.js';
 
 let _container = null;
 
@@ -93,7 +93,7 @@ async function loadKeys(pattern) {
     } catch (e) {
         loader.classList.add('d-none');
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td colspan="4" class="state-error">${I18n.t('js.core.connection_error')}</td>`;
+        tr.innerHTML = `<td colspan="4" class="state-error">${I18nManager.t('js.core.connection_error')}</td>`;
         tbody.appendChild(tr);
     }
 }
@@ -106,7 +106,7 @@ function renderKeysTable(keys, tbody) {
         td.className = 'state-empty';
         td.style.textAlign = 'center';
         td.style.padding = '20px';
-        td.textContent = I18n.t('admin.redis.no_keys') || 'No se encontraron claves.';
+        td.textContent = I18nManager.t('admin.redis.no_keys') || 'No se encontraron claves.';
         tr.appendChild(td);
         tbody.appendChild(tr);
         return;
@@ -145,8 +145,8 @@ function renderKeysTable(keys, tbody) {
         tr.appendChild(tdType);
 
         // 3. Columna TTL
-        let ttlDisplay = k.ttl === -1 ? (I18n.t('admin.redis.ttl_infinite') || 'Infinito') : `${k.ttl}s`;
-        if (k.ttl === -2) ttlDisplay = (I18n.t('admin.redis.ttl_expired') || 'Expirada');
+        let ttlDisplay = k.ttl === -1 ? (I18nManager.t('admin.redis.ttl_infinite') || 'Infinito') : `${k.ttl}s`;
+        if (k.ttl === -2) ttlDisplay = (I18nManager.t('admin.redis.ttl_expired') || 'Expirada');
 
         const tdTTL = document.createElement('td');
         tdTTL.style.fontSize = '12px';
@@ -161,7 +161,7 @@ function renderKeysTable(keys, tbody) {
         const btnDelete = document.createElement('button');
         btnDelete.className = 'component-button btn-delete-key';
         btnDelete.style.cssText = "width:28px; height:28px; padding:0; border:none; color:var(--text-tertiary);";
-        btnDelete.title = I18n.t('js.core.delete') || 'Eliminar';
+        btnDelete.title = I18nManager.t('js.core.delete') || 'Eliminar';
         
         const icon = document.createElement('span');
         icon.className = 'material-symbols-rounded';
@@ -187,14 +187,14 @@ function renderKeysTable(keys, tbody) {
 }
 
 async function showValueDialog(key) {
-    Dialog.showLoading(I18n.t('admin.redis.loading_value') || 'Cargando valor...');
+    DialogManager.showLoading(I18nManager.t('admin.redis.loading_value') || 'Cargando valor...');
     
     const formData = new FormData();
     formData.append('key', key);
 
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.Redis.GetValue, formData);
-        Dialog.close();
+        DialogManager.close();
 
         if (res.success) {
             const data = res.data;
@@ -209,18 +209,18 @@ async function showValueDialog(key) {
             const htmlContent = `
                 <div class="component-data-viewer">
                     <div class="component-data-meta">
-                        <span><strong>${I18n.t('admin.redis.meta_type') || 'Tipo:'}</strong> ${data.type}</span>
-                        <span><strong>${I18n.t('admin.redis.meta_size') || 'Tamaño:'}</strong> ${data.size} items/bytes</span>
+                        <span><strong>${I18nManager.t('admin.redis.meta_type') || 'Tipo:'}</strong> ${data.type}</span>
+                        <span><strong>${I18nManager.t('admin.redis.meta_size') || 'Tamaño:'}</strong> ${data.size} items/bytes</span>
                         <span><strong>TTL:</strong> ${data.ttl}</span>
                     </div>
                     <textarea class="component-textarea-read" readonly></textarea>
                 </div>
             `;
 
-            Dialog.confirm({
-                title: `${I18n.t('admin.redis.key_label') || 'Clave'}: ${key}`, // El título escapa autom en Dialog
+            DialogManager.confirm({
+                title: `${I18nManager.t('admin.redis.key_label') || 'Clave'}: ${key}`, // El título escapa autom en Dialog
                 message: '', 
-                confirmText: I18n.t('js.core.close') || 'Cerrar',
+                confirmText: I18nManager.t('js.core.close') || 'Cerrar',
                 cancelText: null, 
                 onReady: (wrapper) => {
                     const contentArea = wrapper.querySelector('[data-element="message"]');
@@ -236,16 +236,16 @@ async function showValueDialog(key) {
             });
 
         } else {
-            Toast.show(res.message, 'error');
+            ToastManager.show(res.message, 'error');
         }
     } catch (e) {
-        Dialog.close();
-        Toast.show(I18n.t('admin.redis.value_error') || 'Error al obtener valor', 'error');
+        DialogManager.close();
+        ToastManager.show(I18nManager.t('admin.redis.value_error') || 'Error al obtener valor', 'error');
     }
 }
 
 async function deleteKey(key) {
-    if (!await Dialog.confirm({ title: I18n.t('admin.redis.delete_confirm') || '¿Eliminar clave?', message: key, type: 'danger' })) return;
+    if (!await DialogManager.confirm({ title: I18nManager.t('admin.redis.delete_confirm') || '¿Eliminar clave?', message: key, type: 'danger' })) return;
 
     const formData = new FormData();
     formData.append('key', key);
@@ -253,49 +253,49 @@ async function deleteKey(key) {
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.Redis.DeleteKey, formData);
         if (res.success) {
-            Toast.show(I18n.t('js.core.deleted') || 'Eliminado', 'success');
+            ToastManager.show(I18nManager.t('js.core.deleted') || 'Eliminado', 'success');
             const pattern = document.getElementById('redis-search-input').value || '*';
             loadKeys(pattern);
             loadStats(); 
         } else {
-            Toast.show(res.message, 'error');
+            ToastManager.show(res.message, 'error');
         }
-    } catch (e) { Toast.show(I18n.t('admin.redis.delete_error') || 'Error al eliminar', 'error'); }
+    } catch (e) { ToastManager.show(I18nManager.t('admin.redis.delete_error') || 'Error al eliminar', 'error'); }
 }
 
 async function handleFlushDB() {
-    const confirm1 = await Dialog.confirm({ 
-        title: I18n.t('admin.redis.flush_title') || 'PELIGRO: ¿VACIAR REDIS?', 
-        message: I18n.t('admin.redis.flush_message') || 'Esto eliminará TODAS las claves de la base de datos actual. Sesiones, caché, tokens temporales... TODO.', 
+    const confirm1 = await DialogManager.confirm({ 
+        title: I18nManager.t('admin.redis.flush_title') || 'PELIGRO: ¿VACIAR REDIS?', 
+        message: I18nManager.t('admin.redis.flush_message') || 'Esto eliminará TODAS las claves de la base de datos actual. Sesiones, caché, tokens temporales... TODO.', 
         type: 'danger', 
-        confirmText: I18n.t('admin.redis.flush_confirm_1') || 'SÍ, VACIAR TODO' 
+        confirmText: I18nManager.t('admin.redis.flush_confirm_1') || 'SÍ, VACIAR TODO' 
     });
 
     if (!confirm1) return;
 
-    const confirm2 = await Dialog.confirm({ 
-        title: I18n.t('admin.redis.flush_sure') || '¿Estás absolutamente seguro?', 
-        message: I18n.t('admin.redis.flush_warning') || 'Esta acción no se puede deshacer. Los usuarios serán desconectados.', 
+    const confirm2 = await DialogManager.confirm({ 
+        title: I18nManager.t('admin.redis.flush_sure') || '¿Estás absolutamente seguro?', 
+        message: I18nManager.t('admin.redis.flush_warning') || 'Esta acción no se puede deshacer. Los usuarios serán desconectados.', 
         type: 'danger', 
-        confirmText: I18n.t('admin.redis.flush_confirm_2') || 'ESTOY SEGURO' 
+        confirmText: I18nManager.t('admin.redis.flush_confirm_2') || 'ESTOY SEGURO' 
     });
 
     if (!confirm2) return;
 
-    Dialog.showLoading(I18n.t('admin.redis.flushing') || 'Vaciando base de datos...');
+    DialogManager.showLoading(I18nManager.t('admin.redis.flushing') || 'Vaciando base de datos...');
 
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.Redis.FlushDB);
-        Dialog.close();
+        DialogManager.close();
         if (res.success) {
-            Toast.show(res.message, 'success');
+            ToastManager.show(res.message, 'success');
             loadStats();
             loadKeys('*');
         } else {
-            Toast.show(res.message, 'error');
+            ToastManager.show(res.message, 'error');
         }
     } catch (e) {
-        Dialog.close();
-        Toast.show(I18n.t('admin.redis.critical_error') || 'Error crítico', 'error');
+        DialogManager.close();
+        ToastManager.show(I18nManager.t('admin.redis.critical_error') || 'Error crítico', 'error');
     }
 }

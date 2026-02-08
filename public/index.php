@@ -7,9 +7,6 @@ require_once __DIR__ . '/../includes/core/app-setup.php';
 // 2. Configuración de Rutas URL
 require_once __DIR__ . '/../config/routers/router.php';
 
-// 3. Interceptor de Descargas (Si aplica, detiene ejecución)
-require_once __DIR__ . '/../includes/core/download-interceptor.php';
-
 // 4. Lógica de Negocio (Permisos, Sesión, Mantenimiento, Selección de Archivo)
 require_once __DIR__ . '/../includes/core/routing-logic.php';
 

@@ -4,13 +4,10 @@
  */
 
 import { ApiService } from '../../core/api-service.js';
-import { Toast } from '../../core/toast-manager.js';
-import { I18n } from '../../core/i18n-manager.js';
-import { Dialog } from '../../core/dialog-manager.js';
+import { ToastManager } from '../../core/toast-manager.js';
+import { I18nManager } from '../../core/i18n-manager.js';
+import { DialogManager } from '../../core/dialog-manager.js';
 import { DialogDefinitions } from '../../core/dialog-definitions.js';
-
-// Atajo
-const SettingsAPI = ApiService.Routes.Settings;
 
 // --- ESTADO PRIVADO DEL MÓDULO ---
 let isLoading = false;
@@ -25,7 +22,7 @@ async function _loadDevices() {
     isLoading = true;
 
     try {
-        const res = await ApiService.post(SettingsAPI.GetSessions);
+        const res = await ApiService.post(ApiService.Routes.Settings.GetSessions);
 
         if (res.success) {
             _renderList(res.sessions);
@@ -33,7 +30,7 @@ async function _loadDevices() {
             container.innerHTML = '';
             const msg = document.createElement('div');
             msg.style.cssText = 'padding:20px; text-align:center;';
-            msg.textContent = I18n.t('js.devices.load_error');
+            msg.textContent = I18nManager.t('js.devices.load_error');
             container.appendChild(msg);
         }
 
@@ -42,7 +39,7 @@ async function _loadDevices() {
         container.innerHTML = '';
         const msg = document.createElement('div');
         msg.style.cssText = 'padding:20px; text-align:center;';
-        msg.textContent = I18n.t('js.devices.connection_error');
+        msg.textContent = I18nManager.t('js.devices.connection_error');
         container.appendChild(msg);
     } finally {
         isLoading = false;
@@ -58,7 +55,7 @@ function _renderList(sessions) {
     if (sessions.length === 0) {
         const msg = document.createElement('div');
         msg.style.cssText = 'padding:24px; text-align:center; color:#666;';
-        msg.textContent = I18n.t('js.devices.empty');
+        msg.textContent = I18nManager.t('js.devices.empty');
         container.appendChild(msg);
         return;
     }
@@ -102,7 +99,7 @@ function _renderList(sessions) {
             const badge = document.createElement('span');
             badge.className = 'component-badge component-badge--sm';
             badge.style.marginLeft = '8px';
-            badge.textContent = I18n.t('js.devices.current_device');
+            badge.textContent = I18nManager.t('js.devices.current_device');
             h2.appendChild(badge);
         }
         textDiv.appendChild(h2);
@@ -135,7 +132,7 @@ function _renderList(sessions) {
             btn.type = 'button';
             btn.className = 'component-button btn-revoke-one';
             btn.dataset.id = s.id;
-            btn.textContent = I18n.t('js.devices.btn_revoke');
+            btn.textContent = I18nManager.t('js.devices.btn_revoke');
             actionsDiv.appendChild(btn);
         }
         groupItem.appendChild(actionsDiv);
@@ -160,7 +157,7 @@ function _bindListEvents() {
             const id = e.target.dataset.id;
             if(!id) return;
 
-            const confirmed = await Dialog.confirm(DialogDefinitions.Devices.REVOKE_ONE);
+            const confirmed = await DialogManager.confirm(DialogDefinitions.Devices.REVOKE_ONE);
             if (!confirmed) return;
 
             const originalText = e.target.innerText;
@@ -171,17 +168,17 @@ function _bindListEvents() {
             formData.append('token_id', id);
 
             try {
-                const res = await ApiService.post(SettingsAPI.RevokeSession, formData);
+                const res = await ApiService.post(ApiService.Routes.Settings.RevokeSession, formData);
                 if(res.success) {
-                    Toast.show(I18n.t('js.devices.revoke_success'), 'success');
+                    ToastManager.show(I18nManager.t('js.devices.revoke_success'), 'success');
                     _loadDevices(); 
                 } else {
-                    Toast.show(res.message, 'error');
+                    ToastManager.show(res.message, 'error');
                     e.target.innerText = originalText;
                     e.target.disabled = false;
                 }
             } catch(err) {
-                Toast.show(I18n.t('js.devices.connection_error'), 'error');
+                ToastManager.show(I18nManager.t('js.devices.connection_error'), 'error');
                 e.target.innerText = originalText;
                 e.target.disabled = false;
             }
@@ -196,21 +193,21 @@ function _initRevokeAllButton() {
         btnAll.parentNode.replaceChild(newBtnAll, btnAll);
         
         newBtnAll.addEventListener('click', async () => {
-            const confirmed = await Dialog.confirm(DialogDefinitions.Devices.REVOKE_ALL);
+            const confirmed = await DialogManager.confirm(DialogDefinitions.Devices.REVOKE_ALL);
             
             if (!confirmed) return;
 
             const formData = new FormData();
             
             try {
-                const res = await ApiService.post(SettingsAPI.RevokeAllSessions, formData);
+                const res = await ApiService.post(ApiService.Routes.Settings.RevokeAllSessions, formData);
                 if(res.success) {
                     window.location.href = window.BASE_PATH + 'login';
                 } else {
-                    Toast.show(res.message, 'error');
+                    ToastManager.show(res.message, 'error');
                 }
             } catch(err) {
-                Toast.show(I18n.t('js.devices.connection_error'), 'error');
+                ToastManager.show(I18nManager.t('js.devices.connection_error'), 'error');
             }
         });
     }

@@ -4,10 +4,10 @@
  */
 
 import { ApiService } from '../../core/api-service.js';
-import { Toast } from '../../core/toast-manager.js';
-import { Dialog } from '../../core/dialog-manager.js';
+import { ToastManager } from '../../core/toast-manager.js';
+import { DialogManager } from '../../core/dialog-manager.js';
 import { navigateTo } from '../../core/url-manager.js';
-import { I18n } from '../../core/i18n-manager.js'; 
+import { I18nManager } from '../../core/i18n-manager.js'; 
 
 let _container = null;
 let _filesData = [];
@@ -39,7 +39,7 @@ function onDownloadReady(e) {
     const data = e.detail.message;
     if (data && data.url) {
         triggerBrowserDownload(data.url);
-        Toast.show(I18n.t('admin.logs.download_started') || 'Descarga iniciada.', 'success');
+        ToastManager.show(I18nManager.t('admin.logs.download_started') || 'Descarga iniciada.', 'success');
         clearSelection();
     }
 }
@@ -84,7 +84,7 @@ async function handleDownload() {
     const pathsArray = Array.from(_selectedPaths);
     const pathsString = pathsArray.join(','); 
     
-    Toast.show(I18n.t('admin.logs.download_preparing') || 'Solicitando descarga...', 'info');
+    ToastManager.show(I18nManager.t('admin.logs.download_preparing') || 'Solicitando descarga...', 'info');
 
     const formData = new FormData();
     formData.append('file', pathsString);
@@ -96,17 +96,17 @@ async function handleDownload() {
         
         if (res.success) {
             if (res.queued) {
-                Toast.show(res.message || 'Tu descarga se está generando en segundo plano...', 'info');
+                ToastManager.show(res.message || 'Tu descarga se está generando en segundo plano...', 'info');
             } else if (res.download_url) {
                 triggerBrowserDownload(res.download_url);
-                Toast.show(I18n.t('admin.logs.download_started') || 'Descarga iniciada.', 'success');
+                ToastManager.show(I18nManager.t('admin.logs.download_started') || 'Descarga iniciada.', 'success');
                 clearSelection();
             }
         } else {
-            Toast.show(res.message || (I18n.t('admin.logs.download_token_error') || 'Error al solicitar descarga.'), 'error');
+            ToastManager.show(res.message || (I18nManager.t('admin.logs.download_token_error') || 'Error al solicitar descarga.'), 'error');
         }
     } catch (e) {
-        Toast.show(I18n.t('js.core.connection_error') || 'Error de conexión.', 'error');
+        ToastManager.show(I18nManager.t('js.core.connection_error') || 'Error de conexión.', 'error');
     }
 }
 
@@ -134,7 +134,7 @@ async function loadFiles() {
             list.innerHTML = `<div class="state-error">${res.message}</div>`;
         }
     } catch(e) {
-        list.innerHTML = `<div class="state-error">${I18n.t('js.core.connection_error') || 'Error de conexión'}</div>`;
+        list.innerHTML = `<div class="state-error">${I18nManager.t('js.core.connection_error') || 'Error de conexión'}</div>`;
     }
 }
 
@@ -144,12 +144,12 @@ function renderList(query = '') {
     
     const filtered = _filesData.filter(f => f.filename.toLowerCase().includes(query));
 
-    if(countLabel) countLabel.innerText = `${filtered.length} ${I18n.t('admin.logs.files_count') || 'archivos'}`;
+    if(countLabel) countLabel.innerText = `${filtered.length} ${I18nManager.t('admin.logs.files_count') || 'archivos'}`;
 
     list.innerHTML = ''; // Limpieza segura
 
     if(filtered.length === 0) {
-        list.innerHTML = `<div class="state-empty">${I18n.t('admin.logs.empty') || 'No se encontraron archivos de log.'}</div>`;
+        list.innerHTML = `<div class="state-empty">${I18nManager.t('admin.logs.empty') || 'No se encontraron archivos de log.'}</div>`;
         return;
     }
 
@@ -212,7 +212,7 @@ function renderGrid(files, container) {
         const createBadge = (text, tooltipKey, mono = false) => {
             const span = document.createElement('span');
             span.className = 'component-badge';
-            span.dataset.tooltip = I18n.t(tooltipKey);
+            span.dataset.tooltip = I18nManager.t(tooltipKey);
             if (mono) span.style.fontFamily = 'monospace';
             span.textContent = text; // [SEGURIDAD]
             return span;
@@ -244,10 +244,10 @@ function renderTable(files, container) {
     const headerRow = document.createElement('tr');
     const headers = [
         { w: '50px', t: '' },
-        { t: I18n.t('admin.logs.col_filename') || 'Archivo' },
-        { t: I18n.t('admin.logs.col_category') || 'Categoría' },
-        { t: I18n.t('admin.logs.col_size') || 'Tamaño' },
-        { t: I18n.t('admin.logs.col_date') || 'Fecha' }
+        { t: I18nManager.t('admin.logs.col_filename') || 'Archivo' },
+        { t: I18nManager.t('admin.logs.col_category') || 'Categoría' },
+        { t: I18nManager.t('admin.logs.col_size') || 'Tamaño' },
+        { t: I18nManager.t('admin.logs.col_date') || 'Fecha' }
     ];
     headers.forEach(h => {
         const th = document.createElement('th');
@@ -337,15 +337,15 @@ function updateToolbarState() {
     if(_selectedPaths.size > 0) {
         defGroup.classList.add('d-none');
         actGroup.classList.remove('d-none');
-        indicator.innerText = `${_selectedPaths.size} ${I18n.t('admin.logs.selected_count') || 'seleccionados'}`;
+        indicator.innerText = `${_selectedPaths.size} ${I18nManager.t('admin.logs.selected_count') || 'seleccionados'}`;
         
         const btnDownload = _container.querySelector('[data-action="download-selected"]');
         if (btnDownload) {
             btnDownload.style.opacity = '1';
             btnDownload.disabled = false;
             btnDownload.dataset.tooltip = _selectedPaths.size > 1 
-                ? I18n.t('admin.logs.download_zip_count', [_selectedPaths.size]) || `Descargar ZIP (${_selectedPaths.size})` 
-                : I18n.t('admin.logs.download_log') || 'Descargar Log';
+                ? I18nManager.t('admin.logs.download_zip_count', [_selectedPaths.size]) || `Descargar ZIP (${_selectedPaths.size})` 
+                : I18nManager.t('admin.logs.download_log') || 'Descargar Log';
         }
 
     } else {
@@ -372,9 +372,9 @@ function toggleView() {
 }
 
 async function deleteSelected() {
-    if(!await Dialog.confirm({ 
-        title: I18n.t('admin.logs.delete_title') || '¿Eliminar archivos?', 
-        message: I18n.t('admin.logs.delete_message') || 'Esta acción borrará los logs físicamente del servidor.', 
+    if(!await DialogManager.confirm({ 
+        title: I18nManager.t('admin.logs.delete_title') || '¿Eliminar archivos?', 
+        message: I18nManager.t('admin.logs.delete_message') || 'Esta acción borrará los logs físicamente del servidor.', 
         type: 'danger' 
     })) return;
 
@@ -385,11 +385,11 @@ async function deleteSelected() {
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.DeleteLogFiles, formData);
         if(res.success) {
-            Toast.show(I18n.t('admin.logs.delete_success') || 'Archivos eliminados', 'success');
+            ToastManager.show(I18nManager.t('admin.logs.delete_success') || 'Archivos eliminados', 'success');
             clearSelection();
             loadFiles();
         } else {
-            Toast.show(res.message, 'error');
+            ToastManager.show(res.message, 'error');
         }
-    } catch(e) { Toast.show(I18n.t('admin.logs.delete_error') || 'Error al eliminar', 'error'); }
+    } catch(e) { ToastManager.show(I18nManager.t('admin.logs.delete_error') || 'Error al eliminar', 'error'); }
 }

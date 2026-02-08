@@ -3,12 +3,9 @@
  */
 
 import { navigateTo } from './core/url-manager.js';
-import { Toast } from './core/toast-manager.js';
+import { ToastManager } from './core/toast-manager.js';
 import { ApiService } from './core/api-service.js';
-import { I18n } from './core/i18n-manager.js';
-
-// Atajo
-const AuthAPI = ApiService.Routes.Auth;
+import { I18nManager } from './core/i18n-manager.js';
 
 let resendTimerInterval = null;
 let recoveryTimerInterval = null;
@@ -83,7 +80,7 @@ export function initAuthController() {
             const tsToken = getTurnstileToken();
 
             if (!email || !password) {
-                showError(btnNext1, 'register-step1-error', I18n.t('js.auth.fill_all'));
+                showError(btnNext1, 'register-step1-error', I18nManager.t('js.auth.fill_all'));
                 return;
             }
 
@@ -98,8 +95,6 @@ export function initAuthController() {
             formData.append('cf-turnstile-response', tsToken);
 
             // [MODIFICACIÓN] HONEYPOT: Enviar la trampa al servidor
-            // Si el campo existe (que debería), enviamos su valor.
-            // Si un bot lo llenó, el servidor lo recibirá.
             const honeyPot = document.getElementById('website_url');
             if (honeyPot) {
                 formData.append('website_url', honeyPot.value);
@@ -108,7 +103,7 @@ export function initAuthController() {
             setLoading(btnNext1, true);
 
             try {
-                const res = await ApiService.post(AuthAPI.RegisterStep1, formData);
+                const res = await ApiService.post(ApiService.Routes.Auth.RegisterStep1, formData);
 
                 if (res.success) {
                     navigateTo(res.next_url);
@@ -119,7 +114,7 @@ export function initAuthController() {
                 }
             } catch (err) {
                 console.error(err);
-                showError(btnNext1, 'register-step1-error', I18n.t('js.auth.unexpected_error'));
+                showError(btnNext1, 'register-step1-error', I18nManager.t('js.auth.unexpected_error'));
                 setLoading(btnNext1, false);
                 resetTurnstile();
             }
@@ -135,7 +130,7 @@ export function initAuthController() {
             const username = document.getElementById('username').value;
 
             if (!username) {
-                showError(btnNext2, 'register-step2-error', I18n.t('js.auth.choose_username'));
+                showError(btnNext2, 'register-step2-error', I18nManager.t('js.auth.choose_username'));
                 return;
             }
 
@@ -145,10 +140,10 @@ export function initAuthController() {
             setLoading(btnNext2, true);
 
             try {
-                const res = await ApiService.post(AuthAPI.RegisterStep2, formData);
+                const res = await ApiService.post(ApiService.Routes.Auth.RegisterStep2, formData);
 
                 if (res.success) {
-                    Toast.show(I18n.t('js.auth.code_sent'), 'info');
+                    ToastManager.show(I18nManager.t('js.auth.code_sent'), 'info');
                     navigateTo(res.next_url);
                     // Aquí ya no llamamos a startResendTimer manualmente,
                     // al cargar la vista se ejecutará checkServerTimer
@@ -157,7 +152,7 @@ export function initAuthController() {
                     setLoading(btnNext2, false);
                 }
             } catch (err) {
-                showError(btnNext2, 'register-step2-error', I18n.t('js.auth.connection_error'));
+                showError(btnNext2, 'register-step2-error', I18nManager.t('js.auth.connection_error'));
                 setLoading(btnNext2, false);
             }
             return;
@@ -171,7 +166,7 @@ export function initAuthController() {
 
             const code = document.getElementById('verification_code').value;
             if (!code) {
-                showError(btnFinish, 'register-step3-error', I18n.t('js.auth.enter_code'));
+                showError(btnFinish, 'register-step3-error', I18nManager.t('js.auth.enter_code'));
                 return;
             }
 
@@ -181,7 +176,7 @@ export function initAuthController() {
             setLoading(btnFinish, true);
 
             try {
-                const res = await ApiService.post(AuthAPI.RegisterComplete, formData);
+                const res = await ApiService.post(ApiService.Routes.Auth.RegisterComplete, formData);
 
                 if (res.success) {
                     window.location.href = res.redirect;
@@ -190,7 +185,7 @@ export function initAuthController() {
                     setLoading(btnFinish, false);
                 }
             } catch (err) {
-                showError(btnFinish, 'register-step3-error', I18n.t('js.auth.verify_error'));
+                showError(btnFinish, 'register-step3-error', I18nManager.t('js.auth.verify_error'));
                 setLoading(btnFinish, false);
             }
             return;
@@ -214,18 +209,18 @@ export function initAuthController() {
             btnResend.style.opacity = '0.5';
 
             try {
-                const res = await ApiService.post(AuthAPI.ResendCode, formData);
+                const res = await ApiService.post(ApiService.Routes.Auth.ResendCode, formData);
                 btnResend.style.opacity = '1';
 
                 if (res.success) {
-                    Toast.show(I18n.t('js.auth.resend_success'), 'success');
+                    ToastManager.show(I18nManager.t('js.auth.resend_success'), 'success');
                     startResendTimer(60);
                 } else {
                     showError(targetErrorNode, 'register-step3-error', res.message);
                 }
             } catch (err) {
                 btnResend.style.opacity = '1';
-                showError(targetErrorNode, 'register-step3-error', I18n.t('js.auth.resend_error'));
+                showError(targetErrorNode, 'register-step3-error', I18nManager.t('js.auth.resend_error'));
             }
             return;
         }
@@ -238,7 +233,7 @@ export function initAuthController() {
 
             const email = document.getElementById('email_recovery').value;
             if (!email) {
-                showError(btnRequestReset, 'recovery-error', I18n.t('js.auth.enter_email'));
+                showError(btnRequestReset, 'recovery-error', I18nManager.t('js.auth.enter_email'));
                 return;
             }
 
@@ -248,18 +243,18 @@ export function initAuthController() {
             setLoading(btnRequestReset, true);
 
             try {
-                const res = await ApiService.post(AuthAPI.RequestReset, formData);
+                const res = await ApiService.post(ApiService.Routes.Auth.RequestReset, formData);
                 setLoading(btnRequestReset, false);
 
                 if (res.success) {
-                    Toast.show(I18n.t('js.auth.reset_link_sent'), 'success');
+                    ToastManager.show(I18nManager.t('js.auth.reset_link_sent'), 'success');
                     startRecoveryTimer(60);
                 } else {
                     showError(btnRequestReset, 'recovery-error', res.message);
                 }
             } catch (err) {
                 setLoading(btnRequestReset, false);
-                showError(btnRequestReset, 'recovery-error', I18n.t('js.auth.connection_error'));
+                showError(btnRequestReset, 'recovery-error', I18nManager.t('js.auth.connection_error'));
             }
             return;
         }
@@ -282,18 +277,18 @@ export function initAuthController() {
             linkResendRecovery.style.opacity = '0.5';
 
             try {
-                const res = await ApiService.post(AuthAPI.RequestReset, formData);
+                const res = await ApiService.post(ApiService.Routes.Auth.RequestReset, formData);
                 linkResendRecovery.style.opacity = '1';
 
                 if (res.success) {
-                    Toast.show(I18n.t('js.auth.reset_link_sent'), 'success');
+                    ToastManager.show(I18nManager.t('js.auth.reset_link_sent'), 'success');
                     startRecoveryTimer(60);
                 } else {
-                    Toast.show(res.message, 'error');
+                    ToastManager.show(res.message, 'error');
                 }
             } catch (err) {
                 linkResendRecovery.style.opacity = '1';
-                Toast.show(I18n.t('js.auth.connection_error'), 'error');
+                ToastManager.show(I18nManager.t('js.auth.connection_error'), 'error');
             }
             return;
         }
@@ -309,11 +304,11 @@ export function initAuthController() {
             const pass2 = document.getElementById('confirm_password').value;
 
             if (!pass1 || !pass2) {
-                showError(btnSubmitNewPass, 'reset-pass-error', I18n.t('js.auth.fill_all'));
+                showError(btnSubmitNewPass, 'reset-pass-error', I18nManager.t('js.auth.fill_all'));
                 return;
             }
             if (pass1 !== pass2) {
-                showError(btnSubmitNewPass, 'reset-pass-error', I18n.t('js.auth.pass_mismatch'));
+                showError(btnSubmitNewPass, 'reset-pass-error', I18nManager.t('js.auth.pass_mismatch'));
                 return;
             }
 
@@ -324,9 +319,9 @@ export function initAuthController() {
             setLoading(btnSubmitNewPass, true);
 
             try {
-                const res = await ApiService.post(AuthAPI.ResetPassword, formData);
+                const res = await ApiService.post(ApiService.Routes.Auth.ResetPassword, formData);
                 if (res.success) {
-                    Toast.show(I18n.t('js.auth.pass_updated'), 'success');
+                    ToastManager.show(I18nManager.t('js.auth.pass_updated'), 'success');
                     setTimeout(() => {
                         window.location.href = window.BASE_PATH + 'login';
                     }, 1500);
@@ -336,7 +331,7 @@ export function initAuthController() {
                 }
             } catch (err) {
                 setLoading(btnSubmitNewPass, false);
-                showError(btnSubmitNewPass, 'reset-pass-error', I18n.t('js.auth.unexpected_error'));
+                showError(btnSubmitNewPass, 'reset-pass-error', I18nManager.t('js.auth.unexpected_error'));
             }
             return;
         }
@@ -354,7 +349,7 @@ export function initAuthController() {
             window.isManualLogout = true;
 
             try {
-                await ApiService.post(AuthAPI.Logout);
+                await ApiService.post(ApiService.Routes.Auth.Logout);
                 window.location.href = window.BASE_PATH + 'login';
             } catch (err) {
                 console.error("Logout error:", err);
@@ -398,7 +393,7 @@ function toggleRecoveryMode(btn) {
         input.value = '';
         input.focus();
         
-        label.textContent = I18n.t('auth.2fa.field_code');
+        label.textContent = I18nManager.t('auth.2fa.field_code');
         btn.textContent = "Usar código de recuperación";
     }
 }
@@ -420,7 +415,7 @@ async function handleLoginStep1(btn) {
     });
 
     if (hasEmpty) {
-        showError(btn, 'login-error', I18n.t('js.auth.fill_all'));
+        showError(btn, 'login-error', I18nManager.t('js.auth.fill_all'));
         return;
     }
 
@@ -432,7 +427,7 @@ async function handleLoginStep1(btn) {
 
     setLoading(btn, true);
     try {
-        const res = await ApiService.post(AuthAPI.Login, formData);
+        const res = await ApiService.post(ApiService.Routes.Auth.Login, formData);
 
         if (res.success) {
             if (res.require_2fa) {
@@ -450,7 +445,7 @@ async function handleLoginStep1(btn) {
             resetTurnstile();
         }
     } catch (e) {
-        showError(btn, 'login-error', I18n.t('js.auth.connection_error'));
+        showError(btn, 'login-error', I18nManager.t('js.auth.connection_error'));
         setLoading(btn, false);
         resetTurnstile();
     }
@@ -462,7 +457,7 @@ async function handleLoginStep2(btn) {
     
     // Validar vacío y mostrar error en DIV
     if (!code) {
-        showError(btn, 'login-step2-error', I18n.t('js.auth.enter_code'));
+        showError(btn, 'login-step2-error', I18nManager.t('js.auth.enter_code'));
         input2fa.focus();
         return;
     }
@@ -473,7 +468,7 @@ async function handleLoginStep2(btn) {
     setLoading(btn, true);
 
     try {
-        const res = await ApiService.post(AuthAPI.Verify2FA, formData);
+        const res = await ApiService.post(ApiService.Routes.Auth.Verify2FA, formData);
         if (res.success) {
             window.location.href = res.redirect;
         } else {
@@ -482,7 +477,7 @@ async function handleLoginStep2(btn) {
             input2fa.focus();
         }
     } catch (e) {
-        showError(btn, 'login-step2-error', I18n.t('js.auth.connection_error'));
+        showError(btn, 'login-step2-error', I18nManager.t('js.auth.connection_error'));
         setLoading(btn, false);
     }
 }
@@ -494,8 +489,8 @@ function transitionTo2FA() {
     const stage2 = document.getElementById('login-stage-2');
     stage2.classList.remove('disabled');
 
-    document.getElementById('auth-title').innerText = I18n.t('auth.2fa.title');
-    document.getElementById('auth-subtitle').innerText = I18n.t('auth.2fa.subtitle');
+    document.getElementById('auth-title').innerText = I18nManager.t('auth.2fa.title');
+    document.getElementById('auth-subtitle').innerText = I18nManager.t('auth.2fa.subtitle');
 
     const inputCode = document.getElementById('2fa-code');
     if (inputCode) inputCode.focus();
@@ -549,7 +544,7 @@ function setLoading(btn, isLoading) {
         btn.disabled = true;
         btn.style.opacity = '0.8';
     } else {
-        btn.innerText = btn.dataset.originalText || I18n.t('js.auth.continue');
+        btn.innerText = btn.dataset.originalText || I18nManager.t('js.auth.continue');
         btn.disabled = false;
         btn.style.opacity = '1';
     }
@@ -699,8 +694,8 @@ function startRecoveryTimer(seconds) {
 
 async function checkServerTimer() {
     try {
-        // Llamamos al nuevo endpoint
-        const res = await ApiService.post(AuthAPI.GetStatus);
+        // Llamamos al nuevo endpoint usando la ruta completa
+        const res = await ApiService.post(ApiService.Routes.Auth.GetStatus);
         
         if (res.success && res.cooldown > 0) {
             // Si hay cooldown en el servidor, iniciamos el timer con ese tiempo exacto

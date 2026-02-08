@@ -4,8 +4,8 @@
  */
 
 import { ApiService } from '../../core/api-service.js';
-import { Toast } from '../../core/toast-manager.js';
-import { I18n } from '../../core/i18n-manager.js'; 
+import { ToastManager } from '../../core/toast-manager.js';
+import { I18nManager } from '../../core/i18n-manager.js'; 
 
 let _container = null;
 let _currentFiles = [];
@@ -31,7 +31,7 @@ export const FileViewerController = {
         const filesParam = urlParams.get('files');
 
         if (!filesParam) {
-            showError(I18n.t('admin.file_viewer.no_files') || 'No se especificaron archivos.');
+            showError(I18nManager.t('admin.file_viewer.no_files') || 'No se especificaron archivos.');
             return;
         }
 
@@ -86,8 +86,8 @@ function initEvents() {
             const content = _currentFiles[_activeFileIndex]?.content || '';
             if (content) {
                 navigator.clipboard.writeText(content)
-                    .then(() => Toast.show(I18n.t('js.core.copied') || 'Copiado', 'info'))
-                    .catch(() => Toast.show(I18n.t('js.core.copy_error') || 'Error al copiar', 'error'));
+                    .then(() => ToastManager.show(I18nManager.t('js.core.copied') || 'Copiado', 'info'))
+                    .catch(() => ToastManager.show(I18nManager.t('js.core.copy_error') || 'Error al copiar', 'error'));
             }
         });
     }
@@ -126,7 +126,7 @@ async function loadContent(paths) {
     } catch (e) {
         console.error(e);
         if (loader) loader.classList.add('d-none');
-        showError(I18n.t('js.core.connection_error') || 'Error de conexión.');
+        showError(I18nManager.t('js.core.connection_error') || 'Error de conexión.');
     }
 }
 
@@ -158,7 +158,7 @@ function renderTabs() {
 
         const closeBtn = document.createElement('span');
         closeBtn.className = 'material-symbols-rounded tab-close';
-        closeBtn.title = I18n.t('admin.file_viewer.close_file') || 'Cerrar archivo';
+        closeBtn.title = I18nManager.t('admin.file_viewer.close_file') || 'Cerrar archivo';
         closeBtn.textContent = 'close';
         
         // Click en el botón de cerrar
@@ -223,7 +223,7 @@ function renderActiveContent() {
         container.innerHTML = `
             <div class="state-empty" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--text-secondary);">
                 <span class="material-symbols-rounded" style="font-size: 48px; opacity: 0.5; margin-bottom: 16px;">folder_off</span>
-                <p>${I18n.t('admin.file_viewer.no_files_open') || 'No hay archivos abiertos.'}</p>
+                <p>${I18nManager.t('admin.file_viewer.no_files_open') || 'No hay archivos abiertos.'}</p>
             </div>`;
         return;
     }
@@ -234,13 +234,13 @@ function renderActiveContent() {
         const errDiv = document.createElement('div');
         errDiv.className = 'state-error';
         errDiv.style.textAlign = 'left';
-        errDiv.textContent = `${I18n.t('js.core.error') || 'Error'}: ${file.error}`;
+        errDiv.textContent = `${I18nManager.t('js.core.error') || 'Error'}: ${file.error}`;
         container.appendChild(errDiv);
         return;
     }
 
     const rawContent = file.content;
-    const warningMsg = I18n.t('admin.file_viewer.truncated', [file.size]) || `Archivo truncado (${file.size})`;
+    const warningMsg = I18nManager.t('admin.file_viewer.truncated', [file.size]) || `Archivo truncado (${file.size})`;
     
     if (file.is_truncated) {
         const warnDiv = document.createElement('div');

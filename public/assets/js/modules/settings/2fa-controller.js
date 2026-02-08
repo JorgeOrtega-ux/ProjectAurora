@@ -3,13 +3,10 @@
  */
 
 import { ApiService } from '../../core/api-service.js';
-import { Toast } from '../../core/toast-manager.js';
-import { I18n } from '../../core/i18n-manager.js';
-import { Dialog } from '../../core/dialog-manager.js';
+import { ToastManager } from '../../core/toast-manager.js';
+import { I18nManager } from '../../core/i18n-manager.js';
+import { DialogManager } from '../../core/dialog-manager.js';
 import { DialogDefinitions } from '../../core/dialog-definitions.js';
-
-// Atajo
-const SettingsAPI = ApiService.Routes.Settings;
 
 let qrCodeInstance = null;
 
@@ -37,9 +34,9 @@ export const TwoFactorController = {
                     const input = document.getElementById(targetId);
                     if (input && input.value) {
                         navigator.clipboard.writeText(input.value).then(() => {
-                            Toast.show('Copiado al portapapeles', 'info');
+                            ToastManager.show('Copiado al portapapeles', 'info');
                         }).catch(() => {
-                            Toast.show('Error al copiar', 'error');
+                            ToastManager.show('Error al copiar', 'error');
                         });
                     }
                 }
@@ -54,9 +51,8 @@ export const TwoFactorController = {
             });
         }
 
-        // --- CAMBIO: Listener global para foco automático ---
+        // Listener global para foco automático
         document.addEventListener('ui:accordion-opened', (e) => {
-            // El ID '3' corresponde al paso de validación en el HTML
             if (e.detail && e.detail.id === '3') { 
                 setTimeout(() => {
                     const input = document.getElementById('input-2fa-verify');
@@ -64,7 +60,6 @@ export const TwoFactorController = {
                 }, 200);
             }
         });
-        // ---------------------------------------------------
 
         // Verificar 2FA
         if (btnVerify) {
@@ -72,20 +67,19 @@ export const TwoFactorController = {
                 const rawCode = inputCode.value.replace(/\s/g, ''); 
                 
                 if (rawCode.length < 6) {
-                    Toast.show(I18n.t('js.2fa.fill_code'), 'warning');
+                    ToastManager.show(I18nManager.t('js.2fa.fill_code'), 'warning');
                     inputCode.focus();
                     return;
                 }
 
                 const originalText = btnVerify.innerText;
-                setLoading(btnVerify, true, I18n.t('js.2fa.verifying'));
+                setLoading(btnVerify, true, I18nManager.t('js.2fa.verifying'));
 
                 const formData = new FormData();
                 formData.append('code', rawCode);
 
                 try {
-                    // USO DE API ROUTES
-                    const res = await ApiService.post(SettingsAPI.Enable2FA, formData);
+                    const res = await ApiService.post(ApiService.Routes.Settings.Enable2FA, formData);
 
                     if (res.success) {
                         const stepQrContainer = document.getElementById('step-qr-container');
@@ -107,16 +101,16 @@ export const TwoFactorController = {
                             list.innerHTML = res.recovery_codes.map(c => `<span>${c}</span>`).join('');
                         }
                         
-                        Toast.show(I18n.t('api.2fa_enabled'), 'success');
+                        ToastManager.show(I18nManager.t('api.2fa_enabled'), 'success');
                     } else {
-                        Toast.show(res.message, 'error');
+                        ToastManager.show(res.message, 'error');
                         setLoading(btnVerify, false, originalText);
                         inputCode.value = '';
                         inputCode.focus();
                     }
                 } catch (error) {
                     console.error(error);
-                    Toast.show(I18n.t('js.2fa.error_verify'), 'error');
+                    ToastManager.show(I18nManager.t('js.2fa.error_verify'), 'error');
                     setLoading(btnVerify, false, originalText);
                 }
             });
@@ -125,27 +119,25 @@ export const TwoFactorController = {
         // DESACTIVAR 2FA
         if (btnDisable) {
             btnDisable.addEventListener('click', async () => {
-                const confirmed = await Dialog.confirm(DialogDefinitions.TwoFactor.DISABLE);
+                const confirmed = await DialogManager.confirm(DialogDefinitions.TwoFactor.DISABLE);
                 if (!confirmed) return;
 
                 const originalText = btnDisable.innerText;
-                setLoading(btnDisable, true, I18n.t('js.2fa.disabling'));
+                setLoading(btnDisable, true, I18nManager.t('js.2fa.disabling'));
 
                 const formData = new FormData();
-                // Acción automática
 
                 try {
-                    // USO DE API ROUTES
-                    const res = await ApiService.post(SettingsAPI.Disable2FA, formData);
+                    const res = await ApiService.post(ApiService.Routes.Settings.Disable2FA, formData);
                     if (res.success) {
-                        Toast.show(I18n.t('api.2fa_disabled'), 'success');
+                        ToastManager.show(I18nManager.t('api.2fa_disabled'), 'success');
                         setTimeout(() => window.location.reload(), 1000);
                     } else {
-                        Toast.show(res.message, 'error');
+                        ToastManager.show(res.message, 'error');
                         setLoading(btnDisable, false, originalText);
                     }
                 } catch (error) {
-                    Toast.show(I18n.t('js.2fa.error_connection'), 'error');
+                    ToastManager.show(I18nManager.t('js.2fa.error_connection'), 'error');
                     setLoading(btnDisable, false, originalText);
                 }
             });
@@ -156,8 +148,6 @@ export const TwoFactorController = {
         }
     }
 };
-
-// Se eliminó la función initAccordion() de aquí.
 
 async function initRecoveryLogic() {
     const countDisplay = document.getElementById('recovery-count-display');
@@ -170,8 +160,7 @@ async function initRecoveryLogic() {
     const listNewCodes = document.getElementById('new-recovery-codes-list');
 
     try {
-        // USO DE API ROUTES
-        const res = await ApiService.post(SettingsAPI.GetRecoveryStatus);
+        const res = await ApiService.post(ApiService.Routes.Settings.GetRecoveryStatus);
         if (res.success && countDisplay) {
             countDisplay.innerText = res.count;
         }
@@ -179,7 +168,7 @@ async function initRecoveryLogic() {
 
     if (btnShowRegen) {
         btnShowRegen.addEventListener('click', async () => {
-            const confirmed = await Dialog.confirm(DialogDefinitions.TwoFactor.REGENERATE);
+            const confirmed = await DialogManager.confirm(DialogDefinitions.TwoFactor.REGENERATE);
             if (!confirmed) return;
 
             areaRegen.classList.remove('disabled');
@@ -202,23 +191,22 @@ async function initRecoveryLogic() {
         btnSubmitRegen.addEventListener('click', async () => {
             const password = inputPass.value;
             if(!password) {
-                Toast.show(I18n.t('js.auth.fill_all'), 'warning');
+                ToastManager.show(I18nManager.t('js.auth.fill_all'), 'warning');
                 return;
             }
 
             const originalText = btnSubmitRegen.innerText;
-            setLoading(btnSubmitRegen, true, I18n.t('js.2fa.generating'));
+            setLoading(btnSubmitRegen, true, I18nManager.t('js.2fa.generating'));
             inputPass.disabled = true;
 
             const formData = new FormData();
             formData.append('password', password);
 
             try {
-                // USO DE API ROUTES
-                const res = await ApiService.post(SettingsAPI.RegenerateRecoveryCodes, formData);
+                const res = await ApiService.post(ApiService.Routes.Settings.RegenerateRecoveryCodes, formData);
                 
                 if (res.success) {
-                    Toast.show(I18n.t('js.2fa.codes_generated'), 'success');
+                    ToastManager.show(I18nManager.t('js.2fa.codes_generated'), 'success');
                     areaRegen.classList.remove('active');
                     areaRegen.classList.add('disabled');
                     btnShowRegen.classList.remove('disabled');
@@ -232,7 +220,7 @@ async function initRecoveryLogic() {
                     inputPass.value = '';
                     
                 } else {
-                    Toast.show(res.message, 'error');
+                    ToastManager.show(res.message, 'error');
                     setLoading(btnSubmitRegen, false, originalText);
                     inputPass.disabled = false;
                     inputPass.focus();
@@ -240,7 +228,7 @@ async function initRecoveryLogic() {
 
             } catch (error) {
                 console.error(error);
-                Toast.show(I18n.t('js.core.connection_error'), 'error');
+                ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
                 setLoading(btnSubmitRegen, false, originalText);
                 inputPass.disabled = false;
             }
@@ -250,8 +238,7 @@ async function initRecoveryLogic() {
 
 async function loadQrCode(container) {
     try {
-        // USO DE API ROUTES (Sin formData)
-        const res = await ApiService.post(SettingsAPI.Init2FA);
+        const res = await ApiService.post(ApiService.Routes.Settings.Init2FA);
 
         if (res.success && res.otpauth_url) {
             container.innerHTML = '';
@@ -293,7 +280,7 @@ async function loadQrCode(container) {
         console.error(error);
         const boxQr = container.closest('.box-qr');
         if (boxQr) boxQr.style.display = 'none';
-        Toast.show(I18n.t('js.core.connection_error'), 'error');
+        ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
     }
 }
 

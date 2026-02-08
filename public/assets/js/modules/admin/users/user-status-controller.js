@@ -3,10 +3,10 @@
  */
 
 import { ApiService } from '../../../core/api-service.js';
-import { Toast } from '../../../core/toast-manager.js';
+import { ToastManager } from '../../../core/toast-manager.js';
 import { navigateTo } from '../../../core/url-manager.js';
 import { DateTimePicker } from '../../../core/date-time-picker.js';
-import { I18n } from '../../../core/i18n-manager.js';
+import { I18nManager } from '../../../core/i18n-manager.js';
 
 let _container = null;
 let _targetUserId = null;
@@ -90,7 +90,7 @@ function loadServerData() {
             
             // Texto del label principal
             const key = `admin.user_status.status.${data.status}`;
-            const label = I18n.t(key) || data.status;
+            const label = I18nManager.t(key) || data.status;
             updateLabel('current-status-label', label);
             
             // Desplegar secciones correspondientes
@@ -103,7 +103,7 @@ function loadServerData() {
                 if (data.suspension_ends_at) {
                     // Es Temporal
                     _state.suspensionType = 'temp';
-                    updateLabel('suspension-type-label', I18n.t('admin.user_status.suspension_type.temp'));
+                    updateLabel('suspension-type-label', I18nManager.t('admin.user_status.suspension_type.temp'));
                     processSuspensionTypeChange('temp');
 
                     // Setear fecha en el calendario y calcular días
@@ -121,7 +121,7 @@ function loadServerData() {
                 } else {
                     // Es Permanente
                     _state.suspensionType = 'perm';
-                    updateLabel('suspension-type-label', I18n.t('admin.user_status.suspension_type.perm'));
+                    updateLabel('suspension-type-label', I18nManager.t('admin.user_status.suspension_type.perm'));
                     processSuspensionTypeChange('perm');
                 }
             } 
@@ -130,7 +130,7 @@ function loadServerData() {
                 populateReasons('deletion');
                 // Asumimos 'Admin' como fuente para visualización si ya está eliminado
                 _state.deletionSource = 'admin'; 
-                updateLabel('deletion-source-label', I18n.t('admin.user_status.decision.admin'));
+                updateLabel('deletion-source-label', I18nManager.t('admin.user_status.decision.admin'));
                 showSection('group-reason');
             }
 
@@ -227,9 +227,9 @@ function processMainStatusChange(status) {
     // Reset labels internos solo si el usuario está cambiando manualmente
     // (Si estamos en loadServerData, los valores se sobreescriben después)
     if (!_state.reason) { // Check simple para saber si es carga inicial o interacción
-         updateLabel('suspension-type-label', I18n.t('admin.user_status.select_type') || 'Seleccionar tipo...');
-         updateLabel('deletion-source-label', I18n.t('admin.user_status.select_source') || 'Seleccionar origen...');
-         updateLabel('reason-label', I18n.t('admin.user_status.select_reason') || 'Seleccionar razón...');
+         updateLabel('suspension-type-label', I18nManager.t('admin.user_status.select_type') || 'Seleccionar tipo...');
+         updateLabel('deletion-source-label', I18nManager.t('admin.user_status.select_source') || 'Seleccionar origen...');
+         updateLabel('reason-label', I18nManager.t('admin.user_status.select_reason') || 'Seleccionar razón...');
     }
 
     if (status === 'active') {
@@ -316,7 +316,7 @@ async function saveStatus() {
     const btn = _container.querySelector('#btn-save-status');
     btn.disabled = true;
     const originalText = btn.textContent;
-    btn.textContent = (I18n.t('js.core.saving') || 'Guardando') + '...';
+    btn.textContent = (I18nManager.t('js.core.saving') || 'Guardando') + '...';
 
     const formData = new FormData();
     formData.append('target_id', _targetUserId);
@@ -331,18 +331,18 @@ async function saveStatus() {
         const res = await ApiService.post(ApiService.Routes.Admin.UpdateStatus, formData);
         
         if (res.success) {
-            Toast.show(res.message, 'success');
+            ToastManager.show(res.message, 'success');
             setTimeout(() => {
                 navigateTo('admin/users');
             }, 1000);
         } else {
-            Toast.show(res.message, 'error');
+            ToastManager.show(res.message, 'error');
             btn.disabled = false;
             btn.textContent = originalText;
         }
     } catch (e) {
         console.error(e);
-        Toast.show(I18n.t('js.core.connection_error') || 'Error de conexión', 'error');
+        ToastManager.show(I18nManager.t('js.core.connection_error') || 'Error de conexión', 'error');
         btn.disabled = false;
         btn.textContent = originalText;
     }

@@ -3,11 +3,8 @@
  */
 
 import { ApiService } from '../../core/api-service.js';
-import { Toast } from '../../core/toast-manager.js';
-import { I18n } from '../../core/i18n-manager.js';
-
-// Atajo
-const SettingsAPI = ApiService.Routes.Settings;
+import { ToastManager } from '../../core/toast-manager.js';
+import { I18nManager } from '../../core/i18n-manager.js';
 
 export const SecurityController = {
     init: () => {
@@ -56,31 +53,30 @@ function initPasswordFlow() {
             const currentPass = currentPassInput.value;
             
             if (!currentPass) {
-                Toast.show(I18n.t('js.settings.enter_current_pass'), 'warning');
+                ToastManager.show(I18nManager.t('js.settings.enter_current_pass'), 'warning');
                 return;
             }
 
             const originalText = btn.innerText;
-            btn.innerText = I18n.t('js.settings.verifying');
+            btn.innerText = I18nManager.t('js.settings.verifying');
             btn.disabled = true;
 
             const formData = new FormData();
             formData.append('current_password', currentPass);
 
             try {
-                // USO DE API ROUTES
-                const res = await ApiService.post(SettingsAPI.ValidatePassword, formData);
+                const res = await ApiService.post(ApiService.Routes.Settings.ValidatePassword, formData);
                 if (res.success) {
                     switchState(stage1, stage2);
                     const inputNew = document.getElementById('new-password-input');
                     if(inputNew) { inputNew.value = ''; inputNew.focus(); }
                     document.getElementById('repeat-password-input').value = '';
                 } else {
-                    Toast.show(res.message, 'error');
+                    ToastManager.show(res.message, 'error');
                     currentPassInput.focus();
                 }
             } catch (err) {
-                Toast.show(I18n.t('js.settings.processing_error'), 'error');
+                ToastManager.show(I18nManager.t('js.settings.processing_error'), 'error');
             } finally {
                 btn.innerText = originalText;
                 btn.disabled = false;
@@ -92,12 +88,12 @@ function initPasswordFlow() {
             const newPass = document.getElementById('new-password-input').value;
             const repeatPass = document.getElementById('repeat-password-input').value;
 
-            if (!newPass || !repeatPass) { Toast.show(I18n.t('js.settings.fill_all'), 'warning'); return; }
-            if (newPass !== repeatPass) { Toast.show(I18n.t('js.settings.pass_mismatch'), 'error'); return; }
-            if (newPass.length < 6) { Toast.show(I18n.t('js.settings.pass_short'), 'warning'); return; }
+            if (!newPass || !repeatPass) { ToastManager.show(I18nManager.t('js.settings.fill_all'), 'warning'); return; }
+            if (newPass !== repeatPass) { ToastManager.show(I18nManager.t('js.settings.pass_mismatch'), 'error'); return; }
+            if (newPass.length < 6) { ToastManager.show(I18nManager.t('js.settings.pass_short'), 'warning'); return; }
 
             const originalText = btn.innerText;
-            btn.innerText = I18n.t('js.settings.saving');
+            btn.innerText = I18nManager.t('js.settings.saving');
             btn.disabled = true;
 
             const formData = new FormData();
@@ -105,10 +101,9 @@ function initPasswordFlow() {
             formData.append('new_password', newPass);
 
             try {
-                // USO DE API ROUTES
-                const res = await ApiService.post(SettingsAPI.ChangePassword, formData);
+                const res = await ApiService.post(ApiService.Routes.Settings.ChangePassword, formData);
                 if (res.success) {
-                    Toast.show(I18n.t('js.settings.pass_updated'), 'success');
+                    ToastManager.show(I18nManager.t('js.settings.pass_updated'), 'success');
                     
                     if(parentGroup) parentGroup.classList.remove('component-group-item--stacked');
                     [stage1, stage2].forEach(s => {
@@ -117,8 +112,8 @@ function initPasswordFlow() {
                     if(stage0) { stage0.classList.remove(disabledClass); stage0.classList.add(activeClass); }
                     container.querySelectorAll('input').forEach(i => i.value = '');
                     
-                } else { Toast.show(res.message, 'error'); }
-            } catch(err) { Toast.show(I18n.t('js.settings.processing_error'), 'error'); } 
+                } else { ToastManager.show(res.message, 'error'); }
+            } catch(err) { ToastManager.show(I18nManager.t('js.settings.processing_error'), 'error'); } 
             finally { btn.innerText = originalText; btn.disabled = false; }
         }
     });

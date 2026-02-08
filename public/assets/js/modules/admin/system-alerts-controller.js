@@ -2,10 +2,10 @@
  * public/assets/js/modules/admin/system-alerts-controller.js
  */
 import { ApiService } from '../../core/api-service.js';
-import { Toast } from '../../core/toast-manager.js';
-import { Dialog } from '../../core/dialog-manager.js';
+import { ToastManager } from '../../core/toast-manager.js';
+import { DialogManager } from '../../core/dialog-manager.js';
 import { DateTimePicker } from '../../core/date-time-picker.js';
-import { I18n } from '../../core/i18n-manager.js';
+import { I18nManager } from '../../core/i18n-manager.js';
 
 let _container = null;
 
@@ -40,21 +40,21 @@ export const SystemAlertsController = {
 
         // --- CONFIGURACIÓN UI (Textos estáticos) ---
         const configMainType = {
-            'performance': { icon: 'speed', text: I18n.t('admin.alerts.type_perf') },
-            'maintenance': { icon: 'build', text: I18n.t('admin.alerts.type_maint') },
-            'policy':      { icon: 'policy', text: I18n.t('admin.alerts.type_policy') }
+            'performance': { icon: 'speed', text: I18nManager.t('admin.alerts.type_perf') },
+            'maintenance': { icon: 'build', text: I18nManager.t('admin.alerts.type_maint') },
+            'policy':      { icon: 'policy', text: I18nManager.t('admin.alerts.type_policy') }
         };
 
         const configPerfMsg = {
-            'degradation': { icon: 'troubleshoot', text: I18n.t('admin.alerts.perf_deg'), message: I18n.t('system_alerts.performance.degradation') },
-            'latency':     { icon: 'network_check', text: I18n.t('admin.alerts.perf_lat'), message: I18n.t('system_alerts.performance.latency') },
-            'overload':    { icon: 'memory', text: I18n.t('admin.alerts.perf_over'),     message: I18n.t('system_alerts.performance.overload') }
+            'degradation': { icon: 'troubleshoot', text: I18nManager.t('admin.alerts.perf_deg'), message: I18nManager.t('system_alerts.performance.degradation') },
+            'latency':     { icon: 'network_check', text: I18nManager.t('admin.alerts.perf_lat'), message: I18nManager.t('system_alerts.performance.latency') },
+            'overload':    { icon: 'memory', text: I18nManager.t('admin.alerts.perf_over'),     message: I18nManager.t('system_alerts.performance.overload') }
         };
 
         const configPolicyDoc = {
-            'terms':   { text: I18n.t('system_alerts.policy.names.terms') },
-            'privacy': { text: I18n.t('system_alerts.policy.names.privacy') },
-            'cookies': { text: I18n.t('system_alerts.policy.names.cookies') }
+            'terms':   { text: I18nManager.t('system_alerts.policy.names.terms') },
+            'privacy': { text: I18nManager.t('system_alerts.policy.names.privacy') },
+            'cookies': { text: I18nManager.t('system_alerts.policy.names.cookies') }
         };
 
         // --- PREVIEW ---
@@ -78,24 +78,24 @@ export const SystemAlertsController = {
             
             } else if (selectedMainType === 'maintenance') {
                 if (selectedMaintType === 'scheduled') {
-                    titleEl.textContent = I18n.t('admin.alerts.mode_sched'); 
+                    titleEl.textContent = I18nManager.t('admin.alerts.mode_sched'); 
                     const startVal = _container.querySelector('[data-input="maint-start-time"]').value;
                     const duration = _container.querySelector('[data-input="maint-duration"]').value || '60';
                     const dateStr = startVal 
                         ? new Date(startVal).toLocaleString([], {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) 
                         : '--/-- --:--';
-                    msgEl.textContent = I18n.t('system_alerts.maintenance.scheduled', [dateStr, duration]);
+                    msgEl.textContent = I18nManager.t('system_alerts.maintenance.scheduled', [dateStr, duration]);
                     metaHtml = `<span class="material-symbols-rounded" style="font-size:14px">timer</span> ${duration} min`;
                 } else {
-                    titleEl.textContent = I18n.t('admin.alerts.mode_emerg');
+                    titleEl.textContent = I18nManager.t('admin.alerts.mode_emerg');
                     const timeVal = _container.querySelector('[data-input="maint-emergency-time"]').value;
                     let timeStr = '--:--';
                     if (timeVal) {
                         const d = new Date(timeVal);
                         timeStr = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                     }
-                    msgEl.textContent = I18n.t('system_alerts.maintenance.emergency', [timeStr]);
-                    metaHtml = `<span class="material-symbols-rounded" style="font-size:14px; color:var(--color-error)">warning</span> ${I18n.t('admin.alerts.forced_disconnect') || 'Desconexión Forzosa'}`;
+                    msgEl.textContent = I18nManager.t('system_alerts.maintenance.emergency', [timeStr]);
+                    metaHtml = `<span class="material-symbols-rounded" style="font-size:14px; color:var(--color-error)">warning</span> ${I18nManager.t('admin.alerts.forced_disconnect') || 'Desconexión Forzosa'}`;
                     iconEl.textContent = 'warning';
                 }
 
@@ -103,19 +103,19 @@ export const SystemAlertsController = {
                 const docName = configPolicyDoc[selectedPolicyDoc].text;
                 const link = _container.querySelector('[data-input="policy-link"]').value;
                 
-                titleEl.textContent = I18n.t('admin.alerts.legal_update') || "Actualización Legal"; 
+                titleEl.textContent = I18nManager.t('admin.alerts.legal_update') || "Actualización Legal"; 
                 iconEl.textContent = 'gavel';
 
                 if (selectedPolicyStatus === 'future') {
                     const dateVal = _container.querySelector('[data-input="policy-effective-date"]').value;
                     const dateStr = dateVal ? new Date(dateVal).toLocaleDateString() : '--/--/----';
-                    msgEl.innerHTML = I18n.t('system_alerts.policy.future', [`<b>${dateStr}</b>`, `<b>${docName}</b>`]);
+                    msgEl.innerHTML = I18nManager.t('system_alerts.policy.future', [`<b>${dateStr}</b>`, `<b>${docName}</b>`]);
                 } else {
-                    msgEl.innerHTML = I18n.t('system_alerts.policy.immediate', [`<b>${docName}</b>`]);
+                    msgEl.innerHTML = I18nManager.t('system_alerts.policy.immediate', [`<b>${docName}</b>`]);
                 }
                 
                 if (link) {
-                    metaHtml = `<span class="material-symbols-rounded" style="font-size:14px">link</span> <span style="text-decoration:underline">${I18n.t('js.core.view_more') || 'Ver más'}</span>`;
+                    metaHtml = `<span class="material-symbols-rounded" style="font-size:14px">link</span> <span style="text-decoration:underline">${I18nManager.t('js.core.view_more') || 'Ver más'}</span>`;
                 }
             }
 
@@ -187,7 +187,7 @@ export const SystemAlertsController = {
 
         setupTrigger('maint-type', 'select-maint-type', (val) => {
             selectedMaintType = val;
-            const text = (val === 'scheduled' ? I18n.t('admin.alerts.mode_sched') : I18n.t('admin.alerts.mode_emerg'));
+            const text = (val === 'scheduled' ? I18nManager.t('admin.alerts.mode_sched') : I18nManager.t('admin.alerts.mode_emerg'));
             _container.querySelector('[data-preview="text-maint"]').textContent = text;
             _container.querySelector('[data-subgroup="maint-scheduled"]').style.display = (val === 'scheduled') ? 'block' : 'none';
             _container.querySelector('[data-subgroup="maint-emergency"]').style.display = (val === 'emergency') ? 'block' : 'none';
@@ -200,7 +200,7 @@ export const SystemAlertsController = {
 
         setupTrigger('policy-status', 'select-policy-status', (val) => {
             selectedPolicyStatus = val;
-            const text = (val === 'future' ? I18n.t('admin.alerts.status_future') : I18n.t('admin.alerts.status_immediate'));
+            const text = (val === 'future' ? I18nManager.t('admin.alerts.status_future') : I18nManager.t('admin.alerts.status_immediate'));
             _container.querySelector('[data-preview="text-policy-status"]').textContent = text;
             _container.querySelector('[data-subgroup="policy-date"]').style.display = (val === 'immediate') ? 'none' : 'block';
         });
@@ -220,17 +220,17 @@ export const SystemAlertsController = {
                 if (selectedMaintType === 'scheduled') {
                     const start = _container.querySelector('[data-input="maint-start-time"]').value;
                     const duration = _container.querySelector('[data-input="maint-duration"]').value;
-                    if (!start) return { valid: false, msg: I18n.t('admin.alerts.error_start_date') || 'Debes especificar la fecha y hora de inicio.' };
-                    if (!duration || duration <= 0) return { valid: false, msg: I18n.t('admin.alerts.error_duration') || 'La duración debe ser mayor a 0 minutos.' };
+                    if (!start) return { valid: false, msg: I18nManager.t('admin.alerts.error_start_date') || 'Debes especificar la fecha y hora de inicio.' };
+                    if (!duration || duration <= 0) return { valid: false, msg: I18nManager.t('admin.alerts.error_duration') || 'La duración debe ser mayor a 0 minutos.' };
                 } else {
                     const cutoff = _container.querySelector('[data-input="maint-emergency-time"]').value;
-                    if (!cutoff) return { valid: false, msg: I18n.t('admin.alerts.error_cutoff') || 'Debes especificar la hora de la desconexión inminente.' };
+                    if (!cutoff) return { valid: false, msg: I18nManager.t('admin.alerts.error_cutoff') || 'Debes especificar la hora de la desconexión inminente.' };
                 }
             }
             if (selectedMainType === 'policy') {
                 if (selectedPolicyStatus === 'future') {
                     const date = _container.querySelector('[data-input="policy-effective-date"]').value;
-                    if (!date) return { valid: false, msg: I18n.t('admin.alerts.error_effective_date') || 'Debes indicar la fecha de entrada en vigor.' };
+                    if (!date) return { valid: false, msg: I18nManager.t('admin.alerts.error_effective_date') || 'Debes indicar la fecha de entrada en vigor.' };
                 }
             }
             return { valid: true };
@@ -238,7 +238,7 @@ export const SystemAlertsController = {
 
         // --- LÓGICA DE EMISIÓN ---
         const executeEmission = async () => {
-            Dialog.showLoading(I18n.t('admin.alerts.btn_emit') + '...');
+            DialogManager.showLoading(I18nManager.t('admin.alerts.btn_emit') + '...');
 
             let payload = { type: selectedMainType, meta: {} };
 
@@ -271,15 +271,15 @@ export const SystemAlertsController = {
                 const formData = new FormData();
                 formData.append('alert_data', JSON.stringify(payload));
                 const res = await ApiService.post(ApiService.Routes.Admin.CreateSystemAlert, formData);
-                Dialog.close();
+                DialogManager.close();
                 if (res.success) {
-                    Toast.show(I18n.t('admin.alerts.emit_success') || 'Difusión emitida correctamente', 'success');
+                    ToastManager.show(I18nManager.t('admin.alerts.emit_success') || 'Difusión emitida correctamente', 'success');
                     checkActiveAlertStatus();
                 } else {
-                    Toast.show(res.message || (I18n.t('admin.alerts.emit_error') || 'Error al emitir'), 'error');
+                    ToastManager.show(res.message || (I18nManager.t('admin.alerts.emit_error') || 'Error al emitir'), 'error');
                 }
             } catch (e) { 
-                Dialog.close();
+                DialogManager.close();
                 console.error(e); 
             }
         };
@@ -288,15 +288,15 @@ export const SystemAlertsController = {
             btnEmit.onclick = async () => {
                 const validation = validateInputs();
                 if (!validation.valid) {
-                    Dialog.alert({ title: I18n.t('js.auth.fill_all'), message: validation.msg });
+                    DialogManager.alert({ title: I18nManager.t('js.auth.fill_all'), message: validation.msg });
                     return;
                 }
                 if (isAlertActive) {
-                    const confirmed = await Dialog.confirm({
-                        title: I18n.t('admin.alerts.active_detected') || 'Alerta en curso detectada',
-                        message: I18n.t('admin.alerts.replace_confirm') || 'Ya existe una alerta transmitiéndose. ¿Deseas reemplazarla?',
-                        confirmText: I18n.t('admin.alerts.btn_replace') || 'Reemplazar',
-                        cancelText: I18n.t('js.core.cancel') || 'Cancelar'
+                    const confirmed = await DialogManager.confirm({
+                        title: I18nManager.t('admin.alerts.active_detected') || 'Alerta en curso detectada',
+                        message: I18nManager.t('admin.alerts.replace_confirm') || 'Ya existe una alerta transmitiéndose. ¿Deseas reemplazarla?',
+                        confirmText: I18nManager.t('admin.alerts.btn_replace') || 'Reemplazar',
+                        cancelText: I18nManager.t('js.core.cancel') || 'Cancelar'
                     });
                     if (confirmed) await executeEmission();
                 } else {
@@ -306,19 +306,19 @@ export const SystemAlertsController = {
         }
 
         const handleDeactivate = async () => {
-            const confirmed = await Dialog.confirm({
-                title: I18n.t('admin.alerts.btn_deactivate'),
-                message: I18n.t('admin.alerts.stop_confirm') || '¿Estás seguro de que deseas detener la alerta actual?',
+            const confirmed = await DialogManager.confirm({
+                title: I18nManager.t('admin.alerts.btn_deactivate'),
+                message: I18nManager.t('admin.alerts.stop_confirm') || '¿Estás seguro de que deseas detener la alerta actual?',
                 type: 'danger',
-                confirmText: I18n.t('admin.alerts.btn_stop') || 'Detener',
-                cancelText: I18n.t('js.core.cancel') || 'Cancelar'
+                confirmText: I18nManager.t('admin.alerts.btn_stop') || 'Detener',
+                cancelText: I18nManager.t('js.core.cancel') || 'Cancelar'
             });
 
             if (confirmed) {
                 try {
                     const res = await ApiService.post(ApiService.Routes.Admin.DeactivateSystemAlert);
                     if (res.success) {
-                        Toast.show(I18n.t('admin.alerts.system_normalized') || 'Sistema normalizado', 'success');
+                        ToastManager.show(I18nManager.t('admin.alerts.system_normalized') || 'Sistema normalizado', 'success');
                         checkActiveAlertStatus();
                     }
                 } catch (e) { console.error(e); }
@@ -329,7 +329,7 @@ export const SystemAlertsController = {
 
         if (btnRefresh) btnRefresh.onclick = () => {
              checkActiveAlertStatus();
-             Toast.show(I18n.t('admin.alerts.btn_refresh'), 'info');
+             ToastManager.show(I18nManager.t('admin.alerts.btn_refresh'), 'info');
         };
 
         // --- CHECK STATUS ---
@@ -348,7 +348,7 @@ export const SystemAlertsController = {
             const impactTime = _container.querySelector('[data-stat="last-time"]');
 
             try {
-                statText.textContent = I18n.t('js.auth.loading');
+                statText.textContent = I18nManager.t('js.auth.loading');
                 const res = await ApiService.post(ApiService.Routes.Admin.GetActiveAlert);
                 
                 if (res.stats) {
@@ -362,13 +362,13 @@ export const SystemAlertsController = {
                     const color = res.alert.severity === 'critical' ? 'var(--color-error)' : 'var(--color-warning)';
                     statIcon.textContent = 'warning';
                     statIcon.style.color = color;
-                    statText.textContent = I18n.t('admin.alerts.stat_active'); 
+                    statText.textContent = I18nManager.t('admin.alerts.stat_active'); 
                     statText.style.color = color;
                     cardStatus.style.borderLeftColor = color;
                     btnDeactivateMini.style.display = 'flex';
                     
-                    const sevCritical = I18n.t('admin.alerts.sev_critical') || 'Crítico';
-                    const sevModerate = I18n.t('admin.alerts.sev_moderate') || 'Moderado';
+                    const sevCritical = I18nManager.t('admin.alerts.sev_critical') || 'Crítico';
+                    const sevModerate = I18nManager.t('admin.alerts.sev_moderate') || 'Moderado';
                     impactVal.textContent = res.alert.severity === 'critical' ? sevCritical : sevModerate;
                     impactIcon.style.color = color;
                     impactTime.textContent = res.alert.type.toUpperCase(); 
@@ -376,16 +376,16 @@ export const SystemAlertsController = {
                     isAlertActive = false;
                     statIcon.textContent = 'check_circle';
                     statIcon.style.color = 'var(--color-success)';
-                    statText.textContent = I18n.t('admin.alerts.stat_operational'); 
+                    statText.textContent = I18nManager.t('admin.alerts.stat_operational'); 
                     statText.style.color = 'var(--text-primary)';
                     cardStatus.style.borderLeftColor = 'var(--color-success)';
                     btnDeactivateMini.style.display = 'none';
-                    impactVal.textContent = I18n.t('admin.alerts.sev_normal') || "Normal";
+                    impactVal.textContent = I18nManager.t('admin.alerts.sev_normal') || "Normal";
                     impactIcon.style.color = 'var(--text-tertiary)';
                     if (res.stats && res.stats.last_alert_time) {
-                        impactTime.textContent = (I18n.t('admin.alerts.last_alert') || "Última: ") + res.stats.last_alert_time;
+                        impactTime.textContent = (I18nManager.t('admin.alerts.last_alert') || "Última: ") + res.stats.last_alert_time;
                     } else {
-                        impactTime.textContent = I18n.t('admin.alerts.stat_none'); 
+                        impactTime.textContent = I18nManager.t('admin.alerts.stat_none'); 
                     }
                 }
             } catch (e) { console.error(e); }

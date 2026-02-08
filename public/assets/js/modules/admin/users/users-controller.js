@@ -4,8 +4,8 @@
  */
 
 import { ApiService } from '../../../core/api-service.js';
-import { Toast } from '../../../core/toast-manager.js';
-import { I18n } from '../../../core/i18n-manager.js';
+import { ToastManager } from '../../../core/toast-manager.js';
+import { I18nManager } from '../../../core/i18n-manager.js';
 import { UserDetailsController } from './user-details-controller.js'; 
 import { UserRoleController } from './user-role-controller.js'; 
 import { UserStatusController } from './user-status-controller.js';
@@ -204,7 +204,7 @@ async function loadUsers() {
     listContainer.innerHTML = `
         <div class="state-loading">
             <div class="spinner-sm"></div>
-            <p class="state-text">${I18n.t('admin.users_module.list.loading') || 'Cargando usuarios...'}</p>
+            <p class="state-text">${I18nManager.t('admin.users_module.list.loading') || 'Cargando usuarios...'}</p>
         </div>`;
 
     const formData = new FormData();
@@ -233,7 +233,7 @@ async function loadUsers() {
         }
     } catch (error) {
         console.error(error);
-        listContainer.innerHTML = `<div class="state-error">${I18n.t('js.core.connection_error') || 'Error de conexión'}</div>`;
+        listContainer.innerHTML = `<div class="state-error">${I18nManager.t('js.core.connection_error') || 'Error de conexión'}</div>`;
     }
 }
 
@@ -263,7 +263,7 @@ function renderList() {
     if (!listContainer) return;
 
     if (_usersData.length === 0) {
-        listContainer.innerHTML = `<div class="state-empty">${I18n.t('admin.users_module.list.empty') || 'No se encontraron usuarios.'}</div>`;
+        listContainer.innerHTML = `<div class="state-empty">${I18nManager.t('admin.users_module.list.empty') || 'No se encontraron usuarios.'}</div>`;
         return;
     }
 
@@ -285,7 +285,7 @@ function renderListAsGrid(users, listContainer) {
     users.forEach(user => {
         const date = new Date(user.created_at);
         const formattedDate = date.toLocaleDateString();
-        const statusLabel = I18n.t(`admin.user_status.status.${user.account_status}`) || user.account_status;
+        const statusLabel = I18nManager.t(`admin.user_status.status.${user.account_status}`) || user.account_status;
 
         // Crear Tarjeta
         const card = document.createElement('div');
@@ -314,7 +314,7 @@ function renderListAsGrid(users, listContainer) {
         const createBadge = (text, tooltipKey) => {
             const span = document.createElement('span');
             span.className = 'component-badge';
-            span.dataset.tooltip = I18n.t(tooltipKey);
+            span.dataset.tooltip = I18nManager.t(tooltipKey);
             span.textContent = text; // [SEGURIDAD] textContent evita inyección HTML
             return span;
         };
@@ -351,13 +351,13 @@ function renderListAsTable(users, listContainer) {
     const headerRow = document.createElement('tr');
     
     const headers = [
-        { width: '50px', text: I18n.t('admin.users_module.list.headers.avatar') },
-        { text: I18n.t('admin.users_module.list.headers.user') },
-        { text: I18n.t('admin.users_module.list.headers.email') },
-        { text: I18n.t('admin.users_module.list.headers.role') },
-        { text: I18n.t('admin.users_module.list.headers.status') },
-        { text: I18n.t('admin.users_module.list.headers.uuid') },
-        { text: I18n.t('admin.users_module.list.headers.created') }
+        { width: '50px', text: I18nManager.t('admin.users_module.list.headers.avatar') },
+        { text: I18nManager.t('admin.users_module.list.headers.user') },
+        { text: I18nManager.t('admin.users_module.list.headers.email') },
+        { text: I18nManager.t('admin.users_module.list.headers.role') },
+        { text: I18nManager.t('admin.users_module.list.headers.status') },
+        { text: I18nManager.t('admin.users_module.list.headers.uuid') },
+        { text: I18nManager.t('admin.users_module.list.headers.created') }
     ];
 
     headers.forEach(h => {
@@ -375,7 +375,7 @@ function renderListAsTable(users, listContainer) {
     users.forEach(user => {
         const date = new Date(user.created_at);
         const formattedDate = date.toLocaleDateString();
-        const statusLabel = I18n.t(`admin.user_status.status.${user.account_status}`) || user.account_status;
+        const statusLabel = I18nManager.t(`admin.user_status.status.${user.account_status}`) || user.account_status;
 
         const tr = document.createElement('tr');
         tr.className = 'table-row-item';
@@ -466,7 +466,7 @@ function toggleToolbarGroups(isSelectionActive) {
     const selectionIndicator = _container.querySelector('[data-element="selection-indicator"]');
 
     if (selectionIndicator) {
-        const text = (I18n.t('admin.users_module.toolbar.selected_count') || '%s seleccionados').replace('%s', '1');
+        const text = (I18nManager.t('admin.users_module.toolbar.selected_count') || '%s seleccionados').replace('%s', '1');
         selectionIndicator.textContent = text;
     }
 
@@ -512,12 +512,12 @@ function updateViewUI(btnElement) {
         if (headerCard) headerCard.classList.add('d-none');
         if (toolbarTitle) toolbarTitle.classList.remove('d-none'); 
         if (iconSpan) iconSpan.textContent = 'table_rows'; 
-        btnElement.dataset.tooltip = I18n.t('admin.users_module.toolbar.view_grid') || 'Vista en Cuadrícula';
+        btnElement.dataset.tooltip = I18nManager.t('admin.users_module.toolbar.view_grid') || 'Vista en Cuadrícula';
     } else {
         if (wrapper) wrapper.classList.remove('component-wrapper--full');
         if (headerCard) headerCard.classList.remove('d-none');
         if (toolbarTitle) toolbarTitle.classList.add('d-none'); 
         if (iconSpan) iconSpan.textContent = 'grid_view';
-        btnElement.dataset.tooltip = I18n.t('admin.users_module.toolbar.view_table') || 'Vista en Tabla';
+        btnElement.dataset.tooltip = I18nManager.t('admin.users_module.toolbar.view_table') || 'Vista en Tabla';
     }
 }

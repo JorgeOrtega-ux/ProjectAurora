@@ -3,7 +3,7 @@
  * Sistema de traducción para JavaScript (Cliente)
  */
 
-export const I18n = {
+export const I18nManager = {
     /**
      * Obtiene una traducción soportando notación de puntos (nested) y parámetros.
      * @param {string} key - La clave de traducción (ej: 'menu.home')

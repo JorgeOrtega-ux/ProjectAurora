@@ -3,8 +3,8 @@
  */
 
 import { ApiService } from '../../core/api-service.js';
-import { Toast } from '../../core/toast-manager.js';
-import { I18n } from '../../core/i18n-manager.js'; // Importación añadida
+import { ToastManager } from '../../core/toast-manager.js';
+import { I18nManager } from '../../core/i18n-manager.js'; 
 
 let _container = null;
 
@@ -67,11 +67,11 @@ async function loadStats() {
         if (res.success) {
             renderStats(res.stats);
         } else {
-            Toast.show(res.message, 'error');
+            ToastManager.show(res.message, 'error');
         }
     } catch (e) {
         console.error(e);
-        Toast.show(I18n.t('admin.dashboard.load_error') || 'Error cargando estadísticas', 'error');
+        ToastManager.show(I18nManager.t('admin.dashboard.load_error') || 'Error cargando estadísticas', 'error');
     }
 }
 
@@ -110,7 +110,7 @@ function updateTrend(key, trendData) {
     let label = `${value}%`;
 
     if (infinite) {
-        label = I18n.t('admin.dashboard.trend_new') || "Nuevo";
+        label = I18nManager.t('admin.dashboard.trend_new') || "Nuevo";
         badge.classList.add('positive');
         icon = 'keyboard_double_arrow_up';
     } else if (direction === 'up') {

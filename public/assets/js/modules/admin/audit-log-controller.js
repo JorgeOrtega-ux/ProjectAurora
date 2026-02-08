@@ -4,8 +4,8 @@
  */
 
 import { ApiService } from '../../core/api-service.js';
-import { Toast } from '../../core/toast-manager.js';
-import { I18n } from '../../core/i18n-manager.js';
+import { ToastManager } from '../../core/toast-manager.js';
+import { I18nManager } from '../../core/i18n-manager.js';
 
 let _container = null;
 let _currentPage = 1;
@@ -100,7 +100,7 @@ async function loadLogs() {
         const td = document.createElement('td');
         td.colSpan = 6;
         td.className = 'state-error';
-        td.textContent = I18n.t('js.core.connection_error');
+        td.textContent = I18nManager.t('js.core.connection_error');
         tr.appendChild(td);
         tbody.appendChild(tr);
     }
@@ -114,7 +114,7 @@ function renderTable(logs, tbody) {
         td.className = 'state-empty';
         td.style.textAlign = 'center';
         td.style.padding = '20px';
-        td.textContent = I18n.t('admin.audit.empty');
+        td.textContent = I18nManager.t('admin.audit.empty');
         tr.appendChild(td);
         tbody.appendChild(tr);
         return;
@@ -125,10 +125,10 @@ function renderTable(logs, tbody) {
         tr.className = 'table-row-item';
 
         const date = new Date(log.created_at).toLocaleDateString() + ' ' + new Date(log.created_at).toLocaleTimeString();
-        const systemName = I18n.t('admin.audit.system_actor') || 'System';
+        const systemName = I18nManager.t('admin.audit.system_actor') || 'System';
         const adminName = log.admin_name || systemName;
         const avatarSrc = log.admin_avatar_src || `https://ui-avatars.com/api/?name=${encodeURIComponent(adminName)}&background=random&color=fff&size=128`;
-        const displayAdminName = log.admin_name || I18n.t('admin.audit.system_default') || 'Sistema';
+        const displayAdminName = log.admin_name || I18nManager.t('admin.audit.system_default') || 'Sistema';
 
         // 1. Columna Avatar
         const tdAvatar = document.createElement('td');
@@ -229,7 +229,7 @@ function formatChangesSafe(changesObj) {
 
         const valSpan = document.createElement('span');
         valSpan.style.cssText = "color:var(--text-primary); word-break: break-all;";
-        valSpan.textContent = (val === null) ? (I18n.t('admin.audit.value_null') || 'NULL') : String(val);
+        valSpan.textContent = (val === null) ? (I18nManager.t('admin.audit.value_null') || 'NULL') : String(val);
 
         row.appendChild(keySpan);
         row.appendChild(valSpan);

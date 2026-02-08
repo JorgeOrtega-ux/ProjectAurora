@@ -4,10 +4,10 @@
  */
 
 import { ApiService } from '../../../core/api-service.js';
-import { Toast } from '../../../core/toast-manager.js';
+import { ToastManager } from '../../../core/toast-manager.js';
 import { navigateTo } from '../../../core/url-manager.js';
-import { Dialog } from '../../../core/dialog-manager.js';
-import { I18n } from '../../../core/i18n-manager.js'; // Importación añadida
+import { DialogManager } from '../../../core/dialog-manager.js';
+import { I18nManager } from '../../../core/i18n-manager.js';
 
 let _container = null;
 let _targetUserId = null;
@@ -27,13 +27,13 @@ export const UserDetailsController = {
                 dataScript.remove();
             } catch (e) {
                 console.error("Error al parsear datos de usuario:", e);
-                Toast.show(I18n.t('js.core.error') || 'Error de datos del servidor', 'error');
+                ToastManager.show(I18nManager.t('js.core.error') || 'Error de datos del servidor', 'error');
                 return;
             }
         }
 
         if (!_targetUserId) {
-            Toast.show(I18n.t('api.user_not_found') || 'Error: ID de usuario no encontrado', 'error');
+            ToastManager.show(I18nManager.t('api.user_not_found') || 'Error: ID de usuario no encontrado', 'error');
             goBack();
             return;
         }
@@ -109,26 +109,26 @@ async function disable2FA(e) {
     const btn = e.target;
     
     // "Desactivar 2FA?"
-    const title = I18n.t('admin.user_details.2fa_title') ? 
-                  `${I18n.t('global.disable')} ${I18n.t('admin.user_details.2fa_title')}` : 
+    const title = I18nManager.t('admin.user_details.2fa_title') ? 
+                  `${I18nManager.t('global.disable')} ${I18nManager.t('admin.user_details.2fa_title')}` : 
                   '¿Desactivar 2FA?';
 
     // "Esto reducirá la seguridad..."
-    const message = I18n.t('js.2fa.confirm_disable') || 'Esto reducirá la seguridad de la cuenta del usuario.';
+    const message = I18nManager.t('js.2fa.confirm_disable') || 'Esto reducirá la seguridad de la cuenta del usuario.';
 
-    const confirmed = await Dialog.confirm({
+    const confirmed = await DialogManager.confirm({
         title: title,
         message: message,
         type: 'danger',
-        confirmText: I18n.t('global.disable') || 'Desactivar',
-        cancelText: I18n.t('global.cancel') || 'Cancelar'
+        confirmText: I18nManager.t('global.disable') || 'Desactivar',
+        cancelText: I18nManager.t('global.cancel') || 'Cancelar'
     });
 
     if (!confirmed) return;
 
     btn.disabled = true;
     const originalText = btn.innerText;
-    btn.innerText = (I18n.t('js.core.processing') || 'Procesando') + '...';
+    btn.innerText = (I18nManager.t('js.core.processing') || 'Procesando') + '...';
 
     const formData = new FormData();
     formData.append('target_id', _targetUserId);
@@ -137,16 +137,16 @@ async function disable2FA(e) {
         const res = await ApiService.post(ApiService.Routes.Admin.Disable2FA, formData);
 
         if (res.success) {
-            Toast.show(res.message, 'success');
+            ToastManager.show(res.message, 'success');
             setTimeout(() => window.location.reload(), 1000);
         } else {
-            Toast.show(res.message, 'error');
+            ToastManager.show(res.message, 'error');
             btn.disabled = false;
             btn.innerText = originalText;
         }
     } catch (err) {
         console.error(err);
-        Toast.show(I18n.t('js.core.connection_error') || 'Error de conexión', 'error');
+        ToastManager.show(I18nManager.t('js.core.connection_error') || 'Error de conexión', 'error');
         btn.disabled = false;
         btn.innerText = originalText;
     }
@@ -203,13 +203,13 @@ function setupFieldEdit(field, sectionKey) {
             const res = await ApiService.post(ApiService.Routes.Admin.UpdateProfile, formData);
             
             if (res.success) {
-                Toast.show(res.message, 'success');
+                ToastManager.show(res.message, 'success');
                 _currentUserData[field] = newValue;
                 const display = section.querySelector('.text-display-value');
                 if(display) display.textContent = newValue;
                 closeEdit();
             } else {
-                Toast.show(res.message, 'error');
+                ToastManager.show(res.message, 'error');
             }
         });
     }
@@ -270,7 +270,7 @@ async function uploadAvatar() {
     const originalText = btnSave.dataset.originalText || btnSave.textContent;
     if (!btnSave.dataset.originalText) btnSave.dataset.originalText = originalText;
     
-    btnSave.textContent = (I18n.t('js.core.saving') || 'Guardando') + '...';
+    btnSave.textContent = (I18nManager.t('js.core.saving') || 'Guardando') + '...';
     btnSave.disabled = true; 
 
     const formData = new FormData();
@@ -281,16 +281,16 @@ async function uploadAvatar() {
         const res = await ApiService.post(ApiService.Routes.Admin.UploadAvatar, formData);
         
         if (res.success) {
-            Toast.show(res.message, 'success');
+            ToastManager.show(res.message, 'success');
             _currentUserData.avatar_src = res.new_src;
             _currentUserData.is_custom_avatar = true;
             resetAvatarState(true);
         } else {
-            Toast.show(res.message, 'error');
+            ToastManager.show(res.message, 'error');
         }
     } catch (e) {
         console.error(e);
-        Toast.show(I18n.t('js.core.connection_error') || 'Error de conexión', 'error');
+        ToastManager.show(I18nManager.t('js.core.connection_error') || 'Error de conexión', 'error');
     } finally {
         btnSave.textContent = originalText;
         btnSave.disabled = false;
@@ -300,12 +300,12 @@ async function uploadAvatar() {
 async function deleteAvatar() {
     // "¿Eliminar avatar?"
     // "Se eliminará el avatar personalizado..."
-    const confirmed = await Dialog.confirm({
-        title: I18n.t('js.profile.confirm_delete') || '¿Eliminar avatar?',
-        message: I18n.t('js.profile.pic_deleted') || 'Se eliminará el avatar personalizado y se restaurará el defecto.',
+    const confirmed = await DialogManager.confirm({
+        title: I18nManager.t('js.profile.confirm_delete') || '¿Eliminar avatar?',
+        message: I18nManager.t('js.profile.pic_deleted') || 'Se eliminará el avatar personalizado y se restaurará el defecto.',
         type: 'danger',
-        confirmText: I18n.t('js.core.delete') || 'Eliminar',
-        cancelText: I18n.t('global.cancel') || 'Cancelar'
+        confirmText: I18nManager.t('js.core.delete') || 'Eliminar',
+        cancelText: I18nManager.t('global.cancel') || 'Cancelar'
     });
 
     if (!confirmed) return;
@@ -315,12 +315,12 @@ async function deleteAvatar() {
 
     const res = await ApiService.post(ApiService.Routes.Admin.DeleteAvatar, formData);
     if (res.success) {
-        Toast.show(res.message, 'success');
+        ToastManager.show(res.message, 'success');
         _currentUserData.avatar_src = res.new_src;
         _currentUserData.is_custom_avatar = false;
         resetAvatarState(false);
     } else {
-        Toast.show(res.message, 'error');
+        ToastManager.show(res.message, 'error');
     }
 }
 
@@ -333,15 +333,15 @@ async function updatePreference(key, value) {
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.UpdatePreference, formData);
         if (res.success) {
-            Toast.show(res.message, 'success');
+            ToastManager.show(res.message, 'success');
             if(_currentUserData && _currentUserData.preferences) {
                 _currentUserData.preferences[key] = value;
             }
         } else {
-            Toast.show(res.message, 'error');
+            ToastManager.show(res.message, 'error');
         }
     } catch (error) {
         console.error(error);
-        Toast.show(I18n.t('js.core.connection_error') || 'Error de conexión', 'error');
+        ToastManager.show(I18nManager.t('js.core.connection_error') || 'Error de conexión', 'error');
     }
 }

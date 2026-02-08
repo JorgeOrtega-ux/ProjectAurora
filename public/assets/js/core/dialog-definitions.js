@@ -2,7 +2,7 @@
  * public/assets/js/core/dialog-definitions.js
  */
 
-import { I18n } from './i18n-manager.js';
+import { I18nManager } from './i18n-manager.js';
 
 // 1. PLANTILLAS HTML
 export const DialogTemplates = {
@@ -48,36 +48,34 @@ export const DialogTemplates = {
     `
 };
 
-// ... (Resto de DialogDefinitions igual que antes) ...
 export const DialogDefinitions = {
     Profile: {
         DELETE_AVATAR: {
             title: '¿Eliminar foto de perfil?',
-            get message() { return I18n.t('js.profile.confirm_delete'); },
+            get message() { return I18nManager.t('js.profile.confirm_delete'); },
             type: 'danger',
             confirmText: 'Sí, eliminar',
             cancelText: 'Cancelar'
         },
         VERIFY_EMAIL: {
-            get title() { return I18n.t('settings.profile.verify_email_title'); },
-            get message() { return I18n.t('settings.profile.verify_email_msg'); },
+            get title() { return I18nManager.t('settings.profile.verify_email_title'); },
+            get message() { return I18nManager.t('settings.profile.verify_email_msg'); },
             type: 'verify-email', 
             confirmText: 'Verificar',
             cancelText: 'Cancelar'
         }
     },
-    // ... otros ...
     Devices: {
         REVOKE_ALL: {
             title: '¿Cerrar todas las sesiones?',
-            get message() { return I18n.t('js.devices.confirm_revoke_all'); },
+            get message() { return I18nManager.t('js.devices.confirm_revoke_all'); },
             type: 'danger',
             confirmText: 'Cerrar todas',
             cancelText: 'Cancelar'
         },
         REVOKE_ONE: {
             title: '¿Cerrar sesión?',
-            get message() { return I18n.t('js.devices.confirm_revoke_one'); },
+            get message() { return I18nManager.t('js.devices.confirm_revoke_one'); },
             type: 'danger',
             confirmText: 'Cerrar sesión',
             cancelText: 'Cancelar'
@@ -86,7 +84,7 @@ export const DialogDefinitions = {
     Account: {
         DELETE: {
             title: '¿Eliminar cuenta permanentemente?',
-            get message() { return I18n.t('js.delete.confirm_final'); },
+            get message() { return I18nManager.t('js.delete.confirm_final'); },
             type: 'danger',
             confirmText: 'SÍ, ELIMINAR',
             cancelText: 'Cancelar'
@@ -95,7 +93,7 @@ export const DialogDefinitions = {
     TwoFactor: {
         DISABLE: {
             title: '¿Desactivar 2FA?',
-            get message() { return I18n.t('js.2fa.confirm_disable'); },
+            get message() { return I18nManager.t('js.2fa.confirm_disable'); },
             type: 'danger',
             confirmText: 'Desactivar',
             cancelText: 'Cancelar'

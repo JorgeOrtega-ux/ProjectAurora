@@ -3,9 +3,9 @@
  */
 
 import { ApiService } from '../../../core/api-service.js';
-import { Toast } from '../../../core/toast-manager.js';
+import { ToastManager } from '../../../core/toast-manager.js';
 import { navigateTo } from '../../../core/url-manager.js';
-import { I18n } from '../../../core/i18n-manager.js'; // Importación añadida
+import { I18nManager } from '../../../core/i18n-manager.js';
 
 let _container = null;
 let _targetUserId = null;
@@ -94,7 +94,7 @@ async function saveRole() {
     const originalText = btnSave.textContent;
     
     // "Guardando..."
-    btnSave.textContent = (I18n.t('js.core.saving') || 'Guardando') + '...';
+    btnSave.textContent = (I18nManager.t('js.core.saving') || 'Guardando') + '...';
 
     const formData = new FormData();
     formData.append('target_id', _targetUserId);
@@ -104,16 +104,16 @@ async function saveRole() {
         const res = await ApiService.post(ApiService.Routes.Admin.UpdateRole, formData);
         
         if (res.success) {
-            Toast.show(res.message, 'success');
+            ToastManager.show(res.message, 'success');
             _originalRole = _selectedRole;
             updateSaveButtonState();
         } else {
-            Toast.show(res.message, 'error');
+            ToastManager.show(res.message, 'error');
             updateSaveButtonState();
         }
     } catch (error) {
         console.error(error);
-        Toast.show(I18n.t('js.core.connection_error') || 'Error de conexión', 'error');
+        ToastManager.show(I18nManager.t('js.core.connection_error') || 'Error de conexión', 'error');
         updateSaveButtonState();
     } finally {
         btnSave.textContent = originalText;

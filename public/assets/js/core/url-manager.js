@@ -3,7 +3,7 @@
  * Gestiona la navegación SPA y la visibilidad de los menús laterales.
  */
 
-import { I18n } from './i18n-manager.js';
+import { I18nManager } from './i18n-manager.js';
 
 export function initUrlManager() {
     console.log("SPA Router: Iniciado");
@@ -94,7 +94,6 @@ async function loadContent(section) {
 
         const response = await fetch(fetchUrl);
         
-        // [CORRECCIÓN CRÍTICA]
         // Permitimos el estado 409 (Conflict) para que se renderice la UI de error del Honeypot
         if (!response.ok && response.status !== 404 && response.status !== 409) {
              throw new Error(`HTTP error! status: ${response.status}`);
@@ -110,7 +109,7 @@ async function loadContent(section) {
         
     } catch (error) {
         console.error("Error cargando sección:", error);
-        container.innerHTML = `<div style="padding: 20px;"><p>${I18n.t('js.core.loading_error')}</p></div>`;
+        container.innerHTML = `<div style="padding: 20px;"><p>${I18nManager.t('js.core.loading_error')}</p></div>`;
     }
 }
 
@@ -156,7 +155,6 @@ function updateActiveMenu(section) {
     }
 }
 
-// ESTA ES LA FUNCIÓN QUE FALTABA
 function showMenu(element) {
     if (element) {
         element.style.display = 'flex';

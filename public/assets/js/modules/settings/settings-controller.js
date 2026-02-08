@@ -3,9 +3,7 @@
  */
 
 import { ApiService } from '../../core/api-service.js';
-import { Toast } from '../../core/toast-manager.js';
-
-const SettingsAPI = ApiService.Routes.Settings;
+import { ToastManager } from '../../core/toast-manager.js';
 
 export const SettingsController = {
     init: () => {
@@ -107,13 +105,13 @@ async function savePreference(key, value) {
     formData.append('value', value);
 
     try { 
-        const res = await ApiService.post(SettingsAPI.UpdatePreference, formData); 
+        const res = await ApiService.post(ApiService.Routes.Settings.UpdatePreference, formData); 
         if (!res.success) {
-            Toast.show(res.message, 'error');
+            ToastManager.show(res.message, 'error');
         }
     } catch (error) { 
         console.error(error); 
-        Toast.show('Error de conexión', 'error');
+        ToastManager.show('Error de conexión', 'error');
     }
 }
 

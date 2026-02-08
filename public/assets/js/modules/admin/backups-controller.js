@@ -4,10 +4,10 @@
  */
 
 import { ApiService } from '../../core/api-service.js';
-import { Toast } from '../../core/toast-manager.js';
-import { Dialog } from '../../core/dialog-manager.js';
+import { ToastManager } from '../../core/toast-manager.js';
+import { DialogManager } from '../../core/dialog-manager.js';
 import { navigateTo } from '../../core/url-manager.js';
-import { I18n } from '../../core/i18n-manager.js'; 
+import { I18nManager } from '../../core/i18n-manager.js'; 
 
 let _container = null;
 let _selectedFilenames = new Set();
@@ -42,7 +42,7 @@ function onDownloadReady(e) {
     const data = e.detail.message;
     if (data && data.url) {
         triggerBrowserDownload(data.url);
-        Toast.show(I18n.t('admin.backups.download_started') || 'Descarga iniciada.', 'success');
+        ToastManager.show(I18nManager.t('admin.backups.download_started') || 'Descarga iniciada.', 'success');
         deselectAll();
     }
 }
@@ -89,7 +89,7 @@ function injectDownloadButton() {
         const btn = document.createElement('button');
         btn.className = 'header-button';
         btn.dataset.action = 'download-selected';
-        btn.dataset.tooltip = I18n.t('js.core.download') || 'Descargar';
+        btn.dataset.tooltip = I18nManager.t('js.core.download') || 'Descargar';
         
         const icon = document.createElement('span');
         icon.className = 'material-symbols-rounded';
@@ -115,7 +115,7 @@ async function loadBackups(isSilentRefresh = false) {
         listContainer.innerHTML = '';
         const loadingDiv = document.createElement('div');
         loadingDiv.className = 'state-loading';
-        loadingDiv.innerHTML = `<div class="spinner-sm"></div><p class="state-text">${I18n.t('admin.backups.list_loading') || 'Cargando copias de seguridad...'}</p>`;
+        loadingDiv.innerHTML = `<div class="spinner-sm"></div><p class="state-text">${I18nManager.t('admin.backups.list_loading') || 'Cargando copias de seguridad...'}</p>`;
         listContainer.appendChild(loadingDiv);
     }
 
@@ -148,7 +148,7 @@ async function loadBackups(isSilentRefresh = false) {
         listContainer.innerHTML = '';
         const errorDiv = document.createElement('div');
         errorDiv.className = 'state-error';
-        errorDiv.textContent = I18n.t('js.core.connection_error') || 'Error de conexión.';
+        errorDiv.textContent = I18nManager.t('js.core.connection_error') || 'Error de conexión.';
         listContainer.appendChild(errorDiv);
     }
 }
@@ -163,7 +163,7 @@ function renderList() {
         const emptyDiv = document.createElement('div');
         emptyDiv.className = 'state-empty';
         const p = document.createElement('p');
-        p.textContent = I18n.t('admin.backups.list_empty') || 'No hay copias de seguridad disponibles.';
+        p.textContent = I18nManager.t('admin.backups.list_empty') || 'No hay copias de seguridad disponibles.';
         emptyDiv.appendChild(p);
         container.appendChild(emptyDiv);
         return;
@@ -183,7 +183,7 @@ function renderList() {
 function renderListAsGrid(container) {
     _backupsData.forEach(file => {
         const isSelected = _selectedFilenames.has(file.filename);
-        let sourceLabel = (file.source === 'system') ? (I18n.t('admin.backups.source_auto') || 'Automático') : (I18n.t('admin.backups.source_manual') || 'Manual');
+        let sourceLabel = (file.source === 'system') ? (I18nManager.t('admin.backups.source_auto') || 'Automático') : (I18nManager.t('admin.backups.source_manual') || 'Manual');
         
         const card = document.createElement('div');
         card.className = `component-card ${isSelected ? 'is-selected' : ''}`;
@@ -205,7 +205,7 @@ function renderListAsGrid(container) {
         const createBadge = (text, tooltipKey, mono = false) => {
             const span = document.createElement('span');
             span.className = 'component-badge';
-            span.dataset.tooltip = I18n.t(tooltipKey);
+            span.dataset.tooltip = I18nManager.t(tooltipKey);
             if (mono) span.style.fontFamily = 'monospace';
             span.textContent = text; // [SEGURIDAD]
             return span;
@@ -238,10 +238,10 @@ function renderListAsTable(container) {
     
     const headers = [
         { w: '50px', t: '' },
-        { t: I18n.t('admin.backups.col_filename') || 'Archivo' },
-        { t: I18n.t('admin.backups.col_size') || 'Tamaño' },
-        { t: I18n.t('admin.backups.col_date') || 'Fecha' },
-        { t: I18n.t('admin.backups.col_source') || 'Origen' }
+        { t: I18nManager.t('admin.backups.col_filename') || 'Archivo' },
+        { t: I18nManager.t('admin.backups.col_size') || 'Tamaño' },
+        { t: I18nManager.t('admin.backups.col_date') || 'Fecha' },
+        { t: I18nManager.t('admin.backups.col_source') || 'Origen' }
     ];
 
     headers.forEach(h => {
@@ -258,7 +258,7 @@ function renderListAsTable(container) {
     
     _backupsData.forEach(file => {
         const isSelected = _selectedFilenames.has(file.filename);
-        let sourceLabel = (file.source === 'system') ? (I18n.t('admin.backups.source_auto') || 'Automático') : (I18n.t('admin.backups.source_manual') || 'Manual');
+        let sourceLabel = (file.source === 'system') ? (I18nManager.t('admin.backups.source_auto') || 'Automático') : (I18nManager.t('admin.backups.source_manual') || 'Manual');
 
         const tr = document.createElement('tr');
         tr.className = `table-row-item ${isSelected ? 'is-selected' : ''}`;
@@ -335,7 +335,7 @@ function updateToolbarState() {
     if (count > 0) {
         groupDefault.classList.add('d-none');
         groupActions.classList.remove('d-none');
-        indicator.textContent = `${count} ${I18n.t('admin.backups.selected_count') || 'seleccionado(s)'}`;
+        indicator.textContent = `${count} ${I18nManager.t('admin.backups.selected_count') || 'seleccionado(s)'}`;
         
         const btnRestore = groupActions.querySelector('[data-action="restore-selected"]');
         if (btnRestore) {
@@ -348,8 +348,8 @@ function updateToolbarState() {
             btnDownload.disabled = false;
             btnDownload.style.opacity = '1';
             btnDownload.dataset.tooltip = count > 1 
-                ? I18n.t('admin.backups.download_zip', [count]) || `Descargar ${count} archivos (ZIP)` 
-                : I18n.t('admin.backups.download_file') || 'Descargar archivo';
+                ? I18nManager.t('admin.backups.download_zip', [count]) || `Descargar ${count} archivos (ZIP)` 
+                : I18nManager.t('admin.backups.download_file') || 'Descargar archivo';
         }
 
     } else {
@@ -369,13 +369,13 @@ function updateViewUI(btnElement) {
         headerCard.classList.add('d-none');
         toolbarTitle.classList.remove('d-none'); 
         iconSpan.textContent = 'table_rows'; 
-        btnElement.dataset.tooltip = I18n.t('admin.backups.view_grid') || 'Vista en Cuadrícula';
+        btnElement.dataset.tooltip = I18nManager.t('admin.backups.view_grid') || 'Vista en Cuadrícula';
     } else {
         wrapper.classList.remove('component-wrapper--full');
         headerCard.classList.remove('d-none');
         toolbarTitle.classList.add('d-none'); 
         iconSpan.textContent = 'grid_view';
-        btnElement.dataset.tooltip = I18n.t('admin.backups.view_table') || 'Vista en Tabla';
+        btnElement.dataset.tooltip = I18nManager.t('admin.backups.view_table') || 'Vista en Tabla';
     }
 }
 
@@ -397,16 +397,16 @@ async function createBackup() {
         
         if (res.success) {
             if (res.queued) {
-                Toast.show(I18n.t('admin.backups.create_queued') || 'Solicitud enviada. Esperando al servidor...', 'info');
+                ToastManager.show(I18nManager.t('admin.backups.create_queued') || 'Solicitud enviada. Esperando al servidor...', 'info');
             } else {
-                Toast.show(I18n.t('admin.backups.create_success') || 'Backup creado exitosamente', 'success');
+                ToastManager.show(I18nManager.t('admin.backups.create_success') || 'Backup creado exitosamente', 'success');
                 loadBackups();
             }
         } else {
-            Toast.show(res.message, 'error');
+            ToastManager.show(res.message, 'error');
         }
     } catch(e) { 
-        Toast.show(I18n.t('admin.backups.create_error') || 'Error al solicitar backup', 'error'); 
+        ToastManager.show(I18nManager.t('admin.backups.create_error') || 'Error al solicitar backup', 'error'); 
     } finally {
         btn.disabled = false; 
         btn.innerHTML = '';
@@ -420,36 +420,36 @@ async function createBackup() {
 async function handleRestoreSelected() {
     if (_selectedFilenames.size !== 1) return;
     const filename = Array.from(_selectedFilenames)[0];
-    if (!await Dialog.confirm({ title: I18n.t('admin.backups.restore_title') || '¿Restaurar?', message: I18n.t('admin.backups.restore_message') || 'Se sobrescribirán los datos actuales con este respaldo.', type: 'danger' })) return;
-    Dialog.showLoading(I18n.t('admin.backups.restoring') || 'Restaurando...');
+    if (!await DialogManager.confirm({ title: I18nManager.t('admin.backups.restore_title') || '¿Restaurar?', message: I18nManager.t('admin.backups.restore_message') || 'Se sobrescribirán los datos actuales con este respaldo.', type: 'danger' })) return;
+    DialogManager.showLoading(I18nManager.t('admin.backups.restoring') || 'Restaurando...');
     try {
         const formData = new FormData();
         formData.append('filename', filename);
         const res = await ApiService.post(ApiService.Routes.Admin.Backups.Restore, formData); 
-        Dialog.close();
+        DialogManager.close();
         if(res.success) { 
-            Toast.show(I18n.t('admin.backups.restore_success') || 'Restaurado correctamente', 'success'); 
+            ToastManager.show(I18nManager.t('admin.backups.restore_success') || 'Restaurado correctamente', 'success'); 
             setTimeout(() => window.location.reload(), 1500); 
-        } else Toast.show(res.message, 'error');
-    } catch(e) { Dialog.close(); Toast.show('Error', 'error'); }
+        } else ToastManager.show(res.message, 'error');
+    } catch(e) { DialogManager.close(); ToastManager.show('Error', 'error'); }
 }
 
 async function handleDeleteSelected() {
     if (_selectedFilenames.size === 0) return;
-    if (!await Dialog.confirm({ title: I18n.t('admin.backups.delete_title', [_selectedFilenames.size]) || `¿Eliminar ${_selectedFilenames.size} archivos?`, message: I18n.t('admin.backups.delete_message') || 'Esta acción es irreversible.', type: 'danger' })) return;
+    if (!await DialogManager.confirm({ title: I18nManager.t('admin.backups.delete_title', [_selectedFilenames.size]) || `¿Eliminar ${_selectedFilenames.size} archivos?`, message: I18nManager.t('admin.backups.delete_message') || 'Esta acción es irreversible.', type: 'danger' })) return;
     const filesArray = Array.from(_selectedFilenames);
     const formData = new FormData();
     formData.append('filenames', filesArray.join(','));
     try {
         const res = await ApiService.post(ApiService.Routes.Admin.Backups.Delete, formData);
         if (res.success) {
-            Toast.show(res.message, 'success');
+            ToastManager.show(res.message, 'success');
             deselectAll();
             loadBackups();
         } else {
-            Toast.show(res.message, 'error');
+            ToastManager.show(res.message, 'error');
         }
-    } catch(e) { Toast.show(I18n.t('admin.backups.delete_error') || 'Error al eliminar', 'error'); }
+    } catch(e) { ToastManager.show(I18nManager.t('admin.backups.delete_error') || 'Error al eliminar', 'error'); }
 }
 
 function handleViewSelected() {
@@ -468,7 +468,7 @@ async function handleDownloadSelected() {
     const filesArray = Array.from(_selectedFilenames);
     const filesString = filesArray.join(',');
     
-    Toast.show(I18n.t('admin.backups.download_requesting') || 'Solicitando descarga...', 'info');
+    ToastManager.show(I18nManager.t('admin.backups.download_requesting') || 'Solicitando descarga...', 'info');
 
     const formData = new FormData();
     formData.append('file', filesString);
@@ -480,22 +480,22 @@ async function handleDownloadSelected() {
         
        if (res.success) {
             if (res.queued) {
-                Toast.show(res.message || 'Generando archivo ZIP en segundo plano...', 'info');
+                ToastManager.show(res.message || 'Generando archivo ZIP en segundo plano...', 'info');
             } else if (res.download_url) {
                 triggerBrowserDownload(res.download_url);
                 if (filesArray.length === 1) {
-                    Toast.show(I18n.t('admin.backups.download_started') || 'Descarga iniciada.', 'success');
+                    ToastManager.show(I18nManager.t('admin.backups.download_started') || 'Descarga iniciada.', 'success');
                 } else {
-                    Toast.show(I18n.t('admin.backups.zip_ready') || 'Archivo ZIP generado.', 'success');
+                    ToastManager.show(I18nManager.t('admin.backups.zip_ready') || 'Archivo ZIP generado.', 'success');
                 }
                 deselectAll();
             }
         } else {
-            Toast.show(res.message || (I18n.t('admin.backups.download_token_error') || 'No se pudo obtener el enlace seguro.'), 'error');
+            ToastManager.show(res.message || (I18nManager.t('admin.backups.download_token_error') || 'No se pudo obtener el enlace seguro.'), 'error');
         }
     } catch (e) {
         console.error(e);
-        Toast.show(I18n.t('admin.backups.download_conn_error') || 'Error de conexión al solicitar descarga.', 'error');
+        ToastManager.show(I18nManager.t('admin.backups.download_conn_error') || 'Error de conexión al solicitar descarga.', 'error');
     }
 }
 
