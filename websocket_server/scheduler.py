@@ -5,6 +5,8 @@ import mysql.connector
 from dotenv import load_dotenv
 import logging
 from datetime import datetime, timedelta
+import hmac
+import hashlib
 
 # Configuración
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - WORKER - %(message)s')
@@ -77,8 +79,22 @@ def check_and_run():
         if should_run:
             logging.info(f"Iniciando backup automático (Frecuencia: {frequency_hours}h)...")
             
+            # --- NUEVA LÓGICA DE SEGURIDAD (HMAC) ---
+            timestamp = str(int(time.time()))
+            
+            # Generar firma: HMAC-SHA256(Timestamp, SystemKey)
+            signature = hmac.new(
+                SYSTEM_KEY.encode('utf-8'), 
+                timestamp.encode('utf-8'), 
+                hashlib.sha256
+            ).hexdigest()
+
+            headers = {
+                'X-System-Timestamp': timestamp,
+                'X-System-Signature': signature
+            }
+            
             payload = {'route': 'system.create_backup'}
-            headers = {'X-System-Key': SYSTEM_KEY}
             
             try:
                 res = requests.post(API_URL, data=payload, headers=headers)

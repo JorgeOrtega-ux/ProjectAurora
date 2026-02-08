@@ -11,8 +11,9 @@ logs/database/*.log
 logs/security/*.log
 
 # --- ALMACENAMIENTO DE USUARIO (PÚBLICO) ---
-public/uploads/profilePicture/custom/*
-!public/uploads/profilePicture/custom/.gitkeep
+# [CAMBIO] Ignorar contenido de public/storage/profilePicture/custom/
+public/storage/profilePicture/custom/*
+!public/storage/profilePicture/custom/.gitkeep
 
 # --- RESPALDOS DE BASE DE DATOS (RAÍZ) ---
 # Ignoramos todo el contenido de backups excepto el .htaccess de seguridad

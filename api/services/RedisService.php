@@ -35,7 +35,6 @@ class RedisService {
                 ]
             ];
         } catch (Exception $e) {
-            // [CORRECCIÓN SEGURIDAD]
             Logger::app('Redis Error (getStats)', ['msg' => $e->getMessage()]);
             return ['success' => false, 'message' => 'Error de conexión con el servicio de caché (Redis).'];
         }
@@ -50,13 +49,9 @@ class RedisService {
             
             if (empty($pattern)) $pattern = '*';
 
-            // [CORRECCIÓN] Usar el iterador nativo de Predis para SCAN
-            // Esto maneja el cursor automáticamente y es seguro para producción.
-            // La ruta completa es necesaria si no usamos un 'use' arriba.
             $iterator = new \Predis\Collection\Iterator\Keyspace($this->redis, $pattern);
 
             foreach ($iterator as $key) {
-                // Obtenemos metadatos básicos para cada clave encontrada
                 $type = $this->redis->type($key);
                 $ttl = $this->redis->ttl($key);
                 
@@ -67,11 +62,9 @@ class RedisService {
                 ];
                 
                 $count++;
-                // Limitar resultados para no saturar la interfaz
                 if ($count >= $limit) break;
             }
 
-            // Ordenar alfabéticamente
             usort($foundKeys, function($a, $b) {
                 return strcmp($a['key'], $b['key']);
             });
@@ -79,7 +72,6 @@ class RedisService {
             return ['success' => true, 'keys' => $foundKeys];
 
         } catch (Exception $e) {
-            // [CORRECCIÓN SEGURIDAD]
             Logger::app('Redis Error (getKeys)', ['msg' => $e->getMessage()]);
             return ['success' => false, 'message' => 'Error de conexión con el servicio de caché (Redis).'];
         }
@@ -91,6 +83,21 @@ class RedisService {
         try {
             if (!$this->redis->exists($key)) {
                 return ['success' => false, 'message' => 'La clave no existe'];
+            }
+
+            // [SEGURIDAD] Bloqueo de lectura para claves sensibles
+            // Esto evita el secuestro de sesiones o robo de tokens si un admin es comprometido
+            if ($this->isSensitive($key)) {
+                return [
+                    'success' => true, 
+                    'data' => [
+                        'key' => $key,
+                        'type' => (string)$this->redis->type($key),
+                        'ttl' => $this->redis->ttl($key),
+                        'size' => '---', // Ocultamos el tamaño para no dar pistas
+                        'value' => '[CONTENIDO PROTEGIDO: INFORMACIÓN SENSIBLE]'
+                    ]
+                ];
             }
 
             $type = $this->redis->type($key);
@@ -134,7 +141,6 @@ class RedisService {
             ];
 
         } catch (Exception $e) {
-            // [CORRECCIÓN SEGURIDAD]
             Logger::app('Redis Error (getValue)', ['msg' => $e->getMessage()]);
             return ['success' => false, 'message' => 'Error de conexión con el servicio de caché (Redis).'];
         }
@@ -147,7 +153,6 @@ class RedisService {
             $deleted = $this->redis->del($key);
             return ['success' => $deleted > 0, 'message' => $deleted ? 'Clave eliminada' : 'Clave no encontrada'];
         } catch (Exception $e) {
-            // [CORRECCIÓN SEGURIDAD]
             Logger::app('Redis Error (deleteKey)', ['msg' => $e->getMessage()]);
             return ['success' => false, 'message' => 'Error de conexión con el servicio de caché (Redis).'];
         }
@@ -159,7 +164,6 @@ class RedisService {
             $this->redis->flushdb();
             return ['success' => true, 'message' => 'Base de datos Redis vaciada correctamente'];
         } catch (Exception $e) {
-            // [CORRECCIÓN SEGURIDAD]
             Logger::app('Redis Error (flushDB)', ['msg' => $e->getMessage()]);
             return ['success' => false, 'message' => 'Error de conexión con el servicio de caché (Redis).'];
         }
@@ -169,6 +173,29 @@ class RedisService {
         $dtF = new \DateTime('@0');
         $dtT = new \DateTime("@$seconds");
         return $dtF->diff($dtT)->format('%a días, %h horas, %i min');
+    }
+
+    /**
+     * [SEGURIDAD] Detecta patrones de claves que no deben ser legibles.
+     */
+    private function isSensitive($key) {
+        $patterns = [
+            '/^PHPREDIS_SESSION/', // Sesiones de PHP (Crítico)
+            '/session:/i',         // Convención de sesiones manuales
+            '/token:/i',           // Tokens de descarga, WS, etc.
+            '/verify:/i',          // Códigos de verificación de email/cuenta
+            '/auth:/i',            // Datos de autenticación
+            '/secret/i',           // Claves secretas
+            '/password/i',         // Contraseñas (aunque deberían estar hasheadas)
+            '/csrf/i'              // Tokens Anti-CSRF
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $key)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 ?>

@@ -60,14 +60,14 @@ class SettingsService {
         $extension = $allowedTypes[$mime];
         $newFileName = $currentUser['uuid'] . '-' . time() . '.' . $extension;
         
-        // [MODIFICADO] Guardar en carpeta PÚBLICA
-        $baseDir = __DIR__ . '/../../public/uploads/profilePicture/custom/';
+        // [MODIFICADO] Guardar en carpeta PÚBLICA (storage/custom)
+        $baseDir = __DIR__ . '/../../public/storage/profilePicture/custom/';
         
         if (!is_dir($baseDir)) mkdir($baseDir, 0755, true);
         $targetPath = $baseDir . $newFileName;
         
-        // [MODIFICADO] Ruta relativa para la BD
-        $dbPath = 'public/uploads/profilePicture/custom/' . $newFileName;
+        // [MODIFICADO] Ruta relativa para la BD (storage/custom)
+        $dbPath = 'public/storage/profilePicture/custom/' . $newFileName;
         
         $imageSaved = false;
         if (extension_loaded('gd')) {
@@ -93,7 +93,6 @@ class SettingsService {
         }
         return ['success' => false, 'message' => $this->i18n->t('api.pic_move_error')];
     }
-
     public function deleteAvatar() {
         $stmt = $this->pdo->prepare("SELECT avatar_path, username, uuid FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
@@ -105,8 +104,8 @@ class SettingsService {
 
         $newFileName = $uuid . '-' . time() . '.png';
         
-        // [MODIFICADO] Ruta pública para avatares por defecto
-        $dbPath = 'public/uploads/profilePicture/default/' . $newFileName;
+        // [MODIFICADO] Ruta pública para avatares por defecto (storage/default)
+        $dbPath = 'public/storage/profilePicture/default/' . $newFileName;
         $absolutePath = __DIR__ . '/../../' . $dbPath;
 
         if (Utils::generateDefaultProfilePicture($username, $absolutePath)) {

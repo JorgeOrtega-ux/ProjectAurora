@@ -278,7 +278,7 @@ class AuthService {
         }
     }
 
-    public function completeRegister($code) {
+   public function completeRegister($code) {
         $configCheck = $this->checkRegistrationStatus();
         if (!$configCheck['success']) return $configCheck;
 
@@ -321,8 +321,9 @@ class AuthService {
         $uuid = Utils::generateUUID();
 
         $fileName = $uuid . '.png';
-        // [MODIFICADO] Ruta pública para avatares por defecto
-        $dbPath = 'public/uploads/profilePicture/default/' . $fileName;
+        
+        // [MODIFICADO] Ruta corregida a 'storage'
+        $dbPath = 'public/storage/profilePicture/default/' . $fileName;
         $absolutePath = __DIR__ . '/../../' . $dbPath;
 
         // [REFACTOR] Usando Utils
