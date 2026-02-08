@@ -1,7 +1,10 @@
 # storage/.htaccess
 
-# 1. [CRÍTICO] Deshabilitar el motor de PHP
-# Esto evita que CUALQUIER archivo se ejecute como script, sin importar su extensión
+# --- BLOQUEO TOTAL ---
+# Esta carpeta ahora solo contiene Backups y Logs.
+# Nada aquí debe ser accesible desde el navegador.
+
+# 1. Deshabilitar motor PHP (Defensa en profundidad)
 <IfModule mod_php.c>
     php_flag engine off
 </IfModule>
@@ -12,20 +15,8 @@
     php_flag engine off
 </IfModule>
 
-# 2. Deshabilitar listado de directorio
+# 2. Deshabilitar listados y ejecución CGI
 Options -Indexes -ExecCGI
 
-# 3. LISTA BLANCA (WHITELIST)
-# Bloquear todo por defecto
+# 3. DENEGAR TODO EL ACCESO HTTP
 Require all denied
-
-# Permitir solo acceso a imágenes legítimas
-<FilesMatch "(?i)\.(png|jpg|jpeg|gif|webp|svg)$">
-    Require all granted
-</FilesMatch>
-
-# 4. Seguridad adicional contra dobles extensiones (ej: shell.php.jpg)
-# Si el nombre contiene .php en cualquier parte, bloquearlo aunque termine en .jpg
-<FilesMatch "(?i)\.php">
-    Require all denied
-</FilesMatch>

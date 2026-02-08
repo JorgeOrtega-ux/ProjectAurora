@@ -59,10 +59,16 @@ class SettingsService {
         $oldPath = $currentUser['avatar_path'];
         $extension = $allowedTypes[$mime];
         $newFileName = $currentUser['uuid'] . '-' . time() . '.' . $extension;
-        $baseDir = __DIR__ . '/../../storage/profilePicture/custom/';
+        
+        // [MODIFICADO] Guardar en carpeta PÚBLICA
+        $baseDir = __DIR__ . '/../../public/uploads/profilePicture/custom/';
+        
         if (!is_dir($baseDir)) mkdir($baseDir, 0755, true);
         $targetPath = $baseDir . $newFileName;
-        $dbPath = 'storage/profilePicture/custom/' . $newFileName;
+        
+        // [MODIFICADO] Ruta relativa para la BD
+        $dbPath = 'public/uploads/profilePicture/custom/' . $newFileName;
+        
         $imageSaved = false;
         if (extension_loaded('gd')) {
             switch ($mime) {
@@ -98,7 +104,9 @@ class SettingsService {
         $uuid = $currentUser['uuid']; 
 
         $newFileName = $uuid . '-' . time() . '.png';
-        $dbPath = 'storage/profilePicture/default/' . $newFileName;
+        
+        // [MODIFICADO] Ruta pública para avatares por defecto
+        $dbPath = 'public/uploads/profilePicture/default/' . $newFileName;
         $absolutePath = __DIR__ . '/../../' . $dbPath;
 
         if (Utils::generateDefaultProfilePicture($username, $absolutePath)) {

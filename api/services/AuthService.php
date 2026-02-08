@@ -61,7 +61,7 @@ class AuthService {
         // [HONEYPOT CHECK] 
         // Si el campo invisible 'website_url' (que los humanos no ven) tiene datos, es un bot.
         // Accedemos directo a POST para no romper la firma del método si el handler no se actualiza.
- if (!empty($_POST['website_url'])) {
+        if (!empty($_POST['website_url'])) {
             
             // [NUEVO] ¡IMPORTANTE! 
             // Destruimos cualquier intento de registro previo para asegurar 
@@ -321,7 +321,8 @@ class AuthService {
         $uuid = Utils::generateUUID();
 
         $fileName = $uuid . '.png';
-        $dbPath = 'storage/profilePicture/default/' . $fileName;
+        // [MODIFICADO] Ruta pública para avatares por defecto
+        $dbPath = 'public/uploads/profilePicture/default/' . $fileName;
         $absolutePath = __DIR__ . '/../../' . $dbPath;
 
         // [REFACTOR] Usando Utils
