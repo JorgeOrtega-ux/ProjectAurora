@@ -132,13 +132,15 @@ class AdminService {
 
         $targetLevel = $this->getRoleLevel($targetRole);
 
-        // REGLA 1: Auto-modificación permitida
-        if ($this->requestingUserId == $targetUserId) {
+        // REGLA 1: Jerarquía Estricta (Solicitante > Objetivo)
+        if ($myLevel > $targetLevel) {
             return ['allowed' => true, 'role' => $targetRole];
         }
 
-        // REGLA 2: Jerarquía Estricta (Solicitante > Objetivo)
-        if ($myLevel > $targetLevel) {
+        // REGLA 2: Auto-modificación (Limitada posteriormente por lógica de negocio)
+        // Se permite pasar el check inicial, pero los métodos individuales (rol, 2fa, status) 
+        // tienen bloqueos específicos "HARD FAIL" para evitar acciones destructivas.
+        if ($this->requestingUserId == $targetUserId) {
             return ['allowed' => true, 'role' => $targetRole];
         }
 
@@ -170,6 +172,23 @@ class AdminService {
             $this->requesterRoleCache = $stmt->fetchColumn();
         }
         return $this->requesterRoleCache;
+    }
+
+    // [NUEVO] Helper para determinar si se debe ocultar el correo
+    private function shouldHideEmail($targetRole) {
+        $requesterRole = $this->getRequesterRole();
+        
+        // El Founder ve todo
+        if ($requesterRole === 'founder') {
+            return false;
+        }
+
+        // Si el objetivo es Admin o Founder, y el que pide NO es Founder (es Admin/Mod), se oculta.
+        if ($targetRole === 'founder' || $targetRole === 'administrator') {
+            return true;
+        }
+
+        return false;
     }
 
     // ===============================================================================================
@@ -474,6 +493,11 @@ class AdminService {
 
             $formattedUsers = [];
             foreach ($users as $user) {
+                // [MODIFICADO] Protección de correo
+                if ($this->shouldHideEmail($user['role'])) {
+                    $user['email'] = $this->i18n->t('admin.email_protected') ?: 'Correo Protegido';
+                }
+
                 $user['avatar_src'] = $this->resolveAvatarSrcPath($user['avatar_path'], $user['username']);
                 $formattedUsers[] = $user;
             }
@@ -511,6 +535,11 @@ class AdminService {
 
             if (!$user) return ['success' => false, 'message' => $this->i18n->t('api.id_invalid')];
 
+            // [MODIFICADO] Protección de correo
+            if ($this->shouldHideEmail($user['role'])) {
+                $user['email'] = $this->i18n->t('admin.email_protected') ?: 'Correo Protegido';
+            }
+
             $response = [
                 'id' => $user['id'],
                 'uuid' => $user['uuid'],
@@ -541,6 +570,11 @@ class AdminService {
     public function updateUserProfile($targetId, $field, $value) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
         
+        // [FIX] Bloquear auto-edición insegura
+        if ($targetId == $this->requestingUserId) {
+            return ['success' => false, 'message' => 'Para editar tu propio perfil, ve a "Tu Perfil".'];
+        }
+
         $permCheck = $this->checkHierarchicalPermission($targetId);
         if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
 
@@ -582,6 +616,11 @@ class AdminService {
     public function updateUserRole($targetId, $newRole) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
+        // [FIX] Bloquear auto-democión
+        if ($targetId == $this->requestingUserId) {
+            return ['success' => false, 'message' => 'No puedes cambiar tu propio rol. Contacta a otro administrador.'];
+        }
+
         $permCheck = $this->checkHierarchicalPermission($targetId);
         if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
 
@@ -621,6 +660,11 @@ class AdminService {
 
     public function disableUser2FA($targetId) {
         if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+
+        // [FIX] Bloquear desactivación propia de 2FA insegura
+        if ($targetId == $this->requestingUserId) {
+            return ['success' => false, 'message' => 'Por seguridad, usa la sección "Seguridad" en tu configuración para gestionar tu 2FA.'];
+        }
 
         $permCheck = $this->checkHierarchicalPermission($targetId);
         if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
@@ -801,6 +845,11 @@ class AdminService {
         $suspensionType = $statusData['suspension_type'] ?? null; 
         $durationDays = $statusData['duration_days'] ?? 0;
         $deletionSource = $statusData['deletion_source'] ?? null;
+
+        // [FIX] Bloquear auto-sanción
+        if ($targetId == $this->requestingUserId && ($newStatus === 'suspended' || $newStatus === 'deleted')) {
+            return ['success' => false, 'message' => 'No puedes suspender o eliminar tu propia cuenta.'];
+        }
 
         if (!in_array($newStatus, ['active', 'suspended', 'deleted'])) {
             return ['success' => false, 'message' => 'Estado inválido'];

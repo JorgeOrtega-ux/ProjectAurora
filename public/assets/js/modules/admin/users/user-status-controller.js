@@ -17,7 +17,8 @@ let _state = {
     suspensionType: null, 
     durationDays: null,   
     deletionSource: null, 
-    reason: null          
+    reasonValue: null, // Guarda el ID (ej: 'spam', 'other')
+    reasonLabel: null  // Guarda el texto visible (ej: 'Comportamiento sospechoso')
 };
 
 export const UserStatusController = {
@@ -30,10 +31,7 @@ export const UserStatusController = {
         _state = {};
         _dateTimePicker = null;
         
-        // 1. Primero inicializamos eventos y componentes (Calendario)
         initEvents();
-
-        // 2. Luego cargamos y rellenamos la información
         loadServerData();
     }
 };
@@ -48,7 +46,14 @@ function initEvents() {
     document.removeEventListener('ui:dropdown-selected', handleDropdownSelection);
     document.addEventListener('ui:dropdown-selected', handleDropdownSelection);
     
-    // Inicializar el calendario
+    // Listener para el Text Area manual (activar botón guardar al escribir)
+    const manualInput = document.getElementById('manual-reason-input');
+    if (manualInput) {
+        manualInput.addEventListener('input', () => {
+            if (_state.reasonValue === 'other') toggleSaveButton(true);
+        });
+    }
+
     if (document.getElementById('suspension-picker-wrapper')) {
         _dateTimePicker = new DateTimePicker('#suspension-picker-wrapper', '#suspension-date-input', {
             enableTime: false,
@@ -61,7 +66,6 @@ function initEvents() {
             }
         });
 
-        // Escuchar cambios manuales en el input hidden (por si se setea vía JS)
         const hiddenInput = document.getElementById('suspension-date-input');
         if (hiddenInput) {
             hiddenInput.addEventListener('input', (e) => {
@@ -84,61 +88,56 @@ function loadServerData() {
     try {
         const data = JSON.parse(dataScript.textContent);
         
-        // 1. Restaurar Estado Principal
         if (data.status) {
             _state.status = data.status;
             
-            // Texto del label principal
             const key = `admin.user_status.status.${data.status}`;
             const label = I18nManager.t(key) || data.status;
             updateLabel('current-status-label', label);
             
-            // Desplegar secciones correspondientes
+            syncDropdownVisuals('status', data.status);
             processMainStatusChange(data.status);
             
-            // 2. Lógica Específica para SUSPENDIDO
             if (data.status === 'suspended') {
                 populateReasons('suspension');
 
                 if (data.suspension_ends_at) {
-                    // Es Temporal
                     _state.suspensionType = 'temp';
                     updateLabel('suspension-type-label', I18nManager.t('admin.user_status.suspension_type.temp'));
                     processSuspensionTypeChange('temp');
+                    syncDropdownVisuals('suspension_type', 'temp'); 
 
-                    // Setear fecha en el calendario y calcular días
                     if (_dateTimePicker) {
                         const endDate = new Date(data.suspension_ends_at);
-                        // Ajustamos el input, esto disparará la lógica visual
                         const isoDate = endDate.toISOString().split('T')[0];
                         
-                        // Forzamos actualización visual del componente
                         const input = document.getElementById('suspension-date-input');
                         if (input) input.value = isoDate;
                         
                         handleDateSelection(endDate, isoDate);
                     }
                 } else {
-                    // Es Permanente
                     _state.suspensionType = 'perm';
                     updateLabel('suspension-type-label', I18nManager.t('admin.user_status.suspension_type.perm'));
                     processSuspensionTypeChange('perm');
+                    syncDropdownVisuals('suspension_type', 'perm'); 
                 }
             } 
-            // 3. Lógica Específica para ELIMINADO
             else if (data.status === 'deleted') {
                 populateReasons('deletion');
-                // Asumimos 'Admin' como fuente para visualización si ya está eliminado
                 _state.deletionSource = 'admin'; 
                 updateLabel('deletion-source-label', I18nManager.t('admin.user_status.decision.admin'));
+                syncDropdownVisuals('deletion_source', 'admin'); 
                 showSection('group-reason');
             }
 
-            // 4. Restaurar Razón
             if (data.reason) {
-                _state.reason = data.reason;
+                // Al cargar datos existentes, no podemos saber el código original si no se guardó.
+                // Asumimos que es texto plano. Lo mostramos como label y no marcamos 'other' 
+                // a menos que quieras lógica compleja de matching inverso.
+                // Por simplicidad, solo mostramos el texto en el selector.
+                _state.reasonLabel = data.reason;
                 updateLabel('reason-label', data.reason);
-                // Si todo está cargado, habilitamos guardar
                 toggleSaveButton(true);
             }
         }
@@ -150,6 +149,20 @@ function loadServerData() {
     }
 }
 
+function syncDropdownVisuals(type, value) {
+    if (!_container) return;
+    const options = _container.querySelectorAll(`.menu-link[data-type="${type}"]`);
+    options.forEach(opt => {
+        const optValue = opt.dataset.value;
+        const optLabel = opt.dataset.label;
+        if (optValue === value || optLabel === value) {
+            opt.classList.add('active');
+        } else {
+            opt.classList.remove('active');
+        }
+    });
+}
+
 function handleDateSelection(date, dateStr) {
     const today = new Date();
     today.setHours(0,0,0,0); 
@@ -158,7 +171,6 @@ function handleDateSelection(date, dateStr) {
     const diffTime = date.getTime() - today.getTime();
     let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    // Si es una fecha pasada o hoy, mínimo 1 día para lógica visual
     if (diffDays < 1) diffDays = 0; 
 
     _state.durationDays = diffDays;
@@ -175,8 +187,9 @@ function handleDateSelection(date, dateStr) {
     showSection('group-reason');
     populateReasons('suspension');
     
-    // Si ya hay razón seleccionada (al cargar datos), habilitar guardar
-    if (_state.reason) toggleSaveButton(true);
+    if (_state.reasonLabel) {
+        toggleSaveButton(true);
+    }
 }
 
 function toggleSaveButton(enable) {
@@ -209,28 +222,44 @@ function handleDropdownSelection(e) {
     }
 
     if (type === 'reason') {
-        _state.reason = label;
+        _state.reasonValue = value; // Código (ej: 'other')
+        _state.reasonLabel = label; // Texto (ej: 'Otro')
+        
         updateLabel('reason-label', label);
-        toggleSaveButton(true);
+        
+        // [MODIFICADO] Lógica para mostrar/ocultar Text Area
+        if (value === 'other') {
+            showSection('group-reason-manual');
+            const manualInput = document.getElementById('manual-reason-input');
+            if(manualInput) setTimeout(() => manualInput.focus(), 100);
+            
+            // Validar si el textarea está vacío para deshabilitar botón
+            const manualText = manualInput ? manualInput.value.trim() : '';
+            toggleSaveButton(manualText.length > 0);
+        } else {
+            hideSection('group-reason-manual');
+            toggleSaveButton(true);
+        }
     }
 }
 
 function processMainStatusChange(status) {
-    // Reset visual
     hideSection('group-suspension-type');
     hideSection('group-suspension-days');
     hideSection('group-deletion-source');
     hideSection('group-reason');
+    hideSection('group-reason-manual'); // Resetear manual también
     
     toggleSaveButton(false); 
 
-    // Reset labels internos solo si el usuario está cambiando manualmente
-    // (Si estamos en loadServerData, los valores se sobreescriben después)
-    if (!_state.reason) { // Check simple para saber si es carga inicial o interacción
-         updateLabel('suspension-type-label', I18nManager.t('admin.user_status.select_type') || 'Seleccionar tipo...');
-         updateLabel('deletion-source-label', I18nManager.t('admin.user_status.select_source') || 'Seleccionar origen...');
-         updateLabel('reason-label', I18nManager.t('admin.user_status.select_reason') || 'Seleccionar razón...');
-    }
+    // Resetear estados de razón
+    _state.reasonValue = null;
+    _state.reasonLabel = null;
+    updateLabel('reason-label', I18nManager.t('admin.user_status.select_reason') || 'Seleccionar razón...');
+
+    // Labels iniciales para otros dropdowns
+    updateLabel('suspension-type-label', I18nManager.t('admin.user_status.select_type') || 'Seleccionar tipo...');
+    updateLabel('deletion-source-label', I18nManager.t('admin.user_status.select_source') || 'Seleccionar origen...');
 
     if (status === 'active') {
         toggleSaveButton(true);
@@ -246,18 +275,21 @@ function processMainStatusChange(status) {
 function processSuspensionTypeChange(type) {
     hideSection('group-suspension-days');
     hideSection('group-reason');
+    hideSection('group-reason-manual');
     
-    // Si estamos cambiando tipo manualmente, deshabilitar guardar hasta completar flujo
-    if (!_state.reason) toggleSaveButton(false);
+    // Resetear razón si cambia el tipo
+    _state.reasonValue = null;
+    _state.reasonLabel = null;
+    updateLabel('reason-label', I18nManager.t('admin.user_status.select_reason') || 'Seleccionar razón...');
+    
+    toggleSaveButton(false);
     
     if (type === 'temp') {
         showSection('group-suspension-days');
-        // Si ya había fecha cargada, mostrar razón también
         if (_state.durationDays !== null && _state.durationDays !== undefined) {
              showSection('group-reason');
         }
     } else {
-        // Permanente
         showSection('group-reason');
         populateReasons('suspension');
     }
@@ -282,30 +314,33 @@ function populateReasons(context) {
     const list = document.getElementById('reason-list-container');
     if (!list) return;
 
+    // [MODIFICADO] Uso de claves de traducción
     let reasons = [];
+    
     if (context === 'suspension') {
         reasons = [
-            'Violación de Términos de Servicio',
-            'Comportamiento sospechoso (Spam)',
-            'Reportes de otros usuarios',
-            'Falta de verificación de identidad',
-            'Otro (Especificar en notas)'
+            { id: 'terms', label: I18nManager.t('admin.user_status.reasons.terms') || 'Violación de Términos' },
+            { id: 'spam', label: I18nManager.t('admin.user_status.reasons.spam') || 'Comportamiento sospechoso (Spam)' },
+            { id: 'reports', label: I18nManager.t('admin.user_status.reasons.reports') || 'Reportes de usuarios' },
+            { id: 'other', label: I18nManager.t('admin.user_status.reasons.other') || 'Otro (Especificar)' }
         ];
     } else if (context === 'deletion') {
         reasons = [
-            'Solicitud via Soporte',
-            'Cuenta inactiva por largo periodo',
-            'Usuario duplicado',
-            'Incumplimiento grave de normas',
-            'Otro'
+            { id: 'support_req', label: I18nManager.t('admin.user_status.reasons.support_req') || 'Solicitud via Soporte' },
+            { id: 'inactive', label: I18nManager.t('admin.user_status.reasons.inactive') || 'Cuenta inactiva' },
+            { id: 'duplicate', label: I18nManager.t('admin.user_status.reasons.duplicate') || 'Usuario duplicado' },
+            { id: 'rules', label: I18nManager.t('admin.user_status.reasons.rules') || 'Incumplimiento grave' },
+            { id: 'other', label: I18nManager.t('admin.user_status.reasons.other') || 'Otro (Especificar)' }
         ];
     }
 
     let html = '';
-    reasons.forEach(r => {
+    reasons.forEach(item => {
+        const isActive = (_state.reasonValue === item.id) ? 'active' : '';
         html += `
-            <div class="menu-link" data-action="select-option" data-type="reason" data-value="${r}" data-label="${r}">
-                <div class="menu-link-text">${r}</div>
+            <div class="menu-link ${isActive}" data-action="select-option" data-type="reason" data-value="${item.id}" data-label="${item.label}">
+                <div class="menu-link-icon"><span class="material-symbols-rounded">flag</span></div>
+                <div class="menu-link-text">${item.label}</div>
             </div>
         `;
     });
@@ -322,7 +357,24 @@ async function saveStatus() {
     formData.append('target_id', _targetUserId);
     formData.append('status', _state.status);
     
-    if (_state.reason) formData.append('reason', _state.reason);
+    // [MODIFICADO] Lógica de envío de Razón
+    let finalReason = _state.reasonLabel;
+    
+    if (_state.reasonValue === 'other') {
+        const manualInput = document.getElementById('manual-reason-input');
+        finalReason = manualInput ? manualInput.value.trim() : '';
+        
+        if (!finalReason) {
+            ToastManager.show(I18nManager.t('admin.user_status.error_reason_empty') || 'Debes especificar una razón.', 'warning');
+            btn.disabled = false;
+            btn.textContent = originalText;
+            if(manualInput) manualInput.focus();
+            return;
+        }
+    }
+    
+    if (finalReason) formData.append('reason', finalReason);
+    
     if (_state.suspensionType) formData.append('suspension_type', _state.suspensionType);
     if (_state.durationDays) formData.append('duration_days', _state.durationDays);
     if (_state.deletionSource) formData.append('deletion_source', _state.deletionSource);

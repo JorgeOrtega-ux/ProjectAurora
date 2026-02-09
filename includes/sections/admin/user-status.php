@@ -120,7 +120,7 @@ $suspensionData = [
                                 <div class="menu-link-text"><?php echo $i18n->t('admin.user_status.suspension_type.temp'); ?></div>
                             </div>
                             <div class="menu-link" data-action="select-option" data-type="suspension_type" data-value="perm" data-label="<?php echo $i18n->t('admin.user_status.suspension_type.perm'); ?>">
-                                <div class="menu-link-icon"><span class="material-symbols-rounded">lock_forever</span></div>
+                                <div class="menu-link-icon"><span class="material-symbols-rounded">block</span></div>
                                 <div class="menu-link-text"><?php echo $i18n->t('admin.user_status.suspension_type.perm'); ?></div>
                             </div>
                         </div>
@@ -141,11 +141,12 @@ $suspensionData = [
             <div class="component-card__actions">
                 <div class="component-datepicker-wrapper" id="suspension-picker-wrapper" style="position: relative;">
                     <input type="hidden" id="suspension-date-input" name="suspension_ends_at">
-                    
-                    <div class="trigger-selector" style="cursor: pointer;">
-                        <span class="material-symbols-rounded trigger-select-icon">calendar_month</span>
-                        <span class="trigger-select-text" id="suspension-date-label"><?php echo $i18n->t('admin.user_status.select_date'); ?></span>
-                        <span class="material-symbols-rounded" style="font-size: 18px;">edit_calendar</span>
+                    <div class="trigger-select-wrapper">
+                        <div class="trigger-selector" style="cursor: pointer;">
+                            <span class="material-symbols-rounded trigger-select-icon">calendar_month</span>
+                            <span class="trigger-select-text" id="suspension-date-label"><?php echo $i18n->t('admin.user_status.select_date'); ?></span>
+                            <span class="material-symbols-rounded" style="font-size: 18px;">edit_calendar</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -209,6 +210,24 @@ $suspensionData = [
                             <div class="menu-list menu-list--scrollable overflow-y" id="reason-list-container">
                                 </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="component-card component-card--grouped mt-4 d-none" id="group-reason-manual">
+        <div class="component-group-item component-group-item--stacked">
+            <div class="component-card__content w-100">
+                <div class="component-card__text w-100">
+                    <h2 class="component-card__title"><?php echo $i18n->t('admin.user_status.reason_manual.title'); ?></h2>
+                    <p class="component-card__description"><?php echo $i18n->t('admin.user_status.reason_manual.desc'); ?></p>
+                    
+                    <div class="component-input-wrapper mt-16">
+                        <textarea class="component-text-input" 
+                                  id="manual-reason-input" 
+                                  style="height: 100px; resize: none; padding-top: 12px; line-height: 1.5;" 
+                                  placeholder="<?php echo $i18n->t('admin.user_status.reason_manual.placeholder'); ?>"></textarea>
                     </div>
                 </div>
             </div>

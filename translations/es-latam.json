@@ -214,6 +214,7 @@
             "select_date": "Seleccionar fecha...",
             "select_source": "Seleccionar origen...",
             "select_reason": "Seleccionar razón...",
+            "error_reason_empty": "Debes especificar una razón.",
             "account_status": {
                 "title": "Estado de cuenta",
                 "desc": "Define si el usuario está activo, suspendido o eliminado."
@@ -242,6 +243,21 @@
             "reason": {
                 "title": "Razón",
                 "desc": "Motivo del cambio de estado."
+            },
+            "reasons": {
+                "terms": "Violación de Términos de Servicio",
+                "spam": "Comportamiento sospechoso (Spam)",
+                "reports": "Reportes de otros usuarios",
+                "other": "Otro (Especificar)",
+                "support_req": "Solicitud via Soporte",
+                "inactive": "Cuenta inactiva por largo periodo",
+                "duplicate": "Usuario duplicado",
+                "rules": "Incumplimiento grave de normas"
+            },
+            "reason_manual": {
+                "title": "Especificar Razón",
+                "desc": "Escribe el motivo detallado para este cambio de estado.",
+                "placeholder": "Escribe aquí la razón..."
             }
         },
         "user_role": {
