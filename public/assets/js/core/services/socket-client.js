@@ -3,8 +3,8 @@
  */
 
 import { ApiService } from './api-service.js';
-import { I18nManager } from './i18n-manager.js';
-import { ToastManager } from './toast-manager.js';
+import { I18nManager } from '../i18n-manager.js';
+import { ToastManager } from '../toast-manager.js';
 
 export const SocketClient = {
     socket: null,
