@@ -25,9 +25,23 @@ export const TwoFactorController = {
             loadQrCode(qrContainer);
         }
 
+        // Listener global para el área de contenido (Chips y Inputs de copia)
         const contentArea = document.getElementById('2fa-content-area');
         if (contentArea) {
             contentArea.addEventListener('click', (e) => {
+                // [NUEVO] Acción para copiar CHIPS (Códigos de recuperación)
+                const chip = e.target.closest('[data-action="copy-code"]');
+                if (chip) {
+                    const code = chip.dataset.value;
+                    if (code) {
+                        navigator.clipboard.writeText(code).then(() => {
+                            ToastManager.show('Código copiado', 'info');
+                        }).catch(() => ToastManager.show('Error al copiar', 'error'));
+                    }
+                    return;
+                }
+
+                // Acción legacy para copiar Inputs (Secret Key)
                 const btnCopy = e.target.closest('[data-action="copy-input"]');
                 if (btnCopy) {
                     const targetId = btnCopy.dataset.target;
@@ -35,9 +49,7 @@ export const TwoFactorController = {
                     if (input && input.value) {
                         navigator.clipboard.writeText(input.value).then(() => {
                             ToastManager.show('Copiado al portapapeles', 'info');
-                        }).catch(() => {
-                            ToastManager.show('Error al copiar', 'error');
-                        });
+                        }).catch(() => ToastManager.show('Error al copiar', 'error'));
                     }
                 }
             });
@@ -96,9 +108,10 @@ export const TwoFactorController = {
                             stepSuccess.style.display = ''; 
                         }
 
+                        // [MODIFICADO] Generación de Chips para los códigos
                         const list = document.getElementById('recovery-codes-list');
                         if (list && res.recovery_codes) {
-                            list.innerHTML = res.recovery_codes.map(c => `<span>${c}</span>`).join('');
+                            list.innerHTML = renderChips(res.recovery_codes);
                         }
                         
                         ToastManager.show(I18nManager.t('api.2fa_enabled'), 'success');
@@ -148,6 +161,16 @@ export const TwoFactorController = {
         }
     }
 };
+
+// [NUEVO] Helper para renderizar los chips de códigos
+function renderChips(codes) {
+    return codes.map(code => `
+        <div class="component-chip" data-action="copy-code" data-value="${code}">
+            <span class="chip-text">${code}</span>
+            <span class="material-symbols-rounded chip-icon">content_copy</span>
+        </div>
+    `).join('');
+}
 
 async function initRecoveryLogic() {
     const countDisplay = document.getElementById('recovery-count-display');
@@ -212,7 +235,8 @@ async function initRecoveryLogic() {
                     btnShowRegen.classList.remove('disabled');
 
                     if (listNewCodes && res.recovery_codes) {
-                        listNewCodes.innerHTML = res.recovery_codes.map(c => `<span>${c}</span>`).join('');
+                        // [MODIFICADO] Usar renderChips
+                        listNewCodes.innerHTML = renderChips(res.recovery_codes);
                         areaNewCodes.classList.remove('disabled');
                         areaNewCodes.classList.add('active');
                     }

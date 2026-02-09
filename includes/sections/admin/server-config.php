@@ -17,7 +17,7 @@ function isChecked($key, $configArray) {
     return (isset($configArray[$key]) && $configArray[$key] == '1') ? 'checked' : '';
 }
 
-// [NUEVO] Helper para estado del botón de pánico
+// Helper para estado del botón de pánico
 $isPanicActive = (isset($config['security_panic_mode']) && $config['security_panic_mode'] == '1');
 $panicBtnStyle = $isPanicActive 
     ? 'background-color: var(--color-error); color: white; border-color: var(--color-error); animation: pulse-red 2s infinite;' 
@@ -293,7 +293,7 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
                         <input type="hidden" name="email_allowed_domains" id="input-allowed-domains" value="<?php echo conf('email_allowed_domains', '*', $config); ?>">
                         
                         <div class="domain-manager-wrapper">
-                            <div class="domain-list" id="domain-list-container"></div>
+                            <div class="component-chip-grid" id="domain-list-container"></div>
                             
                             <div class="domain-input-group" id="domain-input-group" style="display: none;">
                                 <input type="text" class="component-text-input" id="new-domain-input" placeholder="ej: gmail.com" autocomplete="off">

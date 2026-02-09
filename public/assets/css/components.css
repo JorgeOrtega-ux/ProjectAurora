@@ -1330,45 +1330,9 @@ input:checked+.component-toggle-slider:before {
     gap: 12px;
 }
 
-.domain-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    width: 100%;
-}
-
-.domain-chip {
-    display: inline-flex;
-    align-items: center;
-    background-color: var(--bg-hover-light);
-    border: 1px solid var(--border-light);
-    border-radius: 8px;
-    padding: 6px 8px 6px 12px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-primary);
-    gap: 8px;
-    transition: all 0.2s;
-}
-
-.domain-chip:hover {
-    border-color: var(--border-color-hover);
-}
-
-.domain-chip-remove {
-    cursor: pointer;
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    font-size: 16px;
-    border-radius: 50%;
-    padding: 2px;
-    transition: color 0.2s, background-color 0.2s;
-}
-
-.domain-chip-remove:hover {
-    color: var(--color-error);
-    background-color: var(--action-danger-bg);
+/* Alineación del botón a la derecha */
+.domain-manager-wrapper #btn-add-domain {
+    align-self: flex-end;
 }
 
 .domain-input-group {
@@ -1376,7 +1340,6 @@ input:checked+.component-toggle-slider:before {
     flex-direction: column;
     gap: 8px;
     width: 100%;
-    max-width: 320px;
     animation: fadeInGroup 0.2s ease-out;
 }
 
@@ -2317,5 +2280,88 @@ input:checked+.component-toggle-slider:before {
     }
     .trigger-select-wrapper .trigger-selector {
         width: 100%;
+    }
+}
+
+/* =========================================
+   20. CHIPS & GRID SYSTEM (MODULAR)
+   ========================================= */
+
+/* Contenedor de Grid Responsivo */
+.component-chip-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    width: 100%;
+}
+
+/* Chip Individual Base */
+.component-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background-color: transparent;
+    border: 1px solid var(--border-transparent-20); /* #00000020 */
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+    position: relative;
+    min-height: 42px;
+}
+
+/* Estado Hover: Borde oscuro/claro según tema */
+.component-chip:hover {
+    border-color: var(--text-primary);
+    background-color: var(--bg-surface); /* Sutil feedback de fondo */
+}
+
+/* Estado Active: Feedback de clic */
+.component-chip:active {
+    background-color: var(--bg-hover-light);
+    transform: scale(0.98);
+}
+
+/* Texto del Chip (Monoespaciado para códigos) */
+.chip-text {
+    font-family: var(--sl-font-mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 8px;
+}
+
+/* Icono de Acción (Copiar / Cerrar) */
+.chip-icon {
+    font-size: 16px;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+    transition: color 0.2s;
+}
+
+/* Cambio de color del icono al hacer hover en todo el chip */
+.component-chip:hover .chip-icon {
+    color: var(--text-primary);
+}
+
+/* Variación para eliminación (Rojo solo en icono) - Útil para el Domain Manager */
+.component-chip.chip-removable:hover {
+    border-color: var(--text-primary); /* Borde negro como 2FA */
+    background-color: var(--bg-surface);
+}
+
+.component-chip.chip-removable:hover .chip-icon {
+    color: var(--color-error); /* Icono rojo para indicar acción destructiva */
+}
+
+/* Ajuste Responsive para móviles muy pequeños */
+@media (max-width: 480px) {
+    .component-chip-grid {
+        grid-template-columns: 1fr 1fr; /* Forzar 2 columnas en móvil vertical */
     }
 }

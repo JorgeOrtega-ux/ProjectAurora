@@ -1,32 +1,18 @@
 <?php
 // includes/sections/settings/2fa-setup.php
 
-// === NAMESPACES & IMPORTS ===
 use Aurora\Services\SettingsService;
 use Aurora\Libs\Utils;
 
-// [CORRECCIÓN] Ya no hacemos require_once manual
-// require_once __DIR__ . '/../../../api/services/SettingsService.php';
-
-// Validar que tengamos las dependencias necesarias (por si se carga directo)
 if (!isset($pdo) || !isset($redis)) {
-    // Fallback o error silencioso si es necesario, 
-    // pero idealmente este archivo siempre se carga via routing-logic
+    // Fallback
 }
 
-// [CORRECCIÓN] Pasamos $redis al constructor
-// La variable $redis ya existe porque viene del extract($services) en public/loader.php
-// Ahora SettingsService se carga automáticamente gracias al Autoloader
 $settingsService = new SettingsService($pdo, $i18n, $_SESSION['user_id'], $redis);
-
-// Verificar límite de seguridad para mostrar/ocultar el QR
-// Usamos Utils estáticamente (importado arriba)
 $isRateLimited = Utils::checkSecurityLimit($pdo, '2fa_init_attempt', 10, 60, $_SESSION['user_id']);
 
-// Definir clases y estilos basados en el límite
 $containerClass = $isRateLimited ? 'disabled-interactive' : '';
 $qrBoxStyle = $isRateLimited ? 'display: none;' : '';
-
 $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_factor_enabled'] === 1;
 ?>
 
@@ -115,14 +101,14 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
                     <hr class="component-divider">
                     
                     <div class="component-group-item component-group-item--stacked">
-                        <div class="component-card__content w-100" style="text-align: center;">
+                        <div class="component-card__content w-100">
                             <div class="component-card__text w-100">
                                 <h2 class="component-card__title" style="color: var(--color-success);"><?php echo $i18n->t('settings.2fa.recovery.new_codes_title'); ?></h2>
                                 <p class="component-card__description"><?php echo $i18n->t('settings.2fa.recovery.new_codes_desc'); ?></p>
                             </div>
-                            
-                            <div id="new-recovery-codes-list" style="background: var(--bg-hover-light); padding: 16px; border-radius: 8px; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-family: monospace; font-size: 14px; text-align: center; border: 1px solid var(--border-light); margin-top: 16px;"></div>
                         </div>
+                        
+                        <div id="new-recovery-codes-list" class="component-chip-grid w-100"></div>
                     </div>
                  </div>
 
@@ -259,17 +245,19 @@ $is2FAEnabled = isset($_SESSION['two_factor_enabled']) && (int)$_SESSION['two_fa
             </div>
 
             <div class="component-card component-card--grouped disabled" id="step-success">
-                <div class="component-group-item component-group-item--stacked" style="align-items: center; text-align: center;">
-                    <div class="component-card__icon-container component-card__icon-container--bordered" style="color: var(--color-success); background: var(--color-success-bg); width: 64px; height: 64px;">
-                        <span class="material-symbols-rounded" style="font-size: 32px;">check</span>
-                    </div>
+                <div class="component-group-item component-group-item--stacked">
                     
-                    <div class="component-card__text" style="align-items: center;">
-                        <h2 class="component-card__title" style="font-size: 18px;"><?php echo $i18n->t('settings.2fa.success_title'); ?></h2>
-                        <p class="component-card__description"><?php echo $i18n->t('settings.2fa.success_desc'); ?></p>
+                    <div class="component-card__content">
+                        <div class="component-card__icon-container component-card__icon-container--bordered">
+                            <span class="material-symbols-rounded">check</span>
+                        </div>
+                        <div class="component-card__text">
+                            <h2 class="component-card__title"><?php echo $i18n->t('settings.2fa.success_title'); ?></h2>
+                            <p class="component-card__description"><?php echo $i18n->t('settings.2fa.success_desc'); ?></p>
+                        </div>
                     </div>
 
-                    <div id="recovery-codes-list" style="background: var(--bg-hover-light); padding: 16px; border-radius: 8px; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-family: monospace; font-size: 14px; text-align: center; border: 1px solid var(--border-light);"></div>
+                    <div id="recovery-codes-list" class="component-chip-grid w-100"></div>
 
                     <div class="component-card__actions w-100">
                         <button type="button" class="component-button primary w-100" onclick="window.location.reload()">
