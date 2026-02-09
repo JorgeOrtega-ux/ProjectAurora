@@ -2,10 +2,10 @@
  * public/assets/js/auth-controller.js
  */
 
-import { navigateTo } from './core/url-manager.js';
-import { ToastManager } from './core/toast-manager.js';
-import { ApiService } from './core/api-service.js';
-import { I18nManager } from './core/i18n-manager.js';
+import { navigateTo } from './core/utils/url-manager.js';
+import { ToastManager } from './core/components/toast-manager.js';
+import { ApiService } from './core/services/api-service.js';
+import { I18nManager } from './core/utils/i18n-manager.js';
 
 let resendTimerInterval = null;
 let recoveryTimerInterval = null;

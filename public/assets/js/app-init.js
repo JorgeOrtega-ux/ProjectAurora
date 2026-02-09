@@ -1,19 +1,15 @@
-/**
- * public/assets/js/app-init.js
- */
-
 import { initMainController } from './main-controller.js';
-import { initUrlManager } from './core/url-manager.js';
-import { initAuthController } from './auth-controller.js'; 
-import { ToastManager } from './core/toast-manager.js'; 
-import { TooltipManager } from './core/tooltip-manager.js';
-import { DialogManager } from './core/dialog-manager.js';
-import { UiManager } from './core/ui-manager.js';
-import { SocketClient } from './core/socket-client.js'; 
+import { initUrlManager } from './core/utils/url-manager.js';
+import { initAuthController } from './auth-controller.js';
+import { ToastManager } from './core/components/toast-manager.js';
+import { TooltipManager } from './core/components/tooltip-manager.js';
+import { DialogManager } from './core/components/dialog-manager.js';
+import { UiManager } from './core/components/ui-manager.js';
+import { SocketClient } from './core/services/socket-client.js';
 
-// Módulos
-import { SettingsController } from './modules/settings/settings-controller.js'; 
-import { ProfileController } from './modules/settings/profile-controller.js'; 
+// Módulos (estos no cambian, apuntan a las carpetas de módulos)
+import { SettingsController } from './modules/settings/settings-controller.js';
+import { ProfileController } from './modules/settings/profile-controller.js';
 import { DevicesController } from './modules/settings/devices-controller.js';
 import { DeleteAccountController } from './modules/settings/delete-account-controller.js';
 import { TwoFactorController } from './modules/settings/2fa-controller.js';
@@ -30,8 +26,6 @@ import { LogFilesController } from './modules/admin/log-files-controller.js';
 import { FileViewerController } from './modules/admin/file-viewer-controller.js';
 import { RedisManagerController } from './modules/admin/redis-manager-controller.js';
 import { DashboardController } from './modules/admin/dashboard-controller.js';
-
-// [NUEVO] Importar el nuevo controlador de alertas del sistema
 import { SystemAlertsController } from './modules/admin/system-alerts-controller.js';
 
 const App = {

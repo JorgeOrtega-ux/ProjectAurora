@@ -2,10 +2,10 @@
  * public/assets/js/modules/admin/server-config-controller.js
  */
 
-import { ApiService } from '../../core/api-service.js';
-import { ToastManager } from '../../core/toast-manager.js';
-import { I18nManager } from '../../core/i18n-manager.js';
-import { DialogManager } from '../../core/dialog-manager.js';
+import { ApiService } from '../../core/services/api-service.js';
+import { ToastManager } from '../../core/components/toast-manager.js';
+import { I18nManager } from '../../core/utils/i18n-manager.js';
+import { DialogManager } from '../../core/components/dialog-manager.js';
 
 export const ServerConfigController = {
     init: () => {

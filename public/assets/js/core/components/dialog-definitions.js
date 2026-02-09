@@ -2,7 +2,11 @@
  * public/assets/js/core/dialog-definitions.js
  */
 
+// public/assets/js/core/components/dialog-definitions.js
+
 import { I18nManager } from '../utils/i18n-manager.js';
+
+// ... resto del código
 
 // 1. PLANTILLAS HTML
 export const DialogTemplates = {

@@ -3,11 +3,11 @@
  * Versión Segura (DOM API)
  */
 
-import { ApiService } from '../../core/api-service.js';
-import { ToastManager } from '../../core/toast-manager.js';
-import { I18nManager } from '../../core/i18n-manager.js';
-import { DialogManager } from '../../core/dialog-manager.js';
-import { DialogDefinitions } from '../../core/dialog-definitions.js';
+import { ApiService } from '../../core/services/api-service.js';
+import { ToastManager } from '../../core/components/toast-manager.js';
+import { I18nManager } from '../../core/utils/i18n-manager.js';
+import { DialogManager } from '../../core/components/dialog-manager.js';
+import { DialogDefinitions } from '../../core/components/dialog-definitions.js';
 
 // --- ESTADO PRIVADO DEL MÓDULO ---
 let isLoading = false;

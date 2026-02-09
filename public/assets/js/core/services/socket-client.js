@@ -2,9 +2,13 @@
  * public/assets/js/core/socket-client.js
  */
 
-import { ApiService } from './api-service.js';
-import { I18nManager } from '../i18n-manager.js';
-import { ToastManager } from '../toast-manager.js';
+// public/assets/js/core/services/socket-client.js
+
+import { ApiService } from './api-service.js'; // Mismo directorio, OK
+import { I18nManager } from '../utils/i18n-manager.js'; // Subir un nivel y entrar a utils
+import { ToastManager } from '../components/toast-manager.js'; // Subir un nivel y entrar a components
+
+// ... resto del código
 
 export const SocketClient = {
     socket: null,

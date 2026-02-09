@@ -2,9 +2,9 @@
  * public/assets/js/modules/settings/security-controller.js
  */
 
-import { ApiService } from '../../core/api-service.js';
-import { ToastManager } from '../../core/toast-manager.js';
-import { I18nManager } from '../../core/i18n-manager.js';
+import { ApiService } from '../../core/services/api-service.js';
+import { ToastManager } from '../../core/components/toast-manager.js';
+import { I18nManager } from '../../core/utils/i18n-manager.js';
 
 export const SecurityController = {
     init: () => {

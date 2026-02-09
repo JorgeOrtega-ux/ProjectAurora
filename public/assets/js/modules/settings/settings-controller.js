@@ -2,8 +2,8 @@
  * public/assets/js/modules/settings/settings-controller.js
  */
 
-import { ApiService } from '../../core/api-service.js';
-import { ToastManager } from '../../core/toast-manager.js';
+import { ApiService } from '../../core/services/api-service.js';
+import { ToastManager } from '../../core/components/toast-manager.js';
 
 export const SettingsController = {
     init: () => {
