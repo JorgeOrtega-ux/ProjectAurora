@@ -23,9 +23,21 @@ if (!isset($_SESSION['user_id'])) {
 
 Utils::validateCsrf($i18n);
 
-$role = $_SESSION['role'] ?? 'user';
-if (!in_array($role, ['founder', 'administrator'])) {
-    Utils::jsonResponse(['success' => false, 'message' => $i18n->t('errors.access_denied')]);
+// [SEGURIDAD CENTRALIZADA]
+// Reemplaza la verificación manual de rol. Ahora exige ROL (founder/admin) Y 2FA VERIFICADO.
+$privCheck = Utils::checkUserPrivileges($pdo, $_SESSION['user_id'], ['founder', 'administrator'], true);
+
+if (!$privCheck['allowed']) {
+    $msg = $i18n->t('errors.access_denied');
+    
+    // Mensajes más específicos si es por falta de 2FA
+    if ($privCheck['reason'] === '2fa_not_verified') {
+        $msg = 'Verificación de seguridad (2FA) requerida para realizar esta acción.';
+    } elseif ($privCheck['reason'] === '2fa_not_enabled') {
+        $msg = 'Debes tener la autenticación en dos pasos activada para acceder al panel.';
+    }
+    
+    Utils::jsonResponse(['success' => false, 'message' => $msg]);
 }
 
 $adminService = new AdminService($pdo, $i18n, $_SESSION['user_id'], $redis);

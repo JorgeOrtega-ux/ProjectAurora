@@ -173,3 +173,7 @@ CREATE TABLE IF NOT EXISTS `system_alerts` (
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX `idx_active` (`is_active`)
 );
+
+INSERT INTO server_config (config_key, config_value) 
+VALUES ('security_admin_require_2fa', '1') 
+ON DUPLICATE KEY UPDATE config_value = VALUES(config_value);

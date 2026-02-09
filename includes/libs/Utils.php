@@ -400,5 +400,105 @@ class Utils {
         if ($bytes >= 1024) return number_format($bytes / 1024, 2) . ' KB';
         return $bytes . ' bytes';
     }
+
+    // ===============================================================================
+    // [NUEVO] SISTEMA DE PRIVILEGIOS CENTRALIZADO
+    // ===============================================================================
+
+    /**
+     * Retorna el nivel numérico de un rol para comparaciones jerárquicas.
+     * @param string $role
+     * @return int
+     */
+    public static function getRoleLevel($role) {
+        $hierarchy = [
+            'founder'       => 3,
+            'administrator' => 2,
+            'moderator'     => 1,
+            'user'          => 0
+        ];
+        return $hierarchy[$role] ?? 0;
+    }
+
+    /**
+     * Verifica si un usuario cumple con requisitos de rol y seguridad 2FA.
+     * @param PDO $pdo Conexión BD
+     * @param int $userId ID del usuario
+     * @param array $allowedRoles Roles permitidos (array vacío = cualquiera)
+     * @param bool $require2fa Si es true, exige que el usuario tenga 2FA activado Y verificado en sesión
+     * @return array ['allowed' => bool, 'reason' => string|null]
+     */
+   public static function checkUserPrivileges($pdo, $userId, $allowedRoles = [], $require2fa = false) {
+        if (!$userId) return ['allowed' => false, 'reason' => 'no_session'];
+
+        $stmt = $pdo->prepare("SELECT role, two_factor_enabled FROM users WHERE id = ? LIMIT 1");
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$user) return ['allowed' => false, 'reason' => 'user_not_found'];
+
+        // 1. Verificación de Rol
+        if (!empty($allowedRoles)) {
+            if (!in_array($user['role'], $allowedRoles)) {
+                return ['allowed' => false, 'reason' => 'role_mismatch'];
+            }
+        }
+
+        // 2. Verificación de 2FA (Condicional Global)
+        if ($require2fa) {
+            // Leemos la configuración global (Default '1' = Activado)
+            $isGlobal2faActive = self::getServerConfig($pdo, 'security_admin_require_2fa', '1') === '1';
+
+            // Solo verificamos si el sistema lo exige globalmente
+            if ($isGlobal2faActive) {
+                
+                // A. ¿Tiene 2FA activado en su cuenta?
+                $has2faEnabled = (int)$user['two_factor_enabled'] === 1;
+                if (!$has2faEnabled) {
+                    return ['allowed' => false, 'reason' => '2fa_not_enabled'];
+                }
+
+                // B. ¿Ya validó el código en esta sesión?
+                if (empty($_SESSION['is_2fa_verified'])) {
+                    return ['allowed' => false, 'reason' => '2fa_not_verified'];
+                }
+            }
+        }
+
+        return ['allowed' => true, 'reason' => null];
+    }
+
+    /**
+     * Verifica si el usuario 'requester' tiene mayor o igual nivel jerárquico que 'target'.
+     * @param PDO $pdo
+     * @param int $requesterId
+     * @param int $targetId
+     * @return array
+     */
+    public static function checkHierarchicalAccess($pdo, $requesterId, $targetId) {
+        // Obtener rol del solicitante
+        $stmt = $pdo->prepare("SELECT role FROM users WHERE id = ?");
+        $stmt->execute([$requesterId]);
+        $reqRole = $stmt->fetchColumn();
+        $reqLevel = self::getRoleLevel($reqRole);
+
+        // Obtener rol del objetivo
+        $stmt = $pdo->prepare("SELECT role FROM users WHERE id = ?");
+        $stmt->execute([$targetId]);
+        $targetRole = $stmt->fetchColumn();
+        $targetLevel = self::getRoleLevel($targetRole);
+
+        // Auto-modificación permitida (acceso base)
+        if ($requesterId == $targetId) {
+            return ['allowed' => true, 'role' => $targetRole];
+        }
+
+        // Regla: Solicitante > Objetivo
+        if ($reqLevel > $targetLevel) {
+            return ['allowed' => true, 'role' => $targetRole];
+        }
+
+        return ['allowed' => false, 'message' => 'Jerarquía insuficiente.'];
+    }
 }
 ?>

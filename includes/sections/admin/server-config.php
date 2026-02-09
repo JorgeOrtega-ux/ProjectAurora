@@ -194,6 +194,24 @@ function renderStepper($label, $desc, $name, $value, $stepSmall = 1, $stepLarge 
             <div class="component-accordion-content">
                 <hr class="component-divider">
 
+                <div class="component-group-item">
+                    <div class="component-card__content">
+                        <div class="component-card__text">
+                            <h2 class="component-card__title">Requerir 2FA para Admin</h2>
+                            <p class="component-card__description">
+                                Si se activa, los administradores estarán obligados a tener 2FA y verificarlo para entrar al panel.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="component-card__actions actions-right">
+                        <label class="component-toggle-switch">
+                            <input type="checkbox" name="security_admin_require_2fa" <?php echo isChecked('security_admin_require_2fa', $config); ?>>
+                            <span class="component-toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <hr class="component-divider">
                 <?php 
                 renderStepper(
                     $i18n->t('admin.server.security.login_attempts'), 

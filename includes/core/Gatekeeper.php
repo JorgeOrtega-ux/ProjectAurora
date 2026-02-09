@@ -63,26 +63,35 @@ class Gatekeeper {
             }
         }
 
-        // 4. Protección de Admin (Roles y Seguridad)
+        // 4. Protección de Admin (Roles y Seguridad) - UNIFICADA
         if ($isAdminRoute) {
-            // A. Verificar Rol
-            // Si no está en 'admin_access' (ej. moderadores), mostramos 404 para ocultar el panel
-            if (!in_array($userRole, $rolesConfig['admin_access'])) {
-                return ['action' => self::SHOW_404];
-            }
+            // Obtenemos los roles que tienen acceso al panel desde config/security.php
+            $allowedRoles = $rolesConfig['admin_access'];
             
-            // B. Verificar Seguridad 2FA (CRÍTICO)
-            
-            // Paso 1: ¿Tiene 2FA activado en su cuenta?
-            if (empty($_SESSION['two_factor_enabled'])) {
-                // Si es admin y no tiene 2FA, lo bloqueamos (o mostramos LOCK)
-                return ['action' => self::SHOW_LOCK];
-            }
+            // Usamos el sistema centralizado de Utils
+            // Exigimos 2FA (true) para cualquier acceso admin
+            $privCheck = Utils::checkUserPrivileges($pdo, $userId, $allowedRoles, true);
 
-            // Paso 2: ¿Ya validó el código en esta sesión?
-            // Si tiene 2FA pero no ha verificado la sesión -> REDIRIGIR A VERIFICACIÓN
-            if (empty($_SESSION['is_2fa_verified'])) {
-                return ['action' => self::REDIRECT, 'target' => 'login/verification-aditional'];
+            if (!$privCheck['allowed']) {
+                // Decidimos la acción basada en la razón del fallo
+                switch ($privCheck['reason']) {
+                    case 'role_mismatch':
+                    case 'user_not_found':
+                    case 'no_session':
+                        // Si no tiene el rol adecuado, simulamos que la página no existe (seguridad por oscuridad)
+                        return ['action' => self::SHOW_404];
+                    
+                    case '2fa_not_enabled':
+                        // Si es admin pero no tiene 2FA configurado, mostramos bloqueo
+                        return ['action' => self::SHOW_LOCK];
+                    
+                    case '2fa_not_verified':
+                        // Si tiene 2FA pero no ha verificado la sesión, redirigimos al input de código
+                        return ['action' => self::REDIRECT, 'target' => 'login/verification-aditional'];
+                        
+                    default:
+                        return ['action' => self::SHOW_404];
+                }
             }
         }
 

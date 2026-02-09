@@ -15,8 +15,7 @@ class AdminService {
     private $requestingUserId;
     private $redis; 
 
-    // Cache simple para evitar múltiples consultas del rol del solicitante
-    private $requesterRoleCache = null;
+    // [REFACTOR] Eliminada la propiedad $requesterRoleCache
 
     public function __construct($pdo, $i18n, $userId, $redis = null) {
         $this->pdo = $pdo;
@@ -30,7 +29,9 @@ class AdminService {
     // ===============================================================================================
 
     public function togglePanicMode($activate, AlertService $alertService) {
-        if (!$this->isAdmin()) {
+        // [REFACTOR] Usando Utils::checkUserPrivileges
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) {
             return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
         }
 
@@ -56,7 +57,6 @@ class AdminService {
                 $this->redis->set('firewall:strict', 'true');
 
                 // 3. AlertService: Crear alerta visual roja
-                // "Sobrecarga Temporal" suele ser la mejor descripción genérica para pánico
                 $alertData = [
                     'type' => 'performance',
                     'meta' => ['code' => 'overload'] 
@@ -96,7 +96,9 @@ class AdminService {
             }
 
             // Invalidar caché de configuración global para que PHP lea los nuevos valores DB
-            $this->redis->del('server:config:all');
+            if ($this->redis) {
+                $this->redis->del('server:config:all');
+            }
 
             $this->pdo->commit();
 
@@ -115,68 +117,28 @@ class AdminService {
 
     /**
      * Verifica si el usuario solicitante tiene autoridad jerárquica sobre el objetivo.
+     * [REFACTOR] Ahora delega la lógica a Utils::checkHierarchicalAccess
      */
     private function checkHierarchicalPermission($targetUserId) {
-        // 1. Obtener datos del solicitante
-        $myRole = $this->getRequesterRole();
-        $myLevel = $this->getRoleLevel($myRole);
-
-        // 2. Obtener datos del objetivo
-        $stmt = $this->pdo->prepare("SELECT role FROM users WHERE id = ?");
-        $stmt->execute([$targetUserId]);
-        $targetRole = $stmt->fetchColumn();
-
-        if (!$targetRole) {
-            return ['allowed' => false, 'message' => $this->i18n->t('api.id_invalid')];
+        $result = Utils::checkHierarchicalAccess($this->pdo, $this->requestingUserId, $targetUserId);
+        
+        if (!$result['allowed']) {
+            // Personalizamos el mensaje si es un intento de admin vs admin
+            // (Aunque Utils ya devuelve un mensaje genérico, podemos enriquecerlo si tenemos el rol destino)
+            return ['allowed' => false, 'message' => $result['message'] ?? 'No tienes autoridad suficiente para modificar a este usuario.'];
         }
-
-        $targetLevel = $this->getRoleLevel($targetRole);
-
-        // REGLA 1: Jerarquía Estricta (Solicitante > Objetivo)
-        if ($myLevel > $targetLevel) {
-            return ['allowed' => true, 'role' => $targetRole];
-        }
-
-        // REGLA 2: Auto-modificación (Limitada posteriormente por lógica de negocio)
-        // Se permite pasar el check inicial, pero los métodos individuales (rol, 2fa, status) 
-        // tienen bloqueos específicos "HARD FAIL" para evitar acciones destructivas.
-        if ($this->requestingUserId == $targetUserId) {
-            return ['allowed' => true, 'role' => $targetRole];
-        }
-
-        // Si llegamos aquí, permiso denegado
-        $msg = 'No tienes autoridad suficiente para modificar a este usuario.';
-        if ($targetRole === 'administrator' && $myRole === 'administrator') {
-            $msg = 'Los administradores no pueden modificar a otros administradores.';
-        } elseif ($targetRole === 'founder') {
-            $msg = 'Acción protegida: Solo el Founder puede modificarse a sí mismo.';
-        }
-
-        return ['allowed' => false, 'message' => $msg];
+        
+        return $result;
     }
 
-    private function getRoleLevel($role) {
-        $hierarchy = [
-            'founder'       => 3,
-            'administrator' => 2,
-            'moderator'     => 1,
-            'user'          => 1
-        ];
-        return $hierarchy[$role] ?? 0;
-    }
+    // [REFACTOR] Eliminado getRoleLevel() - Ahora en Utils
+    // [REFACTOR] Eliminado getRequesterRole() y caché asociada
 
-    private function getRequesterRole() {
-        if ($this->requesterRoleCache === null) {
-            $stmt = $this->pdo->prepare("SELECT role FROM users WHERE id = ?");
-            $stmt->execute([$this->requestingUserId]);
-            $this->requesterRoleCache = $stmt->fetchColumn();
-        }
-        return $this->requesterRoleCache;
-    }
-
-    // [NUEVO] Helper para determinar si se debe ocultar el correo
     private function shouldHideEmail($targetRole) {
-        $requesterRole = $this->getRequesterRole();
+        // Obtenemos rol directamente ya que no hay caché local
+        $stmt = $this->pdo->prepare("SELECT role FROM users WHERE id = ?");
+        $stmt->execute([$this->requestingUserId]);
+        $requesterRole = $stmt->fetchColumn();
         
         // El Founder ve todo
         if ($requesterRole === 'founder') {
@@ -197,9 +159,8 @@ class AdminService {
 
     // === GENERACIÓN DE TOKEN DE DESCARGA ===
     public function requestDownloadToken($inputFiles, $type) {
-        if (!$this->isAdmin()) {
-            return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
-        }
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
         if (!$this->redis) {
             return ['success' => false, 'message' => 'Redis no disponible para generar tokens seguros.'];
@@ -323,7 +284,8 @@ class AdminService {
     }
 
     public function getDashboardStats() {
-        if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
         try {
             $onlineUsers = 0;
@@ -399,7 +361,8 @@ class AdminService {
     }
 
     public function getAuditLogs($page = 1, $limit = 50, $filters = []) {
-        if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
         $offset = ($page - 1) * $limit;
         $params = [];
@@ -457,9 +420,8 @@ class AdminService {
     }
 
     public function getAllUsers($page = 1, $limit = 20, $search = '') {
-        if (!$this->isAdmin()) {
-            return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
-        }
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
         $offset = ($page - 1) * $limit;
         $params = [];
@@ -519,7 +481,8 @@ class AdminService {
     }
 
     public function getUserDetails($targetId) {
-        if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
         try {
             $sql = "SELECT u.id, u.uuid, u.username, u.email, u.role, u.avatar_path, 
@@ -568,7 +531,8 @@ class AdminService {
     }
 
     public function updateUserProfile($targetId, $field, $value) {
-        if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
         
         // [FIX] Bloquear auto-edición insegura
         if ($targetId == $this->requestingUserId) {
@@ -614,7 +578,8 @@ class AdminService {
     }
 
     public function updateUserRole($targetId, $newRole) {
-        if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
         // [FIX] Bloquear auto-democión
         if ($targetId == $this->requestingUserId) {
@@ -630,9 +595,13 @@ class AdminService {
             return ['success' => false, 'message' => 'Rol inválido o acción no permitida.'];
         }
 
-        $myRole = $this->getRequesterRole();
-        $myLevel = $this->getRoleLevel($myRole);
-        $newRoleLevel = $this->getRoleLevel($newRole);
+        // [REFACTOR] Obtener roles y niveles usando Utils
+        $stmt = $this->pdo->prepare("SELECT role FROM users WHERE id = ?");
+        $stmt->execute([$this->requestingUserId]);
+        $myRole = $stmt->fetchColumn();
+
+        $myLevel = Utils::getRoleLevel($myRole);
+        $newRoleLevel = Utils::getRoleLevel($newRole);
 
         if ($myRole !== 'founder' && $newRoleLevel >= $myLevel) {
              return ['success' => false, 'message' => 'No tienes permisos para otorgar este nivel de autoridad.'];
@@ -659,7 +628,8 @@ class AdminService {
     }
 
     public function disableUser2FA($targetId) {
-        if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
         // [FIX] Bloquear desactivación propia de 2FA insegura
         if ($targetId == $this->requestingUserId) {
@@ -691,7 +661,8 @@ class AdminService {
     }
 
     public function updateUserPreference($targetId, $key, $value) {
-        if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
         $permCheck = $this->checkHierarchicalPermission($targetId);
         if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
@@ -726,7 +697,8 @@ class AdminService {
     }
 
    public function uploadUserAvatar($targetId, $files) {
-        if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
         
         $permCheck = $this->checkHierarchicalPermission($targetId);
         if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
@@ -792,7 +764,8 @@ class AdminService {
         return ['success' => false, 'message' => $this->i18n->t('api.pic_move_error')];
     }
    public function deleteUserAvatar($targetId) {
-        if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
         $permCheck = $this->checkHierarchicalPermission($targetId);
         if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
@@ -835,7 +808,8 @@ class AdminService {
     }
 
     public function updateUserStatus($targetId, $statusData) {
-        if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
         $permCheck = $this->checkHierarchicalPermission($targetId);
         if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
@@ -914,7 +888,8 @@ class AdminService {
     }
 
     public function getServerConfigAll() {
-        if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
         try {
             $stmt = $this->pdo->prepare("SELECT config_key, config_value FROM server_config");
             $stmt->execute();
@@ -926,16 +901,20 @@ class AdminService {
     }
 
     public function updateServerConfig($data) {
-        if (!$this->isAdmin()) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
         
-        $allowedKeys = [
+       $allowedKeys = [
             'maintenance_mode', 'allow_registrations', 'allow_login',
             'password_min_length', 'username_min_length', 'username_max_length',
             'email_min_prefix_length', 'email_allowed_domains',
             'upload_avatar_max_size', 'upload_avatar_max_dim',
             'security_login_max_attempts', 'security_block_duration', 'security_general_rate_limit',
             'auth_verification_code_expiry', 'auth_reset_token_expiry',
-            'sys_mysqldump_path', 'sys_mysql_path' 
+            'sys_mysqldump_path', 'sys_mysql_path',
+            
+            // [NUEVO] Agregamos la clave aquí
+            'security_admin_require_2fa'
         ];
 
         try {
@@ -992,21 +971,7 @@ class AdminService {
         }
     }
 
-    private function isAdmin() {
-        $stmt = $this->pdo->prepare("SELECT role, two_factor_enabled FROM users WHERE id = ?");
-        $stmt->execute([$this->requestingUserId]);
-        $user = $stmt->fetch();
-
-        if (!$user) return false;
-
-        $isRoleAllowed = in_array($user['role'], ['founder', 'administrator']);
-        
-        if ($isRoleAllowed) {
-            return (int)$user['two_factor_enabled'] === 1;
-        }
-
-        return false;
-    }
+    // [REFACTOR] Eliminado isAdmin() - Ahora en Utils::checkUserPrivileges
 
     private function resolveAvatarSrc($userId, $username) {
         $stmt = $this->pdo->prepare("SELECT avatar_path FROM users WHERE id = ?");
