@@ -25,6 +25,10 @@ class Utils {
         return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';
     }
 
+    // ===============================================================================================
+    // CORE: MANEJO DE ERRORES Y SEGURIDAD (ORIGINAL)
+    // ===============================================================================================
+
     public static function initErrorHandlers() {
         set_exception_handler(function ($e) {
             Logger::app('Uncaught Exception', [
@@ -74,15 +78,10 @@ class Utils {
         ini_set('log_errors', '1');
     }
 
-   public static function applySecurityHeaders() {
+    public static function applySecurityHeaders() {
         $cspNonce = base64_encode(random_bytes(16));
 
-        // [MODIFICADO] Leemos la IP del archivo .env
-        // Si no está definida en .env, usamos 127.0.0.1 como fallback seguro
         $wsIp = $_ENV['APP_HOST_IP'] ?? '127.0.0.1';
-
-        // Construimos las fuentes permitidas para WebSocket
-        // Permitimos localhost por defecto y añadimos la IP configurada
         $wsSources = "ws://localhost:8765 ws://{$wsIp}:8765";
 
         header("Content-Security-Policy: " .
@@ -92,7 +91,6 @@ class Utils {
             "img-src 'self' data: https://ui-avatars.com; " .
             "font-src 'self' https://fonts.gstatic.com; " .
             "frame-src https://challenges.cloudflare.com; " .
-            // [MODIFICADO] Inyectamos $wsSources aquí
             "connect-src 'self' https://challenges.cloudflare.com https://unpkg.com {$wsSources}; " . 
             "object-src 'none'; " .
             "base-uri 'self';"
@@ -105,16 +103,11 @@ class Utils {
         return $cspNonce;
     }
 
-    /**
-     * Muestra la página de error genérica (500).
-     * Intenta reutilizar el diseño de status-screen.php si es posible.
-     */
     public static function showGenericErrorPage() {
         if (!headers_sent()) {
             http_response_code(500);
         }
 
-        // 1. Detección de API/AJAX
         $isApi = (strpos($_SERVER['REQUEST_URI'] ?? '', '/api/') !== false) || 
                  (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
         
@@ -128,15 +121,12 @@ class Utils {
             exit;
         }
 
-        // 2. Intento de Carga Centralizada con status-screen.php
         $statusFile = __DIR__ . '/../sections/system/status-screen.php';
         
         if (file_exists($statusFile)) {
-            // Definimos banderas para controlar status-screen
             $isSystemError = true;
             $showInterface = false; 
             
-            // Inyectamos CSS Crítico Inline para asegurar que se vea bien sin styles.css
             echo '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Error del Sistema</title>';
             echo '<style>
                 :root { --text-primary: #111827; --text-secondary: #6b7280; --bg-hover-light: #f3f4f6; --border-light: #e5e7eb; --action-primary: #000; }
@@ -156,12 +146,9 @@ class Utils {
                 include $statusFile;
                 echo '</body></html>';
                 exit; 
-            } catch (Exception $e) {
-                // Si falla el include, el script sigue al fallback
-            }
+            } catch (Exception $e) { }
         }
 
-        // 3. Fallback de Emergencia (Si status-screen.php no existe)
         echo "<div style='font-family:sans-serif; text-align:center; padding:50px;'>";
         echo "<h1 style='color:#333;'>Error Crítico del Sistema</h1>";
         echo "<p style='color:#666;'>Ha ocurrido un error irrecuperable. Contacte al administrador.</p>";
@@ -169,6 +156,10 @@ class Utils {
         echo "</div>";
         exit;
     }
+
+    // ===============================================================================================
+    // CONFIGURACIÓN E I18N
+    // ===============================================================================================
 
     public static function getServerConfig($pdo, $key, $default = '0') {
         $redisKey = 'server:config:all';
@@ -212,6 +203,10 @@ class Utils {
         return new I18n($userLang);
     }
 
+    // ===============================================================================================
+    // HELPERS WEB Y RESPUESTAS
+    // ===============================================================================================
+
     public static function jsonResponse($data) {
         header('Content-Type: application/json');
         echo json_encode($data);
@@ -229,6 +224,171 @@ class Utils {
             }
         }
     }
+
+    // ===============================================================================================
+    // [NUEVO] VALIDACIÓN DE DATOS CENTRALIZADA
+    // ===============================================================================================
+
+    public static function validateUserValue($pdo, $field, $value, $excludeUserId = null) {
+        $value = trim($value);
+
+        if ($field === 'username') {
+            $minLen = (int)self::getServerConfig($pdo, 'username_min_length', '4');
+            $maxLen = (int)self::getServerConfig($pdo, 'username_max_length', '20');
+
+            if (strlen($value) < $minLen || strlen($value) > $maxLen) {
+                return ['success' => false, 'message' => "El nombre de usuario debe tener entre $minLen y $maxLen caracteres."];
+            }
+
+            if (!preg_match('/^[a-zA-Z0-9._-]+$/', $value)) {
+                return ['success' => false, 'message' => 'El usuario solo puede contener letras, números, puntos, guiones y guiones bajos.'];
+            }
+
+            $sql = "SELECT COUNT(*) FROM users WHERE username = ?";
+            $params = [$value];
+            if ($excludeUserId) {
+                $sql .= " AND id != ?";
+                $params[] = $excludeUserId;
+            }
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            
+            if ($stmt->fetchColumn() > 0) {
+                return ['success' => false, 'message' => 'Este nombre de usuario ya está ocupado.'];
+            }
+        }
+
+        if ($field === 'email') {
+            if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                return ['success' => false, 'message' => 'Formato de correo electrónico inválido.'];
+            }
+
+            $allowedDomainsStr = self::getServerConfig($pdo, 'email_allowed_domains', '*');
+            if ($allowedDomainsStr !== '*') {
+                $allowedDomains = array_map('trim', explode(',', $allowedDomainsStr));
+                $emailDomain = substr(strrchr($value, "@"), 1);
+                
+                if (!in_array($emailDomain, $allowedDomains)) {
+                    return ['success' => false, 'message' => "El dominio @$emailDomain no está permitido en este servidor."];
+                }
+            }
+
+            $prefix = explode('@', $value)[0];
+            $minPrefixLen = (int)self::getServerConfig($pdo, 'email_min_prefix_length', '3');
+            if (strlen($prefix) < $minPrefixLen) {
+                return ['success' => false, 'message' => "La parte local del correo debe tener al menos $minPrefixLen caracteres."];
+            }
+
+            $sql = "SELECT COUNT(*) FROM users WHERE email = ?";
+            $params = [$value];
+            if ($excludeUserId) {
+                $sql .= " AND id != ?";
+                $params[] = $excludeUserId;
+            }
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            
+            if ($stmt->fetchColumn() > 0) {
+                return ['success' => false, 'message' => 'Este correo electrónico ya está registrado.'];
+            }
+        }
+
+        return ['success' => true];
+    }
+
+    public static function validatePassword($pdo, $password) {
+        $minLen = (int)self::getServerConfig($pdo, 'password_min_length', '6');
+        if (strlen($password) < $minLen) {
+            return ['success' => false, 'message' => "La contraseña debe tener al menos $minLen caracteres."];
+        }
+        return ['success' => true];
+    }
+
+    public static function isValidDomain($domain) {
+        return (bool)preg_match('/^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$/i', $domain);
+    }
+
+    // ===============================================================================================
+    // [NUEVO] PROCESAMIENTO DE IMÁGENES (Upload Centralizado)
+    // ===============================================================================================
+
+    public static function processImageUpload($pdo, $file, $uuid, $type = 'custom') {
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            return ['success' => false, 'message' => 'Error en la subida del archivo (Código: ' . $file['error'] . ').'];
+        }
+
+        $maxSizeMB = (int)self::getServerConfig($pdo, 'upload_avatar_max_size', '2');
+        if ($file['size'] > $maxSizeMB * 1024 * 1024) {
+            return ['success' => false, 'message' => "La imagen excede el tamaño máximo permitido de {$maxSizeMB}MB."];
+        }
+
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mime = $finfo->file($file['tmp_name']);
+        $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+        
+        if (!in_array($mime, $allowedMimes)) {
+            return ['success' => false, 'message' => 'Formato no soportado. Usa JPG, PNG o WEBP.'];
+        }
+
+        $maxDim = (int)self::getServerConfig($pdo, 'upload_avatar_max_dim', '2000');
+        list($width, $height) = getimagesize($file['tmp_name']);
+        if ($width > $maxDim || $height > $maxDim) {
+            return ['success' => false, 'message' => "Las dimensiones máximas permitidas son {$maxDim}x{$maxDim}px."];
+        }
+
+        $srcImage = null;
+        switch ($mime) {
+            case 'image/jpeg': $srcImage = imagecreatefromjpeg($file['tmp_name']); break;
+            case 'image/png':  $srcImage = imagecreatefrompng($file['tmp_name']); break;
+            case 'image/webp': $srcImage = imagecreatefromwebp($file['tmp_name']); break;
+        }
+
+        if (!$srcImage) {
+            return ['success' => false, 'message' => 'Error al procesar la imagen. Archivo corrupto.'];
+        }
+
+        // Recorte cuadrado centrado
+        $size = min($width, $height);
+        $x = ($width - $size) / 2;
+        $y = ($height - $size) / 2;
+
+        $dstImage = imagecreatetruecolor(512, 512); 
+        
+        imagealphablending($dstImage, false);
+        imagesavealpha($dstImage, true);
+        $transparent = imagecolorallocatealpha($dstImage, 255, 255, 255, 127);
+        imagefilledrectangle($dstImage, 0, 0, 512, 512, $transparent);
+
+        imagecopyresampled($dstImage, $srcImage, 0, 0, $x, $y, 512, 512, $size, $size);
+
+        $fileName = $uuid . '-' . time() . '.png';
+        $subDir = ($type === 'custom') ? 'custom' : 'default';
+        $relativePath = "public/storage/profilePicture/$subDir/$fileName";
+        $absolutePath = __DIR__ . '/../../' . $relativePath;
+        
+        $dir = dirname($absolutePath);
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+
+        if (imagepng($dstImage, $absolutePath, 9)) {
+            imagedestroy($srcImage);
+            imagedestroy($dstImage);
+
+            $data = file_get_contents($absolutePath);
+            $base64 = 'data:image/png;base64,' . base64_encode($data);
+
+            return [
+                'success' => true,
+                'db_path' => $relativePath,
+                'base64' => $base64
+            ];
+        }
+
+        return ['success' => false, 'message' => 'Error al guardar la imagen en el servidor.'];
+    }
+
+    // ===============================================================================================
+    // HELPERS DE USUARIO Y AVATAR
+    // ===============================================================================================
 
     public static function getGlobalAvatarSrc() {
         $src = '';
@@ -256,28 +416,49 @@ class Utils {
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
     }
 
+    // [MEJORADO] Usamos GD local para generar avatares por defecto
     public static function generateDefaultProfilePicture($name, $outputPath) {
-        $colors = ['2563EB', '16A34A', '7C3AED', 'DC2626', 'EA580C', '374151'];
-        $selectedColor = $colors[array_rand($colors)];
-        $encodedName = urlencode($name);
-        $url = "https://ui-avatars.com/api/?name={$encodedName}&background={$selectedColor}&color=fff&size=512&font-size=0.5&bold=true&length=1";
-
-        try {
-            $imageData = file_get_contents($url);
-            if ($imageData !== false) {
-                $dir = dirname($outputPath);
-                if (!is_dir($dir)) mkdir($dir, 0755, true);
-                if (file_put_contents($outputPath, $imageData) !== false) return true;
-            }
-        } catch (Exception $e) {
-            Logger::log('app', 'Error generando avatar default: ' . $e->getMessage(), ['path' => $outputPath], 'ERROR');
+        $width = 256; $height = 256;
+        $im = imagecreatetruecolor($width, $height);
+        
+        $hash = md5($name);
+        $r = hexdec(substr($hash, 0, 2));
+        $g = hexdec(substr($hash, 2, 2));
+        $b = hexdec(substr($hash, 4, 2));
+        
+        $bgColor = imagecolorallocate($im, $r, $g, $b);
+        imagefilledrectangle($im, 0, 0, $width, $height, $bgColor);
+        
+        $textColor = imagecolorallocate($im, 255, 255, 255);
+        $fontPath = __DIR__ . '/../../public/assets/fonts/Inter-Bold.ttf'; 
+        
+        $initial = strtoupper(substr($name, 0, 1));
+        
+        if (file_exists($fontPath)) {
+            $bbox = imagettfbbox(100, 0, $fontPath, $initial);
+            $x = $bbox[0] + (imagesx($im) / 2) - ($bbox[4] / 2) - 10;
+            $y = $bbox[1] + (imagesy($im) / 2) - ($bbox[5] / 2) - 5;
+            imagettftext($im, 100, 0, $x, $y, $textColor, $fontPath, $initial);
+        } else {
+            $font = 5;
+            $fw = imagefontwidth($font);
+            $fh = imagefontheight($font);
+            $x = ($width - $fw * strlen($initial)) / 2;
+            $y = ($height - $fh) / 2;
+            imagestring($im, $font, $x, $y, $initial, $textColor);
         }
-        return false;
+
+        $dir = dirname($outputPath);
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+
+        $saved = imagepng($im, $outputPath);
+        imagedestroy($im);
+        return $saved;
     }
 
-    // =========================================================
-    // NUEVAS FUNCIONES CENTRALIZADAS
-    // =========================================================
+    // ===============================================================================================
+    // SEGURIDAD, RATE LIMITING Y LOGS (MEJORADOS)
+    // ===============================================================================================
 
     public static function checkSecurityLimit($pdo, $actionType, $limit, $minutes, $identifier = '') {
         $ip = self::getClientIp();
@@ -311,10 +492,10 @@ class Utils {
         $ip = self::getClientIp();
         
         try {
-            $sql = "INSERT INTO security_logs (user_identifier, action_type, ip_address) VALUES (?, ?, ?)";
+            $sql = "INSERT INTO security_logs (user_identifier, action_type, ip_address, expires_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE))";
             $stmt = $pdo->prepare($sql);
             $logId = $identifier ?? 'Anonymous';
-            $stmt->execute([$logId, $actionType, $ip]);
+            $stmt->execute([$logId, $actionType, $ip, $minutes]);
         } catch (Exception $e) { 
             error_log("DB logSecurityAction Error: " . $e->getMessage());
         }
@@ -361,6 +542,10 @@ class Utils {
         }
     }
 
+    // ===============================================================================================
+    // UTILIDADES DEL SISTEMA (FILES, TIME, UA)
+    // ===============================================================================================
+
     public static function parseUserAgent($ua) {
         $platform = 'Desconocido'; 
         $browser = 'Desconocido';
@@ -395,21 +580,64 @@ class Utils {
     }
 
     public static function formatSize($bytes) {
+        if ($bytes === 0) return '0 B';
         if ($bytes >= 1073741824) return number_format($bytes / 1073741824, 2) . ' GB';
         if ($bytes >= 1048576) return number_format($bytes / 1048576, 2) . ' MB';
         if ($bytes >= 1024) return number_format($bytes / 1024, 2) . ' KB';
         return $bytes . ' bytes';
     }
 
-    // ===============================================================================
-    // [NUEVO] SISTEMA DE PRIVILEGIOS CENTRALIZADO
-    // ===============================================================================
+    // [CORREGIDO] Cálculo seguro de tiempo transcurrido (sin propiedades dinámicas)
+    public static function timeElapsedString($datetime, $full = false) {
+        $now = new DateTime;
+        $ago = new DateTime(is_int($datetime) ? "@$datetime" : $datetime);
+        $diff = $now->diff($ago);
 
-    /**
-     * Retorna el nivel numérico de un rol para comparaciones jerárquicas.
-     * @param string $role
-     * @return int
-     */
+        // Calcular semanas manualmente para evitar errores de propiedad dinámica en PHP 8.2+
+        $weeks = floor($diff->d / 7);
+        $days = $diff->d - ($weeks * 7);
+
+        // Mapeo seguro de valores
+        $map = [
+            'y' => ['value' => $diff->y, 'label' => 'año'],
+            'm' => ['value' => $diff->m, 'label' => 'mes'],
+            'w' => ['value' => $weeks,   'label' => 'semana'],
+            'd' => ['value' => $days,    'label' => 'día'],
+            'h' => ['value' => $diff->h, 'label' => 'hora'],
+            'i' => ['value' => $diff->i, 'label' => 'minuto'],
+            's' => ['value' => $diff->s, 'label' => 'segundo'],
+        ];
+
+        $string = [];
+        foreach ($map as $key => $info) {
+            if ($info['value'] > 0) {
+                $string[] = $info['value'] . ' ' . $info['label'] . ($info['value'] > 1 ? 's' : '');
+            }
+        }
+
+        if (!$full) $string = array_slice($string, 0, 1);
+        return $string ? 'hace ' . implode(', ', $string) : 'justo ahora';
+    }
+
+    // [NUEVO] Protección Path Traversal
+    public static function securePath($baseDir, $relativePath) {
+        $cleanPath = str_replace('..', '', $relativePath);
+        $cleanPath = ltrim($cleanPath, '/\\');
+        
+        $fullPath = $baseDir . '/' . $cleanPath;
+        $realPath = realpath($fullPath);
+        
+        if ($realPath && file_exists($realPath) && strpos($realPath, realpath($baseDir)) === 0) {
+            return $realPath;
+        }
+        
+        return false;
+    }
+
+    // ===============================================================================================
+    // PRIVILEGIOS Y JERARQUÍA (Consolidado)
+    // ===============================================================================================
+
     public static function getRoleLevel($role) {
         $hierarchy = [
             'founder'       => 3,
@@ -420,15 +648,7 @@ class Utils {
         return $hierarchy[$role] ?? 0;
     }
 
-    /**
-     * Verifica si un usuario cumple con requisitos de rol y seguridad 2FA.
-     * @param PDO $pdo Conexión BD
-     * @param int $userId ID del usuario
-     * @param array $allowedRoles Roles permitidos (array vacío = cualquiera)
-     * @param bool $require2fa Si es true, exige que el usuario tenga 2FA activado Y verificado en sesión
-     * @return array ['allowed' => bool, 'reason' => string|null]
-     */
-   public static function checkUserPrivileges($pdo, $userId, $allowedRoles = [], $require2fa = false) {
+    public static function checkUserPrivileges($pdo, $userId, $allowedRoles = [], $require2fa = false) {
         if (!$userId) return ['allowed' => false, 'reason' => 'no_session'];
 
         $stmt = $pdo->prepare("SELECT role, two_factor_enabled FROM users WHERE id = ? LIMIT 1");
@@ -437,30 +657,22 @@ class Utils {
 
         if (!$user) return ['allowed' => false, 'reason' => 'user_not_found'];
 
-        // 1. Verificación de Rol
         if (!empty($allowedRoles)) {
-            if (!in_array($user['role'], $allowedRoles)) {
+            $reqRoles = is_array($allowedRoles) ? $allowedRoles : [$allowedRoles];
+            if (!in_array($user['role'], $reqRoles)) {
                 return ['allowed' => false, 'reason' => 'role_mismatch'];
             }
         }
 
-        // 2. Verificación de 2FA (Condicional Global)
         if ($require2fa) {
-            // Leemos la configuración global (Default '1' = Activado)
             $isGlobal2faActive = self::getServerConfig($pdo, 'security_admin_require_2fa', '1') === '1';
 
-            // Solo verificamos si el sistema lo exige globalmente
             if ($isGlobal2faActive) {
-                
-                // A. ¿Tiene 2FA activado en su cuenta?
-                $has2faEnabled = (int)$user['two_factor_enabled'] === 1;
-                if (!$has2faEnabled) {
-                    return ['allowed' => false, 'reason' => '2fa_not_enabled'];
+                if ((int)$user['two_factor_enabled'] !== 1) {
+                    return ['allowed' => false, 'reason' => '2fa_not_enabled', 'message' => 'Esta acción requiere activar 2FA.'];
                 }
-
-                // B. ¿Ya validó el código en esta sesión?
                 if (empty($_SESSION['is_2fa_verified'])) {
-                    return ['allowed' => false, 'reason' => '2fa_not_verified'];
+                    return ['allowed' => false, 'reason' => '2fa_not_verified', 'message' => 'Verifica tu identidad con 2FA.'];
                 }
             }
         }
@@ -468,33 +680,21 @@ class Utils {
         return ['allowed' => true, 'reason' => null];
     }
 
-    /**
-     * Verifica si el usuario 'requester' tiene mayor o igual nivel jerárquico que 'target'.
-     * @param PDO $pdo
-     * @param int $requesterId
-     * @param int $targetId
-     * @return array
-     */
     public static function checkHierarchicalAccess($pdo, $requesterId, $targetId) {
-        // Obtener rol del solicitante
         $stmt = $pdo->prepare("SELECT role FROM users WHERE id = ?");
         $stmt->execute([$requesterId]);
         $reqRole = $stmt->fetchColumn();
         $reqLevel = self::getRoleLevel($reqRole);
 
-        // Obtener rol del objetivo
-        $stmt = $pdo->prepare("SELECT role FROM users WHERE id = ?");
         $stmt->execute([$targetId]);
         $targetRole = $stmt->fetchColumn();
         $targetLevel = self::getRoleLevel($targetRole);
 
-        // Auto-modificación permitida (acceso base)
         if ($requesterId == $targetId) {
             return ['allowed' => true, 'role' => $targetRole];
         }
 
-        // Regla: Solicitante > Objetivo
-        if ($reqLevel > $targetLevel) {
+        if ($reqRole === 'founder' || $reqLevel > $targetLevel) {
             return ['allowed' => true, 'role' => $targetRole];
         }
 

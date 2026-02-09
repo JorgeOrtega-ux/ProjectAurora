@@ -59,16 +59,8 @@ class AuthService {
 
     public function registerStep1($email, $password, $turnstileToken) {
         // [HONEYPOT CHECK] 
-        // Si el campo invisible 'website_url' (que los humanos no ven) tiene datos, es un bot.
-        // Accedemos directo a POST para no romper la firma del método si el handler no se actualiza.
         if (!empty($_POST['website_url'])) {
-            
-            // [NUEVO] ¡IMPORTANTE! 
-            // Destruimos cualquier intento de registro previo para asegurar 
-            // que si redirige, rebote contra la pared en el paso 2.
             unset($_SESSION['temp_register']); 
-
-            // ESTRATEGIA: Devolvemos éxito falso.
             return [
                 'success' => true, 
                 'message' => $this->i18n->t('api.step_1_ok'), 
@@ -87,49 +79,27 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_register_max_attempts', '10');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        // [REFACTOR] Usando Utils para Rate Limit
         if (Utils::checkSecurityLimit($this->pdo, 'register_attempt', $limit, $duration)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
         
-        // [REFACTOR] Usando Utils para Log
         Utils::logSecurityAction($this->pdo, 'register_attempt', $duration, $email);
 
         if (empty($email) || empty($password)) {
             return ['success' => false, 'message' => $this->i18n->t('api.fill_all')];
         }
 
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return ['success' => false, 'message' => $this->i18n->t('api.email_invalid')];
+        // [REFACTORIZADO] Validación centralizada de Email (Formato, Dominios, Unicidad)
+        // Pasamos null como ID porque es un usuario nuevo (no debe existir ninguno)
+        $emailValidation = Utils::validateUserValue($this->pdo, 'email', $email, null);
+        if (!$emailValidation['success']) {
+            return $emailValidation;
         }
 
-        $minPassLen = (int)Utils::getServerConfig($this->pdo, 'password_min_length', '6');
-        if (strlen($password) < $minPassLen) {
-            return ['success' => false, 'message' => $this->i18n->t('api.pass_short', [$minPassLen])];
-        }
-
-        $minPrefixLen = (int)Utils::getServerConfig($this->pdo, 'email_min_prefix_length', '3');
-        $parts = explode('@', $email);
-        $prefix = $parts[0] ?? '';
-        
-        if (strlen($prefix) < $minPrefixLen) {
-            return ['success' => false, 'message' => $this->i18n->t('api.email_prefix_short', [$minPrefixLen])];
-        }
-
-        $allowedDomainsStr = Utils::getServerConfig($this->pdo, 'email_allowed_domains', '*');
-        if ($allowedDomainsStr !== '*' && trim($allowedDomainsStr) !== '') {
-            $allowedDomains = array_map('trim', explode(',', strtolower($allowedDomainsStr)));
-            $domain = strtolower($parts[1] ?? '');
-            
-            if (!in_array($domain, $allowedDomains)) {
-                return ['success' => false, 'message' => $this->i18n->t('api.email_domain_not_allowed', [$domain])];
-            }
-        }
-
-        $stmt = $this->pdo->prepare("SELECT id FROM users WHERE email = ?");
-        $stmt->execute([$email]);
-        if ($stmt->fetch()) {
-            return ['success' => false, 'message' => $this->i18n->t('api.email_taken')];
+        // [REFACTORIZADO] Validación centralizada de Contraseña
+        $passValidation = Utils::validatePassword($this->pdo, $password);
+        if (!$passValidation['success']) {
+            return $passValidation;
         }
 
         $_SESSION['temp_register'] = [
@@ -150,7 +120,6 @@ class AuthService {
         
         $email = $_SESSION['temp_register']['email'];
         
-        // [REFACTOR] Usando Utils
         if (Utils::checkSecurityLimit($this->pdo, 'register_code_req', 3, 15, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
@@ -161,17 +130,10 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.choose_user')];
         }
 
-        $minUserLen = (int)Utils::getServerConfig($this->pdo, 'username_min_length', '4');
-        $maxUserLen = (int)Utils::getServerConfig($this->pdo, 'username_max_length', '20');
-        
-        if (strlen($username) < $minUserLen || strlen($username) > $maxUserLen) {
-            return ['success' => false, 'message' => $this->i18n->t('api.username_bounds', [$minUserLen, $maxUserLen])];
-        }
-
-        $stmt = $this->pdo->prepare("SELECT id FROM users WHERE username = ?");
-        $stmt->execute([$username]);
-        if ($stmt->fetch()) {
-            return ['success' => false, 'message' => $this->i18n->t('api.user_taken')];
+        // [REFACTORIZADO] Validación centralizada de Username (Longitud, Caracteres, Unicidad)
+        $userValidation = Utils::validateUserValue($this->pdo, 'username', $username, null);
+        if (!$userValidation['success']) {
+            return $userValidation;
         }
 
         $cooldownKey = "verify:cooldown:activation:{$email}";
@@ -199,7 +161,6 @@ class AuthService {
             $this->redis->setex($mainKey, $expiryMinutes * 60, $payload);
             $this->redis->setex($cooldownKey, 60, '1');
             
-            // [REFACTOR] Usando Utils
             Utils::logSecurityAction($this->pdo, 'register_code_req', 15, $email);
 
             $_SESSION['pending_verification_email'] = $email;
@@ -234,7 +195,6 @@ class AuthService {
         $configCheck = $this->checkRegistrationStatus();
         if (!$configCheck['success']) return $configCheck;
         
-        // [REFACTOR] Usando Utils
         if (Utils::checkSecurityLimit($this->pdo, 'resend_code_req', 3, 10, $email)) {
              return ['success' => false, 'message' => $this->i18n->t('api.wait_resend')];
         }
@@ -262,7 +222,6 @@ class AuthService {
             $this->redis->setex($mainKey, $expiryMinutes * 60, json_encode($data));
             $this->redis->setex($cooldownKey, 60, '1');
             
-            // [REFACTOR] Usando Utils
             Utils::logSecurityAction($this->pdo, 'resend_code_req', 10, $email);
 
             $username = $data['username'] ?? 'Usuario';
@@ -291,7 +250,6 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5'); 
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        // [REFACTOR] Usando Utils
         if (Utils::checkSecurityLimit($this->pdo, 'register_verify_fail', $limit, $duration, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
@@ -300,7 +258,6 @@ class AuthService {
         $dataJson = $this->redis->get($mainKey);
 
         if (!$dataJson) {
-            // [REFACTOR] Usando Utils
             Utils::logSecurityAction($this->pdo, 'register_verify_fail', $duration, $email);
             return ['success' => false, 'message' => $this->i18n->t('api.code_invalid_expired')];
         }
@@ -309,7 +266,6 @@ class AuthService {
         $storedCode = $data['code'] ?? '';
 
         if ($storedCode !== $code) {
-            // [REFACTOR] Usando Utils
             Utils::logSecurityAction($this->pdo, 'register_verify_fail', $duration, $email);
             return ['success' => false, 'message' => $this->i18n->t('api.code_invalid')];
         }
@@ -317,16 +273,12 @@ class AuthService {
         $username = $data['username'];
         $passwordHash = $data['password_hash']; 
         
-        // [REFACTOR] Usando Utils
         $uuid = Utils::generateUUID();
 
         $fileName = $uuid . '.png';
-        
-        // [MODIFICADO] Ruta corregida a 'storage'
         $dbPath = 'public/storage/profilePicture/default/' . $fileName;
         $absolutePath = __DIR__ . '/../../' . $dbPath;
 
-        // [REFACTOR] Usando Utils
         $avatarGenerated = Utils::generateDefaultProfilePicture($username, $absolutePath);
         $dbAvatarPath = $avatarGenerated ? $dbPath : null;
 
@@ -381,7 +333,6 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        // [REFACTOR] Usando Utils
         if (Utils::checkSecurityLimit($this->pdo, 'login_fail', $limit, $duration, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
@@ -425,7 +376,6 @@ class AuthService {
 
             return $this->completeLogin($user);
         } else {
-            // [REFACTOR] Usando Utils
             Utils::logSecurityAction($this->pdo, 'login_fail', $duration, $email);
             return ['success' => false, 'message' => $this->i18n->t('api.credentials_invalid')];
         }
@@ -441,7 +391,6 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
         
-        // [REFACTOR] Usando Utils
         if (Utils::checkSecurityLimit($this->pdo, '2fa_login_fail', $limit, $duration, "user:$userId")) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
@@ -497,13 +446,9 @@ class AuthService {
 
         if ($isValid) {
             unset($_SESSION['2fa_pending_user_id']);
-            
-            // [FIX CRÍTICO] Marcar sesión como verificada
             $_SESSION['is_2fa_verified'] = true;
-
             return $this->completeLogin($user);
         } else {
-            // [REFACTOR] Usando Utils
             Utils::logSecurityAction($this->pdo, '2fa_login_fail', $duration, "user:$userId");
             return ['success' => false, 'message' => $this->i18n->t('api.code_invalid')];
         }
@@ -517,7 +462,6 @@ class AuthService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        // [REFACTOR] Usando Utils
         if (Utils::checkSecurityLimit($this->pdo, 'recovery_fail', $limit, $duration, $email)) {
             return ['success' => false, 'message' => $this->i18n->t('api.recovery_limit')];
         }
@@ -530,7 +474,6 @@ class AuthService {
         $stmt->execute([$email]);
         
         if (!$stmt->fetch()) {
-            // [REFACTOR] Usando Utils
             Utils::logSecurityAction($this->pdo, 'recovery_fail', $duration, $email);
             return ['success' => false, 'message' => $this->i18n->t('api.email_not_found')];
         }
@@ -552,7 +495,6 @@ class AuthService {
         try {
             $this->pdo->prepare($sql)->execute([$email, $token, $expiresAt]);
             
-            // [REFACTOR] Usando Utils
             Utils::logSecurityAction($this->pdo, 'recovery_success', 60, $email);
 
             $resetLink = "https://tudominio.com/ProjectAurora/reset-password?token=" . $token; 
@@ -577,9 +519,10 @@ class AuthService {
             return ['success' => false, 'message' => $this->i18n->t('api.missing_data')];
         }
 
-        $minPassLen = (int)Utils::getServerConfig($this->pdo, 'password_min_length', '6');
-        if (strlen($newPassword) < $minPassLen) {
-            return ['success' => false, 'message' => $this->i18n->t('api.pass_short', [$minPassLen])];
+        // [REFACTORIZADO] Validación de Contraseña Centralizada
+        $passValidation = Utils::validatePassword($this->pdo, $newPassword);
+        if (!$passValidation['success']) {
+            return $passValidation;
         }
 
         $stmt = $this->pdo->prepare("SELECT email FROM password_resets WHERE token = ? AND expires_at > NOW() LIMIT 1");
@@ -606,7 +549,6 @@ class AuthService {
             if($uData) {
                 $this->pdo->prepare("DELETE FROM user_auth_tokens WHERE user_id = ?")->execute([$uData['id']]);
                 
-                // [REFACTOR] Usando Utils para WebSockets
                 Utils::notifyWebSocket('KICK_ALL', [
                     'user_id' => $uData['id']
                 ]);
@@ -631,7 +573,6 @@ class AuthService {
             }
         }
         
-        // [REFACTOR] Usando Utils para WebSockets
         if (isset($_SESSION['user_id']) && isset($_SESSION['current_token_id'])) {
              Utils::notifyWebSocket('LOGOUT_SESSION', [
                 'user_id' => $_SESSION['user_id'],
@@ -691,8 +632,6 @@ class AuthService {
         if (empty($token)) return ['success' => false, 'message' => 'Por favor completa el captcha.'];
 
         $url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
-        
-        // [REFACTOR] Usando Utils
         $ip = Utils::getClientIp();
 
         $data = [
@@ -752,10 +691,7 @@ class AuthService {
         $validator = bin2hex(random_bytes(32));
         $hashedValidator = hash('sha256', $validator);
         $expiresAt = date('Y-m-d H:i:s', time() + (86400 * 30)); 
-        
-        // [REFACTOR] Usando Utils
         $ip = Utils::getClientIp();
-        
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
 
         $sql = "INSERT INTO user_auth_tokens (user_id, selector, hashed_validator, ip_address, user_agent, expires_at) VALUES (?, ?, ?, ?, ?, ?)";

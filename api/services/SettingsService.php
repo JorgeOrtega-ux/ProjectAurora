@@ -9,7 +9,6 @@ use Aurora\Libs\Utils;
 use Aurora\Libs\EmailTemplates;
 use Aurora\Libs\Logger;
 use Exception;
-use finfo; // Clase nativa de PHP usada para avatares
 
 class SettingsService {
     private $pdo;
@@ -25,74 +24,49 @@ class SettingsService {
     }
 
     public function uploadAvatar($files) {
-        if (!isset($files['avatar']) || $files['avatar']['error'] !== UPLOAD_ERR_OK) { 
-            return ['success' => false, 'message' => $this->i18n->t('api.no_image')]; 
-        }
-        $file = $files['avatar'];
-        
-        $maxSize = (int)Utils::getServerConfig($this->pdo, 'upload_avatar_max_size', '2097152');
-        if ($file['size'] > $maxSize) {
-            $maxSizeMB = round($maxSize / 1048576, 1);
-            return ['success' => false, 'message' => $this->i18n->t('api.avatar_size_limit', [$maxSizeMB])]; 
-        }
-
-        $maxDim = (int)Utils::getServerConfig($this->pdo, 'upload_avatar_max_dim', '4096');
-        list($width, $height) = getimagesize($file['tmp_name']);
-        if ($width > $maxDim || $height > $maxDim) { 
-            return ['success' => false, 'message' => $this->i18n->t('api.avatar_dimensions_limit', [$maxDim])]; 
-        }
-
+        // 1. Rate Limit específico de Settings (Seguridad de usuario)
         if ($this->checkRateLimitExceeded('avatar_update', 24, 3)) { 
             return ['success' => false, 'message' => $this->i18n->t('api.avatar_rate_limit')]; 
         }
 
-        $allowedTypes = ['image/jpeg' => 'jpg', 'image/png'  => 'png', 'image/webp' => 'webp'];
-        $finfo = new finfo(FILEINFO_MIME_TYPE);
-        $mime = $finfo->file($file['tmp_name']);
-        if (!array_key_exists($mime, $allowedTypes)) { 
-            return ['success' => false, 'message' => $this->i18n->t('api.image_format')]; 
+        if (!isset($files['avatar'])) { 
+            return ['success' => false, 'message' => $this->i18n->t('api.no_image')]; 
         }
 
+        // 2. Obtener datos del usuario actual
         $stmt = $this->pdo->prepare("SELECT avatar_path, uuid FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
         $currentUser = $stmt->fetch();
-        $oldPath = $currentUser['avatar_path'];
-        $extension = $allowedTypes[$mime];
-        $newFileName = $currentUser['uuid'] . '-' . time() . '.' . $extension;
-        
-        // [MODIFICADO] Guardar en carpeta PÚBLICA (storage/custom)
-        $baseDir = __DIR__ . '/../../public/storage/profilePicture/custom/';
-        
-        if (!is_dir($baseDir)) mkdir($baseDir, 0755, true);
-        $targetPath = $baseDir . $newFileName;
-        
-        // [MODIFICADO] Ruta relativa para la BD (storage/custom)
-        $dbPath = 'public/storage/profilePicture/custom/' . $newFileName;
-        
-        $imageSaved = false;
-        if (extension_loaded('gd')) {
-            switch ($mime) {
-                case 'image/jpeg': $img = @imagecreatefromjpeg($file['tmp_name']); if ($img) { $imageSaved = imagejpeg($img, $targetPath, 90); imagedestroy($img); } break;
-                case 'image/png': $img = @imagecreatefrompng($file['tmp_name']); if ($img) { imagepalettetotruecolor($img); imagealphablending($img, true); imagesavealpha($img, true); $imageSaved = imagepng($img, $targetPath, 9); imagedestroy($img); } break;
-                case 'image/webp': $img = @imagecreatefromwebp($file['tmp_name']); if ($img) { $imageSaved = imagewebp($img, $targetPath, 90); imagedestroy($img); } break;
-            }
-        } else { return ['success' => false, 'message' => $this->i18n->t('api.server_config_error')]; }
-        
-        if ($imageSaved) {
-            $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
-            if ($update->execute([$dbPath, $this->userId])) {
-                $this->logProfileChange('avatar_update', $oldPath, $dbPath);
-                $this->deleteOldAvatar($oldPath);
-                $_SESSION['avatar'] = $dbPath;
-                
-                $newContent = file_get_contents($targetPath);
-                $base64 = 'data:' . $mime . ';base64,' . base64_encode($newContent);
+        if (!$currentUser) return ['success' => false, 'message' => $this->i18n->t('api.id_invalid')];
 
-                return ['success' => true, 'message' => $this->i18n->t('api.pic_updated'), 'new_src' => $base64, 'type' => 'custom'];
-            } else { @unlink($targetPath); return ['success' => false, 'message' => $this->i18n->t('api.pic_db_error')]; }
+        // 3. Procesamiento Centralizado (Utils)
+        // Utils maneja: Validación de archivo, MIME, Tamaño, Dimensiones y GD
+        $result = Utils::processImageUpload($this->pdo, $files['avatar'], $currentUser['uuid'], 'custom');
+
+        if (!$result['success']) {
+            return $result;
         }
-        return ['success' => false, 'message' => $this->i18n->t('api.pic_move_error')];
+
+        // 4. Actualización en Base de Datos y Sesión
+        $dbPath = $result['db_path'];
+        $oldPath = $currentUser['avatar_path'];
+
+        $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
+        if ($update->execute([$dbPath, $this->userId])) {
+            
+            // Registrar cambio y limpiar archivo viejo
+            $this->logProfileChange('avatar_update', $oldPath, $dbPath);
+            $this->deleteOldAvatar($oldPath);
+            
+            // Actualizar sesión del usuario actual
+            $_SESSION['avatar'] = $dbPath;
+            
+            return ['success' => true, 'message' => $this->i18n->t('api.pic_updated'), 'new_src' => $result['base64'], 'type' => 'custom'];
+        }
+
+        return ['success' => false, 'message' => $this->i18n->t('api.pic_db_error')];
     }
+
     public function deleteAvatar() {
         $stmt = $this->pdo->prepare("SELECT avatar_path, username, uuid FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
@@ -104,7 +78,7 @@ class SettingsService {
 
         $newFileName = $uuid . '-' . time() . '.png';
         
-        // [MODIFICADO] Ruta pública para avatares por defecto (storage/default)
+        // Ruta pública para avatares por defecto
         $dbPath = 'public/storage/profilePicture/default/' . $newFileName;
         $absolutePath = __DIR__ . '/../../' . $dbPath;
 
@@ -173,9 +147,6 @@ class SettingsService {
             }
         }
 
-        $limit = (int)Utils::getServerConfig($this->pdo, 'security_general_rate_limit', '10');
-        
-        // [REFACTOR] Usando Utils
         if (Utils::checkSecurityLimit($this->pdo, 'email_change_req', 3, 10, $this->userId)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
@@ -194,7 +165,6 @@ class SettingsService {
             $this->redis->setex($mainKey, $expiryMinutes * 60, $payload);
             $this->redis->setex($cooldownKey, 60, '1');
             
-            // [REFACTOR] Usando Utils
             Utils::logSecurityAction($this->pdo, 'email_change_req', 10, $this->userId);
 
             $subject = "Verifica tu identidad - Project Aurora";
@@ -234,56 +204,44 @@ class SettingsService {
     }
 
     public function updateProfile($field, $value) {
-        if (!in_array($field, ['username', 'email'])) return ['success' => false, 'message' => $this->i18n->t('api.field_invalid')];
-        if (empty($value)) return ['success' => false, 'message' => $this->i18n->t('api.field_empty')];
+        // 1. Validaciones Específicas de Settings (Permisos y Rate Limit)
         
-        if ($field === 'username') {
-            $minUserLen = (int)Utils::getServerConfig($this->pdo, 'username_min_length', '4');
-            $maxUserLen = (int)Utils::getServerConfig($this->pdo, 'username_max_length', '20');
-            if (strlen($value) < $minUserLen || strlen($value) > $maxUserLen) {
-                return ['success' => false, 'message' => $this->i18n->t('api.username_bounds', [$minUserLen, $maxUserLen])];
-            }
-        }
-        
+        // El cambio de email requiere un paso previo de verificación
         if ($field === 'email') { 
-            if (!filter_var($value, FILTER_VALIDATE_EMAIL)) return ['success' => false, 'message' => $this->i18n->t('api.email_invalid')];
-            
-            $allowedDomainsStr = Utils::getServerConfig($this->pdo, 'email_allowed_domains', '*');
-            if ($allowedDomainsStr !== '*' && trim($allowedDomainsStr) !== '') {
-                $allowedDomains = array_map('trim', explode(',', strtolower($allowedDomainsStr)));
-                $domain = substr(strrchr($value, "@"), 1);
-                if (!in_array(strtolower($domain), $allowedDomains)) {
-                    return ['success' => false, 'message' => $this->i18n->t('api.email_domain_not_allowed', [$domain])];
-                }
-            }
-
             if (!isset($_SESSION['email_change_auth']) || $_SESSION['email_change_auth'] < time()) {
                 return ['success' => false, 'message' => $this->i18n->t('api.auth_required')];
             }
         }
 
+        // Rate Limit para cambios de identidad
         if ($this->checkRateLimitExceeded($field, 288, 1)) {
             return ['success' => false, 'message' => $this->i18n->t('api.identity_rate_limit')];
         }
 
-        $stmt = $this->pdo->prepare("SELECT id FROM users WHERE $field = ? AND id != ?");
-        $stmt->execute([$value, $this->userId]);
-        if ($stmt->fetch()) return ['success' => false, 'message' => $this->i18n->t('api.field_in_use')];
-
-        $stmtOld = $this->pdo->prepare("SELECT $field FROM users WHERE id = ?");
-        $stmtOld->execute([$this->userId]);
-        $oldValue = $stmtOld->fetchColumn();
-
-        if ($oldValue === $value) {
-             return ['success' => true, 'message' => $this->i18n->t('api.field_updated')];
+        // 2. Validación de Datos Centralizada (Utils)
+        // Esto verifica formato (longitud, regex dominios) y unicidad en DB
+        $validation = Utils::validateUserValue($this->pdo, $field, $value, $this->userId);
+        if (!$validation['success']) {
+            return $validation;
         }
 
+        // 3. Ejecución de la Actualización
         try {
+            $stmtOld = $this->pdo->prepare("SELECT $field FROM users WHERE id = ?");
+            $stmtOld->execute([$this->userId]);
+            $oldValue = $stmtOld->fetchColumn();
+
+            if ($oldValue === $value) {
+                 return ['success' => true, 'message' => $this->i18n->t('api.field_updated')];
+            }
+
             $update = $this->pdo->prepare("UPDATE users SET $field = ? WHERE id = ?");
             $update->execute([$value, $this->userId]);
+            
             $this->logProfileChange($field, $oldValue, $value);
             $_SESSION[$field] = $value;
             
+            // Si se cambió el email, consumimos el token de autorización
             if ($field === 'email') {
                 unset($_SESSION['email_change_auth']);
             }
@@ -299,7 +257,6 @@ class SettingsService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
         
-        // [REFACTOR] Usando Utils
         if (Utils::checkSecurityLimit($this->pdo, 'password_verify_fail', $limit, $duration, $this->userId)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
@@ -313,7 +270,6 @@ class SettingsService {
             return ['success' => true, 'message' => $this->i18n->t('api.pass_correct')];
         }
         
-        // [REFACTOR] Usando Utils
         Utils::logSecurityAction($this->pdo, 'password_verify_fail', $duration, $this->userId);
         return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
     }
@@ -322,7 +278,6 @@ class SettingsService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
         
-        // [REFACTOR] Usando Utils
         if (Utils::checkSecurityLimit($this->pdo, 'password_verify_fail', $limit, $duration, $this->userId)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
@@ -338,7 +293,6 @@ class SettingsService {
         $user = $stmt->fetch();
         
         if (!$user || !password_verify($currentPass, $user['password'])) {
-            // [REFACTOR] Usando Utils
             Utils::logSecurityAction($this->pdo, 'password_verify_fail', $duration, $this->userId);
             return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
         }
@@ -357,7 +311,6 @@ class SettingsService {
     public function updatePreference($key, $value) {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_general_rate_limit', '10');
         
-        // [REFACTOR] Usando Utils
         if (Utils::checkSecurityLimit($this->pdo, 'pref_update', $limit, 1, $this->userId)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
@@ -396,7 +349,6 @@ class SettingsService {
             if (!isset($_SESSION['preferences'])) $_SESSION['preferences'] = [];
             $_SESSION['preferences'][$key] = ($key === 'open_links_new_tab' || $key === 'extended_toast') ? (bool)$dbValue : $dbValue;
 
-            // [REFACTOR] Usando Utils
             Utils::logSecurityAction($this->pdo, 'pref_update', 1, $this->userId); 
 
             return ['success' => true, 'message' => $this->i18n->t('api.pref_saved')];
@@ -407,7 +359,6 @@ class SettingsService {
     }
 
     public function init2fa() {
-        // [REFACTOR] Usando Utils
         if (Utils::checkSecurityLimit($this->pdo, '2fa_init_attempt', 10, 60, $this->userId)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pref_rate_limit')];
         }
@@ -424,7 +375,6 @@ class SettingsService {
 
         $otpauthUrl = "otpauth://totp/{$encodedIssuer}:{$encodedUser}?secret={$secret}&issuer={$encodedIssuer}";
 
-        // [REFACTOR] Usando Utils
         Utils::logSecurityAction($this->pdo, '2fa_init_attempt', 60, $this->userId);
         
         return ['success' => true, 'message' => $this->i18n->t('api.qr_scan'), 'otpauth_url' => $otpauthUrl, 'secret' => $secret];
@@ -434,7 +384,6 @@ class SettingsService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        // [REFACTOR] Usando Utils
         if (Utils::checkSecurityLimit($this->pdo, '2fa_verify_attempt', $limit, $duration, $this->userId)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
@@ -455,8 +404,6 @@ class SettingsService {
             if ($stmt->execute([$secret, $jsonCodes, $this->userId])) {
                 unset($_SESSION['temp_2fa_secret']);
                 $_SESSION['two_factor_enabled'] = 1;
-
-                // [FIX CRÍTICO] Marcar sesión como verificada inmediatamente
                 $_SESSION['is_2fa_verified'] = true;
                 
                 $this->logProfileChange('2fa', 'disabled', 'enabled');
@@ -465,7 +412,6 @@ class SettingsService {
             return ['success' => false, 'message' => $this->i18n->t('api.pic_db_error')];
         }
         
-        // [REFACTOR] Usando Utils
         Utils::logSecurityAction($this->pdo, '2fa_verify_attempt', $duration, $this->userId);
         return ['success' => false, 'message' => $this->i18n->t('api.code_invalid')];
     }
@@ -495,56 +441,41 @@ class SettingsService {
     }
 
    public function regenerateRecoveryCodes($password) {
-        // 1. Obtener configuraciones de seguridad
         $limitFail = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        // 2. CHECK 1: Protección contra Fuerza Bruta (Intentos fallidos de contraseña)
-        // Si el usuario ha fallado la contraseña muchas veces, se le bloquea con el mensaje de "Intentos fallidos".
         if (Utils::checkSecurityLimit($this->pdo, '2fa_regen_codes_fail', $limitFail, $duration, $this->userId)) {
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration])];
         }
 
-        // 3. CHECK 2: Rate Limiting (Frecuencia de uso legítimo)
-        // Si el usuario ya generó códigos exitosamente 3 veces en 15 min, se le pide esperar sin acusarlo de fallar.
-        // Usamos 'api.recovery_limit' ("Has excedido el límite de solicitudes...") en lugar de login_block.
         if (Utils::checkSecurityLimit($this->pdo, '2fa_regen_codes', 3, $duration, $this->userId)) {
             return ['success' => false, 'message' => $this->i18n->t('api.recovery_limit')];
         }
 
-        // 4. Validar que se envió la contraseña
         if (empty($password)) {
             return ['success' => false, 'message' => $this->i18n->t('api.pass_req_confirm')];
         }
 
-        // 5. Obtener contraseña actual de la BD
         $stmt = $this->pdo->prepare("SELECT password FROM users WHERE id = ?");
         $stmt->execute([$this->userId]);
         $user = $stmt->fetch();
 
-        // 6. Verificar contraseña
         if (!$user || !password_verify($password, $user['password'])) {
-            // [IMPORTANTE] Registramos el fallo en el contador de 'fail' (Fuerza Bruta)
             Utils::logSecurityAction($this->pdo, '2fa_regen_codes_fail', $duration, $this->userId);
             return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
         }
 
-        // 7. Generar nuevos códigos (Operación costosa)
         $recoveryCodes = []; 
         $hashedCodes = []; 
         for($i=0; $i<10; $i++) {
             $plainCode = bin2hex(random_bytes(4)); 
             $recoveryCodes[] = $plainCode;
-            // Hasheamos cada código para seguridad en reposo
             $hashedCodes[] = password_hash($plainCode, PASSWORD_DEFAULT);
         }
         $jsonCodes = json_encode($hashedCodes);
         
-        // 8. Guardar en Base de Datos
         $update = $this->pdo->prepare("UPDATE users SET two_factor_recovery_codes = ? WHERE id = ?");
         if ($update->execute([$jsonCodes, $this->userId])) {
-            // [IMPORTANTE] Registramos el éxito en el contador de frecuencia (Rate Limit)
-            // Esto es lo que evita que un usuario sature el servidor pidiendo códigos infinitamente.
             Utils::logSecurityAction($this->pdo, '2fa_regen_codes', $duration, $this->userId);
             
             return [
@@ -568,7 +499,6 @@ class SettingsService {
         }
         $formatted = [];
         foreach($sessions as $s) {
-            // [REFACTOR] Usando Utils
             $info = Utils::parseUserAgent($s['user_agent'] ?? '');
             $isCurrent = ($s['selector'] === $currentSelector);
             $formatted[] = [
@@ -589,7 +519,6 @@ class SettingsService {
         $stmt->execute([$tokenId, $this->userId]);
         
         if ($stmt->rowCount() > 0) {
-            // [REFACTOR] Usando Utils
             Utils::notifyWebSocket('KICK_SESSION', [
                 'user_id' => $this->userId,
                 'session_id' => $tokenId
@@ -605,7 +534,6 @@ class SettingsService {
         $stmt->execute([$this->userId]);
         setcookie('auth_persistence_token', '', time() - 3600, '/', '', isset($_SERVER['HTTPS']), true);
         
-        // [REFACTOR] Usando Utils
         Utils::notifyWebSocket('KICK_ALL', [
             'user_id' => $this->userId
         ]);
@@ -617,7 +545,6 @@ class SettingsService {
         $limit = (int)Utils::getServerConfig($this->pdo, 'security_login_max_attempts', '5');
         $duration = (int)Utils::getServerConfig($this->pdo, 'security_block_duration', '15');
 
-        // [REFACTOR] Usando Utils
         if (Utils::checkSecurityLimit($this->pdo, 'account_delete_attempt', $limit, $duration * 2, $this->userId)) { 
             return ['success' => false, 'message' => $this->i18n->t('api.login_block', [$duration * 2])];
         }
@@ -626,7 +553,6 @@ class SettingsService {
         $stmt->execute([$this->userId]);
         $user = $stmt->fetch();
         if (!$user || !password_verify($password, $user['password'])) {
-            // [REFACTOR] Usando Utils
             Utils::logSecurityAction($this->pdo, 'account_delete_attempt', $duration * 2, $this->userId);
             return ['success' => false, 'message' => $this->i18n->t('api.pass_incorrect')];
         }
@@ -639,7 +565,6 @@ class SettingsService {
             $this->logProfileChange('account_status', 'active', 'deleted');
             $this->pdo->commit();
             
-            // [REFACTOR] Usando Utils
             Utils::notifyWebSocket('KICK_ALL', [
                 'user_id' => $this->userId
             ]);
@@ -666,7 +591,6 @@ class SettingsService {
     }
 
     private function logProfileChange($changeType, $oldValue, $newValue) {
-        // [REFACTOR] Usando Utils
         $ip = Utils::getClientIp();
         $ua = $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown';
         $sql = "INSERT INTO profile_changes (user_id, change_type, old_value, new_value, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)";

@@ -7,15 +7,12 @@ use Aurora\Libs\Utils;
 use Aurora\Libs\Logger;
 use PDO;
 use Exception;
-use finfo; 
 
 class AdminService {
     private $pdo;
     private $i18n;
     private $requestingUserId;
     private $redis; 
-
-    // [REFACTOR] Eliminada la propiedad $requesterRoleCache
 
     public function __construct($pdo, $i18n, $userId, $redis = null) {
         $this->pdo = $pdo;
@@ -29,7 +26,6 @@ class AdminService {
     // ===============================================================================================
 
     public function togglePanicMode($activate, AlertService $alertService) {
-        // [REFACTOR] Usando Utils::checkUserPrivileges
         $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
         if (!$privCheck['allowed']) {
             return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
@@ -44,8 +40,6 @@ class AdminService {
 
             if ($activate) {
                 // === ACTIVAR PÁNICO ===
-                
-                // 1. SQL: Bloquear registros y activar bandera
                 $stmt = $this->pdo->prepare("
                     INSERT INTO server_config (config_key, config_value) 
                     VALUES ('allow_registrations', '0'), ('security_panic_mode', '1') 
@@ -53,17 +47,14 @@ class AdminService {
                 ");
                 $stmt->execute();
 
-                // 2. Redis: Activar Firewall estricto (para app-setup.php)
                 $this->redis->set('firewall:strict', 'true');
 
-                // 3. AlertService: Crear alerta visual roja
                 $alertData = [
                     'type' => 'performance',
                     'meta' => ['code' => 'overload'] 
                 ];
                 $alertService->createAlert($alertData);
 
-                // 4. Redis PubSub: Ordenar a Python que mate los invitados
                 $wsMessage = [
                     'cmd' => 'DROP_GUESTS'
                 ];
@@ -75,8 +66,6 @@ class AdminService {
 
             } else {
                 // === DESACTIVAR PÁNICO ===
-
-                // 1. SQL: Restaurar registros y quitar bandera
                 $stmt = $this->pdo->prepare("
                     INSERT INTO server_config (config_key, config_value) 
                     VALUES ('allow_registrations', '1'), ('security_panic_mode', '0') 
@@ -84,10 +73,7 @@ class AdminService {
                 ");
                 $stmt->execute();
 
-                // 2. Redis: Eliminar Firewall estricto
                 $this->redis->del('firewall:strict');
-
-                // 3. AlertService: Quitar alerta
                 $alertService->deactivateAlert();
 
                 $this->logAudit('system', 'global', 'PANIC_MODE_DEACTIVATED');
@@ -95,7 +81,6 @@ class AdminService {
                 $message = 'Modo Pánico desactivado. Sistema restaurado a la normalidad.';
             }
 
-            // Invalidar caché de configuración global para que PHP lea los nuevos valores DB
             if ($this->redis) {
                 $this->redis->del('server:config:all');
             }
@@ -115,37 +100,25 @@ class AdminService {
     // SISTEMA DE SEGURIDAD JERÁRQUICA (CORE)
     // ===============================================================================================
 
-    /**
-     * Verifica si el usuario solicitante tiene autoridad jerárquica sobre el objetivo.
-     * [REFACTOR] Ahora delega la lógica a Utils::checkHierarchicalAccess
-     */
     private function checkHierarchicalPermission($targetUserId) {
         $result = Utils::checkHierarchicalAccess($this->pdo, $this->requestingUserId, $targetUserId);
         
         if (!$result['allowed']) {
-            // Personalizamos el mensaje si es un intento de admin vs admin
-            // (Aunque Utils ya devuelve un mensaje genérico, podemos enriquecerlo si tenemos el rol destino)
             return ['allowed' => false, 'message' => $result['message'] ?? 'No tienes autoridad suficiente para modificar a este usuario.'];
         }
         
         return $result;
     }
 
-    // [REFACTOR] Eliminado getRoleLevel() - Ahora en Utils
-    // [REFACTOR] Eliminado getRequesterRole() y caché asociada
-
     private function shouldHideEmail($targetRole) {
-        // Obtenemos rol directamente ya que no hay caché local
         $stmt = $this->pdo->prepare("SELECT role FROM users WHERE id = ?");
         $stmt->execute([$this->requestingUserId]);
         $requesterRole = $stmt->fetchColumn();
         
-        // El Founder ve todo
         if ($requesterRole === 'founder') {
             return false;
         }
 
-        // Si el objetivo es Admin o Founder, y el que pide NO es Founder (es Admin/Mod), se oculta.
         if ($targetRole === 'founder' || $targetRole === 'administrator') {
             return true;
         }
@@ -455,7 +428,6 @@ class AdminService {
 
             $formattedUsers = [];
             foreach ($users as $user) {
-                // [MODIFICADO] Protección de correo
                 if ($this->shouldHideEmail($user['role'])) {
                     $user['email'] = $this->i18n->t('admin.email_protected') ?: 'Correo Protegido';
                 }
@@ -498,7 +470,6 @@ class AdminService {
 
             if (!$user) return ['success' => false, 'message' => $this->i18n->t('api.id_invalid')];
 
-            // [MODIFICADO] Protección de correo
             if ($this->shouldHideEmail($user['role'])) {
                 $user['email'] = $this->i18n->t('admin.email_protected') ?: 'Correo Protegido';
             }
@@ -531,10 +502,10 @@ class AdminService {
     }
 
     public function updateUserProfile($targetId, $field, $value) {
+        // 1. SEGURIDAD (Autorización)
         $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
         if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
         
-        // [FIX] Bloquear auto-edición insegura
         if ($targetId == $this->requestingUserId) {
             return ['success' => false, 'message' => 'Para editar tu propio perfil, ve a "Tu Perfil".'];
         }
@@ -542,19 +513,14 @@ class AdminService {
         $permCheck = $this->checkHierarchicalPermission($targetId);
         if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
 
-        if (!in_array($field, ['username', 'email'])) return ['success' => false, 'message' => $this->i18n->t('api.field_invalid')];
-        
-        if ($field === 'username') {
-            if (strlen($value) < 4 || strlen($value) > 20) return ['success' => false, 'message' => $this->i18n->t('api.username_bounds', [4, 20])];
-        }
-        if ($field === 'email') {
-             if (!filter_var($value, FILTER_VALIDATE_EMAIL)) return ['success' => false, 'message' => $this->i18n->t('api.email_invalid')];
+        // 2. VALIDACIÓN DE DATOS (Delegada a Utils)
+        // [REFACTORIZADO] Usamos Utils::validateUserValue
+        $validation = Utils::validateUserValue($this->pdo, $field, $value, $targetId);
+        if (!$validation['success']) {
+            return $validation;
         }
 
-        $stmt = $this->pdo->prepare("SELECT id FROM users WHERE $field = ? AND id != ?");
-        $stmt->execute([$value, $targetId]);
-        if ($stmt->fetch()) return ['success' => false, 'message' => $this->i18n->t('api.field_in_use')];
-
+        // 3. EJECUCIÓN
         try {
             $stmtOld = $this->pdo->prepare("SELECT $field FROM users WHERE id = ?");
             $stmtOld->execute([$targetId]);
@@ -581,7 +547,6 @@ class AdminService {
         $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
         if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
-        // [FIX] Bloquear auto-democión
         if ($targetId == $this->requestingUserId) {
             return ['success' => false, 'message' => 'No puedes cambiar tu propio rol. Contacta a otro administrador.'];
         }
@@ -595,7 +560,6 @@ class AdminService {
             return ['success' => false, 'message' => 'Rol inválido o acción no permitida.'];
         }
 
-        // [REFACTOR] Obtener roles y niveles usando Utils
         $stmt = $this->pdo->prepare("SELECT role FROM users WHERE id = ?");
         $stmt->execute([$this->requestingUserId]);
         $myRole = $stmt->fetchColumn();
@@ -631,7 +595,6 @@ class AdminService {
         $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
         if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
 
-        // [FIX] Bloquear desactivación propia de 2FA insegura
         if ($targetId == $this->requestingUserId) {
             return ['success' => false, 'message' => 'Por seguridad, usa la sección "Seguridad" en tu configuración para gestionar tu 2FA.'];
         }
@@ -697,72 +660,56 @@ class AdminService {
     }
 
    public function uploadUserAvatar($targetId, $files) {
+        // 1. SEGURIDAD (Autorización)
         $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
         if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
         
         $permCheck = $this->checkHierarchicalPermission($targetId);
         if (!$permCheck['allowed']) return ['success' => false, 'message' => $permCheck['message']];
 
-        if (!isset($files['avatar']) || $files['avatar']['error'] !== UPLOAD_ERR_OK) { 
+        // 2. VALIDACIÓN Y PROCESAMIENTO (Delegada a Utils)
+        if (!isset($files['avatar'])) { 
             return ['success' => false, 'message' => $this->i18n->t('api.no_image')]; 
         }
-        
-        $file = $files['avatar'];
+
         $stmt = $this->pdo->prepare("SELECT uuid, avatar_path FROM users WHERE id = ?");
         $stmt->execute([$targetId]);
         $targetUser = $stmt->fetch();
         if (!$targetUser) return ['success' => false, 'message' => $this->i18n->t('api.id_invalid')];
 
-        $allowedTypes = ['image/jpeg' => 'jpg', 'image/png'  => 'png', 'image/webp' => 'webp'];
-        $finfo = new finfo(FILEINFO_MIME_TYPE);
-        $mime = $finfo->file($file['tmp_name']);
-        
-        if (!array_key_exists($mime, $allowedTypes)) return ['success' => false, 'message' => $this->i18n->t('api.image_format')];
+        // [REFACTORIZADO] Usamos Utils::processImageUpload
+        $result = Utils::processImageUpload($this->pdo, $files['avatar'], $targetUser['uuid'], 'custom');
 
-        $extension = $allowedTypes[$mime];
-        $newFileName = $targetUser['uuid'] . '-' . time() . '.' . $extension;
-        
-        // [MODIFICADO] Guardar en carpeta PÚBLICA (storage/custom)
-        $baseDir = __DIR__ . '/../../public/storage/profilePicture/custom/';
-        
-        if (!is_dir($baseDir)) mkdir($baseDir, 0755, true);
-        
-        $targetPath = $baseDir . $newFileName;
-        
-        // [MODIFICADO] Ruta relativa para BD (storage/custom)
-        $dbPath = 'public/storage/profilePicture/custom/' . $newFileName;
-
-        $imageSaved = false;
-        if (extension_loaded('gd')) {
-            switch ($mime) {
-                case 'image/jpeg': $img = @imagecreatefromjpeg($file['tmp_name']); if ($img) { $imageSaved = imagejpeg($img, $targetPath, 90); imagedestroy($img); } break;
-                case 'image/png': $img = @imagecreatefrompng($file['tmp_name']); if ($img) { imagepalettetotruecolor($img); imagealphablending($img, true); imagesavealpha($img, true); $imageSaved = imagepng($img, $targetPath, 9); imagedestroy($img); } break;
-                case 'image/webp': $img = @imagecreatefromwebp($file['tmp_name']); if ($img) { $imageSaved = imagewebp($img, $targetPath, 90); imagedestroy($img); } break;
-            }
+        if (!$result['success']) {
+            return $result; // Retorna el error de Utils (tamaño, tipo, etc.)
         }
 
-        if ($imageSaved) {
-            $oldPath = $targetUser['avatar_path'];
-            $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
+        // 3. ACTUALIZACIÓN DB
+        $dbPath = $result['db_path'];
+        $oldPath = $targetUser['avatar_path'];
+
+        $update = $this->pdo->prepare("UPDATE users SET avatar_path = ? WHERE id = ?");
+        if ($update->execute([$dbPath, $targetId])) {
             
-            if ($update->execute([$dbPath, $targetId])) {
-                if (!empty($oldPath) && file_exists(__DIR__ . '/../../' . $oldPath)) {
-                    @unlink(__DIR__ . '/../../' . $oldPath);
-                }
-                
-                $this->logAudit('user', $targetId, 'UPDATE_AVATAR', [
-                    'old' => $oldPath,
-                    'new' => $dbPath
-                ]);
-
-                $newContent = file_get_contents($targetPath);
-                $base64 = 'data:' . $mime . ';base64,' . base64_encode($newContent);
-
-                return ['success' => true, 'message' => $this->i18n->t('api.pic_updated'), 'new_src' => $base64];
+            // Limpiar avatar antiguo si existe
+            if (!empty($oldPath) && file_exists(__DIR__ . '/../../' . $oldPath)) {
+                @unlink(__DIR__ . '/../../' . $oldPath);
             }
+            
+            $this->logAudit('user', $targetId, 'UPDATE_AVATAR', [
+                'old' => $oldPath,
+                'new' => $dbPath
+            ]);
+
+            // Devolvemos el base64 que nos generó Utils (o lo leemos si es necesario, 
+            // pero Utils::processImageUpload debería devolverlo para evitar doble lectura)
+            // Asumimos que Utils devuelve 'base64' para la preview instantánea.
+            return ['success' => true, 'message' => $this->i18n->t('api.pic_updated'), 'new_src' => $result['base64']];
         }
-        return ['success' => false, 'message' => $this->i18n->t('api.pic_move_error')];
+
+        return ['success' => false, 'message' => $this->i18n->t('api.pic_db_error')];
     }
+
    public function deleteUserAvatar($targetId) {
         $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
         if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
@@ -780,7 +727,6 @@ class AdminService {
 
         $newFileName = $uuid . '-' . time() . '.png';
         
-        // [MODIFICADO] Ruta pública para avatares por defecto (storage/default)
         $dbPath = 'public/storage/profilePicture/default/' . $newFileName;
         $absolutePath = __DIR__ . '/../../' . $dbPath;
 
@@ -820,7 +766,6 @@ class AdminService {
         $durationDays = $statusData['duration_days'] ?? 0;
         $deletionSource = $statusData['deletion_source'] ?? null;
 
-        // [FIX] Bloquear auto-sanción
         if ($targetId == $this->requestingUserId && ($newStatus === 'suspended' || $newStatus === 'deleted')) {
             return ['success' => false, 'message' => 'No puedes suspender o eliminar tu propia cuenta.'];
         }
@@ -900,105 +845,99 @@ class AdminService {
         }
     }
 
-   // Archivo: api/services/AdminService.php
+    public function updateServerConfig($data) {
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+        
+        $allowedKeys = [
+            'maintenance_mode', 'allow_registrations', 'allow_login',
+            'password_min_length', 'username_min_length', 'username_max_length',
+            'email_min_prefix_length', 'email_allowed_domains',
+            'upload_avatar_max_size', 'upload_avatar_max_dim',
+            'security_login_max_attempts', 'security_block_duration', 'security_general_rate_limit',
+            'auth_verification_code_expiry', 'auth_reset_token_expiry',
+            'sys_mysqldump_path', 'sys_mysql_path',
+            'security_admin_require_2fa'
+        ];
 
-public function updateServerConfig($data) {
-    $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
-    if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
-    
-    $allowedKeys = [
-        'maintenance_mode', 'allow_registrations', 'allow_login',
-        'password_min_length', 'username_min_length', 'username_max_length',
-        'email_min_prefix_length', 'email_allowed_domains',
-        'upload_avatar_max_size', 'upload_avatar_max_dim',
-        'security_login_max_attempts', 'security_block_duration', 'security_general_rate_limit',
-        'auth_verification_code_expiry', 'auth_reset_token_expiry',
-        'sys_mysqldump_path', 'sys_mysql_path',
-        'security_admin_require_2fa'
-    ];
+        try {
+            $currentConfig = $this->getServerConfigAll()['config'] ?? [];
 
-    try {
-        $currentConfig = $this->getServerConfigAll()['config'] ?? [];
+            $this->pdo->beginTransaction();
+            $stmt = $this->pdo->prepare("INSERT INTO server_config (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
 
-        $this->pdo->beginTransaction();
-        $stmt = $this->pdo->prepare("INSERT INTO server_config (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
+            $maintenanceActivated = false;
+            $hasChanges = false;
 
-        $maintenanceActivated = false;
-        $hasChanges = false;
-
-        foreach ($data as $key => $value) {
-            if (in_array($key, $allowedKeys)) {
-                
-                // --- NUEVO: Validación Específica para Dominios ---
-                if ($key === 'email_allowed_domains') {
-                    $value = trim($value); // Limpieza básica
+            foreach ($data as $key => $value) {
+                if (in_array($key, $allowedKeys)) {
                     
-                    // Si no es el comodín global, validamos cada entrada
-                    if ($value !== '*') {
-                        $domains = explode(',', $value);
-                        foreach ($domains as $d) {
-                            $d = trim($d);
-                            if (empty($d)) continue;
-                            
-                            // Regex compatible con el de JS: valida dominio.ext
-                            if ($d !== '*' && !preg_match('/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/', $d)) {
-                                $this->pdo->rollBack();
-                                return [
-                                    'success' => false, 
-                                    'message' => "El formato del dominio '{$d}' es inválido. Debe incluir extensión (ej. .com)."
-                                ];
+                    // --- NUEVO: Validación de Dominios usando Utils ---
+                    // [REFACTORIZADO] Delegamos a Utils::isValidDomain
+                    if ($key === 'email_allowed_domains') {
+                        $value = trim($value);
+                        if ($value !== '*') {
+                            $domains = explode(',', $value);
+                            foreach ($domains as $d) {
+                                $d = trim($d);
+                                if (empty($d)) continue;
+                                
+                                if (!Utils::isValidDomain($d)) {
+                                    $this->pdo->rollBack();
+                                    return [
+                                        'success' => false, 
+                                        'message' => "El formato del dominio '{$d}' es inválido. Debe incluir extensión (ej. .com)."
+                                    ];
+                                }
                             }
                         }
                     }
-                }
-                // --------------------------------------------------
+                    // --------------------------------------------------
 
-                if ($value === true || $value === 'true') $value = '1';
-                if ($value === false || $value === 'false') $value = '0';
-                
-                $strValue = (string)$value;
-                $oldValue = $currentConfig[$key] ?? null;
-
-                if ($oldValue !== $strValue) {
-                    $stmt->execute([$key, $strValue]);
+                    if ($value === true || $value === 'true') $value = '1';
+                    if ($value === false || $value === 'false') $value = '0';
                     
-                    $this->logAudit('server_config', $key, 'UPDATE_CONFIG', [
-                        'old' => $oldValue,
-                        'new' => $strValue
-                    ]);
+                    $strValue = (string)$value;
+                    $oldValue = $currentConfig[$key] ?? null;
 
-                    if ($key === 'maintenance_mode' && $strValue === '1') {
-                        $maintenanceActivated = true;
+                    if ($oldValue !== $strValue) {
+                        $stmt->execute([$key, $strValue]);
+                        
+                        $this->logAudit('server_config', $key, 'UPDATE_CONFIG', [
+                            'old' => $oldValue,
+                            'new' => $strValue
+                        ]);
+
+                        if ($key === 'maintenance_mode' && $strValue === '1') {
+                            $maintenanceActivated = true;
+                        }
+                        $hasChanges = true;
                     }
-                    $hasChanges = true;
                 }
             }
-        }
-        $this->pdo->commit();
+            $this->pdo->commit();
 
-        if ($hasChanges && $this->redis) {
-            try {
-                $this->redis->del('server:config:all');
-            } catch (Exception $e) {
-                error_log("Error invalidando caché de config: " . $e->getMessage());
+            if ($hasChanges && $this->redis) {
+                try {
+                    $this->redis->del('server:config:all');
+                } catch (Exception $e) {
+                    error_log("Error invalidando caché de config: " . $e->getMessage());
+                }
             }
-        }
 
-        if ($maintenanceActivated) {
-            Utils::notifyWebSocket('maintenance_start', ['text' => 'El sistema ha entrado en mantenimiento.']);
-            $this->logAudit('system', 'global', 'MAINTENANCE_STARTED', []);
-        }
+            if ($maintenanceActivated) {
+                Utils::notifyWebSocket('maintenance_start', ['text' => 'El sistema ha entrado en mantenimiento.']);
+                $this->logAudit('system', 'global', 'MAINTENANCE_STARTED', []);
+            }
 
-        return ['success' => true, 'message' => 'Configuración del servidor guardada exitosamente.'];
-    } catch (Exception $e) {
-        if ($this->pdo->inTransaction()) {
-            $this->pdo->rollBack();
+            return ['success' => true, 'message' => 'Configuración del servidor guardada exitosamente.'];
+        } catch (Exception $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            return ['success' => false, 'message' => 'Error al guardar configuración: ' . $e->getMessage()];
         }
-        return ['success' => false, 'message' => 'Error al guardar configuración: ' . $e->getMessage()];
     }
-}
-
-    // [REFACTOR] Eliminado isAdmin() - Ahora en Utils::checkUserPrivileges
 
     private function resolveAvatarSrc($userId, $username) {
         $stmt = $this->pdo->prepare("SELECT avatar_path FROM users WHERE id = ?");

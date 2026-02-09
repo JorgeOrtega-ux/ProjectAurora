@@ -1,45 +1,51 @@
 /**
  * public/assets/js/core/date-time-picker.js
  * Componente Refactorizado BEM: .component-datepicker-wrapper y .component-calendar
+ * [REFACTOR] Convertido de Class a Const (Constructor Function) para consistencia.
  */
 
-export class DateTimePicker {
-    /**
-     * @param {string|HTMLElement} wrapperSelector - Selector CSS o Elemento del contenedor (.component-datepicker-wrapper)
-     * @param {string|HTMLElement} inputSelector - Selector CSS o Elemento del input hidden
-     * @param {Object} options - Configuración opcional
-     */
-    constructor(wrapperSelector, inputSelector, options = {}) {
-        // Soporte híbrido: string selector o elemento DOM directo
-        this.wrapper = (typeof wrapperSelector === 'string') 
-            ? document.querySelector(wrapperSelector) 
-            : wrapperSelector;
+export const DateTimePicker = function(wrapperSelector, inputSelector, options = {}) {
+    // ==========================================
+    // 1. Configuración e Inicialización
+    // ==========================================
+    this.wrapper = (typeof wrapperSelector === 'string') 
+        ? document.querySelector(wrapperSelector) 
+        : wrapperSelector;
 
-        this.input = (typeof inputSelector === 'string') 
-            ? document.querySelector(inputSelector) 
-            : inputSelector;
+    this.input = (typeof inputSelector === 'string') 
+        ? document.querySelector(inputSelector) 
+        : inputSelector;
 
-        this.options = {
-            enableTime: true,
-            minDate: new Date(),
-            format: 'YYYY-MM-DDTHH:mm',
-            displayFormat: { date: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' },
-            ...options
-        };
+    this.options = {
+        enableTime: true,
+        minDate: new Date(),
+        format: 'YYYY-MM-DDTHH:mm',
+        displayFormat: { date: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' },
+        ...options
+    };
 
-        if (!this.wrapper || !this.input) {
-            console.error("DateTimePicker: Wrapper o Input no encontrado", wrapperSelector);
-            return;
-        }
-
-        // Estado interno
-        this.currentDate = new Date(); 
-        this.selectedDate = null;      
-        
-        this.init();
+    if (!this.wrapper || !this.input) {
+        console.error("DateTimePicker: Wrapper o Input no encontrado", wrapperSelector);
+        return;
     }
 
-    init() {
+    // Estado interno
+    this.currentDate = new Date(); 
+    this.selectedDate = null;
+    
+    // Referencias DOM (se llenarán en renderDOM)
+    this.popover = null;
+    this.grid = null;
+    this.monthLabel = null;
+    this.yearInput = null;
+    this.hourInput = null;
+    this.minuteInput = null;
+
+    // ==========================================
+    // 2. Definición de Métodos
+    // ==========================================
+    
+    this.init = () => {
         this.renderDOM();
         this.bindEvents();
         
@@ -59,10 +65,10 @@ export class DateTimePicker {
              if(triggerText) triggerText.textContent = "Seleccionar fecha...";
         }
         this.renderCalendar();
-    }
+    };
 
-    renderDOM() {
-        // Estructura HTML actualizada con clases BEM (.component-calendar...)
+    this.renderDOM = () => {
+        // Estructura HTML actualizada con clases BEM
         const popoverHTML = `
             <div class="component-calendar">
                 <div class="component-calendar__header">
@@ -101,7 +107,7 @@ export class DateTimePicker {
         // Inyectar el popover dentro del wrapper
         this.wrapper.insertAdjacentHTML('beforeend', popoverHTML);
 
-        // Referencias a elementos internos usando querySelector (scoped)
+        // Referencias a elementos internos
         this.popover = this.wrapper.querySelector('.component-calendar');
         this.grid = this.wrapper.querySelector('.component-calendar__grid');
         this.monthLabel = this.wrapper.querySelector('.component-calendar__month-label');
@@ -116,9 +122,9 @@ export class DateTimePicker {
             this.hourInput.value = String(now.getHours()).padStart(2, '0');
             this.minuteInput.value = String(now.getMinutes()).padStart(2, '0');
         }
-    }
+    };
 
-    renderCalendar() {
+    this.renderCalendar = () => {
         this.grid.innerHTML = '';
         const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
         this.monthLabel.textContent = monthNames[this.currentDate.getMonth()];
@@ -126,7 +132,7 @@ export class DateTimePicker {
 
         const year = this.currentDate.getFullYear();
         const month = this.currentDate.getMonth();
-        const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 (Domingo) - 6
+        const firstDayOfMonth = new Date(year, month, 1).getDay(); 
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         
         let minDateTimestamp = 0;
@@ -139,7 +145,6 @@ export class DateTimePicker {
         // Espacios vacíos
         for (let i = 0; i < firstDayOfMonth; i++) {
             const emptyCell = document.createElement('div');
-            // Clase BEM para estado vacío
             emptyCell.className = 'component-calendar__day is-empty';
             this.grid.appendChild(emptyCell);
         }
@@ -156,7 +161,6 @@ export class DateTimePicker {
             const cellDate = new Date(year, month, day);
             const cellTimestamp = cellDate.getTime();
 
-            // Clases de estado: is-today, is-selected, is-disabled
             if (cellDate.toDateString() === today.toDateString()) {
                 dateCell.classList.add('is-today');
             }
@@ -173,10 +177,9 @@ export class DateTimePicker {
 
             this.grid.appendChild(dateCell);
         }
-    }
+    };
 
-    bindEvents() {
-        // Mantiene .trigger-selector (clase compartida de controles)
+    this.bindEvents = () => {
         const trigger = this.wrapper.querySelector('.trigger-selector');
         
         trigger.onclick = (e) => {
@@ -229,9 +232,9 @@ export class DateTimePicker {
                 this.close();
             }
         });
-    }
+    };
 
-    selectDate(day) {
+    this.selectDate = (day) => {
         if (!this.selectedDate) this.selectedDate = new Date();
         
         this.selectedDate.setFullYear(this.currentDate.getFullYear());
@@ -252,9 +255,9 @@ export class DateTimePicker {
         if (!this.options.enableTime) {
             this.close();
         }
-    }
+    };
 
-    updateValue() {
+    this.updateValue = () => {
         if (!this.selectedDate) return;
 
         if (this.options.enableTime) {
@@ -266,7 +269,6 @@ export class DateTimePicker {
         const isoString = this.toLocalISOString(this.selectedDate);
         this.input.value = isoString;
         
-        // Disparar evento nativo
         this.input.dispatchEvent(new Event('input'));
         
         if (typeof this.options.onChange === 'function') {
@@ -274,9 +276,9 @@ export class DateTimePicker {
         }
 
         this.updateTriggerDisplay();
-    }
+    };
 
-    updateTriggerDisplay() {
+    this.updateTriggerDisplay = () => {
         if (!this.selectedDate) return;
         const textEl = this.wrapper.querySelector('.trigger-select-text');
         
@@ -287,9 +289,9 @@ export class DateTimePicker {
         }
         textEl.textContent = this.selectedDate.toLocaleString('es-MX', options);
         textEl.style.color = 'var(--text-primary)';
-    }
+    };
 
-    toLocalISOString(date) {
+    this.toLocalISOString = (date) => {
         const pad = (n) => n < 10 ? '0' + n : n;
         const d = date.getDate();
         const m = date.getMonth() + 1;
@@ -302,16 +304,20 @@ export class DateTimePicker {
             str += `T${pad(h)}:${pad(min)}`;
         }
         return str;
-    }
+    };
 
-    close() {
+    this.close = () => {
         if(this.wrapper) this.wrapper.classList.remove('active');
         if(this.popover) this.popover.classList.remove('active');
-    }
+    };
     
-    closeAllPopovers() {
-        // [MODIFICADO] Cierra popovers con las nuevas clases
+    this.closeAllPopovers = () => {
         document.querySelectorAll('.component-calendar.active').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.component-datepicker-wrapper.active').forEach(el => el.classList.remove('active'));
-    }
-}
+    };
+
+    // ==========================================
+    // 3. Auto-arranque
+    // ==========================================
+    this.init();
+};

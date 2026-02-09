@@ -10,6 +10,8 @@ export const SettingsController = {
         console.log("SettingsController: Escuchando eventos UI");
         _initToggles();
         
+        // Aquí usas funciones con nombre (_onDropdownSelection), así que removeEventListener SÍ funciona.
+        // Esto estaba bien, no causaba duplicados.
         document.removeEventListener('ui:dropdown-selected', _onDropdownSelection);
         document.addEventListener('ui:dropdown-selected', _onDropdownSelection);
         
@@ -42,8 +44,6 @@ function _syncGuestUI() {
             themeTrigger.textContent = labels[localPrefs.theme] || labels['sync'];
         }
     }
-    
-    // (Opcional) Sincronizar texto de idioma también aquí, aunque el script inline de PHP ya lo hace más rápido
 }
 
 function _initScrollBehavior() {
@@ -75,31 +75,25 @@ function _onDropdownSelection(e) {
         if (type === 'theme') {
             applyTheme(value);
         } else if (type === 'language') {
-            // Recargamos para aplicar el idioma en PHP
             setTimeout(() => window.location.reload(), 150);
         }
     }
 }
 
 async function savePreference(key, value) {
-    // 1. Actualizar memoria global
     if (window.USER_PREFS) window.USER_PREFS[key] = value;
 
-    // 2. MODO INVITADO (LocalStorage + COOKIE para idioma)
     if (!window.IS_LOGGED_IN) {
         const currentPrefs = JSON.parse(localStorage.getItem('guest_prefs') || '{}');
         currentPrefs[key] = value;
         localStorage.setItem('guest_prefs', JSON.stringify(currentPrefs));
         
-        // [FIX CRÍTICO] Guardar idioma en Cookie para que PHP lo lea al recargar
         if (key === 'language') {
             document.cookie = `guest_language=${value}; path=/; max-age=31536000; SameSite=Strict`;
         }
-        
         return;
     }
 
-    // 3. MODO USUARIO (API)
     const formData = new FormData();
     formData.append('key', key);
     formData.append('value', value);
@@ -108,6 +102,21 @@ async function savePreference(key, value) {
         const res = await ApiService.post(ApiService.Routes.Settings.UpdatePreference, formData); 
         if (!res.success) {
             ToastManager.show(res.message, 'error');
+            
+            // [OPCIONAL] Si falla, revertir el checkbox visualmente para que coincida con el servidor
+            // Esto evita que el usuario piense que se guardó.
+            if (key === 'open_links_new_tab') {
+                const el = document.getElementById('pref-open-links');
+                if (el) {
+                    el.checked = !el.checked; // Revertir
+                    // Importante: No dispares el evento 'change' aquí o crearás un bucle infinito
+                }
+            }
+             if (key === 'extended_toast') {
+                const el = document.getElementById('pref-extended-toast');
+                if (el) el.checked = !el.checked;
+            }
+
         }
     } catch (error) { 
         console.error(error); 
@@ -122,13 +131,18 @@ function applyTheme(theme) {
     else root.removeAttribute('data-theme');
 }
 
+// [CORREGIDO] Evita añadir listeners duplicados si la función se llama varias veces
 function _initToggles() {
     const toggleLinks = document.getElementById('pref-open-links');
-    if (toggleLinks) {
+    // Verificamos si existe Y si NO tiene ya nuestro listener (usando un flag custom)
+    if (toggleLinks && !toggleLinks.dataset.hasListener) {
         toggleLinks.addEventListener('change', (e) => savePreference('open_links_new_tab', e.target.checked));
+        toggleLinks.dataset.hasListener = "true"; // Marcamos como "escuchando"
     }
+
     const toggleToast = document.getElementById('pref-extended-toast');
-    if (toggleToast) {
+    if (toggleToast && !toggleToast.dataset.hasListener) {
         toggleToast.addEventListener('change', (e) => savePreference('extended_toast', e.target.checked));
+        toggleToast.dataset.hasListener = "true"; // Marcamos como "escuchando"
     }
 }

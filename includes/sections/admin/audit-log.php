@@ -47,7 +47,9 @@
             <table class="component-table" id="audit-log-table">
                 <thead>
                     <tr>
-                        <th style="width: 50px;"></th> <th><?php echo $i18n->t('admin.audit.table.actor'); ?></th>
+                        <th style="width: 50px;"><?php echo $i18n->t('admin.users_module.list.headers.avatar'); ?></th> 
+                        <th><?php echo $i18n->t('admin.users_module.list.headers.user'); ?></th>
+                        
                         <th><?php echo $i18n->t('admin.audit.table.action'); ?></th>
                         <th><?php echo $i18n->t('admin.audit.table.target'); ?></th>
                         <th style="width: 40%;"><?php echo $i18n->t('admin.audit.table.details'); ?></th>
