@@ -152,6 +152,8 @@ async function disable2FA(e) {
     }
 }
 
+// Archivo: public/assets/js/modules/admin/users/user-details-controller.js
+
 function setupFieldEdit(field, sectionKey) {
     const section = _container.querySelector(`[data-component="${sectionKey}"]`);
     if (!section) return;
@@ -170,7 +172,14 @@ function setupFieldEdit(field, sectionKey) {
             viewState?.classList.replace('active', 'disabled');
             viewActions?.classList.replace('active', 'disabled');
             editState?.classList.replace('disabled', 'active');
-            if(input) input.focus();
+            
+            // [MODIFICADO] Truco para poner el cursor al final del texto
+            if(input) {
+                const val = input.value;
+                input.focus();
+                input.value = '';
+                input.value = val;
+            }
         } else {
             editState?.classList.replace('active', 'disabled');
             viewState?.classList.replace('disabled', 'active');
@@ -182,6 +191,7 @@ function setupFieldEdit(field, sectionKey) {
 
     const closeEdit = () => {
         toggleState(false);
+        // Restaurar valor original desde los datos en memoria si se cancela
         if (input && _currentUserData) input.value = _currentUserData[field];
     };
 

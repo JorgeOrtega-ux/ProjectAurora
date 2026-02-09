@@ -77,6 +77,8 @@ async function togglePanicMode() {
 }
 
 // --- GESTIÓN DE DOMINIOS (CHIPS MODULARES) ---
+// Archivo: public/assets/js/modules/admin/server-config-controller.js
+
 function _initDomainManager() {
     const hiddenInput = document.getElementById('input-allowed-domains');
     const listContainer = document.getElementById('domain-list-container');
@@ -109,15 +111,42 @@ function _initDomainManager() {
 
     btnCancel.addEventListener('click', hideInput);
 
+    // --- NUEVO: Helper de validación ---
+    const isValidDomain = (domain) => {
+        // Permite '*'
+        if (domain === '*') return true;
+        // Regex estricto: alfanumérico/guiones + punto obligatorio + al menos 2 letras de extensión
+        // Ejemplo válido: gmail.com, escuela.edu.mx
+        // Ejemplo inválido: prueba, gmail., .com
+        return /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(domain);
+    };
+
     const addDomain = () => {
         const val = inputNew.value.trim().toLowerCase();
+        
         if (val) {
-            if (val === '*') domains = ['*'];
-            else {
+            // --- NUEVO: Bloque de Validación ---
+            if (!isValidDomain(val)) {
+                ToastManager.show(
+                    'Formato inválido. Debe ser "dominio.com" o similar.', 
+                    'warning'
+                );
+                return; // Detener ejecución
+            }
+            // -----------------------------------
+
+            if (val === '*') {
+                domains = ['*'];
+            } else {
                 if (domains.includes('*')) domains = domains.filter(d => d !== '*');
-                if (!domains.includes(val)) domains.push(val);
-                else {
-                    ToastManager.show(I18nManager.t('admin.server.domain_exists') || 'El dominio ya existe', 'warning');
+                
+                if (!domains.includes(val)) {
+                    domains.push(val);
+                } else {
+                    ToastManager.show(
+                        I18nManager.t('admin.server.domain_exists') || 'El dominio ya existe', 
+                        'warning'
+                    );
                     return;
                 }
             }
@@ -132,7 +161,6 @@ function _initDomainManager() {
 
     // Listener para eliminar chip (Delegado)
     listContainer.addEventListener('click', (e) => {
-        // Buscar el chip o el icono de cerrar
         const chip = e.target.closest('.component-chip');
         if (chip && chip.dataset.value) {
             const valToRemove = chip.dataset.value;
@@ -149,11 +177,9 @@ function _initDomainManager() {
         hiddenInput.value = domains.join(',');
     }
 
-    // Renderizado usando el nuevo componente estándar
     function renderChips() {
         listContainer.innerHTML = '';
         domains.forEach(domain => {
-            // Usamos .chip-removable para que se ponga rojo en hover
             const chip = document.createElement('div');
             chip.className = 'component-chip chip-removable';
             chip.dataset.value = domain;

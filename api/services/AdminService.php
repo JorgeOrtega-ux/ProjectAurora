@@ -900,76 +900,103 @@ class AdminService {
         }
     }
 
-    public function updateServerConfig($data) {
-        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
-        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
-        
-       $allowedKeys = [
-            'maintenance_mode', 'allow_registrations', 'allow_login',
-            'password_min_length', 'username_min_length', 'username_max_length',
-            'email_min_prefix_length', 'email_allowed_domains',
-            'upload_avatar_max_size', 'upload_avatar_max_dim',
-            'security_login_max_attempts', 'security_block_duration', 'security_general_rate_limit',
-            'auth_verification_code_expiry', 'auth_reset_token_expiry',
-            'sys_mysqldump_path', 'sys_mysql_path',
-            
-            // [NUEVO] Agregamos la clave aquí
-            'security_admin_require_2fa'
-        ];
+   // Archivo: api/services/AdminService.php
 
-        try {
-            $currentConfig = $this->getServerConfigAll()['config'] ?? [];
+public function updateServerConfig($data) {
+    $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+    if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+    
+    $allowedKeys = [
+        'maintenance_mode', 'allow_registrations', 'allow_login',
+        'password_min_length', 'username_min_length', 'username_max_length',
+        'email_min_prefix_length', 'email_allowed_domains',
+        'upload_avatar_max_size', 'upload_avatar_max_dim',
+        'security_login_max_attempts', 'security_block_duration', 'security_general_rate_limit',
+        'auth_verification_code_expiry', 'auth_reset_token_expiry',
+        'sys_mysqldump_path', 'sys_mysql_path',
+        'security_admin_require_2fa'
+    ];
 
-            $this->pdo->beginTransaction();
-            $stmt = $this->pdo->prepare("INSERT INTO server_config (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
+    try {
+        $currentConfig = $this->getServerConfigAll()['config'] ?? [];
 
-            $maintenanceActivated = false;
-            $hasChanges = false;
+        $this->pdo->beginTransaction();
+        $stmt = $this->pdo->prepare("INSERT INTO server_config (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
 
-            foreach ($data as $key => $value) {
-                if (in_array($key, $allowedKeys)) {
-                    if ($value === true || $value === 'true') $value = '1';
-                    if ($value === false || $value === 'false') $value = '0';
+        $maintenanceActivated = false;
+        $hasChanges = false;
+
+        foreach ($data as $key => $value) {
+            if (in_array($key, $allowedKeys)) {
+                
+                // --- NUEVO: Validación Específica para Dominios ---
+                if ($key === 'email_allowed_domains') {
+                    $value = trim($value); // Limpieza básica
                     
-                    $strValue = (string)$value;
-                    $oldValue = $currentConfig[$key] ?? null;
-
-                    if ($oldValue !== $strValue) {
-                        $stmt->execute([$key, $strValue]);
-                        
-                        $this->logAudit('server_config', $key, 'UPDATE_CONFIG', [
-                            'old' => $oldValue,
-                            'new' => $strValue
-                        ]);
-
-                        if ($key === 'maintenance_mode' && $strValue === '1') {
-                            $maintenanceActivated = true;
+                    // Si no es el comodín global, validamos cada entrada
+                    if ($value !== '*') {
+                        $domains = explode(',', $value);
+                        foreach ($domains as $d) {
+                            $d = trim($d);
+                            if (empty($d)) continue;
+                            
+                            // Regex compatible con el de JS: valida dominio.ext
+                            if ($d !== '*' && !preg_match('/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/', $d)) {
+                                $this->pdo->rollBack();
+                                return [
+                                    'success' => false, 
+                                    'message' => "El formato del dominio '{$d}' es inválido. Debe incluir extensión (ej. .com)."
+                                ];
+                            }
                         }
-                        $hasChanges = true;
                     }
                 }
-            }
-            $this->pdo->commit();
+                // --------------------------------------------------
 
-            if ($hasChanges && $this->redis) {
-                try {
-                    $this->redis->del('server:config:all');
-                } catch (Exception $e) {
-                    error_log("Error invalidando caché de config: " . $e->getMessage());
+                if ($value === true || $value === 'true') $value = '1';
+                if ($value === false || $value === 'false') $value = '0';
+                
+                $strValue = (string)$value;
+                $oldValue = $currentConfig[$key] ?? null;
+
+                if ($oldValue !== $strValue) {
+                    $stmt->execute([$key, $strValue]);
+                    
+                    $this->logAudit('server_config', $key, 'UPDATE_CONFIG', [
+                        'old' => $oldValue,
+                        'new' => $strValue
+                    ]);
+
+                    if ($key === 'maintenance_mode' && $strValue === '1') {
+                        $maintenanceActivated = true;
+                    }
+                    $hasChanges = true;
                 }
             }
-
-            if ($maintenanceActivated) {
-                Utils::notifyWebSocket('maintenance_start', ['text' => 'El sistema ha entrado en mantenimiento.']);
-                $this->logAudit('system', 'global', 'MAINTENANCE_STARTED', []);
-            }
-
-            return ['success' => true, 'message' => 'Configuración del servidor guardada exitosamente.'];
-        } catch (Exception $e) {
-            $this->pdo->rollBack();
-            return ['success' => false, 'message' => 'Error al guardar configuración.'];
         }
+        $this->pdo->commit();
+
+        if ($hasChanges && $this->redis) {
+            try {
+                $this->redis->del('server:config:all');
+            } catch (Exception $e) {
+                error_log("Error invalidando caché de config: " . $e->getMessage());
+            }
+        }
+
+        if ($maintenanceActivated) {
+            Utils::notifyWebSocket('maintenance_start', ['text' => 'El sistema ha entrado en mantenimiento.']);
+            $this->logAudit('system', 'global', 'MAINTENANCE_STARTED', []);
+        }
+
+        return ['success' => true, 'message' => 'Configuración del servidor guardada exitosamente.'];
+    } catch (Exception $e) {
+        if ($this->pdo->inTransaction()) {
+            $this->pdo->rollBack();
+        }
+        return ['success' => false, 'message' => 'Error al guardar configuración: ' . $e->getMessage()];
     }
+}
 
     // [REFACTOR] Eliminado isAdmin() - Ahora en Utils::checkUserPrivileges
 
