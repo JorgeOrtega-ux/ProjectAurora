@@ -1,5 +1,6 @@
 /**
  * public/assets/js/modules/settings/profile-controller.js
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -16,7 +17,6 @@ export const ProfileController = {
     }
 };
 
-// ... (initAvatarLogic y funciones de avatar se mantienen igual) ...
 function initAvatarLogic() {
     const fileInput = document.getElementById('upload-avatar');
     const previewImg = document.getElementById('preview-avatar');
@@ -72,12 +72,13 @@ function initAvatarLogic() {
             formData.append('avatar', file);
 
             try {
-                const res = await ApiService.post(ApiService.Routes.Settings.UploadAvatar, formData);
+                // Signal added
+                const res = await ApiService.post(ApiService.Routes.Settings.UploadAvatar, formData, { signal: window.PAGE_SIGNAL });
+                
                 if (res.success) {
                     ToastManager.show(I18nManager.t('js.profile.pic_updated'), 'success');
-                    
-                    const newAvatarSrc = previewImg.src; 
-                    originalSrc = res.new_src || newAvatarSrc; 
+                    const newAvatarSrc = res.new_src || previewImg.src; 
+                    originalSrc = newAvatarSrc; 
                     showAvatarActions('custom');
                     fileInput.value = ''; 
 
@@ -90,9 +91,11 @@ function initAvatarLogic() {
                     ToastManager.show(res.message, 'error');
                 }
             } catch(err) {
+                if (err.isAborted) return;
                 console.error(err);
-                ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
+                ToastManager.show(err.message || I18nManager.t('js.core.connection_error'), 'error');
             } finally {
+                if (!btn.closest('body')) return; // Evitar error si el elemento ya no existe
                 btn.innerText = originalText;
                 btn.disabled = false;
             }
@@ -100,17 +103,17 @@ function initAvatarLogic() {
 
         if (action === 'profile-picture-delete') {
             const confirmed = await DialogManager.confirm(DialogDefinitions.Profile.DELETE_AVATAR);
-
             if (!confirmed) return;
 
             const btn = e.target;
             btn.disabled = true;
 
             try {
-                const res = await ApiService.post(ApiService.Routes.Settings.DeleteAvatar);
+                // Signal added
+                const res = await ApiService.post(ApiService.Routes.Settings.DeleteAvatar, new FormData(), { signal: window.PAGE_SIGNAL });
+                
                 if (res.success) {
                     ToastManager.show(I18nManager.t('js.profile.pic_deleted'), 'info');
-                    
                     if (res.new_src) {
                         const newUrl = res.new_src;
                         previewImg.src = newUrl;
@@ -124,12 +127,15 @@ function initAvatarLogic() {
                     } else {
                          window.location.reload();
                     }
-
                 } else {
                     ToastManager.show(res.message, 'error');
                 }
-            } catch(err) { ToastManager.show(I18nManager.t('js.core.connection_error'), 'error'); }
-            finally { btn.disabled = false; }
+            } catch(err) { 
+                if (err.isAborted) return;
+                ToastManager.show(err.message || I18nManager.t('js.core.connection_error'), 'error'); 
+            } finally { 
+                if (btn) btn.disabled = false; 
+            }
         }
 
         if (action === 'profile-picture-change') {
@@ -182,16 +188,13 @@ function initIdentityLogic() {
 }
 
 async function handleEmailVerification(targetField) {
-    // 1. Abre el primer diálogo (Spinner)
     DialogManager.showLoading('Comprobando estado...');
     
     try {
-        const statusRes = await ApiService.post(ApiService.Routes.Settings.GetEmailStatus);
+        const statusRes = await ApiService.post(ApiService.Routes.Settings.GetEmailStatus, new FormData(), { signal: window.PAGE_SIGNAL });
         
-        // [CORRECCIÓN] NO cerramos el diálogo aquí. Mantenemos el spinner girando.
-
         if (!statusRes.success) {
-            DialogManager.close(); // Aquí SÍ cerramos porque hubo error y el flujo termina
+            DialogManager.close(); 
             ToastManager.show(statusRes.message, 'error');
             return;
         }
@@ -199,20 +202,17 @@ async function handleEmailVerification(targetField) {
         let { status, cooldown } = statusRes;
 
         if (status === 'authorized') {
-            DialogManager.close(); // Aquí SÍ cerramos porque el usuario ya puede editar (fin del flujo de diálogo)
+            DialogManager.close();
             toggleEditState(targetField, true);
             return;
         }
 
         if (status === 'none') {
-            // [OPTIMIZACIÓN] Reutilizamos el diálogo abierto cambiando el texto
             DialogManager.showLoading('Enviando código...'); 
-            const reqRes = await ApiService.post(ApiService.Routes.Settings.RequestEmailVerification);
+            const reqRes = await ApiService.post(ApiService.Routes.Settings.RequestEmailVerification, new FormData(), { signal: window.PAGE_SIGNAL });
             
-            // [CORRECCIÓN] NO cerramos aquí tampoco.
-
             if (!reqRes.success) {
-                DialogManager.close(); // Cerrar por error
+                DialogManager.close();
                 ToastManager.show(reqRes.message, 'error');
                 return;
             }
@@ -222,22 +222,19 @@ async function handleEmailVerification(targetField) {
             ToastManager.show('Ya tienes un código activo', 'info');
         }
 
-        // 3. Transición directa: El DialogManager reemplazará el contenido del spinner 
-        // por el formulario de verificación sin cerrar la ventana.
         showVerificationDialog(targetField, cooldown || 0);
 
     } catch (e) {
+        if (e.isAborted) return;
         console.error(e);
-        DialogManager.close(); // Cerrar por error crítico (catch)
+        DialogManager.close();
         ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
     }
 }
 
 async function showVerificationDialog(targetField, initialCooldown) {
-    // 1. Obtener el correo actual desde la interfaz para mostrarlo en el mensaje
     const currentEmail = document.getElementById('display-email')?.innerText.trim() || 'tu correo';
 
-    // 2. Sobrescribir título y mensaje en las opciones del diálogo
     const dialogOptions = {
         ...DialogDefinitions.Profile.VERIFY_EMAIL,
         title: 'Busca el código que te enviamos',
@@ -248,7 +245,6 @@ async function showVerificationDialog(targetField, initialCooldown) {
     const result = await DialogManager.confirm(dialogOptions);
     
     if (result) {
-        // ... resto de la lógica de verificación (sin cambios) ...
         const code = (typeof result === 'string') ? result.trim() : '';
 
         if (!code) {
@@ -261,14 +257,21 @@ async function showVerificationDialog(targetField, initialCooldown) {
         const verifyData = new FormData();
         verifyData.append('code', code);
 
-        const verifyRes = await ApiService.post(ApiService.Routes.Settings.VerifyEmailCode, verifyData);
-        DialogManager.close();
+        // Signal added
+        try {
+            const verifyRes = await ApiService.post(ApiService.Routes.Settings.VerifyEmailCode, verifyData, { signal: window.PAGE_SIGNAL });
+            DialogManager.close();
 
-        if (verifyRes.success) {
-            ToastManager.show('Identidad verificada. Puedes cambiar tu correo.', 'success');
-            toggleEditState(targetField, true);
-        } else {
-            ToastManager.show(verifyRes.message, 'error');
+            if (verifyRes.success) {
+                ToastManager.show('Identidad verificada. Puedes cambiar tu correo.', 'success');
+                toggleEditState(targetField, true);
+            } else {
+                ToastManager.show(verifyRes.message, 'error');
+            }
+        } catch (e) {
+            if (e.isAborted) return;
+            DialogManager.close();
+            ToastManager.show(e.message || 'Error de conexión', 'error');
         }
     }
 }
@@ -280,18 +283,16 @@ function bindResendLogic(wrapper, initialCooldown) {
     if (!btnResend || !timerSpan) return;
 
     let resendInterval = null;
-    let isCooldownActive = false; // [SEGURIDAD] Estado interno inmune al DOM
+    let isCooldownActive = false;
 
     const startTimer = (seconds) => {
-        isCooldownActive = true; // Activar bloqueo lógico
+        isCooldownActive = true; 
         let timeLeft = seconds;
         
-        // Estilos visuales
         btnResend.style.pointerEvents = 'none';
         btnResend.style.opacity = '0.5';
         btnResend.style.color = 'rgb(153, 153, 153)'; 
         
-        // Resetear texto si quedó de "Enviando..."
         if (btnResend.innerText === 'Enviando...') {
              btnResend.childNodes[0].textContent = 'Reenviar código de verificación '; 
         }
@@ -306,9 +307,8 @@ function bindResendLogic(wrapper, initialCooldown) {
             
             if (timeLeft <= 0) {
                 clearInterval(resendInterval);
-                isCooldownActive = false; // Liberar bloqueo lógico
+                isCooldownActive = false; 
                 
-                // Restaurar UI
                 btnResend.style.pointerEvents = 'auto';
                 btnResend.style.opacity = '1';
                 btnResend.style.color = ''; 
@@ -324,10 +324,8 @@ function bindResendLogic(wrapper, initialCooldown) {
     btnResend.addEventListener('click', async (e) => {
         e.preventDefault();
         
-        // [SEGURIDAD] Chequeo de variable interna, no de estilos
         if (isCooldownActive) return;
 
-        // Guardar contenido original del nodo de texto del enlace (sin borrar el span)
         const originalText = btnResend.childNodes[0].textContent;
         btnResend.childNodes[0].textContent = 'Enviando... ';
         
@@ -335,9 +333,9 @@ function bindResendLogic(wrapper, initialCooldown) {
         formData.append('force_resend', 'true');
 
         try {
-            const res = await ApiService.post(ApiService.Routes.Settings.RequestEmailVerification, formData);
+            // Signal added
+            const res = await ApiService.post(ApiService.Routes.Settings.RequestEmailVerification, formData, { signal: window.PAGE_SIGNAL });
             
-            // Restaurar texto
             btnResend.childNodes[0].textContent = 'Reenviar código de verificación ';
 
             if (res.success) {
@@ -347,6 +345,7 @@ function bindResendLogic(wrapper, initialCooldown) {
                 ToastManager.show(res.message, 'error');
             }
         } catch(err) {
+            if (err.isAborted) return;
             btnResend.childNodes[0].textContent = 'Reenviar código de verificación ';
             ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
         }
@@ -414,7 +413,8 @@ async function saveFieldData(fieldId, btnSave) {
     formData.append('value', newValue);
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Settings.UpdateProfile, formData);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Settings.UpdateProfile, formData, { signal: window.PAGE_SIGNAL });
 
         if (res.success) {
             display.innerText = newValue;
@@ -426,6 +426,7 @@ async function saveFieldData(fieldId, btnSave) {
             input.focus(); 
         }
     } catch (error) {
+        if (error.isAborted) return;
         ToastManager.show(I18nManager.t('js.settings.processing_error'), 'error');
     } finally {
         btnSave.disabled = false;

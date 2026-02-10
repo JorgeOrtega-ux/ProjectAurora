@@ -1,5 +1,6 @@
 /**
  * public/assets/js/modules/admin/backup-config-controller.js
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -34,12 +35,10 @@ function initEvents() {
     const btnTrigger = _container.querySelector('#btn-trigger-now');
     if (btnTrigger) btnTrigger.addEventListener('click', triggerNow);
 
-    // Lógica de Steppers (Actualizada para BEM: .component-stepper)
     _container.addEventListener('click', (e) => {
         const btn = e.target.closest('button');
         if (!btn) return;
 
-        // [MODIFICADO] Selector actualizado a .component-stepper
         const wrapper = btn.closest('.component-stepper');
         if (!wrapper) return;
 
@@ -69,19 +68,18 @@ async function loadConfig() {
     const content = _container.querySelector('#config-content-area');
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.Backups.GetConfig);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.Backups.GetConfig, new FormData(), { signal: window.PAGE_SIGNAL });
         
         if (res.success) {
             const checkEnabled = _container.querySelector('#input-auto-enabled');
             const inputFreq = _container.querySelector('#input-frequency');
             const inputRet = _container.querySelector('#input-retention');
 
-            // Inputs
             if (checkEnabled) checkEnabled.checked = res.enabled;
             if (inputFreq) inputFreq.value = res.frequency;
             if (inputRet) inputRet.value = res.retention;
 
-            // Stats Vivos
             updateStats(res);
 
             if(loading) loading.classList.add('d-none');
@@ -90,6 +88,7 @@ async function loadConfig() {
             ToastManager.show(res.message, 'error');
         }
     } catch (e) {
+        if (e.isAborted) return;
         console.error(e);
         ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
     }
@@ -190,7 +189,8 @@ async function saveConfig() {
     formData.append('retention', retention);
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.Backups.UpdateConfig, formData);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.Backups.UpdateConfig, formData, { signal: window.PAGE_SIGNAL });
         if (res.success) {
             ToastManager.show(I18nManager.t('admin.backups.config_saved') || 'Configuración guardada correctamente', 'success');
             await loadConfig();
@@ -198,10 +198,13 @@ async function saveConfig() {
             ToastManager.show(res.message, 'error');
         }
     } catch (e) {
+        if (e.isAborted) return;
         ToastManager.show(I18nManager.t('admin.backups.save_error') || 'Error al guardar', 'error');
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
     }
 }
 
@@ -220,7 +223,8 @@ async function triggerNow() {
     btn.innerHTML = '<div class="spinner-sm"></div>';
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.Backups.Create);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.Backups.Create, new FormData(), { signal: window.PAGE_SIGNAL });
         
         if (res.success) {
             ToastManager.show(I18nManager.t('admin.backups.trigger_success') || 'Respaldo iniciado correctamente', 'success');
@@ -229,10 +233,13 @@ async function triggerNow() {
             ToastManager.show(res.message || (I18nManager.t('admin.backups.trigger_error') || 'Error al iniciar respaldo'), 'error');
         }
     } catch (e) {
+        if (e.isAborted) return;
         console.error(e);
         ToastManager.show(I18nManager.t('js.core.communication_error') || 'Error de comunicación', 'error');
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
     }
 }

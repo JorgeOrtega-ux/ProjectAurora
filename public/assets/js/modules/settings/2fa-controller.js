@@ -1,5 +1,6 @@
 /**
  * public/assets/js/modules/settings/2fa-controller.js
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -25,11 +26,9 @@ export const TwoFactorController = {
             loadQrCode(qrContainer);
         }
 
-        // Listener global para el área de contenido (Chips y Inputs de copia)
         const contentArea = document.getElementById('2fa-content-area');
         if (contentArea) {
             contentArea.addEventListener('click', (e) => {
-                // [NUEVO] Acción para copiar CHIPS (Códigos de recuperación)
                 const chip = e.target.closest('[data-action="copy-code"]');
                 if (chip) {
                     const code = chip.dataset.value;
@@ -41,7 +40,6 @@ export const TwoFactorController = {
                     return;
                 }
 
-                // Acción legacy para copiar Inputs (Secret Key)
                 const btnCopy = e.target.closest('[data-action="copy-input"]');
                 if (btnCopy) {
                     const targetId = btnCopy.dataset.target;
@@ -63,7 +61,6 @@ export const TwoFactorController = {
             });
         }
 
-        // Listener global para foco automático
         document.addEventListener('ui:accordion-opened', (e) => {
             if (e.detail && e.detail.id === '3') { 
                 setTimeout(() => {
@@ -73,7 +70,7 @@ export const TwoFactorController = {
             }
         });
 
-        // Verificar 2FA
+        // Verificar y Activar 2FA
         if (btnVerify) {
             btnVerify.addEventListener('click', async () => {
                 const rawCode = inputCode.value.replace(/\s/g, ''); 
@@ -91,7 +88,8 @@ export const TwoFactorController = {
                 formData.append('code', rawCode);
 
                 try {
-                    const res = await ApiService.post(ApiService.Routes.Settings.Enable2FA, formData);
+                    // Signal added
+                    const res = await ApiService.post(ApiService.Routes.Settings.Enable2FA, formData, { signal: window.PAGE_SIGNAL });
 
                     if (res.success) {
                         const stepQrContainer = document.getElementById('step-qr-container');
@@ -108,7 +106,6 @@ export const TwoFactorController = {
                             stepSuccess.style.display = ''; 
                         }
 
-                        // [MODIFICADO] Generación de Chips para los códigos
                         const list = document.getElementById('recovery-codes-list');
                         if (list && res.recovery_codes) {
                             list.innerHTML = renderChips(res.recovery_codes);
@@ -122,6 +119,7 @@ export const TwoFactorController = {
                         inputCode.focus();
                     }
                 } catch (error) {
+                    if (error.isAborted) return;
                     console.error(error);
                     ToastManager.show(I18nManager.t('js.2fa.error_verify'), 'error');
                     setLoading(btnVerify, false, originalText);
@@ -129,7 +127,7 @@ export const TwoFactorController = {
             });
         }
 
-        // DESACTIVAR 2FA
+        // Desactivar 2FA
         if (btnDisable) {
             btnDisable.addEventListener('click', async () => {
                 const confirmed = await DialogManager.confirm(DialogDefinitions.TwoFactor.DISABLE);
@@ -138,10 +136,9 @@ export const TwoFactorController = {
                 const originalText = btnDisable.innerText;
                 setLoading(btnDisable, true, I18nManager.t('js.2fa.disabling'));
 
-                const formData = new FormData();
-
                 try {
-                    const res = await ApiService.post(ApiService.Routes.Settings.Disable2FA, formData);
+                    // Signal added
+                    const res = await ApiService.post(ApiService.Routes.Settings.Disable2FA, new FormData(), { signal: window.PAGE_SIGNAL });
                     if (res.success) {
                         ToastManager.show(I18nManager.t('api.2fa_disabled'), 'success');
                         setTimeout(() => window.location.reload(), 1000);
@@ -150,6 +147,7 @@ export const TwoFactorController = {
                         setLoading(btnDisable, false, originalText);
                     }
                 } catch (error) {
+                    if (error.isAborted) return;
                     ToastManager.show(I18nManager.t('js.2fa.error_connection'), 'error');
                     setLoading(btnDisable, false, originalText);
                 }
@@ -162,7 +160,6 @@ export const TwoFactorController = {
     }
 };
 
-// [NUEVO] Helper para renderizar los chips de códigos
 function renderChips(codes) {
     return codes.map(code => `
         <div class="component-chip" data-action="copy-code" data-value="${code}">
@@ -183,11 +180,13 @@ async function initRecoveryLogic() {
     const listNewCodes = document.getElementById('new-recovery-codes-list');
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Settings.GetRecoveryStatus);
+        const res = await ApiService.post(ApiService.Routes.Settings.GetRecoveryStatus, new FormData(), { signal: window.PAGE_SIGNAL });
         if (res.success && countDisplay) {
             countDisplay.innerText = res.count;
         }
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        if (!e.isAborted) console.error(e); 
+    }
 
     if (btnShowRegen) {
         btnShowRegen.addEventListener('click', async () => {
@@ -226,7 +225,8 @@ async function initRecoveryLogic() {
             formData.append('password', password);
 
             try {
-                const res = await ApiService.post(ApiService.Routes.Settings.RegenerateRecoveryCodes, formData);
+                // Signal added
+                const res = await ApiService.post(ApiService.Routes.Settings.RegenerateRecoveryCodes, formData, { signal: window.PAGE_SIGNAL });
                 
                 if (res.success) {
                     ToastManager.show(I18nManager.t('js.2fa.codes_generated'), 'success');
@@ -235,7 +235,6 @@ async function initRecoveryLogic() {
                     btnShowRegen.classList.remove('disabled');
 
                     if (listNewCodes && res.recovery_codes) {
-                        // [MODIFICADO] Usar renderChips
                         listNewCodes.innerHTML = renderChips(res.recovery_codes);
                         areaNewCodes.classList.remove('disabled');
                         areaNewCodes.classList.add('active');
@@ -251,6 +250,7 @@ async function initRecoveryLogic() {
                 }
 
             } catch (error) {
+                if (error.isAborted) return;
                 console.error(error);
                 ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
                 setLoading(btnSubmitRegen, false, originalText);
@@ -262,7 +262,7 @@ async function initRecoveryLogic() {
 
 async function loadQrCode(container) {
     try {
-        const res = await ApiService.post(ApiService.Routes.Settings.Init2FA);
+        const res = await ApiService.post(ApiService.Routes.Settings.Init2FA, new FormData(), { signal: window.PAGE_SIGNAL });
 
         if (res.success && res.otpauth_url) {
             container.innerHTML = '';
@@ -301,6 +301,7 @@ async function loadQrCode(container) {
             }
         }
     } catch (error) {
+        if (error.isAborted) return;
         console.error(error);
         const boxQr = container.closest('.box-qr');
         if (boxQr) boxQr.style.display = 'none';

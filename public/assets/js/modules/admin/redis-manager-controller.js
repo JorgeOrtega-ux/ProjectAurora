@@ -1,6 +1,6 @@
 /**
  * public/assets/js/modules/admin/redis-manager-controller.js
- * Versión Segura (DOM API)
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -50,7 +50,12 @@ function initEvents() {
 
 async function loadStats() {
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.Redis.GetStats);
+        // Signal added
+        const res = await ApiService.post(
+            ApiService.Routes.Admin.Redis.GetStats, 
+            new FormData(), 
+            { signal: window.PAGE_SIGNAL }
+        );
         if (res.success) {
             updateStat('version', res.stats.version);
             updateStat('uptime', res.stats.uptime);
@@ -59,7 +64,9 @@ async function loadStats() {
             updateStat('connected_clients', res.stats.connected_clients);
             updateStat('total_keys', res.stats.total_keys);
         }
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        if (!e.isAborted) console.error(e); 
+    }
 }
 
 function updateStat(key, value) {
@@ -80,17 +87,23 @@ async function loadKeys(pattern) {
     formData.append('pattern', pattern);
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.Redis.GetKeys, formData);
+        // Signal added
+        const res = await ApiService.post(
+            ApiService.Routes.Admin.Redis.GetKeys, 
+            formData, 
+            { signal: window.PAGE_SIGNAL }
+        );
         loader.classList.add('d-none');
 
         if (res.success) {
             renderKeysTable(res.keys, tbody);
         } else {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td colspan="4" class="state-error">${res.message}</td>`; // Mensaje de sistema seguro
+            tr.innerHTML = `<td colspan="4" class="state-error">${res.message}</td>`; 
             tbody.appendChild(tr);
         }
     } catch (e) {
+        if (e.isAborted) return;
         loader.classList.add('d-none');
         const tr = document.createElement('tr');
         tr.innerHTML = `<td colspan="4" class="state-error">${I18nManager.t('js.core.connection_error')}</td>`;
@@ -116,17 +129,17 @@ function renderKeysTable(keys, tbody) {
         const tr = document.createElement('tr');
         tr.className = 'table-row-item';
         tr.style.cursor = 'pointer';
-        tr.dataset.key = k.key; // Data attribute para el click handler
+        tr.dataset.key = k.key; 
 
-        // 1. Columna Key
+        // 1. Key
         const tdKey = document.createElement('td');
         tdKey.className = 'font-mono';
         tdKey.style.fontSize = '13px';
         tdKey.style.wordBreak = 'break-all';
-        tdKey.textContent = k.key; // [SEGURIDAD] Evita inyección en el nombre de la clave
+        tdKey.textContent = k.key; 
         tr.appendChild(tdKey);
 
-        // 2. Columna Tipo
+        // 2. Type
         let colorClass = 'component-badge--gray';
         if (k.type === 'string') colorClass = 'component-badge--green';
         else if (k.type === 'hash') colorClass = 'component-badge--blue';
@@ -144,7 +157,7 @@ function renderKeysTable(keys, tbody) {
         tdType.appendChild(badge);
         tr.appendChild(tdType);
 
-        // 3. Columna TTL
+        // 3. TTL
         let ttlDisplay = k.ttl === -1 ? (I18nManager.t('admin.redis.ttl_infinite') || 'Infinito') : `${k.ttl}s`;
         if (k.ttl === -2) ttlDisplay = (I18nManager.t('admin.redis.ttl_expired') || 'Expirada');
 
@@ -154,7 +167,7 @@ function renderKeysTable(keys, tbody) {
         tdTTL.textContent = ttlDisplay;
         tr.appendChild(tdTTL);
 
-        // 4. Columna Acciones
+        // 4. Actions
         const tdActions = document.createElement('td');
         tdActions.className = 'text-right';
         
@@ -170,7 +183,6 @@ function renderKeysTable(keys, tbody) {
         
         btnDelete.appendChild(icon);
         
-        // Listener directo
         btnDelete.onclick = (e) => {
             e.stopPropagation();
             deleteKey(k.key);
@@ -179,7 +191,6 @@ function renderKeysTable(keys, tbody) {
         tdActions.appendChild(btnDelete);
         tr.appendChild(tdActions);
 
-        // Listener de fila
         tr.onclick = () => showValueDialog(k.key);
 
         tbody.appendChild(tr);
@@ -193,7 +204,12 @@ async function showValueDialog(key) {
     formData.append('key', key);
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.Redis.GetValue, formData);
+        // Signal added
+        const res = await ApiService.post(
+            ApiService.Routes.Admin.Redis.GetValue, 
+            formData, 
+            { signal: window.PAGE_SIGNAL }
+        );
         DialogManager.close();
 
         if (res.success) {
@@ -218,7 +234,7 @@ async function showValueDialog(key) {
             `;
 
             DialogManager.confirm({
-                title: `${I18nManager.t('admin.redis.key_label') || 'Clave'}: ${key}`, // El título escapa autom en Dialog
+                title: `${I18nManager.t('admin.redis.key_label') || 'Clave'}: ${key}`, 
                 message: '', 
                 confirmText: I18nManager.t('js.core.close') || 'Cerrar',
                 cancelText: null, 
@@ -228,7 +244,6 @@ async function showValueDialog(key) {
                         contentArea.innerHTML = htmlContent;
                         contentArea.style.whiteSpace = 'normal'; 
                         
-                        // Setear valor de forma segura en textarea
                         const textarea = contentArea.querySelector('textarea');
                         if (textarea) textarea.value = displayValue;
                     }
@@ -239,6 +254,7 @@ async function showValueDialog(key) {
             ToastManager.show(res.message, 'error');
         }
     } catch (e) {
+        if (e.isAborted) return;
         DialogManager.close();
         ToastManager.show(I18nManager.t('admin.redis.value_error') || 'Error al obtener valor', 'error');
     }
@@ -251,7 +267,12 @@ async function deleteKey(key) {
     formData.append('key', key);
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.Redis.DeleteKey, formData);
+        // Signal added
+        const res = await ApiService.post(
+            ApiService.Routes.Admin.Redis.DeleteKey, 
+            formData, 
+            { signal: window.PAGE_SIGNAL }
+        );
         if (res.success) {
             ToastManager.show(I18nManager.t('js.core.deleted') || 'Eliminado', 'success');
             const pattern = document.getElementById('redis-search-input').value || '*';
@@ -260,7 +281,10 @@ async function deleteKey(key) {
         } else {
             ToastManager.show(res.message, 'error');
         }
-    } catch (e) { ToastManager.show(I18nManager.t('admin.redis.delete_error') || 'Error al eliminar', 'error'); }
+    } catch (e) { 
+        if (e.isAborted) return;
+        ToastManager.show(I18nManager.t('admin.redis.delete_error') || 'Error al eliminar', 'error'); 
+    }
 }
 
 async function handleFlushDB() {
@@ -285,7 +309,12 @@ async function handleFlushDB() {
     DialogManager.showLoading(I18nManager.t('admin.redis.flushing') || 'Vaciando base de datos...');
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.Redis.FlushDB);
+        // Signal added
+        const res = await ApiService.post(
+            ApiService.Routes.Admin.Redis.FlushDB, 
+            new FormData(), 
+            { signal: window.PAGE_SIGNAL }
+        );
         DialogManager.close();
         if (res.success) {
             ToastManager.show(res.message, 'success');
@@ -295,6 +324,7 @@ async function handleFlushDB() {
             ToastManager.show(res.message, 'error');
         }
     } catch (e) {
+        if (e.isAborted) return;
         DialogManager.close();
         ToastManager.show(I18nManager.t('admin.redis.critical_error') || 'Error crítico', 'error');
     }

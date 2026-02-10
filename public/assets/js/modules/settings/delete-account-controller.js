@@ -1,5 +1,6 @@
 /**
  * public/assets/js/modules/settings/delete-account-controller.js
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -55,7 +56,8 @@ export const DeleteAccountController = {
             formData.append('password', password);
 
             try {
-                const res = await ApiService.post(ApiService.Routes.Settings.DeleteAccount, formData);
+                // Signal added
+                const res = await ApiService.post(ApiService.Routes.Settings.DeleteAccount, formData, { signal: window.PAGE_SIGNAL });
 
                 if (res.success) {
                     ToastManager.show(I18nManager.t('js.delete.goodbye'), 'success');
@@ -71,6 +73,7 @@ export const DeleteAccountController = {
                     inputPass.value = '';
                 }
             } catch (error) {
+                if (error.isAborted) return;
                 console.error(error);
                 ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
                 btnDelete.innerText = originalText;

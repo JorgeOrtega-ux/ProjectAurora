@@ -1,6 +1,6 @@
 /**
  * public/assets/js/modules/admin/backups-controller.js
- * Versión Segura (DOM API)
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -74,7 +74,6 @@ function initToolbarEvents() {
     _container.querySelector('[data-action="close-selection"]')?.addEventListener('click', deselectAll);
     _container.querySelector('[data-action="view-selected"]')?.addEventListener('click', handleViewSelected);
     
-    // Botón descargar
     const btnDownload = _container.querySelector('[data-action="download-selected"]');
     if (btnDownload) {
         btnDownload.addEventListener('click', handleDownloadSelected);
@@ -120,7 +119,9 @@ async function loadBackups(isSilentRefresh = false) {
     }
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.Backups.Get);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.Backups.Get, new FormData(), { signal: window.PAGE_SIGNAL });
+        
         if (res.success) {
             _backupsData = res.backups;
             renderList();
@@ -129,12 +130,11 @@ async function loadBackups(isSilentRefresh = false) {
                 const btnCreate = _container.querySelector('#btn-create-backup');
                 if (btnCreate && btnCreate.disabled) {
                     btnCreate.disabled = false;
-                    btnCreate.innerHTML = ''; // Limpiar
+                    btnCreate.innerHTML = '';
                     const icon = document.createElement('span');
                     icon.className = 'material-symbols-rounded';
                     icon.textContent = 'add';
                     btnCreate.appendChild(icon);
-                    // Si hubiera texto, se añade aquí
                 }
             }
         } else {
@@ -145,6 +145,7 @@ async function loadBackups(isSilentRefresh = false) {
             listContainer.appendChild(errorDiv);
         }
     } catch (error) {
+        if (error.isAborted) return;
         listContainer.innerHTML = '';
         const errorDiv = document.createElement('div');
         errorDiv.className = 'state-error';
@@ -157,7 +158,7 @@ function renderList() {
     const container = _container.querySelector('[data-component="backup-list"]');
     if (!container) return;
 
-    container.innerHTML = ''; // Limpieza segura
+    container.innerHTML = '';
 
     if (_backupsData.length === 0) {
         const emptyDiv = document.createElement('div');
@@ -192,7 +193,6 @@ function renderListAsGrid(container) {
         const content = document.createElement('div');
         content.className = 'component-list-item-content';
 
-        // Icono
         const iconContainer = document.createElement('div');
         iconContainer.className = 'component-card__icon-container component-card__icon-container--bordered';
         const icon = document.createElement('span');
@@ -201,13 +201,12 @@ function renderListAsGrid(container) {
         iconContainer.appendChild(icon);
         content.appendChild(iconContainer);
 
-        // Helper Badges
         const createBadge = (text, tooltipKey, mono = false) => {
             const span = document.createElement('span');
             span.className = 'component-badge';
             span.dataset.tooltip = I18nManager.t(tooltipKey);
             if (mono) span.style.fontFamily = 'monospace';
-            span.textContent = text; // [SEGURIDAD]
+            span.textContent = text;
             return span;
         };
 
@@ -218,7 +217,6 @@ function renderListAsGrid(container) {
 
         card.appendChild(content);
         
-        // Listener
         card.addEventListener('click', () => toggleSelection(file.filename));
         
         container.appendChild(card);
@@ -232,7 +230,6 @@ function renderListAsTable(container) {
     const table = document.createElement('table');
     table.className = 'component-table';
 
-    // THEAD
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
     
@@ -253,7 +250,6 @@ function renderListAsTable(container) {
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
-    // TBODY
     const tbody = document.createElement('tbody');
     
     _backupsData.forEach(file => {
@@ -265,7 +261,6 @@ function renderListAsTable(container) {
         tr.dataset.filename = file.filename;
         tr.style.cursor = 'pointer';
 
-        // Icon Cell
         const tdIcon = document.createElement('td');
         tdIcon.style.width = '50px';
         const iconDiv = document.createElement('div');
@@ -279,23 +274,19 @@ function renderListAsTable(container) {
         tdIcon.appendChild(iconDiv);
         tr.appendChild(tdIcon);
 
-        // Filename
         const tdName = document.createElement('td');
         tdName.style.fontFamily = 'monospace';
-        tdName.textContent = file.filename; // [SEGURIDAD]
+        tdName.textContent = file.filename;
         tr.appendChild(tdName);
 
-        // Size
         const tdSize = document.createElement('td');
         tdSize.textContent = file.size;
         tr.appendChild(tdSize);
 
-        // Date
         const tdDate = document.createElement('td');
         tdDate.textContent = file.date;
         tr.appendChild(tdDate);
 
-        // Source
         const tdSource = document.createElement('td');
         const badgeSource = document.createElement('span');
         badgeSource.className = 'component-badge';
@@ -382,7 +373,6 @@ function updateViewUI(btnElement) {
 async function createBackup() {
     const btn = document.getElementById('btn-create-backup');
     
-    // Guardar icono original
     const iconSpan = btn.querySelector('.material-symbols-rounded');
     const originalIcon = iconSpan ? iconSpan.textContent : 'add';
     
@@ -393,7 +383,8 @@ async function createBackup() {
     btn.appendChild(spinner);
     
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.Backups.Create);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.Backups.Create, new FormData(), { signal: window.PAGE_SIGNAL });
         
         if (res.success) {
             if (res.queued) {
@@ -406,14 +397,17 @@ async function createBackup() {
             ToastManager.show(res.message, 'error');
         }
     } catch(e) { 
+        if (e.isAborted) return;
         ToastManager.show(I18nManager.t('admin.backups.create_error') || 'Error al solicitar backup', 'error'); 
     } finally {
-        btn.disabled = false; 
-        btn.innerHTML = '';
-        const newIcon = document.createElement('span');
-        newIcon.className = 'material-symbols-rounded';
-        newIcon.textContent = originalIcon;
-        btn.appendChild(newIcon);
+        if (btn) {
+            btn.disabled = false; 
+            btn.innerHTML = '';
+            const newIcon = document.createElement('span');
+            newIcon.className = 'material-symbols-rounded';
+            newIcon.textContent = originalIcon;
+            btn.appendChild(newIcon);
+        }
     }
 }
 
@@ -421,27 +415,39 @@ async function handleRestoreSelected() {
     if (_selectedFilenames.size !== 1) return;
     const filename = Array.from(_selectedFilenames)[0];
     if (!await DialogManager.confirm({ title: I18nManager.t('admin.backups.restore_title') || '¿Restaurar?', message: I18nManager.t('admin.backups.restore_message') || 'Se sobrescribirán los datos actuales con este respaldo.', type: 'danger' })) return;
+    
     DialogManager.showLoading(I18nManager.t('admin.backups.restoring') || 'Restaurando...');
+    
     try {
         const formData = new FormData();
         formData.append('filename', filename);
-        const res = await ApiService.post(ApiService.Routes.Admin.Backups.Restore, formData); 
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.Backups.Restore, formData, { signal: window.PAGE_SIGNAL }); 
         DialogManager.close();
         if(res.success) { 
             ToastManager.show(I18nManager.t('admin.backups.restore_success') || 'Restaurado correctamente', 'success'); 
             setTimeout(() => window.location.reload(), 1500); 
-        } else ToastManager.show(res.message, 'error');
-    } catch(e) { DialogManager.close(); ToastManager.show('Error', 'error'); }
+        } else {
+            ToastManager.show(res.message, 'error');
+        }
+    } catch(e) { 
+        if (e.isAborted) return;
+        DialogManager.close(); 
+        ToastManager.show('Error de conexión', 'error'); 
+    }
 }
 
 async function handleDeleteSelected() {
     if (_selectedFilenames.size === 0) return;
     if (!await DialogManager.confirm({ title: I18nManager.t('admin.backups.delete_title', [_selectedFilenames.size]) || `¿Eliminar ${_selectedFilenames.size} archivos?`, message: I18nManager.t('admin.backups.delete_message') || 'Esta acción es irreversible.', type: 'danger' })) return;
+    
     const filesArray = Array.from(_selectedFilenames);
     const formData = new FormData();
     formData.append('filenames', filesArray.join(','));
+    
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.Backups.Delete, formData);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.Backups.Delete, formData, { signal: window.PAGE_SIGNAL });
         if (res.success) {
             ToastManager.show(res.message, 'success');
             deselectAll();
@@ -449,7 +455,10 @@ async function handleDeleteSelected() {
         } else {
             ToastManager.show(res.message, 'error');
         }
-    } catch(e) { ToastManager.show(I18nManager.t('admin.backups.delete_error') || 'Error al eliminar', 'error'); }
+    } catch(e) { 
+        if (e.isAborted) return;
+        ToastManager.show(I18nManager.t('admin.backups.delete_error') || 'Error al eliminar', 'error'); 
+    }
 }
 
 function handleViewSelected() {
@@ -461,7 +470,6 @@ function handleViewSelected() {
     });
 }
 
-// === LÓGICA DE DESCARGA ASÍNCRONA ===
 async function handleDownloadSelected() {
     if (_selectedFilenames.size === 0) return;
 
@@ -476,7 +484,8 @@ async function handleDownloadSelected() {
 
     try {
         const route = ApiService.Routes.Admin.request_download || { route: 'admin.request_download' };
-        const res = await ApiService.post(route, formData);
+        // Signal added
+        const res = await ApiService.post(route, formData, { signal: window.PAGE_SIGNAL });
         
        if (res.success) {
             if (res.queued) {
@@ -494,6 +503,7 @@ async function handleDownloadSelected() {
             ToastManager.show(res.message || (I18nManager.t('admin.backups.download_token_error') || 'No se pudo obtener el enlace seguro.'), 'error');
         }
     } catch (e) {
+        if (e.isAborted) return;
         console.error(e);
         ToastManager.show(I18nManager.t('admin.backups.download_conn_error') || 'Error de conexión al solicitar descarga.', 'error');
     }

@@ -1,5 +1,6 @@
 /**
  * public/assets/js/modules/settings/settings-controller.js
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -10,8 +11,6 @@ export const SettingsController = {
         console.log("SettingsController: Escuchando eventos UI");
         _initToggles();
         
-        // Aquí usas funciones con nombre (_onDropdownSelection), así que removeEventListener SÍ funciona.
-        // Esto estaba bien, no causaba duplicados.
         document.removeEventListener('ui:dropdown-selected', _onDropdownSelection);
         document.addEventListener('ui:dropdown-selected', _onDropdownSelection);
         
@@ -65,6 +64,7 @@ function _initScrollBehavior() {
 function _onDropdownSelection(e) {
     const { type, value, element } = e.detail;
 
+    // Evitar conflicto si el dropdown es de otra sección (ej. Admin User Details)
     if (element && element.closest('[data-section="admin-user-details"]')) {
         return; 
     }
@@ -81,8 +81,10 @@ function _onDropdownSelection(e) {
 }
 
 async function savePreference(key, value) {
+    // Actualización optimista local
     if (window.USER_PREFS) window.USER_PREFS[key] = value;
 
+    // Modo Invitado (Local Storage)
     if (!window.IS_LOGGED_IN) {
         const currentPrefs = JSON.parse(localStorage.getItem('guest_prefs') || '{}');
         currentPrefs[key] = value;
@@ -99,26 +101,30 @@ async function savePreference(key, value) {
     formData.append('value', value);
 
     try { 
-        const res = await ApiService.post(ApiService.Routes.Settings.UpdatePreference, formData); 
+        // Pasamos window.PAGE_SIGNAL para abortar si el usuario cambia de vista antes de que termine
+        const res = await ApiService.post(
+            ApiService.Routes.Settings.UpdatePreference, 
+            formData, 
+            { signal: window.PAGE_SIGNAL }
+        ); 
+
         if (!res.success) {
             ToastManager.show(res.message, 'error');
             
-            // [OPCIONAL] Si falla, revertir el checkbox visualmente para que coincida con el servidor
-            // Esto evita que el usuario piense que se guardó.
+            // Revertir UI si falla la petición
             if (key === 'open_links_new_tab') {
                 const el = document.getElementById('pref-open-links');
-                if (el) {
-                    el.checked = !el.checked; // Revertir
-                    // Importante: No dispares el evento 'change' aquí o crearás un bucle infinito
-                }
+                if (el) el.checked = !el.checked;
             }
              if (key === 'extended_toast') {
                 const el = document.getElementById('pref-extended-toast');
                 if (el) el.checked = !el.checked;
             }
-
         }
     } catch (error) { 
+        // Si fue abortado por navegación, no mostramos error
+        if (error.isAborted) return;
+        
         console.error(error); 
         ToastManager.show('Error de conexión', 'error');
     }
@@ -131,18 +137,16 @@ function applyTheme(theme) {
     else root.removeAttribute('data-theme');
 }
 
-// [CORREGIDO] Evita añadir listeners duplicados si la función se llama varias veces
 function _initToggles() {
     const toggleLinks = document.getElementById('pref-open-links');
-    // Verificamos si existe Y si NO tiene ya nuestro listener (usando un flag custom)
     if (toggleLinks && !toggleLinks.dataset.hasListener) {
         toggleLinks.addEventListener('change', (e) => savePreference('open_links_new_tab', e.target.checked));
-        toggleLinks.dataset.hasListener = "true"; // Marcamos como "escuchando"
+        toggleLinks.dataset.hasListener = "true";
     }
 
     const toggleToast = document.getElementById('pref-extended-toast');
     if (toggleToast && !toggleToast.dataset.hasListener) {
         toggleToast.addEventListener('change', (e) => savePreference('extended_toast', e.target.checked));
-        toggleToast.dataset.hasListener = "true"; // Marcamos como "escuchando"
+        toggleToast.dataset.hasListener = "true";
     }
 }

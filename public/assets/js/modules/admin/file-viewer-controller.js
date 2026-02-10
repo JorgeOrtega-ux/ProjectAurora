@@ -1,6 +1,6 @@
 /**
  * public/assets/js/modules/admin/file-viewer-controller.js
- * Versión Segura (DOM API)
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -19,14 +19,12 @@ export const FileViewerController = {
         _container = document.querySelector('[data-section="admin-file-viewer"]');
         if (!_container) return;
 
-        // Leer preferencia de resaltado
         const savedPref = localStorage.getItem('viewer_highlight_mode');
         _isHighlightMode = savedPref === 'true';
 
         const check = document.getElementById('check-highlight-mode');
         if (check) check.checked = _isHighlightMode;
 
-        // Leer parámetros URL
         const urlParams = new URLSearchParams(window.location.search);
         const filesParam = urlParams.get('files');
 
@@ -36,7 +34,6 @@ export const FileViewerController = {
         }
 
         initEvents();
-        // Cargar los archivos iniciales
         loadContent(filesParam.split(','));
     }
 };
@@ -75,7 +72,6 @@ function initEvents() {
     if (btnRefresh) {
         btnRefresh.addEventListener('click', () => {
             if (_currentFiles.length > 0) {
-                // Recargar solo los archivos que siguen abiertos
                 loadContent(_currentFiles.map(f => f.path));
             }
         });
@@ -98,7 +94,6 @@ async function loadContent(paths) {
     const errorBox = document.getElementById('viewer-error');
     const contentArea = document.getElementById('file-content-container');
     
-    // Ocultar contenido previo
     if (contentArea) contentArea.style.opacity = '0';
     if (loader) loader.classList.remove('d-none');
     if (errorBox) errorBox.classList.add('d-none');
@@ -107,23 +102,23 @@ async function loadContent(paths) {
     formData.append('files', paths.join(','));
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.GetFileContent, formData);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.GetFileContent, formData, { signal: window.PAGE_SIGNAL });
 
         if (loader) loader.classList.add('d-none');
         if (contentArea) contentArea.style.opacity = '1';
 
         if (res.success) {
             _currentFiles = res.files;
-            // Asegurar que el índice sea válido
             if (_activeFileIndex >= _currentFiles.length) _activeFileIndex = 0;
             renderTabs();
             renderActiveContent();
-            
             updateUrlState(); 
         } else {
             showError(res.message);
         }
     } catch (e) {
+        if (e.isAborted) return;
         console.error(e);
         if (loader) loader.classList.add('d-none');
         showError(I18nManager.t('js.core.connection_error') || 'Error de conexión.');
@@ -153,7 +148,7 @@ function renderTabs() {
 
         const label = document.createElement('span');
         label.className = 'tab-label';
-        label.textContent = file.filename; // [SEGURIDAD]
+        label.textContent = file.filename;
         tab.appendChild(label);
 
         const closeBtn = document.createElement('span');
@@ -161,14 +156,12 @@ function renderTabs() {
         closeBtn.title = I18nManager.t('admin.file_viewer.close_file') || 'Cerrar archivo';
         closeBtn.textContent = 'close';
         
-        // Click en el botón de cerrar
         closeBtn.onclick = (e) => {
             e.stopPropagation();
             closeFile(index);
         };
         tab.appendChild(closeBtn);
         
-        // Click en la pestaña
         tab.onclick = () => {
             _activeFileIndex = index;
             renderTabs();
@@ -218,7 +211,6 @@ function renderActiveContent() {
     container.removeAttribute('style');
     container.style.flex = '1';
     
-    // CASO: No quedan archivos
     if (_activeFileIndex === -1 || !_currentFiles[_activeFileIndex]) {
         container.innerHTML = `
             <div class="state-empty" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:var(--text-secondary);">
@@ -268,19 +260,13 @@ function renderActiveContent() {
             coloredCode = safeCode;
         }
         
-        // Aquí insertamos el código coloreado. Como el coloreado inserta spans HTML,
-        // usamos innerHTML, PERO el contenido 'rawContent' ha sido saneado previamente
-        // por 'escapeHtml' antes de ser procesado por los highlighters.
         syntaxDiv.innerHTML = coloredCode; 
     } else {
-        // Modo plano: puro texto seguro
         syntaxDiv.textContent = rawContent; 
     }
     
     container.appendChild(syntaxDiv);
 }
-
-// === MOTOR DE RESALTADO (IMPORTANTE: escapeHtml primero) ===
 
 function safeHighlight(code, grammar) {
     const placeholders = [];

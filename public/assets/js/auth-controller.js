@@ -1,5 +1,6 @@
 /**
  * public/assets/js/auth-controller.js
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { navigateTo } from './core/utils/url-manager.js';
@@ -10,9 +11,7 @@ import { I18nManager } from './core/utils/i18n-manager.js';
 let resendTimerInterval = null;
 let recoveryTimerInterval = null;
 let turnstileWidgetId = null;
-let isRecoveryMode = false; // Estado local para el tipo de código
-
-// Variable de estado para controlar el bloqueo
+let isRecoveryMode = false;
 let isResendCooldownActive = false;
 
 export function initAuthController() {
@@ -20,29 +19,22 @@ export function initAuthController() {
 
     document.addEventListener('spa:view_loaded', () => {
         setTimeout(renderTurnstile, 100);
-        // Si cargamos directamente la vista de 2FA, poner foco
         if (window.location.pathname.includes('/verification-aditional')) {
             const input2fa = document.getElementById('2fa-code');
             if (input2fa) input2fa.focus();
         }
     });
 
-    // Detección inteligente del timer
     const resendBtn = document.getElementById('btn-resend-code');
-    
-    // Solo si estamos en la pantalla de verificación (existe el botón)
     if (resendBtn) {
-        // 1. Iniciar con bloqueo visual inmediato para evitar clicks prematuros
-        resendBtn.classList.add('link-disabled'); 
-        
-        // 2. Consultar al servidor el tiempo real
+        resendBtn.classList.add('link-disabled');
         checkServerTimer();
     }
 
     document.body.addEventListener('click', async (e) => {
         const target = e.target;
 
-        // LOGIN PASO 1
+        // --- LOGIN FLOW ---
         const btnLogin = target.closest('#btn-login');
         if (btnLogin) {
             e.preventDefault();
@@ -51,17 +43,14 @@ export function initAuthController() {
             return;
         }
 
-        // LOGIN PASO 2 (2FA)
         const btnVerify2FA = target.closest('#btn-verify-2fa');
         if (btnVerify2FA) {
             e.preventDefault();
-            // Limpiar error previo antes de validar
-            hideError('login-step2-error'); 
+            hideError('login-step2-error');
             handleLoginStep2(btnVerify2FA);
             return;
         }
 
-        // Toggle entre App y Código de Recuperación
         const btnToggleRecovery = target.closest('#toggle-recovery-mode');
         if (btnToggleRecovery) {
             e.preventDefault();
@@ -69,7 +58,8 @@ export function initAuthController() {
             return;
         }
 
-        // REGISTRO 1 -> 2
+        // --- REGISTER FLOW ---
+        // Paso 1 -> 2
         const btnNext1 = target.closest('#btn-next-1');
         if (btnNext1) {
             e.preventDefault();
@@ -94,16 +84,14 @@ export function initAuthController() {
             formData.append('password', password);
             formData.append('cf-turnstile-response', tsToken);
 
-            // [MODIFICACIÓN] HONEYPOT: Enviar la trampa al servidor
             const honeyPot = document.getElementById('website_url');
-            if (honeyPot) {
-                formData.append('website_url', honeyPot.value);
-            }
+            if (honeyPot) formData.append('website_url', honeyPot.value);
 
             setLoading(btnNext1, true);
 
             try {
-                const res = await ApiService.post(ApiService.Routes.Auth.RegisterStep1, formData);
+                // Pasamos la señal de la página actual
+                const res = await ApiService.post(ApiService.Routes.Auth.RegisterStep1, formData, { signal: window.PAGE_SIGNAL });
 
                 if (res.success) {
                     navigateTo(res.next_url);
@@ -113,22 +101,23 @@ export function initAuthController() {
                     resetTurnstile();
                 }
             } catch (err) {
+                // ApiService ya normaliza errores de red, pero si es un abort, lo ignoramos silenciosamente
+                if (err.isAborted) return;
                 console.error(err);
-                showError(btnNext1, 'register-step1-error', I18nManager.t('js.auth.unexpected_error'));
+                showError(btnNext1, 'register-step1-error', err.message || I18nManager.t('js.auth.unexpected_error'));
                 setLoading(btnNext1, false);
                 resetTurnstile();
             }
             return;
         }
 
-        // REGISTRO 2 -> 3
+        // Paso 2 -> 3
         const btnNext2 = target.closest('#btn-next-2');
         if (btnNext2) {
             e.preventDefault();
             hideError('register-step2-error');
 
             const username = document.getElementById('username').value;
-
             if (!username) {
                 showError(btnNext2, 'register-step2-error', I18nManager.t('js.auth.choose_username'));
                 return;
@@ -140,25 +129,24 @@ export function initAuthController() {
             setLoading(btnNext2, true);
 
             try {
-                const res = await ApiService.post(ApiService.Routes.Auth.RegisterStep2, formData);
+                const res = await ApiService.post(ApiService.Routes.Auth.RegisterStep2, formData, { signal: window.PAGE_SIGNAL });
 
                 if (res.success) {
                     ToastManager.show(I18nManager.t('js.auth.code_sent'), 'info');
                     navigateTo(res.next_url);
-                    // Aquí ya no llamamos a startResendTimer manualmente,
-                    // al cargar la vista se ejecutará checkServerTimer
                 } else {
                     showError(btnNext2, 'register-step2-error', res.message);
                     setLoading(btnNext2, false);
                 }
             } catch (err) {
-                showError(btnNext2, 'register-step2-error', I18nManager.t('js.auth.connection_error'));
+                if (err.isAborted) return;
+                showError(btnNext2, 'register-step2-error', err.message || I18nManager.t('js.auth.connection_error'));
                 setLoading(btnNext2, false);
             }
             return;
         }
 
-        // REGISTRO FINAL
+        // Registro Final (Verificar código)
         const btnFinish = target.closest('#btn-finish');
         if (btnFinish) {
             e.preventDefault();
@@ -176,7 +164,7 @@ export function initAuthController() {
             setLoading(btnFinish, true);
 
             try {
-                const res = await ApiService.post(ApiService.Routes.Auth.RegisterComplete, formData);
+                const res = await ApiService.post(ApiService.Routes.Auth.RegisterComplete, formData, { signal: window.PAGE_SIGNAL });
 
                 if (res.success) {
                     window.location.href = res.redirect;
@@ -185,31 +173,26 @@ export function initAuthController() {
                     setLoading(btnFinish, false);
                 }
             } catch (err) {
-                showError(btnFinish, 'register-step3-error', I18nManager.t('js.auth.verify_error'));
+                if (err.isAborted) return;
+                showError(btnFinish, 'register-step3-error', err.message || I18nManager.t('js.auth.verify_error'));
                 setLoading(btnFinish, false);
             }
             return;
         }
 
-        // REENVIAR CÓDIGO
+        // Reenviar código
         const btnResend = target.closest('#btn-resend-code');
         if (btnResend) {
             e.preventDefault();
             hideError('register-step3-error');
 
-            // Verificación robusta usando la variable de estado
-            if (isResendCooldownActive) {
-                return;
-            }
+            if (isResendCooldownActive) return;
 
             const targetErrorNode = document.getElementById('btn-finish') || btnResend;
-            const formData = new FormData();
-
-            // Bloqueo visual inmediato
             btnResend.style.opacity = '0.5';
 
             try {
-                const res = await ApiService.post(ApiService.Routes.Auth.ResendCode, formData);
+                const res = await ApiService.post(ApiService.Routes.Auth.ResendCode, new FormData(), { signal: window.PAGE_SIGNAL });
                 btnResend.style.opacity = '1';
 
                 if (res.success) {
@@ -219,13 +202,14 @@ export function initAuthController() {
                     showError(targetErrorNode, 'register-step3-error', res.message);
                 }
             } catch (err) {
+                if (err.isAborted) return;
                 btnResend.style.opacity = '1';
-                showError(targetErrorNode, 'register-step3-error', I18nManager.t('js.auth.resend_error'));
+                showError(targetErrorNode, 'register-step3-error', err.message || I18nManager.t('js.auth.resend_error'));
             }
             return;
         }
 
-        // RECUPERAR PASSWORD (SOLICITUD)
+        // --- RECOVERY FLOW ---
         const btnRequestReset = target.closest('#btn-request-reset');
         if (btnRequestReset) {
             e.preventDefault();
@@ -243,7 +227,7 @@ export function initAuthController() {
             setLoading(btnRequestReset, true);
 
             try {
-                const res = await ApiService.post(ApiService.Routes.Auth.RequestReset, formData);
+                const res = await ApiService.post(ApiService.Routes.Auth.RequestReset, formData, { signal: window.PAGE_SIGNAL });
                 setLoading(btnRequestReset, false);
 
                 if (res.success) {
@@ -253,31 +237,27 @@ export function initAuthController() {
                     showError(btnRequestReset, 'recovery-error', res.message);
                 }
             } catch (err) {
+                if (err.isAborted) return;
                 setLoading(btnRequestReset, false);
-                showError(btnRequestReset, 'recovery-error', I18nManager.t('js.auth.connection_error'));
+                showError(btnRequestReset, 'recovery-error', err.message || I18nManager.t('js.auth.connection_error'));
             }
             return;
         }
 
-        // REENVIAR RECUPERACIÓN
         const linkResendRecovery = target.closest('#link-resend-recovery');
         if (linkResendRecovery) {
             e.preventDefault();
-
-            if (linkResendRecovery.classList.contains('link-disabled') || linkResendRecovery.style.pointerEvents === 'none') {
-                return;
-            }
+            if (linkResendRecovery.classList.contains('link-disabled') || linkResendRecovery.style.pointerEvents === 'none') return;
 
             const email = document.getElementById('email_recovery').value;
             if (!email) return;
 
             const formData = new FormData();
             formData.append('email', email);
-
             linkResendRecovery.style.opacity = '0.5';
 
             try {
-                const res = await ApiService.post(ApiService.Routes.Auth.RequestReset, formData);
+                const res = await ApiService.post(ApiService.Routes.Auth.RequestReset, formData, { signal: window.PAGE_SIGNAL });
                 linkResendRecovery.style.opacity = '1';
 
                 if (res.success) {
@@ -287,13 +267,14 @@ export function initAuthController() {
                     ToastManager.show(res.message, 'error');
                 }
             } catch (err) {
+                if (err.isAborted) return;
                 linkResendRecovery.style.opacity = '1';
-                ToastManager.show(I18nManager.t('js.auth.connection_error'), 'error');
+                ToastManager.show(err.message || I18nManager.t('js.auth.connection_error'), 'error');
             }
             return;
         }
 
-        // RESET PASSWORD (SUBMIT)
+        // --- RESET PASSWORD SUBMIT ---
         const btnSubmitNewPass = target.closest('#btn-submit-new-password');
         if (btnSubmitNewPass) {
             e.preventDefault();
@@ -319,7 +300,8 @@ export function initAuthController() {
             setLoading(btnSubmitNewPass, true);
 
             try {
-                const res = await ApiService.post(ApiService.Routes.Auth.ResetPassword, formData);
+                const res = await ApiService.post(ApiService.Routes.Auth.ResetPassword, formData, { signal: window.PAGE_SIGNAL });
+                
                 if (res.success) {
                     ToastManager.show(I18nManager.t('js.auth.pass_updated'), 'success');
                     setTimeout(() => {
@@ -330,13 +312,14 @@ export function initAuthController() {
                     showError(btnSubmitNewPass, 'reset-pass-error', res.message);
                 }
             } catch (err) {
+                if (err.isAborted) return;
                 setLoading(btnSubmitNewPass, false);
-                showError(btnSubmitNewPass, 'reset-pass-error', I18nManager.t('js.auth.unexpected_error'));
+                showError(btnSubmitNewPass, 'reset-pass-error', err.message || I18nManager.t('js.auth.unexpected_error'));
             }
             return;
         }
 
-        // LOGOUT
+        // --- LOGOUT ---
         const logoutBtn = target.closest('[data-action="logout"]');
         if (logoutBtn) {
             e.preventDefault();
@@ -349,61 +332,35 @@ export function initAuthController() {
             window.isManualLogout = true;
 
             try {
-                await ApiService.post(ApiService.Routes.Auth.Logout);
+                // Logout usa ApiService para aprovechar reintentos si falla la red, 
+                // pero si el usuario navega fuera, el signal lo cancelará (lo cual está bien en logout).
+                await ApiService.post(ApiService.Routes.Auth.Logout, new FormData(), { signal: window.PAGE_SIGNAL });
                 window.location.href = window.BASE_PATH + 'login';
             } catch (err) {
+                if (err.isAborted) return;
                 console.error("Logout error:", err);
                 window.isManualLogout = false;
                 removeSpinnerFromButton(logoutBtn);
                 logoutBtn.dataset.processing = "false";
+                // En caso de error de red en logout, forzamos redirección local
+                // window.location.href = window.BASE_PATH + 'login'; 
             }
             return;
         }
 
         // UI INTERACTIONS
         const inputActionBtn = target.closest('.component-input-action');
-        if (inputActionBtn) {
-            handleUiActions(inputActionBtn, e);
-        }
+        if (inputActionBtn) handleUiActions(inputActionBtn, e);
     });
 
     document.body.addEventListener('keypress', handleEnterKey);
 }
 
-// === Lógica de Toggle Recovery (Visual) ===
-function toggleRecoveryMode(btn) {
-    const input = document.getElementById('2fa-code');
-    const label = document.getElementById('label-2fa-code');
-    
-    isRecoveryMode = !isRecoveryMode;
-
-    if (isRecoveryMode) {
-        input.placeholder = ' ';
-        // Los códigos de recuperación son más largos
-        input.maxLength = 10;
-        input.value = '';
-        input.focus();
-        
-        // Cambiar textos
-        label.textContent = "Código de Recuperación";
-        btn.textContent = "Usar aplicación de autenticación";
-    } else {
-        input.placeholder = ' ';
-        input.maxLength = 6;
-        input.value = '';
-        input.focus();
-        
-        label.textContent = I18nManager.t('auth.2fa.field_code');
-        btn.textContent = "Usar código de recuperación";
-    }
-}
-
-// === HELPERS DE LOGICA LOGIN ===
+// === LOGIC HANDLERS ===
 
 async function handleLoginStep1(btn) {
     const inputs = document.querySelectorAll('#login-stage-1 input');
     const formData = new FormData();
-
     const tsToken = getTurnstileToken();
     let hasEmpty = false;
 
@@ -426,15 +383,14 @@ async function handleLoginStep1(btn) {
     formData.append('cf-turnstile-response', tsToken);
 
     setLoading(btn, true);
+    
     try {
-        const res = await ApiService.post(ApiService.Routes.Auth.Login, formData);
+        const res = await ApiService.post(ApiService.Routes.Auth.Login, formData, { signal: window.PAGE_SIGNAL });
 
         if (res.success) {
             if (res.require_2fa) {
-                // Cambio de URL sin recargar
                 const newUrl = window.BASE_PATH + 'login/verification-aditional';
                 window.history.pushState({ section: 'login/verification-aditional' }, '', newUrl);
-                
                 transitionTo2FA();
             } else {
                 window.location.href = res.redirect;
@@ -445,7 +401,8 @@ async function handleLoginStep1(btn) {
             resetTurnstile();
         }
     } catch (e) {
-        showError(btn, 'login-error', I18nManager.t('js.auth.connection_error'));
+        if (e.isAborted) return;
+        showError(btn, 'login-error', e.message || I18nManager.t('js.auth.connection_error'));
         setLoading(btn, false);
         resetTurnstile();
     }
@@ -455,7 +412,6 @@ async function handleLoginStep2(btn) {
     const input2fa = document.getElementById('2fa-code');
     const code = input2fa.value.trim();
     
-    // Validar vacío y mostrar error en DIV
     if (!code) {
         showError(btn, 'login-step2-error', I18nManager.t('js.auth.enter_code'));
         input2fa.focus();
@@ -468,7 +424,8 @@ async function handleLoginStep2(btn) {
     setLoading(btn, true);
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Auth.Verify2FA, formData);
+        const res = await ApiService.post(ApiService.Routes.Auth.Verify2FA, formData, { signal: window.PAGE_SIGNAL });
+        
         if (res.success) {
             window.location.href = res.redirect;
         } else {
@@ -477,21 +434,43 @@ async function handleLoginStep2(btn) {
             input2fa.focus();
         }
     } catch (e) {
-        showError(btn, 'login-step2-error', I18nManager.t('js.auth.connection_error'));
+        if (e.isAborted) return;
+        showError(btn, 'login-step2-error', e.message || I18nManager.t('js.auth.connection_error'));
         setLoading(btn, false);
+    }
+}
+
+// ... (Resto de funciones UI auxiliares como transitionTo2FA, toggleRecoveryMode, etc. se mantienen igual) ...
+
+function toggleRecoveryMode(btn) {
+    const input = document.getElementById('2fa-code');
+    const label = document.getElementById('label-2fa-code');
+    isRecoveryMode = !isRecoveryMode;
+
+    if (isRecoveryMode) {
+        input.placeholder = ' ';
+        input.maxLength = 10;
+        input.value = '';
+        input.focus();
+        label.textContent = "Código de Recuperación";
+        btn.textContent = "Usar aplicación de autenticación";
+    } else {
+        input.placeholder = ' ';
+        input.maxLength = 6;
+        input.value = '';
+        input.focus();
+        label.textContent = I18nManager.t('auth.2fa.field_code');
+        btn.textContent = "Usar código de recuperación";
     }
 }
 
 function transitionTo2FA() {
     const stage1 = document.getElementById('login-stage-1');
     stage1.classList.add('disabled');
-
     const stage2 = document.getElementById('login-stage-2');
     stage2.classList.remove('disabled');
-
     document.getElementById('auth-title').innerText = I18nManager.t('auth.2fa.title');
     document.getElementById('auth-subtitle').innerText = I18nManager.t('auth.2fa.subtitle');
-
     const inputCode = document.getElementById('2fa-code');
     if (inputCode) inputCode.focus();
 }
@@ -499,7 +478,6 @@ function transitionTo2FA() {
 function handleUiActions(btn, e) {
     e.preventDefault();
     const action = btn.dataset.action;
-
     if (action === 'toggle-password') {
         const input = btn.parentElement.querySelector('input');
         const icon = btn.querySelector('.material-symbols-rounded');
@@ -510,8 +488,7 @@ function handleUiActions(btn, e) {
             input.type = 'password';
             icon.textContent = 'visibility';
         }
-    }
-    else if (action === 'generate-username') {
+    } else if (action === 'generate-username') {
         const input = document.getElementById('username');
         if (input) {
             const now = new Date();
@@ -554,7 +531,6 @@ function addSpinnerToButton(btn) {
     const spinnerContainer = document.createElement('div');
     spinnerContainer.className = 'menu-link-icon';
     spinnerContainer.id = 'logout-spinner';
-
     const spinner = document.createElement('div');
     spinner.className = 'spinner-sm';
     Object.assign(spinner.style, {
@@ -564,7 +540,6 @@ function addSpinnerToButton(btn) {
         height: '20px',
         borderWidth: '2px'
     });
-
     spinnerContainer.appendChild(spinner);
     btn.appendChild(spinnerContainer);
 }
@@ -614,16 +589,12 @@ function resetTurnstile() {
     if (window.turnstile && turnstileWidgetId !== null) turnstile.reset(turnstileWidgetId);
 }
 
-// Función del temporizador usando la variable de estado
 function startResendTimer(seconds) {
     const btn = document.getElementById('btn-resend-code');
     const timerSpan = document.getElementById('register-timer');
     if (!btn || !timerSpan) return;
 
-    // 1. Activar bloqueo lógico
     isResendCooldownActive = true;
-
-    // 2. Aplicar estado visual
     let timeLeft = seconds;
     btn.classList.add('link-disabled');
     btn.style.pointerEvents = 'none';
@@ -635,13 +606,9 @@ function startResendTimer(seconds) {
     resendTimerInterval = setInterval(() => {
         timeLeft--;
         timerSpan.textContent = `(${timeLeft})`;
-        
         if (timeLeft <= 0) {
             clearInterval(resendTimerInterval);
-            
-            // 3. Liberar bloqueo lógico y visual
             isResendCooldownActive = false;
-            
             btn.classList.remove('link-disabled');
             btn.style.pointerEvents = 'auto';
             btn.style.color = '';
@@ -694,14 +661,11 @@ function startRecoveryTimer(seconds) {
 
 async function checkServerTimer() {
     try {
-        // Llamamos al nuevo endpoint usando la ruta completa
-        const res = await ApiService.post(ApiService.Routes.Auth.GetStatus);
+        const res = await ApiService.post(ApiService.Routes.Auth.GetStatus, new FormData(), { signal: window.PAGE_SIGNAL });
         
         if (res.success && res.cooldown > 0) {
-            // Si hay cooldown en el servidor, iniciamos el timer con ese tiempo exacto
             startResendTimer(res.cooldown);
         } else {
-            // Si no hay cooldown (es 0), desbloqueamos el botón inmediatamente
             const btn = document.getElementById('btn-resend-code');
             const timerSpan = document.getElementById('register-timer');
             if (btn) {
@@ -712,8 +676,8 @@ async function checkServerTimer() {
             if (timerSpan) timerSpan.textContent = '';
         }
     } catch (e) {
+        if (e.isAborted) return;
         console.error("Error sincronizando timer:", e);
-        // Fallback: Si falla la red, asumimos 0 para no bloquear al usuario eternamente
-        startResendTimer(0); 
+        startResendTimer(0);
     }
 }

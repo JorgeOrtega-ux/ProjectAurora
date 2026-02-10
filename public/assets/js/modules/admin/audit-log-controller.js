@@ -1,11 +1,11 @@
 /**
  * public/assets/js/modules/admin/audit-log-controller.js
- * Versión Segura (DOM API)
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { ApiService } from '../../core/services/api-service.js';
-import { ToastManager } from '../../core/components/toast-manager.js';
 import { I18nManager } from '../../core/utils/i18n-manager.js';
+
 let _container = null;
 let _currentPage = 1;
 let _limit = 50;
@@ -58,7 +58,7 @@ async function loadLogs() {
 
     if (!tbody) return;
 
-    tbody.innerHTML = ''; // Limpieza segura
+    tbody.innerHTML = ''; 
     if (loading) loading.style.display = 'block';
 
     const formData = new FormData();
@@ -66,7 +66,8 @@ async function loadLogs() {
     formData.append('limit', _limit);
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.GetAuditLogs, formData);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.GetAuditLogs, formData, { signal: window.PAGE_SIGNAL });
 
         if (loading) loading.style.display = 'none';
 
@@ -92,6 +93,7 @@ async function loadLogs() {
         }
 
     } catch (e) {
+        if (e.isAborted) return;
         console.error(e);
         if (loading) loading.style.display = 'none';
         
@@ -154,7 +156,7 @@ function renderTable(logs, tbody) {
         const spanName = document.createElement('span');
         spanName.style.fontWeight = '600';
         spanName.style.fontSize = '13px';
-        spanName.textContent = displayAdminName; // [SEGURIDAD] textContent
+        spanName.textContent = displayAdminName;
         
         const spanId = document.createElement('span');
         spanId.style.fontSize = '11px';
@@ -170,7 +172,7 @@ function renderTable(logs, tbody) {
         const tdAction = document.createElement('td');
         const badgeAction = document.createElement('span');
         badgeAction.className = 'component-badge component-badge--sm';
-        badgeAction.textContent = log.action; // [SEGURIDAD]
+        badgeAction.textContent = log.action;
         tdAction.appendChild(badgeAction);
         tr.appendChild(tdAction);
 
@@ -178,7 +180,7 @@ function renderTable(logs, tbody) {
         const tdTarget = document.createElement('td');
         const badgeTarget = document.createElement('span');
         badgeTarget.className = 'component-badge component-badge--sm';
-        badgeTarget.textContent = `${log.target_type}:${log.target_id || '?'}`; // [SEGURIDAD]
+        badgeTarget.textContent = `${log.target_type}:${log.target_id || '?'}`;
         tdTarget.appendChild(badgeTarget);
         tr.appendChild(tdTarget);
 
@@ -188,7 +190,6 @@ function renderTable(logs, tbody) {
         const divDetails = document.createElement('div');
         divDetails.style.cssText = "font-size: 12px; font-family: monospace; max-height: 80px; overflow-y: auto; color: var(--text-secondary);";
         
-        // Renderizar cambios de forma segura
         if (log.changes) {
             const changesNodes = formatChangesSafe(log.changes);
             divDetails.appendChild(changesNodes);

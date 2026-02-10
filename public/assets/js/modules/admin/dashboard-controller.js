@@ -1,5 +1,6 @@
 /**
  * public/assets/js/modules/admin/dashboard-controller.js
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -23,35 +24,27 @@ function initEvents() {
     const btnRefresh = _container.querySelector('[data-action="refresh-dashboard"]');
     if (btnRefresh) {
         btnRefresh.addEventListener('click', () => {
-            btnRefresh.classList.add('rotate-anim'); // Clase para animar si quieres
+            btnRefresh.classList.add('rotate-anim'); 
             loadStats().then(() => {
                 setTimeout(() => btnRefresh.classList.remove('rotate-anim'), 500);
             });
         });
     }
 
-    // [NUEVO] Escuchar actualizaciones en tiempo real desde Python (Socket)
-    // Esto corrige la "Paradoja del Refresh" actualizando la UI instantáneamente
     document.removeEventListener('socket:stats_update', handleRealtimeUpdate);
     document.addEventListener('socket:stats_update', handleRealtimeUpdate);
 }
 
-// Función separada para manejar la actualización en vivo
 function handleRealtimeUpdate(e) {
-    // Si el usuario ya no está en el dashboard (cambió de pestaña), no hacemos nada
     if (!_container || !document.body.contains(_container)) return;
 
     const stats = e.detail.message;
-    console.log("⚡ Dashboard: Actualización en tiempo real recibida", stats);
-
+    
     if (stats) {
-        // Actualizamos solo los contadores de conexión
-        // Usamos updateValue que ya existe abajo
         updateValue('online_total', stats.online_total);
         updateValue('online_users', stats.online_users);
         updateValue('online_guests', stats.online_guests);
         
-        // Efecto visual opcional: parpadeo suave para indicar cambio
         const card = _container.querySelector('[data-stat="online_total"]')?.closest('.component-stat-card');
         if (card) {
             card.style.transition = 'background-color 0.3s';
@@ -63,13 +56,20 @@ function handleRealtimeUpdate(e) {
 
 async function loadStats() {
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.GetDashboardStats);
+        // Signal added
+        const res = await ApiService.post(
+            ApiService.Routes.Admin.GetDashboardStats, 
+            new FormData(), 
+            { signal: window.PAGE_SIGNAL }
+        );
+        
         if (res.success) {
             renderStats(res.stats);
         } else {
             ToastManager.show(res.message, 'error');
         }
     } catch (e) {
+        if (e.isAborted) return;
         console.error(e);
         ToastManager.show(I18nManager.t('admin.dashboard.load_error') || 'Error cargando estadísticas', 'error');
     }
@@ -90,7 +90,6 @@ function renderStats(stats) {
 }
 
 function updateValue(key, value) {
-    // Verificamos que el valor no sea undefined para no borrar datos si faltan en el payload
     if (value === undefined || value === null) return;
 
     const el = _container.querySelector(`[data-stat="${key}"]`);
@@ -103,7 +102,6 @@ function updateTrend(key, trendData) {
 
     const { value, direction, infinite } = trendData;
     
-    // Resetear clases
     badge.className = 'component-trend-badge';
     
     let icon = 'remove';

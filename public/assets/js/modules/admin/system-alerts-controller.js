@@ -1,5 +1,6 @@
 /**
  * public/assets/js/modules/admin/system-alerts-controller.js
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 import { ApiService } from '../../core/services/api-service.js';
 import { ToastManager } from '../../core/components/toast-manager.js';
@@ -38,7 +39,7 @@ export const SystemAlertsController = {
         const inputPolicy = _container.querySelector('[data-input="policy-effective-date"]');
         new DateTimePicker(wrapperPolicy, inputPolicy, { minDate: new Date(), enableTime: false, format: 'YYYY-MM-DD' });
 
-        // --- CONFIGURACIÓN UI (Textos estáticos) ---
+        // --- CONFIGURACIÓN UI ---
         const configMainType = {
             'performance': { icon: 'speed', text: I18nManager.t('admin.alerts.type_perf') },
             'maintenance': { icon: 'build', text: I18nManager.t('admin.alerts.type_maint') },
@@ -128,7 +129,6 @@ export const SystemAlertsController = {
             }
         };
 
-        // Listeners UI (Inputs)
         const inputsToWatch = _container.querySelectorAll('[data-input]');
         inputsToWatch.forEach(el => el.addEventListener('input', updatePreview));
 
@@ -139,7 +139,6 @@ export const SystemAlertsController = {
         if (btnDurDec && inputDur) btnDurDec.onclick = () => { inputDur.stepDown(15); updatePreview(); };
         if (btnDurInc && inputDur) btnDurInc.onclick = () => { inputDur.stepUp(15); updatePreview(); };
 
-        // --- TRIGGERS & POPOVERS ---
         const setupTrigger = (selectorKey, actionName, onSelectCallback) => {
             const trigger = _container.querySelector(`[data-selector="${selectorKey}"]`);
             const popover = trigger?.nextElementSibling; 
@@ -214,7 +213,6 @@ export const SystemAlertsController = {
 
         updatePreview();
 
-        // --- VALIDACIÓN DE DATOS ---
         const validateInputs = () => {
             if (selectedMainType === 'maintenance') {
                 if (selectedMaintType === 'scheduled') {
@@ -236,7 +234,6 @@ export const SystemAlertsController = {
             return { valid: true };
         };
 
-        // --- LÓGICA DE EMISIÓN ---
         const executeEmission = async () => {
             DialogManager.showLoading(I18nManager.t('admin.alerts.btn_emit') + '...');
 
@@ -270,7 +267,8 @@ export const SystemAlertsController = {
             try {
                 const formData = new FormData();
                 formData.append('alert_data', JSON.stringify(payload));
-                const res = await ApiService.post(ApiService.Routes.Admin.CreateSystemAlert, formData);
+                // Signal added
+                const res = await ApiService.post(ApiService.Routes.Admin.CreateSystemAlert, formData, { signal: window.PAGE_SIGNAL });
                 DialogManager.close();
                 if (res.success) {
                     ToastManager.show(I18nManager.t('admin.alerts.emit_success') || 'Difusión emitida correctamente', 'success');
@@ -279,6 +277,7 @@ export const SystemAlertsController = {
                     ToastManager.show(res.message || (I18nManager.t('admin.alerts.emit_error') || 'Error al emitir'), 'error');
                 }
             } catch (e) { 
+                if (e.isAborted) return;
                 DialogManager.close();
                 console.error(e); 
             }
@@ -316,12 +315,15 @@ export const SystemAlertsController = {
 
             if (confirmed) {
                 try {
-                    const res = await ApiService.post(ApiService.Routes.Admin.DeactivateSystemAlert);
+                    // Signal added
+                    const res = await ApiService.post(ApiService.Routes.Admin.DeactivateSystemAlert, new FormData(), { signal: window.PAGE_SIGNAL });
                     if (res.success) {
                         ToastManager.show(I18nManager.t('admin.alerts.system_normalized') || 'Sistema normalizado', 'success');
                         checkActiveAlertStatus();
                     }
-                } catch (e) { console.error(e); }
+                } catch (e) { 
+                    if (!e.isAborted) console.error(e); 
+                }
             }
         };
 
@@ -332,7 +334,6 @@ export const SystemAlertsController = {
              ToastManager.show(I18nManager.t('admin.alerts.btn_refresh'), 'info');
         };
 
-        // --- CHECK STATUS ---
         checkActiveAlertStatus();
 
         async function checkActiveAlertStatus() {
@@ -349,7 +350,8 @@ export const SystemAlertsController = {
 
             try {
                 statText.textContent = I18nManager.t('js.auth.loading');
-                const res = await ApiService.post(ApiService.Routes.Admin.GetActiveAlert);
+                // Signal added
+                const res = await ApiService.post(ApiService.Routes.Admin.GetActiveAlert, new FormData(), { signal: window.PAGE_SIGNAL });
                 
                 if (res.stats) {
                     statOnline.textContent = res.stats.online_users;
@@ -388,7 +390,9 @@ export const SystemAlertsController = {
                         impactTime.textContent = I18nManager.t('admin.alerts.stat_none'); 
                     }
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) { 
+                if (!e.isAborted) console.error(e); 
+            }
         }
     }
 };

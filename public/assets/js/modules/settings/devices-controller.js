@@ -1,6 +1,6 @@
 /**
  * public/assets/js/modules/settings/devices-controller.js
- * Versión Segura (DOM API)
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -9,10 +9,7 @@ import { I18nManager } from '../../core/utils/i18n-manager.js';
 import { DialogManager } from '../../core/components/dialog-manager.js';
 import { DialogDefinitions } from '../../core/components/dialog-definitions.js';
 
-// --- ESTADO PRIVADO DEL MÓDULO ---
 let isLoading = false;
-
-// --- MÉTODOS PRIVADOS (Lógica Interna) ---
 
 async function _loadDevices() {
     const container = document.getElementById('devices-list-container');
@@ -22,7 +19,8 @@ async function _loadDevices() {
     isLoading = true;
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Settings.GetSessions);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Settings.GetSessions, new FormData(), { signal: window.PAGE_SIGNAL });
 
         if (res.success) {
             _renderList(res.sessions);
@@ -35,6 +33,7 @@ async function _loadDevices() {
         }
 
     } catch (e) {
+        if (e.isAborted) return;
         console.error(e);
         container.innerHTML = '';
         const msg = document.createElement('div');
@@ -50,7 +49,7 @@ function _renderList(sessions) {
     const container = document.getElementById('devices-list-container');
     if (!container) return;
 
-    container.innerHTML = ''; // Limpieza segura
+    container.innerHTML = ''; 
 
     if (sessions.length === 0) {
         const msg = document.createElement('div');
@@ -67,16 +66,12 @@ function _renderList(sessions) {
         if (plat.includes('android') || plat.includes('iphone')) iconName = 'smartphone';
 
         const itemWrapper = document.createElement('div');
-        
-        // Group Item
         const groupItem = document.createElement('div');
         groupItem.className = 'component-group-item';
 
-        // Content (Icon + Text)
         const content = document.createElement('div');
         content.className = 'component-card__content';
 
-        // Icon Container
         const iconDiv = document.createElement('div');
         iconDiv.className = 'component-card__icon-container component-card__icon-container--bordered';
         const iconSpan = document.createElement('span');
@@ -85,16 +80,13 @@ function _renderList(sessions) {
         iconDiv.appendChild(iconSpan);
         content.appendChild(iconDiv);
 
-        // Text Content
         const textDiv = document.createElement('div');
         textDiv.className = 'component-card__text';
 
         const h2 = document.createElement('h2');
         h2.className = 'component-card__title';
-        // [SEGURIDAD] Usamos textContent para los datos inseguros
         h2.textContent = `${s.platform} - ${s.browser}`;
 
-        // Badge si es actual
         if (s.is_current) {
             const badge = document.createElement('span');
             badge.className = 'component-badge component-badge--sm';
@@ -106,14 +98,10 @@ function _renderList(sessions) {
 
         const pDesc = document.createElement('p');
         pDesc.className = 'component-card__description';
-        
-        // Construimos el texto "IP: ..." de forma segura
         const ipText = document.createTextNode(`IP: ${s.ip} `);
         pDesc.appendChild(ipText);
-        
         const br = document.createElement('br');
         pDesc.appendChild(br);
-
         const dateSpan = document.createElement('span');
         dateSpan.style.cssText = 'font-size:12px; color:#999;';
         dateSpan.textContent = `Iniciado: ${s.created_at}`;
@@ -123,7 +111,6 @@ function _renderList(sessions) {
         content.appendChild(textDiv);
         groupItem.appendChild(content);
 
-        // Actions
         const actionsDiv = document.createElement('div');
         actionsDiv.className = 'component-card__actions actions-right';
 
@@ -138,7 +125,6 @@ function _renderList(sessions) {
         groupItem.appendChild(actionsDiv);
         itemWrapper.appendChild(groupItem);
 
-        // Divider
         if (index < sessions.length - 1) {
             const hr = document.createElement('hr');
             hr.className = 'component-divider';
@@ -168,7 +154,8 @@ function _bindListEvents() {
             formData.append('token_id', id);
 
             try {
-                const res = await ApiService.post(ApiService.Routes.Settings.RevokeSession, formData);
+                // Signal added
+                const res = await ApiService.post(ApiService.Routes.Settings.RevokeSession, formData, { signal: window.PAGE_SIGNAL });
                 if(res.success) {
                     ToastManager.show(I18nManager.t('js.devices.revoke_success'), 'success');
                     _loadDevices(); 
@@ -178,6 +165,7 @@ function _bindListEvents() {
                     e.target.disabled = false;
                 }
             } catch(err) {
+                if (err.isAborted) return;
                 ToastManager.show(I18nManager.t('js.devices.connection_error'), 'error');
                 e.target.innerText = originalText;
                 e.target.disabled = false;
@@ -197,16 +185,16 @@ function _initRevokeAllButton() {
             
             if (!confirmed) return;
 
-            const formData = new FormData();
-            
             try {
-                const res = await ApiService.post(ApiService.Routes.Settings.RevokeAllSessions, formData);
+                // Signal added
+                const res = await ApiService.post(ApiService.Routes.Settings.RevokeAllSessions, new FormData(), { signal: window.PAGE_SIGNAL });
                 if(res.success) {
                     window.location.href = window.BASE_PATH + 'login';
                 } else {
                     ToastManager.show(res.message, 'error');
                 }
             } catch(err) {
+                if (err.isAborted) return;
                 ToastManager.show(I18nManager.t('js.devices.connection_error'), 'error');
             }
         });

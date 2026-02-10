@@ -1,5 +1,6 @@
 /**
  * public/assets/js/modules/admin/users/user-role-controller.js
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { ApiService } from '../../../core/services/api-service.js';
@@ -19,7 +20,6 @@ export const UserRoleController = {
 
         _targetUserId = _container.dataset.userId;
         
-        // Obtener rol original del script incrustado
         const dataScript = document.getElementById('server-role-data');
         if (dataScript) {
             try {
@@ -93,7 +93,6 @@ async function saveRole() {
     btnSave.disabled = true;
     const originalText = btnSave.textContent;
     
-    // "Guardando..."
     btnSave.textContent = (I18nManager.t('js.core.saving') || 'Guardando') + '...';
 
     const formData = new FormData();
@@ -101,7 +100,8 @@ async function saveRole() {
     formData.append('new_role', _selectedRole);
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.UpdateRole, formData);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.UpdateRole, formData, { signal: window.PAGE_SIGNAL });
         
         if (res.success) {
             ToastManager.show(res.message, 'success');
@@ -112,10 +112,11 @@ async function saveRole() {
             updateSaveButtonState();
         }
     } catch (error) {
+        if (error.isAborted) return;
         console.error(error);
         ToastManager.show(I18nManager.t('js.core.connection_error') || 'Error de conexión', 'error');
         updateSaveButtonState();
     } finally {
-        btnSave.textContent = originalText;
+        if (btnSave) btnSave.textContent = originalText;
     }
 }

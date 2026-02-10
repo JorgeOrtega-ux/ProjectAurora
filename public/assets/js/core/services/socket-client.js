@@ -1,23 +1,20 @@
 /**
- * public/assets/js/core/socket-client.js
+ * public/assets/js/core/services/socket-client.js
+ * Versión Final: Arquitectura Signal, Sin UI Acoplada
  */
 
-// public/assets/js/core/services/socket-client.js
-
-import { ApiService } from './api-service.js'; // Mismo directorio, OK
-import { I18nManager } from '../utils/i18n-manager.js'; // Subir un nivel y entrar a utils
-import { ToastManager } from '../components/toast-manager.js'; // Subir un nivel y entrar a components
-
-// ... resto del código
+import { ApiService } from './api-service.js';
 
 export const SocketClient = {
     socket: null,
     reconnectInterval: 5000,
-    
+    reconnectTimer: null,
+
     get baseUrl() {
+        // Asegúrate que este puerto (8765) coincida con tu server.py
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.hostname;
-        const port = 8765;
+        const port = 8765; 
         return `${protocol}//${host}:${port}`;
     },
     
@@ -27,6 +24,7 @@ export const SocketClient = {
     },
 
     connect: async () => {
+        // Evitar reconexiones si ya está abierto o conectando
         if (SocketClient.socket && (SocketClient.socket.readyState === WebSocket.OPEN || SocketClient.socket.readyState === WebSocket.CONNECTING)) {
             return;
         }
@@ -36,7 +34,13 @@ export const SocketClient = {
             const wsUrl = SocketClient.baseUrl;
 
             if (window.IS_LOGGED_IN) {
-                const res = await ApiService.post(ApiService.Routes.Auth.GetWsToken);
+                // [CRÍTICO] Recuperamos el uso de signal para evitar errores en navegación rápida
+                const res = await ApiService.post(
+                    ApiService.Routes.Auth.GetWsToken, 
+                    new FormData(), 
+                    { signal: window.PAGE_SIGNAL } // <--- ESTO FALTABA
+                );
+                
                 if (!res.success || !res.ws_token) return;
                 urlToConnect = `${wsUrl}?token=${res.ws_token}`;
             } else {
@@ -47,6 +51,7 @@ export const SocketClient = {
 
             SocketClient.socket.onopen = () => {
                 console.log("Socket: Conectado ✅");
+                if (SocketClient.reconnectTimer) clearTimeout(SocketClient.reconnectTimer);
                 document.dispatchEvent(new CustomEvent('socket:connected'));
             };
 
@@ -54,112 +59,50 @@ export const SocketClient = {
                 try {
                     const data = JSON.parse(event.data);
                     
-                    if (data.type === 'system_alert') {
-                        showSystemAlert(data.message);
-                    }
-                    else if (data.type === 'system_alert_clear') {
-                        const wrapper = document.querySelector('[data-element="system-alert-wrapper"]');
-                        if (wrapper) wrapper.style.display = 'none';
-                        localStorage.removeItem('hidden_alert_id');
-                    }
-                    
+                    // Solo despachamos eventos. La UI (MainController) se encargará de mostrar la alerta.
                     if (data.type) {
                         document.dispatchEvent(new CustomEvent(`socket:${data.type}`, { detail: data }));
                     }
                 } catch (e) {
-                    console.error("Socket: Error leyendo mensaje", e);
+                    console.error("Socket: Error parseando mensaje", e);
                 }
             };
 
-            SocketClient.socket.onclose = () => {
-                setTimeout(() => SocketClient.connect(), SocketClient.reconnectInterval);
+            SocketClient.socket.onclose = (e) => {
+                console.log("Socket: Desconectado ❌", e.code);
+                // Evitamos bucles infinitos de reconexión si la página se está cerrando
+                if (e.code !== 1000 && e.code !== 1001) {
+                    SocketClient.reconnectTimer = setTimeout(() => SocketClient.connect(), SocketClient.reconnectInterval);
+                }
             };
 
-        } catch (e) { console.error(e); }
+            SocketClient.socket.onerror = (err) => {
+                console.error("Socket Error:", err);
+                // El onclose manejará la reconexión
+            };
+
+        } catch (e) { 
+            // Si el error es por abortar la petición (navegación), lo ignoramos
+            if (e.isAborted) return;
+            console.error("Socket: Error de conexión inicial", e);
+            // Reintentar en caso de fallo de API
+            SocketClient.reconnectTimer = setTimeout(() => SocketClient.connect(), SocketClient.reconnectInterval);
+        }
+    },
+
+    disconnect: () => {
+        if (SocketClient.reconnectTimer) clearTimeout(SocketClient.reconnectTimer);
+        if (SocketClient.socket) {
+            SocketClient.socket.close(1000, "Cierre voluntario");
+            SocketClient.socket = null;
+        }
     },
 
     send: (type, payload = {}) => {
         if (SocketClient.socket?.readyState === WebSocket.OPEN) {
             SocketClient.socket.send(JSON.stringify({ type, ...payload }));
+        } else {
+            console.warn("Socket: Intentando enviar mensaje sin conexión.");
         }
     }
 };
-
-// === Helper para mostrar Alertas REFACTORIZADO (Sin IDs) ===
-function showSystemAlert(alertData) {
-    // 1. Seleccionar el Wrapper Global
-    const wrapper = document.querySelector('[data-element="system-alert-wrapper"]');
-    if (!wrapper) return;
-
-    const hiddenId = localStorage.getItem('hidden_alert_id');
-    if (hiddenId === alertData.id) return;
-
-    // 2. Selectores internos usando Data Attributes
-    const box = wrapper.querySelector('.component-system-alert-box');
-    const icon = wrapper.querySelector('[data-element="alert-icon"]');
-    const msg = wrapper.querySelector('[data-element="alert-message"]');
-    const closeBtn = wrapper.querySelector('[data-action="close-system-alert"]');
-
-    if (!box || !icon || !msg) return; 
-
-    // 3. Estilos de Estado
-    box.classList.remove('type--critical', 'type--warning', 'type--info');
-    let modClass = 'type--info';
-    let iconName = 'info';
-    
-    if (alertData.severity === 'critical') {
-        modClass = 'type--critical';
-        iconName = 'report';
-    } else if (alertData.severity === 'warning') {
-        modClass = 'type--warning';
-        iconName = 'warning';
-    }
-
-    box.classList.add(modClass);
-    icon.textContent = iconName;
-
-    // 4. Lógica de Traducción
-    const translationKey = alertData.message;
-    const meta = alertData.meta || {};
-    let params = [];
-
-    if (alertData.type === 'maintenance') {
-        if (meta.subtype === 'emergency') {
-            params.push(meta.cutoff || '--:--');
-        } else {
-            const dateStr = meta.start ? new Date(meta.start).toLocaleString([], {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : '--/--';
-            params.push(dateStr);
-            params.push(meta.duration || '60');
-        }
-    } 
-    else if (alertData.type === 'policy') {
-        const docKey = `system_alerts.policy.names.${meta.doc || 'terms'}`;
-        const docName = I18nManager.t(docKey); 
-        if (meta.update_type === 'future') {
-            const dateStr = meta.date ? new Date(meta.date + 'T00:00:00').toLocaleDateString() : '--/--';
-            params.push(`<strong>${dateStr}</strong>`);
-            params.push(`<strong>${docName}</strong>`);
-        } else {
-            params.push(`<strong>${docName}</strong>`);
-        }
-    }
-
-    let fullText = I18nManager.t(translationKey, params);
-
-    if (meta.link) {
-        const textVerMas = I18nManager.t('js.core.view_more') || 'Ver más';
-        fullText += ` <a href="${meta.link}" target="_blank">${textVerMas}</a>`;
-    }
-
-    msg.innerHTML = fullText;
-    msg.title = msg.textContent;
-    
-    wrapper.style.display = 'block';
-
-    if (closeBtn) {
-        closeBtn.onclick = () => {
-            wrapper.style.display = 'none';
-            localStorage.setItem('hidden_alert_id', alertData.id);
-        };
-    }
-}

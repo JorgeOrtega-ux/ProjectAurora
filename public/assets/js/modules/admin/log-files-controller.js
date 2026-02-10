@@ -1,6 +1,6 @@
 /**
  * public/assets/js/modules/admin/log-files-controller.js
- * Versión Segura (DOM API)
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -8,6 +8,7 @@ import { ToastManager } from '../../core/components/toast-manager.js';
 import { DialogManager } from '../../core/components/dialog-manager.js';
 import { navigateTo } from '../../core/utils/url-manager.js';
 import { I18nManager } from '../../core/utils/i18n-manager.js';
+
 let _container = null;
 let _filesData = [];
 let _selectedPaths = new Set();
@@ -91,7 +92,8 @@ async function handleDownload() {
 
     try {
         const route = ApiService.Routes.Admin.request_download || { route: 'admin.request_download' };
-        const res = await ApiService.post(route, formData);
+        // Signal added
+        const res = await ApiService.post(route, formData, { signal: window.PAGE_SIGNAL });
         
         if (res.success) {
             if (res.queued) {
@@ -105,6 +107,7 @@ async function handleDownload() {
             ToastManager.show(res.message || (I18nManager.t('admin.logs.download_token_error') || 'Error al solicitar descarga.'), 'error');
         }
     } catch (e) {
+        if (e.isAborted) return;
         ToastManager.show(I18nManager.t('js.core.connection_error') || 'Error de conexión.', 'error');
     }
 }
@@ -125,7 +128,9 @@ async function loadFiles() {
     list.innerHTML = '<div class="state-loading"><div class="spinner-sm"></div></div>';
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.GetLogFiles);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.GetLogFiles, new FormData(), { signal: window.PAGE_SIGNAL });
+        
         if(res.success) {
             _filesData = res.files;
             renderList();
@@ -133,6 +138,7 @@ async function loadFiles() {
             list.innerHTML = `<div class="state-error">${res.message}</div>`;
         }
     } catch(e) {
+        if (e.isAborted) return;
         list.innerHTML = `<div class="state-error">${I18nManager.t('js.core.connection_error') || 'Error de conexión'}</div>`;
     }
 }
@@ -145,7 +151,7 @@ function renderList(query = '') {
 
     if(countLabel) countLabel.innerText = `${filtered.length} ${I18nManager.t('admin.logs.files_count') || 'archivos'}`;
 
-    list.innerHTML = ''; // Limpieza segura
+    list.innerHTML = '';
 
     if(filtered.length === 0) {
         list.innerHTML = `<div class="state-empty">${I18nManager.t('admin.logs.empty') || 'No se encontraron archivos de log.'}</div>`;
@@ -207,13 +213,12 @@ function renderGrid(files, container) {
 
         content.appendChild(iconDiv);
 
-        // Badges helper
         const createBadge = (text, tooltipKey, mono = false) => {
             const span = document.createElement('span');
             span.className = 'component-badge';
             span.dataset.tooltip = I18nManager.t(tooltipKey);
             if (mono) span.style.fontFamily = 'monospace';
-            span.textContent = text; // [SEGURIDAD]
+            span.textContent = text;
             return span;
         };
 
@@ -224,7 +229,6 @@ function renderGrid(files, container) {
 
         card.appendChild(content);
         
-        // Listener
         card.addEventListener('click', () => toggleSelection(file.path));
         
         container.appendChild(card);
@@ -238,7 +242,6 @@ function renderTable(files, container) {
     const table = document.createElement('table');
     table.className = 'component-table';
 
-    // THEAD
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
     const headers = [
@@ -257,7 +260,6 @@ function renderTable(files, container) {
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
-    // TBODY
     const tbody = document.createElement('tbody');
     files.forEach(file => {
         const isSel = _selectedPaths.has(file.path);
@@ -269,7 +271,6 @@ function renderTable(files, container) {
         tr.style.cursor = 'pointer';
         tr.dataset.path = file.path;
 
-        // Icon Cell
         const tdIcon = document.createElement('td');
         const iconDiv = document.createElement('div');
         iconDiv.className = 'component-card__profile-picture component-avatar--list';
@@ -282,29 +283,24 @@ function renderTable(files, container) {
         tdIcon.appendChild(iconDiv);
         tr.appendChild(tdIcon);
 
-        // Name
         const tdName = document.createElement('td');
         tdName.style.fontFamily = 'monospace';
         tdName.style.fontWeight = '600';
-        tdName.textContent = file.filename; // [SEGURIDAD]
+        tdName.textContent = file.filename;
         tr.appendChild(tdName);
 
-        // Category
         const tdCat = document.createElement('td');
         tdCat.textContent = file.category;
         tr.appendChild(tdCat);
 
-        // Size
         const tdSize = document.createElement('td');
         tdSize.textContent = file.size;
         tr.appendChild(tdSize);
 
-        // Date
         const tdDate = document.createElement('td');
         tdDate.textContent = file.modified_at;
         tr.appendChild(tdDate);
 
-        // Listener
         tr.addEventListener('click', () => toggleSelection(file.path));
 
         tbody.appendChild(tr);
@@ -382,7 +378,9 @@ async function deleteSelected() {
     formData.append('paths', paths.join(','));
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.DeleteLogFiles, formData);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.DeleteLogFiles, formData, { signal: window.PAGE_SIGNAL });
+        
         if(res.success) {
             ToastManager.show(I18nManager.t('admin.logs.delete_success') || 'Archivos eliminados', 'success');
             clearSelection();
@@ -390,5 +388,8 @@ async function deleteSelected() {
         } else {
             ToastManager.show(res.message, 'error');
         }
-    } catch(e) { ToastManager.show(I18nManager.t('admin.logs.delete_error') || 'Error al eliminar', 'error'); }
+    } catch(e) { 
+        if (e.isAborted) return;
+        ToastManager.show(I18nManager.t('admin.logs.delete_error') || 'Error al eliminar', 'error'); 
+    }
 }

@@ -1,6 +1,6 @@
 /**
  * public/assets/js/modules/admin/users/user-details-controller.js
- * Controlador para la edición detallada de usuarios.
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { ApiService } from '../../../core/services/api-service.js';
@@ -40,10 +40,6 @@ export const UserDetailsController = {
 
         initEvents();
         document.addEventListener('ui:dropdown-selected', _handleGlobalDropdown);
-    },
-    
-    refresh: () => {
-        // ...
     }
 };
 
@@ -108,12 +104,10 @@ function initEvents() {
 async function disable2FA(e) {
     const btn = e.target;
     
-    // "Desactivar 2FA?"
     const title = I18nManager.t('admin.user_details.2fa_title') ? 
                   `${I18nManager.t('global.disable')} ${I18nManager.t('admin.user_details.2fa_title')}` : 
                   '¿Desactivar 2FA?';
 
-    // "Esto reducirá la seguridad..."
     const message = I18nManager.t('js.2fa.confirm_disable') || 'Esto reducirá la seguridad de la cuenta del usuario.';
 
     const confirmed = await DialogManager.confirm({
@@ -134,7 +128,8 @@ async function disable2FA(e) {
     formData.append('target_id', _targetUserId);
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.Disable2FA, formData);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.Disable2FA, formData, { signal: window.PAGE_SIGNAL });
 
         if (res.success) {
             ToastManager.show(res.message, 'success');
@@ -145,14 +140,12 @@ async function disable2FA(e) {
             btn.innerText = originalText;
         }
     } catch (err) {
-        console.error(err);
-        ToastManager.show(I18nManager.t('js.core.connection_error') || 'Error de conexión', 'error');
+        if (err.isAborted) return;
+        ToastManager.show(err.message || I18nManager.t('js.core.connection_error'), 'error');
         btn.disabled = false;
         btn.innerText = originalText;
     }
 }
-
-// Archivo: public/assets/js/modules/admin/users/user-details-controller.js
 
 function setupFieldEdit(field, sectionKey) {
     const section = _container.querySelector(`[data-component="${sectionKey}"]`);
@@ -173,7 +166,6 @@ function setupFieldEdit(field, sectionKey) {
             viewActions?.classList.replace('active', 'disabled');
             editState?.classList.replace('disabled', 'active');
             
-            // [MODIFICADO] Truco para poner el cursor al final del texto
             if(input) {
                 const val = input.value;
                 input.focus();
@@ -191,7 +183,6 @@ function setupFieldEdit(field, sectionKey) {
 
     const closeEdit = () => {
         toggleState(false);
-        // Restaurar valor original desde los datos en memoria si se cancela
         if (input && _currentUserData) input.value = _currentUserData[field];
     };
 
@@ -210,16 +201,22 @@ function setupFieldEdit(field, sectionKey) {
             formData.append('field', field);
             formData.append('value', newValue);
 
-            const res = await ApiService.post(ApiService.Routes.Admin.UpdateProfile, formData);
-            
-            if (res.success) {
-                ToastManager.show(res.message, 'success');
-                _currentUserData[field] = newValue;
-                const display = section.querySelector('.text-display-value');
-                if(display) display.textContent = newValue;
-                closeEdit();
-            } else {
-                ToastManager.show(res.message, 'error');
+            try {
+                // Signal added
+                const res = await ApiService.post(ApiService.Routes.Admin.UpdateProfile, formData, { signal: window.PAGE_SIGNAL });
+                
+                if (res.success) {
+                    ToastManager.show(res.message, 'success');
+                    _currentUserData[field] = newValue;
+                    const display = section.querySelector('.text-display-value');
+                    if(display) display.textContent = newValue;
+                    closeEdit();
+                } else {
+                    ToastManager.show(res.message, 'error');
+                }
+            } catch (err) {
+                if (err.isAborted) return;
+                ToastManager.show(I18nManager.t('js.settings.processing_error'), 'error');
             }
         });
     }
@@ -288,7 +285,8 @@ async function uploadAvatar() {
     formData.append('avatar', _tempAvatarFile);
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.UploadAvatar, formData);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.UploadAvatar, formData, { signal: window.PAGE_SIGNAL });
         
         if (res.success) {
             ToastManager.show(res.message, 'success');
@@ -299,17 +297,18 @@ async function uploadAvatar() {
             ToastManager.show(res.message, 'error');
         }
     } catch (e) {
+        if (e.isAborted) return;
         console.error(e);
         ToastManager.show(I18nManager.t('js.core.connection_error') || 'Error de conexión', 'error');
     } finally {
-        btnSave.textContent = originalText;
-        btnSave.disabled = false;
+        if (btnSave) {
+            btnSave.textContent = originalText;
+            btnSave.disabled = false;
+        }
     }
 }
 
 async function deleteAvatar() {
-    // "¿Eliminar avatar?"
-    // "Se eliminará el avatar personalizado..."
     const confirmed = await DialogManager.confirm({
         title: I18nManager.t('js.profile.confirm_delete') || '¿Eliminar avatar?',
         message: I18nManager.t('js.profile.pic_deleted') || 'Se eliminará el avatar personalizado y se restaurará el defecto.',
@@ -323,14 +322,20 @@ async function deleteAvatar() {
     const formData = new FormData();
     formData.append('target_id', _targetUserId);
 
-    const res = await ApiService.post(ApiService.Routes.Admin.DeleteAvatar, formData);
-    if (res.success) {
-        ToastManager.show(res.message, 'success');
-        _currentUserData.avatar_src = res.new_src;
-        _currentUserData.is_custom_avatar = false;
-        resetAvatarState(false);
-    } else {
-        ToastManager.show(res.message, 'error');
+    try {
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.DeleteAvatar, formData, { signal: window.PAGE_SIGNAL });
+        if (res.success) {
+            ToastManager.show(res.message, 'success');
+            _currentUserData.avatar_src = res.new_src;
+            _currentUserData.is_custom_avatar = false;
+            resetAvatarState(false);
+        } else {
+            ToastManager.show(res.message, 'error');
+        }
+    } catch (err) {
+        if (err.isAborted) return;
+        ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
     }
 }
 
@@ -341,7 +346,8 @@ async function updatePreference(key, value) {
     formData.append('value', value);
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.UpdatePreference, formData);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.UpdatePreference, formData, { signal: window.PAGE_SIGNAL });
         if (res.success) {
             ToastManager.show(res.message, 'success');
             if(_currentUserData && _currentUserData.preferences) {
@@ -351,6 +357,7 @@ async function updatePreference(key, value) {
             ToastManager.show(res.message, 'error');
         }
     } catch (error) {
+        if (error.isAborted) return;
         console.error(error);
         ToastManager.show(I18nManager.t('js.core.connection_error') || 'Error de conexión', 'error');
     }

@@ -1,5 +1,6 @@
 /**
  * public/assets/js/modules/settings/security-controller.js
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -65,7 +66,9 @@ function initPasswordFlow() {
             formData.append('current_password', currentPass);
 
             try {
-                const res = await ApiService.post(ApiService.Routes.Settings.ValidatePassword, formData);
+                // Signal added
+                const res = await ApiService.post(ApiService.Routes.Settings.ValidatePassword, formData, { signal: window.PAGE_SIGNAL });
+                
                 if (res.success) {
                     switchState(stage1, stage2);
                     const inputNew = document.getElementById('new-password-input');
@@ -76,7 +79,8 @@ function initPasswordFlow() {
                     currentPassInput.focus();
                 }
             } catch (err) {
-                ToastManager.show(I18nManager.t('js.settings.processing_error'), 'error');
+                if (err.isAborted) return;
+                ToastManager.show(err.message || I18nManager.t('js.settings.processing_error'), 'error');
             } finally {
                 btn.innerText = originalText;
                 btn.disabled = false;
@@ -101,7 +105,9 @@ function initPasswordFlow() {
             formData.append('new_password', newPass);
 
             try {
-                const res = await ApiService.post(ApiService.Routes.Settings.ChangePassword, formData);
+                // Signal added
+                const res = await ApiService.post(ApiService.Routes.Settings.ChangePassword, formData, { signal: window.PAGE_SIGNAL });
+                
                 if (res.success) {
                     ToastManager.show(I18nManager.t('js.settings.pass_updated'), 'success');
                     
@@ -113,8 +119,12 @@ function initPasswordFlow() {
                     container.querySelectorAll('input').forEach(i => i.value = '');
                     
                 } else { ToastManager.show(res.message, 'error'); }
-            } catch(err) { ToastManager.show(I18nManager.t('js.settings.processing_error'), 'error'); } 
-            finally { btn.innerText = originalText; btn.disabled = false; }
+            } catch(err) { 
+                if (err.isAborted) return;
+                ToastManager.show(err.message || I18nManager.t('js.settings.processing_error'), 'error'); 
+            } finally { 
+                btn.innerText = originalText; btn.disabled = false; 
+            }
         }
     });
 

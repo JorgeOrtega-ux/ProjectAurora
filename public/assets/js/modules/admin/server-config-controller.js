@@ -1,5 +1,6 @@
 /**
  * public/assets/js/modules/admin/server-config-controller.js
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -27,7 +28,6 @@ export const ServerConfigController = {
 };
 
 async function togglePanicMode() {
-    // ... (Lógica de pánico intacta) ...
     const btn = document.getElementById('btn-panic-mode');
     const isActive = btn.dataset.active === 'true';
     const title = isActive ? '¿Desactivar MODO PÁNICO?' : '¿ACTIVAR MODO PÁNICO?';
@@ -50,7 +50,9 @@ async function togglePanicMode() {
     formData.append('activate', !isActive ? '1' : '0');
 
     try {
-        const res = await ApiService.post({ route: 'admin.toggle_panic' }, formData);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.toggle_panic, formData, { signal: window.PAGE_SIGNAL });
+        
         if (res.success) {
             ToastManager.show(res.message, 'success');
             const newState = !isActive;
@@ -69,15 +71,13 @@ async function togglePanicMode() {
             btn.innerHTML = originalContent; 
         }
     } catch (e) {
+        if (e.isAborted) return;
         ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
         btn.innerHTML = originalContent;
     } finally {
-        btn.disabled = false;
+        if (btn) btn.disabled = false;
     }
 }
-
-// --- GESTIÓN DE DOMINIOS (CHIPS MODULARES) ---
-// Archivo: public/assets/js/modules/admin/server-config-controller.js
 
 function _initDomainManager() {
     const hiddenInput = document.getElementById('input-allowed-domains');
@@ -111,13 +111,8 @@ function _initDomainManager() {
 
     btnCancel.addEventListener('click', hideInput);
 
-    // --- NUEVO: Helper de validación ---
     const isValidDomain = (domain) => {
-        // Permite '*'
         if (domain === '*') return true;
-        // Regex estricto: alfanumérico/guiones + punto obligatorio + al menos 2 letras de extensión
-        // Ejemplo válido: gmail.com, escuela.edu.mx
-        // Ejemplo inválido: prueba, gmail., .com
         return /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(domain);
     };
 
@@ -125,15 +120,10 @@ function _initDomainManager() {
         const val = inputNew.value.trim().toLowerCase();
         
         if (val) {
-            // --- NUEVO: Bloque de Validación ---
             if (!isValidDomain(val)) {
-                ToastManager.show(
-                    'Formato inválido. Debe ser "dominio.com" o similar.', 
-                    'warning'
-                );
-                return; // Detener ejecución
+                ToastManager.show('Formato inválido. Debe ser "dominio.com" o similar.', 'warning');
+                return; 
             }
-            // -----------------------------------
 
             if (val === '*') {
                 domains = ['*'];
@@ -143,10 +133,7 @@ function _initDomainManager() {
                 if (!domains.includes(val)) {
                     domains.push(val);
                 } else {
-                    ToastManager.show(
-                        I18nManager.t('admin.server.domain_exists') || 'El dominio ya existe', 
-                        'warning'
-                    );
+                    ToastManager.show(I18nManager.t('admin.server.domain_exists') || 'El dominio ya existe', 'warning');
                     return;
                 }
             }
@@ -159,7 +146,6 @@ function _initDomainManager() {
     btnConfirm.addEventListener('click', addDomain);
     inputNew.addEventListener('keypress', (e) => { if (e.key === 'Enter') addDomain(); });
 
-    // Listener para eliminar chip (Delegado)
     listContainer.addEventListener('click', (e) => {
         const chip = e.target.closest('.component-chip');
         if (chip && chip.dataset.value) {
@@ -247,10 +233,13 @@ async function saveConfig() {
     });
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.UpdateServerConfig, formData);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.UpdateServerConfig, formData, { signal: window.PAGE_SIGNAL });
+        
         if (res.success) ToastManager.show(res.message, 'success');
         else ToastManager.show(res.message, 'error');
     } catch (error) {
+        if (error.isAborted) return;
         ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
     } finally {
         btn.disabled = false;

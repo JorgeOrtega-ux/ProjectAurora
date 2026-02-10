@@ -1,5 +1,6 @@
 /**
  * public/assets/js/modules/admin/users/user-status-controller.js
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { ApiService } from '../../../core/services/api-service.js';
@@ -17,8 +18,8 @@ let _state = {
     suspensionType: null, 
     durationDays: null,   
     deletionSource: null, 
-    reasonValue: null, // Guarda el ID (ej: 'spam', 'other')
-    reasonLabel: null  // Guarda el texto visible (ej: 'Comportamiento sospechoso')
+    reasonValue: null, 
+    reasonLabel: null  
 };
 
 export const UserStatusController = {
@@ -46,7 +47,6 @@ function initEvents() {
     document.removeEventListener('ui:dropdown-selected', handleDropdownSelection);
     document.addEventListener('ui:dropdown-selected', handleDropdownSelection);
     
-    // Listener para el Text Area manual (activar botón guardar al escribir)
     const manualInput = document.getElementById('manual-reason-input');
     if (manualInput) {
         manualInput.addEventListener('input', () => {
@@ -132,10 +132,6 @@ function loadServerData() {
             }
 
             if (data.reason) {
-                // Al cargar datos existentes, no podemos saber el código original si no se guardó.
-                // Asumimos que es texto plano. Lo mostramos como label y no marcamos 'other' 
-                // a menos que quieras lógica compleja de matching inverso.
-                // Por simplicidad, solo mostramos el texto en el selector.
                 _state.reasonLabel = data.reason;
                 updateLabel('reason-label', data.reason);
                 toggleSaveButton(true);
@@ -222,18 +218,16 @@ function handleDropdownSelection(e) {
     }
 
     if (type === 'reason') {
-        _state.reasonValue = value; // Código (ej: 'other')
-        _state.reasonLabel = label; // Texto (ej: 'Otro')
+        _state.reasonValue = value; 
+        _state.reasonLabel = label; 
         
         updateLabel('reason-label', label);
         
-        // [MODIFICADO] Lógica para mostrar/ocultar Text Area
         if (value === 'other') {
             showSection('group-reason-manual');
             const manualInput = document.getElementById('manual-reason-input');
             if(manualInput) setTimeout(() => manualInput.focus(), 100);
             
-            // Validar si el textarea está vacío para deshabilitar botón
             const manualText = manualInput ? manualInput.value.trim() : '';
             toggleSaveButton(manualText.length > 0);
         } else {
@@ -248,16 +242,14 @@ function processMainStatusChange(status) {
     hideSection('group-suspension-days');
     hideSection('group-deletion-source');
     hideSection('group-reason');
-    hideSection('group-reason-manual'); // Resetear manual también
+    hideSection('group-reason-manual');
     
     toggleSaveButton(false); 
 
-    // Resetear estados de razón
     _state.reasonValue = null;
     _state.reasonLabel = null;
     updateLabel('reason-label', I18nManager.t('admin.user_status.select_reason') || 'Seleccionar razón...');
 
-    // Labels iniciales para otros dropdowns
     updateLabel('suspension-type-label', I18nManager.t('admin.user_status.select_type') || 'Seleccionar tipo...');
     updateLabel('deletion-source-label', I18nManager.t('admin.user_status.select_source') || 'Seleccionar origen...');
 
@@ -277,7 +269,6 @@ function processSuspensionTypeChange(type) {
     hideSection('group-reason');
     hideSection('group-reason-manual');
     
-    // Resetear razón si cambia el tipo
     _state.reasonValue = null;
     _state.reasonLabel = null;
     updateLabel('reason-label', I18nManager.t('admin.user_status.select_reason') || 'Seleccionar razón...');
@@ -314,7 +305,6 @@ function populateReasons(context) {
     const list = document.getElementById('reason-list-container');
     if (!list) return;
 
-    // [MODIFICADO] Uso de claves de traducción
     let reasons = [];
     
     if (context === 'suspension') {
@@ -357,7 +347,6 @@ async function saveStatus() {
     formData.append('target_id', _targetUserId);
     formData.append('status', _state.status);
     
-    // [MODIFICADO] Lógica de envío de Razón
     let finalReason = _state.reasonLabel;
     
     if (_state.reasonValue === 'other') {
@@ -380,7 +369,8 @@ async function saveStatus() {
     if (_state.deletionSource) formData.append('deletion_source', _state.deletionSource);
 
     try {
-        const res = await ApiService.post(ApiService.Routes.Admin.UpdateStatus, formData);
+        // Signal added
+        const res = await ApiService.post(ApiService.Routes.Admin.UpdateStatus, formData, { signal: window.PAGE_SIGNAL });
         
         if (res.success) {
             ToastManager.show(res.message, 'success');
@@ -393,6 +383,7 @@ async function saveStatus() {
             btn.textContent = originalText;
         }
     } catch (e) {
+        if (e.isAborted) return;
         console.error(e);
         ToastManager.show(I18nManager.t('js.core.connection_error') || 'Error de conexión', 'error');
         btn.disabled = false;

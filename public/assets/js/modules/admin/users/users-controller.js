@@ -1,10 +1,9 @@
 /**
  * public/assets/js/modules/admin/users/users-controller.js
- * Versión Segura (DOM API / textContent) para prevenir XSS
+ * Versión Refactorizada: Arquitectura Signal & Interceptors
  */
 
 import { ApiService } from '../../../core/services/api-service.js';
-import { ToastManager } from '../../../core/components/toast-manager.js';
 import { I18nManager } from '../../../core/utils/i18n-manager.js';
 import { UserDetailsController } from './user-details-controller.js'; 
 import { UserRoleController } from './user-role-controller.js'; 
@@ -28,6 +27,7 @@ export const UsersController = {
     init: () => {
         console.log("UsersController: Inicializado (Safe Mode)");
         
+        // Sub-controladores si estamos en vistas de detalle
         if (document.querySelector('[data-section="admin-user-details"]')) {
             UserDetailsController.init();
             return;
@@ -213,7 +213,8 @@ async function loadUsers() {
     if (_searchQuery) formData.append('search', _searchQuery);
 
     try {
-        const res = await ApiService.post(AdminAPI.GetUsers, formData);
+        // Signal added: Cancela la búsqueda anterior si el usuario escribe rápido
+        const res = await ApiService.post(AdminAPI.GetUsers, formData, { signal: window.PAGE_SIGNAL });
 
         if (res.success) {
             _usersData = res.users;
@@ -232,6 +233,9 @@ async function loadUsers() {
             listContainer.innerHTML = `<div class="state-error">${res.message}</div>`;
         }
     } catch (error) {
+        // Ignorar aborts
+        if (error.isAborted) return;
+        
         console.error(error);
         listContainer.innerHTML = `<div class="state-error">${I18nManager.t('js.core.connection_error') || 'Error de conexión'}</div>`;
     }
@@ -276,28 +280,22 @@ function renderList() {
     attachSelectionListeners(listContainer);
 }
 
-/**
- * Renderizado SEGURO usando creación de nodos DOM (evita XSS)
- */
 function renderListAsGrid(users, listContainer) {
-    listContainer.innerHTML = ''; // Limpiar contenedor de forma segura
+    listContainer.innerHTML = ''; 
 
     users.forEach(user => {
         const date = new Date(user.created_at);
         const formattedDate = date.toLocaleDateString();
         const statusLabel = I18nManager.t(`admin.user_status.status.${user.account_status}`) || user.account_status;
 
-        // Crear Tarjeta
         const card = document.createElement('div');
         card.className = 'component-card';
         if (_selectedUserId == user.id) card.classList.add('is-selected');
         card.dataset.userId = user.id;
 
-        // Contenedor interno
         const content = document.createElement('div');
         content.className = 'component-list-item-content';
 
-        // 1. Avatar
         const avatarDiv = document.createElement('div');
         avatarDiv.className = 'component-card__profile-picture component-avatar--list';
         avatarDiv.dataset.role = user.role;
@@ -310,16 +308,14 @@ function renderListAsGrid(users, listContainer) {
         avatarDiv.appendChild(img);
         content.appendChild(avatarDiv);
 
-        // Helper para crear Badges seguros
         const createBadge = (text, tooltipKey) => {
             const span = document.createElement('span');
             span.className = 'component-badge';
             span.dataset.tooltip = I18nManager.t(tooltipKey);
-            span.textContent = text; // [SEGURIDAD] textContent evita inyección HTML
+            span.textContent = text; 
             return span;
         };
 
-        // 2. Datos (Badges)
         content.appendChild(createBadge(user.username, 'admin.users_module.list.headers.user'));
         content.appendChild(createBadge(user.email, 'admin.users_module.list.headers.email'));
         content.appendChild(createBadge(user.role, 'admin.users_module.list.headers.role'));
@@ -334,9 +330,6 @@ function renderListAsGrid(users, listContainer) {
     listContainer.scrollTop = 0;
 }
 
-/**
- * Renderizado SEGURO de Tabla
- */
 function renderListAsTable(users, listContainer) {
     listContainer.innerHTML = ''; 
 
@@ -346,7 +339,6 @@ function renderListAsTable(users, listContainer) {
     const table = document.createElement('table');
     table.className = 'component-table';
 
-    // -- THEAD --
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
     
@@ -369,7 +361,6 @@ function renderListAsTable(users, listContainer) {
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
-    // -- TBODY --
     const tbody = document.createElement('tbody');
     
     users.forEach(user => {
@@ -383,7 +374,6 @@ function renderListAsTable(users, listContainer) {
         tr.dataset.userId = user.id;
         tr.style.cursor = 'pointer';
 
-        // 1. Celda Avatar
         const tdAvatar = document.createElement('td');
         const divAvatar = document.createElement('div');
         divAvatar.className = 'component-card__profile-picture component-avatar--list';
@@ -401,7 +391,6 @@ function renderListAsTable(users, listContainer) {
         tdAvatar.appendChild(divAvatar);
         tr.appendChild(tdAvatar);
 
-        // Helper para celdas de texto
         const addCell = (text, isBold = false, isMono = false, isBadge = false) => {
             const td = document.createElement('td');
             if (isBadge) {
@@ -409,14 +398,14 @@ function renderListAsTable(users, listContainer) {
                 span.className = 'component-badge';
                 span.style.height = '24px';
                 span.style.fontSize = '12px';
-                span.textContent = text; // [SEGURIDAD]
+                span.textContent = text; 
                 td.appendChild(span);
             } else if (isBold) {
                 const strong = document.createElement('strong');
-                strong.textContent = text; // [SEGURIDAD]
+                strong.textContent = text; 
                 td.appendChild(strong);
             } else {
-                td.textContent = text; // [SEGURIDAD]
+                td.textContent = text; 
             }
             
             if (isMono) {
@@ -428,9 +417,9 @@ function renderListAsTable(users, listContainer) {
 
         addCell(user.username, true);
         addCell(user.email);
-        addCell(user.role, false, false, true); // Badge style for role
+        addCell(user.role, false, false, true); 
         addCell(statusLabel);
-        addCell(user.uuid, false, true); // Mono font for UUID
+        addCell(user.uuid, false, true); 
         addCell(formattedDate);
 
         tbody.appendChild(tr);
