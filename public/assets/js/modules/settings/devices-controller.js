@@ -1,13 +1,8 @@
-/**
- * public/assets/js/modules/settings/devices-controller.js
- * Versión Refactorizada: Arquitectura Signal & Interceptors
- */
-
 import { ApiService } from '../../core/services/api-service.js';
-import { ToastManager } from '../../core/components/toast-manager.js';
-import { I18nManager } from '../../core/utils/i18n-manager.js';
-import { DialogManager } from '../../core/components/dialog-manager.js';
 import { DialogDefinitions } from '../../core/components/dialog-definitions.js';
+import { DialogManager } from '../../core/components/dialog-manager.js';
+import { I18nManager } from '../../core/utils/i18n-manager.js';
+import { ToastManager } from '../../core/components/toast-manager.js';
 
 let isLoading = false;
 
@@ -19,7 +14,6 @@ async function _loadDevices() {
     isLoading = true;
 
     try {
-        // Signal added
         const res = await ApiService.post(ApiService.Routes.Settings.GetSessions, new FormData(), { signal: window.PAGE_SIGNAL });
 
         if (res.success) {
@@ -34,7 +28,6 @@ async function _loadDevices() {
 
     } catch (e) {
         if (e.isAborted) return;
-        console.error(e);
         container.innerHTML = '';
         const msg = document.createElement('div');
         msg.style.cssText = 'padding:20px; text-align:center;';
@@ -154,7 +147,6 @@ function _bindListEvents() {
             formData.append('token_id', id);
 
             try {
-                // Signal added
                 const res = await ApiService.post(ApiService.Routes.Settings.RevokeSession, formData, { signal: window.PAGE_SIGNAL });
                 if(res.success) {
                     ToastManager.show(I18nManager.t('js.devices.revoke_success'), 'success');
@@ -186,7 +178,6 @@ function _initRevokeAllButton() {
             if (!confirmed) return;
 
             try {
-                // Signal added
                 const res = await ApiService.post(ApiService.Routes.Settings.RevokeAllSessions, new FormData(), { signal: window.PAGE_SIGNAL });
                 if(res.success) {
                     window.location.href = window.BASE_PATH + 'login';
@@ -201,14 +192,14 @@ function _initRevokeAllButton() {
     }
 }
 
-export const DevicesController = {
+const DevicesController = {
     init: () => {
         const container = document.getElementById('devices-list-container');
         if (!container) return;
 
-        console.log("DevicesController: Inicializado (Safe Mode)");
-        
         _loadDevices();
         _initRevokeAllButton();
     }
 };
+
+export { DevicesController };

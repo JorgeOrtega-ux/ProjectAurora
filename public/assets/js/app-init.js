@@ -1,43 +1,38 @@
-import { initMainController } from './main-controller.js';
-import { initUrlManager } from './core/utils/url-manager.js';
-import { initAuthController } from './auth-controller.js';
+import { AuditLogController } from './modules/admin/audit-log-controller.js';
+import { BackupConfigController } from './modules/admin/backup-config-controller.js';
+import { BackupsController } from './modules/admin/backups-controller.js';
+import { DashboardController } from './modules/admin/dashboard-controller.js';
+import { DeleteAccountController } from './modules/settings/delete-account-controller.js';
+import { DevicesController } from './modules/settings/devices-controller.js';
+import { DialogManager } from './core/components/dialog-manager.js';
+import { FileViewerController } from './modules/admin/file-viewer-controller.js';
+import { LogFilesController } from './modules/admin/log-files-controller.js';
+import { ProfileController } from './modules/settings/profile-controller.js';
+import { RedisManagerController } from './modules/admin/redis-manager-controller.js';
+import { SecurityController } from './modules/settings/security-controller.js';
+import { ServerConfigController } from './modules/admin/server-config-controller.js';
+import { SettingsController } from './modules/settings/settings-controller.js';
+import { SocketClient } from './core/services/socket-client.js';
+import { SystemAlertsController } from './modules/admin/system-alerts-controller.js';
 import { ToastManager } from './core/components/toast-manager.js';
 import { TooltipManager } from './core/components/tooltip-manager.js';
-import { DialogManager } from './core/components/dialog-manager.js';
-import { UiManager } from './core/components/ui-manager.js';
-import { SocketClient } from './core/services/socket-client.js';
-
-// Módulos (estos no cambian, apuntan a las carpetas de módulos)
-import { SettingsController } from './modules/settings/settings-controller.js';
-import { ProfileController } from './modules/settings/profile-controller.js';
-import { DevicesController } from './modules/settings/devices-controller.js';
-import { DeleteAccountController } from './modules/settings/delete-account-controller.js';
 import { TwoFactorController } from './modules/settings/2fa-controller.js';
-import { SecurityController } from './modules/settings/security-controller.js';
-import { UsersController } from './modules/admin/users/users-controller.js';
+import { UiManager } from './core/components/ui-manager.js';
 import { UserDetailsController } from './modules/admin/users/user-details-controller.js';
 import { UserRoleController } from './modules/admin/users/user-role-controller.js';
 import { UserStatusController } from './modules/admin/users/user-status-controller.js';
-import { ServerConfigController } from './modules/admin/server-config-controller.js';
-import { BackupsController } from './modules/admin/backups-controller.js';
-import { BackupConfigController } from './modules/admin/backup-config-controller.js';
-import { AuditLogController } from './modules/admin/audit-log-controller.js';
-import { LogFilesController } from './modules/admin/log-files-controller.js';
-import { FileViewerController } from './modules/admin/file-viewer-controller.js';
-import { RedisManagerController } from './modules/admin/redis-manager-controller.js';
-import { DashboardController } from './modules/admin/dashboard-controller.js';
-import { SystemAlertsController } from './modules/admin/system-alerts-controller.js';
+import { UsersController } from './modules/admin/users/users-controller.js';
+import { initAuthController } from './auth-controller.js';
+import { initMainController } from './main-controller.js';
+import { initUrlManager } from './core/utils/url-manager.js';
 
 const App = {
     init: () => {
-        console.log('App: Inicializando...');
-        
         if (!window.IS_LOGGED_IN) {
             try {
                 const localPrefs = JSON.parse(localStorage.getItem('guest_prefs') || '{}');
                 window.USER_PREFS = { ...window.USER_PREFS, ...localPrefs };
             } catch (e) {
-                console.error("Error leyendo localStorage", e);
             }
         }
 
@@ -73,20 +68,17 @@ const App = {
 };
 
 function initGlobalSocketListeners() {
-    // 1. KICK (Expulsión forzosa - Suspended/Deleted/Kick Manual)
     document.addEventListener('socket:force_logout', (e) => {
         if (window.isManualLogout) return;
         if (window.location.pathname.includes('/login')) return;
         
         ToastManager.show('Tu sesión ha cambiado de estado.', 'warning', 5000);
         
-        // Recargar para que PHP detecte el cambio de estado en BD
         setTimeout(() => { 
             window.location.reload(); 
         }, 1500);
     });
 
-    // 2. MANTENIMIENTO
     document.addEventListener('socket:maintenance_start', (e) => {
         const profileBtn = document.querySelector('.header-button.profile-button');
         const currentRole = profileBtn ? profileBtn.dataset.role : 'guest';
@@ -95,7 +87,6 @@ function initGlobalSocketListeners() {
 
         if (staffRoles.includes(currentRole)) {
             ToastManager.show('El sistema ha entrado en modo mantenimiento (Acceso Staff activo).', 'info', 5000);
-            console.log('Maintenance signal received. Ignored due to staff privileges.');
             return;
         }
 
@@ -104,7 +95,6 @@ function initGlobalSocketListeners() {
         }, 1000); 
     });
 
-    // 3. NOTIFICACIONES GENERALES
     document.addEventListener('socket:notification', (e) => {
         const msgData = e.detail.message; 
         if (msgData && msgData.text) {
@@ -116,7 +106,6 @@ function initGlobalSocketListeners() {
 function routeDispatcher(section) {
     updateSidebarState(section);
     switch (section) {
-        // === SETTINGS ===
         case 'settings/your-profile': 
             ProfileController.init(); 
             SettingsController.init(); 
@@ -138,7 +127,6 @@ function routeDispatcher(section) {
         case 'settings/delete-account': DeleteAccountController.init(); break;
         case 'settings/2fa-setup': TwoFactorController.init(); break;
         
-        // === ADMIN MODULES ===
         case 'admin/dashboard': 
             DashboardController.init(); 
             break;

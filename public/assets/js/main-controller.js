@@ -1,10 +1,4 @@
-/**
- * public/assets/js/main-controller.js
- */
-
-export function initMainController() {
-    console.log("Inicializando controlador principal...");
-
+function initMainController() {
     initModuleSystem();
     initScrollEffects();
     initGlobalStateListeners();
@@ -34,12 +28,9 @@ function initModuleSystem() {
     const allModules = document.querySelectorAll('.module-content');
 
     const closeModuleWithAnimation = (mod) => {
-        // Lógica simplificada: Solo quitamos 'active'.
-        // El CSS con transition (opacity/visibility/transform) hace el resto automáticamente.
         mod.classList.remove('active');
         mod.classList.add('disabled'); 
         
-        // Limpiamos estilos inline que pudieron quedar del arrastre (drag)
         const content = mod.querySelector('.menu-content');
         if(content) {
             content.style.transform = '';
@@ -80,7 +71,7 @@ function initModuleSystem() {
                             closeModuleWithAnimation(targetModule);
                         } else {
                             targetModule.classList.remove('disabled');
-                            targetModule.style.display = ''; // Limpiamos display inline por si acaso
+                            targetModule.style.display = ''; 
                             targetModule.classList.add('active');
                         }
                     }
@@ -150,14 +141,12 @@ function initMobileDrag(moduleElement, closeCallback) {
         startY = clientY;
         menuHeight = content.offsetHeight;
         isDragging = true;
-        // Desactivamos transición para que el arrastre sea instantáneo (1:1)
         content.style.transition = 'none';
     };
 
     const moveDrag = (clientY, event) => {
         if (!isDragging) return;
         const deltaY = clientY - startY;
-        // Solo permitir arrastrar hacia abajo
         if (deltaY > 0) {
             if (event.cancelable) event.preventDefault();
             content.style.transform = `translateY(${deltaY}px)`;
@@ -169,14 +158,12 @@ function initMobileDrag(moduleElement, closeCallback) {
         if (!isDragging) return;
         isDragging = false;
         
-        // Restauramos la transición para el rebote o cierre suave
         content.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
         
-        const threshold = menuHeight * 0.4; // 40% de altura para cerrar
+        const threshold = menuHeight * 0.4; 
         if (currentY > threshold) {
             closeCallback(moduleElement);
         } else {
-            // Si no cruzó el umbral, vuelve a 0 (rebote)
             content.style.transform = '';
         }
         currentY = 0;
@@ -186,7 +173,6 @@ function initMobileDrag(moduleElement, closeCallback) {
     handle.addEventListener('touchmove', (e) => moveDrag(e.touches[0].clientY, e), { passive: false });
     handle.addEventListener('touchend', endDrag);
 
-    // Soporte para mouse (pruebas en desktop con modo responsive)
     const onMouseMove = (e) => moveDrag(e.clientY, e);
     const onMouseUp = () => {
         endDrag();
@@ -217,3 +203,5 @@ function initGlobalStateListeners() {
         }
     });
 }
+
+export { initMainController };

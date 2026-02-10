@@ -1,15 +1,7 @@
-/**
- * public/assets/js/core/ui-manager.js
- * Gestor global de componentes de interfaz (Dropdowns, Acordeones, Tabs, etc.)
- * Centraliza la interacción visual y emite eventos para la lógica de negocio.
- */
-
 const SELECTORS = {
-    // Dropdowns
     dropdown: {
         wrapper: '[data-trigger="dropdown"]', 
         popover: '.popover-module',
-        // MODIFICADO: Ahora acepta .header-button como disparador válido
         triggerSelector: '.trigger-selector, .header-button', 
         triggerText: '.trigger-select-text',
         triggerIcon: '.trigger-select-icon',
@@ -19,7 +11,6 @@ const SELECTORS = {
         attrOption: '[data-action="select-option"]',
         attrSearch: '[data-action="filter-options"]'
     },
-    // Accordions
     accordion: {
         item: '.component-accordion-item',
         header: '.component-accordion-header',
@@ -27,34 +18,27 @@ const SELECTORS = {
     }
 };
 
-export const UiManager = {
+const UiManager = {
     init: () => {
-        console.log("UiManager: Inicializado (Core System)");
         _initDropdowns();
         _initAccordions();
     },
 
-    // Utilidad pública
     closeAllDropdowns: () => _closeDropdowns()
 };
 
-/* ==========================================================================
-   LÓGICA DE DROPDOWNS (Menús Desplegables)
-   ========================================================================== */
 function _initDropdowns() {
     const S = SELECTORS.dropdown;
 
     document.addEventListener('click', (e) => {
         if (e.target.closest(S.attrSearch)) return;
 
-        // 1. Selección de Opción
         const optionBtn = e.target.closest(S.attrOption);
         if (optionBtn) { 
             _handleOptionSelect(optionBtn, e, S); 
             return; 
         }
 
-        // 2. Abrir/Cerrar Menú
         const triggerWrapper = e.target.closest(S.attrTrigger);
         if (triggerWrapper) {
             if (e.target.closest(S.triggerSelector)) { 
@@ -63,7 +47,6 @@ function _initDropdowns() {
             return;
         }
         
-        // 3. Cerrar al hacer clic fuera
         if (!e.target.closest(S.wrapper)) { 
             _closeDropdowns(S); 
         }
@@ -79,37 +62,30 @@ function _initDropdowns() {
 function _handleDropdownToggle(wrapper, event, S) {
     event.stopPropagation();
     const menu = wrapper.querySelector(S.popover);
-    // Buscamos el trigger específico que fue clickeado o el primero válido
     const trigger = event.target.closest(S.triggerSelector) || wrapper.querySelector(S.triggerSelector);
     
     if (!menu || !trigger) return;
 
     const isActive = menu.classList.contains(S.activeClass);
     
-    // Primero cerramos cualquier otro menú abierto
     _closeDropdowns(S); 
     
-    // Si NO estaba activo, lo abrimos ahora
     if (!isActive) {
-        menu.classList.add(S.activeClass);    // 1. Hacer visible
+        menu.classList.add(S.activeClass);
         trigger.classList.add(S.activeClass);
         wrapper.classList.add('dropdown-active');
         
-        // Auto-foco
         const input = menu.querySelector('input');
         if(input) setTimeout(() => input.focus(), 100);
 
-        // === CORRECCIÓN SCROLL Y SOMBRA ===
         const list = menu.querySelector('.menu-list');
         const header = menu.querySelector('.menu-search-header');
         
         if (list) {
-            // A. FORZAR SCROLL ARRIBA
             list.scrollTop = 0; 
             
-            // B. Configurar evento de sombra
             if (header) {
-                header.classList.remove('shadow'); // Reset inicial
+                header.classList.remove('shadow'); 
                 
                 list.onscroll = () => {
                     if (list.scrollTop > 5) {
@@ -133,7 +109,6 @@ function _handleOptionSelect(option, event, S) {
     const label = option.dataset.label;
     const type = option.dataset.type; 
 
-    // Actualizar UI
     const textEl = wrapper.querySelector(S.triggerText);
     if (textEl && label) textEl.innerText = label;
     
@@ -151,13 +126,11 @@ function _handleOptionSelect(option, event, S) {
             detail: { type, value, label, element: option }
         });
         document.dispatchEvent(customEvent);
-        console.log(`UiManager: Evento [ui:dropdown-selected] -> ${type}:${value}`);
     }
 }
 
 function _closeDropdowns(S = SELECTORS.dropdown) {
     document.querySelectorAll(S.popover).forEach(el => {
-        // === LIMPIEZA PREVIA ===
         const input = el.querySelector('input');
         if(input) { input.value = ''; _handleDropdownSearch(input, S); }
 
@@ -170,10 +143,8 @@ function _closeDropdowns(S = SELECTORS.dropdown) {
             list.onscroll = null;
         }
 
-        // === AHORA SÍ OCULTAMOS ===
         el.classList.remove(S.activeClass);
     });
-    // Quitamos la clase active de todos los triggers posibles
     document.querySelectorAll(S.triggerSelector).forEach(el => el.classList.remove(S.activeClass));
     document.querySelectorAll(S.wrapper).forEach(el => el.classList.remove('dropdown-active'));
 }
@@ -214,9 +185,6 @@ function _handleDropdownSearch(input, S) {
     }
 }
 
-/* ==========================================================================
-   LÓGICA DE ACCORDIONS
-   ========================================================================== */
 function _initAccordions() {
     const S = SELECTORS.accordion;
     document.addEventListener('click', (e) => {
@@ -245,3 +213,5 @@ function _initAccordions() {
         }
     });
 }
+
+export { UiManager };

@@ -1,9 +1,4 @@
-/**
- * public/assets/js/core/api-routes.js
- */
-
-export const ApiRoutes = {
-    // ... (Auth y Settings igual que antes) ...
+const ApiRoutes = {
     Auth: {
         RegisterStep1: { route: 'auth.register_step_1' },
         RegisterStep2: { route: 'auth.initiate_verify' },
@@ -41,11 +36,9 @@ export const ApiRoutes = {
     Admin: {
         GetDashboardStats: { route: 'admin.dashboard_stats' },
 
-        // === [NUEVO] RUTAS DE ALERTAS ===
         CreateSystemAlert: { route: 'admin.create_system_alert' },
         DeactivateSystemAlert: { route: 'admin.deactivate_system_alert' },
         GetActiveAlert: { route: 'admin.get_active_alert' },
-        // ================================
 
         GetUsers: { route: 'admin.get_users' },
         GetDetails: { route: 'admin.get_details' },
@@ -58,6 +51,8 @@ export const ApiRoutes = {
         Disable2FA: { route: 'admin.disable_2fa' },
         GetServerConfig: { route: 'admin.get_server_config' },
         UpdateServerConfig: { route: 'admin.update_server_config' },
+        toggle_panic: { route: 'admin.toggle_panic' },
+        request_download: { route: 'admin.request_download' },
 
         Backups: {
             Get: { route: 'admin.get_backups' },
@@ -83,3 +78,5 @@ export const ApiRoutes = {
         }
     }
 };
+
+export { ApiRoutes };

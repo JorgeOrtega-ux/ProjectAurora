@@ -1,15 +1,6 @@
-/**
- * public/assets/js/core/dialog-definitions.js
- */
-
-// public/assets/js/core/components/dialog-definitions.js
-
 import { I18nManager } from '../utils/i18n-manager.js';
 
-// ... resto del código
-
-// 1. PLANTILLAS HTML
-export const DialogTemplates = {
+const DialogTemplates = {
     default: (data) => `
         <div class="component-dialog-body">
             <h1 class="component-dialog-title" data-element="title">${data.title || ''}</h1>
@@ -52,7 +43,7 @@ export const DialogTemplates = {
     `
 };
 
-export const DialogDefinitions = {
+const DialogDefinitions = {
     Profile: {
         DELETE_AVATAR: {
             title: '¿Eliminar foto de perfil?',
@@ -111,3 +102,5 @@ export const DialogDefinitions = {
         }
     }
 };
+
+export { DialogTemplates, DialogDefinitions };

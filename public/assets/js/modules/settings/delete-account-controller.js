@@ -1,15 +1,10 @@
-/**
- * public/assets/js/modules/settings/delete-account-controller.js
- * Versión Refactorizada: Arquitectura Signal & Interceptors
- */
-
 import { ApiService } from '../../core/services/api-service.js';
-import { ToastManager } from '../../core/components/toast-manager.js';
-import { I18nManager } from '../../core/utils/i18n-manager.js';
-import { DialogManager } from '../../core/components/dialog-manager.js';
 import { DialogDefinitions } from '../../core/components/dialog-definitions.js';
+import { DialogManager } from '../../core/components/dialog-manager.js';
+import { I18nManager } from '../../core/utils/i18n-manager.js';
+import { ToastManager } from '../../core/components/toast-manager.js';
 
-export const DeleteAccountController = {
+const DeleteAccountController = {
     init: () => {
         const toggleConfirm = document.getElementById('check-confirm-delete');
         const areaConfirmation = document.getElementById('delete-confirmation-area');
@@ -17,8 +12,6 @@ export const DeleteAccountController = {
         const inputPass = document.getElementById('delete-password-input');
 
         if (!toggleConfirm || !areaConfirmation || !btnDelete) return;
-
-        console.log("DeleteAccountController: Inicializado");
 
         toggleConfirm.checked = false;
         toggleConfirm.addEventListener('change', (e) => {
@@ -56,7 +49,6 @@ export const DeleteAccountController = {
             formData.append('password', password);
 
             try {
-                // Signal added
                 const res = await ApiService.post(ApiService.Routes.Settings.DeleteAccount, formData, { signal: window.PAGE_SIGNAL });
 
                 if (res.success) {
@@ -74,7 +66,6 @@ export const DeleteAccountController = {
                 }
             } catch (error) {
                 if (error.isAborted) return;
-                console.error(error);
                 ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
                 btnDelete.innerText = originalText;
                 btnDelete.disabled = false;
@@ -84,3 +75,5 @@ export const DeleteAccountController = {
         });
     }
 };
+
+export { DeleteAccountController };

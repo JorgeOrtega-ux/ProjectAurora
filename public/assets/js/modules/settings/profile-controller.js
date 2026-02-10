@@ -1,17 +1,11 @@
-/**
- * public/assets/js/modules/settings/profile-controller.js
- * Versión Refactorizada: Arquitectura Signal & Interceptors
- */
-
 import { ApiService } from '../../core/services/api-service.js';
-import { ToastManager } from '../../core/components/toast-manager.js';
-import { I18nManager } from '../../core/utils/i18n-manager.js';
-import { DialogManager } from '../../core/components/dialog-manager.js';
 import { DialogDefinitions } from '../../core/components/dialog-definitions.js';
+import { DialogManager } from '../../core/components/dialog-manager.js';
+import { I18nManager } from '../../core/utils/i18n-manager.js';
+import { ToastManager } from '../../core/components/toast-manager.js';
 
-export const ProfileController = {
+const ProfileController = {
     init: () => {
-        console.log("ProfileController: Inicializado (Full)");
         initAvatarLogic();
         initIdentityLogic();
     }
@@ -72,7 +66,6 @@ function initAvatarLogic() {
             formData.append('avatar', file);
 
             try {
-                // Signal added
                 const res = await ApiService.post(ApiService.Routes.Settings.UploadAvatar, formData, { signal: window.PAGE_SIGNAL });
                 
                 if (res.success) {
@@ -92,10 +85,9 @@ function initAvatarLogic() {
                 }
             } catch(err) {
                 if (err.isAborted) return;
-                console.error(err);
                 ToastManager.show(err.message || I18nManager.t('js.core.connection_error'), 'error');
             } finally {
-                if (!btn.closest('body')) return; // Evitar error si el elemento ya no existe
+                if (!btn.closest('body')) return; 
                 btn.innerText = originalText;
                 btn.disabled = false;
             }
@@ -109,7 +101,6 @@ function initAvatarLogic() {
             btn.disabled = true;
 
             try {
-                // Signal added
                 const res = await ApiService.post(ApiService.Routes.Settings.DeleteAvatar, new FormData(), { signal: window.PAGE_SIGNAL });
                 
                 if (res.success) {
@@ -226,7 +217,6 @@ async function handleEmailVerification(targetField) {
 
     } catch (e) {
         if (e.isAborted) return;
-        console.error(e);
         DialogManager.close();
         ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
     }
@@ -257,7 +247,6 @@ async function showVerificationDialog(targetField, initialCooldown) {
         const verifyData = new FormData();
         verifyData.append('code', code);
 
-        // Signal added
         try {
             const verifyRes = await ApiService.post(ApiService.Routes.Settings.VerifyEmailCode, verifyData, { signal: window.PAGE_SIGNAL });
             DialogManager.close();
@@ -333,7 +322,6 @@ function bindResendLogic(wrapper, initialCooldown) {
         formData.append('force_resend', 'true');
 
         try {
-            // Signal added
             const res = await ApiService.post(ApiService.Routes.Settings.RequestEmailVerification, formData, { signal: window.PAGE_SIGNAL });
             
             btnResend.childNodes[0].textContent = 'Reenviar código de verificación ';
@@ -413,7 +401,6 @@ async function saveFieldData(fieldId, btnSave) {
     formData.append('value', newValue);
 
     try {
-        // Signal added
         const res = await ApiService.post(ApiService.Routes.Settings.UpdateProfile, formData, { signal: window.PAGE_SIGNAL });
 
         if (res.success) {
@@ -433,3 +420,5 @@ async function saveFieldData(fieldId, btnSave) {
         btnSave.innerText = originalText;
     }
 }
+
+export { ProfileController };

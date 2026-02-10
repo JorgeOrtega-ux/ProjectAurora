@@ -1,15 +1,9 @@
-/**
- * public/assets/js/modules/settings/security-controller.js
- * Versión Refactorizada: Arquitectura Signal & Interceptors
- */
-
 import { ApiService } from '../../core/services/api-service.js';
-import { ToastManager } from '../../core/components/toast-manager.js';
 import { I18nManager } from '../../core/utils/i18n-manager.js';
+import { ToastManager } from '../../core/components/toast-manager.js';
 
-export const SecurityController = {
+const SecurityController = {
     init: () => {
-        console.log("SecurityController: Inicializado");
         initPasswordFlow();
     }
 };
@@ -66,7 +60,6 @@ function initPasswordFlow() {
             formData.append('current_password', currentPass);
 
             try {
-                // Signal added
                 const res = await ApiService.post(ApiService.Routes.Settings.ValidatePassword, formData, { signal: window.PAGE_SIGNAL });
                 
                 if (res.success) {
@@ -105,7 +98,6 @@ function initPasswordFlow() {
             formData.append('new_password', newPass);
 
             try {
-                // Signal added
                 const res = await ApiService.post(ApiService.Routes.Settings.ChangePassword, formData, { signal: window.PAGE_SIGNAL });
                 
                 if (res.success) {
@@ -139,3 +131,5 @@ function initPasswordFlow() {
         }
     }
 }
+
+export { SecurityController };

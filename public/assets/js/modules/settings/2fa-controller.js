@@ -1,20 +1,13 @@
-/**
- * public/assets/js/modules/settings/2fa-controller.js
- * Versión Refactorizada: Arquitectura Signal & Interceptors
- */
-
 import { ApiService } from '../../core/services/api-service.js';
-import { ToastManager } from '../../core/components/toast-manager.js';
-import { I18nManager } from '../../core/utils/i18n-manager.js';
-import { DialogManager } from '../../core/components/dialog-manager.js';
 import { DialogDefinitions } from '../../core/components/dialog-definitions.js';
+import { DialogManager } from '../../core/components/dialog-manager.js';
+import { I18nManager } from '../../core/utils/i18n-manager.js';
+import { ToastManager } from '../../core/components/toast-manager.js';
 
 let qrCodeInstance = null;
 
-export const TwoFactorController = {
+const TwoFactorController = {
     init: () => {
-        console.log("TwoFactorController: Inicializado");
-
         const btnVerify = document.getElementById('btn-confirm-2fa');
         const btnDisable = document.getElementById('btn-disable-2fa');
         const inputCode = document.getElementById('input-2fa-verify');
@@ -70,7 +63,6 @@ export const TwoFactorController = {
             }
         });
 
-        // Verificar y Activar 2FA
         if (btnVerify) {
             btnVerify.addEventListener('click', async () => {
                 const rawCode = inputCode.value.replace(/\s/g, ''); 
@@ -88,7 +80,6 @@ export const TwoFactorController = {
                 formData.append('code', rawCode);
 
                 try {
-                    // Signal added
                     const res = await ApiService.post(ApiService.Routes.Settings.Enable2FA, formData, { signal: window.PAGE_SIGNAL });
 
                     if (res.success) {
@@ -120,14 +111,12 @@ export const TwoFactorController = {
                     }
                 } catch (error) {
                     if (error.isAborted) return;
-                    console.error(error);
                     ToastManager.show(I18nManager.t('js.2fa.error_verify'), 'error');
                     setLoading(btnVerify, false, originalText);
                 }
             });
         }
 
-        // Desactivar 2FA
         if (btnDisable) {
             btnDisable.addEventListener('click', async () => {
                 const confirmed = await DialogManager.confirm(DialogDefinitions.TwoFactor.DISABLE);
@@ -137,7 +126,6 @@ export const TwoFactorController = {
                 setLoading(btnDisable, true, I18nManager.t('js.2fa.disabling'));
 
                 try {
-                    // Signal added
                     const res = await ApiService.post(ApiService.Routes.Settings.Disable2FA, new FormData(), { signal: window.PAGE_SIGNAL });
                     if (res.success) {
                         ToastManager.show(I18nManager.t('api.2fa_disabled'), 'success');
@@ -185,7 +173,6 @@ async function initRecoveryLogic() {
             countDisplay.innerText = res.count;
         }
     } catch (e) { 
-        if (!e.isAborted) console.error(e); 
     }
 
     if (btnShowRegen) {
@@ -225,7 +212,6 @@ async function initRecoveryLogic() {
             formData.append('password', password);
 
             try {
-                // Signal added
                 const res = await ApiService.post(ApiService.Routes.Settings.RegenerateRecoveryCodes, formData, { signal: window.PAGE_SIGNAL });
                 
                 if (res.success) {
@@ -251,7 +237,6 @@ async function initRecoveryLogic() {
 
             } catch (error) {
                 if (error.isAborted) return;
-                console.error(error);
                 ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
                 setLoading(btnSubmitRegen, false, originalText);
                 inputPass.disabled = false;
@@ -302,7 +287,6 @@ async function loadQrCode(container) {
         }
     } catch (error) {
         if (error.isAborted) return;
-        console.error(error);
         const boxQr = container.closest('.box-qr');
         if (boxQr) boxQr.style.display = 'none';
         ToastManager.show(I18nManager.t('js.core.connection_error'), 'error');
@@ -320,3 +304,5 @@ function setLoading(btn, isLoading, text) {
         btn.style.opacity = '1';
     }
 }
+
+export { TwoFactorController };

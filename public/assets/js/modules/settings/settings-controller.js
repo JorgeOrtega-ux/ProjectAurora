@@ -1,14 +1,8 @@
-/**
- * public/assets/js/modules/settings/settings-controller.js
- * Versión Refactorizada: Arquitectura Signal & Interceptors
- */
-
 import { ApiService } from '../../core/services/api-service.js';
 import { ToastManager } from '../../core/components/toast-manager.js';
 
-export const SettingsController = {
+const SettingsController = {
     init: () => {
-        console.log("SettingsController: Escuchando eventos UI");
         _initToggles();
         
         document.removeEventListener('ui:dropdown-selected', _onDropdownSelection);
@@ -20,7 +14,6 @@ export const SettingsController = {
     },
 
     sync: () => {
-        console.log("SettingsController: Sincronizando UI y Scroll...");
         _initScrollBehavior();
     },
 
@@ -64,7 +57,6 @@ function _initScrollBehavior() {
 function _onDropdownSelection(e) {
     const { type, value, element } = e.detail;
 
-    // Evitar conflicto si el dropdown es de otra sección (ej. Admin User Details)
     if (element && element.closest('[data-section="admin-user-details"]')) {
         return; 
     }
@@ -81,10 +73,8 @@ function _onDropdownSelection(e) {
 }
 
 async function savePreference(key, value) {
-    // Actualización optimista local
     if (window.USER_PREFS) window.USER_PREFS[key] = value;
 
-    // Modo Invitado (Local Storage)
     if (!window.IS_LOGGED_IN) {
         const currentPrefs = JSON.parse(localStorage.getItem('guest_prefs') || '{}');
         currentPrefs[key] = value;
@@ -101,7 +91,6 @@ async function savePreference(key, value) {
     formData.append('value', value);
 
     try { 
-        // Pasamos window.PAGE_SIGNAL para abortar si el usuario cambia de vista antes de que termine
         const res = await ApiService.post(
             ApiService.Routes.Settings.UpdatePreference, 
             formData, 
@@ -111,7 +100,6 @@ async function savePreference(key, value) {
         if (!res.success) {
             ToastManager.show(res.message, 'error');
             
-            // Revertir UI si falla la petición
             if (key === 'open_links_new_tab') {
                 const el = document.getElementById('pref-open-links');
                 if (el) el.checked = !el.checked;
@@ -122,10 +110,8 @@ async function savePreference(key, value) {
             }
         }
     } catch (error) { 
-        // Si fue abortado por navegación, no mostramos error
         if (error.isAborted) return;
         
-        console.error(error); 
         ToastManager.show('Error de conexión', 'error');
     }
 }
@@ -150,3 +136,5 @@ function _initToggles() {
         toggleToast.dataset.hasListener = "true";
     }
 }
+
+export { SettingsController };

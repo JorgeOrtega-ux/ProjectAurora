@@ -1,14 +1,6 @@
-/**
- * public/assets/js/core/components/date-time-picker.js
- * Componente Refactorizado a Clase ES6 para consistencia con el proyecto.
- */
-
-export class DateTimePicker {
+class DateTimePicker {
     
     constructor(wrapperSelector, inputSelector, options = {}) {
-        // ==========================================
-        // 1. Configuración e Inicialización
-        // ==========================================
         this.wrapper = (typeof wrapperSelector === 'string') 
             ? document.querySelector(wrapperSelector) 
             : wrapperSelector;
@@ -26,15 +18,12 @@ export class DateTimePicker {
         };
 
         if (!this.wrapper || !this.input) {
-            console.error("DateTimePicker: Wrapper o Input no encontrado", wrapperSelector);
             return;
         }
 
-        // Estado interno
         this.currentDate = new Date(); 
         this.selectedDate = null;
         
-        // Referencias DOM
         this.popover = null;
         this.grid = null;
         this.monthLabel = null;
@@ -42,19 +31,13 @@ export class DateTimePicker {
         this.hourInput = null;
         this.minuteInput = null;
 
-        // Auto-arranque
         this.init();
     }
-
-    // ==========================================
-    // 2. Métodos del Componente
-    // ==========================================
 
     init() {
         this.renderDOM();
         this.bindEvents();
         
-        // Si el input ya tiene valor, lo cargamos
         if (this.input.value) {
             const d = new Date(this.input.value);
             if (!isNaN(d.getTime())) {
@@ -64,7 +47,6 @@ export class DateTimePicker {
             }
         }
         
-        // Texto inicial si no hay fecha seleccionada
         if (!this.selectedDate) {
              const triggerText = this.wrapper.querySelector('.trigger-select-text');
              if(triggerText) triggerText.textContent = "Seleccionar fecha...";
@@ -73,7 +55,6 @@ export class DateTimePicker {
     }
 
     renderDOM() {
-        // Estructura HTML con clases BEM
         const popoverHTML = `
             <div class="component-calendar">
                 <div class="component-calendar__header">
@@ -109,10 +90,8 @@ export class DateTimePicker {
             </div>
         `;
 
-        // Inyectar el popover dentro del wrapper
         this.wrapper.insertAdjacentHTML('beforeend', popoverHTML);
 
-        // Referencias a elementos internos
         this.popover = this.wrapper.querySelector('.component-calendar');
         this.grid = this.wrapper.querySelector('.component-calendar__grid');
         this.monthLabel = this.wrapper.querySelector('.component-calendar__month-label');
@@ -122,7 +101,6 @@ export class DateTimePicker {
             this.hourInput = this.wrapper.querySelector('.component-timepicker__input.hour');
             this.minuteInput = this.wrapper.querySelector('.component-timepicker__input.minute');
             
-            // Valores por defecto
             const now = this.selectedDate || new Date();
             this.hourInput.value = String(now.getHours()).padStart(2, '0');
             this.minuteInput.value = String(now.getMinutes()).padStart(2, '0');
@@ -147,7 +125,6 @@ export class DateTimePicker {
             minDateTimestamp = m.getTime();
         }
 
-        // Espacios vacíos
         for (let i = 0; i < firstDayOfMonth; i++) {
             const emptyCell = document.createElement('div');
             emptyCell.className = 'component-calendar__day is-empty';
@@ -157,7 +134,6 @@ export class DateTimePicker {
         const today = new Date();
         today.setHours(0,0,0,0);
 
-        // Días del mes
         for (let day = 1; day <= daysInMonth; day++) {
             const dateCell = document.createElement('div');
             dateCell.className = 'component-calendar__day';
@@ -321,3 +297,5 @@ export class DateTimePicker {
         document.querySelectorAll('.component-datepicker-wrapper.active').forEach(el => el.classList.remove('active'));
     }
 }
+
+export { DateTimePicker };
