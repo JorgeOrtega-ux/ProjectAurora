@@ -298,6 +298,7 @@ class AuthService {
             $this->pdo->commit();
 
             $_SESSION['user_id'] = $newUserId;
+            $_SESSION['uuid'] = $uuid; // [NUEVO] Guardamos UUID en sesión
             $_SESSION['username'] = $username;
             $_SESSION['role'] = 'user';
             $_SESSION['avatar'] = $dbAvatarPath;
@@ -721,6 +722,7 @@ class AuthService {
 
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         $_SESSION['user_id'] = $user['id'];
+        $_SESSION['uuid'] = $user['uuid']; // [NUEVO] Guardamos UUID en sesión
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
         $_SESSION['avatar'] = $user['avatar_path'];
