@@ -24,6 +24,22 @@
 
     <div class="header-right">
         <div class="header-item">
+            
+            <?php if (isset($_SESSION['user_id'])): ?>
+                <?php 
+                    // Generamos la URL dinámica basada en el UUID de la sesión actual
+                    $myUuid = $_SESSION['uuid'] ?? 'invalid';
+                    $studioUrl = "s/channel/panel-control/" . htmlspecialchars($myUuid);
+                ?>
+                <a href="<?php echo $basePath . $studioUrl; ?>" 
+                   class="component-button" 
+                   data-nav="<?php echo $studioUrl; ?>"
+                   style="text-decoration: none; padding: 0 12px; margin-right: 4px; border-radius: 20px;">
+                    <span class="material-symbols-rounded" style="font-size: 18px; margin-right: 6px;">video_call</span>
+                    <span style="font-weight: 600; font-size: 13px;"><?php echo $i18n->t('header.creator_studio'); ?></span>
+                </a>
+            <?php endif; ?>
+
             <div class="header-button mobile-search-trigger" 
                  data-action="toggleSearch"
                  data-tooltip="Buscar">
@@ -58,4 +74,3 @@
         <?php include '../includes/modules/module-profile.php'; ?>
     </div>
 </div>
-

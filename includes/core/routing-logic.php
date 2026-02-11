@@ -29,8 +29,8 @@ if ($isLoggedIn) {
             }
         }
 
-        // Obtener datos frescos del usuario
-        $stmt = $pdo->prepare("SELECT role, avatar_path, username, email, two_factor_enabled, account_status, suspension_ends_at, status_reason FROM users WHERE id = ? LIMIT 1");
+        // [CORRECCIÓN] Agregamos 'uuid' al SELECT para que esté disponible siempre
+        $stmt = $pdo->prepare("SELECT uuid, role, avatar_path, username, email, two_factor_enabled, account_status, suspension_ends_at, status_reason FROM users WHERE id = ? LIMIT 1");
         $stmt->execute([$_SESSION['user_id']]);
         $freshUser = $stmt->fetch();
 
@@ -60,6 +60,7 @@ if ($isLoggedIn) {
             }
 
             // Actualizar sesión
+            $_SESSION['uuid'] = $freshUser['uuid']; // [NUEVO] Guardamos el UUID
             $_SESSION['role'] = $freshUser['role'];
             $_SESSION['avatar'] = $freshUser['avatar_path'];
             $_SESSION['username'] = $freshUser['username'];

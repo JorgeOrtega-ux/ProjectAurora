@@ -6,6 +6,9 @@ return [
     'main'     => __DIR__ . '/../includes/sections/app/main.php',
     'explore'  => __DIR__ . '/../includes/sections/app/explore.php',
     
+    // === STUDIO (NUEVO) ===
+    'studio/layout' => __DIR__ . '/../includes/sections/studio/layout.php',
+    
     // === AUTH ===
     'login'                         => __DIR__ . '/../includes/sections/auth/login.php',
     'login/verification-aditional'  => __DIR__ . '/../includes/sections/auth/login.php',
@@ -41,11 +44,8 @@ return [
     'admin/backups'                => __DIR__ . '/../includes/sections/admin/backups.php',
     'admin/backups/config'         => __DIR__ . '/../includes/sections/admin/backup-config.php',
     'admin/server'                 => __DIR__ . '/../includes/sections/admin/server-config.php',
-    
-    // [NUEVO] SYSTEM ALERTS & REDIS
     'admin/alerts'                 => __DIR__ . '/../includes/sections/admin/system-alerts.php',
     'admin/redis'                  => __DIR__ . '/../includes/sections/admin/redis-manager.php',
-
     'admin/audit-log'              => __DIR__ . '/../includes/sections/admin/audit-log.php',
     'admin/log-files'              => __DIR__ . '/../includes/sections/admin/log-files.php',
     'admin/file-viewer'            => __DIR__ . '/../includes/sections/admin/file-viewer.php',

@@ -15,7 +15,23 @@ $basePath = '/ProjectAurora/';
 $section = $_GET['section'] ?? 'main';
 $section = strtok($section, '?');
 
+// =========================================================
+// [NUEVO] INTERCEPTOR DE RUTAS DINÁMICAS (STUDIO)
+// =========================================================
+// Esto permite que el loader entienda las URLs amigables del Studio
+// y extraiga las variables necesarias ($studioView y $targetUuid)
+if (preg_match('#^s/channel/(panel-control|manage-content)/([a-f0-9\-]+)$#', $section, $matches)) {
+    // 1. Mapeamos la sección "falsa" a la ruta real registrada en routes.php
+    $section = 'studio/layout';
+    
+    // 2. Extraemos las variables para que layout.php las use
+    $studioView = $matches[1]; // 'panel-control' o 'manage-content'
+    $targetUuid = $matches[2]; // el uuid del usuario
+}
+// =========================================================
+
 // === PREGUNTAMOS AL PORTERO ===
+// Ahora Gatekeeper recibirá 'studio/layout', que sí está protegida en security.php
 $decision = Gatekeeper::check($section, $pdo);
 
 switch ($decision['action']) {

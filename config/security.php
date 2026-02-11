@@ -7,14 +7,14 @@ return [
         // Roles que pueden ignorar el modo mantenimiento
         'maintenance_bypass' => ['founder', 'administrator', 'moderator'],
         
-        // Roles que tienen acceso al panel de administración (Los mods NO están aquí, como pediste)
+        // Roles que tienen acceso al panel de administración
         'admin_access' => ['founder', 'administrator']
     ],
 
     // Rutas estrictamente de autenticación 
     'auth_routes' => [
         'login', 
-        'login/verification-aditional', // Ruta para introducir el código 2FA
+        'login/verification-aditional',
         'register', 
         'register/aditional-data', 
         'register/verification-account', 
@@ -22,7 +22,7 @@ return [
         'reset-password'
     ],
 
-    // Rutas que REQUIEREN estar logueado (Blacklist / Protección explícita)
+    // Rutas que REQUIEREN estar logueado
     'protected_routes' => [
         'settings/your-profile',
         'settings/login-security',
@@ -30,7 +30,9 @@ return [
         'settings/delete-account',
         'settings/2fa-setup',
         'settings/accessibility', 
-        'logout'
+        'logout',
+        // [NUEVO] Rutas de Studio protegidas
+        'studio/layout' 
     ]
 ];
 ?>

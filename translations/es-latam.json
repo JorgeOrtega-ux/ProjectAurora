@@ -17,7 +17,8 @@
         "select_time": "Seleccionar hora..."
     },
     "header": {
-        "search_placeholder": "Buscar..."
+        "search_placeholder": "Buscar...",
+        "creator_studio": "Aurora Creator Studio"
     },
     "menu": {
         "home": "Página principal",
@@ -38,6 +39,16 @@
             "audit": "Registro de Actividad",
             "exit": "Salir del Panel"
         }
+    },
+    "studio": {
+        "menu_dashboard": "Panel de Control",
+        "menu_content": "Gestionar Contenido",
+        "title_dashboard": "Panel del Canal",
+        "desc_dashboard": "Resumen y métricas de tu canal.",
+        "title_content": "Contenido del Canal",
+        "desc_content": "Sube, edita y gestiona tus videos y publicaciones.",
+        "error_owner_title": "Acceso Denegado",
+        "error_owner_desc": "No tienes permisos para administrar este canal. El UUID no coincide con tu usuario."
     },
     "account_status": {
         "deleted_title": "Cuenta Eliminada",
@@ -666,20 +677,10 @@
             "label_started": "Iniciado:"
         },
         "delete": {
-            "title": "Eliminar cuenta",
-            "desc": "Lamentamos que quieras irte. Por favor lee esto con atención.",
-            "warn_title": "¿Qué implica esto?",
-            "warn_desc": "Tu perfil dejará de ser visible, se cerrarán todas tus sesiones activas y perderás acceso inmediato a tu cuenta. <br><br><strong>Esta acción no se puede deshacer fácilmente desde la interfaz.</strong>",
-            "confirm_title": "Entiendo las consecuencias",
-            "confirm_desc": "Confirmo que quiero desactivar mi cuenta permanentemente.",
-            "pass_title": "Confirma tu contraseña",
-            "pass_desc": "Por seguridad, ingresa tu contraseña para continuar.",
-            "pass_placeholder": "Tu contraseña actual",
-            "btn_final": "Eliminar mi cuenta definitivamente",
-            "processing": "Procesando...",
-            "goodbye": "Cuenta eliminada. Adiós.",
             "enter_pass": "Debes ingresar tu contraseña.",
-            "confirm_final": "ÚLTIMA ADVERTENCIA: ¿Estás realmente seguro?"
+            "confirm_final": "ÚLTIMA ADVERTENCIA: ¿Estás realmente seguro?",
+            "processing": "Procesando...",
+            "goodbye": "Cuenta eliminada. Adiós."
         }
     },
     "explore": {

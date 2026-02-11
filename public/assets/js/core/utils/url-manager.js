@@ -3,12 +3,16 @@ import { I18nManager } from './i18n-manager.js';
 let currentAbortController = null;
 
 function initUrlManager() {
+    // Exponer señal para cancelar peticiones al cambiar de página
     Object.defineProperty(window, 'PAGE_SIGNAL', {
         get: () => currentAbortController ? currentAbortController.signal : null
     });
 
+    // Manejo del botón "Atrás" del navegador
     window.addEventListener('popstate', (event) => {
         if (event.state && event.state.section) {
+            // Nota: Al volver atrás, siempre recargamos la vista principal (full reload)
+            // para asegurar consistencia, a menos que guardemos metadatos complejos en el state.
             loadContent(event.state.section);
             updateActiveMenu(event.state.section);
         } else {
@@ -19,34 +23,29 @@ function initUrlManager() {
         }
     });
 
+    // Delegación de eventos global para clicks
     document.body.addEventListener('click', (e) => {
         const link = e.target.closest('[data-nav]');
         if (link) {
             e.preventDefault();
-            const section = link.dataset.nav;
             
-            // --- [MODIFICACIÓN] Prevenir recarga si es la misma sección ---
+            // 1. Obtener parámetros del enlace
+            const visibleUrl = link.dataset.nav; // URL que se verá en el navegador
+            const fetchSource = link.dataset.fetch || visibleUrl; // Archivo real a pedir (opcional)
+            const targetSelector = link.dataset.target || '.general-content-scrolleable'; // Contenedor destino
             
-            // 1. Obtener la ruta actual limpia (sin Base Path y sin slashes extra)
-            let currentPath = window.location.pathname.replace(window.BASE_PATH, '');
-            currentPath = currentPath.replace(/^\/+|\/+$/g, '');
+            // 2. Evitar recarga si es la misma sección (Opcional, a veces queremos refrescar)
+            // Aquí lo permitimos si es una navegación parcial para dar feedback visual
             
-            // Si está vacío, estamos en 'main'
-            if (!currentPath) currentPath = 'main';
-
-            // 2. Limpiar la sección objetivo del enlace
-            let targetPath = section.replace(/^\/+|\/+$/g, '');
-
-            // 3. Comparar (ignorando query params por ahora para simplificar navegación básica)
-            const isSameSection = (currentPath.split('?')[0] === targetPath.split('?')[0]);
-
-            if (!link.classList.contains('disabled') && !isSameSection) {
-                navigateTo(section);
+            if (!link.classList.contains('disabled')) {
+                // Actualizar menú visualmente antes de navegar
+                updateActiveMenu(visibleUrl, link);
+                
+                // Ejecutar navegación
+                navigateTo(visibleUrl, null, targetSelector, fetchSource);
             }
-            // -------------------------------------------------------------
             
-            // Mantenemos esta lógica fuera del if para que el menú se cierre 
-            // incluso si clicamos en la misma sección (mejor UX en móvil)
+            // Cerrar menú móvil si corresponde
             const activeModules = document.querySelectorAll('.module-content.active');
             activeModules.forEach(mod => {
                 if (mod.dataset.module !== 'moduleSurface' || window.innerWidth < 725) {
@@ -57,13 +56,21 @@ function initUrlManager() {
         }
     });
     
+    // Inicialización del estado activo al cargar la página
     const path = window.location.pathname.replace(window.BASE_PATH, '');
     const cleanPath = path.replace(/^\/+|\/+$/g, ''); 
     const currentSection = cleanPath || 'main';
     updateActiveMenu(currentSection);
 }
 
-function navigateTo(section, params = null) {
+/**
+ * Navega a una sección URL
+ * @param {string} visiblePath - Lo que se muestra en la barra de direcciones
+ * @param {object} params - Query params opcionales
+ * @param {string} targetSelector - Selector CSS del contenedor donde inyectar el HTML
+ * @param {string} fetchPath - (Opcional) Ruta interna real para el loader.php si difiere de visiblePath
+ */
+function navigateTo(visiblePath, params = null, targetSelector = '.general-content-scrolleable', fetchPath = null) {
     const basePath = window.BASE_PATH || '/ProjectAurora/';
     let queryString = '';
 
@@ -76,29 +83,49 @@ function navigateTo(section, params = null) {
         }
     }
 
-    const url = (section === 'main') ? basePath : basePath + section + queryString;
+    // Construir la URL completa para el navegador
+    const browserUrl = (visiblePath === 'main') ? basePath : basePath + visiblePath + queryString;
     
-    history.pushState({ section: section }, '', url);
+    // Guardamos en el historial
+    // Nota: Guardamos 'fetchPath' en el estado por si quisiéramos restaurar vistas parciales en el futuro (avanzado)
+    history.pushState({ section: visiblePath, fetchSource: fetchPath }, '', browserUrl);
     
-    loadContent(section);
-    updateActiveMenu(section);
+    // Cargar el contenido
+    loadContent(fetchPath || visiblePath, targetSelector);
 }
 
-async function loadContent(section) {
-    const container = document.querySelector('.general-content-scrolleable');
-    if (!container) return;
+async function loadContent(section, targetSelector = '.general-content-scrolleable') {
+    const container = document.querySelector(targetSelector);
+    if (!container) {
+        console.error(`UrlManager: Target container '${targetSelector}' not found.`);
+        return;
+    }
 
+    // Cancelar petición anterior si existe
     if (currentAbortController) {
         currentAbortController.abort();
     }
     currentAbortController = new AbortController();
 
-    container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;"><div class="spinner"></div></div>';
+    // Feedback visual de carga (Spinner)
+    // Guardamos la opacidad original para restaurarla (útil para cargas parciales sutiles)
+    const originalOpacity = container.style.opacity;
     
-    await new Promise(resolve => setTimeout(resolve, 150));
+    // Si es el contenedor principal, usamos el spinner centrado grande.
+    // Si es un contenedor parcial (ej. Studio), usamos una transición de opacidad elegante.
+    if (targetSelector === '.general-content-scrolleable') {
+        container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;"><div class="spinner"></div></div>';
+    } else {
+        container.style.transition = 'opacity 0.2s';
+        container.style.opacity = '0.5';
+    }
+    
+    // Pequeño delay artificial para evitar parpadeos en cargas muy rápidas (opcional)
+    // await new Promise(resolve => setTimeout(resolve, 50));
 
     try {
         const currentParams = window.location.search; 
+        // Construimos la URL para el loader
         const fetchUrl = `${window.BASE_PATH}public/loader.php?section=${section}${currentParams.replace('?', '&')}`;
 
         const response = await fetch(fetchUrl, {
@@ -114,13 +141,26 @@ async function loadContent(section) {
         container.innerHTML = html;
         container.scrollTop = 0; 
         
-        const event = new CustomEvent('spa:view_loaded', { detail: { section } });
+        // Restaurar estilos visuales
+        if (targetSelector !== '.general-content-scrolleable') {
+            container.style.opacity = '1';
+        }
+        
+        // Disparar evento global de que una vista se cargó
+        const event = new CustomEvent('spa:view_loaded', { detail: { section, target: targetSelector } });
         document.dispatchEvent(event);
         
     } catch (error) {
         if (error.name === 'AbortError') {
             return;
         }
+        console.error(error);
+        
+        // Restaurar estilos en error
+        if (targetSelector !== '.general-content-scrolleable') {
+            container.style.opacity = '1';
+        }
+
         container.innerHTML = `<div style="padding: 20px; text-align: center;">
             <h3>Error</h3>
             <p>${I18nManager.t('js.core.loading_error') || 'No se pudo cargar el contenido.'}</p>
@@ -129,38 +169,60 @@ async function loadContent(section) {
     }
 }
 
-function updateActiveMenu(section) {
-    document.querySelectorAll('.menu-link[data-nav]').forEach(l => l.classList.remove('active'));
-    
-    let links = document.querySelectorAll(`.menu-link[data-nav="${section}"]`);
-    if (links.length === 0 && section.includes('/')) {
-        const parentSection = section.split('/').slice(0, 2).join('/');
-        links = document.querySelectorAll(`.menu-link[data-nav^="${parentSection}"]`);
+function updateActiveMenu(section, specificLinkElement = null) {
+    // 1. Si tenemos el elemento específico clicado, usémoslo para activar clases locales (ej. sidebar del Studio)
+    if (specificLinkElement) {
+        // Buscar el contenedor padre más cercano que sea un menú (sidebar o módulo)
+        const parentMenu = specificLinkElement.closest('.menu-list') || specificLinkElement.closest('.studio-sidebar');
+        if (parentMenu) {
+            parentMenu.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
+            specificLinkElement.classList.add('active');
+        }
     }
-    
-    links.forEach(l => l.classList.add('active'));
 
-    const menus = {
-        main: document.getElementById('surface-main'),
-        settings: document.getElementById('surface-settings'),
-        help: document.getElementById('surface-help'),
-        admin: document.getElementById('surface-admin')
-    };
-    
-    Object.values(menus).forEach(el => { if(el) el.style.display = 'none'; });
+    // 2. Lógica global del Sidebar Principal (Module Surface)
+    // Esto asegura que si navegamos a 'settings/profile', el sidebar principal marque 'settings'
+    const mainSidebar = document.querySelector('.module-surface');
+    if (mainSidebar) {
+        mainSidebar.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
+        
+        let activeLink = null;
+        
+        // Mapeo de secciones padre
+        if (section.startsWith('settings/')) {
+            switchVisibleMenu('surface-settings');
+            // Intentar encontrar link exacto
+            activeLink = mainSidebar.querySelector(`.menu-link[data-nav="${section}"]`);
+        } 
+        else if (section.startsWith('site-policy')) { 
+            switchVisibleMenu('surface-help');
+            activeLink = mainSidebar.querySelector(`.menu-link[data-nav="${section}"]`);
+        }
+        else if (section.startsWith('admin/')) { 
+            switchVisibleMenu('surface-admin');
+            activeLink = mainSidebar.querySelector(`.menu-link[data-nav="${section}"]`);
+        }
+        else if (section.startsWith('s/channel/') || section.startsWith('studio/')) {
+            // El Studio NO tiene menú en el sidebar principal (es pantalla completa o layout propio)
+            // Así que ocultamos todos los menús del sidebar principal
+            switchVisibleMenu(null); 
+        }
+        else {
+            switchVisibleMenu('surface-main');
+            activeLink = mainSidebar.querySelector(`.menu-link[data-nav="${section}"]`) || 
+                         mainSidebar.querySelector(`.menu-link[data-nav="main"]`);
+        }
 
-    if (section.startsWith('settings/')) {
-        if(menus.settings) menus.settings.style.display = 'flex';
-    } 
-    else if (section.startsWith('site-policy')) { 
-        if(menus.help) menus.help.style.display = 'flex';
+        if (activeLink) activeLink.classList.add('active');
     }
-    else if (section.startsWith('admin/')) { 
-        if(menus.admin) menus.admin.style.display = 'flex';
-    }
-    else {
-        if(menus.main) menus.main.style.display = 'flex';
-    }
+}
+
+function switchVisibleMenu(menuId) {
+    const menus = ['surface-main', 'surface-settings', 'surface-help', 'surface-admin'];
+    menus.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = (id === menuId) ? 'flex' : 'none';
+    });
 }
 
 export { initUrlManager, navigateTo };
