@@ -31,13 +31,11 @@
                     $myUuid = $_SESSION['uuid'] ?? 'invalid';
                     $studioUrl = "s/channel/panel-control/" . htmlspecialchars($myUuid);
                 ?>
-                <a href="<?php echo $basePath . $studioUrl; ?>" 
-                   class="component-button" 
-                   data-nav="<?php echo $studioUrl; ?>"
-                   style="text-decoration: none; padding: 0 12px; margin-right: 4px; border-radius: 20px;">
-                    <span class="material-symbols-rounded" style="font-size: 18px; margin-right: 6px;">video_call</span>
-                    <span style="font-weight: 600; font-size: 13px;"><?php echo $i18n->t('header.creator_studio'); ?></span>
-                </a>
+                <div class="header-button" 
+                     data-nav="<?php echo $studioUrl; ?>"
+                     data-tooltip="<?php echo $i18n->t('header.creator_studio'); ?>">
+                    <span class="material-symbols-rounded">video_call</span>
+                </div>
             <?php endif; ?>
 
             <div class="header-button mobile-search-trigger" 

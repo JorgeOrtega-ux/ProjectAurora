@@ -31,8 +31,10 @@ return [
         'settings/2fa-setup',
         'settings/accessibility', 
         'logout',
-        // [NUEVO] Rutas de Studio protegidas
-        'studio/layout' 
+        // [NUEVO] Rutas de Studio protegidas (Layout y Partes internas)
+        'studio/layout',
+        'studio/parts/dashboard',
+        'studio/parts/content'
     ]
 ];
 ?>

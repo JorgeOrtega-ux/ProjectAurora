@@ -1,8 +1,13 @@
 <?php
 // includes/sections/studio/dashboard.php
 ?>
-<div class="state-empty" style="padding: 40px; text-align: center; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-    <span class="material-symbols-rounded" style="font-size: 48px; color: var(--text-tertiary); margin-bottom: 16px;">construction</span>
-    <h2 style="font-size: 18px; color: var(--text-primary); margin-bottom: 8px;">En construcción</h2>
-    <p style="color: var(--text-secondary); font-size: 14px;">El Panel de Control estará disponible próximamente.</p>
+<div class="studio-module-wrapper">
+    
+    <div class="studio-module-top">
+        <h2 class="component-toolbar-title"><?php echo $i18n->t('studio.menu_dashboard'); ?></h2>
+    </div>
+
+    <div class="studio-module-bottom">
+        </div>
+
 </div>
