@@ -31,19 +31,14 @@ function initUrlManager() {
             const fetchSource = link.dataset.fetch || visibleUrl; // Archivo real a pedir
             const targetSelector = link.dataset.target || '.general-content-scrolleable'; // Contenedor destino
             
-            // === NUEVO: PREVENCIÓN DE RECARGA ===
-            // Normalizamos la URL actual
+            // Normalizamos la URL actual y destino para evitar recargas innecesarias
             const currentPathRaw = window.location.pathname.replace(window.BASE_PATH, '');
             const currentSection = currentPathRaw.replace(/^\/+|\/+$/g, '') || 'main';
-            
-            // Normalizamos la URL destino
             const targetSection = visibleUrl.replace(/^\/+|\/+$/g, '');
 
-            // Si intentamos ir a donde ya estamos, detenemos la ejecución
             if (currentSection === targetSection) {
                 return;
             }
-            // ====================================
 
             if (!link.classList.contains('disabled')) {
                 updateActiveMenu(visibleUrl, link);
@@ -161,6 +156,7 @@ async function loadContent(section, targetSelector = '.general-content-scrolleab
 }
 
 function updateActiveMenu(section, specificLinkElement = null) {
+    // 1. Manejo de click directo en un elemento de menú (Feedback visual inmediato si el usuario hizo clic en la sidebar)
     if (specificLinkElement) {
         const parentMenu = specificLinkElement.closest('.menu-list') || specificLinkElement.closest('.studio-sidebar');
         if (parentMenu) {
@@ -169,6 +165,7 @@ function updateActiveMenu(section, specificLinkElement = null) {
         }
     }
 
+    // 2. Sincronización de la Sidebar Principal (Surface)
     const mainSidebar = document.querySelector('.module-surface');
     if (mainSidebar) {
         mainSidebar.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
@@ -197,6 +194,20 @@ function updateActiveMenu(section, specificLinkElement = null) {
         }
 
         if (activeLink) activeLink.classList.add('active');
+    }
+
+    // 3. [NUEVO] Sincronización de la Sidebar de Studio basada en la URL actual
+    // Esto arregla el problema: busca en la sidebar un enlace que coincida con la URL actual.
+    // Si no encuentra ninguno (ej. estás en upload), desactiva todos.
+    const studioSidebar = document.querySelector('.component-studio-sidebar');
+    if (studioSidebar) {
+        studioSidebar.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
+        
+        // Buscamos enlace exacto
+        const activeLink = studioSidebar.querySelector(`.menu-link[data-nav="${section}"]`);
+        if (activeLink) {
+            activeLink.classList.add('active');
+        }
     }
 }
 
