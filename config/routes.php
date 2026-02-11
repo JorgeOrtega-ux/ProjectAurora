@@ -11,6 +11,7 @@ return [
     // [NUEVO] Rutas internas para la navegación AJAX/SPA
     'studio/parts/dashboard' => __DIR__ . '/../includes/sections/studio/dashboard.php',
     'studio/parts/content'   => __DIR__ . '/../includes/sections/studio/content.php',
+    'studio/parts/upload'    => __DIR__ . '/../includes/sections/studio/upload.php', // <--- AGREGADO
     
     // === AUTH ===
     'login'                         => __DIR__ . '/../includes/sections/auth/login.php',

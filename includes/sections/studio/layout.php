@@ -9,6 +9,7 @@ $isOwner = ($myUuid === $targetUuid);
 // URLs visuales (barra de direcciones)
 $urlDashboard = "s/channel/panel-control/" . $targetUuid;
 $urlContent   = "s/channel/manage-content/" . $targetUuid;
+// $urlUpload se mantiene para uso interno si es necesario, o se puede omitir si solo se usa en content.php
 $urlUpload    = "s/channel/upload/" . $targetUuid;
 
 ?>
@@ -59,16 +60,7 @@ $urlUpload    = "s/channel/upload/" . $targetUuid;
                             <div class="menu-link-text"><?php echo $i18n->t('studio.menu_content'); ?></div>
                         </div>
 
-                        <div class="menu-link <?php echo ($studioView === 'upload') ? 'active' : ''; ?>" 
-                             data-nav="<?php echo $urlUpload; ?>"
-                             data-target="#studio-content-area">
-                            <div class="menu-link-icon">
-                                <span class="material-symbols-rounded">upload</span>
-                            </div>
-                            <div class="menu-link-text">Subir video</div>
                         </div>
-
-                    </div>
                 </div>
             </div>
 
@@ -76,7 +68,7 @@ $urlUpload    = "s/channel/upload/" . $targetUuid;
 
         <div class="component-studio-content" id="studio-content-area">
             <?php 
-                // Carga inicial (Server Side Rendering) para F5 o acceso directo
+                // Carga inicial (Server Side Rendering)
                 if ($studioView === 'panel-control') {
                     include __DIR__ . '/dashboard.php';
                 } elseif ($studioView === 'manage-content') {

@@ -34,7 +34,8 @@ return [
         // [NUEVO] Rutas de Studio protegidas (Layout y Partes internas)
         'studio/layout',
         'studio/parts/dashboard',
-        'studio/parts/content'
+        'studio/parts/content',
+        'studio/parts/upload' // <--- AGREGADO
     ]
 ];
 ?>

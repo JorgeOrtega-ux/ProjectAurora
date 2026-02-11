@@ -11,6 +11,7 @@ $urlUpload = "s/channel/upload/" . $myUuid;
         
         <div class="header-button" 
              data-nav="<?php echo $urlUpload; ?>" 
+             data-fetch="studio/parts/upload"
              data-target="#studio-content-area"
              data-tooltip="Subir videos">
             <span class="material-symbols-rounded">upload</span>
