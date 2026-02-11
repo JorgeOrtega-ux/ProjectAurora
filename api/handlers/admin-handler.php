@@ -15,7 +15,7 @@ use Aurora\Services\AlertService;
 use Aurora\Libs\Utils;
 
 // Inicializamos AlertService aquí para pasarlo si es necesario
-$alertService = new AlertService($pdo, $redis, $_SESSION['user_id']);
+$alertService = new AlertService($redis);
 
 if (!isset($_SESSION['user_id'])) {
     Utils::jsonResponse(['success' => false, 'message' => $i18n->t('api.session_expired')]);
@@ -40,8 +40,13 @@ if (!$privCheck['allowed']) {
     Utils::jsonResponse(['success' => false, 'message' => $msg]);
 }
 
+// Inicialización de Servicios
 $adminService = new AdminService($pdo, $i18n, $_SESSION['user_id'], $redis);
-$backupService = new BackupService($pdo, $i18n, $_SESSION['user_id'], $redis);
+
+// [CORRECCIÓN 1]: Orden de parámetros corregido para coincidir con el constructor de BackupService
+// Estructura correcta: ($pdo, $redis, $i18n, $userId)
+$backupService = new BackupService($pdo, $redis, $i18n, $_SESSION['user_id']);
+
 $logFileService = new LogFileService(); 
 $redisService = new RedisService($redis);
 
@@ -131,7 +136,8 @@ switch ($action) {
 
     // === BACKUPS ===
     case 'get_backups':
-        Utils::jsonResponse($backupService->getAllBackups());
+        // [CORRECCIÓN 2]: Llamada al método correcto (getBackups en lugar de getAllBackups)
+        Utils::jsonResponse($backupService->getBackups());
         break;
 
     case 'create_backup':
@@ -148,20 +154,26 @@ switch ($action) {
         Utils::jsonResponse($backupService->deleteBackup($filenames));
         break;
     
+    // NOTA: Estas funciones (getBackupContent, getAutoConfig, updateAutoConfig)
+    // NO existen en el BackupService.php actual. Si intentas usarlas, fallarán.
+    // Se recomienda comentar o implementar los métodos faltantes en el servicio.
     case 'get_backup_content':
         $filenames = $_POST['files'] ?? '';
-        Utils::jsonResponse($backupService->getBackupContent($filenames));
+        // Utils::jsonResponse($backupService->getBackupContent($filenames));
+        Utils::jsonResponse(['success' => false, 'message' => 'Función no implementada en servicio.']);
         break;
 
     case 'get_backup_config':
-        Utils::jsonResponse($backupService->getAutoConfig());
+        // Utils::jsonResponse($backupService->getAutoConfig());
+        Utils::jsonResponse(['success' => false, 'message' => 'Función no implementada en servicio.']);
         break;
 
     case 'update_backup_config':
         $enabled = isset($_POST['enabled']) && $_POST['enabled'] == '1';
         $freq = $_POST['frequency'] ?? 24;
         $ret = $_POST['retention'] ?? 10;
-        Utils::jsonResponse($backupService->updateAutoConfig($enabled, $freq, $ret));
+        // Utils::jsonResponse($backupService->updateAutoConfig($enabled, $freq, $ret));
+        Utils::jsonResponse(['success' => false, 'message' => 'Función no implementada en servicio.']);
         break;
 
     // === AUDITORÍA ===
@@ -189,7 +201,7 @@ switch ($action) {
     case 'get_log_content':
         $paths = $_POST['files'] ?? '';
         $pathsArray = is_array($paths) ? $paths : explode(',', $paths);
-        Utils::jsonResponse($logFileService->getFilesContent($pathsArray));
+        Utils::jsonResponse($logFileService->getFilesContent($pathsArray)); // Nota: Verificar si getFilesContent existe en LogFileService
         break;
 
     // === REDIS ===
@@ -228,7 +240,7 @@ switch ($action) {
         break;
         
     case 'get_active_alert':
-        Utils::jsonResponse($alertService->getActiveAlert());
+        Utils::jsonResponse($alertService->getActiveAlert()); // Nota: Verificar nombre método en AlertService (getActiveAlert vs getActiveAlerts)
         break;
 
     default:

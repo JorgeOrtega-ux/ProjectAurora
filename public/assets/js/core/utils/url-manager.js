@@ -25,10 +25,28 @@ function initUrlManager() {
             e.preventDefault();
             const section = link.dataset.nav;
             
-            if (!link.classList.contains('disabled')) {
+            // --- [MODIFICACIÓN] Prevenir recarga si es la misma sección ---
+            
+            // 1. Obtener la ruta actual limpia (sin Base Path y sin slashes extra)
+            let currentPath = window.location.pathname.replace(window.BASE_PATH, '');
+            currentPath = currentPath.replace(/^\/+|\/+$/g, '');
+            
+            // Si está vacío, estamos en 'main'
+            if (!currentPath) currentPath = 'main';
+
+            // 2. Limpiar la sección objetivo del enlace
+            let targetPath = section.replace(/^\/+|\/+$/g, '');
+
+            // 3. Comparar (ignorando query params por ahora para simplificar navegación básica)
+            const isSameSection = (currentPath.split('?')[0] === targetPath.split('?')[0]);
+
+            if (!link.classList.contains('disabled') && !isSameSection) {
                 navigateTo(section);
             }
+            // -------------------------------------------------------------
             
+            // Mantenemos esta lógica fuera del if para que el menú se cierre 
+            // incluso si clicamos en la misma sección (mejor UX en móvil)
             const activeModules = document.querySelectorAll('.module-content.active');
             activeModules.forEach(mod => {
                 if (mod.dataset.module !== 'moduleSurface' || window.innerWidth < 725) {
