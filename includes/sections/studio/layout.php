@@ -9,6 +9,7 @@ $isOwner = ($myUuid === $targetUuid);
 // URLs visuales (barra de direcciones)
 $urlDashboard = "s/channel/panel-control/" . $targetUuid;
 $urlContent   = "s/channel/manage-content/" . $targetUuid;
+$urlUpload    = "s/channel/upload/" . $targetUuid;
 
 ?>
 
@@ -58,6 +59,15 @@ $urlContent   = "s/channel/manage-content/" . $targetUuid;
                             <div class="menu-link-text"><?php echo $i18n->t('studio.menu_content'); ?></div>
                         </div>
 
+                        <div class="menu-link <?php echo ($studioView === 'upload') ? 'active' : ''; ?>" 
+                             data-nav="<?php echo $urlUpload; ?>"
+                             data-target="#studio-content-area">
+                            <div class="menu-link-icon">
+                                <span class="material-symbols-rounded">upload</span>
+                            </div>
+                            <div class="menu-link-text">Subir video</div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -71,6 +81,8 @@ $urlContent   = "s/channel/manage-content/" . $targetUuid;
                     include __DIR__ . '/dashboard.php';
                 } elseif ($studioView === 'manage-content') {
                     include __DIR__ . '/content.php';
+                } elseif ($studioView === 'upload') {
+                    include __DIR__ . '/upload.php';
                 }
             ?>
         </div>

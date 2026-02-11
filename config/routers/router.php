@@ -14,15 +14,15 @@ $path = trim($path, '/');
 
 $currentSection = $path ?: 'main';
 
-// [NUEVO] Lógica de Rutas Dinámicas para Creator Studio
+// [MODIFICADO] Lógica de Rutas Dinámicas para Creator Studio
 // Captura: s/channel/{view}/{uuid}
-// Views permitidas: panel-control, manage-content
-if (preg_match('#^s/channel/(panel-control|manage-content)/([a-f0-9\-]+)$#', $path, $matches)) {
+// Views permitidas: panel-control, manage-content, upload
+if (preg_match('#^s/channel/(panel-control|manage-content|upload)/([a-f0-9\-]+)$#', $path, $matches)) {
     // Si coincide, forzamos la sección interna al layout de studio
     $currentSection = 'studio/layout';
     
     // Variables globales para que el layout.php las use
-    $studioView = $matches[1]; // 'panel-control' o 'manage-content'
+    $studioView = $matches[1]; // 'panel-control', 'manage-content' o 'upload'
     $targetUuid = $matches[2]; // el uuid
 }
 

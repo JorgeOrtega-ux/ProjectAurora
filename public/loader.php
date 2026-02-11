@@ -16,16 +16,16 @@ $section = $_GET['section'] ?? 'main';
 $section = strtok($section, '?');
 
 // =========================================================
-// [NUEVO] INTERCEPTOR DE RUTAS DINÁMICAS (STUDIO)
+// [MODIFICADO] INTERCEPTOR DE RUTAS DINÁMICAS (STUDIO)
 // =========================================================
 // Esto permite que el loader entienda las URLs amigables del Studio
 // y extraiga las variables necesarias ($studioView y $targetUuid)
-if (preg_match('#^s/channel/(panel-control|manage-content)/([a-f0-9\-]+)$#', $section, $matches)) {
+if (preg_match('#^s/channel/(panel-control|manage-content|upload)/([a-f0-9\-]+)$#', $section, $matches)) {
     // 1. Mapeamos la sección "falsa" a la ruta real registrada en routes.php
     $section = 'studio/layout';
     
     // 2. Extraemos las variables para que layout.php las use
-    $studioView = $matches[1]; // 'panel-control' o 'manage-content'
+    $studioView = $matches[1]; // 'panel-control', 'manage-content' o 'upload'
     $targetUuid = $matches[2]; // el uuid del usuario
 }
 // =========================================================

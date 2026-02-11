@@ -1,12 +1,18 @@
 <?php
 // includes/sections/studio/content.php
+
+$myUuid = $_SESSION['uuid'] ?? '';
+$urlUpload = "s/channel/upload/" . $myUuid;
 ?>
 <div class="studio-module-wrapper">
     
     <div class="studio-module-top">
         <h2 class="component-toolbar-title"><?php echo $i18n->t('studio.title_content'); ?></h2>
         
-        <div class="header-button" data-tooltip="Subir videos">
+        <div class="header-button" 
+             data-nav="<?php echo $urlUpload; ?>" 
+             data-target="#studio-content-area"
+             data-tooltip="Subir videos">
             <span class="material-symbols-rounded">upload</span>
         </div>
     </div>

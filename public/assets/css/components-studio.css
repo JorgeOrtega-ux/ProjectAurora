@@ -85,6 +85,53 @@
     background-color: transparent;
 }
 
+/* --- Upload Dropzone (NUEVO) --- */
+.upload-dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    max-width: 600px;
+    max-height: 600px;
+    margin: auto;
+    text-align: center;
+    border: 2px dashed var(--border-light); /* Borde punteado */
+    border-radius: 50%; /* Inicialmente puede ser circular o cuadrado, ajustemos a cuadrado redondeado */
+    border-radius: 100%; /* Efecto circular grande visual */
+    background-color: var(--bg-surface);
+    transition: all 0.3s ease;
+    animation: fadeInPopover 0.3s ease-out;
+}
+
+/* Ajuste visual: queremos un círculo grande centrado o un área rectangular? 
+   Generalmente YouTube usa un círculo con flecha. Vamos a hacer el contenedor transparente y el icono circular.
+*/
+.upload-dropzone {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+}
+
+.upload-icon-circle {
+    width: 120px;
+    height: 120px;
+    background-color: var(--bg-hover-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.2s;
+}
+
+.upload-icon-circle:hover {
+    background-color: var(--border-light);
+    transform: scale(1.05);
+}
+
 /* --- Responsive --- */
 @media (max-width: 768px) {
     .component-studio-wrapper {
