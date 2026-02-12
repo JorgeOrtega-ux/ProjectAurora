@@ -35,6 +35,87 @@ class StudioService {
         if (!is_dir($this->thumbnailDir)) mkdir($this->thumbnailDir, 0755, true);
     }
 
+    // ===============================================================================================
+    // [NUEVO] OBTENER FEED DE VIDEOS PÚBLICOS
+    // ===============================================================================================
+    public function getPublicFeed($page = 1, $limit = 20) {
+        $offset = ($page - 1) * $limit;
+        
+        try {
+            // Contar total
+            $countStmt = $this->pdo->query("SELECT COUNT(*) FROM videos WHERE status = 'published'");
+            $totalItems = $countStmt->fetchColumn();
+
+            // Query principal con JOIN para datos del usuario
+            $sql = "SELECT v.uuid, v.title, v.description, v.thumbnail_path, v.created_at, v.duration, v.dominant_color,
+                           u.username, u.avatar_path, u.uuid as user_uuid
+                    FROM videos v
+                    JOIN users u ON v.user_id = u.id
+                    WHERE v.status = 'published'
+                    ORDER BY v.created_at DESC 
+                    LIMIT :limit OFFSET :offset";
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+            $stmt->execute();
+            $videos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Procesar datos para el frontend
+            foreach ($videos as &$v) {
+                // Miniatura Video
+                if ($v['thumbnail_path']) {
+                    $v['thumbnail_url'] = 'public/storage/thumbnails/' . basename($v['thumbnail_path']);
+                } else {
+                    $v['thumbnail_url'] = null;
+                }
+                
+                // Avatar Usuario (Logica replicada de Utils)
+                $avatarPath = $v['avatar_path'];
+                if (!empty($avatarPath) && file_exists(__DIR__ . '/../../' . $avatarPath)) {
+                    // Si el archivo existe físicamente, devolvemos la ruta relativa pública
+                    // Ojo: avatar_path en DB suele ser 'public/storage/...'
+                    // Para el frontend necesitamos que empiece desde public/
+                    // Si el path en DB ya incluye public/, lo dejamos.
+                    $v['author_avatar_url'] = $avatarPath; 
+                } else {
+                    // Generar avatar por defecto
+                    $name = urlencode($v['username']);
+                    $v['author_avatar_url'] = "https://ui-avatars.com/api/?name={$name}&background=random&color=fff&size=128&length=1";
+                }
+
+                // Duración
+                if ($v['duration']) {
+                    $minutes = floor($v['duration'] / 60);
+                    $seconds = $v['duration'] % 60;
+                    $v['duration_formatted'] = sprintf("%02d:%02d", $minutes, $seconds);
+                } else {
+                    $v['duration_formatted'] = '--:--';
+                }
+                
+                // Tiempo transcurrido
+                $v['time_ago'] = Utils::timeElapsedString($v['created_at']);
+                
+                // Views (Mock por ahora ya que no existe columna)
+                $v['views'] = 0; 
+                $v['views_formatted'] = '0 visualizaciones'; 
+            }
+
+            return [
+                'success' => true,
+                'videos' => $videos,
+                'pagination' => [
+                    'current' => (int)$page,
+                    'total_pages' => ceil($totalItems / $limit),
+                    'total_items' => (int)$totalItems
+                ]
+            ];
+
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Error al cargar el feed.'];
+        }
+    }
+
     public function initUpload($batchId, $fileName) {
         if (empty($batchId)) return ['success' => false, 'message' => 'Falta Batch ID'];
 

@@ -9,18 +9,20 @@ $redis = $services['redis'];
 use Aurora\Services\StudioService;
 use Aurora\Libs\Utils;
 
-// 1. Validar Sesión (Solo usuarios logueados)
-if (!isset($_SESSION['user_id'])) {
+// 1. [MODIFICADO] Validar sesión SOLO para acciones de escritura/privadas
+$action = $_POST['action'] ?? '';
+$isPublicAction = in_array($action, ['get_public_feed']); // Lista blanca de acciones públicas
+
+if (!$isPublicAction && !isset($_SESSION['user_id'])) {
     Utils::jsonResponse(['success' => false, 'message' => $i18n->t('api.session_expired')]);
 }
 
 // 2. Validar CSRF
 Utils::validateCsrf($i18n);
 
-// 3. Inicializar Servicio
-$studioService = new StudioService($pdo, $redis, $i18n, $_SESSION['user_id']);
-
-$action = $_POST['action'] ?? '';
+// 3. Inicializar Servicio (Si no hay usuario, pasamos 0 o null)
+$userId = $_SESSION['user_id'] ?? 0;
+$studioService = new StudioService($pdo, $redis, $i18n, $userId);
 
 switch ($action) {
     case 'init_upload':
@@ -56,13 +58,19 @@ switch ($action) {
         Utils::jsonResponse($studioService->getPendingVideos());
         break;
 
-    // [NUEVO] Obtener contenido completo (Dashboard)
     case 'get_content':
         $search = $_POST['search'] ?? '';
         $status = $_POST['status'] ?? 'all';
         $page = (int)($_POST['page'] ?? 1);
         $limit = (int)($_POST['limit'] ?? 20);
         Utils::jsonResponse($studioService->getUserContent($search, $status, $page, $limit));
+        break;
+
+    // [NUEVO] Obtener feed público
+    case 'get_public_feed':
+        $page = (int)($_POST['page'] ?? 1);
+        $limit = (int)($_POST['limit'] ?? 20);
+        Utils::jsonResponse($studioService->getPublicFeed($page, $limit));
         break;
 
     case 'generate_thumbnails':

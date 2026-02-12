@@ -1,11 +1,9 @@
 # --- SEGURIDAD (CRÍTICO) ---
 .env
 
-# --- DEPENDENCIAS ---
+# --- DEPENDENCIAS (PHP) ---
 /vendor/
 composer.lock
-package-lock.json
-node_modules/
 
 # --- LOGS Y REGISTROS ---
 logs/app/*.log
@@ -37,7 +35,7 @@ access_log
 
 # --- ALMACENAMIENTO DE USUARIO (STORAGE) ---
 
-# 1. Fotos de Perfil (Tu regla original)
+# 1. Fotos de Perfil
 public/storage/profilePicture/custom/*
 !public/storage/profilePicture/custom/.gitkeep
 

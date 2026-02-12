@@ -26,7 +26,8 @@ import { initAuthController } from './auth-controller.js';
 import { initMainController } from './main-controller.js';
 import { initUrlManager } from './core/utils/url-manager.js';
 import { UploadController } from './modules/studio/upload-controller.js';
-import { ContentController } from './modules/studio/content-controller.js'; // [NUEVO]
+import { ContentController } from './modules/studio/content-controller.js';
+import { HomeController } from './modules/app/home-controller.js'; // [NUEVO]
 
 const App = {
     init: () => {
@@ -107,13 +108,17 @@ function routeDispatcher(section) {
         return;
     }
     
-    // [NUEVO] Ruta de Mi Contenido
+    // Ruta de Mi Contenido
     if (section.startsWith('channel/my-content') || section.includes('channel/my-content')) {
         ContentController.init();
         return;
     }
 
     switch (section) {
+        case 'main':
+            HomeController.init(); // [NUEVO] Inicializar home
+            break;
+
         case 'settings/your-profile': 
             ProfileController.init(); 
             SettingsController.init(); 

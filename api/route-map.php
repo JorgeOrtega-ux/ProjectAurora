@@ -84,7 +84,8 @@ return [
     'studio.upload_thumbnail' => ['file' => 'handlers/studio-handler.php', 'action' => 'upload_thumbnail'],
     'studio.save_metadata'    => ['file' => 'handlers/studio-handler.php', 'action' => 'save_metadata'],
     'studio.get_pending'      => ['file' => 'handlers/studio-handler.php', 'action' => 'get_pending'],
-    'studio.get_content'      => ['file' => 'handlers/studio-handler.php', 'action' => 'get_content'], // [NUEVO]
+    'studio.get_content'      => ['file' => 'handlers/studio-handler.php', 'action' => 'get_content'],
+    'studio.get_public_feed'  => ['file' => 'handlers/studio-handler.php', 'action' => 'get_public_feed'], // [NUEVO]
     'studio.cancel_batch'     => ['file' => 'handlers/studio-handler.php', 'action' => 'cancel_batch'],
     'studio.generate_thumbs'  => ['file' => 'handlers/studio-handler.php', 'action' => 'generate_thumbnails'],
     'studio.delete_video'     => ['file' => 'handlers/studio-handler.php', 'action' => 'delete_video'],
