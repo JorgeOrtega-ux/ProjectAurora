@@ -1,12 +1,13 @@
 import { ApiService } from '../../core/services/api-service.js';
 import { ToastManager } from '../../core/components/toast-manager.js';
 import { I18nManager } from '../../core/utils/i18n-manager.js';
+import { DialogManager } from '../../core/components/dialog-manager.js';
 
 const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
-const MAX_FILES = 5;
+const MAX_FILES = 3; // [MODIFICADO] Ajustado a 3 videos máximo
 
 // Estado local de videos
-// { uuid, title, status: 'uploading'|'processing'|'ready'|'published', progress: 0-100, data: {} }
+// { uuid, title, status: 'uploading'|'processing'|'ready'|'published'|'error', progress: 0-100, data: {} }
 let _videosState = []; 
 let _activeVideoUuid = null; // Cuál se está editando actualmente
 let _activeBatchId = null;
@@ -69,6 +70,7 @@ async function checkPendingUploads() {
                 switchEditor(_videosState[0].uuid);
             }
         }
+        updateAddButtonVisibility();
     } catch (e) {
         if (!e.isAborted) console.error("Error checking pending:", e);
     }
@@ -79,12 +81,14 @@ function initDropzone() {
     const input = document.getElementById('input-video-files');
     const btnSelect = document.getElementById('btn-select-files');
     const btnTrigger = document.getElementById('btn-trigger-files');
+    const btnAddMore = document.getElementById('btn-add-more'); // [NUEVO]
 
     if (!dropzone || !input) return;
 
     const openSelector = () => input.click();
     if(btnSelect) btnSelect.addEventListener('click', openSelector);
     if(btnTrigger) btnTrigger.addEventListener('click', openSelector);
+    if(btnAddMore) btnAddMore.addEventListener('click', openSelector); // [NUEVO]
 
     input.addEventListener('change', (e) => handleFiles(e.target.files));
 
@@ -110,6 +114,7 @@ function handleFiles(files) {
         return;
     }
 
+    // [MODIFICADO] Validación del límite ajustado a 3
     if ((_videosState.length + validFiles.length) > MAX_FILES) {
         ToastManager.show(`Máximo ${MAX_FILES} videos por sesión.`, 'warning');
         return;
@@ -148,12 +153,25 @@ function handleFiles(files) {
     });
 
     renderTabs();
+    updateAddButtonVisibility(); // [NUEVO]
     
     // Si no hay video activo seleccionado, seleccionar el primero que acabamos de agregar
     if (!_activeVideoUuid) {
         // Buscamos el primer tempId que acabamos de añadir
         const firstNew = _videosState.find(v => v.status === 'uploading');
         if (firstNew) switchEditor(firstNew.uuid);
+    }
+}
+
+// [NUEVO] Helper para mostrar/ocultar el botón "+"
+function updateAddButtonVisibility() {
+    const btnAdd = document.getElementById('btn-add-more');
+    if (!btnAdd) return;
+
+    if (_videosState.length > 0 && _videosState.length < MAX_FILES) {
+        btnAdd.classList.remove('d-none');
+    } else {
+        btnAdd.classList.add('d-none');
     }
 }
 
@@ -190,6 +208,12 @@ async function startUpload(videoEntry) {
         const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
         
         for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+            // [NUEVO] Check si el video fue eliminado durante la subida
+            if (!_videosState.find(v => v.uuid === videoEntry.uuid)) {
+                console.log("Subida abortada por usuario");
+                return;
+            }
+
             const start = chunkIndex * CHUNK_SIZE;
             const end = Math.min(start + CHUNK_SIZE, file.size);
             const chunk = file.slice(start, end);
@@ -227,6 +251,9 @@ async function startUpload(videoEntry) {
 
     } catch (error) {
         console.error("Upload error:", error);
+        // Si fue un abort manual (video eliminado), no marcar error
+        if (!_videosState.find(v => v.uuid === videoEntry.uuid)) return;
+
         videoEntry.status = 'error';
         videoEntry.errorMsg = 'Fallo en subida';
         renderTabs();
@@ -478,6 +505,9 @@ function initEditorEvents() {
             selectGeneratedThumbnail(item.dataset.src);
         }
     });
+
+    // [NUEVO] Evento para Eliminar Video
+    document.getElementById('btn-delete-video')?.addEventListener('click', deleteVideo);
 }
 
 function validatePublishRequirements() {
@@ -524,7 +554,9 @@ async function saveMetadata(publish) {
         if (res.success) {
             ToastManager.show(res.message, 'success');
             if (publish) {
+                // Si se publica, lo quitamos de la lista de borradores
                 _videosState = _videosState.filter(v => v.uuid !== _activeVideoUuid);
+                
                 if (_videosState.length === 0) {
                     window.location.href = window.BASE_PATH + 'channel/my-content';
                 } else {
@@ -542,6 +574,65 @@ async function saveMetadata(publish) {
             btn.disabled = false;
             if (publish) validatePublishRequirements();
         }
+    }
+}
+
+// [NUEVO] Función para eliminar video/borrador
+async function deleteVideo() {
+    if (!_activeVideoUuid) return;
+
+    const confirmed = await DialogManager.confirm({
+        title: '¿Eliminar borrador?',
+        message: 'Esta acción cancelará la subida y eliminará todos los archivos asociados permanentemente.',
+        type: 'danger',
+        confirmText: 'Sí, eliminar',
+        cancelText: 'Cancelar'
+    });
+
+    if (!confirmed) return;
+
+    const btn = document.getElementById('btn-delete-video');
+    btn.disabled = true;
+    btn.innerText = 'Eliminando...';
+
+    const videoUuid = _activeVideoUuid;
+
+    try {
+        // Asumimos que existe esta ruta o usamos string directo
+        const routeConfig = { route: 'studio.delete_video' }; 
+        const formData = new FormData();
+        formData.append('video_uuid', videoUuid);
+
+        // Intentar borrar en backend
+        const res = await ApiService.post(routeConfig, formData);
+        
+        if (res.success) {
+            ToastManager.show('Borrador eliminado.', 'success');
+        } else {
+            // Incluso si falla el backend (ej. no existe), limpiamos el frontend
+            console.warn("Backend delete warning:", res.message);
+        }
+    } catch (e) {
+        console.error("Delete error:", e);
+    } finally {
+        // Limpieza de estado frontend
+        _videosState = _videosState.filter(v => v.uuid !== videoUuid);
+        
+        if (_videosState.length === 0) {
+            // No quedan videos -> Reset total a Dropzone
+            document.getElementById('video-editor-area').classList.add('d-none');
+            document.getElementById('upload-dropzone').classList.remove('d-none');
+            _activeVideoUuid = null;
+            document.getElementById('input-video-files').value = ''; // Reset input
+        } else {
+            // Quedan videos -> Cambiar al primero disponible
+            switchEditor(_videosState[0].uuid);
+        }
+        
+        renderTabs();
+        updateAddButtonVisibility();
+        btn.disabled = false;
+        btn.innerText = 'Eliminar borrador';
     }
 }
 
@@ -563,9 +654,6 @@ async function generateThumbnails() {
 
     // Aseguramos que la ruta 'studio.generate_thumbs' exista en ApiRoutes (agregada en api-routes.js)
     try {
-        // En caso de que no se haya definido explícitamente en el mapa JS, usamos raw post con ruta string si es necesario, 
-        // pero idealmente ApiService.Routes.Studio.GenerateThumbs ya debería existir.
-        // Asumimos que se agregó: GenerateThumbs: { route: 'studio.generate_thumbs' }
         const route = ApiService.Routes.Studio.GenerateThumbs || { route: 'studio.generate_thumbs' };
         
         const res = await ApiService.post(route, formData);
@@ -617,9 +705,6 @@ function onThumbsGenerated(e) {
 async function selectGeneratedThumbnail(src) {
     // Para reutilizar la lógica de "subida" que calcula el color dominante en el backend,
     // convertimos la imagen (URL) a un objeto File y la "subimos" de nuevo.
-    // Esto es ineficiente en ancho de banda pero garantiza consistencia con processImageUpload del backend.
-    // Alternativa: Crear un endpoint específico "set_thumbnail_from_path" que calcule color allá.
-    // Por ahora, usaremos el método de re-upload para mantener el frontend desacoplado de la lógica de color.
     
     const loadingSpinner = document.querySelector('.thumbnail-loading');
     if(loadingSpinner) loadingSpinner.classList.remove('d-none');
@@ -673,8 +758,7 @@ function applyDominantColor(color) {
     
     if (previewCard) {
         previewCard.style.transition = 'box-shadow 0.3s ease';
-        // Sombra suave con el color dominante (usamos opacidad hex si es posible, o simple)
-        // Asumiendo color viene como #RRGGBB
+        // Sombra suave con el color dominante
         previewCard.style.boxShadow = `0 4px 20px ${color}40`; // 40 = aprox 25% opacidad
     }
 }

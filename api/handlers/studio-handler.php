@@ -55,13 +55,21 @@ switch ($action) {
     case 'get_pending':
         Utils::jsonResponse($studioService->getPendingVideos());
         break;
-case 'generate_thumbnails':
+
+    case 'generate_thumbnails':
         $uuid = $_POST['video_uuid'] ?? '';
         Utils::jsonResponse($studioService->requestAutoThumbnails($uuid));
         break;
+
     case 'cancel_batch':
         $batchId = $_POST['batch_id'] ?? '';
         Utils::jsonResponse($studioService->cancelBatch($batchId));
+        break;
+
+    // [NUEVO] Eliminación granular de video
+    case 'delete_video':
+        $uuid = $_POST['video_uuid'] ?? '';
+        Utils::jsonResponse($studioService->deleteVideo($uuid));
         break;
 
     default:

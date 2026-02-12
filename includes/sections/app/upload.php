@@ -33,6 +33,13 @@ if ($requestedUuid !== $_SESSION['uuid']) {
             
             <div id="video-tabs-container" class="studio-tabs-scroll">
                 </div>
+
+            <button class="component-button square d-none" 
+                    id="btn-add-more" 
+                    title="Añadir otro video" 
+                    style="margin-left: 8px; border-radius: 50%; width: 32px; height: 32px; min-width: 32px;">
+                <span class="material-symbols-rounded" style="font-size: 18px;">add</span>
+            </button>
         </div>
 
         <div class="component-studio-toolbar-group">
@@ -156,6 +163,12 @@ if ($requestedUuid !== $_SESSION['uuid']) {
                         <button class="component-button primary w-100" id="btn-publish" disabled>
                             PUBLICAR
                         </button>
+
+                        <div style="margin-top: 8px; border-top: 1px solid var(--border-light); padding-top: 12px;">
+                            <button class="component-button component-button--danger-ghost w-100" id="btn-delete-video">
+                                Eliminar borrador
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

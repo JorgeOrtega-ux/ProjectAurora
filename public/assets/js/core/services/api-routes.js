@@ -78,7 +78,7 @@ const ApiRoutes = {
         }
     },
     
-    // === STUDIO (NUEVO) ===
+    // === STUDIO ===
     Studio: {
         InitUpload: { route: 'studio.init_upload' },
         UploadChunk: { route: 'studio.upload_chunk' },
@@ -86,7 +86,8 @@ const ApiRoutes = {
         SaveMetadata: { route: 'studio.save_metadata' },
         GetPending: { route: 'studio.get_pending' },
         CancelBatch: { route: 'studio.cancel_batch' },
-        GenerateThumbs: { route: 'studio.generate_thumbs' }
+        GenerateThumbs: { route: 'studio.generate_thumbs' },
+        DeleteVideo: { route: 'studio.delete_video' } // [NUEVO]
     }
 };
 

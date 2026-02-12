@@ -259,6 +259,66 @@ class StudioService {
         return ['success' => true];
     }
 
+    // [NUEVO] Eliminación de un video específico
+    public function deleteVideo($uuid) {
+        if (!$this->isOwner($uuid)) {
+            return ['success' => false, 'message' => 'Acceso denegado o video no encontrado.'];
+        }
+
+        // Obtener rutas de archivos antes de borrar el registro
+        $stmt = $this->pdo->prepare("SELECT raw_file_path, thumbnail_path, hls_path, generated_thumbnails FROM videos WHERE uuid = ?");
+        $stmt->execute([$uuid]);
+        $video = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        // 1. Eliminar Archivo RAW
+        if (!empty($video['raw_file_path'])) {
+            $rawPath = __DIR__ . '/../../' . $video['raw_file_path'];
+            if (file_exists($rawPath)) @unlink($rawPath);
+        }
+
+        // 2. Eliminar Archivo Temporal (.part) si existe
+        $tempPath = $this->tempDir . '/' . $uuid . '.part';
+        if (file_exists($tempPath)) @unlink($tempPath);
+
+        // 3. Eliminar Miniatura Principal
+        if (!empty($video['thumbnail_path'])) {
+            $thumbPath = __DIR__ . '/../../' . $video['thumbnail_path'];
+            if (file_exists($thumbPath)) @unlink($thumbPath);
+        }
+
+        // 4. Eliminar Carpeta HLS (y su contenido)
+        // El HLS path es un archivo dentro de una carpeta con el nombre del UUID
+        // Ej: public/storage/videos/{uuid}/index.m3u8
+        $videoFolder = $this->publicVideoDir . '/' . $uuid;
+        if (is_dir($videoFolder)) {
+            $this->deleteDirectory($videoFolder);
+        }
+
+        // 5. Eliminar Carpeta de Miniaturas Generadas
+        // Ruta: public/storage/thumbnails/generated/{uuid}/
+        $generatedThumbsDir = $this->thumbnailDir . '/generated/' . $uuid;
+        if (is_dir($generatedThumbsDir)) {
+            $this->deleteDirectory($generatedThumbsDir);
+        }
+
+        // 6. Eliminar registro en BD
+        $del = $this->pdo->prepare("DELETE FROM videos WHERE uuid = ?");
+        if ($del->execute([$uuid])) {
+            return ['success' => true, 'message' => 'Video eliminado correctamente.'];
+        }
+
+        return ['success' => false, 'message' => 'Error al eliminar el registro.'];
+    }
+
+    private function deleteDirectory($dir) {
+        if (!file_exists($dir)) return;
+        $files = array_diff(scandir($dir), ['.', '..']);
+        foreach ($files as $file) {
+            (is_dir("$dir/$file")) ? $this->deleteDirectory("$dir/$file") : unlink("$dir/$file");
+        }
+        return rmdir($dir);
+    }
+
     private function isOwner($uuid) {
         $stmt = $this->pdo->prepare("SELECT id FROM videos WHERE uuid = ? AND user_id = ?");
         $stmt->execute([$uuid, $this->userId]);
