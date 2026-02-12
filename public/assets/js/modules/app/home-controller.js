@@ -85,6 +85,12 @@ function renderVideos(videos) {
         card.className = 'video-card';
         card.dataset.uuid = v.uuid;
         
+        // --- MODIFICACIÓN: Inyección de variable CSS para el color ---
+        // Usamos el color dominante si existe, si no, un fallback (gris superficie)
+        const hoverColor = v.dominant_color || 'var(--bg-surface-alt)';
+        card.style.setProperty('--card-hover-color', hoverColor);
+        // -------------------------------------------------------------
+        
         // Thumbnail URL handling
         let thumbUrl = v.thumbnail_url ? window.BASE_PATH + v.thumbnail_url : '';
         let thumbHtml = thumbUrl 

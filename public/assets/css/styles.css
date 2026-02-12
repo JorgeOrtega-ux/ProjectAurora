@@ -846,26 +846,51 @@ html {
     width: 100%;
 }
 
+/* --- MODIFICACIÓN FINAL: Efecto Hover con Background Directo y Sombra Expansiva --- */
 .video-card {
     display: flex;
     flex-direction: column;
     gap: 12px;
     cursor: pointer;
-    background-color: transparent;
-    transition: transform 0.2s ease;
+    background-color: transparent; /* Fondo transparente por defecto */
+    border-radius: 12px;
+    /* Padding para definir el área interna que se coloreará */
+    padding: 8px;
+    /* Margen negativo para que el padding no desplace el grid, manteniendo el tamaño original */
+    margin: -12px;
+    position: relative;
+    z-index: 1;
+    
+    /* Transiciones suaves:
+       - background-color: para el fade-in del color.
+       - box-shadow: para el efecto de "sobresalir" (la sombra crece).
+       - z-index: instantáneo (0s) para estar siempre encima al hacer hover. */
+    transition: 
+        background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+        box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+        z-index 0s;
 }
 
-.video-card:hover .video-top img {
-    transform: scale(1.02);
+.video-card:hover {
+    z-index: 100; /* Asegurar que esté por encima de todo */
+    background-color: var(--card-hover-color, var(--bg-surface)); /* Pintar fondo */
+    
+    /* Efecto "Sobresalir" simulado con sombra:
+       1. Sombra sólida (0px blur) que crece 8px -> Crea el borde grueso del color destacado.
+       2. Sombra difusa -> Crea la profundidad y elevación. */
+    box-shadow: 
+        0 0 0 4px var(--card-hover-color, var(--bg-surface)), 
+        0 12px 24px -4px rgba(0,0,0,0.3);
 }
 
+/* Estilos internos de la tarjeta */
 .video-top {
     position: relative;
     width: 100%;
     aspect-ratio: 16 / 9;
-    background-color: #000;
     border-radius: 12px;
     overflow: hidden;
+    z-index: 2; /* Contenido sobre el fondo */
 }
 
 .video-top img {
@@ -886,12 +911,14 @@ html {
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.5px;
+    z-index: 3;
 }
 
 .video-bottom {
     display: flex;
     gap: 12px;
     padding-right: 12px;
+    z-index: 2; /* Contenido sobre el fondo */
 }
 
 .video-avatar {
