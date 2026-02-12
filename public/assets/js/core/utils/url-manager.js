@@ -98,9 +98,8 @@ async function loadContent(section, targetSelector = '.general-content-scrolleab
 
     // Feedback visual de carga (Spinner)
     const isMainArea = targetSelector === '.general-content-scrolleable';
-    const isStudioArea = targetSelector === '#studio-content-area';
 
-    if (isMainArea || isStudioArea) {
+    if (isMainArea) {
         // Inyectar spinner centrado
         container.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100%;width:100%;"><div class="spinner"></div></div>';
     } else {
@@ -130,7 +129,7 @@ async function loadContent(section, targetSelector = '.general-content-scrolleab
         container.scrollTop = 0; 
         
         // Restaurar estilos visuales si usamos opacidad
-        if (!isMainArea && !isStudioArea) {
+        if (!isMainArea) {
             container.style.opacity = '1';
         }
         
@@ -143,7 +142,7 @@ async function loadContent(section, targetSelector = '.general-content-scrolleab
         }
         console.error(error);
         
-        if (!isMainArea && !isStudioArea) {
+        if (!isMainArea) {
             container.style.opacity = '1';
         }
 
@@ -156,57 +155,57 @@ async function loadContent(section, targetSelector = '.general-content-scrolleab
 }
 
 function updateActiveMenu(section, specificLinkElement = null) {
-    // 1. Manejo de click directo en un elemento de menú (Feedback visual inmediato si el usuario hizo clic en la sidebar)
+    // 1. LIMPIEZA GLOBAL DE CLASES ACTIVE
+    // Limpiamos la Sidebar (Surface)
+    const mainSidebar = document.querySelector('.module-surface');
+    if (mainSidebar) {
+        mainSidebar.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
+    }
+
+    // Limpiamos el Menú de Perfil (Module Profile)
+    const profileModule = document.querySelector('.module-profile');
+    if (profileModule) {
+        profileModule.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
+    }
+
+    // 2. MARCAR EL NUEVO ENLACE COMO ACTIVO
+    // Si el usuario hizo click directo, lo marcamos primero
     if (specificLinkElement) {
-        const parentMenu = specificLinkElement.closest('.menu-list') || specificLinkElement.closest('.studio-sidebar');
+        const parentMenu = specificLinkElement.closest('.menu-list');
         if (parentMenu) {
             parentMenu.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
             specificLinkElement.classList.add('active');
         }
     }
 
-    // 2. Sincronización de la Sidebar Principal (Surface)
-    const mainSidebar = document.querySelector('.module-surface');
+    // 3. SINCRONIZACIÓN AUTOMÁTICA POR SECCIÓN
+    let activeLink = null;
+
+    // Buscar el enlace correspondiente en TODA la interfaz (Sidebar o Profile)
+    activeLink = document.querySelector(`.menu-link[data-nav="${section}"]`);
+
+    // Caso especial para "Inicio" si la sección viene vacía o como "main"
+    if (!activeLink && (section === 'main' || section === '')) {
+        activeLink = document.querySelector('.menu-link[data-nav="main"]');
+    }
+
+    if (activeLink) {
+        activeLink.classList.add('active');
+    }
+
+    // 4. CAMBIO DE VISIBILIDAD DE MENÚS EN SURFACE
     if (mainSidebar) {
-        mainSidebar.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
-        
-        let activeLink = null;
-        
         if (section.startsWith('settings/')) {
             switchVisibleMenu('surface-settings');
-            activeLink = mainSidebar.querySelector(`.menu-link[data-nav="${section}"]`);
         } 
         else if (section.startsWith('site-policy')) { 
             switchVisibleMenu('surface-help');
-            activeLink = mainSidebar.querySelector(`.menu-link[data-nav="${section}"]`);
         }
         else if (section.startsWith('admin/')) { 
             switchVisibleMenu('surface-admin');
-            activeLink = mainSidebar.querySelector(`.menu-link[data-nav="${section}"]`);
-        }
-        else if (section.startsWith('s/channel/') || section.startsWith('studio/')) {
-            switchVisibleMenu(null); 
         }
         else {
             switchVisibleMenu('surface-main');
-            activeLink = mainSidebar.querySelector(`.menu-link[data-nav="${section}"]`) || 
-                         mainSidebar.querySelector(`.menu-link[data-nav="main"]`);
-        }
-
-        if (activeLink) activeLink.classList.add('active');
-    }
-
-    // 3. [NUEVO] Sincronización de la Sidebar de Studio basada en la URL actual
-    // Esto arregla el problema: busca en la sidebar un enlace que coincida con la URL actual.
-    // Si no encuentra ninguno (ej. estás en upload), desactiva todos.
-    const studioSidebar = document.querySelector('.component-studio-sidebar');
-    if (studioSidebar) {
-        studioSidebar.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
-        
-        // Buscamos enlace exacto
-        const activeLink = studioSidebar.querySelector(`.menu-link[data-nav="${section}"]`);
-        if (activeLink) {
-            activeLink.classList.add('active');
         }
     }
 }
