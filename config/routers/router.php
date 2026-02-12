@@ -14,6 +14,22 @@ $path = trim($path, '/');
 
 $currentSection = $path ?: 'main';
 
+// Variables para rutas dinámicas
+$routeParams = [];
+
+// === LÓGICA DE RUTAS DINÁMICAS ===
+// Detectar si la ruta es "s/channel/my-content/{uuid}"
+if (strpos($path, 's/channel/my-content/') === 0) {
+    // Explotamos la ruta: s / channel / my-content / {uuid}
+    $segments = explode('/', $path);
+    
+    // El UUID debería estar en el índice 3
+    if (isset($segments[3])) {
+        $routeParams['uuid'] = $segments[3];
+        $currentSection = 'channel/my-content'; // Clave interna para routes.php
+    }
+}
+
 // Mapa de Rutas
 $routes = require __DIR__ . '/../routes.php';
 

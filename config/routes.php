@@ -6,6 +6,9 @@ return [
     'main'     => __DIR__ . '/../includes/sections/app/main.php',
     'explore'  => __DIR__ . '/../includes/sections/app/explore.php', 
 
+    // [NUEVO] Sección de Canales / Contenido
+    'channel/my-content' => __DIR__ . '/../includes/sections/app/my-content.php',
+
     // === AUTH ===
     'login'                         => __DIR__ . '/../includes/sections/auth/login.php',
     'login/verification-aditional'  => __DIR__ . '/../includes/sections/auth/login.php',

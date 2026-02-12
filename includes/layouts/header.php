@@ -33,6 +33,12 @@
 
             <?php if (isset($_SESSION['user_id'])): ?>
                 
+                <div class="header-button" 
+                     data-nav="s/channel/my-content/<?php echo $_SESSION['uuid'] ?? ''; ?>" 
+                     data-tooltip="Mi contenido">
+                    <span class="material-symbols-rounded">video_library</span>
+                </div>
+
                 <div class="header-button profile-button" 
                      data-action="toggleModuleProfile"
                      data-role="<?php echo htmlspecialchars($userRole ?? 'guest'); ?>"
