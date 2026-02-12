@@ -226,7 +226,7 @@ class Utils {
     }
 
     // ===============================================================================================
-    // [NUEVO] VALIDACIÓN DE DATOS CENTRALIZADA
+    // VALIDACIÓN DE DATOS CENTRALIZADA
     // ===============================================================================================
 
     public static function validateUserValue($pdo, $field, $value, $excludeUserId = null) {
@@ -309,8 +309,31 @@ class Utils {
     }
 
     // ===============================================================================================
-    // [NUEVO] PROCESAMIENTO DE IMÁGENES (Upload Centralizado)
+    // PROCESAMIENTO DE IMÁGENES (Upload Centralizado) Y COLOR DOMINANTE
     // ===============================================================================================
+
+    // [NUEVO] Método para obtener color dominante (Promedio simple redimensionando a 1px)
+    public static function getDominantColor($imageResource) {
+        $width = imagesx($imageResource);
+        $height = imagesy($imageResource);
+        
+        // Creamos una imagen de 1x1
+        $tmpImg = imagecreatetruecolor(1, 1);
+        
+        // Redimensionamos la imagen original a 1x1, lo que promedia todos los píxeles
+        imagecopyresampled($tmpImg, $imageResource, 0, 0, 0, 0, 1, 1, $width, $height);
+        
+        // Obtenemos el color del único píxel
+        $rgb = imagecolorat($tmpImg, 0, 0);
+        $r = ($rgb >> 16) & 0xFF;
+        $g = ($rgb >> 8) & 0xFF;
+        $b = $rgb & 0xFF;
+        
+        imagedestroy($tmpImg);
+        
+        // Devolvemos en formato HEX
+        return sprintf("#%02x%02x%02x", $r, $g, $b);
+    }
 
     public static function processImageUpload($pdo, $file, $uuid, $type = 'custom') {
         if ($file['error'] !== UPLOAD_ERR_OK) {
@@ -347,6 +370,9 @@ class Utils {
             return ['success' => false, 'message' => 'Error al procesar la imagen. Archivo corrupto.'];
         }
 
+        // [NUEVO] Calcular color dominante ANTES de redimensionar o recortar (usamos la imagen completa cargada)
+        $dominantColor = self::getDominantColor($srcImage);
+
         // Recorte cuadrado centrado
         $size = min($width, $height);
         $x = ($width - $size) / 2;
@@ -379,7 +405,8 @@ class Utils {
             return [
                 'success' => true,
                 'db_path' => $relativePath,
-                'base64' => $base64
+                'base64' => $base64,
+                'dominant_color' => $dominantColor // Retornamos el color calculado
             ];
         }
 
@@ -416,7 +443,7 @@ class Utils {
         return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
     }
 
-    // [MEJORADO] Usamos GD local para generar avatares por defecto
+    // Usamos GD local para generar avatares por defecto
     public static function generateDefaultProfilePicture($name, $outputPath) {
         $width = 256; $height = 256;
         $im = imagecreatetruecolor($width, $height);
@@ -587,17 +614,15 @@ class Utils {
         return $bytes . ' bytes';
     }
 
-    // [CORREGIDO] Cálculo seguro de tiempo transcurrido (sin propiedades dinámicas)
+    // Cálculo seguro de tiempo transcurrido
     public static function timeElapsedString($datetime, $full = false) {
         $now = new DateTime;
         $ago = new DateTime(is_int($datetime) ? "@$datetime" : $datetime);
         $diff = $now->diff($ago);
 
-        // Calcular semanas manualmente para evitar errores de propiedad dinámica en PHP 8.2+
         $weeks = floor($diff->d / 7);
         $days = $diff->d - ($weeks * 7);
 
-        // Mapeo seguro de valores
         $map = [
             'y' => ['value' => $diff->y, 'label' => 'año'],
             'm' => ['value' => $diff->m, 'label' => 'mes'],
@@ -619,7 +644,7 @@ class Utils {
         return $string ? 'hace ' . implode(', ', $string) : 'justo ahora';
     }
 
-    // [NUEVO] Protección Path Traversal
+    // Protección Path Traversal
     public static function securePath($baseDir, $relativePath) {
         $cleanPath = str_replace('..', '', $relativePath);
         $cleanPath = ltrim($cleanPath, '/\\');

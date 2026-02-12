@@ -374,11 +374,88 @@ def task_process_video(payload):
         logging.error(f"❌ Error procesando video {video_uuid}: {e}")
         update_video_status(video_uuid, 'error', str(e))
         notify_frontend('notification', {'type': 'error', 'text': 'Fallo en la transcodificación del video.'})
+# [NUEVO] Tarea para generar miniaturas inteligentes
+def task_generate_thumbnails(payload):
+    logging.info("🖼️ [Thread] Generando miniaturas inteligentes...")
+    
+    video_uuid = payload.get('video_uuid')
+    raw_path = payload.get('raw_path')
+    duration = float(payload.get('duration', 0)) # Duración en segundos
 
+    if not video_uuid or not os.path.exists(raw_path):
+        logging.error(f"❌ Archivo no encontrado para thumbs: {raw_path}")
+        notify_frontend('notification', {'type': 'error', 'text': 'Error: Video fuente no encontrado.'})
+        return
+
+    # Directorio de salida
+    thumbs_dir = os.path.join(BASE_DIR, 'public', 'storage', 'thumbnails', 'generated', video_uuid)
+    os.makedirs(thumbs_dir, exist_ok=True)
+
+    # Lógica de intervalos:
+    # Duración < 1 min: 1 miniatura
+    # Duración < 10 min: 1 por minuto (aprox)
+    # Duración > 1 hora: Máximo 12 miniaturas distribuidas equitativamente
+    
+    num_thumbs = 1
+    if duration > 60:
+        minutes = duration / 60
+        num_thumbs = int(minutes) # 1 por minuto
+        
+    # Cap (Límite máximo) para videos de horas, para no llenar el disco
+    if num_thumbs > 12: 
+        num_thumbs = 12
+    if num_thumbs < 3:
+        num_thumbs = 3 # Mínimo 3 opciones
+
+    interval = duration / (num_thumbs + 1) # +1 para evitar el primer y último segundo exacto (créditos/negro)
+
+    generated_files = []
+
+    try:
+        for i in range(1, num_thumbs + 1):
+            timestamp = i * interval
+            filename = f"thumb_{int(timestamp)}.jpg"
+            output_path = os.path.join(thumbs_dir, filename)
+            rel_path = f"public/storage/thumbnails/generated/{video_uuid}/{filename}"
+
+            # Extraer frame
+            cmd = [
+                'ffmpeg', '-y', '-ss', str(timestamp), '-i', raw_path,
+                '-vframes', '1', '-q:v', '2', # Alta calidad JPG
+                '-vf', 'scale=320:180:force_original_aspect_ratio=decrease', # Miniatura ligera
+                output_path
+            ]
+            subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            if os.path.exists(output_path):
+                generated_files.append(rel_path)
+
+        # Guardar en DB
+        if generated_files:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            json_paths = json.dumps(generated_files)
+            cursor.execute("UPDATE videos SET generated_thumbnails = %s WHERE uuid = %s", (json_paths, video_uuid))
+            conn.commit()
+            conn.close()
+
+            logging.info(f"✅ Se generaron {len(generated_files)} miniaturas para {video_uuid}")
+            
+            # Notificar al frontend con las imágenes
+            notify_frontend('thumbnails_generated', {
+                'uuid': video_uuid,
+                'thumbnails': generated_files
+            })
+        else:
+            logging.warning("⚠️ No se generaron miniaturas (FFmpeg falló?)")
+
+    except Exception as e:
+        logging.error(f"❌ Error generando miniaturas: {e}")
 TASKS = {
     'create_backup': task_create_backup,
     'create_zip': task_create_zip,
-    'process_video': task_process_video
+    'process_video': task_process_video,
+    'generate_thumbnails': task_generate_thumbnails # <--- AGREGAR ESTO
 }
 
 def run_job(raw_data):

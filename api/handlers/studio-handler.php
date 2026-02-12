@@ -55,7 +55,10 @@ switch ($action) {
     case 'get_pending':
         Utils::jsonResponse($studioService->getPendingVideos());
         break;
-
+case 'generate_thumbnails':
+        $uuid = $_POST['video_uuid'] ?? '';
+        Utils::jsonResponse($studioService->requestAutoThumbnails($uuid));
+        break;
     case 'cancel_batch':
         $batchId = $_POST['batch_id'] ?? '';
         Utils::jsonResponse($studioService->cancelBatch($batchId));

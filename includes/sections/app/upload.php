@@ -1,4 +1,3 @@
-
 <?php
 // includes/sections/app/upload.php
 
@@ -96,8 +95,14 @@ if ($requestedUuid !== $_SESSION['uuid']) {
                     </div>
 
                     <div class="component-form-group">
-                        <label class="component-label">Miniatura</label>
-                        <p class="component-card__description mb-2">Selecciona una imagen o espera a que se genere una automática (próximamente).</p>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <label class="component-label">Miniatura</label>
+                            <button type="button" class="component-button small" id="btn-gen-thumbs" style="font-size:12px; height:28px;">
+                                <span class="material-symbols-rounded" style="font-size:16px;">autorenew</span> Generar Automáticas
+                            </button>
+                        </div>
+                        
+                        <p class="component-card__description mb-2">Selecciona una imagen o genera miniaturas automáticas.</p>
                         
                         <div class="thumbnail-uploader-wrapper">
                             <div class="thumbnail-box" id="thumbnail-dropzone">
@@ -120,6 +125,9 @@ if ($requestedUuid !== $_SESSION['uuid']) {
                                 <p>Formatos: JPG, PNG, WEBP. Máx 2MB.</p>
                             </div>
                         </div>
+
+                        <div id="generated-thumbs-grid" class="generated-thumbs-container d-none">
+                            </div>
                     </div>
                 </div>
 

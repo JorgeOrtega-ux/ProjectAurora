@@ -210,4 +210,33 @@
     .editor-preview-column { order: -1; }
     .video-preview-card { display: none; }
     .studio-tabs-scroll { max-width: 200px; }
+}.generated-thumbs-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 8px;
+    margin-top: 16px;
+    width: 100%;
+    animation: fadeIn 0.3s ease;
+}
+
+.generated-thumb-item {
+    aspect-ratio: 16 / 9;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    opacity: 0.8;
+    transition: all 0.2s;
+}
+
+.generated-thumb-item:hover {
+    opacity: 1;
+    border-color: var(--action-primary);
+    transform: scale(1.05);
+}
+
+.generated-thumb-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }

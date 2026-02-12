@@ -75,7 +75,7 @@ return [
     'admin.redis_get'         => ['file' => 'handlers/admin-handler.php', 'action' => 'get_redis_value'],
     'admin.redis_del'         => ['file' => 'handlers/admin-handler.php', 'action' => 'delete_redis_key'],
     'admin.redis_flush'       => ['file' => 'handlers/admin-handler.php', 'action' => 'flush_redis_db'],
-    
+    'studio.generate_thumbs'  => ['file' => 'handlers/studio-handler.php', 'action' => 'generate_thumbnails'],
     'system.create_backup'    => ['file' => 'handlers/system-handler.php', 'action' => 'create_backup_auto'],
 
     // === STUDIO (NUEVO) ===

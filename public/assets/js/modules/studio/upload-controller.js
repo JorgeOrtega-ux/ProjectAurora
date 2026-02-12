@@ -1,5 +1,3 @@
-
-
 import { ApiService } from '../../core/services/api-service.js';
 import { ToastManager } from '../../core/components/toast-manager.js';
 import { I18nManager } from '../../core/utils/i18n-manager.js';
@@ -30,6 +28,10 @@ export const UploadController = {
         // Escuchar eventos de WebSockets para "Processing Complete"
         document.removeEventListener('socket:processing_complete', onProcessingComplete);
         document.addEventListener('socket:processing_complete', onProcessingComplete);
+
+        // [NUEVO] Escuchar evento de miniaturas generadas
+        document.removeEventListener('socket:thumbnails_generated', onThumbsGenerated);
+        document.addEventListener('socket:thumbnails_generated', onThumbsGenerated);
         
         // Recuperar borradores pendientes al recargar
         await checkPendingUploads();
@@ -210,20 +212,15 @@ async function startUpload(videoEntry) {
             if (_activeVideoUuid === videoEntry.uuid) {
                 updateEditorStatusUI(videoEntry);
             }
-            
-            // Actualizar badge spinner/progress? (Simplificado: Solo spinner en CSS)
         }
 
         // C) Finalizado Subida -> Backend responde con 'queued'
-        // El servidor ya respondió en el último chunk.
-        
         videoEntry.status = 'processing';
         videoEntry.progress = 100;
         
         renderTabs();
         if (_activeVideoUuid === videoEntry.uuid) {
             updateEditorStatusUI(videoEntry);
-            // Llenar datos si el servidor devolvió título limpio (ya lo hicimos en local, pero confirmamos)
         }
         
         ToastManager.show(`"${videoEntry.title}" subido. Procesando...`, 'info');
@@ -254,10 +251,10 @@ function renderTabs() {
         let spinClass = '';
 
         if (v.status === 'uploading') {
-            icon = 'upload'; // O nada si usamos spinner
+            icon = 'upload'; 
         } else if (v.status === 'processing') {
             icon = 'settings_suggest'; 
-            spinClass = 'badge-spinner'; // CSS spinner
+            spinClass = 'badge-spinner'; 
         } else if (v.status === 'ready') {
             icon = 'check_circle';
         } else if (v.status === 'error') {
@@ -308,6 +305,7 @@ function switchEditor(uuid) {
     document.getElementById('meta-desc').value = nextVideo.description || '';
     document.getElementById('meta-filename').textContent = nextVideo.title + '.mp4';
     
+    // Resetear/Llenar Preview
     const imgPreview = document.getElementById('thumbnail-preview');
     if (nextVideo.thumbnail) {
         imgPreview.src = nextVideo.thumbnail;
@@ -315,6 +313,14 @@ function switchEditor(uuid) {
     } else {
         imgPreview.src = '';
         imgPreview.classList.add('d-none');
+    }
+
+    // Limpiar grid de miniaturas generadas (se cargará si el usuario lo pide o ya están en memoria, 
+    // por simplicidad limpiamos para no mezclar con otro video)
+    const grid = document.getElementById('generated-thumbs-grid');
+    if (grid) {
+        grid.innerHTML = '';
+        grid.classList.add('d-none');
     }
 
     updateEditorStatusUI(nextVideo);
@@ -325,16 +331,20 @@ function updateEditorStatusUI(video) {
     const btnPublish = document.getElementById('btn-publish');
     const globalStatus = document.getElementById('global-upload-status');
     const globalText = document.getElementById('global-status-text');
+    const btnGenThumbs = document.getElementById('btn-gen-thumbs');
 
     // Estado Global (Barra superior)
     if (video.status === 'uploading') {
         globalStatus.style.display = 'block';
         globalText.textContent = `Subiendo ${video.progress}%...`;
+        if (btnGenThumbs) btnGenThumbs.disabled = true;
     } else if (video.status === 'processing') {
         globalStatus.style.display = 'block';
         globalText.textContent = 'Procesando en servidor...';
+        if (btnGenThumbs) btnGenThumbs.disabled = true;
     } else {
         globalStatus.style.display = 'none';
+        if (btnGenThumbs) btnGenThumbs.disabled = false;
     }
 
     // Estado Local (Alert en form)
@@ -376,9 +386,6 @@ function onProcessingComplete(e) {
         if (video) {
             video.status = 'ready'; // Listo para publicar
             
-            // Si el socket manda thumbnail u otros datos, actualizarlos aquí
-            // video.thumbnail = ...
-            
             renderTabs();
             
             if (_activeVideoUuid === video.uuid) {
@@ -404,7 +411,6 @@ function initEditorEvents() {
         if (!file || !_activeVideoUuid) return;
 
         const currentVideo = _videosState.find(v => v.uuid === _activeVideoUuid);
-        // Validar que no sea temp
         if (currentVideo.uuid.startsWith('temp_')) {
             ToastManager.show('Espera a que inicie la subida.', 'warning');
             return;
@@ -430,7 +436,9 @@ function initEditorEvents() {
         try {
             const res = await ApiService.post(ApiService.Routes.Studio.UploadThumbnail, formData);
             if (res.success) {
-                currentVideo.thumbnail = res.new_src; // Guardar en estado
+                currentVideo.thumbnail = res.new_src;
+                // [NUEVO] Aplicar color dominante
+                applyDominantColor(res.dominant_color);
                 validatePublishRequirements();
             } else {
                 ToastManager.show(res.message, 'error');
@@ -449,7 +457,6 @@ function initEditorEvents() {
             const video = _videosState.find(v => v.uuid === _activeVideoUuid);
             if (video) {
                 video.title = val || 'Sin título';
-                // Actualizar solo texto del tab actual para performance
                 const activeTab = document.querySelector(`.studio-tab-badge.active .studio-tab-text`);
                 if(activeTab) activeTab.textContent = video.title;
                 
@@ -460,6 +467,17 @@ function initEditorEvents() {
 
     document.getElementById('btn-publish')?.addEventListener('click', () => saveMetadata(true));
     document.getElementById('btn-save-draft')?.addEventListener('click', () => saveMetadata(false));
+
+    // [NUEVO] Listener para botón "Generar Automáticas"
+    document.getElementById('btn-gen-thumbs')?.addEventListener('click', generateThumbnails);
+
+    // [NUEVO] Listener para clicks en miniaturas generadas (delegación)
+    document.getElementById('generated-thumbs-grid')?.addEventListener('click', (e) => {
+        const item = e.target.closest('.generated-thumb-item');
+        if (item) {
+            selectGeneratedThumbnail(item.dataset.src);
+        }
+    });
 }
 
 function validatePublishRequirements() {
@@ -467,7 +485,6 @@ function validatePublishRequirements() {
     const hasThumb = !document.getElementById('thumbnail-preview').classList.contains('d-none');
     const btnPublish = document.getElementById('btn-publish');
     
-    // Verificar estado del video actual
     const video = _videosState.find(v => v.uuid === _activeVideoUuid);
     const isReady = (video && video.status === 'ready');
 
@@ -507,7 +524,6 @@ async function saveMetadata(publish) {
         if (res.success) {
             ToastManager.show(res.message, 'success');
             if (publish) {
-                // Eliminar de tabs y redirigir si no quedan
                 _videosState = _videosState.filter(v => v.uuid !== _activeVideoUuid);
                 if (_videosState.length === 0) {
                     window.location.href = window.BASE_PATH + 'channel/my-content';
@@ -526,5 +542,139 @@ async function saveMetadata(publish) {
             btn.disabled = false;
             if (publish) validatePublishRequirements();
         }
+    }
+}
+
+// ==========================================
+// 6. FUNCIONALIDADES IA: MINIATURAS & COLOR
+// ==========================================
+
+// [NUEVO] Función para llamar a la API de generación
+async function generateThumbnails() {
+    if (!_activeVideoUuid) return;
+    
+    const btn = document.getElementById('btn-gen-thumbs');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner-sm"></div> Generando...';
+
+    const formData = new FormData();
+    formData.append('video_uuid', _activeVideoUuid);
+
+    // Aseguramos que la ruta 'studio.generate_thumbs' exista en ApiRoutes (agregada en api-routes.js)
+    try {
+        // En caso de que no se haya definido explícitamente en el mapa JS, usamos raw post con ruta string si es necesario, 
+        // pero idealmente ApiService.Routes.Studio.GenerateThumbs ya debería existir.
+        // Asumimos que se agregó: GenerateThumbs: { route: 'studio.generate_thumbs' }
+        const route = ApiService.Routes.Studio.GenerateThumbs || { route: 'studio.generate_thumbs' };
+        
+        const res = await ApiService.post(route, formData);
+        if (res.success) {
+            ToastManager.show(res.message, 'info');
+            // El botón se queda deshabilitado hasta que el socket responda o falle
+        } else {
+            ToastManager.show(res.message, 'error');
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    } catch (e) {
+        console.error(e);
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+// [NUEVO] Callback del Socket cuando el Worker termina de generar
+function onThumbsGenerated(e) {
+    const data = e.detail.message;
+    if (data && data.uuid === _activeVideoUuid) {
+        const grid = document.getElementById('generated-thumbs-grid');
+        const btn = document.getElementById('btn-gen-thumbs');
+        
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:16px;">autorenew</span> Generar Automáticas';
+        }
+
+        if (grid && data.thumbnails) {
+            grid.innerHTML = '';
+            data.thumbnails.forEach(path => {
+                const fullPath = window.BASE_PATH + path;
+                const div = document.createElement('div');
+                div.className = 'generated-thumb-item';
+                div.dataset.src = fullPath;
+                div.innerHTML = `<img src="${fullPath}" loading="lazy">`;
+                grid.appendChild(div);
+            });
+            grid.classList.remove('d-none');
+        }
+        
+        ToastManager.show('Miniaturas generadas.', 'success');
+    }
+}
+
+// [NUEVO] Seleccionar una miniatura generada
+async function selectGeneratedThumbnail(src) {
+    // Para reutilizar la lógica de "subida" que calcula el color dominante en el backend,
+    // convertimos la imagen (URL) a un objeto File y la "subimos" de nuevo.
+    // Esto es ineficiente en ancho de banda pero garantiza consistencia con processImageUpload del backend.
+    // Alternativa: Crear un endpoint específico "set_thumbnail_from_path" que calcule color allá.
+    // Por ahora, usaremos el método de re-upload para mantener el frontend desacoplado de la lógica de color.
+    
+    const loadingSpinner = document.querySelector('.thumbnail-loading');
+    if(loadingSpinner) loadingSpinner.classList.remove('d-none');
+
+    try {
+        const response = await fetch(src);
+        const blob = await response.blob();
+        const file = new File([blob], "selected_thumb.jpg", { type: "image/jpeg" });
+        
+        // Actualizar preview inmediatamente
+        const preview = document.getElementById('thumbnail-preview');
+        preview.src = src;
+        preview.classList.remove('d-none');
+        
+        const formData = new FormData();
+        formData.append('video_uuid', _activeVideoUuid);
+        formData.append('thumbnail', file);
+        
+        const res = await ApiService.post(ApiService.Routes.Studio.UploadThumbnail, formData);
+        
+        if(res.success) {
+             const currentVideo = _videosState.find(v => v.uuid === _activeVideoUuid);
+             if(currentVideo) currentVideo.thumbnail = res.new_src;
+             
+             applyDominantColor(res.dominant_color);
+             validatePublishRequirements();
+             ToastManager.show('Miniatura actualizada', 'success');
+        } else {
+            ToastManager.show(res.message, 'error');
+        }
+        
+    } catch (e) {
+        console.error(e);
+        ToastManager.show('Error al seleccionar miniatura', 'error');
+    } finally {
+        if(loadingSpinner) loadingSpinner.classList.add('d-none');
+    }
+}
+
+// [NUEVO] Función visual para aplicar el color dominante
+function applyDominantColor(color) {
+    if (!color) return;
+    const previewCard = document.querySelector('.video-preview-card');
+    const container = document.querySelector('.thumbnail-uploader-wrapper');
+    
+    // Feedback visual sutil
+    if (container) {
+        container.style.transition = 'border-color 0.3s ease';
+        container.style.borderColor = color;
+    }
+    
+    if (previewCard) {
+        previewCard.style.transition = 'box-shadow 0.3s ease';
+        // Sombra suave con el color dominante (usamos opacidad hex si es posible, o simple)
+        // Asumiendo color viene como #RRGGBB
+        previewCard.style.boxShadow = `0 4px 20px ${color}40`; // 40 = aprox 25% opacidad
     }
 }

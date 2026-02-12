@@ -108,6 +108,7 @@ class StudioService {
         return ['success' => false, 'message' => 'Error al ensamblar archivo final'];
     }
 
+    // [MODIFICADO] uploadThumbnail para guardar dominant_color
     public function uploadThumbnail($uuid, $file) {
         if (!$this->isOwner($uuid)) return ['success' => false, 'message' => 'Acceso denegado'];
 
@@ -122,13 +123,55 @@ class StudioService {
         $destAbsPath = __DIR__ . '/../../' . $destRelPath;
 
         if (rename($sourcePath, $destAbsPath)) {
-            $stmt = $this->pdo->prepare("UPDATE videos SET thumbnail_path = ? WHERE uuid = ?");
-            $stmt->execute([$destRelPath, $uuid]);
+            // [CAMBIO] Guardamos también el dominant_color
+            $color = $uploadResult['dominant_color'] ?? '#000000';
             
-            return ['success' => true, 'new_src' => $uploadResult['base64']]; 
+            $stmt = $this->pdo->prepare("UPDATE videos SET thumbnail_path = ?, dominant_color = ? WHERE uuid = ?");
+            $stmt->execute([$destRelPath, $color, $uuid]);
+            
+            return [
+                'success' => true, 
+                'new_src' => $uploadResult['base64'],
+                'dominant_color' => $color
+            ]; 
         }
 
         return ['success' => false, 'message' => 'Error moviendo miniatura'];
+    }
+
+    // [NUEVO] Método para solicitar generación automática
+    public function requestAutoThumbnails($uuid) {
+        if (!$this->isOwner($uuid)) return ['success' => false, 'message' => 'Acceso denegado'];
+
+        // Verificar que el video existe y tiene archivo raw
+        $stmt = $this->pdo->prepare("SELECT raw_file_path, duration FROM videos WHERE uuid = ?");
+        $stmt->execute([$uuid]);
+        $video = $stmt->fetch();
+
+        if (!$video || empty($video['raw_file_path'])) {
+            return ['success' => false, 'message' => 'El video aún no está procesado o no existe el archivo fuente.'];
+        }
+
+        if (!$this->redis) {
+            return ['success' => false, 'message' => 'Redis no disponible para procesar tarea.'];
+        }
+
+        // Enviamos tarea al Worker Python
+        $task = [
+            'task' => 'generate_thumbnails',
+            'payload' => [
+                'video_uuid' => $uuid,
+                'raw_path' => __DIR__ . '/../../' . $video['raw_file_path'],
+                'duration' => $video['duration']
+            ]
+        ];
+        
+        try {
+            $this->redis->rpush('aurora_task_queue', json_encode($task));
+            return ['success' => true, 'message' => 'Generación de miniaturas iniciada...'];
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Error de conexión con cola de tareas.'];
+        }
     }
 
     public function saveMetadata($uuid, $data) {

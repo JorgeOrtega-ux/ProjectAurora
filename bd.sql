@@ -197,4 +197,6 @@ CREATE TABLE IF NOT EXISTS `videos` (
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
   INDEX `idx_batch` (`batch_id`),
   INDEX `idx_status` (`status`)
-);
+);ALTER TABLE videos 
+ADD COLUMN dominant_color VARCHAR(7) DEFAULT '#000000',
+ADD COLUMN generated_thumbnails JSON DEFAULT NULL;
