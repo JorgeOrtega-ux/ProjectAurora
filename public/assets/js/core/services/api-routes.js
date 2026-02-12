@@ -76,6 +76,16 @@ const ApiRoutes = {
             DeleteKey: { route: 'admin.redis_del' },
             FlushDB: { route: 'admin.redis_flush' }
         }
+    },
+    
+    // === STUDIO (NUEVO) ===
+    Studio: {
+        InitUpload: { route: 'studio.init_upload' },
+        UploadChunk: { route: 'studio.upload_chunk' },
+        UploadThumbnail: { route: 'studio.upload_thumbnail' },
+        SaveMetadata: { route: 'studio.save_metadata' },
+        GetPending: { route: 'studio.get_pending' },
+        CancelBatch: { route: 'studio.cancel_batch' }
     }
 };
 

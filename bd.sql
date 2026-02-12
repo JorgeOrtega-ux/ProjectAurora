@@ -177,3 +177,24 @@ CREATE TABLE IF NOT EXISTS `system_alerts` (
 INSERT INTO server_config (config_key, config_value) 
 VALUES ('security_admin_require_2fa', '1') 
 ON DUPLICATE KEY UPDATE config_value = VALUES(config_value);
+
+CREATE TABLE IF NOT EXISTS `videos` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `uuid` CHAR(36) NOT NULL UNIQUE,
+  `user_id` INT NOT NULL,
+  `batch_id` VARCHAR(64) NOT NULL,
+  `title` VARCHAR(255) DEFAULT 'Sin título',
+  `description` TEXT,
+  `status` ENUM('uploading_chunks', 'assembling', 'queued', 'processing', 'waiting_for_metadata', 'published', 'error') DEFAULT 'uploading_chunks',
+  `raw_file_path` VARCHAR(255) DEFAULT NULL,
+  `hls_path` VARCHAR(255) DEFAULT NULL,
+  `thumbnail_path` VARCHAR(255) DEFAULT NULL,
+  `duration` INT DEFAULT 0,
+  `processing_percentage` TINYINT DEFAULT 0,
+  `error_message` TEXT DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+  INDEX `idx_batch` (`batch_id`),
+  INDEX `idx_status` (`status`)
+);

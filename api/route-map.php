@@ -53,12 +53,9 @@ return [
     'admin.get_server_config' => ['file' => 'handlers/admin-handler.php', 'action' => 'get_server_config'],
     'admin.update_server_config' => ['file' => 'handlers/admin-handler.php', 'action' => 'update_server_config'],
     
-    // [NUEVO] Toggle Panic Mode
     'admin.toggle_panic'      => ['file' => 'handlers/admin-handler.php', 'action' => 'toggle_panic_mode'],
-
     'admin.request_download'  => ['file' => 'handlers/admin-handler.php', 'action' => 'request_download_token'],
 
-    // BACKUPS ADMIN
     'admin.get_backups'       => ['file' => 'handlers/admin-handler.php', 'action' => 'get_backups'],
     'admin.create_backup'     => ['file' => 'handlers/admin-handler.php', 'action' => 'create_backup'],
     'admin.restore_backup'    => ['file' => 'handlers/admin-handler.php', 'action' => 'restore_backup'],
@@ -67,15 +64,12 @@ return [
     'admin.get_backup_config' => ['file' => 'handlers/admin-handler.php', 'action' => 'get_backup_config'],
     'admin.upd_backup_config' => ['file' => 'handlers/admin-handler.php', 'action' => 'update_backup_config'],
 
-    // AUDITORÍA
     'admin.get_audit_logs'    => ['file' => 'handlers/admin-handler.php', 'action' => 'get_audit_logs'],
 
-    // LOGS DE ARCHIVO Y VISOR
     'admin.get_log_files'     => ['file' => 'handlers/admin-handler.php', 'action' => 'get_log_files'],
     'admin.delete_log_files'  => ['file' => 'handlers/admin-handler.php', 'action' => 'delete_log_files'],
     'admin.get_log_content'   => ['file' => 'handlers/admin-handler.php', 'action' => 'get_log_content'],
 
-    // REDIS MANAGER
     'admin.redis_stats'       => ['file' => 'handlers/admin-handler.php', 'action' => 'get_redis_stats'],
     'admin.redis_keys'        => ['file' => 'handlers/admin-handler.php', 'action' => 'get_redis_keys'],
     'admin.redis_get'         => ['file' => 'handlers/admin-handler.php', 'action' => 'get_redis_value'],
@@ -83,4 +77,13 @@ return [
     'admin.redis_flush'       => ['file' => 'handlers/admin-handler.php', 'action' => 'flush_redis_db'],
     
     'system.create_backup'    => ['file' => 'handlers/system-handler.php', 'action' => 'create_backup_auto'],
+
+    // === STUDIO (NUEVO) ===
+    'studio.init_upload'      => ['file' => 'handlers/studio-handler.php', 'action' => 'init_upload'],
+    'studio.upload_chunk'     => ['file' => 'handlers/studio-handler.php', 'action' => 'upload_chunk'],
+    'studio.upload_thumbnail' => ['file' => 'handlers/studio-handler.php', 'action' => 'upload_thumbnail'],
+    'studio.save_metadata'    => ['file' => 'handlers/studio-handler.php', 'action' => 'save_metadata'],
+    'studio.get_pending'      => ['file' => 'handlers/studio-handler.php', 'action' => 'get_pending'],
+    'studio.cancel_batch'     => ['file' => 'handlers/studio-handler.php', 'action' => 'cancel_batch'],
 ];
+?>

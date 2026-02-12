@@ -25,6 +25,7 @@ import { UsersController } from './modules/admin/users/users-controller.js';
 import { initAuthController } from './auth-controller.js';
 import { initMainController } from './main-controller.js';
 import { initUrlManager } from './core/utils/url-manager.js';
+import { UploadController } from './modules/studio/upload-controller.js'; // [IMPORTANTE]
 
 const App = {
     init: () => {
@@ -32,8 +33,7 @@ const App = {
             try {
                 const localPrefs = JSON.parse(localStorage.getItem('guest_prefs') || '{}');
                 window.USER_PREFS = { ...window.USER_PREFS, ...localPrefs };
-            } catch (e) {
-            }
+            } catch (e) {}
         }
 
         if (window.USER_PREFS && window.USER_PREFS.theme) {
@@ -58,6 +58,7 @@ const App = {
              initUrlManager();
         }
 
+        // Obtener ruta limpia
         const path = window.location.pathname.replace(window.BASE_PATH, '').replace(/^\/+|\/+$/g, '');
         routeDispatcher(path || 'main');
 
@@ -73,26 +74,19 @@ function initGlobalSocketListeners() {
         if (window.location.pathname.includes('/login')) return;
         
         ToastManager.show('Tu sesión ha cambiado de estado.', 'warning', 5000);
-        
-        setTimeout(() => { 
-            window.location.reload(); 
-        }, 1500);
+        setTimeout(() => { window.location.reload(); }, 1500);
     });
 
     document.addEventListener('socket:maintenance_start', (e) => {
         const profileBtn = document.querySelector('.header-button.profile-button');
         const currentRole = profileBtn ? profileBtn.dataset.role : 'guest';
-        
         const staffRoles = ['founder', 'administrator', 'moderator'];
 
         if (staffRoles.includes(currentRole)) {
             ToastManager.show('El sistema ha entrado en modo mantenimiento (Acceso Staff activo).', 'info', 5000);
             return;
         }
-
-        setTimeout(() => {
-            window.location.reload();
-        }, 1000); 
+        setTimeout(() => { window.location.reload(); }, 1000); 
     });
 
     document.addEventListener('socket:notification', (e) => {
@@ -105,6 +99,14 @@ function initGlobalSocketListeners() {
 
 function routeDispatcher(section) {
     updateSidebarState(section);
+    
+    // [CORRECCIÓN CRÍTICA] Detectar si la URL empieza con "channel/upload"
+    // Esto captura "channel/upload/UUID..."
+    if (section.startsWith('channel/upload') || section.includes('channel/upload')) {
+        UploadController.init();
+        return;
+    }
+
     switch (section) {
         case 'settings/your-profile': 
             ProfileController.init(); 
@@ -113,10 +115,6 @@ function routeDispatcher(section) {
             break;
             
         case 'settings/accessibility': 
-            SettingsController.init(); 
-            SettingsController.sync(); 
-            break;
-            
         case 'settings/preferences': 
             SettingsController.init(); 
             SettingsController.sync(); 
@@ -127,14 +125,8 @@ function routeDispatcher(section) {
         case 'settings/delete-account': DeleteAccountController.init(); break;
         case 'settings/2fa-setup': TwoFactorController.init(); break;
         
-        case 'admin/dashboard': 
-            DashboardController.init(); 
-            break;
-
-        case 'admin/alerts': 
-            SystemAlertsController.init(); 
-            break;
-
+        case 'admin/dashboard': DashboardController.init(); break;
+        case 'admin/alerts': SystemAlertsController.init(); break;
         case 'admin/users': UsersController.init(); break;
         case 'admin/user-details': UserDetailsController.init(); break;
         case 'admin/user-role': UserRoleController.init(); break;
@@ -142,7 +134,6 @@ function routeDispatcher(section) {
         case 'admin/server': ServerConfigController.init(); break;
         case 'admin/backups': BackupsController.init(); break;
         case 'admin/backups/config': BackupConfigController.init(); break;
-        
         case 'admin/audit-log': AuditLogController.init(); break;
         case 'admin/log-files': LogFilesController.init(); break;
         case 'admin/file-viewer': FileViewerController.init(); break;
