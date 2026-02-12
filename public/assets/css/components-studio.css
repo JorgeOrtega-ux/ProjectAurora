@@ -1,0 +1,191 @@
+
+
+
+
+/* === COMPONENT STUDIO (Gestor de Contenido) === */
+
+/* Layout Principal */
+.component-studio-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    background-color: var(--bg-color, #ffffff);
+    padding: 0;
+    overflow: hidden;
+}
+
+/* Pantallas de Estado (Bloqueo, 404, Error) */
+.component-studio-state-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    padding: 40px;
+    text-align: center;
+    background-color: var(--bg-color, #ffffff);
+}
+
+.component-studio-state-content {
+    text-align: center;
+    max-width: 400px;
+}
+
+.component-studio-state-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    display: block;
+}
+
+.component-studio-state-icon.danger {
+    color: var(--danger-color, #d32f2f);
+}
+
+.component-studio-state-title {
+    margin: 0 0 8px 0;
+    color: var(--text-primary, #0f0f0f);
+    font-size: 1.5rem;
+    font-weight: 500;
+}
+
+.component-studio-state-text {
+    margin: 0;
+    color: var(--text-secondary, #606060);
+    font-size: 1rem;
+    line-height: 1.4;
+}
+
+/* Barra de Herramientas Superior */
+.component-studio-toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border-color, #e5e5e5);
+    background-color: var(--bg-color, #ffffff);
+}
+
+.component-studio-toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Área de Contenido Scrollable */
+.component-studio-content-area {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 24px;
+}
+
+/* Estado Vacío (Tablas) */
+.component-studio-empty-wrapper {
+    padding: 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text-secondary, #606060);
+}
+
+.component-studio-empty-icon {
+    font-size: 40px;
+    color: var(--border-color-hover, #cccccc);
+}
+
+/* Loader Error Container */
+.component-studio-error-container {
+    padding: 40px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+/* === COMPONENT STUDIO: UPLOAD SCREEN === */
+
+/* Modificador para centrar contenido en el área principal */
+.component-studio-content-area.centered {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Contenedor de la zona de subida */
+.component-studio-upload-zone {
+    text-align: center;
+    max-width: 600px;
+    width: 100%;
+    padding: 0 24px;
+}
+
+/* Círculo del icono de subida */
+.component-studio-upload-circle {
+    width: 136px; 
+    height: 136px; 
+    background-color: var(--bg-hover-light, #f1f1f1); 
+    border-radius: 50%; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    margin: 0 auto 24px auto;
+    cursor: pointer;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.component-studio-upload-circle:hover {
+    transform: scale(1.05);
+    background-color: var(--bg-hover, #e5e5e5);
+}
+
+.component-studio-upload-icon {
+    font-size: 64px; 
+    color: var(--text-tertiary, #909090);
+}
+
+/* Tipografía de la zona de subida */
+.component-studio-upload-title {
+    font-size: 16px; 
+    font-weight: 500; 
+    margin: 0 0 8px 0; 
+    color: var(--text-primary, #0f0f0f);
+}
+
+.component-studio-upload-desc {
+    font-size: 14px; 
+    color: var(--text-secondary, #606060); 
+    margin: 0 0 24px 0;
+}
+
+/* Footer legal */
+.component-studio-upload-legal {
+    margin-top: 48px; 
+    font-size: 12px; 
+    color: var(--text-tertiary, #909090); 
+    line-height: 1.5;
+}
+
+.component-studio-upload-legal p {
+    margin-bottom: 8px;
+}
+
+.component-studio-upload-legal p:last-child {
+    margin-bottom: 0;
+}
+
+.component-studio-link {
+    color: var(--text-secondary, #606060); 
+    text-decoration: none; 
+    font-weight: 500;
+}
+
+.component-studio-link:hover {
+    text-decoration: underline;
+}

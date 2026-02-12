@@ -10,11 +10,11 @@ $requestedUuid = $routeParams['uuid'] ?? '';
 
 if ($requestedUuid !== $_SESSION['uuid']) {
     ?>
-    <div class="main-content" style="padding: 0; height: 100%; display: flex; align-items: center; justify-content: center; background: #fff;">
-        <div style="text-align: center;">
-            <span class="material-symbols-rounded" style="font-size: 48px; margin-bottom: 16px; color: var(--danger-color);">lock</span>
-            <h2 style="color: var(--text-primary);">Acceso Denegado</h2>
-            <p style="color: var(--text-secondary);">No tienes permiso para ver este contenido.</p>
+    <div class="component-studio-state-screen">
+        <div class="component-studio-state-content">
+            <span class="material-symbols-rounded component-studio-state-icon danger">lock</span>
+            <h2 class="component-studio-state-title">Acceso Denegado</h2>
+            <p class="component-studio-state-text">No tienes permiso para ver este contenido.</p>
         </div>
     </div>
     <?php
@@ -22,30 +22,23 @@ if ($requestedUuid !== $_SESSION['uuid']) {
 }
 ?>
 
-<div class="main-content" style="padding: 0; height: 100%; background-color: #ffffff; display: flex; flex-direction: column;">
+<div class="component-studio-layout">
     
-    <div class="content-top" style="
-        flex: 0 0 auto;
-        padding: 8px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid var(--border-color);">
-        
-        <div class="top-left" style="display: flex; align-items: center; gap: 8px;">
+    <div class="component-studio-toolbar">
+        <div class="component-studio-toolbar-group">
             <span class="component-toolbar-title">Contenido del canal</span>
         </div>
 
-        <div class="top-right">
+        <div class="component-studio-toolbar-group">
             <button class="component-button square" 
                     title="Subir videos"
-                    data-nav="<?php echo $basePath; ?>s/channel/upload/<?php echo $requestedUuid; ?>">
+                    data-nav="s/channel/upload/<?php echo $requestedUuid; ?>">
                 <span class="material-symbols-rounded">upload</span>
             </button>
         </div>
     </div>
 
-    <div class="content-bottom" style="flex: 1 1 auto; overflow-y: auto; padding: 24px;">
+    <div class="component-studio-content-area">
         
         <div class="component-table-wrapper">
             <table class="component-table">
@@ -62,9 +55,9 @@ if ($requestedUuid !== $_SESSION['uuid']) {
                 </thead>
                 <tbody>
                     <tr>
-                        <td colspan="7" style="padding: 48px; text-align: center; color: var(--text-secondary);">
-                            <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
-                                <span class="material-symbols-rounded" style="font-size: 40px; color: var(--border-color-hover);">video_library</span>
+                        <td colspan="7">
+                            <div class="component-studio-empty-wrapper">
+                                <span class="material-symbols-rounded component-studio-empty-icon">video_library</span>
                                 <span>No se ha encontrado contenido disponible.</span>
                             </div>
                         </td>
