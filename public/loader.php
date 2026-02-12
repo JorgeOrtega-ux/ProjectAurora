@@ -15,23 +15,31 @@ $basePath = '/ProjectAurora/';
 $section = $_GET['section'] ?? 'main';
 $section = strtok($section, '?');
 
+// [NUEVO] Inicializamos routeParams para evitar errores en las vistas
+$routeParams = [];
+
 // =========================================================
-// [MODIFICADO] INTERCEPTOR DE RUTAS DINÁMICAS (STUDIO)
+// [MODIFICADO] INTERCEPTOR DE RUTAS DINÁMICAS
 // =========================================================
-// Esto permite que el loader entienda las URLs amigables del Studio
-// y extraiga las variables necesarias ($studioView y $targetUuid)
+
+// CASO 1: Studio (Panel de control, upload, etc)
 if (preg_match('#^s/channel/(panel-control|manage-content|upload)/([a-f0-9\-]+)$#', $section, $matches)) {
-    // 1. Mapeamos la sección "falsa" a la ruta real registrada en routes.php
     $section = 'studio/layout';
-    
-    // 2. Extraemos las variables para que layout.php las use
-    $studioView = $matches[1]; // 'panel-control', 'manage-content' o 'upload'
-    $targetUuid = $matches[2]; // el uuid del usuario
+    $studioView = $matches[1]; 
+    $targetUuid = $matches[2]; 
+    $routeParams['uuid'] = $targetUuid; // Sincronizamos con routeParams
 }
+
+// CASO 2: Mi Contenido (La parte que te faltaba)
+// Detectamos s/channel/my-content/UUID y lo enviamos a 'channel/my-content'
+elseif (preg_match('#^s/channel/my-content/([a-f0-9\-]+)$#', $section, $matches)) {
+    $section = 'channel/my-content'; // Clave correcta en routes.php
+    $routeParams['uuid'] = $matches[1]; // Pasamos el UUID a la vista
+}
+
 // =========================================================
 
 // === PREGUNTAMOS AL PORTERO ===
-// Ahora Gatekeeper recibirá 'studio/layout', que sí está protegida en security.php
 $decision = Gatekeeper::check($section, $pdo);
 
 switch ($decision['action']) {
@@ -41,23 +49,20 @@ switch ($decision['action']) {
         exit;
 
     case Gatekeeper::REDIRECT:
-        // En AJAX no podemos usar header('Location'), enviamos script o 401
         http_response_code(401);
         $target = $decision['target'];
         echo "<script>window.location.href = '{$basePath}{$target}';</script>";
         exit;
 
     case Gatekeeper::SHOW_LOCK:
-        // Cargamos el bloqueo inmediatamente
         include __DIR__ . '/../includes/sections/system/security-lock.php';
         exit;
 
     case Gatekeeper::SHOW_404:
-        $section = '404'; // Dejamos que el flujo continúe para cargar el 404 abajo
+        $section = '404'; 
         break;
         
     case Gatekeeper::ALLOW:
-        // Todo bien, continuamos con la carga normal
         break;
 }
 
@@ -76,17 +81,15 @@ if (array_key_exists($section, $routes)) {
 if (file_exists($file)) {
     include $file;
 } else {
-    // Si el archivo físico no existe (aunque esté en rutas), cargamos la vista 404
     $file404 = $routes['404'];
     
     if (file_exists($file404)) {
         include $file404;
     } else {
-        // Fallback de emergencia solo si el propio archivo 404 fue borrado
         http_response_code(500);
         echo "<div class='component-layout-centered'>
                 <h1 class='component-page-title'>Error Crítico</h1>
-                <p class='component-page-description'>No se pudo cargar el contenido solicitado ni la página de error.</p>
+                <p class='component-page-description'>No se pudo cargar el contenido solicitado.</p>
               </div>";
     }
 }
