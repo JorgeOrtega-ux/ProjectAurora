@@ -82,7 +82,5 @@ return [
     'admin.redis_del'         => ['file' => 'handlers/admin-handler.php', 'action' => 'delete_redis_key'],
     'admin.redis_flush'       => ['file' => 'handlers/admin-handler.php', 'action' => 'flush_redis_db'],
     
-    'canvas.create'           => ['file' => 'handlers/canvas-handler.php', 'action' => 'create_canvas'],
-    // SYSTEM
     'system.create_backup'    => ['file' => 'handlers/system-handler.php', 'action' => 'create_backup_auto'],
 ];

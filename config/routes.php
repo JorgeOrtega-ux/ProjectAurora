@@ -4,15 +4,8 @@
 return [
     // === APP ===
     'main'     => __DIR__ . '/../includes/sections/app/main.php',
-    'explore'  => __DIR__ . '/../includes/sections/app/explore.php',
-    
-    // === STUDIO ===
-    'studio/layout'          => __DIR__ . '/../includes/sections/studio/layout.php',
-    // [NUEVO] Rutas internas para la navegación AJAX/SPA
-    'studio/parts/dashboard' => __DIR__ . '/../includes/sections/studio/dashboard.php',
-    'studio/parts/content'   => __DIR__ . '/../includes/sections/studio/content.php',
-    'studio/parts/upload'    => __DIR__ . '/../includes/sections/studio/upload.php', // <--- AGREGADO
-    
+    'explore'  => __DIR__ . '/../includes/sections/app/explore.php', 
+
     // === AUTH ===
     'login'                         => __DIR__ . '/../includes/sections/auth/login.php',
     'login/verification-aditional'  => __DIR__ . '/../includes/sections/auth/login.php',

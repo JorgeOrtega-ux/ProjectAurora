@@ -24,19 +24,6 @@
 
     <div class="header-right">
         <div class="header-item">
-            
-            <?php if (isset($_SESSION['user_id'])): ?>
-                <?php 
-                    // Generamos la URL dinámica basada en el UUID de la sesión actual
-                    $myUuid = $_SESSION['uuid'] ?? 'invalid';
-                    $studioUrl = "s/channel/panel-control/" . htmlspecialchars($myUuid);
-                ?>
-                <div class="header-button" 
-                     data-nav="<?php echo $studioUrl; ?>"
-                     data-tooltip="<?php echo $i18n->t('header.creator_studio'); ?>">
-                    <span class="material-symbols-rounded">video_call</span>
-                </div>
-            <?php endif; ?>
 
             <div class="header-button mobile-search-trigger" 
                  data-action="toggleSearch"
