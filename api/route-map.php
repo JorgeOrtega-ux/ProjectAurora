@@ -89,5 +89,6 @@ return [
     'studio.cancel_batch'     => ['file' => 'handlers/studio-handler.php', 'action' => 'cancel_batch'],
     'studio.generate_thumbs'  => ['file' => 'handlers/studio-handler.php', 'action' => 'generate_thumbnails'],
     'studio.delete_video'     => ['file' => 'handlers/studio-handler.php', 'action' => 'delete_video'],
+    'studio.get_video_details' => ['file' => 'handlers/studio-handler.php', 'action' => 'get_video_details'],
 ];
 ?>

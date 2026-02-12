@@ -79,9 +79,9 @@ if ($requestedUuid !== $_SESSION['uuid']) {
                 <span class="material-symbols-rounded">search</span>
             </button>
 
-            <button class="header-button" data-nav="s/channel/upload/<?php echo $requestedUuid; ?>" data-tooltip="Crear contenido">
-                <span class="material-symbols-rounded">add</span>
-            </button>
+          <button class="header-button" data-nav="s/channel/upload" data-tooltip="Crear contenido">
+    <span class="material-symbols-rounded">add</span>
+</button>
         </div>
 
         <div id="content-search-dropdown">

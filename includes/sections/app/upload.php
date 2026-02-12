@@ -18,8 +18,15 @@ if (empty($requestedVideoId) && isset($_GET['section'])) {
     }
 }
 
-// NOTA: Se eliminó el bloque "if ($requestedUuid !== $_SESSION['uuid'])" porque
-// comparaba incorrectamente el ID del video con el ID del usuario.
+// [CORRECCIÓN DE SEGURIDAD] 
+// Si el ID que viene en la URL es igual al ID del usuario logueado,
+// lo ignoramos para evitar que el sistema intente cargar al usuario como si fuera un video.
+if ($requestedVideoId === $_SESSION['uuid']) {
+    $requestedVideoId = '';
+}
+
+// NOTA: Si $requestedVideoId está vacío, el JS iniciará en modo "Nueva Subida".
+// Si tiene un valor, el JS iniciará en modo "Editar Borrador".
 ?>
 
 <div class="component-studio-layout" data-section="channel-upload">

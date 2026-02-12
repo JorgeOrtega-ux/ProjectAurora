@@ -10,29 +10,33 @@ $routes = require __DIR__ . '/../config/routes.php';
 $section = $_GET['section'] ?? 'main';
 
 // 1. Limpieza básica (quitar barras al inicio/final y posibles prefijos "s/")
-// Si tus URLs visuales empiezan con "s/", las quitamos para buscar en el array de rutas
 $cleanSection = preg_replace('#^s/#', '', $section);
 $cleanSection = trim($cleanSection, '/');
 
 $matchedFile = null;
-$routeParams = []; // Aquí guardaremos el ID (UUID)
+$routeParams = []; 
 
-// 2. BUSQUEDA DE RUTA
-// A) Intento exacto (ej: "settings/profile")
+// 2. BÚSQUEDA DE RUTA UNIFICADA
+// A) Primero buscamos coincidencia exacta (ej: "main" o "settings/profile")
 if (array_key_exists($cleanSection, $routes)) {
     $matchedFile = $routes[$cleanSection];
 } 
-// B) Intento dinámico (ej: "channel/upload/UUID-Largo")
+// B) Si no es exacta, buscamos si coincide con alguna ruta base (Dinámica)
 else {
     foreach ($routes as $routeKey => $filePath) {
-        // Verificamos si la sección solicitada EMPIEZA con esta ruta clave
+        // Verificamos si la sección solicitada EMPIEZA con esta ruta clave seguida de una barra
+        // Ejemplo: "channel/upload/123" empieza por "channel/upload/"
         if (strpos($cleanSection, $routeKey . '/') === 0) {
             $matchedFile = $filePath;
             
             // Extraemos lo que sobra de la URL y lo guardamos como UUID
             // Ejemplo: de "channel/upload/123" quitamos "channel/upload/" y queda "123"
             $remaining = substr($cleanSection, strlen($routeKey) + 1);
-            $routeParams['uuid'] = $remaining;
+            $remaining = trim($remaining, '/'); // Limpieza extra
+            
+            if (!empty($remaining)) {
+                $routeParams['uuid'] = $remaining;
+            }
             
             break; // ¡Encontrado! Dejamos de buscar
         }

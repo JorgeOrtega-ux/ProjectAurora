@@ -150,10 +150,8 @@ function initEvents() {
             const btnDelete = e.target.closest('[data-action="delete-video"]');
             
             if (btnEdit) {
-                const currentUrl = window.location.pathname;
-                const segments = currentUrl.split('/');
-                const channelUuid = segments[segments.length - 1] || segments[segments.length - 2]; 
-                navigateTo(`s/channel/upload/${channelUuid}`);
+                 const videoUuid = btnEdit.dataset.uuid;
+                navigateTo(`s/channel/upload/${videoUuid}`);
             }
 
             if (btnDelete) {
