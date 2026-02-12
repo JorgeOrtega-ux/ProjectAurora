@@ -375,8 +375,9 @@ def task_process_video(payload):
         update_video_status(video_uuid, 'error', str(e))
         notify_frontend('notification', {'type': 'error', 'text': 'Fallo en la transcodificación del video.'})
 # [NUEVO] Tarea para generar miniaturas inteligentes
+# [MODIFICADO] Tarea para generar miniaturas inteligentes en ALTA CALIDAD
 def task_generate_thumbnails(payload):
-    logging.info("🖼️ [Thread] Generando miniaturas inteligentes...")
+    logging.info("🖼️ [Thread] Generando miniaturas inteligentes (Alta Calidad)...")
     
     video_uuid = payload.get('video_uuid')
     raw_path = payload.get('raw_path')
@@ -418,19 +419,30 @@ def task_generate_thumbnails(payload):
             output_path = os.path.join(thumbs_dir, filename)
             rel_path = f"public/storage/thumbnails/generated/{video_uuid}/{filename}"
 
-            # Extraer frame
+            # --- CAMBIO PARA MÁXIMA CALIDAD ---
             cmd = [
-                'ffmpeg', '-y', '-ss', str(timestamp), '-i', raw_path,
-                '-vframes', '1', '-q:v', '2', # Alta calidad JPG
-                '-vf', 'scale=320:180:force_original_aspect_ratio=decrease', # Miniatura ligera
+                'ffmpeg', '-y', 
+                '-ss', str(timestamp),      # Ir al segundo específico
+                '-i', raw_path,             # Archivo de entrada
+                '-vframes', '1',            # Solo 1 frame
+                '-q:v', '2',                # Calidad JPG Máxima (rango 2-31, 2 es mejor)
+                
+                # ESCALA INTELIGENTE:
+                # 'min(1920,iw)': Si el ancho original (iw) es mayor a 1920, lo baja a 1920.
+                #                 Si es menor (ej. 1280), lo deja como está para no pixelar.
+                # -1:             Calcula la altura automáticamente para mantener la proporción.
+                '-vf', "scale='min(1920,iw)':-1", 
+                
                 output_path
             ]
+            
+            # Ejecutar FFmpeg
             subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
             if os.path.exists(output_path):
                 generated_files.append(rel_path)
 
-        # Guardar en DB
+        # Guardar en DB si se generaron archivos
         if generated_files:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -439,15 +451,15 @@ def task_generate_thumbnails(payload):
             conn.commit()
             conn.close()
 
-            logging.info(f"✅ Se generaron {len(generated_files)} miniaturas para {video_uuid}")
+            logging.info(f"✅ Se generaron {len(generated_files)} miniaturas HD para {video_uuid}")
             
-            # Notificar al frontend con las imágenes
+            # Notificar al frontend con las nuevas rutas
             notify_frontend('thumbnails_generated', {
                 'uuid': video_uuid,
                 'thumbnails': generated_files
             })
         else:
-            logging.warning("⚠️ No se generaron miniaturas (FFmpeg falló?)")
+            logging.warning("⚠️ No se generaron miniaturas (FFmpeg falló o el video es ilegible)")
 
     except Exception as e:
         logging.error(f"❌ Error generando miniaturas: {e}")
