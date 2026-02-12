@@ -78,14 +78,15 @@ return [
     
     'system.create_backup'    => ['file' => 'handlers/system-handler.php', 'action' => 'create_backup_auto'],
 
-    // === STUDIO (NUEVO) ===
+    // === STUDIO ===
     'studio.init_upload'      => ['file' => 'handlers/studio-handler.php', 'action' => 'init_upload'],
     'studio.upload_chunk'     => ['file' => 'handlers/studio-handler.php', 'action' => 'upload_chunk'],
     'studio.upload_thumbnail' => ['file' => 'handlers/studio-handler.php', 'action' => 'upload_thumbnail'],
     'studio.save_metadata'    => ['file' => 'handlers/studio-handler.php', 'action' => 'save_metadata'],
     'studio.get_pending'      => ['file' => 'handlers/studio-handler.php', 'action' => 'get_pending'],
+    'studio.get_content'      => ['file' => 'handlers/studio-handler.php', 'action' => 'get_content'], // [NUEVO]
     'studio.cancel_batch'     => ['file' => 'handlers/studio-handler.php', 'action' => 'cancel_batch'],
     'studio.generate_thumbs'  => ['file' => 'handlers/studio-handler.php', 'action' => 'generate_thumbnails'],
-    'studio.delete_video'     => ['file' => 'handlers/studio-handler.php', 'action' => 'delete_video'], // [NUEVO]
+    'studio.delete_video'     => ['file' => 'handlers/studio-handler.php', 'action' => 'delete_video'],
 ];
 ?>

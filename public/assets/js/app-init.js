@@ -25,7 +25,8 @@ import { UsersController } from './modules/admin/users/users-controller.js';
 import { initAuthController } from './auth-controller.js';
 import { initMainController } from './main-controller.js';
 import { initUrlManager } from './core/utils/url-manager.js';
-import { UploadController } from './modules/studio/upload-controller.js'; // [IMPORTANTE]
+import { UploadController } from './modules/studio/upload-controller.js';
+import { ContentController } from './modules/studio/content-controller.js'; // [NUEVO]
 
 const App = {
     init: () => {
@@ -100,10 +101,15 @@ function initGlobalSocketListeners() {
 function routeDispatcher(section) {
     updateSidebarState(section);
     
-    // [CORRECCIÓN CRÍTICA] Detectar si la URL empieza con "channel/upload"
-    // Esto captura "channel/upload/UUID..."
+    // [IMPORTANTE] Rutas dinámicas de Studio
     if (section.startsWith('channel/upload') || section.includes('channel/upload')) {
         UploadController.init();
+        return;
+    }
+    
+    // [NUEVO] Ruta de Mi Contenido
+    if (section.startsWith('channel/my-content') || section.includes('channel/my-content')) {
+        ContentController.init();
         return;
     }
 

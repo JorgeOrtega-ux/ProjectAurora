@@ -85,9 +85,10 @@ const ApiRoutes = {
         UploadThumbnail: { route: 'studio.upload_thumbnail' },
         SaveMetadata: { route: 'studio.save_metadata' },
         GetPending: { route: 'studio.get_pending' },
+        GetContent: { route: 'studio.get_content' }, // [NUEVO]
         CancelBatch: { route: 'studio.cancel_batch' },
         GenerateThumbs: { route: 'studio.generate_thumbs' },
-        DeleteVideo: { route: 'studio.delete_video' } // [NUEVO]
+        DeleteVideo: { route: 'studio.delete_video' } 
     }
 };
 

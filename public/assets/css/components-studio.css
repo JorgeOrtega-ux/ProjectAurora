@@ -37,85 +37,65 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px; /* Ajustado a 8px */
-    height: auto; /* Ajustado a auto */
+    padding: 8px;
+    height: auto;
     min-height: 56px;
     border-bottom: 1px solid var(--border-color, #e5e5e5);
     background-color: var(--bg-color, #ffffff);
-    gap: 16px;
     flex-wrap: wrap;
+    position: relative;
+    z-index: 20;
+    gap: 8px;
 }
 
 .component-studio-toolbar-group {
     display: flex;
     align-items: center;
-    gap: 12px;
-    min-width: 0; 
+    min-width: 0;
+    gap: 2px;
 }
 
-/* PESTAÑAS / BADGES DE VIDEOS EN HEADER */
-.studio-tabs-scroll {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    overflow-x: auto;
-    scrollbar-width: none; /* Firefox */
-    padding: 4px 0;
-    margin-left: 16px;
-    border-left: 1px solid var(--border-light);
-    padding-left: 16px;
+/* Elementos internos de la Toolbar */
+.component-divider-vertical {
+    height: 24px;
+    border-left: 1px solid var(--border-light, #e0e0e0);
+    margin: 0 4px;
 }
-.studio-tabs-scroll::-webkit-scrollbar { display: none; }
 
-.studio-tab-badge {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px 4px 6px;
-    border-radius: 99px;
-    background-color: var(--bg-hover-light);
-    border: 1px solid transparent;
-    cursor: pointer;
-    font-size: 13px;
+/* Filtros Dropdown */
+.component-studio-toolbar .trigger-select-wrapper {
+    width: auto;
+    min-width: 160px;
+}
+
+/* Texto de Paginación */
+.component-studio-toolbar .component-pagination-info {
+    font-size: 12px;
+    min-width: 40px;
+    text-align: center;
     color: var(--text-secondary);
-    transition: all 0.2s;
     user-select: none;
-    white-space: nowrap;
-    max-width: 200px;
 }
 
-.studio-tab-badge:hover {
-    background-color: var(--bg-hover-light);
-    color: var(--text-primary);
-    border-color: var(--border-light);
+/* Buscador Desplegable */
+#content-search-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 8px;
+    width: 320px;
+    background-color: var(--bg-surface, #ffffff);
+    padding: 12px;
+    border: 1px solid var(--border-light, #e0e0e0);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    display: none;
+    z-index: 50;
+    animation: fadeInPopover 0.15s ease-out;
 }
 
-.studio-tab-badge.active {
-    background-color: var(--action-primary);
-    color: var(--text-inverse);
-    font-weight: 500;
-}
-
-.studio-tab-badge.active .studio-tab-icon { color: var(--text-inverse); }
-
-.studio-tab-icon {
-    font-size: 16px;
-    color: var(--text-tertiary);
-}
-
-.studio-tab-text {
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Spinner dentro del badge */
-.badge-spinner {
-    width: 12px;
-    height: 12px;
-    border: 2px solid rgba(255,255,255,0.3);
-    border-left-color: #fff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+@keyframes fadeInPopover {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* Área de Contenido */
@@ -129,6 +109,38 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+}
+
+/* Tarjetas y Tablas en Studio */
+.component-studio-content-area .component-card--fill {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-light, #e0e0e0);
+    box-shadow: none;
+    background: var(--bg-surface);
+}
+
+.component-studio-content-area .component-table-wrapper {
+    border: none;
+    box-shadow: none;
+}
+
+/* Miniaturas en Tabla */
+.video-row-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.video-row-thumb.placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #222;
+    color: #555;
+    width: 100%;
+    height: 100%;
 }
 
 /* Upload Zone */
@@ -179,11 +191,11 @@
     flex-direction: column; 
     align-items: center; 
     justify-content: center;
-    position: relative; /* Necesario para la imagen absoluta */
+    position: relative;
     overflow: hidden;
 }
 
-/* IMAGEN DE VISTA PREVIA (NUEVO) */
+/* IMAGEN DE VISTA PREVIA */
 .preview-thumbnail-img {
     position: absolute;
     top: 0;
@@ -198,7 +210,7 @@
 .thumbnail-loading {
     position: absolute; 
     inset: 0; 
-    background: rgba(0,0,0,0.7); /* Fondo oscuro semitransparente sobre el player */
+    background: rgba(0,0,0,0.7);
     z-index: 20; 
     display: flex; 
     align-items: center; 

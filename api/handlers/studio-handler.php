@@ -56,6 +56,15 @@ switch ($action) {
         Utils::jsonResponse($studioService->getPendingVideos());
         break;
 
+    // [NUEVO] Obtener contenido completo (Dashboard)
+    case 'get_content':
+        $search = $_POST['search'] ?? '';
+        $status = $_POST['status'] ?? 'all';
+        $page = (int)($_POST['page'] ?? 1);
+        $limit = (int)($_POST['limit'] ?? 20);
+        Utils::jsonResponse($studioService->getUserContent($search, $status, $page, $limit));
+        break;
+
     case 'generate_thumbnails':
         $uuid = $_POST['video_uuid'] ?? '';
         Utils::jsonResponse($studioService->requestAutoThumbnails($uuid));
@@ -66,7 +75,6 @@ switch ($action) {
         Utils::jsonResponse($studioService->cancelBatch($batchId));
         break;
 
-    // [NUEVO] Eliminación granular de video
     case 'delete_video':
         $uuid = $_POST['video_uuid'] ?? '';
         Utils::jsonResponse($studioService->deleteVideo($uuid));

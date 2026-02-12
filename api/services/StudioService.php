@@ -96,7 +96,7 @@ class StudioService {
                 $this->redis->rpush('aurora_task_queue', json_encode($task));
             }
 
-            // [CAMBIO] Devolvemos UUID y Título para que el frontend abra el editor
+            // Devolvemos UUID y Título para que el frontend abra el editor
             return [
                 'success' => true, 
                 'status' => 'queued',
@@ -108,7 +108,6 @@ class StudioService {
         return ['success' => false, 'message' => 'Error al ensamblar archivo final'];
     }
 
-    // [MODIFICADO] uploadThumbnail para guardar dominant_color
     public function uploadThumbnail($uuid, $file) {
         if (!$this->isOwner($uuid)) return ['success' => false, 'message' => 'Acceso denegado'];
 
@@ -123,7 +122,7 @@ class StudioService {
         $destAbsPath = __DIR__ . '/../../' . $destRelPath;
 
         if (rename($sourcePath, $destAbsPath)) {
-            // [CAMBIO] Guardamos también el dominant_color
+            // Guardamos también el dominant_color
             $color = $uploadResult['dominant_color'] ?? '#000000';
             
             $stmt = $this->pdo->prepare("UPDATE videos SET thumbnail_path = ?, dominant_color = ? WHERE uuid = ?");
@@ -139,7 +138,6 @@ class StudioService {
         return ['success' => false, 'message' => 'Error moviendo miniatura'];
     }
 
-    // [NUEVO] Método para solicitar generación automática
     public function requestAutoThumbnails($uuid) {
         if (!$this->isOwner($uuid)) return ['success' => false, 'message' => 'Acceso denegado'];
 
@@ -241,6 +239,85 @@ class StudioService {
         return ['success' => true, 'videos' => $videos];
     }
 
+    // ===============================================================================================
+    // [NUEVO] OBTENER CONTENIDO COMPLETO (FILTRADO Y PAGINADO)
+    // ===============================================================================================
+    public function getUserContent($search = '', $status = 'all', $page = 1, $limit = 20) {
+        $offset = ($page - 1) * $limit;
+        $params = [$this->userId];
+        $whereClause = "WHERE user_id = ?";
+
+        if (!empty($search)) {
+            $whereClause .= " AND title LIKE ?";
+            $params[] = "%$search%";
+        }
+
+        if ($status !== 'all' && !empty($status)) {
+            $whereClause .= " AND status = ?";
+            $params[] = $status;
+        }
+
+        try {
+            // Contar total
+            $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM videos $whereClause");
+            $countStmt->execute($params);
+            $totalItems = $countStmt->fetchColumn();
+
+            // Obtener datos
+            $sql = "SELECT uuid, title, description, status, thumbnail_path, created_at, 
+                           duration, processing_percentage, error_message, dominant_color
+                    FROM videos 
+                    $whereClause 
+                    ORDER BY created_at DESC 
+                    LIMIT $limit OFFSET $offset";
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+            $videos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Procesar miniaturas y fechas
+            foreach ($videos as &$v) {
+                if ($v['thumbnail_path']) {
+                    $path = __DIR__ . '/../../' . $v['thumbnail_path'];
+                    if (file_exists($path)) {
+                        $v['thumbnail_url'] = 'public/storage/thumbnails/' . basename($v['thumbnail_path']);
+                        // Opcional: Si quieres enviar base64 para evitar caché o accesos directos, descomenta esto:
+                        // $data = file_get_contents($path);
+                        // $v['thumbnail_base64'] = 'data:image/png;base64,' . base64_encode($data);
+                    } else {
+                        $v['thumbnail_url'] = null;
+                    }
+                }
+                
+                // Formato de duración (segundos a MM:SS)
+                if ($v['duration']) {
+                    $minutes = floor($v['duration'] / 60);
+                    $seconds = $v['duration'] % 60;
+                    $v['duration_formatted'] = sprintf("%02d:%02d", $minutes, $seconds);
+                } else {
+                    $v['duration_formatted'] = '--:--';
+                }
+                
+                // Tiempo transcurrido
+                $v['time_ago'] = Utils::timeElapsedString($v['created_at']);
+            }
+
+            return [
+                'success' => true,
+                'videos' => $videos,
+                'pagination' => [
+                    'current' => (int)$page,
+                    'total_pages' => ceil($totalItems / $limit),
+                    'total_items' => (int)$totalItems,
+                    'limit' => (int)$limit
+                ]
+            ];
+
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $this->i18n->t('api.db_error')];
+        }
+    }
+
     public function cancelBatch($batchId) {
         if (empty($batchId)) return;
         $stmt = $this->pdo->prepare("SELECT uuid, raw_file_path FROM videos WHERE batch_id = ? AND user_id = ?");
@@ -259,7 +336,6 @@ class StudioService {
         return ['success' => true];
     }
 
-    // [NUEVO] Eliminación de un video específico
     public function deleteVideo($uuid) {
         if (!$this->isOwner($uuid)) {
             return ['success' => false, 'message' => 'Acceso denegado o video no encontrado.'];
@@ -287,15 +363,12 @@ class StudioService {
         }
 
         // 4. Eliminar Carpeta HLS (y su contenido)
-        // El HLS path es un archivo dentro de una carpeta con el nombre del UUID
-        // Ej: public/storage/videos/{uuid}/index.m3u8
         $videoFolder = $this->publicVideoDir . '/' . $uuid;
         if (is_dir($videoFolder)) {
             $this->deleteDirectory($videoFolder);
         }
 
         // 5. Eliminar Carpeta de Miniaturas Generadas
-        // Ruta: public/storage/thumbnails/generated/{uuid}/
         $generatedThumbsDir = $this->thumbnailDir . '/generated/' . $uuid;
         if (is_dir($generatedThumbsDir)) {
             $this->deleteDirectory($generatedThumbsDir);
