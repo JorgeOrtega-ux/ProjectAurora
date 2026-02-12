@@ -14,12 +14,87 @@ let _activeVideoElement = null;
 let _activeCard = null;
 let _previewInterval = null;
 
+// =========================================================
+// 1. PALETA PROFESIONAL (5 Tonos por color)
+// =========================================================
+// Basado en escala 300-700 para cubrir iluminaciones variadas
+const EXTENDED_PALETTE = [
+    // Slate (Neutros)
+    { hex: '#cbd5e1' }, { hex: '#94a3b8' }, { hex: '#64748b' }, { hex: '#475569' }, { hex: '#334155' },
+    // Red
+    { hex: '#fca5a5' }, { hex: '#f87171' }, { hex: '#ef4444' }, { hex: '#dc2626' }, { hex: '#b91c1c' },
+    // Orange
+    { hex: '#fdba74' }, { hex: '#fb923c' }, { hex: '#f97316' }, { hex: '#ea580c' }, { hex: '#c2410c' },
+    // Amber
+    { hex: '#fcd34d' }, { hex: '#fbbf24' }, { hex: '#f59e0b' }, { hex: '#d97706' }, { hex: '#b45309' },
+    // Green
+    { hex: '#86efac' }, { hex: '#4ade80' }, { hex: '#22c55e' }, { hex: '#16a34a' }, { hex: '#15803d' },
+    // Emerald
+    { hex: '#6ee7b7' }, { hex: '#34d399' }, { hex: '#10b981' }, { hex: '#059669' }, { hex: '#047857' },
+    // Teal
+    { hex: '#5eead4' }, { hex: '#2dd4bf' }, { hex: '#14b8a6' }, { hex: '#0d9488' }, { hex: '#0f766e' },
+    // Cyan
+    { hex: '#67e8f9' }, { hex: '#22d3ee' }, { hex: '#06b6d4' }, { hex: '#0891b2' }, { hex: '#0e7490' },
+    // Blue
+    { hex: '#93c5fd' }, { hex: '#60a5fa' }, { hex: '#3b82f6' }, { hex: '#2563eb' }, { hex: '#1d4ed8' },
+    // Indigo
+    { hex: '#a5b4fc' }, { hex: '#818cf8' }, { hex: '#6366f1' }, { hex: '#4f46e5' }, { hex: '#4338ca' },
+    // Violet
+    { hex: '#c4b5fd' }, { hex: '#a78bfa' }, { hex: '#8b5cf6' }, { hex: '#7c3aed' }, { hex: '#6d28d9' },
+    // Purple
+    { hex: '#d8b4fe' }, { hex: '#c084fc' }, { hex: '#a855f7' }, { hex: '#9333ea' }, { hex: '#7e22ce' },
+    // Fuchsia
+    { hex: '#f0abfc' }, { hex: '#e879f9' }, { hex: '#d946ef' }, { hex: '#c026d3' }, { hex: '#a21caf' },
+    // Pink
+    { hex: '#f9a8d4' }, { hex: '#f472b6' }, { hex: '#ec4899' }, { hex: '#db2777' }, { hex: '#be185d' },
+    // Rose
+    { hex: '#fda4af' }, { hex: '#fb7185' }, { hex: '#f43f5e' }, { hex: '#e11d48' }, { hex: '#be123c' }
+];
+
+// Algoritmo de distancia de color (Euclidiano RGB)
+function getNearestSafeColor(rawHex) {
+    if (!rawHex || rawHex === '#000000') return '#202020'; // Fallback
+
+    // Convertir Hex a RGB
+    let r = 0, g = 0, b = 0;
+    if (rawHex.length === 4) {
+        r = parseInt("0x" + rawHex[1] + rawHex[1]);
+        g = parseInt("0x" + rawHex[2] + rawHex[2]);
+        b = parseInt("0x" + rawHex[3] + rawHex[3]);
+    } else if (rawHex.length === 7) {
+        r = parseInt("0x" + rawHex[1] + rawHex[2]);
+        g = parseInt("0x" + rawHex[3] + rawHex[4]);
+        b = parseInt("0x" + rawHex[5] + rawHex[6]);
+    }
+
+    let minDistance = Infinity;
+    let closestHex = EXTENDED_PALETTE[2].hex; // Default (un tono medio)
+
+    // Buscar el color de la paleta con menor distancia matemática
+    for (const color of EXTENDED_PALETTE) {
+        const targetR = parseInt(color.hex.substring(1, 3), 16);
+        const targetG = parseInt(color.hex.substring(3, 5), 16);
+        const targetB = parseInt(color.hex.substring(5, 7), 16);
+
+        // Distancia euclidiana (sin raíz cuadrada para optimizar)
+        const distance = Math.pow(targetR - r, 2) + 
+                         Math.pow(targetG - g, 2) + 
+                         Math.pow(targetB - b, 2);
+
+        if (distance < minDistance) {
+            minDistance = distance;
+            closestHex = color.hex;
+        }
+    }
+    return closestHex;
+}
+
 export const HomeController = {
     init: () => {
         _container = document.getElementById('home-feed-grid');
         if (!_container) return;
 
-        console.log("HomeController: Inicializado");
+        console.log("HomeController: Inicializado (Pro Color Mode)");
         
         _currentPage = 1;
         _hasMore = true;
@@ -45,7 +120,6 @@ export const HomeController = {
 };
 
 function initPreviewEvents() {
-    // Delegación de eventos para mouseenter y mouseleave en las tarjetas
     _container.addEventListener('mouseenter', (e) => {
         const card = e.target.closest('.video-card');
         if (card) handleCardHover(card);
@@ -58,10 +132,7 @@ function initPreviewEvents() {
 }
 
 function handleCardHover(card) {
-    // Limpiar timeout anterior si existe
     if (_hoverTimeout) clearTimeout(_hoverTimeout);
-
-    // Debounce: Esperar 600ms antes de iniciar la reproducción
     _hoverTimeout = setTimeout(() => {
         startVideoPreview(card);
     }, 600);
@@ -76,7 +147,6 @@ function handleCardLeave(card) {
 }
 
 function startVideoPreview(card) {
-    // Si ya hay otro video activo, detenerlo
     if (_activeCard && _activeCard !== card) {
         stopVideoPreview(_activeCard);
     }
@@ -84,21 +154,16 @@ function startVideoPreview(card) {
     const hlsUrl = card.dataset.hls;
     if (!hlsUrl) return;
 
-    // Contenedor superior donde se inyectará el video
     const topContainer = card.querySelector('.video-top');
     if (!topContainer) return;
 
-    // Crear elemento video dinámicamente
     const video = document.createElement('video');
     video.className = 'video-preview active';
     video.muted = true;
     video.autoplay = true;
     video.playsInline = true;
-    video.style.opacity = '0'; // Inicio invisible para evitar parpadeo
+    video.style.opacity = '0';
 
-    // [NUEVO] DETECTAR CUANDO EL VIDEO TERMINA
-    // Esto hace que al acabar el video, se cierre el preview y vuelva la miniatura
-    // aunque el mouse siga encima.
     video.addEventListener('ended', () => {
         stopVideoPreview(card);
     });
@@ -107,7 +172,6 @@ function startVideoPreview(card) {
     _activeVideoElement = video;
     _activeCard = card;
 
-    // Iniciar Hls.js
     if (Hls.isSupported()) {
         const hls = new Hls();
         hls.loadSource(window.BASE_PATH + hlsUrl);
@@ -116,25 +180,20 @@ function startVideoPreview(card) {
             const playPromise = video.play();
             if (playPromise !== undefined) {
                 playPromise.then(() => {
-                    video.style.opacity = '1'; // Mostrar cuando empiece a reproducir
+                    video.style.opacity = '1';
                     startCountdownTimer(card, video);
                 }).catch(error => {
-                    console.log("Autoplay prevent handled");
-                    stopVideoPreview(card); // Si falla el autoplay, limpiamos
+                    stopVideoPreview(card);
                 });
             }
         });
-        
-        // Manejo de errores HLS
         hls.on(Hls.Events.ERROR, function (event, data) {
             if (data.fatal) {
                 stopVideoPreview(card);
             }
         });
-
         _activeHls = hls;
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Soporte nativo (Safari)
         video.src = window.BASE_PATH + hlsUrl;
         video.addEventListener('loadedmetadata', () => {
             video.play();
@@ -145,27 +204,22 @@ function startVideoPreview(card) {
 }
 
 function stopVideoPreview(card) {
-    // Detener intervalo de cuenta regresiva (si hubiera uno basado en interval)
     if (_previewInterval) {
         clearInterval(_previewInterval);
         _previewInterval = null;
     }
 
-    // Resetear timer visual al original guardado en dataset
     const badge = card.querySelector('.video-duration');
     if (badge && card.dataset.durationFormatted) {
         badge.textContent = card.dataset.durationFormatted;
     }
 
-    // Destruir HLS
     if (_activeHls) {
         _activeHls.destroy();
         _activeHls = null;
     }
 
-    // Remover elemento video
     if (_activeVideoElement) {
-        // Pausar y vaciar src para liberar memoria antes de remover
         _activeVideoElement.pause();
         _activeVideoElement.removeAttribute('src');
         _activeVideoElement.load();
@@ -182,21 +236,15 @@ function startCountdownTimer(card, video) {
 
     if (!badge || totalDuration <= 0) return;
 
-    // Actualizar cada vez que el tiempo del video cambia
     video.addEventListener('timeupdate', () => {
-        // Calcular restante
         const remaining = Math.max(0, totalDuration - video.currentTime);
-        
-        // Si el remaining es muy cercano a 0 (ej. 0.1s), forzamos 00:00 para estética
         if (remaining < 0.5) {
              badge.textContent = "00:00";
              return;
         }
-
         const minutes = Math.floor(remaining / 60);
         const seconds = Math.floor(remaining % 60);
         const formatted = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        
         badge.textContent = formatted;
     });
 }
@@ -250,21 +298,24 @@ function renderVideos(videos) {
         card.className = 'video-card';
         card.dataset.uuid = v.uuid;
         
-        // --- DATA ATTRIBUTES PARA PREVIEW ---
+        // DATA ATTRIBUTES
         card.dataset.hls = v.hls_path || '';
         card.dataset.duration = v.duration || 0;
-        card.dataset.durationFormatted = v.duration_formatted; // Guardar texto original para reset
+        card.dataset.durationFormatted = v.duration_formatted;
         
-        const hoverColor = v.dominant_color || 'var(--bg-surface-alt)';
-        card.style.setProperty('--card-hover-color', hoverColor);
+        // [NUEVO] LÓGICA DE COLOR SNAPPING
+        // Toma el color crudo, busca el más cercano en la paleta profesional y lo asigna.
+        const rawColor = v.dominant_color || '#202020';
+        const unifiedColor = getNearestSafeColor(rawColor);
+        card.style.setProperty('--dynamic-base', unifiedColor);
         
-        // Thumbnail URL handling
+        // Miniatura
         let thumbUrl = v.thumbnail_url ? window.BASE_PATH + v.thumbnail_url : '';
         let thumbHtml = thumbUrl 
             ? `<img src="${thumbUrl}" loading="lazy" alt="${v.title}" class="video-thumb-img">` 
             : `<div style="width:100%;height:100%;background:#111;display:flex;align-items:center;justify-content:center;"><span class="material-symbols-rounded" style="color:#333;font-size:32px;">movie</span></div>`;
 
-        // Avatar handling
+        // Avatar
         let avatarUrl = v.author_avatar_url;
         if (avatarUrl && !avatarUrl.startsWith('http')) {
             avatarUrl = window.BASE_PATH + avatarUrl;
@@ -293,7 +344,7 @@ function renderVideos(videos) {
         card.innerHTML = html;
         
         card.addEventListener('click', () => {
-            console.log("Go to video:", v.uuid);
+            // Navegación futura
             // navigateTo('watch/' + v.uuid); 
         });
 
