@@ -11,6 +11,7 @@ import glob
 import zipfile
 import secrets
 import tempfile 
+import shutil
 from concurrent.futures import ThreadPoolExecutor
 
 # --- CONFIGURACIÓN ---
@@ -45,15 +46,14 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BACKUP_DIR = os.path.join(BASE_DIR, 'storage', 'backups')
 LOGS_DIR = os.path.join(BASE_DIR, 'logs')
 TEMP_DIR = os.path.join(BASE_DIR, 'storage', 'temp')
+VIDEOS_DIR = os.path.join(BASE_DIR, 'public', 'storage', 'videos')
 
-# [FIX BLOQUEO] Executor para tareas pesadas (Backups/IO)
-EXECUTOR = ThreadPoolExecutor(max_workers=2)
+# [FIX BLOQUEO] Executor para tareas pesadas (Backups/IO/Video)
+EXECUTOR = ThreadPoolExecutor(max_workers=3)
 
 # --- INICIALIZACIÓN GLOBAL DE REDIS ---
 try:
     # [SEGURIDAD DINÁMICA]
-    # Si REDIS_SCHEME es 'tls' usamos SSL, si es 'tcp' no.
-    # Esto permite que funcione en XAMPP (local) y en Producción sin cambios de código.
     use_ssl = os.getenv('REDIS_SCHEME', 'tcp').lower() == 'tls'
     
     r_client = redis.Redis(
@@ -61,9 +61,9 @@ try:
         port=REDIS_PORT, 
         password=REDIS_PASS, 
         decode_responses=True,
-        ssl=use_ssl,           # True solo si es producción/TLS
-        ssl_cert_reqs=None,    # Ignorar errores de certificado (si usas SSL)
-        socket_timeout=5       # Timeout de seguridad para no colgar el script
+        ssl=use_ssl,
+        ssl_cert_reqs=None,
+        socket_timeout=5
     )
     r_client.ping() # Verificar conexión
     
@@ -116,38 +116,46 @@ def notify_frontend(msg_type, message):
     except Exception as e:
         logging.error(f"❌ Error publicando en Redis: {e}")
 
-def enforce_retention_policy():
+def update_video_status(uuid, status, error_msg=None):
+    """Actualiza el estado del video en la DB"""
     try:
-        limit = int(get_server_config('auto_backup_retention', 10))
-        if limit <= 0: return
-
-        files = glob.glob(os.path.join(BACKUP_DIR, '*.sql'))
-        if len(files) <= limit: return
-
-        # Ordenar por fecha de modificación (descendente) y eliminar excedentes
-        files.sort(key=os.path.getmtime, reverse=True)
-        to_delete = files[limit:]
-        
-        for f in to_delete:
-            try: os.remove(f)
-            except: pass
-        
-        logging.info(f"Limpieza: Se eliminaron {len(to_delete)} backups antiguos.")
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        if error_msg:
+            sql = "UPDATE videos SET status = %s, error_message = %s WHERE uuid = %s"
+            cursor.execute(sql, (status, error_msg, uuid))
+        else:
+            sql = "UPDATE videos SET status = %s WHERE uuid = %s"
+            cursor.execute(sql, (status, uuid))
+        conn.commit()
+        conn.close()
     except Exception as e:
-        logging.error(f"Error en política de retención: {e}")
+        logging.error(f"Error actualizando video DB: {e}")
+
+def get_video_metadata(file_path):
+    """Obtiene metadatos básicos usando ffprobe"""
+    try:
+        cmd = [
+            'ffprobe', 
+            '-v', 'error', 
+            '-show_entries', 'format=duration', 
+            '-of', 'default=noprint_wrappers=1:nokey=1', 
+            file_path
+        ]
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        duration = float(result.stdout.strip()) if result.stdout else 0
+        return {'duration': duration}
+    except Exception as e:
+        logging.error(f"Error ffprobe: {e}")
+        return {'duration': 0}
 
 def secure_resolve_mysqldump():
-    """
-    Resuelve la ruta de mysqldump buscando en config, rutas comunes de Windows y PATH.
-    """
     config_path = get_server_config('sys_mysqldump_path', '')
     valid_names = ['mysqldump', 'mysqldump.exe']
     
     if config_path and os.path.isfile(config_path):
         if os.path.basename(config_path).lower() in valid_names:
             return config_path
-        else:
-            logging.warning(f"⚠️ Ruta config inválida: {config_path}")
 
     common_paths = [
         r"C:\xampp\mysql\bin\mysqldump.exe",
@@ -158,10 +166,28 @@ def secure_resolve_mysqldump():
 
     for path in common_paths:
         if os.path.isfile(path):
-            logging.info(f"✅ Mysqldump encontrado en: {path}")
             return path
 
     return "mysqldump"
+
+def enforce_retention_policy():
+    try:
+        limit = int(get_server_config('auto_backup_retention', 10))
+        if limit <= 0: return
+
+        files = glob.glob(os.path.join(BACKUP_DIR, '*.sql'))
+        if len(files) <= limit: return
+
+        files.sort(key=os.path.getmtime, reverse=True)
+        to_delete = files[limit:]
+        
+        for f in to_delete:
+            try: os.remove(f)
+            except: pass
+        
+        logging.info(f"Limpieza: Se eliminaron {len(to_delete)} backups antiguos.")
+    except Exception as e:
+        logging.error(f"Error en política de retención: {e}")
 
 # --- TAREAS (EJECUTADAS EN HILOS) ---
 
@@ -178,11 +204,9 @@ def task_create_backup(payload):
     
     try:
         with tempfile.NamedTemporaryFile(mode='w', delete=False) as temp_conf:
-            # Escribir configuración estilo my.cnf
             temp_conf.write(f"[client]\nuser=\"{DB_USER}\"\npassword=\"{DB_PASS}\"\nhost=\"{DB_HOST}\"\n")
             conf_path = temp_conf.name
         
-        # Ejecutar mysqldump usando el archivo de configuración
         dump_cmd = [
             mysqldump_bin,
             f'--defaults-extra-file={conf_path}',
@@ -192,15 +216,9 @@ def task_create_backup(payload):
         ]
 
         with open(filepath, 'w') as outfile:
-            process = subprocess.Popen(
-                dump_cmd,
-                stdout=outfile,
-                stderr=subprocess.PIPE,
-                text=True
-            )
+            process = subprocess.Popen(dump_cmd, stdout=outfile, stderr=subprocess.PIPE, text=True)
             _, stderr = process.communicate()
 
-        # [SEGURIDAD] Borrar archivo de credenciales INMEDIATAMENTE
         if os.path.exists(conf_path):
             os.remove(conf_path)
 
@@ -227,7 +245,6 @@ def task_create_backup(payload):
     except Exception as e:
         if 'conf_path' in locals() and os.path.exists(conf_path):
             os.remove(conf_path)
-            
         logging.error(f"❌ Excepción al ejecutar backup: {e}")
         notify_frontend('notification', {'type': 'error', 'text': 'Error crítico en el Worker.'})
 
@@ -239,8 +256,7 @@ def task_create_zip(payload):
         source_type = payload.get('type', '')
         user_id = payload.get('requested_by', 0)
         
-        if not files:
-            raise ValueError("Lista de archivos vacía")
+        if not files: raise ValueError("Lista de archivos vacía")
 
         base_dir = LOGS_DIR if source_type == 'log' else BACKUP_DIR
         
@@ -248,7 +264,6 @@ def task_create_zip(payload):
         for f_rel in files:
             f_rel = f_rel.replace('..', '').strip('/')
             full_path = os.path.join(base_dir, f_rel)
-            
             if os.path.isfile(full_path) and full_path.startswith(base_dir):
                 valid_files.append((full_path, f_rel))
         
@@ -260,29 +275,21 @@ def task_create_zip(payload):
         zip_filename = f"aurora_batch_{int(time.time())}_{secrets.token_hex(4)}.zip"
         zip_filepath = os.path.join(TEMP_DIR, zip_filename)
 
-        logging.info(f"📦 Comprimiendo {len(valid_files)} archivos en {zip_filename}...")
-
         with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zf:
             for abs_path, arc_name in valid_files:
                 zf.write(abs_path, arc_name)
 
         token = secrets.token_hex(32)
         redis_data = {
-            'filepath': zip_filepath,
-            'filename': zip_filename,
-            'is_temp': True,
-            'user_id': user_id,
-            'created_at': time.time()
+            'filepath': zip_filepath, 'filename': zip_filename, 'is_temp': True,
+            'user_id': user_id, 'created_at': time.time()
         }
         
         r_client.setex(f"download:token:{token}", 300, json.dumps(redis_data))
-        
         download_url = f"download.php?token={token}"
         
         notify_frontend('download_ready', {
-            'url': download_url,
-            'filename': zip_filename,
-            'type': source_type
+            'url': download_url, 'filename': zip_filename, 'type': source_type
         })
         
         log_security_event('zip_create', f"Admin:{user_id} | Created: {zip_filename}")
@@ -292,9 +299,86 @@ def task_create_zip(payload):
         logging.error(f"❌ Error creando ZIP: {e}")
         notify_frontend('notification', {'type': 'error', 'text': 'Error al generar el archivo comprimido.'})
 
+def task_process_video(payload):
+    logging.info("🎬 [Thread] Iniciando procesamiento de video (HLS)...")
+    
+    video_uuid = payload.get('video_uuid')
+    raw_path = payload.get('raw_path')
+    
+    if not video_uuid or not raw_path or not os.path.exists(raw_path):
+        logging.error(f"❌ Datos de video inválidos: {video_uuid}")
+        notify_frontend('notification', {'type': 'error', 'text': 'Error al procesar video.'})
+        update_video_status(video_uuid, 'error', 'Raw file not found')
+        return
+
+    update_video_status(video_uuid, 'processing')
+
+    # Crear directorio público para el video
+    output_dir = os.path.join(VIDEOS_DIR, video_uuid)
+    os.makedirs(output_dir, exist_ok=True)
+
+    try:
+        # 1. Obtener Duración
+        meta = get_video_metadata(raw_path)
+        duration = meta.get('duration', 0)
+        
+        # 2. Transcodificar a HLS (Standard)
+        # Genera index.m3u8 y segmentos .ts
+        hls_path = os.path.join(output_dir, 'index.m3u8')
+        
+        cmd = [
+            'ffmpeg', '-y', '-i', raw_path,
+            '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
+            '-c:a', 'aac', '-b:a', '128k',
+            '-f', 'hls',
+            '-hls_time', '6',
+            '-hls_playlist_type', 'vod',
+            '-hls_segment_filename', os.path.join(output_dir, 'segment_%03d.ts'),
+            hls_path
+        ]
+        
+        logging.info(f"⏳ Ejecutando FFmpeg para {video_uuid}...")
+        process = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        
+        if process.returncode != 0:
+            raise Exception(f"FFmpeg Error: {process.stderr}")
+
+        # 3. Actualizar BD con rutas y estado final
+        # Ruta relativa web para el HLS
+        relative_hls = f"public/storage/videos/{video_uuid}/index.m3u8"
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        sql = """
+            UPDATE videos SET 
+                status = 'waiting_for_metadata', 
+                hls_path = %s, 
+                duration = %s,
+                processing_percentage = 100 
+            WHERE uuid = %s
+        """
+        cursor.execute(sql, (relative_hls, duration, video_uuid))
+        conn.commit()
+        conn.close()
+        
+        # 4. Notificar al Frontend
+        notify_frontend('processing_complete', {
+            'uuid': video_uuid,
+            'status': 'waiting_for_metadata',
+            'title': 'Video Procesado'
+        })
+        
+        logging.info(f"✅ Video procesado exitosamente: {video_uuid}")
+
+    except Exception as e:
+        logging.error(f"❌ Error procesando video {video_uuid}: {e}")
+        update_video_status(video_uuid, 'error', str(e))
+        notify_frontend('notification', {'type': 'error', 'text': 'Fallo en la transcodificación del video.'})
+
 TASKS = {
     'create_backup': task_create_backup,
-    'create_zip': task_create_zip
+    'create_zip': task_create_zip,
+    'process_video': task_process_video
 }
 
 def run_job(raw_data):
@@ -312,6 +396,9 @@ def run_job(raw_data):
 
 if __name__ == "__main__":
     logging.info(f"🚀 Aurora Worker iniciado. Esperando trabajos en '{QUEUE_NAME}'...")
+    
+    # Asegurar directorios
+    os.makedirs(VIDEOS_DIR, exist_ok=True)
     
     try:
         while True:

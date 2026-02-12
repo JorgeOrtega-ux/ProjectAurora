@@ -1,51 +1,71 @@
-/**
- * public/assets/js/modules/studio/upload-controller.js
- */
+
 
 import { ApiService } from '../../core/services/api-service.js';
 import { ToastManager } from '../../core/components/toast-manager.js';
-import { SocketClient } from '../../core/services/socket-client.js';
 import { I18nManager } from '../../core/utils/i18n-manager.js';
 
 const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
-const MAX_FILES = 3;
+const MAX_FILES = 5;
 
-let _container = null;
-let _filesQueue = [];
+// Estado local de videos
+// { uuid, title, status: 'uploading'|'processing'|'ready'|'published', progress: 0-100, data: {} }
+let _videosState = []; 
+let _activeVideoUuid = null; // Cuál se está editando actualmente
 let _activeBatchId = null;
-let _isUploading = false;
-let _activeVideoUuid = null; // UUID del video que se está editando
 
 export const UploadController = {
     init: async () => {
-        _container = document.querySelector('[data-section="channel-upload"]');
-        if (!_container) return;
+        const container = document.querySelector('[data-section="channel-upload"]');
+        if (!container) return;
 
-        console.log("UploadController: Inicializado");
+        console.log("UploadController: Inicializado (Multi-Tab Mode)");
         
-        _filesQueue = [];
+        _videosState = [];
+        _activeVideoUuid = null;
         _activeBatchId = null;
-        _isUploading = false;
         
         initDropzone();
         initEditorEvents();
         
-        // Escuchar eventos de WebSockets (Worker -> Server -> Frontend)
+        // Escuchar eventos de WebSockets para "Processing Complete"
         document.removeEventListener('socket:processing_complete', onProcessingComplete);
         document.addEventListener('socket:processing_complete', onProcessingComplete);
         
-        // Verificar si hay una subida pendiente al recargar
-        checkPendingUploads();
+        // Recuperar borradores pendientes al recargar
+        await checkPendingUploads();
     }
 };
+
+// ==========================================
+// 1. INICIALIZACIÓN Y CARGA
+// ==========================================
 
 async function checkPendingUploads() {
     try {
         const res = await ApiService.post(ApiService.Routes.Studio.GetPending, new FormData(), { signal: window.PAGE_SIGNAL });
         if (res.success && res.videos.length > 0) {
-            // Restaurar estado: Mostrar editor para el primer video pendiente
-            const video = res.videos[0];
-            showEditor(video);
+            
+            // Ocultar dropzone si hay videos
+            document.getElementById('upload-dropzone').classList.add('d-none');
+            document.getElementById('video-editor-area').classList.remove('d-none');
+
+            // Reconstruir estado
+            res.videos.forEach(v => {
+                _videosState.push({
+                    uuid: v.uuid,
+                    title: v.title || 'Sin título',
+                    status: (v.status === 'waiting_for_metadata') ? 'ready' : 'processing',
+                    progress: 100, // Ya subido
+                    thumbnail: v.thumbnail_src || null,
+                    description: v.description || ''
+                });
+            });
+
+            renderTabs();
+            // Seleccionar el primero
+            if (_videosState.length > 0) {
+                switchEditor(_videosState[0].uuid);
+            }
         }
     } catch (e) {
         if (!e.isAborted) console.error("Error checking pending:", e);
@@ -66,7 +86,6 @@ function initDropzone() {
 
     input.addEventListener('change', (e) => handleFiles(e.target.files));
 
-    // Drag & Drop visual feedback
     dropzone.addEventListener('dragover', (e) => {
         e.preventDefault();
         dropzone.classList.add('drag-active');
@@ -82,8 +101,6 @@ function initDropzone() {
 }
 
 function handleFiles(files) {
-    if (_isUploading) return;
-    
     const validFiles = Array.from(files).filter(f => f.type.startsWith('video/'));
     
     if (validFiles.length === 0) {
@@ -91,157 +108,309 @@ function handleFiles(files) {
         return;
     }
 
-    if (validFiles.length > MAX_FILES) {
-        ToastManager.show(`Máximo ${MAX_FILES} videos a la vez.`, 'warning');
+    if ((_videosState.length + validFiles.length) > MAX_FILES) {
+        ToastManager.show(`Máximo ${MAX_FILES} videos por sesión.`, 'warning');
         return;
     }
 
-    _filesQueue = validFiles;
-    _activeBatchId = 'batch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    
-    startBatchUpload();
-}
-
-function startBatchUpload() {
-    _isUploading = true;
-    
-    // UI Switch: Ocultar Dropzone, Mostrar Lista
+    // Ocultar Dropzone, Mostrar Editor
     document.getElementById('upload-dropzone').classList.add('d-none');
-    const listContainer = document.getElementById('upload-progress-list');
-    listContainer.classList.remove('d-none');
-    listContainer.innerHTML = '';
+    document.getElementById('video-editor-area').classList.remove('d-none');
 
-    // Renderizar items iniciales
-    _filesQueue.forEach((file, index) => {
-        const item = document.createElement('div');
-        item.className = 'upload-item';
-        item.id = `upload-item-${index}`;
-        item.innerHTML = `
-            <div class="upload-item-header">
-                <span class="filename">${file.name}</span>
-                <span class="percentage">0%</span>
-            </div>
-            <div class="progress-track">
-                <div class="progress-fill" style="width: 0%"></div>
-            </div>
-            <div class="upload-item-status">
-                <span class="status-text">Esperando...</span>
-            </div>
-        `;
-        listContainer.appendChild(item);
+    if (!_activeBatchId) {
+        _activeBatchId = 'batch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    // Procesar cada archivo
+    validFiles.forEach(file => {
+        // Título por defecto: Nombre de archivo sin extensión
+        const defaultTitle = file.name.replace(/\.[^/.]+$/, "");
+        
+        // Crear entrada temporal en estado (sin UUID aún)
+        const tempId = 'temp_' + Date.now() + Math.random();
+        
+        const videoEntry = {
+            uuid: tempId, // Temporal hasta que el server responda
+            fileObject: file,
+            title: defaultTitle,
+            description: '',
+            status: 'uploading',
+            progress: 0,
+            thumbnail: null
+        };
+        
+        _videosState.push(videoEntry);
+        
+        // Iniciar subida individual
+        startUpload(videoEntry);
     });
 
-    // Iniciar subida secuencial
-    processNextInQueue(0);
+    renderTabs();
+    
+    // Si no hay video activo seleccionado, seleccionar el primero que acabamos de agregar
+    if (!_activeVideoUuid) {
+        // Buscamos el primer tempId que acabamos de añadir
+        const firstNew = _videosState.find(v => v.status === 'uploading');
+        if (firstNew) switchEditor(firstNew.uuid);
+    }
 }
 
-async function processNextInQueue(index) {
-    if (index >= _filesQueue.length) {
-        // Todos subidos. Esperar procesamiento del Worker.
-        document.getElementById('global-upload-status').style.display = 'block';
-        ToastManager.show('Archivos subidos. Procesando...', 'info');
-        return;
-    }
+// ==========================================
+// 2. LÓGICA DE SUBIDA (Individual)
+// ==========================================
 
-    const file = _filesQueue[index];
-    const uiItem = document.getElementById(`upload-item-${index}`);
+async function startUpload(videoEntry) {
+    const file = videoEntry.fileObject;
     
     try {
-        await uploadSingleFile(file, uiItem);
-        // Éxito en este archivo, siguiente
-        processNextInQueue(index + 1);
-    } catch (error) {
-        console.error("Error subiendo archivo:", error);
-        handleBatchFailure();
-    }
-}
+        // A) Inicializar en Backend
+        const initData = new FormData();
+        initData.append('action', 'init_upload');
+        initData.append('batch_id', _activeBatchId);
+        initData.append('file_name', file.name);
 
-async function uploadSingleFile(file, uiItem) {
-    const statusText = uiItem.querySelector('.status-text');
-    const fill = uiItem.querySelector('.progress-fill');
-    const percentLabel = uiItem.querySelector('.percentage');
-
-    statusText.textContent = 'Iniciando subida...';
-
-    // 1. Inicializar en Backend
-    const initData = new FormData();
-    initData.append('action', 'init_upload');
-    initData.append('batch_id', _activeBatchId);
-    initData.append('file_name', file.name);
-
-    const initRes = await ApiService.post(ApiService.Routes.Studio.InitUpload, initData);
-    
-    if (!initRes.success) throw new Error(initRes.message);
-    const videoUuid = initRes.video_uuid;
-
-    // 2. Loop de Chunks
-    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-    
-    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-        const start = chunkIndex * CHUNK_SIZE;
-        const end = Math.min(start + CHUNK_SIZE, file.size);
-        const chunk = file.slice(start, end);
-
-        const formData = new FormData();
-        formData.append('action', 'upload_chunk');
-        formData.append('video_uuid', videoUuid);
-        formData.append('chunk_index', chunkIndex);
-        formData.append('chunk', chunk);
-        formData.append('is_last', (chunkIndex === totalChunks - 1) ? 'true' : 'false');
-
-        // Subida del chunk
-        // Nota: Aquí se podría usar XMLHttpRequest para progreso de subida del chunk individual,
-        // pero por simplicidad actualizamos la barra por cada chunk completado.
-        const chunkRes = await ApiService.post(ApiService.Routes.Studio.UploadChunk, formData);
+        const initRes = await ApiService.post(ApiService.Routes.Studio.InitUpload, initData);
         
-        if (!chunkRes.success) throw new Error(chunkRes.message);
+        if (!initRes.success) throw new Error(initRes.message);
+        
+        // Actualizar UUID real en el estado
+        const oldId = videoEntry.uuid;
+        videoEntry.uuid = initRes.video_uuid;
+        
+        // Si el usuario estaba viendo el "temp", actualizar la referencia activa
+        if (_activeVideoUuid === oldId) {
+            _activeVideoUuid = videoEntry.uuid;
+        }
+        
+        renderTabs(); // Refrescar para actualizar IDs en el DOM
 
-        // Actualizar UI
-        const percent = Math.round(((chunkIndex + 1) / totalChunks) * 100);
-        fill.style.width = `${percent}%`;
-        percentLabel.textContent = `${percent}%`;
-        statusText.textContent = `Subiendo... ${percent}%`;
+        // B) Subir Chunks
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+        
+        for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+            const start = chunkIndex * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, file.size);
+            const chunk = file.slice(start, end);
+
+            const formData = new FormData();
+            formData.append('action', 'upload_chunk');
+            formData.append('video_uuid', videoEntry.uuid);
+            formData.append('chunk_index', chunkIndex);
+            formData.append('chunk', chunk);
+            formData.append('is_last', (chunkIndex === totalChunks - 1) ? 'true' : 'false');
+
+            const chunkRes = await ApiService.post(ApiService.Routes.Studio.UploadChunk, formData);
+            if (!chunkRes.success) throw new Error(chunkRes.message);
+
+            // Actualizar progreso
+            const percent = Math.round(((chunkIndex + 1) / totalChunks) * 100);
+            videoEntry.progress = percent;
+            
+            // Si es el video activo, actualizar barra global (opcional) o UI
+            if (_activeVideoUuid === videoEntry.uuid) {
+                updateEditorStatusUI(videoEntry);
+            }
+            
+            // Actualizar badge spinner/progress? (Simplificado: Solo spinner en CSS)
+        }
+
+        // C) Finalizado Subida -> Backend responde con 'queued'
+        // El servidor ya respondió en el último chunk.
+        
+        videoEntry.status = 'processing';
+        videoEntry.progress = 100;
+        
+        renderTabs();
+        if (_activeVideoUuid === videoEntry.uuid) {
+            updateEditorStatusUI(videoEntry);
+            // Llenar datos si el servidor devolvió título limpio (ya lo hicimos en local, pero confirmamos)
+        }
+        
+        ToastManager.show(`"${videoEntry.title}" subido. Procesando...`, 'info');
+
+    } catch (error) {
+        console.error("Upload error:", error);
+        videoEntry.status = 'error';
+        videoEntry.errorMsg = 'Fallo en subida';
+        renderTabs();
+        if (_activeVideoUuid === videoEntry.uuid) updateEditorStatusUI(videoEntry);
+        ToastManager.show(`Error subiendo ${file.name}`, 'error');
+    }
+}
+
+// ==========================================
+// 3. GESTIÓN DE TABS Y EDITOR
+// ==========================================
+
+function renderTabs() {
+    const container = document.getElementById('video-tabs-container');
+    if (!container) return;
+    
+    container.innerHTML = '';
+
+    _videosState.forEach(v => {
+        const isActive = (v.uuid === _activeVideoUuid) ? 'active' : '';
+        let icon = 'movie'; 
+        let spinClass = '';
+
+        if (v.status === 'uploading') {
+            icon = 'upload'; // O nada si usamos spinner
+        } else if (v.status === 'processing') {
+            icon = 'settings_suggest'; 
+            spinClass = 'badge-spinner'; // CSS spinner
+        } else if (v.status === 'ready') {
+            icon = 'check_circle';
+        } else if (v.status === 'error') {
+            icon = 'error';
+        }
+
+        const badge = document.createElement('div');
+        badge.className = `studio-tab-badge ${isActive}`;
+        badge.dataset.uuid = v.uuid;
+        
+        // Icono o Spinner
+        let iconHtml = `<span class="material-symbols-rounded studio-tab-icon">${icon}</span>`;
+        if (v.status === 'uploading' || v.status === 'processing') {
+             // Reemplazar icono con spinner si está activo
+             iconHtml = `<div class="badge-spinner"></div>`;
+        }
+
+        badge.innerHTML = `
+            ${iconHtml}
+            <span class="studio-tab-text">${v.title}</span>
+        `;
+        
+        badge.addEventListener('click', () => switchEditor(v.uuid));
+        container.appendChild(badge);
+    });
+}
+
+function switchEditor(uuid) {
+    // 1. Guardar estado del video actual antes de cambiar (si existe)
+    if (_activeVideoUuid) {
+        const currentVideo = _videosState.find(v => v.uuid === _activeVideoUuid);
+        if (currentVideo) {
+            currentVideo.title = document.getElementById('meta-title').value;
+            currentVideo.description = document.getElementById('meta-desc').value;
+        }
     }
 
-    // Al finalizar subida, cambiar estado visual a "Procesando"
-    statusText.textContent = 'En cola de procesamiento...';
-    fill.classList.add('processing');
+    // 2. Cambiar activo
+    _activeVideoUuid = uuid;
+    const nextVideo = _videosState.find(v => v.uuid === uuid);
+    if (!nextVideo) return;
+
+    // 3. Renderizar Tabs para actualizar clase 'active'
+    renderTabs();
+
+    // 4. Llenar UI del Editor
+    document.getElementById('meta-title').value = nextVideo.title || '';
+    document.getElementById('meta-desc').value = nextVideo.description || '';
+    document.getElementById('meta-filename').textContent = nextVideo.title + '.mp4';
     
-    // Guardamos el UUID en el elemento para referenciarlo luego
-    uiItem.dataset.uuid = videoUuid;
+    const imgPreview = document.getElementById('thumbnail-preview');
+    if (nextVideo.thumbnail) {
+        imgPreview.src = nextVideo.thumbnail;
+        imgPreview.classList.remove('d-none');
+    } else {
+        imgPreview.src = '';
+        imgPreview.classList.add('d-none');
+    }
+
+    updateEditorStatusUI(nextVideo);
 }
 
-async function handleBatchFailure() {
-    _isUploading = false;
-    ToastManager.show('Error en la subida. Cancelando lote...', 'error');
+function updateEditorStatusUI(video) {
+    const alertBox = document.getElementById('editor-status-alert');
+    const btnPublish = document.getElementById('btn-publish');
+    const globalStatus = document.getElementById('global-upload-status');
+    const globalText = document.getElementById('global-status-text');
+
+    // Estado Global (Barra superior)
+    if (video.status === 'uploading') {
+        globalStatus.style.display = 'block';
+        globalText.textContent = `Subiendo ${video.progress}%...`;
+    } else if (video.status === 'processing') {
+        globalStatus.style.display = 'block';
+        globalText.textContent = 'Procesando en servidor...';
+    } else {
+        globalStatus.style.display = 'none';
+    }
+
+    // Estado Local (Alert en form)
+    alertBox.className = 'component-message mb-0'; // Reset clases
     
-    const formData = new FormData();
-    formData.append('batch_id', _activeBatchId);
-    await ApiService.post(ApiService.Routes.Studio.CancelBatch, formData);
-    
-    setTimeout(() => window.location.reload(), 2000);
+    if (video.status === 'uploading') {
+        alertBox.classList.remove('d-none');
+        alertBox.classList.add('component-message--info');
+        alertBox.innerHTML = `<strong>Subiendo video (${video.progress}%)...</strong><br>Puedes ir completando los detalles.`;
+        btnPublish.disabled = true;
+    } 
+    else if (video.status === 'processing') {
+        alertBox.classList.remove('d-none');
+        alertBox.classList.add('component-message--warning');
+        alertBox.innerHTML = `<strong>Procesando video...</strong><br>El video se está convirtiendo. Podrás publicar en breve.`;
+        btnPublish.disabled = true;
+    }
+    else if (video.status === 'ready') {
+        alertBox.classList.add('d-none'); // Ocultar si ya está listo
+        validatePublishRequirements(); // Habilitar botón si hay título/thumb
+    }
+    else if (video.status === 'error') {
+        alertBox.classList.remove('d-none');
+        alertBox.classList.add('component-message--error');
+        alertBox.textContent = 'Ocurrió un error con este video.';
+        btnPublish.disabled = true;
+    }
 }
 
-// === LÓGICA DE EDITOR Y MINIATURAS ===
+// ==========================================
+// 4. EVENTOS DE SOCKET (Worker terminado)
+// ==========================================
+
+function onProcessingComplete(e) {
+    const data = e.detail.message; // { uuid: '...', status: 'waiting_for_metadata' }
+    
+    if (data && data.uuid) {
+        const video = _videosState.find(v => v.uuid === data.uuid);
+        if (video) {
+            video.status = 'ready'; // Listo para publicar
+            
+            // Si el socket manda thumbnail u otros datos, actualizarlos aquí
+            // video.thumbnail = ...
+            
+            renderTabs();
+            
+            if (_activeVideoUuid === video.uuid) {
+                updateEditorStatusUI(video);
+                ToastManager.show('¡Procesamiento completado! Ya puedes publicar.', 'success');
+            }
+        }
+    }
+}
+
+// ==========================================
+// 5. EDITOR: THUMBNAIL Y GUARDADO
+// ==========================================
 
 function initEditorEvents() {
     const inputThumb = document.getElementById('input-thumbnail');
     const dropzoneThumb = document.getElementById('thumbnail-dropzone');
     
-    // Trigger input file
     dropzoneThumb?.addEventListener('click', () => inputThumb.click());
 
-    // Subida inmediata de miniatura al seleccionar
     inputThumb?.addEventListener('change', async (e) => {
         const file = e.target.files[0];
-        if (!file) return;
+        if (!file || !_activeVideoUuid) return;
 
-        if (!_activeVideoUuid) {
-            ToastManager.show('Espera a que el video termine de procesarse.', 'warning');
+        const currentVideo = _videosState.find(v => v.uuid === _activeVideoUuid);
+        // Validar que no sea temp
+        if (currentVideo.uuid.startsWith('temp_')) {
+            ToastManager.show('Espera a que inicie la subida.', 'warning');
             return;
         }
 
-        // Preview local inmediata
+        // Preview local
         const reader = new FileReader();
         reader.onload = (evt) => {
             const img = document.getElementById('thumbnail-preview');
@@ -250,105 +419,69 @@ function initEditorEvents() {
         };
         reader.readAsDataURL(file);
 
-        // Subida al servidor
+        // Subir
+        const loadingSpinner = dropzoneThumb.querySelector('.thumbnail-loading');
+        loadingSpinner.classList.remove('d-none');
+
         const formData = new FormData();
         formData.append('video_uuid', _activeVideoUuid);
         formData.append('thumbnail', file);
 
-        ToastManager.show('Subiendo miniatura...', 'info');
-        
         try {
             const res = await ApiService.post(ApiService.Routes.Studio.UploadThumbnail, formData);
             if (res.success) {
-                ToastManager.show('Miniatura guardada', 'success');
-                validatePublishRequirements(); // Verificar si ya se puede publicar
+                currentVideo.thumbnail = res.new_src; // Guardar en estado
+                validatePublishRequirements();
             } else {
                 ToastManager.show(res.message, 'error');
             }
         } catch (e) {
-            ToastManager.show('Error al subir imagen', 'error');
+            console.error(e);
+        } finally {
+            loadingSpinner.classList.add('d-none');
         }
     });
 
-    // Botón Publicar
-    document.getElementById('btn-publish')?.addEventListener('click', () => saveMetadata(true));
-    // Botón Borrador
-    document.getElementById('btn-save-draft')?.addEventListener('click', () => saveMetadata(false));
-}
-
-function showEditor(videoData) {
-    // Ocultar fases anteriores
-    document.getElementById('upload-dropzone').classList.add('d-none');
-    document.getElementById('upload-progress-list').classList.add('d-none');
-    document.getElementById('global-upload-status').style.display = 'none';
-
-    // Mostrar Editor
-    const editor = document.getElementById('video-editor-area');
-    editor.classList.remove('d-none');
-
-    // Llenar datos
-    _activeVideoUuid = videoData.uuid;
-    document.getElementById('meta-title').value = videoData.title || '';
-    document.getElementById('meta-desc').value = videoData.description || '';
-    document.getElementById('meta-filename').textContent = videoData.title + '.mp4'; // O el nombre real si lo tuviéramos guardado
-
-    // Si ya tiene miniatura (recarga de página), mostrarla
-    if (videoData.thumbnail_src) {
-        const img = document.getElementById('thumbnail-preview');
-        img.src = videoData.thumbnail_src;
-        img.classList.remove('d-none');
-        validatePublishRequirements();
-    }
-}
-
-// Evento de WebSocket: El worker terminó de procesar
-function onProcessingComplete(e) {
-    const data = e.detail.message;
-    if (data && data.uuid) {
-        // Buscar el item en la lista de progreso
-        const items = document.querySelectorAll('.upload-item');
-        let found = false;
-        
-        items.forEach(item => {
-            if (item.dataset.uuid === data.uuid) {
-                found = true;
-                item.querySelector('.status-text').textContent = '¡Listo para editar!';
-                item.querySelector('.progress-fill').classList.remove('processing');
-                item.querySelector('.progress-fill').style.backgroundColor = 'var(--color-success)';
+    // Inputs text change -> Update Tab Title Live
+    document.getElementById('meta-title')?.addEventListener('input', (e) => {
+        if (_activeVideoUuid) {
+            const val = e.target.value;
+            const video = _videosState.find(v => v.uuid === _activeVideoUuid);
+            if (video) {
+                video.title = val || 'Sin título';
+                // Actualizar solo texto del tab actual para performance
+                const activeTab = document.querySelector(`.studio-tab-badge.active .studio-tab-text`);
+                if(activeTab) activeTab.textContent = video.title;
                 
-                // Transición automática al editor para el primer video completado
-                // (Opcional: Podríamos hacer que el usuario haga clic para editar)
-                setTimeout(() => {
-                    showEditor({
-                        uuid: data.uuid,
-                        title: data.title || 'Video sin título'
-                    });
-                }, 500);
+                validatePublishRequirements();
             }
-        });
-        
-        // Si no estaba en la lista visual (recarga de página), ignorar o manejar lógica global
-    }
+        }
+    });
+
+    document.getElementById('btn-publish')?.addEventListener('click', () => saveMetadata(true));
+    document.getElementById('btn-save-draft')?.addEventListener('click', () => saveMetadata(false));
 }
 
 function validatePublishRequirements() {
     const title = document.getElementById('meta-title').value.trim();
     const hasThumb = !document.getElementById('thumbnail-preview').classList.contains('d-none');
     const btnPublish = document.getElementById('btn-publish');
+    
+    // Verificar estado del video actual
+    const video = _videosState.find(v => v.uuid === _activeVideoUuid);
+    const isReady = (video && video.status === 'ready');
 
-    if (title && hasThumb) {
+    if (title && hasThumb && isReady) {
         btnPublish.disabled = false;
     } else {
         btnPublish.disabled = true;
     }
 }
 
-// Listeners para validación en tiempo real
-document.addEventListener('input', (e) => {
-    if (e.target.id === 'meta-title') validatePublishRequirements();
-});
-
-async function saveMetadata(publish = false) {
+async function saveMetadata(publish) {
+    if (!_activeVideoUuid) return;
+    
+    const video = _videosState.find(v => v.uuid === _activeVideoUuid);
     const title = document.getElementById('meta-title').value.trim();
     const desc = document.getElementById('meta-desc').value.trim();
 
@@ -374,10 +507,13 @@ async function saveMetadata(publish = false) {
         if (res.success) {
             ToastManager.show(res.message, 'success');
             if (publish) {
-                // Redirigir a la lista de contenido o limpiar editor
-                setTimeout(() => {
-                    window.location.href = window.BASE_PATH + 'channel/my-content'; // Ajustar ruta
-                }, 1000);
+                // Eliminar de tabs y redirigir si no quedan
+                _videosState = _videosState.filter(v => v.uuid !== _activeVideoUuid);
+                if (_videosState.length === 0) {
+                    window.location.href = window.BASE_PATH + 'channel/my-content';
+                } else {
+                    switchEditor(_videosState[0].uuid);
+                }
             }
         } else {
             ToastManager.show(res.message, 'error');
@@ -385,8 +521,10 @@ async function saveMetadata(publish = false) {
     } catch (e) {
         ToastManager.show('Error al guardar', 'error');
     } finally {
-        btn.innerText = originalText;
-        btn.disabled = false;
-        if (publish) validatePublishRequirements();
+        if(btn) {
+            btn.innerText = originalText;
+            btn.disabled = false;
+            if (publish) validatePublishRequirements();
+        }
     }
 }

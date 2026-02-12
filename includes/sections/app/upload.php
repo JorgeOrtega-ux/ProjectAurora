@@ -1,3 +1,4 @@
+
 <?php
 // includes/sections/app/upload.php
 
@@ -8,7 +9,6 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['uuid'])) {
 
 $requestedUuid = $routeParams['uuid'] ?? '';
 
-// Seguridad: Solo el dueño del canal puede subir
 if ($requestedUuid !== $_SESSION['uuid']) {
     ?>
     <div class="component-studio-state-screen">
@@ -31,11 +31,15 @@ if ($requestedUuid !== $_SESSION['uuid']) {
     <div class="component-studio-toolbar">
         <div class="component-studio-toolbar-group">
             <span class="component-toolbar-title">Subir videos</span>
+            
+            <div id="video-tabs-container" class="studio-tabs-scroll">
+                </div>
         </div>
+
         <div class="component-studio-toolbar-group">
             <div id="global-upload-status" style="font-size: 13px; color: var(--text-secondary); margin-right: 12px; display: none;">
                 <span class="spinner-sm" style="width: 16px; height: 16px; border-width: 2px; vertical-align: middle; margin-right: 8px;"></span>
-                Procesando...
+                <span id="global-status-text">Subiendo...</span>
             </div>
             <button class="component-button" onclick="window.history.back()">
                 <span class="material-symbols-rounded">close</span>
@@ -65,17 +69,18 @@ if ($requestedUuid !== $_SESSION['uuid']) {
 
             <div class="component-studio-upload-legal">
                 <p>Si envías tus videos a ProjectAurora, aceptas las <a href="#" class="component-studio-link">Condiciones del Servicio</a>.</p>
-                <p>Asegúrate de no infringir derechos de autor o privacidad. <a href="#" class="component-studio-link">Más información</a></p>
+                <p>Asegúrate de no infringir derechos de autor o privacidad.</p>
             </div>
         </div>
-
-        <div class="upload-progress-container d-none" id="upload-progress-list">
-            </div>
 
         <div class="video-editor-container d-none" id="video-editor-area">
             
             <div class="editor-layout">
                 <div class="editor-form">
+                    
+                    <div class="component-message mb-0 d-none" id="editor-status-alert">
+                        </div>
+
                     <div class="component-form-group">
                         <label class="component-label">Título (obligatorio)</label>
                         <div class="component-input-wrapper">
@@ -91,8 +96,8 @@ if ($requestedUuid !== $_SESSION['uuid']) {
                     </div>
 
                     <div class="component-form-group">
-                        <label class="component-label">Miniatura (Obligatoria)</label>
-                        <p class="component-card__description mb-2">Selecciona una imagen que muestre el contenido de tu video.</p>
+                        <label class="component-label">Miniatura</label>
+                        <p class="component-card__description mb-2">Selecciona una imagen o espera a que se genere una automática (próximamente).</p>
                         
                         <div class="thumbnail-uploader-wrapper">
                             <div class="thumbnail-box" id="thumbnail-dropzone">
@@ -104,11 +109,14 @@ if ($requestedUuid !== $_SESSION['uuid']) {
                                 <div class="thumbnail-overlay">
                                     <span class="material-symbols-rounded">edit</span>
                                 </div>
+                                <div class="thumbnail-loading d-none">
+                                    <div class="spinner-sm"></div>
+                                </div>
                             </div>
                             <input type="file" id="input-thumbnail" accept="image/png, image/jpeg, image/webp" hidden>
                             
                             <div class="thumbnail-info">
-                                <p>Sube una imagen de 1280x720 px (recomendado).</p>
+                                <p>Recomendado: 1280x720 px.</p>
                                 <p>Formatos: JPG, PNG, WEBP. Máx 2MB.</p>
                             </div>
                         </div>
@@ -119,14 +127,14 @@ if ($requestedUuid !== $_SESSION['uuid']) {
                     <div class="video-preview-card">
                         <div class="preview-player-placeholder">
                             <span class="material-symbols-rounded" style="font-size: 48px; color: var(--text-tertiary);">play_circle</span>
-                            <p style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);">Vista previa del video</p>
+                            <p style="margin-top: 8px; font-size: 12px; color: var(--text-secondary);">Vista previa</p>
                         </div>
                         <div class="preview-meta">
                             <div class="preview-link-row">
                                 <span class="material-symbols-rounded">link</span>
                                 <span class="video-link-text">Enlace del video</span>
                             </div>
-                            <span class="video-filename" id="meta-filename">nombre_archivo.mp4</span>
+                            <span class="video-filename" id="meta-filename">...</span>
                         </div>
                     </div>
 
