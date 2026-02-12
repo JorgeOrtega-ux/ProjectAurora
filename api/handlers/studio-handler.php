@@ -9,7 +9,7 @@ $redis = $services['redis'];
 use Aurora\Services\StudioService;
 use Aurora\Libs\Utils;
 
-// 1. [MODIFICADO] Validar sesión SOLO para acciones de escritura/privadas
+// 1. Validar sesión SOLO para acciones de escritura/privadas
 $action = $_POST['action'] ?? '';
 $isPublicAction = in_array($action, ['get_public_feed']); // Lista blanca de acciones públicas
 
@@ -20,7 +20,7 @@ if (!$isPublicAction && !isset($_SESSION['user_id'])) {
 // 2. Validar CSRF
 Utils::validateCsrf($i18n);
 
-// 3. Inicializar Servicio (Si no hay usuario, pasamos 0 o null)
+// 3. Inicializar Servicio
 $userId = $_SESSION['user_id'] ?? 0;
 $studioService = new StudioService($pdo, $redis, $i18n, $userId);
 
@@ -35,7 +35,6 @@ switch ($action) {
         $uuid = $_POST['video_uuid'] ?? '';
         $chunkIndex = $_POST['chunk_index'] ?? 0;
         $isLast = isset($_POST['is_last']) && $_POST['is_last'] === 'true';
-        // El archivo viene en $_FILES['chunk']
         Utils::jsonResponse($studioService->uploadChunk($uuid, $_FILES['chunk'], $chunkIndex, $isLast));
         break;
 
@@ -65,8 +64,13 @@ switch ($action) {
         $limit = (int)($_POST['limit'] ?? 20);
         Utils::jsonResponse($studioService->getUserContent($search, $status, $page, $limit));
         break;
+        
+    // [NUEVO] Caso para obtener un video específico para editar
+    case 'get_video_details':
+        $uuid = $_POST['video_uuid'] ?? '';
+        Utils::jsonResponse($studioService->getVideoDetails($uuid));
+        break;
 
-    // [NUEVO] Obtener feed público
     case 'get_public_feed':
         $page = (int)($_POST['page'] ?? 1);
         $limit = (int)($_POST['limit'] ?? 20);

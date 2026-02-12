@@ -6,27 +6,26 @@ if (!isset($_SESSION['user_id']) || !isset($_SESSION['uuid'])) {
     exit;
 }
 
-$requestedUuid = $routeParams['uuid'] ?? '';
+// 1. Obtener el UUID del video de la URL (si existe)
+$requestedVideoId = $routeParams['uuid'] ?? '';
 
-if ($requestedUuid !== $_SESSION['uuid']) {
-    ?>
-    <div class="component-studio-state-screen">
-        <div class="component-studio-state-content">
-            <span class="material-symbols-rounded component-studio-state-icon danger">lock</span>
-            <h2 class="component-studio-state-title">Acceso Denegado</h2>
-            <p class="component-studio-state-text">No tienes permisos para gestionar este canal.</p>
-            <div style="margin-top: 24px;">
-                <button class="component-button primary" onclick="window.history.back()">Volver</button>
-            </div>
-        </div>
-    </div>
-    <?php
-    return;
+// Fallback: Si el router no lo detectó, intentamos sacarlo de la URL actual
+if (empty($requestedVideoId) && isset($_GET['section'])) {
+    $parts = explode('/', $_GET['section']);
+    // Si la URL es channel/upload/UUID, el UUID es la última parte
+    if (count($parts) > 2 && $parts[1] === 'upload') {
+        $requestedVideoId = end($parts);
+    }
 }
+
+// NOTA: Se eliminó el bloque "if ($requestedUuid !== $_SESSION['uuid'])" porque
+// comparaba incorrectamente el ID del video con el ID del usuario.
 ?>
 
 <div class="component-studio-layout" data-section="channel-upload">
     
+    <input type="hidden" id="initial-video-id" value="<?php echo htmlspecialchars($requestedVideoId); ?>">
+
     <div class="component-studio-toolbar">
         <div class="component-studio-toolbar-group">
             <span class="component-toolbar-title">Subir videos</span>

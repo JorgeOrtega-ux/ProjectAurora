@@ -85,7 +85,8 @@ const ApiRoutes = {
         UploadThumbnail: { route: 'studio.upload_thumbnail' },
         SaveMetadata: { route: 'studio.save_metadata' },
         GetPending: { route: 'studio.get_pending' },
-        GetContent: { route: 'studio.get_content' }, // [NUEVO]
+        GetContent: { route: 'studio.get_content' },
+        GetDetails: { route: 'studio.get_video_details' }, // <--- [NUEVO] ESTA LÍNEA FALTABA
         CancelBatch: { route: 'studio.cancel_batch' },
         GenerateThumbs: { route: 'studio.generate_thumbs' },
         DeleteVideo: { route: 'studio.delete_video' } 

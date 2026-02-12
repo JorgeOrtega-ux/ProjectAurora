@@ -1,7 +1,7 @@
 /**
  * public/assets/js/modules/studio/upload-controller.js
  * Versión Refactorizada: Arquitectura Signal & Interceptors
- * Actualizado para nuevo diseño de interfaz (Estilo Perfil)
+ * Actualizado para nuevo diseño de interfaz (Estilo Perfil) y soporte de Edición Directa
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -16,17 +16,19 @@ const MAX_FILES = 3;
 let _videosState = []; 
 let _activeVideoUuid = null;
 let _activeBatchId = null;
+let _isEditMode = false; // Bandera para saber si estamos editando uno existente
 
 export const UploadController = {
     init: async () => {
         const container = document.querySelector('[data-section="channel-upload"]');
         if (!container) return;
 
-        console.log("UploadController: Inicializado (Rediseño Granular)");
+        console.log("UploadController: Inicializado (Rediseño Granular + Edición)");
         
         _videosState = [];
         _activeVideoUuid = null;
         _activeBatchId = null;
+        _isEditMode = false;
         
         initDropzone();
         initEditorEvents();
@@ -38,13 +40,82 @@ export const UploadController = {
         document.removeEventListener('socket:thumbnails_generated', onThumbsGenerated);
         document.addEventListener('socket:thumbnails_generated', onThumbsGenerated);
         
-        await checkPendingUploads();
+        // Revisar si venimos de una URL con ID específico (Modo Edición)
+        const initialVideoId = document.getElementById('initial-video-id')?.value;
+        
+        if (initialVideoId && initialVideoId.length > 5) {
+            // Cargar modo edición para este video
+            await loadExistingDraft(initialVideoId);
+        } else {
+            // Comportamiento normal: buscar subidas pendientes
+            await checkPendingUploads();
+        }
     }
 };
 
 // ==========================================
 // 1. INICIALIZACIÓN Y CARGA
 // ==========================================
+
+async function loadExistingDraft(uuid) {
+    try {
+        console.log("Cargando borrador existente:", uuid);
+        
+        // 1. Ocultar dropzone y mostrar editor (con loading)
+        document.getElementById('upload-dropzone').classList.add('d-none');
+        document.getElementById('video-editor-area').classList.remove('d-none');
+        
+        const alertBox = document.getElementById('editor-status-alert');
+        alertBox.className = 'component-message component-message--info mb-4'; 
+        alertBox.innerHTML = '<span class="spinner-sm"></span> Cargando datos del video...';
+        alertBox.classList.remove('d-none');
+
+        // 2. Pedir datos al servidor
+        // NOTA: Asegúrate de tener una ruta para obtener detalles. Si no, usa GetPending o crea 'get_video_details'
+        const formData = new FormData();
+        formData.append('video_uuid', uuid);
+        
+        // Usamos una ruta genérica de obtención o la misma de studio
+        const route = ApiService.Routes.Studio.GetDetails || { route: 'studio.get_video_details' }; 
+        const res = await ApiService.post(route, formData);
+
+        if (res.success && res.video) {
+            _isEditMode = true;
+            _activeVideoUuid = res.video.uuid;
+
+            // Construir estado local
+            const videoEntry = {
+                uuid: res.video.uuid,
+                title: res.video.title || '',
+                description: res.video.description || '',
+                status: res.video.status || 'ready',
+                progress: 100,
+                thumbnail: res.video.thumbnail_src || null
+            };
+
+            _videosState = [videoEntry];
+
+            renderTabs();
+            switchEditor(videoEntry.uuid);
+            
+            // Quitar mensaje de carga
+            alertBox.classList.add('d-none');
+            
+        } else {
+            console.error("Error cargando video:", res.message);
+            ToastManager.show('No se pudo cargar la información del video.', 'error');
+            // Volver al inicio si falla
+            document.getElementById('upload-dropzone').classList.remove('d-none');
+            document.getElementById('video-editor-area').classList.add('d-none');
+        }
+
+    } catch (e) {
+        console.error("Error loading draft:", e);
+        ToastManager.show('Error de conexión al obtener video.', 'error');
+        document.getElementById('upload-dropzone').classList.remove('d-none');
+        document.getElementById('video-editor-area').classList.add('d-none');
+    }
+}
 
 async function checkPendingUploads() {
     try {
@@ -326,6 +397,25 @@ function updateEditorStatusUI(video) {
     const btnGenThumbs = document.getElementById('btn-gen-thumbs');
     const btnPublish = document.getElementById('btn-publish');
 
+    // MODO EDICIÓN: Limpiar estados de "subiendo"
+    if (_isEditMode) {
+        if(globalStatus) globalStatus.style.display = 'none';
+        
+        // Si hay error, lo mostramos, si no, ocultamos alertas
+        if (video.status === 'error') {
+            alertBox.classList.remove('d-none');
+            alertBox.classList.add('component-message--error');
+            alertBox.textContent = 'Error recuperando datos.';
+        } else {
+            alertBox.classList.add('d-none');
+        }
+        
+        if (btnGenThumbs) btnGenThumbs.disabled = false;
+        validatePublishRequirements();
+        return;
+    }
+
+    // MODO SUBIDA (Lógica original)
     // Estado Global (Barra superior)
     if (video.status === 'uploading') {
         globalStatus.style.display = 'block';
@@ -624,9 +714,14 @@ async function handleThumbnailUpload(e) {
     if (!file || !_activeVideoUuid) return;
 
     const currentVideo = _videosState.find(v => v.uuid === _activeVideoUuid);
-    if (currentVideo.uuid.startsWith('temp_')) {
-        ToastManager.show('Espera a que inicie la subida.', 'warning');
-        return;
+    
+    // Si estamos editando un borrador existente, permitimos subir aunque no empiece por temp_
+    if (!_isEditMode && currentVideo.uuid.startsWith('temp_')) {
+         // Validamos que se haya iniciado la subida solo en modo Upload
+         if (currentVideo.progress === 0) {
+            ToastManager.show('Espera a que inicie la subida.', 'warning');
+            return;
+         }
     }
 
     // Mostrar spinner en la zona del player
@@ -670,7 +765,7 @@ async function deleteVideo() {
 
     const confirmed = await DialogManager.confirm({
         title: '¿Eliminar borrador?',
-        message: 'Esta acción cancelará la subida y eliminará todos los archivos asociados permanentemente.',
+        message: 'Esta acción eliminará el video y sus archivos permanentemente.',
         type: 'danger',
         confirmText: 'Sí, eliminar',
         cancelText: 'Cancelar'
@@ -690,10 +785,17 @@ async function deleteVideo() {
         
         if (res.success) {
             ToastManager.show('Borrador eliminado.', 'success');
+            
+            // Si estamos en modo edición única, redirigir al listado
+            if (_isEditMode) {
+                window.location.href = window.BASE_PATH + 'channel/my-content';
+                return;
+            }
         }
     } catch (e) {
         console.error("Delete error:", e);
     } finally {
+        // Limpiar estado local
         _videosState = _videosState.filter(v => v.uuid !== videoUuid);
         
         if (_videosState.length === 0) {
@@ -717,7 +819,10 @@ function validatePublishRequirements() {
     const btnPublish = document.getElementById('btn-publish');
     
     const video = _videosState.find(v => v.uuid === _activeVideoUuid);
-    const isReady = (video && video.status === 'ready');
+    
+    // En modo edición, asumimos que el video está "ready" si ya existe en BD
+    // En modo upload, verificamos el status del objeto
+    const isReady = _isEditMode ? true : (video && video.status === 'ready');
 
     if (title && hasThumb && isReady) {
         btnPublish.disabled = false;
