@@ -8,6 +8,7 @@ return [
 
     // [NUEVO] Sección de Canales / Contenido
     'channel/my-content' => __DIR__ . '/../includes/sections/app/my-content.php',
+    'channel/upload'     => __DIR__ . '/../includes/sections/app/upload.php', // <--- Nueva ruta agregada
 
     // === AUTH ===
     'login'                         => __DIR__ . '/../includes/sections/auth/login.php',

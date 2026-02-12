@@ -18,15 +18,26 @@ $currentSection = $path ?: 'main';
 $routeParams = [];
 
 // === LÓGICA DE RUTAS DINÁMICAS ===
-// Detectar si la ruta es "s/channel/my-content/{uuid}"
+
+// 1. Canal - Contenido (My Content)
 if (strpos($path, 's/channel/my-content/') === 0) {
     // Explotamos la ruta: s / channel / my-content / {uuid}
     $segments = explode('/', $path);
     
-    // El UUID debería estar en el índice 3
     if (isset($segments[3])) {
         $routeParams['uuid'] = $segments[3];
-        $currentSection = 'channel/my-content'; // Clave interna para routes.php
+        $currentSection = 'channel/my-content'; 
+    }
+}
+
+// 2. Canal - Subir Video (Upload) [NUEVO]
+if (strpos($path, 's/channel/upload/') === 0) {
+    // Explotamos la ruta: s / channel / upload / {uuid}
+    $segments = explode('/', $path);
+    
+    if (isset($segments[3])) {
+        $routeParams['uuid'] = $segments[3];
+        $currentSection = 'channel/upload'; // Clave interna para routes.php
     }
 }
 

@@ -1,17 +1,13 @@
 <?php
 // includes/sections/app/my-content.php
 
-// 1. Verificación de sesión básica
 if (!isset($_SESSION['user_id']) || !isset($_SESSION['uuid'])) {
     header("Location: " . $basePath . "login");
     exit;
 }
 
-// 2. Obtener el UUID solicitado desde los parámetros de la ruta
-// Nota: $routeParams se define ahora tanto en router.php como en loader.php
 $requestedUuid = $routeParams['uuid'] ?? '';
 
-// 3. Verificación Estricta de Propiedad
 if ($requestedUuid !== $_SESSION['uuid']) {
     ?>
     <div class="main-content" style="padding: 0; height: 100%; display: flex; align-items: center; justify-content: center; background: #fff;">
@@ -26,7 +22,7 @@ if ($requestedUuid !== $_SESSION['uuid']) {
 }
 ?>
 
-<div class="main-content" style="padding: 0; height: 100%; box-sizing: border-box; background-color: #ffffff; display: flex; flex-direction: column;">
+<div class="main-content" style="padding: 0; height: 100%; background-color: #ffffff; display: flex; flex-direction: column;">
     
     <div class="content-top" style="
         flex: 0 0 auto;
@@ -37,19 +33,46 @@ if ($requestedUuid !== $_SESSION['uuid']) {
         border-bottom: 1px solid var(--border-color);">
         
         <div class="top-left" style="display: flex; align-items: center; gap: 8px;">
-            <span class="component-toolbar-title">Mi Contenido</span>
+            <span class="component-toolbar-title">Contenido del canal</span>
         </div>
 
         <div class="top-right">
-            </div>
+            <button class="component-button square" 
+                    title="Subir videos"
+                    data-nav="<?php echo $basePath; ?>s/channel/upload/<?php echo $requestedUuid; ?>">
+                <span class="material-symbols-rounded">upload</span>
+            </button>
+        </div>
     </div>
 
-    <div class="content-bottom" style="
-        flex: 1 1 auto;
-        overflow-y: auto;
-        position: relative;
-        padding: 0;">
+    <div class="content-bottom" style="flex: 1 1 auto; overflow-y: auto; padding: 24px;">
         
+        <div class="component-table-wrapper">
+            <table class="component-table">
+                <thead>
+                    <tr>
+                        <th>Video</th>
+                        <th>Visibilidad</th>
+                        <th>Restricciones</th>
+                        <th>Fecha</th>
+                        <th class="text-right">Vistas</th>
+                        <th class="text-right">Comentarios</th>
+                        <th class="text-right">"Me gusta" (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="7" style="padding: 48px; text-align: center; color: var(--text-secondary);">
+                            <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                <span class="material-symbols-rounded" style="font-size: 40px; color: var(--border-color-hover);">video_library</span>
+                                <span>No se ha encontrado contenido disponible.</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
+
+    </div>
 
 </div>
