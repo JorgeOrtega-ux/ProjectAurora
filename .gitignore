@@ -1,29 +1,74 @@
 # --- SEGURIDAD (CRÍTICO) ---
-# Ignorar el archivo de variables de entorno para no exponer contraseñas
 .env
 
-# --- DEPENDENCIAS (COMPOSER) ---
+# --- DEPENDENCIAS ---
 /vendor/
+composer.lock
+package-lock.json
+node_modules/
 
 # --- LOGS Y REGISTROS ---
 logs/app/*.log
 logs/database/*.log
 logs/security/*.log
+error_log
+access_log
+*.log
 
-# --- ALMACENAMIENTO DE USUARIO (PÚBLICO) ---
-# [CAMBIO] Ignorar contenido de public/storage/profilePicture/custom/
+# === MEDIA & VIDEO FILES (GLOBAL) ===
+# Bloquear subida accidental de videos pesados
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.flv
+*.wmv
+*.mp3
+*.wav
+
+# === STREAMING & TEMP FILES ===
+# Bloquear fragmentos de HLS y archivos temporales de carga
+*.ts
+*.m3u8
+*.part
+*.tmp
+*.temp
+
+# --- ALMACENAMIENTO DE USUARIO (STORAGE) ---
+
+# 1. Fotos de Perfil (Tu regla original)
 public/storage/profilePicture/custom/*
 !public/storage/profilePicture/custom/.gitkeep
 
-# --- RESPALDOS DE BASE DE DATOS (RAÍZ) ---
-# Ignoramos todo el contenido de backups excepto el .htaccess de seguridad
+# 2. Raw Uploads (Videos crudos subidos por usuarios)
+storage/uploads/raw/*
+!storage/uploads/raw/.gitkeep
+
+# 3. Videos Procesados (Carpetas HLS públicas)
+public/storage/videos/*
+!public/storage/videos/.gitkeep
+
+# 4. Miniaturas Generadas (Excepto default)
+public/storage/thumbnails/*
+!public/storage/thumbnails/.gitkeep
+!public/storage/thumbnails/default/
+
+# --- RESPALDOS DE BASE DE DATOS ---
 storage/backups/*
 !storage/backups/.htaccess
 !storage/backups/.gitkeep
 
-# --- ARCHIVOS TEMPORALES (Descargas Zips) ---
+# --- ARCHIVOS TEMPORALES (Chunks, Zips, Temporales) ---
 storage/temp/*
 !storage/temp/.gitkeep
+
+# --- PYTHON WORKER ---
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
 
 # --- SISTEMA OPERATIVO E IDE ---
 .DS_Store
@@ -31,3 +76,4 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+*.swo
