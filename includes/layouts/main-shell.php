@@ -10,11 +10,13 @@
     <script src="https://unpkg.com/@popperjs/core@2"></script>
     <script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
     
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/root.css">
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/styles.css">
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components.css">
-      <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components-studio.css">
+    <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components-studio.css">
 
     <script nonce="<?php echo $cspNonce; ?>">
         window.BASE_PATH = '<?php echo $basePath; ?>';

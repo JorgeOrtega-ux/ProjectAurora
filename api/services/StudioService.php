@@ -47,7 +47,8 @@ class StudioService {
             $totalItems = $countStmt->fetchColumn();
 
             // Query principal con JOIN para datos del usuario
-            $sql = "SELECT v.uuid, v.title, v.description, v.thumbnail_path, v.created_at, v.duration, v.dominant_color,
+            // [MODIFICADO] Se agrega v.hls_path a la selección
+            $sql = "SELECT v.uuid, v.title, v.description, v.thumbnail_path, v.created_at, v.duration, v.dominant_color, v.hls_path,
                            u.username, u.avatar_path, u.uuid as user_uuid
                     FROM videos v
                     JOIN users u ON v.user_id = u.id
@@ -73,10 +74,6 @@ class StudioService {
                 // Avatar Usuario (Logica replicada de Utils)
                 $avatarPath = $v['avatar_path'];
                 if (!empty($avatarPath) && file_exists(__DIR__ . '/../../' . $avatarPath)) {
-                    // Si el archivo existe físicamente, devolvemos la ruta relativa pública
-                    // Ojo: avatar_path en DB suele ser 'public/storage/...'
-                    // Para el frontend necesitamos que empiece desde public/
-                    // Si el path en DB ya incluye public/, lo dejamos.
                     $v['author_avatar_url'] = $avatarPath; 
                 } else {
                     // Generar avatar por defecto
@@ -320,9 +317,6 @@ class StudioService {
         return ['success' => true, 'videos' => $videos];
     }
 
-    // ===============================================================================================
-    // [NUEVO] OBTENER CONTENIDO COMPLETO (FILTRADO Y PAGINADO)
-    // ===============================================================================================
     public function getUserContent($search = '', $status = 'all', $page = 1, $limit = 20) {
         $offset = ($page - 1) * $limit;
         $params = [$this->userId];
@@ -362,9 +356,6 @@ class StudioService {
                     $path = __DIR__ . '/../../' . $v['thumbnail_path'];
                     if (file_exists($path)) {
                         $v['thumbnail_url'] = 'public/storage/thumbnails/' . basename($v['thumbnail_path']);
-                        // Opcional: Si quieres enviar base64 para evitar caché o accesos directos, descomenta esto:
-                        // $data = file_get_contents($path);
-                        // $v['thumbnail_base64'] = 'data:image/png;base64,' . base64_encode($data);
                     } else {
                         $v['thumbnail_url'] = null;
                     }
