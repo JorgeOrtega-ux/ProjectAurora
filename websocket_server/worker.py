@@ -717,7 +717,9 @@ def task_generate_sprites(payload):
 
 def task_register_view_persistence(payload):
     """
-    Registra la visita en el historial (video_views) y actualiza el contador global (videos).
+    Registra la visita en el historial (video_views).
+    [CORREGIDO] Ya NO actualiza el contador global 'videos.views_count' aquí.
+    De eso se encarga el Scheduler masivamente para evitar double-counting.
     """
     video_uuid = payload.get('video_uuid')
     ip = payload.get('ip')
@@ -748,10 +750,10 @@ def task_register_view_persistence(payload):
             """
             cursor.execute(sql_log, (video_id, user_id, ip, user_agent, timestamp))
             
-            # 3. Incrementar el contador rápido en la tabla principal (videos)
-            # Esto hace que el número 'views_count' suba permanentemente
-            sql_update = "UPDATE videos SET views_count = views_count + 1 WHERE id = %s"
-            cursor.execute(sql_update, (video_id,))
+            # 3. [DESACTIVADO] El Scheduler ya actualiza el contador global.
+            # Evitamos contar la visita dos veces.
+            # sql_update = "UPDATE videos SET views_count = views_count + 1 WHERE id = %s"
+            # cursor.execute(sql_update, (video_id,))
             
             conn.commit()
             # logging.info(f"👁️ Visita registrada OK para video {video_uuid}")

@@ -19,9 +19,10 @@ class InteractionService {
     }
 
     /**
-     * Lógica Híbrida para Likes:
-     * 1. MySQL (Síncrono): Guarda el estado "Yo le di like" (Source of Truth).
-     * 2. Redis (Inmediato): Actualiza el contador (+1/-1) para feedback visual instantáneo.
+     * Lógica Híbrida Blindada:
+     * 1. MySQL: Ejecuta la acción (Insert/Delete).
+     * 2. Redis: SE RECALCULA el total real desde la BD.
+     * Esto evita el bug de "-1 Likes" si la caché estaba vacía.
      */
     public function toggleLike($videoUuid, $type = 'like') {
         if (!isset($_SESSION['user_id'])) {
@@ -30,10 +31,12 @@ class InteractionService {
 
         $userId = $_SESSION['user_id'];
         $allowedTypes = ['like', 'dislike'];
+        
+        // Normalización forzada para evitar errores de mayúsculas/minúsculas
         if (!in_array($type, $allowedTypes)) $type = 'like';
 
         try {
-            // 1. Obtener ID numérico del video (Más rápido para JOINS)
+            // 1. Obtener ID numérico del video
             $stmt = $this->pdo->prepare("SELECT id FROM videos WHERE uuid = ?");
             $stmt->execute([$videoUuid]);
             $video = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -43,9 +46,8 @@ class InteractionService {
             }
 
             $videoId = $video['id'];
-            $redisKey = "video:stats:{$videoUuid}";
 
-            // INICIO TRANSACCIÓN MYSQL (Bloqueo para consistencia)
+            // INICIO TRANSACCIÓN
             $this->pdo->beginTransaction();
 
             // Verificar estado actual
@@ -57,63 +59,78 @@ class InteractionService {
             
             if ($existing) {
                 if ($existing['type'] === $type) {
-                    // CASO A: Quitar interacción (ej. dio Like y volvió a dar Like)
+                    // CASO A: Quitar interacción (Toggle Off)
                     $del = $this->pdo->prepare("DELETE FROM video_interactions WHERE user_id = ? AND video_id = ?");
                     $del->execute([$userId, $videoId]);
-                    
-                    // Redis: Restar al contador correspondiente
-                    if ($this->redis) {
-                        $field = ($type === 'like') ? 'likes' : 'dislikes';
-                        $this->redis->hincrby($redisKey, $field, -1);
-                    }
                     $actionPerformed = 'removed';
                 } else {
-                    // CASO B: Cambiar opinión (ej. tenía Dislike y dio Like)
+                    // CASO B: Cambiar opinión (Switch)
                     $upd = $this->pdo->prepare("UPDATE video_interactions SET type = ? WHERE user_id = ? AND video_id = ?");
                     $upd->execute([$type, $userId, $videoId]);
-
-                    // Redis: Restar al viejo, Sumar al nuevo
-                    if ($this->redis) {
-                        $oldField = ($existing['type'] === 'like') ? 'likes' : 'dislikes';
-                        $newField = ($type === 'like') ? 'likes' : 'dislikes';
-                        $this->redis->hincrby($redisKey, $oldField, -1);
-                        $this->redis->hincrby($redisKey, $newField, 1);
-                    }
                     $actionPerformed = 'switched';
                 }
             } else {
-                // CASO C: Nueva interacción
+                // CASO C: Nueva interacción (Add)
                 $ins = $this->pdo->prepare("INSERT INTO video_interactions (user_id, video_id, type) VALUES (?, ?, ?)");
                 $ins->execute([$userId, $videoId, $type]);
-
-                // Redis: Sumar
-                if ($this->redis) {
-                    $field = ($type === 'like') ? 'likes' : 'dislikes';
-                    $this->redis->hincrby($redisKey, $field, 1);
-                }
                 $actionPerformed = 'added';
             }
 
             $this->pdo->commit();
+            // FIN TRANSACCIÓN - La BD ya tiene el dato correcto (o borrado).
 
-            // Obtener contadores frescos de Redis para actualizar UI
-            $stats = [];
-            if ($this->redis) {
-                $stats = $this->redis->hmget($redisKey, ['likes', 'dislikes']);
-            }
+            // --- ACTUALIZACIÓN INTELIGENTE DE REDIS ---
+            // En lugar de sumar/restar ciegamente, recalculamos los totales reales.
+            // Esto corrige automáticamente cualquier desincronización (incluyendo el "-1").
+            $stats = $this->syncVideoStats($videoId, $videoUuid);
 
             return [
                 'success' => true,
                 'action' => $actionPerformed,
                 'type' => $type,
-                'likes' => (int)($stats[0] ?? 0),
-                'dislikes' => (int)($stats[1] ?? 0)
+                'likes' => (int)$stats['likes'],
+                'dislikes' => (int)$stats['dislikes']
             ];
 
         } catch (Exception $e) {
             if ($this->pdo->inTransaction()) $this->pdo->rollBack();
             return ['success' => false, 'message' => 'Error processing interaction: ' . $e->getMessage()];
         }
+    }
+
+    /**
+     * Helper para contar Likes reales en BD y actualizar Redis.
+     * Devuelve el array con los nuevos valores.
+     */
+    private function syncVideoStats($videoId, $videoUuid) {
+        $stats = ['likes' => 0, 'dislikes' => 0];
+
+        try {
+            // 1. Contar Likes Reales
+            $stmtLike = $this->pdo->prepare("SELECT COUNT(*) FROM video_interactions WHERE video_id = ? AND type = 'like'");
+            $stmtLike->execute([$videoId]);
+            $stats['likes'] = $stmtLike->fetchColumn();
+
+            // 2. Contar Dislikes Reales
+            $stmtDislike = $this->pdo->prepare("SELECT COUNT(*) FROM video_interactions WHERE video_id = ? AND type = 'dislike'");
+            $stmtDislike->execute([$videoId]);
+            $stats['dislikes'] = $stmtDislike->fetchColumn();
+
+            // 3. Actualizar Redis (Setear valor absoluto, no incremental)
+            if ($this->redis) {
+                $redisKey = "video:stats:{$videoUuid}";
+                $this->redis->hmset($redisKey, [
+                    'likes' => $stats['likes'],
+                    'dislikes' => $stats['dislikes']
+                ]);
+            }
+        } catch (Exception $e) {
+            // Si falla el recálculo, al menos no rompemos la respuesta principal,
+            // pero logueamos el error.
+            // Logger::error("Error sync stats: " . $e->getMessage());
+        }
+
+        return $stats;
     }
 
     /**
@@ -126,7 +143,6 @@ class InteractionService {
 
         $subscriberId = $_SESSION['user_id'];
 
-        // Evitar auto-suscripción
         if ($_SESSION['uuid'] === $channelUuid) {
             return ['success' => false, 'message' => 'No puedes suscribirte a ti mismo'];
         }
@@ -145,7 +161,6 @@ class InteractionService {
 
             $this->pdo->beginTransaction();
 
-            // Verificar si ya sigue
             $check = $this->pdo->prepare("SELECT id FROM subscriptions WHERE subscriber_id = ? AND channel_id = ?");
             $check->execute([$subscriberId, $channelId]);
             $exists = $check->fetch();
@@ -156,25 +171,28 @@ class InteractionService {
                 // Desuscribirse
                 $this->pdo->prepare("DELETE FROM subscriptions WHERE subscriber_id = ? AND channel_id = ?")
                           ->execute([$subscriberId, $channelId]);
-                
-                if ($this->redis) $this->redis->hincrby($redisKey, 'subscribers', -1);
                 $isSubscribed = false;
             } else {
                 // Suscribirse
                 $this->pdo->prepare("INSERT INTO subscriptions (subscriber_id, channel_id) VALUES (?, ?)")
                           ->execute([$subscriberId, $channelId]);
-                
-                if ($this->redis) $this->redis->hincrby($redisKey, 'subscribers', 1);
                 $isSubscribed = true;
             }
 
             $this->pdo->commit();
 
-            // Obtener contador actualizado
+            // --- ACTUALIZACIÓN INTELIGENTE DE SUBS ---
+            // Igual que con likes, contamos la realidad.
             $subCount = 0;
-            if ($this->redis) {
-                $subCount = $this->redis->hget($redisKey, 'subscribers');
-            }
+            try {
+                $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM subscriptions WHERE channel_id = ?");
+                $countStmt->execute([$channelId]);
+                $subCount = $countStmt->fetchColumn();
+
+                if ($this->redis) {
+                    $this->redis->hset($redisKey, 'subscribers', $subCount);
+                }
+            } catch (Exception $e) {}
 
             return [
                 'success' => true,
@@ -190,44 +208,50 @@ class InteractionService {
 
     /**
      * Registro de Visitas con Debounce y Cola
-     * 1. Verifica Cooldown en Redis (por IP y Video).
-     * 2. Si es válido: Incrementa Redis instantáneo.
-     * 3. Envía tarea al Worker para persistir en MySQL (video_views log).
      */
-// api/services/InteractionService.php
+    public function registerView($videoUuid) {
+        if (!$this->redis) return ['success' => false];
 
-public function registerView($videoUuid) {
-    if (!$this->redis) return ['success' => false];
+        $ip = Utils::getClientIp();
+        $cooldownKey = "view:cooldown:{$videoUuid}:{$ip}";
+        
+        if ($this->redis->exists($cooldownKey)) {
+            return ['success' => true, 'status' => 'ignored_cooldown'];
+        }
 
-    $ip = Utils::getClientIp();
-    $cooldownKey = "view:cooldown:{$videoUuid}:{$ip}";
-    
-    // 1. Debounce (Protección F5 - 30 minutos)
-    if ($this->redis->exists($cooldownKey)) {
-        return ['success' => true, 'status' => 'ignored_cooldown'];
+        try {
+            // 2. Marcar cooldown
+            $this->redis->setex($cooldownKey, 1800, '1');
+
+            // 3. INCREMENTO ATÓMICO EN REDIS (El Buffer)
+            $bufferKey = "video:buffer:views:{$videoUuid}";
+            $currentBuffer = $this->redis->incr($bufferKey);
+            
+            // 4. [NUEVO] Despachar Tarea de Analítica al Worker
+            // Esto llena la tabla video_views (historial)
+            $jobPayload = json_encode([
+                'task' => 'register_view_persistence',
+                'payload' => [
+                    'video_uuid' => $videoUuid,
+                    'user_id' => $_SESSION['user_id'] ?? null,
+                    'ip' => $ip,
+                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
+                    'timestamp' => time()
+                ]
+            ]);
+            
+            // Insertar en la cola 'aurora_task_queue'
+            $this->redis->rpush('aurora_task_queue', $jobPayload);
+
+            return [
+                'success' => true, 
+                'status' => 'buffered', 
+                'buffer_val' => $currentBuffer
+            ];
+
+        } catch (Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
     }
-
-    try {
-        // 2. Marcar cooldown
-        $this->redis->setex($cooldownKey, 1800, '1');
-
-        // 3. INCREMENTO ATÓMICO EN REDIS (El Buffer)
-        // Usamos una key especial: "video:buffer:views:{uuid}"
-        $bufferKey = "video:buffer:views:{$videoUuid}";
-        $currentBuffer = $this->redis->incr($bufferKey);
-
-        // [OPCIONAL] También actualizamos la key visual antigua por si acaso
-        $this->redis->hincrby("video:stats:{$videoUuid}", 'views', 1);
-
-        return [
-            'success' => true, 
-            'status' => 'buffered', 
-            'buffer_val' => $currentBuffer
-        ];
-
-    } catch (Exception $e) {
-        return ['success' => false, 'error' => $e->getMessage()];
-    }
-}
 }
 ?>

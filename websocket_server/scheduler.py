@@ -157,18 +157,18 @@ def sync_views_buffer():
     except Exception as e:
         logging.error(f"❌ Error en sync_views_buffer: {e}")
 
+# [DESACTIVADO POR SEGURIDAD]
+# Esta función ha sido desactivada para evitar que Redis sobrescriba la DB.
+# PHP ya escribe Likes y Subs directamente en MySQL (Source of Truth).
+# Si Redis se reinicia, esta función borraba los datos reales. ¡NO DESCOMENTAR!
+"""
 def sync_counters_to_db():
-    """
     Sincroniza contadores generales (Likes, Dislikes, Subs) de Redis -> MySQL.
-    Esto es una sincronización de ESTADO (state sync), no de buffer.
-    """
-    # logging.info("💾 Sincronizando estados generales (Likes/Subs)...")
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
         # 1. Sincronizar Videos (Likes, Dislikes)
-        # Nota: Ya no sincronizamos views aquí porque lo hace sync_views_buffer de forma más precisa
         video_keys = r_client.keys("video:stats:*")
         for key in video_keys:
             try:
@@ -198,6 +198,7 @@ def sync_counters_to_db():
         
     except Exception as e:
         logging.error(f"Error sync general: {e}")
+"""
 
 def trigger_system_action(route):
     """Helper para llamar a la API interna (para lanzar backups, etc)"""
@@ -229,7 +230,7 @@ if __name__ == "__main__":
             # TAREAS MEDIAS (Cada 60 segundos)
             if counter_sec % 60 == 0:
                 check_and_run_backup()
-                sync_counters_to_db() # Likes y Subs
+                # sync_counters_to_db() # <--- DESACTIVADO: Peligro de pérdida de datos si Redis reinicia.
 
             # TAREAS LENTAS (Cada 1 hora = 3600 seg)
             if counter_sec >= 3600:
