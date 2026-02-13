@@ -78,15 +78,16 @@ class StudioService {
         }
     }
 
-    public function getPublicFeed($page = 1, $limit = 20) {
+ public function getPublicFeed($page = 1, $limit = 20) {
         $offset = ($page - 1) * $limit;
         
         try {
             $countStmt = $this->pdo->query("SELECT COUNT(*) FROM videos WHERE status = 'published'");
             $totalItems = $countStmt->fetchColumn();
 
-            // [MODIFICADO] Se añade 'v.orientation' a la consulta para el frontend
+            // [CAMBIO IMPORTANTE] Se agrega 'v.views_count' al SELECT
             $sql = "SELECT v.uuid, v.title, v.description, v.thumbnail_path, v.created_at, v.duration, v.dominant_color, v.hls_path, v.orientation,
+                           v.views_count, 
                            u.username, u.avatar_path, u.uuid as user_uuid
                     FROM videos v
                     JOIN users u ON v.user_id = u.id
@@ -124,8 +125,12 @@ class StudioService {
                 }
                 
                 $v['time_ago'] = Utils::timeElapsedString($v['created_at']);
-                $v['views'] = 0; 
-                $v['views_formatted'] = '0 visualizaciones'; 
+                
+                // [CAMBIO IMPORTANTE] Asignamos el valor real de la base de datos
+                $v['views'] = (int)$v['views_count']; 
+                
+                // Formateo opcional (puedes ajustar esto si quieres "1.2k" o similar)
+                $v['views_formatted'] = number_format($v['views']) . ' visualizaciones'; 
             }
 
             return [

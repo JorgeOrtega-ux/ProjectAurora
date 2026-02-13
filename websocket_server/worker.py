@@ -715,13 +715,61 @@ def task_generate_sprites(payload):
     except Exception as e:
         logging.error(f"❌ Excepción en task_generate_sprites: {e}")
 
+def task_register_view_persistence(payload):
+    """
+    Registra la visita en el historial (video_views) y actualiza el contador global (videos).
+    """
+    video_uuid = payload.get('video_uuid')
+    ip = payload.get('ip')
+    user_id = payload.get('user_id') # Puede ser None si no está logueado
+    user_agent = payload.get('user_agent', 'Unknown')
+    timestamp = payload.get('timestamp') # PHP envía time()
+    
+    if not video_uuid:
+        logging.warning("⚠️ task_register_view_persistence recibida sin video_uuid")
+        return
 
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # 1. Obtener el ID numérico interno del video
+        cursor.execute("SELECT id FROM videos WHERE uuid = %s", (video_uuid,))
+        video_result = cursor.fetchone()
+        
+        if video_result:
+            video_id = video_result[0]
+            
+            # 2. Insertar en el log histórico (video_views)
+            # Usamos FROM_UNIXTIME para convertir el timestamp de PHP a DATETIME de MySQL
+            sql_log = """
+                INSERT INTO video_views (video_id, user_id, ip_address, user_agent, viewed_at)
+                VALUES (%s, %s, %s, %s, FROM_UNIXTIME(%s))
+            """
+            cursor.execute(sql_log, (video_id, user_id, ip, user_agent, timestamp))
+            
+            # 3. Incrementar el contador rápido en la tabla principal (videos)
+            # Esto hace que el número 'views_count' suba permanentemente
+            sql_update = "UPDATE videos SET views_count = views_count + 1 WHERE id = %s"
+            cursor.execute(sql_update, (video_id,))
+            
+            conn.commit()
+            # logging.info(f"👁️ Visita registrada OK para video {video_uuid}")
+        else:
+            logging.warning(f"⚠️ Intento de registrar visita en video inexistente: {video_uuid}")
+        
+        cursor.close()
+        conn.close()
+
+    except Exception as e:
+        logging.error(f"❌ Error persistiendo visita en BD: {e}")
 TASKS = {
     'create_backup': task_create_backup,
     'create_zip': task_create_zip,
     'process_video': task_process_video,
     'generate_thumbnails': task_generate_thumbnails,
-    'generate_sprites': task_generate_sprites 
+    'generate_sprites': task_generate_sprites,
+    'register_view_persistence': task_register_view_persistence  # <--- ESTA LÍNEA ES LA CLAVE
 }
 
 def run_job(raw_data):
