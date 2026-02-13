@@ -136,26 +136,58 @@ class StudioService {
         }
     }
 
-    public function initUpload($batchId, $fileName) {
+    public function initUpload($batchId, $fileName, $fileSize = 0) {
         if (empty($batchId)) return ['success' => false, 'message' => 'Falta Batch ID'];
 
-        $uuid = Utils::generateUUID();
-        $title = pathinfo($fileName, PATHINFO_FILENAME);
-
-        // [SEGURIDAD] Generación de Token
-        $uploadToken = bin2hex(random_bytes(32));
-
-        if ($this->redis) {
-            // Guardamos el token y el user_id para validar después
-            $tokenData = json_encode([
-                'user_id' => $this->userId,
-                'token' => $uploadToken
-            ]);
-            // Expiración: 2 Horas (7200s)
-            $this->redis->setex("upload_token:$uuid", 7200, $tokenData);
-        }
-
         try {
+            // [TIERED LIMITS] 1. Obtener Rol del Usuario
+            $stmtRole = $this->pdo->prepare("SELECT role FROM users WHERE id = ?");
+            $stmtRole->execute([$this->userId]);
+            $role = $stmtRole->fetchColumn();
+
+            $isFounder = ($role === 'founder');
+
+            // [TIERED LIMITS] 2. Definir Límites (Hardcoded o desde config)
+            // Estándar: 3 videos/día, 25GB
+            // Founder: Ilimitado cantidad, 100GB
+            $dailyLimit = $isFounder ? 999999 : 3; 
+            $maxSizeBytes = $isFounder ? (100 * 1024 * 1024 * 1024) : (25 * 1024 * 1024 * 1024);
+
+            // [TIERED LIMITS] 3. Validar Tamaño del Archivo
+            if ($fileSize > $maxSizeBytes) {
+                // Si el tamaño reportado por el cliente excede el límite
+                $readableMax = Utils::formatSize($maxSizeBytes);
+                return ['success' => false, 'message' => "El archivo excede el límite de tamaño permitido ($readableMax)."];
+            }
+
+            // [TIERED LIMITS] 4. Validar Cantidad Diaria (Solo si no es founder para optimizar)
+            if (!$isFounder) {
+                $stmtCount = $this->pdo->prepare("SELECT COUNT(*) FROM videos WHERE user_id = ? AND DATE(created_at) = CURDATE()");
+                $stmtCount->execute([$this->userId]);
+                $countToday = $stmtCount->fetchColumn();
+
+                if ($countToday >= $dailyLimit) {
+                    return ['success' => false, 'message' => "Has alcanzado tu límite diario de subidas ($dailyLimit videos)."];
+                }
+            }
+
+            // Si pasa validaciones, proceder con la creación
+            $uuid = Utils::generateUUID();
+            $title = pathinfo($fileName, PATHINFO_FILENAME);
+
+            // [SEGURIDAD] Generación de Token
+            $uploadToken = bin2hex(random_bytes(32));
+
+            if ($this->redis) {
+                // Guardamos el token y el user_id para validar después
+                $tokenData = json_encode([
+                    'user_id' => $this->userId,
+                    'token' => $uploadToken
+                ]);
+                // Expiración: 2 Horas (7200s)
+                $this->redis->setex("upload_token:$uuid", 7200, $tokenData);
+            }
+
             $stmt = $this->pdo->prepare("
                 INSERT INTO videos (uuid, user_id, batch_id, title, status) 
                 VALUES (?, ?, ?, ?, 'uploading_chunks')
@@ -257,12 +289,21 @@ class StudioService {
             $stmtTitle->execute([$uuid]);
             $title = $stmtTitle->fetchColumn();
 
+            // [TIERED LIMITS] Determinar límite de duración para el worker
+            $stmtRole = $this->pdo->prepare("SELECT role FROM users WHERE id = ?");
+            $stmtRole->execute([$this->userId]);
+            $role = $stmtRole->fetchColumn();
+            
+            // Estándar: 2h (7200s), Founder: 12h (43200s)
+            $maxDuration = ($role === 'founder') ? 43200 : 7200;
+
             if ($this->redis) {
                 $task = [
                     'task' => 'process_video',
                     'payload' => [
                         'video_uuid' => $uuid,
-                        'raw_path' => $finalPath
+                        'raw_path' => $finalPath,
+                        'max_duration' => $maxDuration // Límite para que el worker valide
                     ]
                 ];
                 $this->redis->rpush('aurora_task_queue', json_encode($task));

@@ -28,7 +28,9 @@ switch ($action) {
     case 'init_upload':
         $batchId = $_POST['batch_id'] ?? '';
         $fileName = $_POST['file_name'] ?? 'unknown.mp4';
-        Utils::jsonResponse($studioService->initUpload($batchId, $fileName));
+        // [TIERED LIMITS] Recibir tamaño del archivo
+        $fileSize = $_POST['file_size'] ?? 0;
+        Utils::jsonResponse($studioService->initUpload($batchId, $fileName, $fileSize));
         break;
 
     case 'upload_chunk':

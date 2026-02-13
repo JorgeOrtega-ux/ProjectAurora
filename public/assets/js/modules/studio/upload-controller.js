@@ -4,6 +4,7 @@
  * Actualizado para soporte de "Components" PHP y corrección de rutas/visibilidad.
  * [SEGURIDAD] Implementación de Upload Tokens.
  * [MEJORA] Soporte para progreso de procesamiento en tiempo real.
+ * [NUEVO] Validación Tiered Limits (Size & Duration) en Frontend.
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -14,18 +15,39 @@ import { DialogManager } from '../../core/components/dialog-manager.js';
 const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
 const MAX_FILES = 3;
 
+// [TIERED LIMITS] Configuración de límites
+const LIMITS = {
+    STD_SIZE: 25 * 1024 * 1024 * 1024, // 25 GB
+    STD_DURATION: 7200,                // 2 Horas
+    FOUNDER_SIZE: 100 * 1024 * 1024 * 1024, // 100 GB
+    FOUNDER_DURATION: 43200            // 12 Horas
+};
+
 // Estado local de videos
 let _videosState = []; 
 let _activeVideoUuid = null;
 let _activeBatchId = null;
 let _isEditMode = false; // Bandera para saber si estamos editando uno existente
 
+// Helper para detectar rol (debe ser inyectado en el layout o body)
+const getUserLimits = () => {
+    // Intentar leer rol del DOM o variable global
+    const role = document.body.dataset.userRole || window.AURORA_USER_ROLE || 'user';
+    const isFounder = (role === 'founder');
+
+    return {
+        maxSize: isFounder ? LIMITS.FOUNDER_SIZE : LIMITS.STD_SIZE,
+        maxDuration: isFounder ? LIMITS.FOUNDER_DURATION : LIMITS.STD_DURATION,
+        label: isFounder ? 'Founder' : 'Estándar'
+    };
+};
+
 export const UploadController = {
     init: async () => {
         const container = document.querySelector('[data-section="channel-upload"]');
         if (!container) return;
 
-        console.log("UploadController: Inicializado (V2 + Security Tokens + Realtime Processing)");
+        console.log("UploadController: Inicializado (V2 + Security Tokens + Limits Check)");
         
         _videosState = [];
         _activeVideoUuid = null;
@@ -179,6 +201,7 @@ function initDropzone() {
     if(btnTrigger) btnTrigger.addEventListener('click', openSelector);
     if(btnAddMore) btnAddMore.addEventListener('click', openSelector);
 
+    // [MODIFICADO] handleFiles ahora es async para validar duración
     input.addEventListener('change', (e) => handleFiles(e.target.files));
 
     dropzone.addEventListener('dragover', (e) => {
@@ -195,7 +218,28 @@ function initDropzone() {
     });
 }
 
-function handleFiles(files) {
+// [NUEVO] Función helper para obtener duración antes de subir
+const getVideoDuration = (file) => {
+    return new Promise((resolve, reject) => {
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        
+        video.onloadedmetadata = () => {
+            window.URL.revokeObjectURL(video.src);
+            resolve(video.duration);
+        };
+        
+        video.onerror = () => {
+            window.URL.revokeObjectURL(video.src);
+            reject("Error cargando metadatos");
+        };
+        
+        video.src = window.URL.createObjectURL(file);
+    });
+};
+
+// [MODIFICADO] Función handleFiles con validaciones estrictas
+async function handleFiles(files) {
     const validFiles = Array.from(files).filter(f => f.type.startsWith('video/'));
     
     if (validFiles.length === 0) {
@@ -208,17 +252,48 @@ function handleFiles(files) {
         return;
     }
 
+    // [TIERED LIMITS] Obtener límites del usuario actual
+    const limits = getUserLimits();
+    const filesToUpload = [];
+
+    // Validar cada archivo (Asíncrono para la duración)
+    for (const file of validFiles) {
+        // 1. Validar Tamaño
+        if (file.size > limits.maxSize) {
+            const sizeGB = (limits.maxSize / (1024 * 1024 * 1024)).toFixed(0);
+            ToastManager.show(`El archivo "${file.name}" excede el límite de ${sizeGB}GB.`, 'error');
+            continue; // Saltar este archivo
+        }
+
+        // 2. Validar Duración (Intento en cliente)
+        try {
+            const duration = await getVideoDuration(file);
+            if (duration > limits.maxDuration) {
+                const limitHours = limits.maxDuration / 3600;
+                ToastManager.show(`El archivo "${file.name}" dura más de ${limitHours} horas.`, 'error');
+                continue; // Saltar este archivo
+            }
+        } catch (e) {
+            console.warn("No se pudo validar duración en cliente, validando en servidor...", e);
+            // Dejamos pasar si falla la comprobación local para que el servidor decida
+        }
+
+        filesToUpload.push(file);
+    }
+
+    if (filesToUpload.length === 0) return;
+
+    // UI Updates
     document.getElementById('upload-dropzone')?.classList.add('d-none');
     document.getElementById('video-editor-area')?.classList.remove('d-none');
-    
-    // Mostrar barra de botones al iniciar subida
     document.getElementById('action-buttons-group')?.classList.remove('d-none');
 
     if (!_activeBatchId) {
         _activeBatchId = 'batch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
 
-    validFiles.forEach(file => {
+    // Iniciar subidas
+    filesToUpload.forEach(file => {
         const defaultTitle = file.name.replace(/\.[^/.]+$/, "");
         const tempId = 'temp_' + Date.now() + Math.random();
         
@@ -231,7 +306,7 @@ function handleFiles(files) {
             progress: 0,
             processingPercent: 0,
             thumbnail: null,
-            uploadToken: null // [TOKEN] Placeholder para el token de seguridad
+            uploadToken: null 
         };
         
         _videosState.push(videoEntry);
@@ -270,6 +345,9 @@ async function startUpload(videoEntry) {
         initData.append('action', 'init_upload');
         initData.append('batch_id', _activeBatchId);
         initData.append('file_name', file.name);
+        
+        // [TIERED LIMITS] Enviamos el tamaño para validación temprana en servidor (Gatekeeper)
+        initData.append('file_size', file.size);
 
         const initRes = await ApiService.post(ApiService.Routes.Studio.InitUpload, initData);
         if (!initRes.success) throw new Error(initRes.message);
@@ -337,7 +415,13 @@ async function startUpload(videoEntry) {
         videoEntry.errorMsg = error.message || 'Fallo en subida';
         renderTabs();
         if (_activeVideoUuid === videoEntry.uuid) updateEditorStatusUI(videoEntry);
-        ToastManager.show(`Error subiendo ${file.name}: ${videoEntry.errorMsg}`, 'error');
+        
+        // Mensaje específico si es por límites
+        if (error.message.includes('límite')) {
+             ToastManager.show(error.message, 'error');
+        } else {
+             ToastManager.show(`Error subiendo ${file.name}: ${videoEntry.errorMsg}`, 'error');
+        }
     }
 }
 

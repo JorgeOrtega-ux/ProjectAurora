@@ -343,6 +343,22 @@ def task_process_video(payload):
         meta = get_video_metadata(raw_path)
         duration = meta.get('duration', 0)
         
+        # [TIERED LIMITS] Validación de duración máxima
+        max_duration = payload.get('max_duration', 0) # 0 = ilimitado (o default)
+        
+        if max_duration > 0 and duration > max_duration:
+            error_msg = f"Límite de duración excedido ({int(duration)}s > {max_duration}s)"
+            logging.warning(f"⚠️ Video {video_uuid} rechazado: {error_msg}")
+            
+            # Borrar archivo crudo para liberar espacio
+            if os.path.exists(raw_path):
+                os.remove(raw_path)
+            
+            # Actualizar estado y notificar
+            update_video_status(video_uuid, 'error', error_msg)
+            notify_frontend('notification', {'type': 'error', 'text': 'Error: El video excede la duración permitida.'})
+            return
+
         # 2. Transcodificar a HLS con Subprocess.Popen para leer progreso
         hls_path = os.path.join(output_dir, 'index.m3u8')
         
