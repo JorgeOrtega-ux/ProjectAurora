@@ -1,13 +1,12 @@
 /**
  * public/assets/js/modules/studio/content-controller.js
  * Controlador para la gestión de contenido del canal.
- * ACTUALIZADO: Lógica síncrona de miniaturas y edición en modal.
  */
 
 import { ApiService } from '../../core/services/api-service.js';
 import { ToastManager } from '../../core/components/toast-manager.js';
 import { DialogManager } from '../../core/components/dialog-manager.js';
-// import { navigateTo } from '../../core/utils/url-manager.js'; // Ya no se usa para editar
+import { navigateTo } from '../../core/utils/url-manager.js';
 
 let _container = null;
 let _state = {
@@ -18,10 +17,6 @@ let _state = {
     totalPages: 1
 };
 let _searchTimeout = null;
-let _currentEditUuid = null; // Para saber qué video estamos editando
-
-// Ruta base para las acciones del estudio (Fallback si no está en ApiRoutes)
-const STUDIO_ROUTE = { route: 'studio-handler' };
 
 export const ContentController = {
     init: () => {
@@ -36,7 +31,6 @@ export const ContentController = {
         _state.status = 'all';
 
         initEvents();
-        initModalEvents(); // [NUEVO] Eventos del modal
         
         // Escuchar eventos de Dropdown (UiManager)
         document.removeEventListener('ui:dropdown-selected', onFilterSelected);
@@ -44,10 +38,11 @@ export const ContentController = {
 
         loadContent();
 
-        // Listener para actualizaciones en tiempo real (Procesamiento de video)
+        // Listener para actualizaciones en tiempo real (Completado)
         document.removeEventListener('socket:processing_complete', onVideoProcessed);
         document.addEventListener('socket:processing_complete', onVideoProcessed);
 
+        // [NUEVO] Listener para progreso en tiempo real (Porcentaje)
         document.removeEventListener('socket:processing_progress', onProcessingProgress);
         document.addEventListener('socket:processing_progress', onProcessingProgress);
     }
@@ -59,13 +54,16 @@ function onVideoProcessed() {
     }
 }
 
+// [NUEVO] Handler para actualizar la fila de la tabla sin recargar
 function onProcessingProgress(e) {
     const data = e.detail.message;
     if (data && data.uuid) {
+        // Buscar la fila específica en la tabla mediante el atributo data-row-uuid
         const row = document.querySelector(`tr[data-row-uuid="${data.uuid}"]`);
         if (row) {
-            const statusCell = row.cells[1];
+            const statusCell = row.cells[1]; // La segunda columna es "Estado"
             if (statusCell) {
+                // Actualizamos el contenido visual
                 statusCell.innerHTML = `
                     <div style="display: flex; align-items: center; gap: 6px;">
                         <span class="material-symbols-rounded" style="font-size: 18px; color: var(--color-warning);">hourglass_top</span>
@@ -91,7 +89,7 @@ function onFilterSelected(e) {
 }
 
 function initEvents() {
-    // 1. Buscador Expandible (Código Original conservado)
+    // 1. Buscador Expandible
     const btnToggleSearch = _container.querySelector('[data-action="toggle-content-search"]');
     const searchDropdown = document.getElementById('content-search-dropdown');
     const inputSearch = document.getElementById('content-search-input');
@@ -103,16 +101,17 @@ function initEvents() {
             
             if (isVisible) {
                 searchDropdown.style.display = 'none';
-                btnToggleSearch.classList.remove('active');
+                btnToggleSearch.classList.remove('active'); // Quitar estado activo
                 btnToggleSearch.style.backgroundColor = '';
             } else {
                 searchDropdown.style.display = 'block';
-                btnToggleSearch.classList.add('active');
+                btnToggleSearch.classList.add('active'); // Poner estado activo (bg-hover)
                 btnToggleSearch.style.backgroundColor = 'var(--bg-hover-light)';
                 if (inputSearch) setTimeout(() => inputSearch.focus(), 50);
             }
         });
 
+        // Cerrar al hacer click fuera
         document.addEventListener('click', (e) => {
             if (searchDropdown.style.display === 'block' && 
                 !searchDropdown.contains(e.target) && 
@@ -123,6 +122,7 @@ function initEvents() {
             }
         });
 
+        // Busqueda Input
         if (inputSearch) {
             inputSearch.addEventListener('input', (e) => {
                 const val = e.target.value.trim();
@@ -176,8 +176,7 @@ function initEvents() {
             
             if (btnEdit) {
                  const videoUuid = btnEdit.dataset.uuid;
-                 // [CAMBIO] Abrir modal en lugar de navegar
-                 openEditModal(videoUuid);
+                navigateTo(`s/channel/upload/${videoUuid}`);
             }
 
             if (btnDelete) {
@@ -188,286 +187,6 @@ function initEvents() {
         });
     }
 }
-
-// [NUEVO] Inicializar eventos dentro del Modal de Edición
-function initModalEvents() {
-    // Guardar borrador
-    const saveBtn = document.getElementById('save-video-changes');
-    if (saveBtn) saveBtn.addEventListener('click', () => saveChanges(false));
-
-    // Publicar
-    const publishBtn = document.getElementById('publish-video-btn');
-    if (publishBtn) publishBtn.addEventListener('click', () => saveChanges(true));
-
-    // Generar Miniaturas (Síncrono)
-    const generateBtn = document.getElementById('generate-thumbs-btn');
-    if (generateBtn) generateBtn.addEventListener('click', handleGenerateThumbs);
-
-    // Subir miniatura personalizada
-    const thumbInput = document.getElementById('custom-thumb-input');
-    if (thumbInput) thumbInput.addEventListener('change', handleCustomThumbUpload);
-
-    // Selección de miniatura generada (Delegación)
-    const generatedGrid = document.getElementById('generated-thumbs-grid');
-    if (generatedGrid) {
-        generatedGrid.addEventListener('click', (e) => {
-            const item = e.target.closest('.generated-thumb-item');
-            if (item) handleSelectGeneratedThumb(item);
-        });
-    }
-    
-    // Cerrar modales genéricos
-    document.querySelectorAll('[data-dismiss="modal"]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            DialogManager.close('edit-video-dialog'); // Asumiendo que DialogManager soporta ID o close genérico
-            // Si DialogManager.close() no acepta ID, usa el método que cierre el modal actual.
-            // O usa: document.getElementById('edit-video-dialog').classList.remove('active');
-            const dialog = document.getElementById('edit-video-dialog');
-            if(dialog) dialog.classList.remove('active'); 
-        });
-    });
-}
-
-// --- LÓGICA DE EDICIÓN Y MINIATURAS ---
-
-async function openEditModal(uuid) {
-    _currentEditUuid = uuid;
-    
-    // Abrir modal (Asumiendo estructura estándar de modal CSS)
-    const modal = document.getElementById('edit-video-dialog');
-    if (modal) modal.classList.add('active');
-    
-    const formContainer = document.getElementById('edit-form-container');
-    if (formContainer) formContainer.classList.add('loading');
-
-    const formData = new FormData();
-    formData.append('action', 'get_video_details');
-    formData.append('video_uuid', uuid);
-
-    try {
-        const res = await ApiService.post(STUDIO_ROUTE, formData);
-
-        if (res.success) {
-            populateEditForm(res.video);
-        } else {
-            ToastManager.show(res.message, 'error');
-            if(modal) modal.classList.remove('active');
-        }
-    } catch (e) {
-        console.error(e);
-        ToastManager.show('Error al cargar datos', 'error');
-    } finally {
-        if (formContainer) formContainer.classList.remove('loading');
-    }
-}
-
-function populateEditForm(video) {
-    const titleInput = document.getElementById('edit-title');
-    const descInput = document.getElementById('edit-desc');
-
-    if (titleInput) titleInput.value = video.title || '';
-    if (descInput) descInput.value = video.description || '';
-
-    updateThumbnailPreview(video.thumbnail_src, video.dominant_color);
-
-    // Renderizar miniaturas ya existentes (si las hay guardadas)
-    renderGeneratedThumbnails(video.generated_thumbnails || []);
-}
-
-function updateThumbnailPreview(src, color) {
-    const img = document.getElementById('current-thumb-img');
-    const container = document.querySelector('.current-thumbnail-preview');
-    
-    if (src) {
-        if (img) {
-            img.src = src;
-            img.style.display = 'block';
-        }
-        if (container) container.style.backgroundColor = 'transparent';
-    } else {
-        if (img) img.style.display = 'none';
-        if (container) container.style.backgroundColor = color || '#333';
-    }
-}
-
-// [NUEVO] Lógica Síncrona: Pide al PHP y recibe el array inmediatamente
-async function handleGenerateThumbs() {
-    if (!_currentEditUuid) return;
-
-    const btn = document.getElementById('generate-thumbs-btn');
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<span class="material-symbols-rounded spin">sync</span> Generando...';
-    }
-
-    const formData = new FormData();
-    formData.append('action', 'generate_thumbnails');
-    formData.append('video_uuid', _currentEditUuid);
-
-    try {
-        // Esperamos la respuesta DIRECTA del servidor (FFmpeg ya corrió en PHP)
-        const res = await ApiService.post(STUDIO_ROUTE, formData);
-
-        if (res.success) {
-            ToastManager.show(res.message, 'success');
-            // Renderizamos inmediatamente lo que devolvió PHP
-            renderGeneratedThumbnails(res.thumbnails);
-        } else {
-            ToastManager.show(res.message, 'error');
-        }
-    } catch (e) {
-        console.error(e);
-        ToastManager.show('Error al generar miniaturas', 'error');
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<span class="material-symbols-rounded">auto_awesome</span> Generar Automáticas';
-        }
-    }
-}
-
-// [NUEVO] Renderiza objetos {path, color}
-function renderGeneratedThumbnails(thumbnails) {
-    const grid = document.getElementById('generated-thumbs-grid');
-    if (!grid) return;
-    
-    grid.innerHTML = '';
-
-    if (!thumbnails || thumbnails.length === 0) {
-        grid.innerHTML = '<p class="text-muted text-sm">No hay sugerencias disponibles.</p>';
-        return;
-    }
-
-    thumbnails.forEach(thumb => {
-        let path = '';
-        let color = '#000000';
-
-        // Compatibilidad hacia atrás por si hay datos viejos
-        if (typeof thumb === 'string') {
-            path = thumb;
-        } else {
-            path = thumb.path;
-            color = thumb.color;
-        }
-
-        const div = document.createElement('div');
-        div.className = 'generated-thumb-item';
-        div.dataset.path = path;
-        div.dataset.color = color; // Guardamos el color en el DOM
-
-        div.innerHTML = `<img src="${path}" loading="lazy" alt="Opción">`;
-        grid.appendChild(div);
-    });
-}
-
-// [NUEVO] Envia path Y color al seleccionar
-async function handleSelectGeneratedThumb(element) {
-    document.querySelectorAll('.generated-thumb-item').forEach(el => el.classList.remove('selected'));
-    element.classList.add('selected');
-
-    const path = element.dataset.path;
-    const color = element.dataset.color;
-
-    const formData = new FormData();
-    formData.append('action', 'select_generated_thumbnail');
-    formData.append('video_uuid', _currentEditUuid);
-    formData.append('thumbnail_path', path);
-    formData.append('dominant_color', color); // ¡Clave! Enviamos el color pre-calculado
-
-    try {
-        const res = await ApiService.post(STUDIO_ROUTE, formData);
-
-        if (res.success) {
-            ToastManager.show('Miniatura seleccionada', 'success');
-            updateThumbnailPreview(path, color);
-            // Actualizar tabla de fondo si es posible
-            loadContent(true); 
-        } else {
-            ToastManager.show(res.message, 'error');
-        }
-    } catch (e) {
-        ToastManager.show('Error de red', 'error');
-    }
-}
-
-async function handleCustomThumbUpload(e) {
-    const file = e.target.files[0];
-    if (!file || !_currentEditUuid) return;
-
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-        ToastManager.show('Formato inválido (Use JPG/PNG)', 'warning');
-        return;
-    }
-
-    const formData = new FormData();
-    formData.append('action', 'upload_thumbnail');
-    formData.append('video_uuid', _currentEditUuid);
-    formData.append('thumbnail', file);
-
-    const label = document.querySelector('.custom-upload-btn');
-    const originalText = label ? label.textContent : 'Subir';
-    if (label) label.textContent = 'Subiendo...';
-
-    try {
-        const res = await ApiService.post(STUDIO_ROUTE, formData);
-        if (res.success) {
-            ToastManager.show('Miniatura subida', 'success');
-            updateThumbnailPreview(res.new_src, res.dominant_color);
-            loadContent(true);
-        } else {
-            ToastManager.show(res.message, 'error');
-        }
-    } catch (error) {
-        ToastManager.show('Error al subir', 'error');
-    } finally {
-        if (label) label.textContent = originalText;
-        e.target.value = '';
-    }
-}
-
-async function saveChanges(publish = false) {
-    if (!_currentEditUuid) return;
-
-    const title = document.getElementById('edit-title').value.trim();
-    const desc = document.getElementById('edit-desc').value.trim();
-
-    if (!title) {
-        ToastManager.show('El título es obligatorio', 'warning');
-        return;
-    }
-
-    const btn = publish ? document.getElementById('publish-video-btn') : document.getElementById('save-video-changes');
-    const originalText = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Procesando...';
-
-    const formData = new FormData();
-    formData.append('action', 'save_metadata');
-    formData.append('video_uuid', _currentEditUuid);
-    formData.append('title', title);
-    formData.append('description', desc);
-    formData.append('publish', publish);
-
-    try {
-        const res = await ApiService.post(STUDIO_ROUTE, formData);
-
-        if (res.success) {
-            ToastManager.show(res.message, 'success');
-            const modal = document.getElementById('edit-video-dialog');
-            if (modal) modal.classList.remove('active');
-            loadContent(true);
-        } else {
-            ToastManager.show(res.message, 'error');
-        }
-    } catch (e) {
-        ToastManager.show('Error al guardar', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = originalText;
-    }
-}
-
-// --- FUNCIONES ORIGINALES (Carga y Renderizado de Tabla) ---
 
 async function loadContent(silent = false) {
     const tableBody = document.getElementById('content-table-body');
@@ -504,7 +223,7 @@ async function loadContent(silent = false) {
         if (e.isAborted) return;
         console.error(e);
         if (!silent && loading) loading.classList.add('d-none');
-        // ToastManager.show('Error de conexión', 'error'); // Opcional silenciar
+        ToastManager.show('Error de conexión', 'error');
     }
 }
 
@@ -543,6 +262,7 @@ function renderTable(videos) {
             case 'processing':
             case 'uploading_chunks':
                 statusBadge = 'hourglass_empty'; 
+                // [MEJORA] Mostrar porcentaje inicial si viene del servidor
                 const percent = v.processing_percentage || 0;
                 statusText = `Procesando (${percent}%)`; 
                 break;
@@ -552,6 +272,7 @@ function renderTable(videos) {
                 statusBadge = 'help'; statusText = v.status;
         }
 
+        // [MODIFICADO] Añadido data-row-uuid para identificación precisa
         html += `
             <tr class="table-row-item" data-row-uuid="${v.uuid}">
                 <td style="padding: 12px 16px;">
