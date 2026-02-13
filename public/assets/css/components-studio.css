@@ -31,7 +31,7 @@
 .component-studio-state-title { margin: 0 0 8px 0; color: var(--text-primary, #0f0f0f); font-size: 1.5rem; font-weight: 500; }
 .component-studio-state-text { margin: 0; color: var(--text-secondary, #606060); font-size: 1rem; line-height: 1.4; }
 
-/* Barra de Herramientas (MODIFICADO) */
+/* Barra de Herramientas */
 .component-studio-toolbar {
     flex: 0 0 auto;
     display: flex;
@@ -52,10 +52,9 @@
     display: flex;
     align-items: center;
     min-width: 0;
-    gap: 2px;
+    gap: 8px;
 }
 
-/* Elementos internos de la Toolbar */
 .component-divider-vertical {
     height: 24px;
     border-left: 1px solid var(--border-light, #e0e0e0);
@@ -68,13 +67,78 @@
     min-width: 160px;
 }
 
-/* Texto de Paginación */
 .component-studio-toolbar .component-pagination-info {
     font-size: 12px;
     min-width: 40px;
     text-align: center;
     color: var(--text-secondary);
     user-select: none;
+}
+
+/* === TABS DE VIDEO === */
+.studio-tabs-scroll {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 0 4px;
+    margin-left: 12px;
+    border-left: 1px solid var(--border-light);
+    padding-left: 12px;
+    max-width: 400px;
+    scrollbar-width: none;
+}
+
+.studio-tabs-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.studio-tab-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 99px;
+    border: 1px solid var(--border-light);
+    background-color: var(--bg-surface);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    transition: all 0.2s ease;
+    max-width: 180px;
+}
+
+.studio-tab-badge:hover {
+    background-color: var(--bg-hover-light);
+    color: var(--text-primary);
+    border-color: var(--border-color-hover);
+}
+
+.studio-tab-badge.active {
+    background-color: var(--text-primary);
+    color: var(--bg-surface);
+    border-color: var(--text-primary);
+}
+
+.studio-tab-icon { font-size: 16px; }
+.studio-tab-text { overflow: hidden; text-overflow: ellipsis; }
+
+.badge-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-left-color: #fff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.studio-tab-badge:not(.active) .badge-spinner {
+    border-color: var(--border-light);
+    border-left-color: var(--text-primary);
 }
 
 /* Buscador Desplegable */
@@ -98,31 +162,64 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* Área de Contenido */
+/* Área de Contenido Principal (Studio) */
 .component-studio-content-area {
     flex: 1 1 auto;
-    overflow-y: auto;
-    padding: 24px;
+    overflow: hidden; 
+    padding: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .component-studio-content-area.centered {
     display: flex;
     flex-direction: column;
     align-items: center;
+    padding: 24px;
+    overflow-y: auto;
 }
 
-/* Tarjetas y Tablas en Studio */
+/* Tarjeta contenedora de la Tabla */
 .component-studio-content-area .component-card--fill {
-    border-radius: 8px;
+    border-radius: 0;
     overflow: hidden;
-    border: 1px solid var(--border-light, #e0e0e0);
+    border: none;
+    border-bottom: 1px solid var(--border-light, #e0e0e0);
     box-shadow: none;
     background: var(--bg-surface);
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
+/* Wrapper de la Tabla (Aquí ocurre el scroll) */
 .component-studio-content-area .component-table-wrapper {
     border: none;
     box-shadow: none;
+    border-radius: 0;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+/* [CORRECCIÓN] Header de la Tabla:
+   1. Background blanco/surface para que no sea transparente al scrollear.
+   2. Box-shadow hace de borde inferior.
+*/
+.component-studio-content-area .component-table-sticky-header {
+    background-color: var(--bg-surface) !important; /* Fondo sólido */
+    box-shadow: 0 1px 0 var(--border-light);        /* Línea separadora sutil */
+    z-index: 10;
+}
+
+/* [CORRECCIÓN] Celdas del Header (th):
+   1. Quitamos border-bottom físico para evitar doble borde con el shadow.
+   2. Fondo heredado.
+*/
+.component-studio-content-area .component-table th {
+    border-bottom: none !important; 
+    background-color: inherit;
 }
 
 /* Miniaturas en Tabla */
@@ -195,7 +292,6 @@
     overflow: hidden;
 }
 
-/* IMAGEN DE VISTA PREVIA */
 .preview-thumbnail-img {
     position: absolute;
     top: 0;

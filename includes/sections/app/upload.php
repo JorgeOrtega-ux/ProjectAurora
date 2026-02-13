@@ -34,22 +34,32 @@ $isEditMode = !empty($requestedVideoId);
             <span class="component-toolbar-title">Subir videos</span>
             <div id="video-tabs-container" class="studio-tabs-scroll"></div>
             
-            <button class="component-button square d-none" id="btn-add-more" title="Añadir otro video" style="margin-left: 8px; border-radius: 50%; width: 32px; height: 32px; min-width: 32px;">
-                <span class="material-symbols-rounded" style="font-size: 18px;">add</span>
+            <button class="header-button d-none" id="btn-add-more" data-tooltip="Añadir otro video">
+                <span class="material-symbols-rounded">add</span>
             </button>
         </div>
 
         <div class="component-studio-toolbar-group <?php echo $isEditMode ? '' : 'd-none'; ?>" id="action-buttons-group">
+            
             <div id="global-upload-status" style="font-size: 13px; color: var(--text-secondary); margin-right: 12px; display: none;">
                 <span class="spinner-sm" style="width: 16px; height: 16px; border-width: 2px; vertical-align: middle; margin-right: 8px;"></span>
                 <span id="global-status-text">Subiendo...</span>
             </div>
 
-            <button class="component-button component-button--danger-ghost" id="btn-delete-video" title="Eliminar borrador">
-                <span class="material-symbols-rounded">delete</span>
+            <div class="component-divider-vertical"></div>
+
+            <button class="header-button" id="btn-delete-video" data-tooltip="Eliminar borrador">
+                <span class="material-symbols-rounded" style="color: var(--color-error);">delete</span>
             </button>
-            <button class="component-button" id="btn-save-draft">Guardar Borrador</button>
-            <button class="component-button primary" id="btn-publish" disabled>PUBLICAR</button>
+            
+            <button class="header-button" id="btn-save-draft" data-tooltip="Guardar cambios">
+                <span class="material-symbols-rounded">save</span>
+            </button>
+            
+            <button class="header-button" id="btn-publish" data-tooltip="Publicar video" disabled>
+                <span class="material-symbols-rounded" style="color: var(--action-primary);">send</span>
+            </button>
+
         </div>
     </div>
 
@@ -57,10 +67,7 @@ $isEditMode = !empty($requestedVideoId);
         
         <?php 
             // INCLUIMOS LOS COMPONENTES
-            // Ambos se cargan, pero su visibilidad (d-none) se controla dentro de ellos o vía JS
-            
             require __DIR__ . '/components/upload-dropzone.php'; 
-            
             require __DIR__ . '/components/upload-editor.php'; 
         ?>
 
