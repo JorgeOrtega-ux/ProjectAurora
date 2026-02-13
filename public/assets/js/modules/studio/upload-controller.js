@@ -2,6 +2,7 @@
  * public/assets/js/modules/studio/upload-controller.js
  * Versión Refactorizada: Arquitectura Signal & Interceptors
  * Actualizado para soporte de "Components" PHP y corrección de rutas/visibilidad.
+ * [SEGURIDAD] Implementación de Upload Tokens.
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -23,7 +24,7 @@ export const UploadController = {
         const container = document.querySelector('[data-section="channel-upload"]');
         if (!container) return;
 
-        console.log("UploadController: Inicializado (V2 Components + Logic Fixes)");
+        console.log("UploadController: Inicializado (V2 + Security Tokens)");
         
         _videosState = [];
         _activeVideoUuid = null;
@@ -65,7 +66,7 @@ async function loadExistingDraft(uuid) {
         document.getElementById('upload-dropzone')?.classList.add('d-none');
         document.getElementById('video-editor-area')?.classList.remove('d-none');
         
-        // [CORRECCIÓN] Mostrar la barra de botones de acción
+        // Mostrar la barra de botones de acción
         document.getElementById('action-buttons-group')?.classList.remove('d-none');
         
         const alertBox = document.getElementById('editor-status-alert');
@@ -93,7 +94,7 @@ async function loadExistingDraft(uuid) {
                 description: res.video.description || '',
                 status: res.video.status || 'ready',
                 progress: 100,
-                // [CORRECCIÓN] Ruta absoluta para la miniatura
+                // Ruta absoluta para la miniatura
                 thumbnail: res.video.thumbnail_src ? (window.BASE_PATH + res.video.thumbnail_src) : null
             };
 
@@ -131,7 +132,7 @@ async function checkPendingUploads() {
             document.getElementById('upload-dropzone')?.classList.add('d-none');
             document.getElementById('video-editor-area')?.classList.remove('d-none');
             
-            // [CORRECCIÓN] Mostrar botones si hay videos pendientes
+            // Mostrar botones si hay videos pendientes
             document.getElementById('action-buttons-group')?.classList.remove('d-none');
 
             res.videos.forEach(v => {
@@ -140,7 +141,7 @@ async function checkPendingUploads() {
                     title: v.title || 'Sin título',
                     status: (v.status === 'waiting_for_metadata') ? 'ready' : 'processing',
                     progress: 100,
-                    // [CORRECCIÓN] Ruta absoluta
+                    // Ruta absoluta
                     thumbnail: v.thumbnail_src ? (window.BASE_PATH + v.thumbnail_src) : null,
                     description: v.description || ''
                 });
@@ -203,7 +204,7 @@ function handleFiles(files) {
     document.getElementById('upload-dropzone')?.classList.add('d-none');
     document.getElementById('video-editor-area')?.classList.remove('d-none');
     
-    // [CORRECCIÓN] Mostrar barra de botones al iniciar subida
+    // Mostrar barra de botones al iniciar subida
     document.getElementById('action-buttons-group')?.classList.remove('d-none');
 
     if (!_activeBatchId) {
@@ -221,7 +222,8 @@ function handleFiles(files) {
             description: '',
             status: 'uploading',
             progress: 0,
-            thumbnail: null
+            thumbnail: null,
+            uploadToken: null // [TOKEN] Placeholder para el token de seguridad
         };
         
         _videosState.push(videoEntry);
@@ -249,7 +251,7 @@ function updateAddButtonVisibility() {
 }
 
 // ==========================================
-// 2. LÓGICA DE SUBIDA
+// 2. LÓGICA DE SUBIDA (MODIFICADA)
 // ==========================================
 
 async function startUpload(videoEntry) {
@@ -266,6 +268,9 @@ async function startUpload(videoEntry) {
         
         const oldId = videoEntry.uuid;
         videoEntry.uuid = initRes.video_uuid;
+        
+        // [TOKEN] Guardamos el token de seguridad devuelto por el servidor
+        videoEntry.uploadToken = initRes.upload_token;
         
         if (_activeVideoUuid === oldId) {
             _activeVideoUuid = videoEntry.uuid;
@@ -290,6 +295,9 @@ async function startUpload(videoEntry) {
             formData.append('chunk_index', chunkIndex);
             formData.append('chunk', chunk);
             formData.append('is_last', (chunkIndex === totalChunks - 1) ? 'true' : 'false');
+            
+            // [TOKEN] Adjuntamos el token en cada chunk para validar permisos y lock
+            formData.append('upload_token', videoEntry.uploadToken);
 
             const chunkRes = await ApiService.post(ApiService.Routes.Studio.UploadChunk, formData);
             if (!chunkRes.success) throw new Error(chunkRes.message);
@@ -317,10 +325,10 @@ async function startUpload(videoEntry) {
         if (!_videosState.find(v => v.uuid === videoEntry.uuid)) return;
 
         videoEntry.status = 'error';
-        videoEntry.errorMsg = 'Fallo en subida';
+        videoEntry.errorMsg = error.message || 'Fallo en subida';
         renderTabs();
         if (_activeVideoUuid === videoEntry.uuid) updateEditorStatusUI(videoEntry);
-        ToastManager.show(`Error subiendo ${file.name}`, 'error');
+        ToastManager.show(`Error subiendo ${file.name}: ${videoEntry.errorMsg}`, 'error');
     }
 }
 
@@ -470,7 +478,7 @@ function updateEditorStatusUI(video) {
     else if (video.status === 'error') {
         alertBox.classList.remove('d-none');
         alertBox.classList.add('component-message--error');
-        alertBox.textContent = 'Ocurrió un error con este video.';
+        alertBox.textContent = video.errorMsg || 'Ocurrió un error con este video.';
     }
 
     validatePublishRequirements();
@@ -734,7 +742,7 @@ async function handleThumbnailUpload(e) {
         const res = await ApiService.post(ApiService.Routes.Studio.UploadThumbnail, formData);
         
         if (res.success) {
-            // [CORRECCIÓN] Asegurar ruta absoluta
+            // Asegurar ruta absoluta
             const fullSrc = window.BASE_PATH + res.new_src;
             currentVideo.thumbnail = fullSrc;
             
@@ -798,7 +806,7 @@ async function deleteVideo() {
             document.getElementById('video-editor-area')?.classList.add('d-none');
             document.getElementById('upload-dropzone')?.classList.remove('d-none');
             
-            // [CORRECCIÓN] Ocultar botones si no hay videos
+            // Ocultar botones si no hay videos
             document.getElementById('action-buttons-group')?.classList.add('d-none');
 
             _activeVideoUuid = null;
@@ -876,7 +884,6 @@ function onThumbsGenerated(e) {
         if (grid && data.thumbnails) {
             grid.innerHTML = '';
             data.thumbnails.forEach(path => {
-                // [NOTA] path ya suele ser relativo, concatenamos BASE_PATH
                 const fullPath = window.BASE_PATH + path;
                 const div = document.createElement('div');
                 div.className = 'generated-thumb-item';

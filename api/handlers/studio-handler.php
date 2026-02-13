@@ -35,7 +35,10 @@ switch ($action) {
         $uuid = $_POST['video_uuid'] ?? '';
         $chunkIndex = $_POST['chunk_index'] ?? 0;
         $isLast = isset($_POST['is_last']) && $_POST['is_last'] === 'true';
-        Utils::jsonResponse($studioService->uploadChunk($uuid, $_FILES['chunk'], $chunkIndex, $isLast));
+        // [NUEVO] Recibir token de seguridad
+        $token = $_POST['upload_token'] ?? '';
+        
+        Utils::jsonResponse($studioService->uploadChunk($uuid, $_FILES['chunk'], $chunkIndex, $isLast, $token));
         break;
 
     case 'upload_thumbnail':

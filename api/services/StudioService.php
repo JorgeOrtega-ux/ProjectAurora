@@ -142,6 +142,19 @@ class StudioService {
         $uuid = Utils::generateUUID();
         $title = pathinfo($fileName, PATHINFO_FILENAME);
 
+        // [SEGURIDAD] Generación de Token
+        $uploadToken = bin2hex(random_bytes(32));
+
+        if ($this->redis) {
+            // Guardamos el token y el user_id para validar después
+            $tokenData = json_encode([
+                'user_id' => $this->userId,
+                'token' => $uploadToken
+            ]);
+            // Expiración: 2 Horas (7200s)
+            $this->redis->setex("upload_token:$uuid", 7200, $tokenData);
+        }
+
         try {
             $stmt = $this->pdo->prepare("
                 INSERT INTO videos (uuid, user_id, batch_id, title, status) 
@@ -149,14 +162,36 @@ class StudioService {
             ");
             $stmt->execute([$uuid, $this->userId, $batchId, $title]);
 
-            return ['success' => true, 'video_uuid' => $uuid];
+            return [
+                'success' => true, 
+                'video_uuid' => $uuid,
+                'upload_token' => $uploadToken // Devolver token al frontend
+            ];
         } catch (Exception $e) {
             return ['success' => false, 'message' => $this->i18n->t('api.db_error')];
         }
     }
 
-    public function uploadChunk($uuid, $file, $index, $isLast) {
-        if (!$this->isOwner($uuid)) return ['success' => false, 'message' => 'Acceso denegado'];
+    public function uploadChunk($uuid, $file, $index, $isLast, $token) {
+        // [SEGURIDAD] Validación de Token en Redis
+        if ($this->redis) {
+            $redisKey = "upload_token:$uuid";
+            $storedDataJson = $this->redis->get($redisKey);
+
+            if (!$storedDataJson) {
+                return ['success' => false, 'message' => 'Sesión de subida expirada o inválida.'];
+            }
+
+            $storedData = json_decode($storedDataJson, true);
+            
+            // Validar que el token coincida y que el usuario sea el correcto
+            if ($storedData['token'] !== $token || $storedData['user_id'] != $this->userId) {
+                return ['success' => false, 'message' => 'Token de seguridad inválido. Acceso denegado.'];
+            }
+        } else {
+            // Fallback a DB si Redis no está (menos seguro para race conditions)
+            if (!$this->isOwner($uuid)) return ['success' => false, 'message' => 'Acceso denegado'];
+        }
 
         if (!isset($file['tmp_name']) || $file['error'] !== UPLOAD_ERR_OK) {
             return ['success' => false, 'message' => 'Error en chunk upload'];
@@ -164,7 +199,39 @@ class StudioService {
 
         $tempFilePath = $this->tempDir . '/' . $uuid . '.part';
         $chunkData = file_get_contents($file['tmp_name']);
-        file_put_contents($tempFilePath, $chunkData, FILE_APPEND);
+
+        // [SEGURIDAD] Redis Lock para evitar condiciones de carrera en escritura
+        $lockKey = "lock:upload:$uuid";
+        $lockAcquired = false;
+
+        if ($this->redis) {
+            // Intentar adquirir lock por hasta 5 segundos (50 intentos de 100ms)
+            for ($i = 0; $i < 50; $i++) {
+                // SETNX devuelve true si estableció la clave (lock libre)
+                $lockAcquired = $this->redis->setnx($lockKey, time());
+                if ($lockAcquired) {
+                    $this->redis->expire($lockKey, 10); // TTL de seguridad al lock (10s)
+                    break;
+                }
+                usleep(100000); // Esperar 100ms
+            }
+
+            if (!$lockAcquired) {
+                return ['success' => false, 'message' => 'Servidor ocupado (Lock timeout). Reintenta el chunk.'];
+            }
+        }
+
+        try {
+            // Sección Crítica: Escritura de archivo
+            file_put_contents($tempFilePath, $chunkData, FILE_APPEND);
+        } finally {
+            // Liberar el lock
+            if ($this->redis && $lockAcquired) {
+                $this->redis->del($lockKey);
+                // Heartbeat: Renovar el TTL del token de subida
+                $this->redis->expire("upload_token:$uuid", 7200);
+            }
+        }
 
         if ($isLast) {
             return $this->finalizeUpload($uuid, $tempFilePath);
@@ -177,6 +244,12 @@ class StudioService {
         $finalPath = $this->rawDir . '/' . $uuid . '.mp4';
         
         if (rename($tempPath, $finalPath)) {
+            // [SEGURIDAD] Limpieza de Redis tras éxito
+            if ($this->redis) {
+                $this->redis->del("upload_token:$uuid");
+                $this->redis->del("lock:upload:$uuid");
+            }
+
             $stmt = $this->pdo->prepare("UPDATE videos SET status = 'queued', raw_file_path = ? WHERE uuid = ?");
             $stmt->execute(['storage/uploads/raw/' . $uuid . '.mp4', $uuid]);
 
@@ -409,6 +482,13 @@ class StudioService {
         foreach ($videos as $v) {
             $tempPart = $this->tempDir . '/' . $v['uuid'] . '.part';
             $rawFile = __DIR__ . '/../../' . ($v['raw_file_path'] ?? '');
+            
+            // Limpieza también de Redis
+            if ($this->redis) {
+                $this->redis->del("upload_token:{$v['uuid']}");
+                $this->redis->del("lock:upload:{$v['uuid']}");
+            }
+
             if (file_exists($tempPart)) @unlink($tempPart);
             if (!empty($v['raw_file_path']) && file_exists($rawFile)) @unlink($rawFile);
         }
@@ -448,6 +528,12 @@ class StudioService {
         $generatedThumbsDir = $this->thumbnailDir . '/generated/' . $uuid;
         if (is_dir($generatedThumbsDir)) {
             $this->deleteDirectory($generatedThumbsDir);
+        }
+
+        // Limpieza de Redis por si acaso quedó algo
+        if ($this->redis) {
+            $this->redis->del("upload_token:$uuid");
+            $this->redis->del("lock:upload:$uuid");
         }
 
         $del = $this->pdo->prepare("DELETE FROM videos WHERE uuid = ?");
