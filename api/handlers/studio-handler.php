@@ -53,7 +53,10 @@ switch ($action) {
         $data = [
             'title' => $_POST['title'] ?? '',
             'description' => $_POST['description'] ?? '',
-            'publish' => isset($_POST['publish']) && $_POST['publish'] === 'true'
+            'publish' => isset($_POST['publish']) && $_POST['publish'] === 'true',
+            // [NUEVO] Capturar datos de miniatura para guardado diferido
+            'selected_thumbnail' => $_POST['selected_thumbnail'] ?? null,
+            'dominant_color' => $_POST['dominant_color'] ?? null
         ];
         Utils::jsonResponse($studioService->saveMetadata($uuid, $data));
         break;
@@ -87,7 +90,7 @@ switch ($action) {
         Utils::jsonResponse($studioService->requestAutoThumbnails($uuid));
         break;
 
-    // [NUEVO] Caso para seleccionar una miniatura generada
+    // Caso para seleccionar una miniatura generada (Puede ser usado para cambios inmediatos si se requiere)
     case 'select_generated_thumbnail':
         $uuid = $_POST['video_uuid'] ?? '';
         $path = $_POST['thumbnail_path'] ?? '';

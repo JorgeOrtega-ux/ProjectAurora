@@ -54,12 +54,14 @@ class StudioService {
                 return ['success' => false, 'message' => 'Video no encontrado.'];
             }
 
-            // Preparar miniatura
+            // [CORRECCIÓN] Usar la ruta completa almacenada, no reconstruirla con basename
             $video['thumbnail_src'] = null;
             if (!empty($video['thumbnail_path'])) {
                 $path = __DIR__ . '/../../' . $video['thumbnail_path'];
                 if (file_exists($path)) {
-                    $video['thumbnail_src'] = 'public/storage/thumbnails/' . basename($video['thumbnail_path']);
+                    // ANTES (BUG): $video['thumbnail_src'] = 'public/storage/thumbnails/' . basename($video['thumbnail_path']);
+                    // AHORA (CORRECTO):
+                    $video['thumbnail_src'] = $video['thumbnail_path'];
                 }
             }
             
@@ -99,8 +101,10 @@ class StudioService {
             $videos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             foreach ($videos as &$v) {
+                // [CORRECCIÓN] Usar ruta directa
                 if ($v['thumbnail_path']) {
-                    $v['thumbnail_url'] = 'public/storage/thumbnails/' . basename($v['thumbnail_path']);
+                    // ANTES (BUG): 'public/storage/thumbnails/' . basename($v['thumbnail_path']);
+                    $v['thumbnail_url'] = $v['thumbnail_path'];
                 } else {
                     $v['thumbnail_url'] = null;
                 }
@@ -336,9 +340,14 @@ class StudioService {
         return ['success' => false, 'message' => 'Error moviendo miniatura'];
     }
 
-    // [MODIFICADO] Generación Síncrona en PHP (FFmpeg + GD)
     public function requestAutoThumbnails($uuid) {
         if (!$this->isOwner($uuid)) return ['success' => false, 'message' => 'Acceso denegado'];
+
+        // [SEGURIDAD] Rate Limit
+        if (Utils::checkSecurityLimit($this->pdo, 'generate_thumbs', 3, 10, $this->userId)) {
+            return ['success' => false, 'message' => 'Has excedido el límite de generación. Espera unos minutos.'];
+        }
+        Utils::logSecurityAction($this->pdo, 'generate_thumbs', 10, $this->userId);
 
         // 1. Obtener datos del video
         $stmt = $this->pdo->prepare("SELECT raw_file_path, duration FROM videos WHERE uuid = ?");
@@ -364,15 +373,14 @@ class StudioService {
             }
         }
 
-        // Evitar Timeouts de PHP si el video es largo
         set_time_limit(120); 
 
         // 3. Lógica de intervalos
         $duration = (float)$video['duration'];
         $numThumbs = 1;
-        if ($duration > 60) $numThumbs = (int)($duration / 60); // 1 por min
-        if ($numThumbs > 12) $numThumbs = 12; // Máximo 12
-        if ($numThumbs < 3) $numThumbs = 3;   // Mínimo 3
+        if ($duration > 60) $numThumbs = (int)($duration / 60); 
+        if ($numThumbs > 12) $numThumbs = 12; 
+        if ($numThumbs < 3) $numThumbs = 3;   
 
         $interval = $duration / ($numThumbs + 1);
         $generatedFiles = [];
@@ -384,13 +392,11 @@ class StudioService {
             $outputAbs = "$thumbsDirAbs/$fileName";
             $outputRel = "$thumbsDirRel/$fileName";
 
-            // Comando FFmpeg (Calidad media-alta, escala inteligente)
             $cmd = "ffmpeg -y -ss $timestamp -i " . escapeshellarg($rawPath) . " -vframes 1 -q:v 2 -vf \"scale='min(1920,iw)':-1\" " . escapeshellarg($outputAbs) . " 2>&1";
             
             exec($cmd, $output, $returnVar);
 
             if ($returnVar === 0 && file_exists($outputAbs)) {
-                // Cálculo de Color Dominante (Igual que en uploadThumbnail)
                 $color = '#000000';
                 try {
                     $im = @imagecreatefromjpeg($outputAbs);
@@ -398,9 +404,7 @@ class StudioService {
                         $color = Utils::getDominantColor($im);
                         imagedestroy($im);
                     }
-                } catch (Exception $e) {
-                    // Fallback silencioso
-                }
+                } catch (Exception $e) {}
 
                 $generatedFiles[] = [
                     'path' => $outputRel,
@@ -409,7 +413,7 @@ class StudioService {
             }
         }
 
-        // 5. Guardar en Base de Datos (JSON Array de objetos)
+        // 5. Guardar en BD
         if (!empty($generatedFiles)) {
             $json = json_encode($generatedFiles);
             $upd = $this->pdo->prepare("UPDATE videos SET generated_thumbnails = ? WHERE uuid = ?");
@@ -425,19 +429,21 @@ class StudioService {
         return ['success' => false, 'message' => 'No se pudieron generar miniaturas (Fallo FFmpeg).'];
     }
 
-    // [NUEVO] Método para aplicar una miniatura generada
     public function setGeneratedThumbnail($uuid, $path, $color) {
         if (!$this->isOwner($uuid)) return ['success' => false, 'message' => 'Acceso denegado'];
 
-        // Validación de seguridad de ruta (Path Traversal Protection)
-        // La ruta debe contener "public/storage/thumbnails/generated/{uuid}/"
+        if (Utils::checkSecurityLimit($this->pdo, 'set_thumb_click', 20, 1, $this->userId)) {
+            return ['success' => false, 'message' => 'Demasiados intentos. Calma.'];
+        }
+        Utils::logSecurityAction($this->pdo, 'set_thumb_click', 1, $this->userId);
+
         $expectedPath = "public/storage/thumbnails/generated/$uuid/";
         if (strpos($path, $expectedPath) === false) {
              return ['success' => false, 'message' => 'Ruta de miniatura inválida o no pertenece a este video.'];
         }
 
         if (!preg_match('/^#[a-f0-9]{6}$/i', $color)) {
-            $color = '#000000'; // Fallback por si el color viene mal
+            $color = '#000000'; 
         }
 
         try {
@@ -459,34 +465,57 @@ class StudioService {
         if (empty($title)) return ['success' => false, 'message' => 'El título es obligatorio'];
 
         try {
+            $this->pdo->beginTransaction(); 
+
+            // 1. Textos
             $stmt = $this->pdo->prepare("UPDATE videos SET title = ?, description = ? WHERE uuid = ?");
             $stmt->execute([$title, $desc, $uuid]);
 
+            // 2. Miniatura
+            if (!empty($data['selected_thumbnail'])) {
+                $expectedPath = "public/storage/thumbnails/generated/$uuid/";
+                
+                if (strpos($data['selected_thumbnail'], $expectedPath) !== false) {
+                    $thumbSql = "UPDATE videos SET thumbnail_path = ?, dominant_color = ? WHERE uuid = ?";
+                    $thumbStmt = $this->pdo->prepare($thumbSql);
+                    $color = $data['dominant_color'] ?? '#000000';
+                    $thumbStmt->execute([$data['selected_thumbnail'], $color, $uuid]);
+                }
+            }
+
+            // 3. Publicar
             if ($publish === true || $publish === 'true') {
                 $check = $this->pdo->prepare("SELECT status, thumbnail_path FROM videos WHERE uuid = ?");
                 $check->execute([$uuid]);
                 $video = $check->fetch();
 
+                $hasThumbnail = !empty($data['selected_thumbnail']) || !empty($video['thumbnail_path']);
+
                 if ($video['status'] !== 'waiting_for_metadata') {
+                    $this->pdo->rollBack();
                     return [
                         'success' => false, 
                         'message' => 'El video aún se está procesando o no está listo.'
                     ];
                 }
 
-                if (empty($video['thumbnail_path'])) {
+                if (!$hasThumbnail) {
+                    $this->pdo->rollBack();
                     return ['success' => false, 'message' => 'Debes subir una miniatura antes de publicar.'];
                 }
 
                 $upd = $this->pdo->prepare("UPDATE videos SET status = 'published' WHERE uuid = ?");
                 $upd->execute([$uuid]);
 
+                $this->pdo->commit();
                 return ['success' => true, 'published' => true, 'message' => '¡Video publicado exitosamente!'];
             }
 
+            $this->pdo->commit();
             return ['success' => true, 'published' => false, 'message' => 'Borrador guardado'];
 
         } catch (Exception $e) {
+            $this->pdo->rollBack();
             return ['success' => false, 'message' => $this->i18n->t('api.db_error')];
         }
     }
@@ -501,11 +530,18 @@ class StudioService {
         $videos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($videos as &$v) {
+            // [CORRECCIÓN] Usar la ruta almacenada directamente si existe
             if ($v['thumbnail_path']) {
                 $path = __DIR__ . '/../../' . $v['thumbnail_path'];
                 if (file_exists($path)) {
-                    $data = file_get_contents($path);
-                    $v['thumbnail_src'] = 'data:image/png;base64,' . base64_encode($data);
+                    // Para subidas manuales puede que queramos devolver base64 si es seguro
+                    // Pero para generadas, es mejor la ruta pública
+                    // Mantenemos lógica original para compatibilidad visual en editor, pero corregimos ruta
+                    $v['thumbnail_src'] = $v['thumbnail_path'];
+                    
+                    // Si prefieres base64 para preview instantáneo (opcional):
+                    // $data = file_get_contents($path);
+                    // $v['thumbnail_src'] = 'data:image/png;base64,' . base64_encode($data);
                 }
             }
         }
@@ -545,13 +581,12 @@ class StudioService {
             $videos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             foreach ($videos as &$v) {
+                // [CORRECCIÓN] Usar ruta directa
                 if ($v['thumbnail_path']) {
-                    $path = __DIR__ . '/../../' . $v['thumbnail_path'];
-                    if (file_exists($path)) {
-                        $v['thumbnail_url'] = 'public/storage/thumbnails/' . basename($v['thumbnail_path']);
-                    } else {
-                        $v['thumbnail_url'] = null;
-                    }
+                     // ANTES (BUG): basename(...)
+                    $v['thumbnail_url'] = $v['thumbnail_path'];
+                } else {
+                    $v['thumbnail_url'] = null;
                 }
                 
                 if ($v['duration']) {

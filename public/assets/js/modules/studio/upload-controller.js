@@ -6,6 +6,7 @@
  * [MEJORA] Soporte para progreso de procesamiento en tiempo real.
  * [NUEVO] Validación Tiered Limits (Size & Duration) en Frontend.
  * [MODIFICADO] Generación de miniaturas síncrona (PHP/FFmpeg).
+ * [OPTIMIZACIÓN] Selección de miniaturas en cliente (Defer save).
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -30,6 +31,12 @@ let _activeVideoUuid = null;
 let _activeBatchId = null;
 let _isEditMode = false; // Bandera para saber si estamos editando uno existente
 
+// [NUEVO] Estado temporal para selección de miniatura (Frontend Only)
+let _tempSelectedThumbnail = null;
+let _tempDominantColor = null;
+// Variable para bloqueo de operaciones de generación
+let _isThumbOperationActive = false;
+
 // Helper para detectar rol (debe ser inyectado en el layout o body)
 const getUserLimits = () => {
     // Intentar leer rol del DOM o variable global
@@ -48,12 +55,14 @@ export const UploadController = {
         const container = document.querySelector('[data-section="channel-upload"]');
         if (!container) return;
 
-        console.log("UploadController: Inicializado (V2 + Security Tokens + Limits Check + Sync Thumbs)");
+        console.log("UploadController: Inicializado (V2 + Security Tokens + Limits Check + Sync Thumbs + Client Select)");
         
         _videosState = [];
         _activeVideoUuid = null;
         _activeBatchId = null;
         _isEditMode = false;
+        _tempSelectedThumbnail = null;
+        _tempDominantColor = null;
         
         initDropzone();
         initEditorEvents();
@@ -463,6 +472,11 @@ function renderTabs() {
 
 function switchEditor(uuid) {
     _activeVideoUuid = uuid;
+    
+    // [IMPORTANTE] Resetear variables temporales al cambiar de video
+    _tempSelectedThumbnail = null;
+    _tempDominantColor = null;
+
     const nextVideo = _videosState.find(v => v.uuid === uuid);
     if (!nextVideo) return;
 
@@ -776,6 +790,7 @@ async function saveFieldData(targetName) {
     }
 }
 
+// [MODIFICADO] saveGlobalAction: Envía también miniatura si hay selección temporal
 async function saveGlobalAction(publish) {
     if (!_activeVideoUuid) return;
     
@@ -801,12 +816,22 @@ async function saveGlobalAction(publish) {
     formData.append('description', desc);
     formData.append('publish', publish ? 'true' : 'false');
 
+    // [NUEVO] Si hay una selección de miniatura pendiente, la enviamos
+    if (_tempSelectedThumbnail) {
+        formData.append('selected_thumbnail', _tempSelectedThumbnail);
+        formData.append('dominant_color', _tempDominantColor);
+    }
+
     try {
         const res = await ApiService.post(ApiService.Routes.Studio.SaveMetadata, formData);
         
         if (res.success) {
             ToastManager.show(res.message, 'success');
             
+            // Si guardamos, limpiamos el estado temporal de miniatura para evitar reenvíos
+            _tempSelectedThumbnail = null;
+            _tempDominantColor = null;
+
             if (publish) {
                 // Si se publica, eliminar de la lista local
                 _videosState = _videosState.filter(v => v.uuid !== _activeVideoUuid);
@@ -940,7 +965,8 @@ async function deleteVideo() {
 function validatePublishRequirements() {
     const title = document.getElementById('meta-title').value.trim();
     const thumbPreview = document.getElementById('thumbnail-preview');
-    const hasThumb = thumbPreview && !thumbPreview.classList.contains('d-none');
+    // Verificar si hay imagen visible, ya sea subida o seleccionada temporalmente
+    const hasThumb = (thumbPreview && !thumbPreview.classList.contains('d-none')) || _tempSelectedThumbnail;
     
     const btnPublish = document.getElementById('btn-publish');
     if (!btnPublish) return;
@@ -963,6 +989,10 @@ function validatePublishRequirements() {
 async function generateThumbnails() {
     if (!_activeVideoUuid) return;
     
+    // [SEGURIDAD] Bloqueo de cliente para evitar múltiples clics
+    if (_isThumbOperationActive) return;
+    _isThumbOperationActive = true;
+
     const btn = document.getElementById('btn-gen-thumbs');
     const originalContent = '<span class="material-symbols-rounded">autorenew</span>';
     
@@ -1002,6 +1032,7 @@ async function generateThumbnails() {
         // Restaurar botón
         btn.disabled = false;
         btn.innerHTML = originalContent;
+        _isThumbOperationActive = false; // Liberar bloqueo
     }
 }
 
@@ -1024,7 +1055,6 @@ function renderGeneratedGrid(thumbnails) {
         }
 
         // Ajuste de ruta: PHP devuelve rutas relativas (public/storage/...), JS necesita base
-        // Usamos encadenamiento opcional (?.) por seguridad extra, aunque el if de arriba ya lo cubre
         const pathStr = String(thumb.path); 
         const fullPath = pathStr.startsWith('http') ? pathStr : (window.BASE_PATH + pathStr);
         
@@ -1036,7 +1066,7 @@ function renderGeneratedGrid(thumbnails) {
         
         div.innerHTML = `<img src="${fullPath}" loading="lazy" alt="Opción generada">`;
         
-        // Listener directo
+        // Listener directo: Ahora solo llama a la función visual, NO al servidor
         div.addEventListener('click', () => selectGeneratedThumbnail(pathStr, thumb.color));
         
         grid.appendChild(div);
@@ -1050,51 +1080,42 @@ function renderGeneratedGrid(thumbnails) {
     }
 }
 
-async function selectGeneratedThumbnail(path, color) {
+// [MODIFICADO] selectGeneratedThumbnail: Solo actualiza la UI y guarda estado temporal
+function selectGeneratedThumbnail(path, color) {
     if (!_activeVideoUuid) return;
 
-    const spinner = document.querySelector('.preview-player-placeholder .thumbnail-loading');
-    if(spinner) spinner.classList.remove('d-none');
+    // Guardar selección temporal en memoria
+    _tempSelectedThumbnail = path;
+    _tempDominantColor = color;
 
-    const formData = new FormData();
-    formData.append('action', 'select_generated_thumbnail'); // Importante para el Handler
-    formData.append('video_uuid', _activeVideoUuid);
-    formData.append('thumbnail_path', path);
-    formData.append('dominant_color', color);
-
-    try {
-        const route = { route: 'studio.select_generated_thumbnail' }; 
-        const res = await ApiService.post(route, formData);
-        
-        if (res.success) {
-            const currentVideo = _videosState.find(v => v.uuid === _activeVideoUuid);
-            
-            // Actualizar estado local
-            const fullDisplayPath = window.BASE_PATH + path;
-            
-            if (currentVideo) {
-                currentVideo.thumbnail = fullDisplayPath;
-            }
-            
-            // Actualizar UI
-            const preview = document.getElementById('thumbnail-preview');
-            if (preview) {
-                preview.src = fullDisplayPath;
-                preview.classList.remove('d-none');
-            }
-            
-            applyDominantColor(color);
-            validatePublishRequirements();
-            ToastManager.show('Miniatura actualizada correctamente.', 'success');
-        } else {
-            ToastManager.show(res.message, 'error');
-        }
-    } catch (e) {
-        console.error("Error selecting thumbnail:", e);
-        ToastManager.show('Error al establecer la miniatura.', 'error');
-    } finally {
-        if(spinner) spinner.classList.add('d-none');
+    // Actualizar previsualización principal visualmente
+    const preview = document.getElementById('thumbnail-preview');
+    if (preview) {
+        preview.src = window.BASE_PATH + path;
+        preview.classList.remove('d-none');
     }
+    
+    // Aplicar sombra de color
+    applyDominantColor(color);
+    
+    // Validar requisitos para habilitar el botón de publicar
+    validatePublishRequirements();
+
+    // Feedback visual en el grid (Borde activo)
+    const allItems = document.querySelectorAll('.generated-thumb-item');
+    allItems.forEach(item => {
+        if (item.dataset.path === path) {
+            item.classList.add('active-thumb-selection');
+            item.style.borderColor = 'var(--action-primary)';
+            item.style.opacity = '1';
+            item.style.transform = 'scale(1.05)';
+        } else {
+            item.classList.remove('active-thumb-selection');
+            item.style.borderColor = 'transparent';
+            item.style.opacity = '0.8';
+            item.style.transform = 'scale(1)';
+        }
+    });
 }
 
 function applyDominantColor(color) {
