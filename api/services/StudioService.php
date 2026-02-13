@@ -462,8 +462,14 @@ class StudioService {
         }
     }
 
-    public function saveMetadata($uuid, $data) {
+   public function saveMetadata($uuid, $data) {
         if (!$this->isOwner($uuid)) return ['success' => false, 'message' => 'Acceso denegado'];
+
+        // [MODIFICADO] Rate Limit: Ventana de 10 minutos (15 intentos permitidos)
+        if (Utils::checkSecurityLimit($this->pdo, 'save_draft_limit', 15, 10, $this->userId)) {
+            return ['success' => false, 'message' => 'Estás guardando muy rápido. Por favor espera un momento.'];
+        }
+        Utils::logSecurityAction($this->pdo, 'save_draft_limit', 10, $this->userId);
 
         $title = trim($data['title']);
         $desc = trim($data['description']);
@@ -478,7 +484,7 @@ class StudioService {
             $stmt = $this->pdo->prepare("UPDATE videos SET title = ?, description = ? WHERE uuid = ?");
             $stmt->execute([$title, $desc, $uuid]);
 
-            // 2. Miniatura
+            // 2. Miniatura (Si se seleccionó una generada)
             if (!empty($data['selected_thumbnail'])) {
                 $expectedPath = "public/storage/thumbnails/generated/$uuid/";
                 

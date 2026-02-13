@@ -806,9 +806,15 @@ async function saveGlobalAction(publish) {
     }
 
     const btn = publish ? document.getElementById('btn-publish') : document.getElementById('btn-save-draft');
-    const originalText = btn.innerText;
+    const originalText = btn.innerHTML; // Guardamos el HTML (icono) en vez de solo texto
     btn.disabled = true;
-    btn.innerText = 'Procesando...';
+    
+    // Si es botón de guardar (icono), reemplazamos por spinner, si es publicar (texto), ponemos texto
+    if (!publish) {
+        btn.innerHTML = '<span class="spinner-sm" style="width:16px;height:16px;"></span>';
+    } else {
+        btn.innerText = 'Procesando...';
+    }
 
     const formData = new FormData();
     formData.append('video_uuid', _activeVideoUuid);
@@ -852,7 +858,7 @@ async function saveGlobalAction(publish) {
         ToastManager.show('Error de conexión', 'error');
     } finally {
         if(btn) {
-            btn.innerText = originalText;
+            btn.innerHTML = originalText;
             btn.disabled = false;
             validatePublishRequirements();
         }
@@ -1122,7 +1128,8 @@ function applyDominantColor(color) {
     if (!color) return;
     const previewCard = document.querySelector('.video-preview-card');
     if (previewCard) {
+        // [MODIFICADO] Neutralizar sombra de color
         previewCard.style.transition = 'box-shadow 0.3s ease';
-        previewCard.style.boxShadow = `0 4px 20px ${color}40`;
+        previewCard.style.boxShadow = 'none'; // Forzar sin sombra o mantener la default
     }
 }
