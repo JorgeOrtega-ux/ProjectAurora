@@ -1,31 +1,26 @@
 <?php
 // includes/sections/app/watch.php
 
-$videoUuid = trim($_GET['v'] ?? ''); // Limpiar espacios de la URL
+$videoUuid = trim($_GET['v'] ?? '');
 $videoData = null;
 
 if (!empty($videoUuid) && isset($pdo)) {
     try {
-    // Elimina "v.views," de la lista de campos
-$stmt = $pdo->prepare("
-    SELECT v.title, v.description, v.hls_path, v.created_at, 
-           u.username, u.avatar_path, u.uuid as user_uuid
-    FROM videos v 
-    JOIN users u ON v.user_id = u.id 
-    WHERE v.uuid = ? AND v.status = 'published' 
-    LIMIT 1
-");
+        $stmt = $pdo->prepare("
+            SELECT v.title, v.description, v.hls_path, v.created_at, 
+                   u.username, u.avatar_path, u.uuid as user_uuid
+            FROM videos v 
+            JOIN users u ON v.user_id = u.id 
+            WHERE v.uuid = ? AND v.status = 'published' 
+            LIMIT 1
+        ");
         $stmt->execute([$videoUuid]);
         $videoData = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        // Si sigue fallando aquí, es un error de JOIN.
     } catch (Exception $e) {
-        // ESTO TE MOSTRARÁ EL ERROR REAL SI HAY FALLO DE SINTAXIS
-        die("ERROR SQL OCULTO: " . $e->getMessage());
+        die("ERROR SQL: " . $e->getMessage());
     }
 }
 
-// Helper para avatar
 $avatarUrl = '';
 if ($videoData) {
     if (!empty($videoData['avatar_path']) && file_exists(__DIR__ . '/../../../../' . $videoData['avatar_path'])) {
@@ -43,10 +38,100 @@ if ($videoData) {
             
             <div class="watch-left">
                 
-                <div class="watch-player-card">
+                <div class="watch-player-card" id="video-container">
                     <div class="video-player-wrapper">
-                        <video id="main-player" controls playsinline poster=""></video>
+                        <video id="main-player" playsinline poster="" class="video-element"></video>
                     </div>
+
+                    <div id="settings-popover" class="settings-popover">
+                        
+                        <div id="settings-main" class="settings-panel active">
+                            <div class="settings-item" data-target="lighting">
+                                <span class="material-symbols-rounded icon-left">light_mode</span>
+                                <span class="setting-label">Iluminación cinematográfica</span>
+                                <span class="setting-value" id="lighting-status-text">Desactivado</span>
+                                <span class="material-symbols-rounded icon-right">chevron_right</span>
+                            </div>
+                            <div class="settings-item" data-target="quality">
+                                <span class="material-symbols-rounded icon-left">tune</span>
+                                <span class="setting-label">Calidad</span>
+                                <span class="setting-value" id="quality-status-text">Auto</span>
+                                <span class="material-symbols-rounded icon-right">chevron_right</span>
+                            </div>
+                        </div>
+
+                        <div id="settings-lighting" class="settings-panel">
+                            <div class="settings-header" data-back="main">
+                                <span class="material-symbols-rounded">arrow_back</span>
+                                <span>Iluminación cinematográfica</span>
+                            </div>
+                            <div class="settings-option selected" data-type="lighting" data-value="off">
+                                <span>Desactivado</span>
+                                <span class="material-symbols-rounded check-icon">check</span>
+                            </div>
+                            <div class="settings-option" data-type="lighting" data-value="on">
+                                <span>Activo</span>
+                                <span class="material-symbols-rounded check-icon">check</span>
+                            </div>
+                        </div>
+
+                        <div id="settings-quality" class="settings-panel">
+                            <div class="settings-header" data-back="main">
+                                <span class="material-symbols-rounded">arrow_back</span>
+                                <span>Calidad</span>
+                            </div>
+                            <div id="quality-options-container">
+                                </div>
+                        </div>
+
+                    </div>
+                    <div class="custom-controls" id="custom-controls">
+                        
+                        <div class="progress-container">
+                            <input type="range" id="seek-bar" class="seek-bar" value="0" min="0" step="0.1">
+                        </div>
+
+                        <div class="controls-row">
+                            
+                            <div class="controls-left">
+                                <div class="control-pill">
+                                    <button id="play-pause-btn" class="control-btn" title="Reproducir/Pausar">
+                                        <span class="material-symbols-rounded">play_arrow</span>
+                                    </button>
+                                </div>
+
+                                <div class="control-pill volume-pill-container">
+                                    <button id="mute-btn" class="control-btn" title="Silenciar">
+                                        <span class="material-symbols-rounded">volume_up</span>
+                                    </button>
+                                    <div class="volume-slider-wrapper">
+                                        <input type="range" id="volume-bar" class="volume-bar" min="0" max="1" step="0.05" value="1">
+                                    </div>
+                                </div>
+
+                                <div class="control-pill timer-pill">
+                                    <span id="current-time">0:00</span>
+                                    <span class="time-separator">/</span>
+                                    <span id="duration">0:00</span>
+                                </div>
+                            </div>
+
+                            <div class="controls-right">
+                                <div class="control-pill group-pill">
+                                    <button id="settings-btn" class="control-btn" title="Configuración">
+                                        <span class="material-symbols-rounded">settings</span>
+                                    </button>
+                                    <button class="control-btn" title="Modo Cine">
+                                        <span class="material-symbols-rounded">crop_landscape</span>
+                                    </button>
+                                    <button id="fullscreen-btn" class="control-btn" title="Pantalla Completa">
+                                        <span class="material-symbols-rounded">fullscreen</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <div class="watch-meta-card">
@@ -83,7 +168,6 @@ if ($videoData) {
 
                 <div class="watch-comments-section">
                     <h3 style="font-size: 1.2rem; margin-bottom: 16px;">Comentarios</h3>
-                    
                     <div class="component-card" style="text-align: center; color: var(--text-secondary); padding: 40px;">
                         <span class="material-symbols-rounded" style="font-size: 32px; margin-bottom: 8px;">forum</span>
                         <p>Próximamente: Sección de comentarios</p>
@@ -118,170 +202,338 @@ if ($videoData) {
 </div>
 
 <style>
-    /* ... contenido previo ... */
-
 /* =========================================
-   21. WATCH PAGE LAYOUT (Estilo YouTube)
+   ESTILOS REPRODUCTOR + SETTINGS
    ========================================= */
 
-.watch-layout {
-    display: flex;
-    flex-direction: row;
-    gap: 24px;
-    width: 100%;
-    max-width: 1700px; /* Limitar ancho en pantallas ultra-wide */
-    margin: 0 auto;
-    padding: 24px;
-    align-items: flex-start; /* Evita que la columna derecha se estire */
-}
-
-/* --- COLUMNA IZQUIERDA (Player + Info) --- */
-.watch-left {
-    flex: 1; /* Ocupa todo el espacio disponible */
-    min-width: 0; /* Previene desbordamiento en Flexbox */
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-/* Reproductor */
 .watch-player-card {
-    width: 100%;
+    position: relative;
     background-color: #000;
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    position: relative;
-    /* Aspect Ratio 16:9 */
     aspect-ratio: 16 / 9;
 }
 
-.video-player-wrapper {
+.video-player-wrapper, .video-element {
     width: 100%;
     height: 100%;
+    object-fit: contain;
+    cursor: pointer;
 }
 
-.video-player-wrapper video {
+/* --- OVERLAY DE CONTROLES --- */
+.custom-controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
     width: 100%;
-    height: 100%;
-    object-fit: contain; /* Ajustar sin recortar (barras negras si es necesario) */
-}
-
-/* Info del Video */
-.watch-meta-card {
+    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+    padding: 0 12px 12px 12px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
+    z-index: 20; /* Por encima del video, debajo del popover si fuera necesario */
 }
 
-.watch-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    line-height: 1.4;
-    margin: 0;
+.watch-player-card:hover .custom-controls,
+.custom-controls.show {
+    opacity: 1;
 }
 
-.watch-author-row {
+/* --- BARRA DE PROGRESO --- */
+.progress-container {
+    width: 100%;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.seek-bar {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: height 0.1s ease;
+    background-image: linear-gradient(#ff0000, #ff0000);
+    background-size: 0% 100%;
+    background-repeat: no-repeat;
+}
+
+.progress-container:hover .seek-bar {
+    height: 5px;
+}
+
+.seek-bar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 12px;
+    width: 12px;
+    border-radius: 50%;
+    background: #ff0000;
+    cursor: pointer;
+    transform: scale(0);
+    transition: transform 0.1s ease;
+}
+
+.progress-container:hover .seek-bar::-webkit-slider-thumb {
+    transform: scale(1);
+}
+
+/* --- CONTROLES --- */
+.controls-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
 }
 
-.watch-author-info {
+.controls-left, .controls-right {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
 }
 
-.watch-avatar {
-    width: 40px;
+.control-pill {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    border-radius: 999px;
+    padding: 2px;
+    display: flex;
+    align-items: center;
     height: 40px;
+    position: relative; /* Para el settings popover positioning relativo si se quisiera */
+}
+
+.group-pill {
+    gap: 2px;
+}
+
+.control-btn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    object-fit: cover;
-}
-
-.watch-author-text {
+    cursor: pointer;
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
 }
 
-.watch-username {
-    font-weight: 600;
-    font-size: 1rem;
-    color: var(--text-primary);
+.control-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
 }
 
-.watch-subs {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
+.control-btn span {
+    font-size: 24px;
 }
 
-.watch-actions {
-    display: flex;
-    gap: 8px;
-}
-
-/* Caja de Descripción */
-.watch-description-box {
-    background-color: var(--bg-hover-light);
-    border-radius: 12px;
-    padding: 12px;
-    font-size: 0.9rem;
-    color: var(--text-primary);
-    margin-top: 4px;
-}
-
-.watch-views-date {
-    font-weight: 600;
+.timer-pill {
+    padding: 0 16px;
+    color: #fff;
     font-size: 0.85rem;
-    color: var(--text-primary);
-    margin-bottom: 8px;
+    font-family: monospace;
+    font-weight: 500;
 }
 
-.watch-desc-text {
-    white-space: pre-wrap; /* Mantiene saltos de línea */
-    line-height: 1.5;
-    color: var(--text-secondary);
+.time-separator {
+    margin: 0 4px;
+    opacity: 0.7;
 }
 
-/* --- COLUMNA DERECHA (Recomendaciones) --- */
-.watch-right {
-    width: 400px; /* Ancho fijo estilo sidebar */
-    flex-shrink: 0;
+.volume-pill-container {
+    padding-right: 0;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.volume-slider-wrapper {
+    width: 0;
+    overflow: hidden;
+    transition: width 0.3s ease, padding 0.3s ease;
     display: flex;
-    flex-direction: column;
-    gap: 16px;
+    align-items: center;
 }
 
-/* --- RESPONSIVE --- */
+.volume-pill-container:hover .volume-slider-wrapper,
+.volume-slider-wrapper:active {
+    width: 80px;
+    padding-right: 12px;
+}
+
+.volume-bar {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    cursor: pointer;
+}
+
+.volume-bar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 10px;
+    width: 10px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+}
+
+/* =========================================
+   SETTINGS POPOVER (NUEVO)
+   ========================================= */
+
+.settings-popover {
+    position: absolute;
+    bottom: 60px; /* Encima de los controles */
+    right: 24px; /* Alineado a la derecha */
+    width: 280px;
+    background-color: rgba(28, 28, 28, 0.95);
+    backdrop-filter: blur(8px);
+    border-radius: 12px;
+    padding: 8px 0;
+    display: none; /* Oculto por defecto */
+    flex-direction: column;
+    z-index: 30;
+    color: #fff;
+    font-size: 0.9rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    transition: height 0.2s ease;
+}
+
+.settings-popover.active {
+    display: flex;
+}
+
+/* Paneles (Main, Quality, Lighting) */
+.settings-panel {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+}
+
+.settings-panel.active {
+    display: flex;
+    animation: fadeInPanel 0.2s ease;
+}
+
+@keyframes fadeInPanel {
+    from { opacity: 0; transform: translateX(10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* Items del menú principal */
+.settings-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+    height: 48px;
+}
+
+.settings-item:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+
+.settings-item .icon-left {
+    margin-right: 12px;
+    font-size: 20px;
+}
+
+.settings-item .setting-label {
+    flex: 1;
+}
+
+.settings-item .setting-value {
+    color: #aaa;
+    margin-right: 8px;
+    font-size: 0.85rem;
+}
+
+.settings-item .icon-right {
+    color: #aaa;
+    font-size: 18px;
+}
+
+/* Cabecera de submenús */
+.settings-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.settings-header:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+
+.settings-header span:first-child {
+    margin-right: 12px;
+    font-size: 20px;
+}
+
+/* Opciones de submenús (Checkable) */
+.settings-option {
+    display: flex;
+    align-items: center;
+    padding: 10px 36px 10px 16px; /* Padding derecho para el check */
+    cursor: pointer;
+    position: relative;
+    font-size: 0.9rem;
+}
+
+.settings-option:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+
+.settings-option.selected {
+    font-weight: 600;
+}
+
+.settings-option .check-icon {
+    position: absolute;
+    right: 16px;
+    font-size: 18px;
+    display: none;
+    color: #fff;
+}
+
+.settings-option.selected .check-icon {
+    display: block;
+}
+
+/* --- LAYOUT GENERAL (Mismo de antes) --- */
+.watch-layout { display: flex; gap: 24px; width: 100%; max-width: 1700px; margin: 0 auto; padding: 24px; align-items: flex-start; }
+.watch-left { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.watch-meta-card { display: flex; flex-direction: column; gap: 12px; }
+.watch-title { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0; }
+.watch-author-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.watch-author-info { display: flex; align-items: center; gap: 12px; }
+.watch-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+.watch-author-text { display: flex; flex-direction: column; }
+.watch-username { font-weight: 600; font-size: 1rem; color: var(--text-primary); }
+.watch-subs { font-size: 0.8rem; color: var(--text-secondary); }
+.watch-actions { display: flex; gap: 8px; }
+.watch-description-box { background-color: var(--bg-hover-light); border-radius: 12px; padding: 12px; font-size: 0.9rem; color: var(--text-primary); margin-top: 4px; }
+.watch-views-date { font-weight: 600; font-size: 0.85rem; color: var(--text-primary); margin-bottom: 8px; }
+.watch-desc-text { white-space: pre-wrap; line-height: 1.5; color: var(--text-secondary); }
+.watch-right { width: 400px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; }
 @media (max-width: 1000px) {
-    .watch-layout {
-        flex-direction: column; /* Apilar columnas */
-        padding: 0; /* Quitar padding lateral para aprovechar móvil */
-    }
-
-    .watch-left {
-        width: 100%;
-    }
-
-    .watch-right {
-        width: 100%; /* Sidebar ahora ocupa todo el ancho abajo */
-        padding: 0 16px;
-    }
-
-    .watch-player-card {
-        border-radius: 0; /* Player cuadrado en móvil */
-    }
-
-    .watch-meta-card {
-        padding: 0 16px;
-    }
-    
-    .watch-comments-section {
-        padding: 0 16px 24px 16px;
-    }
+    .watch-layout { flex-direction: column; padding: 0; }
+    .watch-left { width: 100%; }
+    .watch-right { width: 100%; padding: 0 16px; }
+    .watch-player-card { border-radius: 0; }
+    .watch-meta-card { padding: 0 16px; }
+    .watch-comments-section { padding: 0 16px 24px 16px; }
 }
 </style>
