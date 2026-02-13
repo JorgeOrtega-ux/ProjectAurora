@@ -1,4 +1,3 @@
-
 <?php
 // includes/sections/app/watch.php
 
@@ -56,7 +55,13 @@ if ($videoData) {
 <div class="component-wrapper component-wrapper--full" data-section="watch" style="max-width: 100%; padding: 0;">
     
     <?php if ($videoData): ?>
-        <div class="component-watch-layout">
+        <?php
+        // [CORRECCIÓN] Leemos la cookie para aplicar el modo cine desde el servidor y evitar parpadeo
+        $isCinemaMode = isset($_COOKIE['aurora_cinema_mode']) && $_COOKIE['aurora_cinema_mode'] === 'on';
+        $cinemaClass = $isCinemaMode ? 'component-watch-mode-cinema' : '';
+        ?>
+        
+        <div class="component-watch-layout <?php echo $cinemaClass; ?>">
             
             <div class="component-watch-col-left">
                 

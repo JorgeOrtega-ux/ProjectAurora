@@ -1,4 +1,3 @@
-
 import { ToastManager } from '../../core/components/toast-manager.js';
 
 let _hls = null;
@@ -12,13 +11,13 @@ let _vttUrl = null;
 let _vttData = []; 
 let _spriteImage = null; 
 
-// [NUEVO] Variables para Iluminación Cinematográfica
+// Variables para Iluminación Cinematográfica
 let _ambientCanvas = null;
 let _ambientCtx = null;
 let _isLightingEnabled = false;
 let _animationFrameId = null;
 
-// [NUEVO] Variable para Modo Cine
+// Variable para Modo Cine
 let _isCinemaMode = false;
 
 export const WatchController = {
@@ -31,7 +30,7 @@ export const WatchController = {
         _video = document.getElementById('main-player');
         const hlsSourceInput = document.getElementById('watch-hls-source');
 
-        // [NUEVO] Inicializar Canvas
+        // Inicializar Canvas
         _ambientCanvas = document.getElementById('ambient-canvas');
         if (_ambientCanvas) {
             _ambientCtx = _ambientCanvas.getContext('2d', { alpha: false }); // Optimización: sin canal alpha
@@ -41,10 +40,21 @@ export const WatchController = {
         const storedPref = localStorage.getItem('aurora_cinematic_mode');
         _isLightingEnabled = storedPref === 'on';
 
-        // [NUEVO] Leer preferencia de Modo Cine
-        const storedCinema = localStorage.getItem('aurora_cinema_mode');
-        if (storedCinema === 'on') {
-            setCinemaMode(true);
+        // [CORRECCIÓN] Inicializar Modo Cine (Verificando primero si PHP ya lo renderizó activo)
+        const layout = document.querySelector('.component-watch-layout');
+        const cinemaBtn = document.getElementById('cinema-mode-btn');
+        const cinemaIcon = cinemaBtn ? cinemaBtn.querySelector('span') : null;
+
+        if (layout && layout.classList.contains('component-watch-mode-cinema')) {
+             _isCinemaMode = true;
+             // Solo actualizamos el icono porque la clase ya está puesta
+             if(cinemaIcon) cinemaIcon.innerText = 'crop_free';
+        } else {
+            // Fallback: Verificar localStorage por si es la primera carga sin cookie
+            const storedCinema = localStorage.getItem('aurora_cinema_mode');
+            if (storedCinema === 'on') {
+                setCinemaMode(true);
+            }
         }
 
         // Inputs para Scrubbing
@@ -65,7 +75,7 @@ export const WatchController = {
                 initScrubbing();
             }
 
-            // [NUEVO] Iniciar lógica de iluminación
+            // Iniciar lógica de iluminación
             initAmbientLightLogic();
         }
     },
@@ -104,7 +114,7 @@ function loadPlayer(video, source) {
             console.log(`HLS Manifest cargado. ${data.levels.length} niveles encontrados.`);
             _levels = data.levels;
             
-            // Renderizar opciones de calidad (Ahora con etiquetas HD/4K)
+            // Renderizar opciones de calidad
             renderQualityOptions(_levels);
             
             video.play().catch(e => console.log("Autoplay bloqueado por navegador:", e));
@@ -217,11 +227,14 @@ function parseTime(timeStr) {
 }
 
 // ==========================================
-// [NUEVO] LÓGICA DE MODO CINE
+// LÓGICA DE MODO CINE
 // ==========================================
 
 function setCinemaMode(enable) {
     _isCinemaMode = enable;
+    
+    // [CORRECCIÓN] Guardar en Cookie para persistencia sin FOUC
+    document.cookie = `aurora_cinema_mode=${enable ? 'on' : 'off'}; path=/; max-age=31536000`; // 1 año
     localStorage.setItem('aurora_cinema_mode', enable ? 'on' : 'off');
 
     const layout = document.querySelector('.component-watch-layout');
@@ -236,7 +249,7 @@ function setCinemaMode(enable) {
         if(icon) icon.innerText = 'crop_landscape'; // Icono para entrar (modo cine)
     }
 
-    // Forzar redibujado de ambient canvas si es necesario (el cambio de tamaño puede afectarlo)
+    // Forzar redibujado de ambient canvas si es necesario
     if (_isLightingEnabled) {
         drawAmbientFrame();
     }
@@ -249,14 +262,11 @@ function setCinemaMode(enable) {
 function initAmbientLightLogic() {
     if (!_ambientCanvas || !_video) return;
 
-    // Configurar resolución interna BAJA para rendimiento (el CSS lo estira y desenfoca)
     _ambientCanvas.width = 100;
-    _ambientCanvas.height = 56; // Aprox 16:9
+    _ambientCanvas.height = 56; 
 
-    // Sincronizar estado inicial de UI
     updateLightingUI(_isLightingEnabled);
 
-    // Eventos de control del loop
     _video.addEventListener('play', () => {
         if (_isLightingEnabled) {
             _ambientCanvas.style.opacity = '1';
@@ -266,7 +276,6 @@ function initAmbientLightLogic() {
 
     _video.addEventListener('pause', () => {
         stopAmbientLoop();
-        // Opcional: Bajar opacidad al pausar para efecto dramático
         if (_isLightingEnabled) _ambientCanvas.style.opacity = '1';
     });
 
@@ -277,28 +286,23 @@ function initAmbientLightLogic() {
 
     _video.addEventListener('seeked', () => {
         if (_isLightingEnabled && _video.paused) {
-            // Dibujar un frame estático si nos movemos mientras está pausado
             drawAmbientFrame();
         }
     });
 
-    // Delegación de eventos para el menú de configuración
     const lightingOptions = document.querySelectorAll('#settings-lighting .component-watch-settings-option');
     lightingOptions.forEach(opt => {
         opt.addEventListener('click', (e) => {
-            const val = opt.dataset.value; // 'on' o 'off'
+            const val = opt.dataset.value; 
             const isEnabled = val === 'on';
             
             setLightingState(isEnabled);
             
-            // Actualizar visualmente la selección en el menú
             lightingOptions.forEach(o => o.classList.remove('selected'));
             opt.classList.add('selected');
             
-            // Cerrar menú o volver atrás (simulado con el reset)
             document.getElementById('lighting-status-text').innerText = isEnabled ? 'Activo' : 'Desactivado';
             
-            // Volver al menú principal
             document.querySelectorAll('.component-watch-settings-panel').forEach(p => p.classList.remove('active'));
             document.getElementById('settings-main').classList.add('active');
         });
@@ -311,19 +315,17 @@ function setLightingState(enabled) {
     
     if (enabled) {
         _ambientCanvas.style.display = 'block';
-        // Pequeño delay para permitir que el display:block renderice antes de la opacidad
         requestAnimationFrame(() => {
             _ambientCanvas.style.opacity = _video.paused ? '0.5' : '1';
         });
         if (!_video.paused) {
             startAmbientLoop();
         } else {
-            drawAmbientFrame(); // Dibujar frame actual estático
+            drawAmbientFrame(); 
         }
     } else {
         _ambientCanvas.style.opacity = '0';
         stopAmbientLoop();
-        // Esperar transición CSS antes de ocultar (opcional)
     }
 }
 
@@ -333,7 +335,6 @@ function updateLightingUI(isEnabled) {
         textStatus.innerText = isEnabled ? 'Activo' : 'Desactivado';
     }
 
-    // Actualizar checks en el submenú
     const options = document.querySelectorAll('#settings-lighting .component-watch-settings-option');
     options.forEach(opt => {
         if ((opt.dataset.value === 'on' && isEnabled) || (opt.dataset.value === 'off' && !isEnabled)) {
@@ -365,7 +366,6 @@ function stopAmbientLoop() {
 
 function drawAmbientFrame() {
     if (!_ambientCtx || !_video) return;
-    // Dibujar el frame actual del video escalado al tamaño pequeño del canvas
     _ambientCtx.drawImage(_video, 0, 0, _ambientCanvas.width, _ambientCanvas.height);
 }
 
@@ -383,7 +383,6 @@ function initCustomControls(video) {
     const fullscreenBtn = document.getElementById('fullscreen-btn');
     const settingsBtn = document.getElementById('settings-btn');
     
-    // [MODIFICADO] Referencia al botón Modo Cine
     const cinemaBtn = document.getElementById('cinema-mode-btn');
     
     const controlsContainer = document.getElementById('custom-controls');
@@ -433,14 +432,15 @@ function initCustomControls(video) {
         currentTimeEl.innerText = formatTime(seekBar.value);
     });
 
-    // --- LOGICA DE SCRUBBING (Mouse Move) ---
+    // --- LOGICA DE SCRUBBING (Mouse Move) [CORREGIDA] ---
     if (progressContainer && tooltip && _vttData) {
         progressContainer.addEventListener('mousemove', (e) => {
             if (!_vttData.length) return;
 
-            const rect = progressContainer.getBoundingClientRect();
-            const offsetX = e.clientX - rect.left;
-            let percent = offsetX / rect.width;
+            // 1. CÁLCULO DEL TIEMPO (Relativo a la barra de progreso)
+            const rectBar = progressContainer.getBoundingClientRect();
+            const offsetXBar = e.clientX - rectBar.left;
+            let percent = offsetXBar / rectBar.width;
             
             if (percent < 0) percent = 0;
             if (percent > 1) percent = 1;
@@ -456,11 +456,25 @@ function initCustomControls(video) {
             if (frame && tooltipImg) {
                 tooltip.style.display = 'flex';
                 
-                let leftPos = offsetX; 
-                if(leftPos < 80) leftPos = 80; 
-                if(leftPos > rect.width - 80) leftPos = rect.width - 80;
+                // 2. CÁLCULO DE POSICIÓN VISUAL (Relativo al padre del tooltip)
+                // [IMPORTANTE] Usamos offsetParent para que funcione en modo cine y normal
+                const tooltipParent = tooltip.offsetParent || videoContainer; 
+                
+                if (tooltipParent) {
+                    const parentRect = tooltipParent.getBoundingClientRect();
+                    let relativeX = e.clientX - parentRect.left;
 
-                tooltip.style.left = `${leftPos}px`;
+                    // Límites visuales
+                    const halfTooltip = 80; // Aprox mitad de 160px
+                    const maxLimit = parentRect.width - halfTooltip;
+
+                    if (relativeX < halfTooltip) relativeX = halfTooltip;
+                    if (relativeX > maxLimit) relativeX = maxLimit;
+
+                    tooltip.style.left = `${relativeX}px`;
+                }
+                
+                // Renderizado del sprite
                 tooltipImg.style.backgroundImage = `url('${_spriteUrl}')`;
                 tooltipImg.style.backgroundPosition = `-${frame.x}px -${frame.y}px`;
                 tooltipImg.style.width = `${frame.w}px`;
@@ -522,7 +536,7 @@ function initCustomControls(video) {
 
     initSettingsNavigationDelegated();
 
-    // 6. [NUEVO] Modo Cine
+    // 6. Modo Cine
     if (cinemaBtn) {
         cinemaBtn.addEventListener('click', () => {
             setCinemaMode(!_isCinemaMode);
@@ -595,9 +609,6 @@ function initSettingsNavigationDelegated() {
     });
 }
 
-/**
- * Renderiza opciones de calidad con etiquetas HD/4K
- */
 function renderQualityOptions(levels) {
     const container = document.getElementById('quality-options-container');
     container.innerHTML = '';
