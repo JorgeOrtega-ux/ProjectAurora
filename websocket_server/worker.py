@@ -529,6 +529,7 @@ def task_generate_thumbnails(payload):
             rel_path = f"public/storage/thumbnails/generated/{video_uuid}/{filename}"
 
             # --- CAMBIO PARA MÁXIMA CALIDAD ---
+            # Se aplica filtro de escalado 16:9 con relleno negro (Pillarbox)
             cmd = [
                 'ffmpeg', '-y', 
                 '-ss', str(timestamp),      # Ir al segundo específico
@@ -536,11 +537,10 @@ def task_generate_thumbnails(payload):
                 '-vframes', '1',            # Solo 1 frame
                 '-q:v', '2',                # Calidad JPG Máxima (rango 2-31, 2 es mejor)
                 
-                # ESCALA INTELIGENTE:
-                # 'min(1920,iw)': Si el ancho original (iw) es mayor a 1920, lo baja a 1920.
-                #                 Si es menor (ej. 1280), lo deja como está para no pixelar.
-                # -1:             Calcula la altura automáticamente para mantener la proporción.
-                '-vf', "scale='min(1920,iw)':-1", 
+                # ESCALA CON PAD (BARRAS NEGRAS):
+                # force_original_aspect_ratio=decrease: Reduce el video para caber en 1920x1080.
+                # pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black: Rellena con negro para llegar a 1920x1080 centrado.
+                '-vf', "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black", 
                 
                 output_path
             ]

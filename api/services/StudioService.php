@@ -394,7 +394,12 @@ class StudioService {
             $outputAbs = "$thumbsDirAbs/$fileName";
             $outputRel = "$thumbsDirRel/$fileName";
 
-            $cmd = "ffmpeg -y -ss $timestamp -i " . escapeshellarg($rawPath) . " -vframes 1 -q:v 2 -vf \"scale='min(1920,iw)':-1\" " . escapeshellarg($outputAbs) . " 2>&1";
+            // [MODIFICADO] Filtro FFmpeg para escalar y aplicar padding negro (1920x1080)
+            // force_original_aspect_ratio=decrease: Escala el video para que quepa dentro de 1920x1080 sin recortar.
+            // pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black: Rellena el espacio sobrante con negro, centrando el video.
+            $vfFilter = "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black";
+            
+            $cmd = "ffmpeg -y -ss $timestamp -i " . escapeshellarg($rawPath) . " -vframes 1 -q:v 2 -vf \"$vfFilter\" " . escapeshellarg($outputAbs) . " 2>&1";
             
             exec($cmd, $output, $returnVar);
 
