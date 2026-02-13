@@ -1,7 +1,7 @@
 /**
  * public/assets/js/modules/app/watch-controller.js
  * Controlador de reproducción de video HLS con UI personalizada.
- * Soporta: Master Playlist, Scrubbing, Selección de Calidad e ILUMINACIÓN CINEMATOGRÁFICA.
+ * Soporta: Master Playlist, Scrubbing, Selección de Calidad, ILUMINACIÓN CINEMATOGRÁFICA y MODO CINE.
  */
 
 import { ToastManager } from '../../core/components/toast-manager.js';
@@ -23,12 +23,15 @@ let _ambientCtx = null;
 let _isLightingEnabled = false;
 let _animationFrameId = null;
 
+// [NUEVO] Variable para Modo Cine
+let _isCinemaMode = false;
+
 export const WatchController = {
     init: () => {
         const container = document.querySelector('[data-section="watch"]');
         if (!container) return;
 
-        console.log("WatchController: Inicializado (Multi-Bitrate + Scrubbing + Ambient)");
+        console.log("WatchController: Inicializado (Multi-Bitrate + Scrubbing + Ambient + Cinema)");
 
         _video = document.getElementById('main-player');
         const hlsSourceInput = document.getElementById('watch-hls-source');
@@ -39,9 +42,15 @@ export const WatchController = {
             _ambientCtx = _ambientCanvas.getContext('2d', { alpha: false }); // Optimización: sin canal alpha
         }
 
-        // Leer preferencia de usuario
+        // Leer preferencia de usuario (Iluminación)
         const storedPref = localStorage.getItem('aurora_cinematic_mode');
         _isLightingEnabled = storedPref === 'on';
+
+        // [NUEVO] Leer preferencia de Modo Cine
+        const storedCinema = localStorage.getItem('aurora_cinema_mode');
+        if (storedCinema === 'on') {
+            setCinemaMode(true);
+        }
 
         // Inputs para Scrubbing
         const spriteInput = document.getElementById('watch-sprite-source');
@@ -213,7 +222,33 @@ function parseTime(timeStr) {
 }
 
 // ==========================================
-// [NUEVO] LÓGICA DE ILUMINACIÓN CINEMATOGRÁFICA
+// [NUEVO] LÓGICA DE MODO CINE
+// ==========================================
+
+function setCinemaMode(enable) {
+    _isCinemaMode = enable;
+    localStorage.setItem('aurora_cinema_mode', enable ? 'on' : 'off');
+
+    const layout = document.querySelector('.watch-layout');
+    const btn = document.getElementById('cinema-mode-btn');
+    const icon = btn ? btn.querySelector('span') : null;
+
+    if (enable) {
+        layout.classList.add('cinema-mode');
+        if(icon) icon.innerText = 'crop_free'; // Icono para salir (pantalla normal)
+    } else {
+        layout.classList.remove('cinema-mode');
+        if(icon) icon.innerText = 'crop_landscape'; // Icono para entrar (modo cine)
+    }
+
+    // Forzar redibujado de ambient canvas si es necesario (el cambio de tamaño puede afectarlo)
+    if (_isLightingEnabled) {
+        drawAmbientFrame();
+    }
+}
+
+// ==========================================
+// LÓGICA DE ILUMINACIÓN CINEMATOGRÁFICA
 // ==========================================
 
 function initAmbientLightLogic() {
@@ -353,6 +388,9 @@ function initCustomControls(video) {
     const fullscreenBtn = document.getElementById('fullscreen-btn');
     const settingsBtn = document.getElementById('settings-btn');
     
+    // [MODIFICADO] Referencia al botón Modo Cine
+    const cinemaBtn = document.getElementById('cinema-mode-btn');
+    
     const controlsContainer = document.getElementById('custom-controls');
     const videoContainer = document.getElementById('video-container');
     const settingsPopover = document.getElementById('settings-popover');
@@ -489,7 +527,14 @@ function initCustomControls(video) {
 
     initSettingsNavigationDelegated();
 
-    // 6. Ocultar controles automáticamente
+    // 6. [NUEVO] Modo Cine
+    if (cinemaBtn) {
+        cinemaBtn.addEventListener('click', () => {
+            setCinemaMode(!_isCinemaMode);
+        });
+    }
+
+    // 7. Ocultar controles automáticamente
     const showControls = () => {
         controlsContainer.classList.add('show');
         videoContainer.style.cursor = 'default';

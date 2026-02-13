@@ -6,7 +6,6 @@ $videoData = null;
 
 if (!empty($videoUuid) && isset($pdo)) {
     try {
-        // [MODIFICADO] Agregamos v.dominant_color al SELECT
         $stmt = $pdo->prepare("
             SELECT v.title, v.description, v.hls_path, v.sprite_path, v.vtt_path, v.created_at, v.dominant_color,
                    u.username, u.avatar_path, u.uuid as user_uuid
@@ -23,53 +22,27 @@ if (!empty($videoUuid) && isset($pdo)) {
 }
 
 $avatarUrl = '';
-$domColorRgb = '255, 255, 255'; // Default blanco por si falla
+$domColorRgb = '255, 255, 255'; 
 
 if ($videoData) {
-    // ---------------------------------------------------------
-    // [CORRECCIÓN] LÓGICA ROBUSTA PARA EL AVATAR
-    // ---------------------------------------------------------
-   // ---------------------------------------------------------
-    // [CORREGIDO] LÓGICA DE AVATAR (Ruta arreglada)
-    // ---------------------------------------------------------
     $avatarPath = $videoData['avatar_path'] ?? '';
-    
-    // CORRECCIÓN AQUÍ: Usamos 3 niveles hacia arriba, no 4.
-    // includes/sections/app/ -> includes/sections/ -> includes/ -> RAÍZ
     $projectRoot = realpath(__DIR__ . '/../../../'); 
-
-    // Limpiamos la ruta de la BD para evitar dobles slashes
     $cleanPath = ltrim($avatarPath, '/');
-
-    // Definimos las 2 rutas posibles donde podría estar la imagen físicamente:
-    // 1. En la carpeta 'public' (Lo más probable: public/storage/...)
     $physicalPathPublic = $projectRoot . '/public/' . $cleanPath;
-    
-    // 2. En la raíz directa (Por si la ruta en BD ya incluye 'public')
     $physicalPathRoot = $projectRoot . '/' . $cleanPath;
 
     if (!empty($avatarPath)) {
         if (file_exists($physicalPathPublic)) {
-            // Si está en public, la URL debe incluirlo (a menos que tu servidor apunte a public)
-            // Aseguramos que la URL web sea correcta
             $avatarUrl = $basePath . 'public/' . $cleanPath;
-            
-            // PEQUEÑO AJUSTE: Si tu $basePath ya incluye 'public/', usa la línea de abajo en su lugar:
-            // $avatarUrl = $basePath . $cleanPath;
-            
         } elseif (file_exists($physicalPathRoot)) {
             $avatarUrl = $basePath . $cleanPath;
         } else {
-            // Si falla file_exists, fallback a UI Avatars
             $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($videoData['username']) . "&background=random&color=fff";
         }
     } else {
         $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($videoData['username']) . "&background=random&color=fff";
     }
 
-    // ---------------------------------------------------------
-    // [NUEVO] Procesar Color Dominante (Hex -> RGB)
-    // ---------------------------------------------------------
     $hex = $videoData['dominant_color'] ?? '#ffffff';
     $hex = ltrim($hex, '#');
     if (strlen($hex) == 6) {
@@ -87,7 +60,6 @@ if ($videoData) {
             <div class="watch-left">
                 
                 <div class="watch-player-card" id="video-container">
-                    
                     <canvas id="ambient-canvas" class="ambient-canvas"></canvas>
 
                     <div class="video-player-wrapper">
@@ -104,7 +76,6 @@ if ($videoData) {
                     </div>
 
                     <div id="settings-popover" class="settings-popover">
-                        
                         <div id="settings-main" class="settings-panel active">
                             <div class="settings-item" data-target="lighting">
                                 <span class="material-symbols-rounded icon-left">light_mode</span>
@@ -140,28 +111,23 @@ if ($videoData) {
                                 <span class="material-symbols-rounded">arrow_back</span>
                                 <span>Calidad</span>
                             </div>
-                            <div id="quality-options-container">
-                                </div>
+                            <div id="quality-options-container"></div>
                         </div>
-
                     </div>
 
                     <div class="custom-controls" id="custom-controls">
-                        
                         <div class="progress-container">
                             <div class="progress-hover-area"></div>
                             <input type="range" id="seek-bar" class="seek-bar" value="0" min="0" step="0.1">
                         </div>
 
                         <div class="controls-row">
-                            
                             <div class="controls-left">
                                 <div class="control-pill">
                                     <button id="play-pause-btn" class="control-btn" title="Reproducir/Pausar">
                                         <span class="material-symbols-rounded">play_arrow</span>
                                     </button>
                                 </div>
-
                                 <div class="control-pill volume-pill-container">
                                     <button id="mute-btn" class="control-btn" title="Silenciar">
                                         <span class="material-symbols-rounded">volume_up</span>
@@ -170,20 +136,18 @@ if ($videoData) {
                                         <input type="range" id="volume-bar" class="volume-bar" min="0" max="1" step="0.05" value="1">
                                     </div>
                                 </div>
-
                                 <div class="control-pill timer-pill">
                                     <span id="current-time">0:00</span>
                                     <span class="time-separator">/</span>
                                     <span id="duration">0:00</span>
                                 </div>
                             </div>
-
                             <div class="controls-right">
                                 <div class="control-pill group-pill">
                                     <button id="settings-btn" class="control-btn" title="Configuración">
                                         <span class="material-symbols-rounded">settings</span>
                                     </button>
-                                    <button class="control-btn" title="Modo Cine">
+                                    <button id="cinema-mode-btn" class="control-btn" title="Modo Cine">
                                         <span class="material-symbols-rounded">crop_landscape</span>
                                     </button>
                                     <button id="fullscreen-btn" class="control-btn" title="Pantalla Completa">
@@ -193,7 +157,6 @@ if ($videoData) {
                             </div>
                         </div>
                     </div>
-
                 </div>
 
                 <div class="watch-meta-card">
@@ -208,13 +171,32 @@ if ($videoData) {
                             </div>
                             <button class="component-button primary" style="border-radius: 20px; margin-left: 24px;">Suscribirse</button>
                         </div>
+                        
                         <div class="watch-actions">
-                            <button class="component-button" style="border-radius: 20px;">
-                                <span class="material-symbols-rounded">thumb_up</span> 0
-                            </button>
-                            <button class="component-button" style="border-radius: 20px;">
+                            
+                            <div class="joined-pill">
+                                <button class="joined-btn like" title="Me gusta">
+                                    <span class="material-symbols-rounded">thumb_up</span>
+                                    <span>12</span>
+                                </button>
+                                <div class="joined-separator"></div>
+                                <button class="joined-btn dislike" title="No me gusta">
+                                    <span class="material-symbols-rounded">thumb_down</span>
+                                </button>
+                            </div>
+
+                            <button class="component-button action-pill-btn">
                                 <span class="material-symbols-rounded">share</span> Compartir
                             </button>
+
+                            <button class="component-button action-pill-btn">
+                                <span class="material-symbols-rounded">download</span> Descargar
+                            </button>
+
+                            <button class="component-button action-pill-btn">
+                                <span class="material-symbols-rounded">bookmark</span> Guardar
+                            </button>
+
                         </div>
                     </div>
 
@@ -264,341 +246,3 @@ if ($videoData) {
     <?php endif; ?>
 
 </div>
-
-<style>
-/* =========================================
-   ESTILOS REPRODUCTOR + SETTINGS + SCRUBBING
-   ========================================= */
-
-.watch-player-card {
-    position: relative;
-    background-color: #000;
-    border-radius: 12px;
-    /* overflow: hidden;  <-- IMPORTANTE: DESACTIVADO PARA QUE EL BRILLO SALGA */
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    aspect-ratio: 16 / 9;
-    z-index: 1; /* Contexto de apilamiento base */
-}
-
-/* --- [NUEVO] ILUMINACIÓN CINEMATOGRÁFICA --- */
-.ambient-canvas {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(1.2); /* Escala para que el brillo sobresalga */
-    width: 85%;
-    height: 85%;
-    z-index: 0; /* Detrás del video */
-    opacity: 0; /* Invisible por defecto */
-    transition: opacity 0.8s ease; /* Fade suave */
-    pointer-events: none;
-    /* Filtros pesados para hacer el efecto de luz difusa */
-    filter: blur(60px) brightness(1.3) saturate(1.4); 
-}
-
-.video-player-wrapper {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    z-index: 2; /* Encima de la luz */
-    background-color: #000; /* Fondo negro para evitar transparencias indeseadas del video */
-    border-radius: 12px; /* Mantener bordes redondeados del video */
-}
-
-.video-element {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    cursor: pointer;
-    border-radius: 12px;
-}
-
-/* --- TOOLTIP DE SCRUBBING --- */
-.scrub-tooltip {
-    position: absolute;
-    bottom: 85px; 
-    left: 0;
-    transform: translateX(-50%); 
-    display: none; 
-    flex-direction: column;
-    align-items: center;
-    z-index: 50;
-    pointer-events: none;
-    background: transparent;
-    border: none;
-    box-shadow: none;
-}
-
-.scrub-img-wrapper {
-    transform: scale(1.35); 
-    transform-origin: bottom center;
-    margin-bottom: 14px; 
-    border: 2px solid #fff;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.6);
-    background-color: #000;
-    overflow: hidden;
-}
-
-.scrub-preview-img {
-    background-repeat: no-repeat;
-    background-color: #000;
-}
-
-.scrub-time-pill {
-    background: rgba(10, 10, 10, 0.9);
-    padding: 4px 12px;
-    border-radius: 99px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-    border: 1px solid rgba(255,255,255,0.15);
-}
-
-.scrub-time {
-    color: #fff;
-    font-size: 0.85rem;
-    font-weight: 600;
-    font-family: 'Roboto Mono', monospace; 
-    letter-spacing: 0.5px;
-}
-
-/* --- CAJA DE DESCRIPCIÓN DINÁMICA --- */
-.watch-description-box { 
-    background-color: var(--bg-hover-light); 
-    border-radius: 12px; 
-    padding: 12px; 
-    font-size: 0.9rem; 
-    color: var(--text-primary); 
-    margin-top: 4px; 
-    
-    /* Transición suave para el color */
-    transition: background-color 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-    border: 1px solid transparent; 
-}
-
-/* [EFECTO] Hover con color dominante */
-.watch-description-box:hover {
-    /* Usamos la variable inyectada desde PHP */
-    background-color: rgba(var(--dominant-rgb), 0.15);
-    border-color: rgba(var(--dominant-rgb), 0.3);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-}
-
-.watch-views-date { font-weight: 600; font-size: 0.85rem; color: var(--text-primary); margin-bottom: 8px; }
-.watch-desc-text { white-space: pre-wrap; line-height: 1.5; color: var(--text-secondary); }
-
-/* --- OVERLAY DE CONTROLES --- */
-.custom-controls {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 60%, transparent 100%);
-    padding: 0 12px 12px 12px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    z-index: 20;
-    border-bottom-left-radius: 12px;
-    border-bottom-right-radius: 12px;
-}
-
-.watch-player-card:hover .custom-controls,
-.custom-controls.show {
-    opacity: 1;
-}
-
-/* --- BARRA DE PROGRESO --- */
-.progress-container {
-    width: 100%;
-    height: 16px; 
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    position: relative;
-    margin-bottom: 4px; 
-}
-
-.seek-bar {
-    -webkit-appearance: none;
-    width: 100%;
-    height: 3px; 
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 2px;
-    cursor: pointer;
-    transition: height 0.1s ease, transform 0.1s;
-    background-image: linear-gradient(#ff0000, #ff0000);
-    background-size: 0% 100%;
-    background-repeat: no-repeat;
-    position: relative;
-    z-index: 2;
-}
-
-.progress-container:hover .seek-bar {
-    height: 5px; 
-}
-
-.seek-bar::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    height: 12px;
-    width: 12px;
-    border-radius: 50%;
-    background: #ff0000;
-    cursor: pointer;
-    transform: scale(0);
-    transition: transform 0.1s ease;
-}
-
-.progress-container:hover .seek-bar::-webkit-slider-thumb {
-    transform: scale(1);
-}
-
-/* --- CONTROLES BOTONERÍA --- */
-.controls-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.controls-left, .controls-right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.control-pill {
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
-    border-radius: 999px;
-    padding: 2px;
-    display: flex;
-    align-items: center;
-    height: 40px;
-    position: relative;
-}
-
-.group-pill { gap: 2px; }
-
-.control-btn {
-    background: transparent;
-    border: none;
-    color: #fff;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.2s;
-}
-
-.control-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
-
-.timer-pill {
-    padding: 0 16px;
-    color: #fff;
-    font-size: 0.85rem;
-    font-family: monospace;
-    font-weight: 500;
-}
-
-.time-separator { margin: 0 4px; opacity: 0.7; }
-
-.volume-pill-container {
-    padding-right: 0;
-    transition: all 0.3s ease;
-    overflow: hidden;
-}
-
-.volume-slider-wrapper {
-    width: 0;
-    overflow: hidden;
-    transition: width 0.3s ease, padding 0.3s ease;
-    display: flex;
-    align-items: center;
-}
-
-.volume-pill-container:hover .volume-slider-wrapper,
-.volume-slider-wrapper:active {
-    width: 80px;
-    padding-right: 12px;
-}
-
-.volume-bar {
-    -webkit-appearance: none;
-    width: 100%;
-    height: 3px;
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 2px;
-    cursor: pointer;
-}
-
-.volume-bar::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    height: 10px;
-    width: 10px;
-    border-radius: 50%;
-    background: #fff;
-    cursor: pointer;
-}
-
-/* --- SETTINGS POPOVER --- */
-.settings-popover {
-    position: absolute;
-    bottom: 60px;
-    right: 24px;
-    width: 280px;
-    background-color: rgba(28, 28, 28, 0.95);
-    backdrop-filter: blur(8px);
-    border-radius: 12px;
-    padding: 8px 0;
-    display: none;
-    flex-direction: column;
-    z-index: 30;
-    color: #fff;
-    font-size: 0.9rem;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    transition: height 0.2s ease;
-}
-
-.settings-popover.active { display: flex; }
-.settings-panel { display: none; flex-direction: column; width: 100%; }
-.settings-panel.active { display: flex; animation: fadeInPanel 0.2s ease; }
-@keyframes fadeInPanel { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
-.settings-item { display: flex; align-items: center; padding: 10px 16px; cursor: pointer; transition: background 0.2s; height: 48px; }
-.settings-item:hover { background-color: rgba(255,255,255,0.1); }
-.settings-header { display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 4px; cursor: pointer; font-weight: 500; }
-.settings-header:hover { background-color: rgba(255,255,255,0.1); }
-.settings-option { display: flex; align-items: center; padding: 10px 36px 10px 16px; cursor: pointer; position: relative; font-size: 0.9rem; }
-.settings-option:hover { background-color: rgba(255,255,255,0.1); }
-.settings-option.selected { font-weight: 600; }
-.settings-option .check-icon { position: absolute; right: 16px; display: none; color: #fff; }
-.settings-option.selected .check-icon { display: block; }
-
-/* --- LAYOUT GENERAL --- */
-.watch-layout { display: flex; gap: 24px; width: 100%; max-width: 1700px; margin: 0 auto; padding: 24px; align-items: flex-start; }
-.watch-left { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
-.watch-meta-card { display: flex; flex-direction: column; gap: 12px; }
-.watch-title { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0; }
-.watch-author-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-.watch-author-info { display: flex; align-items: center; gap: 12px; }
-.watch-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-.watch-author-text { display: flex; flex-direction: column; }
-.watch-username { font-weight: 600; font-size: 1rem; color: var(--text-primary); }
-.watch-subs { font-size: 0.8rem; color: var(--text-secondary); }
-.watch-actions { display: flex; gap: 8px; }
-.watch-right { width: 400px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; }
-
-@media (max-width: 1000px) {
-    .watch-layout { flex-direction: column; padding: 0; }
-    .watch-left { width: 100%; }
-    .watch-right { width: 100%; padding: 0 16px; }
-    .watch-player-card { border-radius: 0; }
-    .watch-meta-card { padding: 0 16px; }
-    .watch-comments-section { padding: 0 16px 24px 16px; }
-}
-</style>
