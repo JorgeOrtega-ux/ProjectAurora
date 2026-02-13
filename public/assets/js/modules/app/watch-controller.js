@@ -1,8 +1,3 @@
-/**
- * public/assets/js/modules/app/watch-controller.js
- * Controlador de reproducción de video HLS con UI personalizada.
- * Soporta: Master Playlist, Scrubbing, Selección de Calidad, ILUMINACIÓN CINEMATOGRÁFICA y MODO CINE.
- */
 
 import { ToastManager } from '../../core/components/toast-manager.js';
 
@@ -229,15 +224,15 @@ function setCinemaMode(enable) {
     _isCinemaMode = enable;
     localStorage.setItem('aurora_cinema_mode', enable ? 'on' : 'off');
 
-    const layout = document.querySelector('.watch-layout');
+    const layout = document.querySelector('.component-watch-layout');
     const btn = document.getElementById('cinema-mode-btn');
     const icon = btn ? btn.querySelector('span') : null;
 
     if (enable) {
-        layout.classList.add('cinema-mode');
+        layout.classList.add('component-watch-mode-cinema');
         if(icon) icon.innerText = 'crop_free'; // Icono para salir (pantalla normal)
     } else {
-        layout.classList.remove('cinema-mode');
+        layout.classList.remove('component-watch-mode-cinema');
         if(icon) icon.innerText = 'crop_landscape'; // Icono para entrar (modo cine)
     }
 
@@ -288,7 +283,7 @@ function initAmbientLightLogic() {
     });
 
     // Delegación de eventos para el menú de configuración
-    const lightingOptions = document.querySelectorAll('#settings-lighting .settings-option');
+    const lightingOptions = document.querySelectorAll('#settings-lighting .component-watch-settings-option');
     lightingOptions.forEach(opt => {
         opt.addEventListener('click', (e) => {
             const val = opt.dataset.value; // 'on' o 'off'
@@ -304,7 +299,7 @@ function initAmbientLightLogic() {
             document.getElementById('lighting-status-text').innerText = isEnabled ? 'Activo' : 'Desactivado';
             
             // Volver al menú principal
-            document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.component-watch-settings-panel').forEach(p => p.classList.remove('active'));
             document.getElementById('settings-main').classList.add('active');
         });
     });
@@ -339,7 +334,7 @@ function updateLightingUI(isEnabled) {
     }
 
     // Actualizar checks en el submenú
-    const options = document.querySelectorAll('#settings-lighting .settings-option');
+    const options = document.querySelectorAll('#settings-lighting .component-watch-settings-option');
     options.forEach(opt => {
         if ((opt.dataset.value === 'on' && isEnabled) || (opt.dataset.value === 'off' && !isEnabled)) {
             opt.classList.add('selected');
@@ -382,7 +377,7 @@ function initCustomControls(video) {
     const muteBtn = document.getElementById('mute-btn');
     const volumeBar = document.getElementById('volume-bar');
     const seekBar = document.getElementById('seek-bar');
-    const progressContainer = document.querySelector('.progress-container');
+    const progressContainer = document.querySelector('.component-watch-progress-container');
     const currentTimeEl = document.getElementById('current-time');
     const durationEl = document.getElementById('duration');
     const fullscreenBtn = document.getElementById('fullscreen-btn');
@@ -397,8 +392,8 @@ function initCustomControls(video) {
 
     // Elementos de Scrubbing
     const tooltip = document.getElementById('scrub-tooltip');
-    const tooltipImg = tooltip ? tooltip.querySelector('.scrub-preview-img') : null;
-    const tooltipTime = tooltip ? tooltip.querySelector('.scrub-time') : null;
+    const tooltipImg = tooltip ? tooltip.querySelector('.component-watch-scrub-preview') : null;
+    const tooltipTime = tooltip ? tooltip.querySelector('.component-watch-scrub-time') : null;
 
     // 1. Play / Pause
     const togglePlay = () => {
@@ -411,7 +406,7 @@ function initCustomControls(video) {
 
     playPauseBtn.addEventListener('click', togglePlay);
     video.addEventListener('click', (e) => {
-        if (e.target.closest('.settings-popover')) return; 
+        if (e.target.closest('.component-watch-settings-popover')) return; 
         togglePlay();
     });
 
@@ -570,7 +565,7 @@ function toggleSettingsMenu() {
 }
 
 function resetSettingsMenu() {
-    document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.component-watch-settings-panel').forEach(p => p.classList.remove('active'));
     document.getElementById('settings-main').classList.add('active');
 }
 
@@ -579,7 +574,7 @@ function initSettingsNavigationDelegated() {
     if(!popover) return;
 
     popover.addEventListener('click', (e) => {
-        const item = e.target.closest('.settings-item');
+        const item = e.target.closest('.component-watch-settings-item');
         if (item) {
             const targetId = item.getAttribute('data-target');
             const targetPanel = document.getElementById(`settings-${targetId}`);
@@ -590,10 +585,10 @@ function initSettingsNavigationDelegated() {
             return;
         }
 
-        const header = e.target.closest('.settings-header');
+        const header = e.target.closest('.component-watch-settings-header');
         if (header) {
             const backTarget = header.getAttribute('data-back'); 
-            header.closest('.settings-panel').classList.remove('active');
+            header.closest('.component-watch-settings-panel').classList.remove('active');
             document.getElementById(`settings-${backTarget}`).classList.add('active');
             return;
         }
@@ -636,7 +631,7 @@ function renderQualityOptions(levels) {
 
 function createQualityOption(val, text, isSelected) {
     const div = document.createElement('div');
-    div.className = `settings-option ${isSelected ? 'selected' : ''}`;
+    div.className = `component-watch-settings-option ${isSelected ? 'selected' : ''}`;
     div.setAttribute('data-quality', val);
     div.innerHTML = `<span>${text}</span><span class="material-symbols-rounded check-icon">check</span>`;
     return div;
@@ -647,7 +642,7 @@ function handleQualityChange(levelIndex, label, element) {
         _hls.currentLevel = levelIndex; // -1 = Auto
     }
 
-    const allOpts = document.querySelectorAll('#quality-options-container .settings-option');
+    const allOpts = document.querySelectorAll('#quality-options-container .component-watch-settings-option');
     allOpts.forEach(o => o.classList.remove('selected'));
     element.classList.add('selected');
 

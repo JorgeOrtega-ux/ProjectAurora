@@ -1,3 +1,4 @@
+
 <?php
 // includes/sections/app/watch.php
 
@@ -55,35 +56,35 @@ if ($videoData) {
 <div class="component-wrapper component-wrapper--full" data-section="watch" style="max-width: 100%; padding: 0;">
     
     <?php if ($videoData): ?>
-        <div class="watch-layout">
+        <div class="component-watch-layout">
             
-            <div class="watch-left">
+            <div class="component-watch-col-left">
                 
-                <div class="watch-player-card" id="video-container">
-                    <canvas id="ambient-canvas" class="ambient-canvas"></canvas>
+                <div class="component-watch-player-card" id="video-container">
+                    <canvas id="ambient-canvas" class="component-watch-ambient-canvas"></canvas>
 
-                    <div class="video-player-wrapper">
-                        <video id="main-player" playsinline poster="" class="video-element"></video>
+                    <div class="component-watch-player-wrapper">
+                        <video id="main-player" playsinline poster="" class="component-watch-video-element"></video>
                         
-                        <div id="scrub-tooltip" class="scrub-tooltip">
-                            <div class="scrub-img-wrapper">
-                                <div class="scrub-preview-img"></div>
+                        <div id="scrub-tooltip" class="component-watch-scrub-tooltip">
+                            <div class="component-watch-scrub-img-wrapper">
+                                <div class="component-watch-scrub-preview"></div>
                             </div>
-                            <div class="scrub-time-pill">
-                                <span class="scrub-time">0:00</span>
+                            <div class="component-watch-scrub-time-pill">
+                                <span class="component-watch-scrub-time">0:00</span>
                             </div>
                         </div>
                     </div>
 
-                    <div id="settings-popover" class="settings-popover">
-                        <div id="settings-main" class="settings-panel active">
-                            <div class="settings-item" data-target="lighting">
+                    <div id="settings-popover" class="component-watch-settings-popover">
+                        <div id="settings-main" class="component-watch-settings-panel active">
+                            <div class="component-watch-settings-item" data-target="lighting">
                                 <span class="material-symbols-rounded icon-left">light_mode</span>
                                 <span class="setting-label">Iluminación cinematográfica</span>
                                 <span class="setting-value" id="lighting-status-text">Desactivado</span>
                                 <span class="material-symbols-rounded icon-right">chevron_right</span>
                             </div>
-                            <div class="settings-item" data-target="quality">
+                            <div class="component-watch-settings-item" data-target="quality">
                                 <span class="material-symbols-rounded icon-left">tune</span>
                                 <span class="setting-label">Calidad</span>
                                 <span class="setting-value" id="quality-status-text">Auto</span>
@@ -91,23 +92,23 @@ if ($videoData) {
                             </div>
                         </div>
 
-                        <div id="settings-lighting" class="settings-panel">
-                            <div class="settings-header" data-back="main">
+                        <div id="settings-lighting" class="component-watch-settings-panel">
+                            <div class="component-watch-settings-header" data-back="main">
                                 <span class="material-symbols-rounded">arrow_back</span>
                                 <span>Iluminación cinematográfica</span>
                             </div>
-                            <div class="settings-option" data-type="lighting" data-value="off">
+                            <div class="component-watch-settings-option" data-type="lighting" data-value="off">
                                 <span>Desactivado</span>
                                 <span class="material-symbols-rounded check-icon">check</span>
                             </div>
-                            <div class="settings-option" data-type="lighting" data-value="on">
+                            <div class="component-watch-settings-option" data-type="lighting" data-value="on">
                                 <span>Activo</span>
                                 <span class="material-symbols-rounded check-icon">check</span>
                             </div>
                         </div>
 
-                        <div id="settings-quality" class="settings-panel">
-                            <div class="settings-header" data-back="main">
+                        <div id="settings-quality" class="component-watch-settings-panel">
+                            <div class="component-watch-settings-header" data-back="main">
                                 <span class="material-symbols-rounded">arrow_back</span>
                                 <span>Calidad</span>
                             </div>
@@ -115,42 +116,42 @@ if ($videoData) {
                         </div>
                     </div>
 
-                    <div class="custom-controls" id="custom-controls">
-                        <div class="progress-container">
-                            <div class="progress-hover-area"></div>
-                            <input type="range" id="seek-bar" class="seek-bar" value="0" min="0" step="0.1">
+                    <div class="component-watch-controls" id="custom-controls">
+                        <div class="component-watch-progress-container">
+                            <div class="component-watch-progress-hover"></div>
+                            <input type="range" id="seek-bar" class="component-watch-seek-bar" value="0" min="0" step="0.1">
                         </div>
 
-                        <div class="controls-row">
-                            <div class="controls-left">
-                                <div class="control-pill">
-                                    <button id="play-pause-btn" class="control-btn" title="Reproducir/Pausar">
+                        <div class="component-watch-controls-row">
+                            <div class="component-watch-controls-left">
+                                <div class="component-watch-control-pill">
+                                    <button id="play-pause-btn" class="component-watch-control-btn" title="Reproducir/Pausar">
                                         <span class="material-symbols-rounded">play_arrow</span>
                                     </button>
                                 </div>
-                                <div class="control-pill volume-pill-container">
-                                    <button id="mute-btn" class="control-btn" title="Silenciar">
+                                <div class="component-watch-control-pill component-watch-volume-container">
+                                    <button id="mute-btn" class="component-watch-control-btn" title="Silenciar">
                                         <span class="material-symbols-rounded">volume_up</span>
                                     </button>
-                                    <div class="volume-slider-wrapper">
-                                        <input type="range" id="volume-bar" class="volume-bar" min="0" max="1" step="0.05" value="1">
+                                    <div class="component-watch-volume-wrapper">
+                                        <input type="range" id="volume-bar" class="component-watch-volume-bar" min="0" max="1" step="0.05" value="1">
                                     </div>
                                 </div>
-                                <div class="control-pill timer-pill">
+                                <div class="component-watch-control-pill component-watch-timer-pill">
                                     <span id="current-time">0:00</span>
-                                    <span class="time-separator">/</span>
+                                    <span class="component-watch-time-sep">/</span>
                                     <span id="duration">0:00</span>
                                 </div>
                             </div>
-                            <div class="controls-right">
-                                <div class="control-pill group-pill">
-                                    <button id="settings-btn" class="control-btn" title="Configuración">
+                            <div class="component-watch-controls-right">
+                                <div class="component-watch-control-pill component-watch-group-pill">
+                                    <button id="settings-btn" class="component-watch-control-btn" title="Configuración">
                                         <span class="material-symbols-rounded">settings</span>
                                     </button>
-                                    <button id="cinema-mode-btn" class="control-btn" title="Modo Cine">
+                                    <button id="cinema-mode-btn" class="component-watch-control-btn" title="Modo Cine">
                                         <span class="material-symbols-rounded">crop_landscape</span>
                                     </button>
-                                    <button id="fullscreen-btn" class="control-btn" title="Pantalla Completa">
+                                    <button id="fullscreen-btn" class="component-watch-control-btn" title="Pantalla Completa">
                                         <span class="material-symbols-rounded">fullscreen</span>
                                     </button>
                                 </div>
@@ -159,58 +160,58 @@ if ($videoData) {
                     </div>
                 </div>
 
-                <div class="watch-meta-card">
-                    <h1 class="watch-title"><?php echo htmlspecialchars($videoData['title']); ?></h1>
+                <div class="component-watch-meta-card">
+                    <h1 class="component-watch-title"><?php echo htmlspecialchars($videoData['title']); ?></h1>
                     
-                    <div class="watch-author-row">
-                        <div class="watch-author-info">
-                            <img src="<?php echo $avatarUrl; ?>" alt="Avatar" class="watch-avatar">
-                            <div class="watch-author-text">
-                                <span class="watch-username"><?php echo htmlspecialchars($videoData['username']); ?></span>
-                                <span class="watch-subs">0 suscriptores</span>
+                    <div class="component-watch-author-row">
+                        <div class="component-watch-author-info">
+                            <img src="<?php echo $avatarUrl; ?>" alt="Avatar" class="component-watch-avatar">
+                            <div class="component-watch-author-text">
+                                <span class="component-watch-username"><?php echo htmlspecialchars($videoData['username']); ?></span>
+                                <span class="component-watch-subs">0 suscriptores</span>
                             </div>
                             <button class="component-button primary" style="border-radius: 20px; margin-left: 24px;">Suscribirse</button>
                         </div>
                         
-                        <div class="watch-actions">
+                        <div class="component-watch-actions">
                             
-                            <div class="joined-pill">
-                                <button class="joined-btn like" title="Me gusta">
+                            <div class="component-watch-joined-pill">
+                                <button class="component-watch-joined-btn like" title="Me gusta">
                                     <span class="material-symbols-rounded">thumb_up</span>
                                     <span>12</span>
                                 </button>
-                                <div class="joined-separator"></div>
-                                <button class="joined-btn dislike" title="No me gusta">
+                                <div class="component-watch-joined-separator"></div>
+                                <button class="component-watch-joined-btn dislike" title="No me gusta">
                                     <span class="material-symbols-rounded">thumb_down</span>
                                 </button>
                             </div>
 
-                            <button class="component-button action-pill-btn">
+                            <button class="component-button component-watch-action-pill">
                                 <span class="material-symbols-rounded">share</span> Compartir
                             </button>
 
-                            <button class="component-button action-pill-btn">
+                            <button class="component-button component-watch-action-pill">
                                 <span class="material-symbols-rounded">download</span> Descargar
                             </button>
 
-                            <button class="component-button action-pill-btn">
+                            <button class="component-button component-watch-action-pill">
                                 <span class="material-symbols-rounded">bookmark</span> Guardar
                             </button>
 
                         </div>
                     </div>
 
-                    <div class="watch-description-box" style="--dominant-rgb: <?php echo $domColorRgb; ?>;">
-                        <p class="watch-views-date">
+                    <div class="component-watch-desc-box" style="--dominant-rgb: <?php echo $domColorRgb; ?>;">
+                        <p class="component-watch-desc-meta">
                             0 visualizaciones • <?php echo date('d M Y', strtotime($videoData['created_at'])); ?>
                         </p>
-                        <p class="watch-desc-text">
+                        <p class="component-watch-desc-text">
                             <?php echo nl2br(htmlspecialchars($videoData['description'] ?? '')); ?>
                         </p>
                     </div>
                 </div>
 
-                <div class="watch-comments-section">
+                <div class="component-watch-comments">
                     <h3 style="font-size: 1.2rem; margin-bottom: 16px;">Comentarios</h3>
                     <div class="component-card" style="text-align: center; color: var(--text-secondary); padding: 40px;">
                         <span class="material-symbols-rounded" style="font-size: 32px; margin-bottom: 8px;">forum</span>
@@ -220,7 +221,7 @@ if ($videoData) {
 
             </div>
 
-            <div class="watch-right">
+            <div class="component-watch-col-right">
                 <div class="component-card" style="text-align: center; color: var(--text-secondary); padding: 40px; min-height: 400px; display: flex; flex-direction: column; justify-content: center;">
                     <span class="material-symbols-rounded" style="font-size: 32px; margin-bottom: 8px;">playlist_play</span>
                     <p>Próximamente:<br>Videos relacionados</p>

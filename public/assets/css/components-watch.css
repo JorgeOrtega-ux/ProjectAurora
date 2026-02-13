@@ -1,5 +1,5 @@
 
-.watch-player-card {
+.component-watch-player-card {
     position: relative;
     background-color: #000;
     border-radius: 12px;
@@ -9,7 +9,7 @@
     transition: width 0.3s ease, height 0.3s ease, border-radius 0.3s ease; 
 }
 
-.ambient-canvas {
+.component-watch-ambient-canvas {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -23,7 +23,7 @@
     filter: blur(60px) brightness(1.3) saturate(1.4); 
 }
 
-.video-player-wrapper {
+.component-watch-player-wrapper {
     width: 100%;
     height: 100%;
     position: relative;
@@ -35,7 +35,7 @@
     align-items: center;
 }
 
-.video-element {
+.component-watch-video-element {
     width: 100%;
     height: 100%;
     object-fit: contain;
@@ -44,121 +44,121 @@
 }
 
 /* Tooltip Scrubbing */
-.scrub-tooltip {
+.component-watch-scrub-tooltip {
     position: absolute; bottom: 85px; left: 0; transform: translateX(-50%); display: none; 
     flex-direction: column; align-items: center; z-index: 50; pointer-events: none;
     background: transparent; border: none; box-shadow: none;
 }
-.scrub-img-wrapper {
+.component-watch-scrub-img-wrapper {
     transform: scale(1.35); transform-origin: bottom center; margin-bottom: 14px; 
     border: 2px solid #fff; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.6);
     background-color: #000; overflow: hidden;
 }
-.scrub-preview-img { background-repeat: no-repeat; background-color: #000; }
-.scrub-time-pill {
+.component-watch-scrub-preview { background-repeat: no-repeat; background-color: #000; }
+.component-watch-scrub-time-pill {
     background: rgba(10, 10, 10, 0.9); padding: 4px 12px; border-radius: 99px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15);
 }
-.scrub-time { color: #fff; font-size: 0.85rem; font-weight: 600; font-family: 'Roboto Mono', monospace; letter-spacing: 0.5px; }
+.component-watch-scrub-time { color: #fff; font-size: 0.85rem; font-weight: 600; font-family: 'Roboto Mono', monospace; letter-spacing: 0.5px; }
 
 /* Description Box */
-.watch-description-box { 
+.component-watch-desc-box { 
     background-color: var(--bg-hover-light); border-radius: 12px; padding: 12px; 
     font-size: 0.9rem; color: var(--text-primary); margin-top: 4px; 
     transition: background-color 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
     border: 1px solid transparent; 
 }
-.watch-description-box:hover {
+.component-watch-desc-box:hover {
     background-color: rgba(var(--dominant-rgb), 0.15); border-color: rgba(var(--dominant-rgb), 0.3);
     box-shadow: 0 4px 20px rgba(0,0,0,0.1);
 }
-.watch-views-date { font-weight: 600; font-size: 0.85rem; color: var(--text-primary); margin-bottom: 8px; }
-.watch-desc-text { white-space: pre-wrap; line-height: 1.5; color: var(--text-secondary); }
+.component-watch-desc-meta { font-weight: 600; font-size: 0.85rem; color: var(--text-primary); margin-bottom: 8px; }
+.component-watch-desc-text { white-space: pre-wrap; line-height: 1.5; color: var(--text-secondary); }
 
 /* Controls Overlay */
-.custom-controls {
+.component-watch-controls {
     position: absolute; bottom: 0; left: 0; width: 100%;
     background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 60%, transparent 100%);
     padding: 0 12px 12px 12px; opacity: 0; transition: opacity 0.3s ease;
     display: flex; flex-direction: column; gap: 8px; z-index: 20;
     border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
 }
-.watch-player-card:hover .custom-controls, .custom-controls.show { opacity: 1; }
+.component-watch-player-card:hover .component-watch-controls, .component-watch-controls.show { opacity: 1; }
 
 /* Progress Bar */
-.progress-container {
+.component-watch-progress-container {
     width: 100%; height: 16px; display: flex; align-items: center; cursor: pointer; position: relative; margin-bottom: 4px; 
 }
-.seek-bar {
+.component-watch-seek-bar {
     -webkit-appearance: none; width: 100%; height: 3px; background: rgba(255, 255, 255, 0.3);
     border-radius: 2px; cursor: pointer; transition: height 0.1s ease, transform 0.1s;
     background-image: linear-gradient(#ff0000, #ff0000); background-size: 0% 100%;
     background-repeat: no-repeat; position: relative; z-index: 2;
 }
-.progress-container:hover .seek-bar { height: 5px; }
-.seek-bar::-webkit-slider-thumb {
+.component-watch-progress-container:hover .component-watch-seek-bar { height: 5px; }
+.component-watch-seek-bar::-webkit-slider-thumb {
     -webkit-appearance: none; height: 12px; width: 12px; border-radius: 50%;
     background: #ff0000; cursor: pointer; transform: scale(0); transition: transform 0.1s ease;
 }
-.progress-container:hover .seek-bar::-webkit-slider-thumb { transform: scale(1); }
+.component-watch-progress-container:hover .component-watch-seek-bar::-webkit-slider-thumb { transform: scale(1); }
 
 /* Controls Buttons */
-.controls-row { display: flex; justify-content: space-between; align-items: center; }
-.controls-left, .controls-right { display: flex; align-items: center; gap: 10px; }
-.control-pill {
+.component-watch-controls-row { display: flex; justify-content: space-between; align-items: center; }
+.component-watch-controls-left, .component-watch-controls-right { display: flex; align-items: center; gap: 10px; }
+.component-watch-control-pill {
     background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); border-radius: 999px;
     padding: 2px; display: flex; align-items: center; height: 40px; position: relative;
 }
-.group-pill { gap: 2px; }
-.control-btn {
+.component-watch-group-pill { gap: 2px; }
+.component-watch-control-btn {
     background: transparent; border: none; color: #fff; width: 36px; height: 36px;
     border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
     transition: background 0.2s;
 }
-.control-btn:hover { background: rgba(255, 255, 255, 0.2); }
-.timer-pill { padding: 0 16px; color: #fff; font-size: 0.85rem; font-family: monospace; font-weight: 500; }
-.time-separator { margin: 0 4px; opacity: 0.7; }
-.volume-pill-container { padding-right: 0; transition: all 0.3s ease; overflow: hidden; }
-.volume-slider-wrapper { width: 0; overflow: hidden; transition: width 0.3s ease, padding 0.3s ease; display: flex; align-items: center; }
-.volume-pill-container:hover .volume-slider-wrapper, .volume-slider-wrapper:active { width: 80px; padding-right: 12px; }
-.volume-bar { -webkit-appearance: none; width: 100%; height: 3px; background: rgba(255, 255, 255, 0.3); border-radius: 2px; cursor: pointer; }
-.volume-bar::-webkit-slider-thumb { -webkit-appearance: none; height: 10px; width: 10px; border-radius: 50%; background: #fff; cursor: pointer; }
+.component-watch-control-btn:hover { background: rgba(255, 255, 255, 0.2); }
+.component-watch-timer-pill { padding: 0 16px; color: #fff; font-size: 0.85rem; font-family: monospace; font-weight: 500; }
+.component-watch-time-sep { margin: 0 4px; opacity: 0.7; }
+.component-watch-volume-container { padding-right: 0; transition: all 0.3s ease; overflow: hidden; }
+.component-watch-volume-wrapper { width: 0; overflow: hidden; transition: width 0.3s ease, padding 0.3s ease; display: flex; align-items: center; }
+.component-watch-volume-container:hover .component-watch-volume-wrapper, .component-watch-volume-wrapper:active { width: 80px; padding-right: 12px; }
+.component-watch-volume-bar { -webkit-appearance: none; width: 100%; height: 3px; background: rgba(255, 255, 255, 0.3); border-radius: 2px; cursor: pointer; }
+.component-watch-volume-bar::-webkit-slider-thumb { -webkit-appearance: none; height: 10px; width: 10px; border-radius: 50%; background: #fff; cursor: pointer; }
 
 /* Settings Popover */
-.settings-popover {
+.component-watch-settings-popover {
     position: absolute; bottom: 60px; right: 24px; width: 280px;
     background-color: rgba(28, 28, 28, 0.95); backdrop-filter: blur(8px);
     border-radius: 12px; padding: 8px 0; display: none; flex-direction: column;
     z-index: 30; color: #fff; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
     transition: height 0.2s ease;
 }
-.settings-popover.active { display: flex; }
-.settings-panel { display: none; flex-direction: column; width: 100%; }
-.settings-panel.active { display: flex; animation: fadeInPanel 0.2s ease; }
+.component-watch-settings-popover.active { display: flex; }
+.component-watch-settings-panel { display: none; flex-direction: column; width: 100%; }
+.component-watch-settings-panel.active { display: flex; animation: fadeInPanel 0.2s ease; }
 @keyframes fadeInPanel { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
-.settings-item { display: flex; align-items: center; padding: 10px 16px; cursor: pointer; transition: background 0.2s; height: 48px; }
-.settings-item:hover { background-color: rgba(255,255,255,0.1); }
-.settings-header { display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 4px; cursor: pointer; font-weight: 500; }
-.settings-header:hover { background-color: rgba(255,255,255,0.1); }
-.settings-option { display: flex; align-items: center; padding: 10px 36px 10px 16px; cursor: pointer; position: relative; font-size: 0.9rem; }
-.settings-option:hover { background-color: rgba(255,255,255,0.1); }
-.settings-option.selected { font-weight: 600; }
-.settings-option .check-icon { position: absolute; right: 16px; display: none; color: #fff; }
-.settings-option.selected .check-icon { display: block; }
+.component-watch-settings-item { display: flex; align-items: center; padding: 10px 16px; cursor: pointer; transition: background 0.2s; height: 48px; }
+.component-watch-settings-item:hover { background-color: rgba(255,255,255,0.1); }
+.component-watch-settings-header { display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 4px; cursor: pointer; font-weight: 500; }
+.component-watch-settings-header:hover { background-color: rgba(255,255,255,0.1); }
+.component-watch-settings-option { display: flex; align-items: center; padding: 10px 36px 10px 16px; cursor: pointer; position: relative; font-size: 0.9rem; }
+.component-watch-settings-option:hover { background-color: rgba(255,255,255,0.1); }
+.component-watch-settings-option.selected { font-weight: 600; }
+.component-watch-settings-option .check-icon { position: absolute; right: 16px; display: none; color: #fff; }
+.component-watch-settings-option.selected .check-icon { display: block; }
 
 /* =========================================
    [NUEVO] ESTILOS BOTONES DE ACCIÓN
    ========================================= */
 
-.watch-actions {
+.component-watch-actions {
     display: flex;
     align-items: center;
     gap: 8px;
-    flex-wrap: wrap; /* Permitir que bajen si no caben en móvil muy pequeño */
+    flex-wrap: wrap; 
 }
 
 /* Botones Individuales (Share, Download, Save) */
-.action-pill-btn {
+.component-watch-action-pill {
     border-radius: 20px !important; 
     display: flex;
     align-items: center;
@@ -173,10 +173,10 @@
     font-weight: 500;
     transition: background 0.2s;
 }
-.action-pill-btn:hover { background-color: rgba(255, 255, 255, 0.2); }
+.component-watch-action-pill:hover { background-color: rgba(255, 255, 255, 0.2); }
 
 /* Píldora Unificada (Like + Dislike) */
-.joined-pill {
+.component-watch-joined-pill {
     display: flex;
     align-items: center;
     background-color: rgba(255, 255, 255, 0.1); 
@@ -185,7 +185,7 @@
     overflow: hidden; 
 }
 
-.joined-btn {
+.component-watch-joined-btn {
     background: transparent;
     border: none;
     color: var(--text-primary, #fff);
@@ -200,35 +200,34 @@
     transition: background 0.2s;
     gap: 6px;
 }
-.joined-btn:hover { background-color: rgba(255, 255, 255, 0.2); }
-.joined-btn.dislike { padding: 0 12px; }
+.component-watch-joined-btn:hover { background-color: rgba(255, 255, 255, 0.2); }
+.component-watch-joined-btn.dislike { padding: 0 12px; }
 
-.joined-separator {
+.component-watch-joined-separator {
     width: 1px;
     height: 60%;
     background-color: rgba(255, 255, 255, 0.2);
 }
 
 /* --- LAYOUT GENERAL --- */
-.watch-layout { display: flex; gap: 24px; width: 100%; max-width: 1700px; margin: 0 auto; padding: 24px; align-items: flex-start; }
-.watch-left { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
-.watch-meta-card { display: flex; flex-direction: column; gap: 12px; }
-.watch-title { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0; }
-.watch-author-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-.watch-author-info { display: flex; align-items: center; gap: 12px; }
-.watch-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-.watch-author-text { display: flex; flex-direction: column; }
-.watch-username { font-weight: 600; font-size: 1rem; color: var(--text-primary); }
-.watch-subs { font-size: 0.8rem; color: var(--text-secondary); }
-.watch-right { width: 400px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; }
+.component-watch-layout { display: flex; gap: 24px; width: 100%; max-width: 1700px; margin: 0 auto; padding: 24px; align-items: flex-start; }
+.component-watch-col-left { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.component-watch-meta-card { display: flex; flex-direction: column; gap: 12px; }
+.component-watch-title { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0; }
+.component-watch-author-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.component-watch-author-info { display: flex; align-items: center; gap: 12px; }
+.component-watch-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+.component-watch-author-text { display: flex; flex-direction: column; }
+.component-watch-username { font-weight: 600; font-size: 1rem; color: var(--text-primary); }
+.component-watch-subs { font-size: 0.8rem; color: var(--text-secondary); }
+.component-watch-col-right { width: 400px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; }
 
 /* =========================================
    [NUEVO] MODO CINE (Cinema Mode)
    ========================================= */
 
-.watch-layout.cinema-mode {
+.component-watch-layout.component-watch-mode-cinema {
     display: grid;
-    /* [CORRECCIÓN DERECHA] Ancho de columna: 400px contenido + 24px espacio */
     grid-template-columns: minmax(0, 1fr) 424px;
     gap: 24px;
     max-width: 100%; 
@@ -236,9 +235,9 @@
     padding-bottom: 24px;
 }
 
-.watch-layout.cinema-mode .watch-left { display: contents; }
+.component-watch-layout.component-watch-mode-cinema .component-watch-col-left { display: contents; }
 
-.watch-layout.cinema-mode .watch-player-card {
+.component-watch-layout.component-watch-mode-cinema .component-watch-player-card {
     grid-column: 1 / -1; 
     width: 100%;
     height: 85vh; 
@@ -253,24 +252,24 @@
     overflow: hidden; 
 }
 
-.watch-layout.cinema-mode .video-player-wrapper,
-.watch-layout.cinema-mode .video-element {
+.component-watch-layout.component-watch-mode-cinema .component-watch-player-wrapper,
+.component-watch-layout.component-watch-mode-cinema .component-watch-video-element {
     border-radius: 0;
 }
 
-.watch-layout.cinema-mode .video-player-wrapper {
+.component-watch-layout.component-watch-mode-cinema .component-watch-player-wrapper {
     width: auto; height: 100%; aspect-ratio: 16/9; max-width: 100%;
 }
 
-.watch-layout.cinema-mode .watch-meta-card {
+.component-watch-layout.component-watch-mode-cinema .component-watch-meta-card {
     grid-column: 1 / 2; grid-row: 2; margin-left: 24px; 
 }
 
-.watch-layout.cinema-mode .watch-comments-section {
+.component-watch-layout.component-watch-mode-cinema .component-watch-comments {
     grid-column: 1 / 2; grid-row: 3; margin-left: 24px;
 }
 
-.watch-layout.cinema-mode .watch-right {
+.component-watch-layout.component-watch-mode-cinema .component-watch-col-right {
     grid-column: 2 / 3; grid-row: 2 / span 2;
     margin-right: 0;
     padding-right: 24px; 
@@ -278,20 +277,19 @@
 
 /* --- Responsive para Modo Cine --- */
 @media (max-width: 1000px) {
-    .watch-layout.cinema-mode {
+    .component-watch-layout.component-watch-mode-cinema {
         display: flex;
         flex-direction: column;
         grid-template-columns: none; 
     }
 
-    .watch-layout.cinema-mode .watch-player-card {
+    .component-watch-layout.component-watch-mode-cinema .component-watch-player-card {
         height: auto; aspect-ratio: 16/9;
         order: 1;
         margin-bottom: 16px;
     }
 
-    /* [CORRECCIÓN MÓVIL] 100% Width y Box-Sizing */
-    .watch-layout.cinema-mode .watch-meta-card {
+    .component-watch-layout.component-watch-mode-cinema .component-watch-meta-card {
         order: 2;
         margin-left: 0;
         padding: 0 16px;
@@ -299,7 +297,7 @@
         box-sizing: border-box;
     }
 
-    .watch-layout.cinema-mode .watch-right {
+    .component-watch-layout.component-watch-mode-cinema .component-watch-col-right {
         order: 3;
         margin-right: 0;
         padding: 0 16px;
@@ -309,7 +307,7 @@
         box-sizing: border-box;
     }
 
-    .watch-layout.cinema-mode .watch-comments-section {
+    .component-watch-layout.component-watch-mode-cinema .component-watch-comments {
         order: 4;
         margin-left: 0;
         padding: 0 16px;
@@ -319,10 +317,10 @@
 }
 
 @media (max-width: 1000px) {
-    .watch-layout { flex-direction: column; padding: 0; }
-    .watch-left { width: 100%; }
-    .watch-right { width: 100%; padding: 0 16px; }
-    .watch-player-card { border-radius: 0; }
-    .watch-meta-card { padding: 0 16px; }
-    .watch-comments-section { padding: 0 16px 24px 16px; }
+    .component-watch-layout { flex-direction: column; padding: 0; }
+    .component-watch-col-left { width: 100%; }
+    .component-watch-col-right { width: 100%; padding: 0 16px; }
+    .component-watch-player-card { border-radius: 0; }
+    .component-watch-meta-card { padding: 0 16px; }
+    .component-watch-comments { padding: 0 16px 24px 16px; }
 }
