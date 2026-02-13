@@ -86,10 +86,13 @@ const ApiRoutes = {
         SaveMetadata: { route: 'studio.save_metadata' },
         GetPending: { route: 'studio.get_pending' },
         GetContent: { route: 'studio.get_content' },
-        GetDetails: { route: 'studio.get_video_details' }, // <--- [NUEVO] ESTA LÍNEA FALTABA
+        GetDetails: { route: 'studio.get_video_details' },
         CancelBatch: { route: 'studio.cancel_batch' },
         GenerateThumbs: { route: 'studio.generate_thumbs' },
-        DeleteVideo: { route: 'studio.delete_video' } 
+        DeleteVideo: { route: 'studio.delete_video' },
+        
+        // [ESTA ES LA PROPIEDAD QUE FALTABA PARA COMPLETAR EL MAPEO]
+        SelectGeneratedThumbnail: { route: 'studio.select_generated_thumbnail' }
     }
 };
 

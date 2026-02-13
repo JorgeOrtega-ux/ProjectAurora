@@ -5,6 +5,7 @@
  * [SEGURIDAD] Implementación de Upload Tokens.
  * [MEJORA] Soporte para progreso de procesamiento en tiempo real.
  * [NUEVO] Validación Tiered Limits (Size & Duration) en Frontend.
+ * [MODIFICADO] Generación de miniaturas síncrona (PHP/FFmpeg).
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -47,7 +48,7 @@ export const UploadController = {
         const container = document.querySelector('[data-section="channel-upload"]');
         if (!container) return;
 
-        console.log("UploadController: Inicializado (V2 + Security Tokens + Limits Check)");
+        console.log("UploadController: Inicializado (V2 + Security Tokens + Limits Check + Sync Thumbs)");
         
         _videosState = [];
         _activeVideoUuid = null;
@@ -57,17 +58,14 @@ export const UploadController = {
         initDropzone();
         initEditorEvents();
         
-        // Listeners de Sockets
+        // Listeners de Sockets (Solo procesamiento, ya no miniaturas)
         document.removeEventListener('socket:processing_complete', onProcessingComplete);
         document.addEventListener('socket:processing_complete', onProcessingComplete);
 
-        // [NUEVO] Listener para progreso de procesamiento (Transcodificación)
+        // Listener para progreso de procesamiento (Transcodificación)
         document.removeEventListener('socket:processing_progress', onProcessingProgress);
         document.addEventListener('socket:processing_progress', onProcessingProgress);
 
-        document.removeEventListener('socket:thumbnails_generated', onThumbsGenerated);
-        document.addEventListener('socket:thumbnails_generated', onThumbsGenerated);
-        
         // Revisar si venimos de una URL con ID específico (Modo Edición)
         const initialVideoId = document.getElementById('initial-video-id')?.value;
         
@@ -122,7 +120,9 @@ async function loadExistingDraft(uuid) {
                 status: res.video.status || 'ready',
                 progress: 100, // Progreso de subida (ya subido)
                 // Ruta absoluta para la miniatura
-                thumbnail: res.video.thumbnail_src ? (window.BASE_PATH + res.video.thumbnail_src) : null
+                thumbnail: res.video.thumbnail_src ? (window.BASE_PATH + res.video.thumbnail_src) : null,
+                // [NUEVO] Guardar miniaturas generadas si existen
+                generated_thumbnails: res.video.generated_thumbnails || []
             };
 
             _videosState = [videoEntry];
@@ -172,7 +172,8 @@ async function checkPendingUploads() {
                     progress: 100, // Progreso de subida (ya subido)
                     // Ruta absoluta
                     thumbnail: v.thumbnail_src ? (window.BASE_PATH + v.thumbnail_src) : null,
-                    description: v.description || ''
+                    description: v.description || '',
+                    generated_thumbnails: v.generated_thumbnails || []
                 });
             });
 
@@ -306,7 +307,8 @@ async function handleFiles(files) {
             progress: 0,
             processingPercent: 0,
             thumbnail: null,
-            uploadToken: null 
+            uploadToken: null,
+            generated_thumbnails: []
         };
         
         _videosState.push(videoEntry);
@@ -486,7 +488,7 @@ function switchEditor(uuid) {
     // Preview File Name
     document.getElementById('meta-filename').textContent = (nextVideo.title || 'video') + '.mp4';
     
-    // 3. Miniatura
+    // 3. Miniatura Principal
     const imgPreview = document.getElementById('thumbnail-preview');
     if (nextVideo.thumbnail) {
         imgPreview.src = nextVideo.thumbnail;
@@ -496,11 +498,15 @@ function switchEditor(uuid) {
         imgPreview.classList.add('d-none');
     }
 
-    // Limpiar grid de miniaturas generadas
+    // 4. Miniaturas Generadas (Renderizar si existen)
     const grid = document.getElementById('generated-thumbs-grid');
-    if (grid) {
-        grid.innerHTML = '';
-        grid.classList.add('d-none');
+    if (nextVideo.generated_thumbnails && Array.isArray(nextVideo.generated_thumbnails) && nextVideo.generated_thumbnails.length > 0) {
+        renderGeneratedGrid(nextVideo.generated_thumbnails);
+    } else {
+        if (grid) {
+            grid.innerHTML = '';
+            grid.classList.add('d-none');
+        }
     }
 
     updateEditorStatusUI(nextVideo);
@@ -643,11 +649,7 @@ function initEditorEvents() {
 
     if (btnGenThumbs) btnGenThumbs.addEventListener('click', generateThumbnails);
 
-    // D) Miniaturas Generadas (Delegación)
-    document.getElementById('generated-thumbs-grid')?.addEventListener('click', (e) => {
-        const item = e.target.closest('.generated-thumb-item');
-        if (item) selectGeneratedThumbnail(item.dataset.src);
-    });
+    // D) Miniaturas Generadas (Delegación eliminada, ahora manejada en renderGeneratedGrid)
 }
 
 function setupFieldLogic(targetName, inputId) {
@@ -955,97 +957,141 @@ function validatePublishRequirements() {
 }
 
 // ==========================================
-// 5. UTILIDADES DE IA & MINIATURAS
+// 5. UTILIDADES DE IA & MINIATURAS (REFACTORIZADO)
 // ==========================================
 
 async function generateThumbnails() {
     if (!_activeVideoUuid) return;
     
     const btn = document.getElementById('btn-gen-thumbs');
+    const originalContent = '<span class="material-symbols-rounded">autorenew</span>';
+    
+    // UI Loading
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-sm" style="width:16px;height:16px;"></span>';
+    
+    // Toast informativo (FFmpeg puede tardar unos segundos)
+    ToastManager.show('Generando miniaturas, por favor espera...', 'info');
 
     const formData = new FormData();
     formData.append('video_uuid', _activeVideoUuid);
 
     try {
+        // La llamada ahora es síncrona en PHP (FFmpeg directo)
         const route = ApiService.Routes.Studio.GenerateThumbs || { route: 'studio.generate_thumbs' };
         const res = await ApiService.post(route, formData);
-        if (res.success) {
-            ToastManager.show(res.message, 'info');
+
+        if (res.success && res.thumbnails) {
+            ToastManager.show(res.message, 'success');
+            
+            // Guardar en estado local
+            const video = _videosState.find(v => v.uuid === _activeVideoUuid);
+            if (video) {
+                video.generated_thumbnails = res.thumbnails;
+            }
+            
+            // Renderizar inmediatamente
+            renderGeneratedGrid(res.thumbnails);
         } else {
-            ToastManager.show(res.message, 'error');
-            btn.disabled = false;
-            btn.innerHTML = '<span class="material-symbols-rounded">autorenew</span>';
+            ToastManager.show(res.message || 'No se generaron miniaturas.', 'error');
         }
     } catch (e) {
+        console.error(e);
+        ToastManager.show('Error al conectar con el servidor de generación.', 'error');
+    } finally {
+        // Restaurar botón
         btn.disabled = false;
-        btn.innerHTML = '<span class="material-symbols-rounded">autorenew</span>';
+        btn.innerHTML = originalContent;
     }
 }
 
-function onThumbsGenerated(e) {
-    const data = e.detail.message;
-    if (data && data.uuid === _activeVideoUuid) {
-        const grid = document.getElementById('generated-thumbs-grid');
-        const btn = document.getElementById('btn-gen-thumbs');
-        
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<span class="material-symbols-rounded">autorenew</span>';
+function renderGeneratedGrid(thumbnails) {
+    const grid = document.getElementById('generated-thumbs-grid');
+    if (!grid) return;
+
+    grid.innerHTML = '';
+    
+    // Validación extra: asegurarse que es un array
+    if (!thumbnails || !Array.isArray(thumbnails) || thumbnails.length === 0) {
+        grid.classList.add('d-none');
+        return;
+    }
+
+    thumbnails.forEach(thumb => {
+        // [CORRECCIÓN] Validar que el objeto y la propiedad path existan antes de usarlos
+        if (!thumb || !thumb.path) {
+            return; // Si el dato está corrupto, lo saltamos y seguimos con el siguiente
         }
 
-        if (grid && data.thumbnails) {
-            grid.innerHTML = '';
-            data.thumbnails.forEach(path => {
-                const fullPath = window.BASE_PATH + path;
-                const div = document.createElement('div');
-                div.className = 'generated-thumb-item';
-                div.dataset.src = fullPath;
-                div.innerHTML = `<img src="${fullPath}" loading="lazy">`;
-                grid.appendChild(div);
-            });
-            grid.classList.remove('d-none');
-        }
+        // Ajuste de ruta: PHP devuelve rutas relativas (public/storage/...), JS necesita base
+        // Usamos encadenamiento opcional (?.) por seguridad extra, aunque el if de arriba ya lo cubre
+        const pathStr = String(thumb.path); 
+        const fullPath = pathStr.startsWith('http') ? pathStr : (window.BASE_PATH + pathStr);
         
-        ToastManager.show('Miniaturas generadas.', 'success');
+        const div = document.createElement('div');
+        div.className = 'generated-thumb-item';
+        div.dataset.path = pathStr; 
+        div.dataset.src = fullPath;
+        div.dataset.color = thumb.color || '#000000';
+        
+        div.innerHTML = `<img src="${fullPath}" loading="lazy" alt="Opción generada">`;
+        
+        // Listener directo
+        div.addEventListener('click', () => selectGeneratedThumbnail(pathStr, thumb.color));
+        
+        grid.appendChild(div);
+    });
+
+    // Si después de filtrar los corruptos no quedó nada, ocultamos el grid
+    if (grid.children.length === 0) {
+        grid.classList.add('d-none');
+    } else {
+        grid.classList.remove('d-none');
     }
 }
 
-async function selectGeneratedThumbnail(src) {
+async function selectGeneratedThumbnail(path, color) {
+    if (!_activeVideoUuid) return;
+
     const spinner = document.querySelector('.preview-player-placeholder .thumbnail-loading');
     if(spinner) spinner.classList.remove('d-none');
 
+    const formData = new FormData();
+    formData.append('action', 'select_generated_thumbnail'); // Importante para el Handler
+    formData.append('video_uuid', _activeVideoUuid);
+    formData.append('thumbnail_path', path);
+    formData.append('dominant_color', color);
+
     try {
-        const response = await fetch(src);
-        const blob = await response.blob();
-        const file = new File([blob], "selected_thumb.jpg", { type: "image/jpeg" });
+        const route = { route: 'studio.select_generated_thumbnail' }; 
+        const res = await ApiService.post(route, formData);
         
-        // Actualizar preview local
-        const preview = document.getElementById('thumbnail-preview');
-        preview.src = src; // src ya es absoluto porque viene del dataset
-        preview.classList.remove('d-none');
-        
-        const formData = new FormData();
-        formData.append('video_uuid', _activeVideoUuid);
-        formData.append('thumbnail', file);
-        
-        const res = await ApiService.post(ApiService.Routes.Studio.UploadThumbnail, formData);
-        
-        if(res.success) {
-             const currentVideo = _videosState.find(v => v.uuid === _activeVideoUuid);
-             if(currentVideo) currentVideo.thumbnail = res.new_src ? (window.BASE_PATH + res.new_src) : src;
-             
-             applyDominantColor(res.dominant_color);
-             validatePublishRequirements();
-             ToastManager.show('Miniatura actualizada', 'success');
+        if (res.success) {
+            const currentVideo = _videosState.find(v => v.uuid === _activeVideoUuid);
+            
+            // Actualizar estado local
+            const fullDisplayPath = window.BASE_PATH + path;
+            
+            if (currentVideo) {
+                currentVideo.thumbnail = fullDisplayPath;
+            }
+            
+            // Actualizar UI
+            const preview = document.getElementById('thumbnail-preview');
+            if (preview) {
+                preview.src = fullDisplayPath;
+                preview.classList.remove('d-none');
+            }
+            
+            applyDominantColor(color);
+            validatePublishRequirements();
+            ToastManager.show('Miniatura actualizada correctamente.', 'success');
         } else {
             ToastManager.show(res.message, 'error');
         }
-        
     } catch (e) {
-        console.error(e);
-        ToastManager.show('Error al seleccionar miniatura', 'error');
+        console.error("Error selecting thumbnail:", e);
+        ToastManager.show('Error al establecer la miniatura.', 'error');
     } finally {
         if(spinner) spinner.classList.add('d-none');
     }

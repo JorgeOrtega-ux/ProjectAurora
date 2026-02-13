@@ -85,10 +85,13 @@ return [
     'studio.save_metadata'    => ['file' => 'handlers/studio-handler.php', 'action' => 'save_metadata'],
     'studio.get_pending'      => ['file' => 'handlers/studio-handler.php', 'action' => 'get_pending'],
     'studio.get_content'      => ['file' => 'handlers/studio-handler.php', 'action' => 'get_content'],
-    'studio.get_public_feed'  => ['file' => 'handlers/studio-handler.php', 'action' => 'get_public_feed'], // [NUEVO]
+    'studio.get_public_feed'  => ['file' => 'handlers/studio-handler.php', 'action' => 'get_public_feed'],
     'studio.cancel_batch'     => ['file' => 'handlers/studio-handler.php', 'action' => 'cancel_batch'],
     'studio.generate_thumbs'  => ['file' => 'handlers/studio-handler.php', 'action' => 'generate_thumbnails'],
     'studio.delete_video'     => ['file' => 'handlers/studio-handler.php', 'action' => 'delete_video'],
-    'studio.get_video_details' => ['file' => 'handlers/studio-handler.php', 'action' => 'get_video_details'],
+    'studio.get_video_details'=> ['file' => 'handlers/studio-handler.php', 'action' => 'get_video_details'],
+    
+    // [ESTA ES LA LÍNEA QUE FALTABA]
+    'studio.select_generated_thumbnail' => ['file' => 'handlers/studio-handler.php', 'action' => 'select_generated_thumbnail'],
 ];
 ?>
