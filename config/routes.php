@@ -5,10 +5,11 @@ return [
     // === APP ===
     'main'     => __DIR__ . '/../includes/sections/app/main.php',
     'explore'  => __DIR__ . '/../includes/sections/app/explore.php', 
+    'watch'    => __DIR__ . '/../includes/sections/app/watch.php', // <--- NUEVA RUTA AGREGADA
 
     // [NUEVO] Sección de Canales / Contenido
     'channel/my-content' => __DIR__ . '/../includes/sections/app/my-content.php',
-    'channel/upload'     => __DIR__ . '/../includes/sections/app/upload.php', // <--- Nueva ruta agregada
+    'channel/upload'     => __DIR__ . '/../includes/sections/app/upload.php',
 
     // === AUTH ===
     'login'                         => __DIR__ . '/../includes/sections/auth/login.php',

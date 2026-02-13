@@ -27,7 +27,8 @@ import { initMainController } from './main-controller.js';
 import { initUrlManager } from './core/utils/url-manager.js';
 import { UploadController } from './modules/studio/upload-controller.js';
 import { ContentController } from './modules/studio/content-controller.js';
-import { HomeController } from './modules/app/home-controller.js'; // [NUEVO]
+import { HomeController } from './modules/app/home-controller.js';
+import { WatchController } from './modules/app/watch-controller.js'; // <--- IMPORTADO
 
 const App = {
     init: () => {
@@ -102,7 +103,7 @@ function initGlobalSocketListeners() {
 function routeDispatcher(section) {
     updateSidebarState(section);
     
-    // [IMPORTANTE] Rutas dinámicas de Studio
+    // Rutas dinámicas de Studio
     if (section.startsWith('channel/upload') || section.includes('channel/upload')) {
         UploadController.init();
         return;
@@ -114,9 +115,15 @@ function routeDispatcher(section) {
         return;
     }
 
+    // [NUEVO] Despacho para la ruta Watch
+    if (section === 'watch') {
+        WatchController.init();
+        return;
+    }
+
     switch (section) {
         case 'main':
-            HomeController.init(); // [NUEVO] Inicializar home
+            HomeController.init(); 
             break;
 
         case 'settings/your-profile': 

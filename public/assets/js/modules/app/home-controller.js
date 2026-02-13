@@ -1,5 +1,6 @@
 import { ApiService } from '../../core/services/api-service.js';
 import { ToastManager } from '../../core/components/toast-manager.js';
+import { navigateTo } from '../../core/utils/url-manager.js'; // <--- IMPORTANTE
 
 let _container = null;
 let _isLoading = false;
@@ -17,7 +18,6 @@ let _previewInterval = null;
 // =========================================================
 // 1. PALETA PROFESIONAL (5 Tonos por color)
 // =========================================================
-// Basado en escala 300-700 para cubrir iluminaciones variadas
 const EXTENDED_PALETTE = [
     // Slate (Neutros)
     { hex: '#cbd5e1' }, { hex: '#94a3b8' }, { hex: '#64748b' }, { hex: '#475569' }, { hex: '#334155' },
@@ -51,11 +51,9 @@ const EXTENDED_PALETTE = [
     { hex: '#fda4af' }, { hex: '#fb7185' }, { hex: '#f43f5e' }, { hex: '#e11d48' }, { hex: '#be123c' }
 ];
 
-// Algoritmo de distancia de color (Euclidiano RGB)
 function getNearestSafeColor(rawHex) {
-    if (!rawHex || rawHex === '#000000') return '#202020'; // Fallback
+    if (!rawHex || rawHex === '#000000') return '#202020'; 
 
-    // Convertir Hex a RGB
     let r = 0, g = 0, b = 0;
     if (rawHex.length === 4) {
         r = parseInt("0x" + rawHex[1] + rawHex[1]);
@@ -68,15 +66,13 @@ function getNearestSafeColor(rawHex) {
     }
 
     let minDistance = Infinity;
-    let closestHex = EXTENDED_PALETTE[2].hex; // Default (un tono medio)
+    let closestHex = EXTENDED_PALETTE[2].hex; 
 
-    // Buscar el color de la paleta con menor distancia matemática
     for (const color of EXTENDED_PALETTE) {
         const targetR = parseInt(color.hex.substring(1, 3), 16);
         const targetG = parseInt(color.hex.substring(3, 5), 16);
         const targetB = parseInt(color.hex.substring(5, 7), 16);
 
-        // Distancia euclidiana (sin raíz cuadrada para optimizar)
         const distance = Math.pow(targetR - r, 2) + 
                          Math.pow(targetG - g, 2) + 
                          Math.pow(targetB - b, 2);
@@ -94,7 +90,7 @@ export const HomeController = {
         _container = document.getElementById('home-feed-grid');
         if (!_container) return;
 
-        console.log("HomeController: Inicializado (Pro Color Mode & Vertical Support)");
+        console.log("HomeController: Inicializado");
         
         _currentPage = 1;
         _hasMore = true;
@@ -102,7 +98,6 @@ export const HomeController = {
         
         loadFeed();
         
-        // Infinite scroll simple
         const scrollContainer = document.querySelector('.general-content-scrolleable');
         if(scrollContainer) {
             scrollContainer.addEventListener('scroll', () => {
@@ -157,7 +152,6 @@ function startVideoPreview(card) {
     const topContainer = card.querySelector('.video-top');
     if (!topContainer) return;
 
-    // Detectar si es portrait para ajustar el estilo del video
     const isPortrait = card.dataset.orientation === 'portrait';
 
     const video = document.createElement('video');
@@ -167,7 +161,6 @@ function startVideoPreview(card) {
     video.playsInline = true;
     video.style.opacity = '0';
     
-    // [MODIFICADO] Aplicar contain si es vertical para ver barras negras
     if (isPortrait) {
         video.style.objectFit = 'contain';
     }
@@ -302,37 +295,27 @@ async function loadFeed(append = false) {
 
 function renderVideos(videos) {
     videos.forEach(v => {
-        // [MODIFICADO] Detectar si es vertical
         const isPortrait = v.orientation === 'portrait';
         
         const card = document.createElement('div');
-        // Agregar clase modificadora para CSS si fuera necesario, y data-attributes
         card.className = `video-card ${isPortrait ? 'video-card--portrait' : ''}`;
         card.dataset.uuid = v.uuid;
-        
-        // DATA ATTRIBUTES
         card.dataset.hls = v.hls_path || '';
         card.dataset.duration = v.duration || 0;
         card.dataset.durationFormatted = v.duration_formatted;
-        card.dataset.orientation = v.orientation || 'landscape'; // Guardamos la orientación
+        card.dataset.orientation = v.orientation || 'landscape';
         
-        // [NUEVO] LÓGICA DE COLOR SNAPPING
         const rawColor = v.dominant_color || '#202020';
         const unifiedColor = getNearestSafeColor(rawColor);
         card.style.setProperty('--dynamic-base', unifiedColor);
         
-        // [MODIFICADO] Lógica de Object Fit
-        // Si es vertical (portrait), usamos contain para que se vean las barras negras laterales.
-        // Si es horizontal (landscape), usamos cover.
         const imgObjectFit = isPortrait ? 'contain' : 'cover';
 
-        // Miniatura
         let thumbUrl = v.thumbnail_url ? window.BASE_PATH + v.thumbnail_url : '';
         let thumbHtml = thumbUrl 
             ? `<img src="${thumbUrl}" loading="lazy" alt="${v.title}" class="video-thumb-img" style="width: 100%; height: 100%; object-fit: ${imgObjectFit};">` 
             : `<div style="width:100%;height:100%;background:#111;display:flex;align-items:center;justify-content:center;"><span class="material-symbols-rounded" style="color:#333;font-size:32px;">movie</span></div>`;
 
-        // Avatar
         let avatarUrl = v.author_avatar_url;
         if (avatarUrl && !avatarUrl.startsWith('http')) {
             avatarUrl = window.BASE_PATH + avatarUrl;
@@ -360,9 +343,14 @@ function renderVideos(videos) {
         
         card.innerHTML = html;
         
-        card.addEventListener('click', () => {
-            // Navegación futura
-            // navigateTo('watch/' + v.uuid); 
+        // --- CLICK HANDLER PARA NAVEGACIÓN ---
+        card.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation(); // Evita conflictos con otros listeners globales
+            
+            // Navegar a la URL /watch?v=UUID
+            // UrlManager se encarga de convertir el objeto params a query string
+            navigateTo('watch', { v: v.uuid });
         });
 
         _container.appendChild(card);
