@@ -70,7 +70,7 @@ switch ($action) {
         Utils::jsonResponse($studioService->getUserContent($search, $status, $page, $limit));
         break;
         
-    // [NUEVO] Caso para obtener un video específico para editar
+    // Caso para obtener un video específico para editar
     case 'get_video_details':
         $uuid = $_POST['video_uuid'] ?? '';
         Utils::jsonResponse($studioService->getVideoDetails($uuid));
@@ -85,6 +85,14 @@ switch ($action) {
     case 'generate_thumbnails':
         $uuid = $_POST['video_uuid'] ?? '';
         Utils::jsonResponse($studioService->requestAutoThumbnails($uuid));
+        break;
+
+    // [NUEVO] Caso para seleccionar una miniatura generada
+    case 'select_generated_thumbnail':
+        $uuid = $_POST['video_uuid'] ?? '';
+        $path = $_POST['thumbnail_path'] ?? '';
+        $color = $_POST['dominant_color'] ?? '#000000';
+        Utils::jsonResponse($studioService->setGeneratedThumbnail($uuid, $path, $color));
         break;
 
     case 'cancel_batch':

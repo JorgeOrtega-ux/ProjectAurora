@@ -35,7 +35,7 @@ class StudioService {
         if (!is_dir($this->thumbnailDir)) mkdir($this->thumbnailDir, 0755, true);
     }
 
-    // [NUEVO] Método para obtener detalles de un video específico (Edición)
+    // Método para obtener detalles de un video específico (Edición)
     public function getVideoDetails($uuid) {
         if (!$this->isOwner($uuid)) {
             return ['success' => false, 'message' => 'Video no encontrado o acceso denegado.'];
@@ -43,7 +43,7 @@ class StudioService {
 
         try {
             $stmt = $this->pdo->prepare("
-                SELECT uuid, title, description, status, thumbnail_path, dominant_color 
+                SELECT uuid, title, description, status, thumbnail_path, dominant_color, generated_thumbnails 
                 FROM videos 
                 WHERE uuid = ?
             ");
@@ -58,11 +58,16 @@ class StudioService {
             $video['thumbnail_src'] = null;
             if (!empty($video['thumbnail_path'])) {
                 $path = __DIR__ . '/../../' . $video['thumbnail_path'];
-                // Si es pública, usar URL relativa; si es privada/subida, convertir a base64 o ruta pública
                 if (file_exists($path)) {
-                    // Opción: Devolver URL pública directa si está en public/storage
                     $video['thumbnail_src'] = 'public/storage/thumbnails/' . basename($video['thumbnail_path']);
                 }
+            }
+            
+            // Decodificar miniaturas generadas si existen
+            if (!empty($video['generated_thumbnails'])) {
+                $video['generated_thumbnails'] = json_decode($video['generated_thumbnails'], true);
+            } else {
+                $video['generated_thumbnails'] = [];
             }
 
             return ['success' => true, 'video' => $video];
@@ -136,55 +141,35 @@ class StudioService {
         }
     }
 
-public function initUpload($batchId, $fileName, $fileSize = 0) {
+    public function initUpload($batchId, $fileName, $fileSize = 0) {
         if (empty($batchId)) return ['success' => false, 'message' => 'Falta Batch ID'];
 
         try {
-            // -----------------------------------------------------------------------
-            // [NUEVO] 0. CAPA DE SEGURIDAD ANTI-EXHAUSTION (Resource Exhaustion Protection)
-            // -----------------------------------------------------------------------
-            
-            // Obtenemos el límite de intentos desde la configuración (Default: 10)
+            // CAPA DE SEGURIDAD
             $attemptsLimit = (int)Utils::getServerConfig($this->pdo, 'upload_daily_limit', '10');
 
-            // Verificamos si el usuario ha excedido los intentos en las últimas 24 horas (1440 min)
-            // Usamos el ID de usuario para el bloqueo
             if (Utils::checkSecurityLimit($this->pdo, 'video_upload_init', $attemptsLimit, 1440, $this->userId)) {
                 return [
                     'success' => false, 
                     'message' => $this->i18n->t('api.upload_security_limit_reached') ?? 'Límite de seguridad de subidas excedido.'
                 ];
             }
-
-            // Si pasa el chequeo, REGISTRAMOS este intento inmediatamente.
-            // Esto cuenta como "1 crédito gastado" independientemente de si el usuario completa la subida o la cancela.
             Utils::logSecurityAction($this->pdo, 'video_upload_init', 1440, $this->userId);
 
-            // -----------------------------------------------------------------------
-            // A partir de aquí sigue tu lógica de negocio normal (TIERED LIMITS)
-            // -----------------------------------------------------------------------
-
-            // [TIERED LIMITS] 1. Obtener Rol del Usuario
+            // TIERED LIMITS
             $stmtRole = $this->pdo->prepare("SELECT role FROM users WHERE id = ?");
             $stmtRole->execute([$this->userId]);
             $role = $stmtRole->fetchColumn();
 
             $isFounder = ($role === 'founder');
-
-            // [TIERED LIMITS] 2. Definir Límites (Hardcoded o desde config)
-            // Estándar: 3 videos/día, 25GB
-            // Founder: Ilimitado cantidad, 100GB
             $dailyLimit = $isFounder ? 999999 : 3; 
             $maxSizeBytes = $isFounder ? (100 * 1024 * 1024 * 1024) : (25 * 1024 * 1024 * 1024);
 
-            // [TIERED LIMITS] 3. Validar Tamaño del Archivo
             if ($fileSize > $maxSizeBytes) {
-                // Si el tamaño reportado por el cliente excede el límite
                 $readableMax = Utils::formatSize($maxSizeBytes);
                 return ['success' => false, 'message' => "El archivo excede el límite de tamaño permitido ($readableMax)."];
             }
 
-            // [TIERED LIMITS] 4. Validar Cantidad Diaria (Solo si no es founder para optimizar)
             if (!$isFounder) {
                 $stmtCount = $this->pdo->prepare("SELECT COUNT(*) FROM videos WHERE user_id = ? AND DATE(created_at) = CURDATE()");
                 $stmtCount->execute([$this->userId]);
@@ -195,20 +180,12 @@ public function initUpload($batchId, $fileName, $fileSize = 0) {
                 }
             }
 
-            // Si pasa validaciones, proceder con la creación
             $uuid = Utils::generateUUID();
             $title = pathinfo($fileName, PATHINFO_FILENAME);
-
-            // [SEGURIDAD] Generación de Token
             $uploadToken = bin2hex(random_bytes(32));
 
             if ($this->redis) {
-                // Guardamos el token y el user_id para validar después
-                $tokenData = json_encode([
-                    'user_id' => $this->userId,
-                    'token' => $uploadToken
-                ]);
-                // Expiración: 2 Horas (7200s)
+                $tokenData = json_encode(['user_id' => $this->userId, 'token' => $uploadToken]);
                 $this->redis->setex("upload_token:$uuid", 7200, $tokenData);
             }
 
@@ -221,7 +198,7 @@ public function initUpload($batchId, $fileName, $fileSize = 0) {
             return [
                 'success' => true, 
                 'video_uuid' => $uuid,
-                'upload_token' => $uploadToken // Devolver token al frontend
+                'upload_token' => $uploadToken
             ];
         } catch (Exception $e) {
             return ['success' => false, 'message' => $this->i18n->t('api.db_error')];
@@ -229,7 +206,6 @@ public function initUpload($batchId, $fileName, $fileSize = 0) {
     }
 
     public function uploadChunk($uuid, $file, $index, $isLast, $token) {
-        // [SEGURIDAD] Validación de Token en Redis
         if ($this->redis) {
             $redisKey = "upload_token:$uuid";
             $storedDataJson = $this->redis->get($redisKey);
@@ -239,13 +215,10 @@ public function initUpload($batchId, $fileName, $fileSize = 0) {
             }
 
             $storedData = json_decode($storedDataJson, true);
-            
-            // Validar que el token coincida y que el usuario sea el correcto
             if ($storedData['token'] !== $token || $storedData['user_id'] != $this->userId) {
                 return ['success' => false, 'message' => 'Token de seguridad inválido. Acceso denegado.'];
             }
         } else {
-            // Fallback a DB si Redis no está (menos seguro para race conditions)
             if (!$this->isOwner($uuid)) return ['success' => false, 'message' => 'Acceso denegado'];
         }
 
@@ -256,20 +229,17 @@ public function initUpload($batchId, $fileName, $fileSize = 0) {
         $tempFilePath = $this->tempDir . '/' . $uuid . '.part';
         $chunkData = file_get_contents($file['tmp_name']);
 
-        // [SEGURIDAD] Redis Lock para evitar condiciones de carrera en escritura
         $lockKey = "lock:upload:$uuid";
         $lockAcquired = false;
 
         if ($this->redis) {
-            // Intentar adquirir lock por hasta 5 segundos (50 intentos de 100ms)
             for ($i = 0; $i < 50; $i++) {
-                // SETNX devuelve true si estableció la clave (lock libre)
                 $lockAcquired = $this->redis->setnx($lockKey, time());
                 if ($lockAcquired) {
-                    $this->redis->expire($lockKey, 10); // TTL de seguridad al lock (10s)
+                    $this->redis->expire($lockKey, 10);
                     break;
                 }
-                usleep(100000); // Esperar 100ms
+                usleep(100000);
             }
 
             if (!$lockAcquired) {
@@ -278,13 +248,10 @@ public function initUpload($batchId, $fileName, $fileSize = 0) {
         }
 
         try {
-            // Sección Crítica: Escritura de archivo
             file_put_contents($tempFilePath, $chunkData, FILE_APPEND);
         } finally {
-            // Liberar el lock
             if ($this->redis && $lockAcquired) {
                 $this->redis->del($lockKey);
-                // Heartbeat: Renovar el TTL del token de subida
                 $this->redis->expire("upload_token:$uuid", 7200);
             }
         }
@@ -300,7 +267,6 @@ public function initUpload($batchId, $fileName, $fileSize = 0) {
         $finalPath = $this->rawDir . '/' . $uuid . '.mp4';
         
         if (rename($tempPath, $finalPath)) {
-            // [SEGURIDAD] Limpieza de Redis tras éxito
             if ($this->redis) {
                 $this->redis->del("upload_token:$uuid");
                 $this->redis->del("lock:upload:$uuid");
@@ -313,12 +279,9 @@ public function initUpload($batchId, $fileName, $fileSize = 0) {
             $stmtTitle->execute([$uuid]);
             $title = $stmtTitle->fetchColumn();
 
-            // [TIERED LIMITS] Determinar límite de duración para el worker
             $stmtRole = $this->pdo->prepare("SELECT role FROM users WHERE id = ?");
             $stmtRole->execute([$this->userId]);
             $role = $stmtRole->fetchColumn();
-            
-            // Estándar: 2h (7200s), Founder: 12h (43200s)
             $maxDuration = ($role === 'founder') ? 43200 : 7200;
 
             if ($this->redis) {
@@ -327,7 +290,7 @@ public function initUpload($batchId, $fileName, $fileSize = 0) {
                     'payload' => [
                         'video_uuid' => $uuid,
                         'raw_path' => $finalPath,
-                        'max_duration' => $maxDuration // Límite para que el worker valide
+                        'max_duration' => $maxDuration
                     ]
                 ];
                 $this->redis->rpush('aurora_task_queue', json_encode($task));
@@ -373,35 +336,116 @@ public function initUpload($batchId, $fileName, $fileSize = 0) {
         return ['success' => false, 'message' => 'Error moviendo miniatura'];
     }
 
+    // [MODIFICADO] Generación Síncrona en PHP (FFmpeg + GD)
     public function requestAutoThumbnails($uuid) {
         if (!$this->isOwner($uuid)) return ['success' => false, 'message' => 'Acceso denegado'];
 
+        // 1. Obtener datos del video
         $stmt = $this->pdo->prepare("SELECT raw_file_path, duration FROM videos WHERE uuid = ?");
         $stmt->execute([$uuid]);
         $video = $stmt->fetch();
 
         if (!$video || empty($video['raw_file_path'])) {
-            return ['success' => false, 'message' => 'El video aún no está procesado o no existe el archivo fuente.'];
+            return ['success' => false, 'message' => 'El video aún no está procesado.'];
         }
 
-        if (!$this->redis) {
-            return ['success' => false, 'message' => 'Redis no disponible para procesar tarea.'];
+        $rawPath = __DIR__ . '/../../' . $video['raw_file_path']; 
+        if (!file_exists($rawPath)) {
+            return ['success' => false, 'message' => 'Archivo de video no encontrado en el servidor.'];
         }
 
-        $task = [
-            'task' => 'generate_thumbnails',
-            'payload' => [
-                'video_uuid' => $uuid,
-                'raw_path' => __DIR__ . '/../../' . $video['raw_file_path'],
-                'duration' => $video['duration']
-            ]
-        ];
-        
+        // 2. Configurar directorios
+        $thumbsDirRel = "public/storage/thumbnails/generated/$uuid";
+        $thumbsDirAbs = __DIR__ . "/../../$thumbsDirRel";
+
+        if (!is_dir($thumbsDirAbs)) {
+            if (!mkdir($thumbsDirAbs, 0755, true)) {
+                return ['success' => false, 'message' => 'No se pudo crear el directorio de miniaturas.'];
+            }
+        }
+
+        // Evitar Timeouts de PHP si el video es largo
+        set_time_limit(120); 
+
+        // 3. Lógica de intervalos
+        $duration = (float)$video['duration'];
+        $numThumbs = 1;
+        if ($duration > 60) $numThumbs = (int)($duration / 60); // 1 por min
+        if ($numThumbs > 12) $numThumbs = 12; // Máximo 12
+        if ($numThumbs < 3) $numThumbs = 3;   // Mínimo 3
+
+        $interval = $duration / ($numThumbs + 1);
+        $generatedFiles = [];
+
+        // 4. Generación y Procesamiento
+        for ($i = 1; $i <= $numThumbs; $i++) {
+            $timestamp = $i * $interval;
+            $fileName = "thumb_{$i}.jpg";
+            $outputAbs = "$thumbsDirAbs/$fileName";
+            $outputRel = "$thumbsDirRel/$fileName";
+
+            // Comando FFmpeg (Calidad media-alta, escala inteligente)
+            $cmd = "ffmpeg -y -ss $timestamp -i " . escapeshellarg($rawPath) . " -vframes 1 -q:v 2 -vf \"scale='min(1920,iw)':-1\" " . escapeshellarg($outputAbs) . " 2>&1";
+            
+            exec($cmd, $output, $returnVar);
+
+            if ($returnVar === 0 && file_exists($outputAbs)) {
+                // Cálculo de Color Dominante (Igual que en uploadThumbnail)
+                $color = '#000000';
+                try {
+                    $im = @imagecreatefromjpeg($outputAbs);
+                    if ($im) {
+                        $color = Utils::getDominantColor($im);
+                        imagedestroy($im);
+                    }
+                } catch (Exception $e) {
+                    // Fallback silencioso
+                }
+
+                $generatedFiles[] = [
+                    'path' => $outputRel,
+                    'color' => $color
+                ];
+            }
+        }
+
+        // 5. Guardar en Base de Datos (JSON Array de objetos)
+        if (!empty($generatedFiles)) {
+            $json = json_encode($generatedFiles);
+            $upd = $this->pdo->prepare("UPDATE videos SET generated_thumbnails = ? WHERE uuid = ?");
+            $upd->execute([$json, $uuid]);
+
+            return [
+                'success' => true, 
+                'message' => 'Miniaturas generadas correctamente.',
+                'thumbnails' => $generatedFiles 
+            ];
+        }
+
+        return ['success' => false, 'message' => 'No se pudieron generar miniaturas (Fallo FFmpeg).'];
+    }
+
+    // [NUEVO] Método para aplicar una miniatura generada
+    public function setGeneratedThumbnail($uuid, $path, $color) {
+        if (!$this->isOwner($uuid)) return ['success' => false, 'message' => 'Acceso denegado'];
+
+        // Validación de seguridad de ruta (Path Traversal Protection)
+        // La ruta debe contener "public/storage/thumbnails/generated/{uuid}/"
+        $expectedPath = "public/storage/thumbnails/generated/$uuid/";
+        if (strpos($path, $expectedPath) === false) {
+             return ['success' => false, 'message' => 'Ruta de miniatura inválida o no pertenece a este video.'];
+        }
+
+        if (!preg_match('/^#[a-f0-9]{6}$/i', $color)) {
+            $color = '#000000'; // Fallback por si el color viene mal
+        }
+
         try {
-            $this->redis->rpush('aurora_task_queue', json_encode($task));
-            return ['success' => true, 'message' => 'Generación de miniaturas iniciada...'];
+            $stmt = $this->pdo->prepare("UPDATE videos SET thumbnail_path = ?, dominant_color = ? WHERE uuid = ?");
+            $stmt->execute([$path, $color, $uuid]);
+            return ['success' => true, 'message' => 'Miniatura actualizada.'];
         } catch (Exception $e) {
-            return ['success' => false, 'message' => 'Error de conexión con cola de tareas.'];
+            return ['success' => false, 'message' => 'Error al actualizar miniatura en BD.'];
         }
     }
 
@@ -424,7 +468,6 @@ public function initUpload($batchId, $fileName, $fileSize = 0) {
                 $video = $check->fetch();
 
                 if ($video['status'] !== 'waiting_for_metadata') {
-                    // Permitir también 'ready' o 'processed' si los usas
                     return [
                         'success' => false, 
                         'message' => 'El video aún se está procesando o no está listo.'
@@ -548,7 +591,6 @@ public function initUpload($batchId, $fileName, $fileSize = 0) {
             $tempPart = $this->tempDir . '/' . $v['uuid'] . '.part';
             $rawFile = __DIR__ . '/../../' . ($v['raw_file_path'] ?? '');
             
-            // Limpieza también de Redis
             if ($this->redis) {
                 $this->redis->del("upload_token:{$v['uuid']}");
                 $this->redis->del("lock:upload:{$v['uuid']}");
@@ -595,7 +637,6 @@ public function initUpload($batchId, $fileName, $fileSize = 0) {
             $this->deleteDirectory($generatedThumbsDir);
         }
 
-        // Limpieza de Redis por si acaso quedó algo
         if ($this->redis) {
             $this->redis->del("upload_token:$uuid");
             $this->redis->del("lock:upload:$uuid");
