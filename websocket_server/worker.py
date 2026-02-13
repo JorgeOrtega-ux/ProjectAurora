@@ -332,7 +332,7 @@ def task_create_zip(payload):
         notify_frontend('notification', {'type': 'error', 'text': 'Error al generar el archivo comprimido.'})
 
 def task_process_video(payload):
-    logging.info("🎬 [Thread] Iniciando procesamiento de video (HLS)...")
+    logging.info("🎬 [Thread] Iniciando procesamiento de video Multi-Bitrate (HLS)...")
     
     video_uuid = payload.get('video_uuid')
     raw_path = payload.get('raw_path')
@@ -350,49 +350,90 @@ def task_process_video(payload):
     os.makedirs(output_dir, exist_ok=True)
 
     try:
-        # 1. Obtener Duración y Dimensiones [MODIFICADO]
+        # 1. Obtener Metadatos Originales
         meta = get_video_metadata(raw_path)
         duration = meta.get('duration', 0)
         width = meta.get('width', 0)
         height = meta.get('height', 0)
         
-        # [NUEVO] Determinar Orientación
+        # Determinar orientación para metadatos
         orientation = 'portrait' if height > width else 'landscape'
-        logging.info(f"Video {video_uuid}: Detección de formato -> {width}x{height} ({orientation})")
         
         # [TIERED LIMITS] Validación de duración máxima
-        max_duration = payload.get('max_duration', 0) # 0 = ilimitado (o default)
+        max_duration = payload.get('max_duration', 0) 
         
         if max_duration > 0 and duration > max_duration:
             error_msg = f"Límite de duración excedido ({int(duration)}s > {max_duration}s)"
             logging.warning(f"⚠️ Video {video_uuid} rechazado: {error_msg}")
-            
-            # Borrar archivo crudo para liberar espacio
-            if os.path.exists(raw_path):
-                os.remove(raw_path)
-            
-            # Actualizar estado y notificar
+            if os.path.exists(raw_path): os.remove(raw_path)
             update_video_status(video_uuid, 'error', error_msg)
             notify_frontend('notification', {'type': 'error', 'text': 'Error: El video excede la duración permitida.'})
             return
 
-        # 2. Transcodificar a HLS con Subprocess.Popen para leer progreso
-        hls_path = os.path.join(output_dir, 'index.m3u8')
+        # --- DEFINICIÓN DE ESCALERA DE CALIDADES (LADDER) ---
+        # Definimos las calidades estándar con sus bitrates aproximados
+        available_qualities = [
+            {'name': '1080p', 'w': 1920, 'h': 1080, 'bv': '4500k', 'ba': '192k'},
+            {'name': '720p',  'w': 1280, 'h': 720,  'bv': '2500k', 'ba': '128k'},
+            {'name': '480p',  'w': 854,  'h': 480,  'bv': '1000k', 'ba': '128k'},
+            {'name': '360p',  'w': 640,  'h': 360,  'bv': '600k',  'ba': '96k'},
+            {'name': '240p',  'w': 426,  'h': 240,  'bv': '350k',  'ba': '64k'},
+            {'name': '144p',  'w': 256,  'h': 144,  'bv': '100k',  'ba': '48k'}  # <--- AGREGA ESTO
+        ]
+
+        # Filtramos: Solo generamos calidades IGUALES o MENORES al original
+        # Si el video es 1280x720, generará 720p, 480p, 360p, etc. NO 1080p.
+        target_qualities = [q for q in available_qualities if q['h'] <= height]
+
+        # Fallback: Si el video es muy pequeño o extraño y no entra en ninguna categoría,
+        # generamos al menos una variante con la resolución original.
+        if not target_qualities:
+             target_qualities = [{'name': 'original', 'w': width, 'h': height, 'bv': '1000k', 'ba': '128k'}]
+
+        logging.info(f"Video {video_uuid}: Generando calidades -> {[q['name'] for q in target_qualities]}")
+
+        # --- CONSTRUCCIÓN DEL COMANDO FFMPEG ---
+        cmd = ['ffmpeg', '-y', '-i', raw_path]
         
-        cmd = [
-            'ffmpeg', '-y', '-i', raw_path,
-            '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
-            '-c:a', 'aac', '-b:a', '128k',
+        # Listas para construir los argumentos dinámicos
+        var_stream_map = []
+        
+        # Iteramos sobre las calidades objetivo para crear los mapas
+        for i, q in enumerate(target_qualities):
+            # Mapear video y audio del input 0
+            # Escalar video usando 'scale'
+            # force_original_aspect_ratio=decrease evita distorsión si el ratio no es exacto
+            cmd += [
+                f'-map', '0:v:0',
+                f'-map', '0:a:0',
+                f'-c:v:{i}', 'libx264', 
+                f'-b:v:{i}', q['bv'], 
+                f'-s:v:{i}', f"{q['w']}x{q['h']}",
+                f'-c:a:{i}', 'aac', 
+                f'-b:a:{i}', q['ba']
+            ]
+            
+            # Agrupar video+audio en el mapa de streams para HLS
+            # Formato: "v:0,a:0 v:1,a:1 ..."
+            var_stream_map.append(f"v:{i},a:{i}")
+
+        # Nombre del archivo maestro
+        master_pl_name = 'index.m3u8' 
+        
+        cmd += [
             '-f', 'hls',
+            '-var_stream_map', " ".join(var_stream_map),
+            '-master_pl_name', master_pl_name,
             '-hls_time', '6',
             '-hls_playlist_type', 'vod',
-            '-hls_segment_filename', os.path.join(output_dir, 'segment_%03d.ts'),
-            hls_path
+            '-hls_segment_filename', os.path.join(output_dir, 'v%v_segment_%03d.ts'), # %v = ID variante
+            # Cada variante tendrá su propio playlist (v0.m3u8, v1.m3u8...)
+            os.path.join(output_dir, 'v%v.m3u8')
         ]
         
-        logging.info(f"⏳ Ejecutando FFmpeg para {video_uuid}...")
+        logging.info(f"⏳ Ejecutando Transcodificación Multi-Bitrate...")
         
-        # [MODIFICACIÓN] Popen en lugar de run para leer stderr línea por línea
+        # Ejecutar con Popen para leer progreso en tiempo real
         process = subprocess.Popen(
             cmd, 
             stdout=subprocess.PIPE, 
@@ -403,15 +444,13 @@ def task_process_video(payload):
         )
 
         last_percent = -1
-        # Regex para capturar 'time=HH:MM:SS.mm'
+        # Regex para capturar 'time=HH:MM:SS.mm' del log de FFmpeg
         time_regex = re.compile(r"time=(\d{2}:\d{2}:\d{2}\.\d{2})")
 
-        # Leer stderr línea por línea
+        # Loop de lectura de progreso
         while True:
-            # Leemos una línea del stderr (donde ffmpeg escribe el progreso)
             line = process.stderr.readline()
             
-            # Si la línea está vacía y el proceso terminó, salimos del bucle
             if not line and process.poll() is not None:
                 break
             
@@ -426,38 +465,32 @@ def task_process_video(payload):
                     percent = int((current_seconds / duration) * 100)
                     if percent > 100: percent = 100
                     
-                    # [THROTTLING] Actualizar solo si avanzó un 2% para no saturar DB/WS
+                    # Actualizar cada 2%
                     if percent >= last_percent + 2:
                         last_percent = percent
                         
-                        # A. Actualizar DB
                         update_video_progress_db(video_uuid, percent)
                         
-                        # B. Notificar WebSocket
                         notify_frontend('processing_progress', {
                             'uuid': video_uuid,
                             'percent': percent,
                             'status': 'processing'
                         })
-                        
-                        # logging.info(f"Video {video_uuid}: {percent}% procesado")
 
-        # Esperar a que el proceso termine completamente y obtener código de retorno
+        # Verificar resultado final
         return_code = process.wait()
         
         if return_code != 0:
-            # Leer el resto del error si falló
             remaining_err = process.stderr.read()
             raise Exception(f"FFmpeg Error (Code {return_code}): {remaining_err}")
 
         # 3. Actualizar BD con rutas y estado final
-        # Ruta relativa web para el HLS
-        relative_hls = f"public/storage/videos/{video_uuid}/index.m3u8"
+        # [IMPORTANTE] hls_path ahora apunta al MASTER playlist (index.m3u8)
+        relative_hls = f"public/storage/videos/{video_uuid}/{master_pl_name}"
         
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # [MODIFICADO] Guardar también la orientación
         sql = """
             UPDATE videos SET 
                 status = 'waiting_for_metadata', 
@@ -479,9 +512,9 @@ def task_process_video(payload):
             'percent': 100
         })
         
-        logging.info(f"✅ Video procesado exitosamente: {video_uuid}")
+        logging.info(f"✅ Video procesado exitosamente (Multi-Bitrate): {video_uuid}")
 
-        # 5. [NUEVO] Encadenar generación de Sprites
+        # 5. Encadenar tarea: Generación de Sprites
         logging.info("➡️ Encadenando tarea: Generación de Sprites (Scrubbing)...")
         task_generate_sprites({
             'video_uuid': video_uuid,
@@ -511,23 +544,18 @@ def task_generate_thumbnails(payload):
     thumbs_dir = os.path.join(BASE_DIR, 'public', 'storage', 'thumbnails', 'generated', video_uuid)
     os.makedirs(thumbs_dir, exist_ok=True)
 
-    # Lógica de intervalos:
-    # Duración < 1 min: 1 miniatura
-    # Duración < 10 min: 1 por minuto (aprox)
-    # Duración > 1 hora: Máximo 12 miniaturas distribuidas equitativamente
-    
+    # Lógica de intervalos
     num_thumbs = 1
     if duration > 60:
         minutes = duration / 60
-        num_thumbs = int(minutes) # 1 por minuto
+        num_thumbs = int(minutes) 
         
-    # Cap (Límite máximo) para videos de horas, para no llenar el disco
     if num_thumbs > 12: 
         num_thumbs = 12
     if num_thumbs < 3:
-        num_thumbs = 3 # Mínimo 3 opciones
+        num_thumbs = 3 
 
-    interval = duration / (num_thumbs + 1) # +1 para evitar el primer y último segundo exacto (créditos/negro)
+    interval = duration / (num_thumbs + 1) 
 
     generated_files = []
 
@@ -538,30 +566,23 @@ def task_generate_thumbnails(payload):
             output_path = os.path.join(thumbs_dir, filename)
             rel_path = f"public/storage/thumbnails/generated/{video_uuid}/{filename}"
 
-            # --- CAMBIO PARA MÁXIMA CALIDAD ---
-            # Se aplica filtro de escalado 16:9 con relleno negro (Pillarbox)
+            # Filtro 16:9 con relleno negro (Pillarbox)
             cmd = [
                 'ffmpeg', '-y', 
-                '-ss', str(timestamp),      # Ir al segundo específico
-                '-i', raw_path,             # Archivo de entrada
-                '-vframes', '1',            # Solo 1 frame
-                '-q:v', '2',                # Calidad JPG Máxima (rango 2-31, 2 es mejor)
-                
-                # ESCALA CON PAD (BARRAS NEGRAS):
-                # force_original_aspect_ratio=decrease: Reduce el video para caber en 1920x1080.
-                # pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black: Rellena con negro para llegar a 1920x1080 centrado.
+                '-ss', str(timestamp),      
+                '-i', raw_path,             
+                '-vframes', '1',            
+                '-q:v', '2',                
                 '-vf', "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black", 
-                
                 output_path
             ]
             
-            # Ejecutar FFmpeg
             subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
             if os.path.exists(output_path):
                 generated_files.append(rel_path)
 
-        # Guardar en DB si se generaron archivos
+        # Guardar en DB 
         if generated_files:
             conn = get_db_connection()
             cursor = conn.cursor()
@@ -572,7 +593,6 @@ def task_generate_thumbnails(payload):
 
             logging.info(f"✅ Se generaron {len(generated_files)} miniaturas HD para {video_uuid}")
             
-            # Notificar al frontend con las nuevas rutas
             notify_frontend('thumbnails_generated', {
                 'uuid': video_uuid,
                 'thumbnails': generated_files
@@ -607,20 +627,14 @@ def task_generate_sprites(payload):
     vtt_path_rel = f"public/storage/videos/{video_uuid}/{vtt_filename}"
 
     # CONFIGURACIÓN DE LA CUADRÍCULA
-    # Usaremos 5x5 = 25 imágenes totales como solicitaste.
-    # NOTA: Para videos largos, 25 imágenes puede ser poco fluido.
     ROWS = 5
     COLS = 5
     TOTAL_IMAGES = ROWS * COLS
     
-    # Calcular intervalo de captura (cada cuántos segundos tomamos una foto)
-    # Ejemplo: Video 100s / 25 imgs = 1 foto cada 4 segundos.
     interval = duration / TOTAL_IMAGES
     if interval <= 0: interval = 1
 
     # Definir dimensiones de celda según orientación
-    # Landscape: Ancho 160px, Alto proporcional
-    # Portrait: Alto 160px, Ancho proporcional
     if orientation == 'portrait':
         scale_filter = "scale=-1:160"
         cell_height = 160
@@ -634,10 +648,6 @@ def task_generate_sprites(payload):
 
     try:
         # COMANDO FFMPEG
-        # fps=1/interval: Captura 1 frame cada X segundos
-        # scale: Redimensiona la celda
-        # tile: Crea el mosaico 5x5
-        
         vf_string = f"fps=1/{interval},{scale_filter},tile={COLS}x{ROWS}"
         
         cmd = [
@@ -663,7 +673,6 @@ def task_generate_sprites(payload):
             real_cell_height = sheet_height / ROWS
 
             # GENERAR ARCHIVO VTT
-            # Formato WebVTT para sprites
             with open(vtt_path_abs, 'w') as vtt:
                 vtt.write("WEBVTT\n\n")
                 
@@ -680,8 +689,6 @@ def task_generate_sprites(payload):
                         return f"{h:02}:{m:02}:{s:06.3f}"
 
                     # Calcular coordenadas XY
-                    # x = (i % COLS) * w
-                    # y = (i // COLS) * h
                     col_idx = i % COLS
                     row_idx = i // COLS
                     x = int(col_idx * real_cell_width)
@@ -714,7 +721,7 @@ TASKS = {
     'create_zip': task_create_zip,
     'process_video': task_process_video,
     'generate_thumbnails': task_generate_thumbnails,
-    'generate_sprites': task_generate_sprites # Registrada nueva tarea
+    'generate_sprites': task_generate_sprites 
 }
 
 def run_job(raw_data):

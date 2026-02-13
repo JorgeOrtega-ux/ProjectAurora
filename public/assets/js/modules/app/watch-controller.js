@@ -1,8 +1,7 @@
 /**
  * public/assets/js/modules/app/watch-controller.js
- * Controlador de reproducción de video HLS con UI personalizada estilo YouTube.
- * Incluye lógica de Scrubbing (Previsualización con Sprites).
- * [FIX] Delegación de eventos para menú de configuración.
+ * Controlador de reproducción de video HLS con UI personalizada.
+ * Soporta: Master Playlist (Multivariant), Scrubbing (Sprites) y Selección de Calidad.
  */
 
 import { ToastManager } from '../../core/components/toast-manager.js';
@@ -23,7 +22,7 @@ export const WatchController = {
         const container = document.querySelector('[data-section="watch"]');
         if (!container) return;
 
-        console.log("WatchController: Inicializado (Custom UI + Settings + Scrubbing)");
+        console.log("WatchController: Inicializado (Multi-Bitrate + Scrubbing)");
 
         _video = document.getElementById('main-player');
         const hlsSourceInput = document.getElementById('watch-hls-source');
@@ -66,7 +65,7 @@ function loadPlayer(video, source) {
         }
 
         _hls = new Hls({
-            capLevelToPlayerSize: true,
+            capLevelToPlayerSize: true, // Optimización automática
             autoStartLoad: true
         });
 
@@ -74,11 +73,13 @@ function loadPlayer(video, source) {
         _hls.attachMedia(video);
 
         _hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-            console.log("HLS Manifest loaded.", data.levels);
+            console.log(`HLS Manifest cargado. ${data.levels.length} niveles encontrados.`);
             _levels = data.levels;
+            
+            // Renderizar opciones de calidad (Ahora con etiquetas HD/4K)
             renderQualityOptions(_levels);
             
-            video.play().catch(e => console.log("Autoplay bloqueado:", e));
+            video.play().catch(e => console.log("Autoplay bloqueado por navegador:", e));
             updatePlayPauseIcon(false);
         });
 
@@ -86,19 +87,29 @@ function loadPlayer(video, source) {
             if (data.fatal) {
                 switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
-                        console.error("HLS Network Error, recovering...");
+                        console.warn("HLS Network Error, intentando recuperar...");
                         _hls.startLoad();
                         break;
                     case Hls.ErrorTypes.MEDIA_ERROR:
-                        console.error("HLS Media Error, recovering...");
+                        console.warn("HLS Media Error, intentando recuperar...");
                         _hls.recoverMediaError();
                         break;
                     default:
+                        console.error("HLS Error Fatal:", data);
                         _hls.destroy();
                         ToastManager.show('Error crítico de reproducción.', 'error');
                         break;
                 }
             }
+        });
+
+        // Opcional: Actualizar etiqueta "Auto" cuando HLS cambia dinámicamente de nivel
+        _hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
+             const level = _levels[data.level];
+             if (level && _hls.autoLevelEnabled) {
+                 // Podríamos actualizar la UI para decir "Auto (720p)"
+                 // console.log(`Auto-cambio a: ${level.height}p`);
+             }
         });
 
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -107,7 +118,7 @@ function loadPlayer(video, source) {
         video.addEventListener('loadedmetadata', () => {
             video.play();
             updatePlayPauseIcon(false);
-            document.getElementById('quality-status-text').innerText = 'Auto';
+            document.getElementById('quality-status-text').innerText = 'Auto (Nativo)';
         });
     } else {
         ToastManager.show('Tu navegador no soporta reproducción HLS.', 'error');
@@ -118,8 +129,6 @@ function loadPlayer(video, source) {
  * Lógica de Scrubbing (Previsualización)
  */
 async function initScrubbing() {
-    console.log("Iniciando Scrubbing...");
-    
     // 1. Precargar Imagen del Sprite
     _spriteImage = new Image();
     _spriteImage.src = _spriteUrl;
@@ -132,13 +141,10 @@ async function initScrubbing() {
         _vttData = parseVTT(text);
         console.log(`Scrubbing listo: ${_vttData.length} frames indexados.`);
     } catch (e) {
-        console.error("Fallo al inicializar scrubbing:", e);
+        console.warn("Fallo al inicializar scrubbing (posiblemente aún procesando):", e);
     }
 }
 
-/**
- * Parsea el contenido de un archivo WebVTT de sprites
- */
 function parseVTT(vttText) {
     const lines = vttText.split('\n');
     const data = [];
@@ -155,7 +161,6 @@ function parseVTT(vttText) {
         if (!line) continue;
         if (line.startsWith('WEBVTT')) continue;
 
-        // Buscar Tiempos
         const timeMatch = timeRegex.exec(line);
         if (timeMatch) {
             currentStart = parseTime(timeMatch[1]);
@@ -163,7 +168,6 @@ function parseVTT(vttText) {
             continue;
         }
 
-        // Buscar Coordenadas
         if (currentStart !== null) {
             const coordsMatch = coordsRegex.exec(line);
             if (coordsMatch) {
@@ -182,7 +186,6 @@ function parseVTT(vttText) {
     return data;
 }
 
-// Convierte HH:MM:SS.ms a segundos
 function parseTime(timeStr) {
     const parts = timeStr.split(':');
     const h = parseInt(parts[0]);
@@ -225,7 +228,7 @@ function initCustomControls(video) {
 
     playPauseBtn.addEventListener('click', togglePlay);
     video.addEventListener('click', (e) => {
-        if (e.target.closest('.settings-popover')) return; // IMPORTANTE: No pausar si click es en settings
+        if (e.target.closest('.settings-popover')) return; 
         togglePlay();
     });
 
@@ -246,7 +249,6 @@ function initCustomControls(video) {
         }
     });
 
-    // Input (Arrastrar la bola)
     seekBar.addEventListener('input', () => {
         video.currentTime = seekBar.value;
         updateSeekBarBackground(seekBar);
@@ -255,46 +257,34 @@ function initCustomControls(video) {
 
     // --- LOGICA DE SCRUBBING (Mouse Move) ---
     if (progressContainer && tooltip && _vttData) {
-        
         progressContainer.addEventListener('mousemove', (e) => {
             if (!_vttData.length) return;
 
-            // Calcular posición relativa dentro de la barra
             const rect = progressContainer.getBoundingClientRect();
             const offsetX = e.clientX - rect.left;
             let percent = offsetX / rect.width;
             
-            // Limites 0-1
             if (percent < 0) percent = 0;
             if (percent > 1) percent = 1;
 
-            // Calcular tiempo objetivo
             const hoverTime = percent * video.duration;
 
-            // Actualizar Texto Tiempo (en la píldora)
             if (tooltipTime) {
                 tooltipTime.innerText = formatTime(hoverTime);
             }
 
-            // Buscar Frame en VTT
             const frame = _vttData.find(f => hoverTime >= f.start && hoverTime < f.end);
             
             if (frame && tooltipImg) {
-                // Mostrar Tooltip
                 tooltip.style.display = 'flex';
                 
-                // Mover Tooltip (centrado en el mouse, con límites)
                 let leftPos = offsetX; 
                 if(leftPos < 80) leftPos = 80; 
                 if(leftPos > rect.width - 80) leftPos = rect.width - 80;
 
                 tooltip.style.left = `${leftPos}px`;
-
-                // Renderizar Imagen (Sprite)
                 tooltipImg.style.backgroundImage = `url('${_spriteUrl}')`;
                 tooltipImg.style.backgroundPosition = `-${frame.x}px -${frame.y}px`;
-                
-                // Aplicar dimensiones exactas del recorte
                 tooltipImg.style.width = `${frame.w}px`;
                 tooltipImg.style.height = `${frame.h}px`;
             }
@@ -352,7 +342,6 @@ function initCustomControls(video) {
         }
     });
 
-    // [FIX] Iniciamos la navegación de settings con delegación
     initSettingsNavigationDelegated();
 
     // 6. Ocultar controles automáticamente
@@ -395,16 +384,11 @@ function resetSettingsMenu() {
     document.getElementById('settings-main').classList.add('active');
 }
 
-/**
- * [FIX] Delegación de Eventos para el Menú
- * Detecta clics en cualquier parte del popover y actúa según el elemento clickeado.
- */
 function initSettingsNavigationDelegated() {
     const popover = document.getElementById('settings-popover');
     if(!popover) return;
 
     popover.addEventListener('click', (e) => {
-        // 1. Click en Item de Menú (para ir a submenú)
         const item = e.target.closest('.settings-item');
         if (item) {
             const targetId = item.getAttribute('data-target');
@@ -416,7 +400,6 @@ function initSettingsNavigationDelegated() {
             return;
         }
 
-        // 2. Click en Header (botón "Atrás")
         const header = e.target.closest('.settings-header');
         if (header) {
             const backTarget = header.getAttribute('data-back'); 
@@ -425,7 +408,6 @@ function initSettingsNavigationDelegated() {
             return;
         }
 
-        // 3. Click en Opción de Iluminación
         const lightingOpt = e.target.closest('#settings-lighting .settings-option');
         if (lightingOpt) {
             document.querySelectorAll('#settings-lighting .settings-option').forEach(o => o.classList.remove('selected'));
@@ -433,31 +415,46 @@ function initSettingsNavigationDelegated() {
             const text = lightingOpt.querySelector('span').innerText;
             document.getElementById('lighting-status-text').innerText = text;
             resetSettingsMenu();
-            toggleSettingsMenu(); // Cerrar menú al seleccionar
+            toggleSettingsMenu();
         }
     });
 }
 
 /**
- * Renderiza las opciones de calidad basadas en HLS levels
+ * [MEJORADO] Renderiza opciones de calidad con etiquetas HD/4K
  */
 function renderQualityOptions(levels) {
     const container = document.getElementById('quality-options-container');
     container.innerHTML = '';
 
-    // Opción Automática
-    const autoOption = createQualityOption('-1', 'Automática', true);
+    // 1. Opción Automática
+    // Verificamos si Auto está activo en HLS.js
+    const isAutoEnabled = _hls ? _hls.autoLevelEnabled : true;
+    
+    const autoOption = createQualityOption('-1', 'Automática', isAutoEnabled);
     autoOption.addEventListener('click', () => handleQualityChange(-1, 'Automática', autoOption));
     container.appendChild(autoOption);
 
-    // Niveles disponibles
-    [...levels].reverse().forEach((level, index) => {
+    // 2. Niveles disponibles (Orden descendente: Mayor -> Menor)
+    // HLS.js entrega levels ordenados ascendentemente (0 = peor, N = mejor). Invertimos.
+    [...levels].reverse().forEach((level) => {
+        // Obtenemos el índice REAL del array original para HLS
         const originalIndex = levels.indexOf(level); 
         const height = level.height;
         
-        const option = createQualityOption(originalIndex, `${height}p`, false);
+        // Generar Etiqueta Bonita
+        let label = `${height}p`;
+        if (height >= 2160) label += ' 4K';
+        else if (height >= 1440) label += ' 2K';
+        else if (height >= 1080) label += ' FHD';
+        else if (height >= 720) label += ' HD';
+
+        // Determinar si está seleccionado (Solo si NO está en Auto)
+        const isSelected = !isAutoEnabled && (_hls && _hls.currentLevel === originalIndex);
         
-        option.addEventListener('click', () => handleQualityChange(originalIndex, `${height}p`, option));
+        const option = createQualityOption(originalIndex, label, isSelected);
+        
+        option.addEventListener('click', () => handleQualityChange(originalIndex, label, option));
         container.appendChild(option);
     });
 }
@@ -472,18 +469,20 @@ function createQualityOption(val, text, isSelected) {
 
 function handleQualityChange(levelIndex, label, element) {
     if (_hls) {
-        _hls.currentLevel = levelIndex; 
+        _hls.currentLevel = levelIndex; // -1 = Auto
     }
 
+    // Actualizar checks visuales
     const allOpts = document.querySelectorAll('#quality-options-container .settings-option');
     allOpts.forEach(o => o.classList.remove('selected'));
     element.classList.add('selected');
 
+    // Actualizar texto en el menú principal
     const statusText = levelIndex === -1 ? 'Auto' : label;
     document.getElementById('quality-status-text').innerText = statusText;
 
     resetSettingsMenu();
-    toggleSettingsMenu(); // Cerrar al seleccionar
+    toggleSettingsMenu(); // Cerrar menú
 }
 
 
