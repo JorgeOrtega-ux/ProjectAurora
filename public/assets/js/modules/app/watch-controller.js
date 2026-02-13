@@ -1,7 +1,7 @@
 /**
  * public/assets/js/modules/app/watch-controller.js
  * Controlador de reproducción de video HLS con UI personalizada.
- * Soporta: Master Playlist (Multivariant), Scrubbing (Sprites) y Selección de Calidad.
+ * Soporta: Master Playlist, Scrubbing, Selección de Calidad e ILUMINACIÓN CINEMATOGRÁFICA.
  */
 
 import { ToastManager } from '../../core/components/toast-manager.js';
@@ -17,15 +17,31 @@ let _vttUrl = null;
 let _vttData = []; 
 let _spriteImage = null; 
 
+// [NUEVO] Variables para Iluminación Cinematográfica
+let _ambientCanvas = null;
+let _ambientCtx = null;
+let _isLightingEnabled = false;
+let _animationFrameId = null;
+
 export const WatchController = {
     init: () => {
         const container = document.querySelector('[data-section="watch"]');
         if (!container) return;
 
-        console.log("WatchController: Inicializado (Multi-Bitrate + Scrubbing)");
+        console.log("WatchController: Inicializado (Multi-Bitrate + Scrubbing + Ambient)");
 
         _video = document.getElementById('main-player');
         const hlsSourceInput = document.getElementById('watch-hls-source');
+
+        // [NUEVO] Inicializar Canvas
+        _ambientCanvas = document.getElementById('ambient-canvas');
+        if (_ambientCanvas) {
+            _ambientCtx = _ambientCanvas.getContext('2d', { alpha: false }); // Optimización: sin canal alpha
+        }
+
+        // Leer preferencia de usuario
+        const storedPref = localStorage.getItem('aurora_cinematic_mode');
+        _isLightingEnabled = storedPref === 'on';
 
         // Inputs para Scrubbing
         const spriteInput = document.getElementById('watch-sprite-source');
@@ -44,6 +60,9 @@ export const WatchController = {
                 _vttUrl = vttInput.value;
                 initScrubbing();
             }
+
+            // [NUEVO] Iniciar lógica de iluminación
+            initAmbientLightLogic();
         }
     },
 
@@ -52,9 +71,14 @@ export const WatchController = {
             _hls.destroy();
             _hls = null;
         }
+        if (_animationFrameId) {
+            cancelAnimationFrame(_animationFrameId);
+        }
         _video = null;
         _vttData = [];
         _spriteImage = null;
+        _ambientCanvas = null;
+        _ambientCtx = null;
     }
 };
 
@@ -103,11 +127,9 @@ function loadPlayer(video, source) {
             }
         });
 
-        // Opcional: Actualizar etiqueta "Auto" cuando HLS cambia dinámicamente de nivel
         _hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
              const level = _levels[data.level];
              if (level && _hls.autoLevelEnabled) {
-                 // Podríamos actualizar la UI para decir "Auto (720p)"
                  // console.log(`Auto-cambio a: ${level.height}p`);
              }
         });
@@ -129,11 +151,9 @@ function loadPlayer(video, source) {
  * Lógica de Scrubbing (Previsualización)
  */
 async function initScrubbing() {
-    // 1. Precargar Imagen del Sprite
     _spriteImage = new Image();
     _spriteImage.src = _spriteUrl;
     
-    // 2. Descargar y Parsear VTT
     try {
         const response = await fetch(_vttUrl);
         if (!response.ok) throw new Error("Error cargando VTT");
@@ -151,9 +171,7 @@ function parseVTT(vttText) {
     let currentStart = null;
     let currentEnd = null;
 
-    // Regex para tiempo: 00:00:00.000
     const timeRegex = /(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})/;
-    // Regex para coords: #xywh=x,y,w,h
     const coordsRegex = /#xywh=(\d+),(\d+),(\d+),(\d+)/;
 
     for (let line of lines) {
@@ -192,6 +210,133 @@ function parseTime(timeStr) {
     const m = parseInt(parts[1]);
     const s = parseFloat(parts[2]);
     return (h * 3600) + (m * 60) + s;
+}
+
+// ==========================================
+// [NUEVO] LÓGICA DE ILUMINACIÓN CINEMATOGRÁFICA
+// ==========================================
+
+function initAmbientLightLogic() {
+    if (!_ambientCanvas || !_video) return;
+
+    // Configurar resolución interna BAJA para rendimiento (el CSS lo estira y desenfoca)
+    _ambientCanvas.width = 100;
+    _ambientCanvas.height = 56; // Aprox 16:9
+
+    // Sincronizar estado inicial de UI
+    updateLightingUI(_isLightingEnabled);
+
+    // Eventos de control del loop
+    _video.addEventListener('play', () => {
+        if (_isLightingEnabled) {
+            _ambientCanvas.style.opacity = '1';
+            startAmbientLoop();
+        }
+    });
+
+    _video.addEventListener('pause', () => {
+        stopAmbientLoop();
+        // Opcional: Bajar opacidad al pausar para efecto dramático
+        if (_isLightingEnabled) _ambientCanvas.style.opacity = '1';
+    });
+
+    _video.addEventListener('ended', () => {
+        stopAmbientLoop();
+        _ambientCanvas.style.opacity = '0';
+    });
+
+    _video.addEventListener('seeked', () => {
+        if (_isLightingEnabled && _video.paused) {
+            // Dibujar un frame estático si nos movemos mientras está pausado
+            drawAmbientFrame();
+        }
+    });
+
+    // Delegación de eventos para el menú de configuración
+    const lightingOptions = document.querySelectorAll('#settings-lighting .settings-option');
+    lightingOptions.forEach(opt => {
+        opt.addEventListener('click', (e) => {
+            const val = opt.dataset.value; // 'on' o 'off'
+            const isEnabled = val === 'on';
+            
+            setLightingState(isEnabled);
+            
+            // Actualizar visualmente la selección en el menú
+            lightingOptions.forEach(o => o.classList.remove('selected'));
+            opt.classList.add('selected');
+            
+            // Cerrar menú o volver atrás (simulado con el reset)
+            document.getElementById('lighting-status-text').innerText = isEnabled ? 'Activo' : 'Desactivado';
+            
+            // Volver al menú principal
+            document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+            document.getElementById('settings-main').classList.add('active');
+        });
+    });
+}
+
+function setLightingState(enabled) {
+    _isLightingEnabled = enabled;
+    localStorage.setItem('aurora_cinematic_mode', enabled ? 'on' : 'off');
+    
+    if (enabled) {
+        _ambientCanvas.style.display = 'block';
+        // Pequeño delay para permitir que el display:block renderice antes de la opacidad
+        requestAnimationFrame(() => {
+            _ambientCanvas.style.opacity = _video.paused ? '0.5' : '1';
+        });
+        if (!_video.paused) {
+            startAmbientLoop();
+        } else {
+            drawAmbientFrame(); // Dibujar frame actual estático
+        }
+    } else {
+        _ambientCanvas.style.opacity = '0';
+        stopAmbientLoop();
+        // Esperar transición CSS antes de ocultar (opcional)
+    }
+}
+
+function updateLightingUI(isEnabled) {
+    const textStatus = document.getElementById('lighting-status-text');
+    if (textStatus) {
+        textStatus.innerText = isEnabled ? 'Activo' : 'Desactivado';
+    }
+
+    // Actualizar checks en el submenú
+    const options = document.querySelectorAll('#settings-lighting .settings-option');
+    options.forEach(opt => {
+        if ((opt.dataset.value === 'on' && isEnabled) || (opt.dataset.value === 'off' && !isEnabled)) {
+            opt.classList.add('selected');
+        } else {
+            opt.classList.remove('selected');
+        }
+    });
+}
+
+function startAmbientLoop() {
+    if (_animationFrameId) cancelAnimationFrame(_animationFrameId);
+    
+    const loop = () => {
+        if (!_video.paused && !_video.ended && _isLightingEnabled) {
+            drawAmbientFrame();
+            _animationFrameId = requestAnimationFrame(loop);
+        }
+    };
+    _animationFrameId = requestAnimationFrame(loop);
+}
+
+function stopAmbientLoop() {
+    if (_animationFrameId) {
+        cancelAnimationFrame(_animationFrameId);
+        _animationFrameId = null;
+    }
+}
+
+function drawAmbientFrame() {
+    if (!_ambientCtx || !_video) return;
+    // Dibujar el frame actual del video escalado al tamaño pequeño del canvas
+    _ambientCtx.drawImage(_video, 0, 0, _ambientCanvas.width, _ambientCanvas.height);
 }
 
 /**
@@ -407,49 +552,34 @@ function initSettingsNavigationDelegated() {
             document.getElementById(`settings-${backTarget}`).classList.add('active');
             return;
         }
-
-        const lightingOpt = e.target.closest('#settings-lighting .settings-option');
-        if (lightingOpt) {
-            document.querySelectorAll('#settings-lighting .settings-option').forEach(o => o.classList.remove('selected'));
-            lightingOpt.classList.add('selected');
-            const text = lightingOpt.querySelector('span').innerText;
-            document.getElementById('lighting-status-text').innerText = text;
-            resetSettingsMenu();
-            toggleSettingsMenu();
-        }
     });
 }
 
 /**
- * [MEJORADO] Renderiza opciones de calidad con etiquetas HD/4K
+ * Renderiza opciones de calidad con etiquetas HD/4K
  */
 function renderQualityOptions(levels) {
     const container = document.getElementById('quality-options-container');
     container.innerHTML = '';
 
     // 1. Opción Automática
-    // Verificamos si Auto está activo en HLS.js
     const isAutoEnabled = _hls ? _hls.autoLevelEnabled : true;
     
     const autoOption = createQualityOption('-1', 'Automática', isAutoEnabled);
     autoOption.addEventListener('click', () => handleQualityChange(-1, 'Automática', autoOption));
     container.appendChild(autoOption);
 
-    // 2. Niveles disponibles (Orden descendente: Mayor -> Menor)
-    // HLS.js entrega levels ordenados ascendentemente (0 = peor, N = mejor). Invertimos.
+    // 2. Niveles disponibles (Orden descendente)
     [...levels].reverse().forEach((level) => {
-        // Obtenemos el índice REAL del array original para HLS
         const originalIndex = levels.indexOf(level); 
         const height = level.height;
         
-        // Generar Etiqueta Bonita
         let label = `${height}p`;
         if (height >= 2160) label += ' 4K';
         else if (height >= 1440) label += ' 2K';
         else if (height >= 1080) label += ' FHD';
         else if (height >= 720) label += ' HD';
 
-        // Determinar si está seleccionado (Solo si NO está en Auto)
         const isSelected = !isAutoEnabled && (_hls && _hls.currentLevel === originalIndex);
         
         const option = createQualityOption(originalIndex, label, isSelected);
@@ -472,19 +602,16 @@ function handleQualityChange(levelIndex, label, element) {
         _hls.currentLevel = levelIndex; // -1 = Auto
     }
 
-    // Actualizar checks visuales
     const allOpts = document.querySelectorAll('#quality-options-container .settings-option');
     allOpts.forEach(o => o.classList.remove('selected'));
     element.classList.add('selected');
 
-    // Actualizar texto en el menú principal
     const statusText = levelIndex === -1 ? 'Auto' : label;
     document.getElementById('quality-status-text').innerText = statusText;
 
     resetSettingsMenu();
-    toggleSettingsMenu(); // Cerrar menú
+    toggleSettingsMenu(); 
 }
-
 
 // Helpers de UI
 

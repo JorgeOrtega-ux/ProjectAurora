@@ -6,7 +6,7 @@ $videoData = null;
 
 if (!empty($videoUuid) && isset($pdo)) {
     try {
-        // [MODIFICADO] Agregado v.dominant_color al SELECT
+        // [MODIFICADO] Agregamos v.dominant_color al SELECT
         $stmt = $pdo->prepare("
             SELECT v.title, v.description, v.hls_path, v.sprite_path, v.vtt_path, v.created_at, v.dominant_color,
                    u.username, u.avatar_path, u.uuid as user_uuid
@@ -23,17 +23,53 @@ if (!empty($videoUuid) && isset($pdo)) {
 }
 
 $avatarUrl = '';
-$domColorRgb = '255, 255, 255'; // Default blanco si falla
+$domColorRgb = '255, 255, 255'; // Default blanco por si falla
 
 if ($videoData) {
-    // Avatar logic
-    if (!empty($videoData['avatar_path']) && file_exists(__DIR__ . '/../../../../' . $videoData['avatar_path'])) {
-        $avatarUrl = $basePath . $videoData['avatar_path'];
+    // ---------------------------------------------------------
+    // [CORRECCIÓN] LÓGICA ROBUSTA PARA EL AVATAR
+    // ---------------------------------------------------------
+   // ---------------------------------------------------------
+    // [CORREGIDO] LÓGICA DE AVATAR (Ruta arreglada)
+    // ---------------------------------------------------------
+    $avatarPath = $videoData['avatar_path'] ?? '';
+    
+    // CORRECCIÓN AQUÍ: Usamos 3 niveles hacia arriba, no 4.
+    // includes/sections/app/ -> includes/sections/ -> includes/ -> RAÍZ
+    $projectRoot = realpath(__DIR__ . '/../../../'); 
+
+    // Limpiamos la ruta de la BD para evitar dobles slashes
+    $cleanPath = ltrim($avatarPath, '/');
+
+    // Definimos las 2 rutas posibles donde podría estar la imagen físicamente:
+    // 1. En la carpeta 'public' (Lo más probable: public/storage/...)
+    $physicalPathPublic = $projectRoot . '/public/' . $cleanPath;
+    
+    // 2. En la raíz directa (Por si la ruta en BD ya incluye 'public')
+    $physicalPathRoot = $projectRoot . '/' . $cleanPath;
+
+    if (!empty($avatarPath)) {
+        if (file_exists($physicalPathPublic)) {
+            // Si está en public, la URL debe incluirlo (a menos que tu servidor apunte a public)
+            // Aseguramos que la URL web sea correcta
+            $avatarUrl = $basePath . 'public/' . $cleanPath;
+            
+            // PEQUEÑO AJUSTE: Si tu $basePath ya incluye 'public/', usa la línea de abajo en su lugar:
+            // $avatarUrl = $basePath . $cleanPath;
+            
+        } elseif (file_exists($physicalPathRoot)) {
+            $avatarUrl = $basePath . $cleanPath;
+        } else {
+            // Si falla file_exists, fallback a UI Avatars
+            $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($videoData['username']) . "&background=random&color=fff";
+        }
     } else {
         $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($videoData['username']) . "&background=random&color=fff";
     }
 
+    // ---------------------------------------------------------
     // [NUEVO] Procesar Color Dominante (Hex -> RGB)
+    // ---------------------------------------------------------
     $hex = $videoData['dominant_color'] ?? '#ffffff';
     $hex = ltrim($hex, '#');
     if (strlen($hex) == 6) {
@@ -51,6 +87,9 @@ if ($videoData) {
             <div class="watch-left">
                 
                 <div class="watch-player-card" id="video-container">
+                    
+                    <canvas id="ambient-canvas" class="ambient-canvas"></canvas>
+
                     <div class="video-player-wrapper">
                         <video id="main-player" playsinline poster="" class="video-element"></video>
                         
@@ -86,7 +125,7 @@ if ($videoData) {
                                 <span class="material-symbols-rounded">arrow_back</span>
                                 <span>Iluminación cinematográfica</span>
                             </div>
-                            <div class="settings-option selected" data-type="lighting" data-value="off">
+                            <div class="settings-option" data-type="lighting" data-value="off">
                                 <span>Desactivado</span>
                                 <span class="material-symbols-rounded check-icon">check</span>
                             </div>
@@ -106,6 +145,7 @@ if ($videoData) {
                         </div>
 
                     </div>
+
                     <div class="custom-controls" id="custom-controls">
                         
                         <div class="progress-container">
@@ -234,17 +274,43 @@ if ($videoData) {
     position: relative;
     background-color: #000;
     border-radius: 12px;
-    overflow: hidden;
+    /* overflow: hidden;  <-- IMPORTANTE: DESACTIVADO PARA QUE EL BRILLO SALGA */
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     aspect-ratio: 16 / 9;
+    z-index: 1; /* Contexto de apilamiento base */
 }
 
-.video-player-wrapper, .video-element {
+/* --- [NUEVO] ILUMINACIÓN CINEMATOGRÁFICA --- */
+.ambient-canvas {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(1.2); /* Escala para que el brillo sobresalga */
+    width: 85%;
+    height: 85%;
+    z-index: 0; /* Detrás del video */
+    opacity: 0; /* Invisible por defecto */
+    transition: opacity 0.8s ease; /* Fade suave */
+    pointer-events: none;
+    /* Filtros pesados para hacer el efecto de luz difusa */
+    filter: blur(60px) brightness(1.3) saturate(1.4); 
+}
+
+.video-player-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    z-index: 2; /* Encima de la luz */
+    background-color: #000; /* Fondo negro para evitar transparencias indeseadas del video */
+    border-radius: 12px; /* Mantener bordes redondeados del video */
+}
+
+.video-element {
     width: 100%;
     height: 100%;
     object-fit: contain;
     cursor: pointer;
-    position: relative; 
+    border-radius: 12px;
 }
 
 /* --- TOOLTIP DE SCRUBBING --- */
@@ -305,15 +371,15 @@ if ($videoData) {
     margin-top: 4px; 
     
     /* Transición suave para el color */
-    transition: background-color 0.3s ease, box-shadow 0.3s ease;
-    border: 1px solid transparent; /* Reserva espacio para borde */
+    transition: background-color 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    border: 1px solid transparent; 
 }
 
 /* [EFECTO] Hover con color dominante */
 .watch-description-box:hover {
     /* Usamos la variable inyectada desde PHP */
-    background-color: rgba(var(--dominant-rgb), 0.25);
-    border-color: rgba(var(--dominant-rgb), 0.4);
+    background-color: rgba(var(--dominant-rgb), 0.15);
+    border-color: rgba(var(--dominant-rgb), 0.3);
     box-shadow: 0 4px 20px rgba(0,0,0,0.1);
 }
 
@@ -334,6 +400,8 @@ if ($videoData) {
     flex-direction: column;
     gap: 8px;
     z-index: 20;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
 }
 
 .watch-player-card:hover .custom-controls,
