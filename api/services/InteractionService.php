@@ -207,7 +207,7 @@ class InteractionService {
     }
 
     /**
-     * Registro de Visitas con Debounce y Cola
+     * Registro de Visitas con Debounce y Cola (OPTIMIZADO)
      */
     public function registerView($videoUuid) {
         if (!$this->redis) return ['success' => false];
@@ -220,28 +220,26 @@ class InteractionService {
         }
 
         try {
-            // 2. Marcar cooldown
+            // 2. Marcar cooldown (30 minutos)
             $this->redis->setex($cooldownKey, 1800, '1');
 
-            // 3. INCREMENTO ATÓMICO EN REDIS (El Buffer)
+            // 3. INCREMENTO ATÓMICO EN REDIS (El Buffer de Contadores)
             $bufferKey = "video:buffer:views:{$videoUuid}";
             $currentBuffer = $this->redis->incr($bufferKey);
             
-            // 4. [NUEVO] Despachar Tarea de Analítica al Worker
-            // Esto llena la tabla video_views (historial)
-            $jobPayload = json_encode([
-                'task' => 'register_view_persistence',
-                'payload' => [
-                    'video_uuid' => $videoUuid,
-                    'user_id' => $_SESSION['user_id'] ?? null,
-                    'ip' => $ip,
-                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
-                    'timestamp' => time()
-                ]
+            // 4. [OPTIMIZADO] Buffering de Logs (Historial)
+            // En lugar de enviar una tarea por visita, guardamos el log en una lista temporal.
+            // El Scheduler procesará esto en lote (Bulk Insert).
+            $logEntry = json_encode([
+                'video_uuid' => $videoUuid,
+                'user_id' => $_SESSION['user_id'] ?? null,
+                'ip' => $ip,
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
+                'timestamp' => time()
             ]);
             
-            // Insertar en la cola 'aurora_task_queue'
-            $this->redis->rpush('aurora_task_queue', $jobPayload);
+            // Insertar en la lista temporal 'video:logs:buffer'
+            $this->redis->rpush('video:logs:buffer', $logEntry);
 
             return [
                 'success' => true, 

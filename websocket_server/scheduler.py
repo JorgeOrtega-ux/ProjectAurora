@@ -9,6 +9,7 @@ import hmac
 import hashlib
 import glob
 import redis
+import json
 
 # --- CONFIGURACIÓN ---
 logging.basicConfig(
@@ -117,8 +118,8 @@ def cleanup_stale_uploads():
 
 def sync_views_buffer():
     """
-    [NUEVO - OPTIMIZADO] Vacía el buffer de visitas (INCR) a MySQL.
-    Esto maneja el alto tráfico de visitas de forma eficiente.
+    [OPTIMIZADO] Vacía el buffer de CONTADORES de visitas (INCR) a MySQL.
+    Actualiza el número total de vistas en la tabla 'videos'.
     """
     try:
         # Buscamos keys tipo video:buffer:views:{uuid}
@@ -127,7 +128,7 @@ def sync_views_buffer():
         
         if not keys: return
 
-        logging.info(f"⚡ Procesando buffer de visitas ({len(keys)} videos)...")
+        # logging.info(f"⚡ Procesando buffer de contadores ({len(keys)} videos)...")
         conn = get_db_connection()
         cursor = conn.cursor()
         
@@ -152,10 +153,95 @@ def sync_views_buffer():
         conn.commit()
         conn.close()
         if count > 0:
-            logging.info(f"✅ Se inyectaron visitas en {count} videos.")
+            logging.info(f"✅ Contadores actualizados en {count} videos.")
 
     except Exception as e:
         logging.error(f"❌ Error en sync_views_buffer: {e}")
+
+def process_video_logs_buffer():
+    """
+    [NUEVO] Procesa el HISTORIAL de visitas (Logs) en lote.
+    Lee de la lista 'video:logs:buffer', resuelve IDs y hace Bulk Insert en 'video_views'.
+    """
+    LIST_KEY = 'video:logs:buffer'
+    BATCH_SIZE = 200 # Procesamos de 200 en 200
+    
+    try:
+        # 1. Verificar si hay logs pendientes (Check rápido)
+        if r_client.llen(LIST_KEY) == 0:
+            return
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Procesamos hasta 5 lotes (1000 logs) por ciclo para no bloquear el scheduler
+        for _ in range(5):
+            # Usamos pipeline para hacer un "LPOP multiple" seguro y compatible
+            p = r_client.pipeline()
+            for _ in range(BATCH_SIZE):
+                p.lpop(LIST_KEY)
+            results = p.execute()
+            
+            # Filtramos los None (cuando la lista se vacía)
+            raw_logs = [item for item in results if item is not None]
+            
+            if not raw_logs:
+                break
+                
+            # 2. Parsear JSONs y recolectar UUIDs
+            entries = []
+            uuids_to_resolve = set()
+            
+            for log_str in raw_logs:
+                try:
+                    data = json.loads(log_str)
+                    # Validar integridad básica
+                    if 'video_uuid' in data:
+                        entries.append(data)
+                        uuids_to_resolve.add(data['video_uuid'])
+                except:
+                    continue # Ignorar logs corruptos
+            
+            if not entries:
+                continue
+
+            # 3. Resolver UUIDs a IDs numéricos (MySQL FK)
+            if not uuids_to_resolve: continue
+            
+            format_strings = ','.join(['%s'] * len(uuids_to_resolve))
+            sql_ids = f"SELECT uuid, id FROM videos WHERE uuid IN ({format_strings})"
+            cursor.execute(sql_ids, tuple(uuids_to_resolve))
+            
+            uuid_map = {row[0]: row[1] for row in cursor.fetchall()}
+            
+            # 4. Construir filas para Bulk Insert
+            insert_values = []
+            for entry in entries:
+                vid_uuid = entry.get('video_uuid')
+                if vid_uuid in uuid_map:
+                    video_id = uuid_map[vid_uuid]
+                    user_id = entry.get('user_id') # Puede ser None
+                    ip = entry.get('ip', '0.0.0.0')
+                    ua = entry.get('user_agent', 'Unknown')[:255] # Truncar por seguridad
+                    ts = float(entry.get('timestamp', time.time()))
+                    viewed_at = datetime.fromtimestamp(ts)
+
+                    insert_values.append((video_id, user_id, ip, ua, viewed_at))
+            
+            if insert_values:
+                sql_insert = """
+                    INSERT INTO video_views (video_id, user_id, ip_address, user_agent, viewed_at)
+                    VALUES (%s, %s, %s, %s, %s)
+                """
+                cursor.executemany(sql_insert, insert_values)
+                conn.commit()
+                logging.info(f"📜 Historial: Se guardaron {len(insert_values)} visitas en BD.")
+
+        cursor.close()
+        conn.close()
+
+    except Exception as e:
+        logging.error(f"❌ Error procesando logs de historial: {e}")
 
 # [DESACTIVADO POR SEGURIDAD]
 # Esta función ha sido desactivada para evitar que Redis sobrescriba la DB.
@@ -163,39 +249,12 @@ def sync_views_buffer():
 # Si Redis se reinicia, esta función borraba los datos reales. ¡NO DESCOMENTAR!
 """
 def sync_counters_to_db():
-    Sincroniza contadores generales (Likes, Dislikes, Subs) de Redis -> MySQL.
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        # 1. Sincronizar Videos (Likes, Dislikes)
-        video_keys = r_client.keys("video:stats:*")
-        for key in video_keys:
-            try:
-                uuid = key.split(':')[-1]
-                stats = r_client.hgetall(key)
-                
-                likes = int(stats.get('likes', 0))
-                dislikes = int(stats.get('dislikes', 0))
-                
-                sql = "UPDATE videos SET likes_count = %s, dislikes_count = %s WHERE uuid = %s"
-                cursor.execute(sql, (likes, dislikes, uuid))
-            except Exception: pass
-
-        # 2. Sincronizar Usuarios (Suscriptores)
-        user_keys = r_client.keys("user:stats:*")
-        for key in user_keys:
-            try:
-                uuid = key.split(':')[-1]
-                subs = int(r_client.hget(key, 'subscribers') or 0)
-                
-                sql = "UPDATE users SET subscribers_count = %s WHERE uuid = %s"
-                cursor.execute(sql, (subs, uuid))
-            except Exception: pass
-
+        # ... (Lógica original comentada)
         conn.commit()
         conn.close()
-        
     except Exception as e:
         logging.error(f"Error sync general: {e}")
 """
@@ -223,16 +282,19 @@ if __name__ == "__main__":
     while True:
         try:
             # TAREAS RÁPIDAS (Cada 10 segundos)
-            # Procesamos las visitas rápido para que el contador de la DB esté fresco
             if counter_sec % 10 == 0:
-                sync_views_buffer()
+                sync_views_buffer() # Actualiza los contadores (números)
 
-            # TAREAS MEDIAS (Cada 60 segundos)
+            # TAREAS MEDIAS (Cada 30 segundos)
+            if counter_sec % 30 == 0:
+                process_video_logs_buffer() # [NUEVO] Actualiza el historial (logs)
+
+            # TAREAS LENTAS (Cada 60 segundos)
             if counter_sec % 60 == 0:
                 check_and_run_backup()
-                # sync_counters_to_db() # <--- DESACTIVADO: Peligro de pérdida de datos si Redis reinicia.
+                # sync_counters_to_db() # <--- DESACTIVADO
 
-            # TAREAS LENTAS (Cada 1 hora = 3600 seg)
+            # TAREAS DE LIMPIEZA (Cada 1 hora = 3600 seg)
             if counter_sec >= 3600:
                 cleanup_stale_uploads()
                 counter_sec = 0
