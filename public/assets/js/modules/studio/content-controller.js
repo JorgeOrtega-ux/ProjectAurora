@@ -38,15 +38,40 @@ export const ContentController = {
 
         loadContent();
 
-        // Listener para actualizaciones en tiempo real
+        // Listener para actualizaciones en tiempo real (Completado)
         document.removeEventListener('socket:processing_complete', onVideoProcessed);
         document.addEventListener('socket:processing_complete', onVideoProcessed);
+
+        // [NUEVO] Listener para progreso en tiempo real (Porcentaje)
+        document.removeEventListener('socket:processing_progress', onProcessingProgress);
+        document.addEventListener('socket:processing_progress', onProcessingProgress);
     }
 };
 
 function onVideoProcessed() {
     if (_container && document.body.contains(_container)) {
         loadContent(true);
+    }
+}
+
+// [NUEVO] Handler para actualizar la fila de la tabla sin recargar
+function onProcessingProgress(e) {
+    const data = e.detail.message;
+    if (data && data.uuid) {
+        // Buscar la fila específica en la tabla mediante el atributo data-row-uuid
+        const row = document.querySelector(`tr[data-row-uuid="${data.uuid}"]`);
+        if (row) {
+            const statusCell = row.cells[1]; // La segunda columna es "Estado"
+            if (statusCell) {
+                // Actualizamos el contenido visual
+                statusCell.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span class="material-symbols-rounded" style="font-size: 18px; color: var(--color-warning);">hourglass_top</span>
+                        <span style="font-size: 13px;">Procesando (${data.percent}%)</span>
+                    </div>
+                `;
+            }
+        }
     }
 }
 
@@ -236,15 +261,20 @@ function renderTable(videos) {
                 statusBadge = 'draft'; statusText = 'Borrador'; break;
             case 'processing':
             case 'uploading_chunks':
-                statusBadge = 'hourglass_empty'; statusText = 'Procesando'; break;
+                statusBadge = 'hourglass_empty'; 
+                // [MEJORA] Mostrar porcentaje inicial si viene del servidor
+                const percent = v.processing_percentage || 0;
+                statusText = `Procesando (${percent}%)`; 
+                break;
             case 'error':
                 statusBadge = 'error'; statusText = 'Error'; iconColor = 'var(--color-error)'; break;
             default:
                 statusBadge = 'help'; statusText = v.status;
         }
 
+        // [MODIFICADO] Añadido data-row-uuid para identificación precisa
         html += `
-            <tr class="table-row-item">
+            <tr class="table-row-item" data-row-uuid="${v.uuid}">
                 <td style="padding: 12px 16px;">
                     <div style="display: flex; gap: 12px;">
                         <div style="width: 120px; height: 68px; flex-shrink: 0; position: relative; background: #000; border-radius: 4px; overflow: hidden;">
@@ -298,7 +328,6 @@ function renderTable(videos) {
 }
 
 function updatePaginationUI(pagination) {
-    // [CORRECCIÓN] Selector ajustado para coincidir con el HTML del usuario
     const info = document.querySelector('[data-element="pagination-info"]');
     const btnPrev = document.querySelector('[data-action="prev-page"]');
     const btnNext = document.querySelector('[data-action="next-page"]');

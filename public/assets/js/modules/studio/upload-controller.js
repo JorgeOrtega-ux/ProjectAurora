@@ -3,6 +3,7 @@
  * Versión Refactorizada: Arquitectura Signal & Interceptors
  * Actualizado para soporte de "Components" PHP y corrección de rutas/visibilidad.
  * [SEGURIDAD] Implementación de Upload Tokens.
+ * [MEJORA] Soporte para progreso de procesamiento en tiempo real.
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -24,7 +25,7 @@ export const UploadController = {
         const container = document.querySelector('[data-section="channel-upload"]');
         if (!container) return;
 
-        console.log("UploadController: Inicializado (V2 + Security Tokens)");
+        console.log("UploadController: Inicializado (V2 + Security Tokens + Realtime Processing)");
         
         _videosState = [];
         _activeVideoUuid = null;
@@ -37,6 +38,10 @@ export const UploadController = {
         // Listeners de Sockets
         document.removeEventListener('socket:processing_complete', onProcessingComplete);
         document.addEventListener('socket:processing_complete', onProcessingComplete);
+
+        // [NUEVO] Listener para progreso de procesamiento (Transcodificación)
+        document.removeEventListener('socket:processing_progress', onProcessingProgress);
+        document.addEventListener('socket:processing_progress', onProcessingProgress);
 
         document.removeEventListener('socket:thumbnails_generated', onThumbsGenerated);
         document.addEventListener('socket:thumbnails_generated', onThumbsGenerated);
@@ -93,7 +98,7 @@ async function loadExistingDraft(uuid) {
                 title: res.video.title || '',
                 description: res.video.description || '',
                 status: res.video.status || 'ready',
-                progress: 100,
+                progress: 100, // Progreso de subida (ya subido)
                 // Ruta absoluta para la miniatura
                 thumbnail: res.video.thumbnail_src ? (window.BASE_PATH + res.video.thumbnail_src) : null
             };
@@ -140,7 +145,9 @@ async function checkPendingUploads() {
                     uuid: v.uuid,
                     title: v.title || 'Sin título',
                     status: (v.status === 'waiting_for_metadata') ? 'ready' : 'processing',
-                    progress: 100,
+                    // Si viene del servidor como processing, usamos el porcentaje guardado si existe, sino 0
+                    processingPercent: v.processing_percentage || 0,
+                    progress: 100, // Progreso de subida (ya subido)
                     // Ruta absoluta
                     thumbnail: v.thumbnail_src ? (window.BASE_PATH + v.thumbnail_src) : null,
                     description: v.description || ''
@@ -222,6 +229,7 @@ function handleFiles(files) {
             description: '',
             status: 'uploading',
             progress: 0,
+            processingPercent: 0,
             thumbnail: null,
             uploadToken: null // [TOKEN] Placeholder para el token de seguridad
         };
@@ -312,6 +320,7 @@ async function startUpload(videoEntry) {
 
         videoEntry.status = 'processing';
         videoEntry.progress = 100;
+        videoEntry.processingPercent = 0; // Inicio de procesamiento
         
         renderTabs();
         if (_activeVideoUuid === videoEntry.uuid) {
@@ -470,7 +479,10 @@ function updateEditorStatusUI(video) {
     else if (video.status === 'processing') {
         alertBox.classList.remove('d-none');
         alertBox.classList.add('component-message--warning');
-        alertBox.innerHTML = `<strong>Procesando video...</strong><br>El video se está convirtiendo. Podrás publicar en breve.`;
+        
+        // [MODIFICADO] Mostrar porcentaje de procesamiento real
+        const procPercent = video.processingPercent || 0;
+        alertBox.innerHTML = `<strong>Procesando video (${procPercent}%)...</strong><br>El video se está convirtiendo. Podrás publicar en breve.`;
     }
     else if (video.status === 'ready') {
         alertBox.classList.add('d-none');
@@ -490,10 +502,28 @@ function onProcessingComplete(e) {
         const video = _videosState.find(v => v.uuid === data.uuid);
         if (video) {
             video.status = 'ready';
+            video.processingPercent = 100;
             renderTabs();
             if (_activeVideoUuid === video.uuid) {
                 updateEditorStatusUI(video);
                 ToastManager.show('¡Procesamiento completado! Ya puedes publicar.', 'success');
+            }
+        }
+    }
+}
+
+// [NUEVO] Handler para progreso en tiempo real
+function onProcessingProgress(e) {
+    const data = e.detail.message;
+    if (data && data.uuid) {
+        const video = _videosState.find(v => v.uuid === data.uuid);
+        if (video) {
+            video.status = 'processing';
+            video.processingPercent = data.percent; 
+            
+            // Si el video está activo en el editor, actualizamos la UI
+            if (_activeVideoUuid === video.uuid) {
+                updateEditorStatusUI(video);
             }
         }
     }

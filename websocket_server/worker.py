@@ -13,6 +13,7 @@ import secrets
 import tempfile 
 import shutil
 from concurrent.futures import ThreadPoolExecutor
+import re # [NUEVO] Importado para analizar la salida de FFmpeg
 
 # --- CONFIGURACIÓN ---
 logging.basicConfig(
@@ -132,6 +133,18 @@ def update_video_status(uuid, status, error_msg=None):
     except Exception as e:
         logging.error(f"Error actualizando video DB: {e}")
 
+# [NUEVO] Helper específico para actualizar solo el porcentaje sin tocar el estado
+def update_video_progress_db(uuid, percentage):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        sql = "UPDATE videos SET processing_percentage = %s WHERE uuid = %s"
+        cursor.execute(sql, (percentage, uuid))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logging.error(f"Error actualizando porcentaje DB: {e}")
+
 def get_video_metadata(file_path):
     """Obtiene metadatos básicos usando ffprobe"""
     try:
@@ -148,6 +161,14 @@ def get_video_metadata(file_path):
     except Exception as e:
         logging.error(f"Error ffprobe: {e}")
         return {'duration': 0}
+
+# [NUEVO] Convierte timecode HH:MM:SS.ms a segundos totales
+def timecode_to_seconds(timecode):
+    try:
+        h, m, s = timecode.split(':')
+        return int(h) * 3600 + int(m) * 60 + float(s)
+    except Exception:
+        return 0.0
 
 def secure_resolve_mysqldump():
     config_path = get_server_config('sys_mysqldump_path', '')
@@ -322,8 +343,7 @@ def task_process_video(payload):
         meta = get_video_metadata(raw_path)
         duration = meta.get('duration', 0)
         
-        # 2. Transcodificar a HLS (Standard)
-        # Genera index.m3u8 y segmentos .ts
+        # 2. Transcodificar a HLS con Subprocess.Popen para leer progreso
         hls_path = os.path.join(output_dir, 'index.m3u8')
         
         cmd = [
@@ -338,10 +358,64 @@ def task_process_video(payload):
         ]
         
         logging.info(f"⏳ Ejecutando FFmpeg para {video_uuid}...")
-        process = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         
-        if process.returncode != 0:
-            raise Exception(f"FFmpeg Error: {process.stderr}")
+        # [MODIFICACIÓN] Popen en lugar de run para leer stderr línea por línea
+        process = subprocess.Popen(
+            cmd, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE, 
+            text=True, 
+            universal_newlines=True,
+            bufsize=1 # Line buffered
+        )
+
+        last_percent = -1
+        # Regex para capturar 'time=HH:MM:SS.mm'
+        time_regex = re.compile(r"time=(\d{2}:\d{2}:\d{2}\.\d{2})")
+
+        # Leer stderr línea por línea
+        while True:
+            # Leemos una línea del stderr (donde ffmpeg escribe el progreso)
+            line = process.stderr.readline()
+            
+            # Si la línea está vacía y el proceso terminó, salimos del bucle
+            if not line and process.poll() is not None:
+                break
+            
+            if line:
+                # Buscar patrón de tiempo
+                match = time_regex.search(line)
+                if match and duration > 0:
+                    time_str = match.group(1)
+                    current_seconds = timecode_to_seconds(time_str)
+                    
+                    # Calcular porcentaje
+                    percent = int((current_seconds / duration) * 100)
+                    if percent > 100: percent = 100
+                    
+                    # [THROTTLING] Actualizar solo si avanzó un 2% para no saturar DB/WS
+                    if percent >= last_percent + 2:
+                        last_percent = percent
+                        
+                        # A. Actualizar DB
+                        update_video_progress_db(video_uuid, percent)
+                        
+                        # B. Notificar WebSocket
+                        notify_frontend('processing_progress', {
+                            'uuid': video_uuid,
+                            'percent': percent,
+                            'status': 'processing'
+                        })
+                        
+                        # logging.info(f"Video {video_uuid}: {percent}% procesado")
+
+        # Esperar a que el proceso termine completamente y obtener código de retorno
+        return_code = process.wait()
+        
+        if return_code != 0:
+            # Leer el resto del error si falló
+            remaining_err = process.stderr.read()
+            raise Exception(f"FFmpeg Error (Code {return_code}): {remaining_err}")
 
         # 3. Actualizar BD con rutas y estado final
         # Ruta relativa web para el HLS
@@ -365,7 +439,8 @@ def task_process_video(payload):
         notify_frontend('processing_complete', {
             'uuid': video_uuid,
             'status': 'waiting_for_metadata',
-            'title': 'Video Procesado'
+            'title': 'Video Procesado',
+            'percent': 100
         })
         
         logging.info(f"✅ Video procesado exitosamente: {video_uuid}")
@@ -374,8 +449,7 @@ def task_process_video(payload):
         logging.error(f"❌ Error procesando video {video_uuid}: {e}")
         update_video_status(video_uuid, 'error', str(e))
         notify_frontend('notification', {'type': 'error', 'text': 'Fallo en la transcodificación del video.'})
-# [NUEVO] Tarea para generar miniaturas inteligentes
-# [MODIFICADO] Tarea para generar miniaturas inteligentes en ALTA CALIDAD
+
 def task_generate_thumbnails(payload):
     logging.info("🖼️ [Thread] Generando miniaturas inteligentes (Alta Calidad)...")
     
@@ -463,11 +537,12 @@ def task_generate_thumbnails(payload):
 
     except Exception as e:
         logging.error(f"❌ Error generando miniaturas: {e}")
+
 TASKS = {
     'create_backup': task_create_backup,
     'create_zip': task_create_zip,
     'process_video': task_process_video,
-    'generate_thumbnails': task_generate_thumbnails # <--- AGREGAR ESTO
+    'generate_thumbnails': task_generate_thumbnails
 }
 
 def run_job(raw_data):
