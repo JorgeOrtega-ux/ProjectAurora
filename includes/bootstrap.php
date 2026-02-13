@@ -1,29 +1,33 @@
 <?php
 // includes/bootstrap.php
 
-// 1. Carga del Autoloader
+// 1. Carga del Autoloader (Composer)
+// [CRÍTICO] Esto permite cargar clases como Aurora\Services\InteractionService automáticamente
 require_once __DIR__ . '/../vendor/autoload.php';
 
 // === IMPORTACIONES (Namespaces) ===
 use Aurora\Libs\Utils;
 use Aurora\Libs\Logger;
-use Aurora\Libs\I18n;
 use Predis\Client;
 use Predis\Session\Handler;
 
-// 2. Carga de Variables de Entorno
+// 2. Carga de Variables de Entorno (.env)
 $envFile = __DIR__ . '/../.env';
 if (file_exists($envFile)) {
     $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
         if (strpos(trim($line), '#') === 0) continue;
-        list($name, $value) = explode('=', $line, 2);
-        $name = trim($name);
-        $value = trim($value);
-        if (!array_key_exists($name, $_SERVER) && !array_key_exists($name, $_ENV)) {
-            putenv(sprintf('%s=%s', $name, $value));
-            $_ENV[$name] = $value;
-            $_SERVER[$name] = $value;
+        // [MEJORA] Limite de explosión a 2 para evitar romper valores con '=' (ej. base64)
+        list($name, $value) = explode('=', $line, 2) + [NULL, NULL]; 
+        
+        if ($name) {
+            $name = trim($name);
+            $value = trim($value ?? '');
+            if (!array_key_exists($name, $_SERVER) && !array_key_exists($name, $_ENV)) {
+                putenv(sprintf('%s=%s', $name, $value));
+                $_ENV[$name] = $value;
+                $_SERVER[$name] = $value;
+            }
         }
     }
 }
@@ -43,6 +47,7 @@ $redisConfig = [
     'host'     => $redisHost,
     'port'     => $redisPort,
     'timeout'  => 2.0,
+    'read_write_timeout' => 2.0, // [MEJORA] Timeout de lectura/escritura
     'ssl'      => [
         'verify_peer' => false,
         'verify_peer_name' => false
@@ -56,7 +61,6 @@ if (!empty($redisPass)) {
 $redis = null; 
 
 try {
-    // Usamos la clase importada via 'use Predis\Client'
     $client = new Client($redisConfig);
     $client->connect(); 
     $redis = $client;
@@ -68,7 +72,6 @@ try {
 // 4. Gestión de Sesiones
 if ($redis) {
     try {
-        // Usamos la clase importada via 'use Predis\Session\Handler'
         $sessionHandler = new Handler($redis, ['gc_maxlifetime' => 86400]);
         $sessionHandler->register();
     } catch (Exception $e) {
@@ -95,19 +98,13 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // 7. Utilidades e Inicialización
-// Ya no hacemos require manual de Utils.php gracias al Autoload
 Utils::setRedis($redis);
 Utils::initErrorHandlers();
 
 // 8. Conexión BD Controlada
 try {
-    // El archivo de configuración de DB sigue siendo un script plano, 
-    // pero internamente usará las variables globales o instanciará PDO.
-    // Asegúrate de que config/database/db.php NO tenga 'use PDO' tampoco si no tiene namespace.
     require_once __DIR__ . '/../config/database/db.php';
 } catch (Exception $e) {
-    // Si falla, usamos el Logger (importado arriba) si la clase existe, 
-    // o un error_log nativo como fallback.
     if (class_exists(Logger::class)) {
         Logger::db("Database Connection Critical Failure", ['msg' => $e->getMessage()]);
     } else {
@@ -129,15 +126,7 @@ try {
             'error_code' => 'DB_CONN_FAIL'
         ]);
     } else {
-        echo '<!DOCTYPE html>
-        <html>
-        <head><title>Error de Servicio</title><style>body{font-family:sans-serif;text-align:center;padding:50px;background:#f9f9f9;color:#333;}</style></head>
-        <body>
-            <h1 style="color:#d32f2f;">Servicio Interrumpido</h1>
-            <p>No se pudo establecer conexión con la base de datos principal.</p>
-            <p>El equipo técnico ha sido notificado. Por favor intenta de nuevo en unos minutos.</p>
-        </body>
-        </html>';
+        echo 'Error crítico de conexión a base de datos.';
     }
     
     exit;

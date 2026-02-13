@@ -1,3 +1,8 @@
+/**
+ * api-routes.js
+ * Mapeo centralizado de acciones de API para Project Aurora.
+ */
+
 const ApiRoutes = {
     Auth: {
         RegisterStep1: { route: 'auth.register_step_1' },
@@ -33,13 +38,12 @@ const ApiRoutes = {
         ValidatePassword: { route: 'settings.val_password' },
         ChangePassword: { route: 'settings.change_pass' }
     },
+
     Admin: {
         GetDashboardStats: { route: 'admin.dashboard_stats' },
-
         CreateSystemAlert: { route: 'admin.create_system_alert' },
         DeactivateSystemAlert: { route: 'admin.deactivate_system_alert' },
         GetActiveAlert: { route: 'admin.get_active_alert' },
-
         GetUsers: { route: 'admin.get_users' },
         GetDetails: { route: 'admin.get_details' },
         UpdateProfile: { route: 'admin.update_profile' },
@@ -78,7 +82,10 @@ const ApiRoutes = {
         }
     },
     
-    // === STUDIO ===
+    System: {
+        CreateAutoBackup: { route: 'system.create_backup' }
+    },
+
     Studio: {
         InitUpload: { route: 'studio.init_upload' },
         UploadChunk: { route: 'studio.upload_chunk' },
@@ -90,9 +97,14 @@ const ApiRoutes = {
         CancelBatch: { route: 'studio.cancel_batch' },
         GenerateThumbs: { route: 'studio.generate_thumbs' },
         DeleteVideo: { route: 'studio.delete_video' },
-        
-        // [ESTA ES LA PROPIEDAD QUE FALTABA PARA COMPLETAR EL MAPEO]
         SelectGeneratedThumbnail: { route: 'studio.select_generated_thumbnail' }
+    },
+
+    // [NUEVO] Sección de Interacciones (Siguiendo tu patrón de objetos)
+    Interaction: {
+        ToggleLike: { route: 'interaction.toggle_like' },
+        ToggleSub: { route: 'interaction.toggle_sub' },
+        RegisterView: { route: 'interaction.view' }
     }
 };
 

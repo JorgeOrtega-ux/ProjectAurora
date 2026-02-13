@@ -1,5 +1,14 @@
 import { ToastManager } from '../../core/components/toast-manager.js';
+import {ApiService} from '../../core/services/api-service.js';
+// [CORRECCIÓN] Importación nombrada para coincidir con tu archivo existente
+import { ApiRoutes } from '../../core/services/api-routes.js';
+import {I18nManager} from '../../core/utils/i18n-manager.js';
 
+// ==========================================
+// VARIABLES DE ESTADO (Módulo)
+// ==========================================
+
+// Variables del Reproductor
 let _hls = null;
 let _video = null;
 let _controlsTimeout = null;
@@ -20,37 +29,49 @@ let _animationFrameId = null;
 // Variable para Modo Cine
 let _isCinemaMode = false;
 
+// [NUEVO] Variables para Interacción (Likes, Subs, Views)
+let _interactionState = {
+    videoUuid: null,
+    channelUuid: null,
+    viewRegistered: false,
+    isLoading: false
+};
+
+// ==========================================
+// CONTROLADOR PRINCIPAL
+// ==========================================
+
 export const WatchController = {
     init: () => {
         const container = document.querySelector('[data-section="watch"]');
         if (!container) return;
 
-        console.log("WatchController: Inicializado (Multi-Bitrate + Scrubbing + Ambient + Cinema)");
+        console.log("WatchController: Inicializado (Player + Interacciones)");
 
         _video = document.getElementById('main-player');
         const hlsSourceInput = document.getElementById('watch-hls-source');
 
-        // Inicializar Canvas
+        // --- 1. CONFIGURACIÓN DEL REPRODUCTOR (HLS, Cine, Ambient) ---
+        
+        // Inicializar Canvas Ambient
         _ambientCanvas = document.getElementById('ambient-canvas');
         if (_ambientCanvas) {
-            _ambientCtx = _ambientCanvas.getContext('2d', { alpha: false }); // Optimización: sin canal alpha
+            _ambientCtx = _ambientCanvas.getContext('2d', { alpha: false }); 
         }
 
-        // Leer preferencia de usuario (Iluminación)
+        // Preferencia de Iluminación
         const storedPref = localStorage.getItem('aurora_cinematic_mode');
         _isLightingEnabled = storedPref === 'on';
 
-        // [CORRECCIÓN] Inicializar Modo Cine (Verificando primero si PHP ya lo renderizó activo)
+        // Inicializar Modo Cine
         const layout = document.querySelector('.component-watch-layout');
         const cinemaBtn = document.getElementById('cinema-mode-btn');
         const cinemaIcon = cinemaBtn ? cinemaBtn.querySelector('span') : null;
 
         if (layout && layout.classList.contains('component-watch-mode-cinema')) {
              _isCinemaMode = true;
-             // Solo actualizamos el icono porque la clase ya está puesta
              if(cinemaIcon) cinemaIcon.innerText = 'crop_free';
         } else {
-            // Fallback: Verificar localStorage por si es la primera carga sin cookie
             const storedCinema = localStorage.getItem('aurora_cinema_mode');
             if (storedCinema === 'on') {
                 setCinemaMode(true);
@@ -62,21 +83,30 @@ export const WatchController = {
         const vttInput = document.getElementById('watch-vtt-source');
 
         if (_video && hlsSourceInput) {
-            // 1. Inicializar reproductor
             loadPlayer(_video, hlsSourceInput.value);
-            
-            // 2. Inicializar controles UI
             initCustomControls(_video);
 
-            // 3. Inicializar Scrubbing si hay datos
             if (spriteInput && vttInput && spriteInput.value && vttInput.value) {
                 _spriteUrl = spriteInput.value;
                 _vttUrl = vttInput.value;
                 initScrubbing();
             }
 
-            // Iniciar lógica de iluminación
             initAmbientLightLogic();
+        }
+
+        // --- 2. CONFIGURACIÓN DE INTERACCIONES (Likes, Subs, Views) ---
+        // Buscamos el contexto inyectado por PHP (Fase 4)
+        const metaContext = document.querySelector('.js-video-context');
+        if (metaContext) {
+            _interactionState.videoUuid = metaContext.dataset.videoUuid;
+            _interactionState.channelUuid = metaContext.dataset.channelUuid;
+            
+            // Iniciar listeners
+            initInteractionControls();
+            initViewTracker();
+        } else {
+            console.warn("WatchController: No se encontraron metadatos de interacción (.js-video-context)");
         }
     },
 
@@ -93,8 +123,181 @@ export const WatchController = {
         _spriteImage = null;
         _ambientCanvas = null;
         _ambientCtx = null;
+        
+        // Reset state
+        _interactionState = {
+            videoUuid: null,
+            channelUuid: null,
+            viewRegistered: false,
+            isLoading: false
+        };
     }
 };
+
+// ==========================================
+// LÓGICA DE INTERACCIONES (NUEVO)
+// ==========================================
+
+function initInteractionControls() {
+    const btnLike = document.querySelector('.js-btn-like');
+    const btnDislike = document.querySelector('.js-btn-dislike');
+    const btnSubscribe = document.querySelector('.js-btn-subscribe');
+
+    if (btnLike) {
+        btnLike.addEventListener('click', () => handleInteraction('like'));
+    }
+    if (btnDislike) {
+        btnDislike.addEventListener('click', () => handleInteraction('dislike'));
+    }
+    if (btnSubscribe) {
+        btnSubscribe.addEventListener('click', () => handleSubscribe());
+    }
+}
+
+async function handleInteraction(type) {
+    if (_interactionState.isLoading) return;
+    _interactionState.isLoading = true;
+
+    try {
+        const response = await ApiService.post(ApiRoutes.Interaction.ToggleLike, {
+            video_uuid: _interactionState.videoUuid,
+            type: type
+        });
+
+        if (response.success) {
+            updateInteractionUI(response);
+        } else if (response.require_login) {
+            ToastManager.show(I18nManager.t('auth.login_required') || 'Inicia sesión para interactuar', 'info');
+        } else {
+            ToastManager.show(response.message || 'Error', 'error');
+        }
+    } catch (error) {
+        console.error('Interaction error:', error);
+    } finally {
+        _interactionState.isLoading = false;
+    }
+}
+
+function updateInteractionUI(data) {
+    const { action, likes, dislikes, type } = data;
+    
+    const btnLike = document.querySelector('.js-btn-like');
+    const btnDislike = document.querySelector('.js-btn-dislike');
+    const countLike = document.querySelector('.js-count-like');
+    const countDislike = document.querySelector('.js-count-dislike');
+
+    // Resetear estados
+    if (btnLike) btnLike.classList.remove('active');
+    if (btnDislike) btnDislike.classList.remove('active');
+
+    // Aplicar nuevo estado
+    if (action !== 'removed') {
+        if (type === 'like' && btnLike) btnLike.classList.add('active');
+        if (type === 'dislike' && btnDislike) btnDislike.classList.add('active');
+    }
+
+    // Actualizar contadores
+    if (countLike) countLike.textContent = formatNumber(likes);
+    if (countDislike) countDislike.textContent = formatNumber(dislikes);
+}
+
+async function handleSubscribe() {
+    if (_interactionState.isLoading) return;
+    if (!_interactionState.channelUuid) return;
+
+    _interactionState.isLoading = true;
+    const btn = document.querySelector('.js-btn-subscribe');
+    if (!btn) return;
+    
+    const originalText = btn.innerHTML;
+    btn.classList.add('loading'); // Feedback visual si tienes CSS para esto
+
+    try {
+        const response = await ApiService.post(ApiRoutes.Interaction.ToggleSub, {
+            channel_uuid: _interactionState.channelUuid
+        });
+
+        if (response.success) {
+            const isSubscribed = response.subscribed;
+            const countSubs = document.querySelector('.js-count-subs');
+
+            if (isSubscribed) {
+                btn.classList.add('subscribed');
+                btn.textContent = I18nManager.t('app.subscribed') || 'Suscrito';
+                ToastManager.show(I18nManager.t('app.sub_success') || 'Suscripción añadida', 'success');
+            } else {
+                btn.classList.remove('subscribed');
+                btn.textContent = I18nManager.t('app.subscribe') || 'Suscribirse';
+                ToastManager.show(I18nManager.t('app.unsub_success') || 'Suscripción eliminada', 'success');
+            }
+
+            if (countSubs) {
+                countSubs.textContent = formatNumber(response.subscribers_count);
+            }
+        } else if (response.require_login) {
+            ToastManager.show('Inicia sesión para suscribirte', 'info');
+        } else {
+            ToastManager.show(response.message, 'error');
+        }
+    } catch (error) {
+        console.error('Subscribe error:', error);
+        btn.innerHTML = originalText;
+    } finally {
+        _interactionState.isLoading = false;
+        btn.classList.remove('loading');
+    }
+}
+
+function initViewTracker() {
+    if (!_video) return;
+
+    _video.addEventListener('timeupdate', () => {
+        if (_interactionState.viewRegistered) return;
+
+        if (!_video.paused && !_video.seeking) {
+            // Contar visita después de 5 segundos de reproducción real
+            if (_video.currentTime > 5) {
+                registerView();
+            }
+        }
+    });
+}
+
+async function registerView() {
+    if (_interactionState.viewRegistered) return;
+    _interactionState.viewRegistered = true;
+
+    try {
+        const response = await ApiService.post(ApiRoutes.Interaction.RegisterView, {
+            video_uuid: _interactionState.videoUuid
+        });
+        
+        if (response.success && response.status === 'registered') {
+            // console.log(`View registered. Total: ${response.views}`);
+        }
+    } catch (e) {
+        console.warn('View registration failed', e);
+    }
+}
+
+// Helper para formato de números (1.2K, 1M)
+function formatNumber(num) {
+    if (num === null || num === undefined) return '0';
+    num = parseInt(num);
+    if (isNaN(num)) return '0';
+
+    if (num >= 1000000) {
+        return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    }
+    if (num >= 1000) {
+        return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    }
+    return num.toString();
+}
+
+// ==========================================
+// LÓGICA DE REPRODUCTOR (HLS)
+// ==========================================
 
 function loadPlayer(video, source) {
     if (Hls.isSupported()) {
@@ -103,7 +306,7 @@ function loadPlayer(video, source) {
         }
 
         _hls = new Hls({
-            capLevelToPlayerSize: true, // Optimización automática
+            capLevelToPlayerSize: true, 
             autoStartLoad: true
         });
 
@@ -113,8 +316,6 @@ function loadPlayer(video, source) {
         _hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
             console.log(`HLS Manifest cargado. ${data.levels.length} niveles encontrados.`);
             _levels = data.levels;
-            
-            // Renderizar opciones de calidad
             renderQualityOptions(_levels);
             
             video.play().catch(e => console.log("Autoplay bloqueado por navegador:", e));
@@ -142,14 +343,12 @@ function loadPlayer(video, source) {
         });
 
         _hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
-             const level = _levels[data.level];
-             if (level && _hls.autoLevelEnabled) {
-                 // console.log(`Auto-cambio a: ${level.height}p`);
-             }
+             // const level = _levels[data.level];
+             // Auto-level debug logic here
         });
 
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        // Soporte nativo (Safari)
+        // Safari Nativo
         video.src = source;
         video.addEventListener('loadedmetadata', () => {
             video.play();
@@ -161,9 +360,10 @@ function loadPlayer(video, source) {
     }
 }
 
-/**
- * Lógica de Scrubbing (Previsualización)
- */
+// ==========================================
+// LÓGICA DE SCRUBBING
+// ==========================================
+
 async function initScrubbing() {
     _spriteImage = new Image();
     _spriteImage.src = _spriteUrl;
@@ -175,7 +375,7 @@ async function initScrubbing() {
         _vttData = parseVTT(text);
         console.log(`Scrubbing listo: ${_vttData.length} frames indexados.`);
     } catch (e) {
-        console.warn("Fallo al inicializar scrubbing (posiblemente aún procesando):", e);
+        console.warn("Fallo al inicializar scrubbing:", e);
     }
 }
 
@@ -233,8 +433,7 @@ function parseTime(timeStr) {
 function setCinemaMode(enable) {
     _isCinemaMode = enable;
     
-    // [CORRECCIÓN] Guardar en Cookie para persistencia sin FOUC
-    document.cookie = `aurora_cinema_mode=${enable ? 'on' : 'off'}; path=/; max-age=31536000`; // 1 año
+    document.cookie = `aurora_cinema_mode=${enable ? 'on' : 'off'}; path=/; max-age=31536000`; 
     localStorage.setItem('aurora_cinema_mode', enable ? 'on' : 'off');
 
     const layout = document.querySelector('.component-watch-layout');
@@ -243,20 +442,19 @@ function setCinemaMode(enable) {
 
     if (enable) {
         layout.classList.add('component-watch-mode-cinema');
-        if(icon) icon.innerText = 'crop_free'; // Icono para salir (pantalla normal)
+        if(icon) icon.innerText = 'crop_free';
     } else {
         layout.classList.remove('component-watch-mode-cinema');
-        if(icon) icon.innerText = 'crop_landscape'; // Icono para entrar (modo cine)
+        if(icon) icon.innerText = 'crop_landscape';
     }
 
-    // Forzar redibujado de ambient canvas si es necesario
     if (_isLightingEnabled) {
         drawAmbientFrame();
     }
 }
 
 // ==========================================
-// LÓGICA DE ILUMINACIÓN CINEMATOGRÁFICA
+// LÓGICA DE ILUMINACIÓN
 // ==========================================
 
 function initAmbientLightLogic() {
@@ -369,9 +567,10 @@ function drawAmbientFrame() {
     _ambientCtx.drawImage(_video, 0, 0, _ambientCanvas.width, _ambientCanvas.height);
 }
 
-/**
- * Inicializa la lógica de los controles personalizados
- */
+// ==========================================
+// CONTROLES UI
+// ==========================================
+
 function initCustomControls(video) {
     const playPauseBtn = document.getElementById('play-pause-btn');
     const muteBtn = document.getElementById('mute-btn');
@@ -382,14 +581,12 @@ function initCustomControls(video) {
     const durationEl = document.getElementById('duration');
     const fullscreenBtn = document.getElementById('fullscreen-btn');
     const settingsBtn = document.getElementById('settings-btn');
-    
     const cinemaBtn = document.getElementById('cinema-mode-btn');
     
     const controlsContainer = document.getElementById('custom-controls');
     const videoContainer = document.getElementById('video-container');
     const settingsPopover = document.getElementById('settings-popover');
 
-    // Elementos de Scrubbing
     const tooltip = document.getElementById('scrub-tooltip');
     const tooltipImg = tooltip ? tooltip.querySelector('.component-watch-scrub-preview') : null;
     const tooltipTime = tooltip ? tooltip.querySelector('.component-watch-scrub-time') : null;
@@ -412,7 +609,7 @@ function initCustomControls(video) {
     video.addEventListener('play', () => updatePlayPauseIcon(false));
     video.addEventListener('pause', () => updatePlayPauseIcon(true));
 
-    // 2. Barra de Progreso y Tiempo
+    // 2. Barra de Progreso
     video.addEventListener('loadedmetadata', () => {
         seekBar.max = video.duration;
         durationEl.innerText = formatTime(video.duration);
@@ -432,12 +629,11 @@ function initCustomControls(video) {
         currentTimeEl.innerText = formatTime(seekBar.value);
     });
 
-    // --- LOGICA DE SCRUBBING (Mouse Move) [CORREGIDA] ---
+    // 3. Scrubbing UI
     if (progressContainer && tooltip && _vttData) {
         progressContainer.addEventListener('mousemove', (e) => {
             if (!_vttData.length) return;
 
-            // 1. CÁLCULO DEL TIEMPO (Relativo a la barra de progreso)
             const rectBar = progressContainer.getBoundingClientRect();
             const offsetXBar = e.clientX - rectBar.left;
             let percent = offsetXBar / rectBar.width;
@@ -456,16 +652,13 @@ function initCustomControls(video) {
             if (frame && tooltipImg) {
                 tooltip.style.display = 'flex';
                 
-                // 2. CÁLCULO DE POSICIÓN VISUAL (Relativo al padre del tooltip)
-                // [IMPORTANTE] Usamos offsetParent para que funcione en modo cine y normal
                 const tooltipParent = tooltip.offsetParent || videoContainer; 
                 
                 if (tooltipParent) {
                     const parentRect = tooltipParent.getBoundingClientRect();
                     let relativeX = e.clientX - parentRect.left;
 
-                    // Límites visuales
-                    const halfTooltip = 80; // Aprox mitad de 160px
+                    const halfTooltip = 80; 
                     const maxLimit = parentRect.width - halfTooltip;
 
                     if (relativeX < halfTooltip) relativeX = halfTooltip;
@@ -474,7 +667,6 @@ function initCustomControls(video) {
                     tooltip.style.left = `${relativeX}px`;
                 }
                 
-                // Renderizado del sprite
                 tooltipImg.style.backgroundImage = `url('${_spriteUrl}')`;
                 tooltipImg.style.backgroundPosition = `-${frame.x}px -${frame.y}px`;
                 tooltipImg.style.width = `${frame.w}px`;
@@ -487,7 +679,7 @@ function initCustomControls(video) {
         });
     }
 
-    // 3. Volumen
+    // 4. Volumen
     volumeBar.addEventListener('input', (e) => {
         video.volume = e.target.value;
         video.muted = e.target.value === 0;
@@ -506,7 +698,7 @@ function initCustomControls(video) {
         }
     });
 
-    // 4. Pantalla Completa
+    // 5. Pantalla Completa
     fullscreenBtn.addEventListener('click', () => {
         if (!document.fullscreenElement) {
             if (videoContainer.requestFullscreen) {
@@ -521,7 +713,7 @@ function initCustomControls(video) {
         }
     });
 
-    // 5. Configuración (Settings)
+    // 6. Configuración
     settingsBtn.addEventListener('click', (e) => {
         e.stopPropagation(); 
         toggleSettingsMenu();
@@ -536,14 +728,13 @@ function initCustomControls(video) {
 
     initSettingsNavigationDelegated();
 
-    // 6. Modo Cine
     if (cinemaBtn) {
         cinemaBtn.addEventListener('click', () => {
             setCinemaMode(!_isCinemaMode);
         });
     }
 
-    // 7. Ocultar controles automáticamente
+    // 7. Auto-ocultar controles
     const showControls = () => {
         controlsContainer.classList.add('show');
         videoContainer.style.cursor = 'default';
@@ -613,14 +804,12 @@ function renderQualityOptions(levels) {
     const container = document.getElementById('quality-options-container');
     container.innerHTML = '';
 
-    // 1. Opción Automática
     const isAutoEnabled = _hls ? _hls.autoLevelEnabled : true;
     
     const autoOption = createQualityOption('-1', 'Automática', isAutoEnabled);
     autoOption.addEventListener('click', () => handleQualityChange(-1, 'Automática', autoOption));
     container.appendChild(autoOption);
 
-    // 2. Niveles disponibles (Orden descendente)
     [...levels].reverse().forEach((level) => {
         const originalIndex = levels.indexOf(level); 
         const height = level.height;
@@ -634,7 +823,6 @@ function renderQualityOptions(levels) {
         const isSelected = !isAutoEnabled && (_hls && _hls.currentLevel === originalIndex);
         
         const option = createQualityOption(originalIndex, label, isSelected);
-        
         option.addEventListener('click', () => handleQualityChange(originalIndex, label, option));
         container.appendChild(option);
     });
@@ -650,7 +838,7 @@ function createQualityOption(val, text, isSelected) {
 
 function handleQualityChange(levelIndex, label, element) {
     if (_hls) {
-        _hls.currentLevel = levelIndex; // -1 = Auto
+        _hls.currentLevel = levelIndex; 
     }
 
     const allOpts = document.querySelectorAll('#quality-options-container .component-watch-settings-option');
@@ -663,8 +851,6 @@ function handleQualityChange(levelIndex, label, element) {
     resetSettingsMenu();
     toggleSettingsMenu(); 
 }
-
-// Helpers de UI
 
 function updatePlayPauseIcon(isPaused) {
     const btn = document.getElementById('play-pause-btn');

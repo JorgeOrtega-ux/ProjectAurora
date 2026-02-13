@@ -90,8 +90,13 @@ return [
     'studio.generate_thumbs'  => ['file' => 'handlers/studio-handler.php', 'action' => 'generate_thumbnails'],
     'studio.delete_video'     => ['file' => 'handlers/studio-handler.php', 'action' => 'delete_video'],
     'studio.get_video_details'=> ['file' => 'handlers/studio-handler.php', 'action' => 'get_video_details'],
-    
-    // [ESTA ES LA LÍNEA QUE FALTABA]
     'studio.select_generated_thumbnail' => ['file' => 'handlers/studio-handler.php', 'action' => 'select_generated_thumbnail'],
+
+    // === INTERACTIONS (LIKES, SUBS, VIEWS) ===
+    'interaction.toggle_like' => ['file' => 'handlers/interaction-handler.php', 'action' => 'toggle_like'],
+    'interaction.toggle_sub'  => ['file' => 'handlers/interaction-handler.php', 'action' => 'toggle_subscribe'],
+    'interaction.view'        => ['file' => 'handlers/interaction-handler.php', 'action' => 'register_view'],
+
+    
 ];
 ?>

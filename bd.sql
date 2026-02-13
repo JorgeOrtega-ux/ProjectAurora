@@ -4,6 +4,10 @@ USE project_aurora_db;
 -- =========================================================
 -- REINICIO DE TABLAS
 -- =========================================================
+-- (Mantenemos tu lógica de limpieza si reinicias la BD, agregamos las nuevas)
+DROP TABLE IF EXISTS video_views;
+DROP TABLE IF EXISTS video_interactions;
+DROP TABLE IF EXISTS subscriptions;
 DROP TABLE IF EXISTS audit_logs; 
 DROP TABLE IF EXISTS ws_auth_tokens;
 DROP TABLE IF EXISTS user_auth_tokens;
@@ -12,11 +16,12 @@ DROP TABLE IF EXISTS security_logs;
 DROP TABLE IF EXISTS password_resets;
 DROP TABLE IF EXISTS verification_codes;
 DROP TABLE IF EXISTS profile_changes;
+DROP TABLE IF EXISTS videos; -- Videos debe borrarse antes que users
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS server_config;
 
 -- =========================================================
--- CREACIÓN DE TABLAS
+-- CREACIÓN DE TABLAS (Existentes)
 -- =========================================================
 
 CREATE TABLE IF NOT EXISTS users (
@@ -33,7 +38,9 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     two_factor_secret VARCHAR(255) DEFAULT NULL,
     two_factor_enabled TINYINT(1) DEFAULT 0,
-    two_factor_recovery_codes JSON DEFAULT NULL
+    two_factor_recovery_codes JSON DEFAULT NULL,
+    -- [NUEVO] Contador persistente para suscriptores (Cache DB)
+    subscribers_count INT DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS verification_codes (
@@ -64,6 +71,7 @@ CREATE TABLE IF NOT EXISTS security_logs (
     action_type VARCHAR(50) NOT NULL,
     ip_address VARCHAR(45) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME DEFAULT NULL,
     INDEX (user_identifier),
     INDEX (ip_address),
     INDEX (created_at)
@@ -114,7 +122,6 @@ CREATE TABLE IF NOT EXISTS server_config (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- [MODIFICADO] Se agrega 'security_panic_mode'
 INSERT IGNORE INTO server_config (config_key, config_value) VALUES 
 ('maintenance_mode', '0'),
 ('security_panic_mode', '0'),
@@ -132,7 +139,9 @@ INSERT IGNORE INTO server_config (config_key, config_value) VALUES
 ('security_register_max_attempts', '10'),
 ('security_general_rate_limit', '10'),
 ('auth_verification_code_expiry', '15'),
-('auth_reset_token_expiry', '60');
+('auth_reset_token_expiry', '60'),
+('security_admin_require_2fa', '1'),
+('upload_daily_limit', '10');
 
 CREATE TABLE IF NOT EXISTS ws_auth_tokens (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -174,10 +183,6 @@ CREATE TABLE IF NOT EXISTS `system_alerts` (
   INDEX `idx_active` (`is_active`)
 );
 
-INSERT INTO server_config (config_key, config_value) 
-VALUES ('security_admin_require_2fa', '1') 
-ON DUPLICATE KEY UPDATE config_value = VALUES(config_value);
-
 CREATE TABLE IF NOT EXISTS `videos` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `uuid` CHAR(36) NOT NULL UNIQUE,
@@ -192,23 +197,65 @@ CREATE TABLE IF NOT EXISTS `videos` (
   `duration` INT DEFAULT 0,
   `processing_percentage` TINYINT DEFAULT 0,
   `error_message` TEXT DEFAULT NULL,
+  `dominant_color` VARCHAR(7) DEFAULT '#000000',
+  `generated_thumbnails` JSON DEFAULT NULL,
+  `orientation` ENUM('landscape', 'portrait') DEFAULT 'landscape',
+  `sprite_path` VARCHAR(255) DEFAULT NULL,
+  `vtt_path` VARCHAR(255) DEFAULT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  -- [NUEVO] Contadores persistentes para videos (Cache DB)
+  `views_count` BIGINT DEFAULT 0,
+  `likes_count` INT DEFAULT 0,
+  `dislikes_count` INT DEFAULT 0,
   FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
   INDEX `idx_batch` (`batch_id`),
   INDEX `idx_status` (`status`)
-);ALTER TABLE videos 
-ADD COLUMN dominant_color VARCHAR(7) DEFAULT '#000000',
-ADD COLUMN generated_thumbnails JSON DEFAULT NULL;
+);
 
--- Ejecutar en tu base de datos o agregar a bd.sql
-INSERT INTO server_config (config_key, config_value) 
-VALUES ('upload_daily_limit', '10') 
-ON DUPLICATE KEY UPDATE config_value = VALUES(config_value);ALTER TABLE security_logs ADD COLUMN expires_at DATETIME DEFAULT NULL;
+-- =========================================================
+-- NUEVAS TABLAS (Project Aurora - Interaction Engine)
+-- =========================================================
 
-ALTER TABLE videos 
-ADD COLUMN orientation ENUM('landscape', 'portrait') DEFAULT 'landscape' AFTER duration;
+-- A. SUBSCRIPTIONS
+-- Controla quién sigue a quién. Relación User -> User
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    subscriber_id INT NOT NULL, -- Usuario que se suscribe
+    channel_id INT NOT NULL,    -- Usuario al que se suscriben
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (subscriber_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (channel_id) REFERENCES users(id) ON DELETE CASCADE,
+    -- Restricción única para evitar doble suscripción
+    UNIQUE KEY unique_subscription (subscriber_id, channel_id),
+    -- Índice para contar suscriptores rápido
+    INDEX idx_channel (channel_id)
+);
 
-ALTER TABLE videos 
-ADD COLUMN sprite_path VARCHAR(255) DEFAULT NULL,
-ADD COLUMN vtt_path VARCHAR(255) DEFAULT NULL;
+-- B. VIDEO INTERACTIONS
+-- Unificamos likes y dislikes en una sola tabla (Toggle logic)
+CREATE TABLE IF NOT EXISTS video_interactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    video_id INT NOT NULL,
+    type ENUM('like', 'dislike') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
+    -- Un usuario solo puede tener UNA interacción por video
+    UNIQUE KEY unique_interaction (user_id, video_id)
+);
+
+-- C. VIDEO VIEWS (Historial y Seguridad)
+-- Para contar visitas reales y prevenir spam (Log histórico)
+CREATE TABLE IF NOT EXISTS video_views (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    video_id INT NOT NULL,
+    user_id INT NULL, -- Puede ser NULL si es invitado
+    ip_address VARCHAR(45) NOT NULL, -- Para limitar visitas por IP
+    user_agent TEXT, -- Para detectar bots
+    viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
+    -- Índice para limpiar logs viejos o análisis
+    INDEX idx_video_date (video_id, viewed_at)
+);

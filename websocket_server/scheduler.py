@@ -8,184 +8,200 @@ from datetime import datetime, timedelta
 import hmac
 import hashlib
 import glob
-import redis  # [NUEVO]
+import redis
 
-# Configuración
+# --- CONFIGURACIÓN ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - SCHEDULER - %(message)s')
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../.env'))
 
-# [SEGURIDAD] Validación estricta de TODAS las variables
+# [SEGURIDAD] Validación estricta
 DB_HOST = os.getenv('DB_HOST')
-if not DB_HOST: raise ValueError("Error crítico: Falta la variable DB_HOST.")
-
 DB_USER = os.getenv('DB_USER')
-if not DB_USER: raise ValueError("Error crítico: Falta la variable DB_USER.")
-
 DB_PASS = os.getenv('DB_PASS')
-if DB_PASS is None: raise ValueError("Error crítico: Falta la variable DB_PASS.")
-
 DB_NAME = os.getenv('DB_NAME')
-if not DB_NAME: raise ValueError("Error crítico: Falta la variable DB_NAME.")
-
 SYSTEM_KEY = os.getenv('SYSTEM_API_KEY')
-if not SYSTEM_KEY: raise ValueError("Error crítico: Falta la variable SYSTEM_API_KEY.")
-
 REDIS_HOST = os.getenv('REDIS_HOST')
 REDIS_PORT = os.getenv('REDIS_PORT')
 REDIS_PASS = os.getenv('REDIS_PASSWORD')
 
-if not REDIS_HOST or not REDIS_PORT:
-    logging.error("❌ Error fatal: Faltan variables Redis en .env")
+if not all([DB_HOST, DB_USER, DB_PASS is not None, DB_NAME, REDIS_HOST, REDIS_PORT]):
+    logging.error("❌ Error fatal: Faltan variables de entorno críticas.")
     exit(1)
 
 REDIS_PORT = int(REDIS_PORT)
-
-# URL de la API (Ajustar según tu entorno real)
-API_URL = "http://192.168.8.2/ProjectAurora/api/"
+API_URL = "http://localhost/ProjectAurora/api/" # Ajusta si usas IP o dominio
 
 # Directorios
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMP_DIR = os.path.join(BASE_DIR, 'storage', 'temp')
 
-# --- INICIALIZACIÓN GLOBAL DE REDIS ---
+# --- REDIS ---
 try:
     use_ssl = os.getenv('REDIS_SCHEME', 'tcp').lower() == 'tls'
-    
     r_client = redis.Redis(
-        host=REDIS_HOST, 
-        port=REDIS_PORT, 
-        password=REDIS_PASS, 
-        decode_responses=True,
-        ssl=use_ssl,
-        ssl_cert_reqs=None,
-        socket_timeout=5
+        host=REDIS_HOST, port=REDIS_PORT, password=REDIS_PASS,
+        decode_responses=True, ssl=use_ssl, ssl_cert_reqs=None, socket_timeout=5
     )
     r_client.ping()
-    logging.info("✅ Conexión a Redis establecida para mantenimiento.")
-
+    logging.info("✅ Redis conectado.")
 except Exception as e:
-    logging.error(f"❌ Error fatal conectando a Redis: {e}")
+    logging.error(f"❌ Error Redis: {e}")
     exit(1)
 
 def get_db_connection():
     return mysql.connector.connect(host=DB_HOST, user=DB_USER, password=DB_PASS, database=DB_NAME)
 
+# --- TAREAS ---
+
 def check_and_run_backup():
+    """Ejecuta backups automáticos según configuración en DB"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-
-        # 1. Leer Configuración
+        
         cursor.execute("SELECT config_key, config_value FROM server_config WHERE config_key LIKE 'auto_backup_%'")
         rows = cursor.fetchall()
         config = {row['config_key']: row['config_value'] for row in rows}
-
+        
         enabled = config.get('auto_backup_enabled', '0') == '1'
-        frequency_hours = int(config.get('auto_backup_frequency', 24))
-
+        freq = int(config.get('auto_backup_frequency', 24))
+        
         if not enabled:
             conn.close()
             return
 
-        # 2. Verificar último backup
         cursor.execute("SELECT created_at FROM security_logs WHERE action_type = 'backup_create' ORDER BY id DESC LIMIT 1")
-        last_log = cursor.fetchone()
+        last = cursor.fetchone()
         
         should_run = False
-        
-        if not last_log:
-            should_run = True # Nunca se ha hecho uno
-        else:
-            last_time = last_log['created_at'] # Datetime object
-            diff = datetime.now() - last_time
-            if diff > timedelta(hours=frequency_hours):
-                should_run = True
-
+        if not last:
+            should_run = True
+        elif (datetime.now() - last['created_at']) > timedelta(hours=freq):
+            should_run = True
+            
         conn.close()
-
-        # 3. Ejecutar Backup vía API si corresponde
+        
         if should_run:
-            logging.info(f"Iniciando backup automático (Frecuencia: {frequency_hours}h)...")
-            
-            timestamp = str(int(time.time()))
-            
-            signature = hmac.new(
-                SYSTEM_KEY.encode('utf-8'), 
-                timestamp.encode('utf-8'), 
-                hashlib.sha256
-            ).hexdigest()
-
-            headers = {
-                'X-System-Timestamp': timestamp,
-                'X-System-Signature': signature
-            }
-            
-            payload = {'route': 'system.create_backup'}
-            
-            try:
-                res = requests.post(API_URL, data=payload, headers=headers)
-                if res.status_code == 200:
-                    data = res.json()
-                    if data.get('success'):
-                        logging.info(f"Backup ÉXITO: {data.get('filename')}")
-                    else:
-                        logging.error(f"Backup FALLO API: {data.get('message')}")
-                else:
-                    logging.error(f"Backup FALLO HTTP: {res.status_code}")
-            except Exception as e:
-                logging.error(f"Error conectando con API: {e}")
+            logging.info(f"🔄 Ejecutando backup automático ({freq}h)...")
+            trigger_system_action('system.create_backup')
 
     except Exception as e:
-        logging.error(f"Error general en scheduler backup: {e}")
+        logging.error(f"Error en backup scheduler: {e}")
 
-# [NUEVO] Tarea de limpieza de subidas huérfanas
 def cleanup_stale_uploads():
-    logging.info("🧹 Ejecutando limpieza de archivos temporales huérfanos...")
+    """Elimina archivos .part viejos en storage/temp"""
     try:
-        if not os.path.exists(TEMP_DIR):
-            return
-
-        # Buscar todos los archivos .part
-        part_files = glob.glob(os.path.join(TEMP_DIR, '*.part'))
-        deleted_count = 0
-
-        for file_path in part_files:
-            filename = os.path.basename(file_path)
-            # El formato esperado es {uuid}.part
-            uuid = filename.replace('.part', '')
-            
-            # Consultar a Redis si el token de subida para este UUID sigue vivo
-            # Si NO existe, significa que expiró (2 horas) o se completó
-            redis_key = f"upload_token:{uuid}"
-            
-            if not r_client.exists(redis_key):
+        if not os.path.exists(TEMP_DIR): return
+        
+        files = glob.glob(os.path.join(TEMP_DIR, '*.part'))
+        deleted = 0
+        
+        for f in files:
+            uuid = os.path.basename(f).replace('.part', '')
+            if not r_client.exists(f"upload_token:{uuid}"):
                 try:
-                    os.remove(file_path)
-                    deleted_count += 1
-                    logging.info(f"🗑️ Eliminado archivo huérfano: {filename}")
-                except OSError as e:
-                    logging.error(f"❌ Error al borrar {filename}: {e}")
+                    os.remove(f)
+                    deleted += 1
+                except: pass
+        
+        if deleted > 0:
+            logging.info(f"🧹 Limpieza: {deleted} archivos temporales eliminados.")
+            
+    except Exception as e:
+        logging.error(f"Error limpieza uploads: {e}")
 
-        if deleted_count > 0:
-            logging.info(f"✅ Limpieza completada: {deleted_count} archivos eliminados.")
+def sync_counters_to_db():
+    """
+    [NUEVO] Sincroniza los contadores de Redis (Hot) a MySQL (Cold).
+    Esto asegura que los Likes/Views no se pierdan si Redis se reinicia.
+    """
+    logging.info("💾 Sincronizando contadores Redis -> MySQL...")
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 1. Sincronizar Videos (Likes, Dislikes, Views)
+        # Patrón: video:stats:{uuid}
+        video_keys = r_client.keys("video:stats:*")
+        for key in video_keys:
+            try:
+                uuid = key.split(':')[-1]
+                stats = r_client.hgetall(key)
+                
+                views = int(stats.get('views', 0))
+                likes = int(stats.get('likes', 0))
+                dislikes = int(stats.get('dislikes', 0))
+                
+                # Actualizamos solo si hay datos. Usamos UPDATE directo.
+                # Optimización: Podríamos verificar si cambió, pero el UPDATE es barato aquí.
+                sql = """
+                    UPDATE videos 
+                    SET views_count = %s, likes_count = %s, dislikes_count = %s 
+                    WHERE uuid = %s
+                """
+                cursor.execute(sql, (views, likes, dislikes, uuid))
+            except Exception as e:
+                logging.error(f"Error sync video {key}: {e}")
+
+        # 2. Sincronizar Usuarios (Suscriptores)
+        # Patrón: user:stats:{uuid}
+        user_keys = r_client.keys("user:stats:*")
+        for key in user_keys:
+            try:
+                uuid = key.split(':')[-1]
+                subs = int(r_client.hget(key, 'subscribers') or 0)
+                
+                sql = "UPDATE users SET subscribers_count = %s WHERE uuid = %s"
+                cursor.execute(sql, (subs, uuid))
+            except Exception as e:
+                logging.error(f"Error sync user {key}: {e}")
+
+        conn.commit()
+        conn.close()
+        # logging.info("✅ Sincronización DB completada.") # Comentar para no saturar logs
         
     except Exception as e:
-        logging.error(f"❌ Error en cleanup_stale_uploads: {e}")
+        logging.error(f"❌ Error crítico sincronizando DB: {e}")
 
-if __name__ == "__main__":
-    logging.info("Iniciando Scheduler de Mantenimiento...")
+def trigger_system_action(route):
+    """Helper para llamar a la API interna"""
+    timestamp = str(int(time.time()))
+    signature = hmac.new(
+        SYSTEM_KEY.encode('utf-8'), timestamp.encode('utf-8'), hashlib.sha256
+    ).hexdigest()
     
-    # Contadores para intervalos diferentes
-    minutes_counter = 0
+    headers = {'X-System-Timestamp': timestamp, 'X-System-Signature': signature}
+    try:
+        requests.post(API_URL, data={'route': route}, headers=headers, timeout=5)
+    except Exception as e:
+        logging.error(f"Fallo trigger API {route}: {e}")
+
+# --- LOOP PRINCIPAL ---
+if __name__ == "__main__":
+    logging.info("🚀 Scheduler iniciado. Cron activo.")
+    
+    counter_min = 0
     
     while True:
-        # Tareas de cada minuto
-        check_and_run_backup()
-        
-        # Tareas de cada hora (60 minutos)
-        if minutes_counter >= 60:
-            cleanup_stale_uploads()
-            minutes_counter = 0
-        
-        minutes_counter += 1
-        time.sleep(60)
+        try:
+            # Tareas por Minuto (Cada 1 min)
+            check_and_run_backup()
+            
+            # Tareas cada 5 minutos (Sincronización DB)
+            if counter_min % 5 == 0:
+                sync_counters_to_db()
+
+            # Tareas cada 60 minutos (Limpieza profunda)
+            if counter_min >= 60:
+                cleanup_stale_uploads()
+                counter_min = 0
+            
+            counter_min += 1
+            time.sleep(60)
+            
+        except KeyboardInterrupt:
+            logging.info("🛑 Scheduler detenido.")
+            break
+        except Exception as e:
+            logging.error(f"💥 Error en loop principal: {e}")
+            time.sleep(10)

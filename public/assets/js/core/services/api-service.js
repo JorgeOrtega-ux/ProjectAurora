@@ -21,7 +21,8 @@ const ApiService = {
         (config) => {
             if (config.body instanceof FormData) {
                 if (!config.body.has('csrf_token')) {
-                    config.body.append('csrf_token', ApiService.getCsrfToken());
+                    const token = ApiService.getCsrfToken();
+                    if(token) config.body.append('csrf_token', token);
                 }
             }
             return config;
@@ -31,7 +32,6 @@ const ApiService = {
     responseInterceptors: [
         async (response) => {
             if (response.status === 401 || response.status === 403) {
-                
                 if (!window.location.pathname.includes('/login')) {
                     ToastManager.show(I18nManager.t('api.session_expired') || 'Sesión expirada', 'warning');
                     setTimeout(() => {
@@ -57,12 +57,61 @@ const ApiService = {
         }
     ],
 
-    post: async (routeConfig, formData = new FormData(), options = {}) => {
+    /**
+     * Método POST Principal
+     * @param {Object|String} routeConfig - Puede ser { route: 'auth.login' } o 'auth.login'
+     * @param {Object} data - Datos a enviar (se convertirán a FormData)
+     * @param {Object} options - Opciones extra (signal, retry, etc)
+     */
+    post: async (routeConfig, data = {}, options = {}) => {
         const basePath = window.BASE_PATH || '/ProjectAurora/';
         const url = `${basePath}api/`;
 
-        if (formData instanceof FormData) {
-            formData.append('route', routeConfig.route);
+        // === 1. DEBUG Y NORMALIZACIÓN DE RUTA ===
+        let routeValue = '';
+
+        if (typeof routeConfig === 'object' && routeConfig !== null && routeConfig.route) {
+            routeValue = routeConfig.route;
+        } else if (typeof routeConfig === 'string') {
+            routeValue = routeConfig;
+        } else {
+            console.error('❌ ApiService: Formato de ruta inválido:', routeConfig);
+            return { success: false, message: 'Invalid Route Format in Client' };
+        }
+
+        console.log(`📡 Enviando API: [${routeValue}]`, data);
+
+        // === 2. PREPARACIÓN DEL FORMDATA ===
+        let formData;
+        if (data instanceof FormData) {
+            formData = data;
+        } else {
+            formData = new FormData();
+            for (const key in data) {
+                if (Object.prototype.hasOwnProperty.call(data, key)) {
+                    const value = data[key];
+                    if (typeof value === 'object' && !(value instanceof File) && value !== null) {
+                        formData.append(key, JSON.stringify(value));
+                    } else if (value !== null && value !== undefined) {
+                        formData.append(key, value);
+                    }
+                }
+            }
+        }
+
+        // Agregar la ruta normalizada
+        // IMPORTANTE: Enviamos tanto 'route' (para el Router) como 'action' (por si acaso el backend lo usa directo)
+        formData.append('route', routeValue);
+        
+        // Si el handler espera 'action' y el router no lo inyecta, esto lo soluciona:
+        // Extraemos la acción del string (ej: 'interaction.toggle_like' -> 'toggle_like')
+        if (!formData.has('action')) {
+            const parts = routeValue.split('.');
+            if (parts.length > 1) {
+                formData.append('action', parts[1]); 
+            } else {
+                formData.append('action', routeValue);
+            }
         }
 
         let fetchConfig = {
@@ -74,6 +123,7 @@ const ApiService = {
             }
         };
 
+        // === 3. INTERCEPTORES ===
         try {
             for (const interceptor of ApiService.requestInterceptors) {
                 fetchConfig = await interceptor(fetchConfig);
@@ -82,6 +132,7 @@ const ApiService = {
             return ApiService._formatError(e);
         }
 
+        // === 4. ENVÍO ===
         return ApiService._fetchWithRetry(url, fetchConfig, options.retry !== false ? CONFIG.MAX_RETRIES : 0);
     },
 
@@ -89,6 +140,7 @@ const ApiService = {
         try {
             const response = await fetch(url, config);
 
+            // Interceptores de respuesta (clonamos para no consumir el stream si el interceptor lo lee)
             for (const interceptor of ApiService.responseInterceptors) {
                 await interceptor(response.clone()); 
             }
@@ -97,7 +149,23 @@ const ApiService = {
                 throw new Error(`HTTP Error ${response.status}`);
             }
 
-            const data = await response.json();
+            // Parsear JSON
+            const text = await response.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                console.error('❌ Error JSON del servidor:', text);
+                return { success: false, message: 'Invalid JSON response from server' };
+            }
+
+            // Verificar error específico de ruta
+            if (!data.success && data.message === 'Invalid API Route') {
+                console.error('🔥 ERROR CRÍTICO: El Backend no reconoce la ruta enviada.');
+                console.error('   1. Revisa que api/route-map.php tenga la clave exacta que enviaste.');
+                console.error('   2. Ruta enviada:', config.body instanceof FormData ? config.body.get('route') : 'Unknown');
+            }
+
             return ApiService._normalizeResponse(data);
 
         } catch (error) {
@@ -110,6 +178,7 @@ const ApiService = {
             }
 
             if (retriesLeft > 0) {
+                console.warn(`Reintentando petición (${retriesLeft} restantes)...`);
                 await new Promise(r => setTimeout(r, CONFIG.RETRY_DELAY_MS));
                 return ApiService._fetchWithRetry(url, config, retriesLeft - 1);
             }
@@ -125,12 +194,13 @@ const ApiService = {
             success: data.success === true,
             message: data.message || (data.success ? 'Operación exitosa' : 'Error desconocido'),
             data: data.data || data, 
-            ...data 
+            ...data // Esparcir el resto por si hay campos custom como 'likes', 'views'
         };
     },
 
     _formatError: (error) => {
         const isNetworkError = error.message === 'Failed to fetch' || error.message.includes('Network');
+        console.error('❌ ApiService Error:', error);
         return {
             success: false,
             message: isNetworkError ? (I18nManager.t('js.core.connection_error') || 'Error de conexión') : (error.message || 'Error inesperado'),
