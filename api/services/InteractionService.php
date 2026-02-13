@@ -194,49 +194,40 @@ class InteractionService {
      * 2. Si es válido: Incrementa Redis instantáneo.
      * 3. Envía tarea al Worker para persistir en MySQL (video_views log).
      */
-    public function registerView($videoUuid) {
-        if (!$this->redis) return ['success' => false];
+// api/services/InteractionService.php
 
-        $ip = Utils::getClientIp();
-        $cooldownKey = "view:cooldown:{$videoUuid}:{$ip}";
-        
-        // 1. Debounce (30 minutos por IP por video)
-        if ($this->redis->exists($cooldownKey)) {
-            return ['success' => true, 'status' => 'ignored_cooldown'];
-        }
+public function registerView($videoUuid) {
+    if (!$this->redis) return ['success' => false];
 
-        try {
-            // 2. Marcar cooldown
-            $this->redis->setex($cooldownKey, 1800, '1'); // 1800s = 30 min
-
-            // 3. Incrementar contador visual (Inmediato)
-            $newCount = $this->redis->hincrby("video:stats:{$videoUuid}", 'views', 1);
-
-            // 4. Delegar persistencia al Worker (Asíncrono)
-            // Preparamos el payload para el worker.py
-            $taskPayload = json_encode([
-                'task' => 'register_view_persistence', // Esta tarea la implementaremos en worker.py en FASE 4
-                'payload' => [
-                    'video_uuid' => $videoUuid,
-                    'ip' => $ip,
-                    'user_id' => $_SESSION['user_id'] ?? null,
-                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
-                    'timestamp' => time()
-                ]
-            ]);
-
-            // Enviar a la cola
-            $this->redis->rpush('aurora_task_queue', $taskPayload);
-
-            return [
-                'success' => true, 
-                'status' => 'registered', 
-                'views' => $newCount
-            ];
-
-        } catch (Exception $e) {
-            return ['success' => false, 'error' => $e->getMessage()];
-        }
+    $ip = Utils::getClientIp();
+    $cooldownKey = "view:cooldown:{$videoUuid}:{$ip}";
+    
+    // 1. Debounce (Protección F5 - 30 minutos)
+    if ($this->redis->exists($cooldownKey)) {
+        return ['success' => true, 'status' => 'ignored_cooldown'];
     }
+
+    try {
+        // 2. Marcar cooldown
+        $this->redis->setex($cooldownKey, 1800, '1');
+
+        // 3. INCREMENTO ATÓMICO EN REDIS (El Buffer)
+        // Usamos una key especial: "video:buffer:views:{uuid}"
+        $bufferKey = "video:buffer:views:{$videoUuid}";
+        $currentBuffer = $this->redis->incr($bufferKey);
+
+        // [OPCIONAL] También actualizamos la key visual antigua por si acaso
+        $this->redis->hincrby("video:stats:{$videoUuid}", 'views', 1);
+
+        return [
+            'success' => true, 
+            'status' => 'buffered', 
+            'buffer_val' => $currentBuffer
+        ];
+
+    } catch (Exception $e) {
+        return ['success' => false, 'error' => $e->getMessage()];
+    }
+}
 }
 ?>

@@ -11,7 +11,10 @@ import glob
 import redis
 
 # --- CONFIGURACIÓN ---
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - SCHEDULER - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, 
+    format='%(asctime)s - SCHEDULER - %(levelname)s - %(message)s'
+)
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../.env'))
 
 # [SEGURIDAD] Validación estricta
@@ -29,13 +32,14 @@ if not all([DB_HOST, DB_USER, DB_PASS is not None, DB_NAME, REDIS_HOST, REDIS_PO
     exit(1)
 
 REDIS_PORT = int(REDIS_PORT)
-API_URL = "http://localhost/ProjectAurora/api/" # Ajusta si usas IP o dominio
+# Ajusta esta URL si tu API está en otro puerto o dominio
+API_URL = "http://localhost/ProjectAurora/api/" 
 
 # Directorios
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMP_DIR = os.path.join(BASE_DIR, 'storage', 'temp')
 
-# --- REDIS ---
+# --- CONEXIÓN REDIS GLOBAL ---
 try:
     use_ssl = os.getenv('REDIS_SCHEME', 'tcp').lower() == 'tls'
     r_client = redis.Redis(
@@ -43,7 +47,7 @@ try:
         decode_responses=True, ssl=use_ssl, ssl_cert_reqs=None, socket_timeout=5
     )
     r_client.ping()
-    logging.info("✅ Redis conectado.")
+    logging.info("✅ Redis conectado correctamente.")
 except Exception as e:
     logging.error(f"❌ Error Redis: {e}")
     exit(1)
@@ -98,6 +102,7 @@ def cleanup_stale_uploads():
         
         for f in files:
             uuid = os.path.basename(f).replace('.part', '')
+            # Si no existe token en Redis, es basura
             if not r_client.exists(f"upload_token:{uuid}"):
                 try:
                     os.remove(f)
@@ -110,41 +115,74 @@ def cleanup_stale_uploads():
     except Exception as e:
         logging.error(f"Error limpieza uploads: {e}")
 
+def sync_views_buffer():
+    """
+    [NUEVO - OPTIMIZADO] Vacía el buffer de visitas (INCR) a MySQL.
+    Esto maneja el alto tráfico de visitas de forma eficiente.
+    """
+    try:
+        # Buscamos keys tipo video:buffer:views:{uuid}
+        pattern = "video:buffer:views:*"
+        keys = list(r_client.scan_iter(match=pattern))
+        
+        if not keys: return
+
+        logging.info(f"⚡ Procesando buffer de visitas ({len(keys)} videos)...")
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        count = 0
+        for key in keys:
+            try:
+                # Extraer UUID
+                parts = key.split(':')
+                video_uuid = parts[-1]
+                
+                # Operación Atómica: Leer y Borrar (Reset a 0)
+                views_accumulated = r_client.getset(key, 0)
+                
+                if views_accumulated and int(views_accumulated) > 0:
+                    val = int(views_accumulated)
+                    sql = "UPDATE videos SET views_count = views_count + %s WHERE uuid = %s"
+                    cursor.execute(sql, (val, video_uuid))
+                    count += 1
+            except Exception as e:
+                logging.error(f"Error buffer key {key}: {e}")
+
+        conn.commit()
+        conn.close()
+        if count > 0:
+            logging.info(f"✅ Se inyectaron visitas en {count} videos.")
+
+    except Exception as e:
+        logging.error(f"❌ Error en sync_views_buffer: {e}")
+
 def sync_counters_to_db():
     """
-    [NUEVO] Sincroniza los contadores de Redis (Hot) a MySQL (Cold).
-    Esto asegura que los Likes/Views no se pierdan si Redis se reinicia.
+    Sincroniza contadores generales (Likes, Dislikes, Subs) de Redis -> MySQL.
+    Esto es una sincronización de ESTADO (state sync), no de buffer.
     """
-    logging.info("💾 Sincronizando contadores Redis -> MySQL...")
+    # logging.info("💾 Sincronizando estados generales (Likes/Subs)...")
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 1. Sincronizar Videos (Likes, Dislikes, Views)
-        # Patrón: video:stats:{uuid}
+        # 1. Sincronizar Videos (Likes, Dislikes)
+        # Nota: Ya no sincronizamos views aquí porque lo hace sync_views_buffer de forma más precisa
         video_keys = r_client.keys("video:stats:*")
         for key in video_keys:
             try:
                 uuid = key.split(':')[-1]
                 stats = r_client.hgetall(key)
                 
-                views = int(stats.get('views', 0))
                 likes = int(stats.get('likes', 0))
                 dislikes = int(stats.get('dislikes', 0))
                 
-                # Actualizamos solo si hay datos. Usamos UPDATE directo.
-                # Optimización: Podríamos verificar si cambió, pero el UPDATE es barato aquí.
-                sql = """
-                    UPDATE videos 
-                    SET views_count = %s, likes_count = %s, dislikes_count = %s 
-                    WHERE uuid = %s
-                """
-                cursor.execute(sql, (views, likes, dislikes, uuid))
-            except Exception as e:
-                logging.error(f"Error sync video {key}: {e}")
+                sql = "UPDATE videos SET likes_count = %s, dislikes_count = %s WHERE uuid = %s"
+                cursor.execute(sql, (likes, dislikes, uuid))
+            except Exception: pass
 
         # 2. Sincronizar Usuarios (Suscriptores)
-        # Patrón: user:stats:{uuid}
         user_keys = r_client.keys("user:stats:*")
         for key in user_keys:
             try:
@@ -153,18 +191,17 @@ def sync_counters_to_db():
                 
                 sql = "UPDATE users SET subscribers_count = %s WHERE uuid = %s"
                 cursor.execute(sql, (subs, uuid))
-            except Exception as e:
-                logging.error(f"Error sync user {key}: {e}")
+            except Exception: pass
 
         conn.commit()
         conn.close()
-        # logging.info("✅ Sincronización DB completada.") # Comentar para no saturar logs
         
     except Exception as e:
-        logging.error(f"❌ Error crítico sincronizando DB: {e}")
+        logging.error(f"Error sync general: {e}")
 
 def trigger_system_action(route):
-    """Helper para llamar a la API interna"""
+    """Helper para llamar a la API interna (para lanzar backups, etc)"""
+    if not SYSTEM_KEY: return
     timestamp = str(int(time.time()))
     signature = hmac.new(
         SYSTEM_KEY.encode('utf-8'), timestamp.encode('utf-8'), hashlib.sha256
@@ -180,24 +217,27 @@ def trigger_system_action(route):
 if __name__ == "__main__":
     logging.info("🚀 Scheduler iniciado. Cron activo.")
     
-    counter_min = 0
+    counter_sec = 0
     
     while True:
         try:
-            # Tareas por Minuto (Cada 1 min)
-            check_and_run_backup()
-            
-            # Tareas cada 5 minutos (Sincronización DB)
-            if counter_min % 5 == 0:
-                sync_counters_to_db()
+            # TAREAS RÁPIDAS (Cada 10 segundos)
+            # Procesamos las visitas rápido para que el contador de la DB esté fresco
+            if counter_sec % 10 == 0:
+                sync_views_buffer()
 
-            # Tareas cada 60 minutos (Limpieza profunda)
-            if counter_min >= 60:
+            # TAREAS MEDIAS (Cada 60 segundos)
+            if counter_sec % 60 == 0:
+                check_and_run_backup()
+                sync_counters_to_db() # Likes y Subs
+
+            # TAREAS LENTAS (Cada 1 hora = 3600 seg)
+            if counter_sec >= 3600:
                 cleanup_stale_uploads()
-                counter_min = 0
+                counter_sec = 0
             
-            counter_min += 1
-            time.sleep(60)
+            counter_sec += 5
+            time.sleep(5) # Ciclo de 5 segundos
             
         except KeyboardInterrupt:
             logging.info("🛑 Scheduler detenido.")

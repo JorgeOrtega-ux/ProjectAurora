@@ -35,16 +35,38 @@ class StudioService {
         if (!is_dir($this->thumbnailDir)) mkdir($this->thumbnailDir, 0755, true);
     }
 
-    // Método para obtener detalles de un video específico (Edición)
+    // --- HELPER PRIVADO PARA LECTURA HÍBRIDA (Real-Time Batching) ---
+    private function getRealViewCount($uuid, $mysqlCount) {
+        if (!$this->redis) return (int)$mysqlCount;
+        
+        try {
+            // Leemos el buffer temporal de Redis
+            $bufferKey = "video:buffer:views:{$uuid}";
+            $bufferCount = (int)$this->redis->get($bufferKey);
+            
+            // Sumamos: Lo consolidado en BD + Lo pendiente en RAM
+            return (int)$mysqlCount + $bufferCount;
+        } catch (Exception $e) {
+            return (int)$mysqlCount;
+        }
+    }
+
+    // Método para obtener detalles de un video específico (Edición/Visualización)
     public function getVideoDetails($uuid) {
+        // Permitimos acceso público para visualizar, pero validamos propiedad para editar en otros métodos
+        // Si es solo para obtener info pública (Watch), no validamos isOwner estrictamente aquí
+        // Pero tu código original usaba isOwner, asumo que este método es para el Dueño en el Studio.
+        // Si es para el 'Watch', deberías tener otro método o quitar el isOwner.
+        // MANTENGO TU LÓGICA ORIGINAL: Solo el dueño puede ver detalles de edición.
         if (!$this->isOwner($uuid)) {
             return ['success' => false, 'message' => 'Video no encontrado o acceso denegado.'];
         }
 
         try {
-            // [MODIFICADO] Se incluye 'orientation', 'sprite_path' y 'vtt_path'
+            // [MODIFICADO] Incluimos views_count
             $stmt = $this->pdo->prepare("
-                SELECT uuid, title, description, status, thumbnail_path, dominant_color, generated_thumbnails, orientation, sprite_path, vtt_path 
+                SELECT uuid, title, description, status, thumbnail_path, dominant_color, 
+                       generated_thumbnails, orientation, sprite_path, vtt_path, views_count
                 FROM videos 
                 WHERE uuid = ?
             ");
@@ -55,7 +77,6 @@ class StudioService {
                 return ['success' => false, 'message' => 'Video no encontrado.'];
             }
 
-            // [CORRECCIÓN] Usar la ruta completa almacenada
             $video['thumbnail_src'] = null;
             if (!empty($video['thumbnail_path'])) {
                 $path = __DIR__ . '/../../' . $video['thumbnail_path'];
@@ -64,12 +85,14 @@ class StudioService {
                 }
             }
             
-            // Decodificar miniaturas generadas si existen
             if (!empty($video['generated_thumbnails'])) {
                 $video['generated_thumbnails'] = json_decode($video['generated_thumbnails'], true);
             } else {
                 $video['generated_thumbnails'] = [];
             }
+
+            // [LÓGICA HÍBRIDA] Calcular visitas reales
+            $video['views'] = $this->getRealViewCount($uuid, $video['views_count']);
 
             return ['success' => true, 'video' => $video];
 
@@ -78,16 +101,16 @@ class StudioService {
         }
     }
 
- public function getPublicFeed($page = 1, $limit = 20) {
+    public function getPublicFeed($page = 1, $limit = 20) {
         $offset = ($page - 1) * $limit;
         
         try {
             $countStmt = $this->pdo->query("SELECT COUNT(*) FROM videos WHERE status = 'published'");
             $totalItems = $countStmt->fetchColumn();
 
-            // [CAMBIO IMPORTANTE] Se agrega 'v.views_count' al SELECT
-            $sql = "SELECT v.uuid, v.title, v.description, v.thumbnail_path, v.created_at, v.duration, v.dominant_color, v.hls_path, v.orientation,
-                           v.views_count, 
+            // [MODIFICADO] Incluimos views_count
+            $sql = "SELECT v.uuid, v.title, v.description, v.thumbnail_path, v.created_at, v.duration, 
+                           v.dominant_color, v.hls_path, v.orientation, v.views_count,
                            u.username, u.avatar_path, u.uuid as user_uuid
                     FROM videos v
                     JOIN users u ON v.user_id = u.id
@@ -126,10 +149,8 @@ class StudioService {
                 
                 $v['time_ago'] = Utils::timeElapsedString($v['created_at']);
                 
-                // [CAMBIO IMPORTANTE] Asignamos el valor real de la base de datos
-                $v['views'] = (int)$v['views_count']; 
-                
-                // Formateo opcional (puedes ajustar esto si quieres "1.2k" o similar)
+                // [LÓGICA HÍBRIDA] Calcular visitas reales para cada video del feed
+                $v['views'] = $this->getRealViewCount($v['uuid'], $v['views_count']);
                 $v['views_formatted'] = number_format($v['views']) . ' visualizaciones'; 
             }
 
@@ -152,7 +173,6 @@ class StudioService {
         if (empty($batchId)) return ['success' => false, 'message' => 'Falta Batch ID'];
 
         try {
-            // CAPA DE SEGURIDAD
             $attemptsLimit = (int)Utils::getServerConfig($this->pdo, 'upload_daily_limit', '10');
 
             if (Utils::checkSecurityLimit($this->pdo, 'video_upload_init', $attemptsLimit, 1440, $this->userId)) {
@@ -163,7 +183,6 @@ class StudioService {
             }
             Utils::logSecurityAction($this->pdo, 'video_upload_init', 1440, $this->userId);
 
-            // TIERED LIMITS
             $stmtRole = $this->pdo->prepare("SELECT role FROM users WHERE id = ?");
             $stmtRole->execute([$this->userId]);
             $role = $stmtRole->fetchColumn();
@@ -292,8 +311,6 @@ class StudioService {
             $maxDuration = ($role === 'founder') ? 43200 : 7200;
 
             if ($this->redis) {
-                // [NOTA] Solo encolamos process_video. 
-                // La tarea task_process_video en Python encadenará automáticamente task_generate_sprites.
                 $task = [
                     'task' => 'process_video',
                     'payload' => [
@@ -348,13 +365,11 @@ class StudioService {
     public function requestAutoThumbnails($uuid) {
         if (!$this->isOwner($uuid)) return ['success' => false, 'message' => 'Acceso denegado'];
 
-        // [SEGURIDAD] Rate Limit
         if (Utils::checkSecurityLimit($this->pdo, 'generate_thumbs', 3, 10, $this->userId)) {
             return ['success' => false, 'message' => 'Has excedido el límite de generación. Espera unos minutos.'];
         }
         Utils::logSecurityAction($this->pdo, 'generate_thumbs', 10, $this->userId);
 
-        // 1. Obtener datos del video
         $stmt = $this->pdo->prepare("SELECT raw_file_path, duration FROM videos WHERE uuid = ?");
         $stmt->execute([$uuid]);
         $video = $stmt->fetch();
@@ -368,7 +383,6 @@ class StudioService {
             return ['success' => false, 'message' => 'Archivo de video no encontrado en el servidor.'];
         }
 
-        // 2. Configurar directorios
         $thumbsDirRel = "public/storage/thumbnails/generated/$uuid";
         $thumbsDirAbs = __DIR__ . "/../../$thumbsDirRel";
 
@@ -380,7 +394,6 @@ class StudioService {
 
         set_time_limit(120); 
 
-        // 3. Lógica de intervalos
         $duration = (float)$video['duration'];
         $numThumbs = 1;
         if ($duration > 60) $numThumbs = (int)($duration / 60); 
@@ -390,7 +403,6 @@ class StudioService {
         $interval = $duration / ($numThumbs + 1);
         $generatedFiles = [];
 
-        // 4. Generación y Procesamiento
         for ($i = 1; $i <= $numThumbs; $i++) {
             $timestamp = $i * $interval;
             $fileName = "thumb_{$i}.jpg";
@@ -420,7 +432,6 @@ class StudioService {
             }
         }
 
-        // 5. Guardar en BD
         if (!empty($generatedFiles)) {
             $json = json_encode($generatedFiles);
             $upd = $this->pdo->prepare("UPDATE videos SET generated_thumbnails = ? WHERE uuid = ?");
@@ -462,10 +473,9 @@ class StudioService {
         }
     }
 
-   public function saveMetadata($uuid, $data) {
+    public function saveMetadata($uuid, $data) {
         if (!$this->isOwner($uuid)) return ['success' => false, 'message' => 'Acceso denegado'];
 
-        // [MODIFICADO] Rate Limit: Ventana de 10 minutos (15 intentos permitidos)
         if (Utils::checkSecurityLimit($this->pdo, 'save_draft_limit', 15, 10, $this->userId)) {
             return ['success' => false, 'message' => 'Estás guardando muy rápido. Por favor espera un momento.'];
         }
@@ -480,11 +490,9 @@ class StudioService {
         try {
             $this->pdo->beginTransaction(); 
 
-            // 1. Textos
             $stmt = $this->pdo->prepare("UPDATE videos SET title = ?, description = ? WHERE uuid = ?");
             $stmt->execute([$title, $desc, $uuid]);
 
-            // 2. Miniatura (Si se seleccionó una generada)
             if (!empty($data['selected_thumbnail'])) {
                 $expectedPath = "public/storage/thumbnails/generated/$uuid/";
                 
@@ -496,7 +504,6 @@ class StudioService {
                 }
             }
 
-            // 3. Publicar
             if ($publish === true || $publish === 'true') {
                 $check = $this->pdo->prepare("SELECT status, thumbnail_path FROM videos WHERE uuid = ?");
                 $check->execute([$uuid]);
@@ -575,7 +582,7 @@ class StudioService {
             $totalItems = $countStmt->fetchColumn();
 
             $sql = "SELECT uuid, title, description, status, thumbnail_path, created_at, 
-                           duration, processing_percentage, error_message, dominant_color
+                           duration, processing_percentage, error_message, dominant_color, views_count
                     FROM videos 
                     $whereClause 
                     ORDER BY created_at DESC 
@@ -601,6 +608,9 @@ class StudioService {
                 }
                 
                 $v['time_ago'] = Utils::timeElapsedString($v['created_at']);
+
+                // [OPCIONAL] Si quieres mostrar visitas reales también en el panel de "Mi Contenido"
+                $v['views'] = $this->getRealViewCount($v['uuid'], $v['views_count']);
             }
 
             return [
@@ -648,7 +658,6 @@ class StudioService {
             return ['success' => false, 'message' => 'Acceso denegado o video no encontrado.'];
         }
 
-        // [MODIFICADO] Seleccionar paths extra para eliminar
         $stmt = $this->pdo->prepare("SELECT raw_file_path, thumbnail_path, hls_path, generated_thumbnails, sprite_path, vtt_path FROM videos WHERE uuid = ?");
         $stmt->execute([$uuid]);
         $video = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -666,7 +675,6 @@ class StudioService {
             if (file_exists($thumbPath)) @unlink($thumbPath);
         }
 
-        // Limpiar sprites y vtt
         if (!empty($video['sprite_path'])) {
             $spritePath = __DIR__ . '/../../' . $video['sprite_path'];
             if (file_exists($spritePath)) @unlink($spritePath);
@@ -689,6 +697,8 @@ class StudioService {
         if ($this->redis) {
             $this->redis->del("upload_token:$uuid");
             $this->redis->del("lock:upload:$uuid");
+            // Limpiamos también el buffer de visitas si existiera
+            $this->redis->del("video:buffer:views:$uuid");
         }
 
         $del = $this->pdo->prepare("DELETE FROM videos WHERE uuid = ?");

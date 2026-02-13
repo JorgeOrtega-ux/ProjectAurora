@@ -3,7 +3,6 @@
 
 // Asegurar dependencias
 if (!isset($pdo) || !isset($redis)) {
-    // Fallback básico si se carga mal (no debería pasar con el router)
     global $pdo, $redis;
 }
 
@@ -23,7 +22,7 @@ $interaction = [
 
 if (!empty($videoUuid) && isset($pdo)) {
     try {
-        // 1. Obtener datos del video y autor
+        // 1. Obtener datos del video y autor desde MySQL (Base sólida)
         $stmt = $pdo->prepare("
             SELECT v.id, v.title, v.description, v.hls_path, v.sprite_path, v.vtt_path, 
                    v.created_at, v.dominant_color, v.views_count, v.likes_count, v.dislikes_count,
@@ -37,25 +36,31 @@ if (!empty($videoUuid) && isset($pdo)) {
         $videoData = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($videoData) {
-            // 2. [REDIS HYBRID] Intentar obtener contadores frescos de Redis
-            // Si Redis tiene datos, tienen prioridad sobre MySQL (son más recientes)
+            // 2. [REDIS HYBRID] Obtener datos frescos
             if ($redis) {
+                // A. VISITAS: Usamos la lógica de "Buffer + MySQL" (Igual que en StudioService)
+                // Esto asegura que siempre veamos la suma del histórico + lo nuevo
+                $bufferKey = "video:buffer:views:{$videoUuid}";
+                $bufferCount = (int)$redis->get($bufferKey);
+                $interaction['views_count'] = (int)$videoData['views_count'] + $bufferCount;
+
+                // B. LIKES/DISLIKES/SUBS: Usamos 'video:stats' (Estado caliente)
+                // Estos contadores sí se mantienen en 'video:stats' y se sincronizan periódicamente
                 $vStats = $redis->hgetall("video:stats:{$videoUuid}");
+                
                 if ($vStats) {
                     $interaction['likes_count'] = $vStats['likes'] ?? $videoData['likes_count'];
                     $interaction['dislikes_count'] = $vStats['dislikes'] ?? $videoData['dislikes_count'];
-                    $interaction['views_count'] = $vStats['views'] ?? $videoData['views_count'];
                 } else {
-                    // Si no hay key en Redis, usamos MySQL y "calentamos" Redis (opcional, aquí solo leemos)
                     $interaction['likes_count'] = $videoData['likes_count'];
                     $interaction['dislikes_count'] = $videoData['dislikes_count'];
-                    $interaction['views_count'] = $videoData['views_count'];
                 }
 
                 $uStats = $redis->hget("user:stats:{$videoData['user_uuid']}", 'subscribers');
                 $interaction['subs_count'] = ($uStats !== null) ? $uStats : $videoData['subscribers_count'];
+
             } else {
-                // Fallback solo MySQL
+                // Fallback solo MySQL (Si Redis falla)
                 $interaction['likes_count'] = $videoData['likes_count'];
                 $interaction['dislikes_count'] = $videoData['dislikes_count'];
                 $interaction['views_count'] = $videoData['views_count'];
@@ -95,7 +100,7 @@ $domColorRgb = '20, 20, 20'; // Default dark
 if ($videoData) {
     $avatarPath = $videoData['avatar_path'] ?? '';
     if (!empty($avatarPath) && file_exists(__DIR__ . '/../../../' . $avatarPath)) {
-        $avatarUrl = '/ProjectAurora/' . ltrim($avatarPath, '/'); // Ajusta ruta relativa web
+        $avatarUrl = '/ProjectAurora/' . ltrim($avatarPath, '/'); 
     } else {
         $avatarUrl = "https://ui-avatars.com/api/?name=" . urlencode($videoData['username']) . "&background=333&color=fff";
     }
@@ -108,7 +113,7 @@ if ($videoData) {
     }
 }
 
-// Helper para formato de números (1.2K)
+// Helper para formato de números
 function formatCount($n) {
     if ($n >= 1000000) return number_format($n / 1000000, 1) . 'M';
     if ($n >= 1000) return number_format($n / 1000, 1) . 'K';
@@ -249,7 +254,6 @@ function formatCount($n) {
                         </div>
                         
                         <div class="component-watch-actions">
-                            
                             <div class="component-watch-joined-pill">
                                 <button class="component-watch-joined-btn like js-btn-like <?php echo $interaction['liked'] ? 'active' : ''; ?>" title="Me gusta">
                                     <span class="material-symbols-rounded">thumb_up</span>
@@ -260,7 +264,6 @@ function formatCount($n) {
                                     <span class="material-symbols-rounded">thumb_down</span>
                                     </button>
                             </div>
-
                             <button class="component-button component-watch-action-pill">
                                 <span class="material-symbols-rounded">share</span> Compartir
                             </button>
