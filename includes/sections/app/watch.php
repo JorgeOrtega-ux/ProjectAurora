@@ -1,25 +1,27 @@
 <?php
 // includes/sections/app/watch.php
 
-// 1. Obtener UUID y validar
-$videoUuid = $_GET['v'] ?? '';
+$videoUuid = trim($_GET['v'] ?? ''); // Limpiar espacios de la URL
 $videoData = null;
 
 if (!empty($videoUuid) && isset($pdo)) {
     try {
-        // [SQL ACTUALIZADO] Traemos hls_path, datos del autor y descripción
-        $stmt = $pdo->prepare("
-            SELECT v.title, v.description, v.hls_path, v.created_at, v.views, 
-                   u.username, u.avatar_path, u.uuid as user_uuid
-            FROM videos v 
-            JOIN users u ON v.user_id = u.id 
-            WHERE v.uuid = ? AND v.status = 'published' 
-            LIMIT 1
-        ");
+    // Elimina "v.views," de la lista de campos
+$stmt = $pdo->prepare("
+    SELECT v.title, v.description, v.hls_path, v.created_at, 
+           u.username, u.avatar_path, u.uuid as user_uuid
+    FROM videos v 
+    JOIN users u ON v.user_id = u.id 
+    WHERE v.uuid = ? AND v.status = 'published' 
+    LIMIT 1
+");
         $stmt->execute([$videoUuid]);
         $videoData = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Si sigue fallando aquí, es un error de JOIN.
     } catch (Exception $e) {
-        error_log("Watch DB Error: " . $e->getMessage());
+        // ESTO TE MOSTRARÁ EL ERROR REAL SI HAY FALLO DE SINTAXIS
+        die("ERROR SQL OCULTO: " . $e->getMessage());
     }
 }
 
