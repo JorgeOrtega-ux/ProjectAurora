@@ -1,32 +1,28 @@
 <?php
 // includes/sections/app/watch.php
 
+// 1. Obtener UUID y validar
 $videoUuid = $_GET['v'] ?? '';
 $videoData = null;
 
-if (!empty($videoUuid)) {
-    if (!isset($pdo)) {
-        die("DIAGNÓSTICO: La variable \$pdo no existe. El archivo no tiene acceso a la base de datos.");
+if (!empty($videoUuid) && isset($pdo)) {
+    try {
+        // [SQL ACTUALIZADO] Traemos hls_path, datos del autor y descripción
+        $stmt = $pdo->prepare("
+            SELECT v.title, v.description, v.hls_path, v.created_at, v.views, 
+                   u.username, u.avatar_path, u.uuid as user_uuid
+            FROM videos v 
+            JOIN users u ON v.user_id = u.id 
+            WHERE v.uuid = ? AND v.status = 'published' 
+            LIMIT 1
+        ");
+        $stmt->execute([$videoUuid]);
+        $videoData = $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        error_log("Watch DB Error: " . $e->getMessage());
     }
-
-    // Probar si el video existe solo por UUID
-    $testVideo = $pdo->prepare("SELECT user_id, status FROM videos WHERE uuid = ?");
-    $testVideo->execute([$videoUuid]);
-    $resVideo = $testVideo->fetch();
-
-    if (!$resVideo) {
-        die("DIAGNÓSTICO: El UUID '$videoUuid' no existe en la tabla 'videos'.");
-    }
-
-    // Probar si el usuario del video existe
-    $testUser = $pdo->prepare("SELECT id FROM users WHERE id = ?");
-    $testUser->execute([$resVideo['user_id']]);
-    if (!$testUser->fetch()) {
-        die("DIAGNÓSTICO: El video existe, pero el user_id '" . $resVideo['user_id'] . "' NO existe en la tabla 'users'. El JOIN está fallando por esto.");
-    }
-    
-    die("DIAGNÓSTICO: El video y el usuario existen. El error podría ser el estado '" . $resVideo['status'] . "' o un error de sintaxis oculto.");
 }
+
 // Helper para avatar
 $avatarUrl = '';
 if ($videoData) {
