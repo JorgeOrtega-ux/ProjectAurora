@@ -200,3 +200,8 @@ CREATE TABLE IF NOT EXISTS `videos` (
 );ALTER TABLE videos 
 ADD COLUMN dominant_color VARCHAR(7) DEFAULT '#000000',
 ADD COLUMN generated_thumbnails JSON DEFAULT NULL;
+
+-- Ejecutar en tu base de datos o agregar a bd.sql
+INSERT INTO server_config (config_key, config_value) 
+VALUES ('upload_daily_limit', '10') 
+ON DUPLICATE KEY UPDATE config_value = VALUES(config_value);ALTER TABLE security_logs ADD COLUMN expires_at DATETIME DEFAULT NULL;

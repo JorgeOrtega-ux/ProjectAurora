@@ -849,16 +849,17 @@ class AdminService {
         $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
         if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
         
-        $allowedKeys = [
-            'maintenance_mode', 'allow_registrations', 'allow_login',
-            'password_min_length', 'username_min_length', 'username_max_length',
-            'email_min_prefix_length', 'email_allowed_domains',
-            'upload_avatar_max_size', 'upload_avatar_max_dim',
-            'security_login_max_attempts', 'security_block_duration', 'security_general_rate_limit',
-            'auth_verification_code_expiry', 'auth_reset_token_expiry',
-            'sys_mysqldump_path', 'sys_mysql_path',
-            'security_admin_require_2fa'
-        ];
+      $allowedKeys = [
+    'maintenance_mode', 'allow_registrations', 'allow_login',
+    'password_min_length', 'username_min_length', 'username_max_length',
+    'email_min_prefix_length', 'email_allowed_domains',
+    'upload_avatar_max_size', 'upload_avatar_max_dim',
+    'upload_daily_limit', // <--- NUEVO: Agregado aquí
+    'security_login_max_attempts', 'security_block_duration', 'security_general_rate_limit',
+    'auth_verification_code_expiry', 'auth_reset_token_expiry',
+    'sys_mysqldump_path', 'sys_mysql_path',
+    'security_admin_require_2fa'
+];
 
         try {
             $currentConfig = $this->getServerConfigAll()['config'] ?? [];

@@ -136,10 +136,34 @@ class StudioService {
         }
     }
 
-    public function initUpload($batchId, $fileName, $fileSize = 0) {
+public function initUpload($batchId, $fileName, $fileSize = 0) {
         if (empty($batchId)) return ['success' => false, 'message' => 'Falta Batch ID'];
 
         try {
+            // -----------------------------------------------------------------------
+            // [NUEVO] 0. CAPA DE SEGURIDAD ANTI-EXHAUSTION (Resource Exhaustion Protection)
+            // -----------------------------------------------------------------------
+            
+            // Obtenemos el límite de intentos desde la configuración (Default: 10)
+            $attemptsLimit = (int)Utils::getServerConfig($this->pdo, 'upload_daily_limit', '10');
+
+            // Verificamos si el usuario ha excedido los intentos en las últimas 24 horas (1440 min)
+            // Usamos el ID de usuario para el bloqueo
+            if (Utils::checkSecurityLimit($this->pdo, 'video_upload_init', $attemptsLimit, 1440, $this->userId)) {
+                return [
+                    'success' => false, 
+                    'message' => $this->i18n->t('api.upload_security_limit_reached') ?? 'Límite de seguridad de subidas excedido.'
+                ];
+            }
+
+            // Si pasa el chequeo, REGISTRAMOS este intento inmediatamente.
+            // Esto cuenta como "1 crédito gastado" independientemente de si el usuario completa la subida o la cancela.
+            Utils::logSecurityAction($this->pdo, 'video_upload_init', 1440, $this->userId);
+
+            // -----------------------------------------------------------------------
+            // A partir de aquí sigue tu lógica de negocio normal (TIERED LIMITS)
+            // -----------------------------------------------------------------------
+
             // [TIERED LIMITS] 1. Obtener Rol del Usuario
             $stmtRole = $this->pdo->prepare("SELECT role FROM users WHERE id = ?");
             $stmtRole->execute([$this->userId]);
