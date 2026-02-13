@@ -1,7 +1,7 @@
 /**
  * public/assets/js/modules/studio/upload-controller.js
  * Versión Refactorizada: Arquitectura Signal & Interceptors
- * Actualizado para nuevo diseño de interfaz (Estilo Perfil) y soporte de Edición Directa
+ * Actualizado para soporte de "Components" PHP y corrección de rutas/visibilidad.
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -23,7 +23,7 @@ export const UploadController = {
         const container = document.querySelector('[data-section="channel-upload"]');
         if (!container) return;
 
-        console.log("UploadController: Inicializado (Rediseño Granular + Edición)");
+        console.log("UploadController: Inicializado (V2 Components + Logic Fixes)");
         
         _videosState = [];
         _activeVideoUuid = null;
@@ -62,20 +62,23 @@ async function loadExistingDraft(uuid) {
         console.log("Cargando borrador existente:", uuid);
         
         // 1. Ocultar dropzone y mostrar editor (con loading)
-        document.getElementById('upload-dropzone').classList.add('d-none');
-        document.getElementById('video-editor-area').classList.remove('d-none');
+        document.getElementById('upload-dropzone')?.classList.add('d-none');
+        document.getElementById('video-editor-area')?.classList.remove('d-none');
+        
+        // [CORRECCIÓN] Mostrar la barra de botones de acción
+        document.getElementById('action-buttons-group')?.classList.remove('d-none');
         
         const alertBox = document.getElementById('editor-status-alert');
-        alertBox.className = 'component-message component-message--info mb-4'; 
-        alertBox.innerHTML = '<span class="spinner-sm"></span> Cargando datos del video...';
-        alertBox.classList.remove('d-none');
+        if (alertBox) {
+            alertBox.className = 'component-message component-message--info mb-4'; 
+            alertBox.innerHTML = '<span class="spinner-sm"></span> Cargando datos del video...';
+            alertBox.classList.remove('d-none');
+        }
 
         // 2. Pedir datos al servidor
-        // NOTA: Asegúrate de tener una ruta para obtener detalles. Si no, usa GetPending o crea 'get_video_details'
         const formData = new FormData();
         formData.append('video_uuid', uuid);
         
-        // Usamos una ruta genérica de obtención o la misma de studio
         const route = ApiService.Routes.Studio.GetDetails || { route: 'studio.get_video_details' }; 
         const res = await ApiService.post(route, formData);
 
@@ -90,7 +93,8 @@ async function loadExistingDraft(uuid) {
                 description: res.video.description || '',
                 status: res.video.status || 'ready',
                 progress: 100,
-                thumbnail: res.video.thumbnail_src || null
+                // [CORRECCIÓN] Ruta absoluta para la miniatura
+                thumbnail: res.video.thumbnail_src ? (window.BASE_PATH + res.video.thumbnail_src) : null
             };
 
             _videosState = [videoEntry];
@@ -99,21 +103,23 @@ async function loadExistingDraft(uuid) {
             switchEditor(videoEntry.uuid);
             
             // Quitar mensaje de carga
-            alertBox.classList.add('d-none');
+            if (alertBox) alertBox.classList.add('d-none');
             
         } else {
             console.error("Error cargando video:", res.message);
             ToastManager.show('No se pudo cargar la información del video.', 'error');
             // Volver al inicio si falla
-            document.getElementById('upload-dropzone').classList.remove('d-none');
-            document.getElementById('video-editor-area').classList.add('d-none');
+            document.getElementById('upload-dropzone')?.classList.remove('d-none');
+            document.getElementById('video-editor-area')?.classList.add('d-none');
+            document.getElementById('action-buttons-group')?.classList.add('d-none');
         }
 
     } catch (e) {
         console.error("Error loading draft:", e);
         ToastManager.show('Error de conexión al obtener video.', 'error');
-        document.getElementById('upload-dropzone').classList.remove('d-none');
-        document.getElementById('video-editor-area').classList.add('d-none');
+        document.getElementById('upload-dropzone')?.classList.remove('d-none');
+        document.getElementById('video-editor-area')?.classList.add('d-none');
+        document.getElementById('action-buttons-group')?.classList.add('d-none');
     }
 }
 
@@ -122,8 +128,11 @@ async function checkPendingUploads() {
         const res = await ApiService.post(ApiService.Routes.Studio.GetPending, new FormData(), { signal: window.PAGE_SIGNAL });
         if (res.success && res.videos.length > 0) {
             
-            document.getElementById('upload-dropzone').classList.add('d-none');
-            document.getElementById('video-editor-area').classList.remove('d-none');
+            document.getElementById('upload-dropzone')?.classList.add('d-none');
+            document.getElementById('video-editor-area')?.classList.remove('d-none');
+            
+            // [CORRECCIÓN] Mostrar botones si hay videos pendientes
+            document.getElementById('action-buttons-group')?.classList.remove('d-none');
 
             res.videos.forEach(v => {
                 _videosState.push({
@@ -131,7 +140,8 @@ async function checkPendingUploads() {
                     title: v.title || 'Sin título',
                     status: (v.status === 'waiting_for_metadata') ? 'ready' : 'processing',
                     progress: 100,
-                    thumbnail: v.thumbnail_src || null,
+                    // [CORRECCIÓN] Ruta absoluta
+                    thumbnail: v.thumbnail_src ? (window.BASE_PATH + v.thumbnail_src) : null,
                     description: v.description || ''
                 });
             });
@@ -190,8 +200,11 @@ function handleFiles(files) {
         return;
     }
 
-    document.getElementById('upload-dropzone').classList.add('d-none');
-    document.getElementById('video-editor-area').classList.remove('d-none');
+    document.getElementById('upload-dropzone')?.classList.add('d-none');
+    document.getElementById('video-editor-area')?.classList.remove('d-none');
+    
+    // [CORRECCIÓN] Mostrar barra de botones al iniciar subida
+    document.getElementById('action-buttons-group')?.classList.remove('d-none');
 
     if (!_activeBatchId) {
         _activeBatchId = 'batch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -359,13 +372,15 @@ function switchEditor(uuid) {
     // 2. Llenar valores
     // Título
     document.getElementById('display-title').textContent = nextVideo.title || 'Sin título';
-    document.getElementById('meta-title').value = nextVideo.title || '';
-    document.getElementById('meta-title').dataset.originalValue = nextVideo.title || '';
+    const inputTitle = document.getElementById('meta-title');
+    inputTitle.value = nextVideo.title || '';
+    inputTitle.dataset.originalValue = nextVideo.title || '';
 
     // Descripción
     document.getElementById('display-desc').textContent = nextVideo.description || 'Sin descripción';
-    document.getElementById('meta-desc').value = nextVideo.description || '';
-    document.getElementById('meta-desc').dataset.originalValue = nextVideo.description || '';
+    const inputDesc = document.getElementById('meta-desc');
+    inputDesc.value = nextVideo.description || '';
+    inputDesc.dataset.originalValue = nextVideo.description || '';
 
     // Preview File Name
     document.getElementById('meta-filename').textContent = (nextVideo.title || 'video') + '.mp4';
@@ -397,6 +412,8 @@ function updateEditorStatusUI(video) {
     const btnGenThumbs = document.getElementById('btn-gen-thumbs');
     const btnPublish = document.getElementById('btn-publish');
 
+    if (!alertBox) return; // Seguridad si el componente no cargó
+
     // MODO EDICIÓN: Limpiar estados de "subiendo"
     if (_isEditMode) {
         if(globalStatus) globalStatus.style.display = 'none';
@@ -415,18 +432,22 @@ function updateEditorStatusUI(video) {
         return;
     }
 
-    // MODO SUBIDA (Lógica original)
+    // MODO SUBIDA
     // Estado Global (Barra superior)
     if (video.status === 'uploading') {
-        globalStatus.style.display = 'block';
-        globalText.textContent = `Subiendo ${video.progress}%...`;
+        if(globalStatus) {
+            globalStatus.style.display = 'block';
+            globalText.textContent = `Subiendo ${video.progress}%...`;
+        }
         if (btnGenThumbs) btnGenThumbs.disabled = true;
     } else if (video.status === 'processing') {
-        globalStatus.style.display = 'block';
-        globalText.textContent = 'Procesando en servidor...';
+        if(globalStatus) {
+            globalStatus.style.display = 'block';
+            globalText.textContent = 'Procesando en servidor...';
+        }
         if (btnGenThumbs) btnGenThumbs.disabled = true;
     } else {
-        globalStatus.style.display = 'none';
+        if(globalStatus) globalStatus.style.display = 'none';
         if (btnGenThumbs) btnGenThumbs.disabled = false;
     }
 
@@ -471,7 +492,7 @@ function onProcessingComplete(e) {
 }
 
 // ==========================================
-// 4. LÓGICA DE INTERFAZ & EVENTOS (REESCRITA)
+// 4. LÓGICA DE INTERFAZ & EVENTOS
 // ==========================================
 
 function initEditorEvents() {
@@ -507,9 +528,6 @@ function initEditorEvents() {
     });
 }
 
-/**
- * Configura la lógica de Vista/Edición para un campo específico
- */
 function setupFieldLogic(targetName, inputId) {
     const section = document.querySelector(`[data-component="${targetName}-section"]`);
     if (!section) return;
@@ -574,9 +592,6 @@ function toggleEditState(targetName, isEditing) {
     }
 }
 
-/**
- * Guarda un campo individualmente (Título o Descripción)
- */
 async function saveFieldData(targetName) {
     if (!_activeVideoUuid) return;
 
@@ -586,51 +601,42 @@ async function saveFieldData(targetName) {
     const section = document.querySelector(`[data-component="${targetName}-section"]`);
     const btnSave = section.querySelector('[data-action="save-field"]');
     
-    // Obtener valores actuales (el editado + el otro que no se edita)
     const inputTitle = document.getElementById('meta-title');
     const inputDesc = document.getElementById('meta-desc');
     
     let titleVal = inputTitle.value.trim();
     let descVal = inputDesc.value.trim();
 
-    // Validaciones básicas
     if (targetName === 'title' && !titleVal) {
         ToastManager.show('El título no puede estar vacío.', 'warning');
         return;
     }
 
-    // UI Loading
     const originalText = btnSave.innerText;
     btnSave.innerText = 'Guardando...';
     btnSave.disabled = true;
 
-    // Preparar Payload (SaveMetadata requiere ambos campos)
     const formData = new FormData();
     formData.append('video_uuid', _activeVideoUuid);
     formData.append('title', titleVal);
     formData.append('description', descVal);
-    formData.append('publish', 'false'); // Guardado parcial siempre es borrador implícito
+    formData.append('publish', 'false'); 
 
     try {
         const res = await ApiService.post(ApiService.Routes.Studio.SaveMetadata, formData);
 
         if (res.success) {
-            // Actualizar estado local
             video.title = titleVal;
             video.description = descVal;
             
-            // Actualizar inputs "originalValue"
             inputTitle.dataset.originalValue = titleVal;
             inputDesc.dataset.originalValue = descVal;
 
-            // Actualizar Vista (Textos estáticos)
             document.getElementById('display-title').textContent = titleVal;
             document.getElementById('display-desc').textContent = descVal || 'Sin descripción';
-            
-            // Actualizar Tab y Filename
-            renderTabs();
             document.getElementById('meta-filename').textContent = titleVal + '.mp4';
-
+            
+            renderTabs();
             ToastManager.show(res.message, 'success');
             toggleEditState(targetName, false);
             validatePublishRequirements();
@@ -646,16 +652,12 @@ async function saveFieldData(targetName) {
     }
 }
 
-/**
- * Acciones Globales: Publicar o Guardar Borrador (Sin cerrar editor)
- */
 async function saveGlobalAction(publish) {
     if (!_activeVideoUuid) return;
     
     const video = _videosState.find(v => v.uuid === _activeVideoUuid);
     if (!video) return;
 
-    // Usamos los valores guardados en los inputs (o los dataset originalValue si no están en edición)
     const title = document.getElementById('meta-title').value.trim();
     const desc = document.getElementById('meta-desc').value.trim();
 
@@ -690,7 +692,6 @@ async function saveGlobalAction(publish) {
                     switchEditor(_videosState[0].uuid);
                 }
             } else {
-                // Solo actualizar estado visual si es borrador
                 video.title = title;
                 video.description = desc;
                 renderTabs();
@@ -715,16 +716,13 @@ async function handleThumbnailUpload(e) {
 
     const currentVideo = _videosState.find(v => v.uuid === _activeVideoUuid);
     
-    // Si estamos editando un borrador existente, permitimos subir aunque no empiece por temp_
     if (!_isEditMode && currentVideo.uuid.startsWith('temp_')) {
-         // Validamos que se haya iniciado la subida solo en modo Upload
          if (currentVideo.progress === 0) {
             ToastManager.show('Espera a que inicie la subida.', 'warning');
             return;
          }
     }
 
-    // Mostrar spinner en la zona del player
     const spinner = document.querySelector('.preview-player-placeholder .thumbnail-loading');
     if (spinner) spinner.classList.remove('d-none');
 
@@ -736,12 +734,13 @@ async function handleThumbnailUpload(e) {
         const res = await ApiService.post(ApiService.Routes.Studio.UploadThumbnail, formData);
         
         if (res.success) {
-            currentVideo.thumbnail = res.new_src;
+            // [CORRECCIÓN] Asegurar ruta absoluta
+            const fullSrc = window.BASE_PATH + res.new_src;
+            currentVideo.thumbnail = fullSrc;
             
-            // Actualizar imagen en el player
             const imgPreview = document.getElementById('thumbnail-preview');
             if (imgPreview) {
-                imgPreview.src = res.new_src;
+                imgPreview.src = fullSrc;
                 imgPreview.classList.remove('d-none');
             }
             
@@ -756,7 +755,7 @@ async function handleThumbnailUpload(e) {
         ToastManager.show('Error al subir miniatura', 'error');
     } finally {
         if (spinner) spinner.classList.add('d-none');
-        e.target.value = ''; // Reset input
+        e.target.value = ''; 
     }
 }
 
@@ -785,8 +784,6 @@ async function deleteVideo() {
         
         if (res.success) {
             ToastManager.show('Borrador eliminado.', 'success');
-            
-            // Si estamos en modo edición única, redirigir al listado
             if (_isEditMode) {
                 window.location.href = window.BASE_PATH + 'channel/my-content';
                 return;
@@ -795,12 +792,15 @@ async function deleteVideo() {
     } catch (e) {
         console.error("Delete error:", e);
     } finally {
-        // Limpiar estado local
         _videosState = _videosState.filter(v => v.uuid !== videoUuid);
         
         if (_videosState.length === 0) {
-            document.getElementById('video-editor-area').classList.add('d-none');
-            document.getElementById('upload-dropzone').classList.remove('d-none');
+            document.getElementById('video-editor-area')?.classList.add('d-none');
+            document.getElementById('upload-dropzone')?.classList.remove('d-none');
+            
+            // [CORRECCIÓN] Ocultar botones si no hay videos
+            document.getElementById('action-buttons-group')?.classList.add('d-none');
+
             _activeVideoUuid = null;
             document.getElementById('input-video-files').value = '';
         } else {
@@ -815,13 +815,14 @@ async function deleteVideo() {
 
 function validatePublishRequirements() {
     const title = document.getElementById('meta-title').value.trim();
-    const hasThumb = !document.getElementById('thumbnail-preview').classList.contains('d-none');
-    const btnPublish = document.getElementById('btn-publish');
+    const thumbPreview = document.getElementById('thumbnail-preview');
+    const hasThumb = thumbPreview && !thumbPreview.classList.contains('d-none');
     
+    const btnPublish = document.getElementById('btn-publish');
+    if (!btnPublish) return;
+
     const video = _videosState.find(v => v.uuid === _activeVideoUuid);
     
-    // En modo edición, asumimos que el video está "ready" si ya existe en BD
-    // En modo upload, verificamos el status del objeto
     const isReady = _isEditMode ? true : (video && video.status === 'ready');
 
     if (title && hasThumb && isReady) {
@@ -875,6 +876,7 @@ function onThumbsGenerated(e) {
         if (grid && data.thumbnails) {
             grid.innerHTML = '';
             data.thumbnails.forEach(path => {
+                // [NOTA] path ya suele ser relativo, concatenamos BASE_PATH
                 const fullPath = window.BASE_PATH + path;
                 const div = document.createElement('div');
                 div.className = 'generated-thumb-item';
@@ -900,7 +902,7 @@ async function selectGeneratedThumbnail(src) {
         
         // Actualizar preview local
         const preview = document.getElementById('thumbnail-preview');
-        preview.src = src;
+        preview.src = src; // src ya es absoluto porque viene del dataset
         preview.classList.remove('d-none');
         
         const formData = new FormData();
@@ -911,7 +913,7 @@ async function selectGeneratedThumbnail(src) {
         
         if(res.success) {
              const currentVideo = _videosState.find(v => v.uuid === _activeVideoUuid);
-             if(currentVideo) currentVideo.thumbnail = res.new_src;
+             if(currentVideo) currentVideo.thumbnail = res.new_src ? (window.BASE_PATH + res.new_src) : src;
              
              applyDominantColor(res.dominant_color);
              validatePublishRequirements();

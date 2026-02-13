@@ -44,11 +44,22 @@ if (strpos($path, 's/channel/upload/') === 0) {
 // Mapa de Rutas
 $routes = require __DIR__ . '/../routes.php';
 
-// Validar si la ruta existe en el mapa
+// [CORRECCIÓN] Normalización de rutas con prefijo 's/'
+// Primero intentamos buscar la ruta tal cual viene
 if (array_key_exists($currentSection, $routes)) {
-    // Si existe, la usamos
-} else {
-    // Si no existe, mandamos a 404
+    // Coincidencia exacta
+} 
+// Si no, intentamos quitarle el prefijo 's/' (igual que hace loader.php)
+elseif (strpos($currentSection, 's/') === 0) {
+    $cleanPath = preg_replace('#^s/#', '', $currentSection);
+    
+    if (array_key_exists($cleanPath, $routes)) {
+        $currentSection = $cleanPath;
+    } else {
+        $currentSection = '404';
+    }
+} 
+else {
+    // Si no existe de ninguna forma, mandamos a 404
     $currentSection = '404';
 }
-?>
