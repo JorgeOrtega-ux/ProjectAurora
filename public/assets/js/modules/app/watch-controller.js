@@ -1,6 +1,8 @@
 /**
  * public/assets/js/modules/app/watch-controller.js
  * Controlador de reproducción de video HLS con UI personalizada estilo YouTube.
+ * Incluye lógica de Scrubbing (Previsualización con Sprites).
+ * [FIX] Delegación de eventos para menú de configuración.
  */
 
 import { ToastManager } from '../../core/components/toast-manager.js';
@@ -8,23 +10,41 @@ import { ToastManager } from '../../core/components/toast-manager.js';
 let _hls = null;
 let _video = null;
 let _controlsTimeout = null;
-let _levels = []; // Almacena niveles de calidad disponibles
+let _levels = []; 
+
+// Variables para Scrubbing
+let _spriteUrl = null;
+let _vttUrl = null;
+let _vttData = []; 
+let _spriteImage = null; 
 
 export const WatchController = {
     init: () => {
         const container = document.querySelector('[data-section="watch"]');
         if (!container) return;
 
-        console.log("WatchController: Inicializado (Custom UI + Settings)");
+        console.log("WatchController: Inicializado (Custom UI + Settings + Scrubbing)");
 
         _video = document.getElementById('main-player');
         const hlsSourceInput = document.getElementById('watch-hls-source');
 
+        // Inputs para Scrubbing
+        const spriteInput = document.getElementById('watch-sprite-source');
+        const vttInput = document.getElementById('watch-vtt-source');
+
         if (_video && hlsSourceInput) {
-            // Inicializar reproductor HLS
+            // 1. Inicializar reproductor
             loadPlayer(_video, hlsSourceInput.value);
-            // Inicializar eventos de la UI personalizada
+            
+            // 2. Inicializar controles UI
             initCustomControls(_video);
+
+            // 3. Inicializar Scrubbing si hay datos
+            if (spriteInput && vttInput && spriteInput.value && vttInput.value) {
+                _spriteUrl = spriteInput.value;
+                _vttUrl = vttInput.value;
+                initScrubbing();
+            }
         }
     },
 
@@ -34,6 +54,8 @@ export const WatchController = {
             _hls = null;
         }
         _video = null;
+        _vttData = [];
+        _spriteImage = null;
     }
 };
 
@@ -53,10 +75,9 @@ function loadPlayer(video, source) {
 
         _hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
             console.log("HLS Manifest loaded.", data.levels);
-            _levels = data.levels; // Guardar niveles disponibles
-            renderQualityOptions(_levels); // Renderizar menú de calidad
+            _levels = data.levels;
+            renderQualityOptions(_levels);
             
-            // Intentar autoplay
             video.play().catch(e => console.log("Autoplay bloqueado:", e));
             updatePlayPauseIcon(false);
         });
@@ -86,12 +107,88 @@ function loadPlayer(video, source) {
         video.addEventListener('loadedmetadata', () => {
             video.play();
             updatePlayPauseIcon(false);
-            // Safari nativo maneja calidad automáticamente, no podemos forzar levels igual que HLS.js fácilmente
             document.getElementById('quality-status-text').innerText = 'Auto';
         });
     } else {
         ToastManager.show('Tu navegador no soporta reproducción HLS.', 'error');
     }
+}
+
+/**
+ * Lógica de Scrubbing (Previsualización)
+ */
+async function initScrubbing() {
+    console.log("Iniciando Scrubbing...");
+    
+    // 1. Precargar Imagen del Sprite
+    _spriteImage = new Image();
+    _spriteImage.src = _spriteUrl;
+    
+    // 2. Descargar y Parsear VTT
+    try {
+        const response = await fetch(_vttUrl);
+        if (!response.ok) throw new Error("Error cargando VTT");
+        const text = await response.text();
+        _vttData = parseVTT(text);
+        console.log(`Scrubbing listo: ${_vttData.length} frames indexados.`);
+    } catch (e) {
+        console.error("Fallo al inicializar scrubbing:", e);
+    }
+}
+
+/**
+ * Parsea el contenido de un archivo WebVTT de sprites
+ */
+function parseVTT(vttText) {
+    const lines = vttText.split('\n');
+    const data = [];
+    let currentStart = null;
+    let currentEnd = null;
+
+    // Regex para tiempo: 00:00:00.000
+    const timeRegex = /(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})/;
+    // Regex para coords: #xywh=x,y,w,h
+    const coordsRegex = /#xywh=(\d+),(\d+),(\d+),(\d+)/;
+
+    for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
+        if (line.startsWith('WEBVTT')) continue;
+
+        // Buscar Tiempos
+        const timeMatch = timeRegex.exec(line);
+        if (timeMatch) {
+            currentStart = parseTime(timeMatch[1]);
+            currentEnd = parseTime(timeMatch[2]);
+            continue;
+        }
+
+        // Buscar Coordenadas
+        if (currentStart !== null) {
+            const coordsMatch = coordsRegex.exec(line);
+            if (coordsMatch) {
+                data.push({
+                    start: currentStart,
+                    end: currentEnd,
+                    x: parseInt(coordsMatch[1]),
+                    y: parseInt(coordsMatch[2]),
+                    w: parseInt(coordsMatch[3]),
+                    h: parseInt(coordsMatch[4])
+                });
+                currentStart = null; 
+            }
+        }
+    }
+    return data;
+}
+
+// Convierte HH:MM:SS.ms a segundos
+function parseTime(timeStr) {
+    const parts = timeStr.split(':');
+    const h = parseInt(parts[0]);
+    const m = parseInt(parts[1]);
+    const s = parseFloat(parts[2]);
+    return (h * 3600) + (m * 60) + s;
 }
 
 /**
@@ -102,6 +199,7 @@ function initCustomControls(video) {
     const muteBtn = document.getElementById('mute-btn');
     const volumeBar = document.getElementById('volume-bar');
     const seekBar = document.getElementById('seek-bar');
+    const progressContainer = document.querySelector('.progress-container');
     const currentTimeEl = document.getElementById('current-time');
     const durationEl = document.getElementById('duration');
     const fullscreenBtn = document.getElementById('fullscreen-btn');
@@ -110,6 +208,11 @@ function initCustomControls(video) {
     const controlsContainer = document.getElementById('custom-controls');
     const videoContainer = document.getElementById('video-container');
     const settingsPopover = document.getElementById('settings-popover');
+
+    // Elementos de Scrubbing
+    const tooltip = document.getElementById('scrub-tooltip');
+    const tooltipImg = tooltip ? tooltip.querySelector('.scrub-preview-img') : null;
+    const tooltipTime = tooltip ? tooltip.querySelector('.scrub-time') : null;
 
     // 1. Play / Pause
     const togglePlay = () => {
@@ -122,8 +225,7 @@ function initCustomControls(video) {
 
     playPauseBtn.addEventListener('click', togglePlay);
     video.addEventListener('click', (e) => {
-        // Si el click fue en el popover, no pausar
-        if (e.target.closest('.settings-popover')) return;
+        if (e.target.closest('.settings-popover')) return; // IMPORTANTE: No pausar si click es en settings
         togglePlay();
     });
 
@@ -144,11 +246,64 @@ function initCustomControls(video) {
         }
     });
 
+    // Input (Arrastrar la bola)
     seekBar.addEventListener('input', () => {
         video.currentTime = seekBar.value;
         updateSeekBarBackground(seekBar);
         currentTimeEl.innerText = formatTime(seekBar.value);
     });
+
+    // --- LOGICA DE SCRUBBING (Mouse Move) ---
+    if (progressContainer && tooltip && _vttData) {
+        
+        progressContainer.addEventListener('mousemove', (e) => {
+            if (!_vttData.length) return;
+
+            // Calcular posición relativa dentro de la barra
+            const rect = progressContainer.getBoundingClientRect();
+            const offsetX = e.clientX - rect.left;
+            let percent = offsetX / rect.width;
+            
+            // Limites 0-1
+            if (percent < 0) percent = 0;
+            if (percent > 1) percent = 1;
+
+            // Calcular tiempo objetivo
+            const hoverTime = percent * video.duration;
+
+            // Actualizar Texto Tiempo (en la píldora)
+            if (tooltipTime) {
+                tooltipTime.innerText = formatTime(hoverTime);
+            }
+
+            // Buscar Frame en VTT
+            const frame = _vttData.find(f => hoverTime >= f.start && hoverTime < f.end);
+            
+            if (frame && tooltipImg) {
+                // Mostrar Tooltip
+                tooltip.style.display = 'flex';
+                
+                // Mover Tooltip (centrado en el mouse, con límites)
+                let leftPos = offsetX; 
+                if(leftPos < 80) leftPos = 80; 
+                if(leftPos > rect.width - 80) leftPos = rect.width - 80;
+
+                tooltip.style.left = `${leftPos}px`;
+
+                // Renderizar Imagen (Sprite)
+                tooltipImg.style.backgroundImage = `url('${_spriteUrl}')`;
+                tooltipImg.style.backgroundPosition = `-${frame.x}px -${frame.y}px`;
+                
+                // Aplicar dimensiones exactas del recorte
+                tooltipImg.style.width = `${frame.w}px`;
+                tooltipImg.style.height = `${frame.h}px`;
+            }
+        });
+
+        progressContainer.addEventListener('mouseleave', () => {
+            if (tooltip) tooltip.style.display = 'none';
+        });
+    }
 
     // 3. Volumen
     volumeBar.addEventListener('input', (e) => {
@@ -186,11 +341,10 @@ function initCustomControls(video) {
 
     // 5. Configuración (Settings)
     settingsBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // Evitar que cierre inmediatamente si hay click outside
+        e.stopPropagation(); 
         toggleSettingsMenu();
     });
 
-    // Cerrar menú al hacer clic fuera
     document.addEventListener('click', (e) => {
         if (!settingsPopover.contains(e.target) && !settingsBtn.contains(e.target)) {
             settingsPopover.classList.remove('active');
@@ -198,8 +352,8 @@ function initCustomControls(video) {
         }
     });
 
-    // Manejo de navegación del menú settings
-    initSettingsNavigation();
+    // [FIX] Iniciamos la navegación de settings con delegación
+    initSettingsNavigationDelegated();
 
     // 6. Ocultar controles automáticamente
     const showControls = () => {
@@ -209,7 +363,6 @@ function initCustomControls(video) {
         
         if (!video.paused) {
             _controlsTimeout = setTimeout(() => {
-                // No ocultar si el menú de settings está abierto
                 if (!settingsPopover.classList.contains('active')) {
                     controlsContainer.classList.remove('show');
                     videoContainer.style.cursor = 'none';
@@ -226,19 +379,14 @@ function initCustomControls(video) {
     });
 }
 
-/**
- * Lógica del menú de configuración
- */
 function toggleSettingsMenu() {
     const popover = document.getElementById('settings-popover');
-    const isActive = popover.classList.contains('active');
-    
-    if (isActive) {
+    if (popover.classList.contains('active')) {
         popover.classList.remove('active');
-        setTimeout(resetSettingsMenu, 200); // Resetear a main después de la animación de cierre
+        setTimeout(resetSettingsMenu, 200); 
     } else {
         popover.classList.add('active');
-        resetSettingsMenu(); // Asegurar que empieza en main
+        resetSettingsMenu(); 
     }
 }
 
@@ -247,45 +395,46 @@ function resetSettingsMenu() {
     document.getElementById('settings-main').classList.add('active');
 }
 
-function initSettingsNavigation() {
-    // Click en items principales para ir a submenús
-    document.querySelectorAll('.settings-item').forEach(item => {
-        item.addEventListener('click', () => {
+/**
+ * [FIX] Delegación de Eventos para el Menú
+ * Detecta clics en cualquier parte del popover y actúa según el elemento clickeado.
+ */
+function initSettingsNavigationDelegated() {
+    const popover = document.getElementById('settings-popover');
+    if(!popover) return;
+
+    popover.addEventListener('click', (e) => {
+        // 1. Click en Item de Menú (para ir a submenú)
+        const item = e.target.closest('.settings-item');
+        if (item) {
             const targetId = item.getAttribute('data-target');
             const targetPanel = document.getElementById(`settings-${targetId}`);
             if (targetPanel) {
                 document.getElementById('settings-main').classList.remove('active');
                 targetPanel.classList.add('active');
             }
-        });
-    });
+            return;
+        }
 
-    // Click en headers para volver atrás
-    document.querySelectorAll('.settings-header').forEach(header => {
-        header.addEventListener('click', () => {
-            const backTarget = header.getAttribute('data-back'); // generalmente 'main'
+        // 2. Click en Header (botón "Atrás")
+        const header = e.target.closest('.settings-header');
+        if (header) {
+            const backTarget = header.getAttribute('data-back'); 
             header.closest('.settings-panel').classList.remove('active');
             document.getElementById(`settings-${backTarget}`).classList.add('active');
-        });
-    });
+            return;
+        }
 
-    // Selección de opciones de iluminación (Dummy por ahora)
-    const lightingOptions = document.querySelectorAll('#settings-lighting .settings-option');
-    lightingOptions.forEach(opt => {
-        opt.addEventListener('click', () => {
-            lightingOptions.forEach(o => o.classList.remove('selected'));
-            opt.classList.add('selected');
-            
-            const val = opt.getAttribute('data-value');
-            const text = opt.querySelector('span').innerText;
-            
-            // Actualizar texto en menú principal
+        // 3. Click en Opción de Iluminación
+        const lightingOpt = e.target.closest('#settings-lighting .settings-option');
+        if (lightingOpt) {
+            document.querySelectorAll('#settings-lighting .settings-option').forEach(o => o.classList.remove('selected'));
+            lightingOpt.classList.add('selected');
+            const text = lightingOpt.querySelector('span').innerText;
             document.getElementById('lighting-status-text').innerText = text;
-            
-            // Volver al menú principal
             resetSettingsMenu();
-            console.log("Iluminación cambiada a:", val);
-        });
+            toggleSettingsMenu(); // Cerrar menú al seleccionar
+        }
     });
 }
 
@@ -296,49 +445,45 @@ function renderQualityOptions(levels) {
     const container = document.getElementById('quality-options-container');
     container.innerHTML = '';
 
-    // Opción AUTO
-    const autoOption = document.createElement('div');
-    autoOption.className = 'settings-option selected'; // Auto por defecto
-    autoOption.setAttribute('data-quality', '-1'); // -1 es auto en hls.js
-    autoOption.innerHTML = `<span>Automática</span><span class="material-symbols-rounded check-icon">check</span>`;
-    
+    // Opción Automática
+    const autoOption = createQualityOption('-1', 'Automática', true);
     autoOption.addEventListener('click', () => handleQualityChange(-1, 'Automática', autoOption));
     container.appendChild(autoOption);
 
-    // Opciones numéricas (1080p, 720p, etc.)
-    // levels viene ordenado de menor a mayor bitrate usualmente, lo invertimos para UI
+    // Niveles disponibles
     [...levels].reverse().forEach((level, index) => {
-        // El index original es importante para hls.js
         const originalIndex = levels.indexOf(level); 
         const height = level.height;
         
-        const option = document.createElement('div');
-        option.className = 'settings-option';
-        option.setAttribute('data-quality', originalIndex);
-        option.innerHTML = `<span>${height}p</span><span class="material-symbols-rounded check-icon">check</span>`;
+        const option = createQualityOption(originalIndex, `${height}p`, false);
         
         option.addEventListener('click', () => handleQualityChange(originalIndex, `${height}p`, option));
         container.appendChild(option);
     });
 }
 
+function createQualityOption(val, text, isSelected) {
+    const div = document.createElement('div');
+    div.className = `settings-option ${isSelected ? 'selected' : ''}`;
+    div.setAttribute('data-quality', val);
+    div.innerHTML = `<span>${text}</span><span class="material-symbols-rounded check-icon">check</span>`;
+    return div;
+}
+
 function handleQualityChange(levelIndex, label, element) {
     if (_hls) {
-        _hls.currentLevel = levelIndex; // -1 auto, >= 0 fixed
+        _hls.currentLevel = levelIndex; 
     }
 
-    // Actualizar UI del submenú
     const allOpts = document.querySelectorAll('#quality-options-container .settings-option');
     allOpts.forEach(o => o.classList.remove('selected'));
     element.classList.add('selected');
 
-    // Actualizar texto en menú principal
     const statusText = levelIndex === -1 ? 'Auto' : label;
     document.getElementById('quality-status-text').innerText = statusText;
 
-    // Volver
     resetSettingsMenu();
-    console.log("Calidad cambiada a:", label);
+    toggleSettingsMenu(); // Cerrar al seleccionar
 }
 
 

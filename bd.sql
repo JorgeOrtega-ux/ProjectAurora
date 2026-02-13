@@ -208,3 +208,7 @@ ON DUPLICATE KEY UPDATE config_value = VALUES(config_value);ALTER TABLE security
 
 ALTER TABLE videos 
 ADD COLUMN orientation ENUM('landscape', 'portrait') DEFAULT 'landscape' AFTER duration;
+
+ALTER TABLE videos 
+ADD COLUMN sprite_path VARCHAR(255) DEFAULT NULL,
+ADD COLUMN vtt_path VARCHAR(255) DEFAULT NULL;

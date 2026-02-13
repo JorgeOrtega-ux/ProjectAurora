@@ -14,6 +14,7 @@ import tempfile
 import shutil
 from concurrent.futures import ThreadPoolExecutor
 import re 
+import math
 
 # --- CONFIGURACIÓN ---
 logging.basicConfig(
@@ -480,6 +481,15 @@ def task_process_video(payload):
         
         logging.info(f"✅ Video procesado exitosamente: {video_uuid}")
 
+        # 5. [NUEVO] Encadenar generación de Sprites
+        logging.info("➡️ Encadenando tarea: Generación de Sprites (Scrubbing)...")
+        task_generate_sprites({
+            'video_uuid': video_uuid,
+            'raw_path': raw_path,
+            'duration': duration,
+            'orientation': orientation
+        })
+
     except Exception as e:
         logging.error(f"❌ Error procesando video {video_uuid}: {e}")
         update_video_status(video_uuid, 'error', str(e))
@@ -573,11 +583,138 @@ def task_generate_thumbnails(payload):
     except Exception as e:
         logging.error(f"❌ Error generando miniaturas: {e}")
 
+def task_generate_sprites(payload):
+    logging.info("🎞️ [Thread] Iniciando Generación de Sprites (Scrubbing)...")
+    
+    video_uuid = payload.get('video_uuid')
+    raw_path = payload.get('raw_path')
+    duration = float(payload.get('duration', 0))
+    orientation = payload.get('orientation', 'landscape')
+    
+    if not video_uuid or not os.path.exists(raw_path):
+        logging.error("❌ Datos insuficientes para sprites")
+        return
+
+    # Directorio para los sprites (reutilizamos la carpeta pública del video)
+    output_dir = os.path.join(VIDEOS_DIR, video_uuid)
+    sprite_filename = "sprite_sheet.jpg"
+    vtt_filename = "sprites.vtt"
+    sprite_path_abs = os.path.join(output_dir, sprite_filename)
+    vtt_path_abs = os.path.join(output_dir, vtt_filename)
+    
+    # Rutas relativas para DB
+    sprite_path_rel = f"public/storage/videos/{video_uuid}/{sprite_filename}"
+    vtt_path_rel = f"public/storage/videos/{video_uuid}/{vtt_filename}"
+
+    # CONFIGURACIÓN DE LA CUADRÍCULA
+    # Usaremos 5x5 = 25 imágenes totales como solicitaste.
+    # NOTA: Para videos largos, 25 imágenes puede ser poco fluido.
+    ROWS = 5
+    COLS = 5
+    TOTAL_IMAGES = ROWS * COLS
+    
+    # Calcular intervalo de captura (cada cuántos segundos tomamos una foto)
+    # Ejemplo: Video 100s / 25 imgs = 1 foto cada 4 segundos.
+    interval = duration / TOTAL_IMAGES
+    if interval <= 0: interval = 1
+
+    # Definir dimensiones de celda según orientación
+    # Landscape: Ancho 160px, Alto proporcional
+    # Portrait: Alto 160px, Ancho proporcional
+    if orientation == 'portrait':
+        scale_filter = "scale=-1:160"
+        cell_height = 160
+        # Estimamos el ancho si es 9:16 -> aprox 90px
+        cell_width = 90 
+    else:
+        scale_filter = "scale=160:-1"
+        cell_width = 160
+        # Estimamos el alto si es 16:9 -> aprox 90px
+        cell_height = 90
+
+    try:
+        # COMANDO FFMPEG
+        # fps=1/interval: Captura 1 frame cada X segundos
+        # scale: Redimensiona la celda
+        # tile: Crea el mosaico 5x5
+        
+        vf_string = f"fps=1/{interval},{scale_filter},tile={COLS}x{ROWS}"
+        
+        cmd = [
+            'ffmpeg', '-y',
+            '-i', raw_path,
+            '-vf', vf_string,
+            '-frames:v', '1', # Solo queremos 1 imagen de salida (la hoja completa)
+            '-q:v', '3',      # Calidad JPG decente
+            sprite_path_abs
+        ]
+        
+        logging.info(f"🎞️ Ejecutando FFmpeg Sprite: {vf_string}")
+        subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        if os.path.exists(sprite_path_abs):
+            # Obtener dimensiones reales de la hoja generada para VTT preciso
+            meta = get_video_metadata(sprite_path_abs) # Reusamos funcion aunque sea imagen
+            sheet_width = meta['width']
+            sheet_height = meta['height']
+            
+            # Recalcular dimensiones exactas de celda
+            real_cell_width = sheet_width / COLS
+            real_cell_height = sheet_height / ROWS
+
+            # GENERAR ARCHIVO VTT
+            # Formato WebVTT para sprites
+            with open(vtt_path_abs, 'w') as vtt:
+                vtt.write("WEBVTT\n\n")
+                
+                for i in range(TOTAL_IMAGES):
+                    # Tiempo inicio y fin de este frame
+                    start_time = i * interval
+                    end_time = (i + 1) * interval
+                    
+                    # Formatear tiempo HH:MM:SS.ms
+                    def fmt_time(t):
+                        h = int(t // 3600)
+                        m = int((t % 3600) // 60)
+                        s = t % 60
+                        return f"{h:02}:{m:02}:{s:06.3f}"
+
+                    # Calcular coordenadas XY
+                    # x = (i % COLS) * w
+                    # y = (i // COLS) * h
+                    col_idx = i % COLS
+                    row_idx = i // COLS
+                    x = int(col_idx * real_cell_width)
+                    y = int(row_idx * real_cell_height)
+                    w = int(real_cell_width)
+                    h = int(real_cell_height)
+
+                    vtt.write(f"{fmt_time(start_time)} --> {fmt_time(end_time)}\n")
+                    vtt.write(f"{sprite_filename}#xywh={x},{y},{w},{h}\n\n")
+
+            logging.info(f"✅ Sprite sheet y VTT generados: {sprite_path_rel}")
+
+            # ACTUALIZAR BASE DE DATOS
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            sql = "UPDATE videos SET sprite_path = %s, vtt_path = %s WHERE uuid = %s"
+            cursor.execute(sql, (sprite_path_rel, vtt_path_rel, video_uuid))
+            conn.commit()
+            conn.close()
+
+        else:
+            logging.error("❌ Falló la generación del Sprite Sheet (archivo no creado)")
+
+    except Exception as e:
+        logging.error(f"❌ Excepción en task_generate_sprites: {e}")
+
+
 TASKS = {
     'create_backup': task_create_backup,
     'create_zip': task_create_zip,
     'process_video': task_process_video,
-    'generate_thumbnails': task_generate_thumbnails
+    'generate_thumbnails': task_generate_thumbnails,
+    'generate_sprites': task_generate_sprites # Registrada nueva tarea
 }
 
 def run_job(raw_data):

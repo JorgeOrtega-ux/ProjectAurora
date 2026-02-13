@@ -42,9 +42,9 @@ class StudioService {
         }
 
         try {
-            // [MODIFICADO] Se incluye 'orientation' en la selección
+            // [MODIFICADO] Se incluye 'orientation', 'sprite_path' y 'vtt_path'
             $stmt = $this->pdo->prepare("
-                SELECT uuid, title, description, status, thumbnail_path, dominant_color, generated_thumbnails, orientation 
+                SELECT uuid, title, description, status, thumbnail_path, dominant_color, generated_thumbnails, orientation, sprite_path, vtt_path 
                 FROM videos 
                 WHERE uuid = ?
             ");
@@ -55,13 +55,11 @@ class StudioService {
                 return ['success' => false, 'message' => 'Video no encontrado.'];
             }
 
-            // [CORRECCIÓN] Usar la ruta completa almacenada, no reconstruirla con basename
+            // [CORRECCIÓN] Usar la ruta completa almacenada
             $video['thumbnail_src'] = null;
             if (!empty($video['thumbnail_path'])) {
                 $path = __DIR__ . '/../../' . $video['thumbnail_path'];
                 if (file_exists($path)) {
-                    // ANTES (BUG): $video['thumbnail_src'] = 'public/storage/thumbnails/' . basename($video['thumbnail_path']);
-                    // AHORA (CORRECTO):
                     $video['thumbnail_src'] = $video['thumbnail_path'];
                 }
             }
@@ -103,9 +101,7 @@ class StudioService {
             $videos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             foreach ($videos as &$v) {
-                // [CORRECCIÓN] Usar ruta directa
                 if ($v['thumbnail_path']) {
-                    // ANTES (BUG): 'public/storage/thumbnails/' . basename($v['thumbnail_path']);
                     $v['thumbnail_url'] = $v['thumbnail_path'];
                 } else {
                     $v['thumbnail_url'] = null;
@@ -291,6 +287,8 @@ class StudioService {
             $maxDuration = ($role === 'founder') ? 43200 : 7200;
 
             if ($this->redis) {
+                // [NOTA] Solo encolamos process_video. 
+                // La tarea task_process_video en Python encadenará automáticamente task_generate_sprites.
                 $task = [
                     'task' => 'process_video',
                     'payload' => [
@@ -394,9 +392,6 @@ class StudioService {
             $outputAbs = "$thumbsDirAbs/$fileName";
             $outputRel = "$thumbsDirRel/$fileName";
 
-            // [MODIFICADO] Filtro FFmpeg para escalar y aplicar padding negro (1920x1080)
-            // force_original_aspect_ratio=decrease: Escala el video para que quepa dentro de 1920x1080 sin recortar.
-            // pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black: Rellena el espacio sobrante con negro, centrando el video.
             $vfFilter = "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:black";
             
             $cmd = "ffmpeg -y -ss $timestamp -i " . escapeshellarg($rawPath) . " -vframes 1 -q:v 2 -vf \"$vfFilter\" " . escapeshellarg($outputAbs) . " 2>&1";
@@ -543,18 +538,10 @@ class StudioService {
         $videos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($videos as &$v) {
-            // [CORRECCIÓN] Usar la ruta almacenada directamente si existe
             if ($v['thumbnail_path']) {
                 $path = __DIR__ . '/../../' . $v['thumbnail_path'];
                 if (file_exists($path)) {
-                    // Para subidas manuales puede que queramos devolver base64 si es seguro
-                    // Pero para generadas, es mejor la ruta pública
-                    // Mantenemos lógica original para compatibilidad visual en editor, pero corregimos ruta
                     $v['thumbnail_src'] = $v['thumbnail_path'];
-                    
-                    // Si prefieres base64 para preview instantáneo (opcional):
-                    // $data = file_get_contents($path);
-                    // $v['thumbnail_src'] = 'data:image/png;base64,' . base64_encode($data);
                 }
             }
         }
@@ -594,9 +581,7 @@ class StudioService {
             $videos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             foreach ($videos as &$v) {
-                // [CORRECCIÓN] Usar ruta directa
                 if ($v['thumbnail_path']) {
-                     // ANTES (BUG): basename(...)
                     $v['thumbnail_url'] = $v['thumbnail_path'];
                 } else {
                     $v['thumbnail_url'] = null;
@@ -658,7 +643,8 @@ class StudioService {
             return ['success' => false, 'message' => 'Acceso denegado o video no encontrado.'];
         }
 
-        $stmt = $this->pdo->prepare("SELECT raw_file_path, thumbnail_path, hls_path, generated_thumbnails FROM videos WHERE uuid = ?");
+        // [MODIFICADO] Seleccionar paths extra para eliminar
+        $stmt = $this->pdo->prepare("SELECT raw_file_path, thumbnail_path, hls_path, generated_thumbnails, sprite_path, vtt_path FROM videos WHERE uuid = ?");
         $stmt->execute([$uuid]);
         $video = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -673,6 +659,16 @@ class StudioService {
         if (!empty($video['thumbnail_path'])) {
             $thumbPath = __DIR__ . '/../../' . $video['thumbnail_path'];
             if (file_exists($thumbPath)) @unlink($thumbPath);
+        }
+
+        // Limpiar sprites y vtt
+        if (!empty($video['sprite_path'])) {
+            $spritePath = __DIR__ . '/../../' . $video['sprite_path'];
+            if (file_exists($spritePath)) @unlink($spritePath);
+        }
+        if (!empty($video['vtt_path'])) {
+            $vttPath = __DIR__ . '/../../' . $video['vtt_path'];
+            if (file_exists($vttPath)) @unlink($vttPath);
         }
 
         $videoFolder = $this->publicVideoDir . '/' . $uuid;
