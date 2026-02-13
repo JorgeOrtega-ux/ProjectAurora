@@ -13,7 +13,7 @@ import secrets
 import tempfile 
 import shutil
 from concurrent.futures import ThreadPoolExecutor
-import re # [NUEVO] Importado para analizar la salida de FFmpeg
+import re 
 
 # --- CONFIGURACIÓN ---
 logging.basicConfig(
@@ -146,21 +146,31 @@ def update_video_progress_db(uuid, percentage):
         logging.error(f"Error actualizando porcentaje DB: {e}")
 
 def get_video_metadata(file_path):
-    """Obtiene metadatos básicos usando ffprobe"""
+    """Obtiene metadatos (duración y dimensiones) usando ffprobe"""
     try:
+        # [MODIFICADO] Solicitamos streams para ver ancho/alto y formato JSON para parseo seguro
         cmd = [
             'ffprobe', 
             '-v', 'error', 
-            '-show_entries', 'format=duration', 
-            '-of', 'default=noprint_wrappers=1:nokey=1', 
+            '-select_streams', 'v:0',
+            '-show_entries', 'stream=width,height:format=duration', 
+            '-of', 'json', 
             file_path
         ]
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        duration = float(result.stdout.strip()) if result.stdout else 0
-        return {'duration': duration}
+        data = json.loads(result.stdout)
+        
+        format_info = data.get('format', {})
+        stream_info = data.get('streams', [{}])[0]
+        
+        return {
+            'duration': float(format_info.get('duration', 0)),
+            'width': int(stream_info.get('width', 0)),
+            'height': int(stream_info.get('height', 0))
+        }
     except Exception as e:
         logging.error(f"Error ffprobe: {e}")
-        return {'duration': 0}
+        return {'duration': 0, 'width': 0, 'height': 0}
 
 # [NUEVO] Convierte timecode HH:MM:SS.ms a segundos totales
 def timecode_to_seconds(timecode):
@@ -339,9 +349,15 @@ def task_process_video(payload):
     os.makedirs(output_dir, exist_ok=True)
 
     try:
-        # 1. Obtener Duración
+        # 1. Obtener Duración y Dimensiones [MODIFICADO]
         meta = get_video_metadata(raw_path)
         duration = meta.get('duration', 0)
+        width = meta.get('width', 0)
+        height = meta.get('height', 0)
+        
+        # [NUEVO] Determinar Orientación
+        orientation = 'portrait' if height > width else 'landscape'
+        logging.info(f"Video {video_uuid}: Detección de formato -> {width}x{height} ({orientation})")
         
         # [TIERED LIMITS] Validación de duración máxima
         max_duration = payload.get('max_duration', 0) # 0 = ilimitado (o default)
@@ -439,15 +455,18 @@ def task_process_video(payload):
         
         conn = get_db_connection()
         cursor = conn.cursor()
+        
+        # [MODIFICADO] Guardar también la orientación
         sql = """
             UPDATE videos SET 
                 status = 'waiting_for_metadata', 
                 hls_path = %s, 
                 duration = %s,
+                orientation = %s,
                 processing_percentage = 100 
             WHERE uuid = %s
         """
-        cursor.execute(sql, (relative_hls, duration, video_uuid))
+        cursor.execute(sql, (relative_hls, duration, orientation, video_uuid))
         conn.commit()
         conn.close()
         

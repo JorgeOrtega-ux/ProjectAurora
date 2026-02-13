@@ -42,8 +42,9 @@ class StudioService {
         }
 
         try {
+            // [MODIFICADO] Se incluye 'orientation' en la selección
             $stmt = $this->pdo->prepare("
-                SELECT uuid, title, description, status, thumbnail_path, dominant_color, generated_thumbnails 
+                SELECT uuid, title, description, status, thumbnail_path, dominant_color, generated_thumbnails, orientation 
                 FROM videos 
                 WHERE uuid = ?
             ");
@@ -86,7 +87,8 @@ class StudioService {
             $countStmt = $this->pdo->query("SELECT COUNT(*) FROM videos WHERE status = 'published'");
             $totalItems = $countStmt->fetchColumn();
 
-            $sql = "SELECT v.uuid, v.title, v.description, v.thumbnail_path, v.created_at, v.duration, v.dominant_color, v.hls_path,
+            // [MODIFICADO] Se añade 'v.orientation' a la consulta para el frontend
+            $sql = "SELECT v.uuid, v.title, v.description, v.thumbnail_path, v.created_at, v.duration, v.dominant_color, v.hls_path, v.orientation,
                            u.username, u.avatar_path, u.uuid as user_uuid
                     FROM videos v
                     JOIN users u ON v.user_id = u.id

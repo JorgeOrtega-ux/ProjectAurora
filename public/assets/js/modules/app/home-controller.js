@@ -94,7 +94,7 @@ export const HomeController = {
         _container = document.getElementById('home-feed-grid');
         if (!_container) return;
 
-        console.log("HomeController: Inicializado (Pro Color Mode)");
+        console.log("HomeController: Inicializado (Pro Color Mode & Vertical Support)");
         
         _currentPage = 1;
         _hasMore = true;
@@ -157,12 +157,20 @@ function startVideoPreview(card) {
     const topContainer = card.querySelector('.video-top');
     if (!topContainer) return;
 
+    // Detectar si es portrait para ajustar el estilo del video
+    const isPortrait = card.dataset.orientation === 'portrait';
+
     const video = document.createElement('video');
     video.className = 'video-preview active';
     video.muted = true;
     video.autoplay = true;
     video.playsInline = true;
     video.style.opacity = '0';
+    
+    // [MODIFICADO] Aplicar contain si es vertical para ver barras negras
+    if (isPortrait) {
+        video.style.objectFit = 'contain';
+    }
 
     video.addEventListener('ended', () => {
         stopVideoPreview(card);
@@ -294,25 +302,34 @@ async function loadFeed(append = false) {
 
 function renderVideos(videos) {
     videos.forEach(v => {
+        // [MODIFICADO] Detectar si es vertical
+        const isPortrait = v.orientation === 'portrait';
+        
         const card = document.createElement('div');
-        card.className = 'video-card';
+        // Agregar clase modificadora para CSS si fuera necesario, y data-attributes
+        card.className = `video-card ${isPortrait ? 'video-card--portrait' : ''}`;
         card.dataset.uuid = v.uuid;
         
         // DATA ATTRIBUTES
         card.dataset.hls = v.hls_path || '';
         card.dataset.duration = v.duration || 0;
         card.dataset.durationFormatted = v.duration_formatted;
+        card.dataset.orientation = v.orientation || 'landscape'; // Guardamos la orientación
         
         // [NUEVO] LÓGICA DE COLOR SNAPPING
-        // Toma el color crudo, busca el más cercano en la paleta profesional y lo asigna.
         const rawColor = v.dominant_color || '#202020';
         const unifiedColor = getNearestSafeColor(rawColor);
         card.style.setProperty('--dynamic-base', unifiedColor);
         
+        // [MODIFICADO] Lógica de Object Fit
+        // Si es vertical (portrait), usamos contain para que se vean las barras negras laterales.
+        // Si es horizontal (landscape), usamos cover.
+        const imgObjectFit = isPortrait ? 'contain' : 'cover';
+
         // Miniatura
         let thumbUrl = v.thumbnail_url ? window.BASE_PATH + v.thumbnail_url : '';
         let thumbHtml = thumbUrl 
-            ? `<img src="${thumbUrl}" loading="lazy" alt="${v.title}" class="video-thumb-img">` 
+            ? `<img src="${thumbUrl}" loading="lazy" alt="${v.title}" class="video-thumb-img" style="width: 100%; height: 100%; object-fit: ${imgObjectFit};">` 
             : `<div style="width:100%;height:100%;background:#111;display:flex;align-items:center;justify-content:center;"><span class="material-symbols-rounded" style="color:#333;font-size:32px;">movie</span></div>`;
 
         // Avatar

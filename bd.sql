@@ -205,3 +205,6 @@ ADD COLUMN generated_thumbnails JSON DEFAULT NULL;
 INSERT INTO server_config (config_key, config_value) 
 VALUES ('upload_daily_limit', '10') 
 ON DUPLICATE KEY UPDATE config_value = VALUES(config_value);ALTER TABLE security_logs ADD COLUMN expires_at DATETIME DEFAULT NULL;
+
+ALTER TABLE videos 
+ADD COLUMN orientation ENUM('landscape', 'portrait') DEFAULT 'landscape' AFTER duration;

@@ -1006,6 +1006,13 @@ html {
     content: "";
 }
 
+/* [NUEVO] ESTILOS PARA VIDEOS VERTICALES (PORTRAIT) */
+/* Al usar contain, la imagen se ajusta sin cortarse, revelando el fondo negro de .video-top */
+.video-card--portrait .video-thumb-img,
+.video-card--portrait .video-preview {
+    object-fit: contain !important;
+}
+
 /* Responsive */
 @media (max-width: 480px) {
     .video-grid {
