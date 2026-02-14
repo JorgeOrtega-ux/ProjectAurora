@@ -268,8 +268,10 @@ CREATE TABLE IF NOT EXISTS video_shares (
 );
 
 -- E. VIDEO COMMENTS
+-- [MODIFICADO] Se añade columna UUID para identificar comentarios en tránsito (Redis -> MySQL)
 CREATE TABLE IF NOT EXISTS video_comments (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    uuid CHAR(36) NOT NULL UNIQUE, 
     video_id INT NOT NULL,
     user_id INT NOT NULL,
     parent_id INT NULL COMMENT 'ID del comentario padre si es una respuesta',
@@ -281,7 +283,8 @@ CREATE TABLE IF NOT EXISTS video_comments (
     FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (parent_id) REFERENCES video_comments(id) ON DELETE CASCADE,
-    INDEX idx_video_thread (video_id, parent_id)
+    INDEX idx_video_thread (video_id, parent_id),
+    INDEX idx_uuid (uuid)
 );
 
 -- F. COMMENT INTERACTIONS [NUEVO]

@@ -13,7 +13,6 @@ use Aurora\Services\InteractionService;
 use Aurora\Libs\Utils;
 
 // 3. Validar CSRF (Seguridad estándar de Aurora)
-// Las interacciones modifican estado o leen datos sensibles, requieren protección
 Utils::validateCsrf($i18n);
 
 // 4. Inicializar Servicio
@@ -23,31 +22,23 @@ $action = $_POST['action'] ?? '';
 
 switch ($action) {
     case 'toggle_like':
-        // Recibe el UUID del video y el tipo de interacción (like/dislike)
         $videoUuid = trim($_POST['video_uuid'] ?? '');
         $type = trim($_POST['type'] ?? 'like'); 
-        
         Utils::jsonResponse($interactionService->toggleLike($videoUuid, $type));
         break;
 
     case 'toggle_subscribe':
-        // Recibe el UUID del canal (usuario) al que queremos suscribirnos
         $channelUuid = trim($_POST['channel_uuid'] ?? '');
-        
         Utils::jsonResponse($interactionService->toggleSubscribe($channelUuid));
         break;
 
     case 'register_view':
-        // Registra una visita (con debounce en Redis)
         $videoUuid = trim($_POST['video_uuid'] ?? '');
-        
         Utils::jsonResponse($interactionService->registerView($videoUuid));
         break;
 
     case 'register_share':
-        // Registra que se ha compartido un video
         $videoUuid = trim($_POST['video_uuid'] ?? '');
-        
         Utils::jsonResponse($interactionService->registerShare($videoUuid));
         break;
 
@@ -59,29 +50,27 @@ switch ($action) {
         $videoUuid = trim($_POST['video_uuid'] ?? '');
         $limit = isset($_POST['limit']) ? (int)$_POST['limit'] : 20;
         $offset = isset($_POST['offset']) ? (int)$_POST['offset'] : 0;
-
-        // Validar límites para evitar sobrecarga
         if ($limit > 100) $limit = 100;
-
         Utils::jsonResponse($interactionService->getComments($videoUuid, $limit, $offset));
         break;
 
     case 'post_comment':
         $videoUuid = trim($_POST['video_uuid'] ?? '');
         $content = trim($_POST['content'] ?? '');
-        $parentId = isset($_POST['parent_id']) && is_numeric($_POST['parent_id']) 
-                    ? (int)$_POST['parent_id'] 
-                    : null;
+        
+        // FIX: Ya NO castear a int porque parent_id puede ser un UUID si es una respuesta a un comentario reciente
+        $parentId = $_POST['parent_id'] ?? null;
+        if ($parentId === 'null' || $parentId === '') $parentId = null;
 
         Utils::jsonResponse($interactionService->addComment($videoUuid, $content, $parentId));
         break;
 
     case 'toggle_comment_like':
-        // NUEVO CASE: Maneja likes/dislikes en comentarios
-        $commentId = isset($_POST['comment_id']) ? (int)$_POST['comment_id'] : 0;
+        // FIX: Eliminar (int) casting. Recibimos UUID string.
+        $commentId = trim($_POST['comment_id'] ?? '');
         $type = trim($_POST['type'] ?? 'like');
 
-        if ($commentId <= 0) {
+        if (empty($commentId)) {
             Utils::jsonResponse(['success' => false, 'message' => 'ID de comentario inválido'], 400);
         } else {
             Utils::jsonResponse($interactionService->toggleCommentLike($commentId, $type));

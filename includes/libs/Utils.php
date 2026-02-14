@@ -84,21 +84,20 @@ class Utils {
         $wsIp = $_ENV['APP_HOST_IP'] ?? '127.0.0.1';
         $wsSources = "ws://localhost:8765 ws://{$wsIp}:8765";
 
-        // [MODIFICADO] Se agrega cdn.jsdelivr.net a script-src y se define worker-src/media-src
-     header("Content-Security-Policy: " .
-        "default-src 'self'; " .
-        "script-src 'self' https://challenges.cloudflare.com https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net 'nonce-$cspNonce'; " .
-        "style-src 'self' https://fonts.googleapis.com https://cdnjs.cloudflare.com 'unsafe-inline'; " .
-        "img-src 'self' data: https://ui-avatars.com; " .
-        "font-src 'self' https://fonts.gstatic.com; " .
-        "frame-src https://challenges.cloudflare.com; " .
-        // AQUI ESTA EL CAMBIO:
-        "connect-src 'self' https://challenges.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net {$wsSources}; " . 
-        "worker-src 'self' blob:; " .
-        "media-src 'self' blob:; " .
-        "object-src 'none'; " .
-        "base-uri 'self';"
-    );
+        // [MODIFICADO] Se agrega storage.googleapis.com a media-src para permitir el anuncio de prueba
+        header("Content-Security-Policy: " .
+            "default-src 'self'; " .
+            "script-src 'self' https://challenges.cloudflare.com https://unpkg.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net 'nonce-$cspNonce'; " .
+            "style-src 'self' https://fonts.googleapis.com https://cdnjs.cloudflare.com 'unsafe-inline'; " .
+            "img-src 'self' data: https://ui-avatars.com; " .
+            "font-src 'self' https://fonts.gstatic.com; " .
+            "frame-src https://challenges.cloudflare.com; " .
+            "connect-src 'self' https://challenges.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net {$wsSources}; " . 
+            "worker-src 'self' blob:; " .
+            "media-src 'self' blob: https://storage.googleapis.com; " . // <--- AQUI ESTA EL CAMBIO IMPORTANTE
+            "object-src 'none'; " .
+            "base-uri 'self';"
+        );
 
         header("X-Frame-Options: DENY");
         header("X-Content-Type-Options: nosniff");
