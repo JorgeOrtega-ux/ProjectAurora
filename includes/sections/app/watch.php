@@ -302,14 +302,11 @@ function formatCount($n) {
                     <?php if (isset($_SESSION['user_id'])): ?>
                         <div class="component-watch-comment-input-row" id="main-comment-form-container">
                             <img src="<?php echo $currentUserAvatar; ?>" class="component-watch-avatar small">
-                            <div class="component-watch-comment-input-wrapper">
-                                <div class="component-input-group">
-                                    <textarea id="comment-input-main" class="component-input auto-expand" placeholder="Añade un comentario..." rows="1"></textarea>
-                                </div>
-                                <div class="component-watch-comment-actions hidden" id="comment-actions-main">
-                                    <button class="component-button text" id="btn-cancel-main">Cancelar</button>
-                                    <button class="component-button primary" id="btn-submit-main" disabled>Comentar</button>
-                                </div>
+                            <div class="component-watch-comment-input-wrapper chat-style">
+                                <textarea id="comment-input-main" class="component-input auto-expand chat-input" placeholder="Añade un comentario..." rows="1"></textarea>
+                                <button class="component-input-embedded-btn" id="btn-submit-main" disabled title="Enviar">
+                                    <span class="material-symbols-rounded">send</span>
+                                </button>
                             </div>
                         </div>
                     <?php else: ?>

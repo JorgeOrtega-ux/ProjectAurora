@@ -31,32 +31,29 @@ export class CommentsSection {
     _initMainInput() {
         const mainInput = document.getElementById('comment-input-main');
         const mainBtn = document.getElementById('btn-submit-main');
-        const cancelBtn = document.getElementById('btn-cancel-main');
-        const actionsDiv = document.getElementById('comment-actions-main');
-
-        if (mainInput && mainBtn && actionsDiv) {
-            mainInput.addEventListener('focus', () => {
-                actionsDiv.classList.remove('hidden');
-            });
-
+        
+        if (mainInput && mainBtn) {
             mainInput.addEventListener('input', () => {
                 mainBtn.disabled = mainInput.value.trim().length === 0;
                 mainInput.style.height = 'auto';
                 mainInput.style.height = mainInput.scrollHeight + 'px';
             });
 
-            cancelBtn.addEventListener('click', () => {
-                mainInput.value = '';
-                mainInput.style.height = 'auto';
-                actionsDiv.classList.add('hidden');
-            });
-
             mainBtn.addEventListener('click', () => {
                 this.postComment(mainInput.value, null, () => {
                     mainInput.value = '';
                     mainInput.style.height = 'auto';
-                    actionsDiv.classList.add('hidden');
+                    mainBtn.disabled = true;
                 });
+            });
+            
+            // Opcional: Ctrl+Enter para enviar
+            mainInput.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    if (mainInput.value.trim().length > 0) {
+                        mainBtn.click();
+                    }
+                }
             });
         }
     }
@@ -64,7 +61,7 @@ export class CommentsSection {
     _attachDelegation() {
         if (this.listContainer) {
             this.listContainer.addEventListener('click', (e) => {
-                // 1. Delegación para Responder
+                // 1. Responder
                 const replyBtn = e.target.closest('.js-reply-trigger');
                 if (replyBtn) {
                     const commentId = replyBtn.dataset.id;
@@ -72,7 +69,7 @@ export class CommentsSection {
                     return;
                 }
 
-                // 2. Delegación para Like
+                // 2. Like
                 const likeBtn = e.target.closest('.js-like-trigger');
                 if (likeBtn) {
                     const commentId = likeBtn.dataset.id;
@@ -80,7 +77,7 @@ export class CommentsSection {
                     return;
                 }
 
-                // 3. Delegación para Dislike
+                // 3. Dislike
                 const dislikeBtn = e.target.closest('.js-dislike-trigger');
                 if (dislikeBtn) {
                     const commentId = dislikeBtn.dataset.id;
@@ -88,7 +85,7 @@ export class CommentsSection {
                     return;
                 }
 
-                // 4. Delegación para MOSTRAR/OCULTAR RESPUESTAS
+                // 4. MOSTRAR/OCULTAR RESPUESTAS
                 const toggleRepliesBtn = e.target.closest('.js-toggle-replies');
                 if (toggleRepliesBtn) {
                     const commentId = toggleRepliesBtn.dataset.id;
@@ -99,22 +96,16 @@ export class CommentsSection {
         }
     }
 
-    /**
-     * Lógica principal para mostrar respuestas por lotes de 10
-     */
     handleRepliesToggle(commentId, btnElement) {
         const container = document.getElementById(`replies-container-${commentId}`);
-        // IMPORTANTE: Aseguramos que el ID sea numérico para buscar en el Map
         const replies = this.repliesStore.get(parseInt(commentId)) || [];
         
-        // Estado actual del botón
         const isHiding = btnElement.dataset.action === 'hide';
         
         if (isHiding) {
-            // Acción: OCULTAR TODO
+            // Acción: OCULTAR -> Vaciamos contenedor
             container.innerHTML = '';
             btnElement.dataset.action = 'show';
-            // Restaurar texto original con el total
             btnElement.innerHTML = `
                 <span class="material-symbols-rounded" style="font-size: 18px; margin-right:6px;">expand_more</span>
                 Ver ${replies.length} respuestas
@@ -122,29 +113,27 @@ export class CommentsSection {
             return;
         }
 
-        // Acción: MOSTRAR (Cargar lote)
+        // Acción: MOSTRAR -> Renderizamos lote
         const currentCount = container.children.length;
         const BATCH_SIZE = 10;
         const nextBatch = replies.slice(currentCount, currentCount + BATCH_SIZE);
 
-        // Renderizar el lote
         nextBatch.forEach(reply => {
             const html = this.renderCommentItem(reply, true);
             container.insertAdjacentHTML('beforeend', html);
         });
 
-        // Calcular nuevo estado
         const newTotalShown = currentCount + nextBatch.length;
         
         if (newTotalShown >= replies.length) {
-            // Ya se mostraron todas -> Cambiar a "Ocultar"
+            // Se mostraron todas -> Botón cambia a Ocultar
             btnElement.dataset.action = 'hide';
             btnElement.innerHTML = `
                 <span class="material-symbols-rounded" style="font-size: 18px; margin-right:6px;">expand_less</span>
                 Ocultar respuestas
             `;
         } else {
-            // Aún quedan más -> Botón "Mostrar más"
+            // Quedan más -> Botón Mostrar más
             btnElement.dataset.action = 'show';
             btnElement.innerHTML = `
                 <span class="material-symbols-rounded" style="font-size: 18px; margin-right:6px;">subdirectory_arrow_right</span>
@@ -167,7 +156,7 @@ export class CommentsSection {
             if (response.success) {
                 this.listContainer.innerHTML = '';
                 this.state.total = response.total_count;
-                this.repliesStore.clear(); // Limpiar memoria al recargar
+                this.repliesStore.clear(); 
 
                 if (response.comments.length === 0) {
                     this.listContainer.innerHTML = `
@@ -195,44 +184,36 @@ export class CommentsSection {
     renderCommentItem(comment, isReply = false) {
         const isLogged = this.currentUserAvatar !== null;
         
-        // 1. Gestión de Respuestas (Batching System)
         let repliesUi = '';
-        
-        // Determinamos si hay respuestas usando el ARRAY
         const repliesCount = comment.replies ? comment.replies.length : 0;
 
-        // Solo procesamos respuestas si NO somos ya una respuesta y si hay respuestas > 0
         if (!isReply && repliesCount > 0) {
-            // Guardamos las respuestas en memoria
             this.repliesStore.set(comment.id, comment.replies);
 
-            // Generamos la UI del botón y el contenedor vacío
+            // CORRECCIÓN DE ORDEN: Primero el Container, luego el Botón
             repliesUi = `
                 <div class="component-comment-replies-wrapper">
+                    <div class="component-comment-replies" id="replies-container-${comment.id}"></div>
+                    
                     <button class="component-watch-replies-toggle js-toggle-replies" data-id="${comment.id}" data-action="show">
                         <span class="material-symbols-rounded" style="font-size: 18px; margin-right:6px;">expand_more</span>
                         Ver ${repliesCount} respuestas
                     </button>
-                    <div class="component-comment-replies" id="replies-container-${comment.id}">
-                        </div>
                 </div>
             `;
         } else if (!isReply) {
-            // Inicializamos el store vacío para futuros comentarios
             this.repliesStore.set(comment.id, []); 
-            // Contenedor "wrapper" necesario para que injectNewComment pueda encontrar dónde insertar el botón
+            // Wrapper vacío con el orden correcto preparado
             repliesUi = `
                 <div class="component-comment-replies-wrapper" id="replies-wrapper-${comment.id}">
                     <div class="component-comment-replies" id="replies-container-${comment.id}"></div>
-                </div>`;
+                    </div>`;
         }
 
         const dateStr = new Date(comment.created_at).toLocaleDateString();
-
         const activeLike = comment.user_interaction === 'like' ? 'active' : '';
         const activeDislike = comment.user_interaction === 'dislike' ? 'active' : '';
         const likesCount = comment.likes_count > 0 ? comment.likes_count : '';
-        const dislikesCount = comment.dislikes_count > 0 ? comment.dislikes_count : '';
 
         return `
         <div class="component-comment-item ${isReply ? 'is-reply' : ''}" id="comment-${comment.id}">
@@ -249,18 +230,19 @@ export class CommentsSection {
                 <div class="component-comment-text">${comment.content}</div>
                 
                 <div class="component-comment-actions">
-                    <button class="component-button icon-only small js-like-trigger ${activeLike}" data-id="${comment.id}" title="Me gusta">
-                        <span class="material-symbols-rounded" style="font-size: 18px;">thumb_up</span>
-                        <span class="count-label" style="font-size: 12px; margin-left: 4px;">${likesCount}</span>
-                    </button>
+                    <div class="component-watch-joined-pill comment-size">
+                        <button class="component-watch-joined-btn like js-like-trigger ${activeLike}" data-id="${comment.id}" title="Me gusta">
+                            <span class="material-symbols-rounded" style="font-size: 16px;">thumb_up</span>
+                            <span class="count-label js-count-like" style="font-size: 12px;">${likesCount}</span>
+                        </button>
+                        <div class="component-watch-joined-separator"></div>
+                        <button class="component-watch-joined-btn dislike js-dislike-trigger ${activeDislike}" data-id="${comment.id}" title="No me gusta">
+                            <span class="material-symbols-rounded" style="font-size: 16px;">thumb_down</span>
+                        </button>
+                    </div>
 
-                    <button class="component-button icon-only small js-dislike-trigger ${activeDislike}" data-id="${comment.id}" title="No me gusta">
-                        <span class="material-symbols-rounded" style="font-size: 18px;">thumb_down</span>
-                        <span class="count-label" style="font-size: 12px; margin-left: 4px;">${dislikesCount}</span>
-                    </button>
-                    
                     ${isLogged && !isReply ? `
-                        <button class="component-button text small js-reply-trigger" data-id="${comment.id}">
+                        <button class="component-button text small js-reply-trigger" data-id="${comment.id}" style="margin-left: 8px;">
                             Responder
                         </button>
                     ` : ''}
@@ -290,15 +272,15 @@ export class CommentsSection {
         container.innerHTML = `
             <div class="component-watch-comment-input-row reply-mode">
                 <img src="${myAvatar}" class="component-watch-avatar small">
-                <div class="component-watch-comment-input-wrapper">
-                    <div class="component-input-group">
-                        <textarea id="reply-input-${commentId}" class="component-input auto-expand" placeholder="Añade una respuesta..." rows="1"></textarea>
-                    </div>
-                    <div class="component-watch-comment-actions" style="display:flex;">
-                        <button class="component-button text small js-cancel-reply">Cancelar</button>
-                        <button class="component-button primary small js-submit-reply" disabled>Responder</button>
-                    </div>
+                <div class="component-watch-comment-input-wrapper chat-style">
+                    <textarea id="reply-input-${commentId}" class="component-input auto-expand chat-input" placeholder="Añade una respuesta..." rows="1"></textarea>
+                    <button class="component-input-embedded-btn js-submit-reply" disabled title="Responder">
+                        <span class="material-symbols-rounded">send</span>
+                    </button>
                 </div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; margin-top:-8px; margin-bottom:12px;">
+                 <button class="component-button text small js-cancel-reply">Cancelar</button>
             </div>
         `;
 
@@ -348,10 +330,7 @@ export class CommentsSection {
                 btnDislike.classList.remove('active');
 
                 const labelLike = btnLike.querySelector('.count-label');
-                const labelDislike = btnDislike.querySelector('.count-label');
-
                 labelLike.textContent = response.likes > 0 ? response.likes : '';
-                labelDislike.textContent = response.dislikes > 0 ? response.dislikes : '';
 
                 if (response.action !== 'removed') {
                     if (response.type === 'like') btnLike.classList.add('active');
@@ -393,7 +372,6 @@ export class CommentsSection {
         if (!commentData.parent_id) {
             const html = this.renderCommentItem(commentData);
             this.listContainer.insertAdjacentHTML('afterbegin', html);
-            
             if (this.state.total === 0) {
                 const emptyMsg = this.listContainer.querySelector('div[style*="text-align:center"]');
                 if (emptyMsg) emptyMsg.remove();
@@ -401,40 +379,37 @@ export class CommentsSection {
             this.state.total++;
         } 
         else {
-            // Inyectar Respuesta y Actualizar UI de Lotes
             const parentId = commentData.parent_id;
+            // Lógica para inyectar respuesta
+            let wrapper = document.getElementById(`replies-wrapper-${parentId}`);
             let repliesContainer = document.getElementById(`replies-container-${parentId}`);
             
-            // Buscar o crear contenedor si no existe
-            if (!repliesContainer) {
+            // Si no existe el wrapper (porque era un comentario sin respuestas), lo creamos
+            if (!wrapper) {
                 const parentNode = document.getElementById(`comment-${parentId}`);
                 if (parentNode) {
                     const contentDiv = parentNode.querySelector('.component-comment-content');
-                    // Usamos el wrapper que preparamos en renderCommentItem
-                    let wrapper = parentNode.querySelector('.component-comment-replies-wrapper');
-                    if (!wrapper) {
-                        wrapper = document.createElement('div');
-                        wrapper.className = 'component-comment-replies-wrapper';
-                        wrapper.id = `replies-wrapper-${parentId}`;
-                        contentDiv.appendChild(wrapper);
-                    }
                     
-                    repliesContainer = wrapper.querySelector('.component-comment-replies');
-                    if (!repliesContainer) {
-                        repliesContainer = document.createElement('div');
-                        repliesContainer.className = 'component-comment-replies';
-                        repliesContainer.id = `replies-container-${parentId}`;
-                        wrapper.appendChild(repliesContainer);
-                    }
+                    wrapper = document.createElement('div');
+                    wrapper.className = 'component-comment-replies-wrapper';
+                    wrapper.id = `replies-wrapper-${parentId}`;
+                    
+                    // IMPORTANTE: El orden de creación aquí también importa
+                    repliesContainer = document.createElement('div');
+                    repliesContainer.className = 'component-comment-replies';
+                    repliesContainer.id = `replies-container-${parentId}`;
+                    
+                    wrapper.appendChild(repliesContainer); // 1. Contenedor
+                    contentDiv.appendChild(wrapper);
                 }
             }
 
             if (repliesContainer) {
-                // 1. Renderizar la nueva respuesta al final visualmente
+                // Inyectamos la nueva respuesta
                 const html = this.renderCommentItem(commentData, true);
                 repliesContainer.insertAdjacentHTML('beforeend', html);
                 
-                // 2. Actualizar el Store interno
+                // Actualizamos store
                 let storedReplies = this.repliesStore.get(parseInt(parentId));
                 if (!storedReplies) {
                     storedReplies = [];
@@ -442,12 +417,21 @@ export class CommentsSection {
                 }
                 storedReplies.push(commentData);
 
-                // 3. Actualizar el botón "Ver X respuestas" si existe
-                const parentNode = document.getElementById(`comment-${parentId}`);
-                let toggleBtn = parentNode.querySelector(`.js-toggle-replies[data-id="${parentId}"]`);
+                // Gestionamos el botón que debe ir DEBAJO
+                // Buscamos si ya existe el botón dentro del wrapper
+                let toggleBtn = wrapper.querySelector(`.js-toggle-replies`);
 
-                if (toggleBtn) {
-                    // Si ya existe el botón, solo actualizamos el contador en el texto si NO está en modo "Ocultar"
+                if (!toggleBtn) {
+                    // Si no existe, lo creamos y lo ponemos AL FINAL del wrapper (debajo del container)
+                    const btnHtml = `
+                        <button class="component-watch-replies-toggle js-toggle-replies" data-id="${parentId}" data-action="show">
+                            <span class="material-symbols-rounded" style="font-size: 18px; margin-right:6px;">expand_more</span>
+                            Ver ${storedReplies.length} respuestas
+                        </button>
+                    `;
+                    wrapper.insertAdjacentHTML('beforeend', btnHtml);
+                } else {
+                    // Si ya existe, actualizamos el texto
                     if (toggleBtn.dataset.action === 'show') {
                          toggleBtn.innerHTML = `
                             <span class="material-symbols-rounded" style="font-size: 18px; margin-right:6px;">expand_more</span>

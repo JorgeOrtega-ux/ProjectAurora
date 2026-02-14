@@ -166,10 +166,22 @@
 }
 .component-watch-action-pill:hover { background-color: rgba(255, 255, 255, 0.2); }
 
+/* Joined Pills (General) */
 .component-watch-joined-pill {
     display: flex; align-items: center; background-color: rgba(255, 255, 255, 0.1); 
     border-radius: 20px; height: 36px; overflow: hidden; 
 }
+/* Variante para Comentarios (Más pequeña y compacta) */
+.component-watch-joined-pill.comment-size {
+    height: 32px;
+    background-color: transparent; /* Opcional: fondo transparente o muy sutil */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+}
+.component-watch-joined-pill.comment-size:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
 .component-watch-joined-btn {
     background: transparent; border: none; color: var(--text-primary, #fff);
     display: flex; align-items: center; justify-content: center; height: 100%;
@@ -178,6 +190,15 @@
 }
 .component-watch-joined-btn:hover { background-color: rgba(255, 255, 255, 0.2); }
 .component-watch-joined-btn.active { color: var(--accent-primary, #6a5acd); }
+
+/* Ajustes específicos para los botones dentro de comentarios */
+.component-watch-joined-pill.comment-size .component-watch-joined-btn {
+    padding: 0 12px; /* Un poco menos de padding lateral */
+}
+.component-watch-joined-pill.comment-size .component-watch-joined-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
 .component-watch-joined-btn.dislike { padding: 0 12px; }
 .component-watch-joined-separator { width: 1px; height: 60%; background-color: rgba(255, 255, 255, 0.2); }
 
@@ -252,11 +273,15 @@
     animation: slideDown 0.2s ease-out;
 }
 
+/* Wrapper para el input estilo chat */
 .component-watch-comment-input-wrapper {
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+.component-watch-comment-input-wrapper.chat-style {
+    position: relative; /* Necesario para posicionar el botón */
 }
 
 /* --- Estructura del Comentario (Grid flexible) --- */
@@ -326,17 +351,6 @@
     gap: 4px;
 }
 
-.component-comment-actions .component-button.icon-only {
-    width: 32px; height: 32px;
-    color: var(--text-secondary);
-    border-radius: 50%;
-}
-
-.component-comment-actions .component-button.icon-only:hover {
-    background-color: rgba(255,255,255,0.1);
-    color: var(--text-primary);
-}
-
 .component-comment-actions .component-button.text {
     padding: 0 12px;
     height: 32px;
@@ -360,24 +374,25 @@
     align-items: flex-start;
 }
 
-/* Botón para Mostrar/Ocultar respuestas */
+/* Botón para Mostrar/Ocultar respuestas (MODIFICADO: Blanco y con borde) */
 .component-watch-replies-toggle {
     display: flex;
     align-items: center;
     background: transparent;
-    border: none;
-    color: #3ea6ff; /* Color de acento tipo YouTube */
+    border: 1px solid rgba(255, 255, 255, 0.2); /* Borde solicitado */
+    color: var(--text-primary, #fff); /* Texto Blanco */
     font-size: 0.9rem;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
-    padding: 6px 12px;
+    padding: 6px 16px;
     border-radius: 18px;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, border-color 0.2s;
     margin-bottom: 8px;
 }
 
 .component-watch-replies-toggle:hover {
-    background-color: rgba(62, 166, 255, 0.15);
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.4);
 }
 
 .component-comment-replies {
@@ -410,10 +425,49 @@
     transition: border-color 0.2s;
     width: 100%;
 }
-.component-input.auto-expand:focus {
-    border-bottom-color: var(--text-primary, #fff);
-    background: transparent;
+
+/* ESTILOS PARA INPUT TIPO CHAT (Botón integrado) */
+.component-input.auto-expand.chat-input {
+    border-radius: 8px; /* Bordes redondeados o mantener solo bottom según prefieras, aquí lo hago sutil */
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 10px 48px 10px 12px; /* Padding derecho grande para el botón */
+    background-color: rgba(0,0,0,0.2);
 }
+.component-input.auto-expand.chat-input:focus {
+    border-color: var(--accent-primary, #fff);
+    background-color: rgba(0,0,0,0.4);
+    outline: none;
+}
+
+/* Botón embebido (Avión de papel) */
+.component-input-embedded-btn {
+    position: absolute;
+    right: 8px;
+    bottom: 8px; /* Anclado abajo para que acompañe al texto si crece */
+    background: transparent;
+    border: none;
+    color: var(--text-primary, #fff);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+.component-input-embedded-btn:disabled {
+    color: rgba(255,255,255,0.2);
+    cursor: default;
+}
+.component-input-embedded-btn:not(:disabled):hover {
+    background-color: rgba(255,255,255,0.1);
+    color: var(--accent-primary, #6a5acd);
+}
+.component-input-embedded-btn .material-symbols-rounded {
+    font-size: 20px;
+}
+
 
 @keyframes slideDown { 
     from { opacity: 0; transform: translateY(-10px); } 
