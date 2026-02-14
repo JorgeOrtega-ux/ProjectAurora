@@ -34,6 +34,11 @@ switch ($action) {
         Utils::jsonResponse($settingsService->deleteAvatar());
         break;
 
+    // [NUEVO] Caso para subir banner
+    case 'upload_banner':
+        Utils::jsonResponse($settingsService->uploadBanner($_FILES));
+        break;
+
     case 'update_profile':
         $field = $_POST['field'] ?? '';
         $value = trim($_POST['value'] ?? '');

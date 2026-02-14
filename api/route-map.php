@@ -19,6 +19,7 @@ return [
     'settings.update_pref'    => ['file' => 'handlers/settings-handler.php', 'action' => 'update_preference'],
     'settings.upload_avatar'  => ['file' => 'handlers/settings-handler.php', 'action' => 'upload_avatar'],
     'settings.delete_avatar'  => ['file' => 'handlers/settings-handler.php', 'action' => 'delete_avatar'],
+    'settings.upload_banner'  => ['file' => 'handlers/settings-handler.php', 'action' => 'upload_banner'], // <--- NUEVA RUTA AÑADIDA
     'settings.email_status'   => ['file' => 'handlers/settings-handler.php', 'action' => 'get_email_edit_status'],
     'settings.req_email_code' => ['file' => 'handlers/settings-handler.php', 'action' => 'request_email_change_verification'],
     'settings.ver_email_code' => ['file' => 'handlers/settings-handler.php', 'action' => 'verify_email_change_code'],

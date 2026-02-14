@@ -11,8 +11,8 @@ if (!isset($viewingChannelUUID)) {
 $allowedTabs = ['home', 'videos', 'shorts'];
 $currentTab = isset($_GET['tab']) && in_array($_GET['tab'], $allowedTabs) ? $_GET['tab'] : 'home';
 
-// 3. Datos del Dueño
-$stmtChannel = $pdo->prepare("SELECT id, username, uuid, avatar_path, account_status, subscribers_count FROM users WHERE uuid = ? LIMIT 1");
+// 3. Datos del Dueño (AGREGADO banner_path A LA CONSULTA)
+$stmtChannel = $pdo->prepare("SELECT id, username, uuid, avatar_path, banner_path, account_status, subscribers_count FROM users WHERE uuid = ? LIMIT 1");
 $stmtChannel->execute([$viewingChannelUUID]);
 $channelOwner = $stmtChannel->fetch(PDO::FETCH_ASSOC);
 
@@ -40,8 +40,18 @@ $avatarSrc = (isset($channelOwner['avatar_path']) && $channelOwner['avatar_path'
     ? $basePath . $channelOwner['avatar_path'] 
     : $basePath . 'public/storage/profilePicture/default/default.png';
 
-$bannerStyle = "background: linear-gradient(135deg, var(--sl-color-primary-800) 0%, var(--sl-color-primary-500) 100%);";
+// Lógica del Banner (MODIFICADA)
+$bannerUrl = (isset($channelOwner['banner_path']) && $channelOwner['banner_path'])
+    ? $basePath . $channelOwner['banner_path'] . '?v=' . time() // Cache busting
+    : null;
 
+if ($bannerUrl) {
+    // Si hay banner, usamos la imagen con tamaño cover y centrado
+    $bannerStyle = "background-image: url('" . htmlspecialchars($bannerUrl) . "');";
+} else {
+    // Si no, gradiente por defecto
+    $bannerStyle = "background: linear-gradient(135deg, var(--sl-color-primary-800) 0%, var(--sl-color-primary-500) 100%);";
+}
 // Helpers PHP
 function getNearestSafeColorPHP($rawHex) {
     if (!$rawHex || $rawHex === '#000000') return '#202020';

@@ -24,7 +24,7 @@ class SettingsService {
     }
 
     public function uploadAvatar($files) {
-        // 1. Rate Limit específico de Settings (Seguridad de usuario)
+        // 1. Rate Limit específico de Settings
         if ($this->checkRateLimitExceeded('avatar_update', 24, 3)) { 
             return ['success' => false, 'message' => $this->i18n->t('api.avatar_rate_limit')]; 
         }
@@ -40,7 +40,6 @@ class SettingsService {
         if (!$currentUser) return ['success' => false, 'message' => $this->i18n->t('api.id_invalid')];
 
         // 3. Procesamiento Centralizado (Utils)
-        // Utils maneja: Validación de archivo, MIME, Tamaño, Dimensiones y GD
         $result = Utils::processImageUpload($this->pdo, $files['avatar'], $currentUser['uuid'], 'custom');
 
         if (!$result['success']) {
@@ -56,7 +55,7 @@ class SettingsService {
             
             // Registrar cambio y limpiar archivo viejo
             $this->logProfileChange('avatar_update', $oldPath, $dbPath);
-            $this->deleteOldAvatar($oldPath);
+            $this->deleteOldFile($oldPath); // Refactorizado a deleteOldFile para reutilizar
             
             // Actualizar sesión del usuario actual
             $_SESSION['avatar'] = $dbPath;
@@ -88,7 +87,7 @@ class SettingsService {
             if ($update->execute([$dbPath, $this->userId])) {
                 
                 $this->logProfileChange('avatar_delete', $oldPath, $dbPath . ' (Default)');
-                $this->deleteOldAvatar($oldPath);
+                $this->deleteOldFile($oldPath);
                 $_SESSION['avatar'] = $dbPath;
                 
                 $imageContent = file_get_contents($absolutePath);
@@ -100,6 +99,82 @@ class SettingsService {
         }
         
         return ['success' => false, 'message' => $this->i18n->t('api.pic_gen_error')];
+    }
+
+    // [NUEVO] Método para subir Banner
+    public function uploadBanner($files) {
+        // 1. Rate Limit (Permitimos un poco más que avatares, ej: 5 veces en 24h)
+        if ($this->checkRateLimitExceeded('banner_update', 24, 5)) {
+            return ['success' => false, 'message' => 'Has actualizado tu banner demasiadas veces hoy.'];
+        }
+
+        if (!isset($files['banner']) || $files['banner']['error'] !== UPLOAD_ERR_OK) {
+            return ['success' => false, 'message' => 'No se recibió ninguna imagen válida.'];
+        }
+
+        $file = $files['banner'];
+
+        // 2. Validaciones básicas de seguridad
+        $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mime = $finfo->file($file['tmp_name']);
+
+        if (!in_array($mime, $allowedMimes)) {
+            return ['success' => false, 'message' => 'Formato de imagen no permitido (solo JPG, PNG, WEBP).'];
+        }
+
+        // Limite 4MB (los banners pueden ser grandes)
+        if ($file['size'] > 4 * 1024 * 1024) {
+            return ['success' => false, 'message' => 'La imagen es demasiado pesada (máx 4MB).'];
+        }
+
+        // 3. Obtener datos usuario
+        $stmt = $this->pdo->prepare("SELECT uuid, banner_path FROM users WHERE id = ?");
+        $stmt->execute([$this->userId]);
+        $user = $stmt->fetch();
+        if (!$user) return ['success' => false, 'message' => 'Usuario no encontrado.'];
+
+        // 4. Preparar Directorio
+        $uploadDirRelative = 'public/storage/banners/';
+        $uploadDirAbsolute = __DIR__ . '/../../' . $uploadDirRelative;
+
+        if (!is_dir($uploadDirAbsolute)) {
+            mkdir($uploadDirAbsolute, 0755, true);
+        }
+
+        // 5. Procesar y Guardar
+        // Generamos nombre único
+        $extension = 'jpg'; // Forzamos JPG ya que viene del Canvas como JPEG
+        if ($mime === 'image/png') $extension = 'png';
+        
+        $fileName = $user['uuid'] . '-' . time() . '.' . $extension;
+        $targetPath = $uploadDirAbsolute . $fileName;
+        $dbPath = $uploadDirRelative . $fileName;
+
+        // Movemos el archivo
+        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+            
+            // 6. Actualizar BD
+            $oldBanner = $user['banner_path'];
+            $update = $this->pdo->prepare("UPDATE users SET banner_path = ? WHERE id = ?");
+            
+            if ($update->execute([$dbPath, $this->userId])) {
+                // 7. Limpieza y Logs
+                if ($oldBanner) {
+                    $this->deleteOldFile($oldBanner);
+                }
+                
+                $this->logProfileChange('banner_update', $oldBanner ?? 'none', $dbPath);
+                
+                return ['success' => true, 'message' => 'Banner actualizado correctamente.'];
+            } else {
+                // Si falla la BD, borramos la imagen subida
+                @unlink($targetPath);
+                return ['success' => false, 'message' => 'Error al guardar en la base de datos.'];
+            }
+        }
+
+        return ['success' => false, 'message' => 'Error al mover el archivo al servidor.'];
     }
 
     public function getEmailEditStatus() {
@@ -204,28 +279,24 @@ class SettingsService {
     }
 
     public function updateProfile($field, $value) {
-        // 1. Validaciones Específicas de Settings (Permisos y Rate Limit)
-        
-        // El cambio de email requiere un paso previo de verificación
+        // 1. Validaciones Específicas
         if ($field === 'email') { 
             if (!isset($_SESSION['email_change_auth']) || $_SESSION['email_change_auth'] < time()) {
                 return ['success' => false, 'message' => $this->i18n->t('api.auth_required')];
             }
         }
 
-        // Rate Limit para cambios de identidad
         if ($this->checkRateLimitExceeded($field, 288, 1)) {
             return ['success' => false, 'message' => $this->i18n->t('api.identity_rate_limit')];
         }
 
-        // 2. Validación de Datos Centralizada (Utils)
-        // Esto verifica formato (longitud, regex dominios) y unicidad en DB
+        // 2. Validación de Datos Centralizada
         $validation = Utils::validateUserValue($this->pdo, $field, $value, $this->userId);
         if (!$validation['success']) {
             return $validation;
         }
 
-        // 3. Ejecución de la Actualización
+        // 3. Ejecución
         try {
             $stmtOld = $this->pdo->prepare("SELECT $field FROM users WHERE id = ?");
             $stmtOld->execute([$this->userId]);
@@ -241,7 +312,6 @@ class SettingsService {
             $this->logProfileChange($field, $oldValue, $value);
             $_SESSION[$field] = $value;
             
-            // Si se cambió el email, consumimos el token de autorización
             if ($field === 'email') {
                 unset($_SESSION['email_change_auth']);
             }
@@ -584,7 +654,8 @@ class SettingsService {
         return ($stmt->fetchColumn() >= $limit);
     }
     
-    private function deleteOldAvatar($currentPath) {
+    // Método helper renombrado para ser genérico (sirve para avatares y banners)
+    private function deleteOldFile($currentPath) {
         if ($currentPath && file_exists(__DIR__ . '/../../' . $currentPath)) {
             @unlink(__DIR__ . '/../../' . $currentPath);
         }

@@ -22,6 +22,7 @@ const ApiRoutes = {
         UpdatePreference: { route: 'settings.update_pref' },
         UploadAvatar: { route: 'settings.upload_avatar' },
         DeleteAvatar: { route: 'settings.delete_avatar' },
+        UploadBanner: { route: 'settings.upload_banner' }, // <--- NUEVA RUTA AÑADIDA
         GetEmailStatus: { route: 'settings.email_status' },
         RequestEmailVerification: { route: 'settings.req_email_code' },
         VerifyEmailCode: { route: 'settings.ver_email_code' },
@@ -105,7 +106,6 @@ const ApiRoutes = {
         ToggleSub: { route: 'interaction.toggle_sub' },
         RegisterView: { route: 'interaction.view' },
         Share: { route: 'interaction.share' },
-        // [NUEVO] Rutas de Comentarios añadidas para corregir el error
         LoadComments: { route: 'interaction.load_comments' },
         PostComment: { route: 'interaction.post_comment' },
         CommentLike: { route: 'interaction.comment_like' }
