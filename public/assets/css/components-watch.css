@@ -13,7 +13,6 @@
     position: relative;
     background-color: #000;
     border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     aspect-ratio: 16 / 9;
     z-index: 1; 
     transition: width 0.3s ease, height 0.3s ease, border-radius 0.3s ease; 
@@ -38,7 +37,6 @@
     height: 100%;
     position: relative;
     z-index: 2; 
-    background-color: #000; 
     border-radius: 12px; 
     display: flex;
     justify-content: center;
@@ -81,7 +79,6 @@
 }
 .component-watch-desc-box:hover {
     background-color: rgba(var(--dominant-rgb), 0.15); border-color: rgba(var(--dominant-rgb), 0.3);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
 }
 .component-watch-desc-meta { font-weight: 600; font-size: 0.85rem; color: var(--text-primary); margin-bottom: 8px; }
 
