@@ -168,60 +168,6 @@ class RedisService {
         }
     }
 
-    // ==========================================
-    // MÉTODOS PARA COLAS Y LISTAS (Project Aurora)
-    // ==========================================
-
-    public function pushToQueue($key, $data) {
-        if (!$this->redis) return false;
-        try {
-            // RPUSH: Inserta al final (Cola FIFO estándar para procesamiento)
-            return $this->redis->rpush($key, json_encode($data));
-        } catch (Exception $e) {
-            Logger::app('Redis Error (pushToQueue)', ['msg' => $e->getMessage()]);
-            return false;
-        }
-    }
-
-    public function pushToBuffer($key, $data) {
-        if (!$this->redis) return false;
-        try {
-            // LPUSH: Inserta al inicio (Stack LIFO para visualización: lo más nuevo arriba)
-            return $this->redis->lpush($key, json_encode($data));
-        } catch (Exception $e) {
-            Logger::app('Redis Error (pushToBuffer)', ['msg' => $e->getMessage()]);
-            return false;
-        }
-    }
-
-    public function getList($key, $limit = -1) {
-        if (!$this->redis) return [];
-        try {
-            // Obtener rango de elementos de la lista
-            $raw = $this->redis->lrange($key, 0, $limit);
-            
-            // Decodificar JSON
-            return array_map(function($item) {
-                return json_decode($item, true);
-            }, $raw);
-        } catch (Exception $e) {
-            Logger::app('Redis Error (getList)', ['msg' => $e->getMessage()]);
-            return [];
-        }
-    }
-
-    public function removeFromList($key, $value) {
-        if (!$this->redis) return false;
-        try {
-            // LREM: Elimina elementos que coincidan con el valor exacto
-            // El count 0 indica eliminar todas las ocurrencias
-            return $this->redis->lrem($key, 0, $value);
-        } catch (Exception $e) {
-            Logger::app('Redis Error (removeFromList)', ['msg' => $e->getMessage()]);
-            return false;
-        }
-    }
-
     private function formatUptime($seconds) {
         $dtF = new \DateTime('@0');
         $dtT = new \DateTime("@$seconds");
@@ -230,14 +176,14 @@ class RedisService {
 
     private function isSensitive($key) {
         $patterns = [
-            '/^PHPREDIS_SESSION/', 
-            '/session:/i',         
-            '/token:/i',           
-            '/verify:/i',          
-            '/auth:/i',            
-            '/secret/i',           
-            '/password/i',         
-            '/csrf/i'              
+            '/^PHPREDIS_SESSION/', // Sesiones de PHP (Crítico)
+            '/session:/i',         // Convención de sesiones manuales
+            '/token:/i',           // Tokens de descarga, WS, etc.
+            '/verify:/i',          // Códigos de verificación de email/cuenta
+            '/auth:/i',            // Datos de autenticación
+            '/secret/i',           // Claves secretas
+            '/password/i',         // Contraseñas (aunque deberían estar hasheadas)
+            '/csrf/i'              // Tokens Anti-CSRF
         ];
 
         foreach ($patterns as $pattern) {

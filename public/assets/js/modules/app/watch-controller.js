@@ -19,7 +19,7 @@ export const WatchController = {
         const container = document.querySelector('[data-section="watch"]');
         if (!container) return;
 
-        console.log("WatchController: Inicializado");
+        console.log("WatchController: Inicializado (Modular)");
 
         const videoElement = document.getElementById('main-player');
         const hlsSourceInput = document.getElementById('watch-hls-source');
@@ -32,14 +32,12 @@ export const WatchController = {
 
         // 2. Inicializar Ambient Light
         const ambientCanvas = document.getElementById('ambient-canvas');
-        if (ambientCanvas) {
-            WatchController._ambient = new AmbientLight(videoElement, ambientCanvas);
-        }
+        WatchController._ambient = new AmbientLight(videoElement, ambientCanvas);
 
         // 3. Inicializar Scrubbing
         const spriteInput = document.getElementById('watch-sprite-source');
         const vttInput = document.getElementById('watch-vtt-source');
-        if (spriteInput && vttInput && spriteInput.value && vttInput.value) {
+        if (spriteInput && vttInput) {
             WatchController._scrubbing = new ScrubbingSystem(videoElement, spriteInput.value, vttInput.value);
         }
 
@@ -62,18 +60,18 @@ export const WatchController = {
         if (metaContext) {
             const videoUuid = metaContext.dataset.videoUuid;
             const channelUuid = metaContext.dataset.channelUuid;
-            
-            // IMPORTANTE: Aquí obtenemos el avatar del usuario actual desde el HTML
-            // Si el usuario no está logueado, esto vendrá vacío o null.
             const userAvatar = metaContext.dataset.userAvatar || null;
 
             WatchController._interactions = new InteractionManager(videoElement, videoUuid, channelUuid);
             
-            // Pasamos el avatar a la sección de comentarios para validar sesión
+            // AQUÍ se inicializa tu nueva lógica (CommentsSection.js)
             WatchController._comments = new CommentsSection(videoUuid, userAvatar);
             
-            // 6. UI Helpers (Descripción expandible)
+            // 6. UI Helpers
             WatchController._initDescriptionToggle();
+            
+            // ELIMINADO: WatchController._initCommentInputBehavior(); 
+            // (Esta era la función que causaba el conflicto y bloqueaba la expansión)
         }
     },
 
@@ -88,7 +86,6 @@ export const WatchController = {
                 const truncatedText = textContainer.dataset.truncatedText;
 
                 if (action === 'expand') {
-                    // Reemplazamos saltos de línea por <br> para mantener formato
                     textContainer.innerHTML = fullText.replace(/\n/g, '<br>');
                     btn.textContent = 'Leer menos';
                     btn.dataset.action = 'collapse';
@@ -103,7 +100,7 @@ export const WatchController = {
 
     dispose: () => {
         if (WatchController._player) WatchController._player.destroy();
-        
+        // Limpieza de controllers...
         WatchController._player = null;
         WatchController._ambient = null;
         WatchController._scrubbing = null;
