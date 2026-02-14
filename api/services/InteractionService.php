@@ -241,7 +241,8 @@ class InteractionService {
     // ==========================================
 
     /**
-     * Obtiene los comentarios estructurados + ESTADÍSTICAS (Likes/Dislikes/UserInteraction)
+     * Obtiene los comentarios estructurados + ESTADÍSTICAS (Solo Likes/UserInteraction)
+     * OPTIMIZADO: No se consultan ni calculan los dislikes.
      */
     public function getComments($videoUuid, $limit = 50, $offset = 0) {
         try {
@@ -253,12 +254,11 @@ class InteractionService {
 
             $currentUserId = $_SESSION['user_id'] ?? 0;
 
-            // SQL Mejorado: Subconsultas para likes, dislikes y estado del usuario actual.
+            // SQL OPTIMIZADO: Eliminada la subconsulta de dislikes_count
             $sql = "
                 SELECT c.id, c.parent_id, c.content, c.created_at, 
                        u.username, u.avatar_path, u.uuid as user_uuid,
                        (SELECT COUNT(*) FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.type = 'like') as likes_count,
-                       (SELECT COUNT(*) FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.type = 'dislike') as dislikes_count,
                        (SELECT type FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = :current_user_id) as user_interaction
                 FROM video_comments c
                 JOIN users u ON c.user_id = u.id
@@ -286,7 +286,6 @@ class InteractionService {
                 
                 // Asegurar tipos numéricos para JS
                 $comment['likes_count'] = (int)$comment['likes_count'];
-                $comment['dislikes_count'] = (int)$comment['dislikes_count'];
                 
                 if ($comment['is_reply']) {
                     $replies[] = $comment;
@@ -300,9 +299,6 @@ class InteractionService {
             foreach ($replies as $reply) {
                 $pid = $reply['parent_id'];
                 if (isset($parents[$pid])) {
-                    // Respuestas ordenadas cronológicamente (más viejas primero) debajo del padre suele ser el estándar,
-                    // pero aquí usaremos orden de llegada (como venían del query DESC, invertimos para ASC visual si se desea,
-                    // o mantenemos DESC. Mantendremos la lógica original).
                     array_unshift($parents[$pid]['replies'], $reply);
                 } else {
                     $reply['is_orphaned_reply'] = true;
@@ -353,7 +349,6 @@ class InteractionService {
                     return ['success' => false, 'message' => 'El comentario al que respondes no existe'];
                 }
 
-                // REGLA DE ORO 1 NIVEL:
                 if (!empty($parentData['parent_id'])) {
                     $finalParentId = $parentData['parent_id'];
                 } else {
@@ -384,7 +379,7 @@ class InteractionService {
                     'avatar_url' => $this->processAvatarUrl($userData['avatar_path'], $userData['username']),
                     'replies' => [],
                     'likes_count' => 0,
-                    'dislikes_count' => 0,
+                    'dislikes_count' => 0, // Se mantiene en 0 para compatibilidad JS
                     'user_interaction' => null
                 ]
             ];
@@ -452,7 +447,7 @@ class InteractionService {
                 'action' => $actionPerformed,
                 'type' => $type,
                 'likes' => (int)$stats['likes'],
-                'dislikes' => (int)$stats['dislikes']
+                'dislikes' => 0 // Hardcodeado a 0
             ];
 
         } catch (Exception $e) {
@@ -462,15 +457,13 @@ class InteractionService {
     }
 
     private function getCommentStats($commentId) {
-        $stats = ['likes' => 0, 'dislikes' => 0];
+        $stats = ['likes' => 0];
         try {
             $stmtLike = $this->pdo->prepare("SELECT COUNT(*) FROM comment_interactions WHERE comment_id = ? AND type = 'like'");
             $stmtLike->execute([$commentId]);
             $stats['likes'] = $stmtLike->fetchColumn();
 
-            $stmtDislike = $this->pdo->prepare("SELECT COUNT(*) FROM comment_interactions WHERE comment_id = ? AND type = 'dislike'");
-            $stmtDislike->execute([$commentId]);
-            $stats['dislikes'] = $stmtDislike->fetchColumn();
+            // ELIMINADO: Consulta de dislikes para optimización
         } catch (Exception $e) {}
         return $stats;
     }
