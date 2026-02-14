@@ -12,7 +12,7 @@
     
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/root.css">
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/styles.css">
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components.css">
