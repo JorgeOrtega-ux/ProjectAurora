@@ -107,7 +107,8 @@ const ApiRoutes = {
         Share: { route: 'interaction.share' },
         // [NUEVO] Rutas de Comentarios añadidas para corregir el error
         LoadComments: { route: 'interaction.load_comments' },
-        PostComment: { route: 'interaction.post_comment' }
+        PostComment: { route: 'interaction.post_comment' },
+        CommentLike: { route: 'interaction.comment_like' }
     }
 };
 

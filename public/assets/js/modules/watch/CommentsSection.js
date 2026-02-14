@@ -127,7 +127,7 @@ export class CommentsSection {
         }
     }
 
-   renderCommentItem(comment, isReply = false) {
+renderCommentItem(comment, isReply = false) {
     const isLogged = this.currentUserAvatar !== null;
     
     // 1. Generar HTML de respuestas (Recursividad)
@@ -135,12 +135,21 @@ export class CommentsSection {
     if (comment.replies && comment.replies.length > 0) {
         repliesHtml = `<div class="component-comment-replies">`;
         comment.replies.forEach(reply => {
+            // Nota: Pasamos true para indicar que es una respuesta
             repliesHtml += this.renderCommentItem(reply, true);
         });
         repliesHtml += `</div>`;
     }
 
     const dateStr = new Date(comment.created_at).toLocaleDateString();
+
+    // 2. Determinar estado activo de los botones (Visual)
+    const activeLike = comment.user_interaction === 'like' ? 'active' : '';
+    const activeDislike = comment.user_interaction === 'dislike' ? 'active' : '';
+
+    // 3. Formatear contadores (para no mostrar "0")
+    const likesCount = comment.likes_count > 0 ? comment.likes_count : '';
+    const dislikesCount = comment.dislikes_count > 0 ? comment.dislikes_count : '';
 
     return `
     <div class="component-comment-item ${isReply ? 'is-reply' : ''}" id="comment-${comment.id}">
@@ -157,11 +166,14 @@ export class CommentsSection {
             <div class="component-comment-text">${comment.content}</div>
             
             <div class="component-comment-actions">
-                <button class="component-button icon-only small" title="Me gusta">
+                <button class="component-button icon-only small js-like-trigger ${activeLike}" data-id="${comment.id}" title="Me gusta">
                     <span class="material-symbols-rounded" style="font-size: 18px;">thumb_up</span>
+                    <span class="count-label" style="font-size: 12px; margin-left: 4px;">${likesCount}</span>
                 </button>
-                <button class="component-button icon-only small" title="No me gusta">
+
+                <button class="component-button icon-only small js-dislike-trigger ${activeDislike}" data-id="${comment.id}" title="No me gusta">
                     <span class="material-symbols-rounded" style="font-size: 18px;">thumb_down</span>
+                    <span class="count-label" style="font-size: 12px; margin-left: 4px;">${dislikesCount}</span>
                 </button>
                 
                 ${isLogged && !isReply ? `
@@ -232,59 +244,55 @@ export class CommentsSection {
     }
 
     // --- MODIFICACIÓN 3: Lógica Interactiva (Like/Dislike) ---
-    async toggleInteraction(commentId, type) {
-        if (!this.currentUserAvatar) {
-            ToastManager.show('Debes iniciar sesión', 'info');
-            return;
-        }
+   // Archivo: public/assets/js/modules/watch/CommentsSection.js
 
-        // Selección de elementos UI del comentario específico
-        const commentEl = document.getElementById(`comment-${commentId}`);
-        if (!commentEl) return;
-
-        const btnLike = commentEl.querySelector('.js-like-trigger');
-        const btnDislike = commentEl.querySelector('.js-dislike-trigger');
-        const countLabel = btnLike.querySelector('.count-label');
-        
-        // Optimistic UI (Feedback Inmediato) provisional
-        // Nota: Para una implementación perfecta, deberíamos calcular la lógica localmente antes del servidor,
-        // pero para evitar desincronización compleja, llamaremos a la API y actualizaremos con la respuesta real.
-        // Podríamos añadir un estado de "loading" o simplemente disparar.
-        
-        try {
-            // Usamos la ruta genérica o una específica. 
-            // IMPORTANTE: Asegúrate de que 'toggle_comment_like' esté mapeado en interaction-handler.php
-            const response = await ApiService.post(ApiRoutes.Interaction.Main || 'api/interaction', {
-                action: 'toggle_comment_like', // Acción definida en interaction-handler.php
-                comment_id: commentId,
-                type: type
-            });
-
-            if (response.success) {
-                // Actualizar contadores y clases con la verdad del servidor
-                
-                // Reset clases
-                btnLike.classList.remove('active');
-                btnDislike.classList.remove('active');
-
-                // Aplicar nueva clase
-                if (response.type === 'like' && response.action !== 'removed') {
-                    btnLike.classList.add('active');
-                } else if (response.type === 'dislike' && response.action !== 'removed') {
-                    btnDislike.classList.add('active');
-                }
-
-                // Actualizar número
-                const newLikes = response.likes;
-                countLabel.textContent = newLikes > 0 ? newLikes : '';
-
-            } else {
-                ToastManager.show(response.message || 'Error al interactuar', 'error');
-            }
-        } catch (e) {
-            console.error(e);
-        }
+async toggleInteraction(commentId, type) {
+    if (!this.currentUserAvatar) {
+        ToastManager.show('Debes iniciar sesión', 'info');
+        return;
     }
+
+    const commentEl = document.getElementById(`comment-${commentId}`);
+    if (!commentEl) return;
+
+    // Selectores actualizados para buscar dentro del elemento
+    const btnLike = commentEl.querySelector('.js-like-trigger');
+    const btnDislike = commentEl.querySelector('.js-dislike-trigger');
+    
+    // Referencia al contador correcto según el tipo
+    const targetBtn = type === 'like' ? btnLike : btnDislike;
+    const countLabel = targetBtn.querySelector('.count-label');
+try {
+        // CORRECCIÓN: Usamos el OBJETO de ApiRoutes, no el string.
+        const response = await ApiService.post(ApiRoutes.Interaction.CommentLike, {
+            comment_id: commentId,
+            type: type
+        });
+
+        if (response.success) {
+            // Limpiar clases activas
+            btnLike.classList.remove('active');
+            btnDislike.classList.remove('active');
+
+            // Actualizar contadores visuales (usando los datos frescos del servidor)
+            const labelLike = btnLike.querySelector('.count-label');
+            const labelDislike = btnDislike.querySelector('.count-label');
+
+            labelLike.textContent = response.likes > 0 ? response.likes : '';
+            labelDislike.textContent = response.dislikes > 0 ? response.dislikes : '';
+
+            // Activar botón si corresponde
+            if (response.action !== 'removed') {
+                if (response.type === 'like') btnLike.classList.add('active');
+                if (response.type === 'dislike') btnDislike.classList.add('active');
+            }
+        } else {
+            ToastManager.show(response.message || 'Error al interactuar', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
 
     async postComment(content, parentId = null, onSuccess) {
         if (this.state.isLoading) return;
