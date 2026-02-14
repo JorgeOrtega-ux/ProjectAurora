@@ -3,6 +3,12 @@
 
 require_once __DIR__ . '/../includes/bootstrap.php';
 
+// === [CORRECCIÓN CRÍTICA] ===
+// Definimos el basePath manualmente porque este archivo no pasa por router.php.
+// Esto asegura que las imágenes en las vistas cargadas por AJAX tengan rutas absolutas.
+$basePath = '/ProjectAurora/'; 
+// ============================
+
 // Cargar rutas
 $routes = require __DIR__ . '/../config/routes.php';
 
@@ -15,50 +21,42 @@ $cleanSection = trim($cleanSection, '/');
 
 $matchedFile = null;
 $routeParams = []; 
-$viewingChannelUUID = null; // Variable para que la use channel-profile.php
+$viewingChannelUUID = null; 
 
-// === [CORRECCIÓN] Lógica específica para canales (c/UUID) ===
-// Esto permite que el loader entienda la ruta igual que el router.php
+// === Lógica específica para canales (c/UUID) ===
 if (strpos($cleanSection, 'c/') === 0) {
-    // Extraemos el UUID (lo que está después de c/)
+    // Extraemos el UUID 
     $parts = explode('/', $cleanSection);
     
     if (isset($parts[1]) && !empty($parts[1])) {
-        $viewingChannelUUID = $parts[1]; // Asignamos la variable que espera la vista
+        $viewingChannelUUID = $parts[1]; 
         $routeParams['uuid'] = $parts[1];
     }
     
-    // Forzamos la sección interna para buscar en routes.php
     $cleanSection = 'channel-profile';
 }
-// =============================================================
 
 // 2. BÚSQUEDA DE RUTA UNIFICADA
-// A) Primero buscamos coincidencia exacta (ej: "main", "settings/profile" o ahora "channel-profile")
 if (array_key_exists($cleanSection, $routes)) {
     $matchedFile = $routes[$cleanSection];
 } 
-// B) Si no es exacta, buscamos si coincide con alguna ruta base (Dinámica)
 else {
     foreach ($routes as $routeKey => $filePath) {
-        // Verificamos si la sección solicitada EMPIEZA con esta ruta clave seguida de una barra
         if (strpos($cleanSection, $routeKey . '/') === 0) {
             $matchedFile = $filePath;
-            
-            // Extraemos lo que sobra de la URL
             $remaining = substr($cleanSection, strlen($routeKey) + 1);
             $remaining = trim($remaining, '/'); 
             
             if (!empty($remaining)) {
                 $routeParams['uuid'] = $remaining;
             }
-            
-            break; // ¡Encontrado!
+            break; 
         }
     }
 }
 
 if ($matchedFile && file_exists($matchedFile)) {
+    // Ahora channel-profile.php recibirá $basePath correctamente
     include $matchedFile;
 } else {
     http_response_code(404);

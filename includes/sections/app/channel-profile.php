@@ -1,6 +1,9 @@
 <?php
 // includes/sections/app/channel-profile.php
 
+// Aseguramos acceso a la variable global por si acaso (aunque loader.php ya la define)
+global $basePath;
+
 // 1. Validar UUID
 if (!isset($viewingChannelUUID)) {
     include __DIR__ . '/../system/404.php';
@@ -41,8 +44,10 @@ $avatarSrc = (isset($channelOwner['avatar_path']) && $channelOwner['avatar_path'
     : $basePath . 'public/storage/profilePicture/default/default.png';
 
 // Lógica del Banner
+// [MODIFICADO] Opción B: Eliminamos '?v=time()' para evitar parpadeos.
+// Como tus subidas generan nombres de archivo únicos (con timestamp), el caché se renovará solo.
 $bannerUrl = (isset($channelOwner['banner_path']) && $channelOwner['banner_path'])
-    ? $basePath . $channelOwner['banner_path'] . '?v=' . time() // Cache busting
+    ? $basePath . $channelOwner['banner_path']
     : null;
 
 // La imagen dinámica debe ser inline por naturaleza, pero movemos el resto a CSS
@@ -50,7 +55,7 @@ $bannerInlineStyle = "";
 if ($bannerUrl) {
     $bannerInlineStyle = "background-image: url('" . htmlspecialchars($bannerUrl) . "');";
 } else {
-    // Gradiente default si no hay banner (opcional, o dejar el del CSS)
+    // Gradiente default si no hay banner
     $bannerInlineStyle = "background: linear-gradient(135deg, var(--sl-color-primary-800) 0%, var(--sl-color-primary-500) 100%);";
 }
 
