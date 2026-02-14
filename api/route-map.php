@@ -96,6 +96,7 @@ return [
     'interaction.toggle_like' => ['file' => 'handlers/interaction-handler.php', 'action' => 'toggle_like'],
     'interaction.toggle_sub'  => ['file' => 'handlers/interaction-handler.php', 'action' => 'toggle_subscribe'],
     'interaction.view'        => ['file' => 'handlers/interaction-handler.php', 'action' => 'register_view'],
+    'interaction.share'       => ['file' => 'handlers/interaction-handler.php', 'action' => 'register_share'], // [NUEVO]
 
     
 ];

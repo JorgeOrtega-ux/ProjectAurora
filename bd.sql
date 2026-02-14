@@ -5,6 +5,7 @@ USE project_aurora_db;
 -- REINICIO DE TABLAS
 -- =========================================================
 -- (Mantenemos tu lógica de limpieza si reinicias la BD, agregamos las nuevas)
+DROP TABLE IF EXISTS video_shares; -- [NUEVO]
 DROP TABLE IF EXISTS video_views;
 DROP TABLE IF EXISTS video_interactions;
 DROP TABLE IF EXISTS subscriptions;
@@ -258,4 +259,16 @@ CREATE TABLE IF NOT EXISTS video_views (
     FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
     -- Índice para limpiar logs viejos o análisis
     INDEX idx_video_date (video_id, viewed_at)
+);
+
+-- D. VIDEO SHARES [NUEVO]
+-- Registro de cuando se comparte un video
+CREATE TABLE IF NOT EXISTS video_shares (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    video_id INT NOT NULL,
+    user_id INT NULL, -- Puede ser NULL si comparte un visitante no logueado
+    ip_address VARCHAR(45) NOT NULL,
+    shared_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
+    INDEX idx_video_share (video_id, shared_at)
 );

@@ -251,5 +251,35 @@ class InteractionService {
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
+
+    /**
+     * Registro de "Compartir" para Analíticas
+     */
+    public function registerShare($videoUuid) {
+        $ip = Utils::getClientIp();
+        $userId = $_SESSION['user_id'] ?? null;
+
+        try {
+            // 1. Obtener ID del video
+            $stmt = $this->pdo->prepare("SELECT id FROM videos WHERE uuid = ?");
+            $stmt->execute([$videoUuid]);
+            $videoId = $stmt->fetchColumn();
+
+            if (!$videoId) {
+                return ['success' => false, 'message' => 'Video not found'];
+            }
+
+            // 2. Insertar log en video_shares
+            // No requiere transacción compleja, es un log directo
+            $ins = $this->pdo->prepare("INSERT INTO video_shares (video_id, user_id, ip_address) VALUES (?, ?, ?)");
+            $ins->execute([$videoId, $userId, $ip]);
+
+            return ['success' => true];
+
+        } catch (Exception $e) {
+            // No interrumpimos el flujo si falla el log, solo retornamos false
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
 }
 ?>

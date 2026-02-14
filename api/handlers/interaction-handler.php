@@ -47,6 +47,13 @@ switch ($action) {
         Utils::jsonResponse($interactionService->registerView($videoUuid));
         break;
 
+    case 'register_share': // [NUEVO]
+        // Registra que se ha compartido un video (para analíticas)
+        $videoUuid = trim($_POST['video_uuid'] ?? '');
+        
+        Utils::jsonResponse($interactionService->registerShare($videoUuid));
+        break;
+
     default:
         Utils::jsonResponse([
             'success' => false, 

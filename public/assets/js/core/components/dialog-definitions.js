@@ -12,7 +12,7 @@ const DialogTemplates = {
             <button type="button" class="component-button primary btn-confirm" data-action="confirm">${data.confirmText || 'Confirmar'}</button>
         </div>
     `,
-  'verify-email': (data) => `
+    'verify-email': (data) => `
         <div class="component-dialog-body">
             <h1 class="component-dialog-title" data-element="title">${data.title || ''}</h1>
             <p class="component-dialog-message" data-element="message">${data.message || ''}</p>
@@ -33,6 +33,27 @@ const DialogTemplates = {
         <div class="component-dialog-footer">
             <button type="button" class="component-button btn-cancel" data-action="cancel">Cancelar</button>
             <button type="button" class="component-button primary btn-confirm" data-action="confirm">Verificar</button>
+        </div>
+    `,
+    'share': (data) => `
+        <div class="component-dialog-body">
+            <h1 class="component-dialog-title" data-element="title">${data.title || 'Compartir'}</h1>
+            <p class="component-dialog-message" style="margin-bottom: 16px;">Comparte este video con tus amigos:</p>
+            
+            <div class="component-input-group" style="display: flex; gap: 8px; margin-bottom: 8px;">
+                <input type="text" id="share-url-input" class="component-text-input" 
+                       value="${data.url || ''}" 
+                       readonly 
+                       onclick="this.select();"
+                       style="flex: 1;">
+                <button type="button" class="component-button primary" id="btn-copy-link" style="white-space: nowrap;">
+                    <span class="material-symbols-rounded" style="font-size: 18px; margin-right: 4px;">content_copy</span>
+                    Copiar
+                </button>
+            </div>
+        </div>
+        <div class="component-dialog-footer">
+            <button type="button" class="component-button btn-cancel" data-action="cancel">Cerrar</button>
         </div>
     `,
     loading: (data) => `

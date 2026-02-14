@@ -66,15 +66,17 @@ const DialogManager = {
         });
     },
 
-    confirm: ({ title, message, type = 'default', confirmText, cancelText, onReady }) => {
+    // [MODIFICADO] Ahora aceptamos "...customData" para pasar propiedades extra como 'url'
+    confirm: ({ title, message, type = 'default', confirmText, cancelText, onReady, ...customData }) => {
         return new Promise((resolve) => {
             if (!DialogManager._ensureReady()) return resolve(false);
 
-            let templateKey = 'default';
-            if (type === 'regen-codes') templateKey = 'regen-codes';
-            if (type === 'verify-email') templateKey = 'verify-email';
+            // [MODIFICADO] Eliminamos los IFs restrictivos. 
+            // Ahora pasamos el 'type' directamente. Si no existe en definitions, _render usará default.
+            let templateKey = type;
             
-            DialogManager._render(templateKey, { title, message, confirmText, cancelText });
+            // Pasamos customData (que incluye 'url') al render
+            DialogManager._render(templateKey, { title, message, confirmText, cancelText, ...customData });
 
             const btnConfirm = DialogManager.elements.wrapper.querySelector('[data-action="confirm"]');
             const cancelButtons = DialogManager.elements.wrapper.querySelectorAll('[data-action="cancel"]');
@@ -100,10 +102,17 @@ const DialogManager = {
 
             DialogManager._show();
             
+            // Foco inteligente
             if (type === 'verify-email') {
                 setTimeout(() => {
                     const input = DialogManager.elements.wrapper.querySelector('input');
                     if (input) input.focus();
+                }, 50);
+            } else if (type === 'share') {
+                // [NUEVO] Foco para el input de compartir
+                setTimeout(() => {
+                    const input = DialogManager.elements.wrapper.querySelector('#share-url-input');
+                    if (input) input.select();
                 }, 50);
             } else if (btnConfirm) {
                 setTimeout(() => btnConfirm.focus(), 50);
@@ -156,15 +165,22 @@ const DialogManager = {
         const wrapper = DialogManager.elements.wrapper;
         const pillHTML = `<div class="component-dialog-drag-zone" data-action="drag-handle"><div class="component-dialog-drag-handle"></div></div>`;
         
+        // Aquí ocurre la magia: busca el template, si no existe usa default
         let renderFn = DialogTemplates[templateKey];
         if (!renderFn) renderFn = DialogTemplates['default'];
         
         wrapper.innerHTML = pillHTML + renderFn(data);
         DialogManager._bindDragEvents();
 
+        // Manejo del mensaje opcional
         const elMsg = wrapper.querySelector('[data-element="message"]');
         if (elMsg) {
-            elMsg.style.display = data.message ? 'block' : 'none';
+            // Si el mensaje está vacío, lo ocultamos para que no ocupe espacio
+            if (!data.message) {
+                elMsg.style.display = 'none';
+            } else {
+                elMsg.style.display = 'block';
+            }
         }
         
         wrapper.className = 'component-dialog';

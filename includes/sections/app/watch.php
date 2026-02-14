@@ -264,7 +264,7 @@ function formatCount($n) {
                                     <span class="material-symbols-rounded">thumb_down</span>
                                     </button>
                             </div>
-                            <button class="component-button component-watch-action-pill">
+                            <button class="component-button component-watch-action-pill js-btn-share">
                                 <span class="material-symbols-rounded">share</span> Compartir
                             </button>
                         </div>

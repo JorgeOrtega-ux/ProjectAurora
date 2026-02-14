@@ -1,8 +1,9 @@
 import { ToastManager } from '../../core/components/toast-manager.js';
-import {ApiService} from '../../core/services/api-service.js';
-// [CORRECCIÓN] Importación nombrada para coincidir con tu archivo existente
+import { ApiService } from '../../core/services/api-service.js';
 import { ApiRoutes } from '../../core/services/api-routes.js';
-import {I18nManager} from '../../core/utils/i18n-manager.js';
+import { I18nManager } from '../../core/utils/i18n-manager.js';
+// [NUEVO] Importamos DialogManager para mostrar el modal de compartir
+import { DialogManager } from '../../core/components/dialog-manager.js';
 
 // ==========================================
 // VARIABLES DE ESTADO (Módulo)
@@ -29,7 +30,7 @@ let _animationFrameId = null;
 // Variable para Modo Cine
 let _isCinemaMode = false;
 
-// [NUEVO] Variables para Interacción (Likes, Subs, Views)
+// Variables para Interacción (Likes, Subs, Views)
 let _interactionState = {
     videoUuid: null,
     channelUuid: null,
@@ -95,8 +96,8 @@ export const WatchController = {
             initAmbientLightLogic();
         }
 
-        // --- 2. CONFIGURACIÓN DE INTERACCIONES (Likes, Subs, Views) ---
-        // Buscamos el contexto inyectado por PHP (Fase 4)
+        // --- 2. CONFIGURACIÓN DE INTERACCIONES (Likes, Subs, Views, Share) ---
+        // Buscamos el contexto inyectado por PHP
         const metaContext = document.querySelector('.js-video-context');
         if (metaContext) {
             _interactionState.videoUuid = metaContext.dataset.videoUuid;
@@ -135,13 +136,15 @@ export const WatchController = {
 };
 
 // ==========================================
-// LÓGICA DE INTERACCIONES (NUEVO)
+// LÓGICA DE INTERACCIONES (Likes, Share, Subs)
 // ==========================================
 
 function initInteractionControls() {
     const btnLike = document.querySelector('.js-btn-like');
     const btnDislike = document.querySelector('.js-btn-dislike');
     const btnSubscribe = document.querySelector('.js-btn-subscribe');
+    // [NUEVO] Botón compartir
+    const btnShare = document.querySelector('.js-btn-share');
 
     if (btnLike) {
         btnLike.addEventListener('click', () => handleInteraction('like'));
@@ -151,6 +154,65 @@ function initInteractionControls() {
     }
     if (btnSubscribe) {
         btnSubscribe.addEventListener('click', () => handleSubscribe());
+    }
+    if (btnShare) {
+        btnShare.addEventListener('click', () => handleShare());
+    }
+}
+
+// [NUEVO] Manejo de Compartir
+async function handleShare() {
+    // 1. Construir URL del video
+    // Asumimos que la URL es base + /ProjectAurora/watch?v=UUID
+    const shareUrl = window.location.origin + '/ProjectAurora/watch?v=' + _interactionState.videoUuid;
+
+    // 2. Abrir Diálogo
+    DialogManager.confirm({
+        title: 'Compartir Video',
+        type: 'share', // Usamos el template 'share' definido en DialogDefinitions
+        url: shareUrl, // Pasamos la URL al template
+        confirmText: 'Cerrar', // Solo botón de cerrar
+        cancelText: null, // Ocultar cancelar
+        onReady: (modal) => {
+            // Lógica interna del modal (Botón Copiar)
+            const btnCopy = modal.querySelector('#btn-copy-link');
+            const input = modal.querySelector('#share-url-input');
+
+            if (btnCopy && input) {
+                btnCopy.onclick = () => {
+                    input.select();
+                    input.setSelectionRange(0, 99999); // Móvil
+
+                    navigator.clipboard.writeText(shareUrl).then(() => {
+                        ToastManager.show('Enlace copiado al portapapeles', 'success');
+                        
+                        // Feedback visual en el botón
+                        const originalHtml = btnCopy.innerHTML;
+                        btnCopy.innerHTML = '<span class="material-symbols-rounded" style="font-size: 18px; margin-right: 4px;">check</span> Copiado';
+                        btnCopy.classList.add('success');
+                        
+                        setTimeout(() => {
+                            btnCopy.innerHTML = originalHtml;
+                            btnCopy.classList.remove('success');
+                        }, 2000);
+                    }).catch(err => {
+                        console.error('Error al copiar: ', err);
+                        ToastManager.show('No se pudo copiar el enlace', 'error');
+                    });
+                };
+            }
+        }
+    });
+
+    // 3. Registrar analítica (Silent request)
+    try {
+        // Usamos la cadena directa 'interaction.share' ya que la acabamos de definir en el backend
+        // y quizás no esté en el objeto JS ApiRoutes todavía.
+        ApiService.post('interaction.share', {
+            video_uuid: _interactionState.videoUuid
+        });
+    } catch (e) {
+        console.warn('Error registrando share:', e);
     }
 }
 
@@ -210,7 +272,7 @@ async function handleSubscribe() {
     if (!btn) return;
     
     const originalText = btn.innerHTML;
-    btn.classList.add('loading'); // Feedback visual si tienes CSS para esto
+    btn.classList.add('loading'); 
 
     try {
         const response = await ApiService.post(ApiRoutes.Interaction.ToggleSub, {
