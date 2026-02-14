@@ -100,6 +100,21 @@ if ($isLoggedIn) {
 $userRole = $_SESSION['role'] ?? 'guest';
 $isAdmin = in_array($userRole, $adminRoles);
 
+// ==========================================================
+// [NUEVO] Lógica para detectar rutas dinámicas (/c/UUID)
+// ==========================================================
+$viewingChannelUUID = null;
+
+// CORRECCIÓN: Agregamos [\/?] al inicio para aceptar rutas como "/c/..." o "c/..."
+if (preg_match('/^[\/]?c\/([a-zA-Z0-9-]+)$/', $currentSection, $matches)) {
+    // Capturamos el UUID de la URL
+    $viewingChannelUUID = $matches[1];
+    
+    // Cambiamos la sección actual a la llave que definimos en routes.php
+    $currentSection = 'channel-profile'; 
+}
+// ==========================================================
+
 // === PREGUNTAMOS AL PORTERO ===
 // [MODIFICADO] Namespace Gatekeeper
 $decision = Gatekeeper::check($currentSection, $pdo);
@@ -130,6 +145,7 @@ switch ($decision['action']) {
 
     case Gatekeeper::ALLOW:
         $routesMap = require __DIR__ . '/../../config/routes.php';
+        // Aquí $currentSection ya podría ser 'channel-profile' si entró al IF de arriba
         $fileToLoad = $routesMap[$currentSection] ?? $routesMap['404'];
         
         if (!file_exists($fileToLoad)) {
