@@ -22,7 +22,7 @@ export class CommentsSection {
     init() {
         this._initMainInput();
         this.loadComments();
-        this._attachReplyDelegation();
+        this._attachDelegation();
     }
 
     _initMainInput() {
@@ -58,13 +58,31 @@ export class CommentsSection {
         }
     }
 
-    _attachReplyDelegation() {
+    _attachDelegation() {
         if (this.listContainer) {
             this.listContainer.addEventListener('click', (e) => {
+                // 1. Delegación para Responder
                 const replyBtn = e.target.closest('.js-reply-trigger');
                 if (replyBtn) {
                     const commentId = replyBtn.dataset.id;
                     this.toggleReplyBox(commentId);
+                    return;
+                }
+
+                // 2. Delegación para Like
+                const likeBtn = e.target.closest('.js-like-trigger');
+                if (likeBtn) {
+                    const commentId = likeBtn.dataset.id;
+                    this.toggleInteraction(commentId, 'like');
+                    return;
+                }
+
+                // 3. Delegación para Dislike
+                const dislikeBtn = e.target.closest('.js-dislike-trigger');
+                if (dislikeBtn) {
+                    const commentId = dislikeBtn.dataset.id;
+                    this.toggleInteraction(commentId, 'dislike');
+                    return;
                 }
             });
         }
@@ -75,6 +93,7 @@ export class CommentsSection {
         this.state.isLoading = true;
 
         try {
+            // Nota: Se asume que LoadComments ahora devuelve stats (likes_count, user_interaction)
             const response = await ApiService.post(ApiRoutes.Interaction.LoadComments, {
                 video_uuid: this.videoUuid,
                 limit: this.state.limit,
@@ -108,54 +127,57 @@ export class CommentsSection {
         }
     }
 
-    renderCommentItem(comment, isReply = false) {
-        const isLogged = this.currentUserAvatar !== null;
-        
-        let repliesHtml = '';
-        if (comment.replies && comment.replies.length > 0) {
-            repliesHtml = `<div class="component-comment-replies">`;
-            comment.replies.forEach(reply => {
-                repliesHtml += this.renderCommentItem(reply, true);
-            });
-            repliesHtml += `</div>`;
-        }
-
-        const dateStr = new Date(comment.created_at).toLocaleDateString();
-
-        return `
-        <div class="component-comment-item ${isReply ? 'is-reply' : ''}" id="comment-${comment.id}">
-            <a href="/ProjectAurora/channel/${comment.user_uuid}" class="component-comment-avatar-link">
-                <img src="${comment.avatar_url}" alt="${comment.username}" class="component-comment-avatar">
-            </a>
-            <div class="component-comment-content">
-                <div class="component-comment-header">
-                    <span class="component-comment-author">${comment.username}</span>
-                    <span class="component-comment-date">${dateStr}</span>
-                </div>
-                <div class="component-comment-text">${comment.content}</div>
-                
-                <div class="component-comment-actions">
-                    <button class="component-button icon-only small" title="Me gusta">
-                        <span class="material-symbols-rounded" style="font-size: 18px;">thumb_up</span>
-                    </button>
-                    <button class="component-button icon-only small" title="No me gusta">
-                        <span class="material-symbols-rounded" style="font-size: 18px;">thumb_down</span>
-                    </button>
-                    
-                    ${isLogged ? `
-                        <button class="component-button text small js-reply-trigger" data-id="${comment.id}">
-                            Responder
-                        </button>
-                    ` : ''}
-                </div>
-
-                <div id="reply-box-container-${comment.id}" class="component-reply-box-container"></div>
-
-                ${repliesHtml}
-            </div>
-        </div>
-        `;
+   renderCommentItem(comment, isReply = false) {
+    const isLogged = this.currentUserAvatar !== null;
+    
+    // 1. Generar HTML de respuestas (Recursividad)
+    let repliesHtml = '';
+    if (comment.replies && comment.replies.length > 0) {
+        repliesHtml = `<div class="component-comment-replies">`;
+        comment.replies.forEach(reply => {
+            repliesHtml += this.renderCommentItem(reply, true);
+        });
+        repliesHtml += `</div>`;
     }
+
+    const dateStr = new Date(comment.created_at).toLocaleDateString();
+
+    return `
+    <div class="component-comment-item ${isReply ? 'is-reply' : ''}" id="comment-${comment.id}">
+        <a href="/ProjectAurora/channel/${comment.user_uuid}" class="component-comment-avatar-link">
+            <img src="${comment.avatar_url}" alt="${comment.username}" class="component-comment-avatar">
+        </a>
+        
+        <div class="component-comment-content">
+            <div class="component-comment-header">
+                <a href="/ProjectAurora/channel/${comment.user_uuid}" class="component-comment-author">${comment.username}</a>
+                <span class="component-comment-date">${dateStr}</span>
+            </div>
+            
+            <div class="component-comment-text">${comment.content}</div>
+            
+            <div class="component-comment-actions">
+                <button class="component-button icon-only small" title="Me gusta">
+                    <span class="material-symbols-rounded" style="font-size: 18px;">thumb_up</span>
+                </button>
+                <button class="component-button icon-only small" title="No me gusta">
+                    <span class="material-symbols-rounded" style="font-size: 18px;">thumb_down</span>
+                </button>
+                
+                ${isLogged && !isReply ? `
+                    <button class="component-button text small js-reply-trigger" data-id="${comment.id}">
+                        Responder
+                    </button>
+                ` : ''}
+            </div>
+
+            <div id="reply-box-container-${comment.id}" class="component-reply-box-container"></div>
+
+            ${repliesHtml}
+        </div>
+    </div>
+    `;
+}
 
     toggleReplyBox(commentId) {
         const container = document.getElementById(`reply-box-container-${commentId}`);
@@ -166,6 +188,7 @@ export class CommentsSection {
             return;
         }
 
+        // Cerrar otras cajas abiertas para limpieza visual
         document.querySelectorAll('.component-reply-box-container').forEach(el => el.innerHTML = '');
 
         const myAvatar = this.currentUserAvatar;
@@ -208,6 +231,61 @@ export class CommentsSection {
         });
     }
 
+    // --- MODIFICACIÓN 3: Lógica Interactiva (Like/Dislike) ---
+    async toggleInteraction(commentId, type) {
+        if (!this.currentUserAvatar) {
+            ToastManager.show('Debes iniciar sesión', 'info');
+            return;
+        }
+
+        // Selección de elementos UI del comentario específico
+        const commentEl = document.getElementById(`comment-${commentId}`);
+        if (!commentEl) return;
+
+        const btnLike = commentEl.querySelector('.js-like-trigger');
+        const btnDislike = commentEl.querySelector('.js-dislike-trigger');
+        const countLabel = btnLike.querySelector('.count-label');
+        
+        // Optimistic UI (Feedback Inmediato) provisional
+        // Nota: Para una implementación perfecta, deberíamos calcular la lógica localmente antes del servidor,
+        // pero para evitar desincronización compleja, llamaremos a la API y actualizaremos con la respuesta real.
+        // Podríamos añadir un estado de "loading" o simplemente disparar.
+        
+        try {
+            // Usamos la ruta genérica o una específica. 
+            // IMPORTANTE: Asegúrate de que 'toggle_comment_like' esté mapeado en interaction-handler.php
+            const response = await ApiService.post(ApiRoutes.Interaction.Main || 'api/interaction', {
+                action: 'toggle_comment_like', // Acción definida en interaction-handler.php
+                comment_id: commentId,
+                type: type
+            });
+
+            if (response.success) {
+                // Actualizar contadores y clases con la verdad del servidor
+                
+                // Reset clases
+                btnLike.classList.remove('active');
+                btnDislike.classList.remove('active');
+
+                // Aplicar nueva clase
+                if (response.type === 'like' && response.action !== 'removed') {
+                    btnLike.classList.add('active');
+                } else if (response.type === 'dislike' && response.action !== 'removed') {
+                    btnDislike.classList.add('active');
+                }
+
+                // Actualizar número
+                const newLikes = response.likes;
+                countLabel.textContent = newLikes > 0 ? newLikes : '';
+
+            } else {
+                ToastManager.show(response.message || 'Error al interactuar', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
     async postComment(content, parentId = null, onSuccess) {
         if (this.state.isLoading) return;
         
@@ -244,6 +322,10 @@ export class CommentsSection {
             this.state.total++;
         } 
         else {
+            // Lógica para inyectar respuesta
+            // Buscamos el padre visual correcto
+            // Si el padre original era una respuesta, el sistema de backend lo aplanó al abuelo.
+            // Buscamos el elemento DOM del parent_id retornado por el backend.
             const parentId = commentData.parent_id;
             const parentNode = document.getElementById(`comment-${parentId}`);
             
@@ -257,6 +339,7 @@ export class CommentsSection {
                     contentDiv.appendChild(repliesContainer);
                 }
 
+                // Renderizamos como respuesta (isReply = true)
                 const html = this.renderCommentItem(commentData, true);
                 repliesContainer.insertAdjacentHTML('beforeend', html);
             }

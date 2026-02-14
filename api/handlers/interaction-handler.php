@@ -52,7 +52,7 @@ switch ($action) {
         break;
 
     // ==========================================
-    // SECCIÓN DE COMENTARIOS (NUEVO)
+    // SECCIÓN DE COMENTARIOS
     // ==========================================
 
     case 'load_comments':
@@ -74,6 +74,18 @@ switch ($action) {
                     : null;
 
         Utils::jsonResponse($interactionService->addComment($videoUuid, $content, $parentId));
+        break;
+
+    case 'toggle_comment_like':
+        // NUEVO CASE: Maneja likes/dislikes en comentarios
+        $commentId = isset($_POST['comment_id']) ? (int)$_POST['comment_id'] : 0;
+        $type = trim($_POST['type'] ?? 'like');
+
+        if ($commentId <= 0) {
+            Utils::jsonResponse(['success' => false, 'message' => 'ID de comentario inválido'], 400);
+        } else {
+            Utils::jsonResponse($interactionService->toggleCommentLike($commentId, $type));
+        }
         break;
 
     default:

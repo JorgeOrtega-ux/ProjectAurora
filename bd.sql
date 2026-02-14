@@ -5,7 +5,10 @@ USE project_aurora_db;
 -- REINICIO DE TABLAS
 -- =========================================================
 -- El orden es importante para evitar errores de Foreign Keys
-DROP TABLE IF EXISTS video_comments; -- [NUEVO] Comentarios antes que videos/users
+
+-- [NUEVO] Eliminamos interacciones de comentarios antes que los comentarios
+DROP TABLE IF EXISTS comment_interactions; 
+DROP TABLE IF EXISTS video_comments; 
 DROP TABLE IF EXISTS video_shares;
 DROP TABLE IF EXISTS video_views;
 DROP TABLE IF EXISTS video_interactions;
@@ -264,7 +267,7 @@ CREATE TABLE IF NOT EXISTS video_shares (
     INDEX idx_video_share (video_id, shared_at)
 );
 
--- E. VIDEO COMMENTS [NUEVO]
+-- E. VIDEO COMMENTS
 CREATE TABLE IF NOT EXISTS video_comments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     video_id INT NOT NULL,
@@ -279,4 +282,18 @@ CREATE TABLE IF NOT EXISTS video_comments (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (parent_id) REFERENCES video_comments(id) ON DELETE CASCADE,
     INDEX idx_video_thread (video_id, parent_id)
+);
+
+-- F. COMMENT INTERACTIONS [NUEVO]
+-- Registra los likes y dislikes individuales en los comentarios
+CREATE TABLE IF NOT EXISTS comment_interactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    comment_id INT NOT NULL,
+    type ENUM('like', 'dislike') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (comment_id) REFERENCES video_comments(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_comment_interaction (user_id, comment_id),
+    INDEX idx_comment_type (comment_id, type)
 );

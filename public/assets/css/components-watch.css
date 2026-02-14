@@ -1,5 +1,9 @@
 /* public/assets/css/components-watch.css */
 
+/* =========================================
+   REPRODUCTOR DE VIDEO Y COMPONENTES VISUALES
+   ========================================= */
+
 .component-watch-player-card {
     position: relative;
     background-color: #000;
@@ -226,7 +230,7 @@
 }
 
 /* =========================================
-   SECCIÓN DE COMENTARIOS (NUEVO)
+   SECCIÓN DE COMENTARIOS (LIMPIO - SIN LÍNEAS)
    ========================================= */
 
 .component-watch-comments {
@@ -234,18 +238,19 @@
     max-width: 100%;
 }
 
+/* --- Input Principal --- */
 .component-watch-comment-input-row {
     display: flex;
     gap: 16px;
     margin-bottom: 32px;
     align-items: flex-start;
 }
+
 .component-watch-comment-input-row.reply-mode {
-    margin-top: 16px;
-    margin-bottom: 16px;
+    margin-top: 12px;
+    margin-bottom: 12px;
     animation: slideDown 0.2s ease-out;
 }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
 .component-watch-comment-input-wrapper {
     flex: 1;
@@ -254,37 +259,36 @@
     gap: 8px;
 }
 
-.component-watch-comment-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-}
-.component-watch-comment-actions.hidden { display: none; }
-
-/* Item de Comentario */
+/* --- Estructura del Comentario (Grid flexible) --- */
 .component-comment-item {
     display: flex;
-    gap: 16px;
+    gap: 12px;
     margin-bottom: 24px;
     align-items: flex-start;
-}
-.component-comment-item.is-reply {
-    margin-bottom: 16px;
-    margin-top: 8px;
+    position: relative;
 }
 
-.component-comment-avatar-link { flex-shrink: 0; text-decoration: none; }
+/* Evitar que el avatar se aplaste */
+.component-comment-avatar-link {
+    flex-shrink: 0;
+    text-decoration: none;
+    z-index: 1;
+}
+
 .component-comment-avatar {
-    width: 40px; height: 40px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     object-fit: cover;
+    background-color: var(--bg-surface);
 }
-.is-reply .component-comment-avatar { width: 24px; height: 24px; }
 
+/* --- Columna de Contenido --- */
 .component-comment-content {
     flex: 1;
     display: flex;
     flex-direction: column;
+    min-width: 0;
     gap: 4px;
 }
 
@@ -293,12 +297,15 @@
     align-items: baseline;
     gap: 8px;
     font-size: 0.85rem;
+    margin-bottom: 2px;
 }
+
 .component-comment-author {
     font-weight: 600;
     color: var(--text-primary);
     text-decoration: none;
 }
+
 .component-comment-date {
     color: var(--text-secondary);
     font-size: 0.8rem;
@@ -307,36 +314,65 @@
 .component-comment-text {
     color: var(--text-primary);
     font-size: 0.95rem;
-    line-height: 1.4;
+    line-height: 1.5;
     white-space: pre-wrap;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
 }
 
+/* Acciones (Like, Reply) */
 .component-comment-actions {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 4px;
 }
+
 .component-comment-actions .component-button.icon-only {
     width: 32px; height: 32px;
     color: var(--text-secondary);
+    border-radius: 50%;
 }
+
 .component-comment-actions .component-button.icon-only:hover {
     background-color: rgba(255,255,255,0.1);
     color: var(--text-primary);
 }
 
-/* Respuestas (Indentación) */
-.component-comment-replies {
-    margin-top: 8px;
-    padding-left: 0px; 
-}
-/* Visualmente anidado pero sin margen excesivo en móvil */
-@media (min-width: 600px) {
-    .component-comment-replies { padding-left: 0; } /* Ya el avatar pequeño da efecto de indentación visual relativa al contenido */
+.component-comment-actions .component-button.text {
+    padding: 0 12px;
+    height: 32px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    border-radius: 16px;
 }
 
-/* El input autoexpandible */
+.component-comment-actions .component-button.text:hover {
+    background-color: rgba(255,255,255,0.1);
+    color: var(--text-primary);
+}
+
+/* --- RESPUESTAS (SIMPLE - SIN LÍNEAS) --- */
+
+.component-comment-replies {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px; /* Espacio entre respuestas hermanas */
+    /* No hay bordes ni padding extra, la jerarquía la da el anidamiento HTML */
+}
+
+/* Ajustes para el ítem cuando es una respuesta */
+.component-comment-item.is-reply {
+    margin-bottom: 0; 
+}
+
+/* Avatar un poco más pequeño en respuestas para jerarquía visual */
+.component-comment-item.is-reply .component-comment-avatar {
+    width: 28px;
+    height: 28px;
+}
+
+/* Inputs */
 .component-input.auto-expand {
     min-height: 40px;
     resize: none;
@@ -346,8 +382,14 @@
     border-radius: 0;
     background: transparent;
     transition: border-color 0.2s;
+    width: 100%;
 }
 .component-input.auto-expand:focus {
     border-bottom-color: var(--text-primary, #fff);
     background: transparent;
+}
+
+@keyframes slideDown { 
+    from { opacity: 0; transform: translateY(-10px); } 
+    to { opacity: 1; transform: translateY(0); } 
 }
