@@ -430,8 +430,8 @@
 .component-comment-header { display: flex; align-items: baseline; gap: 8px; font-size: 0.85rem; margin-bottom: 2px; }
 .component-comment-author { font-weight: 600; color: var(--text-primary); text-decoration: none; }
 .component-comment-date { color: var(--text-secondary); font-size: 0.8rem; }
-.component-comment-text { color: var(--text-primary); font-size: 0.95rem; line-height: 1.5; white-space: pre-wrap; margin-bottom: 6px; overflow-wrap: anywhere; word-break: break-word; }
-.component-comment-text-wrapper { display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 6px; line-height: 1.5; color: var(--text-primary); font-size: 0.95rem; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; }
+.component-comment-text { border: 1px solid #00000020; border-radius:12px;padding: 8px; color: var(--text-primary); font-size: 0.95rem; line-height: 1.5; white-space: pre-wrap; margin-bottom: 6px; overflow-wrap: anywhere; word-break: break-word; }
+.component-comment-text-wrapper { border: 1px solid #00000020; border-radius:12px; padding: 8px; display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 6px; line-height: 1.5; color: var(--text-primary); font-size: 0.95rem; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; }
 .component-comment-actions { display: flex; align-items: center; gap: 4px; }
 .component-button.text.small, .js-read-more { background: none; border: none; padding: 0 12px; height: 32px; font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); border-radius: 16px; cursor: pointer; display: flex; align-items: center; }
 .component-button.text.small:hover, .js-read-more:hover { background-color: var(--bg-hover-light); color: var(--text-primary); }
