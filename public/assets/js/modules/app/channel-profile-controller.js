@@ -18,7 +18,7 @@ let translateX = 0, translateY = 0;
 
 export const ChannelProfileController = {
     init: () => {
-        console.log("ChannelProfileController: Inicializado con Recorte Real");
+        console.log("ChannelProfileController: Inicializado con Recorte Real (CSS Refactor)");
         initFeedInteractions();
         initBannerUploader();
     }
@@ -34,7 +34,8 @@ function initBannerUploader() {
     const cancelBtn = document.getElementById('btn-cancel-crop');
     const saveBtn = document.getElementById('btn-save-crop');
     const bannerDisplay = document.getElementById('channel-banner-display');
-    const desktopZone = document.querySelector('.zone-desktop');
+    // ACTUALIZADO: Selector de clase nuevo
+    const desktopZone = document.querySelector('.component-channel-zone-desktop');
 
     if (!triggerBtn || !fileInput) return;
 
@@ -108,7 +109,7 @@ function initBannerUploader() {
         cancelBtn.addEventListener('click', () => closeModal(modal, fileInput));
     }
 
-    // 6. GUARDAR CON RECORTE REAL (CANVAS + API UPLOAD)
+    // 6. GUARDAR CON RECORTE REAL
     if (saveBtn) {
         saveBtn.addEventListener('click', () => {
             if (previewImg && desktopZone) {
@@ -146,14 +147,11 @@ function initBannerUploader() {
                             return;
                         }
 
-                        // Creamos el FormData
                         const formData = new FormData();
                         formData.append('banner', blob, 'banner.jpg');
 
-                        // Enviamos a la API
                         ToastManager.show('Subiendo banner...', 'info');
                         
-                        // FIX: Enviamos el objeto ApiRoutes.Settings.UploadBanner directamente para validar la arquitectura
                         ApiService.post(ApiRoutes.Settings.UploadBanner, formData)
                             .then(response => {
                                 if (response.success) {

@@ -6,6 +6,7 @@
         <div class="menu-list">
             
             <?php if (isset($_SESSION['user_id'])): ?>
+                
                 <?php if (isset($userRole) && in_array($userRole, ['founder', 'administrator'])): ?>
                     <div class="menu-link menu-link--bordered" data-nav="admin/dashboard">
                         <div class="menu-link-icon">
@@ -17,6 +18,15 @@
                     </div>
                     <div class="menu-divider"></div>
                 <?php endif; ?>
+
+                <div class="menu-link" data-nav="c/<?php echo $_SESSION['uuid'] ?? ''; ?>">
+                    <div class="menu-link-icon">
+                        <span class="material-symbols-rounded">video_settings</span>
+                    </div>
+                    <div class="menu-link-text">
+                        <span>Administrar canal</span>
+                    </div>
+                </div>
 
                 <div class="menu-link" data-nav="settings/your-profile">
                     <div class="menu-link-icon">

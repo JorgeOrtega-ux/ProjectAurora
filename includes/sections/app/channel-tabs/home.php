@@ -13,17 +13,17 @@ $stmt->execute([$channelOwner['id']]);
 $videos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
-<div style="padding: 1.5rem 0;">
-    <h3 style="margin-bottom: 1.5rem; font-size: 1.1rem; color: var(--text-primary);">Subidas recientes</h3>
+<div>
+    <h3 class="component-channel-section-title">Subidas recientes</h3>
 
     <?php if (empty($videos)): ?>
-        <div style="text-align: center; padding: 3rem 0; color: var(--text-tertiary);">
-            <span class="material-symbols-rounded" style="font-size: 48px; margin-bottom: 1rem; opacity: 0.5;">video_library</span>
+        <div class="component-channel-empty">
+            <span class="material-symbols-rounded component-channel-empty-icon">video_library</span>
             <p>Este canal aún no tiene videos.</p>
         </div>
     <?php else: ?>
         
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px;">
+        <div class="component-channel-grid">
             <?php foreach ($videos as $video): ?>
                 <?php 
                     $isShort = $video['orientation'] === 'portrait';
@@ -44,7 +44,8 @@ $videos = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                     
                     <div class="video-bottom">
-                        <div class="video-meta" style="margin-left: 0;"> <h3 class="video-title" title="<?php echo htmlspecialchars($video['title']); ?>">
+                        <div class="video-meta" style="margin-left: 0;"> 
+                            <h3 class="video-title" title="<?php echo htmlspecialchars($video['title']); ?>">
                                 <?php echo htmlspecialchars($video['title']); ?>
                             </h3>
                             <div class="video-info">

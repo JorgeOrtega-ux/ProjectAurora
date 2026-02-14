@@ -1,0 +1,427 @@
+/* public/assets/css/components-channel.css */
+
+/* --- Layout Principal --- */
+.component-channel-wrapper {
+    width: 100%;
+    min-height: 100vh; /* Ajuste para llenar pantalla si es necesario */
+    padding: 1.5rem;
+    overflow-x: hidden;
+}
+
+.component-channel-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+/* --- Banner --- */
+.component-channel-banner {
+    width: 100%;
+    height: 220px;
+    border-radius: var(--radius-md);
+    background-size: cover;
+    background-position: center;
+    position: relative;
+    background-color: var(--sl-color-primary-800); /* Fallback color */
+}
+
+.component-channel-banner-edit-btn {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background 0.2s;
+    font-size: 0.9rem;
+    z-index: 10;
+}
+
+.component-channel-banner-edit-btn:hover {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+/* --- Cabecera: Avatar e Información --- */
+.component-channel-header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.component-channel-avatar-container {
+    width: 160px;
+    height: 160px;
+    margin-top: -80px;
+    position: relative;
+    z-index: 2;
+}
+
+.component-channel-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    border: 5px solid var(--bg-app);
+    background-color: var(--bg-app);
+    box-shadow: var(--shadow-card);
+}
+
+.component-channel-info-row {
+    margin-top: 1rem;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.component-channel-identity h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.component-channel-verified-icon {
+    font-size: 1.2rem;
+    color: var(--sl-color-primary-500);
+    vertical-align: middle;
+}
+
+.component-channel-meta {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    margin-top: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.component-channel-description {
+    color: var(--text-tertiary);
+    margin-top: 1rem;
+    max-width: 600px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+/* --- Botones de Acción --- */
+.component-channel-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.component-channel-btn {
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    transition: opacity 0.2s, background 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.component-channel-btn-secondary {
+    background: var(--sl-color-neutral-200);
+    color: var(--text-primary);
+}
+
+.component-channel-btn-secondary:hover {
+    background: var(--sl-color-neutral-300);
+}
+
+.component-channel-btn-primary {
+    background: var(--text-primary);
+    color: var(--bg-app);
+}
+
+.component-channel-btn-primary:hover {
+    opacity: 0.9;
+}
+
+.component-channel-btn-subscribe {
+    background: var(--text-primary);
+    color: var(--bg-app);
+    padding: 10px 24px;
+    border-radius: 24px;
+}
+
+/* --- Pestañas (Tabs) --- */
+.component-channel-tabs {
+    margin-top: 2rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    gap: 2rem;
+}
+
+.component-channel-tab-link {
+    padding-bottom: 0.8rem;
+    font-weight: 500;
+    text-decoration: none;
+    text-transform: uppercase;
+    border-bottom: 3px solid transparent;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.component-channel-tab-link.active {
+    color: var(--text-primary);
+    font-weight: 600;
+    border-bottom-color: var(--text-primary);
+}
+
+.component-channel-tab-link:hover:not(.active) {
+    color: var(--text-primary);
+}
+
+/* --- Contenido / Grids --- */
+.component-channel-content-area {
+    min-height: 300px;
+    padding-top: 1.5rem;
+}
+
+.component-channel-section-title {
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.component-channel-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 20px;
+}
+
+.component-channel-grid-shorts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 15px;
+}
+
+/* --- Estados Vacíos / Errores --- */
+.component-channel-empty {
+    text-align: center;
+    padding: 3rem 0;
+    color: var(--text-tertiary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.component-channel-empty-icon {
+    font-size: 48px;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.component-channel-not-found {
+    padding: 4rem;
+    text-align: center;
+}
+
+.component-channel-not-found-title {
+    margin-bottom: 0.5rem;
+}
+
+.component-channel-not-found-text {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+.component-channel-btn-back {
+    margin-top: 1rem;
+}
+
+/* --- Modal del Banner (Cropper) --- */
+.component-channel-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.component-channel-modal-overlay.active {
+    display: flex;
+    opacity: 1;
+}
+
+.component-channel-modal-content {
+    background: var(--bg-surface);
+    width: 90%;
+    max-width: 900px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+
+.component-channel-modal-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.component-channel-modal-title {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.component-channel-modal-subtitle {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.component-channel-crop-area {
+    position: relative;
+    width: 100%;
+    height: 450px;
+    background: #121212;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    user-select: none;
+}
+
+.component-channel-crop-area:active {
+    cursor: grabbing;
+}
+
+.component-channel-preview-img {
+    max-height: 100%;
+    width: auto;
+    transition: transform 0.05s linear;
+    transform-origin: center;
+    pointer-events: none;
+    will-change: transform;
+}
+
+.component-channel-safe-zone {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.component-channel-zone-darkener {
+    flex: 1;
+    width: 100%;
+    background: rgba(0,0,0,0.6);
+}
+
+.component-channel-zone-desktop {
+    width: 100%;
+    height: 30%;
+    border-top: 1px dashed rgba(255,255,255,0.3);
+    border-bottom: 1px dashed rgba(255,255,255,0.3);
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.component-channel-zone-label {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: rgba(255,255,255,0.5);
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-shadow: 0 1px 2px black;
+}
+
+.component-channel-zone-all-devices {
+    width: 1546px;
+    max-width: 80%;
+    height: 100%;
+    background: rgba(0, 255, 0, 0.1);
+    border-left: 1px solid rgba(255,255,255,0.5);
+    border-right: 1px solid rgba(255,255,255,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.9);
+    font-weight: bold;
+    font-size: 0.9rem;
+    text-shadow: 0 1px 3px black;
+}
+
+.component-channel-controls {
+    padding: 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-surface);
+    z-index: 20;
+}
+
+.component-channel-zoom-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-secondary);
+}
+
+.component-channel-zoom-slider {
+    width: 200px;
+    accent-color: var(--text-primary);
+    cursor: pointer;
+}
+
+.component-channel-control-btns {
+    display: flex;
+    gap: 10px;
+}
+
+.component-channel-btn-cancel {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.component-channel-btn-save {
+    background: var(--text-primary);
+    color: var(--bg-app);
+    border: none;
+    padding: 8px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}

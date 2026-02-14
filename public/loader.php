@@ -15,9 +15,26 @@ $cleanSection = trim($cleanSection, '/');
 
 $matchedFile = null;
 $routeParams = []; 
+$viewingChannelUUID = null; // Variable para que la use channel-profile.php
+
+// === [CORRECCIÓN] Lógica específica para canales (c/UUID) ===
+// Esto permite que el loader entienda la ruta igual que el router.php
+if (strpos($cleanSection, 'c/') === 0) {
+    // Extraemos el UUID (lo que está después de c/)
+    $parts = explode('/', $cleanSection);
+    
+    if (isset($parts[1]) && !empty($parts[1])) {
+        $viewingChannelUUID = $parts[1]; // Asignamos la variable que espera la vista
+        $routeParams['uuid'] = $parts[1];
+    }
+    
+    // Forzamos la sección interna para buscar en routes.php
+    $cleanSection = 'channel-profile';
+}
+// =============================================================
 
 // 2. BÚSQUEDA DE RUTA UNIFICADA
-// A) Primero buscamos coincidencia exacta (ej: "main" o "settings/profile")
+// A) Primero buscamos coincidencia exacta (ej: "main", "settings/profile" o ahora "channel-profile")
 if (array_key_exists($cleanSection, $routes)) {
     $matchedFile = $routes[$cleanSection];
 } 
@@ -25,20 +42,18 @@ if (array_key_exists($cleanSection, $routes)) {
 else {
     foreach ($routes as $routeKey => $filePath) {
         // Verificamos si la sección solicitada EMPIEZA con esta ruta clave seguida de una barra
-        // Ejemplo: "channel/upload/123" empieza por "channel/upload/"
         if (strpos($cleanSection, $routeKey . '/') === 0) {
             $matchedFile = $filePath;
             
-            // Extraemos lo que sobra de la URL y lo guardamos como UUID
-            // Ejemplo: de "channel/upload/123" quitamos "channel/upload/" y queda "123"
+            // Extraemos lo que sobra de la URL
             $remaining = substr($cleanSection, strlen($routeKey) + 1);
-            $remaining = trim($remaining, '/'); // Limpieza extra
+            $remaining = trim($remaining, '/'); 
             
             if (!empty($remaining)) {
                 $routeParams['uuid'] = $remaining;
             }
             
-            break; // ¡Encontrado! Dejamos de buscar
+            break; // ¡Encontrado!
         }
     }
 }

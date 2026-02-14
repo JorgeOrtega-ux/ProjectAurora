@@ -65,11 +65,25 @@ const App = {
              initUrlManager();
         }
 
-        const path = window.location.pathname.replace(window.BASE_PATH, '').replace(/^\/+|\/+$/g, '');
+        // --- INICIO CORRECCIÓN ---
+        // Obtenemos la ruta relativa limpia
+        let path = window.location.pathname.replace(window.BASE_PATH, '').replace(/^\/+|\/+$/g, '');
+        
+        // Si la ruta empieza con 's/' (ej: s/channel/...), lo quitamos para que coincida con los casos del switch
+        if (path.startsWith('s/')) {
+            path = path.substring(2); 
+        }
+        // --- FIN CORRECCIÓN ---
+
         routeDispatcher(path || 'main');
 
         document.addEventListener('spa:view_loaded', (e) => {
-            routeDispatcher(e.detail.section);
+            // Aplicamos la misma limpieza por si acaso el evento trae la ruta cruda
+            let section = e.detail.section;
+            if (section.startsWith('s/')) {
+                section = section.substring(2);
+            }
+            routeDispatcher(section);
         });
     }
 };
@@ -106,23 +120,25 @@ function initGlobalSocketListeners() {
 function routeDispatcher(section) {
     updateSidebarState(section);
     
+    // Rutas de Studio: Upload
     if (section.startsWith('channel/upload')) {
         UploadController.init();
         return;
     }
     
+    // Rutas de Studio: Contenido
     if (section.startsWith('channel/my-content')) {
         ContentController.init();
         return;
     }
 
+    // Ruta de Watch
     if (section === 'watch') {
         WatchController.init();
         return;
     }
 
-    // [NUEVO] Detector de Rutas de Canal (empiezan con c/...)
-    // También aceptamos 'channel-profile' por si viene del router interno
+    // Detector de Rutas de Canal (empiezan con c/...) o router interno channel-profile
     if (section.startsWith('c/') || section === 'channel-profile') {
         ChannelProfileController.init();
         return;
@@ -188,6 +204,7 @@ function updateSidebarState(section) {
     else if (menus.main) menus.main.style.display = 'flex';
 
     // Para canales, a veces queremos mantener activo "Home" o nada
+    // Si NO es ruta de canal, intentamos marcar el link activo
     if (!section.startsWith('c/')) {
         const activeLink = sidebar.querySelector(`.menu-link[data-nav="${section}"]`);
         if (activeLink) activeLink.classList.add('active');

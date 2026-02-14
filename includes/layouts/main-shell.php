@@ -18,6 +18,7 @@
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components.css">
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components-studio.css">
      <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components-watch.css">
+     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components-channel.css">
 
     <script nonce="<?php echo $cspNonce; ?>">
         window.BASE_PATH = '<?php echo $basePath; ?>';
