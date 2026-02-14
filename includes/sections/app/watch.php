@@ -290,9 +290,19 @@ function formatCount($n) {
                         <p class="component-watch-desc-meta">
                             <span class="js-view-count"><?php echo number_format($interaction['views_count']); ?></span> visualizaciones • <?php echo date('d M Y', strtotime($videoData['created_at'])); ?>
                         </p>
-                        <p class="component-watch-desc-text">
-                            <?php echo nl2br(htmlspecialchars($videoData['description'] ?? '')); ?>
-                        </p>
+                        
+                        <?php 
+                        $fullDesc = $videoData['description'] ?? '';
+                        $descLimit = 955;
+                        $isLongDesc = mb_strlen($fullDesc) > $descLimit;
+                        $displayDesc = $isLongDesc ? mb_substr($fullDesc, 0, $descLimit) . '...' : $fullDesc;
+                        ?>
+
+                        <p class="component-watch-desc-text" id="video-description-text" data-full-text="<?php echo htmlspecialchars($fullDesc); ?>" data-truncated-text="<?php echo htmlspecialchars($displayDesc); ?>"><?php echo nl2br(htmlspecialchars($displayDesc)); ?></p>
+                        
+                        <?php if ($isLongDesc): ?>
+                            <button class="component-button text small js-read-more-desc" id="btn-toggle-description" data-action="expand" style="padding:0; margin-left:4px; height:auto; display:inline-block; color: var(--text-secondary); margin-top: 8px;">Leer más</button>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -302,8 +312,11 @@ function formatCount($n) {
                     <?php if (isset($_SESSION['user_id'])): ?>
                         <div class="component-watch-comment-input-row" id="main-comment-form-container">
                             <img src="<?php echo $currentUserAvatar; ?>" class="component-watch-avatar small">
-                            <div class="component-watch-comment-input-wrapper chat-style">
-                                <textarea id="comment-input-main" class="component-input auto-expand chat-input" placeholder="Añade un comentario..." rows="1"></textarea>
+                            <div class="component-watch-comment-input-wrapper chat-style" style="position: relative;">
+                                <textarea id="comment-input-main" class="component-input auto-expand chat-input" placeholder="Añade un comentario..." rows="1" maxlength="10000"></textarea>
+                                
+                                <span id="main-comment-counter" style="position: absolute; bottom: -18px; right: 0; font-size: 11px; color: var(--text-tertiary);">0 / 10000</span>
+                                
                                 <button class="component-input-embedded-btn" id="btn-submit-main" disabled title="Enviar">
                                     <span class="material-symbols-rounded">send</span>
                                 </button>

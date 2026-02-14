@@ -64,8 +64,36 @@ export const WatchController = {
 
             WatchController._interactions = new InteractionManager(videoElement, videoUuid, channelUuid);
             WatchController._comments = new CommentsSection(videoUuid, userAvatar);
+            
+            // 6. [NUEVO] Inicializar Toggle de Descripción
+            WatchController._initDescriptionToggle();
         } else {
             console.warn("WatchController: No se encontraron metadatos de interacción");
+        }
+    },
+
+    _initDescriptionToggle: () => {
+        const btn = document.getElementById('btn-toggle-description');
+        const textContainer = document.getElementById('video-description-text');
+
+        if (btn && textContainer) {
+            btn.addEventListener('click', () => {
+                const action = btn.dataset.action;
+                const fullText = textContainer.dataset.fullText;
+                const truncatedText = textContainer.dataset.truncatedText;
+
+                if (action === 'expand') {
+                    // Mostrar completo
+                    textContainer.textContent = fullText;
+                    btn.textContent = 'Leer menos';
+                    btn.dataset.action = 'collapse';
+                } else {
+                    // Volver a truncar
+                    textContainer.textContent = truncatedText;
+                    btn.textContent = 'Leer más';
+                    btn.dataset.action = 'expand';
+                }
+            });
         }
     },
 

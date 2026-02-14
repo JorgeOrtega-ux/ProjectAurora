@@ -31,12 +31,30 @@ export class CommentsSection {
     _initMainInput() {
         const mainInput = document.getElementById('comment-input-main');
         const mainBtn = document.getElementById('btn-submit-main');
+        const counter = document.getElementById('main-comment-counter');
+        const MAX_CHARS = 10000;
         
         if (mainInput && mainBtn) {
             mainInput.addEventListener('input', () => {
-                mainBtn.disabled = mainInput.value.trim().length === 0;
+                const currentLength = mainInput.value.length;
+                const isEmpty = mainInput.value.trim().length === 0;
+                
+                // 1. Gestión del botón enviar
+                mainBtn.disabled = isEmpty || currentLength > MAX_CHARS;
+                
+                // 2. Auto-resize
                 mainInput.style.height = 'auto';
                 mainInput.style.height = mainInput.scrollHeight + 'px';
+
+                // 3. Actualizar contador
+                if (counter) {
+                    counter.textContent = `${currentLength.toLocaleString()} / ${MAX_CHARS.toLocaleString()}`;
+                    if (currentLength > MAX_CHARS) {
+                        counter.style.color = 'var(--color-error, #ff4444)';
+                    } else {
+                        counter.style.color = 'var(--text-tertiary)';
+                    }
+                }
             });
 
             mainBtn.addEventListener('click', () => {
@@ -44,13 +62,14 @@ export class CommentsSection {
                     mainInput.value = '';
                     mainInput.style.height = 'auto';
                     mainBtn.disabled = true;
+                    if (counter) counter.textContent = `0 / ${MAX_CHARS.toLocaleString()}`;
                 });
             });
             
             // Opcional: Ctrl+Enter para enviar
             mainInput.addEventListener('keydown', (e) => {
                 if (e.ctrlKey && e.key === 'Enter') {
-                    if (mainInput.value.trim().length > 0) {
+                    if (mainInput.value.trim().length > 0 && mainInput.value.length <= MAX_CHARS) {
                         mainBtn.click();
                     }
                 }
@@ -90,6 +109,28 @@ export class CommentsSection {
                 if (toggleRepliesBtn) {
                     const commentId = toggleRepliesBtn.dataset.id;
                     this.handleRepliesToggle(commentId, toggleRepliesBtn);
+                    return;
+                }
+
+                // 5. LEER MÁS / LEER MENOS (Texto Largo)
+                const readMoreBtn = e.target.closest('.js-read-more');
+                if (readMoreBtn) {
+                    const container = readMoreBtn.closest('.component-comment-text-wrapper');
+                    const shortText = container.querySelector('.js-text-short');
+                    const fullText = container.querySelector('.js-text-full');
+                    const action = readMoreBtn.dataset.action; // 'expand' o 'collapse'
+
+                    if (action === 'expand') {
+                        shortText.style.display = 'none';
+                        fullText.style.display = 'inline';
+                        readMoreBtn.textContent = 'Leer menos';
+                        readMoreBtn.dataset.action = 'collapse';
+                    } else {
+                        shortText.style.display = 'inline';
+                        fullText.style.display = 'none';
+                        readMoreBtn.textContent = 'Leer más';
+                        readMoreBtn.dataset.action = 'expand';
+                    }
                     return;
                 }
             });
@@ -190,7 +231,6 @@ export class CommentsSection {
         if (!isReply && repliesCount > 0) {
             this.repliesStore.set(comment.id, comment.replies);
 
-            // CORRECCIÓN DE ORDEN: Primero el Container, luego el Botón
             repliesUi = `
                 <div class="component-comment-replies-wrapper">
                     <div class="component-comment-replies" id="replies-container-${comment.id}"></div>
@@ -203,7 +243,6 @@ export class CommentsSection {
             `;
         } else if (!isReply) {
             this.repliesStore.set(comment.id, []); 
-            // Wrapper vacío con el orden correcto preparado
             repliesUi = `
                 <div class="component-comment-replies-wrapper" id="replies-wrapper-${comment.id}">
                     <div class="component-comment-replies" id="replies-container-${comment.id}"></div>
@@ -214,6 +253,25 @@ export class CommentsSection {
         const activeLike = comment.user_interaction === 'like' ? 'active' : '';
         const activeDislike = comment.user_interaction === 'dislike' ? 'active' : '';
         const likesCount = comment.likes_count > 0 ? comment.likes_count : '';
+
+        // --- LÓGICA DE TRUNCADO DE TEXTO ---
+        const VISUAL_LIMIT = 300;
+        const content = comment.content || '';
+        let contentHtml = '';
+
+        if (content.length > VISUAL_LIMIT) {
+            const shortContent = content.substring(0, VISUAL_LIMIT) + '...';
+            contentHtml = `
+                <div class="component-comment-text-wrapper">
+                    <span class="js-text-short">${shortContent}</span>
+                    <span class="js-text-full" style="display:none;">${content}</span>
+                    <button class="component-button text small js-read-more" data-action="expand" style="padding:0; margin-left:4px; height:auto; display:inline-block; color: var(--text-secondary);">Leer más</button>
+                </div>
+            `;
+        } else {
+            contentHtml = `<div class="component-comment-text">${content}</div>`;
+        }
+        // -----------------------------------
 
         return `
         <div class="component-comment-item ${isReply ? 'is-reply' : ''}" id="comment-${comment.id}">
@@ -227,7 +285,7 @@ export class CommentsSection {
                     <span class="component-comment-date">${dateStr}</span>
                 </div>
                 
-                <div class="component-comment-text">${comment.content}</div>
+                ${contentHtml}
                 
                 <div class="component-comment-actions">
                     <div class="component-watch-joined-pill comment-size">
@@ -268,18 +326,22 @@ export class CommentsSection {
         document.querySelectorAll('.component-reply-box-container').forEach(el => el.innerHTML = '');
 
         const myAvatar = this.currentUserAvatar;
+        const MAX_CHARS = 10000;
         
         container.innerHTML = `
             <div class="component-watch-comment-input-row reply-mode">
                 <img src="${myAvatar}" class="component-watch-avatar small">
-                <div class="component-watch-comment-input-wrapper chat-style">
-                    <textarea id="reply-input-${commentId}" class="component-input auto-expand chat-input" placeholder="Añade una respuesta..." rows="1"></textarea>
+                <div class="component-watch-comment-input-wrapper chat-style" style="position:relative;">
+                    <textarea id="reply-input-${commentId}" class="component-input auto-expand chat-input" placeholder="Añade una respuesta..." rows="1" maxlength="${MAX_CHARS}"></textarea>
+                    
+                    <span id="reply-counter-${commentId}" style="position: absolute; bottom: -18px; right: 0; font-size: 11px; color: var(--text-tertiary);">0 / ${MAX_CHARS.toLocaleString()}</span>
+
                     <button class="component-input-embedded-btn js-submit-reply" disabled title="Responder">
                         <span class="material-symbols-rounded">send</span>
                     </button>
                 </div>
             </div>
-            <div style="display:flex; justify-content:flex-end; margin-top:-8px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:flex-end; margin-top:8px; margin-bottom:12px;">
                  <button class="component-button text small js-cancel-reply">Cancelar</button>
             </div>
         `;
@@ -287,13 +349,26 @@ export class CommentsSection {
         const input = document.getElementById(`reply-input-${commentId}`);
         const btnSubmit = container.querySelector('.js-submit-reply');
         const btnCancel = container.querySelector('.js-cancel-reply');
+        const counter = document.getElementById(`reply-counter-${commentId}`);
 
         input.focus();
 
         input.addEventListener('input', () => {
-            btnSubmit.disabled = input.value.trim().length === 0;
+            const len = input.value.length;
+            const isEmpty = input.value.trim().length === 0;
+
+            btnSubmit.disabled = isEmpty || len > MAX_CHARS;
             input.style.height = 'auto';
             input.style.height = input.scrollHeight + 'px';
+
+            if (counter) {
+                counter.textContent = `${len.toLocaleString()} / ${MAX_CHARS.toLocaleString()}`;
+                if (len > MAX_CHARS) {
+                    counter.style.color = 'var(--color-error, #ff4444)';
+                } else {
+                    counter.style.color = 'var(--text-tertiary)';
+                }
+            }
         });
 
         btnCancel.addEventListener('click', () => {

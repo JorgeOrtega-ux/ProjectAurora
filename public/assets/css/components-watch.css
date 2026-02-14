@@ -72,13 +72,24 @@
     font-size: 0.9rem; color: var(--text-primary); margin-top: 4px; 
     transition: background-color 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
     border: 1px solid transparent; 
+    /* PREVENIR DESBORDAMIENTO EN DESCRIPCIÓN */
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 .component-watch-desc-box:hover {
     background-color: rgba(var(--dominant-rgb), 0.15); border-color: rgba(var(--dominant-rgb), 0.3);
     box-shadow: 0 4px 20px rgba(0,0,0,0.1);
 }
 .component-watch-desc-meta { font-weight: 600; font-size: 0.85rem; color: var(--text-primary); margin-bottom: 8px; }
-.component-watch-desc-text { white-space: pre-wrap; line-height: 1.5; color: var(--text-secondary); }
+
+.component-watch-desc-text { 
+    white-space: pre-wrap; 
+    line-height: 1.5; 
+    color: var(--text-secondary);
+    /* SEGURIDAD EXTRA PARA TEXTO */
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
 
 /* Controls Overlay */
 .component-watch-controls {
@@ -206,7 +217,11 @@
 .component-watch-layout { display: flex; gap: 24px; width: 100%; max-width: 1700px; margin: 0 auto; padding: 24px; align-items: flex-start; }
 .component-watch-col-left { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 .component-watch-meta-card { display: flex; flex-direction: column; gap: 12px; }
-.component-watch-title { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0; }
+.component-watch-title { 
+    font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0; 
+    /* EVITAR DESBORDAMIENTO EN TÍTULO */
+    overflow-wrap: anywhere; word-break: break-word;
+}
 .component-watch-author-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
 .component-watch-author-info { display: flex; align-items: center; gap: 12px; }
 .component-watch-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
@@ -291,6 +306,7 @@
     margin-bottom: 24px;
     align-items: flex-start;
     position: relative;
+    max-width: 100%; /* Asegura que no crezca más que el contenedor padre */
 }
 
 /* Evitar que el avatar se aplaste */
@@ -313,7 +329,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    min-width: 0;
+    min-width: 0; /* CRÍTICO: Permite que flexbox encoja el contenido si es necesario */
     gap: 4px;
 }
 
@@ -342,6 +358,9 @@
     line-height: 1.5;
     white-space: pre-wrap;
     margin-bottom: 6px;
+    /* PREVENIR DESBORDAMIENTO HORIZONTAL */
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 /* Acciones (Like, Reply) */
@@ -372,6 +391,7 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    width: 100%; /* Asegurar ancho */
 }
 
 /* Botón para Mostrar/Ocultar respuestas (MODIFICADO: Blanco y con borde) */
@@ -472,4 +492,49 @@
 @keyframes slideDown { 
     from { opacity: 0; transform: translateY(-10px); } 
     to { opacity: 1; transform: translateY(0); } 
+}
+
+/* =========================================
+   NUEVOS ESTILOS (Turno Actual)
+   ========================================= */
+
+/* Botón Leer más en comentarios (Discreto) */
+.js-read-more {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--text-secondary);
+    font-weight: 500;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: color 0.2s;
+}
+.js-read-more:hover {
+    color: var(--text-primary);
+    text-decoration: underline;
+}
+
+/* Wrapper del texto para controlar márgenes */
+.component-comment-text-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 6px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    white-space: pre-wrap;
+    /* PREVENIR DESBORDAMIENTO EN WRAPPER */
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    max-width: 100%;
+}
+
+/* Contadores de caracteres */
+#main-comment-counter, 
+.reply-counter {
+    font-family: 'Roboto Mono', monospace;
+    transition: color 0.2s;
+    pointer-events: none;
+    user-select: none;
 }

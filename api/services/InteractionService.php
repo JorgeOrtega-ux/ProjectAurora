@@ -328,6 +328,11 @@ class InteractionService {
         $userId = $_SESSION['user_id'];
         $content = trim($content);
 
+        // VALIDACIÓN DE LONGITUD MÁXIMA
+        if (mb_strlen($content) > 10000) {
+            return ['success' => false, 'message' => 'El comentario es demasiado largo. Máximo 10,000 caracteres.'];
+        }
+
         if (empty($content)) {
             return ['success' => false, 'message' => 'El comentario no puede estar vacío'];
         }
