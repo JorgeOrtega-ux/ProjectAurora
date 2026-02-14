@@ -13,6 +13,9 @@ export class CommentsSection {
             limit: 20,
             total: 0
         };
+
+        // Almacén para guardar las respuestas de cada comentario (ID -> Array de respuestas)
+        this.repliesStore = new Map();
         
         this.listContainer = document.getElementById('comments-list');
         
@@ -84,7 +87,69 @@ export class CommentsSection {
                     this.toggleInteraction(commentId, 'dislike');
                     return;
                 }
+
+                // 4. Delegación para MOSTRAR/OCULTAR RESPUESTAS
+                const toggleRepliesBtn = e.target.closest('.js-toggle-replies');
+                if (toggleRepliesBtn) {
+                    const commentId = toggleRepliesBtn.dataset.id;
+                    this.handleRepliesToggle(commentId, toggleRepliesBtn);
+                    return;
+                }
             });
+        }
+    }
+
+    /**
+     * Lógica principal para mostrar respuestas por lotes de 10
+     */
+    handleRepliesToggle(commentId, btnElement) {
+        const container = document.getElementById(`replies-container-${commentId}`);
+        // IMPORTANTE: Aseguramos que el ID sea numérico para buscar en el Map
+        const replies = this.repliesStore.get(parseInt(commentId)) || [];
+        
+        // Estado actual del botón
+        const isHiding = btnElement.dataset.action === 'hide';
+        
+        if (isHiding) {
+            // Acción: OCULTAR TODO
+            container.innerHTML = '';
+            btnElement.dataset.action = 'show';
+            // Restaurar texto original con el total
+            btnElement.innerHTML = `
+                <span class="material-symbols-rounded" style="font-size: 18px; margin-right:6px;">expand_more</span>
+                Ver ${replies.length} respuestas
+            `;
+            return;
+        }
+
+        // Acción: MOSTRAR (Cargar lote)
+        const currentCount = container.children.length;
+        const BATCH_SIZE = 10;
+        const nextBatch = replies.slice(currentCount, currentCount + BATCH_SIZE);
+
+        // Renderizar el lote
+        nextBatch.forEach(reply => {
+            const html = this.renderCommentItem(reply, true);
+            container.insertAdjacentHTML('beforeend', html);
+        });
+
+        // Calcular nuevo estado
+        const newTotalShown = currentCount + nextBatch.length;
+        
+        if (newTotalShown >= replies.length) {
+            // Ya se mostraron todas -> Cambiar a "Ocultar"
+            btnElement.dataset.action = 'hide';
+            btnElement.innerHTML = `
+                <span class="material-symbols-rounded" style="font-size: 18px; margin-right:6px;">expand_less</span>
+                Ocultar respuestas
+            `;
+        } else {
+            // Aún quedan más -> Botón "Mostrar más"
+            btnElement.dataset.action = 'show';
+            btnElement.innerHTML = `
+                <span class="material-symbols-rounded" style="font-size: 18px; margin-right:6px;">subdirectory_arrow_right</span>
+                Mostrar más
+            `;
         }
     }
 
@@ -93,7 +158,6 @@ export class CommentsSection {
         this.state.isLoading = true;
 
         try {
-            // Nota: Se asume que LoadComments ahora devuelve stats (likes_count, user_interaction)
             const response = await ApiService.post(ApiRoutes.Interaction.LoadComments, {
                 video_uuid: this.videoUuid,
                 limit: this.state.limit,
@@ -103,6 +167,7 @@ export class CommentsSection {
             if (response.success) {
                 this.listContainer.innerHTML = '';
                 this.state.total = response.total_count;
+                this.repliesStore.clear(); // Limpiar memoria al recargar
 
                 if (response.comments.length === 0) {
                     this.listContainer.innerHTML = `
@@ -127,69 +192,87 @@ export class CommentsSection {
         }
     }
 
-renderCommentItem(comment, isReply = false) {
-    const isLogged = this.currentUserAvatar !== null;
-    
-    // 1. Generar HTML de respuestas (Recursividad)
-    let repliesHtml = '';
-    if (comment.replies && comment.replies.length > 0) {
-        repliesHtml = `<div class="component-comment-replies">`;
-        comment.replies.forEach(reply => {
-            // Nota: Pasamos true para indicar que es una respuesta
-            repliesHtml += this.renderCommentItem(reply, true);
-        });
-        repliesHtml += `</div>`;
-    }
-
-    const dateStr = new Date(comment.created_at).toLocaleDateString();
-
-    // 2. Determinar estado activo de los botones (Visual)
-    const activeLike = comment.user_interaction === 'like' ? 'active' : '';
-    const activeDislike = comment.user_interaction === 'dislike' ? 'active' : '';
-
-    // 3. Formatear contadores (para no mostrar "0")
-    const likesCount = comment.likes_count > 0 ? comment.likes_count : '';
-    const dislikesCount = comment.dislikes_count > 0 ? comment.dislikes_count : '';
-
-    return `
-    <div class="component-comment-item ${isReply ? 'is-reply' : ''}" id="comment-${comment.id}">
-        <a href="/ProjectAurora/channel/${comment.user_uuid}" class="component-comment-avatar-link">
-            <img src="${comment.avatar_url}" alt="${comment.username}" class="component-comment-avatar">
-        </a>
+    renderCommentItem(comment, isReply = false) {
+        const isLogged = this.currentUserAvatar !== null;
         
-        <div class="component-comment-content">
-            <div class="component-comment-header">
-                <a href="/ProjectAurora/channel/${comment.user_uuid}" class="component-comment-author">${comment.username}</a>
-                <span class="component-comment-date">${dateStr}</span>
-            </div>
-            
-            <div class="component-comment-text">${comment.content}</div>
-            
-            <div class="component-comment-actions">
-                <button class="component-button icon-only small js-like-trigger ${activeLike}" data-id="${comment.id}" title="Me gusta">
-                    <span class="material-symbols-rounded" style="font-size: 18px;">thumb_up</span>
-                    <span class="count-label" style="font-size: 12px; margin-left: 4px;">${likesCount}</span>
-                </button>
+        // 1. Gestión de Respuestas (Batching System)
+        let repliesUi = '';
+        
+        // Determinamos si hay respuestas usando el ARRAY
+        const repliesCount = comment.replies ? comment.replies.length : 0;
 
-                <button class="component-button icon-only small js-dislike-trigger ${activeDislike}" data-id="${comment.id}" title="No me gusta">
-                    <span class="material-symbols-rounded" style="font-size: 18px;">thumb_down</span>
-                    <span class="count-label" style="font-size: 12px; margin-left: 4px;">${dislikesCount}</span>
-                </button>
-                
-                ${isLogged && !isReply ? `
-                    <button class="component-button text small js-reply-trigger" data-id="${comment.id}">
-                        Responder
+        // Solo procesamos respuestas si NO somos ya una respuesta y si hay respuestas > 0
+        if (!isReply && repliesCount > 0) {
+            // Guardamos las respuestas en memoria
+            this.repliesStore.set(comment.id, comment.replies);
+
+            // Generamos la UI del botón y el contenedor vacío
+            repliesUi = `
+                <div class="component-comment-replies-wrapper">
+                    <button class="component-watch-replies-toggle js-toggle-replies" data-id="${comment.id}" data-action="show">
+                        <span class="material-symbols-rounded" style="font-size: 18px; margin-right:6px;">expand_more</span>
+                        Ver ${repliesCount} respuestas
                     </button>
-                ` : ''}
+                    <div class="component-comment-replies" id="replies-container-${comment.id}">
+                        </div>
+                </div>
+            `;
+        } else if (!isReply) {
+            // Inicializamos el store vacío para futuros comentarios
+            this.repliesStore.set(comment.id, []); 
+            // Contenedor "wrapper" necesario para que injectNewComment pueda encontrar dónde insertar el botón
+            repliesUi = `
+                <div class="component-comment-replies-wrapper" id="replies-wrapper-${comment.id}">
+                    <div class="component-comment-replies" id="replies-container-${comment.id}"></div>
+                </div>`;
+        }
+
+        const dateStr = new Date(comment.created_at).toLocaleDateString();
+
+        const activeLike = comment.user_interaction === 'like' ? 'active' : '';
+        const activeDislike = comment.user_interaction === 'dislike' ? 'active' : '';
+        const likesCount = comment.likes_count > 0 ? comment.likes_count : '';
+        const dislikesCount = comment.dislikes_count > 0 ? comment.dislikes_count : '';
+
+        return `
+        <div class="component-comment-item ${isReply ? 'is-reply' : ''}" id="comment-${comment.id}">
+            <a href="/ProjectAurora/channel/${comment.user_uuid}" class="component-comment-avatar-link">
+                <img src="${comment.avatar_url}" alt="${comment.username}" class="component-comment-avatar">
+            </a>
+            
+            <div class="component-comment-content">
+                <div class="component-comment-header">
+                    <a href="/ProjectAurora/channel/${comment.user_uuid}" class="component-comment-author">${comment.username}</a>
+                    <span class="component-comment-date">${dateStr}</span>
+                </div>
+                
+                <div class="component-comment-text">${comment.content}</div>
+                
+                <div class="component-comment-actions">
+                    <button class="component-button icon-only small js-like-trigger ${activeLike}" data-id="${comment.id}" title="Me gusta">
+                        <span class="material-symbols-rounded" style="font-size: 18px;">thumb_up</span>
+                        <span class="count-label" style="font-size: 12px; margin-left: 4px;">${likesCount}</span>
+                    </button>
+
+                    <button class="component-button icon-only small js-dislike-trigger ${activeDislike}" data-id="${comment.id}" title="No me gusta">
+                        <span class="material-symbols-rounded" style="font-size: 18px;">thumb_down</span>
+                        <span class="count-label" style="font-size: 12px; margin-left: 4px;">${dislikesCount}</span>
+                    </button>
+                    
+                    ${isLogged && !isReply ? `
+                        <button class="component-button text small js-reply-trigger" data-id="${comment.id}">
+                            Responder
+                        </button>
+                    ` : ''}
+                </div>
+
+                <div id="reply-box-container-${comment.id}" class="component-reply-box-container"></div>
+
+                ${repliesUi}
             </div>
-
-            <div id="reply-box-container-${comment.id}" class="component-reply-box-container"></div>
-
-            ${repliesHtml}
         </div>
-    </div>
-    `;
-}
+        `;
+    }
 
     toggleReplyBox(commentId) {
         const container = document.getElementById(`reply-box-container-${commentId}`);
@@ -200,7 +283,6 @@ renderCommentItem(comment, isReply = false) {
             return;
         }
 
-        // Cerrar otras cajas abiertas para limpieza visual
         document.querySelectorAll('.component-reply-box-container').forEach(el => el.innerHTML = '');
 
         const myAvatar = this.currentUserAvatar;
@@ -243,56 +325,45 @@ renderCommentItem(comment, isReply = false) {
         });
     }
 
-    // --- MODIFICACIÓN 3: Lógica Interactiva (Like/Dislike) ---
-   // Archivo: public/assets/js/modules/watch/CommentsSection.js
-
-async toggleInteraction(commentId, type) {
-    if (!this.currentUserAvatar) {
-        ToastManager.show('Debes iniciar sesión', 'info');
-        return;
-    }
-
-    const commentEl = document.getElementById(`comment-${commentId}`);
-    if (!commentEl) return;
-
-    // Selectores actualizados para buscar dentro del elemento
-    const btnLike = commentEl.querySelector('.js-like-trigger');
-    const btnDislike = commentEl.querySelector('.js-dislike-trigger');
-    
-    // Referencia al contador correcto según el tipo
-    const targetBtn = type === 'like' ? btnLike : btnDislike;
-    const countLabel = targetBtn.querySelector('.count-label');
-try {
-        // CORRECCIÓN: Usamos el OBJETO de ApiRoutes, no el string.
-        const response = await ApiService.post(ApiRoutes.Interaction.CommentLike, {
-            comment_id: commentId,
-            type: type
-        });
-
-        if (response.success) {
-            // Limpiar clases activas
-            btnLike.classList.remove('active');
-            btnDislike.classList.remove('active');
-
-            // Actualizar contadores visuales (usando los datos frescos del servidor)
-            const labelLike = btnLike.querySelector('.count-label');
-            const labelDislike = btnDislike.querySelector('.count-label');
-
-            labelLike.textContent = response.likes > 0 ? response.likes : '';
-            labelDislike.textContent = response.dislikes > 0 ? response.dislikes : '';
-
-            // Activar botón si corresponde
-            if (response.action !== 'removed') {
-                if (response.type === 'like') btnLike.classList.add('active');
-                if (response.type === 'dislike') btnDislike.classList.add('active');
-            }
-        } else {
-            ToastManager.show(response.message || 'Error al interactuar', 'error');
+    async toggleInteraction(commentId, type) {
+        if (!this.currentUserAvatar) {
+            ToastManager.show('Debes iniciar sesión', 'info');
+            return;
         }
-    } catch (e) {
-        console.error(e);
+
+        const commentEl = document.getElementById(`comment-${commentId}`);
+        if (!commentEl) return;
+
+        const btnLike = commentEl.querySelector('.js-like-trigger');
+        const btnDislike = commentEl.querySelector('.js-dislike-trigger');
+        
+        try {
+            const response = await ApiService.post(ApiRoutes.Interaction.CommentLike, {
+                comment_id: commentId,
+                type: type
+            });
+
+            if (response.success) {
+                btnLike.classList.remove('active');
+                btnDislike.classList.remove('active');
+
+                const labelLike = btnLike.querySelector('.count-label');
+                const labelDislike = btnDislike.querySelector('.count-label');
+
+                labelLike.textContent = response.likes > 0 ? response.likes : '';
+                labelDislike.textContent = response.dislikes > 0 ? response.dislikes : '';
+
+                if (response.action !== 'removed') {
+                    if (response.type === 'like') btnLike.classList.add('active');
+                    if (response.type === 'dislike') btnDislike.classList.add('active');
+                }
+            } else {
+                ToastManager.show(response.message || 'Error al interactuar', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+        }
     }
-}
 
     async postComment(content, parentId = null, onSuccess) {
         if (this.state.isLoading) return;
@@ -330,26 +401,60 @@ try {
             this.state.total++;
         } 
         else {
-            // Lógica para inyectar respuesta
-            // Buscamos el padre visual correcto
-            // Si el padre original era una respuesta, el sistema de backend lo aplanó al abuelo.
-            // Buscamos el elemento DOM del parent_id retornado por el backend.
+            // Inyectar Respuesta y Actualizar UI de Lotes
             const parentId = commentData.parent_id;
-            const parentNode = document.getElementById(`comment-${parentId}`);
+            let repliesContainer = document.getElementById(`replies-container-${parentId}`);
             
-            if (parentNode) {
-                const contentDiv = parentNode.querySelector('.component-comment-content');
-                let repliesContainer = contentDiv.querySelector('.component-comment-replies');
-                
-                if (!repliesContainer) {
-                    repliesContainer = document.createElement('div');
-                    repliesContainer.className = 'component-comment-replies';
-                    contentDiv.appendChild(repliesContainer);
+            // Buscar o crear contenedor si no existe
+            if (!repliesContainer) {
+                const parentNode = document.getElementById(`comment-${parentId}`);
+                if (parentNode) {
+                    const contentDiv = parentNode.querySelector('.component-comment-content');
+                    // Usamos el wrapper que preparamos en renderCommentItem
+                    let wrapper = parentNode.querySelector('.component-comment-replies-wrapper');
+                    if (!wrapper) {
+                        wrapper = document.createElement('div');
+                        wrapper.className = 'component-comment-replies-wrapper';
+                        wrapper.id = `replies-wrapper-${parentId}`;
+                        contentDiv.appendChild(wrapper);
+                    }
+                    
+                    repliesContainer = wrapper.querySelector('.component-comment-replies');
+                    if (!repliesContainer) {
+                        repliesContainer = document.createElement('div');
+                        repliesContainer.className = 'component-comment-replies';
+                        repliesContainer.id = `replies-container-${parentId}`;
+                        wrapper.appendChild(repliesContainer);
+                    }
                 }
+            }
 
-                // Renderizamos como respuesta (isReply = true)
+            if (repliesContainer) {
+                // 1. Renderizar la nueva respuesta al final visualmente
                 const html = this.renderCommentItem(commentData, true);
                 repliesContainer.insertAdjacentHTML('beforeend', html);
+                
+                // 2. Actualizar el Store interno
+                let storedReplies = this.repliesStore.get(parseInt(parentId));
+                if (!storedReplies) {
+                    storedReplies = [];
+                    this.repliesStore.set(parseInt(parentId), storedReplies);
+                }
+                storedReplies.push(commentData);
+
+                // 3. Actualizar el botón "Ver X respuestas" si existe
+                const parentNode = document.getElementById(`comment-${parentId}`);
+                let toggleBtn = parentNode.querySelector(`.js-toggle-replies[data-id="${parentId}"]`);
+
+                if (toggleBtn) {
+                    // Si ya existe el botón, solo actualizamos el contador en el texto si NO está en modo "Ocultar"
+                    if (toggleBtn.dataset.action === 'show') {
+                         toggleBtn.innerHTML = `
+                            <span class="material-symbols-rounded" style="font-size: 18px; margin-right:6px;">expand_more</span>
+                            Ver ${storedReplies.length} respuestas
+                        `;
+                    }
+                }
             }
         }
     }
