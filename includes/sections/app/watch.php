@@ -339,6 +339,8 @@ function formatCount($n) {
         <input type="hidden" id="watch-sprite-source" value="<?php echo !empty($videoData['sprite_path']) ? '/ProjectAurora/' . ltrim($videoData['sprite_path'], '/') : ''; ?>">
         <input type="hidden" id="watch-vtt-source" value="<?php echo !empty($videoData['vtt_path']) ? '/ProjectAurora/' . ltrim($videoData['vtt_path'], '/') : ''; ?>">
 
+        
+
     <?php else: ?>
         <div class="component-layout-centered">
             <div class="component-card component-watch-error-state">

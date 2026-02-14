@@ -7,6 +7,10 @@ export class CommentsSection {
         this.videoUuid = videoUuid;
         this.currentUserAvatar = currentUserAvatar;
         
+        // Intentamos obtener datos extra del usuario global si existen (para la UI optimista)
+        this.currentUserName = window.Aurora?.user?.username || 'Tú';
+        this.currentUserUuid = window.Aurora?.user?.uuid || 'me';
+        
         this.state = {
             isLoading: false,
             offset: 0,
@@ -28,9 +32,6 @@ export class CommentsSection {
 
     /**
      * Lógica centralizada para el comportamiento ROW -> COLUMN (UX)
-     * 1. Inicialmente ROW (Compacto).
-     * 2. Al hacer Focus (Click) -> Pasa a COLUMN (Expandido).
-     * 3. Al hacer Blur (Salir) -> Si está vacío vuelve a ROW, si tiene texto se queda en COLUMN.
      */
     _attachExpandLogic(input, wrapper) {
         // 1. FOCUS: Expandir a Columna al hacer click
@@ -40,19 +41,16 @@ export class CommentsSection {
 
         // 2. BLUR: Contraer solo si está vacío
         input.addEventListener('blur', () => {
-            // Pequeño timeout para permitir clicks en el botón enviar antes de que cambie el layout
             setTimeout(() => {
                 const hasText = input.value.trim().length > 0;
-                // Si NO hay texto, volvemos al diseño compacto (Row)
                 if (!hasText) {
                     wrapper.classList.remove('is-expanded');
                     input.style.height = 'auto'; // Reset de altura
                 }
-                // Si HAY texto, no hacemos nada (se mantiene en columna)
             }, 150);
         });
 
-        // 3. INPUT: Auto-resize vertical (solo afecta la altura en píxeles, el layout Column/Row lo maneja la clase)
+        // 3. INPUT: Auto-resize vertical
         input.addEventListener('input', () => {
             input.style.height = 'auto';
             input.style.height = input.scrollHeight + 'px';
@@ -65,7 +63,6 @@ export class CommentsSection {
         const MAX_CHARS = 10000;
         
         if (mainInput && mainBtn) {
-            // Usamos el ID del HTML 'watch.php' para asegurar que encontramos el wrapper correcto
             const wrapper = document.getElementById('comment-wrapper-box');
 
             if (wrapper) {
@@ -80,13 +77,17 @@ export class CommentsSection {
             });
 
             mainBtn.addEventListener('click', () => {
-                this.postComment(mainInput.value, null, () => {
-                    mainInput.value = '';
-                    mainInput.style.height = 'auto';
-                    mainBtn.disabled = true;
-                    
-                    // Al enviar, forzamos el reset a Row (porque ahora está vacío)
-                    if (wrapper) wrapper.classList.remove('is-expanded');
+                // UI Optimista: Limpiamos input inmediatamente
+                const text = mainInput.value;
+                mainInput.value = '';
+                mainInput.style.height = 'auto';
+                mainBtn.disabled = true;
+                if (wrapper) wrapper.classList.remove('is-expanded');
+
+                this.postComment(text, null, null, () => {
+                    // OnError: Restaurar texto si falla
+                    mainInput.value = text;
+                    if (wrapper) wrapper.classList.add('is-expanded');
                 });
             });
             
@@ -159,7 +160,8 @@ export class CommentsSection {
 
     handleRepliesToggle(commentId, btnElement) {
         const container = document.getElementById(`replies-container-${commentId}`);
-        const replies = this.repliesStore.get(parseInt(commentId)) || [];
+        // [UUID FIX] Eliminado parseInt, usamos string directo
+        const replies = this.repliesStore.get(commentId) || [];
         const isHiding = btnElement.dataset.action === 'hide';
         
         if (isHiding) {
@@ -226,27 +228,34 @@ export class CommentsSection {
         const isLogged = this.currentUserAvatar !== null;
         let repliesUi = '';
         const repliesCount = comment.replies ? comment.replies.length : 0;
+        const commentId = comment.id || comment.uuid; // Soporte para UUID
+
+        // Estado pendiente (Optimistic UI)
+        const isPending = comment.is_pending === true;
+        const opacityStyle = isPending ? 'opacity: 0.6;' : '';
+        const pendingBadge = isPending ? '<span class="js-pending-label" style="font-size:10px; color:var(--primary-color); margin-left:5px; font-style:italic;">(Enviando...)</span>' : '';
 
         if (!isReply) {
-             this.repliesStore.set(comment.id, comment.replies || []);
+             // [UUID FIX] Eliminado parseInt, clave string
+             this.repliesStore.set(commentId, comment.replies || []);
              if (repliesCount > 0) {
                 repliesUi = `
                     <div class="component-comment-replies-wrapper">
-                        <div class="component-comment-replies" id="replies-container-${comment.id}"></div>
-                        <button class="component-watch-replies-toggle js-toggle-replies" data-id="${comment.id}" data-action="show">
+                        <div class="component-comment-replies" id="replies-container-${commentId}"></div>
+                        <button class="component-watch-replies-toggle js-toggle-replies" data-id="${commentId}" data-action="show">
                             <span class="material-symbols-rounded" style="font-size: 18px; margin-right:6px;">expand_more</span>
                             Ver ${repliesCount} respuestas
                         </button>
                     </div>`;
              } else {
                 repliesUi = `
-                    <div class="component-comment-replies-wrapper" id="replies-wrapper-${comment.id}">
-                        <div class="component-comment-replies" id="replies-container-${comment.id}"></div>
+                    <div class="component-comment-replies-wrapper" id="replies-wrapper-${commentId}">
+                        <div class="component-comment-replies" id="replies-container-${commentId}"></div>
                     </div>`;
              }
         }
 
-        const dateStr = new Date(comment.created_at).toLocaleDateString();
+        const dateStr = isPending ? 'Justo ahora' : new Date(comment.created_at).toLocaleDateString();
         const activeLike = comment.user_interaction === 'like' ? 'active' : '';
         const activeDislike = comment.user_interaction === 'dislike' ? 'active' : '';
         const likesCount = comment.likes_count > 0 ? comment.likes_count : '';
@@ -266,36 +275,36 @@ export class CommentsSection {
             contentHtml = `<div class="component-comment-text">${content}</div>`;
         }
 
-        // --- CAMBIO AQUÍ: Botón Responder con estilo Píldora ---
         return `
-        <div class="component-comment-item ${isReply ? 'is-reply' : ''}" id="comment-${comment.id}">
+        <div class="component-comment-item ${isReply ? 'is-reply' : ''}" id="comment-${commentId}" style="${opacityStyle}">
             <a href="/ProjectAurora/channel/${comment.user_uuid}" class="component-comment-avatar-link">
-                <img src="${comment.avatar_url}" alt="${comment.username}" class="component-comment-avatar">
+                <img src="${comment.avatar_url || comment.user_avatar}" alt="${comment.username}" class="component-comment-avatar">
             </a>
             <div class="component-comment-content">
                 <div class="component-comment-header">
                     <a href="/ProjectAurora/channel/${comment.user_uuid}" class="component-comment-author">${comment.username}</a>
                     <span class="component-comment-date">${dateStr}</span>
+                    ${pendingBadge}
                 </div>
                 ${contentHtml}
                 <div class="component-comment-actions">
                     <div class="component-watch-joined-pill comment-size">
-                        <button class="component-watch-joined-btn like js-like-trigger ${activeLike}" data-id="${comment.id}" title="Me gusta">
+                        <button class="component-watch-joined-btn like js-like-trigger ${activeLike}" data-id="${commentId}" title="Me gusta" ${isPending ? 'disabled' : ''}>
                             <span class="material-symbols-rounded" style="font-size: 16px;">thumb_up</span>
                             <span class="count-label js-count-like" style="font-size: 12px;">${likesCount}</span>
                         </button>
                         <div class="component-watch-joined-separator"></div>
-                        <button class="component-watch-joined-btn dislike js-dislike-trigger ${activeDislike}" data-id="${comment.id}" title="No me gusta">
+                        <button class="component-watch-joined-btn dislike js-dislike-trigger ${activeDislike}" data-id="${commentId}" title="No me gusta" ${isPending ? 'disabled' : ''}>
                             <span class="material-symbols-rounded" style="font-size: 16px;">thumb_down</span>
                         </button>
                     </div>
                     ${isLogged && !isReply ? `
-                        <button class="component-watch-action-pill comment-size js-reply-trigger" data-id="${comment.id}" style="margin-left: 8px;">
+                        <button class="component-watch-action-pill comment-size js-reply-trigger" data-id="${commentId}" style="margin-left: 8px;" ${isPending ? 'disabled' : ''}>
                             Responder
                         </button>
                     ` : ''}
                 </div>
-                <div id="reply-box-container-${comment.id}" class="component-reply-box-container"></div>
+                <div id="reply-box-container-${commentId}" class="component-reply-box-container"></div>
                 ${repliesUi}
             </div>
         </div>`;
@@ -310,13 +319,11 @@ export class CommentsSection {
             return;
         }
 
-        // Limpia otras cajas abiertas
         document.querySelectorAll('.component-reply-box-container').forEach(el => el.innerHTML = '');
 
         const myAvatar = this.currentUserAvatar;
         const MAX_CHARS = 10000;
         
-        // SIN contador, SIN botón cancelar
         container.innerHTML = `
             <div class="component-watch-comment-input-row reply-mode">
                 <img src="${myAvatar}" class="component-watch-avatar small">
@@ -333,12 +340,8 @@ export class CommentsSection {
         const input = document.getElementById(`reply-input-${commentId}`);
         const btnSubmit = container.querySelector('.js-submit-reply');
         
-        // Detectamos el wrapper que acabamos de crear
         const wrapper = input.parentElement;
 
-        // IMPORTANTE: NO hacemos input.focus() automático.
-        // El input aparece en modo Fila. El usuario debe clickar para expandir.
-        
         if (wrapper) {
             this._attachExpandLogic(input, wrapper);
         }
@@ -350,8 +353,13 @@ export class CommentsSection {
         });
 
         btnSubmit.addEventListener('click', () => {
-            this.postComment(input.value, commentId, () => {
-                container.innerHTML = '';
+            const text = input.value;
+            // UI Optimista: Limpiamos y cerramos caja inmediatamente
+            container.innerHTML = ''; 
+            
+            this.postComment(text, commentId, null, () => {
+                // OnError: Reabrir caja (esto es simplificado, idealmente guardamos borrador)
+                ToastManager.show('Fallo al responder, intenta de nuevo', 'error');
             });
         });
     }
@@ -386,24 +394,86 @@ export class CommentsSection {
         }
     }
 
-    async postComment(content, parentId = null, onSuccess) {
-        if (this.state.isLoading) return;
+    // MODIFICADO: Soporte UI Optimista
+    async postComment(content, parentId = null, onSuccess, onError) {
+        if (this.state.isLoading && !parentId) return; // Bloqueo solo para main comment
+
+        // 1. GENERAR ID TEMPORAL Y DATOS FALSOS
+        const tempId = 'temp-' + Date.now();
+        const optimisticComment = {
+            id: tempId,
+            uuid: tempId,
+            video_uuid: this.videoUuid,
+            username: this.currentUserName, // Placeholder o Real
+            user_uuid: this.currentUserUuid,
+            avatar_url: this.currentUserAvatar,
+            content: content,
+            parent_id: parentId,
+            created_at: new Date().toISOString(),
+            likes_count: 0,
+            user_interaction: null,
+            replies: [],
+            is_pending: true // FLAG PARA RENDER
+        };
+
+        // 2. INYECTAR VISUALMENTE (Inmediato)
+        this.injectNewComment(optimisticComment);
+        if (onSuccess) onSuccess();
+
         try {
             const response = await ApiService.post(ApiRoutes.Interaction.PostComment, {
                 video_uuid: this.videoUuid,
                 content: content,
                 parent_id: parentId
             });
+
             if (response.success) {
+                const realComment = response.comment;
+                
+                // 3. REEMPLAZAR FAKE CON REAL
+                const tempEl = document.getElementById(`comment-${tempId}`);
+                if (tempEl) {
+                    tempEl.id = `comment-${realComment.uuid}`; // Usamos UUID
+                    tempEl.classList.remove('opacity-60'); // Quitar opacidad si la pusiste manual
+                    tempEl.style.opacity = '1';
+                    
+                    // Quitar badge "(Enviando...)"
+                    const badge = tempEl.querySelector('.js-pending-label');
+                    if(badge) badge.remove();
+
+                    // Actualizar botones
+                    const btns = tempEl.querySelectorAll(`[data-id="${tempId}"]`);
+                    btns.forEach(b => {
+                        b.dataset.id = realComment.uuid;
+                        b.disabled = false;
+                    });
+                }
+                
+                // Actualizar store
+                if (parentId) {
+                    // [UUID FIX] String key
+                    let replies = this.repliesStore.get(parentId); 
+                    if (replies) {
+                         const idx = replies.findIndex(r => r.id === tempId);
+                         if (idx !== -1) replies[idx] = realComment;
+                    }
+                }
+
                 ToastManager.show('Comentario publicado', 'success');
-                if (onSuccess) onSuccess();
-                this.injectNewComment(response.comment);
             } else {
-                ToastManager.show(response.message || 'Error al comentar', 'error');
+                throw new Error(response.message);
             }
         } catch (e) {
             console.error("Post comment error:", e);
-            ToastManager.show('Error de conexión', 'error');
+            
+            // 4. ROLLBACK (Error)
+            const tempEl = document.getElementById(`comment-${tempId}`);
+            if (tempEl) tempEl.remove();
+            
+            if (!parentId) this.state.total--;
+            
+            ToastManager.show(e.message || 'Error de conexión', 'error');
+            if (onError) onError();
         }
     }
 
@@ -417,7 +487,7 @@ export class CommentsSection {
             }
             this.state.total++;
         } else {
-            const parentId = commentData.parent_id;
+            const parentId = commentData.parent_id; // UUID parent
             let wrapper = document.getElementById(`replies-wrapper-${parentId}`);
             let repliesContainer = document.getElementById(`replies-container-${parentId}`);
             
@@ -440,10 +510,11 @@ export class CommentsSection {
                 const html = this.renderCommentItem(commentData, true);
                 repliesContainer.insertAdjacentHTML('beforeend', html);
                 
-                let storedReplies = this.repliesStore.get(parseInt(parentId));
+                // [UUID FIX] String key
+                let storedReplies = this.repliesStore.get(parentId);
                 if (!storedReplies) {
                     storedReplies = [];
-                    this.repliesStore.set(parseInt(parentId), storedReplies);
+                    this.repliesStore.set(parentId, storedReplies);
                 }
                 storedReplies.push(commentData);
 

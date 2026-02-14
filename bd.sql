@@ -6,6 +6,7 @@ USE project_aurora_db;
 -- =========================================================
 -- El orden es importante para evitar errores de Foreign Keys
 
+-- [NUEVO] Eliminamos interacciones de comentarios antes que los comentarios
 DROP TABLE IF EXISTS comment_interactions; 
 DROP TABLE IF EXISTS video_comments; 
 DROP TABLE IF EXISTS video_shares;
@@ -20,7 +21,7 @@ DROP TABLE IF EXISTS security_logs;
 DROP TABLE IF EXISTS password_resets;
 DROP TABLE IF EXISTS verification_codes;
 DROP TABLE IF EXISTS profile_changes;
-DROP TABLE IF EXISTS videos; 
+DROP TABLE IF EXISTS videos; -- Videos debe borrarse antes que users
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS server_config;
 
@@ -43,8 +44,7 @@ CREATE TABLE IF NOT EXISTS users (
     two_factor_secret VARCHAR(255) DEFAULT NULL,
     two_factor_enabled TINYINT(1) DEFAULT 0,
     two_factor_recovery_codes JSON DEFAULT NULL,
-    subscribers_count INT DEFAULT 0,
-    banner_path VARCHAR(255) DEFAULT NULL
+    subscribers_count INT DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS verification_codes (
@@ -268,9 +268,10 @@ CREATE TABLE IF NOT EXISTS video_shares (
 );
 
 -- E. VIDEO COMMENTS
--- [REVERTIDO] Se elimina UUID, volvemos a ID numérico estándar
+-- [MODIFICADO] Se añade columna UUID para identificar comentarios en tránsito (Redis -> MySQL)
 CREATE TABLE IF NOT EXISTS video_comments (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    uuid CHAR(36) NOT NULL UNIQUE, 
     video_id INT NOT NULL,
     user_id INT NOT NULL,
     parent_id INT NULL COMMENT 'ID del comentario padre si es una respuesta',
@@ -282,10 +283,12 @@ CREATE TABLE IF NOT EXISTS video_comments (
     FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (parent_id) REFERENCES video_comments(id) ON DELETE CASCADE,
-    INDEX idx_video_thread (video_id, parent_id)
+    INDEX idx_video_thread (video_id, parent_id),
+    INDEX idx_uuid (uuid)
 );
 
--- F. COMMENT INTERACTIONS
+-- F. COMMENT INTERACTIONS [NUEVO]
+-- Registra los likes y dislikes individuales en los comentarios
 CREATE TABLE IF NOT EXISTS comment_interactions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -297,3 +300,5 @@ CREATE TABLE IF NOT EXISTS comment_interactions (
     UNIQUE KEY unique_comment_interaction (user_id, comment_id),
     INDEX idx_comment_type (comment_id, type)
 );
+
+ALTER TABLE users ADD COLUMN banner_path VARCHAR(255) DEFAULT NULL AFTER avatar_path;

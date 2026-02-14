@@ -128,7 +128,6 @@ def sync_views_buffer():
         
         if not keys: return
 
-        # logging.info(f"⚡ Procesando buffer de contadores ({len(keys)} videos)...")
         conn = get_db_connection()
         cursor = conn.cursor()
         
@@ -160,52 +159,44 @@ def sync_views_buffer():
 
 def process_video_logs_buffer():
     """
-    [NUEVO] Procesa el HISTORIAL de visitas (Logs) en lote.
-    Lee de la lista 'video:logs:buffer', resuelve IDs y hace Bulk Insert en 'video_views'.
+    Procesa el HISTORIAL de visitas (Logs) en lote.
     """
     LIST_KEY = 'video:logs:buffer'
-    BATCH_SIZE = 200 # Procesamos de 200 en 200
+    BATCH_SIZE = 200 
     
     try:
-        # 1. Verificar si hay logs pendientes (Check rápido)
         if r_client.llen(LIST_KEY) == 0:
             return
 
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Procesamos hasta 5 lotes (1000 logs) por ciclo para no bloquear el scheduler
         for _ in range(5):
-            # Usamos pipeline para hacer un "LPOP multiple" seguro y compatible
             p = r_client.pipeline()
             for _ in range(BATCH_SIZE):
                 p.lpop(LIST_KEY)
             results = p.execute()
             
-            # Filtramos los None (cuando la lista se vacía)
             raw_logs = [item for item in results if item is not None]
             
             if not raw_logs:
                 break
                 
-            # 2. Parsear JSONs y recolectar UUIDs
             entries = []
             uuids_to_resolve = set()
             
             for log_str in raw_logs:
                 try:
                     data = json.loads(log_str)
-                    # Validar integridad básica
                     if 'video_uuid' in data:
                         entries.append(data)
                         uuids_to_resolve.add(data['video_uuid'])
                 except:
-                    continue # Ignorar logs corruptos
+                    continue 
             
             if not entries:
                 continue
 
-            # 3. Resolver UUIDs a IDs numéricos (MySQL FK)
             if not uuids_to_resolve: continue
             
             format_strings = ','.join(['%s'] * len(uuids_to_resolve))
@@ -214,15 +205,14 @@ def process_video_logs_buffer():
             
             uuid_map = {row[0]: row[1] for row in cursor.fetchall()}
             
-            # 4. Construir filas para Bulk Insert
             insert_values = []
             for entry in entries:
                 vid_uuid = entry.get('video_uuid')
                 if vid_uuid in uuid_map:
                     video_id = uuid_map[vid_uuid]
-                    user_id = entry.get('user_id') # Puede ser None
+                    user_id = entry.get('user_id') 
                     ip = entry.get('ip', '0.0.0.0')
-                    ua = entry.get('user_agent', 'Unknown')[:255] # Truncar por seguridad
+                    ua = entry.get('user_agent', 'Unknown')[:255] 
                     ts = float(entry.get('timestamp', time.time()))
                     viewed_at = datetime.fromtimestamp(ts)
 
@@ -243,8 +233,103 @@ def process_video_logs_buffer():
     except Exception as e:
         logging.error(f"❌ Error procesando logs de historial: {e}")
 
+def process_comments_queue():
+    """
+    [NUEVO] Mueve comentarios de Redis a MySQL (Write-Behind)
+    y limpia el buffer de visualización para evitar duplicados.
+    """
+    QUEUE_KEY = 'queue:comments_processing'
+    BATCH_SIZE = 50
+
+    try:
+        # Verificar si hay trabajo
+        if r_client.llen(QUEUE_KEY) == 0:
+            return
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Sacar un lote de comentarios
+        p = r_client.pipeline()
+        for _ in range(BATCH_SIZE):
+            p.lpop(QUEUE_KEY)
+        results = p.execute()
+
+        # Filtrar vacíos (si la cola se vacía a mitad de lote)
+        # Importante: Guardamos el string original (raw_json) para limpiar el buffer luego
+        batch_items = []
+        for raw_json in results:
+            if raw_json:
+                try:
+                    data = json.loads(raw_json)
+                    batch_items.append({'raw': raw_json, 'data': data})
+                except:
+                    logging.error("JSON corrupto en cola de comentarios")
+
+        if not batch_items:
+            conn.close()
+            return
+
+        # Resolver video UUIDs a IDs
+        uuids_to_resolve = set(item['data']['video_uuid'] for item in batch_items)
+        
+        format_strings = ','.join(['%s'] * len(uuids_to_resolve))
+        sql_ids = f"SELECT uuid, id FROM videos WHERE uuid IN ({format_strings})"
+        cursor.execute(sql_ids, tuple(uuids_to_resolve))
+        video_map = {row[0]: row[1] for row in cursor.fetchall()}
+
+        # Preparar inserciones
+        insert_values = []
+        successful_items = []
+
+        for item in batch_items:
+            d = item['data']
+            video_uuid = d.get('video_uuid')
+            
+            if video_uuid in video_map:
+                # Datos para SQL
+                uuid = d.get('uuid')
+                video_id = video_map[video_uuid]
+                user_id = d.get('user_id')
+                parent_id = d.get('parent_id') # Puede ser None
+                content = d.get('content')
+                created_at = datetime.fromtimestamp(int(d.get('created_at')))
+
+                insert_values.append((uuid, video_id, user_id, parent_id, content, created_at))
+                successful_items.append(item)
+
+        # Bulk Insert en MySQL
+        if insert_values:
+            sql = """
+                INSERT IGNORE INTO video_comments 
+                (uuid, video_id, user_id, parent_id, content, created_at) 
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """
+            cursor.executemany(sql, insert_values)
+            conn.commit()
+            logging.info(f"💬 Comentarios: Se persistieron {len(insert_values)} nuevos comentarios.")
+
+            # LIMPIEZA DEL BUFFER (Redis)
+            # Borramos el JSON exacto de la lista de visualización para que al recargar
+            # no aparezca duplicado (uno de Redis y uno de MySQL).
+            # Usamos pipeline para eficiencia.
+            clean_p = r_client.pipeline()
+            for item in successful_items:
+                video_uuid = item['data']['video_uuid']
+                buffer_key = f"video:{video_uuid}:comments_buffer"
+                # LREM: Borra el elemento que coincida exactamente con el raw string
+                clean_p.lrem(buffer_key, 0, item['raw'])
+            clean_p.execute()
+
+        cursor.close()
+        conn.close()
+
+    except Exception as e:
+        logging.error(f"❌ Error procesando cola de comentarios: {e}")
+
+
 def trigger_system_action(route):
-    """Helper para llamar a la API interna (para lanzar backups, etc)"""
+    """Helper para llamar a la API interna"""
     if not SYSTEM_KEY: return
     timestamp = str(int(time.time()))
     signature = hmac.new(
@@ -265,13 +350,17 @@ if __name__ == "__main__":
     
     while True:
         try:
+            # TAREAS MUY RÁPIDAS (Cada 5 segundos)
+            if counter_sec % 5 == 0:
+                process_comments_queue() # [NUEVO] Mover comentarios a MySQL
+
             # TAREAS RÁPIDAS (Cada 10 segundos)
             if counter_sec % 10 == 0:
-                sync_views_buffer() # Actualiza los contadores (números)
+                sync_views_buffer() 
 
             # TAREAS MEDIAS (Cada 30 segundos)
             if counter_sec % 30 == 0:
-                process_video_logs_buffer() # [NUEVO] Actualiza el historial (logs)
+                process_video_logs_buffer() 
 
             # TAREAS LENTAS (Cada 60 segundos)
             if counter_sec % 60 == 0:
@@ -283,7 +372,7 @@ if __name__ == "__main__":
                 counter_sec = 0
             
             counter_sec += 5
-            time.sleep(5) # Ciclo de 5 segundos
+            time.sleep(5) 
             
         except KeyboardInterrupt:
             logging.info("🛑 Scheduler detenido.")
