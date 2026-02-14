@@ -63,11 +63,15 @@ export const WatchController = {
             const userAvatar = metaContext.dataset.userAvatar || null;
 
             WatchController._interactions = new InteractionManager(videoElement, videoUuid, channelUuid);
+            
+            // AQUÍ se inicializa tu nueva lógica (CommentsSection.js)
             WatchController._comments = new CommentsSection(videoUuid, userAvatar);
             
             // 6. UI Helpers
             WatchController._initDescriptionToggle();
-            WatchController._initCommentInputBehavior();
+            
+            // ELIMINADO: WatchController._initCommentInputBehavior(); 
+            // (Esta era la función que causaba el conflicto y bloqueaba la expansión)
         }
     },
 
@@ -92,73 +96,6 @@ export const WatchController = {
                 }
             });
         }
-    },
-
-    // --- SOLUCIÓN DEL BUG DE INPUT ---
-    _initCommentInputBehavior: () => {
-        const inputMain = document.getElementById('comment-input-main');
-        const wrapperBox = document.getElementById('comment-wrapper-box');
-        
-        if (!inputMain || !wrapperBox) return;
-
-        // Crear elemento "Fantasma" para calcular altura real sin oscilaciones
-        const ghost = document.createElement('div');
-        const computedStyle = window.getComputedStyle(inputMain);
-        
-        // Estilos críticos para que el fantasma mida igual que el input
-        ghost.style.position = 'absolute';
-        ghost.style.top = '-9999px';
-        ghost.style.left = '-9999px';
-        ghost.style.visibility = 'hidden';
-        ghost.style.whiteSpace = 'pre-wrap';
-        ghost.style.wordBreak = 'break-word';
-        ghost.style.overflowWrap = 'anywhere'; // Importante para coincidencias exactas
-        ghost.style.fontFamily = computedStyle.fontFamily;
-        ghost.style.fontSize = computedStyle.fontSize;
-        ghost.style.fontWeight = computedStyle.fontWeight;
-        ghost.style.lineHeight = computedStyle.lineHeight;
-        ghost.style.padding = computedStyle.padding;
-        ghost.style.border = computedStyle.border;
-        ghost.style.boxSizing = computedStyle.boxSizing;
-        
-        document.body.appendChild(ghost);
-
-        const handleInput = () => {
-            // 1. Auto-resize del input real
-            inputMain.style.height = 'auto'; 
-            inputMain.style.height = inputMain.scrollHeight + 'px';
-
-            // 2. Lógica de expansión usando el Fantasma
-            // Forzamos al fantasma a tener SIEMPRE el ancho del modo "Row" (colapsado)
-            // Ancho Wrapper - Padding Wrapper (24px) - Botón (32px) - Gap (8px) - Buffer seguro (2px)
-            const wrapperRect = wrapperBox.getBoundingClientRect();
-            // 66px = 12px(pad-left) + 12px(pad-right) + 32px(btn) + 8px(gap) + 2px(border/buffer)
-            const collapsedWidth = wrapperRect.width - 66; 
-            
-            ghost.style.width = `${collapsedWidth}px`;
-            
-            // Copiar texto (agregando caracter invisible para detectar saltos de linea finales)
-            ghost.textContent = inputMain.value + '\u200b'; 
-
-            // Altura de una línea aproximada (line-height + padding vertical)
-            // 22px line-height + 8px padding = ~30px.
-            // Usamos 35px como umbral seguro.
-            const singleLineHeightThreshold = 35; 
-
-            if (ghost.offsetHeight > singleLineHeightThreshold || inputMain.value.includes('\n')) {
-                wrapperBox.classList.add('is-expanded');
-            } else {
-                wrapperBox.classList.remove('is-expanded');
-            }
-        };
-
-        inputMain.addEventListener('input', handleInput);
-        
-        // Observer para redimensionar si cambia el tamaño de la ventana
-        new ResizeObserver(handleInput).observe(wrapperBox);
-        
-        // Ejecutar inicial
-        handleInput();
     },
 
     dispose: () => {

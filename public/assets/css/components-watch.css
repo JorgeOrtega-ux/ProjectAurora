@@ -163,7 +163,7 @@
 .component-watch-settings-option.selected .check-icon { display: block; }
 
 /* =========================================
-   Botones de Acción (MODIFICADO - TRANSPARENTES + BORDE #00000020)
+   Botones de Acción
    ========================================= */
 .component-watch-actions {
     display: flex;
@@ -188,7 +188,7 @@
     cursor: pointer; font-size: 0.9rem; font-weight: 500;
 }
 .component-watch-action-pill:hover { 
-    background-color: var(--bg-hover-light); /* Hover #f5f5fa */
+    background-color: var(--bg-hover-light);
     border-color: var(--text-primary); 
 }
 
@@ -204,37 +204,25 @@
     cursor: pointer; font-size: 0.9rem; font-weight: 500; padding: 0 16px;
     transition: background 0.2s, color 0.2s; gap: 6px;
 }
-/* Efecto hover en los botones internos también */
 .component-watch-joined-btn:hover { 
-    background-color: var(--bg-hover-light); /* Hover #f5f5fa */
+    background-color: var(--bg-hover-light);
 }
-/* 1. Modificar el color del botón activo */
 .component-watch-joined-btn.active {
-    /* Antes era morado (var(--accent-primary)) */
-    /* Ahora lo forzamos a negro o al color de texto principal */
     color: #000000; 
-    /* RECOMENDACIÓN: Si tienes modo oscuro, usa var(--text-primary) en lugar de #000000 */
 }
-
-/* 2. Rellenar el icono cuando el botón está activo */
 .component-watch-joined-btn.active .material-symbols-rounded {
-    /* Esto es lo que hace la magia de rellenarlo */
     font-variation-settings: 'FILL' 1;
 }
-
-/* Opcional: Ajuste específico para el botón de dislike si quieres que también se rellene */
 .component-watch-joined-btn.dislike.active .material-symbols-rounded {
     font-variation-settings: 'FILL' 1;
 }
 .component-watch-joined-btn.dislike { padding: 0 12px; }
 
-/* Separador dentro de la píldora */
 .component-watch-joined-separator { 
     width: 1px; height: 60%; 
     background-color: var(--border-transparent-20); 
 }
 
-/* OVERRIDE PARA DARK MODE */
 [data-theme="dark"] .component-watch-action-pill,
 [data-theme="dark"] .component-watch-joined-pill {
     border-color: rgba(255, 255, 255, 0.2); 
@@ -267,6 +255,15 @@
 .component-watch-joined-btn .count-label {
     font-size: 12px;
 }
+
+/* NUEVO: Soporte para Botón Simple (Action Pill) tamaño comentario (Responder) */
+.component-watch-action-pill.comment-size {
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 16px !important;
+    font-size: 0.85rem;
+}
+
 .btn-reply { margin-left: 8px; }
 
 
@@ -368,7 +365,6 @@
 
 .component-watch-comment-input-wrapper.chat-style:focus-within {
     border-color: var(--text-primary);
-    background-color: var(--bg-hover-light);
 }
 
 /* ESTADO EXPANDIDO (Activado por JS al detectar salto de línea) */
