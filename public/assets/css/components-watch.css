@@ -1,3 +1,4 @@
+/* public/assets/css/components-watch.css */
 
 .component-watch-player-card {
     position: relative;
@@ -146,70 +147,37 @@
 .component-watch-settings-option .check-icon { position: absolute; right: 16px; display: none; color: #fff; }
 .component-watch-settings-option.selected .check-icon { display: block; }
 
-/* =========================================
-   [NUEVO] ESTILOS BOTONES DE ACCIÓN
-   ========================================= */
-
+/* Botones de Acción */
 .component-watch-actions {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap; 
 }
-
-/* Botones Individuales (Share, Download, Save) */
 .component-watch-action-pill {
     border-radius: 20px !important; 
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0 16px;
-    height: 36px;
-    background-color: rgba(255, 255, 255, 0.1);
-    border: none;
-    color: var(--text-primary, #fff);
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: background 0.2s;
+    display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 36px;
+    background-color: rgba(255, 255, 255, 0.1); border: none; color: var(--text-primary, #fff);
+    cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: background 0.2s;
 }
 .component-watch-action-pill:hover { background-color: rgba(255, 255, 255, 0.2); }
 
-/* Píldora Unificada (Like + Dislike) */
 .component-watch-joined-pill {
-    display: flex;
-    align-items: center;
-    background-color: rgba(255, 255, 255, 0.1); 
-    border-radius: 20px;
-    height: 36px;
-    overflow: hidden; 
+    display: flex; align-items: center; background-color: rgba(255, 255, 255, 0.1); 
+    border-radius: 20px; height: 36px; overflow: hidden; 
 }
-
 .component-watch-joined-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-primary, #fff);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 500;
-    padding: 0 16px;
-    transition: background 0.2s;
-    gap: 6px;
+    background: transparent; border: none; color: var(--text-primary, #fff);
+    display: flex; align-items: center; justify-content: center; height: 100%;
+    cursor: pointer; font-size: 0.9rem; font-weight: 500; padding: 0 16px;
+    transition: background 0.2s; gap: 6px;
 }
 .component-watch-joined-btn:hover { background-color: rgba(255, 255, 255, 0.2); }
+.component-watch-joined-btn.active { color: var(--accent-primary, #6a5acd); }
 .component-watch-joined-btn.dislike { padding: 0 12px; }
+.component-watch-joined-separator { width: 1px; height: 60%; background-color: rgba(255, 255, 255, 0.2); }
 
-.component-watch-joined-separator {
-    width: 1px;
-    height: 60%;
-    background-color: rgba(255, 255, 255, 0.2);
-}
-
-/* --- LAYOUT GENERAL --- */
+/* Layout General */
 .component-watch-layout { display: flex; gap: 24px; width: 100%; max-width: 1700px; margin: 0 auto; padding: 24px; align-items: flex-start; }
 .component-watch-col-left { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 .component-watch-meta-card { display: flex; flex-direction: column; gap: 12px; }
@@ -217,104 +185,30 @@
 .component-watch-author-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
 .component-watch-author-info { display: flex; align-items: center; gap: 12px; }
 .component-watch-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+.component-watch-avatar.small { width: 32px; height: 32px; }
+
 .component-watch-author-text { display: flex; flex-direction: column; }
 .component-watch-username { font-weight: 600; font-size: 1rem; color: var(--text-primary); }
 .component-watch-subs { font-size: 0.8rem; color: var(--text-secondary); }
 .component-watch-col-right { width: 400px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; }
 
-/* =========================================
-   [NUEVO] MODO CINE (Cinema Mode)
-   ========================================= */
-
+/* Modo Cine */
 .component-watch-layout.component-watch-mode-cinema {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 424px;
-    gap: 24px;
-    max-width: 100%; 
-    padding: 0;
-    padding-bottom: 24px;
+    display: grid; grid-template-columns: minmax(0, 1fr) 424px; gap: 24px;
+    max-width: 100%; padding: 0; padding-bottom: 24px;
 }
-
 .component-watch-layout.component-watch-mode-cinema .component-watch-col-left { display: contents; }
-
 .component-watch-layout.component-watch-mode-cinema .component-watch-player-card {
-    grid-column: 1 / -1; 
-    width: 100%;
-    height: 85vh; 
-    max-height: 85vh;
-    border-radius: 0; 
-    background-color: #000;
-    display: flex;
-    justify-content: center; 
-    align-items: center;
-    margin-bottom: 24px;
-    aspect-ratio: auto; 
-    overflow: hidden; 
+    grid-column: 1 / -1; width: 100%; height: 85vh; max-height: 85vh;
+    border-radius: 0; background-color: #000; display: flex; justify-content: center; 
+    align-items: center; margin-bottom: 24px; aspect-ratio: auto; overflow: hidden; 
 }
-
 .component-watch-layout.component-watch-mode-cinema .component-watch-player-wrapper,
-.component-watch-layout.component-watch-mode-cinema .component-watch-video-element {
-    border-radius: 0;
-}
-
-.component-watch-layout.component-watch-mode-cinema .component-watch-player-wrapper {
-    width: auto; height: 100%; aspect-ratio: 16/9; max-width: 100%;
-}
-
-.component-watch-layout.component-watch-mode-cinema .component-watch-meta-card {
-    grid-column: 1 / 2; grid-row: 2; margin-left: 24px; 
-}
-
-.component-watch-layout.component-watch-mode-cinema .component-watch-comments {
-    grid-column: 1 / 2; grid-row: 3; margin-left: 24px;
-}
-
-.component-watch-layout.component-watch-mode-cinema .component-watch-col-right {
-    grid-column: 2 / 3; grid-row: 2 / span 2;
-    margin-right: 0;
-    padding-right: 24px; 
-}
-
-/* --- Responsive para Modo Cine --- */
-@media (max-width: 1000px) {
-    .component-watch-layout.component-watch-mode-cinema {
-        display: flex;
-        flex-direction: column;
-        grid-template-columns: none; 
-    }
-
-    .component-watch-layout.component-watch-mode-cinema .component-watch-player-card {
-        height: auto; aspect-ratio: 16/9;
-        order: 1;
-        margin-bottom: 16px;
-    }
-
-    .component-watch-layout.component-watch-mode-cinema .component-watch-meta-card {
-        order: 2;
-        margin-left: 0;
-        padding: 0 16px;
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    .component-watch-layout.component-watch-mode-cinema .component-watch-col-right {
-        order: 3;
-        margin-right: 0;
-        padding: 0 16px;
-        margin-top: 16px;
-        margin-bottom: 16px;
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    .component-watch-layout.component-watch-mode-cinema .component-watch-comments {
-        order: 4;
-        margin-left: 0;
-        padding: 0 16px;
-        width: 100%;
-        box-sizing: border-box;
-    }
-}
+.component-watch-layout.component-watch-mode-cinema .component-watch-video-element { border-radius: 0; }
+.component-watch-layout.component-watch-mode-cinema .component-watch-player-wrapper { width: auto; height: 100%; aspect-ratio: 16/9; max-width: 100%; }
+.component-watch-layout.component-watch-mode-cinema .component-watch-meta-card { grid-column: 1 / 2; grid-row: 2; margin-left: 24px; }
+.component-watch-layout.component-watch-mode-cinema .component-watch-comments { grid-column: 1 / 2; grid-row: 3; margin-left: 24px; }
+.component-watch-layout.component-watch-mode-cinema .component-watch-col-right { grid-column: 2 / 3; grid-row: 2 / span 2; margin-right: 0; padding-right: 24px; }
 
 @media (max-width: 1000px) {
     .component-watch-layout { flex-direction: column; padding: 0; }
@@ -323,4 +217,137 @@
     .component-watch-player-card { border-radius: 0; }
     .component-watch-meta-card { padding: 0 16px; }
     .component-watch-comments { padding: 0 16px 24px 16px; }
+
+    .component-watch-layout.component-watch-mode-cinema { display: flex; flex-direction: column; grid-template-columns: none; }
+    .component-watch-layout.component-watch-mode-cinema .component-watch-player-card { height: auto; aspect-ratio: 16/9; order: 1; margin-bottom: 16px; }
+    .component-watch-layout.component-watch-mode-cinema .component-watch-meta-card { order: 2; margin-left: 0; padding: 0 16px; width: 100%; }
+    .component-watch-layout.component-watch-mode-cinema .component-watch-col-right { order: 3; margin-right: 0; padding: 0 16px; margin-top: 16px; margin-bottom: 16px; width: 100%; }
+    .component-watch-layout.component-watch-mode-cinema .component-watch-comments { order: 4; margin-left: 0; padding: 0 16px; width: 100%; }
+}
+
+/* =========================================
+   SECCIÓN DE COMENTARIOS (NUEVO)
+   ========================================= */
+
+.component-watch-comments {
+    margin-top: 16px;
+    max-width: 100%;
+}
+
+.component-watch-comment-input-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 32px;
+    align-items: flex-start;
+}
+.component-watch-comment-input-row.reply-mode {
+    margin-top: 16px;
+    margin-bottom: 16px;
+    animation: slideDown 0.2s ease-out;
+}
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+.component-watch-comment-input-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.component-watch-comment-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+.component-watch-comment-actions.hidden { display: none; }
+
+/* Item de Comentario */
+.component-comment-item {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    align-items: flex-start;
+}
+.component-comment-item.is-reply {
+    margin-bottom: 16px;
+    margin-top: 8px;
+}
+
+.component-comment-avatar-link { flex-shrink: 0; text-decoration: none; }
+.component-comment-avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.is-reply .component-comment-avatar { width: 24px; height: 24px; }
+
+.component-comment-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.component-comment-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 0.85rem;
+}
+.component-comment-author {
+    font-weight: 600;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+.component-comment-date {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.component-comment-text {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    margin-bottom: 4px;
+}
+
+.component-comment-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.component-comment-actions .component-button.icon-only {
+    width: 32px; height: 32px;
+    color: var(--text-secondary);
+}
+.component-comment-actions .component-button.icon-only:hover {
+    background-color: rgba(255,255,255,0.1);
+    color: var(--text-primary);
+}
+
+/* Respuestas (Indentación) */
+.component-comment-replies {
+    margin-top: 8px;
+    padding-left: 0px; 
+}
+/* Visualmente anidado pero sin margen excesivo en móvil */
+@media (min-width: 600px) {
+    .component-comment-replies { padding-left: 0; } /* Ya el avatar pequeño da efecto de indentación visual relativa al contenido */
+}
+
+/* El input autoexpandible */
+.component-input.auto-expand {
+    min-height: 40px;
+    resize: none;
+    overflow-y: hidden;
+    padding-top: 10px;
+    border-bottom: 1px solid var(--border-color, #333);
+    border-radius: 0;
+    background: transparent;
+    transition: border-color 0.2s;
+}
+.component-input.auto-expand:focus {
+    border-bottom-color: var(--text-primary, #fff);
+    background: transparent;
 }

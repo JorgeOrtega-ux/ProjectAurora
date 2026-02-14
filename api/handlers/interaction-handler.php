@@ -9,24 +9,21 @@ $pdo = $services['pdo'];
 $i18n = $services['i18n'];
 $redis = $services['redis'];
 
-// Usaremos este Namespace en la Fase 2
 use Aurora\Services\InteractionService;
 use Aurora\Libs\Utils;
 
 // 3. Validar CSRF (Seguridad estándar de Aurora)
-// Las interacciones modifican estado, así que requieren protección CSRF
+// Las interacciones modifican estado o leen datos sensibles, requieren protección
 Utils::validateCsrf($i18n);
 
 // 4. Inicializar Servicio
-// NOTA: InteractionService se creará en la Fase 2
 $interactionService = new InteractionService($pdo, $i18n, $redis);
 
 $action = $_POST['action'] ?? '';
 
 switch ($action) {
     case 'toggle_like':
-        // Recibe el UUID del video y el tipo de interacción (like/dislike) opcional
-        // Si type no se envía, se asume "like" por defecto o toggle simple
+        // Recibe el UUID del video y el tipo de interacción (like/dislike)
         $videoUuid = trim($_POST['video_uuid'] ?? '');
         $type = trim($_POST['type'] ?? 'like'); 
         
@@ -41,17 +38,42 @@ switch ($action) {
         break;
 
     case 'register_view':
-        // Registra una visita. Debe llamarse tras unos segundos de reproducción (debounce en frontend)
+        // Registra una visita (con debounce en Redis)
         $videoUuid = trim($_POST['video_uuid'] ?? '');
         
         Utils::jsonResponse($interactionService->registerView($videoUuid));
         break;
 
-    case 'register_share': // [NUEVO]
-        // Registra que se ha compartido un video (para analíticas)
+    case 'register_share':
+        // Registra que se ha compartido un video
         $videoUuid = trim($_POST['video_uuid'] ?? '');
         
         Utils::jsonResponse($interactionService->registerShare($videoUuid));
+        break;
+
+    // ==========================================
+    // SECCIÓN DE COMENTARIOS (NUEVO)
+    // ==========================================
+
+    case 'load_comments':
+        $videoUuid = trim($_POST['video_uuid'] ?? '');
+        $limit = isset($_POST['limit']) ? (int)$_POST['limit'] : 20;
+        $offset = isset($_POST['offset']) ? (int)$_POST['offset'] : 0;
+
+        // Validar límites para evitar sobrecarga
+        if ($limit > 100) $limit = 100;
+
+        Utils::jsonResponse($interactionService->getComments($videoUuid, $limit, $offset));
+        break;
+
+    case 'post_comment':
+        $videoUuid = trim($_POST['video_uuid'] ?? '');
+        $content = trim($_POST['content'] ?? '');
+        $parentId = isset($_POST['parent_id']) && is_numeric($_POST['parent_id']) 
+                    ? (int)$_POST['parent_id'] 
+                    : null;
+
+        Utils::jsonResponse($interactionService->addComment($videoUuid, $content, $parentId));
         break;
 
     default:

@@ -22,7 +22,6 @@ class InteractionService {
      * Lógica Híbrida Blindada:
      * 1. MySQL: Ejecuta la acción (Insert/Delete).
      * 2. Redis: SE RECALCULA el total real desde la BD.
-     * Esto evita el bug de "-1 Likes" si la caché estaba vacía.
      */
     public function toggleLike($videoUuid, $type = 'like') {
         if (!isset($_SESSION['user_id'])) {
@@ -32,11 +31,9 @@ class InteractionService {
         $userId = $_SESSION['user_id'];
         $allowedTypes = ['like', 'dislike'];
         
-        // Normalización forzada para evitar errores de mayúsculas/minúsculas
         if (!in_array($type, $allowedTypes)) $type = 'like';
 
         try {
-            // 1. Obtener ID numérico del video
             $stmt = $this->pdo->prepare("SELECT id FROM videos WHERE uuid = ?");
             $stmt->execute([$videoUuid]);
             $video = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -47,10 +44,8 @@ class InteractionService {
 
             $videoId = $video['id'];
 
-            // INICIO TRANSACCIÓN
             $this->pdo->beginTransaction();
 
-            // Verificar estado actual
             $check = $this->pdo->prepare("SELECT type FROM video_interactions WHERE user_id = ? AND video_id = ?");
             $check->execute([$userId, $videoId]);
             $existing = $check->fetch(PDO::FETCH_ASSOC);
@@ -59,29 +54,22 @@ class InteractionService {
             
             if ($existing) {
                 if ($existing['type'] === $type) {
-                    // CASO A: Quitar interacción (Toggle Off)
                     $del = $this->pdo->prepare("DELETE FROM video_interactions WHERE user_id = ? AND video_id = ?");
                     $del->execute([$userId, $videoId]);
                     $actionPerformed = 'removed';
                 } else {
-                    // CASO B: Cambiar opinión (Switch)
                     $upd = $this->pdo->prepare("UPDATE video_interactions SET type = ? WHERE user_id = ? AND video_id = ?");
                     $upd->execute([$type, $userId, $videoId]);
                     $actionPerformed = 'switched';
                 }
             } else {
-                // CASO C: Nueva interacción (Add)
                 $ins = $this->pdo->prepare("INSERT INTO video_interactions (user_id, video_id, type) VALUES (?, ?, ?)");
                 $ins->execute([$userId, $videoId, $type]);
                 $actionPerformed = 'added';
             }
 
             $this->pdo->commit();
-            // FIN TRANSACCIÓN - La BD ya tiene el dato correcto (o borrado).
 
-            // --- ACTUALIZACIÓN INTELIGENTE DE REDIS ---
-            // En lugar de sumar/restar ciegamente, recalculamos los totales reales.
-            // Esto corrige automáticamente cualquier desincronización (incluyendo el "-1").
             $stats = $this->syncVideoStats($videoId, $videoUuid);
 
             return [
@@ -98,25 +86,18 @@ class InteractionService {
         }
     }
 
-    /**
-     * Helper para contar Likes reales en BD y actualizar Redis.
-     * Devuelve el array con los nuevos valores.
-     */
     private function syncVideoStats($videoId, $videoUuid) {
         $stats = ['likes' => 0, 'dislikes' => 0];
 
         try {
-            // 1. Contar Likes Reales
             $stmtLike = $this->pdo->prepare("SELECT COUNT(*) FROM video_interactions WHERE video_id = ? AND type = 'like'");
             $stmtLike->execute([$videoId]);
             $stats['likes'] = $stmtLike->fetchColumn();
 
-            // 2. Contar Dislikes Reales
             $stmtDislike = $this->pdo->prepare("SELECT COUNT(*) FROM video_interactions WHERE video_id = ? AND type = 'dislike'");
             $stmtDislike->execute([$videoId]);
             $stats['dislikes'] = $stmtDislike->fetchColumn();
 
-            // 3. Actualizar Redis (Setear valor absoluto, no incremental)
             if ($this->redis) {
                 $redisKey = "video:stats:{$videoUuid}";
                 $this->redis->hmset($redisKey, [
@@ -124,18 +105,11 @@ class InteractionService {
                     'dislikes' => $stats['dislikes']
                 ]);
             }
-        } catch (Exception $e) {
-            // Si falla el recálculo, al menos no rompemos la respuesta principal,
-            // pero logueamos el error.
-            // Logger::error("Error sync stats: " . $e->getMessage());
-        }
+        } catch (Exception $e) {}
 
         return $stats;
     }
 
-    /**
-     * Lógica para Suscripciones
-     */
     public function toggleSubscribe($channelUuid) {
         if (!isset($_SESSION['user_id'])) {
             return ['success' => false, 'message' => $this->i18n->t('api.auth_required'), 'require_login' => true];
@@ -168,12 +142,10 @@ class InteractionService {
             $isSubscribed = false;
 
             if ($exists) {
-                // Desuscribirse
                 $this->pdo->prepare("DELETE FROM subscriptions WHERE subscriber_id = ? AND channel_id = ?")
                           ->execute([$subscriberId, $channelId]);
                 $isSubscribed = false;
             } else {
-                // Suscribirse
                 $this->pdo->prepare("INSERT INTO subscriptions (subscriber_id, channel_id) VALUES (?, ?)")
                           ->execute([$subscriberId, $channelId]);
                 $isSubscribed = true;
@@ -181,8 +153,6 @@ class InteractionService {
 
             $this->pdo->commit();
 
-            // --- ACTUALIZACIÓN INTELIGENTE DE SUBS ---
-            // Igual que con likes, contamos la realidad.
             $subCount = 0;
             try {
                 $countStmt = $this->pdo->prepare("SELECT COUNT(*) FROM subscriptions WHERE channel_id = ?");
@@ -206,9 +176,6 @@ class InteractionService {
         }
     }
 
-    /**
-     * Registro de Visitas con Debounce y Cola (OPTIMIZADO)
-     */
     public function registerView($videoUuid) {
         if (!$this->redis) return ['success' => false];
 
@@ -220,16 +187,11 @@ class InteractionService {
         }
 
         try {
-            // 2. Marcar cooldown (30 minutos)
             $this->redis->setex($cooldownKey, 1800, '1');
 
-            // 3. INCREMENTO ATÓMICO EN REDIS (El Buffer de Contadores)
             $bufferKey = "video:buffer:views:{$videoUuid}";
             $currentBuffer = $this->redis->incr($bufferKey);
             
-            // 4. [OPTIMIZADO] Buffering de Logs (Historial)
-            // En lugar de enviar una tarea por visita, guardamos el log en una lista temporal.
-            // El Scheduler procesará esto en lote (Bulk Insert).
             $logEntry = json_encode([
                 'video_uuid' => $videoUuid,
                 'user_id' => $_SESSION['user_id'] ?? null,
@@ -238,7 +200,6 @@ class InteractionService {
                 'timestamp' => time()
             ]);
             
-            // Insertar en la lista temporal 'video:logs:buffer'
             $this->redis->rpush('video:logs:buffer', $logEntry);
 
             return [
@@ -252,15 +213,11 @@ class InteractionService {
         }
     }
 
-    /**
-     * Registro de "Compartir" para Analíticas
-     */
     public function registerShare($videoUuid) {
         $ip = Utils::getClientIp();
         $userId = $_SESSION['user_id'] ?? null;
 
         try {
-            // 1. Obtener ID del video
             $stmt = $this->pdo->prepare("SELECT id FROM videos WHERE uuid = ?");
             $stmt->execute([$videoUuid]);
             $videoId = $stmt->fetchColumn();
@@ -269,17 +226,183 @@ class InteractionService {
                 return ['success' => false, 'message' => 'Video not found'];
             }
 
-            // 2. Insertar log en video_shares
-            // No requiere transacción compleja, es un log directo
             $ins = $this->pdo->prepare("INSERT INTO video_shares (video_id, user_id, ip_address) VALUES (?, ?, ?)");
             $ins->execute([$videoId, $userId, $ip]);
 
             return ['success' => true];
 
         } catch (Exception $e) {
-            // No interrumpimos el flujo si falla el log, solo retornamos false
             return ['success' => false, 'error' => $e->getMessage()];
         }
+    }
+
+    // ==========================================
+    // SECCIÓN DE COMENTARIOS (NUEVO)
+    // ==========================================
+
+    /**
+     * Obtiene los comentarios estructurados (Padres con sus respuestas)
+     */
+    public function getComments($videoUuid, $limit = 50, $offset = 0) {
+        try {
+            $stmtV = $this->pdo->prepare("SELECT id FROM videos WHERE uuid = ?");
+            $stmtV->execute([$videoUuid]);
+            $videoId = $stmtV->fetchColumn();
+
+            if (!$videoId) return ['success' => false, 'message' => 'Video no encontrado'];
+
+            // Obtenemos todos los comentarios planos
+            // Nota: En un sistema muy grande, esto se paginaría solo por padres.
+            // Para Aurora versión inicial, traemos un lote y lo organizamos en PHP.
+            $stmt = $this->pdo->prepare("
+                SELECT c.id, c.parent_id, c.content, c.created_at, 
+                       u.username, u.avatar_path, u.uuid as user_uuid
+                FROM video_comments c
+                JOIN users u ON c.user_id = u.id
+                WHERE c.video_id = ?
+                ORDER BY c.created_at DESC
+                LIMIT ? OFFSET ?
+            ");
+            // PDO limit necesita integer binding real a veces, pero execute array suele castear a string.
+            // Para seguridad en MySQL LIMIT, usamos bindParam si fuera estricto, 
+            // pero la mayoría de drivers modernos lo manejan.
+            $stmt->bindParam(1, $videoId, PDO::PARAM_INT);
+            $stmt->bindParam(2, $limit, PDO::PARAM_INT);
+            $stmt->bindParam(3, $offset, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            $rawComments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Procesar Avatares y Estructura
+            $parents = [];
+            $replies = [];
+
+            foreach ($rawComments as &$comment) {
+                $comment['avatar_url'] = $this->processAvatarUrl($comment['avatar_path'], $comment['username']);
+                $comment['is_reply'] = !empty($comment['parent_id']);
+                
+                if ($comment['is_reply']) {
+                    $replies[] = $comment;
+                } else {
+                    $comment['replies'] = []; // Inicializar array de respuestas
+                    $parents[$comment['id']] = $comment;
+                }
+            }
+
+            // Asignar respuestas a sus padres
+            // Nota: Como ordenamos por fecha DESC, las respuestas pueden salir antes que el padre
+            // si no paginamos con cuidado. 
+            // Para simplificar: Si el padre no está en este lote (ej. paginación), la respuesta queda huérfana en UI.
+            // Solución robusta: Se suele cargar solo padres y pedir respuestas vía AJAX, 
+            // pero aquí haremos "Attach if parent exists".
+            foreach ($replies as $reply) {
+                $pid = $reply['parent_id'];
+                if (isset($parents[$pid])) {
+                    // Añadimos la respuesta al padre (unshift para que queden en orden cronológico dentro del padre si queremos, o push)
+                    // Generalmente respuestas: Oldest top.
+                    array_unshift($parents[$pid]['replies'], $reply);
+                } else {
+                    // Si es huérfano (padre en otra página), podríamos devolverlo suelto o ignorarlo.
+                    // Lo añadimos al final como 'root' fallback para que se vea
+                    $reply['is_orphaned_reply'] = true;
+                    $parents[$reply['id']] = $reply;
+                }
+            }
+
+            return [
+                'success' => true,
+                'comments' => array_values($parents), // Reindexar para JSON
+                'total_count' => count($rawComments) // Aproximado del lote
+            ];
+
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Publica un comentario (o respuesta)
+     */
+    public function addComment($videoUuid, $content, $parentId = null) {
+        if (!isset($_SESSION['user_id'])) {
+            return ['success' => false, 'message' => $this->i18n->t('api.auth_required'), 'require_login' => true];
+        }
+
+        $userId = $_SESSION['user_id'];
+        $content = trim($content);
+
+        if (empty($content)) {
+            return ['success' => false, 'message' => 'El comentario no puede estar vacío'];
+        }
+
+        try {
+            // 1. Validar Video
+            $stmtV = $this->pdo->prepare("SELECT id FROM videos WHERE uuid = ?");
+            $stmtV->execute([$videoUuid]);
+            $videoId = $stmtV->fetchColumn();
+            if (!$videoId) return ['success' => false, 'message' => 'Video no encontrado'];
+
+            // 2. Lógica de Anidamiento (Máximo 1 Nivel)
+            $finalParentId = null;
+
+            if ($parentId) {
+                // Verificar que el padre existe y pertenece al mismo video
+                $stmtP = $this->pdo->prepare("SELECT id, parent_id FROM video_comments WHERE id = ? AND video_id = ?");
+                $stmtP->execute([$parentId, $videoId]);
+                $parentData = $stmtP->fetch(PDO::FETCH_ASSOC);
+
+                if (!$parentData) {
+                    return ['success' => false, 'message' => 'El comentario al que respondes no existe'];
+                }
+
+                // REGLA DE ORO 1 NIVEL:
+                // Si intentamos responder a un comentario que YA es una respuesta ($parentData['parent_id'] no es null),
+                // entonces nuestro nuevo comentario debe ser hermano, no hijo.
+                // Asignamos como padre al padre del comentario objetivo.
+                if (!empty($parentData['parent_id'])) {
+                    $finalParentId = $parentData['parent_id'];
+                } else {
+                    $finalParentId = $parentData['id'];
+                }
+            }
+
+            // 3. Insertar
+            $stmt = $this->pdo->prepare("
+                INSERT INTO video_comments (video_id, user_id, parent_id, content) 
+                VALUES (?, ?, ?, ?)
+            ");
+            $stmt->execute([$videoId, $userId, $finalParentId, $content]);
+            $newId = $this->pdo->lastInsertId();
+
+            // 4. Retornar datos completos para inyección en DOM (Optimistic UI)
+            $stmtUser = $this->pdo->prepare("SELECT username, avatar_path, uuid FROM users WHERE id = ?");
+            $stmtUser->execute([$userId]);
+            $userData = $stmtUser->fetch(PDO::FETCH_ASSOC);
+
+            return [
+                'success' => true,
+                'comment' => [
+                    'id' => $newId,
+                    'content' => htmlspecialchars($content),
+                    'parent_id' => $finalParentId,
+                    'created_at' => date('Y-m-d H:i:s'), // Ahora mismo
+                    'username' => $userData['username'],
+                    'user_uuid' => $userData['uuid'],
+                    'avatar_url' => $this->processAvatarUrl($userData['avatar_path'], $userData['username']),
+                    'replies' => []
+                ]
+            ];
+
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => 'Error al comentar: ' . $e->getMessage()];
+        }
+    }
+
+    private function processAvatarUrl($path, $username) {
+        if (!empty($path) && file_exists(__DIR__ . '/../../' . $path)) {
+            return '/ProjectAurora/' . ltrim($path, '/');
+        }
+        return "https://ui-avatars.com/api/?name=" . urlencode($username) . "&background=333&color=fff";
     }
 }
 ?>

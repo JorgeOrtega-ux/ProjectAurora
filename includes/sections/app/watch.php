@@ -20,6 +20,10 @@ $interaction = [
     'subs_count' => 0
 ];
 
+// Variables del Usuario Actual (Espectador)
+$currentUser = null;
+$currentUserAvatar = '';
+
 if (!empty($videoUuid) && isset($pdo)) {
     try {
         // 1. Obtener datos del video y autor desde MySQL (Base sólida)
@@ -38,14 +42,12 @@ if (!empty($videoUuid) && isset($pdo)) {
         if ($videoData) {
             // 2. [REDIS HYBRID] Obtener datos frescos
             if ($redis) {
-                // A. VISITAS: Usamos la lógica de "Buffer + MySQL" (Igual que en StudioService)
-                // Esto asegura que siempre veamos la suma del histórico + lo nuevo
+                // A. VISITAS
                 $bufferKey = "video:buffer:views:{$videoUuid}";
                 $bufferCount = (int)$redis->get($bufferKey);
                 $interaction['views_count'] = (int)$videoData['views_count'] + $bufferCount;
 
-                // B. LIKES/DISLIKES/SUBS: Usamos 'video:stats' (Estado caliente)
-                // Estos contadores sí se mantienen en 'video:stats' y se sincronizan periódicamente
+                // B. LIKES/DISLIKES/SUBS
                 $vStats = $redis->hgetall("video:stats:{$videoUuid}");
                 
                 if ($vStats) {
@@ -60,14 +62,14 @@ if (!empty($videoUuid) && isset($pdo)) {
                 $interaction['subs_count'] = ($uStats !== null) ? $uStats : $videoData['subscribers_count'];
 
             } else {
-                // Fallback solo MySQL (Si Redis falla)
+                // Fallback solo MySQL
                 $interaction['likes_count'] = $videoData['likes_count'];
                 $interaction['dislikes_count'] = $videoData['dislikes_count'];
                 $interaction['views_count'] = $videoData['views_count'];
                 $interaction['subs_count'] = $videoData['subscribers_count'];
             }
 
-            // 3. [USER STATE] Verificar si el usuario actual ha interactuado
+            // 3. [USER STATE] Verificar interacciones del usuario actual
             if (isset($_SESSION['user_id'])) {
                 $myId = $_SESSION['user_id'];
                 
@@ -84,6 +86,20 @@ if (!empty($videoUuid) && isset($pdo)) {
                 $chkSub->execute([$myId, $videoData['author_id']]);
                 if ($chkSub->fetch()) {
                     $interaction['subscribed'] = true;
+                }
+
+                // C. Obtener Avatar del Usuario Actual (para la caja de comentarios)
+                $stmtUser = $pdo->prepare("SELECT username, avatar_path FROM users WHERE id = ?");
+                $stmtUser->execute([$myId]);
+                $currentUser = $stmtUser->fetch(PDO::FETCH_ASSOC);
+
+                if ($currentUser) {
+                    $currAvatarPath = $currentUser['avatar_path'] ?? '';
+                    if (!empty($currAvatarPath) && file_exists(__DIR__ . '/../../../' . $currAvatarPath)) {
+                        $currentUserAvatar = '/ProjectAurora/' . ltrim($currAvatarPath, '/'); 
+                    } else {
+                        $currentUserAvatar = "https://ui-avatars.com/api/?name=" . urlencode($currentUser['username']) . "&background=333&color=fff";
+                    }
                 }
             }
         }
@@ -113,7 +129,6 @@ if ($videoData) {
     }
 }
 
-// Helper para formato de números
 function formatCount($n) {
     if ($n >= 1000000) return number_format($n / 1000000, 1) . 'M';
     if ($n >= 1000) return number_format($n / 1000, 1) . 'K';
@@ -132,6 +147,7 @@ function formatCount($n) {
         <div class="js-video-context" 
              data-video-uuid="<?php echo htmlspecialchars($videoUuid); ?>"
              data-channel-uuid="<?php echo htmlspecialchars($videoData['user_uuid']); ?>"
+             data-user-avatar="<?php echo htmlspecialchars($currentUserAvatar); ?>"
              style="display:none;"></div>
         
         <div class="component-watch-layout <?php echo $cinemaClass; ?>">
@@ -281,10 +297,30 @@ function formatCount($n) {
                 </div>
 
                 <div class="component-watch-comments">
-                    <h3 style="font-size: 1.2rem; margin-bottom: 16px;">Comentarios</h3>
-                    <div class="component-card" style="text-align: center; color: var(--text-secondary); padding: 40px;">
-                        <span class="material-symbols-rounded" style="font-size: 32px; margin-bottom: 8px;">forum</span>
-                        <p>Próximamente: Sección de comentarios</p>
+                    <h3 style="font-size: 1.2rem; margin-bottom: 20px;">Comentarios</h3>
+                    
+                    <?php if (isset($_SESSION['user_id'])): ?>
+                        <div class="component-watch-comment-input-row" id="main-comment-form-container">
+                            <img src="<?php echo $currentUserAvatar; ?>" class="component-watch-avatar small">
+                            <div class="component-watch-comment-input-wrapper">
+                                <div class="component-input-group">
+                                    <textarea id="comment-input-main" class="component-input auto-expand" placeholder="Añade un comentario..." rows="1"></textarea>
+                                </div>
+                                <div class="component-watch-comment-actions hidden" id="comment-actions-main">
+                                    <button class="component-button text" id="btn-cancel-main">Cancelar</button>
+                                    <button class="component-button primary" id="btn-submit-main" disabled>Comentar</button>
+                                </div>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                         <div style="margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 8px; text-align: center;">
+                            <p style="color: var(--text-secondary); margin-bottom: 8px;">Inicia sesión para comentar</p>
+                            <a href="/ProjectAurora/login" class="component-button primary small">Iniciar Sesión</a>
+                         </div>
+                    <?php endif; ?>
+
+                    <div id="comments-list" class="component-watch-comments-list">
+                        <div class="component-loader-spinner" style="margin: 20px auto;"></div>
                     </div>
                 </div>
 

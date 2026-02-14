@@ -104,7 +104,10 @@ const ApiRoutes = {
         ToggleLike: { route: 'interaction.toggle_like' },
         ToggleSub: { route: 'interaction.toggle_sub' },
         RegisterView: { route: 'interaction.view' },
-        Share: { route: 'interaction.share' } // [NUEVO] Estandarizado
+        Share: { route: 'interaction.share' },
+        // [NUEVO] Rutas de Comentarios añadidas para corregir el error
+        LoadComments: { route: 'interaction.load_comments' },
+        PostComment: { route: 'interaction.post_comment' }
     }
 };
 

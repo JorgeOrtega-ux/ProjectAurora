@@ -37,6 +37,16 @@ let _interactionState = {
     isLoading: false
 };
 
+// Variables para Comentarios [NUEVO]
+let _commentsState = {
+    currentUserAvatar: null, // Si es null, no está logueado
+    isLoading: false,
+    offset: 0,
+    limit: 20,
+    total: 0,
+    listContainer: null
+};
+
 // ==========================================
 // CONTROLADOR PRINCIPAL
 // ==========================================
@@ -46,7 +56,7 @@ export const WatchController = {
         const container = document.querySelector('[data-section="watch"]');
         if (!container) return;
 
-        console.log("WatchController: Inicializado (Player + Interacciones)");
+        console.log("WatchController: Inicializado (Player + Interacciones + Comentarios)");
 
         _video = document.getElementById('main-player');
         const hlsSourceInput = document.getElementById('watch-hls-source');
@@ -95,16 +105,24 @@ export const WatchController = {
             initAmbientLightLogic();
         }
 
-        // --- 2. CONFIGURACIÓN DE INTERACCIONES (Likes, Subs, Views, Share) ---
-        // Buscamos el contexto inyectado por PHP
+        // --- 2. CONFIGURACIÓN DE INTERACCIONES Y COMENTARIOS ---
         const metaContext = document.querySelector('.js-video-context');
         if (metaContext) {
             _interactionState.videoUuid = metaContext.dataset.videoUuid;
             _interactionState.channelUuid = metaContext.dataset.channelUuid;
             
+            // Datos del usuario actual para comentarios (puede estar vacío si es guest)
+            const userAvatar = metaContext.dataset.userAvatar;
+            if (userAvatar && userAvatar !== '') {
+                _commentsState.currentUserAvatar = userAvatar;
+            }
+            
             // Iniciar listeners
             initInteractionControls();
             initViewTracker();
+            
+            // Iniciar Sistema de Comentarios
+            initCommentSystem();
         } else {
             console.warn("WatchController: No se encontraron metadatos de interacción (.js-video-context)");
         }
@@ -131,8 +149,295 @@ export const WatchController = {
             viewRegistered: false,
             isLoading: false
         };
+        _commentsState = {
+            currentUserAvatar: null,
+            isLoading: false,
+            offset: 0,
+            limit: 20,
+            total: 0,
+            listContainer: null
+        };
     }
 };
+
+// ==========================================
+// LÓGICA DE COMENTARIOS (NUEVO)
+// ==========================================
+
+function initCommentSystem() {
+    _commentsState.listContainer = document.getElementById('comments-list');
+    
+    // 1. Manejo del Input Principal (Solo si existe/logueado)
+    const mainInput = document.getElementById('comment-input-main');
+    const mainBtn = document.getElementById('btn-submit-main');
+    const cancelBtn = document.getElementById('btn-cancel-main');
+    const actionsDiv = document.getElementById('comment-actions-main');
+
+    if (mainInput && mainBtn && actionsDiv) {
+        // Mostrar botones al hacer foco
+        mainInput.addEventListener('focus', () => {
+            actionsDiv.classList.remove('hidden');
+        });
+
+        // Habilitar botón si hay texto
+        mainInput.addEventListener('input', () => {
+            mainBtn.disabled = mainInput.value.trim().length === 0;
+            // Auto resize
+            mainInput.style.height = 'auto';
+            mainInput.style.height = mainInput.scrollHeight + 'px';
+        });
+
+        // Cancelar
+        cancelBtn.addEventListener('click', () => {
+            mainInput.value = '';
+            mainInput.style.height = 'auto';
+            actionsDiv.classList.add('hidden');
+        });
+
+        // Enviar Comentario Principal
+        mainBtn.addEventListener('click', () => {
+            postComment(mainInput.value, null, () => {
+                // Reset UI on success
+                mainInput.value = '';
+                mainInput.style.height = 'auto';
+                actionsDiv.classList.add('hidden');
+            });
+        });
+    }
+
+    // 2. Cargar Comentarios Iniciales
+    loadComments();
+
+    // 3. Delegación de Eventos para Respuestas (Responder)
+    if (_commentsState.listContainer) {
+        _commentsState.listContainer.addEventListener('click', (e) => {
+            // Click en "Responder"
+            const replyBtn = e.target.closest('.js-reply-trigger');
+            if (replyBtn) {
+                const commentId = replyBtn.dataset.id;
+                toggleReplyBox(commentId);
+            }
+        });
+    }
+}
+
+async function loadComments() {
+    if (!_commentsState.listContainer) return;
+    _commentsState.isLoading = true;
+
+    try {
+        const response = await ApiService.post(ApiRoutes.Interaction.LoadComments, {
+            video_uuid: _interactionState.videoUuid,
+            limit: _commentsState.limit,
+            offset: _commentsState.offset
+        });
+
+        if (response.success) {
+            _commentsState.listContainer.innerHTML = ''; // Limpiar loader
+            _commentsState.total = response.total_count;
+
+            if (response.comments.length === 0) {
+                _commentsState.listContainer.innerHTML = `
+                    <div style="text-align:center; color:var(--text-secondary); padding: 20px;">
+                        <p>Sé el primero en comentar.</p>
+                    </div>`;
+                return;
+            }
+
+            // Renderizar lista
+            response.comments.forEach(comment => {
+                const html = renderCommentItem(comment);
+                _commentsState.listContainer.insertAdjacentHTML('beforeend', html);
+            });
+
+        } else {
+            _commentsState.listContainer.innerHTML = '<p style="color:red; text-align:center;">Error cargando comentarios.</p>';
+        }
+    } catch (e) {
+        console.error('Error comments:', e);
+    } finally {
+        _commentsState.isLoading = false;
+    }
+}
+
+function renderCommentItem(comment, isReply = false) {
+    const isLogged = _commentsState.currentUserAvatar !== null;
+    
+    // Construir HTML de respuestas recursivamente
+    let repliesHtml = '';
+    if (comment.replies && comment.replies.length > 0) {
+        repliesHtml = `<div class="component-comment-replies">`;
+        comment.replies.forEach(reply => {
+            repliesHtml += renderCommentItem(reply, true);
+        });
+        repliesHtml += `</div>`;
+    }
+
+    const dateStr = new Date(comment.created_at).toLocaleDateString();
+
+    return `
+    <div class="component-comment-item ${isReply ? 'is-reply' : ''}" id="comment-${comment.id}">
+        <a href="/ProjectAurora/channel/${comment.user_uuid}" class="component-comment-avatar-link">
+            <img src="${comment.avatar_url}" alt="${comment.username}" class="component-comment-avatar">
+        </a>
+        <div class="component-comment-content">
+            <div class="component-comment-header">
+                <span class="component-comment-author">${comment.username}</span>
+                <span class="component-comment-date">${dateStr}</span>
+            </div>
+            <div class="component-comment-text">${comment.content}</div>
+            
+            <div class="component-comment-actions">
+                <button class="component-button icon-only small" title="Me gusta">
+                    <span class="material-symbols-rounded" style="font-size: 18px;">thumb_up</span>
+                </button>
+                <button class="component-button icon-only small" title="No me gusta">
+                    <span class="material-symbols-rounded" style="font-size: 18px;">thumb_down</span>
+                </button>
+                
+                ${isLogged ? `
+                    <button class="component-button text small js-reply-trigger" data-id="${comment.id}">
+                        Responder
+                    </button>
+                ` : ''}
+            </div>
+
+            <div id="reply-box-container-${comment.id}" class="component-reply-box-container"></div>
+
+            ${repliesHtml}
+        </div>
+    </div>
+    `;
+}
+
+function toggleReplyBox(commentId) {
+    const container = document.getElementById(`reply-box-container-${commentId}`);
+    if (!container) return;
+
+    // Si ya existe, lo quitamos (toggle)
+    if (container.innerHTML !== '') {
+        container.innerHTML = '';
+        return;
+    }
+
+    // Limpiar otros boxes abiertos (opcional, estilo YouTube)
+    document.querySelectorAll('.component-reply-box-container').forEach(el => el.innerHTML = '');
+
+    // Inyectar form
+    const myAvatar = _commentsState.currentUserAvatar;
+    
+    container.innerHTML = `
+        <div class="component-watch-comment-input-row reply-mode">
+            <img src="${myAvatar}" class="component-watch-avatar small">
+            <div class="component-watch-comment-input-wrapper">
+                <div class="component-input-group">
+                    <textarea id="reply-input-${commentId}" class="component-input auto-expand" placeholder="Añade una respuesta..." rows="1"></textarea>
+                </div>
+                <div class="component-watch-comment-actions" style="display:flex;">
+                    <button class="component-button text small js-cancel-reply">Cancelar</button>
+                    <button class="component-button primary small js-submit-reply" disabled>Responder</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Lógica del form inyectado
+    const input = document.getElementById(`reply-input-${commentId}`);
+    const btnSubmit = container.querySelector('.js-submit-reply');
+    const btnCancel = container.querySelector('.js-cancel-reply');
+
+    input.focus();
+
+    input.addEventListener('input', () => {
+        btnSubmit.disabled = input.value.trim().length === 0;
+        input.style.height = 'auto';
+        input.style.height = input.scrollHeight + 'px';
+    });
+
+    btnCancel.addEventListener('click', () => {
+        container.innerHTML = '';
+    });
+
+    btnSubmit.addEventListener('click', () => {
+        postComment(input.value, commentId, () => {
+            container.innerHTML = ''; // Cerrar box al éxito
+        });
+    });
+}
+
+async function postComment(content, parentId = null, onSuccess) {
+    if (_commentsState.isLoading) return;
+    
+    // Feedback visual (opcional)
+    // const loadingToast = ToastManager.show('Publicando...', 'info');
+
+    try {
+        const response = await ApiService.post(ApiRoutes.Interaction.PostComment, {
+            video_uuid: _interactionState.videoUuid,
+            content: content,
+            parent_id: parentId
+        });
+
+        if (response.success) {
+            ToastManager.show('Comentario publicado', 'success');
+            if (onSuccess) onSuccess();
+
+            // INYECCIÓN OPTIMISTA (Sin recargar)
+            injectNewComment(response.comment);
+        } else {
+            ToastManager.show(response.message || 'Error al comentar', 'error');
+        }
+
+    } catch (e) {
+        console.error("Post comment error:", e);
+        ToastManager.show('Error de conexión', 'error');
+    }
+}
+
+function injectNewComment(commentData) {
+    // Si es un comentario raíz
+    if (!commentData.parent_id) {
+        const html = renderCommentItem(commentData);
+        // Insertar al inicio de la lista
+        _commentsState.listContainer.insertAdjacentHTML('afterbegin', html);
+        
+        // Quitar mensaje de "Se el primero" si existe
+        if (_commentsState.total === 0) {
+            const emptyMsg = _commentsState.listContainer.querySelector('div[style*="text-align:center"]');
+            if (emptyMsg) emptyMsg.remove();
+        }
+        _commentsState.total++;
+    } 
+    else {
+        // Es una respuesta
+        // Buscamos el nodo padre VISUAL. 
+        // OJO: El backend puede haber reasignado el parent_id si respondimos a una respuesta (regla 1 nivel).
+        // Usamos el parent_id que retornó el backend.
+        const parentId = commentData.parent_id;
+        const parentNode = document.getElementById(`comment-${parentId}`);
+        
+        if (parentNode) {
+            const contentDiv = parentNode.querySelector('.component-comment-content');
+            let repliesContainer = contentDiv.querySelector('.component-comment-replies');
+            
+            // Si no existe contenedor de respuestas, crearlo
+            if (!repliesContainer) {
+                repliesContainer = document.createElement('div');
+                repliesContainer.className = 'component-comment-replies';
+                contentDiv.appendChild(repliesContainer);
+            }
+
+            // Renderizar SOLO este item (forzando isReply = true)
+            // Nota: renderCommentItem devuelve un string con div wrapper.
+            // Para respuestas, renderCommentItem lo marca con clase .is-reply
+            const html = renderCommentItem(commentData, true);
+            
+            // Insertar al inicio de las respuestas (o final, YouTube lo hace al final visualmente si es respuesta nueva)
+            repliesContainer.insertAdjacentHTML('beforeend', html);
+        }
+    }
+}
+
 
 // ==========================================
 // LÓGICA DE INTERACCIONES (Likes, Share, Subs)
@@ -142,7 +447,6 @@ function initInteractionControls() {
     const btnLike = document.querySelector('.js-btn-like');
     const btnDislike = document.querySelector('.js-btn-dislike');
     const btnSubscribe = document.querySelector('.js-btn-subscribe');
-    // [NUEVO] Botón compartir
     const btnShare = document.querySelector('.js-btn-share');
 
     if (btnLike) {
@@ -159,12 +463,9 @@ function initInteractionControls() {
     }
 }
 
-// [NUEVO] Manejo de Compartir con Lógica Estandarizada
 async function handleShare() {
-    // 1. Construir URL del video
     const shareUrl = window.location.origin + '/ProjectAurora/watch?v=' + _interactionState.videoUuid;
 
-    // 2. Abrir Diálogo
     DialogManager.confirm({
         title: 'Compartir Video',
         type: 'share', 
@@ -200,9 +501,7 @@ async function handleShare() {
         }
     });
 
-    // 3. Registrar analítica (Usando ApiRoutes estandarizado)
     try {
-        // [CORRECCIÓN] Usamos el objeto definido en api-routes.js, no un string suelto.
         ApiService.post(ApiRoutes.Interaction.Share, {
             video_uuid: _interactionState.videoUuid
         });
@@ -243,17 +542,14 @@ function updateInteractionUI(data) {
     const countLike = document.querySelector('.js-count-like');
     const countDislike = document.querySelector('.js-count-dislike');
 
-    // Resetear estados
     if (btnLike) btnLike.classList.remove('active');
     if (btnDislike) btnDislike.classList.remove('active');
 
-    // Aplicar nuevo estado
     if (action !== 'removed') {
         if (type === 'like' && btnLike) btnLike.classList.add('active');
         if (type === 'dislike' && btnDislike) btnDislike.classList.add('active');
     }
 
-    // Actualizar contadores
     if (countLike) countLike.textContent = formatNumber(likes);
     if (countDislike) countDislike.textContent = formatNumber(dislikes);
 }
@@ -328,10 +624,6 @@ async function registerView() {
         const response = await ApiService.post(ApiRoutes.Interaction.RegisterView, {
             video_uuid: _interactionState.videoUuid
         });
-        
-        if (response.success && response.status === 'registered') {
-            // console.log(`View registered. Total: ${response.views}`);
-        }
     } catch (e) {
         console.warn('View registration failed', e);
     }
@@ -397,11 +689,6 @@ function loadPlayer(video, source) {
                         break;
                 }
             }
-        });
-
-        _hls.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
-             // const level = _levels[data.level];
-             // Auto-level debug logic here
         });
 
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {

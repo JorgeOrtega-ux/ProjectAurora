@@ -4,8 +4,9 @@ USE project_aurora_db;
 -- =========================================================
 -- REINICIO DE TABLAS
 -- =========================================================
--- (Mantenemos tu lógica de limpieza si reinicias la BD, agregamos las nuevas)
-DROP TABLE IF EXISTS video_shares; -- [NUEVO]
+-- El orden es importante para evitar errores de Foreign Keys
+DROP TABLE IF EXISTS video_comments; -- [NUEVO] Comentarios antes que videos/users
+DROP TABLE IF EXISTS video_shares;
 DROP TABLE IF EXISTS video_views;
 DROP TABLE IF EXISTS video_interactions;
 DROP TABLE IF EXISTS subscriptions;
@@ -40,7 +41,6 @@ CREATE TABLE IF NOT EXISTS users (
     two_factor_secret VARCHAR(255) DEFAULT NULL,
     two_factor_enabled TINYINT(1) DEFAULT 0,
     two_factor_recovery_codes JSON DEFAULT NULL,
-    -- [NUEVO] Contador persistente para suscriptores (Cache DB)
     subscribers_count INT DEFAULT 0
 );
 
@@ -205,7 +205,6 @@ CREATE TABLE IF NOT EXISTS `videos` (
   `vtt_path` VARCHAR(255) DEFAULT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  -- [NUEVO] Contadores persistentes para videos (Cache DB)
   `views_count` BIGINT DEFAULT 0,
   `likes_count` INT DEFAULT 0,
   `dislikes_count` INT DEFAULT 0,
@@ -219,22 +218,18 @@ CREATE TABLE IF NOT EXISTS `videos` (
 -- =========================================================
 
 -- A. SUBSCRIPTIONS
--- Controla quién sigue a quién. Relación User -> User
 CREATE TABLE IF NOT EXISTS subscriptions (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    subscriber_id INT NOT NULL, -- Usuario que se suscribe
-    channel_id INT NOT NULL,    -- Usuario al que se suscriben
+    subscriber_id INT NOT NULL, 
+    channel_id INT NOT NULL,    
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (subscriber_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (channel_id) REFERENCES users(id) ON DELETE CASCADE,
-    -- Restricción única para evitar doble suscripción
     UNIQUE KEY unique_subscription (subscriber_id, channel_id),
-    -- Índice para contar suscriptores rápido
     INDEX idx_channel (channel_id)
 );
 
 -- B. VIDEO INTERACTIONS
--- Unificamos likes y dislikes en una sola tabla (Toggle logic)
 CREATE TABLE IF NOT EXISTS video_interactions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -243,32 +238,45 @@ CREATE TABLE IF NOT EXISTS video_interactions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
-    -- Un usuario solo puede tener UNA interacción por video
     UNIQUE KEY unique_interaction (user_id, video_id)
 );
 
--- C. VIDEO VIEWS (Historial y Seguridad)
--- Para contar visitas reales y prevenir spam (Log histórico)
+-- C. VIDEO VIEWS 
 CREATE TABLE IF NOT EXISTS video_views (
     id INT AUTO_INCREMENT PRIMARY KEY,
     video_id INT NOT NULL,
-    user_id INT NULL, -- Puede ser NULL si es invitado
-    ip_address VARCHAR(45) NOT NULL, -- Para limitar visitas por IP
-    user_agent TEXT, -- Para detectar bots
+    user_id INT NULL, 
+    ip_address VARCHAR(45) NOT NULL, 
+    user_agent TEXT, 
     viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
-    -- Índice para limpiar logs viejos o análisis
     INDEX idx_video_date (video_id, viewed_at)
 );
 
--- D. VIDEO SHARES [NUEVO]
--- Registro de cuando se comparte un video
+-- D. VIDEO SHARES
 CREATE TABLE IF NOT EXISTS video_shares (
     id INT AUTO_INCREMENT PRIMARY KEY,
     video_id INT NOT NULL,
-    user_id INT NULL, -- Puede ser NULL si comparte un visitante no logueado
+    user_id INT NULL, 
     ip_address VARCHAR(45) NOT NULL,
     shared_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
     INDEX idx_video_share (video_id, shared_at)
+);
+
+-- E. VIDEO COMMENTS [NUEVO]
+CREATE TABLE IF NOT EXISTS video_comments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    video_id INT NOT NULL,
+    user_id INT NOT NULL,
+    parent_id INT NULL COMMENT 'ID del comentario padre si es una respuesta',
+    content TEXT NOT NULL,
+    is_pinned TINYINT(1) DEFAULT 0,
+    likes_count INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_id) REFERENCES video_comments(id) ON DELETE CASCADE,
+    INDEX idx_video_thread (video_id, parent_id)
 );

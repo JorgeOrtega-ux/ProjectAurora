@@ -92,12 +92,13 @@ return [
     'studio.get_video_details'=> ['file' => 'handlers/studio-handler.php', 'action' => 'get_video_details'],
     'studio.select_generated_thumbnail' => ['file' => 'handlers/studio-handler.php', 'action' => 'select_generated_thumbnail'],
 
-    // === INTERACTIONS (LIKES, SUBS, VIEWS) ===
+    // === INTERACTIONS (LIKES, SUBS, VIEWS, COMMENTS) ===
     'interaction.toggle_like' => ['file' => 'handlers/interaction-handler.php', 'action' => 'toggle_like'],
     'interaction.toggle_sub'  => ['file' => 'handlers/interaction-handler.php', 'action' => 'toggle_subscribe'],
     'interaction.view'        => ['file' => 'handlers/interaction-handler.php', 'action' => 'register_view'],
-    'interaction.share'       => ['file' => 'handlers/interaction-handler.php', 'action' => 'register_share'], // [NUEVO]
-
-    
+    'interaction.share'       => ['file' => 'handlers/interaction-handler.php', 'action' => 'register_share'],
+    // [NUEVO] Comentarios
+    'interaction.load_comments' => ['file' => 'handlers/interaction-handler.php', 'action' => 'load_comments'],
+    'interaction.post_comment'  => ['file' => 'handlers/interaction-handler.php', 'action' => 'post_comment'],
 ];
 ?>
