@@ -297,3 +297,5 @@ CREATE TABLE IF NOT EXISTS comment_interactions (
     UNIQUE KEY unique_comment_interaction (user_id, comment_id),
     INDEX idx_comment_type (comment_id, type)
 );
+
+ALTER TABLE users ADD COLUMN banner_path VARCHAR(255) DEFAULT NULL AFTER avatar_path;
