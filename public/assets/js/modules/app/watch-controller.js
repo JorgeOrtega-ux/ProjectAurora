@@ -2,7 +2,6 @@ import { ToastManager } from '../../core/components/toast-manager.js';
 import { ApiService } from '../../core/services/api-service.js';
 import { ApiRoutes } from '../../core/services/api-routes.js';
 import { I18nManager } from '../../core/utils/i18n-manager.js';
-// [NUEVO] Importamos DialogManager para mostrar el modal de compartir
 import { DialogManager } from '../../core/components/dialog-manager.js';
 
 // ==========================================
@@ -160,33 +159,30 @@ function initInteractionControls() {
     }
 }
 
-// [NUEVO] Manejo de Compartir
+// [NUEVO] Manejo de Compartir con Lógica Estandarizada
 async function handleShare() {
     // 1. Construir URL del video
-    // Asumimos que la URL es base + /ProjectAurora/watch?v=UUID
     const shareUrl = window.location.origin + '/ProjectAurora/watch?v=' + _interactionState.videoUuid;
 
     // 2. Abrir Diálogo
     DialogManager.confirm({
         title: 'Compartir Video',
-        type: 'share', // Usamos el template 'share' definido en DialogDefinitions
-        url: shareUrl, // Pasamos la URL al template
-        confirmText: 'Cerrar', // Solo botón de cerrar
-        cancelText: null, // Ocultar cancelar
+        type: 'share', 
+        url: shareUrl, 
+        confirmText: 'Cerrar', 
+        cancelText: null, 
         onReady: (modal) => {
-            // Lógica interna del modal (Botón Copiar)
             const btnCopy = modal.querySelector('#btn-copy-link');
             const input = modal.querySelector('#share-url-input');
 
             if (btnCopy && input) {
                 btnCopy.onclick = () => {
                     input.select();
-                    input.setSelectionRange(0, 99999); // Móvil
+                    input.setSelectionRange(0, 99999); 
 
                     navigator.clipboard.writeText(shareUrl).then(() => {
                         ToastManager.show('Enlace copiado al portapapeles', 'success');
                         
-                        // Feedback visual en el botón
                         const originalHtml = btnCopy.innerHTML;
                         btnCopy.innerHTML = '<span class="material-symbols-rounded" style="font-size: 18px; margin-right: 4px;">check</span> Copiado';
                         btnCopy.classList.add('success');
@@ -204,11 +200,10 @@ async function handleShare() {
         }
     });
 
-    // 3. Registrar analítica (Silent request)
+    // 3. Registrar analítica (Usando ApiRoutes estandarizado)
     try {
-        // Usamos la cadena directa 'interaction.share' ya que la acabamos de definir en el backend
-        // y quizás no esté en el objeto JS ApiRoutes todavía.
-        ApiService.post('interaction.share', {
+        // [CORRECCIÓN] Usamos el objeto definido en api-routes.js, no un string suelto.
+        ApiService.post(ApiRoutes.Interaction.Share, {
             video_uuid: _interactionState.videoUuid
         });
     } catch (e) {

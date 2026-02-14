@@ -100,11 +100,11 @@ const ApiRoutes = {
         SelectGeneratedThumbnail: { route: 'studio.select_generated_thumbnail' }
     },
 
-    // [NUEVO] Sección de Interacciones (Siguiendo tu patrón de objetos)
     Interaction: {
         ToggleLike: { route: 'interaction.toggle_like' },
         ToggleSub: { route: 'interaction.toggle_sub' },
-        RegisterView: { route: 'interaction.view' }
+        RegisterView: { route: 'interaction.view' },
+        Share: { route: 'interaction.share' } // [NUEVO] Estandarizado
     }
 };
 

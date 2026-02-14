@@ -58,27 +58,29 @@ const ApiService = {
     ],
 
     /**
-     * Método POST Principal
-     * @param {Object|String} routeConfig - Puede ser { route: 'auth.login' } o 'auth.login'
-     * @param {Object} data - Datos a enviar (se convertirán a FormData)
-     * @param {Object} options - Opciones extra (signal, retry, etc)
+     * Método POST Principal (MODO ESTRICTO)
+     * @param {Object} routeObject - DEBE ser un objeto de ApiRoutes (ej. ApiRoutes.Auth.Login)
+     * @param {Object} data - Datos a enviar
+     * @param {Object} options - Opciones extra
      */
-    post: async (routeConfig, data = {}, options = {}) => {
+    post: async (routeObject, data = {}, options = {}) => {
         const basePath = window.BASE_PATH || '/ProjectAurora/';
         const url = `${basePath}api/`;
 
-        // === 1. DEBUG Y NORMALIZACIÓN DE RUTA ===
-        let routeValue = '';
-
-        if (typeof routeConfig === 'object' && routeConfig !== null && routeConfig.route) {
-            routeValue = routeConfig.route;
-        } else if (typeof routeConfig === 'string') {
-            routeValue = routeConfig;
-        } else {
-            console.error('❌ ApiService: Formato de ruta inválido:', routeConfig);
-            return { success: false, message: 'Invalid Route Format in Client' };
+        // === 1. VALIDACIÓN ESTRICTA DE ARQUITECTURA ===
+        // Eliminamos la normalización. Ahora exigimos el estándar.
+        if (!routeObject || typeof routeObject !== 'object' || !routeObject.route) {
+            console.error('🛑 ERROR DE ARQUITECTURA: ApiService.post() recibió un formato inválido.');
+            console.error('   ❌ Recibido:', routeObject);
+            console.error('   ✅ Se esperaba un objeto de ApiRoutes (ej: ApiRoutes.Interaction.Like)');
+            
+            return { 
+                success: false, 
+                message: 'Error Interno: Implementación de ruta inválida (Ver consola)' 
+            };
         }
 
+        const routeValue = routeObject.route;
         console.log(`📡 Enviando API: [${routeValue}]`, data);
 
         // === 2. PREPARACIÓN DEL FORMDATA ===
@@ -99,12 +101,10 @@ const ApiService = {
             }
         }
 
-        // Agregar la ruta normalizada
-        // IMPORTANTE: Enviamos tanto 'route' (para el Router) como 'action' (por si acaso el backend lo usa directo)
+        // Agregar la ruta validada
         formData.append('route', routeValue);
         
-        // Si el handler espera 'action' y el router no lo inyecta, esto lo soluciona:
-        // Extraemos la acción del string (ej: 'interaction.toggle_like' -> 'toggle_like')
+        // Inyectar 'action' automáticamente si no viene en los datos
         if (!formData.has('action')) {
             const parts = routeValue.split('.');
             if (parts.length > 1) {
@@ -140,7 +140,6 @@ const ApiService = {
         try {
             const response = await fetch(url, config);
 
-            // Interceptores de respuesta (clonamos para no consumir el stream si el interceptor lo lee)
             for (const interceptor of ApiService.responseInterceptors) {
                 await interceptor(response.clone()); 
             }
@@ -149,7 +148,6 @@ const ApiService = {
                 throw new Error(`HTTP Error ${response.status}`);
             }
 
-            // Parsear JSON
             const text = await response.text();
             let data;
             try {
@@ -159,11 +157,9 @@ const ApiService = {
                 return { success: false, message: 'Invalid JSON response from server' };
             }
 
-            // Verificar error específico de ruta
             if (!data.success && data.message === 'Invalid API Route') {
-                console.error('🔥 ERROR CRÍTICO: El Backend no reconoce la ruta enviada.');
-                console.error('   1. Revisa que api/route-map.php tenga la clave exacta que enviaste.');
-                console.error('   2. Ruta enviada:', config.body instanceof FormData ? config.body.get('route') : 'Unknown');
+                console.error('🔥 ERROR CRÍTICO DE BACKEND: Ruta no registrada en route-map.php');
+                console.error('   Ruta enviada:', config.body instanceof FormData ? config.body.get('route') : 'Unknown');
             }
 
             return ApiService._normalizeResponse(data);
@@ -194,7 +190,7 @@ const ApiService = {
             success: data.success === true,
             message: data.message || (data.success ? 'Operación exitosa' : 'Error desconocido'),
             data: data.data || data, 
-            ...data // Esparcir el resto por si hay campos custom como 'likes', 'views'
+            ...data 
         };
     },
 
