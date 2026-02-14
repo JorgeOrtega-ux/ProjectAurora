@@ -440,4 +440,18 @@
 .component-comment-replies { display: flex; flex-direction: column; gap: 16px; width: 100%; }
 .component-comment-item.is-reply { margin-bottom: 0; }
 .component-comment-item.is-reply .component-comment-avatar { width: 28px; height: 28px; }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }/* --- RESPONSIVE SCRUBBING --- */
+@media (max-width: 1000px) {
+    .component-watch-scrub-img-wrapper {
+        /* En pantallas chicas, quitamos el zoom para que no estorbe */
+        transform: scale(1) !important; 
+        margin-bottom: 10px;
+    }
+}
+
+@media (max-width: 600px) {
+    .component-watch-scrub-img-wrapper {
+        /* En móviles, incluso un poco más chico si quieres */
+        transform: scale(0.9) !important;
+    }
+}

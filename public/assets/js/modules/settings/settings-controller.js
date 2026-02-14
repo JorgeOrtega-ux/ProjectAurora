@@ -1,6 +1,9 @@
 import { ApiService } from '../../core/services/api-service.js';
 import { ToastManager } from '../../core/components/toast-manager.js';
 
+// Variable para guardar la referencia del listener y poder limpiarlo si cambian de modo
+let _systemThemeListener = null;
+
 const SettingsController = {
     init: () => {
         _initToggles();
@@ -116,11 +119,42 @@ async function savePreference(key, value) {
     }
 }
 
+/**
+ * MODIFICADO: Ahora maneja "sync" aplicando explícitamente data-theme
+ * y escuchando cambios del sistema operativo.
+ */
 function applyTheme(theme) {
     const root = document.documentElement;
-    if (theme === 'dark') root.setAttribute('data-theme', 'dark');
-    else if (theme === 'light') root.setAttribute('data-theme', 'light');
-    else root.removeAttribute('data-theme');
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+    // 1. Limpiar listener previo si existía (para evitar duplicados o conflictos)
+    if (_systemThemeListener) {
+        mediaQuery.removeEventListener('change', _systemThemeListener);
+        _systemThemeListener = null;
+    }
+
+    if (theme === 'dark') {
+        // Caso: Fijo Oscuro
+        root.setAttribute('data-theme', 'dark');
+    } else if (theme === 'light') {
+        // Caso: Fijo Claro
+        root.setAttribute('data-theme', 'light');
+    } else {
+        // Caso: Sincronizar (o null)
+        
+        // Función interna para actualizar según lo que diga el sistema
+        const updateSystemTheme = (e) => {
+            const isDark = e.matches;
+            root.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        };
+
+        // A. Aplicar estado actual INMEDIATAMENTE
+        updateSystemTheme(mediaQuery);
+
+        // B. Guardar referencia y escuchar cambios futuros (ej: usuario cambia Windows de día a noche)
+        _systemThemeListener = updateSystemTheme;
+        mediaQuery.addEventListener('change', _systemThemeListener);
+    }
 }
 
 function _initToggles() {

@@ -3,26 +3,32 @@
 /* --- Layout Principal --- */
 .component-channel-wrapper {
     width: 100%;
-    min-height: 100vh; /* Ajuste para llenar pantalla si es necesario */
-    padding: 1.5rem;
+    min-height: 100vh;
+    padding: 1.5rem 0; /* Ajustado: Padding arriba/abajo, laterales 0 porque el container maneja el ancho */
     overflow-x: hidden;
+    display: flex;
+    justify-content: center; /* Centrar el bloque principal */
 }
 
 .component-channel-container {
-    max-width: 1200px;
+    width: 100%;
+    max-width: 1284px; /* AUMENTADO: Ancho similar a YouTube Desktop */
     margin: 0 auto;
-    padding: 0 1rem;
+    padding: 0 1rem; /* Padding interno para móviles */
+    display: flex;
+    flex-direction: column;
 }
 
 /* --- Banner --- */
 .component-channel-banner {
-    width: 100%;
-    height: 220px;
+    width: 100%; /* Ahora ocupará el 100% de 1284px, no de la pantalla completa */
+    height: 220px; /* Puedes ajustar esto a 16:9 relativo si prefieres, pero fijo funciona bien tipo YT */
     border-radius: var(--radius-md);
     background-size: cover;
     background-position: center;
     position: relative;
-    background-color: var(--sl-color-primary-800); /* Fallback color */
+    background-color: var(--sl-color-primary-800);
+    margin-bottom: 0; /* Asegurar que no empuje extra */
 }
 
 .component-channel-banner-edit-btn {
@@ -52,12 +58,13 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    padding: 0 1rem; /* Un poco de aire lateral dentro del container */
 }
 
 .component-channel-avatar-container {
     width: 160px;
     height: 160px;
-    margin-top: -80px;
+    margin-top: -80px; /* Efecto flotante sobre el banner */
     position: relative;
     z-index: 2;
 }
@@ -66,7 +73,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: var(--radius-md);
+    border-radius: 50%; /* YouTube usa redondos ahora, si prefieres cuadrado usa var(--radius-md) */
     border: 5px solid var(--bg-app);
     background-color: var(--bg-app);
     box-shadow: var(--shadow-card);
@@ -110,7 +117,7 @@
 .component-channel-description {
     color: var(--text-tertiary);
     margin-top: 1rem;
-    max-width: 600px;
+    max-width: 800px; /* Aumentado ligeramente para aprovechar el ancho */
     font-size: 0.95rem;
     line-height: 1.5;
 }
@@ -165,6 +172,7 @@
     border-bottom: 1px solid var(--border-color);
     display: flex;
     gap: 2rem;
+    padding: 0 1rem;
 }
 
 .component-channel-tab-link {
@@ -192,6 +200,8 @@
 .component-channel-content-area {
     min-height: 300px;
     padding-top: 1.5rem;
+    padding-left: 1rem; /* Alinear con el resto */
+    padding-right: 1rem;
 }
 
 .component-channel-section-title {
@@ -424,7 +434,9 @@
     border-radius: 6px;
     cursor: pointer;
     font-weight: 600;
-}/* Spinner de carga para SPA */
+}
+
+/* Spinner de carga para SPA */
 .channel-loader-container {
     display: flex;
     justify-content: center;
@@ -436,13 +448,12 @@
 .loading-spinner {
     width: 40px;
     height: 40px;
-    border: 3px solid rgba(0, 0, 0, 0.1); /* Borde suave */
+    border: 3px solid rgba(0, 0, 0, 0.1);
     border-radius: 50%;
-    border-top-color: var(--sl-color-primary-500); /* Tu color primario */
+    border-top-color: var(--sl-color-primary-500);
     animation: spin 0.8s ease-in-out infinite;
 }
 
-/* Soporte Dark Mode para el spinner */
 [data-theme="dark"] .loading-spinner {
     border-color: rgba(255, 255, 255, 0.1);
     border-top-color: var(--sl-color-primary-500);

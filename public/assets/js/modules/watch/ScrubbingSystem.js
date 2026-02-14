@@ -1,5 +1,6 @@
 export class ScrubbingSystem {
     constructor(videoElement, spriteUrl, vttUrl) {
+        // console.log('[Scrubbing] 🔧 Constructor iniciado');
         this.video = videoElement;
         this.spriteUrl = spriteUrl;
         this.vttUrl = vttUrl;
@@ -8,8 +9,11 @@ export class ScrubbingSystem {
         
         // Elementos UI
         this.progressContainer = document.querySelector('.component-watch-progress-container');
-        this.videoContainer = document.getElementById('video-container');
+        this.playerCard = this.video.closest('.component-watch-player-card') || document.getElementById('video-container');
+        
         this.tooltip = document.getElementById('scrub-tooltip');
+        // Necesitamos el wrapper para leer el SCALE del CSS
+        this.tooltipWrapper = this.tooltip ? this.tooltip.querySelector('.component-watch-scrub-img-wrapper') : null;
         this.tooltipImg = this.tooltip ? this.tooltip.querySelector('.component-watch-scrub-preview') : null;
         this.tooltipTime = this.tooltip ? this.tooltip.querySelector('.component-watch-scrub-time') : null;
 
@@ -27,10 +31,9 @@ export class ScrubbingSystem {
             if (!response.ok) throw new Error("Error cargando VTT");
             const text = await response.text();
             this.vttData = this._parseVTT(text);
-            console.log(`ScrubbingSystem: ${this.vttData.length} frames indexados.`);
             this._attachListeners();
         } catch (e) {
-            console.warn("Fallo al inicializar scrubbing:", e);
+            console.warn("[Scrubbing] ❌ Fallo al inicializar:", e);
         }
     }
 
@@ -39,7 +42,6 @@ export class ScrubbingSystem {
         const data = [];
         let currentStart = null;
         let currentEnd = null;
-
         const timeRegex = /(\d{2}:\d{2}:\d{2}\.\d{3}) --> (\d{2}:\d{2}:\d{2}\.\d{3})/;
         const coordsRegex = /#xywh=(\d+),(\d+),(\d+),(\d+)/;
 
@@ -88,49 +90,83 @@ export class ScrubbingSystem {
         return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
     }
 
+    // Función auxiliar para leer la escala real del CSS
+    _getScaleFactor() {
+        if (!this.tooltipWrapper) return 1;
+        const style = window.getComputedStyle(this.tooltipWrapper);
+        const transform = style.transform || style.webkitTransform;
+        
+        // La matriz de transformación es "matrix(a, b, c, d, tx, ty)"
+        // El valor 'a' (índice 0) suele ser la escala X
+        if (transform && transform !== 'none') {
+            const values = transform.split('(')[1].split(')')[0].split(',');
+            const a = parseFloat(values[0]);
+            const b = parseFloat(values[1]);
+            // Calculamos la magnitud del vector para ser precisos (por si hubiera rotación)
+            const scale = Math.sqrt(a*a + b*b);
+            return scale;
+        }
+        return 1;
+    }
+
     _attachListeners() {
         if (!this.progressContainer || !this.tooltip) return;
 
         this.progressContainer.addEventListener('mousemove', (e) => {
             if (!this.vttData.length) return;
 
+            // 1. Calcular Tiempo
             const rectBar = this.progressContainer.getBoundingClientRect();
             const offsetXBar = e.clientX - rectBar.left;
             let percent = offsetXBar / rectBar.width;
-            
             if (percent < 0) percent = 0;
             if (percent > 1) percent = 1;
 
             const hoverTime = percent * this.video.duration;
+            if (this.tooltipTime) this.tooltipTime.innerText = this._formatTime(hoverTime);
 
-            if (this.tooltipTime) {
-                this.tooltipTime.innerText = this._formatTime(hoverTime);
-            }
-
+            // 2. Buscar Frame
             const frame = this.vttData.find(f => hoverTime >= f.start && hoverTime < f.end);
             
             if (frame && this.tooltipImg) {
                 this.tooltip.style.display = 'flex';
                 
-                const tooltipParent = this.tooltip.offsetParent || this.videoContainer; 
-                
-                if (tooltipParent) {
-                    const parentRect = tooltipParent.getBoundingClientRect();
-                    let relativeX = e.clientX - parentRect.left;
-
-                    const halfTooltip = 80; // Mitad aproximada del ancho del tooltip
-                    const maxLimit = parentRect.width - halfTooltip;
-
-                    if (relativeX < halfTooltip) relativeX = halfTooltip;
-                    if (relativeX > maxLimit) relativeX = maxLimit;
-
-                    this.tooltip.style.left = `${relativeX}px`;
-                }
-                
+                // Aplicar imagen
                 this.tooltipImg.style.backgroundImage = `url('${this.spriteUrl}')`;
                 this.tooltipImg.style.backgroundPosition = `-${frame.x}px -${frame.y}px`;
                 this.tooltipImg.style.width = `${frame.w}px`;
                 this.tooltipImg.style.height = `${frame.h}px`;
+
+                // 3. CÁLCULO DE POSICIÓN DINÁMICO
+                if (this.playerCard) {
+                    const cardRect = this.playerCard.getBoundingClientRect();
+                    
+                    // A. Obtenemos el factor de escala DIRECTAMENTE del CSS
+                    const currentScale = this._getScaleFactor();
+                    
+                    // B. Margen de seguridad (px)
+                    const SAFETY_MARGIN = 12; 
+
+                    // C. Calculamos ancho visual real usando la escala detectada
+                    const visualWidth = this.tooltip.offsetWidth * currentScale;
+                    const halfTooltipVisual = (visualWidth / 2) + SAFETY_MARGIN;
+                    
+                    // D. Límites y Clamping
+                    const mouseGlobalX = e.clientX;
+                    const minGlobalX = cardRect.left + halfTooltipVisual;
+                    const maxGlobalX = cardRect.right - halfTooltipVisual;
+
+                    let targetGlobalX = Math.max(minGlobalX, Math.min(mouseGlobalX, maxGlobalX));
+
+                    // E. Posicionamiento local
+                    const offsetParent = this.tooltip.offsetParent;
+                    if (offsetParent) {
+                        const parentRect = offsetParent.getBoundingClientRect();
+                        const finalLocalLeft = targetGlobalX - parentRect.left;
+                        
+                        this.tooltip.style.left = `${finalLocalLeft}px`;
+                    }
+                }
             }
         });
 

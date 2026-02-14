@@ -105,16 +105,17 @@ if (!function_exists('timeAgo')) { function timeAgo($datetime) {
 <?php else: ?>
 
 <div class="component-channel-wrapper">
-    <input type="file" id="banner-upload-input" accept="image/*" style="display: none;">
-    <div id="channel-banner-display" class="component-channel-banner" style="<?php echo $bannerInlineStyle; ?>">
-        <?php if ($channelStatus === 'OWNER'): ?>
-            <button id="btn-trigger-banner" class="component-channel-banner-edit-btn">
-                <span class="material-symbols-rounded">camera_alt</span> Editar banner
-            </button>
-        <?php endif; ?>
-    </div>
-
     <div class="component-channel-container">
+        
+        <input type="file" id="banner-upload-input" accept="image/*" style="display: none;">
+        <div id="channel-banner-display" class="component-channel-banner" style="<?php echo $bannerInlineStyle; ?>">
+            <?php if ($channelStatus === 'OWNER'): ?>
+                <button id="btn-trigger-banner" class="component-channel-banner-edit-btn">
+                    <span class="material-symbols-rounded">camera_alt</span> Editar banner
+                </button>
+            <?php endif; ?>
+        </div>
+
         <div class="component-channel-header">
             <div class="component-channel-avatar-container">
                 <img src="<?php echo htmlspecialchars($avatarSrc); ?>" class="component-channel-avatar-img">
@@ -151,8 +152,7 @@ if (!function_exists('timeAgo')) { function timeAgo($datetime) {
         <div class="component-channel-content-area" id="channel-feed-grid">
             <?php include __DIR__ . '/channel-feed.php'; ?>
         </div>
-    </div>
-</div>
+    </div> </div>
 
 <div id="banner-modal" class="component-channel-modal-overlay">
     <div class="component-channel-modal-content">
