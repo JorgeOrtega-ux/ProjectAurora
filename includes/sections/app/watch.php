@@ -9,7 +9,7 @@ if (!isset($pdo) || !isset($redis)) {
 $videoUuid = trim($_GET['v'] ?? '');
 $videoData = null;
 
-// Variables de Estado de Interacción (Defaults)
+// Variables de Estado de Interacción
 $interaction = [
     'liked' => false,
     'disliked' => false,
@@ -20,13 +20,13 @@ $interaction = [
     'subs_count' => 0
 ];
 
-// Variables del Usuario Actual (Espectador)
+// Variables del Usuario Actual
 $currentUser = null;
 $currentUserAvatar = '';
 
 if (!empty($videoUuid) && isset($pdo)) {
     try {
-        // 1. Obtener datos del video y autor desde MySQL (Base sólida)
+        // 1. Obtener datos del video y autor
         $stmt = $pdo->prepare("
             SELECT v.id, v.title, v.description, v.hls_path, v.sprite_path, v.vtt_path, 
                    v.created_at, v.dominant_color, v.views_count, v.likes_count, v.dislikes_count,
@@ -40,16 +40,13 @@ if (!empty($videoUuid) && isset($pdo)) {
         $videoData = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($videoData) {
-            // 2. [REDIS HYBRID] Obtener datos frescos
+            // 2. [REDIS HYBRID]
             if ($redis) {
-                // A. VISITAS
                 $bufferKey = "video:buffer:views:{$videoUuid}";
                 $bufferCount = (int)$redis->get($bufferKey);
                 $interaction['views_count'] = (int)$videoData['views_count'] + $bufferCount;
 
-                // B. LIKES/DISLIKES/SUBS
                 $vStats = $redis->hgetall("video:stats:{$videoUuid}");
-                
                 if ($vStats) {
                     $interaction['likes_count'] = $vStats['likes'] ?? $videoData['likes_count'];
                     $interaction['dislikes_count'] = $vStats['dislikes'] ?? $videoData['dislikes_count'];
@@ -62,18 +59,16 @@ if (!empty($videoUuid) && isset($pdo)) {
                 $interaction['subs_count'] = ($uStats !== null) ? $uStats : $videoData['subscribers_count'];
 
             } else {
-                // Fallback solo MySQL
                 $interaction['likes_count'] = $videoData['likes_count'];
                 $interaction['dislikes_count'] = $videoData['dislikes_count'];
                 $interaction['views_count'] = $videoData['views_count'];
                 $interaction['subs_count'] = $videoData['subscribers_count'];
             }
 
-            // 3. [USER STATE] Verificar interacciones del usuario actual
+            // 3. [USER STATE]
             if (isset($_SESSION['user_id'])) {
                 $myId = $_SESSION['user_id'];
                 
-                // A. Check Like/Dislike
                 $chkInt = $pdo->prepare("SELECT type FROM video_interactions WHERE user_id = ? AND video_id = ?");
                 $chkInt->execute([$myId, $videoData['id']]);
                 $type = $chkInt->fetchColumn();
@@ -81,14 +76,12 @@ if (!empty($videoUuid) && isset($pdo)) {
                 if ($type === 'like') $interaction['liked'] = true;
                 if ($type === 'dislike') $interaction['disliked'] = true;
 
-                // B. Check Subscription
                 $chkSub = $pdo->prepare("SELECT id FROM subscriptions WHERE subscriber_id = ? AND channel_id = ?");
                 $chkSub->execute([$myId, $videoData['author_id']]);
                 if ($chkSub->fetch()) {
                     $interaction['subscribed'] = true;
                 }
 
-                // C. Obtener Avatar del Usuario Actual (para la caja de comentarios)
                 $stmtUser = $pdo->prepare("SELECT username, avatar_path FROM users WHERE id = ?");
                 $stmtUser->execute([$myId]);
                 $currentUser = $stmtUser->fetch(PDO::FETCH_ASSOC);
@@ -111,7 +104,7 @@ if (!empty($videoUuid) && isset($pdo)) {
 
 // Helpers visuales
 $avatarUrl = '';
-$domColorRgb = '20, 20, 20'; // Default dark
+$domColorRgb = '20, 20, 20'; 
 
 if ($videoData) {
     $avatarPath = $videoData['avatar_path'] ?? '';
@@ -136,7 +129,7 @@ function formatCount($n) {
 }
 ?>
 
-<div class="component-wrapper component-wrapper--full" data-section="watch" style="max-width: 100%; padding: 0;">
+<div class="component-wrapper component-wrapper--full component-wrapper--watch-page" data-section="watch">
     
     <?php if ($videoData): ?>
         <?php
@@ -144,11 +137,10 @@ function formatCount($n) {
         $cinemaClass = $isCinemaMode ? 'component-watch-mode-cinema' : '';
         ?>
 
-        <div class="js-video-context" 
+        <div class="js-video-context d-none" 
              data-video-uuid="<?php echo htmlspecialchars($videoUuid); ?>"
              data-channel-uuid="<?php echo htmlspecialchars($videoData['user_uuid']); ?>"
-             data-user-avatar="<?php echo htmlspecialchars($currentUserAvatar); ?>"
-             style="display:none;"></div>
+             data-user-avatar="<?php echo htmlspecialchars($currentUserAvatar); ?>"></div>
         
         <div class="component-watch-layout <?php echo $cinemaClass; ?>">
             
@@ -255,7 +247,7 @@ function formatCount($n) {
                     
                     <div class="component-watch-author-row">
                         <div class="component-watch-author-info">
-                            <a href="/ProjectAurora/channel/<?php echo $videoData['user_uuid']; ?>" style="text-decoration:none; display:flex; align-items:center; color:inherit;">
+                            <a href="/ProjectAurora/channel/<?php echo $videoData['user_uuid']; ?>" class="component-watch-author-link">
                                 <img src="<?php echo $avatarUrl; ?>" alt="Avatar" class="component-watch-avatar">
                                 <div class="component-watch-author-text">
                                     <span class="component-watch-username"><?php echo htmlspecialchars($videoData['username']); ?></span>
@@ -263,8 +255,7 @@ function formatCount($n) {
                                 </div>
                             </a>
                             
-                            <button class="component-button primary js-btn-subscribe <?php echo $interaction['subscribed'] ? 'subscribed' : ''; ?>" 
-                                    style="border-radius: 20px; margin-left: 24px;">
+                            <button class="component-button primary js-btn-subscribe component-watch-subscribe-btn <?php echo $interaction['subscribed'] ? 'subscribed' : ''; ?>">
                                 <?php echo $interaction['subscribed'] ? 'Suscrito' : 'Suscribirse'; ?>
                             </button>
                         </div>
@@ -301,21 +292,20 @@ function formatCount($n) {
                         <p class="component-watch-desc-text" id="video-description-text" data-full-text="<?php echo htmlspecialchars($fullDesc); ?>" data-truncated-text="<?php echo htmlspecialchars($displayDesc); ?>"><?php echo nl2br(htmlspecialchars($displayDesc)); ?></p>
                         
                         <?php if ($isLongDesc): ?>
-                            <button class="component-button text small js-read-more-desc" id="btn-toggle-description" data-action="expand" style="padding:0; margin-left:4px; height:auto; display:inline-block; color: var(--text-secondary); margin-top: 8px;">Leer más</button>
+                            <button class="component-button text small js-read-more-desc" id="btn-toggle-description" data-action="expand">Leer más</button>
                         <?php endif; ?>
                     </div>
                 </div>
 
                 <div class="component-watch-comments">
-                    <h3 style="font-size: 1.2rem; margin-bottom: 20px;">Comentarios</h3>
+                    <h3 class="component-watch-comments-title">Comentarios</h3>
                     
                     <?php if (isset($_SESSION['user_id'])): ?>
                         <div class="component-watch-comment-input-row" id="main-comment-form-container">
                             <img src="<?php echo $currentUserAvatar; ?>" class="component-watch-avatar small">
-                            <div class="component-watch-comment-input-wrapper chat-style" style="position: relative;">
+                            
+                            <div class="component-watch-comment-input-wrapper chat-style" id="comment-wrapper-box">
                                 <textarea id="comment-input-main" class="component-input auto-expand chat-input" placeholder="Añade un comentario..." rows="1" maxlength="10000"></textarea>
-                                
-                                <span id="main-comment-counter" style="position: absolute; bottom: -18px; right: 0; font-size: 11px; color: var(--text-tertiary);">0 / 10000</span>
                                 
                                 <button class="component-input-embedded-btn" id="btn-submit-main" disabled title="Enviar">
                                     <span class="material-symbols-rounded">send</span>
@@ -323,22 +313,22 @@ function formatCount($n) {
                             </div>
                         </div>
                     <?php else: ?>
-                         <div style="margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 8px; text-align: center;">
-                            <p style="color: var(--text-secondary); margin-bottom: 8px;">Inicia sesión para comentar</p>
+                         <div class="component-watch-login-placeholder">
+                            <p class="component-watch-login-text">Inicia sesión para comentar</p>
                             <a href="/ProjectAurora/login" class="component-button primary small">Iniciar Sesión</a>
                          </div>
                     <?php endif; ?>
 
                     <div id="comments-list" class="component-watch-comments-list">
-                        <div class="component-loader-spinner" style="margin: 20px auto;"></div>
+                        <div class="component-loader-spinner component-loader-center"></div>
                     </div>
                 </div>
 
             </div>
 
             <div class="component-watch-col-right">
-                <div class="component-card" style="text-align: center; color: var(--text-secondary); padding: 40px;">
-                    <span class="material-symbols-rounded" style="font-size: 32px; margin-bottom: 8px;">playlist_play</span>
+                <div class="component-card component-watch-related-placeholder">
+                    <span class="material-symbols-rounded component-watch-related-icon">playlist_play</span>
                     <p>Próximamente: Videos relacionados</p>
                 </div>
             </div>
@@ -351,10 +341,10 @@ function formatCount($n) {
 
     <?php else: ?>
         <div class="component-layout-centered">
-            <div class="component-card" style="text-align: center; padding: 40px;">
-                <span class="material-symbols-rounded" style="font-size: 48px; color: var(--text-tertiary);">videocam_off</span>
-                <h2 style="margin: 16px 0; color: var(--text-primary);">Video no disponible</h2>
-                <p style="color: var(--text-secondary);">El video no existe o es privado.</p>
+            <div class="component-card component-watch-error-state">
+                <span class="material-symbols-rounded component-watch-error-icon">videocam_off</span>
+                <h2 class="component-watch-error-title">Video no disponible</h2>
+                <p class="component-watch-error-desc">El video no existe o es privado.</p>
                 <button class="component-button primary mt-16" onclick="window.history.back()">Volver</button>
             </div>
         </div>

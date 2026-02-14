@@ -4,6 +4,11 @@
    REPRODUCTOR DE VIDEO Y COMPONENTES VISUALES
    ========================================= */
 
+.component-wrapper--watch-page {
+    max-width: 100%;
+    padding: 0;
+}
+
 .component-watch-player-card {
     position: relative;
     background-color: #000;
@@ -72,9 +77,7 @@
     font-size: 0.9rem; color: var(--text-primary); margin-top: 4px; 
     transition: background-color 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
     border: 1px solid transparent; 
-    /* PREVENIR DESBORDAMIENTO EN DESCRIPCIÓN */
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    overflow-wrap: anywhere; word-break: break-word;
 }
 .component-watch-desc-box:hover {
     background-color: rgba(var(--dominant-rgb), 0.15); border-color: rgba(var(--dominant-rgb), 0.3);
@@ -83,12 +86,12 @@
 .component-watch-desc-meta { font-weight: 600; font-size: 0.85rem; color: var(--text-primary); margin-bottom: 8px; }
 
 .component-watch-desc-text { 
-    white-space: pre-wrap; 
-    line-height: 1.5; 
-    color: var(--text-secondary);
-    /* SEGURIDAD EXTRA PARA TEXTO */
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    white-space: pre-wrap; line-height: 1.5; color: var(--text-secondary);
+    overflow-wrap: anywhere; word-break: break-word;
+}
+.js-read-more-desc {
+    padding: 0; margin-left: 4px; height: auto; display: inline-block; 
+    color: var(--text-secondary); margin-top: 8px;
 }
 
 /* Controls Overlay */
@@ -162,87 +165,131 @@
 .component-watch-settings-option .check-icon { position: absolute; right: 16px; display: none; color: #fff; }
 .component-watch-settings-option.selected .check-icon { display: block; }
 
-/* Botones de Acción */
+/* =========================================
+   Botones de Acción (MODIFICADO - TRANSPARENTES + BORDE #00000020)
+   ========================================= */
 .component-watch-actions {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap; 
 }
+
+/* Estilo general para píldoras (Joined y Action) */
+.component-watch-action-pill,
+.component-watch-joined-pill {
+    background-color: transparent; /* Transparente por defecto */
+    border: 1px solid var(--border-transparent-20); /* Borde #00000020 */
+    color: var(--text-primary);
+    transition: background 0.2s, border-color 0.2s;
+}
+
+/* Action Pill Especifico */
 .component-watch-action-pill {
     border-radius: 20px !important; 
     display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 36px;
-    background-color: rgba(255, 255, 255, 0.1); border: none; color: var(--text-primary, #fff);
-    cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: background 0.2s;
+    cursor: pointer; font-size: 0.9rem; font-weight: 500;
 }
-.component-watch-action-pill:hover { background-color: rgba(255, 255, 255, 0.2); }
+.component-watch-action-pill:hover { 
+    background-color: var(--bg-hover-light); /* Hover #f5f5fa */
+    border-color: var(--text-primary); 
+}
 
-/* Joined Pills (General) */
+/* Joined Pills Container */
 .component-watch-joined-pill {
-    display: flex; align-items: center; background-color: rgba(255, 255, 255, 0.1); 
+    display: flex; align-items: center; 
     border-radius: 20px; height: 36px; overflow: hidden; 
-}
-/* Variante para Comentarios (Más pequeña y compacta) */
-.component-watch-joined-pill.comment-size {
-    height: 32px;
-    background-color: transparent; /* Opcional: fondo transparente o muy sutil */
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-}
-.component-watch-joined-pill.comment-size:hover {
-    background-color: rgba(255, 255, 255, 0.05);
 }
 
 .component-watch-joined-btn {
-    background: transparent; border: none; color: var(--text-primary, #fff);
+    background: transparent; border: none; color: var(--text-primary);
     display: flex; align-items: center; justify-content: center; height: 100%;
     cursor: pointer; font-size: 0.9rem; font-weight: 500; padding: 0 16px;
-    transition: background 0.2s; gap: 6px;
+    transition: background 0.2s, color 0.2s; gap: 6px;
 }
-.component-watch-joined-btn:hover { background-color: rgba(255, 255, 255, 0.2); }
+/* Efecto hover en los botones internos también */
+.component-watch-joined-btn:hover { 
+    background-color: var(--bg-hover-light); /* Hover #f5f5fa */
+}
 .component-watch-joined-btn.active { color: var(--accent-primary, #6a5acd); }
+.component-watch-joined-btn.dislike { padding: 0 12px; }
 
-/* Ajustes específicos para los botones dentro de comentarios */
+/* Separador dentro de la píldora */
+.component-watch-joined-separator { 
+    width: 1px; height: 60%; 
+    background-color: var(--border-transparent-20); 
+}
+
+/* OVERRIDE PARA DARK MODE */
+[data-theme="dark"] .component-watch-action-pill,
+[data-theme="dark"] .component-watch-joined-pill {
+    border-color: rgba(255, 255, 255, 0.2); 
+}
+[data-theme="dark"] .component-watch-joined-separator {
+    background-color: rgba(255, 255, 255, 0.2); 
+}
+
+/* =========================================
+   Acciones en Comentarios (Small Pills)
+   ========================================= */
+.component-watch-joined-pill.comment-size {
+    height: 32px;
+    background-color: transparent; 
+    border: 1px solid var(--border-transparent-20);
+    border-radius: 16px;
+}
+.component-watch-joined-pill.comment-size:hover {
+    background-color: var(--bg-hover-light);
+}
 .component-watch-joined-pill.comment-size .component-watch-joined-btn {
-    padding: 0 12px; /* Un poco menos de padding lateral */
+    padding: 0 12px;
 }
 .component-watch-joined-pill.comment-size .component-watch-joined-btn:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: var(--bg-hover-light);
 }
+.component-watch-joined-btn .material-symbols-rounded.icon-sm {
+    font-size: 16px;
+}
+.component-watch-joined-btn .count-label {
+    font-size: 12px;
+}
+.btn-reply { margin-left: 8px; }
 
-.component-watch-joined-btn.dislike { padding: 0 12px; }
-.component-watch-joined-separator { width: 1px; height: 60%; background-color: rgba(255, 255, 255, 0.2); }
 
-/* Layout General */
+/* =========================================
+   Layout General y Helpers
+   ========================================= */
 .component-watch-layout { display: flex; gap: 24px; width: 100%; max-width: 1700px; margin: 0 auto; padding: 24px; align-items: flex-start; }
 .component-watch-col-left { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 .component-watch-meta-card { display: flex; flex-direction: column; gap: 12px; }
-.component-watch-title { 
-    font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0; 
-    /* EVITAR DESBORDAMIENTO EN TÍTULO */
-    overflow-wrap: anywhere; word-break: break-word;
-}
+.component-watch-title { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0; overflow-wrap: anywhere; word-break: break-word; }
 .component-watch-author-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
 .component-watch-author-info { display: flex; align-items: center; gap: 12px; }
 .component-watch-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
 .component-watch-avatar.small { width: 32px; height: 32px; }
-
 .component-watch-author-text { display: flex; flex-direction: column; }
 .component-watch-username { font-weight: 600; font-size: 1rem; color: var(--text-primary); }
 .component-watch-subs { font-size: 0.8rem; color: var(--text-secondary); }
 .component-watch-col-right { width: 400px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; }
 
+/* Helpers */
+.component-watch-author-link { text-decoration: none; display: flex; align-items: center; color: inherit; }
+.component-watch-subscribe-btn { border-radius: 20px; margin-left: 24px; }
+.component-watch-comments-title { font-size: 1.2rem; margin-bottom: 20px; }
+.component-watch-login-placeholder { margin-bottom: 24px; padding: 16px; background: var(--bg-hover-light); border-radius: 8px; text-align: center; border: 1px solid var(--border-transparent-20); }
+.component-watch-login-text { color: var(--text-secondary); margin-bottom: 8px; }
+.component-loader-center { margin: 20px auto; }
+.component-watch-related-placeholder { text-align: center; color: var(--text-secondary); padding: 40px; }
+.component-watch-related-icon { font-size: 32px; margin-bottom: 8px; }
+.component-watch-error-state { text-align: center; padding: 40px; }
+.component-watch-error-icon { font-size: 48px; color: var(--text-tertiary); }
+.component-watch-error-title { margin: 16px 0; color: var(--text-primary); }
+.component-watch-error-desc { color: var(--text-secondary); }
+
 /* Modo Cine */
-.component-watch-layout.component-watch-mode-cinema {
-    display: grid; grid-template-columns: minmax(0, 1fr) 424px; gap: 24px;
-    max-width: 100%; padding: 0; padding-bottom: 24px;
-}
+.component-watch-layout.component-watch-mode-cinema { display: grid; grid-template-columns: minmax(0, 1fr) 424px; gap: 24px; max-width: 100%; padding: 0; padding-bottom: 24px; }
 .component-watch-layout.component-watch-mode-cinema .component-watch-col-left { display: contents; }
-.component-watch-layout.component-watch-mode-cinema .component-watch-player-card {
-    grid-column: 1 / -1; width: 100%; height: 85vh; max-height: 85vh;
-    border-radius: 0; background-color: #000; display: flex; justify-content: center; 
-    align-items: center; margin-bottom: 24px; aspect-ratio: auto; overflow: hidden; 
-}
+.component-watch-layout.component-watch-mode-cinema .component-watch-player-card { grid-column: 1 / -1; width: 100%; height: 85vh; max-height: 85vh; border-radius: 0; background-color: #000; display: flex; justify-content: center; align-items: center; margin-bottom: 24px; aspect-ratio: auto; overflow: hidden; }
 .component-watch-layout.component-watch-mode-cinema .component-watch-player-wrapper,
 .component-watch-layout.component-watch-mode-cinema .component-watch-video-element { border-radius: 0; }
 .component-watch-layout.component-watch-mode-cinema .component-watch-player-wrapper { width: auto; height: 100%; aspect-ratio: 16/9; max-width: 100%; }
@@ -257,7 +304,6 @@
     .component-watch-player-card { border-radius: 0; }
     .component-watch-meta-card { padding: 0 16px; }
     .component-watch-comments { padding: 0 16px 24px 16px; }
-
     .component-watch-layout.component-watch-mode-cinema { display: flex; flex-direction: column; grid-template-columns: none; }
     .component-watch-layout.component-watch-mode-cinema .component-watch-player-card { height: auto; aspect-ratio: 16/9; order: 1; margin-bottom: 16px; }
     .component-watch-layout.component-watch-mode-cinema .component-watch-meta-card { order: 2; margin-left: 0; padding: 0 16px; width: 100%; }
@@ -266,7 +312,7 @@
 }
 
 /* =========================================
-   SECCIÓN DE COMENTARIOS (LIMPIO - SIN LÍNEAS)
+   SECCIÓN DE COMENTARIOS (INPUT REDISEÑADO)
    ========================================= */
 
 .component-watch-comments {
@@ -276,265 +322,108 @@
 
 /* --- Input Principal --- */
 .component-watch-comment-input-row {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 32px;
-    align-items: flex-start;
+    display: flex; gap: 16px; margin-bottom: 32px; align-items: flex-start;
 }
-
 .component-watch-comment-input-row.reply-mode {
-    margin-top: 12px;
-    margin-bottom: 12px;
-    animation: slideDown 0.2s ease-out;
+    margin-top: 12px; margin-bottom: 12px; animation: slideDown 0.2s ease-out;
 }
 
-/* Wrapper para el input estilo chat */
-.component-watch-comment-input-wrapper {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
+/* WRAPPER FLEXBOX DEL INPUT */
 .component-watch-comment-input-wrapper.chat-style {
-    position: relative; /* Necesario para posicionar el botón */
-}
-
-/* --- Estructura del Comentario (Grid flexible) --- */
-.component-comment-item {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 24px;
-    align-items: flex-start;
-    position: relative;
-    max-width: 100%; /* Asegura que no crezca más que el contenedor padre */
-}
-
-/* Evitar que el avatar se aplaste */
-.component-comment-avatar-link {
-    flex-shrink: 0;
-    text-decoration: none;
-    z-index: 1;
-}
-
-.component-comment-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    object-fit: cover;
-    background-color: var(--bg-surface);
-}
-
-/* --- Columna de Contenido --- */
-.component-comment-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-width: 0; /* CRÍTICO: Permite que flexbox encoja el contenido si es necesario */
-    gap: 4px;
-}
-
-.component-comment-header {
-    display: flex;
-    align-items: baseline;
+    width: 100%;
+    height: 45px; /* Altura fija inicial (minimo) */
+    display: flex; 
+    flex-direction: row; /* Default: Left (Text) - Right (Btn) */
+    align-items: center; /* Centrado verticalmente al inicio */
     gap: 8px;
-    font-size: 0.85rem;
-    margin-bottom: 2px;
+    padding: 8px 12px;
+    
+    /* Bordes y Colores */
+    border: 1px solid var(--border-transparent-20);
+    border-radius: 8px;
+    background-color: transparent; /* Light mode default */
+    position: relative;
+    transition: background 0.2s, height 0.2s;
 }
 
-.component-comment-author {
-    font-weight: 600;
-    color: var(--text-primary);
-    text-decoration: none;
-}
-
-.component-comment-date {
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-}
-
-.component-comment-text {
-    color: var(--text-primary);
-    font-size: 0.95rem;
-    line-height: 1.5;
-    white-space: pre-wrap;
-    margin-bottom: 6px;
-    /* PREVENIR DESBORDAMIENTO HORIZONTAL */
-    overflow-wrap: anywhere;
-    word-break: break-word;
-}
-
-/* Acciones (Like, Reply) */
-.component-comment-actions {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.component-comment-actions .component-button.text {
-    padding: 0 12px;
-    height: 32px;
-    font-weight: 600;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    border-radius: 16px;
-}
-
-.component-comment-actions .component-button.text:hover {
-    background-color: rgba(255,255,255,0.1);
-    color: var(--text-primary);
-}
-
-/* --- RESPUESTAS (SIMPLE - SIN LÍNEAS) --- */
-
-.component-comment-replies-wrapper {
-    margin-top: 8px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    width: 100%; /* Asegurar ancho */
-}
-
-/* Botón para Mostrar/Ocultar respuestas (MODIFICADO: Blanco y con borde) */
-.component-watch-replies-toggle {
-    display: flex;
-    align-items: center;
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2); /* Borde solicitado */
-    color: var(--text-primary, #fff); /* Texto Blanco */
-    font-size: 0.9rem;
-    font-weight: 500;
-    cursor: pointer;
-    padding: 6px 16px;
-    border-radius: 18px;
-    transition: background-color 0.2s, border-color 0.2s;
-    margin-bottom: 8px;
-}
-
-.component-watch-replies-toggle:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.4);
-}
-
-.component-comment-replies {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    width: 100%;
-}
-
-/* Ajustes para el ítem cuando es una respuesta */
-.component-comment-item.is-reply {
-    margin-bottom: 0; 
-}
-
-/* Avatar un poco más pequeño en respuestas para jerarquía visual */
-.component-comment-item.is-reply .component-comment-avatar {
-    width: 28px;
-    height: 28px;
-}
-
-/* Inputs */
-.component-input.auto-expand {
-    min-height: 40px;
-    resize: none;
-    overflow-y: hidden;
-    padding-top: 10px;
-    border-bottom: 1px solid var(--border-color, #333);
-    border-radius: 0;
-    background: transparent;
-    transition: border-color 0.2s;
-    width: 100%;
-}
-
-/* ESTILOS PARA INPUT TIPO CHAT (Botón integrado) */
-.component-input.auto-expand.chat-input {
-    border-radius: 8px; /* Bordes redondeados o mantener solo bottom según prefieras, aquí lo hago sutil */
-    border: 1px solid rgba(255,255,255,0.2);
-    padding: 10px 48px 10px 12px; /* Padding derecho grande para el botón */
+/* Background para dark mode */
+[data-theme="dark"] .component-watch-comment-input-wrapper.chat-style {
     background-color: rgba(0,0,0,0.2);
-}
-.component-input.auto-expand.chat-input:focus {
-    border-color: var(--accent-primary, #fff);
-    background-color: rgba(0,0,0,0.4);
-    outline: none;
+    border-color: rgba(255,255,255,0.2);
 }
 
-/* Botón embebido (Avión de papel) */
-.component-input-embedded-btn {
-    position: absolute;
-    right: 8px;
-    bottom: 8px; /* Anclado abajo para que acompañe al texto si crece */
-    background: transparent;
-    border: none;
-    color: var(--text-primary, #fff);
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
+.component-watch-comment-input-wrapper.chat-style:focus-within {
+    border-color: var(--text-primary);
+    background-color: var(--bg-hover-light);
 }
+
+/* ESTADO EXPANDIDO (Activado por JS al detectar salto de línea) */
+.component-watch-comment-input-wrapper.chat-style.is-expanded {
+    flex-direction: column; /* Cambia a columna */
+    height: auto; /* Permite crecer */
+    align-items: flex-end; /* Botón a la derecha */
+}
+
+/* TEXT AREA */
+.component-input.auto-expand.chat-input {
+    flex: 1 1 auto; /* Ocupa todo el espacio disponible */
+    width: 100%;
+    border: none;
+    border-radius: 0; 
+    padding: 4px 0;
+    background-color: transparent; 
+    color: var(--text-primary);
+    resize: none; /* Sin resize manual */
+    min-height: 24px;
+    line-height: 1.4;
+    max-height: 200px;
+    overflow-y: hidden;
+}
+
+.component-input.auto-expand.chat-input:focus {
+    outline: none;
+    background: transparent;
+}
+
+/* Botón embebido */
+.component-input-embedded-btn {
+    position: static; /* Flujo normal */
+    background: transparent; border: none; color: var(--text-primary);
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background 0.2s, color 0.2s;
+    flex-shrink: 0;
+}
+
 .component-input-embedded-btn:disabled {
-    color: rgba(255,255,255,0.2);
-    cursor: default;
+    color: var(--text-tertiary); cursor: default;
 }
 .component-input-embedded-btn:not(:disabled):hover {
-    background-color: rgba(255,255,255,0.1);
+    background-color: var(--bg-hover-light);
     color: var(--accent-primary, #6a5acd);
 }
-.component-input-embedded-btn .material-symbols-rounded {
-    font-size: 20px;
-}
+.component-input-embedded-btn .material-symbols-rounded { font-size: 20px; }
 
 
-@keyframes slideDown { 
-    from { opacity: 0; transform: translateY(-10px); } 
-    to { opacity: 1; transform: translateY(0); } 
-}
-
-/* =========================================
-   NUEVOS ESTILOS (Turno Actual)
-   ========================================= */
-
-/* Botón Leer más en comentarios (Discreto) */
-.js-read-more {
-    background: none;
-    border: none;
-    padding: 0;
-    color: var(--text-secondary);
-    font-weight: 500;
-    cursor: pointer;
-    font-size: 0.85rem;
-    transition: color 0.2s;
-}
-.js-read-more:hover {
-    color: var(--text-primary);
-    text-decoration: underline;
-}
-
-/* Wrapper del texto para controlar márgenes */
-.component-comment-text-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    margin-bottom: 6px;
-    line-height: 1.5;
-    color: var(--text-primary);
-    font-size: 0.95rem;
-    white-space: pre-wrap;
-    /* PREVENIR DESBORDAMIENTO EN WRAPPER */
-    overflow-wrap: anywhere;
-    word-break: break-word;
-    max-width: 100%;
-}
-
-/* Contadores de caracteres */
-#main-comment-counter, 
-.reply-counter {
-    font-family: 'Roboto Mono', monospace;
-    transition: color 0.2s;
-    pointer-events: none;
-    user-select: none;
-}
+/* --- Estructura del Comentario --- */
+.component-comment-item { display: flex; gap: 12px; margin-bottom: 24px; align-items: flex-start; position: relative; max-width: 100%; }
+.component-comment-avatar-link { flex-shrink: 0; text-decoration: none; z-index: 1; }
+.component-comment-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background-color: var(--bg-surface); }
+.component-comment-content { flex: 1; display: flex; flex-direction: column; min-width: 0; gap: 4px; }
+.component-comment-header { display: flex; align-items: baseline; gap: 8px; font-size: 0.85rem; margin-bottom: 2px; }
+.component-comment-author { font-weight: 600; color: var(--text-primary); text-decoration: none; }
+.component-comment-date { color: var(--text-secondary); font-size: 0.8rem; }
+.component-comment-text { color: var(--text-primary); font-size: 0.95rem; line-height: 1.5; white-space: pre-wrap; margin-bottom: 6px; overflow-wrap: anywhere; word-break: break-word; }
+.component-comment-text-wrapper { display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 6px; line-height: 1.5; color: var(--text-primary); font-size: 0.95rem; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; }
+.component-comment-actions { display: flex; align-items: center; gap: 4px; }
+.component-button.text.small, .js-read-more { background: none; border: none; padding: 0 12px; height: 32px; font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); border-radius: 16px; cursor: pointer; display: flex; align-items: center; }
+.component-button.text.small:hover, .js-read-more:hover { background-color: var(--bg-hover-light); color: var(--text-primary); }
+.js-read-more { padding: 0; text-decoration: none; }
+.js-read-more:hover { text-decoration: underline; background: transparent; }
+.component-comment-replies-wrapper { margin-top: 8px; display: flex; flex-direction: column; align-items: flex-start; width: 100%; }
+.component-watch-replies-toggle { display: flex; align-items: center; background: transparent; border: 1px solid var(--border-transparent-20); color: var(--text-primary); font-size: 0.9rem; font-weight: 500; cursor: pointer; padding: 6px 16px; border-radius: 18px; transition: background-color 0.2s, border-color 0.2s; margin-bottom: 8px; }
+.component-watch-replies-toggle:hover { background-color: var(--bg-hover-light); border-color: var(--text-primary); }
+.component-comment-replies { display: flex; flex-direction: column; gap: 16px; width: 100%; }
+.component-comment-item.is-reply { margin-bottom: 0; }
+.component-comment-item.is-reply .component-comment-avatar { width: 28px; height: 28px; }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
