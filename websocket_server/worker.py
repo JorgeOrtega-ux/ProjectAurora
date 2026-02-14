@@ -371,18 +371,24 @@ def task_process_video(payload):
             return
 
         # --- DEFINICIÓN DE ESCALERA DE CALIDADES (LADDER) ---
-        # Definimos las calidades estándar con sus bitrates aproximados
+        # Ahora incluye 4K (2160p) y 2K (1440p)
         available_qualities = [
-            {'name': '1080p', 'w': 1920, 'h': 1080, 'bv': '4500k', 'ba': '192k'},
-            {'name': '720p',  'w': 1280, 'h': 720,  'bv': '2500k', 'ba': '128k'},
-            {'name': '480p',  'w': 854,  'h': 480,  'bv': '1000k', 'ba': '128k'},
-            {'name': '360p',  'w': 640,  'h': 360,  'bv': '600k',  'ba': '96k'},
-            {'name': '240p',  'w': 426,  'h': 240,  'bv': '350k',  'ba': '64k'},
-            {'name': '144p',  'w': 256,  'h': 144,  'bv': '100k',  'ba': '48k'}  # <--- AGREGA ESTO
+            # 4K UHD: Bitrate alto para mantener detalle en pantallas grandes
+            {'name': '4k',    'w': 3840, 'h': 2160, 'bv': '14000k', 'ba': '320k'},
+            # 2K QHD: El punto dulce entre HD y 4K
+            {'name': '2k',    'w': 2560, 'h': 1440, 'bv': '9000k',  'ba': '256k'},
+            # Full HD Estándar
+            {'name': '1080p', 'w': 1920, 'h': 1080, 'bv': '4500k',  'ba': '192k'},
+            {'name': '720p',  'w': 1280, 'h': 720,  'bv': '2500k',  'ba': '128k'},
+            {'name': '480p',  'w': 854,  'h': 480,  'bv': '1000k',  'ba': '128k'},
+            {'name': '360p',  'w': 640,  'h': 360,  'bv': '600k',   'ba': '96k'},
+            {'name': '240p',  'w': 426,  'h': 240,  'bv': '350k',   'ba': '64k'},
+            {'name': '144p',  'w': 256,  'h': 144,  'bv': '100k',   'ba': '48k'}
         ]
 
         # Filtramos: Solo generamos calidades IGUALES o MENORES al original
-        # Si el video es 1280x720, generará 720p, 480p, 360p, etc. NO 1080p.
+        # Si el video original es 1920x1080, NO generará 4K ni 2K.
+        # Si el video original es 3840x2160, generará TODO (4K, 2K, 1080p...).
         target_qualities = [q for q in available_qualities if q['h'] <= height]
 
         # Fallback: Si el video es muy pequeño o extraño y no entra en ninguna categoría,
@@ -413,7 +419,7 @@ def task_process_video(payload):
                 f'-b:a:{i}', q['ba']
             ]
             
-            # Agrupar video+audio en el mapa de streams para HLS
+            # Agrupar video+audio en el mapa de streams para HLS (Muxed)
             # Formato: "v:0,a:0 v:1,a:1 ..."
             var_stream_map.append(f"v:{i},a:{i}")
 
@@ -431,7 +437,7 @@ def task_process_video(payload):
             os.path.join(output_dir, 'v%v.m3u8')
         ]
         
-        logging.info(f"⏳ Ejecutando Transcodificación Multi-Bitrate...")
+        logging.info(f"⏳ Ejecutando Transcodificación Multi-Bitrate (incluye 4K/2K si aplica)...")
         
         # Ejecutar con Popen para leer progreso en tiempo real
         process = subprocess.Popen(
@@ -485,7 +491,7 @@ def task_process_video(payload):
             raise Exception(f"FFmpeg Error (Code {return_code}): {remaining_err}")
 
         # 3. Actualizar BD con rutas y estado final
-        # [IMPORTANTE] hls_path ahora apunta al MASTER playlist (index.m3u8)
+        # [IMPORTANTE] hls_path apunta al MASTER playlist (index.m3u8)
         relative_hls = f"public/storage/videos/{video_uuid}/{master_pl_name}"
         
         conn = get_db_connection()
