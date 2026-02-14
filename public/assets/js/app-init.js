@@ -1,3 +1,5 @@
+/* public/assets/js/app-init.js */
+
 import { AuditLogController } from './modules/admin/audit-log-controller.js';
 import { BackupConfigController } from './modules/admin/backup-config-controller.js';
 import { BackupsController } from './modules/admin/backups-controller.js';
@@ -28,7 +30,9 @@ import { initUrlManager } from './core/utils/url-manager.js';
 import { UploadController } from './modules/studio/upload-controller.js';
 import { ContentController } from './modules/studio/content-controller.js';
 import { HomeController } from './modules/app/home-controller.js';
-import { WatchController } from './modules/app/watch-controller.js'; // <--- IMPORTADO
+import { WatchController } from './modules/app/watch-controller.js';
+// [NUEVO] Importamos el controlador del perfil
+import { ChannelProfileController } from './modules/app/channel-profile-controller.js';
 
 const App = {
     init: () => {
@@ -61,7 +65,6 @@ const App = {
              initUrlManager();
         }
 
-        // Obtener ruta limpia
         const path = window.location.pathname.replace(window.BASE_PATH, '').replace(/^\/+|\/+$/g, '');
         routeDispatcher(path || 'main');
 
@@ -103,21 +106,25 @@ function initGlobalSocketListeners() {
 function routeDispatcher(section) {
     updateSidebarState(section);
     
-    // Rutas dinámicas de Studio
-    if (section.startsWith('channel/upload') || section.includes('channel/upload')) {
+    if (section.startsWith('channel/upload')) {
         UploadController.init();
         return;
     }
     
-    // Ruta de Mi Contenido
-    if (section.startsWith('channel/my-content') || section.includes('channel/my-content')) {
+    if (section.startsWith('channel/my-content')) {
         ContentController.init();
         return;
     }
 
-    // [NUEVO] Despacho para la ruta Watch
     if (section === 'watch') {
         WatchController.init();
+        return;
+    }
+
+    // [NUEVO] Detector de Rutas de Canal (empiezan con c/...)
+    // También aceptamos 'channel-profile' por si viene del router interno
+    if (section.startsWith('c/') || section === 'channel-profile') {
+        ChannelProfileController.init();
         return;
     }
 
@@ -180,8 +187,11 @@ function updateSidebarState(section) {
     else if (section.startsWith('site-policy')) menus.help.style.display = 'flex';
     else if (menus.main) menus.main.style.display = 'flex';
 
-    const activeLink = sidebar.querySelector(`.menu-link[data-nav="${section}"]`);
-    if (activeLink) activeLink.classList.add('active');
+    // Para canales, a veces queremos mantener activo "Home" o nada
+    if (!section.startsWith('c/')) {
+        const activeLink = sidebar.querySelector(`.menu-link[data-nav="${section}"]`);
+        if (activeLink) activeLink.classList.add('active');
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

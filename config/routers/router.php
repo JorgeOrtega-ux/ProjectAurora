@@ -44,12 +44,12 @@ if (strpos($path, 's/channel/upload/') === 0) {
 // Mapa de Rutas
 $routes = require __DIR__ . '/../routes.php';
 
-// [CORRECCIÓN] Normalización de rutas con prefijo 's/'
+// [CORRECCIÓN] Normalización de rutas
 // Primero intentamos buscar la ruta tal cual viene
 if (array_key_exists($currentSection, $routes)) {
     // Coincidencia exacta
 } 
-// Si no, intentamos quitarle el prefijo 's/' (igual que hace loader.php)
+// Si no, intentamos quitarle el prefijo 's/'
 elseif (strpos($currentSection, 's/') === 0) {
     $cleanPath = preg_replace('#^s/#', '', $currentSection);
     
@@ -59,6 +59,11 @@ elseif (strpos($currentSection, 's/') === 0) {
         $currentSection = '404';
     }
 } 
+// [NUEVO] Permitir paso de rutas de canales 'c/UUID'
+elseif (strpos($currentSection, 'c/') === 0) {
+    // Dejamos pasar la ruta intacta (ej: c/uuid...) para que routing-logic.php 
+    // la capture con su expresión regular y asigne la vista 'channel-profile'.
+}
 else {
     // Si no existe de ninguna forma, mandamos a 404
     $currentSection = '404';
