@@ -18,10 +18,16 @@ export class ControlsManager {
         this.controlsContainer = document.getElementById('custom-controls');
         this.videoContainer = document.getElementById('video-container');
 
+        // Spinner
+        this.bufferingSpinner = document.getElementById('buffering-spinner');
+
         this.isCinemaMode = false;
         this.controlsTimeout = null;
         
-        // Variable para recordar el volumen anterior (UX mejorada)
+        // Variable para controlar el rebote del spinner (Anti-Flicker)
+        this.bufferingTimeout = null;
+        
+        // Variable para recordar el volumen anterior
         this.lastVolume = 1; 
 
         this.init();
@@ -91,11 +97,61 @@ export class ControlsManager {
             }
         });
 
-        // Click en video para pausa
+        // Click en video para pausa (Evitar si es click en popover)
         this.video.addEventListener('click', (e) => {
-            if (e.target.closest('.component-watch-settings-popover')) return; 
+            // CAMBIO: Checamos la nueva clase del popover
+            if (e.target.closest('.popover-module')) return; 
             this.player.togglePlay();
         });
+
+        /* ===========================================================
+           LÓGICA AVANZADA DE BUFFERING (ANTI-PARPADEO)
+           =========================================================== */
+        this.video.addEventListener('waiting', () => {
+            this._clearBufferingDebounce();
+            this.showBuffering();
+        });
+
+        this.video.addEventListener('playing', () => {
+            this._clearBufferingDebounce();
+            this.hideBuffering();
+        });
+
+        this.video.addEventListener('canplay', () => {
+            this._clearBufferingDebounce();
+            this.hideBuffering();
+        });
+
+        this.video.addEventListener('seeking', () => {
+            this._clearBufferingDebounce(); // Reiniciar si ya había uno pendiente
+            this.bufferingTimeout = setTimeout(() => {
+                this.showBuffering();
+            }, 200); 
+        });
+
+        this.video.addEventListener('seeked', () => {
+            this._clearBufferingDebounce();
+            this.hideBuffering();
+        });
+    }
+
+    _clearBufferingDebounce() {
+        if (this.bufferingTimeout) {
+            clearTimeout(this.bufferingTimeout);
+            this.bufferingTimeout = null;
+        }
+    }
+
+    showBuffering() {
+        if (this.bufferingSpinner) {
+            this.bufferingSpinner.classList.add('active');
+        }
+    }
+
+    hideBuffering() {
+        if (this.bufferingSpinner) {
+            this.bufferingSpinner.classList.remove('active');
+        }
     }
 
     _attachControlListeners() {
@@ -107,42 +163,27 @@ export class ControlsManager {
             this.currentTimeEl.innerText = this._formatTime(this.seekBar.value);
         });
 
-        // --- LÓGICA DE VOLUMEN MEJORADA (INPUT) ---
         this.volumeBar.addEventListener('input', (e) => {
             const vol = parseFloat(e.target.value);
             this.video.volume = vol;
             this.video.muted = (vol === 0);
-            
-            // Actualizamos lastVolume siempre con lo que el usuario arrastre.
-            // Si arrastra a 0, lastVolume será 0.
             this.lastVolume = vol; 
-            
             this.updateVolumeIcon(this.video.volume);
             this._updateSeekBarBackground(this.volumeBar);
         });
 
-        // --- LÓGICA DE VOLUMEN MEJORADA (CLICK BOTÓN) ---
         this.muteBtn.addEventListener('click', () => {
-            // Si ya está muteado O el volumen actual es 0 (efectivamente muteado)
             if (this.video.muted || this.video.volume === 0) {
-                // DESMUTEAR
                 this.video.muted = false;
-                
-                // LÓGICA CLAVE:
-                // 1. Si lastVolume > 0 (ej: 0.3), restauramos ese valor.
-                // 2. Si lastVolume es 0 (usuario lo bajó a mano a 0), subimos a 1 (100%).
                 this.video.volume = this.lastVolume > 0 ? this.lastVolume : 1;
-                
                 this.volumeBar.value = this.video.volume;
                 this.updateVolumeIcon(this.video.volume);
             } else {
-                // MUTEAR
-                this.lastVolume = this.video.volume; // Guardamos "memoria" antes de silenciar
+                this.lastVolume = this.video.volume;
                 this.video.muted = true;
                 this.volumeBar.value = 0;
                 this.updateVolumeIcon(0);
             }
-            // Actualizar el fondo visual tras el cambio
             this._updateSeekBarBackground(this.volumeBar);
         });
 
@@ -176,6 +217,7 @@ export class ControlsManager {
             if (!this.video.paused) {
                 this.controlsTimeout = setTimeout(() => {
                     const settingsPopover = document.getElementById('settings-popover');
+                    // CAMBIO: Checamos 'active' en la nueva clase
                     if (!settingsPopover || !settingsPopover.classList.contains('active')) {
                         this.controlsContainer.classList.remove('show');
                         this.videoContainer.style.cursor = 'none';
@@ -187,6 +229,7 @@ export class ControlsManager {
         this.videoContainer.addEventListener('mousemove', showControls);
         this.videoContainer.addEventListener('mouseleave', () => {
             const settingsPopover = document.getElementById('settings-popover');
+            // CAMBIO: Checamos 'active' en la nueva clase
             if (!this.video.paused && (!settingsPopover || !settingsPopover.classList.contains('active'))) {
                 this.controlsContainer.classList.remove('show');
             }

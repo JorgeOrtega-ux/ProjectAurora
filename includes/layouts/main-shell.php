@@ -1,24 +1,25 @@
 <!DOCTYPE html>
 <html lang="<?php echo htmlspecialchars($userLang); ?>">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $i18n->t('app.name'); ?></title>
     <meta name="csrf-token" content="<?php echo $_SESSION['csrf_token']; ?>">
-    
+
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"></script>
     <script src="https://unpkg.com/@popperjs/core@2"></script>
     <script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    
+
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/root.css">
     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/styles.css">
-    <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components.css">
-    <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components-studio.css">
-     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components-watch.css">
-     <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components-channel.css">
+    <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components/components.css">
+    <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components/components-studio.css">
+    <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components/components-watch.css">
+    <link rel="stylesheet" type="text/css" href="<?php echo $basePath; ?>public/assets/css/components/components-channel.css">
 
     <script nonce="<?php echo $cspNonce; ?>">
         window.BASE_PATH = '<?php echo $basePath; ?>';
@@ -26,7 +27,7 @@
         window.TRANSLATIONS = <?php echo $jsTranslations; ?>;
         window.TURNSTILE_SITE_KEY = '<?php echo $turnstileSiteKey; ?>';
         window.IS_LOGGED_IN = <?php echo $isLoggedIn ? 'true' : 'false'; ?>;
-        
+
         (function() {
             try {
                 var localPrefs = localStorage.getItem('guest_prefs');
@@ -51,7 +52,7 @@
     <div class="page-wrapper">
         <div class="main-content">
             <div class="general-content">
-                
+
                 <?php if ($showInterface): ?>
                     <div class="general-content-top">
                         <?php include __DIR__ . '/../layouts/header.php'; ?>
@@ -71,7 +72,7 @@
                         </div>
                     </div>
                 </div>
-               
+
                 <div class="general-content-bottom">
                     <?php if ($showInterface): ?>
                         <?php include __DIR__ . '/../modules/module-surface.php'; ?>
@@ -91,4 +92,5 @@
         </div>
     </div>
 </body>
+
 </html>

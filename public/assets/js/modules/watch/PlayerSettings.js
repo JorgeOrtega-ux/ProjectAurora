@@ -1,143 +1,227 @@
+import { ToastManager } from '../../core/components/toast-manager.js';
+
 export class PlayerSettings {
-    constructor(videoPlayerInstance, ambientLightInstance) {
-        this.player = videoPlayerInstance;
-        this.ambient = ambientLightInstance;
+    constructor(playerInstance, ambientInstance) {
+        this.player = playerInstance;
+        this.ambient = ambientInstance;
         
+        // DOM Elements
         this.settingsBtn = document.getElementById('settings-btn');
         this.popover = document.getElementById('settings-popover');
-        this.container = document.getElementById('quality-options-container');
-
+        this.qualityContainer = document.getElementById('quality-options-container');
+        this.panels = document.querySelectorAll('.menu-content'); 
+        
+        // Status Text Elements
+        this.lightingStatus = document.getElementById('lighting-status-text');
+        this.qualityStatus = document.getElementById('quality-status-text');
+        
         this.init();
     }
 
     init() {
+        if (!this.settingsBtn || !this.popover) return;
+
+        // Toggle Popover
         this.settingsBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); 
-            this.toggleMenu();
+            e.stopPropagation();
+            this.togglePopover();
         });
 
+        // Close on click outside
         document.addEventListener('click', (e) => {
-            if (this.popover && !this.popover.contains(e.target) && !this.settingsBtn.contains(e.target)) {
-                this.popover.classList.remove('active');
-                this.resetMenu();
+            if (this.popover.classList.contains('active') && 
+                !this.popover.contains(e.target) && 
+                e.target !== this.settingsBtn) {
+                this.closePopover();
             }
         });
 
+        // Navigation between panels
         this._initNavigation();
-        this._initLightingOptions();
+        
+        // Initialize Lighting Settings
+        this._initLightingSettings();
 
-        // Escuchar cuando el player cargue los niveles HLS
+        // Listen for levels loaded (from VideoPlayer)
         this.player.onLevelsLoaded = (levels, isNative) => {
-            if (isNative) {
-                document.getElementById('quality-status-text').innerText = 'Auto (Nativo)';
-            } else {
-                this.renderQualityOptions(levels);
-            }
+            this._renderQualityOptions(levels, isNative);
         };
     }
 
-    toggleMenu() {
-        if (this.popover.classList.contains('active')) {
-            this.popover.classList.remove('active');
-            setTimeout(() => this.resetMenu(), 200); 
+    togglePopover() {
+        const isActive = this.popover.classList.contains('active');
+        if (isActive) {
+            this.closePopover();
         } else {
             this.popover.classList.add('active');
-            this.resetMenu(); 
+            this.popover.style.display = 'block'; 
+            this._showPanel('settings-main'); 
         }
     }
 
-    resetMenu() {
-        document.querySelectorAll('.component-watch-settings-panel').forEach(p => p.classList.remove('active'));
-        document.getElementById('settings-main').classList.add('active');
+    closePopover() {
+        this.popover.classList.remove('active');
+        this.popover.style.display = 'none'; 
     }
 
     _initNavigation() {
-        if(!this.popover) return;
-
-        this.popover.addEventListener('click', (e) => {
-            const item = e.target.closest('.component-watch-settings-item');
-            if (item) {
-                const targetId = item.getAttribute('data-target');
-                const targetPanel = document.getElementById(`settings-${targetId}`);
-                if (targetPanel) {
-                    document.getElementById('settings-main').classList.remove('active');
-                    targetPanel.classList.add('active');
+        // Main items click (Items que abren submenús)
+        const navItems = this.popover.querySelectorAll('.menu-link[data-target]');
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const target = item.dataset.target; 
+                if (target) {
+                    this._showPanel(`settings-${target}`);
                 }
-                return;
-            }
-
-            const header = e.target.closest('.component-watch-settings-header');
-            if (header) {
-                const backTarget = header.getAttribute('data-back'); 
-                header.closest('.component-watch-settings-panel').classList.remove('active');
-                document.getElementById(`settings-${backTarget}`).classList.add('active');
-                return;
-            }
+            });
         });
-    }
 
-    _initLightingOptions() {
-        const lightingOptions = document.querySelectorAll('#settings-lighting .component-watch-settings-option');
-        lightingOptions.forEach(opt => {
-            opt.addEventListener('click', () => {
-                const val = opt.dataset.value; 
-                const isEnabled = val === 'on';
-                
-                this.ambient.setEnabled(isEnabled);
-                
-                this.resetMenu();
-                this.toggleMenu();
+        // Back buttons click (Ahora están en .menu-header)
+        const backItems = this.popover.querySelectorAll('.menu-header[data-back]');
+        backItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const backTarget = item.dataset.back;
+                if (backTarget) {
+                    this._showPanel(`settings-${backTarget}`);
+                }
             });
         });
     }
 
-    renderQualityOptions(levels) {
-        if (!this.container) return;
-        this.container.innerHTML = '';
-
-        const isAutoEnabled = this.player.getAutoLevelEnabled();
+    _showPanel(panelId) {
+        this.panels.forEach(p => {
+            p.classList.remove('active');
+            p.style.display = 'none'; 
+        });
         
-        const autoOption = this._createOption('-1', 'Automática', isAutoEnabled);
-        autoOption.addEventListener('click', () => this.handleQualityChange(-1, 'Automática', autoOption));
-        this.container.appendChild(autoOption);
+        const target = document.getElementById(panelId);
+        if (target) {
+            target.classList.add('active');
+            target.style.display = 'block'; 
+        }
+    }
 
-        [...levels].reverse().forEach((level) => {
-            const originalIndex = levels.indexOf(level); 
-            const height = level.height;
-            
-            let label = `${height}p`;
-            if (height >= 2160) label += ' 4K';
-            else if (height >= 1440) label += ' 2K';
-            else if (height >= 1080) label += ' FHD';
-            else if (height >= 720) label += ' HD';
+    // --- LIGHTING LOGIC ---
+    _initLightingSettings() {
+        const lightingOptions = document.querySelectorAll('[data-type="lighting"]');
+        
+        // Load preference
+        const saved = localStorage.getItem('aurora_ambient_mode') || 'off';
+        this._updateLightingUI(saved);
+        
+        if (this.ambient) this.ambient.setEnabled(saved === 'on');
 
-            const isSelected = !isAutoEnabled && (this.player.getCurrentLevel() === originalIndex);
-            
-            const option = this._createOption(originalIndex, label, isSelected);
-            option.addEventListener('click', () => this.handleQualityChange(originalIndex, label, option));
-            this.container.appendChild(option);
+        lightingOptions.forEach(opt => {
+            opt.addEventListener('click', () => {
+                const val = opt.dataset.value;
+                this._updateLightingUI(val);
+                
+                if (this.ambient) this.ambient.setEnabled(val === 'on');
+                
+                // Save & Go back
+                localStorage.setItem('aurora_ambient_mode', val);
+                setTimeout(() => this._showPanel('settings-main'), 200);
+            });
         });
     }
 
-    _createOption(val, text, isSelected) {
+    _updateLightingUI(val) {
+        document.querySelectorAll('[data-type="lighting"]').forEach(opt => {
+            const checkIcon = opt.querySelector('.check-icon');
+            if (opt.dataset.value === val) {
+                opt.classList.add('active'); 
+                if(checkIcon) checkIcon.style.display = 'block';
+            } else {
+                opt.classList.remove('active');
+                if(checkIcon) checkIcon.style.display = 'none';
+            }
+        });
+        this.lightingStatus.innerText = (val === 'on') ? 'Activo' : 'Desactivado';
+    }
+
+    // --- QUALITY LOGIC ---
+    _renderQualityOptions(levels, isNative) {
+        this.qualityContainer.innerHTML = '';
+
+        if (isNative) {
+            this.qualityStatus.innerText = 'Auto (Nativo)';
+            const nativoEl = this._createQualityOption('Automático (Nativo)', -1, true);
+            this.qualityContainer.appendChild(nativoEl);
+            return;
+        }
+
+        if (!levels || levels.length === 0) {
+            this.qualityStatus.innerText = 'Auto';
+             const autoEl = this._createQualityOption('Automático', -1, true);
+             autoEl.addEventListener('click', () => this._handleQualitySelect(-1));
+             this.qualityContainer.appendChild(autoEl);
+            return;
+        }
+
+        // Add "Auto" option
+        const autoEl = this._createQualityOption('Automático', -1, false);
+        autoEl.addEventListener('click', () => this._handleQualitySelect(-1));
+        this.qualityContainer.appendChild(autoEl);
+
+        // Add Levels
+        levels.forEach((lvl, index) => {
+            const label = lvl.height ? `${lvl.height}p` : `Nivel ${index}`;
+            const el = this._createQualityOption(label, index, false);
+            el.addEventListener('click', () => this._handleQualitySelect(index));
+            this.qualityContainer.appendChild(el);
+        });
+        
+        this._updateQualityUI(this.player.hls.currentLevel);
+    }
+
+    _createQualityOption(label, index, isSelected) {
         const div = document.createElement('div');
-        div.className = `component-watch-settings-option ${isSelected ? 'selected' : ''}`;
-        div.setAttribute('data-quality', val);
-        div.innerHTML = `<span>${text}</span><span class="material-symbols-rounded check-icon">check</span>`;
+        div.className = 'menu-link';
+        div.style.cssText = 'display: flex; align-items: center; justify-content: space-between; cursor: pointer;';
+        div.dataset.qualityIndex = index;
+
+        // Estructura estricta: Icono Equalizer + Texto + Icono Check
+        div.innerHTML = `
+            <div class="menu-link-icon">
+                <span class="material-symbols-rounded">equalizer</span>
+            </div>
+            <div class="menu-link-text">${label}</div>
+            <div class="menu-link-icon">
+                <span class="material-symbols-rounded check-icon" style="display: ${isSelected ? 'block' : 'none'};">check</span>
+            </div>
+        `;
         return div;
     }
 
-    handleQualityChange(levelIndex, label, element) {
-        this.player.setLevel(levelIndex);
+    _handleQualitySelect(index) {
+        this.player.setLevel(index);
+        this._updateQualityUI(index);
+        setTimeout(() => this._showPanel('settings-main'), 200);
+    }
 
-        const allOpts = document.querySelectorAll('#quality-options-container .component-watch-settings-option');
-        allOpts.forEach(o => o.classList.remove('selected'));
-        element.classList.add('selected');
+    _updateQualityUI(levelIndex) {
+        // Reset check icons
+        const options = this.qualityContainer.children;
+        for (let i = 0; i < options.length; i++) {
+            const opt = options[i];
+            const check = opt.querySelector('.check-icon');
+            if(check) check.style.display = 'none';
+        }
 
-        const statusText = levelIndex === -1 ? 'Auto' : label;
-        document.getElementById('quality-status-text').innerText = statusText;
+        // Determine active option
+        let activeOpt = null;
+        if (levelIndex === -1) {
+             activeOpt = options[0];
+             this.qualityStatus.innerText = 'Auto';
+        } else {
+             activeOpt = options[levelIndex + 1];
+             const height = this.player.levels[levelIndex]?.height;
+             this.qualityStatus.innerText = height ? `${height}p` : `Nivel ${levelIndex}`;
+        }
 
-        this.resetMenu();
-        this.toggleMenu(); 
+        if (activeOpt) {
+            const check = activeOpt.querySelector('.check-icon');
+            if(check) check.style.display = 'block';
+        }
     }
 }

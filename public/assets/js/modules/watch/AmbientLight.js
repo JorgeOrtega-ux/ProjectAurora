@@ -7,8 +7,8 @@ export class AmbientLight {
         this.canvas = canvasElement;
         this.ctx = this.canvas ? this.canvas.getContext('2d', { alpha: false }) : null;
         
-        // Estado de preferencia del usuario (ON/OFF en el menú)
-        this.userPreference = true; 
+        // Estado de preferencia del usuario (Por defecto OFF para evitar flash si no hay storage)
+        this.userPreference = false; 
         
         // Estados del entorno
         this.isDarkMode = false;
@@ -28,9 +28,11 @@ export class AmbientLight {
         this.canvas.width = 100;
         this.canvas.height = 56;
 
-        // 1. Cargar preferencia
-        const storedPref = localStorage.getItem('aurora_cinematic_mode');
-        this.userPreference = storedPref !== 'off';
+        // 1. Cargar preferencia (Clave unificada con PlayerSettings)
+        const storedPref = localStorage.getItem('aurora_ambient_mode');
+        // Si no existe, por defecto es 'off', si es 'on', activamos.
+        this.userPreference = storedPref === 'on';
+        
         console.log(`[AmbientLight] 💾 Preferencia cargada: "${storedPref}" -> Activo: ${this.userPreference}`);
 
         // 2. Detectar entorno inicial
@@ -41,30 +43,24 @@ export class AmbientLight {
         this._attachEnvironmentObservers();
 
         // 4. Aplicar estado inicial
-        this._updateUIState();
         this._applyVisibility(); 
     }
 
     /**
      * Verifica el entorno actual basándose EXCLUSIVAMENTE en el DOM.
-     * Ya no preguntamos al sistema porque SettingsController se encarga de eso.
      */
     _checkEnvironment() {
         // Detectar Dark Mode en HTML o BODY
         const htmlTheme = document.documentElement.getAttribute('data-theme');
         const bodyTheme = document.body.getAttribute('data-theme');
         
-        // Ahora confiamos plenamente en que SettingsController puso el atributo
         this.isDarkMode = (htmlTheme === 'dark' || bodyTheme === 'dark');
 
         // Detectar Modo Cine
         const layout = document.querySelector('.component-watch-layout');
         this.isCinemaMode = layout ? layout.classList.contains('component-watch-mode-cinema') : false;
 
-        console.log(`[AmbientLight] 🌍 Check Environment:
-        > HTML Theme: "${htmlTheme}"
-        > Is DarkMode: ${this.isDarkMode}
-        > Is CinemaMode: ${this.isCinemaMode}`);
+        console.log(`[AmbientLight] 🌍 Check Environment: DarkMode=${this.isDarkMode}, CinemaMode=${this.isCinemaMode}`);
     }
 
     _shouldBeVisible() {
@@ -123,12 +119,9 @@ export class AmbientLight {
     }
 
     _attachEnvironmentObservers() {
-        // Solo observamos el DOM. Si el sistema cambia, SettingsController actualizará el DOM,
-        // y este observer se disparará. ¡Eficiencia pura!
         const themeObserver = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
-                    console.log('[AmbientLight] 🔄 Cambio de atributo TEMA detectado');
                     this._checkEnvironment();
                     this._applyVisibility();
                 }
@@ -153,10 +146,13 @@ export class AmbientLight {
     // --- API Pública ---
 
     setEnabled(enabled) {
-        console.log(`[AmbientLight] 🖱️ Usuario cambió interruptor a: ${enabled}`);
+        console.log(`[AmbientLight] 🖱️ setEnabled: ${enabled}`);
         this.userPreference = enabled;
-        localStorage.setItem('aurora_cinematic_mode', enabled ? 'on' : 'off');
-        this._updateUIState();
+        // Nota: El localStorage ahora lo maneja principalmente PlayerSettings, 
+        // pero lo actualizamos aquí también por redundancia y coherencia.
+        localStorage.setItem('aurora_ambient_mode', enabled ? 'on' : 'off');
+        
+        // Ya NO llamamos a _updateUIState() porque PlayerSettings controla la UI.
         this._applyVisibility();
     }
 
@@ -184,23 +180,6 @@ export class AmbientLight {
         try {
             this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
         } catch (e) {}
-    }
-
-    _updateUIState() {
-        const textStatus = document.getElementById('lighting-status-text');
-        if (textStatus) {
-            textStatus.innerText = this.userPreference ? 'Activo' : 'Desactivado';
-        }
-
-        const options = document.querySelectorAll('#settings-lighting .component-watch-settings-option');
-        options.forEach(opt => {
-            const isTargetOn = opt.dataset.value === 'on';
-            if (isTargetOn === this.userPreference) {
-                opt.classList.add('selected');
-            } else {
-                opt.classList.remove('selected');
-            }
-        });
     }
 
     destroy() {

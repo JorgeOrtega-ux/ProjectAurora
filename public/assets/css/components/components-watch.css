@@ -51,6 +51,38 @@
     border-radius: 12px;
 }
 
+/* --- SPINNER DE BUFFERING --- */
+.component-watch-buffering-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    pointer-events: none;
+    display: none; /* Oculto por defecto */
+    justify-content: center;
+    align-items: center;
+    width: 64px;
+    height: 64px;
+}
+
+.component-watch-buffering-indicator.active {
+    display: flex;
+}
+
+.component-watch-spinner-circle {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: watchSpinnerRotate 1s ease-in-out infinite;
+}
+
+@keyframes watchSpinnerRotate {
+    to { transform: rotate(360deg); }
+}
+
 /* Tooltip Scrubbing */
 .component-watch-scrub-tooltip {
     position: absolute; bottom: 85px; left: 0; transform: translateX(-50%); display: none; 
@@ -96,7 +128,7 @@
     position: absolute; bottom: 0; left: 0; width: 100%;
     background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.5) 60%, transparent 100%);
     padding: 0 12px 12px 12px; opacity: 0; transition: opacity 0.3s ease;
-    display: flex; flex-direction: column; gap: 8px; z-index: 20;
+    display: flex; flex-direction: column; z-index: 20;
     border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
 }
 .component-watch-player-card:hover .component-watch-controls, .component-watch-controls.show { opacity: 1; }
@@ -238,26 +270,47 @@
 .component-watch-volume-bar:hover::-webkit-slider-thumb { transform: scale(1.2); }
 
 /* Settings Popover */
-.component-watch-settings-popover {
-    position: absolute; bottom: 60px; right: 24px; width: 280px;
-    background-color: rgba(28, 28, 28, 0.95); backdrop-filter: blur(8px);
-    border-radius: 12px; padding: 8px 0; display: none; flex-direction: column;
-    z-index: 30; color: #fff; font-size: 0.9rem; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    transition: height 0.2s ease;
+.popover-module--upwards {
+    top: auto !important;     
+    bottom: 100% !important;  
+    right: 0;
+    margin-bottom: 15px;      
+    transform-origin: bottom right; 
 }
-.component-watch-settings-popover.active { display: flex; }
-.component-watch-settings-panel { display: none; flex-direction: column; width: 100%; }
-.component-watch-settings-panel.active { display: flex; animation: fadeInPanel 0.2s ease; }
-@keyframes fadeInPanel { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
-.component-watch-settings-item { display: flex; align-items: center; padding: 10px 16px; cursor: pointer; transition: background 0.2s; height: 48px; }
-.component-watch-settings-item:hover { background-color: rgba(255,255,255,0.1); }
-.component-watch-settings-header { display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 4px; cursor: pointer; font-weight: 500; }
-.component-watch-settings-header:hover { background-color: rgba(255,255,255,0.1); }
-.component-watch-settings-option { display: flex; align-items: center; padding: 10px 36px 10px 16px; cursor: pointer; position: relative; font-size: 0.9rem; }
-.component-watch-settings-option:hover { background-color: rgba(255,255,255,0.1); }
-.component-watch-settings-option.selected { font-weight: 600; }
-.component-watch-settings-option .check-icon { position: absolute; right: 16px; display: none; color: #fff; }
-.component-watch-settings-option.selected .check-icon { display: block; }
+
+/* Modificador Dark Glass para el reproductor */
+.popover-module--dark {
+    background-color: rgba(20, 20, 20, 0.95); /* Negro casi total */
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+}
+
+/* Ajustes de hijos en modo oscuro */
+.popover-module--dark .menu-link {
+    color: #e0e0e0;
+    transition: background-color 0.2s, color 0.2s;
+}
+.popover-module--dark .menu-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+/* El header de búsqueda/navegación */
+.popover-module--dark .menu-search-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    background-color: transparent; 
+}
+/* Iconos */
+.popover-module--dark .menu-link-icon,
+.popover-module--dark .material-symbols-rounded {
+    color: #e0e0e0;
+}
+.popover-module--dark .menu-link:hover .menu-link-icon,
+.popover-module--dark .menu-link:hover .material-symbols-rounded {
+    color: #fff;
+}
+
 
 /* Botones de Acción */
 .component-watch-actions {
