@@ -10,12 +10,10 @@
                     <span class="component-watch-subs js-count-subs"><?php echo formatCount($interaction['subs_count']); ?> suscriptores</span>
                 </div>
             </a>
-            
-
         </div>
         
         <div class="component-watch-actions">
-                        <button class="component-button primary js-btn-subscribe component-watch-subscribe-btn <?php echo $interaction['subscribed'] ? 'subscribed' : ''; ?>">
+            <button class="component-button primary js-btn-subscribe component-watch-subscribe-btn <?php echo $interaction['subscribed'] ? 'subscribed' : ''; ?>">
                 <?php echo $interaction['subscribed'] ? 'Suscrito' : 'Suscribirse'; ?>
             </button>
             <div class="component-watch-joined-pill">
@@ -26,7 +24,7 @@
                 <div class="component-watch-joined-separator"></div>
                 <button class="component-watch-joined-btn dislike js-btn-dislike <?php echo $interaction['disliked'] ? 'active' : ''; ?>" title="No me gusta">
                     <span class="material-symbols-rounded">thumb_down</span>
-                    </button>
+                </button>
             </div>
             <button class="component-button component-watch-action-pill js-btn-share">
                 <span class="material-symbols-rounded">share</span> Compartir
@@ -51,5 +49,41 @@
         <?php if ($isLongDesc): ?>
             <button class="component-button text small js-read-more-desc" id="btn-toggle-description" data-action="expand">Leer más</button>
         <?php endif; ?>
+
+        <?php if (!empty($videoCategories) || !empty($videoCast)): ?>
+            <div class="watch-tags-container" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 10px;">
+                
+                <?php if (!empty($videoCategories)): ?>
+                    <div class="watch-tag-row" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                        <span class="material-symbols-rounded" style="font-size: 18px; color: var(--text-tertiary);" title="Categorías">tag</span>
+                        <?php foreach ($videoCategories as $cat): ?>
+                            <a href="/ProjectAurora/feed?category=<?php echo urlencode($cat['slug']); ?>" 
+                               style="background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 100px; font-size: 12px; color: var(--text-primary); text-decoration: none; transition: background 0.2s;"
+                               onmouseover="this.style.background='rgba(255,255,255,0.2)'"
+                               onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                                <?php echo htmlspecialchars($cat['name']); ?>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+
+                <?php if (!empty($videoCast)): ?>
+                    <div class="watch-tag-row" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                        <span class="material-symbols-rounded" style="font-size: 18px; color: var(--text-tertiary);" title="Reparto">group</span>
+                        <?php foreach ($videoCast as $actor): ?>
+                            <a href="/ProjectAurora/search?q=<?php echo urlencode($actor['name']); ?>&type=actor" 
+                               style="background: rgba(var(--dominant-rgb), 0.3); border: 1px solid rgba(var(--dominant-rgb), 0.5); padding: 4px 10px; border-radius: 100px; font-size: 12px; color: var(--text-primary); text-decoration: none; display: flex; align-items: center; gap: 4px;"
+                               onmouseover="this.style.opacity='0.8'"
+                               onmouseout="this.style.opacity='1'">
+                                <span class="material-symbols-rounded" style="font-size: 14px;">star</span>
+                                <?php echo htmlspecialchars($actor['name']); ?>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+
+            </div>
+        <?php endif; ?>
+
     </div>
 </div>

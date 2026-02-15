@@ -48,13 +48,17 @@ switch ($action) {
         Utils::jsonResponse($studioService->uploadThumbnail($uuid, $_FILES['thumbnail']));
         break;
 
-    case 'save_metadata':
+  case 'save_metadata':
         $uuid = $_POST['video_uuid'] ?? '';
         $data = [
             'title' => $_POST['title'] ?? '',
             'description' => $_POST['description'] ?? '',
             'publish' => isset($_POST['publish']) && $_POST['publish'] === 'true',
-            // [NUEVO] Capturar datos de miniatura para guardado diferido
+            
+            // [CORRECCIÓN] Agregamos los campos faltantes aquí:
+            'categories' => $_POST['categories'] ?? '[]', // <--- IMPORTANTE
+            'actors' => $_POST['actors'] ?? '[]',         // <--- IMPORTANTE
+            
             'selected_thumbnail' => $_POST['selected_thumbnail'] ?? null,
             'dominant_color' => $_POST['dominant_color'] ?? null
         ];

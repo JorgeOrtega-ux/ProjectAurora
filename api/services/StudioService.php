@@ -515,6 +515,7 @@ class StudioService {
     public function saveMetadata($uuid, $data) {
         if (!$this->isOwner($uuid)) return ['success' => false, 'message' => 'Acceso denegado'];
 
+        // Gatekeeper: Límite de frecuencia
         if (Utils::checkSecurityLimit($this->pdo, 'save_draft_limit', 15, 10, $this->userId)) {
             return ['success' => false, 'message' => 'Estás guardando muy rápido. Por favor espera un momento.'];
         }
@@ -524,31 +525,45 @@ class StudioService {
         $desc = trim($data['description']);
         $publish = $data['publish'];
 
-        // [MODIFICACIÓN 2] Decodificar arrays de tags
-        $categories = isset($data['categories']) ? json_decode($data['categories'], true) : [];
-        $actors = isset($data['actors']) ? json_decode($data['actors'], true) : [];
+        // Decodificar JSON de tags
+        $categories = isset($data['categories']) ? (is_string($data['categories']) ? json_decode($data['categories'], true) : $data['categories']) : [];
+        $actors = isset($data['actors']) ? (is_string($data['actors']) ? json_decode($data['actors'], true) : $data['actors']) : [];
 
         if (empty($title)) return ['success' => false, 'message' => 'El título es obligatorio'];
 
         try {
             $this->pdo->beginTransaction(); 
 
-            // 1. Obtener ID numérico del video
+            // 1. Obtener ID
             $stmtId = $this->pdo->prepare("SELECT id, status, thumbnail_path FROM videos WHERE uuid = ?");
             $stmtId->execute([$uuid]);
             $video = $stmtId->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$video) {
+                $this->pdo->rollBack();
+                return ['success' => false, 'message' => 'Video no encontrado.'];
+            }
+            
             $videoId = $video['id'];
 
             // 2. Actualizar datos básicos
             $stmt = $this->pdo->prepare("UPDATE videos SET title = ?, description = ? WHERE id = ?");
             $stmt->execute([$title, $desc, $videoId]);
 
+            // ---------------------------------------------------------
             // 3. Procesar Categorías
-            // Limpiar relaciones previas
+            // ---------------------------------------------------------
+            
+            // A. Capturar IDs existentes
+            $stmtOldCats = $this->pdo->prepare("SELECT category_id FROM video_categories_map WHERE video_id = ?");
+            $stmtOldCats->execute([$videoId]);
+            $affectedCatIds = $stmtOldCats->fetchAll(PDO::FETCH_COLUMN);
+
+            // B. Limpiar y reinsertar
             $delCats = $this->pdo->prepare("DELETE FROM video_categories_map WHERE video_id = ?");
             $delCats->execute([$videoId]);
 
-            if (!empty($categories)) {
+            if (!empty($categories) && is_array($categories)) {
                 $insCatMap = $this->pdo->prepare("INSERT IGNORE INTO video_categories_map (video_id, category_id) VALUES (?, ?)");
                 $findCat = $this->pdo->prepare("SELECT id FROM video_categories WHERE name = ?");
                 $createCat = $this->pdo->prepare("INSERT INTO video_categories (name, slug) VALUES (?, ?)");
@@ -559,7 +574,6 @@ class StudioService {
 
                     $catId = $cat['id'] ?? null;
 
-                    // Si no tiene ID (es nuevo), buscamos o creamos
                     if (!$catId) {
                         $findCat->execute([$catName]);
                         $existingId = $findCat->fetchColumn();
@@ -572,7 +586,6 @@ class StudioService {
                                 $createCat->execute([$catName, $slug]);
                                 $catId = $this->pdo->lastInsertId();
                             } catch (Exception $ex) {
-                                // Si falla por duplicado de slug, intentamos recuperar de nuevo
                                 $findCat->execute([$catName]);
                                 $catId = $findCat->fetchColumn();
                             }
@@ -581,16 +594,40 @@ class StudioService {
 
                     if ($catId) {
                         $insCatMap->execute([$videoId, $catId]);
+                        $affectedCatIds[] = $catId;
                     }
                 }
             }
 
-            // 4. Procesar Actores (Cast)
-            // Limpiar relaciones previas
+            // C. Recalcular usage_count (CORREGIDO: Usando '?' y pasando ID dos veces)
+            if (!empty($affectedCatIds)) {
+                $affectedCatIds = array_unique($affectedCatIds);
+                // Usamos ? en lugar de :id para evitar el error HY093 por reutilización
+                $updCatCount = $this->pdo->prepare("
+                    UPDATE video_categories 
+                    SET usage_count = (SELECT COUNT(*) FROM video_categories_map WHERE category_id = ?) 
+                    WHERE id = ?
+                ");
+                foreach ($affectedCatIds as $id) {
+                    $updCatCount->execute([$id, $id]); // Pasamos el ID dos veces
+                }
+            }
+
+
+            // ---------------------------------------------------------
+            // 4. Procesar Actores
+            // ---------------------------------------------------------
+            
+            // A. Capturar IDs existentes
+            $stmtOldCast = $this->pdo->prepare("SELECT actor_id FROM video_actors_map WHERE video_id = ?");
+            $stmtOldCast->execute([$videoId]);
+            $affectedActorIds = $stmtOldCast->fetchAll(PDO::FETCH_COLUMN);
+
+            // B. Limpiar y reinsertar
             $delCast = $this->pdo->prepare("DELETE FROM video_actors_map WHERE video_id = ?");
             $delCast->execute([$videoId]);
 
-            if (!empty($actors)) {
+            if (!empty($actors) && is_array($actors)) {
                 $insCastMap = $this->pdo->prepare("INSERT IGNORE INTO video_actors_map (video_id, actor_id) VALUES (?, ?)");
                 $findActor = $this->pdo->prepare("SELECT id FROM video_actors WHERE name = ?");
                 $createActor = $this->pdo->prepare("INSERT INTO video_actors (name, slug, type) VALUES (?, ?, 'other')");
@@ -621,14 +658,27 @@ class StudioService {
 
                     if ($actorId) {
                         $insCastMap->execute([$videoId, $actorId]);
+                        $affectedActorIds[] = $actorId;
                     }
                 }
             }
 
-            // 5. Miniatura (si se seleccionó una de las generadas)
+            // C. Recalcular usage_count (CORREGIDO: Usando '?' y pasando ID dos veces)
+            if (!empty($affectedActorIds)) {
+                $affectedActorIds = array_unique($affectedActorIds);
+                $updActorCount = $this->pdo->prepare("
+                    UPDATE video_actors 
+                    SET usage_count = (SELECT COUNT(*) FROM video_actors_map WHERE actor_id = ?) 
+                    WHERE id = ?
+                ");
+                foreach ($affectedActorIds as $id) {
+                    $updActorCount->execute([$id, $id]); // Pasamos el ID dos veces
+                }
+            }
+
+            // 5. Miniatura
             if (!empty($data['selected_thumbnail'])) {
                 $expectedPath = "public/storage/thumbnails/generated/$uuid/";
-                
                 if (strpos($data['selected_thumbnail'], $expectedPath) !== false) {
                     $thumbSql = "UPDATE videos SET thumbnail_path = ?, dominant_color = ? WHERE id = ?";
                     $thumbStmt = $this->pdo->prepare($thumbSql);
@@ -637,7 +687,7 @@ class StudioService {
                 }
             }
 
-            // 6. Lógica de Publicación
+            // 6. Publicación
             if ($publish === true || $publish === 'true') {
                 $check = $this->pdo->prepare("SELECT status, thumbnail_path FROM videos WHERE id = ?");
                 $check->execute([$videoId]);
@@ -645,12 +695,9 @@ class StudioService {
 
                 $hasThumbnail = !empty($data['selected_thumbnail']) || !empty($videoInfo['thumbnail_path']);
 
-                if ($videoInfo['status'] !== 'waiting_for_metadata') {
+                if ($videoInfo['status'] !== 'waiting_for_metadata' && $videoInfo['status'] !== 'published') {
                     $this->pdo->rollBack();
-                    return [
-                        'success' => false, 
-                        'message' => 'El video aún se está procesando o no está listo.'
-                    ];
+                    return ['success' => false, 'message' => 'El video aún se está procesando o no está listo.'];
                 }
 
                 if (!$hasThumbnail) {
@@ -658,11 +705,16 @@ class StudioService {
                     return ['success' => false, 'message' => 'Debes subir una miniatura antes de publicar.'];
                 }
 
-                $upd = $this->pdo->prepare("UPDATE videos SET status = 'published' WHERE id = ?");
-                $upd->execute([$videoId]);
+                if ($videoInfo['status'] !== 'published') {
+                    $upd = $this->pdo->prepare("UPDATE videos SET status = 'published' WHERE id = ?");
+                    $upd->execute([$videoId]);
+                    $msg = '¡Video publicado exitosamente!';
+                } else {
+                    $msg = 'Cambios guardados exitosamente.';
+                }
 
                 $this->pdo->commit();
-                return ['success' => true, 'published' => true, 'message' => '¡Video publicado exitosamente!'];
+                return ['success' => true, 'published' => true, 'message' => $msg];
             }
 
             $this->pdo->commit();
@@ -670,7 +722,9 @@ class StudioService {
 
         } catch (Exception $e) {
             $this->pdo->rollBack();
-            error_log($e->getMessage()); // Debug
+            // Si quieres ver el error en desarrollo descomenta la siguiente línea:
+            // return ['success' => false, 'message' => 'DEBUG DB: ' . $e->getMessage()];
+            error_log("Error saveMetadata: " . $e->getMessage());
             return ['success' => false, 'message' => $this->i18n->t('api.db_error')];
         }
     }
