@@ -11,12 +11,13 @@
                 </div>
             </a>
             
-            <button class="component-button primary js-btn-subscribe component-watch-subscribe-btn <?php echo $interaction['subscribed'] ? 'subscribed' : ''; ?>">
-                <?php echo $interaction['subscribed'] ? 'Suscrito' : 'Suscribirse'; ?>
-            </button>
+
         </div>
         
         <div class="component-watch-actions">
+                        <button class="component-button primary js-btn-subscribe component-watch-subscribe-btn <?php echo $interaction['subscribed'] ? 'subscribed' : ''; ?>">
+                <?php echo $interaction['subscribed'] ? 'Suscrito' : 'Suscribirse'; ?>
+            </button>
             <div class="component-watch-joined-pill">
                 <button class="component-watch-joined-btn like js-btn-like <?php echo $interaction['liked'] ? 'active' : ''; ?>" title="Me gusta">
                     <span class="material-symbols-rounded">thumb_up</span>
