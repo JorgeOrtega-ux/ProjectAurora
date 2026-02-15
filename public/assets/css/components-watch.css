@@ -118,27 +118,156 @@
 }
 .component-watch-progress-container:hover .component-watch-seek-bar::-webkit-slider-thumb { transform: scale(1); }
 
-/* Controls Buttons */
+/* Controls Buttons Layout */
 .component-watch-controls-row { display: flex; justify-content: space-between; align-items: center; }
 .component-watch-controls-left, .component-watch-controls-right { display: flex; align-items: center; gap: 10px; }
+
+
+/* =======================================================
+   SISTEMA DE PÍLDORAS MODULARES (REFACTORIZADO)
+   ======================================================= */
+
+/* 1. PADRE (La cáscara) - Define la forma y la separación */
 .component-watch-control-pill {
-    background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); border-radius: 999px;
-    padding: 2px; display: flex; align-items: center; height: 40px; position: relative;
-}
-.component-watch-group-pill { gap: 2px; }
-.component-watch-control-btn {
-    background: transparent; border: none; color: #fff; width: 36px; height: 36px;
-    border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, 0.6); 
+    backdrop-filter: blur(4px); 
+    border-radius: 999px;
+    padding: 2px; /* Esta es la separación (gap) de 2px simétrica */
+    display: flex; 
+    align-items: center; 
+    height: 40px; 
+    position: relative;
+    box-sizing: border-box; 
     transition: background 0.2s;
 }
-.component-watch-control-btn:hover { background: rgba(255, 255, 255, 0.2); }
-.component-watch-timer-pill { padding: 0 16px; color: #fff; font-size: 0.85rem; font-family: monospace; font-weight: 500; }
+
+/* Grupo de botones pegados (derecha) */
+.component-watch-group-pill { gap: 2px; }
+
+
+/* 2. HIJO (El contenido interactivo) - Recibe el hover */
+.component-watch-control-btn, 
+.component-watch-timer-block {
+    height: 100%; /* Ocupa todo el alto dentro del padding */
+    border: none;
+    background: transparent;
+    color: #fff;
+    border-radius: 50%; /* Por defecto redondo para botones */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    width: 36px; /* 40px - 2px - 2px */
+    position: relative;
+}
+
+/* Estado Hover del HIJO: Aquí está el fondo blanco semitransparente */
+.component-watch-control-btn:hover,
+.component-watch-timer-block:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* =======================================================
+   MODULO DE TIEMPO (TIMER)
+   ======================================================= */
+/* Ajuste específico para el bloque de tiempo que es más ancho */
+.component-watch-timer-block {
+    width: auto; /* Ancho automático según texto */
+    padding: 0 14px; /* Relleno lateral */
+    border-radius: 99px; /* Píldora completa */
+    font-size: 0.85rem; 
+    font-family: monospace; 
+    font-weight: 500;
+    user-select: none;
+    cursor: default; /* Cursor normal */
+}
 .component-watch-time-sep { margin: 0 4px; opacity: 0.7; }
-.component-watch-volume-container { padding-right: 0; transition: all 0.3s ease; overflow: hidden; }
-.component-watch-volume-wrapper { width: 0; overflow: hidden; transition: width 0.3s ease, padding 0.3s ease; display: flex; align-items: center; }
-.component-watch-volume-container:hover .component-watch-volume-wrapper, .component-watch-volume-wrapper:active { width: 80px; padding-right: 12px; }
-.component-watch-volume-bar { -webkit-appearance: none; width: 100%; height: 3px; background: rgba(255, 255, 255, 0.3); border-radius: 2px; cursor: pointer; }
-.component-watch-volume-bar::-webkit-slider-thumb { -webkit-appearance: none; height: 10px; width: 10px; border-radius: 50%; background: #fff; cursor: pointer; }
+
+
+/* =======================================================
+   MODULO DE VOLUMEN (SOLUCIÓN DEFINITIVA OVERFLOW)
+   ======================================================= */
+/* Usamos la misma lógica: Padre pill, Hijo caja unificada */
+
+.component-watch-volume-container {
+    padding-right: 2px; /* Mantiene la simetría */
+    transition: width 0.3s ease;
+}
+
+/* CAJA UNIFICADA (Hijo) */
+.component-watch-volume-box {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    border-radius: 999px;
+    transition: background-color 0.2s ease;
+    /* Al hacer hover en el contenedor padre, iluminamos esta caja */
+}
+
+.component-watch-volume-container:hover .component-watch-volume-box {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Quitamos hover individual del botón de mute para evitar doble efecto */
+.component-watch-volume-box .component-watch-control-btn:hover {
+    background: transparent; 
+}
+
+/* EXPANDER (Máscara de Animación) */
+/* Esta caja se expande pero tiene overflow hidden para recortar la aparición */
+.component-watch-volume-expander {
+    width: 0;
+    transition: width 0.3s ease, opacity 0.2s ease;
+    opacity: 0;
+}
+
+/* Animación al abrir */
+.component-watch-volume-container:hover .component-watch-volume-expander,
+.component-watch-volume-expander:active,
+.component-watch-volume-expander:focus-within {
+    width: 90px; /* Ancho TOTAL de la máscara visible */
+    opacity: 1;
+}
+
+/* SLIDER WRAP (El Colchón de Seguridad) */
+/* Este contenedor vive dentro del overflow:hidden. 
+   Su padding interno evita que la bola del slider toque los bordes del expander. */
+.component-watch-volume-slider-wrap {
+    width: 90px; /* DEBE ser igual al ancho del expander para llenarlo */
+    padding-right: 12px;
+    box-sizing: border-box; /* El padding se incluye en los 90px */
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+/* INPUT RANGE */
+.component-watch-volume-bar {
+    -webkit-appearance: none;
+    width: 100%; /* Llena el espacio disponible (90px - 24px padding = 66px de track) */
+    height: 3px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    cursor: pointer;
+    position: relative;
+    z-index: 10;
+    margin: 0; /* Sin márgenes extraños, el padding del padre lo maneja */
+}
+
+/* La bola del slider */
+.component-watch-volume-bar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 12px;
+    width: 12px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+    box-shadow: 0 0 4px rgba(0,0,0,0.5);
+    transition: transform 0.1s;
+}
+.component-watch-volume-bar:hover::-webkit-slider-thumb { transform: scale(1.2); }
+
 
 /* Settings Popover */
 .component-watch-settings-popover {
@@ -163,7 +292,7 @@
 .component-watch-settings-option.selected .check-icon { display: block; }
 
 /* =========================================
-   Botones de Acción
+   Botones de Acción (Resto del diseño)
    ========================================= */
 .component-watch-actions {
     display: flex;
@@ -175,8 +304,8 @@
 /* Estilo general para píldoras (Joined y Action) */
 .component-watch-action-pill,
 .component-watch-joined-pill {
-    background-color: transparent; /* Transparente por defecto */
-    border: 1px solid var(--border-transparent-20); /* Borde #00000020 */
+    background-color: transparent; 
+    border: 1px solid var(--border-transparent-20); 
     color: var(--text-primary);
     transition: background 0.2s, border-color 0.2s;
 }
@@ -256,7 +385,6 @@
     font-size: 12px;
 }
 
-/* NUEVO: Soporte para Botón Simple (Action Pill) tamaño comentario (Responder) */
 .component-watch-action-pill.comment-size {
     height: 32px;
     padding: 0 12px;
@@ -436,10 +564,11 @@
 .component-comment-replies { display: flex; flex-direction: column; gap: 16px; width: 100%; }
 .component-comment-item.is-reply { margin-bottom: 0; }
 .component-comment-item.is-reply .component-comment-avatar { width: 28px; height: 28px; }
-@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }/* --- RESPONSIVE SCRUBBING --- */
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* --- RESPONSIVE SCRUBBING --- */
 @media (max-width: 1000px) {
     .component-watch-scrub-img-wrapper {
-        /* En pantallas chicas, quitamos el zoom para que no estorbe */
         transform: scale(1) !important; 
         margin-bottom: 10px;
     }
@@ -447,7 +576,6 @@
 
 @media (max-width: 600px) {
     .component-watch-scrub-img-wrapper {
-        /* En móviles, incluso un poco más chico si quieres */
         transform: scale(0.9) !important;
     }
 }

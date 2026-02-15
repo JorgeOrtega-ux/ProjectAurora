@@ -208,23 +208,34 @@ function formatCount($n) {
 
                         <div class="component-watch-controls-row">
                             <div class="component-watch-controls-left">
+                                
                                 <div class="component-watch-control-pill">
                                     <button id="play-pause-btn" class="component-watch-control-btn" title="Reproducir">
                                         <span class="material-symbols-rounded">play_arrow</span>
                                     </button>
                                 </div>
+                                
                                 <div class="component-watch-control-pill component-watch-volume-container">
-                                    <button id="mute-btn" class="component-watch-control-btn" title="Volumen">
-                                        <span class="material-symbols-rounded">volume_up</span>
-                                    </button>
-                                    <div class="component-watch-volume-wrapper">
-                                        <input type="range" id="volume-bar" class="component-watch-volume-bar" min="0" max="1" step="0.05" value="1">
+                                    <div class="component-watch-volume-box">
+                                        <button id="mute-btn" class="component-watch-control-btn" title="Volumen">
+                                            <span class="material-symbols-rounded">volume_up</span>
+                                        </button>
+                                        <div class="component-watch-volume-expander">
+                                            <div class="component-watch-volume-slider-wrap">
+                                                <input type="range" id="volume-bar" class="component-watch-volume-bar" min="0" max="1" step="0.05" value="1">
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
+
                                 <div class="component-watch-control-pill component-watch-timer-pill">
-                                    <span id="current-time">0:00</span><span class="component-watch-time-sep">/</span><span id="duration">0:00</span>
+                                    <div class="component-watch-timer-block">
+                                        <span id="current-time">0:00</span><span class="component-watch-time-sep">/</span><span id="duration">0:00</span>
+                                    </div>
                                 </div>
+
                             </div>
+
                             <div class="component-watch-controls-right">
                                 <div class="component-watch-control-pill component-watch-group-pill">
                                     <button id="settings-btn" class="component-watch-control-btn" title="Configuración">
