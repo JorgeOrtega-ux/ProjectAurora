@@ -1020,4 +1020,12 @@ html {
         padding: 12px;
         gap: 12px;
     }
+}.overflow-y {
+    overflow-x: hidden;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+    scrollbar-color: var(--text-tertiary) transparent;
+    scrollbar-width: thin;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
 }

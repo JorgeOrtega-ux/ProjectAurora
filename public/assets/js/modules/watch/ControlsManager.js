@@ -1,3 +1,5 @@
+/* public/assets/js/modules/watch/ControlsManager.js */
+
 export class ControlsManager {
     constructor(videoElement, videoPlayerInstance, ambientLightInstance) {
         this.video = videoElement;
@@ -18,6 +20,9 @@ export class ControlsManager {
 
         this.isCinemaMode = false;
         this.controlsTimeout = null;
+        
+        // Variable para recordar el volumen anterior (UX mejorada)
+        this.lastVolume = 1; 
 
         this.init();
     }
@@ -27,6 +32,10 @@ export class ControlsManager {
         this._attachVideoListeners();
         this._attachControlListeners();
         this._initAutoHide();
+        
+        // Inicializar volumen y fondo
+        this.lastVolume = this.video.volume;
+        this._updateSeekBarBackground(this.volumeBar);
     }
 
     _initCinemaMode() {
@@ -98,22 +107,43 @@ export class ControlsManager {
             this.currentTimeEl.innerText = this._formatTime(this.seekBar.value);
         });
 
+        // --- LÓGICA DE VOLUMEN MEJORADA (INPUT) ---
         this.volumeBar.addEventListener('input', (e) => {
-            this.video.volume = e.target.value;
-            this.video.muted = e.target.value === 0;
+            const vol = parseFloat(e.target.value);
+            this.video.volume = vol;
+            this.video.muted = (vol === 0);
+            
+            // Actualizamos lastVolume siempre con lo que el usuario arrastre.
+            // Si arrastra a 0, lastVolume será 0.
+            this.lastVolume = vol; 
+            
             this.updateVolumeIcon(this.video.volume);
+            this._updateSeekBarBackground(this.volumeBar);
         });
 
+        // --- LÓGICA DE VOLUMEN MEJORADA (CLICK BOTÓN) ---
         this.muteBtn.addEventListener('click', () => {
-            this.video.muted = !this.video.muted;
-            if (this.video.muted) {
+            // Si ya está muteado O el volumen actual es 0 (efectivamente muteado)
+            if (this.video.muted || this.video.volume === 0) {
+                // DESMUTEAR
+                this.video.muted = false;
+                
+                // LÓGICA CLAVE:
+                // 1. Si lastVolume > 0 (ej: 0.3), restauramos ese valor.
+                // 2. Si lastVolume es 0 (usuario lo bajó a mano a 0), subimos a 1 (100%).
+                this.video.volume = this.lastVolume > 0 ? this.lastVolume : 1;
+                
+                this.volumeBar.value = this.video.volume;
+                this.updateVolumeIcon(this.video.volume);
+            } else {
+                // MUTEAR
+                this.lastVolume = this.video.volume; // Guardamos "memoria" antes de silenciar
+                this.video.muted = true;
                 this.volumeBar.value = 0;
                 this.updateVolumeIcon(0);
-            } else {
-                this.video.volume = 1;
-                this.volumeBar.value = 1;
-                this.updateVolumeIcon(1);
             }
+            // Actualizar el fondo visual tras el cambio
+            this._updateSeekBarBackground(this.volumeBar);
         });
 
         this.fullscreenBtn.addEventListener('click', () => {
