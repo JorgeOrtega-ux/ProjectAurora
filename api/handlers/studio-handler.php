@@ -107,7 +107,12 @@ switch ($action) {
         $uuid = $_POST['video_uuid'] ?? '';
         Utils::jsonResponse($studioService->deleteVideo($uuid));
         break;
-
+// [CORRECCIÓN] CASO FALTANTE AGREGADO
+    case 'search_tags':
+        $type = $_POST['type'] ?? 'category'; // 'category' o 'actor'
+        $query = $_POST['query'] ?? '';
+        Utils::jsonResponse($studioService->searchTags($type, $query));
+        break;
     default:
         Utils::jsonResponse(['success' => false, 'message' => $i18n->t('api.unknown_action')]);
         break;

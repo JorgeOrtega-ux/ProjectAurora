@@ -58,8 +58,9 @@ class StudioService {
         }
 
         try {
+            // 1. Datos principales
             $stmt = $this->pdo->prepare("
-                SELECT uuid, title, description, status, thumbnail_path, dominant_color, 
+                SELECT id, uuid, title, description, status, thumbnail_path, dominant_color, 
                        generated_thumbnails, orientation, sprite_path, vtt_path, views_count
                 FROM videos 
                 WHERE uuid = ?
@@ -71,6 +72,7 @@ class StudioService {
                 return ['success' => false, 'message' => 'Video no encontrado.'];
             }
 
+            // Procesar rutas y JSON
             $video['thumbnail_src'] = null;
             if (!empty($video['thumbnail_path'])) {
                 $path = __DIR__ . '/../../' . $video['thumbnail_path'];
@@ -88,10 +90,54 @@ class StudioService {
             // [LÓGICA HÍBRIDA] Calcular visitas reales
             $video['views'] = $this->getRealViewCount($uuid, $video['views_count']);
 
+            // [MODIFICACIÓN 1] Cargar Categorías y Actores asociados
+            // A. Categorías
+            $stmtCat = $this->pdo->prepare("
+                SELECT c.id, c.name, c.slug 
+                FROM video_categories c
+                JOIN video_categories_map map ON c.id = map.category_id
+                WHERE map.video_id = ?
+            ");
+            $stmtCat->execute([$video['id']]);
+            $video['categories'] = $stmtCat->fetchAll(PDO::FETCH_ASSOC);
+
+            // B. Actores (Cast)
+            $stmtCast = $this->pdo->prepare("
+                SELECT a.id, a.name, a.slug, a.avatar_path 
+                FROM video_actors a
+                JOIN video_actors_map map ON a.id = map.actor_id
+                WHERE map.video_id = ?
+            ");
+            $stmtCast->execute([$video['id']]);
+            $video['cast'] = $stmtCast->fetchAll(PDO::FETCH_ASSOC);
+
+            // Limpiamos el ID interno antes de enviar al front por seguridad/limpieza
+            unset($video['id']);
+
             return ['success' => true, 'video' => $video];
 
         } catch (Exception $e) {
             return ['success' => false, 'message' => $this->i18n->t('api.db_error')];
+        }
+    }
+
+    // [NUEVO] Método para búsqueda de tags (Autocompletado)
+    public function searchTags($type, $query) {
+        $query = trim($query);
+        if (strlen($query) < 2) return ['success' => true, 'results' => []];
+
+        try {
+            if ($type === 'actor') {
+                $stmt = $this->pdo->prepare("SELECT id, name, avatar_path, slug FROM video_actors WHERE name LIKE ? LIMIT 5");
+                $stmt->execute(["%$query%"]);
+                return ['success' => true, 'results' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+            } else {
+                $stmt = $this->pdo->prepare("SELECT id, name, slug, usage_count as count FROM video_categories WHERE name LIKE ? LIMIT 5");
+                $stmt->execute(["%$query%"]);
+                return ['success' => true, 'results' => $stmt->fetchAll(PDO::FETCH_ASSOC)];
+            }
+        } catch (Exception $e) {
+            return ['success' => false, 'results' => []];
         }
     }
 
@@ -478,33 +524,128 @@ class StudioService {
         $desc = trim($data['description']);
         $publish = $data['publish'];
 
+        // [MODIFICACIÓN 2] Decodificar arrays de tags
+        $categories = isset($data['categories']) ? json_decode($data['categories'], true) : [];
+        $actors = isset($data['actors']) ? json_decode($data['actors'], true) : [];
+
         if (empty($title)) return ['success' => false, 'message' => 'El título es obligatorio'];
 
         try {
             $this->pdo->beginTransaction(); 
 
-            $stmt = $this->pdo->prepare("UPDATE videos SET title = ?, description = ? WHERE uuid = ?");
-            $stmt->execute([$title, $desc, $uuid]);
+            // 1. Obtener ID numérico del video
+            $stmtId = $this->pdo->prepare("SELECT id, status, thumbnail_path FROM videos WHERE uuid = ?");
+            $stmtId->execute([$uuid]);
+            $video = $stmtId->fetch(PDO::FETCH_ASSOC);
+            $videoId = $video['id'];
 
+            // 2. Actualizar datos básicos
+            $stmt = $this->pdo->prepare("UPDATE videos SET title = ?, description = ? WHERE id = ?");
+            $stmt->execute([$title, $desc, $videoId]);
+
+            // 3. Procesar Categorías
+            // Limpiar relaciones previas
+            $delCats = $this->pdo->prepare("DELETE FROM video_categories_map WHERE video_id = ?");
+            $delCats->execute([$videoId]);
+
+            if (!empty($categories)) {
+                $insCatMap = $this->pdo->prepare("INSERT IGNORE INTO video_categories_map (video_id, category_id) VALUES (?, ?)");
+                $findCat = $this->pdo->prepare("SELECT id FROM video_categories WHERE name = ?");
+                $createCat = $this->pdo->prepare("INSERT INTO video_categories (name, slug) VALUES (?, ?)");
+
+                foreach ($categories as $cat) {
+                    $catName = trim($cat['name']);
+                    if (empty($catName)) continue;
+
+                    $catId = $cat['id'] ?? null;
+
+                    // Si no tiene ID (es nuevo), buscamos o creamos
+                    if (!$catId) {
+                        $findCat->execute([$catName]);
+                        $existingId = $findCat->fetchColumn();
+
+                        if ($existingId) {
+                            $catId = $existingId;
+                        } else {
+                            $slug = Utils::slugify($catName);
+                            try {
+                                $createCat->execute([$catName, $slug]);
+                                $catId = $this->pdo->lastInsertId();
+                            } catch (Exception $ex) {
+                                // Si falla por duplicado de slug, intentamos recuperar de nuevo
+                                $findCat->execute([$catName]);
+                                $catId = $findCat->fetchColumn();
+                            }
+                        }
+                    }
+
+                    if ($catId) {
+                        $insCatMap->execute([$videoId, $catId]);
+                    }
+                }
+            }
+
+            // 4. Procesar Actores (Cast)
+            // Limpiar relaciones previas
+            $delCast = $this->pdo->prepare("DELETE FROM video_actors_map WHERE video_id = ?");
+            $delCast->execute([$videoId]);
+
+            if (!empty($actors)) {
+                $insCastMap = $this->pdo->prepare("INSERT IGNORE INTO video_actors_map (video_id, actor_id) VALUES (?, ?)");
+                $findActor = $this->pdo->prepare("SELECT id FROM video_actors WHERE name = ?");
+                $createActor = $this->pdo->prepare("INSERT INTO video_actors (name, slug, type) VALUES (?, ?, 'other')");
+
+                foreach ($actors as $actor) {
+                    $actorName = trim($actor['name']);
+                    if (empty($actorName)) continue;
+
+                    $actorId = $actor['id'] ?? null;
+
+                    if (!$actorId) {
+                        $findActor->execute([$actorName]);
+                        $existingId = $findActor->fetchColumn();
+
+                        if ($existingId) {
+                            $actorId = $existingId;
+                        } else {
+                            $slug = Utils::slugify($actorName);
+                            try {
+                                $createActor->execute([$actorName, $slug]);
+                                $actorId = $this->pdo->lastInsertId();
+                            } catch (Exception $ex) {
+                                $findActor->execute([$actorName]);
+                                $actorId = $findActor->fetchColumn();
+                            }
+                        }
+                    }
+
+                    if ($actorId) {
+                        $insCastMap->execute([$videoId, $actorId]);
+                    }
+                }
+            }
+
+            // 5. Miniatura (si se seleccionó una de las generadas)
             if (!empty($data['selected_thumbnail'])) {
                 $expectedPath = "public/storage/thumbnails/generated/$uuid/";
                 
                 if (strpos($data['selected_thumbnail'], $expectedPath) !== false) {
-                    $thumbSql = "UPDATE videos SET thumbnail_path = ?, dominant_color = ? WHERE uuid = ?";
+                    $thumbSql = "UPDATE videos SET thumbnail_path = ?, dominant_color = ? WHERE id = ?";
                     $thumbStmt = $this->pdo->prepare($thumbSql);
                     $color = $data['dominant_color'] ?? '#000000';
-                    $thumbStmt->execute([$data['selected_thumbnail'], $color, $uuid]);
+                    $thumbStmt->execute([$data['selected_thumbnail'], $color, $videoId]);
                 }
             }
 
+            // 6. Lógica de Publicación
             if ($publish === true || $publish === 'true') {
-                $check = $this->pdo->prepare("SELECT status, thumbnail_path FROM videos WHERE uuid = ?");
-                $check->execute([$uuid]);
-                $video = $check->fetch();
+                $check = $this->pdo->prepare("SELECT status, thumbnail_path FROM videos WHERE id = ?");
+                $check->execute([$videoId]);
+                $videoInfo = $check->fetch();
 
-                $hasThumbnail = !empty($data['selected_thumbnail']) || !empty($video['thumbnail_path']);
+                $hasThumbnail = !empty($data['selected_thumbnail']) || !empty($videoInfo['thumbnail_path']);
 
-                if ($video['status'] !== 'waiting_for_metadata') {
+                if ($videoInfo['status'] !== 'waiting_for_metadata') {
                     $this->pdo->rollBack();
                     return [
                         'success' => false, 
@@ -517,8 +658,8 @@ class StudioService {
                     return ['success' => false, 'message' => 'Debes subir una miniatura antes de publicar.'];
                 }
 
-                $upd = $this->pdo->prepare("UPDATE videos SET status = 'published' WHERE uuid = ?");
-                $upd->execute([$uuid]);
+                $upd = $this->pdo->prepare("UPDATE videos SET status = 'published' WHERE id = ?");
+                $upd->execute([$videoId]);
 
                 $this->pdo->commit();
                 return ['success' => true, 'published' => true, 'message' => '¡Video publicado exitosamente!'];
@@ -529,6 +670,7 @@ class StudioService {
 
         } catch (Exception $e) {
             $this->pdo->rollBack();
+            error_log($e->getMessage()); // Debug
             return ['success' => false, 'message' => $this->i18n->t('api.db_error')];
         }
     }
@@ -554,7 +696,6 @@ class StudioService {
         return ['success' => true, 'videos' => $videos];
     }
 
-    // [MODIFICADO] Se agregan likes_count y subconsulta para comments_count
     public function getUserContent($search = '', $status = 'all', $page = 1, $limit = 20) {
         $offset = ($page - 1) * $limit;
         $params = [$this->userId];

@@ -727,3 +727,59 @@
         grid-row: auto; 
     }
 }
+
+/* === NUEVO: TAGS Y METADATOS (ACTORES Y CATEGORÍAS) === */
+
+.watch-meta-tags-section {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-top: 1px solid var(--border-transparent-20); /* Separator */
+    padding-top: 12px;
+}
+
+.watch-tags-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.watch-tag-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color 0.2s, color 0.2s;
+    background-color: rgba(0,0,0,0.05);
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .watch-tag-pill {
+    background-color: rgba(255,255,255,0.1);
+    color: var(--text-secondary);
+}
+
+.watch-tag-pill:hover {
+    background-color: var(--bg-hover-light);
+    color: var(--text-primary);
+}
+
+.watch-tag-pill .material-symbols-rounded {
+    font-size: 14px;
+}
+
+/* Colores específicos */
+.watch-tag-pill.actor {
+    color: #3ea6ff; /* Azul para actores */
+    background-color: rgba(62, 166, 255, 0.1);
+}
+
+.watch-tag-pill.category {
+    color: var(--text-primary);
+}

@@ -97,6 +97,9 @@ return [
     'studio.get_video_details'=> ['file' => 'handlers/studio-handler.php', 'action' => 'get_video_details'],
     'studio.select_generated_thumbnail' => ['file' => 'handlers/studio-handler.php', 'action' => 'select_generated_thumbnail'],
 
+    // [CORRECCIÓN] RUTA FALTANTE AGREGADA
+    'studio.search_tags'      => ['file' => 'handlers/studio-handler.php', 'action' => 'search_tags'],
+
     'interaction.toggle_like' => ['file' => 'handlers/interaction-handler.php', 'action' => 'toggle_like'],
     'interaction.toggle_sub'  => ['file' => 'handlers/interaction-handler.php', 'action' => 'toggle_subscribe'],
     'interaction.view'        => ['file' => 'handlers/interaction-handler.php', 'action' => 'register_view'],

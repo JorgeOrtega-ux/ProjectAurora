@@ -341,7 +341,7 @@
     object-fit: cover;
 }
 
-/* [NUEVO] Estilos para las celdas de métricas */
+/* Estilos para las celdas de métricas */
 .table-metric-cell {
     display: flex;
     flex-direction: column;
@@ -356,6 +356,174 @@
 .table-metric-cell .material-symbols-rounded {
     font-size: 18px;
     color: var(--text-tertiary);
+}
+
+/* === NUEVOS ESTILOS: METADATA & TAGS INPUTS === */
+
+.meta-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.field-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.field-help {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    margin: 4px 0 0 0;
+}
+
+/* Wrapper del Input de Tags */
+.tag-input-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    min-height: 40px;
+    position: relative;
+    transition: border-color 0.2s;
+}
+
+.tag-input-wrapper:focus-within {
+    border-color: var(--action-primary);
+    box-shadow: 0 0 0 1px var(--action-primary);
+}
+
+/* Colección de Chips (Tags) */
+.tags-collection {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* Chip Individual (Estilo Edición) */
+.tag-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background-color: var(--bg-hover-light);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    padding: 4px 10px;
+    font-size: 13px;
+    color: var(--text-primary);
+    user-select: none;
+}
+
+.tag-chip .remove-tag {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    font-size: 14px;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+}
+
+.tag-chip .remove-tag:hover {
+    background-color: rgba(0,0,0,0.1);
+    color: var(--danger-color, #d32f2f);
+}
+
+/* Input Transparente */
+.tag-input-field {
+    border: none;
+    outline: none;
+    background: transparent;
+    flex: 1;
+    min-width: 120px;
+    font-size: 14px;
+    color: var(--text-primary);
+    padding: 4px 0;
+}
+
+/* Dropdown de Sugerencias */
+.suggestions-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 100;
+}
+
+.suggestion-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.1s;
+}
+
+.suggestion-item:hover, .suggestion-item.selected {
+    background-color: var(--bg-hover-light);
+}
+
+.suggestion-item img {
+    width: 24px; 
+    height: 24px; 
+    border-radius: 50%; 
+    object-fit: cover;
+}
+
+.suggestion-item .type-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: var(--bg-hover-light);
+    color: var(--text-secondary);
+    margin-left: auto;
+}
+
+/* Estilo para View State (Solo lectura) */
+.tags-view-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.view-tag-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px;
+    background-color: var(--bg-hover-light);
+    border-radius: 12px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    border: 1px solid transparent;
+}
+
+.view-tag-pill.actor {
+    background-color: rgba(62, 166, 255, 0.1); /* Tinte azul suave */
+    color: #3ea6ff;
+}
+
+.view-tag-pill.category {
+    background-color: var(--bg-hover-light);
+    color: var(--text-primary);
 }
 
 @media (max-width: 850px) {

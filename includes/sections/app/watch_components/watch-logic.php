@@ -7,6 +7,8 @@ if (!isset($pdo) || !isset($redis)) {
 
 $videoUuid = trim($_GET['v'] ?? '');
 $videoData = null;
+$videoCast = []; // Array para actores
+$videoCategories = []; // Array para categorías
 
 // Inicializar estado de interacción
 $interaction = [
@@ -39,6 +41,29 @@ if (!empty($videoUuid) && isset($pdo)) {
         $videoData = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($videoData) {
+            // [MODIFICACIÓN] Obtener Categorías y Actores para mostrar en la descripción
+            
+            // Consulta A: Reparto (Cast)
+            $stmtCast = $pdo->prepare("
+                SELECT a.name, a.slug 
+                FROM video_actors a
+                JOIN video_actors_map map ON a.id = map.actor_id
+                WHERE map.video_id = ?
+            ");
+            $stmtCast->execute([$videoData['id']]);
+            $videoCast = $stmtCast->fetchAll(PDO::FETCH_ASSOC);
+
+            // Consulta B: Categorías
+            $stmtCat = $pdo->prepare("
+                SELECT c.name, c.slug 
+                FROM video_categories c
+                JOIN video_categories_map map ON c.id = map.category_id
+                WHERE map.video_id = ?
+            ");
+            $stmtCat->execute([$videoData['id']]);
+            $videoCategories = $stmtCat->fetchAll(PDO::FETCH_ASSOC);
+
+
             // 2. Lógica Híbrida Redis/DB para contadores en tiempo real
             if ($redis) {
                 $bufferKey = "video:buffer:views:{$videoUuid}";

@@ -6,6 +6,12 @@ USE project_aurora_db;
 -- =========================================================
 -- El orden es importante para evitar errores de Foreign Keys
 
+-- [NUEVO] Eliminamos tablas pivote y metadatos
+DROP TABLE IF EXISTS video_categories_map;
+DROP TABLE IF EXISTS video_actors_map;
+DROP TABLE IF EXISTS video_categories;
+DROP TABLE IF EXISTS video_actors;
+
 -- [NUEVO] Eliminamos interacciones de comentarios antes que los comentarios
 DROP TABLE IF EXISTS comment_interactions; 
 DROP TABLE IF EXISTS video_comments; 
@@ -44,7 +50,8 @@ CREATE TABLE IF NOT EXISTS users (
     two_factor_secret VARCHAR(255) DEFAULT NULL,
     two_factor_enabled TINYINT(1) DEFAULT 0,
     two_factor_recovery_codes JSON DEFAULT NULL,
-    subscribers_count INT DEFAULT 0
+    subscribers_count INT DEFAULT 0,
+    banner_path VARCHAR(255) DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS verification_codes (
@@ -268,7 +275,6 @@ CREATE TABLE IF NOT EXISTS video_shares (
 );
 
 -- E. VIDEO COMMENTS
--- [MODIFICADO] Se añade columna UUID para identificar comentarios en tránsito (Redis -> MySQL)
 CREATE TABLE IF NOT EXISTS video_comments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     uuid CHAR(36) NOT NULL UNIQUE, 
@@ -287,8 +293,7 @@ CREATE TABLE IF NOT EXISTS video_comments (
     INDEX idx_uuid (uuid)
 );
 
--- F. COMMENT INTERACTIONS [NUEVO]
--- Registra los likes y dislikes individuales en los comentarios
+-- F. COMMENT INTERACTIONS
 CREATE TABLE IF NOT EXISTS comment_interactions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -301,12 +306,11 @@ CREATE TABLE IF NOT EXISTS comment_interactions (
     INDEX idx_comment_type (comment_id, type)
 );
 
-ALTER TABLE users ADD COLUMN banner_path VARCHAR(255) DEFAULT NULL AFTER avatar_path;
-
 -- =========================================================
 -- GESTIÓN DE METADATOS (Categorías y Actores)
 -- =========================================================
 
+-- Tablas Maestras (Catálogos)
 CREATE TABLE IF NOT EXISTS video_categories (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
@@ -323,4 +327,24 @@ CREATE TABLE IF NOT EXISTS video_actors (
     usage_count INT DEFAULT 0,
     avatar_path VARCHAR(255) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- [NUEVO] Tablas Pivote (Relación Muchos a Muchos)
+
+-- Relaciona Videos <-> Categorías
+CREATE TABLE IF NOT EXISTS video_categories_map (
+    video_id INT NOT NULL,
+    category_id INT NOT NULL,
+    PRIMARY KEY (video_id, category_id),
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES video_categories(id) ON DELETE CASCADE
+);
+
+-- Relaciona Videos <-> Actores
+CREATE TABLE IF NOT EXISTS video_actors_map (
+    video_id INT NOT NULL,
+    actor_id INT NOT NULL,
+    PRIMARY KEY (video_id, actor_id),
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE CASCADE,
+    FOREIGN KEY (actor_id) REFERENCES video_actors(id) ON DELETE CASCADE
 );

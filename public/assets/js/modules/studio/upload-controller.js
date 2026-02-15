@@ -7,6 +7,7 @@
  * [NUEVO] Validación Tiered Limits (Size & Duration) en Frontend.
  * [MODIFICADO] Generación de miniaturas síncrona (PHP/FFmpeg).
  * [OPTIMIZACIÓN] Selección de miniaturas en cliente (Defer save).
+ * [NUEVO] Gestión de Metadatos: Categorías y Actores (Tags System).
  */
 
 import { ApiService } from '../../core/services/api-service.js';
@@ -37,6 +38,9 @@ let _tempDominantColor = null;
 // Variable para bloqueo de operaciones de generación
 let _isThumbOperationActive = false;
 
+// [NUEVO] Timeout para debounce de búsqueda
+let _searchTimeout = null;
+
 // Helper para detectar rol (debe ser inyectado en el layout o body)
 const getUserLimits = () => {
     // Intentar leer rol del DOM o variable global
@@ -55,7 +59,7 @@ export const UploadController = {
         const container = document.querySelector('[data-section="channel-upload"]');
         if (!container) return;
 
-        console.log("UploadController: Inicializado (V2 + Security Tokens + Limits Check + Sync Thumbs + Client Select)");
+        console.log("UploadController: Inicializado (V2 + Security Tokens + Tags System)");
         
         _videosState = [];
         _activeVideoUuid = null;
@@ -131,7 +135,10 @@ async function loadExistingDraft(uuid) {
                 // Ruta absoluta para la miniatura
                 thumbnail: res.video.thumbnail_src ? (window.BASE_PATH + res.video.thumbnail_src) : null,
                 // [NUEVO] Guardar miniaturas generadas si existen
-                generated_thumbnails: res.video.generated_thumbnails || []
+                generated_thumbnails: res.video.generated_thumbnails || [],
+                // [NUEVO] Cargar Tags
+                categories: res.video.categories || [], // Array de objetos {id, name}
+                cast: res.video.cast || [] // Array de objetos {id, name, avatar}
             };
 
             _videosState = [videoEntry];
@@ -182,7 +189,10 @@ async function checkPendingUploads() {
                     // Ruta absoluta
                     thumbnail: v.thumbnail_src ? (window.BASE_PATH + v.thumbnail_src) : null,
                     description: v.description || '',
-                    generated_thumbnails: v.generated_thumbnails || []
+                    generated_thumbnails: v.generated_thumbnails || [],
+                    // [NUEVO] Inicializar vacíos para nuevos videos o pendientes
+                    categories: [],
+                    cast: []
                 });
             });
 
@@ -317,7 +327,10 @@ async function handleFiles(files) {
             processingPercent: 0,
             thumbnail: null,
             uploadToken: null,
-            generated_thumbnails: []
+            generated_thumbnails: [],
+            // [NUEVO] Inicializar Tags
+            categories: [],
+            cast: []
         };
         
         _videosState.push(videoEntry);
@@ -485,6 +498,7 @@ function switchEditor(uuid) {
     // 1. Resetear estados visuales a "View"
     toggleEditState('title', false);
     toggleEditState('desc', false);
+    toggleEditState('meta', false); // Resetear estado de metadatos
 
     // 2. Llenar valores
     // Título
@@ -502,6 +516,9 @@ function switchEditor(uuid) {
     // Preview File Name
     document.getElementById('meta-filename').textContent = (nextVideo.title || 'video') + '.mp4';
     
+    // [NUEVO] Renderizar Tags (Categorías y Actores)
+    renderTagsUI(nextVideo);
+
     // 3. Miniatura Principal
     const imgPreview = document.getElementById('thumbnail-preview');
     if (nextVideo.thumbnail) {
@@ -641,6 +658,8 @@ function initEditorEvents() {
     // A) Configuración de campos (Toggle & Guardado Granular)
     setupFieldLogic('title', 'meta-title');
     setupFieldLogic('desc', 'meta-desc');
+    // [NUEVO] Lógica para el campo Meta (Tags)
+    setupFieldLogic('meta', null); // null porque no es un input único
 
     // B) Acciones Globales (Header)
     const btnPublish = document.getElementById('btn-publish');
@@ -663,7 +682,8 @@ function initEditorEvents() {
 
     if (btnGenThumbs) btnGenThumbs.addEventListener('click', generateThumbnails);
 
-    // D) Miniaturas Generadas (Delegación eliminada, ahora manejada en renderGeneratedGrid)
+    // D) Inicializar Inputs de Tags (Autocomplete)
+    initTagInputs();
 }
 
 function setupFieldLogic(targetName, inputId) {
@@ -674,7 +694,7 @@ function setupFieldLogic(targetName, inputId) {
     const btnEdit = section.querySelector(`[data-action="start-edit"][data-target="${targetName}"]`);
     const btnCancel = section.querySelector(`[data-action="cancel-edit"][data-target="${targetName}"]`);
     const btnSave = section.querySelector(`[data-action="save-field"][data-target="${targetName}"]`);
-    const input = document.getElementById(inputId);
+    const input = inputId ? document.getElementById(inputId) : null;
 
     // Evento Editar
     if (btnEdit) {
@@ -688,6 +708,11 @@ function setupFieldLogic(targetName, inputId) {
     if (btnCancel) {
         btnCancel.addEventListener('click', () => {
             if (input) input.value = input.dataset.originalValue || '';
+            // Si es Meta, necesitamos revertir los tags visuales
+            if (targetName === 'meta' && _activeVideoUuid) {
+                 const video = _videosState.find(v => v.uuid === _activeVideoUuid);
+                 if (video) renderTagsUI(video);
+            }
             toggleEditState(targetName, false);
         });
     }
@@ -730,6 +755,183 @@ function toggleEditState(targetName, isEditing) {
     }
 }
 
+// [NUEVO] Lógica de Inputs de Etiquetas
+function initTagInputs() {
+    const categoryInput = document.getElementById('meta-category-input');
+    const actorInput = document.getElementById('meta-actor-input');
+
+    if (categoryInput) {
+        // Búsqueda al escribir
+        categoryInput.addEventListener('input', (e) => handleTagSearch('category', e.target.value));
+        // Enter para crear/seleccionar
+        categoryInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addTag('category', { name: e.target.value.trim(), id: null }); // ID null = Nuevo/Custom
+                e.target.value = '';
+                document.getElementById('category-suggestions')?.classList.add('d-none');
+            }
+        });
+    }
+
+    if (actorInput) {
+        actorInput.addEventListener('input', (e) => handleTagSearch('actor', e.target.value));
+        // Actores usualmente no se crean con Enter, solo selección, pero por UX dejamos limpiar
+        actorInput.addEventListener('keydown', (e) => {
+             if (e.key === 'Escape') document.getElementById('actor-suggestions')?.classList.add('d-none');
+        });
+    }
+
+    // Cerrar sugerencias al hacer clic fuera
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.tag-input-wrapper')) {
+            document.querySelectorAll('.suggestions-dropdown').forEach(el => el.classList.add('d-none'));
+        }
+    });
+}
+
+function handleTagSearch(type, query) {
+    const dropdown = document.getElementById(`${type}-suggestions`);
+    if (!dropdown) return;
+
+    if (!query || query.length < 2) {
+        dropdown.classList.add('d-none');
+        return;
+    }
+
+    if (_searchTimeout) clearTimeout(_searchTimeout);
+    _searchTimeout = setTimeout(async () => {
+        try {
+            const formData = new FormData();
+            formData.append('type', type);
+            formData.append('query', query);
+            
+            // Usamos una ruta genérica de búsqueda
+            const route = ApiService.Routes.Studio.SearchTags || { route: 'studio.search_tags' };
+            const res = await ApiService.post(route, formData, { silent: true });
+
+            if (res.success && res.results && res.results.length > 0) {
+                renderSuggestions(type, res.results);
+            } else {
+                dropdown.classList.add('d-none');
+            }
+        } catch (e) {
+            console.error("Search error", e);
+        }
+    }, 300);
+}
+
+function renderSuggestions(type, results) {
+    const dropdown = document.getElementById(`${type}-suggestions`);
+    dropdown.innerHTML = '';
+    
+    results.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'suggestion-item';
+        
+        let content = '';
+        if (type === 'actor') {
+             // Avatar si existe, sino placeholder
+             const avatar = item.avatar_path ? (window.BASE_PATH + item.avatar_path) : 'https://ui-avatars.com/api/?name='+item.name;
+             content = `<img src="${avatar}"><span>${item.name}</span>`;
+        } else {
+             content = `<span>${item.name}</span> <span class="type-badge">${item.count || 0} videos</span>`;
+        }
+
+        div.innerHTML = content;
+        div.addEventListener('click', () => {
+            addTag(type, item);
+            document.getElementById(`meta-${type}-input`).value = '';
+            dropdown.classList.add('d-none');
+        });
+        dropdown.appendChild(div);
+    });
+
+    dropdown.classList.remove('d-none');
+}
+
+function addTag(type, item) {
+    if (!_activeVideoUuid) return;
+    const video = _videosState.find(v => v.uuid === _activeVideoUuid);
+    if (!video) return;
+
+    // Normalizar
+    const name = item.name.trim();
+    if (!name) return;
+
+    // Array destino
+    const collection = (type === 'category') ? video.categories : video.cast;
+
+    // Evitar duplicados
+    if (collection.find(t => t.name.toLowerCase() === name.toLowerCase())) {
+        return; 
+    }
+
+    // Agregar (Si item tiene ID es existente, sino es nuevo string)
+    collection.push({
+        id: item.id || null, // null indicará al backend que cree/busque por nombre
+        name: name,
+        avatar_path: item.avatar_path || null
+    });
+
+    renderTagsUI(video);
+}
+
+function removeTag(type, index) {
+    if (!_activeVideoUuid) return;
+    const video = _videosState.find(v => v.uuid === _activeVideoUuid);
+    if (!video) return;
+
+    if (type === 'category') video.categories.splice(index, 1);
+    else video.cast.splice(index, 1);
+
+    renderTagsUI(video);
+}
+
+function renderTagsUI(video) {
+    // 1. Renderizar Chips de Edición
+    const renderChips = (containerId, items, type) => {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+        
+        items.forEach((item, idx) => {
+            const chip = document.createElement('div');
+            chip.className = 'tag-chip';
+            chip.innerHTML = `<span>${item.name}</span><span class="remove-tag">×</span>`;
+            chip.querySelector('.remove-tag').addEventListener('click', () => removeTag(type, idx));
+            container.appendChild(chip);
+        });
+    };
+
+    renderChips('category-tags-collection', video.categories, 'category');
+    renderChips('actor-tags-collection', video.cast, 'actor');
+
+    // 2. Renderizar Vista de Lectura (View State)
+    const renderView = (containerId, items, type) => {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        
+        if (items.length === 0) {
+            container.innerHTML = '<span style="color: var(--text-secondary); font-size: 13px;">Ninguna</span>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        items.forEach(item => {
+            const pill = document.createElement('span');
+            pill.className = `view-tag-pill ${type}`;
+            
+            let icon = type === 'category' ? '#' : '★';
+            pill.textContent = `${icon} ${item.name}`;
+            container.appendChild(pill);
+        });
+    };
+
+    renderView('display-categories', video.categories, 'category');
+    renderView('display-cast', video.cast, 'actor');
+}
+
 async function saveFieldData(targetName) {
     if (!_activeVideoUuid) return;
 
@@ -739,40 +941,54 @@ async function saveFieldData(targetName) {
     const section = document.querySelector(`[data-component="${targetName}-section"]`);
     const btnSave = section.querySelector('[data-action="save-field"]');
     
-    const inputTitle = document.getElementById('meta-title');
-    const inputDesc = document.getElementById('meta-desc');
-    
-    let titleVal = inputTitle.value.trim();
-    let descVal = inputDesc.value.trim();
+    // [MODIFICADO] Lógica dinámica según el target
+    const formData = new FormData();
+    formData.append('video_uuid', _activeVideoUuid);
+    formData.append('publish', 'false');
 
-    if (targetName === 'title' && !titleVal) {
-        ToastManager.show('El título no puede estar vacío.', 'warning');
-        return;
+    if (targetName === 'title') {
+        const val = document.getElementById('meta-title').value.trim();
+        if (!val) { ToastManager.show('El título es obligatorio.', 'warning'); return; }
+        formData.append('title', val);
+        // Mantener descripción actual
+        formData.append('description', video.description); 
+
+    } else if (targetName === 'desc') {
+        const val = document.getElementById('meta-desc').value.trim();
+        formData.append('description', val);
+        // Mantener título actual
+        formData.append('title', video.title);
+
+    } else if (targetName === 'meta') {
+        // [NUEVO] Guardar Tags
+        // Enviamos todo el conjunto de metadatos básicos para asegurar integridad
+        formData.append('title', video.title);
+        formData.append('description', video.description);
+        
+        // Convertir arrays a JSON
+        formData.append('categories', JSON.stringify(video.categories));
+        formData.append('actors', JSON.stringify(video.cast));
     }
 
     const originalText = btnSave.innerText;
     btnSave.innerText = 'Guardando...';
     btnSave.disabled = true;
 
-    const formData = new FormData();
-    formData.append('video_uuid', _activeVideoUuid);
-    formData.append('title', titleVal);
-    formData.append('description', descVal);
-    formData.append('publish', 'false'); 
-
     try {
         const res = await ApiService.post(ApiService.Routes.Studio.SaveMetadata, formData);
 
         if (res.success) {
-            video.title = titleVal;
-            video.description = descVal;
-            
-            inputTitle.dataset.originalValue = titleVal;
-            inputDesc.dataset.originalValue = descVal;
-
-            document.getElementById('display-title').textContent = titleVal;
-            document.getElementById('display-desc').textContent = descVal || 'Sin descripción';
-            document.getElementById('meta-filename').textContent = titleVal + '.mp4';
+            // Actualizar estado local si fue title/desc
+            if (targetName === 'title') {
+                video.title = formData.get('title');
+                document.getElementById('meta-title').dataset.originalValue = video.title;
+                document.getElementById('display-title').textContent = video.title;
+            }
+            if (targetName === 'desc') {
+                video.description = formData.get('description');
+                document.getElementById('meta-desc').dataset.originalValue = video.description;
+                document.getElementById('display-desc').textContent = video.description || 'Sin descripción';
+            }
             
             renderTabs();
             ToastManager.show(res.message, 'success');
@@ -790,7 +1006,7 @@ async function saveFieldData(targetName) {
     }
 }
 
-// [MODIFICADO] saveGlobalAction: Envía también miniatura si hay selección temporal
+// [MODIFICADO] saveGlobalAction: Envía también miniatura Y TAGS
 async function saveGlobalAction(publish) {
     if (!_activeVideoUuid) return;
     
@@ -821,6 +1037,10 @@ async function saveGlobalAction(publish) {
     formData.append('title', title);
     formData.append('description', desc);
     formData.append('publish', publish ? 'true' : 'false');
+
+    // [NUEVO] Incluir Tags
+    formData.append('categories', JSON.stringify(video.categories));
+    formData.append('actors', JSON.stringify(video.cast));
 
     // [NUEVO] Si hay una selección de miniatura pendiente, la enviamos
     if (_tempSelectedThumbnail) {
