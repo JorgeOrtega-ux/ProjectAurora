@@ -203,20 +203,13 @@
     min-height: 0;
 }
 
-/* [CORRECCIÓN] Header de la Tabla:
-   1. Background blanco/surface para que no sea transparente al scrollear.
-   2. Box-shadow hace de borde inferior.
-*/
+/* Header de la Tabla */
 .component-studio-content-area .component-table-sticky-header {
-    background-color: var(--bg-surface) !important; /* Fondo sólido */
-    box-shadow: 0 1px 0 var(--border-light);        /* Línea separadora sutil */
+    background-color: var(--bg-surface) !important;
+    box-shadow: 0 1px 0 var(--border-light);
     z-index: 10;
 }
 
-/* [CORRECCIÓN] Celdas del Header (th):
-   1. Quitamos border-bottom físico para evitar doble borde con el shadow.
-   2. Fondo heredado.
-*/
 .component-studio-content-area .component-table th {
     border-bottom: none !important; 
     background-color: inherit;
@@ -346,6 +339,23 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+/* [NUEVO] Estilos para las celdas de métricas */
+.table-metric-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    text-align: center;
+}
+
+.table-metric-cell .material-symbols-rounded {
+    font-size: 18px;
+    color: var(--text-tertiary);
 }
 
 @media (max-width: 850px) {

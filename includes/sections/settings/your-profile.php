@@ -2,6 +2,23 @@
 // includes/sections/settings/your-profile.php
 
 $currentAvatarPath = $_SESSION['avatar'] ?? '';
+
+// --- INICIO FIX: RUTAS ABSOLUTAS PARA LA IMAGEN ---
+// Esto asegura que la imagen cargue sin importar en qué URL te encuentres (ej: /settings/profile)
+$projectRoot = '/ProjectAurora/'; 
+
+if (!empty($currentAvatarPath) && strpos($currentAvatarPath, 'data:') !== 0 && strpos($currentAvatarPath, 'http') !== 0) {
+    // Si es una ruta relativa de archivo, le pegamos la raíz del proyecto
+    $cleanPath = ltrim($currentAvatarPath, '/');
+    $globalAvatarSrc = $projectRoot . $cleanPath;
+} else {
+    // Fallback: Si no hay avatar, usamos el default con ruta absoluta
+    // O si es base64/url externa, la dejamos tal cual.
+    $defaultPath = $projectRoot . 'public/storage/profilePicture/default/default.png';
+    $globalAvatarSrc = !empty($currentAvatarPath) ? $currentAvatarPath : $defaultPath;
+}
+// --- FIN FIX ---
+
 $isCustomAvatar = (strpos($currentAvatarPath, 'storage/profilePicture/custom/') !== false);
 $classDefault = $isCustomAvatar ? 'disabled' : 'active'; 
 $classCustom  = $isCustomAvatar ? 'active' : 'disabled'; 

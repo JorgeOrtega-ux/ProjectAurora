@@ -99,10 +99,13 @@ if ($requestedUuid !== $_SESSION['uuid']) {
                 <table class="component-table">
                     <thead class="component-table-sticky-header">
                         <tr>
-                            <th style="min-width: 300px;">Video</th>
-                            <th style="width: 120px;">Estado</th>
-                            <th style="width: 140px;">Fecha</th>
-                            <th style="width: 100px;" class="text-right">Duración</th>
+                            <th style="width: 35%; max-width: 400px;">Video</th>
+                            <th style="width: 100px;">Estado</th>
+                            <th style="width: 90px;" class="text-center">Vistas</th>
+                            <th style="width: 90px;" class="text-center">Comentarios</th>
+                            <th style="width: 80px;" class="text-center">Likes</th>
+                            <th style="width: 120px;">Fecha</th>
+                            <th style="width: 80px;" class="text-right">Duración</th>
                             <th style="width: 80px;"></th>
                         </tr>
                     </thead>

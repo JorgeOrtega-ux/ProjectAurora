@@ -53,17 +53,11 @@ class StudioService {
 
     // Método para obtener detalles de un video específico (Edición/Visualización)
     public function getVideoDetails($uuid) {
-        // Permitimos acceso público para visualizar, pero validamos propiedad para editar en otros métodos
-        // Si es solo para obtener info pública (Watch), no validamos isOwner estrictamente aquí
-        // Pero tu código original usaba isOwner, asumo que este método es para el Dueño en el Studio.
-        // Si es para el 'Watch', deberías tener otro método o quitar el isOwner.
-        // MANTENGO TU LÓGICA ORIGINAL: Solo el dueño puede ver detalles de edición.
         if (!$this->isOwner($uuid)) {
             return ['success' => false, 'message' => 'Video no encontrado o acceso denegado.'];
         }
 
         try {
-            // [MODIFICADO] Incluimos views_count
             $stmt = $this->pdo->prepare("
                 SELECT uuid, title, description, status, thumbnail_path, dominant_color, 
                        generated_thumbnails, orientation, sprite_path, vtt_path, views_count
@@ -108,7 +102,6 @@ class StudioService {
             $countStmt = $this->pdo->query("SELECT COUNT(*) FROM videos WHERE status = 'published'");
             $totalItems = $countStmt->fetchColumn();
 
-            // [MODIFICADO] Incluimos views_count
             $sql = "SELECT v.uuid, v.title, v.description, v.thumbnail_path, v.created_at, v.duration, 
                            v.dominant_color, v.hls_path, v.orientation, v.views_count,
                            u.username, u.avatar_path, u.uuid as user_uuid
@@ -561,6 +554,7 @@ class StudioService {
         return ['success' => true, 'videos' => $videos];
     }
 
+    // [MODIFICADO] Se agregan likes_count y subconsulta para comments_count
     public function getUserContent($search = '', $status = 'all', $page = 1, $limit = 20) {
         $offset = ($page - 1) * $limit;
         $params = [$this->userId];
@@ -582,7 +576,8 @@ class StudioService {
             $totalItems = $countStmt->fetchColumn();
 
             $sql = "SELECT uuid, title, description, status, thumbnail_path, created_at, 
-                           duration, processing_percentage, error_message, dominant_color, views_count
+                           duration, processing_percentage, error_message, dominant_color, views_count, likes_count,
+                           (SELECT COUNT(*) FROM video_comments WHERE video_id = videos.id) as comments_count
                     FROM videos 
                     $whereClause 
                     ORDER BY created_at DESC 

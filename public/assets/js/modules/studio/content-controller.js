@@ -42,7 +42,7 @@ export const ContentController = {
         document.removeEventListener('socket:processing_complete', onVideoProcessed);
         document.addEventListener('socket:processing_complete', onVideoProcessed);
 
-        // [NUEVO] Listener para progreso en tiempo real (Porcentaje)
+        // Listener para progreso en tiempo real (Porcentaje)
         document.removeEventListener('socket:processing_progress', onProcessingProgress);
         document.addEventListener('socket:processing_progress', onProcessingProgress);
     }
@@ -54,7 +54,7 @@ function onVideoProcessed() {
     }
 }
 
-// [NUEVO] Handler para actualizar la fila de la tabla sin recargar
+// Handler para actualizar la fila de la tabla sin recargar
 function onProcessingProgress(e) {
     const data = e.detail.message;
     if (data && data.uuid) {
@@ -227,6 +227,14 @@ async function loadContent(silent = false) {
     }
 }
 
+// [NUEVO] Helper para formatear números (1500 -> 1.5K)
+function formatMetric(num) {
+    num = parseInt(num) || 0;
+    if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    return num.toString();
+}
+
 function renderTable(videos) {
     const tableBody = document.getElementById('content-table-body');
     const empty = document.getElementById('content-empty');
@@ -262,7 +270,6 @@ function renderTable(videos) {
             case 'processing':
             case 'uploading_chunks':
                 statusBadge = 'hourglass_empty'; 
-                // [MEJORA] Mostrar porcentaje inicial si viene del servidor
                 const percent = v.processing_percentage || 0;
                 statusText = `Procesando (${percent}%)`; 
                 break;
@@ -272,10 +279,10 @@ function renderTable(videos) {
                 statusBadge = 'help'; statusText = v.status;
         }
 
-        // [MODIFICADO] Añadido data-row-uuid para identificación precisa
+        // [MODIFICADO] Añadidas 3 nuevas columnas (Vistas, Comentarios, Likes)
         html += `
             <tr class="table-row-item" data-row-uuid="${v.uuid}">
-                <td style="padding: 12px 16px;">
+                <td style="padding: 12px 16px; max-width: 400px;">
                     <div style="display: flex; gap: 12px;">
                         <div style="width: 120px; height: 68px; flex-shrink: 0; position: relative; background: #000; border-radius: 4px; overflow: hidden;">
                             ${thumbHtml}
@@ -283,11 +290,11 @@ function renderTable(videos) {
                                 ${v.duration_formatted}
                             </div>
                         </div>
-                        <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px; overflow: hidden;">
+                        <div style="display: flex; flex-direction: column; justify-content: center; gap: 4px; overflow: hidden; flex: 1; min-width: 0;">
                             <span style="font-weight: 500; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; max-width: 100%; color: var(--text-primary);" title="${v.title}">
                                 ${v.title || 'Sin título'}
                             </span>
-                            <span style="font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            <span style="font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">
                                 ${v.description || 'Sin descripción'}
                             </span>
                         </div>
@@ -301,6 +308,24 @@ function renderTable(videos) {
                     </div>
                 </td>
 
+                <td>
+                    <div class="table-metric-cell">
+                         <span class="material-symbols-rounded">bar_chart</span>
+                         <span>${formatMetric(v.views_count)}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="table-metric-cell">
+                         <span class="material-symbols-rounded">comment</span>
+                         <span>${formatMetric(v.comments_count)}</span>
+                    </div>
+                </td>
+                <td>
+                    <div class="table-metric-cell">
+                         <span class="material-symbols-rounded">thumb_up</span>
+                         <span>${formatMetric(v.likes_count)}</span>
+                    </div>
+                </td>
                 <td>
                     <span style="font-size: 13px;">${new Date(v.created_at).toLocaleDateString()}</span>
                     <div style="font-size: 11px; color: var(--text-tertiary);">${v.time_ago || ''}</div>
