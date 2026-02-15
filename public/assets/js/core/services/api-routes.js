@@ -41,6 +41,9 @@ const ApiRoutes = {
     },
 
     Admin: {
+        GetMetadata: { file: 'handlers/admin-handler.php', action: 'get_metadata' },
+        CreateMetadata: { file: 'handlers/admin-handler.php', action: 'create_metadata' },
+        DeleteMetadata: { file: 'handlers/admin-handler.php', action: 'delete_metadata' },
         GetDashboardStats: { route: 'admin.dashboard_stats' },
         CreateSystemAlert: { route: 'admin.create_system_alert' },
         DeactivateSystemAlert: { route: 'admin.deactivate_system_alert' },

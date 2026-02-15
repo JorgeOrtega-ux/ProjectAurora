@@ -2,7 +2,7 @@
 // api/route-map.php
 
 return [
-    // === AUTH ===
+    // ... (Mantén todas las rutas anteriores de AUTH y SETTINGS) ...
     'auth.register_step_1'    => ['file' => 'handlers/auth-handler.php', 'action' => 'register_step_1'],
     'auth.initiate_verify'    => ['file' => 'handlers/auth-handler.php', 'action' => 'initiate_verification'],
     'auth.complete_register'  => ['file' => 'handlers/auth-handler.php', 'action' => 'complete_register'],
@@ -15,11 +15,10 @@ return [
     'auth.get_ws_token'       => ['file' => 'handlers/auth-handler.php', 'action' => 'get_ws_token'],
     'auth.get_status'         => ['file' => 'handlers/auth-handler.php', 'action' => 'get_registration_status'],
 
-    // === SETTINGS ===
     'settings.update_pref'    => ['file' => 'handlers/settings-handler.php', 'action' => 'update_preference'],
     'settings.upload_avatar'  => ['file' => 'handlers/settings-handler.php', 'action' => 'upload_avatar'],
     'settings.delete_avatar'  => ['file' => 'handlers/settings-handler.php', 'action' => 'delete_avatar'],
-    'settings.upload_banner'  => ['file' => 'handlers/settings-handler.php', 'action' => 'upload_banner'], // <--- NUEVA RUTA AÑADIDA
+    'settings.upload_banner'  => ['file' => 'handlers/settings-handler.php', 'action' => 'upload_banner'],
     'settings.email_status'   => ['file' => 'handlers/settings-handler.php', 'action' => 'get_email_edit_status'],
     'settings.req_email_code' => ['file' => 'handlers/settings-handler.php', 'action' => 'request_email_change_verification'],
     'settings.ver_email_code' => ['file' => 'handlers/settings-handler.php', 'action' => 'verify_email_change_code'],
@@ -77,9 +76,14 @@ return [
     'admin.redis_del'         => ['file' => 'handlers/admin-handler.php', 'action' => 'delete_redis_key'],
     'admin.redis_flush'       => ['file' => 'handlers/admin-handler.php', 'action' => 'flush_redis_db'],
     
+    // [NUEVO] METADATA (Categorías y Actores)
+    'admin.get_metadata'      => ['file' => 'handlers/admin-handler.php', 'action' => 'get_metadata'],
+    'admin.create_metadata'   => ['file' => 'handlers/admin-handler.php', 'action' => 'create_metadata'],
+    'admin.delete_metadata'   => ['file' => 'handlers/admin-handler.php', 'action' => 'delete_metadata'],
+
     'system.create_backup'    => ['file' => 'handlers/system-handler.php', 'action' => 'create_backup_auto'],
 
-    // === STUDIO ===
+    // ... (Mantén las rutas de STUDIO e INTERACTIONS) ...
     'studio.init_upload'      => ['file' => 'handlers/studio-handler.php', 'action' => 'init_upload'],
     'studio.upload_chunk'     => ['file' => 'handlers/studio-handler.php', 'action' => 'upload_chunk'],
     'studio.upload_thumbnail' => ['file' => 'handlers/studio-handler.php', 'action' => 'upload_thumbnail'],
@@ -93,13 +97,11 @@ return [
     'studio.get_video_details'=> ['file' => 'handlers/studio-handler.php', 'action' => 'get_video_details'],
     'studio.select_generated_thumbnail' => ['file' => 'handlers/studio-handler.php', 'action' => 'select_generated_thumbnail'],
 
-    // === INTERACTIONS (LIKES, SUBS, VIEWS, COMMENTS) ===
     'interaction.toggle_like' => ['file' => 'handlers/interaction-handler.php', 'action' => 'toggle_like'],
     'interaction.toggle_sub'  => ['file' => 'handlers/interaction-handler.php', 'action' => 'toggle_subscribe'],
     'interaction.view'        => ['file' => 'handlers/interaction-handler.php', 'action' => 'register_view'],
     'interaction.share'       => ['file' => 'handlers/interaction-handler.php', 'action' => 'register_share'],
     'interaction.comment_like' => ['file' => 'handlers/interaction-handler.php', 'action' => 'toggle_comment_like'],
-    // [NUEVO] Comentarios
     'interaction.load_comments' => ['file' => 'handlers/interaction-handler.php', 'action' => 'load_comments'],
     'interaction.post_comment'  => ['file' => 'handlers/interaction-handler.php', 'action' => 'post_comment'],
 ];

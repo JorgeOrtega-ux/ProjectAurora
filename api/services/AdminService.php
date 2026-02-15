@@ -957,5 +957,88 @@ class AdminService {
             return "https://ui-avatars.com/api/?name={$name}&background=random&color=fff&size=128&length=1";
         }
     }
+    public function getMetadata($type) {
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+
+        try {
+            $table = ($type === 'actor') ? 'video_actors' : 'video_categories';
+            
+            // Ordenar alfabéticamente
+            $sql = "SELECT * FROM $table ORDER BY name ASC";
+            $stmt = $this->pdo->query($sql);
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            return ['success' => true, 'data' => $data];
+
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $this->i18n->t('api.db_error')];
+        }
+    }
+
+    public function createMetadata($type, $name, $extra = null) {
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+
+        if (empty($name)) {
+            return ['success' => false, 'message' => 'El nombre no puede estar vacío.'];
+        }
+
+        // Generar Slug simple
+        $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $name)));
+        
+        try {
+            if ($type === 'category') {
+                $sql = "INSERT INTO video_categories (name, slug) VALUES (?, ?)";
+                $stmt = $this->pdo->prepare($sql);
+                $stmt->execute([$name, $slug]);
+            } 
+            elseif ($type === 'actor') {
+                $actorType = in_array($extra, ['actor', 'actress']) ? $extra : 'other';
+                $sql = "INSERT INTO video_actors (name, slug, type) VALUES (?, ?, ?)";
+                $stmt = $this->pdo->prepare($sql);
+                $stmt->execute([$name, $slug, $actorType]);
+            } 
+            else {
+                return ['success' => false, 'message' => 'Tipo de metadato inválido.'];
+            }
+
+            $this->logAudit('system', 'metadata', 'CREATE_' . strtoupper($type), ['name' => $name]);
+
+            return ['success' => true, 'message' => 'Registro creado exitosamente.'];
+
+        } catch (Exception $e) {
+            if ($e->getCode() == 23000) { // Duplicate entry
+                return ['success' => false, 'message' => 'Ya existe un registro con este nombre.'];
+            }
+            return ['success' => false, 'message' => $this->i18n->t('api.db_error') . ' ' . $e->getMessage()];
+        }
+    }
+
+    public function deleteMetadata($type, $id) {
+        $privCheck = Utils::checkUserPrivileges($this->pdo, $this->requestingUserId, ['founder', 'administrator'], true);
+        if (!$privCheck['allowed']) return ['success' => false, 'message' => $this->i18n->t('errors.access_denied')];
+
+        try {
+            $table = ($type === 'actor') ? 'video_actors' : 'video_categories';
+            
+            // Primero obtenemos el nombre para el log
+            $stmtGet = $this->pdo->prepare("SELECT name FROM $table WHERE id = ?");
+            $stmtGet->execute([$id]);
+            $name = $stmtGet->fetchColumn();
+
+            if (!$name) return ['success' => false, 'message' => 'Registro no encontrado.'];
+
+            $stmt = $this->pdo->prepare("DELETE FROM $table WHERE id = ?");
+            $stmt->execute([$id]);
+
+            $this->logAudit('system', 'metadata', 'DELETE_' . strtoupper($type), ['name' => $name, 'id' => $id]);
+
+            return ['success' => true, 'message' => 'Registro eliminado correctamente.'];
+
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $this->i18n->t('api.db_error')];
+        }
+    }
 }
 ?>

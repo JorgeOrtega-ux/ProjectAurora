@@ -18,7 +18,9 @@
                     <button class="header-button" data-nav="admin/log-files" data-tooltip="<?php echo $i18n->t('admin.dashboard.nav.logs'); ?>">
                         <span class="material-symbols-rounded">description</span>
                     </button>
-
+<button class="header-button" data-nav="admin/metadata" data-tooltip="Categorías y Actores">
+        <span class="material-symbols-rounded">category</span>
+    </button>
                     <button class="header-button" data-nav="admin/audit-log" data-tooltip="<?php echo $i18n->t('admin.dashboard.nav.audit'); ?>">
                         <span class="material-symbols-rounded">history_edu</span>
                     </button>

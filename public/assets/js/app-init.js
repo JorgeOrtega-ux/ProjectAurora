@@ -31,8 +31,10 @@ import { UploadController } from './modules/studio/upload-controller.js';
 import { ContentController } from './modules/studio/content-controller.js';
 import { HomeController } from './modules/app/home-controller.js';
 import { WatchController } from './modules/app/watch-controller.js';
-// [NUEVO] Importamos el controlador del perfil
 import { ChannelProfileController } from './modules/app/channel-profile-controller.js';
+
+// [NUEVO] Importamos el controlador de Metadatos (Actores/Categorías)
+import { MetadataController } from './modules/admin/metadata-controller.js';
 
 const App = {
     init: () => {
@@ -180,6 +182,11 @@ function routeDispatcher(section) {
         case 'admin/file-viewer': FileViewerController.init(); break;
         case 'admin/redis': RedisManagerController.init(); break;
         
+        // [NUEVO] Caso para la gestión de Metadatos
+        case 'admin/metadata': 
+            MetadataController.init(); 
+            break;
+        
         default: break;
     }
 }
@@ -203,8 +210,6 @@ function updateSidebarState(section) {
     else if (section.startsWith('site-policy')) menus.help.style.display = 'flex';
     else if (menus.main) menus.main.style.display = 'flex';
 
-    // Para canales, a veces queremos mantener activo "Home" o nada
-    // Si NO es ruta de canal, intentamos marcar el link activo
     if (!section.startsWith('c/')) {
         const activeLink = sidebar.querySelector(`.menu-link[data-nav="${section}"]`);
         if (activeLink) activeLink.classList.add('active');

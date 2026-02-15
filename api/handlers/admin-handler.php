@@ -203,7 +203,24 @@ switch ($action) {
         $pathsArray = is_array($paths) ? $paths : explode(',', $paths);
         Utils::jsonResponse($logFileService->getFilesContent($pathsArray)); // Nota: Verificar si getFilesContent existe en LogFileService
         break;
+// === GESTIÓN DE METADATOS (Nuevo) ===
+    case 'get_metadata':
+        $type = $_POST['type'] ?? 'category'; // 'category' o 'actor'
+        Utils::jsonResponse($adminService->getMetadata($type));
+        break;
 
+    case 'create_metadata':
+        $type = $_POST['type'] ?? '';
+        $name = trim($_POST['name'] ?? '');
+        $extra = $_POST['extra'] ?? null; // Ejemplo: 'actor' o 'actress' si es persona
+        Utils::jsonResponse($adminService->createMetadata($type, $name, $extra));
+        break;
+
+    case 'delete_metadata':
+        $type = $_POST['type'] ?? '';
+        $id = (int)($_POST['id'] ?? 0);
+        Utils::jsonResponse($adminService->deleteMetadata($type, $id));
+        break;
     // === REDIS ===
     case 'get_redis_stats':
         Utils::jsonResponse($redisService->getStats());

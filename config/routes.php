@@ -5,11 +5,12 @@ return [
     // === APP ===
     'main'     => __DIR__ . '/../includes/sections/app/main.php',
     'explore'  => __DIR__ . '/../includes/sections/app/explore.php', 
-    'watch'    => __DIR__ . '/../includes/sections/app/watch.php', // <--- NUEVA RUTA AGREGADA
+    'watch'    => __DIR__ . '/../includes/sections/app/watch.php',
 
-    // [NUEVO] Sección de Canales / Contenido
+    // Sección de Canales
     'channel/my-content' => __DIR__ . '/../includes/sections/app/my-content.php',
     'channel/upload'     => __DIR__ . '/../includes/sections/app/upload.php',
+    'channel-profile'    => __DIR__ . '/../includes/sections/app/channel-profile.php',
 
     // === AUTH ===
     'login'                         => __DIR__ . '/../includes/sections/auth/login.php',
@@ -51,7 +52,10 @@ return [
     'admin/audit-log'              => __DIR__ . '/../includes/sections/admin/audit-log.php',
     'admin/log-files'              => __DIR__ . '/../includes/sections/admin/log-files.php',
     'admin/file-viewer'            => __DIR__ . '/../includes/sections/admin/file-viewer.php',
-'channel-profile' => __DIR__ . '/../includes/sections/app/channel-profile.php',
+    
+    // [NUEVO] Gestión de Metadatos (Categorías y Actores)
+    'admin/metadata'               => __DIR__ . '/../includes/sections/admin/metadata-manager.php',
+
     // === SYSTEM ===
     '404'      => __DIR__ . '/../includes/sections/system/404.php',
 ];

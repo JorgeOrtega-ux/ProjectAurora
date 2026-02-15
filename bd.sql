@@ -302,3 +302,25 @@ CREATE TABLE IF NOT EXISTS comment_interactions (
 );
 
 ALTER TABLE users ADD COLUMN banner_path VARCHAR(255) DEFAULT NULL AFTER avatar_path;
+
+-- =========================================================
+-- GESTIÓN DE METADATOS (Categorías y Actores)
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS video_categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    slug VARCHAR(100) NOT NULL UNIQUE,
+    usage_count INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS video_actors (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    slug VARCHAR(100) NOT NULL UNIQUE,
+    type ENUM('actor', 'actress', 'other') DEFAULT 'other',
+    usage_count INT DEFAULT 0,
+    avatar_path VARCHAR(255) DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
