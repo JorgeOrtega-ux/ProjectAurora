@@ -124,15 +124,13 @@
 
 
 /* =======================================================
-   SISTEMA DE PÍLDORAS MODULARES (REFACTORIZADO)
+   SISTEMA DE PÍLDORAS MODULARES
    ======================================================= */
-
-/* 1. PADRE (La cáscara) - Define la forma y la separación */
 .component-watch-control-pill {
     background: rgba(0, 0, 0, 0.6); 
     backdrop-filter: blur(4px); 
     border-radius: 999px;
-    padding: 2px; /* Esta es la separación (gap) de 2px simétrica */
+    padding: 2px; 
     display: flex; 
     align-items: center; 
     height: 40px; 
@@ -141,124 +139,92 @@
     transition: background 0.2s;
 }
 
-/* Grupo de botones pegados (derecha) */
 .component-watch-group-pill { gap: 2px; }
 
-
-/* 2. HIJO (El contenido interactivo) - Recibe el hover */
 .component-watch-control-btn, 
 .component-watch-timer-block {
-    height: 100%; /* Ocupa todo el alto dentro del padding */
+    height: 100%; 
     border: none;
     background: transparent;
     color: #fff;
-    border-radius: 50%; /* Por defecto redondo para botones */
+    border-radius: 50%; 
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: background-color 0.2s ease, color 0.2s ease;
-    width: 36px; /* 40px - 2px - 2px */
+    width: 36px; 
     position: relative;
 }
 
-/* Estado Hover del HIJO: Aquí está el fondo blanco semitransparente */
 .component-watch-control-btn:hover,
 .component-watch-timer-block:hover {
     background-color: rgba(255, 255, 255, 0.2);
 }
 
-/* =======================================================
-   MODULO DE TIEMPO (TIMER)
-   ======================================================= */
-/* Ajuste específico para el bloque de tiempo que es más ancho */
 .component-watch-timer-block {
-    width: auto; /* Ancho automático según texto */
-    padding: 0 14px; /* Relleno lateral */
-    border-radius: 99px; /* Píldora completa */
+    width: auto; 
+    padding: 0 14px; 
+    border-radius: 99px; 
     font-size: 0.85rem; 
     font-family: monospace; 
     font-weight: 500;
     user-select: none;
-    cursor: default; /* Cursor normal */
+    cursor: default; 
 }
 .component-watch-time-sep { margin: 0 4px; opacity: 0.7; }
 
-
-/* =======================================================
-   MODULO DE VOLUMEN (SOLUCIÓN DEFINITIVA OVERFLOW)
-   ======================================================= */
-/* Usamos la misma lógica: Padre pill, Hijo caja unificada */
-
+/* MODULO DE VOLUMEN */
 .component-watch-volume-container {
-    padding-right: 2px; /* Mantiene la simetría */
+    padding-right: 2px; 
     transition: width 0.3s ease;
 }
-
-/* CAJA UNIFICADA (Hijo) */
 .component-watch-volume-box {
     display: flex;
     align-items: center;
     height: 100%;
     border-radius: 999px;
     transition: background-color 0.2s ease;
-    /* Al hacer hover en el contenedor padre, iluminamos esta caja */
 }
-
 .component-watch-volume-container:hover .component-watch-volume-box {
     background-color: rgba(255, 255, 255, 0.2);
 }
-
-/* Quitamos hover individual del botón de mute para evitar doble efecto */
 .component-watch-volume-box .component-watch-control-btn:hover {
     background: transparent; 
 }
-
-/* EXPANDER (Máscara de Animación) */
-/* Esta caja se expande pero tiene overflow hidden para recortar la aparición */
 .component-watch-volume-expander {
     width: 0;
     transition: width 0.3s ease, opacity 0.2s ease;
     opacity: 0;
 }
-
-/* Animación al abrir */
 .component-watch-volume-container:hover .component-watch-volume-expander,
 .component-watch-volume-expander:active,
 .component-watch-volume-expander:focus-within {
-    width: 90px; /* Ancho TOTAL de la máscara visible */
+    width: 90px; 
     opacity: 1;
 }
-
-/* SLIDER WRAP (El Colchón de Seguridad) */
-/* Este contenedor vive dentro del overflow:hidden. 
-   Su padding interno evita que la bola del slider toque los bordes del expander. */
 .component-watch-volume-slider-wrap {
-    width: 90px; /* DEBE ser igual al ancho del expander para llenarlo */
+    width: 90px; 
     padding-right: 12px;
-    box-sizing: border-box; /* El padding se incluye en los 90px */
+    box-sizing: border-box; 
     height: 100%;
     display: flex;
     align-items: center;
 }
-
-/* INPUT RANGE */
 .component-watch-volume-bar {
     -webkit-appearance: none;
-    width: 100%; /* Llena el espacio disponible (90px - 24px padding = 66px de track) */
+    width: 100%; 
     height: 3px;
     background: rgba(255, 255, 255, 0.3);
     border-radius: 2px;
     cursor: pointer;
     position: relative;
     z-index: 10;
-    margin: 0; /* Sin márgenes extraños, el padding del padre lo maneja */
+    margin: 0; 
     background-image: linear-gradient(#ffffff, #ffffff);
     background-size: 100% 100%;
     background-repeat: no-repeat;
 }
-
-/* La bola del slider */
 .component-watch-volume-bar::-webkit-slider-thumb {
     -webkit-appearance: none;
     height: 12px;
@@ -270,7 +236,6 @@
     transition: transform 0.1s;
 }
 .component-watch-volume-bar:hover::-webkit-slider-thumb { transform: scale(1.2); }
-
 
 /* Settings Popover */
 .component-watch-settings-popover {
@@ -294,17 +259,13 @@
 .component-watch-settings-option .check-icon { position: absolute; right: 16px; display: none; color: #fff; }
 .component-watch-settings-option.selected .check-icon { display: block; }
 
-/* =========================================
-   Botones de Acción (Resto del diseño)
-   ========================================= */
+/* Botones de Acción */
 .component-watch-actions {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap; 
 }
-
-/* Estilo general para píldoras (Joined y Action) */
 .component-watch-action-pill,
 .component-watch-joined-pill {
     background-color: transparent; 
@@ -312,8 +273,6 @@
     color: var(--text-primary);
     transition: background 0.2s, border-color 0.2s;
 }
-
-/* Action Pill Especifico */
 .component-watch-action-pill {
     border-radius: 20px !important; 
     display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 36px;
@@ -323,13 +282,10 @@
     background-color: var(--bg-hover-light);
     border-color: var(--text-primary); 
 }
-
-/* Joined Pills Container */
 .component-watch-joined-pill {
     display: flex; align-items: center; 
     border-radius: 20px; height: 36px; overflow: hidden; 
 }
-
 .component-watch-joined-btn {
     background: transparent; border: none; color: var(--text-primary);
     display: flex; align-items: center; justify-content: center; height: 100%;
@@ -349,12 +305,10 @@
     font-variation-settings: 'FILL' 1;
 }
 .component-watch-joined-btn.dislike { padding: 0 12px; }
-
 .component-watch-joined-separator { 
     width: 1px; height: 60%; 
     background-color: var(--border-transparent-20); 
 }
-
 [data-theme="dark"] .component-watch-action-pill,
 [data-theme="dark"] .component-watch-joined-pill {
     border-color: rgba(255, 255, 255, 0.2); 
@@ -363,9 +317,7 @@
     background-color: rgba(255, 255, 255, 0.2); 
 }
 
-/* =========================================
-   Acciones en Comentarios (Small Pills)
-   ========================================= */
+/* Acciones en Comentarios (Small Pills) */
 .component-watch-joined-pill.comment-size {
     height: 32px;
     background-color: transparent; 
@@ -387,20 +339,15 @@
 .component-watch-joined-btn .count-label {
     font-size: 12px;
 }
-
 .component-watch-action-pill.comment-size {
     height: 32px;
     padding: 0 12px;
     border-radius: 16px !important;
     font-size: 0.85rem;
 }
-
 .btn-reply { margin-left: 8px; }
 
-
-/* =========================================
-   Layout General y Helpers
-   ========================================= */
+/* Layout General y Helpers */
 .component-watch-layout { display: flex; gap: 24px; width: 100%; max-width: 1700px; margin: 0 auto; padding: 24px; align-items: flex-start; }
 .component-watch-col-left { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 .component-watch-meta-card { display: flex; flex-direction: column; gap: 12px; }
@@ -415,9 +362,8 @@
 .component-watch-col-right { width: 400px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px; }
 
 /* Helpers */
-.component-watch-author-link { text-decoration: none; display: flex; align-items: center; color: inherit; }
+.component-watch-author-link { text-decoration: none; display: flex; align-items: center; color: inherit; gap: 12px; }
 .component-watch-subscribe-btn { border-radius: 20px; margin-left: 24px; }
-.component-watch-comments-title { font-size: 1.2rem; margin-bottom: 20px; }
 .component-watch-login-placeholder { margin-bottom: 24px; padding: 16px; background: var(--bg-hover-light); border-radius: 8px; text-align: center; border: 1px solid var(--border-transparent-20); }
 .component-watch-login-text { color: var(--text-secondary); margin-bottom: 8px; }
 .component-loader-center { margin: 20px auto; }
@@ -428,7 +374,7 @@
 .component-watch-error-title { margin: 16px 0; color: var(--text-primary); }
 .component-watch-error-desc { color: var(--text-secondary); }
 
-/* Modo Cine */
+/* Modo Cine Desktop */
 .component-watch-layout.component-watch-mode-cinema { display: grid; grid-template-columns: minmax(0, 1fr) 424px; gap: 24px; max-width: 100%; padding: 0; padding-bottom: 24px; }
 .component-watch-layout.component-watch-mode-cinema .component-watch-col-left { display: contents; }
 .component-watch-layout.component-watch-mode-cinema .component-watch-player-card { grid-column: 1 / -1; width: 100%; height: 85vh; max-height: 85vh; border-radius: 0; background-color: #000; display: flex; justify-content: center; align-items: center; margin-bottom: 24px; aspect-ratio: auto; overflow: hidden; }
@@ -439,32 +385,39 @@
 .component-watch-layout.component-watch-mode-cinema .component-watch-comments { grid-column: 1 / 2; grid-row: 3; margin-left: 24px; }
 .component-watch-layout.component-watch-mode-cinema .component-watch-col-right { grid-column: 2 / 3; grid-row: 2 / span 2; margin-right: 0; padding-right: 24px; }
 
-@media (max-width: 1000px) {
-    .component-watch-layout { flex-direction: column; padding: 0; }
-    .component-watch-col-left { width: 100%; }
-    .component-watch-col-right { width: 100%; padding: 0 16px; }
-    .component-watch-player-card { border-radius: 0; }
-    .component-watch-meta-card { padding: 0 16px; }
-    .component-watch-comments { padding: 0 16px 24px 16px; }
-    .component-watch-layout.component-watch-mode-cinema { display: flex; flex-direction: column; grid-template-columns: none; }
-    .component-watch-layout.component-watch-mode-cinema .component-watch-player-card { height: auto; aspect-ratio: 16/9; order: 1; margin-bottom: 16px; }
-    .component-watch-layout.component-watch-mode-cinema .component-watch-meta-card { order: 2; margin-left: 0; padding: 0 16px; width: 100%; }
-    .component-watch-layout.component-watch-mode-cinema .component-watch-col-right { order: 3; margin-right: 0; padding: 0 16px; margin-top: 16px; margin-bottom: 16px; width: 100%; }
-    .component-watch-layout.component-watch-mode-cinema .component-watch-comments { order: 4; margin-left: 0; padding: 0 16px; width: 100%; }
-}
 
 /* =========================================
-   SECCIÓN DE COMENTARIOS (INPUT REDISEÑADO)
+   SECCIÓN DE COMENTARIOS (REDISEÑADA)
    ========================================= */
 
 .component-watch-comments {
-    margin-top: 16px;
     max-width: 100%;
+}
+
+/* Contenedor Caja para Header + Input */
+.component-watch-comments-header-box {
+    border: 1px solid var(--border-transparent-20);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+/* Título de comentarios tipo Chip */
+.component-watch-comments-title {
+    font-size: 1.2rem;
+    margin: 0 0 16px 0;
+    padding: 8px 16px;
+    width: fit-content;
+    border-radius: 8px;
+    border: 1px solid var(--border-transparent-20);
+    font-weight: 600;
 }
 
 /* --- Input Principal --- */
 .component-watch-comment-input-row {
-    display: flex; gap: 16px; margin-bottom: 32px; align-items: flex-start;
+    display: flex; gap: 16px; 
+    margin-bottom: 0; 
+    align-items: flex-start;
 }
 .component-watch-comment-input-row.reply-mode {
     margin-top: 12px; margin-bottom: 12px; animation: slideDown 0.2s ease-out;
@@ -473,22 +426,19 @@
 /* WRAPPER FLEXBOX DEL INPUT */
 .component-watch-comment-input-wrapper.chat-style {
     width: 100%;
-    height: 45px; /* Altura fija inicial (minimo) */
+    height: 45px; 
     display: flex; 
-    flex-direction: row; /* Default: Left (Text) - Right (Btn) */
-    align-items: center; /* Centrado verticalmente al inicio */
+    flex-direction: row; 
+    align-items: center; 
     gap: 8px;
     padding: 8px 12px;
-    
-    /* Bordes y Colores */
     border: 1px solid var(--border-transparent-20);
     border-radius: 8px;
-    background-color: transparent; /* Light mode default */
+    background-color: transparent; 
     position: relative;
     transition: background 0.2s, height 0.2s;
 }
 
-/* Background para dark mode */
 [data-theme="dark"] .component-watch-comment-input-wrapper.chat-style {
     background-color: rgba(0,0,0,0.2);
     border-color: rgba(255,255,255,0.2);
@@ -498,23 +448,22 @@
     border-color: var(--text-primary);
 }
 
-/* ESTADO EXPANDIDO (Activado por JS al detectar salto de línea) */
 .component-watch-comment-input-wrapper.chat-style.is-expanded {
-    flex-direction: column; /* Cambia a columna */
-    height: auto; /* Permite crecer */
-    align-items: flex-end; /* Botón a la derecha */
+    flex-direction: column; 
+    height: auto; 
+    align-items: flex-end; 
 }
 
 /* TEXT AREA */
 .component-input.auto-expand.chat-input {
-    flex: 1 1 auto; /* Ocupa todo el espacio disponible */
+    flex: 1 1 auto; 
     width: 100%;
     border: none;
     border-radius: 0; 
     padding: 4px 0;
     background-color: transparent; 
     color: var(--text-primary);
-    resize: none; /* Sin resize manual */
+    resize: none; 
     min-height: 24px;
     line-height: 1.4;
     max-height: 200px;
@@ -528,7 +477,7 @@
 
 /* Botón embebido */
 .component-input-embedded-btn {
-    position: static; /* Flujo normal */
+    position: static; 
     background: transparent; border: none; color: var(--text-primary);
     width: 32px; height: 32px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
@@ -546,39 +495,182 @@
 .component-input-embedded-btn .material-symbols-rounded { font-size: 20px; }
 
 
-/* --- Estructura del Comentario --- */
-.component-comment-item { display: flex; gap: 12px; margin-bottom: 24px; align-items: flex-start; position: relative; max-width: 100%; }
+/* --- Estructura del Comentario (Item Tipo Tarjeta) --- */
+.component-comment-item { 
+    display: flex; 
+    gap: 12px; 
+    margin-bottom: 16px; 
+    align-items: flex-start; 
+    position: relative; 
+    max-width: 100%; 
+    border: 1px solid var(--border-transparent-20);
+    border-radius: 12px;
+    padding: 16px;
+}
+
 .component-comment-avatar-link { flex-shrink: 0; text-decoration: none; z-index: 1; }
 .component-comment-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background-color: var(--bg-surface); }
 .component-comment-content { flex: 1; display: flex; flex-direction: column; min-width: 0; gap: 4px; }
 .component-comment-header { display: flex; align-items: baseline; gap: 8px; font-size: 0.85rem; margin-bottom: 2px; }
 .component-comment-author { font-weight: 600; color: var(--text-primary); text-decoration: none; }
 .component-comment-date { color: var(--text-secondary); font-size: 0.8rem; }
-.component-comment-text { border: 1px solid #00000020; border-radius:12px;padding: 8px; color: var(--text-primary); font-size: 0.95rem; line-height: 1.5; white-space: pre-wrap; margin-bottom: 6px; overflow-wrap: anywhere; word-break: break-word; }
-.component-comment-text-wrapper { border: 1px solid #00000020; border-radius:12px; padding: 8px; display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 6px; line-height: 1.5; color: var(--text-primary); font-size: 0.95rem; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; max-width: 100%; }
+
+.component-comment-text, 
+.component-comment-text-wrapper {
+    border: 1px solid rgba(0,0,0,0.05); 
+    border-radius: 12px;
+    padding: 8px;
+    color: var(--text-primary); 
+    font-size: 0.95rem; 
+    line-height: 1.5; 
+    white-space: pre-wrap; 
+    margin-bottom: 6px; 
+    overflow-wrap: anywhere; 
+    word-break: break-word;
+    background-color: rgba(0,0,0,0.02); 
+}
+[data-theme="dark"] .component-comment-text,
+[data-theme="dark"] .component-comment-text-wrapper {
+     border-color: rgba(255,255,255,0.05);
+     background-color: rgba(255,255,255,0.02);
+}
+
+.component-comment-text-wrapper { display: flex; flex-direction: column; align-items: flex-start; max-width: 100%; }
+
 .component-comment-actions { display: flex; align-items: center; gap: 4px; }
 .component-button.text.small, .js-read-more { background: none; border: none; padding: 0 12px; height: 32px; font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); border-radius: 16px; cursor: pointer; display: flex; align-items: center; }
 .component-button.text.small:hover, .js-read-more:hover { background-color: var(--bg-hover-light); color: var(--text-primary); }
 .js-read-more { padding: 0; text-decoration: none; }
 .js-read-more:hover { text-decoration: underline; background: transparent; }
-.component-comment-replies-wrapper { margin-top: 8px; display: flex; flex-direction: column; align-items: flex-start; width: 100%; }
+.component-comment-replies-wrapper { display: flex; flex-direction: column; align-items: flex-start; width: 100%; }
 .component-watch-replies-toggle { display: flex; align-items: center; background: transparent; border: 1px solid var(--border-transparent-20); color: var(--text-primary); font-size: 0.9rem; font-weight: 500; cursor: pointer; padding: 6px 16px; border-radius: 18px; transition: background-color 0.2s, border-color 0.2s; margin-bottom: 8px; }
 .component-watch-replies-toggle:hover { background-color: var(--bg-hover-light); border-color: var(--text-primary); }
 .component-comment-replies { display: flex; flex-direction: column; gap: 16px; width: 100%; }
-.component-comment-item.is-reply { margin-bottom: 0; }
+
+.component-comment-item.is-reply { 
+    margin-bottom: 0; 
+    border: none; 
+    padding: 0; 
+    border-radius: 0;
+}
 .component-comment-item.is-reply .component-comment-avatar { width: 28px; height: 28px; }
+
 @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
-/* --- RESPONSIVE SCRUBBING --- */
 @media (max-width: 1000px) {
-    .component-watch-scrub-img-wrapper {
-        transform: scale(1) !important; 
-        margin-bottom: 10px;
-    }
+    .component-watch-scrub-img-wrapper { transform: scale(1) !important; margin-bottom: 10px; }
+}
+@media (max-width: 600px) {
+    .component-watch-scrub-img-wrapper { transform: scale(0.9) !important; }
 }
 
-@media (max-width: 600px) {
-    .component-watch-scrub-img-wrapper {
-        transform: scale(0.9) !important;
+
+/* =======================================================
+   RESPONSIVE: REORDENAMIENTO EN MÓVIL (GRID LAYOUT)
+   ======================================================= */
+
+@media (max-width: 1000px) {
+    
+    /* 1. CONTENEDOR PRINCIPAL: Definimos Grid Areas */
+    .component-watch-layout {
+        display: grid;
+        grid-template-columns: 100%;
+        /* Definimos el orden vertical explícito mediante áreas */
+        grid-template-areas:
+            "player"
+            "meta"
+            "recs"
+            "comments";
+        padding: 0;
+        gap: 0;
+    }
+
+    /* 2. ELIMINAMOS EL WRAPPING DE LAS COLUMNAS */
+    .component-watch-col-left,
+    .component-watch-col-right {
+        display: contents; /* Desaparecen visualmente, sus hijos obedecen al Grid */
+    }
+
+    /* 3. ASIGNACIÓN DE ÁREAS Y ESTILOS */
+
+    /* --- Area: PLAYER (Full Bleed) --- */
+    .component-watch-player-card {
+        grid-area: player;
+        width: 100%;
+        border-radius: 0;
+        margin: 0;
+    }
+    
+    /* CORRECCIÓN: Quitamos el borde redondeado de los hijos para evitar "fondo negro" */
+    .component-watch-player-card .component-watch-player-wrapper,
+    .component-watch-player-card .component-watch-video-element {
+        border-radius: 0;
+    }
+
+    /* --- Area: META (Info del video) --- */
+    .component-watch-meta-card {
+        grid-area: meta;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0 16px; /* Límites laterales seguros */
+        margin-top: 16px;
+    }
+
+    /* --- Area: RECS (Videos Recomendados) --- */
+    /* Apuntamos a los hijos directos de la columna derecha */
+    .component-watch-col-right > * {
+        grid-area: recs;
+        /* TRUCO: Ancho auto + márgenes = 100% visual con espacio real */
+        width: auto; 
+        margin: 24px 16px; /* Espacio vertical y 16px laterales */
+        box-sizing: border-box;
+    }
+
+    /* --- Area: COMMENTS (Comentarios) --- */
+    .component-watch-comments {
+        grid-area: comments;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0 16px 40px 16px; /* Padding inferior extra para scroll */
+    }
+
+    /* 4. MODO CINE MÓVIL (RESET DE ESPECIFICIDAD) */
+    .component-watch-layout.component-watch-mode-cinema {
+        display: grid;
+        grid-template-columns: 100%;
+        grid-template-areas:
+            "player"
+            "meta"
+            "recs"
+            "comments";
+        padding-bottom: 0;
+    }
+    
+    /* Forzar los hijos al área correcta en modo cine móvil */
+    .component-watch-layout.component-watch-mode-cinema .component-watch-player-card {
+        grid-area: player;
+        height: auto;
+        aspect-ratio: 16/9;
+        margin-bottom: 0;
+        grid-column: auto;
+    }
+    .component-watch-layout.component-watch-mode-cinema .component-watch-meta-card {
+        grid-area: meta;
+        margin-left: 0;
+        grid-column: auto;
+    }
+    .component-watch-layout.component-watch-mode-cinema .component-watch-col-right > * {
+        grid-area: recs;
+        /* CORREGIDO: Aseguramos el margen simétrico 16px en ambos lados */
+        margin: 24px 16px; 
+        width: auto;
+        padding-right: 0;
+        grid-column: auto;
+    }
+    .component-watch-layout.component-watch-mode-cinema .component-watch-comments {
+        grid-area: comments;
+        margin-left: 0;
+        grid-column: auto;
+        grid-row: auto; 
     }
 }

@@ -1,7 +1,7 @@
 <?php
 // includes/sections/app/watch.php
 
-// Asegurar dependencias
+// Asegurar dependencias globales
 if (!isset($pdo) || !isset($redis)) {
     global $pdo, $redis;
 }
@@ -9,7 +9,7 @@ if (!isset($pdo) || !isset($redis)) {
 $videoUuid = trim($_GET['v'] ?? '');
 $videoData = null;
 
-// Variables de Estado de Interacción
+// Inicializar estado de interacción
 $interaction = [
     'liked' => false,
     'disliked' => false,
@@ -20,7 +20,7 @@ $interaction = [
     'subs_count' => 0
 ];
 
-// Variables del Usuario Actual
+// Inicializar usuario actual
 $currentUser = null;
 $currentUserAvatar = '';
 
@@ -40,7 +40,7 @@ if (!empty($videoUuid) && isset($pdo)) {
         $videoData = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($videoData) {
-            // 2. [REDIS HYBRID]
+            // 2. Lógica Híbrida Redis/DB para contadores en tiempo real
             if ($redis) {
                 $bufferKey = "video:buffer:views:{$videoUuid}";
                 $bufferCount = (int)$redis->get($bufferKey);
@@ -65,7 +65,7 @@ if (!empty($videoUuid) && isset($pdo)) {
                 $interaction['subs_count'] = $videoData['subscribers_count'];
             }
 
-            // 3. [USER STATE]
+            // 3. Estado del usuario (si está logueado)
             if (isset($_SESSION['user_id'])) {
                 $myId = $_SESSION['user_id'];
                 
@@ -102,7 +102,7 @@ if (!empty($videoUuid) && isset($pdo)) {
     }
 }
 
-// Helpers visuales
+// Helpers visuales para el frontend
 $avatarUrl = '';
 $domColorRgb = '20, 20, 20'; 
 
@@ -177,7 +177,6 @@ function formatCount($n) {
                                 <span class="material-symbols-rounded icon-right">chevron_right</span>
                             </div>
                         </div>
-                        
                         <div id="settings-lighting" class="component-watch-settings-panel">
                             <div class="component-watch-settings-header" data-back="main">
                                 <span class="material-symbols-rounded">arrow_back</span>
@@ -190,7 +189,6 @@ function formatCount($n) {
                                 <span>Activo</span><span class="material-symbols-rounded check-icon">check</span>
                             </div>
                         </div>
-
                         <div id="settings-quality" class="component-watch-settings-panel">
                             <div class="component-watch-settings-header" data-back="main">
                                 <span class="material-symbols-rounded">arrow_back</span>
@@ -208,13 +206,11 @@ function formatCount($n) {
 
                         <div class="component-watch-controls-row">
                             <div class="component-watch-controls-left">
-                                
                                 <div class="component-watch-control-pill">
                                     <button id="play-pause-btn" class="component-watch-control-btn" title="Reproducir">
                                         <span class="material-symbols-rounded">play_arrow</span>
                                     </button>
                                 </div>
-                                
                                 <div class="component-watch-control-pill component-watch-volume-container">
                                     <div class="component-watch-volume-box">
                                         <button id="mute-btn" class="component-watch-control-btn" title="Volumen">
@@ -227,13 +223,11 @@ function formatCount($n) {
                                         </div>
                                     </div>
                                 </div>
-
                                 <div class="component-watch-control-pill component-watch-timer-pill">
                                     <div class="component-watch-timer-block">
                                         <span id="current-time">0:00</span><span class="component-watch-time-sep">/</span><span id="duration">0:00</span>
                                     </div>
                                 </div>
-
                             </div>
 
                             <div class="component-watch-controls-right">
@@ -309,26 +303,29 @@ function formatCount($n) {
                 </div>
 
                 <div class="component-watch-comments">
-                    <h3 class="component-watch-comments-title">Comentarios</h3>
                     
-                    <?php if (isset($_SESSION['user_id'])): ?>
-                        <div class="component-watch-comment-input-row" id="main-comment-form-container">
-                            <img src="<?php echo $currentUserAvatar; ?>" class="component-watch-avatar small">
-                            
-                            <div class="component-watch-comment-input-wrapper chat-style" id="comment-wrapper-box">
-                                <textarea id="comment-input-main" class="component-input auto-expand chat-input" placeholder="Añade un comentario..." rows="1" maxlength="10000"></textarea>
+                    <div class="component-watch-comments-header-box">
+                        <h3 class="component-watch-comments-title">Comentarios</h3>
+                        
+                        <?php if (isset($_SESSION['user_id'])): ?>
+                            <div class="component-watch-comment-input-row" id="main-comment-form-container">
+                                <img src="<?php echo $currentUserAvatar; ?>" class="component-comment-avatar">
                                 
-                                <button class="component-input-embedded-btn" id="btn-submit-main" disabled title="Enviar">
-                                    <span class="material-symbols-rounded">send</span>
-                                </button>
+                                <div class="component-watch-comment-input-wrapper chat-style" id="comment-wrapper-box">
+                                    <textarea id="comment-input-main" class="component-input auto-expand chat-input" placeholder="Añade un comentario..." rows="1" maxlength="10000"></textarea>
+                                    
+                                    <button class="component-input-embedded-btn" id="btn-submit-main" disabled title="Enviar">
+                                        <span class="material-symbols-rounded">send</span>
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    <?php else: ?>
-                         <div class="component-watch-login-placeholder">
-                            <p class="component-watch-login-text">Inicia sesión para comentar</p>
-                            <a href="/ProjectAurora/login" class="component-button primary small">Iniciar Sesión</a>
-                         </div>
-                    <?php endif; ?>
+                        <?php else: ?>
+                            <div class="component-watch-login-placeholder">
+                                <p class="component-watch-login-text">Inicia sesión para comentar</p>
+                                <a href="/ProjectAurora/login" class="component-button primary small">Iniciar Sesión</a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
 
                     <div id="comments-list" class="component-watch-comments-list">
                         <div class="component-loader-spinner component-loader-center"></div>
@@ -349,8 +346,6 @@ function formatCount($n) {
         <input type="hidden" id="watch-hls-source" value="<?php echo '/ProjectAurora/' . ltrim($videoData['hls_path'], '/'); ?>">
         <input type="hidden" id="watch-sprite-source" value="<?php echo !empty($videoData['sprite_path']) ? '/ProjectAurora/' . ltrim($videoData['sprite_path'], '/') : ''; ?>">
         <input type="hidden" id="watch-vtt-source" value="<?php echo !empty($videoData['vtt_path']) ? '/ProjectAurora/' . ltrim($videoData['vtt_path'], '/') : ''; ?>">
-
-        
 
     <?php else: ?>
         <div class="component-layout-centered">
