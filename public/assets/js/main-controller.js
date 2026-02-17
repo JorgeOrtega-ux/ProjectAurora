@@ -9,6 +9,7 @@ export class MainController {
         
         this.handleMobileSearch();
         this.handleResize();
+        this.handleScrollShadow(); // Iniciamos la detección de scroll
     }
 
     handleMobileSearch() {
@@ -31,5 +32,22 @@ export class MainController {
                 this.header.classList.remove('is-search-active');
             }
         });
+    }
+
+    handleScrollShadow() {
+        const scrollableArea = document.querySelector('.general-content-scrolleable');
+        const topSection = document.querySelector('.general-content-top');
+
+        if (scrollableArea && topSection) {
+            scrollableArea.addEventListener('scroll', () => {
+                // Si el scroll vertical es mayor a 0, agregamos la clase shadow
+                if (scrollableArea.scrollTop > 0) {
+                    topSection.classList.add('shadow');
+                } else {
+                    // Si volvemos arriba del todo, la quitamos
+                    topSection.classList.remove('shadow');
+                }
+            });
+        }
     }
 }

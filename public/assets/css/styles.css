@@ -41,13 +41,21 @@ body {
 
 .general-content-bottom {
     flex: 1 1 auto;
+    min-height: 0; /* <--- ESTA LÍNEA ES CLAVE */
+    position: relative; /* Buena práctica para asegurar el contexto */
 }
 
 .general-content-scrolleable {
     overflow-y: auto;
     overflow-x: hidden;
+    height: 100%; /* <--- AÑADE ESTA LÍNEA */
 }
 
+/* Clase que se agrega vía JS al hacer scroll */
+.general-content-top.shadow {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Sombra suave */
+    border-bottom-color: transparent; /* Opcional: ocultar el borde si prefieres solo sombra */
+}
 /* --- HEADER LAYOUT --- */
 .header {
     width: 100%;
