@@ -222,8 +222,8 @@
     }
 }
 
-/* Mobile Small (465px) */
-@media (max-width: 465px) {
+/* Mobile Small (465px) - BOTTOM SHEET LOGIC */
+@media (max-width: 468px) {
     /* 1. Forzamos que sea visible y tenga ancho 100% */
     .component-module--display-block.component-module--size-m {
         display: flex;
@@ -242,51 +242,52 @@
         border: none;     
     }
 
+    /* --- OVERLAY ANIMATION LOGIC --- */
     .component-module--display-overlay {
         position: fixed;
         top: 0;
-        background-color: #00000080;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0); /* Inicialmente transparente */
         display: flex;
         width: 100%;
         height: 100%;
         align-items: flex-end;
+        pointer-events: none; /* No bloquea clicks si está oculto/transparente */
+        transition: background-color 0.3s ease; /* Fade effect del fondo */
+    }
+    
+    /* Clase que aplica JS cuando se está abriendo */
+    .component-module--display-overlay.is-animating,
+    .component-module--display-overlay.is-open {
+        background-color: rgba(0, 0, 0, 0.5);
+        pointer-events: auto;
     }
 
-    .component-module-panel {
+    /* --- PANEL ANIMATION LOGIC --- */
+    .component-module--display-overlay .component-module-panel {
         border-bottom-left-radius: 0;
         border-bottom-right-radius: 0;
-    }
-}
-
-.component-module--display-block.component-module--offset-s.disabled {
-    display: none;
-}
-
-.disabled {
-    display: none;
-}
-
-
-/* En styles.css - Línea 698 aprox */
-.pill-container {
-    display: none;
-}/* En styles.css - Línea 815 dentro del @media (max-width: 468px) */
-@media (max-width: 468px) {
-    
-    .pill-container {
-        display: flex;
-        justify-content: center;
         width: 100%;
-        flex-shrink: 0;
-        padding: 0px 0px 8px 8px;
-        cursor: grab;
-        touch-action: none; /* Importante para que el JS controle el gesto */
+        transform: translateY(100%); /* Inicialmente fuera de la pantalla (abajo) */
+        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); /* Slide effect suave */
+        will-change: transform;
     }
 
-    .drag-handle {
-        width: 40px;
-        height: 4px;
-        background-color: #f5f5fa;
-        border-radius: 10px;
+    /* Estado abierto: el panel sube */
+    .component-module--display-overlay.is-open .component-module-panel {
+        transform: translateY(0);
     }
+    
+    /* Estado dragging: quitamos la transición para que siga el dedo instantáneamente */
+    .component-module--display-overlay.is-dragging .component-module-panel {
+        transition: none;
+    }
+}
+
+/* Lógica de Display General */
+/* Ocultamos por defecto si tiene disabled y no se está animando */
+.component-module.disabled:not(.is-animating) {
+    display: none;
 }

@@ -66,16 +66,13 @@ body {
     min-height: 0;
     position: relative;
     display: flex;
-    /* Nuevo: Para alinear sidebar y contenido */
     flex-direction: row;
     overflow: hidden;
 }
 
 .general-content-scrolleable {
     flex: 1 1 auto;
-    /* Nuevo: Ocupa el espacio restante */
     min-width: 0;
-    /* Evita desbordamientos en flex */
     overflow-y: auto;
     overflow-x: hidden;
     height: 100%;
@@ -125,6 +122,11 @@ body {
     align-items: center;
 }
 
+/* --- DRAG PILL CONTAINER (Handle) --- */
+.pill-container {
+    display: none;
+}
+
 /* --- MEDIA QUERIES --- */
 @media (max-width: 768px) {
     .main-content {
@@ -162,19 +164,32 @@ body {
     }
 }
 
-/* --- REGLA ESPECÍFICA SOLICITADA (Mobile Small + :has) --- */
-@media (max-width: 465px) {
+@media (max-width: 468px) {
+    /* Muestra la barra de arrastre */
+    .pill-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        flex-shrink: 0;
+        padding: 12px 0; /* Más área táctil vertical */
+        cursor: grab;
+        touch-action: none; /* Crucial: Evita que el navegador intente hacer scroll nativo al arrastrar */
+    }
 
-    /* Si .general-content contiene un módulo moduleSurface que NO está disabled (está activo),
-       entonces buscamos el .general-content-top que tenga la clase .shadow.
-    */
+    .drag-handle {
+        width: 40px;
+        height: 4px;
+        background-color: #e0e0e5; /* Color sutil */
+        border-radius: 10px;
+    }
+
+    /* Ajuste para el shadow en mobile small */
     .general-content:has([data-module="moduleSurface"]:not(.disabled)) .general-content-top.shadow {
-        /* Restauramos el borde para separar visualmente */
         border-bottom-color: #00000020;
     }
 
     .general-content:has([data-module="moduleSurface"]:not(.disabled)) .general-content-top.shadow::after {
-        /* Ocultamos la sombra (gradiente) */
         opacity: 0;
     }
 }
