@@ -13,6 +13,7 @@ body {
 .page-wrapper {
     width: 100%;
     height: 100%;
+    overflow: hidden;
 }
 
 .main-content {
@@ -42,6 +43,11 @@ body {
     flex: 1 1 auto;
 }
 
+.general-content-scrolleable {
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
 /* --- HEADER LAYOUT --- */
 .header {
     width: 100%;
@@ -50,6 +56,7 @@ body {
     flex-direction: row;
     gap: 8px;
     align-items: center;
+    transition: all 0.2s ease; /* Transición suave opcional */
 }
 
 .header-left {
@@ -74,20 +81,37 @@ body {
     align-items: center;
 }
 
-.mobile-search-trigger {
-    display: none;
-}
 
 /* Breakpoint para tablets/móviles */
 @media (max-width: 768px) {
     
-    /* Ocultamos la barra de búsqueda central */
     .header-center {
         display: none;
     }
 
-    /* Mostramos el botón lupa en la derecha */
-    .mobile-search-trigger {
-        display: inline-flex;
+    /* --- ESTADO ACTIVO DEL BUSCADOR --- */
+    .header.is-search-active {
+        flex-wrap: wrap; /* Permite que el contenido caiga a la siguiente línea */
+        height: auto;    /* El header debe crecer según su contenido */
+    }
+
+    /* IMPORTANTE: Reseteamos la altura de los lados para que no empujen el contenido */
+    .header.is-search-active .header-left,
+    .header.is-search-active .header-right {
+        height: auto;
+        flex-basis: auto; /* Asegura que mantengan su ancho natural de flex */
+    }
+
+    /* Configuramos el buscador para que ocupe la "segunda fila" completa */
+    .header.is-search-active .header-center {
+        display: flex;
+        width: 100%;
+        order: 3;
+        /* No margin-top, el gap: 8px del padre .header se encarga de la separación */
+    }
+
+    /* El componente de búsqueda ocupa todo el ancho */
+    .header.is-search-active .header-center .component-search {
+        width: 100%;
     }
 }

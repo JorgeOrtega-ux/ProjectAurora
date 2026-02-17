@@ -102,3 +102,18 @@
     font-size: 14px;
     color: inherit;
 }
+
+.mobile-search-trigger {
+    display: none;
+}
+
+
+
+
+
+/* Breakpoint para tablets/móviles */
+@media (max-width: 768px) {
+    .mobile-search-trigger {
+        display: inline-flex;
+    }
+}
