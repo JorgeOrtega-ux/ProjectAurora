@@ -30,32 +30,59 @@ body {
     flex-direction: column;
     background-color: #ffffff;
     border-radius: 12px;
+    overflow: hidden; /* Asegura que el contenido respete el radio del padre */
+    
+    /* NUEVA SOMBRA: Suave y elegante para dar elevación */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
+/* --- Header Top --- */
 .general-content-top {
     width: 100%;
     height: auto;
     padding: 8px;
     border-bottom: 1px solid #00000020;
+    transition: border-bottom-color 0.3s ease;
+    position: relative;
+    z-index: 10;
+}
+
+/* Pseudo-elemento para la sombra del scroll (Gradiente hacia abajo) */
+.general-content-top::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    height: 16px;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.06), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none; 
 }
 
 .general-content-bottom {
     flex: 1 1 auto;
-    min-height: 0; /* <--- ESTA LÍNEA ES CLAVE */
-    position: relative; /* Buena práctica para asegurar el contexto */
+    min-height: 0;
+    position: relative;
 }
 
 .general-content-scrolleable {
     overflow-y: auto;
     overflow-x: hidden;
-    height: 100%; /* <--- AÑADE ESTA LÍNEA */
+    height: 100%;
 }
 
-/* Clase que se agrega vía JS al hacer scroll */
+/* --- Estado Active (Shadow del Header al hacer scroll) --- */
 .general-content-top.shadow {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Sombra suave */
-    border-bottom-color: transparent; /* Opcional: ocultar el borde si prefieres solo sombra */
+    border-bottom-color: transparent;
+    box-shadow: none; 
 }
+
+.general-content-top.shadow::after {
+    opacity: 1;
+}
+
 /* --- HEADER LAYOUT --- */
 .header {
     width: 100%;
@@ -63,8 +90,9 @@ body {
     display: flex;
     flex-direction: row;
     gap: 8px;
+    position: relative;
     align-items: center;
-    transition: all 0.2s ease; /* Transición suave opcional */
+    transition: all 0.2s ease;
 }
 
 .header-left {
@@ -89,36 +117,39 @@ body {
     align-items: center;
 }
 
-
-/* Breakpoint para tablets/móviles */
+/* --- MEDIA QUERIES --- */
 @media (max-width: 768px) {
+    .main-content {
+        padding: 0; /* Elimina padding en mobile */
+    }
+
+    .general-content {
+        border-radius: 0; /* Elimina border radius en mobile */
+        box-shadow: none; /* Opcional: Quitar sombra en mobile para un look plano */
+    }
     
     .header-center {
         display: none;
     }
 
-    /* --- ESTADO ACTIVO DEL BUSCADOR --- */
+    /* --- ESTADO ACTIVO DEL BUSCADOR EN MOBILE --- */
     .header.is-search-active {
-        flex-wrap: wrap; /* Permite que el contenido caiga a la siguiente línea */
-        height: auto;    /* El header debe crecer según su contenido */
+        flex-wrap: wrap;
+        height: auto;
     }
 
-    /* IMPORTANTE: Reseteamos la altura de los lados para que no empujen el contenido */
     .header.is-search-active .header-left,
     .header.is-search-active .header-right {
         height: auto;
-        flex-basis: auto; /* Asegura que mantengan su ancho natural de flex */
+        flex-basis: auto;
     }
 
-    /* Configuramos el buscador para que ocupe la "segunda fila" completa */
     .header.is-search-active .header-center {
         display: flex;
         width: 100%;
         order: 3;
-        /* No margin-top, el gap: 8px del padre .header se encarga de la separación */
     }
 
-    /* El componente de búsqueda ocupa todo el ancho */
     .header.is-search-active .header-center .component-search {
         width: 100%;
     }
