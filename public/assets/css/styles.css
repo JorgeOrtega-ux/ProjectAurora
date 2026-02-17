@@ -34,7 +34,7 @@ body {
     background-color: #ffffff;
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px #00000020
 }
 
 /* --- Header Top --- */
@@ -193,4 +193,15 @@ body {
     .general-content:has([data-module="moduleSurface"]:not(.disabled)) .general-content-top.shadow::after {
         opacity: 0;
     }
+}/* ... contenido previo ... */
+
+/* --- Header Top --- */
+/* ... (tu código existente) ... */
+
+/* --- UTILIDAD: RESIZE STOPPER --- */
+/* Esta clase se añade vía JS mientras se redimensiona la ventana
+   para evitar "saltos" o transiciones feas entre breakpoints */
+.resize-animation-stopper * {
+    transition: none !important;
+    animation: none !important;
 }

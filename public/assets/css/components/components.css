@@ -86,7 +86,6 @@
    SYSTEM: COMPONENT MODULE
    ========================================= */
 
-/* 1. Base Container */
 .component-module {
     box-sizing: border-box;
 }
@@ -100,7 +99,6 @@
     height: auto;
 }
 
-/* RECOMENDACIÓN: Mantenemos esto como relative por defecto para futuros módulos fijos */
 .component-module--display-block {
     position: relative; 
     height: 100%;
@@ -108,8 +106,6 @@
     display: flex; 
 }
 
-/* RECOMENDACIÓN: Regla específica para tu Surface. 
-   Usa el atributo data-module para volverlo absoluto sin afectar a otros bloques. */
 .component-module--display-block[data-module="moduleSurface"] {
     position: absolute;
     top: 0;
@@ -142,14 +138,13 @@
     height: 100%;
     background-color: #ffffff;
     border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px #00000020;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     border: 1px solid #00000008;
 }
 
-/* Panel Modifiers */
 .component-module-panel--padded {
     padding: 8px;
     height: auto;
@@ -215,79 +210,96 @@
 
 /* --- MEDIA QUERIES --- */
 
-/* Tablet / Mobile Standard (768px) */
 @media (max-width: 768px) {
     .mobile-search-trigger {
         display: inline-flex;
     }
 }
 
-/* Mobile Small (465px) - BOTTOM SHEET LOGIC */
+/* Mobile Small (465px) - CSS MODERNO CON ANIMACIÓN DE ENTRADA */
 @media (max-width: 468px) {
-    /* 1. Forzamos que sea visible y tenga ancho 100% */
+    /* 1. Reset básico */
     .component-module--display-block.component-module--size-m {
         display: flex;
         width: 100%;
     }
 
-    /* 2. Eliminamos el padding (offset) del contenedor */
     .component-module--display-block.component-module--offset-s {
         padding: 0;
     }
 
-    /* 3. Eliminamos el border-radius del panel interno */
     .component-module--display-block .component-module-panel {
         border-radius: 0;
         box-shadow: none; 
         border: none;     
     }
 
-    /* --- OVERLAY ANIMATION LOGIC --- */
+    /* 2. OVERLAY LOGIC (Modern Syntax) */
     .component-module--display-overlay {
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
         bottom: 0;
-        background-color: rgba(0, 0, 0, 0); /* Inicialmente transparente */
+        z-index: 1000;
+        
+        /* Layout */
         display: flex;
         width: 100%;
         height: 100%;
-        align-items: flex-end;
-        pointer-events: none; /* No bloquea clicks si está oculto/transparente */
-        transition: background-color 0.3s ease; /* Fade effect del fondo */
-    }
-    
-    /* Clase que aplica JS cuando se está abriendo */
-    .component-module--display-overlay.is-animating,
-    .component-module--display-overlay.is-open {
+        align-items: flex-end; /* Pega el panel al fondo */
+        
+        /* Estado VISIBLE */
         background-color: rgba(0, 0, 0, 0.5);
-        pointer-events: auto;
+        
+        /* PROPIEDADES ESPECÍFICAS DE TRANSICIÓN */
+        /* allow-discrete permite animar display:none a display:flex */
+        transition: display 0.3s allow-discrete, background-color 0.3s ease;
     }
 
-    /* --- PANEL ANIMATION LOGIC --- */
+    /* Panel interno */
     .component-module--display-overlay .component-module-panel {
         border-bottom-left-radius: 0;
         border-bottom-right-radius: 0;
         width: 100%;
-        transform: translateY(100%); /* Inicialmente fuera de la pantalla (abajo) */
-        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); /* Slide effect suave */
+        
+        /* Estado VISIBLE */
+        transform: translateY(0);
+        
+        /* Solo animamos el transform, nada más */
+        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         will-change: transform;
     }
 
-    /* Estado abierto: el panel sube */
-    .component-module--display-overlay.is-open .component-module-panel {
-        transform: translateY(0);
+    /* 3. ESTADO DISABLED (Salida) */
+    .component-module--display-overlay.disabled {
+        display: none;
+        background-color: rgba(0, 0, 0, 0);
+    }
+
+    .component-module--display-overlay.disabled .component-module-panel {
+        transform: translateY(100%);
+    }
+
+    /* 4. ESTADO INICIAL (Entrada / @starting-style) */
+    /* Define desde dónde empieza la animación cuando display cambia de none a flex */
+    @starting-style {
+        .component-module--display-overlay {
+            background-color: rgba(0, 0, 0, 0);
+        }
+        
+        .component-module--display-overlay .component-module-panel {
+            transform: translateY(100%);
+        }
     }
     
-    /* Estado dragging: quitamos la transición para que siga el dedo instantáneamente */
+    /* Estado dragging */
     .component-module--display-overlay.is-dragging .component-module-panel {
         transition: none;
     }
 }
 
-/* Lógica de Display General */
-/* Ocultamos por defecto si tiene disabled y no se está animando */
-.component-module.disabled:not(.is-animating) {
+/* Lógica de Display General (PC) */
+.component-module.disabled {
     display: none;
 }

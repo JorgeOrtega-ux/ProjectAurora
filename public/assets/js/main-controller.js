@@ -16,9 +16,6 @@ export class MainController {
         this.init();
     }
 
-    // --- HELPER DE SINCRONIZACIÓN (Pixel Perfect) ---
-    // Devuelve TRUE si el CSS está aplicando reglas de móvil (<= 480px).
-    // Esto evita desajustes entre JS y CSS.
     get isMobile() {
         return window.matchMedia('(max-width: 480px)').matches;
     }
@@ -53,12 +50,9 @@ export class MainController {
 
         document.addEventListener('click', (e) => {
             const openModules = document.querySelectorAll('.component-module:not(.disabled)');
-            
             openModules.forEach(module => {
                 const panel = module.querySelector('.component-module-panel');
-                
                 if (this.dragState.isDragging) return;
-
                 if (module.contains(e.target) && !panel.contains(e.target)) {
                     this.closeModule(module);
                 }
@@ -91,62 +85,13 @@ export class MainController {
     }
 
     openModule(module) {
-        // VERIFICACIÓN: ¿Es este módulo un Overlay (animable)?
-        // Si es el sidebar (moduleSurface), NO tendrá esta clase, por lo tanto isOverlay será false.
-        const isOverlay = module.classList.contains('component-module--display-overlay');
-
-        // CASO 1: Es PC -O- NO es un overlay (es sidebar/bloque) -> INSTANTÁNEO
-        if (!this.isMobile || !isOverlay) {
-            module.classList.remove('disabled');
-            // Limpieza preventiva
-            module.classList.remove('is-animating', 'is-open');
-            return;
-        }
-
-        // CASO 2: Es Móvil Y es Overlay -> ANIMADO (Bottom Sheet)
         module.classList.remove('disabled');
-        module.classList.add('is-animating');
-        void module.offsetWidth; // Force Reflow
-        module.classList.add('is-open');
-
-        const onTransitionEnd = () => {
-            module.classList.remove('is-animating');
-            module.removeEventListener('transitionend', onTransitionEnd);
-        };
-        module.addEventListener('transitionend', onTransitionEnd);
     }
 
     closeModule(module) {
-        // VERIFICACIÓN: ¿Es este módulo un Overlay (animable)?
-        const isOverlay = module.classList.contains('component-module--display-overlay');
-
-        // CASO 1: Es PC -O- NO es un overlay -> INSTANTÁNEO
-        if (!this.isMobile || !isOverlay) {
-            module.classList.add('disabled');
-            module.classList.remove('is-animating', 'is-open');
-            
-            // Limpieza de estilos drag por si acaso
-            const panel = module.querySelector('.component-module-panel');
-            if(panel) panel.style.transform = '';
-            return;
-        }
-
-        // CASO 2: Es Móvil Y es Overlay -> ANIMADO
-        module.classList.add('is-animating');
-        module.classList.remove('is-open');
-        
+        module.classList.add('disabled');
         const panel = module.querySelector('.component-module-panel');
         if(panel) panel.style.transform = '';
-
-        const onTransitionEnd = () => {
-            // Solo aplicamos disabled si realmente terminó de cerrarse
-            if (!module.classList.contains('is-open')) {
-                module.classList.add('disabled');
-                module.classList.remove('is-animating');
-            }
-            module.removeEventListener('transitionend', onTransitionEnd);
-        };
-        module.addEventListener('transitionend', onTransitionEnd);
     }
 
     closeAllModules() {
@@ -154,34 +99,39 @@ export class MainController {
         activeModules.forEach(module => this.closeModule(module));
     }
 
+    // --- AQUÍ ESTÁ LA MAGIA DEL RESIZE ---
     handleResize() {
+        let resizeTimer;
+        
         window.addEventListener('resize', () => {
+            // 1. Añadimos la clase que MATA todas las transiciones instantáneamente
+            document.body.classList.add('resize-animation-stopper');
+            
+            // 2. Lógica existente de header
             if (window.innerWidth > 768 && this.header.classList.contains('is-search-active')) {
                 this.header.classList.remove('is-search-active');
             }
             
-            if (this.isMobile) {
-                // De PC a Móvil: Asegurar estado visual correcto SOLO para OVERLAYS
-                // Los bloques normales (sidebar) no necesitan 'is-open'
-                const overlays = document.querySelectorAll('.component-module--display-overlay:not(.disabled):not(.is-open)');
-                overlays.forEach(m => {
-                    m.classList.add('is-open');
-                });
-            } else {
-                // De Móvil a PC: Limpiar todas las clases de animación
+            // 3. Limpieza de estado drag si pasamos a PC
+            if (!this.isMobile) {
                 const activeModules = document.querySelectorAll('.component-module');
                 activeModules.forEach(m => {
-                    m.classList.remove('is-animating', 'is-open', 'is-dragging');
+                    m.classList.remove('is-dragging');
                     const p = m.querySelector('.component-module-panel');
                     if(p) p.style.transform = '';
                 });
             }
+
+            // 4. Debounce: Esperamos a que el usuario termine de redimensionar
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                // Restauramos las animaciones para que funcionen los clicks normales
+                document.body.classList.remove('resize-animation-stopper');
+            }, 400); // 400ms de espera tras el último movimiento
         });
     }
 
-    // --- LÓGICA DRAG & DROP ---
     initBottomSheets() {
-        // Solo seleccionamos los overlays para aplicar drag. El sidebar queda excluido.
         const modules = document.querySelectorAll('.component-module--display-overlay');
 
         modules.forEach(module => {
@@ -201,25 +151,19 @@ export class MainController {
     }
 
     handleDragStart(e, module, panel, type) {
-        // Bloqueo estricto: Si no es móvil, no arrastra.
         if (!this.isMobile) return;
-
         const clientY = type === 'touch' ? e.touches[0].clientY : e.clientY;
-
         this.dragState.isDragging = true;
         this.dragState.startY = clientY;
         this.dragState.module = module;
         this.dragState.panel = panel;
-
         module.classList.add('is-dragging');
     }
 
     handleDragMove(e, type) {
         if (!this.dragState.isDragging) return;
-
         const clientY = type === 'touch' ? e.touches[0].clientY : e.clientY;
         const diff = clientY - this.dragState.startY;
-
         if (diff > 0) {
             if (type === 'touch' && e.cancelable) e.preventDefault();
             this.dragState.panel.style.transform = `translateY(${diff}px)`;
