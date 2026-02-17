@@ -31,7 +31,9 @@
     </div>
 
     <?php
-    include 'includes/modules/moduleMainOptions.php';
+    // __DIR__ aquí es '.../includes/layout'. 
+    // Subimos uno para ir a 'includes' y entramos a 'modules'.
+    include __DIR__ . '/../modules/moduleMainOptions.php';
     ?>
 
 </div>

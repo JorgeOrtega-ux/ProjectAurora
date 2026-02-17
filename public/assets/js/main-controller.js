@@ -99,20 +99,16 @@ export class MainController {
         activeModules.forEach(module => this.closeModule(module));
     }
 
-    // --- AQUÍ ESTÁ LA MAGIA DEL RESIZE ---
     handleResize() {
         let resizeTimer;
         
         window.addEventListener('resize', () => {
-            // 1. Añadimos la clase que MATA todas las transiciones instantáneamente
             document.body.classList.add('resize-animation-stopper');
             
-            // 2. Lógica existente de header
             if (window.innerWidth > 768 && this.header.classList.contains('is-search-active')) {
                 this.header.classList.remove('is-search-active');
             }
             
-            // 3. Limpieza de estado drag si pasamos a PC
             if (!this.isMobile) {
                 const activeModules = document.querySelectorAll('.component-module');
                 activeModules.forEach(m => {
@@ -122,15 +118,14 @@ export class MainController {
                 });
             }
 
-            // 4. Debounce: Esperamos a que el usuario termine de redimensionar
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(() => {
-                // Restauramos las animaciones para que funcionen los clicks normales
                 document.body.classList.remove('resize-animation-stopper');
-            }, 400); // 400ms de espera tras el último movimiento
+            }, 400);
         });
     }
 
+    // --- CORRECCIÓN AQUÍ: USO DE POINTER EVENTS ---
     initBottomSheets() {
         const modules = document.querySelectorAll('.component-module--display-overlay');
 
@@ -138,45 +133,65 @@ export class MainController {
             const panel = module.querySelector('.component-module-panel');
             if (!panel) return;
 
-            // Touch
-            panel.addEventListener('touchstart', (e) => this.handleDragStart(e, module, panel, 'touch'), { passive: false });
-            panel.addEventListener('touchmove', (e) => this.handleDragMove(e, 'touch'), { passive: false });
-            panel.addEventListener('touchend', (e) => this.handleDragEnd(e, 'touch'), { passive: false });
+            // Usamos 'pointerdown' en lugar de mousedown/touchstart.
+            // Esto unifica la lógica y permite usar setPointerCapture.
+            panel.addEventListener('pointerdown', (e) => {
+                // Prevenir el drag nativo del navegador (imágenes fantasma, selección)
+                e.preventDefault(); 
+                this.handleDragStart(e, module, panel);
+            });
 
-            // Mouse
-            panel.addEventListener('mousedown', (e) => this.handleDragStart(e, module, panel, 'mouse'));
-            document.addEventListener('mousemove', (e) => this.handleDragMove(e, 'mouse'));
-            document.addEventListener('mouseup', (e) => this.handleDragEnd(e, 'mouse'));
+            // Usamos pointermove y pointerup globales o sobre el panel con captura
+            panel.addEventListener('pointermove', (e) => this.handleDragMove(e));
+            panel.addEventListener('pointerup', (e) => this.handleDragEnd(e));
+            panel.addEventListener('pointercancel', (e) => this.handleDragEnd(e));
         });
     }
 
-    handleDragStart(e, module, panel, type) {
+    handleDragStart(e, module, panel) {
         if (!this.isMobile) return;
-        const clientY = type === 'touch' ? e.touches[0].clientY : e.clientY;
+        
+        // Verificar que sea botón izquierdo (para mouse) o toque
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+        // --- LA SOLUCIÓN CLAVE ---
+        // 'setPointerCapture' obliga al navegador a redirigir todos los eventos
+        // futuros a 'panel' hasta que se suelte, incluso si el cursor sale del div.
+        // Esto evita que se pierda el evento 'mouseup'.
+        panel.setPointerCapture(e.pointerId);
+
         this.dragState.isDragging = true;
-        this.dragState.startY = clientY;
+        this.dragState.startY = e.clientY; // e.clientY funciona igual para mouse y touch en PointerEvents
         this.dragState.module = module;
         this.dragState.panel = panel;
         module.classList.add('is-dragging');
     }
 
-    handleDragMove(e, type) {
+    handleDragMove(e) {
         if (!this.dragState.isDragging) return;
-        const clientY = type === 'touch' ? e.touches[0].clientY : e.clientY;
-        const diff = clientY - this.dragState.startY;
+        
+        // Prevenir comportamientos por defecto del navegador durante el arrastre
+        if (e.cancelable) e.preventDefault();
+
+        const diff = e.clientY - this.dragState.startY;
+        
+        // Lógica de arrastre (solo hacia abajo para cerrar)
         if (diff > 0) {
-            if (type === 'touch' && e.cancelable) e.preventDefault();
             this.dragState.panel.style.transform = `translateY(${diff}px)`;
             this.dragState.currentDiff = diff;
         }
     }
 
-    handleDragEnd(e, type) {
+    handleDragEnd(e) {
         if (!this.dragState.isDragging) return;
-        if (type === 'mouse' && e.button !== 0 && e.button !== undefined) return;
 
         this.dragState.isDragging = false;
         this.dragState.module.classList.remove('is-dragging');
+        
+        // Liberamos la captura del puntero
+        if (this.dragState.panel.hasPointerCapture(e.pointerId)) {
+            this.dragState.panel.releasePointerCapture(e.pointerId);
+        }
 
         const panelHeight = this.dragState.panel.offsetHeight;
         const threshold = panelHeight * 0.40; 
