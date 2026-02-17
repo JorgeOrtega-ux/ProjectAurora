@@ -30,9 +30,7 @@ body {
     flex-direction: column;
     background-color: #ffffff;
     border-radius: 12px;
-    overflow: hidden; /* Asegura que el contenido respete el radio del padre */
-    
-    /* NUEVA SOMBRA: Suave y elegante para dar elevación */
+    overflow: hidden;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
@@ -47,7 +45,6 @@ body {
     z-index: 10;
 }
 
-/* Pseudo-elemento para la sombra del scroll (Gradiente hacia abajo) */
 .general-content-top::after {
     content: '';
     position: absolute;
@@ -61,13 +58,19 @@ body {
     pointer-events: none; 
 }
 
+/* --- Main Layout Bottom --- */
 .general-content-bottom {
     flex: 1 1 auto;
     min-height: 0;
     position: relative;
+    display: flex; /* Nuevo: Para alinear sidebar y contenido */
+    flex-direction: row;
+    overflow: hidden;
 }
 
 .general-content-scrolleable {
+    flex: 1 1 auto; /* Nuevo: Ocupa el espacio restante */
+    min-width: 0; /* Evita desbordamientos en flex */
     overflow-y: auto;
     overflow-x: hidden;
     height: 100%;
@@ -120,19 +123,18 @@ body {
 /* --- MEDIA QUERIES --- */
 @media (max-width: 768px) {
     .main-content {
-        padding: 0; /* Elimina padding en mobile */
+        padding: 0;
     }
 
     .general-content {
-        border-radius: 0; /* Elimina border radius en mobile */
-        box-shadow: none; /* Opcional: Quitar sombra en mobile para un look plano */
+        border-radius: 0;
+        box-shadow: none;
     }
     
     .header-center {
         display: none;
     }
 
-    /* --- ESTADO ACTIVO DEL BUSCADOR EN MOBILE --- */
     .header.is-search-active {
         flex-wrap: wrap;
         height: auto;
