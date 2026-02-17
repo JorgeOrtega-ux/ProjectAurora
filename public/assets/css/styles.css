@@ -1,7 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap');
+
 * {
     padding: 0;
     margin: 0;
-    box-sizing: border-box;
+    font-family: "Roboto Condensed", sans-serif;
 }
 
 html,
@@ -55,7 +57,7 @@ body {
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.06), transparent);
     opacity: 0;
     transition: opacity 0.3s ease;
-    pointer-events: none; 
+    pointer-events: none;
 }
 
 /* --- Main Layout Bottom --- */
@@ -63,14 +65,17 @@ body {
     flex: 1 1 auto;
     min-height: 0;
     position: relative;
-    display: flex; /* Nuevo: Para alinear sidebar y contenido */
+    display: flex;
+    /* Nuevo: Para alinear sidebar y contenido */
     flex-direction: row;
     overflow: hidden;
 }
 
 .general-content-scrolleable {
-    flex: 1 1 auto; /* Nuevo: Ocupa el espacio restante */
-    min-width: 0; /* Evita desbordamientos en flex */
+    flex: 1 1 auto;
+    /* Nuevo: Ocupa el espacio restante */
+    min-width: 0;
+    /* Evita desbordamientos en flex */
     overflow-y: auto;
     overflow-x: hidden;
     height: 100%;
@@ -79,7 +84,7 @@ body {
 /* --- Estado Active (Shadow del Header al hacer scroll) --- */
 .general-content-top.shadow {
     border-bottom-color: transparent;
-    box-shadow: none; 
+    box-shadow: none;
 }
 
 .general-content-top.shadow::after {
@@ -101,7 +106,7 @@ body {
 .header-left {
     flex: 1;
     height: 100%;
-    display: flex; 
+    display: flex;
     justify-content: flex-start;
     align-items: center;
 }
@@ -130,7 +135,7 @@ body {
         border-radius: 0;
         box-shadow: none;
     }
-    
+
     .header-center {
         display: none;
     }
@@ -154,5 +159,22 @@ body {
 
     .header.is-search-active .header-center .component-search {
         width: 100%;
+    }
+}
+
+/* --- REGLA ESPECÍFICA SOLICITADA (Mobile Small + :has) --- */
+@media (max-width: 465px) {
+
+    /* Si .general-content contiene un módulo moduleSurface que NO está disabled (está activo),
+       entonces buscamos el .general-content-top que tenga la clase .shadow.
+    */
+    .general-content:has([data-module="moduleSurface"]:not(.disabled)) .general-content-top.shadow {
+        /* Restauramos el borde para separar visualmente */
+        border-bottom-color: #00000020;
+    }
+
+    .general-content:has([data-module="moduleSurface"]:not(.disabled)) .general-content-top.shadow::after {
+        /* Ocultamos la sombra (gradiente) */
+        opacity: 0;
     }
 }

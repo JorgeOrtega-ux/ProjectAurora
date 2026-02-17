@@ -100,11 +100,22 @@
     height: auto;
 }
 
+/* RECOMENDACIÓN: Mantenemos esto como relative por defecto para futuros módulos fijos */
 .component-module--display-block {
-    position: relative;
+    position: relative; 
     height: 100%;
     flex-shrink: 0;
     display: flex; 
+}
+
+/* RECOMENDACIÓN: Regla específica para tu Surface. 
+   Usa el atributo data-module para volverlo absoluto sin afectar a otros bloques. */
+.component-module--display-block[data-module="moduleSurface"] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 20;
+    height: 100%;
 }
 
 /* 3. Size Modifiers */
@@ -209,10 +220,9 @@
     .mobile-search-trigger {
         display: inline-flex;
     }
-
 }
 
-/* Mobile Small (465px) - REGLA ESPECÍFICA SOLICITADA */
+/* Mobile Small (465px) */
 @media (max-width: 465px) {
     /* 1. Forzamos que sea visible y tenga ancho 100% */
     .component-module--display-block.component-module--size-m {
@@ -228,15 +238,55 @@
     /* 3. Eliminamos el border-radius del panel interno */
     .component-module--display-block .component-module-panel {
         border-radius: 0;
-        box-shadow: none; /* Opcional: en full width a veces la sombra sobra */
-        border: none;     /* Opcional: limpieza visual */
+        box-shadow: none; 
+        border: none;     
+    }
+
+    .component-module--display-overlay {
+        position: fixed;
+        top: 0;
+        background-color: #00000080;
+        display: flex;
+        width: 100%;
+        height: 100%;
+        align-items: flex-end;
+    }
+
+    .component-module-panel {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
     }
 }
+
 .component-module--display-block.component-module--offset-s.disabled {
     display: none;
 }
 
-
 .disabled {
     display: none;
+}
+
+
+/* En styles.css - Línea 698 aprox */
+.pill-container {
+    display: none;
+}/* En styles.css - Línea 815 dentro del @media (max-width: 468px) */
+@media (max-width: 468px) {
+    
+    .pill-container {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        flex-shrink: 0;
+        padding: 0px 0px 8px 8px;
+        cursor: grab;
+        touch-action: none; /* Importante para que el JS controle el gesto */
+    }
+
+    .drag-handle {
+        width: 40px;
+        height: 4px;
+        background-color: #f5f5fa;
+        border-radius: 10px;
+    }
 }
