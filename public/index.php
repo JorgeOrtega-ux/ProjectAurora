@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css" href="assets/css/styles.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/components/components.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" />
     <title>Document</title>
 </head>
 
@@ -14,9 +16,40 @@
             <div class="general-content">
                 <div class="general-content-top">
                     <div class="header">
-                        <div class="header-left"></div>
-                        <div class="header-center"></div>
-                        <div class="header-right"></div>
+                        <div class="header-left">
+                            <div class="component-actions">
+                                <button class="component-button component-button--square-40">
+                                    <span class="material-symbols-rounded">
+                                        menu
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="header-center">
+                            <div class="component-search">
+                                <div class="component-search-icon">
+                                    <span class="material-symbols-rounded">search</span>
+                                </div>
+                                <div class="component-search-input">
+                                    <input type="text" class="component-search-input-field" placeholder="Buscar...">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="header-right">
+                            <div class="component-actions">
+                                <button class="component-button component-button--square-40 mobile-search-trigger">
+                                    <span class="material-symbols-rounded">search</span>
+                                </button>
+
+                                <button class="component-button component-button--square-40">
+                                    <span class="material-symbols-rounded">
+                                        more_vert
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="general-content-bottom"></div>

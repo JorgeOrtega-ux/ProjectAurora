@@ -42,29 +42,52 @@ body {
     flex: 1 1 auto;
 }
 
+/* --- HEADER LAYOUT --- */
 .header {
     width: 100%;
     height: 100%;
     display: flex;
     flex-direction: row;
     gap: 8px;
+    align-items: center;
 }
 
 .header-left {
-    width: auto;
+    flex: 1;
     height: 100%;
+    display: flex; 
     justify-content: flex-start;
     align-items: center;
 }
 
 .header-center {
+    flex: 0 0 auto;
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
-
 .header-right {
+    flex: 1;
+    display: flex;
     justify-content: flex-end;
     align-items: center;
+}
+
+.mobile-search-trigger {
+    display: none;
+}
+
+/* Breakpoint para tablets/móviles */
+@media (max-width: 768px) {
+    
+    /* Ocultamos la barra de búsqueda central */
+    .header-center {
+        display: none;
+    }
+
+    /* Mostramos el botón lupa en la derecha */
+    .mobile-search-trigger {
+        display: inline-flex;
+    }
 }
