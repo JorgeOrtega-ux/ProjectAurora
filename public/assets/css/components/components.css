@@ -15,6 +15,7 @@
     align-items: center;
     cursor: pointer;
     font-size: 14px;
+    outline: none;
     transition: background-color 0.2s;
 }
 
@@ -208,11 +209,7 @@
     .mobile-search-trigger {
         display: inline-flex;
     }
-    
-    /* Por defecto ocultamos los bloques laterales en mobile */
-    .component-module--display-block {
-        display: none;
-    }
+
 }
 
 /* Mobile Small (465px) - REGLA ESPECÍFICA SOLICITADA */
@@ -234,6 +231,9 @@
         box-shadow: none; /* Opcional: en full width a veces la sombra sobra */
         border: none;     /* Opcional: limpieza visual */
     }
+}
+.component-module--display-block.component-module--offset-s.disabled {
+    display: none;
 }
 
 
