@@ -21,29 +21,39 @@ class AuthService {
         }
 
         // 2. Generar UUID y Hash
-        $uuid = bin2hex(random_bytes(16)); // Simple UUID v4 simulation
+        $uuid = bin2hex(random_bytes(16));
         $password_hash = password_hash($data->password, PASSWORD_BCRYPT);
 
-        // 3. Generar Avatar con UI Avatars
+        // 3. Configuración del Avatar (NUEVA LÓGICA)
         $avatarFilename = $uuid . '.png';
-        // Ruta absoluta del sistema de archivos para guardar
         $storageDir = __DIR__ . '/../../public/storage/profilePictures/default/';
-        // Ruta relativa web para guardar en BD
         $webPath = 'storage/profilePictures/default/' . $avatarFilename;
 
         if (!file_exists($storageDir)) {
             mkdir($storageDir, 0777, true);
         }
 
-        // Obtener iniciales para el avatar
+        // --- CAMBIOS SOLICITADOS ---
+        // Lista de colores permitidos (sin el # para la URL)
+        $allowedColors = ['2563eb', '16a34a', '7c3aed', 'dc2626', 'ea580c', '374151'];
+        // Seleccionar uno al azar
+        $randomColor = $allowedColors[array_rand($allowedColors)];
+        
         $nameEncoded = urlencode($data->username);
-        $avatarUrl = "https://ui-avatars.com/api/?name={$nameEncoded}&background=random&size=128&format=png";
+        
+        // URL con los nuevos parámetros:
+        // background = color aleatorio de la lista
+        // color = fff (blanco para que contraste con tus colores oscuros)
+        // size = 512 (Alta calidad)
+        // length = 1 (Solo 1 letra)
+        $avatarUrl = "https://ui-avatars.com/api/?name={$nameEncoded}&background={$randomColor}&color=fff&size=512&length=1&format=png";
+        
         $avatarContent = file_get_contents($avatarUrl);
         
         if ($avatarContent) {
             file_put_contents($storageDir . $avatarFilename, $avatarContent);
         } else {
-            $webPath = ''; // Fallback si falla
+            $webPath = ''; // Fallback
         }
 
         // 4. Insertar en BD
@@ -59,10 +69,10 @@ class AuthService {
         $stmt->bindParam(':avatar_path', $webPath);
 
         if ($stmt->execute()) {
-            // Iniciar sesión automáticamente
             $_SESSION['user_id'] = $this->conn->lastInsertId();
             $_SESSION['user_uuid'] = $uuid;
             $_SESSION['user_name'] = $data->username;
+            $_SESSION['user_role'] = 'user';
             $_SESSION['user_avatar'] = $webPath;
 
             return [
@@ -70,7 +80,8 @@ class AuthService {
                 'message' => 'Usuario registrado correctamente.',
                 'user' => [
                     'name' => $data->username,
-                    'avatar' => $webPath
+                    'avatar' => $webPath,
+                    'role' => 'user'
                 ]
             ];
         }
@@ -79,7 +90,7 @@ class AuthService {
     }
 
     public function login($email, $password) {
-        $query = "SELECT id, uuid, nombre, contrasena, avatar_path FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1";
+        $query = "SELECT id, uuid, nombre, contrasena, avatar_path, role FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':correo', $email);
         $stmt->execute();
@@ -91,13 +102,15 @@ class AuthService {
                 $_SESSION['user_uuid'] = $row['uuid'];
                 $_SESSION['user_name'] = $row['nombre'];
                 $_SESSION['user_avatar'] = $row['avatar_path'];
+                $_SESSION['user_role'] = $row['role'];
 
                 return [
                     'success' => true,
                     'message' => 'Inicio de sesión exitoso.',
                     'user' => [
                         'name' => $row['nombre'],
-                        'avatar' => $row['avatar_path']
+                        'avatar' => $row['avatar_path'],
+                        'role' => $row['role']
                     ]
                 ];
             }

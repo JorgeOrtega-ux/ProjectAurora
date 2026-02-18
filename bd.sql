@@ -14,6 +14,7 @@ CREATE TABLE users (
     nombre VARCHAR(100) NOT NULL,
     correo VARCHAR(150) NOT NULL UNIQUE,
     contrasena VARCHAR(255) NOT NULL,
+    role ENUM('user', 'moderator', 'administrator', 'founder') DEFAULT 'user' COMMENT 'Rol del usuario para permisos y UI',
     avatar_path VARCHAR(255) DEFAULT NULL COMMENT 'Ruta de la imagen guardada en storage',
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

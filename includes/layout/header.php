@@ -4,6 +4,8 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 $isLoggedIn = isset($_SESSION['user_id']);
 $avatar = $isLoggedIn ? $_SESSION['user_avatar'] : '';
+// Recuperamos el rol, por defecto 'user' si no existe
+$role = $isLoggedIn && isset($_SESSION['user_role']) ? $_SESSION['user_role'] : 'user';
 
 // Lógica simple: Definimos el estilo inicial desde el servidor
 $styleGuest = $isLoggedIn ? 'display: none !important;' : 'display: flex !important;';
@@ -46,10 +48,11 @@ $styleUser  = $isLoggedIn ? 'display: flex !important;' : 'display: none !import
             </div>
 
             <div class="auth-user-actions" style="<?php echo $styleUser; ?>">
-                <button class="component-button component-button--square-40" 
+                <button class="component-button component-button--square-40 user-avatar-btn" 
                         data-action="toggleModuleMainOptions" 
-                        style="padding: 0; overflow: hidden; border-radius: 50%; border: 2px solid #eee;">
-                    <img id="user-avatar-img" src="<?php echo htmlspecialchars($avatar); ?>" alt="Perfil" style="width: 100%; height: 100%; object-fit: cover;">
+                        data-role="<?php echo htmlspecialchars($role); ?>"
+                        style="padding: 0; border: none; background: transparent;">
+                    <img id="user-avatar-img" src="<?php echo htmlspecialchars($avatar); ?>" alt="Perfil" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                 </button>
             </div>
 
