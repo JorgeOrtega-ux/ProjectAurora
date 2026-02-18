@@ -1,10 +1,22 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     
-    # Define la base de la URL (la carpeta de tu proyecto)
-    RewriteBase /ProjectAurora/
+    # Necesario para que funcione la reescritura
+    Options +FollowSymLinks
+    
+    # Evita que se listen los directorios si no hay index (seguridad y evita errores visuales)
+    Options -Indexes
 
-    # Si la petición llega a la raíz del proyecto, redirige a /public/
-    # Usamos una ruta relativa para evitar que incluya la ruta del disco (E:/...)
-    RewriteRule ^$ public/ [L,R=301]
+    # 1. EXCEPCIONES: Si la petición es para 'public' o 'api', NO redirigir.
+    # Esto arregla el problema de que la API dejara de funcionar o diera 403.
+    RewriteRule ^(public|api)($|/) - [L]
+
+    # 2. Redirigir la raíz del dominio directamente a public/
+    RewriteRule ^$ public/ [L]
+
+    # 3. Redirigir cualquier otra petición a public/ (Front Controller)
+    # Solo si el archivo o carpeta solicitados NO existen físicamente en la raíz
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
