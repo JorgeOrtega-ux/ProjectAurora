@@ -3,11 +3,15 @@
     Options -Indexes
     Options -MultiViews
 
-    # 1. MAPEO DE ASSETS
+    # 1. MAPEO DE ASSETS (Ya lo tienes)
     RewriteRule ^assets/(.*)$ public/assets/$1 [L]
     
-    # 2. MAPEO DE API (NUEVO)
-    # Permite acceder directamente a los handlers dentro de api/
+    # --- AGREGA ESTA LÍNEA AQUÍ ---
+    # Permite que el navegador acceda a la carpeta storage/ dentro de public/
+    RewriteRule ^storage/(.*)$ public/storage/$1 [L]
+    # ------------------------------
+
+    # 2. MAPEO DE API (Ya lo tienes)
     RewriteRule ^api/(.*)$ api/$1 [L]
 
     # 3. EXCEPCIONES FÍSICAS

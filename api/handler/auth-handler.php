@@ -3,7 +3,7 @@
 session_start();
 header("Content-Type: application/json; charset=UTF-8");
 
-include_once __DIR__ . '/../../includes/config/database.php';
+include_once __DIR__ . '/../../config/database.php';
 include_once __DIR__ . '/../services/AuthService.php';
 
 $database = new Database();

@@ -1,10 +1,13 @@
 <?php
-// Iniciar sesión si no está iniciada (para la carga inicial PHP)
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $isLoggedIn = isset($_SESSION['user_id']);
 $avatar = $isLoggedIn ? $_SESSION['user_avatar'] : '';
+
+// Lógica simple: Definimos el estilo inicial desde el servidor
+$styleGuest = $isLoggedIn ? 'display: none !important;' : 'display: flex !important;';
+$styleUser  = $isLoggedIn ? 'display: flex !important;' : 'display: none !important;';
 ?>
 
 <div class="header">
@@ -33,7 +36,7 @@ $avatar = $isLoggedIn ? $_SESSION['user_avatar'] : '';
                 <span class="material-symbols-rounded">search</span>
             </button>
 
-            <div class="auth-guest-actions <?php echo $isLoggedIn ? 'hidden' : ''; ?>" style="display: flex; gap: 8px;">
+            <div class="auth-guest-actions" style="<?php echo $styleGuest; ?> gap: 8px;">
                 <button class="component-button component-button--black component-button--rect-40" data-nav="/ProjectAurora/login">
                     Acceder
                 </button>
@@ -42,7 +45,7 @@ $avatar = $isLoggedIn ? $_SESSION['user_avatar'] : '';
                 </button>
             </div>
 
-            <div class="auth-user-actions <?php echo !$isLoggedIn ? 'hidden' : ''; ?>">
+            <div class="auth-user-actions" style="<?php echo $styleUser; ?>">
                 <button class="component-button component-button--square-40" 
                         data-action="toggleModuleMainOptions" 
                         style="padding: 0; overflow: hidden; border-radius: 50%; border: 2px solid #eee;">
@@ -55,15 +58,3 @@ $avatar = $isLoggedIn ? $_SESSION['user_avatar'] : '';
 
     <?php include __DIR__ . '/../modules/moduleMainOptions.php'; ?>
 </div>
-
-<style>
-    /* Clases de utilidad para togglear visibilidad desde JS/PHP */
-    .hidden { display: none !important; }
-    
-    /* Cuando JS detecta login, aplica clases al body */
-    body.is-logged-in .auth-guest-actions { display: none !important; }
-    body.is-logged-in .auth-user-actions { display: flex !important; }
-    
-    body:not(.is-logged-in) .auth-user-actions { display: none !important; }
-    body:not(.is-logged-in) .auth-guest-actions { display: flex !important; }
-</style>

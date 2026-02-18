@@ -1,5 +1,4 @@
-// public/assets/js/auth-controller.js
-import { SpaRouter } from './spa-router.js'; // Para redireccionar
+import { SpaRouter } from './spa-router.js';
 
 export class AuthController {
     constructor() {
@@ -8,7 +7,6 @@ export class AuthController {
     }
 
     init() {
-        // Escuchar eventos globales (porque las vistas login/register se cargan dinámicamente)
         document.body.addEventListener('submit', (e) => {
             if (e.target.id === 'form-login') {
                 e.preventDefault();
@@ -19,7 +17,6 @@ export class AuthController {
             }
         });
 
-        // Escuchar click en logout
         document.body.addEventListener('click', (e) => {
             const logoutBtn = e.target.closest('[data-action="logout"]');
             if (logoutBtn) {
@@ -27,9 +24,9 @@ export class AuthController {
                 this.handleLogout();
             }
         });
-
-        // Chequear sesión al iniciar
-        this.checkSession();
+        
+        // Ya no necesitamos checkSession() para la UI inicial, 
+        // porque PHP ya pintó los botones correctos.
     }
 
     async handleLogin() {
@@ -42,18 +39,14 @@ export class AuthController {
         try {
             const res = await this.post({ action: 'login', email, password });
             if (res.success) {
-                this.updateUI(res.user);
-                // Redirigir al home forzando la navegación del router
-                window.history.pushState(null, '', '/ProjectAurora/');
-                // Pequeño hack para disparar el evento popstate o recargar la vista
-                const event = new PopStateEvent('popstate');
-                window.dispatchEvent(event);
+                // --- CAMBIO CLAVE: Recargar en lugar de SPA ---
+                window.location.href = '/ProjectAurora/'; 
             } else {
                 alert(res.message);
+                this.setLoading(btn, false);
             }
         } catch (error) {
             console.error(error);
-        } finally {
             this.setLoading(btn, false);
         }
     }
@@ -69,16 +62,14 @@ export class AuthController {
         try {
             const res = await this.post({ action: 'register', username, email, password });
             if (res.success) {
-                this.updateUI(res.user);
-                window.history.pushState(null, '', '/ProjectAurora/');
-                const event = new PopStateEvent('popstate');
-                window.dispatchEvent(event);
+                // --- CAMBIO CLAVE: Recargar en lugar de SPA ---
+                window.location.href = '/ProjectAurora/';
             } else {
                 alert(res.message);
+                this.setLoading(btn, false);
             }
         } catch (error) {
             console.error(error);
-        } finally {
             this.setLoading(btn, false);
         }
     }
@@ -86,39 +77,16 @@ export class AuthController {
     async handleLogout() {
         try {
             await this.post({ action: 'logout' });
-            this.resetUI();
+            // Al hacer logout, recargamos al login o al home
             window.location.href = '/ProjectAurora/login';
         } catch (error) {
             console.error(error);
         }
     }
 
-    async checkSession() {
-        try {
-            const res = await this.post({ action: 'check_session' });
-            if (res.success) {
-                this.updateUI(res.user);
-            } else {
-                this.resetUI();
-            }
-        } catch (error) {
-            // No hacer nada si falla check session silencioso
-        }
-    }
-
-    updateUI(user) {
-        document.body.classList.add('is-logged-in');
-        
-        // Actualizar avatar
-        const avatarImg = document.getElementById('user-avatar-img');
-        if (avatarImg && user.avatar) {
-            avatarImg.src = user.avatar;
-        }
-    }
-
-    resetUI() {
-        document.body.classList.remove('is-logged-in');
-    }
+    // --- FUNCIONES QUE YA NO SON NECESARIAS SI RECARGAS ---
+    // updateUI(user) { ...borrar... }
+    // resetUI() { ...borrar... }
 
     async post(data) {
         const response = await fetch(this.apiPath, {
