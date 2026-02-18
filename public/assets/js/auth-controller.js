@@ -46,18 +46,22 @@ export class AuthController {
 
     async handleLogin() {
         const form = document.getElementById('form-login');
-        // --- CORRECCIÓN: Seleccionar explícitamente el botón de submit ---
         const btn = form.querySelector('button[type="submit"]'); 
         
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
+        // OBTENER TOKEN
+        const csrfTokenInput = document.getElementById('csrf_token');
+        const csrfToken = csrfTokenInput ? csrfTokenInput.value : '';
+
         const errorDiv = document.getElementById('login-error');
 
         this.setLoading(btn, true);
         this.hideError(errorDiv);
 
         try {
-            const res = await this.post({ action: 'login', email, password });
+            // ENVIAR TOKEN
+            const res = await this.post({ action: 'login', email, password, csrf_token: csrfToken });
             if (res.success) {
                 window.location.href = '/ProjectAurora/'; 
             } else {
@@ -73,19 +77,23 @@ export class AuthController {
 
     async handleRegister() {
         const form = document.getElementById('form-register');
-        // --- CORRECCIÓN: Seleccionar explícitamente el botón de submit ---
         const btn = form.querySelector('button[type="submit"]');
 
         const username = document.getElementById('reg-username').value;
         const email = document.getElementById('reg-email').value;
         const password = document.getElementById('reg-password').value;
+        // OBTENER TOKEN
+        const csrfTokenInput = document.getElementById('csrf_token');
+        const csrfToken = csrfTokenInput ? csrfTokenInput.value : '';
+
         const errorDiv = document.getElementById('register-error');
 
         this.setLoading(btn, true);
         this.hideError(errorDiv);
 
         try {
-            const res = await this.post({ action: 'register', username, email, password });
+            // ENVIAR TOKEN
+            const res = await this.post({ action: 'register', username, email, password, csrf_token: csrfToken });
             if (res.success) {
                 window.location.href = '/ProjectAurora/';
             } else {
@@ -122,18 +130,13 @@ export class AuthController {
         if(!btn) return;
 
         if (isLoading) {
-            // Guardamos el texto original en un atributo data
             if (!btn.dataset.originalText) {
                 btn.dataset.originalText = btn.textContent.trim();
             }
-            // Deshabilitamos
             btn.disabled = true;
-            // Reemplazamos contenido por el spinner HTML
             btn.innerHTML = '<div class="component-spinner-button"></div>';
         } else {
-            // Restauramos
             btn.disabled = false;
-            // Recuperamos el texto original
             const originalText = btn.dataset.originalText || 'Continuar';
             btn.textContent = originalText;
         }

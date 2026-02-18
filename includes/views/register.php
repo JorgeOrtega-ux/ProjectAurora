@@ -9,6 +9,8 @@
 
             <form id="form-register" class="component-stage-form">
                 
+                <input type="hidden" id="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+
                 <div class="component-form-group">
                     <div class="component-input-wrapper">
                         <input type="text" id="reg-username" class="component-text-input" required placeholder=" ">

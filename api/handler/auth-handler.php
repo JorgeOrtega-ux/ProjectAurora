@@ -14,6 +14,16 @@ $auth = new AuthService($db);
 $data = json_decode(file_get_contents("php://input"));
 $action = isset($data->action) ? $data->action : '';
 
+// --- VALIDACIÓN CSRF ---
+// Solo validamos para acciones críticas (login y register)
+if ($action === 'login' || $action === 'register') {
+    if (empty($data->csrf_token) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $data->csrf_token)) {
+        echo json_encode(['success' => false, 'message' => 'Error de seguridad (Token inválido). Recarga la página.']);
+        exit;
+    }
+}
+// -----------------------
+
 switch ($action) {
     case 'register':
         if (!empty($data->username) && !empty($data->email) && !empty($data->password)) {

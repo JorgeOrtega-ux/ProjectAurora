@@ -6,12 +6,18 @@ require_once __DIR__ . '/../includes/core/Loader.php';
 require_once __DIR__ . '/../includes/core/Router.php';
 $routes = require __DIR__ . '/../includes/config/routes.php';
 
-// --- NUEVO: Iniciar sesión aquí para determinar el estado del body ---
+// --- NUEVO: Iniciar sesión y Generar Token CSRF ---
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+// Generar token CSRF si no existe en la sesión
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
 $bodyClass = isset($_SESSION['user_id']) ? 'is-logged-in' : '';
-// --------------------------------------------------------------------
+// --------------------------------------------------
 
 // 2. Inicializar
 $loader = new Loader();

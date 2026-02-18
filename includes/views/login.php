@@ -9,6 +9,8 @@
 
             <form id="form-login" class="component-stage-form">
                 
+                <input type="hidden" id="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
+                
                 <div class="component-form-group">
                     <div class="component-input-wrapper">
                         <input type="email" id="login-email" class="component-text-input" required placeholder=" ">
