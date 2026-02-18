@@ -40,7 +40,12 @@
 .component-button--black:hover {
     background-color: #333333;
 }
-
+/* --- NUEVO: Modificador para botones con texto (Rectangular) --- */
+.component-button--rect-40 {
+    height: 40px;          /* Misma altura que los iconos */
+    padding: 0 12px;       /* Espacio a los lados del texto */
+    font-weight: 500;      /* Un poco más de peso a la fuente */
+}
 /* --- COMPONENT: SEARCH --- */
 .component-search {
     width: 425px;
@@ -185,9 +190,23 @@
     transition: background-color 0.2s ease;
 }
 
+/* ... código anterior ... */
+
 .component-menu-link:hover {
     background-color: #f5f5fa;
 }
+
+/* --- NUEVO: Estado Activo (Sección actual) --- */
+/* Se aplica cuando el router añade la clase .active */
+.component-menu-link.active {
+    background-color: #f5f5fa; /* Mismo color que el hover */
+}
+
+.component-menu-link.active .component-menu-link-icon {
+    color: #000000;             /* Asegura que el icono se vea nítido */
+}
+
+/* ... resto del código ... */
 
 .component-menu-link-icon {
     width: 45px;

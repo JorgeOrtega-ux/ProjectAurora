@@ -18,10 +18,14 @@
         </div>
     </div>
 
-    <div class="header-right">
+   <div class="header-right">
         <div class="component-actions">
             <button class="component-button component-button--square-40 mobile-search-trigger">
                 <span class="material-symbols-rounded">search</span>
+            </button>
+
+            <button class="component-button component-button--black component-button--rect-40">
+                Acceder
             </button>
 
             <button class="component-button component-button--square-40" data-action="toggleModuleMainOptions">

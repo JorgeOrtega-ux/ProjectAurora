@@ -1,22 +1,21 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    
-    # Necesario para que funcione la reescritura
-    Options +FollowSymLinks
-    
-    # Evita que se listen los directorios si no hay index (seguridad y evita errores visuales)
     Options -Indexes
+    
+    # Desactiva la negociación de contenido automática de Apache que a veces causa conflictos
+    Options -MultiViews
 
-    # 1. EXCEPCIONES: Si la petición es para 'public' o 'api', NO redirigir.
-    # Esto arregla el problema de que la API dejara de funcionar o diera 403.
-    RewriteRule ^(public|api)($|/) - [L]
+    # 1. MAPEO DE ASSETS (El puente)
+    # Si la URL pide 'assets/algo', búscalo REALMENTE en 'public/assets/algo'
+    # La bandera [L] significa "Last" (si esto coincide, deja de procesar y sirve el archivo)
+    RewriteRule ^assets/(.*)$ public/assets/$1 [L]
 
-    # 2. Redirigir la raíz del dominio directamente a public/
-    RewriteRule ^$ public/ [L]
+    # 2. EXCEPCIONES FÍSICAS
+    # Si el archivo existe físicamente (por si acaso), sírvelo directamente.
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
 
-    # 3. Redirigir cualquier otra petición a public/ (Front Controller)
-    # Solo si el archivo o carpeta solicitados NO existen físicamente en la raíz
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^(.*)$ public/$1 [L]
+    # 3. TODO LO DEMÁS -> AL ROUTER (SPA)
+    # Cualquier otra cosa se envía al index.php
+    RewriteRule ^(.*)$ public/index.php [QSA,L]
 </IfModule>
