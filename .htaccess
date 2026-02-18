@@ -1,21 +1,19 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     Options -Indexes
-    
-    # Desactiva la negociación de contenido automática de Apache que a veces causa conflictos
     Options -MultiViews
 
-    # 1. MAPEO DE ASSETS (El puente)
-    # Si la URL pide 'assets/algo', búscalo REALMENTE en 'public/assets/algo'
-    # La bandera [L] significa "Last" (si esto coincide, deja de procesar y sirve el archivo)
+    # 1. MAPEO DE ASSETS
     RewriteRule ^assets/(.*)$ public/assets/$1 [L]
+    
+    # 2. MAPEO DE API (NUEVO)
+    # Permite acceder directamente a los handlers dentro de api/
+    RewriteRule ^api/(.*)$ api/$1 [L]
 
-    # 2. EXCEPCIONES FÍSICAS
-    # Si el archivo existe físicamente (por si acaso), sírvelo directamente.
+    # 3. EXCEPCIONES FÍSICAS
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
-    # 3. TODO LO DEMÁS -> AL ROUTER (SPA)
-    # Cualquier otra cosa se envía al index.php
+    # 4. TODO LO DEMÁS -> AL ROUTER (SPA)
     RewriteRule ^(.*)$ public/index.php [QSA,L]
 </IfModule>

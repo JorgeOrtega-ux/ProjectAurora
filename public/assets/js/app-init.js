@@ -1,11 +1,11 @@
 import { MainController } from './main-controller.js';
 import { SpaRouter } from './spa-router.js';
+import { AuthController } from './auth-controller.js'; // Importar
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Inicializar lógica de UI existente
     const app = new MainController();
+    const auth = new AuthController(); // Inicializar
     
-    // Inicializar Sistema SPA
     const router = new SpaRouter({
         outlet: '#app-router-outlet'
     });

@@ -20,6 +20,18 @@
                     <span>Ayuda y comentarios</span>
                 </div>
             </a>
+            
+            <div style="height: 1px; background-color: #eee; margin: 4px 0;" class="auth-user-actions"></div>
+
+            <a href="#" class="component-menu-link auth-user-actions" data-action="logout">
+                <div class="component-menu-link-icon">
+                    <span class="material-symbols-rounded">logout</span>
+                </div>
+                <div class="component-menu-link-text">
+                    <span>Cerrar sesión</span>
+                </div>
+            </a>
+
         </div>
     </div>
 </div>
