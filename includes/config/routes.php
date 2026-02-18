@@ -3,5 +3,7 @@
 
 return [
     '/' => 'home.php',
-    '/explore' => 'explore.php'
+    '/explore' => 'explore.php',
+    '/login' => 'login.php',
+    '/register' => 'register.php'
 ];

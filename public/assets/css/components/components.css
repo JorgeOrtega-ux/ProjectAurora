@@ -190,23 +190,17 @@
     transition: background-color 0.2s ease;
 }
 
-/* ... código anterior ... */
-
 .component-menu-link:hover {
     background-color: #f5f5fa;
 }
 
-/* --- NUEVO: Estado Activo (Sección actual) --- */
-/* Se aplica cuando el router añade la clase .active */
 .component-menu-link.active {
-    background-color: #f5f5fa; /* Mismo color que el hover */
+    background-color: #f5f5fa; 
 }
 
 .component-menu-link.active .component-menu-link-icon {
-    color: #000000;             /* Asegura que el icono se vea nítido */
+    color: #000000;
 }
-
-/* ... resto del código ... */
 
 .component-menu-link-icon {
     width: 45px;
@@ -235,9 +229,8 @@
     }
 }
 
-/* Mobile Small (465px) - CSS MODERNO CON ANIMACIÓN DE ENTRADA */
+/* Mobile Small (465px) */
 @media (max-width: 468px) {
-    /* 1. Reset básico */
     .component-module--display-block.component-module--size-m {
         display: flex;
         width: 100%;
@@ -253,7 +246,6 @@
         border: none;     
     }
 
-    /* 2. OVERLAY LOGIC (Modern Syntax) */
     .component-module--display-overlay {
         position: fixed;
         top: 0;
@@ -261,36 +253,23 @@
         right: 0;
         bottom: 0;
         z-index: 1000;
-        
-        /* Layout */
         display: flex;
         width: 100%;
         height: 100%;
-        align-items: flex-end; /* Pega el panel al fondo */
-        
-        /* Estado VISIBLE */
+        align-items: flex-end; 
         background-color: rgba(0, 0, 0, 0.5);
-        
-        /* PROPIEDADES ESPECÍFICAS DE TRANSICIÓN */
-        /* allow-discrete permite animar display:none a display:flex */
         transition: display 0.3s allow-discrete, background-color 0.3s ease;
     }
 
-    /* Panel interno */
     .component-module--display-overlay .component-module-panel {
         border-bottom-left-radius: 0;
         border-bottom-right-radius: 0;
         width: 100%;
-        
-        /* Estado VISIBLE */
         transform: translateY(0);
-        
-        /* Solo animamos el transform, nada más */
         transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         will-change: transform;
     }
 
-    /* 3. ESTADO DISABLED (Salida) */
     .component-module--display-overlay.disabled {
         display: none;
         background-color: rgba(0, 0, 0, 0);
@@ -300,8 +279,6 @@
         transform: translateY(100%);
     }
 
-    /* 4. ESTADO INICIAL (Entrada / @starting-style) */
-    /* Define desde dónde empieza la animación cuando display cambia de none a flex */
     @starting-style {
         .component-module--display-overlay {
             background-color: rgba(0, 0, 0, 0);
@@ -312,13 +289,134 @@
         }
     }
     
-    /* Estado dragging */
     .component-module--display-overlay.is-dragging .component-module-panel {
         transition: none;
     }
 }
 
-/* Lógica de Display General (PC) */
 .component-module.disabled {
     display: none;
+}
+
+/* =========================================
+   AUTH VIEWS & FLOATING LABELS
+   ========================================= */
+
+/* Contenedor centralizado para Login/Register */
+.auth-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.auth-container {
+    width: 100%;
+    max-width: 400px; /* Ancho máximo para que no se vea gigante en desktop */
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.auth-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+/* --- Floating Label Input Group --- */
+.input-group {
+    position: relative;
+    width: 100%;
+    height: 50px; /* Solicitud explicita */
+}
+
+.input-field {
+    width: 100%;
+    height: 100%;
+    padding: 20px 12px 4px 12px; /* Espacio arriba para el label cuando sube */
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    outline: none;
+    background-color: #f9f9f9;
+    font-size: 16px;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.input-field:focus {
+    border-color: #000;
+    background-color: #fff;
+}
+
+/* El Label */
+.input-label {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: #666;
+    pointer-events: none; /* Permite clickear el input a través del label */
+    transition: all 0.2s ease;
+}
+
+/* Lógica de elevación (Floating) */
+/* Se eleva si tiene foco O si NO está mostrando el placeholder (es decir, tiene texto) */
+.input-field:focus + .input-label,
+.input-field:not(:placeholder-shown) + .input-label {
+    top: 14px; /* Ajuste fino vertical */
+    font-size: 11px;
+    color: #000;
+    font-weight: 600;
+}
+
+/* --- Auth Actions --- */
+.auth-button {
+    width: 100%;
+    height: 50px; /* Solicitud explicita */
+    background-color: #000;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.auth-button:hover {
+    opacity: 0.9;
+}
+
+.auth-links {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.link-secondary {
+    color: #666;
+    text-decoration: none;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.link-secondary:hover {
+    text-decoration: underline;
+    color: #000;
+}
+
+.link-bold {
+    font-weight: 600;
+    color: #000;
+}
+
+.view-content {
+    width: 100%;
+    height: 100%;
 }

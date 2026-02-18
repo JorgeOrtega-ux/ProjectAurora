@@ -3,7 +3,6 @@ export class SpaRouter {
         this.outlet = document.querySelector(options.outlet || '#app-router-outlet');
         this.basePath = '/ProjectAurora';
         
-        // Eliminamos cualquier estilo de transición previo
         if (this.outlet) {
             this.outlet.style.transition = 'none';
             this.outlet.style.opacity = '1';
@@ -38,27 +37,27 @@ export class SpaRouter {
     }
 
     async loadRoute(url) {
-        // 1. INMEDIATO: Mostrar Loader y BORRAR contenido viejo
-        this._createLoader();
-        
+        // 1. Limpiar contenido actual
         if (this.outlet) {
-            this.outlet.innerHTML = ''; // Se elimina la sección vieja al instante
+            this.outlet.innerHTML = ''; 
+            // 2. Mostrar loader DENTRO del outlet
+            this._showLoaderInOutlet();
         }
 
         try {
-            // 2. ESPERA: Fetch + Tiempo mínimo (200ms)
             const fetchPromise = fetch(url, {
                 method: 'GET',
                 headers: { 'X-SPA-Request': 'true' }
             });
 
+            // Mantenemos el delay mínimo para evitar parpadeos muy rápidos
             const delayPromise = new Promise(resolve => setTimeout(resolve, 200));
 
             const [response] = await Promise.all([fetchPromise, delayPromise]);
 
-            // 3. CARGA: Insertar contenido nuevo
             if (response.ok) {
                 const html = await response.text();
+                // 3. Renderizar sobrescribe el loader automáticamente
                 this.render(html);
             } else {
                 console.error('Error:', response.status);
@@ -68,9 +67,6 @@ export class SpaRouter {
         } catch (error) {
             console.error('Network error:', error);
             this.render('<div class="view-content"><h1>Error de Red</h1></div>');
-        } finally {
-            // 4. LIMPIEZA: Quitar loader
-            this._removeLoader();
         }
     }
 
@@ -93,27 +89,19 @@ export class SpaRouter {
         if(target) this.updateActiveNav(target);
     }
 
-    /* --- LOADER SPINNER --- */
-
-    _createLoader() {
-        if (document.getElementById('dynamic-loader')) return;
-
-        const loader = document.createElement('div');
-        loader.id = 'dynamic-loader';
-        loader.className = 'loader-overlay'; 
-        loader.classList.add('active'); // Activo directamente, sin esperas
+    /* --- LOADER INTERNO --- */
+    
+    _showLoaderInOutlet() {
+        // Creamos el contenedor del loader
+        const loaderContainer = document.createElement('div');
+        loaderContainer.className = 'content-loader-container';
         
         const spinner = document.createElement('div');
         spinner.className = 'spinner';
         
-        loader.appendChild(spinner);
-        document.body.appendChild(loader);
-    }
-
-    _removeLoader() {
-        const loader = document.getElementById('dynamic-loader');
-        if (loader && loader.parentNode) {
-            loader.parentNode.removeChild(loader);
-        }
+        loaderContainer.appendChild(spinner);
+        
+        // Lo añadimos al outlet (que ya fue vaciado)
+        this.outlet.appendChild(loaderContainer);
     }
 }

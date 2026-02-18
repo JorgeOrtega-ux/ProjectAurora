@@ -24,7 +24,7 @@
                 <span class="material-symbols-rounded">search</span>
             </button>
 
-            <button class="component-button component-button--black component-button--rect-40">
+            <button class="component-button component-button--black component-button--rect-40" data-nav="/ProjectAurora/login">
                 Acceder
             </button>
 
@@ -35,9 +35,6 @@
     </div>
 
     <?php
-    // __DIR__ aquí es '.../includes/layout'. 
-    // Subimos uno para ir a 'includes' y entramos a 'modules'.
     include __DIR__ . '/../modules/moduleMainOptions.php';
     ?>
-
 </div>
