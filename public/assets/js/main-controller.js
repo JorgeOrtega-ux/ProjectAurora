@@ -48,12 +48,19 @@ export class MainController {
             });
         });
 
+        // --- CORRECCIÓN APLICADA AQUÍ ---
         document.addEventListener('click', (e) => {
             const openModules = document.querySelectorAll('.component-module:not(.disabled)');
             openModules.forEach(module => {
                 const panel = module.querySelector('.component-module-panel');
+                
+                // Si estamos arrastrando, no hacemos nada
                 if (this.dragState.isDragging) return;
-                if (module.contains(e.target) && !panel.contains(e.target)) {
+
+                // LOGICA CORREGIDA:
+                // Si existe el panel y el clic NO fue dentro del panel, cerramos.
+                // Esto cubre clics en el overlay (móvil) y en el body (escritorio).
+                if (panel && !panel.contains(e.target)) {
                     this.closeModule(module);
                 }
             });
@@ -125,7 +132,6 @@ export class MainController {
         });
     }
 
-    // --- CORRECCIÓN AQUÍ: USO DE POINTER EVENTS ---
     initBottomSheets() {
         const modules = document.querySelectorAll('.component-module--display-overlay');
 
@@ -134,14 +140,13 @@ export class MainController {
             if (!panel) return;
 
             // Usamos 'pointerdown' en lugar de mousedown/touchstart.
-            // Esto unifica la lógica y permite usar setPointerCapture.
             panel.addEventListener('pointerdown', (e) => {
-                // Prevenir el drag nativo del navegador (imágenes fantasma, selección)
+                // Prevenir el drag nativo del navegador
                 e.preventDefault(); 
                 this.handleDragStart(e, module, panel);
             });
 
-            // Usamos pointermove y pointerup globales o sobre el panel con captura
+            // Eventos globales para el movimiento y soltado
             panel.addEventListener('pointermove', (e) => this.handleDragMove(e));
             panel.addEventListener('pointerup', (e) => this.handleDragEnd(e));
             panel.addEventListener('pointercancel', (e) => this.handleDragEnd(e));
@@ -154,14 +159,11 @@ export class MainController {
         // Verificar que sea botón izquierdo (para mouse) o toque
         if (e.pointerType === 'mouse' && e.button !== 0) return;
 
-        // --- LA SOLUCIÓN CLAVE ---
-        // 'setPointerCapture' obliga al navegador a redirigir todos los eventos
-        // futuros a 'panel' hasta que se suelte, incluso si el cursor sale del div.
-        // Esto evita que se pierda el evento 'mouseup'.
+        // Captura del puntero para no perder el evento si sale del div
         panel.setPointerCapture(e.pointerId);
 
         this.dragState.isDragging = true;
-        this.dragState.startY = e.clientY; // e.clientY funciona igual para mouse y touch en PointerEvents
+        this.dragState.startY = e.clientY;
         this.dragState.module = module;
         this.dragState.panel = panel;
         module.classList.add('is-dragging');
@@ -170,12 +172,11 @@ export class MainController {
     handleDragMove(e) {
         if (!this.dragState.isDragging) return;
         
-        // Prevenir comportamientos por defecto del navegador durante el arrastre
         if (e.cancelable) e.preventDefault();
 
         const diff = e.clientY - this.dragState.startY;
         
-        // Lógica de arrastre (solo hacia abajo para cerrar)
+        // Solo permitir arrastre hacia abajo
         if (diff > 0) {
             this.dragState.panel.style.transform = `translateY(${diff}px)`;
             this.dragState.currentDiff = diff;
@@ -188,7 +189,6 @@ export class MainController {
         this.dragState.isDragging = false;
         this.dragState.module.classList.remove('is-dragging');
         
-        // Liberamos la captura del puntero
         if (this.dragState.panel.hasPointerCapture(e.pointerId)) {
             this.dragState.panel.releasePointerCapture(e.pointerId);
         }

@@ -1,0 +1,10 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Define la base de la URL (la carpeta de tu proyecto)
+    RewriteBase /ProjectAurora/
+
+    # Si la petición llega a la raíz del proyecto, redirige a /public/
+    # Usamos una ruta relativa para evitar que incluya la ruta del disco (E:/...)
+    RewriteRule ^$ public/ [L,R=301]
+</IfModule>
