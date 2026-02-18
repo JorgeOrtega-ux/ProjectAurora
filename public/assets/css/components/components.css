@@ -410,4 +410,12 @@
     z-index: 3; /* Asegura que el label quede ENCIMA del fondo del input */
 }
 
-/* ... resto del código ... */
+/* ... resto del código ... *//* AGREGAR ESTO: Define el estado inicial al "nacer" el elemento */
+@starting-style {
+    .component-module--display-overlay {
+        background-color: rgba(0, 0, 0, 0); /* Empieza transparente */
+    }
+    .component-module--display-overlay .component-module-panel {
+        transform: translateY(100%); /* Empieza abajo */
+    }
+}
