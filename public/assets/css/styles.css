@@ -173,7 +173,7 @@ body {
         align-items: center;
         width: 100%;
         flex-shrink: 0;
-        padding: 12px 0; /* Más área táctil vertical */
+        padding-bottom: 12px;
         cursor: grab;
         touch-action: none; /* Crucial: Evita que el navegador intente hacer scroll nativo al arrastrar */
     }

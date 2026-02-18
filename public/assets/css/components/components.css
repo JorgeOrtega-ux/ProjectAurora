@@ -19,6 +19,8 @@
     font-size: 14px;
     outline: none;
     transition: background-color 0.2s;
+    text-decoration: none;
+    color: inherit;
 }
 
 .component-button:hover {
@@ -32,22 +34,34 @@
     padding: 0;
 }
 
-/* Modificador de Estilo: Negro */
-.component-button--black {
+.component-button--rect-40 {
+    height: 40px;
+    padding: 0 12px;
+    font-weight: 500;
+}
+
+/* Modificador: Large (Para el Login) */
+.component-button--large {
+    width: 100%;
+    height: 48px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* Modificador de Estilo: Negro/Primary */
+.component-button--black,
+.component-button.primary {
     background-color: #000000;
     color: #ffffff;
     border-color: #000000;
 }
 
-.component-button--black:hover {
+.component-button--black:hover,
+.component-button.primary:hover {
     background-color: #333333;
+    opacity: 0.9;
 }
-/* --- NUEVO: Modificador para botones con texto (Rectangular) --- */
-.component-button--rect-40 {
-    height: 40px;          /* Misma altura que los iconos */
-    padding: 0 12px;       /* Espacio a los lados del texto */
-    font-weight: 500;      /* Un poco más de peso a la fuente */
-}
+
 /* --- COMPONENT: SEARCH --- */
 .component-search {
     width: 425px;
@@ -92,391 +106,241 @@
 /* =========================================
    SYSTEM: COMPONENT MODULE
    ========================================= */
+.component-module { box-sizing: border-box; }
+.component-module--display-overlay { position: absolute; top: calc(100% + 5px); right: 0; z-index: 100; height: auto; }
+.component-module--display-block { position: relative; height: 100%; flex-shrink: 0; display: flex; }
+.component-module--display-block[data-module="moduleSurface"] { position: absolute; top: 0; left: 0; z-index: 20; height: 100%; }
+.component-module--size-m { width: 295px; }
+.component-module--size-l { width: 425px; }
+.component-module--size-full { width: 100%; }
+.component-module--offset-s { padding: 12px; }
 
-.component-module {
-    box-sizing: border-box;
-}
+/* PANEL */
+.component-module-panel { width: 100%; height: 100%; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px #00000020; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #00000008; }
+.component-module-panel--padded { padding: 8px; height: auto; }
+.component-module-panel-top { width: 100%; }
+.component-module--display-block .component-module-panel-top { padding: 8px; }
+.component-module-panel-bottom { width: 100%; flex: 1 1 auto; }
 
-/* 2. Display Modes */
-.component-module--display-overlay {
-    position: absolute;
-    top: calc(100% + 5px);
-    right: 0;
-    z-index: 100;
-    height: auto;
-}
-
-.component-module--display-block {
-    position: relative; 
-    height: 100%;
-    flex-shrink: 0;
-    display: flex; 
-}
-
-.component-module--display-block[data-module="moduleSurface"] {
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 20;
-    height: 100%;
-}
-
-/* 3. Size Modifiers */
-.component-module--size-m {
-    width: 295px;
-}
-
-.component-module--size-l {
-    width: 425px;
-}
-
-.component-module--size-full {
-    width: 100%;
-}
-
-/* 4. Offset Modifiers */
-.component-module--offset-s {
-    padding: 12px;
-}
-
-/* --- ELEMENT: PANEL --- */
-.component-module-panel {
-    width: 100%;
-    height: 100%;
-    background-color: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px #00000020;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    border: 1px solid #00000008;
-}
-
-.component-module-panel--padded {
-    padding: 8px;
-    height: auto;
-}
-
-/* --- ELEMENT: PANEL SECTIONS --- */
-.component-module-panel-top {
-    width: 100%;
-}
-
-.component-module--display-block .component-module-panel-top {
-    padding: 8px;
-}
-
-.component-module-panel-bottom {
-    width: 100%;
-    flex: 1 1 auto;
-}
-
-/* --- COMPONENT: MENU LINK --- */
-.component-menu-list {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.component-menu-link {
-    width: 100%;
-    height: 40px;
-    display: flex;
-    flex-direction: row;
-    border-radius: 8px;
-    background-color: transparent;
-    text-decoration: none;
-    color: inherit;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-.component-menu-link:hover {
-    background-color: #f5f5fa;
-}
-
-.component-menu-link.active {
-    background-color: #f5f5fa; 
-}
-
-.component-menu-link.active .component-menu-link-icon {
-    color: #000000;
-}
-
-.component-menu-link-icon {
-    width: 45px;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: #000000;
-}
-
-.component-menu-link-text {
-    flex: 1 1 auto;
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    font-size: 14px;
-    font-weight: 500;
-    color: #000000;
-}
-
-/* --- MEDIA QUERIES --- */
-
-@media (max-width: 768px) {
-    .mobile-search-trigger {
-        display: inline-flex;
-    }
-}
-
-/* Mobile Small (465px) */
-@media (max-width: 468px) {
-    .component-module--display-block.component-module--size-m {
-        display: flex;
-        width: 100%;
-    }
-
-    .component-module--display-block.component-module--offset-s {
-        padding: 0;
-    }
-
-    .component-module--display-block .component-module-panel {
-        border-radius: 0;
-        box-shadow: none; 
-        border: none;     
-    }
-
-    .component-module--display-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 1000;
-        display: flex;
-        width: 100%;
-        height: 100%;
-        align-items: flex-end; 
-        background-color: rgba(0, 0, 0, 0.5);
-        transition: display 0.3s allow-discrete, background-color 0.3s ease;
-    }
-
-    .component-module--display-overlay .component-module-panel {
-        border-bottom-left-radius: 0;
-        border-bottom-right-radius: 0;
-        width: 100%;
-        max-height: 80vh;
-        transform: translateY(0);
-        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-        will-change: transform;
-    }
-
-    .component-module--display-overlay.disabled {
-        display: none;
-        background-color: rgba(0, 0, 0, 0);
-    }
-
-    .component-module--display-overlay.disabled .component-module-panel {
-        transform: translateY(100%);
-    }
-
-    @starting-style {
-        .component-module--display-overlay {
-            background-color: rgba(0, 0, 0, 0);
-        }
-        
-        .component-module--display-overlay .component-module-panel {
-            transform: translateY(100%);
-        }
-    }
-    
-    .component-module--display-overlay.is-dragging .component-module-panel {
-        transition: none;
-    }
-}
-
-.component-module.disabled {
-    display: none;
-}
+/* MENU LINK */
+.component-menu-list { width: 100%; display: flex; flex-direction: column; gap: 4px; }
+.component-menu-link { width: 100%; height: 40px; display: flex; flex-direction: row; border-radius: 8px; background-color: transparent; text-decoration: none; color: inherit; cursor: pointer; transition: background-color 0.2s ease; }
+.component-menu-link:hover, .component-menu-link.active { background-color: #f5f5fa; }
+.component-menu-link.active .component-menu-link-icon { color: #000000; }
+.component-menu-link-icon { width: 45px; height: 100%; display: flex; justify-content: center; align-items: center; color: #000000; }
+.component-menu-link-text { flex: 1 1 auto; display: flex; justify-content: flex-start; align-items: center; font-size: 14px; font-weight: 500; color: #000000; }
 
 /* =========================================
-   AUTH VIEWS & FLOATING LABELS
+   NUEVO DISEÑO AUTH (MODULAR 8PX)
    ========================================= */
 
-/* Contenedor centralizado para Login/Register */
-.auth-wrapper {
-    width: 100%;
-    height: 100%;
+/* Layout Centrado */
+.component-layout-centered {
     display: flex;
     justify-content: center;
     align-items: center;
+    width: 100%;
+    height: 100%;
     padding: 20px;
 }
 
-.auth-container {
+/* Tarjeta Auth */
+.component-card {
+    background-color: #ffffff;
+    border-radius: 16px;
+    padding: 32px 24px;
+    /* Box shadow eliminado */
+    box-shadow: none; 
     width: 100%;
-    max-width: 400px; /* Ancho máximo para que no se vea gigante en desktop */
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
 }
 
-.auth-title {
-    font-size: 28px;
+/* Constraint de ancho solicitado: 355px */
+.component-card--compact {
+    max-width: 355px; 
+}
+
+/* Header Centrado */
+.component-header-centered {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.component-header-centered h1 {
+    font-size: 24px;
     font-weight: 700;
     margin-bottom: 8px;
-    text-align: center;
+    color: #1a1a1a;
 }
 
-/* --- Floating Label Input Group --- */
-.input-group {
+.component-header-centered p {
+    font-size: 14px;
+    color: #666;
+}
+
+/* --- MODULARIDAD: El Stage Form controla el ritmo vertical --- */
+.component-stage-form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 8px; /* 8px entre todos los elementos hijos directos */
+}
+
+/* Grupo de Formulario (Inputs) */
+.component-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* 8px entre inputs */
+    width: 100%;
+}
+
+/* Input Wrapper (Floating) */
+.component-input-wrapper {
     position: relative;
     width: 100%;
-    height: 50px; /* Solicitud explicita */
-}
-
-.input-field {
-    width: 100%;
-    height: 100%;
-    padding: 20px 12px 4px 12px; /* Espacio arriba para el label cuando sube */
-    border: 1px solid #ccc;
+    height: 52px;
+    border: 1px solid #e0e0e0;
     border-radius: 8px;
-    outline: none;
-    background-color: #f9f9f9;
-    font-size: 16px;
-    transition: border-color 0.2s, background-color 0.2s;
-}
-
-.input-field:focus {
-    border-color: #000;
+    transition: border-color 0.2s ease;
     background-color: #fff;
 }
 
-/* El Label */
-.input-label {
+.component-input-wrapper:focus-within {
+    border-color: #000;
+}
+
+/* Input Transparente */
+.component-text-input {
+    width: 100%;
+    height: 100%;
+    background-color: transparent !important;
+    border: none;
+    outline: none;
+    padding: 22px 12px 6px 12px;
+    font-size: 16px;
+    color: #000;
+    border-radius: 8px;
+    z-index: 2;
+    position: relative;
+}
+
+/* Corrección para passwords largos */
+.component-text-input.has-action {
+    padding-right: 48px; 
+}
+
+/* Label Flotante */
+.component-label-floating {
     position: absolute;
     left: 12px;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 16px;
-    color: #666;
-    pointer-events: none; /* Permite clickear el input a través del label */
+    font-size: 15px;
+    color: #757575;
+    pointer-events: none;
     transition: all 0.2s ease;
+    z-index: 1;
 }
 
-/* Lógica de elevación (Floating) */
-/* Se eleva si tiene foco O si NO está mostrando el placeholder (es decir, tiene texto) */
-.input-field:focus + .input-label,
-.input-field:not(:placeholder-shown) + .input-label {
-    top: 14px; /* Ajuste fino vertical */
+.component-text-input:focus + .component-label-floating,
+.component-text-input:not(:placeholder-shown) + .component-label-floating {
+    top: 14px;
     font-size: 11px;
+    font-weight: 600;
     color: #000;
-    font-weight: 600;
 }
 
-/* --- Auth Actions --- */
-.auth-button {
-    width: 100%;
-    height: 50px; /* Solicitud explicita */
-    background-color: #000;
-    color: #fff;
+/* Botón de acción (Toggle Password) */
+.component-input-action {
+    position: absolute;
+    right: 8px; 
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;  
+    height: 36px;
+    border-radius: 50%; 
+    background: transparent;
     border: none;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: 600;
     cursor: pointer;
-    transition: opacity 0.2s;
-}
-
-.auth-button:hover {
-    opacity: 0.9;
-}
-
-.auth-links {
+    color: #757575;
     display: flex;
-    flex-direction: column;
-    gap: 16px;
+    justify-content: center;
     align-items: center;
-    margin-top: 8px;
+    z-index: 3;
+    transition: background-color 0.2s, color 0.2s;
 }
 
-.link-secondary {
+.component-input-action:hover {
+    background-color: #f5f5fa;
+    color: #000;
+}
+
+/* Links */
+.component-link-simple {
+    font-size: 13px;
     color: #666;
     text-decoration: none;
-    font-size: 14px;
-    cursor: pointer;
-}
-
-.link-secondary:hover {
-    text-decoration: underline;
-    color: #000;
-}
-
-.link-bold {
-    font-weight: 600;
-    color: #000;
-}
-
-.view-content {
+    text-align: right;
     width: 100%;
-    height: 100%;
+    display: block;
+    font-weight: 500;
+}
+
+.component-link-simple:hover {
+    color: #000;
+    text-decoration: underline;
+}
+
+/* Footer de Texto */
+.component-text-footer {
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+}
+
+.component-text-footer a {
+    color: #000;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.component-text-footer a:hover {
+    text-decoration: underline;
 }
 
 /* =========================================
-   USER AVATAR ROLES (NUEVO)
+   MEDIA QUERIES
    ========================================= */
+@media (max-width: 768px) { .mobile-search-trigger { display: inline-flex; } }
 
-.user-avatar-btn {
-    position: relative; /* Referencia para el ::before absoluto */
-    border-radius: 50%; 
-    overflow: visible !important; /* IMPORTANTE: Permite que el borde exterior se vea */
-    transition: transform 0.2s ease;
+@media (max-width: 468px) {
+    .component-module--display-block.component-module--size-m { display: flex; width: 100%; }
+    .component-module--display-block.component-module--offset-s { padding: 0; }
+    .component-module--display-block .component-module-panel { border-radius: 0; box-shadow: none; border: none; }
+    
+    .component-module--display-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000;
+        display: flex; width: 100%; height: 100%; align-items: flex-end;
+        background-color: rgba(0, 0, 0, 0.5);
+        transition: display 0.3s allow-discrete, background-color 0.3s ease;
+    }
+    
+    .component-module--display-overlay .component-module-panel {
+        border-bottom-left-radius: 0; border-bottom-right-radius: 0; width: 100%;
+        max-height: 80vh; transform: translateY(0);
+        transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        will-change: transform;
+    }
+    
+    .component-module--display-overlay.disabled { display: none; background-color: rgba(0, 0, 0, 0); }
+    .component-module--display-overlay.disabled .component-module-panel { transform: translateY(100%); }
 }
+.component-module.disabled { display: none; }
 
-/* El anillo de color externo */
-.user-avatar-btn::before {
-    content: '';
-    position: absolute;
-    /* Ajustado a -2px para estar más pegado a la imagen */
-    top: -2px; 
-    left: -2px; 
-    right: -2px; 
-    bottom: -2px;
-    border-radius: 50%;
-    border: 2px solid transparent; /* El color se define abajo por rol */
-    z-index: 1;
-    pointer-events: none; /* Click traspasa al botón */
-    transition: border-color 0.3s ease;
-}
-
-/* La imagen tiene su propio borde blanco para separarse del anillo de color */
-.user-avatar-btn img {
-    border: 2px solid #ffffff; 
-    display: block;
-    box-sizing: border-box; 
-    border-radius: 50%;
-}
-
-/* --- COLORES POR ROL --- */
-
-/* User: Gris */
-.user-avatar-btn[data-role="user"]::before {
-    border-color: #eeeeee;
-}
-
-/* Moderator: Azul */
-.user-avatar-btn[data-role="moderator"]::before {
-    border-color: #2196f3;
-}
-
-/* Administrator: Rojo */
-.user-avatar-btn[data-role="administrator"]::before {
-    border-color: #f44336;
-}
-
-/* Founder: Morado */
-.user-avatar-btn[data-role="founder"]::before {
-    border-color: #9c27b0;
-}
+/* User Avatar Roles */
+.user-avatar-btn { position: relative; border-radius: 50%; overflow: visible !important; transition: transform 0.2s ease; }
+.user-avatar-btn::before { content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; border-radius: 50%; border: 2px solid transparent; z-index: 1; pointer-events: none; transition: border-color 0.3s ease; }
+.user-avatar-btn img { border: 2px solid #ffffff; display: block; box-sizing: border-box; border-radius: 50%; }
+.user-avatar-btn[data-role="user"]::before { border-color: #eeeeee; }
+.user-avatar-btn[data-role="moderator"]::before { border-color: #2196f3; }
+.user-avatar-btn[data-role="administrator"]::before { border-color: #f44336; }
+.user-avatar-btn[data-role="founder"]::before { border-color: #9c27b0; }

@@ -48,7 +48,6 @@ export class MainController {
             });
         });
 
-        // --- CORRECCIÓN APLICADA AQUÍ ---
         document.addEventListener('click', (e) => {
             const openModules = document.querySelectorAll('.component-module:not(.disabled)');
             openModules.forEach(module => {
@@ -57,9 +56,7 @@ export class MainController {
                 // Si estamos arrastrando, no hacemos nada
                 if (this.dragState.isDragging) return;
 
-                // LOGICA CORREGIDA:
                 // Si existe el panel y el clic NO fue dentro del panel, cerramos.
-                // Esto cubre clics en el overlay (móvil) y en el body (escritorio).
                 if (panel && !panel.contains(e.target)) {
                     this.closeModule(module);
                 }
@@ -139,14 +136,22 @@ export class MainController {
             const panel = module.querySelector('.component-module-panel');
             if (!panel) return;
 
-            // Usamos 'pointerdown' en lugar de mousedown/touchstart.
-            panel.addEventListener('pointerdown', (e) => {
-                // Prevenir el drag nativo del navegador
-                e.preventDefault(); 
-                this.handleDragStart(e, module, panel);
-            });
+            // --- CORRECCIÓN: Buscar la "agarradera" (pill-container) ---
+            const dragHandle = panel.querySelector('.pill-container');
 
-            // Eventos globales para el movimiento y soltado
+            if (dragHandle) {
+                // Usamos 'pointerdown' SOLO en la agarradera
+                dragHandle.addEventListener('pointerdown', (e) => {
+                    // Prevenir el drag nativo y la propagación
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.handleDragStart(e, module, panel);
+                });
+            }
+
+            // Mantenemos los listeners de movimiento y finalización en el panel
+            // para que el arrastre sea fluido aunque el dedo se salga de la agarradera.
+            // Gracias a setPointerCapture en handleDragStart, esto funcionará bien.
             panel.addEventListener('pointermove', (e) => this.handleDragMove(e));
             panel.addEventListener('pointerup', (e) => this.handleDragEnd(e));
             panel.addEventListener('pointercancel', (e) => this.handleDragEnd(e));
@@ -160,6 +165,7 @@ export class MainController {
         if (e.pointerType === 'mouse' && e.button !== 0) return;
 
         // Captura del puntero para no perder el evento si sale del div
+        // Esto asegura que los eventos pointermove/up del panel se disparen
         panel.setPointerCapture(e.pointerId);
 
         this.dragState.isDragging = true;
