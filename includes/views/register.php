@@ -30,6 +30,8 @@
                     Crear Cuenta
                 </button>
 
+                <div id="register-error" class="component-message-error"></div>
+
                 <div class="component-text-footer">
                     <p>¿Ya tienes una cuenta? <a href="/ProjectAurora/login" data-nav="/ProjectAurora/login">Inicia sesión</a></p>
                 </div>

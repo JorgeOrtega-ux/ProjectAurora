@@ -30,6 +30,8 @@
                     Iniciar Sesión
                 </button>
 
+                <div id="login-error" class="component-message-error"></div>
+
                 <div class="component-text-footer">
                     <p>¿No tienes una cuenta? <a href="/ProjectAurora/register" data-nav="/ProjectAurora/register">Regístrate</a></p>
                 </div>
