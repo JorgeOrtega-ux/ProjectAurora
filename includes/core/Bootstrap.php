@@ -38,9 +38,7 @@ try {
 }
 
 // 5. CONEXIÓN A LA BASE DE DATOS Y MANEJO DE ERRORES GLOBALES
-// Hacemos la conexión global para que los handlers la puedan reutilizar sin instanciar de nuevo
-global $dbConnection;
-
+// La variable $dbConnection se crea sin declarar 'global'
 try {
     $database = new Database();
     $dbConnection = $database->getConnection();
