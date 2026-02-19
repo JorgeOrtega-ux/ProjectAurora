@@ -5,5 +5,11 @@ return [
     '/' => 'home.php',
     '/explore' => 'explore.php',
     '/login' => 'login.php',
-    '/register' => 'register.php'
+    '/register' => 'register.php',
+    
+    // Rutas de configuración
+    '/settings/your-account' => 'settings-account.php',
+    '/settings/security' => 'settings-security.php',
+    '/settings/accessibility' => 'settings-accessibility.php',
+    '/settings/guest' => 'settings-guest.php'
 ];

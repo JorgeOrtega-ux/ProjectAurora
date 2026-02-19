@@ -1,3 +1,4 @@
+// public/assets/js/spa-router.js
 export class SpaRouter {
     constructor(options = {}) {
         this.outlet = document.querySelector(options.outlet || '#app-router-outlet');
@@ -21,6 +22,13 @@ export class SpaRouter {
             
             if (navTarget) {
                 e.preventDefault();
+                
+                // Cerrar automáticamente los módulos superpuestos si se hizo clic adentro
+                const module = navTarget.closest('.component-module');
+                if(module && module.dataset.module !== 'moduleSurface') {
+                    module.classList.add('disabled');
+                }
+
                 const url = navTarget.dataset.nav;
                 this.navigate(url);
                 this.updateActiveNav(navTarget);
@@ -37,12 +45,13 @@ export class SpaRouter {
     }
 
     async loadRoute(url) {
-        // 1. Limpiar contenido actual
         if (this.outlet) {
             this.outlet.innerHTML = ''; 
-            // 2. Mostrar loader DENTRO del outlet
             this._showLoaderInOutlet();
         }
+
+        // Alternar el Surface Menu dinámicamente
+        this.updateSurfaceMenu(url);
 
         try {
             const fetchPromise = fetch(url, {
@@ -50,15 +59,14 @@ export class SpaRouter {
                 headers: { 'X-SPA-Request': 'true' }
             });
 
-            // Mantenemos el delay mínimo para evitar parpadeos muy rápidos
             const delayPromise = new Promise(resolve => setTimeout(resolve, 200));
 
             const [response] = await Promise.all([fetchPromise, delayPromise]);
 
             if (response.ok) {
                 const html = await response.text();
-                // 3. Renderizar sobrescribe el loader automáticamente
                 this.render(html);
+                this.highlightCurrentRoute();
             } else {
                 console.error('Error:', response.status);
                 this.render('<div class="view-content"><h1>Error</h1><p>No se pudo cargar.</p></div>');
@@ -87,12 +95,27 @@ export class SpaRouter {
         const target = document.querySelector(`[data-nav="${path}"]`) || 
                        document.querySelector(`[data-nav="${path}/"]`);
         if(target) this.updateActiveNav(target);
+        
+        // Mantener la sincronización del menú surface al recargar directo
+        this.updateSurfaceMenu(path);
     }
 
-    /* --- LOADER INTERNO --- */
-    
+    updateSurfaceMenu(url) {
+        const mainAppMenu = document.getElementById('menu-surface-main');
+        const settingsMenu = document.getElementById('menu-surface-settings');
+        
+        if (!mainAppMenu || !settingsMenu) return;
+
+        if (url.includes('/settings/')) {
+            mainAppMenu.style.display = 'none';
+            settingsMenu.style.display = 'flex';
+        } else {
+            mainAppMenu.style.display = 'flex';
+            settingsMenu.style.display = 'none';
+        }
+    }
+
     _showLoaderInOutlet() {
-        // Creamos el contenedor del loader
         const loaderContainer = document.createElement('div');
         loaderContainer.className = 'content-loader-container';
         
@@ -100,8 +123,6 @@ export class SpaRouter {
         spinner.className = 'spinner';
         
         loaderContainer.appendChild(spinner);
-        
-        // Lo añadimos al outlet (que ya fue vaciado)
         this.outlet.appendChild(loaderContainer);
     }
 }
