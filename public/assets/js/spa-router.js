@@ -3,10 +3,7 @@ export class SpaRouter {
     constructor(options = {}) {
         this.outlet = document.querySelector(options.outlet || '#app-router-outlet');
         this.basePath = '/ProjectAurora';
-        if (this.outlet) {
-            this.outlet.style.transition = 'none';
-            this.outlet.style.opacity = '1';
-        }
+        // Se eliminaron las líneas que forzaban transition: none y opacity: 1
         this.init();
     }
 
@@ -49,6 +46,7 @@ export class SpaRouter {
                 method: 'GET',
                 headers: { 'X-SPA-Request': 'true' }
             });
+            // SE MANTIENEN LOS 200ms INTACTOS COMO PEDISTE
             const delayPromise = new Promise(resolve => setTimeout(resolve, 200));
             const [response] = await Promise.all([fetchPromise, delayPromise]);
 

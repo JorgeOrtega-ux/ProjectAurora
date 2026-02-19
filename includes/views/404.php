@@ -1,5 +1,5 @@
 <?php http_response_code(404); ?>
-<div class="view-content animate-fade-in">
+<div class="view-content">
     <div class="component-layout-centered" style="flex-direction: column; text-align: center;">
         
         <span style="display: inline-block; padding: 8px 16px; border: 1px solid #00000020; border-radius: 12px; font-weight: 600; font-size: 14px; color: #555; margin-bottom: 24px; letter-spacing: 2px;">

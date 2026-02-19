@@ -5,7 +5,7 @@ $uri = $_SERVER['REQUEST_URI'] ?? '';
 $isSubStep = (strpos($uri, '/aditional-data') !== false || strpos($uri, '/verification-account') !== false);
 $headerStyle = $isSubStep ? 'display: none;' : '';
 ?>
-<div class="view-content animate-fade-in">
+<div class="view-content">
     <div class="component-layout-centered">
         <div class="component-card component-card--compact">
 

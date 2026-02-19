@@ -1,4 +1,4 @@
-<div class="view-content animate-fade-in">
+<div class="view-content">
     <div class="component-layout-centered">
         <div class="component-card component-card--compact">
 

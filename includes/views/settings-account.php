@@ -6,7 +6,7 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 ?>
-<div class="view-content animate-fade-in" style="padding: 24px;">
+<div class="view-content">
     <h1 style="font-size: 24px; font-weight: 600; margin-bottom: 8px;">Tu perfil</h1>
     <p style="color: #666; font-size: 14px;">Administra tu información personal y detalles de tu cuenta.</p>
     
