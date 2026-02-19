@@ -19,7 +19,7 @@ $headerStyle = $isSubStep ? 'display: none;' : '';
                 <div id="register-fatal-error-code" class="component-json-error-box"></div>
             </div>
 
-            <form id="form-register-1" class="component-stage-form" style="display: none;">
+            <div id="form-register-1" class="component-stage-form" style="display: none;">
                 <input type="hidden" id="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
 
                 <div class="component-form-group">
@@ -36,7 +36,7 @@ $headerStyle = $isSubStep ? 'display: none;' : '';
                         </button>
                     </div>
                 </div>
-                <button type="submit" id="btn-next-1" class="component-button component-button--large primary" style="margin-top: 16px;">
+                <button type="button" id="btn-next-1" class="component-button component-button--large primary" style="margin-top: 16px;">
                     Continuar
                 </button>
 
@@ -45,9 +45,9 @@ $headerStyle = $isSubStep ? 'display: none;' : '';
                 <div class="component-text-footer" style="margin-top: 12px;">
                     <p>¿Ya tienes una cuenta? <a href="/ProjectAurora/login" data-nav="/ProjectAurora/login">Inicia sesión</a></p>
                 </div>
-            </form>
+            </div>
 
-            <form id="form-register-2" class="component-stage-form" style="display: none;">
+            <div id="form-register-2" class="component-stage-form" style="display: none;">
                 <button type="button" id="btn-back-1" class="component-button component-button--square-40" style="margin-bottom: 16px;">
                     <span class="material-symbols-rounded">arrow_back</span>
                 </button>
@@ -58,14 +58,14 @@ $headerStyle = $isSubStep ? 'display: none;' : '';
                         <label for="reg-username" class="component-label-floating">Nombre de usuario</label>
                     </div>
                 </div>
-                <button type="submit" id="btn-next-2" class="component-button component-button--large primary" style="margin-top: 16px;">
+                <button type="button" id="btn-next-2" class="component-button component-button--large primary" style="margin-top: 16px;">
                     Continuar
                 </button>
 
                 <div id="register-error-2" class="component-message-error"></div>
-            </form>
+            </div>
 
-            <form id="form-register-3" class="component-stage-form" style="display: none;">
+            <div id="form-register-3" class="component-stage-form" style="display: none;">
                 <button type="button" id="btn-back-2" class="component-button component-button--square-40" style="margin-bottom: 16px;">
                     <span class="material-symbols-rounded">arrow_back</span>
                 </button>
@@ -81,12 +81,12 @@ $headerStyle = $isSubStep ? 'display: none;' : '';
                         <label for="reg-code" class="component-label-floating" style="left: 12px; transform: translateY(-50%); width: 100%; text-align: center;">Código de 6 dígitos</label>
                     </div>
                 </div>
-                <button type="submit" id="btn-register-final" class="component-button component-button--large primary" style="margin-top: 16px;">
+                <button type="button" id="btn-register-final" class="component-button component-button--large primary" style="margin-top: 16px;">
                     Verificar y Crear Cuenta
                 </button>
 
                 <div id="register-error-3" class="component-message-error"></div>
-            </form>
+            </div>
 
         </div>
     </div>

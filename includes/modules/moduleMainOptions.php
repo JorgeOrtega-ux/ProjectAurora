@@ -4,6 +4,9 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 $isLoggedInOption = isset($_SESSION['user_id']);
 $settingsRoute = $isLoggedInOption ? '/ProjectAurora/settings/your-account' : '/ProjectAurora/settings/guest';
+
+// Recuperamos el rol del usuario (por defecto 'user' si no está definido)
+$userRoleOption = $isLoggedInOption && isset($_SESSION['user_role']) ? $_SESSION['user_role'] : 'user';
 ?>
 <div class="component-module component-module--display-overlay component-module--size-m disabled" data-module="moduleMainOptions">
     <div class="component-module-panel">
@@ -24,7 +27,18 @@ $settingsRoute = $isLoggedInOption ? '/ProjectAurora/settings/your-account' : '/
                     </div>
                 </a>
                 
-                <a href="#" class="component-menu-link">
+                <?php if ($isLoggedInOption && in_array($userRoleOption, ['administrator', 'founder'])): ?>
+                <a href="#" class="component-menu-link" onclick="event.preventDefault();">
+                    <div class="component-menu-link-icon">
+                        <span class="material-symbols-rounded">admin_panel_settings</span>
+                    </div>
+                    <div class="component-menu-link-text">
+                        <span>Panel de administración</span>
+                    </div>
+                </a>
+                <?php endif; ?>
+                
+                <a href="#" class="component-menu-link" onclick="event.preventDefault();">
                     <div class="component-menu-link-icon">
                         <span class="material-symbols-rounded">help</span>
                     </div>

@@ -13,17 +13,27 @@ export class AuthController {
     }
 
     init() {
-        // Envíos de los formularios
-        document.body.addEventListener('submit', (e) => {
-            if (e.target.id === 'form-login') { e.preventDefault(); this.handleLogin(); }
-            else if (e.target.id === 'form-register-1') { e.preventDefault(); this.handleRegisterStage1(); }
-            else if (e.target.id === 'form-register-2') { e.preventDefault(); this.handleRegisterStage2(); }
-            else if (e.target.id === 'form-register-3') { e.preventDefault(); this.handleRegisterFinal(); }
-            else if (e.target.id === 'form-forgot-password') { e.preventDefault(); this.handleForgotPassword(); }
-            else if (e.target.id === 'form-reset-password') { e.preventDefault(); this.handleResetPassword(); }
+        // Manejo de pulsación de tecla Enter para emular el 'submit' nativo
+        document.body.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                if (e.target.closest('#form-login')) { e.preventDefault(); this.handleLogin(); }
+                else if (e.target.closest('#form-register-1')) { e.preventDefault(); this.handleRegisterStage1(); }
+                else if (e.target.closest('#form-register-2')) { e.preventDefault(); this.handleRegisterStage2(); }
+                else if (e.target.closest('#form-register-3')) { e.preventDefault(); this.handleRegisterFinal(); }
+                else if (e.target.closest('#form-forgot-password')) { e.preventDefault(); this.handleForgotPassword(); }
+                else if (e.target.closest('#form-reset-password')) { e.preventDefault(); this.handleResetPassword(); }
+            }
         });
 
+        // Envíos a través de clics en nuestros botones personalizados (sin usar etiquetas de formulario nativas)
         document.body.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-login')) { e.preventDefault(); this.handleLogin(); return; }
+            if (e.target.closest('#btn-next-1')) { e.preventDefault(); this.handleRegisterStage1(); return; }
+            if (e.target.closest('#btn-next-2')) { e.preventDefault(); this.handleRegisterStage2(); return; }
+            if (e.target.closest('#btn-register-final')) { e.preventDefault(); this.handleRegisterFinal(); return; }
+            if (e.target.closest('#btn-forgot-password')) { e.preventDefault(); this.handleForgotPassword(); return; }
+            if (e.target.closest('#btn-reset-password')) { e.preventDefault(); this.handleResetPassword(); return; }
+
             // Cerrar Sesión
             const logoutBtn = e.target.closest('[data-action="logout"]');
             if (logoutBtn) { e.preventDefault(); this.handleLogout(logoutBtn); return; }
@@ -60,7 +70,7 @@ export class AuthController {
         
         if (!container || !codeBox) return;
 
-        // Ocultar formularios y títulos normales
+        // Ocultar pseudo-formularios y títulos normales
         formsToHide.forEach(form => {
             if (form) form.style.display = 'none';
         });
@@ -229,12 +239,16 @@ export class AuthController {
 
     // --- MÉTODOS EXISTENTES INTACTOS (Login, Forgot, Reset) ---
     async handleLogin() {
-        const form = document.getElementById('form-login');
-        const btn = form.querySelector('button[type="submit"]'); 
+        const btn = document.getElementById('btn-login'); 
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
         const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
         const errorDiv = document.getElementById('login-error');
+
+        if (!email || !password) {
+            this.showError(errorDiv, 'Por favor, completa todos los campos.');
+            return;
+        }
 
         this.setLoading(btn, true);
         this.hideError(errorDiv);
@@ -281,6 +295,11 @@ export class AuthController {
         const linkContainer = document.getElementById('simulated-link-container');
         const linkDisplay = document.getElementById('simulated-link-display');
 
+        if (!email) {
+            this.showError(errorDiv, 'Por favor, ingresa tu correo electrónico.');
+            return;
+        }
+
         this.setLoading(btn, true);
         this.hideError(errorDiv);
         linkContainer.style.display = 'none';
@@ -311,6 +330,7 @@ export class AuthController {
             return; 
         }
 
+        if (!pass1 || !pass2) { this.showError(errorDiv, 'Por favor, completa ambos campos.'); return; }
         if (pass1 !== pass2) { this.showError(errorDiv, 'Las contraseñas no coinciden.'); return; }
 
         this.setLoading(btn, true);

@@ -7,7 +7,7 @@
                 <p id="auth-subtitle">Ingresa a tu cuenta para continuar</p>
             </div>
 
-            <form id="form-login" class="component-stage-form">
+            <div id="form-login" class="component-stage-form">
                 
                 <input type="hidden" id="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                 
@@ -28,7 +28,7 @@
 
               <a href="/ProjectAurora/forgot-password" data-nav="/ProjectAurora/forgot-password" class="component-link-simple">¿Olvidaste tu contraseña?</a>
 
-                <button type="submit" class="component-button component-button--large primary">
+                <button type="button" id="btn-login" class="component-button component-button--large primary">
                     Iniciar Sesión
                 </button>
 
@@ -37,7 +37,7 @@
                 <div class="component-text-footer">
                     <p>¿No tienes una cuenta? <a href="/ProjectAurora/register" data-nav="/ProjectAurora/register">Regístrate</a></p>
                 </div>
-            </form>
+            </div>
 
         </div>
     </div>

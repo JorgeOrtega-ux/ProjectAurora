@@ -17,7 +17,7 @@ $initialStyle = !$hasToken ? 'display: none;' : '';
                 <div id="reset-fatal-error-code" class="component-json-error-box"></div>
             </div>
 
-            <form id="form-reset-password" class="component-stage-form" style="<?php echo $initialStyle; ?>">
+            <div id="form-reset-password" class="component-stage-form" style="<?php echo $initialStyle; ?>">
                 <input type="hidden" id="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                 
                 <div class="component-form-group">
@@ -38,7 +38,7 @@ $initialStyle = !$hasToken ? 'display: none;' : '';
                     </div>
                 </div>
 
-                <button type="submit" id="btn-reset-password" class="component-button component-button--large primary" style="margin-top: 16px;">
+                <button type="button" id="btn-reset-password" class="component-button component-button--large primary" style="margin-top: 16px;">
                     Actualizar Contraseña
                 </button>
 
@@ -46,7 +46,7 @@ $initialStyle = !$hasToken ? 'display: none;' : '';
                 <div id="reset-success" style="display: none; color: #16a34a; font-weight: 500; text-align: center; margin-top: 16px; padding: 12px; background: #f0fdf4; border: 1px solid #16a34a; border-radius: 8px;">
                     Contraseña actualizada correctamente. Redirigiendo...
                 </div>
-            </form>
+            </div>
 
         </div>
     </div>
