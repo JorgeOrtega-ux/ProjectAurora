@@ -1,13 +1,23 @@
+<?php
+// Evaluamos si el token existe en la URL para evitar el parpadeo de la UI
+$hasToken = isset($_GET['token']) && !empty($_GET['token']);
+$initialStyle = !$hasToken ? 'display: none;' : '';
+?>
 <div class="view-content animate-fade-in">
     <div class="component-layout-centered">
         <div class="component-card component-card--compact">
 
-            <div class="component-header-centered">
+            <div class="component-header-centered" style="<?php echo $initialStyle; ?>">
                 <h1 id="auth-title">Nueva Contraseña</h1>
                 <p id="auth-subtitle">Ingresa tu nueva contraseña para la cuenta</p>
             </div>
 
-            <form id="form-reset-password" class="component-stage-form">
+            <div id="reset-fatal-error" class="component-fatal-error-container">
+                <h2 class="component-fatal-error-title">Oops, an error occurred!</h2>
+                <div id="reset-fatal-error-code" class="component-json-error-box"></div>
+            </div>
+
+            <form id="form-reset-password" class="component-stage-form" style="<?php echo $initialStyle; ?>">
                 <input type="hidden" id="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                 
                 <div class="component-form-group">

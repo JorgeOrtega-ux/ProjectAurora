@@ -9,6 +9,7 @@ export class AuthController {
         
         // Ejecutar la revisión de etapa inicial en caso de cargar directo del navegador
         this.checkRegisterStage(window.location.pathname);
+        this.checkResetPasswordStage(window.location.pathname);
     }
 
     init() {
@@ -48,7 +49,28 @@ export class AuthController {
         // Escuchar cuando el router termina de cargar una vista para mostrar la etapa correcta
         window.addEventListener('viewLoaded', (e) => {
             this.checkRegisterStage(e.detail.url);
+            this.checkResetPasswordStage(e.detail.url);
         });
+    }
+
+    // --- NUEVO: FUNCIÓN PARA MOSTRAR ERROR JSON ---
+    showFatalJsonError(containerId, codeId, httpCode, message, type, codeStr, formsToHide = []) {
+        const container = document.getElementById(containerId);
+        const codeBox = document.getElementById(codeId);
+        
+        if (!container || !codeBox) return;
+
+        // Ocultar formularios y títulos normales
+        formsToHide.forEach(form => {
+            if (form) form.style.display = 'none';
+        });
+        const header = document.querySelector('.component-header-centered');
+        if (header) header.style.display = 'none';
+
+        // Formatear JSON como en la imagen
+        const jsonContent = `Route Error (${httpCode} ): {\n  "error": {\n    "message": "${message}",\n    "type": "${type}",\n    "param": null,\n    "code": "${codeStr}"\n  }\n}`;
+        codeBox.textContent = jsonContent;
+        container.style.display = 'flex';
     }
 
     // --- LÓGICA DE CONTROL DE ETAPAS BASADA EN URL ---
@@ -58,8 +80,14 @@ export class AuthController {
         const stage1 = document.getElementById('form-register-1');
         const stage2 = document.getElementById('form-register-2');
         const stage3 = document.getElementById('form-register-3');
+        const header = document.querySelector('.component-header-centered');
+        const fatalContainer = document.getElementById('register-fatal-error');
 
         if (!stage1 || !stage2 || !stage3) return;
+
+        // Reset visibility (limpiar errores si el usuario regresó a la url original)
+        if (header) header.style.display = 'block';
+        if (fatalContainer) fatalContainer.style.display = 'none';
 
         // 1. Restaurar datos desde sessionStorage
         const email = sessionStorage.getItem('reg_email') || '';
@@ -80,13 +108,21 @@ export class AuthController {
         const subtitle = document.getElementById('auth-subtitle');
 
         if (url.endsWith('/register/aditional-data')) {
-            if (!email) { this.router.navigate('/ProjectAurora/register'); return; }
+            if (!email) { 
+                // En lugar de redirigir, mostramos el error JSON
+                this.showFatalJsonError('register-fatal-error', 'register-fatal-error-code', 409, 'Invalid client. Please start over.', 'invalid_request_error', 'invalid_state', [stage1, stage2, stage3]);
+                return; 
+            }
             stage2.style.display = 'flex';
             if (title) { title.textContent = 'Casi listo'; subtitle.textContent = '¿Cómo deberíamos llamarte?'; }
             setTimeout(() => document.getElementById('reg-username').focus(), 50);
 
         } else if (url.endsWith('/register/verification-account')) {
-            if (!email || !user) { this.router.navigate('/ProjectAurora/register'); return; }
+            if (!email || !user) { 
+                // En lugar de redirigir, mostramos el error JSON
+                this.showFatalJsonError('register-fatal-error', 'register-fatal-error-code', 409, 'Invalid client. Please start over.', 'invalid_request_error', 'invalid_state', [stage1, stage2, stage3]);
+                return; 
+            }
             stage3.style.display = 'flex';
             if (title) { title.textContent = 'Verificar cuenta'; subtitle.textContent = 'Confirma tu identidad'; }
             const display = document.getElementById('simulated-code-display');
@@ -97,6 +133,26 @@ export class AuthController {
             // Base /register
             stage1.style.display = 'flex';
             if (title) { title.textContent = 'Crear Cuenta'; subtitle.textContent = 'Regístrate para comenzar'; }
+        }
+    }
+
+    // --- NUEVO: LÓGICA DE CONTROL PARA RESET PASSWORD URL ---
+    checkResetPasswordStage(url) {
+        if (!url.includes('/ProjectAurora/reset-password')) return;
+        
+        const token = new URLSearchParams(window.location.search).get('token');
+        const form = document.getElementById('form-reset-password');
+        const header = document.querySelector('.component-header-centered');
+        const fatalContainer = document.getElementById('reset-fatal-error');
+        
+        // Reset visibility
+        if (fatalContainer) fatalContainer.style.display = 'none';
+        if (header) header.style.display = 'block';
+        if (form) form.style.display = 'flex';
+
+        // Validar si entró directamente sin proporcionar token en la URL
+        if (!token) {
+            this.showFatalJsonError('reset-fatal-error', 'reset-fatal-error-code', 400, 'Invalid or missing token. Please start over.', 'invalid_request_error', 'invalid_state', [form]);
         }
     }
 
@@ -224,9 +280,16 @@ export class AuthController {
         const btn = document.getElementById('btn-reset-password');
         const errorDiv = document.getElementById('reset-error');
         const successDiv = document.getElementById('reset-success');
+        const form = document.getElementById('form-reset-password');
 
         this.hideError(errorDiv);
-        if (!token) { this.showError(errorDiv, 'Enlace no válido.'); return; }
+        
+        // Bloqueo de seguridad si de alguna manera pasaron el chequeo de carga
+        if (!token) { 
+            this.showFatalJsonError('reset-fatal-error', 'reset-fatal-error-code', 400, 'Invalid client. Please start over.', 'invalid_request_error', 'invalid_state', [form]);
+            return; 
+        }
+
         if (pass1 !== pass2) { this.showError(errorDiv, 'Las contraseñas no coinciden.'); return; }
 
         this.setLoading(btn, true);
@@ -235,7 +298,11 @@ export class AuthController {
             if (res.success) {
                 successDiv.style.display = 'block'; btn.style.display = 'none';
                 setTimeout(() => window.location.href = '/ProjectAurora/login', 2000);
-            } else { this.showError(errorDiv, res.message); this.setLoading(btn, false); }
+            } else { 
+                // AQUÍ interceptamos si el token es viejo o ya se usó (la API regresó success: false)
+                this.showFatalJsonError('reset-fatal-error', 'reset-fatal-error-code', 409, res.message, 'invalid_request_error', 'token_expired_or_used', [form]);
+                this.setLoading(btn, false); 
+            }
         } catch (error) { this.showError(errorDiv, 'Error al actualizar.'); this.setLoading(btn, false); }
     }
 

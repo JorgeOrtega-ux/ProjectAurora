@@ -1,10 +1,22 @@
+<?php
+// Evaluamos la URL solicitada para ocultar la cabecera desde el servidor si es una sub-etapa
+// Esto evita el parpadeo "FOUC" (Flash of Unstyled Content) antes de que JS valide la sesión
+$uri = $_SERVER['REQUEST_URI'] ?? '';
+$isSubStep = (strpos($uri, '/aditional-data') !== false || strpos($uri, '/verification-account') !== false);
+$headerStyle = $isSubStep ? 'display: none;' : '';
+?>
 <div class="view-content animate-fade-in">
     <div class="component-layout-centered">
         <div class="component-card component-card--compact">
 
-            <div class="component-header-centered">
+            <div class="component-header-centered" style="<?php echo $headerStyle; ?>">
                 <h1 id="auth-title">Crear Cuenta</h1>
                 <p id="auth-subtitle">Regístrate para comenzar</p>
+            </div>
+
+            <div id="register-fatal-error" class="component-fatal-error-container">
+                <h2 class="component-fatal-error-title">Oops, an error occurred!</h2>
+                <div id="register-fatal-error-code" class="component-json-error-box"></div>
             </div>
 
             <form id="form-register-1" class="component-stage-form" style="display: none;">

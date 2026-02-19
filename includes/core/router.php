@@ -21,6 +21,12 @@ class Router {
             $relativePath = $requestUri;
         }
 
+        // --- SOLUCIÓN: Limpiar el slash (/) al final de la ruta ---
+        // Si la ruta tiene más de 1 caracter (no es simplemente '/') y termina en '/', lo removemos.
+        if (strlen($relativePath) > 1 && substr($relativePath, -1) === '/') {
+            $relativePath = rtrim($relativePath, '/');
+        }
+
         // Normalizar raíz vacía a '/'
         if ($relativePath === '' || $relativePath === false) {
             $relativePath = '/';
@@ -35,3 +41,4 @@ class Router {
         return '404.php';
     }
 }
+?>
