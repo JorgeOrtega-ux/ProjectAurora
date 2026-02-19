@@ -2,18 +2,24 @@
 // includes/config/routes.php
 
 return [
-    '/' => 'home.php',
-    '/explore' => 'explore.php',
-    '/login' => 'login.php',
-    '/register' => 'register.php',
-    '/register/aditional-data' => 'register.php', // Apunta al mismo archivo
-    '/register/verification-account' => 'register.php', // Apunta al mismo archivo
-    '/forgot-password' => 'forgot-password.php',
-    '/reset-password' => 'reset-password.php',
-    
-    // Rutas de configuración
-    '/settings/your-account' => 'settings-account.php',
-    '/settings/security' => 'settings-security.php',
-    '/settings/accessibility' => 'settings-accessibility.php',
-    '/settings/guest' => 'settings-guest.php'
+    // --- RUTAS PÚBLICAS ---
+    '/' => ['view' => 'home.php', 'access' => 'public', 'layout' => 'main'],
+    '/explore' => ['view' => 'explore.php', 'access' => 'public', 'layout' => 'main'],
+
+    // --- RUTAS GUEST (Solo para usuarios no logueados) ---
+    // layout = 'auth' hará que no se renderice el header ni el panel lateral
+    '/login' => ['view' => 'login.php', 'access' => 'guest', 'layout' => 'auth'],
+    '/register' => ['view' => 'register.php', 'access' => 'guest', 'layout' => 'auth'],
+    '/register/aditional-data' => ['view' => 'register.php', 'access' => 'guest', 'layout' => 'auth'],
+    '/register/verification-account' => ['view' => 'register.php', 'access' => 'guest', 'layout' => 'auth'],
+    '/forgot-password' => ['view' => 'forgot-password.php', 'access' => 'guest', 'layout' => 'auth'],
+    '/reset-password' => ['view' => 'reset-password.php', 'access' => 'guest', 'layout' => 'auth'],
+
+    // --- RUTAS AUTH (Solo para usuarios logueados) ---
+    '/settings/your-account' => ['view' => 'settings-account.php', 'access' => 'auth', 'layout' => 'main'],
+    '/settings/security' => ['view' => 'settings-security.php', 'access' => 'auth', 'layout' => 'main'],
+    '/settings/accessibility' => ['view' => 'settings-accessibility.php', 'access' => 'auth', 'layout' => 'main'],
+
+    // Ruta especial de configuración para no logueados
+    '/settings/guest' => ['view' => 'settings-guest.php', 'access' => 'guest', 'layout' => 'main']
 ];

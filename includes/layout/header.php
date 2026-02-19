@@ -39,9 +39,9 @@ $styleUser  = $isLoggedIn ? 'display: flex !important;' : 'display: none !import
             </button>
 
             <div class="auth-guest-actions" style="<?php echo $styleGuest; ?> gap: 8px;">
-                <button class="component-button component-button--black component-button--rect-40" data-nav="/ProjectAurora/login">
-                    Acceder
-                </button>
+            <button class="component-button component-button--black component-button--rect-40" onclick="window.location.href='/ProjectAurora/login'">
+    Acceder
+</button>
                 <button class="component-button component-button--square-40" data-action="toggleModuleMainOptions">
                     <span class="material-symbols-rounded">more_vert</span>
                 </button>

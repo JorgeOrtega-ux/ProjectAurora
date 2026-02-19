@@ -233,4 +233,9 @@ body {
     to { transform: rotate(360deg); }
 }
 
+.view-content {
+    width: 100%;
+    height: 100%;
+}
+
 /* NOTA: Puedes eliminar las clases .loader-overlay antiguas si ya no las usas */

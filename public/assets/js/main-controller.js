@@ -1,3 +1,5 @@
+// public/assets/js/main-controller.js
+
 export class MainController {
     constructor() {
         // --- CONFIGURACIÓN ---
@@ -109,7 +111,8 @@ export class MainController {
         window.addEventListener('resize', () => {
             document.body.classList.add('resize-animation-stopper');
             
-            if (window.innerWidth > 768 && this.header.classList.contains('is-search-active')) {
+            // CORRECCIÓN AQUÍ: Agregamos "this.header &&" para evitar el error de null en vistas auth
+            if (window.innerWidth > 768 && this.header && this.header.classList.contains('is-search-active')) {
                 this.header.classList.remove('is-search-active');
             }
             
@@ -136,22 +139,16 @@ export class MainController {
             const panel = module.querySelector('.component-module-panel');
             if (!panel) return;
 
-            // --- CORRECCIÓN: Buscar la "agarradera" (pill-container) ---
             const dragHandle = panel.querySelector('.pill-container');
 
             if (dragHandle) {
-                // Usamos 'pointerdown' SOLO en la agarradera
                 dragHandle.addEventListener('pointerdown', (e) => {
-                    // Prevenir el drag nativo y la propagación
                     e.preventDefault();
                     e.stopPropagation();
                     this.handleDragStart(e, module, panel);
                 });
             }
 
-            // Mantenemos los listeners de movimiento y finalización en el panel
-            // para que el arrastre sea fluido aunque el dedo se salga de la agarradera.
-            // Gracias a setPointerCapture en handleDragStart, esto funcionará bien.
             panel.addEventListener('pointermove', (e) => this.handleDragMove(e));
             panel.addEventListener('pointerup', (e) => this.handleDragEnd(e));
             panel.addEventListener('pointercancel', (e) => this.handleDragEnd(e));
@@ -161,11 +158,8 @@ export class MainController {
     handleDragStart(e, module, panel) {
         if (!this.isMobile) return;
         
-        // Verificar que sea botón izquierdo (para mouse) o toque
         if (e.pointerType === 'mouse' && e.button !== 0) return;
 
-        // Captura del puntero para no perder el evento si sale del div
-        // Esto asegura que los eventos pointermove/up del panel se disparen
         panel.setPointerCapture(e.pointerId);
 
         this.dragState.isDragging = true;
@@ -182,7 +176,6 @@ export class MainController {
 
         const diff = e.clientY - this.dragState.startY;
         
-        // Solo permitir arrastre hacia abajo
         if (diff > 0) {
             this.dragState.panel.style.transform = `translateY(${diff}px)`;
             this.dragState.currentDiff = diff;

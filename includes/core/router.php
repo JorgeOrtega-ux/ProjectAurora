@@ -17,15 +17,13 @@ class Router {
         $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
         
         // 2. Limpiar el 'base path' para obtener la ruta relativa pura
-        // Si la URL es /ProjectAurora/explore, queremos solo /explore
         if (strpos($requestUri, $this->basePath) === 0) {
             $relativePath = substr($requestUri, strlen($this->basePath));
         } else {
             $relativePath = $requestUri;
         }
 
-        // --- SOLUCIÓN: Limpiar el slash (/) al final de la ruta ---
-        // Si la ruta tiene más de 1 caracter (no es simplemente '/') y termina en '/', lo removemos.
+        // 3. Limpiar el slash (/) al final de la ruta
         if (strlen($relativePath) > 1 && substr($relativePath, -1) === '/') {
             $relativePath = rtrim($relativePath, '/');
         }
@@ -35,13 +33,47 @@ class Router {
             $relativePath = '/';
         }
 
-        // 3. Buscar en la lista de rutas
-        if (array_key_exists($relativePath, $this->routes)) {
-            return $this->routes[$relativePath];
+        // 4. Buscar la ruta en el mapa
+        if (!array_key_exists($relativePath, $this->routes)) {
+            return ['view' => '404.php', 'access' => 'public', 'layout' => 'main'];
         }
 
-        // 4. SI NO EXISTE -> Retornar la vista 404
-        return '404.php';
+        $routeConfig = $this->routes[$relativePath];
+
+        // Compatibilidad por si en un futuro declaras rutas sin array
+        if (is_string($routeConfig)) {
+            $routeConfig = ['view' => $routeConfig, 'access' => 'public', 'layout' => 'main'];
+        }
+
+        // --- SISTEMA DE PROTECCIÓN DE RUTAS ---
+        $access = $routeConfig['access'] ?? 'public';
+        $isLoggedIn = isset($_SESSION['user_id']);
+        $isApiRequest = !empty($_SERVER['HTTP_X_SPA_REQUEST']);
+
+        // A) Ruta protegida (solo logueados) pero el usuario NO está logueado
+        if ($access === 'auth' && !$isLoggedIn) {
+            if ($isApiRequest) {
+                header('X-SPA-Redirect: ' . $this->basePath . '/login');
+                exit;
+            }
+            header("Location: {$this->basePath}/login");
+            exit;
+        }
+
+        // B) Ruta para invitados (ej. login) pero el usuario YA está logueado
+        if ($access === 'guest' && $isLoggedIn) {
+            if ($relativePath !== '/settings/guest') {
+                if ($isApiRequest) {
+                    header('X-SPA-Redirect: ' . $this->basePath . '/');
+                    exit;
+                }
+                header("Location: {$this->basePath}/");
+                exit;
+            }
+        }
+
+        // Retornamos el array con la vista y el layout para que index.php decida qué pintar
+        return $routeConfig;
     }
 }
 ?>

@@ -1,8 +1,8 @@
 <?php
 // public/index.php
 
-// 1. Cargar el Bootstrap (Entorno, Sesiones Seguras, Base de Datos y Composer Autoloader)
-require_once __DIR__ . '/../includes/core/bootstrap.php';
+// 1. Cargar el Bootstrap
+require_once __DIR__ . '/../includes/core/Bootstrap.php';
 
 use App\Core\Loader;
 use App\Core\Router;
@@ -16,7 +16,9 @@ $loader = new Loader();
 $router = new Router($routes);
 
 // 3. Resolver vista
-$currentView = $router->resolve();
+$routeData = $router->resolve();
+$currentView = $routeData['view'];
+$layout = $routeData['layout'] ?? 'main';
 
 // 4. DETECCIÓN SPA
 $isSpaRequest = !empty($_SERVER['HTTP_X_SPA_REQUEST']);
@@ -44,12 +46,16 @@ if ($isSpaRequest) {
         <div class="main-content">
             <div class="general-content">
                 
+                <?php if ($layout !== 'auth'): ?>
                 <div class="general-content-top">
                     <?php include __DIR__ . '/../includes/layout/header.php'; ?>
                 </div>
+                <?php endif; ?>
 
                 <div class="general-content-bottom">
-                    <?php include __DIR__ . '/../includes/modules/moduleSurface.php'; ?>
+                    <?php if ($layout !== 'auth'): ?>
+                        <?php include __DIR__ . '/../includes/modules/moduleSurface.php'; ?>
+                    <?php endif; ?>
                     
                     <div class="general-content-scrolleable" id="app-router-outlet">
                         <?php 
@@ -57,6 +63,7 @@ if ($isSpaRequest) {
                         ?>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
