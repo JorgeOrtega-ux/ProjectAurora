@@ -3,6 +3,9 @@
 session_start();
 header("Content-Type: application/json; charset=UTF-8");
 
+// Incluir la clase Utils globalmente para toda la API
+require_once __DIR__ . '/../includes/core/Utils.php';
+
 $routeMap = require __DIR__ . '/route-map.php';
 $endpoint = isset($_GET['endpoint']) ? rtrim($_GET['endpoint'], '/') : '';
 
@@ -16,11 +19,9 @@ if (array_key_exists($endpoint, $routeMap)) {
     if (file_exists($handlerFile)) {
         require_once $handlerFile;
     } else {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Error interno: Handler no encontrado.']);
+        Utils::sendResponse(['success' => false, 'message' => 'Error interno: Handler no encontrado.'], 500);
     }
 } else {
-    http_response_code(404);
-    echo json_encode(['success' => false, 'message' => 'Ruta de API no encontrada: ' . htmlspecialchars($endpoint)]);
+    Utils::sendResponse(['success' => false, 'message' => 'Ruta de API no encontrada: ' . htmlspecialchars($endpoint)], 404);
 }
 ?>

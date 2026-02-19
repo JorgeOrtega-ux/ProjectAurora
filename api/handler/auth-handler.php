@@ -8,16 +8,14 @@ $database = new Database();
 $db = $database->getConnection();
 $auth = new AuthService($db);
 
-// Obtener datos del cuerpo de la petición (JSON)
-$data = json_decode(file_get_contents("php://input"));
+// Obtener datos del cuerpo de la petición (JSON) usando Utils
+$data = Utils::getJsonInput();
 
-// NOTA: La variable $action YA EXISTE aquí porque fue definida en api/index.php
-
-// --- VALIDACIÓN CSRF ---
-if ($action === 'login' || $action === 'register' || $action === 'send_code') {
-    if (empty($data->csrf_token) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $data->csrf_token)) {
-        echo json_encode(['success' => false, 'message' => 'Error de seguridad (Token inválido). Recarga la página.']);
-        exit;
+// --- VALIDACIÓN CSRF USANDO UTILS ---
+if (in_array($action, ['login', 'register', 'send_code'])) {
+    // Si el token no es válido, se bloquea la petición
+    if (!Utils::validateCSRF($data->csrf_token ?? '')) {
+        Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido). Recarga la página.']);
     }
 }
 // -----------------------
@@ -26,46 +24,46 @@ switch ($action) {
     case 'check_email':
         if (!empty($data->email)) {
             if ($auth->checkEmail($data->email)) {
-                echo json_encode(['success' => false, 'message' => 'El correo ya está registrado.']);
+                Utils::sendResponse(['success' => false, 'message' => 'El correo ya está registrado.']);
             } else {
-                echo json_encode(['success' => true]);
+                Utils::sendResponse(['success' => true]);
             }
         } else {
-            echo json_encode(['success' => false, 'message' => 'El correo es requerido.']);
+            Utils::sendResponse(['success' => false, 'message' => 'El correo es requerido.']);
         }
         break;
 
     case 'send_code':
         if (!empty($data->username) && !empty($data->email) && !empty($data->password)) {
-            echo json_encode($auth->requestRegistrationCode($data));
+            Utils::sendResponse($auth->requestRegistrationCode($data));
         } else {
-            echo json_encode(['success' => false, 'message' => 'Faltan datos para procesar el registro.']);
+            Utils::sendResponse(['success' => false, 'message' => 'Faltan datos para procesar el registro.']);
         }
         break;
 
     case 'register':
         if (!empty($data->email) && !empty($data->code)) {
-            echo json_encode($auth->register($data));
+            Utils::sendResponse($auth->register($data));
         } else {
-            echo json_encode(['success' => false, 'message' => 'El código de verificación es requerido.']);
+            Utils::sendResponse(['success' => false, 'message' => 'El código de verificación es requerido.']);
         }
         break;
 
     case 'login':
         if (!empty($data->email) && !empty($data->password)) {
-            echo json_encode($auth->login($data->email, $data->password));
+            Utils::sendResponse($auth->login($data->email, $data->password));
         } else {
-            echo json_encode(['success' => false, 'message' => 'Datos incompletos.']);
+            Utils::sendResponse(['success' => false, 'message' => 'Datos incompletos.']);
         }
         break;
 
     case 'logout':
-        echo json_encode($auth->logout());
+        Utils::sendResponse($auth->logout());
         break;
 
     case 'check_session':
         if (isset($_SESSION['user_id'])) {
-            echo json_encode([
+            Utils::sendResponse([
                 'success' => true,
                 'user' => [
                     'name' => $_SESSION['user_name'],
@@ -73,12 +71,12 @@ switch ($action) {
                 ]
             ]);
         } else {
-            echo json_encode(['success' => false]);
+            Utils::sendResponse(['success' => false]);
         }
         break;
 
     default:
-        echo json_encode(['success' => false, 'message' => 'Acción no válida.']);
+        Utils::sendResponse(['success' => false, 'message' => 'Acción no válida.']);
         break;
 }
 ?>

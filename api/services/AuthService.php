@@ -87,33 +87,13 @@ class AuthService {
         $email = $payload['email'];
         $password_hash = $payload['password_hash'];
 
-        // 2. Generar UUID
-        $uuid = bin2hex(random_bytes(16));
+        // 2. Generar UUID usando Utils
+        $uuid = Utils::generateUUID();
 
-        // 3. Configuración del Avatar 
-        $avatarFilename = $uuid . '.png';
+        // 3. Configuración del Avatar usando Utils
         $storageDir = __DIR__ . '/../../public/storage/profilePictures/default/';
-        $webPath = 'storage/profilePictures/default/' . $avatarFilename;
-
-        if (!file_exists($storageDir)) {
-            mkdir($storageDir, 0777, true);
-        }
-
-        // Lista de colores permitidos solicitados
-        $allowedColors = ['2563eb', '16a34a', '7c3aed', 'dc2626', 'ea580c', '374151'];
-        $randomColor = $allowedColors[array_rand($allowedColors)];
-        
-        $nameEncoded = urlencode($username);
-        
-        $avatarUrl = "https://ui-avatars.com/api/?name={$nameEncoded}&background={$randomColor}&color=fff&size=512&length=1&format=png";
-        
-        $avatarContent = file_get_contents($avatarUrl);
-        
-        if ($avatarContent) {
-            file_put_contents($storageDir . $avatarFilename, $avatarContent);
-        } else {
-            $webPath = ''; // Fallback
-        }
+        $webDir = 'storage/profilePictures/default/';
+        $webPath = Utils::generateAndSaveAvatar($username, $uuid, $storageDir, $webDir);
 
         // 4. Insertar en BD Final
         $query = "INSERT INTO " . $this->table_name . " 
