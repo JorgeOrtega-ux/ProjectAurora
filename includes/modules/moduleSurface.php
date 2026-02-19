@@ -36,7 +36,7 @@ $settingsMenuDisplay = $isSettings ? 'flex' : 'none';
             </div>
 
             <div class="component-menu-list" id="menu-surface-settings" style="display: <?php echo $settingsMenuDisplay; ?>; flex-direction: column; gap: 4px;">
-                <div class="component-menu-link nav-item" data-nav="/ProjectAurora/" style="margin-bottom: 12px;">
+                <div class="component-menu-link component-menu-link--bordered nav-item" data-nav="/ProjectAurora/" style="margin-bottom: 12px;">
                     <div class="component-menu-link-icon">
                         <span class="material-symbols-rounded">arrow_back</span>
                     </div>

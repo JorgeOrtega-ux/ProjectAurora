@@ -135,6 +135,7 @@
 .component-menu-link.active .component-menu-link-icon { color: #000000; }
 .component-menu-link-icon { width: 45px; height: 100%; display: flex; justify-content: center; align-items: center; color: #000000; }
 .component-menu-link-text { flex: 1 1 auto; display: flex; justify-content: flex-start; align-items: center; font-size: 14px; font-weight: 500; color: #000000; }
+.component-menu-link--bordered { border: 1px solid #00000020; } /* <-- NUEVO MODIFICADOR */
 
 /* =========================================
    NUEVO DISEÑO AUTH (MODULAR 8PX)
@@ -436,18 +437,4 @@
     margin-bottom: 20px;
     color: #000;
     text-align: center;
-}
-
-.component-json-error-box {
-    background-color: #eeeeee;
-    border-radius: 6px;
-    padding: 16px;
-    width: 100%;
-    font-family: monospace;
-    font-size: 14px;
-    color: #555;
-    text-align: left;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    word-break: break-all;
 }

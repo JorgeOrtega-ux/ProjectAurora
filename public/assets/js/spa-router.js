@@ -3,27 +3,33 @@ export class SpaRouter {
     constructor(options = {}) {
         this.outlet = document.querySelector(options.outlet || '#app-router-outlet');
         this.basePath = '/ProjectAurora';
-        // Se eliminaron las líneas que forzaban transition: none y opacity: 1
         this.init();
     }
 
     init() {
+        // Escuchar retroceso/avance del navegador
         window.addEventListener('popstate', (e) => {
             this.loadRoute(window.location.pathname);
         });
 
+        // Interceptar todos los clics en enlaces con data-nav
         document.body.addEventListener('click', (e) => {
             const navTarget = e.target.closest('[data-nav]');
             if (navTarget) {
                 e.preventDefault();
+                
+                // Ocultar cualquier módulo emergente que no sea el principal (ej: el de los 3 puntos)
                 const module = navTarget.closest('.component-module');
-                if(module && module.dataset.module !== 'moduleSurface') module.classList.add('disabled');
+                if (module && module.dataset.module !== 'moduleSurface') {
+                    module.classList.add('disabled');
+                }
                 
                 const url = navTarget.dataset.nav;
                 this.navigate(url);
-                this.updateActiveNav(navTarget);
             }
         });
+        
+        // Marcar la ruta actual al iniciar la app
         this.highlightCurrentRoute();
     }
 
@@ -39,6 +45,7 @@ export class SpaRouter {
             this._showLoaderInOutlet();
         }
 
+        // Actualizamos los menús del panel lateral dinámicamente
         this.updateSurfaceMenu(url);
 
         try {
@@ -46,16 +53,18 @@ export class SpaRouter {
                 method: 'GET',
                 headers: { 'X-SPA-Request': 'true' }
             });
-            // SE MANTIENEN LOS 200ms INTACTOS COMO PEDISTE
+            // Mantenemos el pequeño delay visual que tenías
             const delayPromise = new Promise(resolve => setTimeout(resolve, 200));
             const [response] = await Promise.all([fetchPromise, delayPromise]);
 
             if (response.ok) {
                 const html = await response.text();
                 this.render(html);
+                
+                // Remarcamos la ruta de forma global después de cargar la vista
                 this.highlightCurrentRoute();
                 
-                // NUEVO: Emitimos un evento para avisar que la vista se cargó
+                // Emitimos un evento para que el auth-controller lo intercepte
                 window.dispatchEvent(new CustomEvent('viewLoaded', { detail: { url } }));
             } else {
                 this.render('<div class="view-content"><h1>Error</h1></div>');
@@ -72,15 +81,22 @@ export class SpaRouter {
         }
     }
 
-    updateActiveNav(targetElement) {
-        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        if(targetElement) targetElement.classList.add('active');
-    }
-
     highlightCurrentRoute() {
         const path = window.location.pathname;
-        const target = document.querySelector(`[data-nav="${path}"]`) || document.querySelector(`[data-nav="${path}/"]`);
-        if(target) this.updateActiveNav(target);
+        
+        // 1. Limpiamos la clase 'active' de TODOS los enlaces de navegación
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        
+        // 2. Buscamos TODOS los enlaces que coincidan con la ruta actual (querySelectorAll en vez de querySelector)
+        // Esto resuelve el conflicto entre el enlace del dropdown del usuario y el panel lateral
+        const targets = document.querySelectorAll(`[data-nav="${path}"], [data-nav="${path}/"]`);
+        
+        // 3. Aplicamos la clase 'active' a todos los encontrados
+        targets.forEach(target => {
+            target.classList.add('active');
+        });
+
+        // Revalidamos el menú lateral (por si se entró recargando la página directamente en una sub-ruta)
         this.updateSurfaceMenu(path);
     }
 
@@ -89,6 +105,7 @@ export class SpaRouter {
         const settingsMenu = document.getElementById('menu-surface-settings');
         if (!mainAppMenu || !settingsMenu) return;
 
+        // Alternar la visibilidad de los menús en el módulo Surface
         if (url.includes('/settings/')) {
             mainAppMenu.style.display = 'none';
             settingsMenu.style.display = 'flex';
