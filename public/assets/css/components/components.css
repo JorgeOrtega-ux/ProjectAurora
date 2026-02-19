@@ -124,6 +124,29 @@
 /* PANEL */
 .component-module-panel { width: 100%; height: 100%; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px #00000020; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #00000008; }
 .component-module-panel--padded { padding: 8px; height: auto; }
+
+/* RESTRICCIÓN DESKTOP PARA OVERLAYS (Ej. Menú Opciones) */
+.component-module--display-overlay .component-module-panel {
+    height: auto;
+    max-height: calc(100vh - 80px); /* Previene que crezca fuera de la pantalla */
+}
+
+/* --- NUEVO: BODY SCROLLEABLE INTERNO --- */
+.component-module-panel-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0; /* Crucial para activar el scroll interno en flexbox */
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+/* Variante del body con padding (Reemplaza al panel--padded) */
+.component-module-panel-body--padded {
+    padding: 8px;
+}
+
 .component-module-panel-top { width: 100%; }
 .component-module--display-block .component-module-panel-top { padding: 8px; }
 .component-module-panel-bottom { width: 100%; flex: 1 1 auto; }
@@ -135,7 +158,7 @@
 .component-menu-link.active .component-menu-link-icon { color: #000000; }
 .component-menu-link-icon { width: 45px; height: 100%; display: flex; justify-content: center; align-items: center; color: #000000; }
 .component-menu-link-text { flex: 1 1 auto; display: flex; justify-content: flex-start; align-items: center; font-size: 14px; font-weight: 500; color: #000000; }
-.component-menu-link--bordered { border: 1px solid #00000020; } /* <-- NUEVO MODIFICADOR */
+.component-menu-link--bordered { border: 1px solid #00000020; } 
 
 /* =========================================
    NUEVO DISEÑO AUTH (MODULAR 8PX)
@@ -338,7 +361,6 @@
     display: inline-block;
 }
 
-/* Si el botón no es negro (ej. blanco), O si explícitamente es un dark-spinner, cambia el color */
 .component-button:not(.component-button--black):not(.primary) .component-spinner-button,
 .component-spinner-button.dark-spinner {
     border-color: rgba(0, 0, 0, 0.1);
@@ -376,10 +398,25 @@
         max-height: 80vh; transform: translateY(0);
         transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         will-change: transform;
+        height: auto;
     }
     
     .component-module--display-overlay.disabled { display: none; background-color: rgba(0, 0, 0, 0); }
     .component-module--display-overlay.disabled .component-module-panel { transform: translateY(100%); }
+
+    /* EL DRAG HANDLE FIJO ARRIBA */
+    .pill-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        flex-shrink: 0;
+        padding: 12px 0; /* Padding superior e inferior para equilibrar */
+        cursor: grab;
+        touch-action: none; 
+        background-color: #ffffff; /* Evita que el scroll transparente el handle */
+        z-index: 10;
+    }
 }
 .component-module.disabled { display: none; }
 
@@ -392,33 +429,31 @@
 .user-avatar-btn[data-role="administrator"]::before { border-color: #f44336; }
 .user-avatar-btn[data-role="founder"]::before { border-color: #9c27b0; }
 
-/* FIX: Autocomplete de Navegadores (Chrome/Edge/Safari) */
+/* FIX: Autocomplete de Navegadores */
 .component-text-input:-webkit-autofill,
 .component-text-input:-webkit-autofill:hover, 
 .component-text-input:-webkit-autofill:focus, 
 .component-text-input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px white inset !important; /* Fuerza fondo blanco */
-    -webkit-text-fill-color: #000 !important; /* Fuerza texto negro */
-    transition: background-color 5000s ease-in-out 0s; /* Evita parpadeos de color */
-    z-index: 2; /* Asegura que esté por encima pero bajo el label si es necesario */
+    -webkit-box-shadow: 0 0 0 30px white inset !important;
+    -webkit-text-fill-color: #000 !important;
+    transition: background-color 5000s ease-in-out 0s;
+    z-index: 2;
 }
 
-/* FIX: Asegurar que el Label flote cuando hay autocompletado */
 .component-text-input:-webkit-autofill + .component-label-floating {
     top: 14px;
     font-size: 11px;
     font-weight: 600;
     color: #000;
-    z-index: 3; /* Asegura que el label quede ENCIMA del fondo del input */
+    z-index: 3;
 }
 
-/* AGREGAR ESTO: Define el estado inicial al "nacer" el elemento */
 @starting-style {
     .component-module--display-overlay {
-        background-color: rgba(0, 0, 0, 0); /* Empieza transparente */
+        background-color: rgba(0, 0, 0, 0);
     }
     .component-module--display-overlay .component-module-panel {
-        transform: translateY(100%); /* Empieza abajo */
+        transform: translateY(100%);
     }
 }
 
