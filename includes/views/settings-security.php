@@ -1,10 +1,3 @@
-<?php
-if (session_status() === PHP_SESSION_NONE) session_start();
-if (!isset($_SESSION['user_id'])) {
-    echo "<script>window.location.href = '/ProjectAurora/settings/guest';</script>";
-    exit;
-}
-?>
 <div class="view-content">
     <h1 style="font-size: 24px; font-weight: 600; margin-bottom: 8px;">Inicio de sesión y seguridad</h1>
     <p style="color: #666; font-size: 14px;">Administra tu contraseña y las opciones de seguridad de tu cuenta.</p>

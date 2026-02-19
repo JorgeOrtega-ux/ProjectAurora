@@ -338,8 +338,9 @@
     display: inline-block;
 }
 
-/* Si el botón no es negro (ej. blanco), cambia el color del spinner */
-.component-button:not(.component-button--black):not(.primary) .component-spinner-button {
+/* Si el botón no es negro (ej. blanco), O si explícitamente es un dark-spinner, cambia el color */
+.component-button:not(.component-button--black):not(.primary) .component-spinner-button,
+.component-spinner-button.dark-spinner {
     border-color: rgba(0, 0, 0, 0.1);
     border-top-color: #000000;
 }

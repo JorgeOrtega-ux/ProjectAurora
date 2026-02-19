@@ -26,7 +26,7 @@ export class AuthController {
         document.body.addEventListener('click', (e) => {
             // Cerrar Sesión
             const logoutBtn = e.target.closest('[data-action="logout"]');
-            if (logoutBtn) { e.preventDefault(); this.handleLogout(); return; }
+            if (logoutBtn) { e.preventDefault(); this.handleLogout(logoutBtn); return; }
 
             // Visibilidad de contraseñas
             const toggleBtn = e.target.closest('.component-input-action');
@@ -53,7 +53,7 @@ export class AuthController {
         });
     }
 
-    // --- NUEVO: FUNCIÓN PARA MOSTRAR ERROR JSON ---
+    // --- FUNCIÓN PARA MOSTRAR ERROR JSON ---
     showFatalJsonError(containerId, codeId, httpCode, message, type, codeStr, formsToHide = []) {
         const container = document.getElementById(containerId);
         const codeBox = document.getElementById(codeId);
@@ -109,7 +109,6 @@ export class AuthController {
 
         if (url.endsWith('/register/aditional-data')) {
             if (!email) { 
-                // En lugar de redirigir, mostramos el error JSON
                 this.showFatalJsonError('register-fatal-error', 'register-fatal-error-code', 409, 'Invalid client. Please start over.', 'invalid_request_error', 'invalid_state', [stage1, stage2, stage3]);
                 return; 
             }
@@ -119,7 +118,6 @@ export class AuthController {
 
         } else if (url.endsWith('/register/verification-account')) {
             if (!email || !user) { 
-                // En lugar de redirigir, mostramos el error JSON
                 this.showFatalJsonError('register-fatal-error', 'register-fatal-error-code', 409, 'Invalid client. Please start over.', 'invalid_request_error', 'invalid_state', [stage1, stage2, stage3]);
                 return; 
             }
@@ -136,7 +134,7 @@ export class AuthController {
         }
     }
 
-    // --- NUEVO: LÓGICA DE CONTROL PARA RESET PASSWORD URL ---
+    // --- LÓGICA DE CONTROL PARA RESET PASSWORD URL ---
     checkResetPasswordStage(url) {
         if (!url.includes('/ProjectAurora/reset-password')) return;
         
@@ -248,8 +246,31 @@ export class AuthController {
         } catch (error) { this.showError(errorDiv, 'Error de conexión.'); this.setLoading(btn, false); }
     }
 
-    async handleLogout() {
-        try { await ApiService.post(API_ROUTES.AUTH.LOGOUT); window.location.href = '/ProjectAurora/login'; } catch (error) { console.error(error); }
+    // --- MANEJO DE CERRAR SESIÓN CON SPINNER ---
+    async handleLogout(btn) {
+        // Prevenir múltiples peticiones
+        if (btn.classList.contains('is-loading')) return;
+        btn.classList.add('is-loading');
+
+        // Generamos el nuevo div dinámicamente y lo adjuntamos al menú link
+        const spinnerContainer = document.createElement('div');
+        spinnerContainer.className = 'component-menu-link-icon';
+        spinnerContainer.innerHTML = '<div class="component-spinner-button dark-spinner"></div>';
+        
+        btn.appendChild(spinnerContainer);
+
+        try { 
+            await ApiService.post(API_ROUTES.AUTH.LOGOUT); 
+            // Añadimos un pequeño timeout de 400ms para que la animación alcance a ser apreciable
+            setTimeout(() => {
+                window.location.href = '/ProjectAurora/login'; 
+            }, 400);
+        } catch (error) { 
+            console.error(error); 
+            // Si falla, removemos el spinner para permitir reintentar
+            btn.classList.remove('is-loading');
+            spinnerContainer.remove();
+        }
     }
 
     async handleForgotPassword() {
