@@ -4,9 +4,10 @@ CREATE DATABASE IF NOT EXISTS project_aurora_db CHARACTER SET utf8mb4 COLLATE ut
 -- 2. Seleccionar la Base de Datos
 USE project_aurora_db;
 
--- 3. ELIMINAR LA TABLA (Para reiniciar de cero como pediste)
+-- 3. ELIMINAR LAS TABLAS (Para reiniciar de cero)
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS verification_codes;
+DROP TABLE IF EXISTS rate_limits;
 
 -- 4. Crear la tabla 'users'
 CREATE TABLE users (
@@ -20,7 +21,7 @@ CREATE TABLE users (
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 5. Crear la tabla 'verification_codes' (NUEVO PARA ETAPAS)
+-- 5. Crear la tabla 'verification_codes'
 CREATE TABLE IF NOT EXISTS verification_codes (
     id INT AUTO_INCREMENT PRIMARY KEY,
     identifier VARCHAR(100) NOT NULL,
@@ -31,4 +32,15 @@ CREATE TABLE IF NOT EXISTS verification_codes (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX (identifier),
     INDEX (code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 6. Crear la tabla 'rate_limits' (NUEVO SISTEMA DE SEGURIDAD)
+CREATE TABLE IF NOT EXISTS rate_limits (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    ip_address VARCHAR(45) NOT NULL,
+    action VARCHAR(50) NOT NULL COMMENT 'Ej: login, forgot_password',
+    attempts INT DEFAULT 1,
+    last_attempt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    blocked_until DATETIME DEFAULT NULL,
+    UNIQUE KEY ip_action (ip_address, action)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -13,6 +13,78 @@ class AuthService {
         $this->conn = $db;
     }
 
+    // ==========================================
+    // SISTEMA DE RATE LIMITING Y SEGURIDAD
+    // ==========================================
+
+    private function getUserIP() {
+        if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+            return $_SERVER['HTTP_CLIENT_IP'];
+        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            return $_SERVER['HTTP_X_FORWARDED_FOR'];
+        } else {
+            return $_SERVER['REMOTE_ADDR'];
+        }
+    }
+
+    private function checkRateLimit($action) {
+        $ip = $this->getUserIP();
+        $query = "SELECT attempts, blocked_until, (blocked_until > NOW()) as is_blocked FROM rate_limits WHERE ip_address = :ip AND action = :action LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([':ip' => $ip, ':action' => $action]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($result) {
+            // Si el tiempo actual es menor al blocked_until, sigue bloqueado
+            if ($result['is_blocked']) {
+                return false; 
+            }
+            // Si el bloqueo ya expiró, reseteamos el contador para permitir intentos nuevamente
+            if (!$result['is_blocked'] && $result['blocked_until'] !== null) {
+                $this->resetAttempts($action);
+            }
+        }
+        return true; // Permitido
+    }
+
+    private function recordFailedAttempt($action) {
+        $ip = $this->getUserIP();
+        $query = "SELECT attempts FROM rate_limits WHERE ip_address = :ip AND action = :action LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([':ip' => $ip, ':action' => $action]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($result) {
+            $attempts = $result['attempts'] + 1;
+            // Si llega a 5 intentos, calculamos 15 minutos de bloqueo desde PHP
+            $blocked_until = ($attempts >= 5) ? date('Y-m-d H:i:s', strtotime('+15 minutes')) : null;
+            
+            $update = "UPDATE rate_limits SET attempts = :attempts, last_attempt = NOW(), blocked_until = :blocked_until WHERE ip_address = :ip AND action = :action";
+            $updStmt = $this->conn->prepare($update);
+            $updStmt->execute([
+                ':attempts' => $attempts, 
+                ':blocked_until' => $blocked_until, 
+                ':ip' => $ip, 
+                ':action' => $action
+            ]);
+        } else {
+            $insert = "INSERT INTO rate_limits (ip_address, action, attempts, last_attempt) VALUES (:ip, :action, 1, NOW())";
+            $insStmt = $this->conn->prepare($insert);
+            $insStmt->execute([':ip' => $ip, ':action' => $action]);
+        }
+    }
+
+    private function resetAttempts($action) {
+        $ip = $this->getUserIP();
+        $query = "DELETE FROM rate_limits WHERE ip_address = :ip AND action = :action";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([':ip' => $ip, ':action' => $action]);
+    }
+
+    // ==========================================
+    // MÉTODOS DE AUTENTICACIÓN
+    // ==========================================
+
     public function checkEmail($email) {
         $query = "SELECT id FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
@@ -127,6 +199,11 @@ class AuthService {
     }
 
     public function login($email, $password) {
+        // 1. Validar límite de intentos antes de tocar la base de datos de usuarios
+        if (!$this->checkRateLimit('login')) {
+            return ['success' => false, 'message' => 'Por seguridad, tu cuenta está bloqueada temporalmente. Intenta de nuevo en 15 minutos.'];
+        }
+
         $query = "SELECT id, uuid, nombre, contrasena, avatar_path, role FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':correo', $email);
@@ -135,6 +212,10 @@ class AuthService {
         if ($stmt->rowCount() > 0) {
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             if (password_verify($password, $row['contrasena'])) {
+                
+                // Si el inicio de sesión es exitoso, reiniciamos los intentos fallidos
+                $this->resetAttempts('login');
+
                 $_SESSION['user_id'] = $row['id'];
                 $_SESSION['user_uuid'] = $row['uuid'];
                 $_SESSION['user_name'] = $row['nombre'];
@@ -152,6 +233,9 @@ class AuthService {
                 ];
             }
         }
+        
+        // 2. Si falla la contraseña o el correo no existe, registramos un intento fallido
+        $this->recordFailedAttempt('login');
         return ['success' => false, 'message' => 'Correo o contraseña incorrectos.'];
     }
 
@@ -161,9 +245,19 @@ class AuthService {
     }
 
     public function requestPasswordReset($email) {
+        // 1. Validar límite de intentos para prevenir enumeración de correos
+        if (!$this->checkRateLimit('forgot_password')) {
+            return ['success' => false, 'message' => 'Demasiadas solicitudes. Por favor, intenta de nuevo en 15 minutos.'];
+        }
+
         if (!$this->checkEmail($email)) {
+            // Si el correo NO existe, cuenta como un intento para prevenir barridos de diccionarios de correos
+            $this->recordFailedAttempt('forgot_password');
             return ['success' => false, 'message' => 'El correo proporcionado no está registrado en el sistema.'];
         }
+
+        // Si el correo SÍ existe, limpiamos los intentos para que el usuario legítimo no se bloquee a sí mismo
+        $this->resetAttempts('forgot_password');
 
         $token = bin2hex(random_bytes(32)); 
         $expires_at = date('Y-m-d H:i:s', strtotime('+1 hour')); 
