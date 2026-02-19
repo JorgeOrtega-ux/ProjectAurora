@@ -8,7 +8,7 @@ class Database {
     public $conn;
 
     public function __construct() {
-        // Se eliminan los fallbacks: Toma los valores estrictamente del entorno (.env)
+        // Toma los valores estrictamente del entorno (.env)
         $this->host = getenv('DB_HOST');
         $this->db_name = getenv('DB_NAME');
         $this->username = getenv('DB_USER');
@@ -17,15 +17,12 @@ class Database {
 
     public function getConnection() {
         $this->conn = null;
-        try {
-            $this->conn = new PDO("mysql:host=" . $this->host . ";dbname=" . $this->db_name, $this->username, $this->password);
-            $this->conn->exec("set names utf8");
-            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        } catch(PDOException $exception) {
-            // Detener ejecución y mostrar error en caso de fallo crítico
-            http_response_code(500);
-            die("Error crítico de conexión a la base de datos: " . $exception->getMessage());
-        }
+        // Al quitar el try-catch, PDO lanzará PDOException automáticamente si falla
+        // y será capturado de forma segura por bootstrap.php
+        $this->conn = new PDO("mysql:host=" . $this->host . ";dbname=" . $this->db_name, $this->username, $this->password);
+        $this->conn->exec("set names utf8");
+        $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
         return $this->conn;
     }
 }

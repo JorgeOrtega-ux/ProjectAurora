@@ -1,32 +1,14 @@
 <?php
 // public/index.php
 
-// 1. Cargar dependencias y variables de entorno
-require_once __DIR__ . '/../includes/core/utils.php';
-
-// Inyectar el entorno antes que nada
-try {
-    Utils::loadEnv(__DIR__ . '/../.env');
-} catch (Exception $e) {
-    die("Error de configuración: " . $e->getMessage());
-}
+// 1. Cargar el Bootstrap (Entorno, Sesiones Seguras, Base de Datos y Utilidades)
+require_once __DIR__ . '/../includes/core/bootstrap.php';
 
 require_once __DIR__ . '/../includes/core/loader.php';
 require_once __DIR__ . '/../includes/core/router.php';
 $routes = require __DIR__ . '/../includes/config/routes.php';
 
-// --- NUEVO: Iniciar sesión y Generar Token CSRF ---
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Generar token CSRF si no existe en la sesión
-if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
-
 $bodyClass = isset($_SESSION['user_id']) ? 'is-logged-in' : '';
-// --------------------------------------------------
 
 // 2. Inicializar
 $loader = new Loader();

@@ -1,12 +1,14 @@
 <?php
 // api/handler/auth-handler.php
 
-include_once __DIR__ . '/../../config/database.php';
+// La clase Database y utilidades ya fueron cargadas y probadas por bootstrap.php
 include_once __DIR__ . '/../services/AuthService.php';
 
-$database = new Database();
-$db = $database->getConnection();
-$auth = new AuthService($db);
+// Llamamos a la conexión global generada en bootstrap.php
+global $dbConnection;
+
+// Instanciamos el servicio pasando directamente la conexión segura
+$auth = new AuthService($dbConnection);
 
 // Obtener datos del cuerpo de la petición (JSON) usando Utils
 $data = Utils::getJsonInput();
