@@ -1,9 +1,18 @@
 <?php
 // public/index.php
 
-// 1. Cargar dependencias
-require_once __DIR__ . '/../includes/core/Loader.php';
-require_once __DIR__ . '/../includes/core/Router.php';
+// 1. Cargar dependencias y variables de entorno
+require_once __DIR__ . '/../includes/core/utils.php';
+
+// Inyectar el entorno antes que nada
+try {
+    Utils::loadEnv(__DIR__ . '/../.env');
+} catch (Exception $e) {
+    die("Error de configuración: " . $e->getMessage());
+}
+
+require_once __DIR__ . '/../includes/core/loader.php';
+require_once __DIR__ . '/../includes/core/router.php';
 $routes = require __DIR__ . '/../includes/config/routes.php';
 
 // --- NUEVO: Iniciar sesión y Generar Token CSRF ---

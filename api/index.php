@@ -4,7 +4,14 @@ session_start();
 header("Content-Type: application/json; charset=UTF-8");
 
 // Incluir la clase Utils globalmente para toda la API
-require_once __DIR__ . '/../includes/core/Utils.php';
+require_once __DIR__ . '/../includes/core/utils.php';
+
+// Inyectar el entorno antes de procesar las rutas
+try {
+    Utils::loadEnv(__DIR__ . '/../.env');
+} catch (Exception $e) {
+    Utils::sendResponse(['success' => false, 'message' => 'Error interno de configuración del servidor.'], 500);
+}
 
 $routeMap = require __DIR__ . '/route-map.php';
 $endpoint = isset($_GET['endpoint']) ? rtrim($_GET['endpoint'], '/') : '';

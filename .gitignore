@@ -1,0 +1,21 @@
+# --- CONFIGURACIÓN Y CREDENCIALES ---
+# Ignorar el archivo de variables de entorno
+.env
+
+# --- ALMACENAMIENTO DE USUARIOS ---
+# Ignorar todas las fotos de perfil generadas o subidas
+public/storage/profilePictures/default/*.png
+public/storage/profilePictures/default/*.jpg
+public/storage/profilePictures/default/*.jpeg
+
+# --- ARCHIVOS DE SISTEMA Y LOGS ---
+# Logs de error de PHP
+*.log
+error_log
+
+# Archivos temporales de SO
+.DS_Store
+Thumbs.db
+
+# --- DIRECTORIOS DE DEPENDENCIAS (Si usas Composer en el futuro) ---
+vendor/

@@ -1,5 +1,5 @@
 <?php
-// includes/core/Utils.php
+// includes/core/utils.php
 
 class Utils {
     
@@ -61,6 +61,36 @@ class Utils {
         }
         
         return ''; // Fallback en caso de no poder descargar
+    }
+
+    /**
+     * Carga las variables de entorno desde el archivo .env
+     */
+    public static function loadEnv($path) {
+        if (!file_exists($path)) {
+            throw new Exception("El archivo .env no existe en la ruta especificada.");
+        }
+
+        $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        foreach ($lines as $line) {
+            // Ignorar los comentarios
+            if (strpos(trim($line), '#') === 0) continue;
+            
+            if (strpos($line, '=') !== false) {
+                list($name, $value) = explode('=', $line, 2);
+                $name = trim($name);
+                $value = trim($value);
+                
+                // Remover comillas del valor si las tiene
+                $value = trim($value, '"\'');
+
+                if (!array_key_exists($name, $_SERVER) && !array_key_exists($name, $_ENV)) {
+                    putenv(sprintf('%s=%s', $name, $value));
+                    $_ENV[$name] = $value;
+                    $_SERVER[$name] = $value;
+                }
+            }
+        }
     }
 }
 ?>
