@@ -7,17 +7,18 @@ export class AuthController {
     }
 
     init() {
+        // Enrutamiento de eventos form submit
         document.body.addEventListener('submit', (e) => {
             if (e.target.id === 'form-login') {
                 e.preventDefault();
                 this.handleLogin();
             } else if (e.target.id === 'form-register') {
                 e.preventDefault();
-                this.handleRegister();
+                this.handleRegisterFinal(); // Ahora se dispara en la etapa 3
             }
         });
 
-        // Toggle Password Visibility Logic
+        // Interceptores de clics para transiciones y visibilidad de contraseña
         document.body.addEventListener('click', (e) => {
             const logoutBtn = e.target.closest('[data-action="logout"]');
             if (logoutBtn) {
@@ -36,34 +37,152 @@ export class AuthController {
                 if (input && input.type === 'password') {
                     input.type = 'text';
                     icon.textContent = 'visibility_off';
-                } else if (input) {
+                } else if (input && input.type === 'text') {
                     input.type = 'password';
                     icon.textContent = 'visibility';
                 }
             }
+
+            // Flujo de Registro (Etapas)
+            if (e.target.closest('#btn-next-1')) {
+                this.handleRegisterStage1();
+            } else if (e.target.closest('#btn-next-2')) {
+                this.handleRegisterStage2();
+            } else if (e.target.closest('#btn-back-1')) {
+                this.switchStage(2, 1);
+            } else if (e.target.closest('#btn-back-2')) {
+                this.switchStage(3, 2);
+            }
         });
     }
 
-    async handleLogin() {
-        const form = document.getElementById('form-login');
-        const btn = form.querySelector('button[type="submit"]'); 
-        
-        const email = document.getElementById('login-email').value;
-        const password = document.getElementById('login-password').value;
-        // OBTENER TOKEN
-        const csrfTokenInput = document.getElementById('csrf_token');
-        const csrfToken = csrfTokenInput ? csrfTokenInput.value : '';
+    // --- FUNCIONES DE TRANSICIÓN Y MANEJO DE ETAPAS --- //
 
-        const errorDiv = document.getElementById('login-error');
+    switchStage(fromStage, toStage) {
+        document.getElementById(`reg-stage-${fromStage}`).style.display = 'none';
+        document.getElementById(`reg-stage-${toStage}`).style.display = 'block';
+        this.hideError(document.getElementById('register-error'));
+        
+        // Foco automático para mejorar UX
+        if (toStage === 2) {
+            setTimeout(() => document.getElementById('reg-username').focus(), 50);
+        } else if (toStage === 3) {
+            setTimeout(() => document.getElementById('reg-code').focus(), 50);
+        }
+    }
+
+    async handleRegisterStage1() {
+        const emailInput = document.getElementById('reg-email');
+        const passwordInput = document.getElementById('reg-password');
+        const errorDiv = document.getElementById('register-error');
+        const btn = document.getElementById('btn-next-1');
+        const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
+
+        if (!emailInput.value || !passwordInput.value) {
+            this.showError(errorDiv, 'Por favor, ingresa tu correo y contraseña.');
+            return;
+        }
+
+        // Validación básica de email en JS antes de ir a BD
+        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value)){
+             this.showError(errorDiv, 'Ingresa un correo válido.');
+             return;
+        }
 
         this.setLoading(btn, true);
         this.hideError(errorDiv);
 
         try {
-            // ENVIAR TOKEN
-            const res = await this.post({ action: 'login', email, password, csrf_token: csrfToken });
+            // Verificar si el correo ya existe
+            const res = await this.post({ 
+                action: 'check_email', 
+                email: emailInput.value,
+                csrf_token: csrfToken 
+            });
+
             if (res.success) {
-                window.location.href = '/ProjectAurora/'; 
+                this.switchStage(1, 2);
+            } else {
+                this.showError(errorDiv, res.message);
+            }
+        } catch (error) {
+            console.error(error);
+            this.showError(errorDiv, 'Error de conexión. Inténtalo de nuevo.');
+        } finally {
+            this.setLoading(btn, false);
+        }
+    }
+
+    async handleRegisterStage2() {
+        const email = document.getElementById('reg-email').value;
+        const password = document.getElementById('reg-password').value;
+        const username = document.getElementById('reg-username').value;
+        const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
+        const errorDiv = document.getElementById('register-error');
+        const btn = document.getElementById('btn-next-2');
+
+        if (!username) {
+            this.showError(errorDiv, 'El nombre de usuario es obligatorio.');
+            return;
+        }
+
+        this.setLoading(btn, true);
+        this.hideError(errorDiv);
+
+        try {
+            // Solicitar código a la API (guardará el payload en BD temporalmente)
+            const res = await this.post({ 
+                action: 'send_code', 
+                email, 
+                password, 
+                username, 
+                csrf_token: csrfToken 
+            });
+
+            if (res.success) {
+                // Simulación: Imprimir código en pantalla para que el usuario pueda copiarlo
+                const codeDisplay = document.getElementById('simulated-code-display');
+                if (codeDisplay) {
+                    codeDisplay.textContent = res.dev_code;
+                }
+                this.switchStage(2, 3);
+            } else {
+                this.showError(errorDiv, res.message);
+            }
+        } catch (error) {
+            console.error(error);
+            this.showError(errorDiv, 'Error al generar el código. Inténtalo de nuevo.');
+        } finally {
+            this.setLoading(btn, false);
+        }
+    }
+
+    async handleRegisterFinal() {
+        const email = document.getElementById('reg-email').value;
+        const code = document.getElementById('reg-code').value;
+        const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
+        const errorDiv = document.getElementById('register-error');
+        const btn = document.getElementById('btn-register-final');
+
+        if (!code || code.length !== 6) {
+            this.showError(errorDiv, 'Ingresa el código de 6 dígitos enviado.');
+            return;
+        }
+
+        this.setLoading(btn, true);
+        this.hideError(errorDiv);
+
+        try {
+            // Enviar verificación final (crea el usuario)
+            const res = await this.post({ 
+                action: 'register', 
+                email, 
+                code, 
+                csrf_token: csrfToken 
+            });
+
+            if (res.success) {
+                window.location.href = '/ProjectAurora/';
             } else {
                 this.showError(errorDiv, res.message);
                 this.setLoading(btn, false);
@@ -75,27 +194,26 @@ export class AuthController {
         }
     }
 
-    async handleRegister() {
-        const form = document.getElementById('form-register');
-        const btn = form.querySelector('button[type="submit"]');
+    // --- FLUJOS NORMALES --- //
 
-        const username = document.getElementById('reg-username').value;
-        const email = document.getElementById('reg-email').value;
-        const password = document.getElementById('reg-password').value;
-        // OBTENER TOKEN
+    async handleLogin() {
+        const form = document.getElementById('form-login');
+        const btn = form.querySelector('button[type="submit"]'); 
+        
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
         const csrfTokenInput = document.getElementById('csrf_token');
         const csrfToken = csrfTokenInput ? csrfTokenInput.value : '';
 
-        const errorDiv = document.getElementById('register-error');
+        const errorDiv = document.getElementById('login-error');
 
         this.setLoading(btn, true);
         this.hideError(errorDiv);
 
         try {
-            // ENVIAR TOKEN
-            const res = await this.post({ action: 'register', username, email, password, csrf_token: csrfToken });
+            const res = await this.post({ action: 'login', email, password, csrf_token: csrfToken });
             if (res.success) {
-                window.location.href = '/ProjectAurora/';
+                window.location.href = '/ProjectAurora/'; 
             } else {
                 this.showError(errorDiv, res.message);
                 this.setLoading(btn, false);
@@ -125,7 +243,8 @@ export class AuthController {
         return await response.json();
     }
 
-    // --- LÓGICA DE SPINNER ---
+    // --- UI UX --- //
+    
     setLoading(btn, isLoading) {
         if(!btn) return;
 

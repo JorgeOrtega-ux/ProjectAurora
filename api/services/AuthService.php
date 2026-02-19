@@ -9,22 +9,88 @@ class AuthService {
         $this->conn = $db;
     }
 
-    public function register($data) {
-        // 1. Validar si el correo existe
+    // Valida si un correo ya existe en la tabla users
+    public function checkEmail($email) {
         $query = "SELECT id FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':correo', $data->email);
+        $stmt->bindParam(':correo', $email);
         $stmt->execute();
         
-        if ($stmt->rowCount() > 0) {
+        return $stmt->rowCount() > 0;
+    }
+
+    // Genera el código y almacena el payload temporalmente
+    public function requestRegistrationCode($data) {
+        if ($this->checkEmail($data->email)) {
             return ['success' => false, 'message' => 'El correo ya está registrado.'];
         }
 
-        // 2. Generar UUID y Hash
-        $uuid = bin2hex(random_bytes(16));
+        // Generar código de 6 dígitos
+        $code = sprintf("%06d", mt_rand(1, 999999));
         $password_hash = password_hash($data->password, PASSWORD_BCRYPT);
+        
+        // Guardar todos los datos necesarios para cuando se verifique
+        $payload = json_encode([
+            'username' => $data->username,
+            'email' => $data->email,
+            'password_hash' => $password_hash
+        ]);
 
-        // 3. Configuración del Avatar (NUEVA LÓGICA)
+        // Expira en 15 minutos
+        $expires_at = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+
+        // Limpiar códigos anteriores de este correo para evitar basura en la DB
+        $delQuery = "DELETE FROM verification_codes WHERE identifier = :identifier AND code_type = 'account_activation'";
+        $delStmt = $this->conn->prepare($delQuery);
+        $delStmt->bindParam(':identifier', $data->email);
+        $delStmt->execute();
+
+        // Insertar nuevo código temporal
+        $query = "INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) 
+                  VALUES (:identifier, 'account_activation', :code, :payload, :expires_at)";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':identifier', $data->email);
+        $stmt->bindParam(':code', $code);
+        $stmt->bindParam(':payload', $payload);
+        $stmt->bindParam(':expires_at', $expires_at);
+
+        if ($stmt->execute()) {
+            return [
+                'success' => true, 
+                'message' => 'Código enviado.', 
+                'dev_code' => $code // Devuelto al JS para simular que llega al correo y mostrarlo
+            ];
+        }
+
+        return ['success' => false, 'message' => 'Error al procesar la solicitud.'];
+    }
+
+    // Verifica el código e inserta el usuario final
+    public function register($data) {
+        // 1. Validar si el código existe, es para ese correo y no ha expirado
+        $query = "SELECT id, payload FROM verification_codes WHERE identifier = :identifier AND code = :code AND code_type = 'account_activation' AND expires_at > NOW() LIMIT 0,1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':identifier', $data->email);
+        $stmt->bindParam(':code', $data->code);
+        $stmt->execute();
+
+        if ($stmt->rowCount() === 0) {
+            return ['success' => false, 'message' => 'El código de verificación es inválido o ha expirado.'];
+        }
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $payload = json_decode($row['payload'], true);
+        $codeId = $row['id'];
+
+        // Extraer datos validados del payload temporal
+        $username = $payload['username'];
+        $email = $payload['email'];
+        $password_hash = $payload['password_hash'];
+
+        // 2. Generar UUID
+        $uuid = bin2hex(random_bytes(16));
+
+        // 3. Configuración del Avatar 
         $avatarFilename = $uuid . '.png';
         $storageDir = __DIR__ . '/../../public/storage/profilePictures/default/';
         $webPath = 'storage/profilePictures/default/' . $avatarFilename;
@@ -33,19 +99,12 @@ class AuthService {
             mkdir($storageDir, 0777, true);
         }
 
-        // --- CAMBIOS SOLICITADOS ---
-        // Lista de colores permitidos (sin el # para la URL)
+        // Lista de colores permitidos solicitados
         $allowedColors = ['2563eb', '16a34a', '7c3aed', 'dc2626', 'ea580c', '374151'];
-        // Seleccionar uno al azar
         $randomColor = $allowedColors[array_rand($allowedColors)];
         
-        $nameEncoded = urlencode($data->username);
+        $nameEncoded = urlencode($username);
         
-        // URL con los nuevos parámetros:
-        // background = color aleatorio de la lista
-        // color = fff (blanco para que contraste con tus colores oscuros)
-        // size = 512 (Alta calidad)
-        // length = 1 (Solo 1 letra)
         $avatarUrl = "https://ui-avatars.com/api/?name={$nameEncoded}&background={$randomColor}&color=fff&size=512&length=1&format=png";
         
         $avatarContent = file_get_contents($avatarUrl);
@@ -56,22 +115,31 @@ class AuthService {
             $webPath = ''; // Fallback
         }
 
-        // 4. Insertar en BD
+        // 4. Insertar en BD Final
         $query = "INSERT INTO " . $this->table_name . " 
                  (uuid, nombre, correo, contrasena, avatar_path) 
                  VALUES (:uuid, :nombre, :correo, :contrasena, :avatar_path)";
         
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':uuid', $uuid);
-        $stmt->bindParam(':nombre', $data->username);
-        $stmt->bindParam(':correo', $data->email);
+        $stmt->bindParam(':nombre', $username);
+        $stmt->bindParam(':correo', $email);
         $stmt->bindParam(':contrasena', $password_hash);
         $stmt->bindParam(':avatar_path', $webPath);
 
         if ($stmt->execute()) {
-            $_SESSION['user_id'] = $this->conn->lastInsertId();
+            $newUserId = $this->conn->lastInsertId();
+
+            // 5. Destruir el código utilizado para que no se re-use
+            $delQuery = "DELETE FROM verification_codes WHERE id = :id";
+            $delStmt = $this->conn->prepare($delQuery);
+            $delStmt->bindParam(':id', $codeId);
+            $delStmt->execute();
+
+            // 6. Iniciar sesión automática
+            $_SESSION['user_id'] = $newUserId;
             $_SESSION['user_uuid'] = $uuid;
-            $_SESSION['user_name'] = $data->username;
+            $_SESSION['user_name'] = $username;
             $_SESSION['user_role'] = 'user';
             $_SESSION['user_avatar'] = $webPath;
 
@@ -79,14 +147,14 @@ class AuthService {
                 'success' => true, 
                 'message' => 'Usuario registrado correctamente.',
                 'user' => [
-                    'name' => $data->username,
+                    'name' => $username,
                     'avatar' => $webPath,
                     'role' => 'user'
                 ]
             ];
         }
 
-        return ['success' => false, 'message' => 'Error al registrar el usuario.'];
+        return ['success' => false, 'message' => 'Error crítico al crear la cuenta.'];
     }
 
     public function login($email, $password) {
