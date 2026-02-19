@@ -1,24 +1,24 @@
+// public/assets/js/auth-controller.js
 import { SpaRouter } from './spa-router.js';
+import { ApiService } from './api-services.js';
+import { API_ROUTES } from './api-routes.js';
 
 export class AuthController {
     constructor() {
-        this.apiPath = '/ProjectAurora/api/handler/auth-handler.php';
         this.init();
     }
 
     init() {
-        // Enrutamiento de eventos form submit
         document.body.addEventListener('submit', (e) => {
             if (e.target.id === 'form-login') {
                 e.preventDefault();
                 this.handleLogin();
             } else if (e.target.id === 'form-register') {
                 e.preventDefault();
-                this.handleRegisterFinal(); // Ahora se dispara en la etapa 3
+                this.handleRegisterFinal(); 
             }
         });
 
-        // Interceptores de clics para transiciones y visibilidad de contraseña
         document.body.addEventListener('click', (e) => {
             const logoutBtn = e.target.closest('[data-action="logout"]');
             if (logoutBtn) {
@@ -27,7 +27,6 @@ export class AuthController {
                 return;
             }
 
-            // Manejo del botón de ver contraseña
             const toggleBtn = e.target.closest('.component-input-action');
             if (toggleBtn) {
                 const wrapper = toggleBtn.parentElement;
@@ -43,7 +42,6 @@ export class AuthController {
                 }
             }
 
-            // Flujo de Registro (Etapas)
             if (e.target.closest('#btn-next-1')) {
                 this.handleRegisterStage1();
             } else if (e.target.closest('#btn-next-2')) {
@@ -56,14 +54,11 @@ export class AuthController {
         });
     }
 
-    // --- FUNCIONES DE TRANSICIÓN Y MANEJO DE ETAPAS --- //
-
     switchStage(fromStage, toStage) {
         document.getElementById(`reg-stage-${fromStage}`).style.display = 'none';
         document.getElementById(`reg-stage-${toStage}`).style.display = 'block';
         this.hideError(document.getElementById('register-error'));
         
-        // Foco automático para mejorar UX
         if (toStage === 2) {
             setTimeout(() => document.getElementById('reg-username').focus(), 50);
         } else if (toStage === 3) {
@@ -83,7 +78,6 @@ export class AuthController {
             return;
         }
 
-        // Validación básica de email en JS antes de ir a BD
         if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value)){
              this.showError(errorDiv, 'Ingresa un correo válido.');
              return;
@@ -93,9 +87,8 @@ export class AuthController {
         this.hideError(errorDiv);
 
         try {
-            // Verificar si el correo ya existe
-            const res = await this.post({ 
-                action: 'check_email', 
+            // Fíjate que ya no enviamos "action" aquí, la URL lo determina
+            const res = await ApiService.post(API_ROUTES.AUTH.CHECK_EMAIL, { 
                 email: emailInput.value,
                 csrf_token: csrfToken 
             });
@@ -130,9 +123,7 @@ export class AuthController {
         this.hideError(errorDiv);
 
         try {
-            // Solicitar código a la API (guardará el payload en BD temporalmente)
-            const res = await this.post({ 
-                action: 'send_code', 
+            const res = await ApiService.post(API_ROUTES.AUTH.SEND_CODE, { 
                 email, 
                 password, 
                 username, 
@@ -140,7 +131,6 @@ export class AuthController {
             });
 
             if (res.success) {
-                // Simulación: Imprimir código en pantalla para que el usuario pueda copiarlo
                 const codeDisplay = document.getElementById('simulated-code-display');
                 if (codeDisplay) {
                     codeDisplay.textContent = res.dev_code;
@@ -173,9 +163,7 @@ export class AuthController {
         this.hideError(errorDiv);
 
         try {
-            // Enviar verificación final (crea el usuario)
-            const res = await this.post({ 
-                action: 'register', 
+            const res = await ApiService.post(API_ROUTES.AUTH.REGISTER, { 
                 email, 
                 code, 
                 csrf_token: csrfToken 
@@ -194,8 +182,6 @@ export class AuthController {
         }
     }
 
-    // --- FLUJOS NORMALES --- //
-
     async handleLogin() {
         const form = document.getElementById('form-login');
         const btn = form.querySelector('button[type="submit"]'); 
@@ -211,7 +197,11 @@ export class AuthController {
         this.hideError(errorDiv);
 
         try {
-            const res = await this.post({ action: 'login', email, password, csrf_token: csrfToken });
+            const res = await ApiService.post(API_ROUTES.AUTH.LOGIN, { 
+                email, 
+                password, 
+                csrf_token: csrfToken 
+            });
             if (res.success) {
                 window.location.href = '/ProjectAurora/'; 
             } else {
@@ -227,24 +217,13 @@ export class AuthController {
 
     async handleLogout() {
         try {
-            await this.post({ action: 'logout' });
+            await ApiService.post(API_ROUTES.AUTH.LOGOUT);
             window.location.href = '/ProjectAurora/login';
         } catch (error) {
             console.error(error);
         }
     }
 
-    async post(data) {
-        const response = await fetch(this.apiPath, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        return await response.json();
-    }
-
-    // --- UI UX --- //
-    
     setLoading(btn, isLoading) {
         if(!btn) return;
 

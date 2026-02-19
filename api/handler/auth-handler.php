@@ -1,7 +1,5 @@
 <?php
 // api/handler/auth-handler.php
-session_start();
-header("Content-Type: application/json; charset=UTF-8");
 
 include_once __DIR__ . '/../../config/database.php';
 include_once __DIR__ . '/../services/AuthService.php';
@@ -12,10 +10,10 @@ $auth = new AuthService($db);
 
 // Obtener datos del cuerpo de la petición (JSON)
 $data = json_decode(file_get_contents("php://input"));
-$action = isset($data->action) ? $data->action : '';
+
+// NOTA: La variable $action YA EXISTE aquí porque fue definida en api/index.php
 
 // --- VALIDACIÓN CSRF ---
-// Validamos acciones críticas
 if ($action === 'login' || $action === 'register' || $action === 'send_code') {
     if (empty($data->csrf_token) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $data->csrf_token)) {
         echo json_encode(['success' => false, 'message' => 'Error de seguridad (Token inválido). Recarga la página.']);
@@ -26,7 +24,6 @@ if ($action === 'login' || $action === 'register' || $action === 'send_code') {
 
 switch ($action) {
     case 'check_email':
-        // Etapa 1: Validar que el correo no exista antes de continuar
         if (!empty($data->email)) {
             if ($auth->checkEmail($data->email)) {
                 echo json_encode(['success' => false, 'message' => 'El correo ya está registrado.']);
@@ -39,7 +36,6 @@ switch ($action) {
         break;
 
     case 'send_code':
-        // Etapa 2: Guardar payload temporal y enviar código
         if (!empty($data->username) && !empty($data->email) && !empty($data->password)) {
             echo json_encode($auth->requestRegistrationCode($data));
         } else {
@@ -48,7 +44,6 @@ switch ($action) {
         break;
 
     case 'register':
-        // Etapa 3: Validar código y completar registro en BD
         if (!empty($data->email) && !empty($data->code)) {
             echo json_encode($auth->register($data));
         } else {

@@ -3,16 +3,14 @@
     Options -Indexes
     Options -MultiViews
 
-    # 1. MAPEO DE ASSETS (Ya lo tienes)
+    # 1. MAPEO DE ASSETS 
     RewriteRule ^assets/(.*)$ public/assets/$1 [L]
     
-    # --- AGREGA ESTA LÍNEA AQUÍ ---
     # Permite que el navegador acceda a la carpeta storage/ dentro de public/
     RewriteRule ^storage/(.*)$ public/storage/$1 [L]
-    # ------------------------------
 
-    # 2. MAPEO DE API (Ya lo tienes)
-    RewriteRule ^api/(.*)$ api/$1 [L]
+    # 2. MAPEO DE API (NUEVO ROUTER CENTRAL)
+    RewriteRule ^api/(.*)$ api/index.php?endpoint=$1 [QSA,L]
 
     # 3. EXCEPCIONES FÍSICAS
     RewriteCond %{REQUEST_FILENAME} -f
