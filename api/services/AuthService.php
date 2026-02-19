@@ -1,5 +1,9 @@
 <?php
 // api/services/AuthService.php
+namespace App\Api\Services;
+
+use PDO;
+use App\Core\Utils;
 
 class AuthService {
     private $conn;
@@ -156,27 +160,19 @@ class AuthService {
         return ['success' => true];
     }
 
-    // ==========================================
-    // MÉTODOS PARA RECUPERACIÓN DE CONTRASEÑA
-    // ==========================================
-
     public function requestPasswordReset($email) {
-        // 1. Validar que el correo exista
         if (!$this->checkEmail($email)) {
             return ['success' => false, 'message' => 'El correo proporcionado no está registrado en el sistema.'];
         }
 
-        // 2. Generar Token Seguro Largo
-        $token = bin2hex(random_bytes(32)); // 64 caracteres
-        $expires_at = date('Y-m-d H:i:s', strtotime('+1 hour')); // Expira en 1 hora
+        $token = bin2hex(random_bytes(32)); 
+        $expires_at = date('Y-m-d H:i:s', strtotime('+1 hour')); 
 
-        // 3. Limpiar tokens antiguos de recuperación
         $delQuery = "DELETE FROM verification_codes WHERE identifier = :identifier AND code_type = 'password_reset'";
         $delStmt = $this->conn->prepare($delQuery);
         $delStmt->bindParam(':identifier', $email);
         $delStmt->execute();
 
-        // 4. Insertar nuevo Token
         $payload = json_encode(['email' => $email]);
         $query = "INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) 
                   VALUES (:identifier, 'password_reset', :code, :payload, :expires_at)";
@@ -187,12 +183,11 @@ class AuthService {
         $stmt->bindParam(':expires_at', $expires_at);
 
         if ($stmt->execute()) {
-            // El dominio base deberia venir del archivo env, pero lo emulamos como pediste:
             $resetLink = "/ProjectAurora/reset-password?token=" . $token;
             return [
                 'success' => true, 
                 'message' => 'Enlace de recuperación generado.',
-                'dev_link' => $resetLink // Simulamos el correo mostrándolo en UI
+                'dev_link' => $resetLink 
             ];
         }
 
@@ -200,7 +195,6 @@ class AuthService {
     }
 
     public function resetPassword($token, $newPassword) {
-        // 1. Validar que el token exista y no haya expirado
         $query = "SELECT id, identifier FROM verification_codes WHERE code = :code AND code_type = 'password_reset' AND expires_at > NOW() LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':code', $token);
@@ -214,17 +208,14 @@ class AuthService {
         $email = $row['identifier'];
         $codeId = $row['id'];
 
-        // 2. Encriptar nueva contraseña
         $password_hash = password_hash($newPassword, PASSWORD_BCRYPT);
 
-        // 3. Actualizar la tabla users
         $updateQuery = "UPDATE " . $this->table_name . " SET contrasena = :contrasena WHERE correo = :correo";
         $updStmt = $this->conn->prepare($updateQuery);
         $updStmt->bindParam(':contrasena', $password_hash);
         $updStmt->bindParam(':correo', $email);
 
         if ($updStmt->execute()) {
-            // 4. Eliminar el token para que no pueda ser usado nuevamente
             $delStmt = $this->conn->prepare("DELETE FROM verification_codes WHERE id = :id");
             $delStmt->bindParam(':id', $codeId);
             $delStmt->execute();

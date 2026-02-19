@@ -1,0 +1,11 @@
+{
+    "name": "jorgeortega/projectaurora",
+    "description": "Project Aurora SPA",
+    "autoload": {
+        "psr-4": {
+            "App\\Config\\": "config/",
+            "App\\Core\\": "includes/core/",
+            "App\\Api\\Services\\": "api/services/"
+        }
+    }
+}

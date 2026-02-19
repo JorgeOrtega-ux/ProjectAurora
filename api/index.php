@@ -1,8 +1,10 @@
 <?php
 // api/index.php
 
-// 1. Cargar el Bootstrap (Entorno, Sesiones Seguras, Base de Datos y Utilidades)
+// 1. Cargar el Bootstrap (Entorno, Sesiones Seguras, Base de Datos y Composer Autoloader)
 require_once __DIR__ . '/../includes/core/bootstrap.php';
+
+use App\Core\Utils;
 
 header("Content-Type: application/json; charset=UTF-8");
 

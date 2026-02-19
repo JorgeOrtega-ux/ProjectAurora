@@ -1,10 +1,16 @@
 <?php
-// includes/core/bootstrap.php
+// includes/core/Bootstrap.php
 
-// 1. ZONA HORARIA
+// 1. CARGAR AUTOLOADER DE COMPOSER
+require_once __DIR__ . '/../../vendor/autoload.php';
+
+use App\Core\Utils;
+use App\Config\Database;
+
+// 2. ZONA HORARIA
 date_default_timezone_set('America/Mexico_City');
 
-// 2. CONFIGURACIÓN DE SESIONES Y COOKIES SEGURAS
+// 3. CONFIGURACIÓN DE SESIONES Y COOKIES SEGURAS
 // Evitar acceso a cookies desde JavaScript (Previene ataques XSS)
 ini_set('session.cookie_httponly', 1);
 // Prevenir envío de cookies en peticiones cruzadas (Previene ataques CSRF en conjunto con tu token)
@@ -24,18 +30,14 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// 3. CARGA DE UTILIDADES Y ENTORNO
-require_once __DIR__ . '/utils.php';
-
+// 4. CARGA DE UTILIDADES Y ENTORNO
 try {
     Utils::loadEnv(__DIR__ . '/../../.env');
 } catch (Exception $e) {
     die("Error crítico del sistema: No se pudo cargar el archivo de configuración de entorno.");
 }
 
-// 4. CONEXIÓN A LA BASE DE DATOS Y MANEJO DE ERRORES GLOBALES
-require_once __DIR__ . '/../../config/database.php';
-
+// 5. CONEXIÓN A LA BASE DE DATOS Y MANEJO DE ERRORES GLOBALES
 // Hacemos la conexión global para que los handlers la puedan reutilizar sin instanciar de nuevo
 global $dbConnection;
 

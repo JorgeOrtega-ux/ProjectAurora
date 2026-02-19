@@ -1,5 +1,10 @@
 <?php
-// includes/config/database.php
+// config/database.php
+namespace App\Config;
+
+use PDO;
+use PDOException;
+
 class Database {
     private $host;
     private $db_name;

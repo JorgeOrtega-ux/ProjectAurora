@@ -1,5 +1,8 @@
 <?php
 // includes/core/utils.php
+namespace App\Core;
+
+use Exception;
 
 class Utils {
     

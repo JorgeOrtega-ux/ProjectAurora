@@ -1,4 +1,7 @@
 <?php
+// includes/core/router.php
+namespace App\Core;
+
 class Router {
     private $routes;
     private $basePath;

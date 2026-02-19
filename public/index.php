@@ -1,11 +1,12 @@
 <?php
 // public/index.php
 
-// 1. Cargar el Bootstrap (Entorno, Sesiones Seguras, Base de Datos y Utilidades)
+// 1. Cargar el Bootstrap (Entorno, Sesiones Seguras, Base de Datos y Composer Autoloader)
 require_once __DIR__ . '/../includes/core/bootstrap.php';
 
-require_once __DIR__ . '/../includes/core/loader.php';
-require_once __DIR__ . '/../includes/core/router.php';
+use App\Core\Loader;
+use App\Core\Router;
+
 $routes = require __DIR__ . '/../includes/config/routes.php';
 
 $bodyClass = isset($_SESSION['user_id']) ? 'is-logged-in' : '';

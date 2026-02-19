@@ -1,8 +1,8 @@
 <?php
 // api/handler/auth-handler.php
 
-// La clase Database y utilidades ya fueron cargadas y probadas por bootstrap.php
-include_once __DIR__ . '/../services/AuthService.php';
+use App\Api\Services\AuthService;
+use App\Core\Utils;
 
 // Llamamos a la conexión global generada en bootstrap.php
 global $dbConnection;
@@ -14,7 +14,6 @@ $auth = new AuthService($dbConnection);
 $data = Utils::getJsonInput();
 
 // --- VALIDACIÓN CSRF USANDO UTILS ---
-// SE AÑADIERON LAS NUEVAS RUTAS A LA VALIDACIÓN
 if (in_array($action, ['login', 'register', 'send_code', 'forgot_password', 'reset_password'])) {
     // Si el token no es válido, se bloquea la petición
     if (!Utils::validateCSRF($data->csrf_token ?? '')) {
@@ -78,7 +77,6 @@ switch ($action) {
         }
         break;
 
-    // --- NUEVAS RUTAS DE PASSWORD ---
     case 'forgot_password':
         if (!empty($data->email)) {
             Utils::sendResponse($auth->requestPasswordReset($data->email));

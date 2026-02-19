@@ -1,5 +1,6 @@
 <?php
-// includes/core/Loader.php
+// includes/core/loader.php
+namespace App\Core;
 
 class Loader {
     private $viewsPath;
@@ -19,3 +20,4 @@ class Loader {
         }
     }
 }
+?>
