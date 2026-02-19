@@ -12,7 +12,8 @@ $auth = new AuthService($db);
 $data = Utils::getJsonInput();
 
 // --- VALIDACIÓN CSRF USANDO UTILS ---
-if (in_array($action, ['login', 'register', 'send_code'])) {
+// SE AÑADIERON LAS NUEVAS RUTAS A LA VALIDACIÓN
+if (in_array($action, ['login', 'register', 'send_code', 'forgot_password', 'reset_password'])) {
     // Si el token no es válido, se bloquea la petición
     if (!Utils::validateCSRF($data->csrf_token ?? '')) {
         Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido). Recarga la página.']);
@@ -72,6 +73,23 @@ switch ($action) {
             ]);
         } else {
             Utils::sendResponse(['success' => false]);
+        }
+        break;
+
+    // --- NUEVAS RUTAS DE PASSWORD ---
+    case 'forgot_password':
+        if (!empty($data->email)) {
+            Utils::sendResponse($auth->requestPasswordReset($data->email));
+        } else {
+            Utils::sendResponse(['success' => false, 'message' => 'El correo es requerido.']);
+        }
+        break;
+
+    case 'reset_password':
+        if (!empty($data->token) && !empty($data->password)) {
+            Utils::sendResponse($auth->resetPassword($data->token, $data->password));
+        } else {
+            Utils::sendResponse(['success' => false, 'message' => 'El token o la contraseña están vacíos.']);
         }
         break;
 

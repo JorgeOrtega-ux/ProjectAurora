@@ -16,6 +16,12 @@ export class AuthController {
             } else if (e.target.id === 'form-register') {
                 e.preventDefault();
                 this.handleRegisterFinal(); 
+            } else if (e.target.id === 'form-forgot-password') { // NUEVO
+                e.preventDefault();
+                this.handleForgotPassword();
+            } else if (e.target.id === 'form-reset-password') {   // NUEVO
+                e.preventDefault();
+                this.handleResetPassword();
             }
         });
 
@@ -27,6 +33,7 @@ export class AuthController {
                 return;
             }
 
+            // Alternador global de visibilidad de contraseñas
             const toggleBtn = e.target.closest('.component-input-action');
             if (toggleBtn) {
                 const wrapper = toggleBtn.parentElement;
@@ -87,7 +94,6 @@ export class AuthController {
         this.hideError(errorDiv);
 
         try {
-            // Fíjate que ya no enviamos "action" aquí, la URL lo determina
             const res = await ApiService.post(API_ROUTES.AUTH.CHECK_EMAIL, { 
                 email: emailInput.value,
                 csrf_token: csrfToken 
@@ -223,6 +229,96 @@ export class AuthController {
             console.error(error);
         }
     }
+
+    // --- NUEVAS FUNCIONES RECUPERACIÓN DE CONTRASEÑA ---
+
+    async handleForgotPassword() {
+        const email = document.getElementById('forgot-email').value;
+        const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
+        const btn = document.getElementById('btn-forgot-password');
+        const errorDiv = document.getElementById('forgot-error');
+        const linkContainer = document.getElementById('simulated-link-container');
+        const linkDisplay = document.getElementById('simulated-link-display');
+
+        this.setLoading(btn, true);
+        this.hideError(errorDiv);
+        linkContainer.style.display = 'none';
+
+        try {
+            const res = await ApiService.post(API_ROUTES.AUTH.FORGOT_PASSWORD, { 
+                email, 
+                csrf_token: csrfToken 
+            });
+
+            if (res.success) {
+                // Simulamos mostrar el correo recibido 
+                linkDisplay.href = res.dev_link;
+                linkDisplay.textContent = window.location.origin + res.dev_link;
+                // Configurar para usar SPA routing en el enlace simulado si se da clic
+                linkDisplay.dataset.nav = res.dev_link; 
+                linkContainer.style.display = 'block';
+            } else {
+                this.showError(errorDiv, res.message);
+            }
+        } catch (error) {
+            console.error(error);
+            this.showError(errorDiv, 'Error al procesar la solicitud. Inténtalo de nuevo.');
+        } finally {
+            this.setLoading(btn, false);
+        }
+    }
+
+    async handleResetPassword() {
+        // Obtenemos el token desde la URL (query parameter)
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+        
+        const pass1 = document.getElementById('reset-password-1').value;
+        const pass2 = document.getElementById('reset-password-2').value;
+        const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
+        const btn = document.getElementById('btn-reset-password');
+        const errorDiv = document.getElementById('reset-error');
+        const successDiv = document.getElementById('reset-success');
+
+        this.hideError(errorDiv);
+
+        if (!token) {
+            this.showError(errorDiv, 'El enlace no es válido (falta el token).');
+            return;
+        }
+
+        if (pass1 !== pass2) {
+            this.showError(errorDiv, 'Las contraseñas no coinciden.');
+            return;
+        }
+
+        this.setLoading(btn, true);
+
+        try {
+            const res = await ApiService.post(API_ROUTES.AUTH.RESET_PASSWORD, { 
+                token, 
+                password: pass1,
+                csrf_token: csrfToken 
+            });
+
+            if (res.success) {
+                successDiv.style.display = 'block';
+                btn.style.display = 'none'; // Ocultar el botón para evitar re-clics
+                setTimeout(() => {
+                    window.location.href = '/ProjectAurora/login';
+                }, 2000); // Redirigir a los 2 segundos
+            } else {
+                this.showError(errorDiv, res.message);
+                this.setLoading(btn, false);
+            }
+        } catch (error) {
+            console.error(error);
+            this.showError(errorDiv, 'Error al actualizar. Inténtalo de nuevo.');
+            this.setLoading(btn, false);
+        }
+    }
+
+    // --- FUNCIONES UTILERÍA ---
 
     setLoading(btn, isLoading) {
         if(!btn) return;

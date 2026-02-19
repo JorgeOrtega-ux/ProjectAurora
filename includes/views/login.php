@@ -26,7 +26,7 @@
                     </div>
                 </div>
 
-                <a href="#" class="component-link-simple">¿Olvidaste tu contraseña?</a>
+              <a href="/ProjectAurora/forgot-password" data-nav="/ProjectAurora/forgot-password" class="component-link-simple">¿Olvidaste tu contraseña?</a>
 
                 <button type="submit" class="component-button component-button--large primary">
                     Iniciar Sesión

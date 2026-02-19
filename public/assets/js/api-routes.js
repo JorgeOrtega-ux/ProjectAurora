@@ -8,6 +8,8 @@ export const API_ROUTES = {
         REGISTER: `${BASE_PATH}/api/auth.register`,
         LOGIN: `${BASE_PATH}/api/auth.login`,
         LOGOUT: `${BASE_PATH}/api/auth.logout`,
-        CHECK_SESSION: `${BASE_PATH}/api/auth.check_session`
+        CHECK_SESSION: `${BASE_PATH}/api/auth.check_session`,
+        FORGOT_PASSWORD: `${BASE_PATH}/api/auth.forgot_password`, // NUEVA
+        RESET_PASSWORD: `${BASE_PATH}/api/auth.reset_password`    // NUEVA
     }
 };
