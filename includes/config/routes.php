@@ -6,8 +6,10 @@ return [
     '/explore' => 'explore.php',
     '/login' => 'login.php',
     '/register' => 'register.php',
-    '/forgot-password' => 'forgot-password.php', // NUEVA RUTA
-    '/reset-password' => 'reset-password.php',   // NUEVA RUTA
+    '/register/aditional-data' => 'register.php', // Apunta al mismo archivo
+    '/register/verification-account' => 'register.php', // Apunta al mismo archivo
+    '/forgot-password' => 'forgot-password.php',
+    '/reset-password' => 'reset-password.php',
     
     // Rutas de configuración
     '/settings/your-account' => 'settings-account.php',
