@@ -100,5 +100,9 @@
   "js.profile.err_empty": "El campo no puede estar vacío.",
   "js.profile.err_net": "Error de red al procesar la solicitud.",
   "js.profile.err_proc": "Error interno al procesar la solicitud.",
-  "js.profile.err_db": "Error al actualizar el campo en la base de datos."
+  "js.profile.err_db": "Error al actualizar el campo en la base de datos.",
+  "js.auth.err_email_invalid": "El correo es inválido. Usa un dominio permitido (@gmail.com, @outlook.com, @icloud.com, @hotmail.com, @yahoo.com) y debe tener entre 4 y 64 caracteres antes del @.",
+  "js.auth.err_pass_length": "La contraseña debe tener entre 12 y 64 caracteres.",
+  "js.auth.err_user_length": "El nombre de usuario debe tener entre 3 y 32 caracteres.",
+  "js.auth.err_validation": "Los datos proporcionados no cumplen con los requisitos de seguridad."
 }

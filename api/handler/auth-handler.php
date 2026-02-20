@@ -4,6 +4,39 @@
 use App\Api\Services\AuthService;
 use App\Core\Utils;
 
+// --- FUNCIONES DE VALIDACIÓN DE SEGURIDAD ---
+
+function validateEmailAuth($email) {
+    if (strlen($email) > 254) return false;
+    
+    $parts = explode('@', $email);
+    if (count($parts) !== 2) return false;
+    
+    $local = $parts[0];
+    $domain = strtolower($parts[1]);
+    
+    // Validación de longitud antes del @
+    if (strlen($local) < 4 || strlen($local) > 64) return false;
+    
+    // Validación de dominios permitidos
+    $allowedDomains = ['gmail.com', 'outlook.com', 'icloud.com', 'hotmail.com', 'yahoo.com'];
+    if (!in_array($domain, $allowedDomains)) return false;
+    
+    return true;
+}
+
+function validatePasswordAuth($password) {
+    $len = strlen($password);
+    return $len >= 12 && $len <= 64;
+}
+
+function validateUsernameAuth($username) {
+    $len = strlen(trim($username));
+    return $len >= 3 && $len <= 32;
+}
+
+// --------------------------------------------
+
 // Retornamos una función anónima que recibe las dependencias inyectadas
 return function($dbConnection, $action) {
 
@@ -25,6 +58,10 @@ return function($dbConnection, $action) {
     switch ($action) {
         case 'check_email':
             if (!empty($data->email)) {
+                if (!validateEmailAuth($data->email)) {
+                    Utils::sendResponse(['success' => false, 'message' => 'js.auth.err_email_invalid']);
+                }
+
                 if ($auth->checkEmail($data->email)) {
                     Utils::sendResponse(['success' => false, 'message' => 'El correo ya está registrado.']);
                 } else {
@@ -37,6 +74,11 @@ return function($dbConnection, $action) {
 
         case 'send_code':
             if (!empty($data->username) && !empty($data->email) && !empty($data->password)) {
+                // Validación estricta antes de enviar código
+                if (!validateEmailAuth($data->email) || !validatePasswordAuth($data->password) || !validateUsernameAuth($data->username)) {
+                    Utils::sendResponse(['success' => false, 'message' => 'js.auth.err_validation']);
+                }
+
                 Utils::sendResponse($auth->requestRegistrationCode($data));
             } else {
                 Utils::sendResponse(['success' => false, 'message' => 'Faltan datos para procesar el registro.']);
@@ -87,6 +129,9 @@ return function($dbConnection, $action) {
 
         case 'reset_password':
             if (!empty($data->token) && !empty($data->password)) {
+                if (!validatePasswordAuth($data->password)) {
+                    Utils::sendResponse(['success' => false, 'message' => 'js.auth.err_validation']);
+                }
                 Utils::sendResponse($auth->resetPassword($data->token, $data->password));
             } else {
                 Utils::sendResponse(['success' => false, 'message' => 'El token o la contraseña están vacíos.']);

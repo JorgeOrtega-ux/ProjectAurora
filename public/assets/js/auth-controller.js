@@ -153,16 +153,41 @@ export class AuthController {
         const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
 
         if (!emailInput.value || !passwordInput.value) { this.showError(errorDiv, window.t('js.auth.err_fields')); return; }
-        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value)){ this.showError(errorDiv, window.t('js.auth.err_email')); return; }
+
+        const email = emailInput.value.trim();
+        const pass = passwordInput.value;
+        const emailParts = email.split('@');
+        
+        // Validar formato de correo, longitud total y partes
+        if (emailParts.length !== 2 || email.length > 254) { 
+            this.showError(errorDiv, window.t('js.auth.err_email_invalid')); 
+            return; 
+        }
+
+        const localPart = emailParts[0];
+        const domainPart = emailParts[1].toLowerCase();
+        const allowedDomains = ['gmail.com', 'outlook.com', 'icloud.com', 'hotmail.com', 'yahoo.com'];
+
+        // Validar reglas específicas del correo
+        if (localPart.length < 4 || localPart.length > 64 || !allowedDomains.includes(domainPart)) {
+            this.showError(errorDiv, window.t('js.auth.err_email_invalid')); 
+            return;
+        }
+
+        // Validar longitud de la contraseña
+        if (pass.length < 12 || pass.length > 64) {
+            this.showError(errorDiv, window.t('js.auth.err_pass_length')); 
+            return;
+        }
 
         this.setLoading(btn, true);
         this.hideError(errorDiv);
 
         try {
-            const res = await ApiService.post(API_ROUTES.AUTH.CHECK_EMAIL, { email: emailInput.value, csrf_token: csrfToken });
+            const res = await ApiService.post(API_ROUTES.AUTH.CHECK_EMAIL, { email: email, csrf_token: csrfToken });
             if (res.success) {
-                sessionStorage.setItem('reg_email', emailInput.value);
-                sessionStorage.setItem('reg_password', passwordInput.value);
+                sessionStorage.setItem('reg_email', email);
+                sessionStorage.setItem('reg_password', pass);
                 this.router.navigate('/ProjectAurora/register/aditional-data'); 
             } else {
                 this.showError(errorDiv, window.t(res.message));
@@ -180,15 +205,22 @@ export class AuthController {
         const email = sessionStorage.getItem('reg_email');
         const password = sessionStorage.getItem('reg_password');
 
-        if (!usernameInput.value) { this.showError(errorDiv, window.t('js.auth.err_user')); return; }
+        const user = usernameInput.value.trim();
+        if (!user) { this.showError(errorDiv, window.t('js.auth.err_user')); return; }
+
+        // Validar longitud del nombre de usuario
+        if (user.length < 3 || user.length > 32) {
+            this.showError(errorDiv, window.t('js.auth.err_user_length')); 
+            return;
+        }
 
         this.setLoading(btn, true);
         this.hideError(errorDiv);
 
         try {
-            const res = await ApiService.post(API_ROUTES.AUTH.SEND_CODE, { email, password, username: usernameInput.value, csrf_token: csrfToken });
+            const res = await ApiService.post(API_ROUTES.AUTH.SEND_CODE, { email, password, username: user, csrf_token: csrfToken });
             if (res.success) {
-                sessionStorage.setItem('reg_username', usernameInput.value);
+                sessionStorage.setItem('reg_username', user);
                 sessionStorage.setItem('reg_dev_code', res.dev_code);
                 this.router.navigate('/ProjectAurora/register/verification-account'); 
             } else { this.showError(errorDiv, window.t(res.message)); }
@@ -318,6 +350,9 @@ export class AuthController {
 
         if (!pass1 || !pass2) { this.showError(errorDiv, window.t('js.auth.err_fields')); return; }
         if (pass1 !== pass2) { this.showError(errorDiv, window.t('js.auth.err_pass_match')); return; }
+        if (pass1.length < 12 || pass1.length > 64) {
+            this.showError(errorDiv, window.t('js.auth.err_pass_length')); return;
+        }
 
         this.setLoading(btn, true);
         try {
