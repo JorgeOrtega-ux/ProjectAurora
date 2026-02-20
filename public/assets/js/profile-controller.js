@@ -1,5 +1,7 @@
+// public/assets/js/profile-controller.js
 import { ApiService } from './api-services.js';
 import { API_ROUTES } from './api-routes.js';
+import { Toast } from './toast-controller.js'; // <-- INTEGRACIÓN DEL SISTEMA TOAST
 
 export class ProfileController {
     constructor() {
@@ -84,7 +86,7 @@ export class ProfileController {
         if (!file) return;
 
         if (file.size > 2 * 1024 * 1024) {
-            alert(window.t('js.profile.err_img_size'));
+            Toast.show(window.t('js.profile.err_img_size'), 'error'); // <-- TOAST ERROR
             input.value = ''; 
             return;
         }
@@ -135,12 +137,13 @@ export class ProfileController {
             if (res.success) {
                 this.updateAvatarVisuals(res.avatar);
                 this.switchAvatarControlsState('custom'); 
+                Toast.show(window.t(res.message) || 'Foto de perfil actualizada', 'success'); // <-- TOAST ÉXITO
             } else {
-                alert(window.t(res.message));
+                Toast.show(window.t(res.message), 'error'); // <-- TOAST ERROR
                 this.cancelAvatarChange(); 
             }
         } catch (error) {
-            alert(window.t('js.profile.err_net'));
+            Toast.show(window.t('js.profile.err_net'), 'error'); // <-- TOAST ERROR
             this.cancelAvatarChange();
         } finally {
             btn.disabled = false;
@@ -161,11 +164,12 @@ export class ProfileController {
             if (res.success) {
                 this.updateAvatarVisuals(res.avatar);
                 this.switchAvatarControlsState('default');
+                Toast.show(window.t(res.message) || 'Foto de perfil eliminada', 'success'); // <-- TOAST ÉXITO
             } else {
-                alert(window.t(res.message));
+                Toast.show(window.t(res.message), 'error'); // <-- TOAST ERROR
             }
         } catch (error) {
-            alert(window.t('js.profile.err_proc'));
+            Toast.show(window.t('js.profile.err_proc'), 'error'); // <-- TOAST ERROR
         } finally {
             btn.disabled = false;
             btn.textContent = originalText;
@@ -242,7 +246,7 @@ export class ProfileController {
 
         const newValue = inputEl.value.trim();
         if (newValue === "") {
-            alert(window.t('js.profile.err_empty')); 
+            Toast.show(window.t('js.profile.err_empty'), 'error'); // <-- TOAST ERROR
             return;
         }
 
@@ -264,9 +268,12 @@ export class ProfileController {
             if (res.success) {
                 displayEl.textContent = res.newValue;
                 this.toggleFieldState(target, 'view');
-            } else { alert(window.t(res.message)); }
+                Toast.show(window.t(res.message) || 'Actualizado correctamente', 'success'); // <-- TOAST ÉXITO
+            } else { 
+                Toast.show(window.t(res.message), 'error'); // <-- TOAST ERROR
+            }
         } catch (error) {
-            alert(window.t('js.profile.err_db'));
+            Toast.show(window.t('js.profile.err_db'), 'error'); // <-- TOAST ERROR
         } finally {
             btnSave.disabled = false;
             btnSave.textContent = originalText;

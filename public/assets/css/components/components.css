@@ -807,3 +807,78 @@ input:checked + .component-toggle-slider:before {
         flex: 1;
     }
 }
+
+/* =========================================
+   COMPONENT: TOAST NOTIFICATIONS (NUEVO)
+   ========================================= */
+#toast-container {
+    position: fixed;
+    bottom: 24px;   /* Se ajusta a la parte inferior */
+    left: 24px;     /* Se alinea a la izquierda como solicitaste */
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: none; /* Permite clicks a través del contenedor */
+}
+
+.component-toast {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-left: 4px solid #000;
+    transform: translateX(-120%);
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease;
+    pointer-events: auto; /* Rehabilita clicks en la propia alerta si se requiere */
+    min-width: 250px;
+    max-width: 350px;
+}
+
+.component-toast.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+.component-toast--success {
+    border-left-color: #16a34a;
+}
+
+.component-toast--success .material-symbols-rounded {
+    color: #16a34a;
+}
+
+.component-toast--error {
+    border-left-color: #dc2626;
+}
+
+.component-toast--error .material-symbols-rounded {
+    color: #dc2626;
+}
+
+.component-toast-message {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1a1a1a;
+    line-height: 1.4;
+}
+
+/* Ajustes para pantallas pequeñas (móvil) */
+@media (max-width: 480px) {
+    #toast-container {
+        left: 16px;
+        bottom: 16px;
+    }
+    .component-toast {
+        min-width: calc(100vw - 32px);
+        max-width: calc(100vw - 32px);
+        transform: translateY(120%); /* Entra por abajo en pantallas móviles por diseño estándar */
+    }
+    .component-toast.show {
+        transform: translateY(0);
+    }
+}
