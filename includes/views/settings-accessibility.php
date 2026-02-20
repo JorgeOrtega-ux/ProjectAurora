@@ -1,5 +1,8 @@
 <div class="view-content">
     <div class="component-wrapper">
+        
+        <input type="hidden" id="csrf_token_settings" value="<?= $_SESSION['csrf_token'] ?? ''; ?>">
+
         <div class="component-header-card">
             <h1 class="component-page-title"><?= t('settings.access.title') ?></h1>
             <p class="component-page-description"><?= t('settings.access.desc') ?></p>
