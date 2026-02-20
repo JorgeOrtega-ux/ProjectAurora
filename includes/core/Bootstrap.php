@@ -49,30 +49,24 @@ if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// --- SISTEMA DE INTERNACIONALIZACIÓN (i18n) ---
-$auroraLang = $_COOKIE['aurora_lang'] ?? 'en-us'; // Define el idioma por defecto si no hay cookie
-$fileName = ($auroraLang === 'es-latam') ? 'es-419' : $auroraLang; 
-$translations = [];
-$langFile = __DIR__ . '/../../translations/' . $fileName . '.json';
-
-// Si el archivo existe, lo cargamos. Si no, $translations se queda vacío.
-if (file_exists($langFile)) {
-    $translations = json_decode(file_get_contents($langFile), true);
-}
-
-// Helper global para vistas y controladores
-if (!function_exists('t')) {
-    function t($key) {
-        global $translations;
-        // Si el array está vacío o no encuentra la clave, imprime la clave directamente
-        return $translations[$key] ?? $key;
-    }
-}
-
-// --- CONEXIÓN A BASE DE DATOS ---
+// --- CONEXIÓN A BASE DE DATOS Y CONFIGURACIÓN DEL SERVIDOR ---
 try {
     $database = new Database();
     $dbConnection = $database->getConnection();
+    
+    // --- CARGAR CONFIGURACIÓN DINÁMICA DEL SERVIDOR ---
+    global $APP_CONFIG;
+    $APP_CONFIG = [];
+    try {
+        $stmt = $dbConnection->query("SELECT setting_key, setting_value FROM server_config");
+        if ($stmt) {
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $APP_CONFIG[$row['setting_key']] = $row['setting_value'];
+            }
+        }
+    } catch (PDOException $e) {
+        // Ignorar el error si la tabla aún no existe al momento de iniciar por primera vez
+    }
 } catch (PDOException $e) {
     $isApiRequest = (strpos($_SERVER['REQUEST_URI'] ?? '', '/api/') !== false) ||
                     (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false) ||
@@ -86,6 +80,35 @@ try {
     } else {
         http_response_code(500);
         die("<div style='font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f5f5fa; margin: 0;'><div style='text-align: center; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 400px;'><h1 style='color: #dc2626; font-size: 24px; margin-bottom: 12px;'>Error 500</h1><p style='color: #666; font-size: 15px; line-height: 1.5;'>Servicio no disponible temporalmente.</p></div></div>");
+    }
+}
+
+// --- SISTEMA DE INTERNACIONALIZACIÓN (i18n) ---
+$auroraLang = $_COOKIE['aurora_lang'] ?? 'en-us'; 
+$fileName = ($auroraLang === 'es-latam') ? 'es-419' : $auroraLang; 
+$translations = [];
+$langFile = __DIR__ . '/../../translations/' . $fileName . '.json';
+
+if (file_exists($langFile)) {
+    $translations = json_decode(file_get_contents($langFile), true);
+}
+
+// Helper global para vistas y controladores con reemplazo dinámico
+if (!function_exists('t')) {
+    function t($key, $replacements = null) {
+        global $translations, $APP_CONFIG;
+        
+        $text = $translations[$key] ?? $key;
+        
+        $data = $replacements ?? $APP_CONFIG ?? [];
+        if (is_array($data) && !empty($data)) {
+            foreach ($data as $search => $replace) {
+                if (is_scalar($replace)) {
+                    $text = str_replace('{' . $search . '}', (string)$replace, $text);
+                }
+            }
+        }
+        return $text;
     }
 }
 ?>

@@ -5,6 +5,7 @@ CREATE DATABASE IF NOT EXISTS project_aurora_db CHARACTER SET utf8mb4 COLLATE ut
 USE project_aurora_db;
 
 -- 3. ELIMINAR LAS TABLAS (Para reiniciar de cero)
+DROP TABLE IF EXISTS server_config;
 DROP TABLE IF EXISTS user_preferences;
 DROP TABLE IF EXISTS user_changes_log;
 DROP TABLE IF EXISTS users;
@@ -66,3 +67,21 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 9. Crear la tabla 'server_config' (CONFIGURACIÓN DINÁMICA DEL SERVIDOR)
+CREATE TABLE IF NOT EXISTS server_config (
+    setting_key VARCHAR(50) PRIMARY KEY,
+    setting_value TEXT NOT NULL,
+    description VARCHAR(255) DEFAULT NULL,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Insertar valores de configuración por defecto
+INSERT IGNORE INTO server_config (setting_key, setting_value, description) VALUES
+('min_password_length', '12', 'Longitud mínima de la contraseña'),
+('max_password_length', '64', 'Longitud máxima de la contraseña'),
+('min_username_length', '3', 'Longitud mínima del nombre de usuario'),
+('max_username_length', '32', 'Longitud máxima del nombre de usuario'),
+('min_email_local_length', '4', 'Longitud mínima del correo antes del @'),
+('max_email_local_length', '64', 'Longitud máxima del correo antes del @'),
+('allowed_email_domains', 'gmail.com,outlook.com,icloud.com,hotmail.com,yahoo.com', 'Dominios de correo permitidos separados por coma');

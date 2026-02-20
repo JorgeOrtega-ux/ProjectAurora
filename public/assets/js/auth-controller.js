@@ -158,7 +158,6 @@ export class AuthController {
         const pass = passwordInput.value;
         const emailParts = email.split('@');
         
-        // Validar formato de correo, longitud total y partes
         if (emailParts.length !== 2 || email.length > 254) { 
             this.showError(errorDiv, window.t('js.auth.err_email_invalid')); 
             return; 
@@ -166,16 +165,24 @@ export class AuthController {
 
         const localPart = emailParts[0];
         const domainPart = emailParts[1].toLowerCase();
-        const allowedDomains = ['gmail.com', 'outlook.com', 'icloud.com', 'hotmail.com', 'yahoo.com'];
+        
+        // Obtener configuraciones de BD expuestas desde PHP
+        const minLocal = parseInt(window.APP_CONFIG?.min_email_local_length || 4);
+        const maxLocal = parseInt(window.APP_CONFIG?.max_email_local_length || 64);
+        const domainsStr = window.APP_CONFIG?.allowed_email_domains || 'gmail.com,outlook.com,icloud.com,hotmail.com,yahoo.com';
+        const allowedDomains = domainsStr.split(',').map(d => d.trim().toLowerCase());
 
-        // Validar reglas específicas del correo
-        if (localPart.length < 4 || localPart.length > 64 || !allowedDomains.includes(domainPart)) {
+        // Validar reglas específicas del correo dinámicamente
+        if (localPart.length < minLocal || localPart.length > maxLocal || !allowedDomains.includes(domainPart)) {
             this.showError(errorDiv, window.t('js.auth.err_email_invalid')); 
             return;
         }
 
-        // Validar longitud de la contraseña
-        if (pass.length < 12 || pass.length > 64) {
+        const minPass = parseInt(window.APP_CONFIG?.min_password_length || 12);
+        const maxPass = parseInt(window.APP_CONFIG?.max_password_length || 64);
+
+        // Validar longitud de la contraseña dinámicamente
+        if (pass.length < minPass || pass.length > maxPass) {
             this.showError(errorDiv, window.t('js.auth.err_pass_length')); 
             return;
         }
@@ -208,8 +215,11 @@ export class AuthController {
         const user = usernameInput.value.trim();
         if (!user) { this.showError(errorDiv, window.t('js.auth.err_user')); return; }
 
-        // Validar longitud del nombre de usuario
-        if (user.length < 3 || user.length > 32) {
+        const minUser = parseInt(window.APP_CONFIG?.min_username_length || 3);
+        const maxUser = parseInt(window.APP_CONFIG?.max_username_length || 32);
+
+        // Validar longitud del nombre de usuario dinámicamente
+        if (user.length < minUser || user.length > maxUser) {
             this.showError(errorDiv, window.t('js.auth.err_user_length')); 
             return;
         }
@@ -350,7 +360,11 @@ export class AuthController {
 
         if (!pass1 || !pass2) { this.showError(errorDiv, window.t('js.auth.err_fields')); return; }
         if (pass1 !== pass2) { this.showError(errorDiv, window.t('js.auth.err_pass_match')); return; }
-        if (pass1.length < 12 || pass1.length > 64) {
+        
+        const minPass = parseInt(window.APP_CONFIG?.min_password_length || 12);
+        const maxPass = parseInt(window.APP_CONFIG?.max_password_length || 64);
+
+        if (pass1.length < minPass || pass1.length > maxPass) {
             this.showError(errorDiv, window.t('js.auth.err_pass_length')); return;
         }
 
