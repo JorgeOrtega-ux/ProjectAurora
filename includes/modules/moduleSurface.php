@@ -21,10 +21,13 @@ $settingsMenuDisplay = $isSettings ? 'flex' : 'none';
                     </div>
                 </div>
                 <div class="component-menu-list" id="menu-surface-settings" style="display: <?= $settingsMenuDisplay; ?>; flex-direction: column; gap: 4px;">
-                    <div class="component-menu-link component-menu-link--bordered nav-item" data-nav="/ProjectAurora/" style="margin-bottom: 12px;">
+                    <div class="component-menu-link component-menu-link--bordered nav-item" data-nav="/ProjectAurora/">
                         <div class="component-menu-link-icon"><span class="material-symbols-rounded">arrow_back</span></div>
                         <div class="component-menu-link-text"><span style="font-weight: 600;"><?= t('surface.back') ?></span></div>
                     </div>
+                    
+                    <div style="height: 1px; background-color: #00000020; margin: 4px 0; flex-shrink: 0;"></div>
+
                     <?php if ($isLoggedIn): ?>
                         <div class="component-menu-link nav-item" data-nav="/ProjectAurora/settings/your-account">
                             <div class="component-menu-link-icon"><span class="material-symbols-rounded">person</span></div>

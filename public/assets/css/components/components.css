@@ -43,9 +43,10 @@
 /* Modificador: Large (Para el Login) */
 .component-button--large {
     width: 100%;
-    height: 48px;
+    height: 52px; /* Altura ajustada a la de los inputs */
     font-size: 16px;
     font-weight: 600;
+    flex-shrink: 0; /* Previene que se aplaste */
 }
 
 /* Modificador de Estilo: Negro/Primary */
@@ -165,10 +166,8 @@
 
 .component-layout-centered {
     display: flex;
-    justify-content: center;
-    align-items: center;
     width: 100%;
-    height: 100%;
+    min-height: 100%;
     padding: 20px;
 }
 
@@ -178,6 +177,7 @@
     padding: 32px 24px;
     box-shadow: none; 
     width: 100%;
+    margin: auto; /* Centra perfectamente sin cortar por arriba en pantallas chicas */
 }
 
 .component-card--compact {
@@ -402,6 +402,11 @@
         touch-action: none; 
         background-color: #ffffff; 
         z-index: 10;
+    }
+
+    /* Solución Padding doble pill+body */
+    .component-module-panel-body--padded {
+        padding-top: 0;
     }
 }
 .component-module.disabled { display: none; }
@@ -646,7 +651,8 @@
     align-items: center;
 }
 
-.view-content .component-button {
+/* FIX APLICADO AQUÍ */
+.view-content .component-button:not(.component-button--large) {
     height: 36px;
     padding: 0 14px;
 }
@@ -795,7 +801,9 @@ input:checked + .component-toggle-slider:before {
         flex-direction: column;
         align-items: stretch;
     }
-    .component-button {
+    
+    /* FIX: Ignorar botones grandes (Auth) al forzar flex: 1 */
+    .component-button:not(.component-button--large) {
         flex: 1;
     }
 }
