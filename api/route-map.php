@@ -14,6 +14,8 @@ return [
     'settings.upload_avatar' => ['file' => 'handler/settings-handler.php', 'action' => 'upload_avatar'],
     'settings.delete_avatar' => ['file' => 'handler/settings-handler.php', 'action' => 'delete_avatar'],
     'settings.update_field'  => ['file' => 'handler/settings-handler.php', 'action' => 'update_field'],
+    'settings.request_email_change' => ['file' => 'handler/settings-handler.php', 'action' => 'request_email_change'],
+    'settings.confirm_email_change' => ['file' => 'handler/settings-handler.php', 'action' => 'confirm_email_change'],
     
     // --- RUTAS DE PREFERENCIAS ---
     'settings.get_preferences'    => ['file' => 'handler/settings-handler.php', 'action' => 'get_preferences'],

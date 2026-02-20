@@ -16,6 +16,9 @@ export const API_ROUTES = {
         UPLOAD_AVATAR: `${BASE_PATH}/api/settings.upload_avatar`,
         DELETE_AVATAR: `${BASE_PATH}/api/settings.delete_avatar`,
         UPDATE_FIELD: `${BASE_PATH}/api/settings.update_field`,
+        REQUEST_EMAIL_CHANGE: `${BASE_PATH}/api/settings.request_email_change`,
+        CONFIRM_EMAIL_CHANGE: `${BASE_PATH}/api/settings.confirm_email_change`,
+        
         // NUEVAS RUTAS DE PREFERENCIAS
         GET_PREFERENCES: `${BASE_PATH}/api/settings.get_preferences`,
         UPDATE_PREFERENCE: `${BASE_PATH}/api/settings.update_preference` 

@@ -146,4 +146,40 @@ $stateCustomClass = $isDefaultAvatar ? 'disabled' : 'active';
             </div>
         </div>
     </div>
+
+    <div class="component-dialog-overlay" id="dialog-delete-avatar">
+        <div class="component-dialog-box">
+            <div class="component-dialog-header">
+                <h3 class="component-dialog-title">Eliminar foto de perfil</h3>
+                <button class="component-dialog-close" data-action="close-dialog" data-target="dialog-delete-avatar"><span class="material-symbols-rounded">close</span></button>
+            </div>
+            <div class="component-dialog-body">
+                ¿Estás seguro de que deseas eliminar tu foto de perfil? Se te asignará una nueva generada automáticamente en base a tu nombre.
+            </div>
+            <div class="component-dialog-footer">
+                <button class="component-button" data-action="close-dialog" data-target="dialog-delete-avatar">Cancelar</button>
+                <button class="component-button primary" id="btn-confirm-delete-avatar" style="background-color: #d32f2f; border-color: #d32f2f;">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="component-dialog-overlay" id="dialog-verify-email">
+        <div class="component-dialog-box">
+            <div class="component-dialog-header">
+                <h3 class="component-dialog-title">Verificar cambio de correo</h3>
+                <button class="component-dialog-close" data-action="close-dialog" data-target="dialog-verify-email"><span class="material-symbols-rounded">close</span></button>
+            </div>
+            <div class="component-dialog-body">
+                Hemos enviado un código de seguridad a tu <b>correo actual</b>. Ingrésalo para autorizar el cambio a tu nuevo correo.
+                <div class="component-input-wrapper" style="margin-top: 16px;">
+                    <input type="text" id="input-email-code" class="component-text-input" placeholder=" " maxlength="6" style="letter-spacing: 4px; text-align: center; font-weight: bold; font-size: 18px;">
+                    <label for="input-email-code" class="component-label-floating" style="left: 12px; transform: translateY(-50%); width: 100%; text-align: center;">Código de 6 dígitos</label>
+                </div>
+            </div>
+            <div class="component-dialog-footer">
+                <button class="component-button" data-action="close-dialog" data-target="dialog-verify-email">Cancelar</button>
+                <button class="component-button primary" id="btn-confirm-email-code">Verificar y Guardar</button>
+            </div>
+        </div>
+    </div>
 </div>

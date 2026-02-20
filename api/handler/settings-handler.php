@@ -47,6 +47,28 @@ return function($dbConnection, $action) {
             }
             Utils::sendResponse($settings->updateField($userId, $data->field, $data->value));
             break;
+            
+        case 'request_email_change':
+            $data = Utils::getJsonInput();
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) {
+                Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido).']);
+            }
+            if (empty($data->new_email)) {
+                Utils::sendResponse(['success' => false, 'message' => 'El nuevo correo es requerido.']);
+            }
+            Utils::sendResponse($settings->requestEmailChange($userId, $data->new_email));
+            break;
+
+        case 'confirm_email_change':
+            $data = Utils::getJsonInput();
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) {
+                Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido).']);
+            }
+            if (empty($data->code)) {
+                Utils::sendResponse(['success' => false, 'message' => 'El código es requerido.']);
+            }
+            Utils::sendResponse($settings->confirmEmailChange($userId, $data->code));
+            break;
 
         // NUEVO: Obtener preferencias del usuario
         case 'get_preferences':

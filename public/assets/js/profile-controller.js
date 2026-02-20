@@ -1,7 +1,7 @@
 // public/assets/js/profile-controller.js
 import { ApiService } from './api-services.js';
 import { API_ROUTES } from './api-routes.js';
-import { Toast } from './toast-controller.js'; // <-- INTEGRACIÓN DEL SISTEMA TOAST
+import { Toast } from './toast-controller.js';
 
 export class ProfileController {
     constructor() {
@@ -10,6 +10,19 @@ export class ProfileController {
 
     init() {
         document.body.addEventListener('click', (e) => {
+            // Manejador de Cierre de Dialogs
+            const btnCloseDialog = e.target.closest('[data-action="close-dialog"]');
+            if (btnCloseDialog) {
+                e.preventDefault();
+                this.closeDialog(btnCloseDialog.dataset.target);
+                return;
+            }
+
+            // Cerrar dialogs al hacer click por fuera del recuadro
+            if (e.target.classList.contains('component-dialog-overlay')) {
+                this.closeDialog(e.target.id);
+            }
+
             if (e.target.closest('#btn-upload-init') || e.target.closest('[data-action="profile-picture-change"]') || e.target.closest('#btn-trigger-upload')) {
                 e.preventDefault();
                 const fileInput = document.getElementById('upload-avatar');
@@ -30,12 +43,26 @@ export class ProfileController {
                 return;
             }
 
+            // Nueva intercepción del botón de eliminar (Abre Diálogo en vez del confirm nativo)
             const btnDeleteAvatar = e.target.closest('[data-action="profile-picture-delete"]');
             if (btnDeleteAvatar) {
                 e.preventDefault();
-                if(confirm(window.t('js.profile.confirm_del'))) {
-                    this.deleteAvatar(btnDeleteAvatar);
-                }
+                this.openDialog('dialog-delete-avatar');
+                return;
+            }
+
+            // Confirmación dentro del Dialog de Avatar
+            if (e.target.closest('#btn-confirm-delete-avatar')) {
+                e.preventDefault();
+                const btn = document.getElementById('btn-confirm-delete-avatar');
+                this.deleteAvatar(btn);
+                return;
+            }
+
+            // Confirmación dentro del Dialog de Correo Electrónico
+            if (e.target.closest('#btn-confirm-email-code')) {
+                e.preventDefault();
+                this.confirmEmailChange(e.target.closest('#btn-confirm-email-code'));
                 return;
             }
 
@@ -45,8 +72,17 @@ export class ProfileController {
             const btnCancelEdit = e.target.closest('[data-action="cancel-edit"]');
             if (btnCancelEdit) { e.preventDefault(); this.handleCancelEdit(btnCancelEdit.dataset.target); return; }
 
+            // Lógica dividida para guardar (Diferenciando email de los demás campos)
             const btnSaveField = e.target.closest('[data-action="save-field"]');
-            if (btnSaveField) { e.preventDefault(); this.handleSaveField(btnSaveField.dataset.target); return; }
+            if (btnSaveField) { 
+                e.preventDefault(); 
+                if (btnSaveField.dataset.target === 'email') {
+                    this.requestEmailChange(btnSaveField);
+                } else {
+                    this.handleSaveField(btnSaveField.dataset.target); 
+                }
+                return; 
+            }
 
             const triggerSelector = e.target.closest('[data-action="toggle-dropdown"]');
             if (triggerSelector) { e.preventDefault(); this.handleDropdownToggle(triggerSelector, e); return; }
@@ -81,12 +117,32 @@ export class ProfileController {
         });
     }
 
+    // ===============================
+    // MANEJO DE DIALOGS OVERLAYS
+    // ===============================
+    openDialog(id) {
+        const dialog = document.getElementById(id);
+        if (dialog) dialog.classList.add('active');
+    }
+
+    closeDialog(id) {
+        const dialog = document.getElementById(id);
+        if (dialog) {
+            dialog.classList.remove('active');
+            // Limpia todos los inputs cuando el dialog se cierre
+            const inputs = dialog.querySelectorAll('input');
+            inputs.forEach(input => input.value = '');
+        }
+    }
+
+    // ===============================
+
     handleFileSelection(input) {
         const file = input.files[0];
         if (!file) return;
 
         if (file.size > 2 * 1024 * 1024) {
-            Toast.show(window.t('js.profile.err_img_size'), 'error'); // <-- TOAST ERROR
+            Toast.show(window.t('js.profile.err_img_size'), 'error');
             input.value = ''; 
             return;
         }
@@ -137,13 +193,13 @@ export class ProfileController {
             if (res.success) {
                 this.updateAvatarVisuals(res.avatar);
                 this.switchAvatarControlsState('custom'); 
-                Toast.show(window.t(res.message) || 'Foto de perfil actualizada', 'success'); // <-- TOAST ÉXITO
+                Toast.show(window.t(res.message) || 'Foto de perfil actualizada', 'success'); 
             } else {
-                Toast.show(window.t(res.message), 'error'); // <-- TOAST ERROR
+                Toast.show(window.t(res.message), 'error');
                 this.cancelAvatarChange(); 
             }
         } catch (error) {
-            Toast.show(window.t('js.profile.err_net'), 'error'); // <-- TOAST ERROR
+            Toast.show(window.t('js.profile.err_net'), 'error');
             this.cancelAvatarChange();
         } finally {
             btn.disabled = false;
@@ -157,19 +213,20 @@ export class ProfileController {
 
         const originalText = btn.textContent;
         btn.disabled = true;
-        btn.innerHTML = '<div class="component-spinner-button dark-spinner"></div>';
+        btn.innerHTML = '<div class="component-spinner-button" style="border-top-color: #d32f2f;"></div>';
 
         try {
             const res = await ApiService.post(API_ROUTES.SETTINGS.DELETE_AVATAR, { csrf_token: csrfToken });
             if (res.success) {
                 this.updateAvatarVisuals(res.avatar);
                 this.switchAvatarControlsState('default');
-                Toast.show(window.t(res.message) || 'Foto de perfil eliminada', 'success'); // <-- TOAST ÉXITO
+                this.closeDialog('dialog-delete-avatar');
+                Toast.show(window.t(res.message) || 'Foto de perfil eliminada', 'success');
             } else {
-                Toast.show(window.t(res.message), 'error'); // <-- TOAST ERROR
+                Toast.show(window.t(res.message), 'error');
             }
         } catch (error) {
-            Toast.show(window.t('js.profile.err_proc'), 'error'); // <-- TOAST ERROR
+            Toast.show(window.t('js.profile.err_proc'), 'error'); 
         } finally {
             btn.disabled = false;
             btn.textContent = originalText;
@@ -237,6 +294,86 @@ export class ProfileController {
         this.toggleFieldState(target, 'view');
     }
 
+    // ===============================
+    // LÓGICA DE CORREO (SEPARADA)
+    // ===============================
+    async requestEmailChange(btn) {
+        const inputEl = document.getElementById('input-email');
+        const newEmail = inputEl.value.trim();
+        const displayEl = document.getElementById('display-email');
+        
+        if (newEmail === "" || newEmail === displayEl.textContent) {
+            this.toggleFieldState('email', 'view');
+            return;
+        }
+
+        const csrfToken = document.getElementById('csrf_token_settings') ? document.getElementById('csrf_token_settings').value : '';
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.innerHTML = '<div class="component-spinner-button"></div>';
+
+        try {
+            const res = await ApiService.post(API_ROUTES.SETTINGS.REQUEST_EMAIL_CHANGE, { 
+                new_email: newEmail, 
+                csrf_token: csrfToken 
+            });
+            
+            if (res.success) {
+                Toast.show(window.t(res.message) || 'Código enviado', 'success');
+                this.openDialog('dialog-verify-email');
+            } else { 
+                Toast.show(window.t(res.message), 'error'); 
+            }
+        } catch (error) {
+            Toast.show(window.t('js.profile.err_db'), 'error'); 
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    }
+
+    async confirmEmailChange(btn) {
+        const codeInput = document.getElementById('input-email-code');
+        const code = codeInput.value.trim();
+        const inputEl = document.getElementById('input-email');
+        const displayEl = document.getElementById('display-email');
+        
+        if (!code || code.length !== 6) {
+            Toast.show('Por favor ingresa un código de 6 dígitos válido', 'error');
+            return;
+        }
+
+        const csrfToken = document.getElementById('csrf_token_settings') ? document.getElementById('csrf_token_settings').value : '';
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.innerHTML = '<div class="component-spinner-button"></div>';
+
+        try {
+            const res = await ApiService.post(API_ROUTES.SETTINGS.CONFIRM_EMAIL_CHANGE, { 
+                code: code, 
+                csrf_token: csrfToken 
+            });
+            
+            if (res.success) {
+                displayEl.textContent = res.newValue;
+                inputEl.value = res.newValue;
+                this.toggleFieldState('email', 'view');
+                this.closeDialog('dialog-verify-email');
+                Toast.show(window.t(res.message) || 'Correo actualizado', 'success');
+            } else { 
+                Toast.show(window.t(res.message), 'error'); 
+            }
+        } catch (error) {
+            Toast.show(window.t('js.profile.err_db'), 'error'); 
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    }
+
+    // ===============================
+    // LÓGICA DE NOMBRE DE USUARIO
+    // ===============================
     async handleSaveField(target) {
         const inputEl = document.getElementById(`input-${target}`);
         const displayEl = document.getElementById(`display-${target}`);
@@ -246,12 +383,12 @@ export class ProfileController {
 
         const newValue = inputEl.value.trim();
         if (newValue === "") {
-            Toast.show(window.t('js.profile.err_empty'), 'error'); // <-- TOAST ERROR
+            Toast.show(window.t('js.profile.err_empty'), 'error');
             return;
         }
 
         const csrfToken = document.getElementById('csrf_token_settings') ? document.getElementById('csrf_token_settings').value : '';
-        const fieldMap = { 'username': 'nombre', 'email': 'correo' };
+        const fieldMap = { 'username': 'nombre' }; // Correo fue omitido ya que se procesa diferente arriba
         const apiField = fieldMap[target];
 
         const originalText = btnSave.textContent;
@@ -268,12 +405,12 @@ export class ProfileController {
             if (res.success) {
                 displayEl.textContent = res.newValue;
                 this.toggleFieldState(target, 'view');
-                Toast.show(window.t(res.message) || 'Actualizado correctamente', 'success'); // <-- TOAST ÉXITO
+                Toast.show(window.t(res.message) || 'Actualizado correctamente', 'success'); 
             } else { 
-                Toast.show(window.t(res.message), 'error'); // <-- TOAST ERROR
+                Toast.show(window.t(res.message), 'error');
             }
         } catch (error) {
-            Toast.show(window.t('js.profile.err_db'), 'error'); // <-- TOAST ERROR
+            Toast.show(window.t('js.profile.err_db'), 'error'); 
         } finally {
             btnSave.disabled = false;
             btnSave.textContent = originalText;

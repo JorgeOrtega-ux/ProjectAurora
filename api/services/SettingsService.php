@@ -4,6 +4,8 @@ namespace App\Api\Services;
 
 use PDO;
 use App\Core\Utils;
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
 class SettingsService {
     private $conn;
@@ -92,6 +94,36 @@ class SettingsService {
         $query = "DELETE FROM rate_limits WHERE ip_address = :ip AND action = :action";
         $stmt = $this->conn->prepare($query);
         $stmt->execute([':ip' => $ip, ':action' => $action]);
+    }
+    
+    // ==========================================
+    // SISTEMA DE CORREO SMTP
+    // ==========================================
+    private function sendEmail($to, $subject, $bodyHtml) {
+        $mail = new PHPMailer(true);
+        try {
+            $mail->isSMTP();
+            $mail->Host       = getenv('SMTP_HOST') ?: 'smtp.gmail.com';
+            $mail->SMTPAuth   = true;
+            $mail->Username   = getenv('SMTP_USER');
+            $mail->Password   = getenv('SMTP_PASS');
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+            $mail->Port       = getenv('SMTP_PORT') ?: 465;
+
+            $mail->setFrom(getenv('SMTP_USER'), 'Project Aurora');
+            $mail->addAddress($to);
+
+            $mail->isHTML(true);
+            $mail->Subject = mb_encode_mimeheader($subject, "UTF-8");
+            $mail->Body    = $bodyHtml;
+            $mail->CharSet = 'UTF-8';
+
+            $mail->send();
+            return true;
+        } catch (Exception $e) {
+            error_log("Error al enviar correo SMTP: {$mail->ErrorInfo}");
+            return false;
+        }
     }
 
     // ==========================================
@@ -190,6 +222,8 @@ class SettingsService {
     }
 
     public function updateField($userId, $field, $newValue) {
+        // En este controlador la actualización de email se dividió en verify/request, 
+        // pero se mantiene aquí para retrocompatibilidad general de campos.
         $allowedFields = ['nombre', 'correo'];
         if (!in_array($field, $allowedFields)) { return ['success' => false, 'message' => 'Campo no válido.']; }
 
@@ -234,6 +268,112 @@ class SettingsService {
         }
 
         return ['success' => false, 'message' => 'Error al actualizar el campo.'];
+    }
+
+    // ==========================================
+    // CAMBIO SEGURO DE CORREO
+    // ==========================================
+    public function requestEmailChange($userId, $newEmail) {
+        if (!$this->checkRateLimit('request_email_change')) {
+            return ['success' => false, 'message' => 'Demasiados intentos. Por favor, espera 5 minutos.'];
+        }
+
+        $newEmail = trim($newEmail);
+        if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {
+            $this->recordActionAttempt('request_email_change', 5, 5);
+            return ['success' => false, 'message' => 'Formato de correo inválido.'];
+        }
+
+        $checkStmt = $this->conn->prepare("SELECT id FROM users WHERE correo = :correo");
+        $checkStmt->execute([':correo' => $newEmail]);
+        if ($checkStmt->rowCount() > 0) {
+            $this->recordActionAttempt('request_email_change', 5, 5);
+            return ['success' => false, 'message' => 'El correo ya está en uso.'];
+        }
+
+        if ($this->countRecentChanges($userId, 'correo', '7 DAY') >= 1) {
+            return ['success' => false, 'message' => 'js.profile.err_limit_email'];
+        }
+
+        $userStmt = $this->conn->prepare("SELECT correo, nombre FROM users WHERE id = :id");
+        $userStmt->execute([':id' => $userId]);
+        $user = $userStmt->fetch(PDO::FETCH_ASSOC);
+        $currentEmail = $user['correo'];
+        $userName = $user['nombre'];
+
+        if ($currentEmail === $newEmail) {
+            return ['success' => false, 'message' => 'El nuevo correo no puede ser el actual.'];
+        }
+
+        $code = sprintf("%06d", mt_rand(1, 999999));
+        $payload = json_encode(['new_email' => $newEmail]);
+        $expires_at = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+
+        $delQuery = "DELETE FROM verification_codes WHERE identifier = :identifier AND code_type = 'email_change'";
+        $delStmt = $this->conn->prepare($delQuery);
+        $delStmt->execute([':identifier' => $userId]);
+
+        $query = "INSERT INTO verification_codes (identifier, code_type, code, payload, expires_at) 
+                  VALUES (:identifier, 'email_change', :code, :payload, :expires_at)";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([
+            ':identifier' => $userId,
+            ':code' => $code,
+            ':payload' => $payload,
+            ':expires_at' => $expires_at
+        ]);
+
+        $html = "<div style='font-family: sans-serif; max-width: 600px; margin: 0 auto;'>
+                    <h2>Cambio de Correo Electrónico</h2>
+                    <p>Hola {$userName},</p>
+                    <p>Se ha solicitado un cambio en tu cuenta para actualizar el correo a: <b>{$newEmail}</b>.</p>
+                    <p>Para autorizar el cambio, ingresa el siguiente código de seguridad:</p>
+                    <h1 style='letter-spacing: 4px; background: #f5f5fa; padding: 12px; text-align: center; border-radius: 8px;'>{$code}</h1>
+                    <p>Este código expirará en 15 minutos. Si no fuiste tú, ignora este correo y revisa la seguridad de tu cuenta.</p>
+                 </div>";
+
+        if ($this->sendEmail($currentEmail, 'Código de Verificación - Cambio de Correo', $html)) {
+            $this->resetAttempts('request_email_change');
+            return ['success' => true, 'message' => 'Código de verificación enviado a tu correo actual.'];
+        }
+        
+        return ['success' => false, 'message' => 'Error de servidor al intentar enviar el correo.'];
+    }
+
+    public function confirmEmailChange($userId, $code) {
+        $query = "SELECT id, payload FROM verification_codes WHERE identifier = :identifier AND code = :code AND code_type = 'email_change' AND expires_at > NOW() LIMIT 0,1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([':identifier' => $userId, ':code' => $code]);
+
+        if ($stmt->rowCount() === 0) {
+            return ['success' => false, 'message' => 'El código de verificación es inválido o expiró.'];
+        }
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $payload = json_decode($row['payload'], true);
+        $newEmail = $payload['new_email'];
+        $codeId = $row['id'];
+
+        $userStmt = $this->conn->prepare("SELECT correo FROM users WHERE id = :id");
+        $userStmt->execute([':id' => $userId]);
+        $oldEmail = $userStmt->fetchColumn();
+
+        if ($this->countRecentChanges($userId, 'correo', '7 DAY') >= 1) {
+            return ['success' => false, 'message' => 'js.profile.err_limit_email'];
+        }
+
+        $updStmt = $this->conn->prepare("UPDATE users SET correo = :new_val WHERE id = :id");
+        if ($updStmt->execute([':new_val' => $newEmail, ':id' => $userId])) {
+            $this->logChange($userId, 'correo', $oldEmail, $newEmail);
+            $_SESSION['user_email'] = $newEmail;
+            
+            $delStmt = $this->conn->prepare("DELETE FROM verification_codes WHERE id = :id");
+            $delStmt->execute([':id' => $codeId]);
+
+            return ['success' => true, 'message' => 'Correo actualizado correctamente.', 'newValue' => $newEmail];
+        }
+
+        return ['success' => false, 'message' => 'Error crítico al actualizar el correo.'];
     }
 
     // ==========================================

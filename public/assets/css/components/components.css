@@ -809,17 +809,17 @@ input:checked + .component-toggle-slider:before {
 }
 
 /* =========================================
-   COMPONENT: TOAST NOTIFICATIONS (NUEVO)
+   COMPONENT: TOAST NOTIFICATIONS
    ========================================= */
 #toast-container {
     position: fixed;
-    bottom: 24px;   /* Se ajusta a la parte inferior */
-    left: 24px;     /* Se alinea a la izquierda como solicitaste */
+    bottom: 24px;
+    left: 24px;
     z-index: 9999;
     display: flex;
     flex-direction: column;
     gap: 12px;
-    pointer-events: none; /* Permite clicks a través del contenedor */
+    pointer-events: none;
 }
 
 .component-toast {
@@ -834,7 +834,7 @@ input:checked + .component-toggle-slider:before {
     transform: translateX(-120%);
     opacity: 0;
     transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease;
-    pointer-events: auto; /* Rehabilita clicks en la propia alerta si se requiere */
+    pointer-events: auto;
     min-width: 250px;
     max-width: 350px;
 }
@@ -867,7 +867,6 @@ input:checked + .component-toggle-slider:before {
     line-height: 1.4;
 }
 
-/* Ajustes para pantallas pequeñas (móvil) */
 @media (max-width: 480px) {
     #toast-container {
         left: 16px;
@@ -876,9 +875,96 @@ input:checked + .component-toggle-slider:before {
     .component-toast {
         min-width: calc(100vw - 32px);
         max-width: calc(100vw - 32px);
-        transform: translateY(120%); /* Entra por abajo en pantallas móviles por diseño estándar */
+        transform: translateY(120%);
     }
     .component-toast.show {
         transform: translateY(0);
     }
+}
+
+/* =========================================
+   COMPONENT: DIALOG OVERLAY (NUEVO)
+   ========================================= */
+.component-dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.component-dialog-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.component-dialog-box {
+    background-color: #ffffff;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 400px;
+    padding: 24px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    transform: translateY(20px) scale(0.95);
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin: 16px;
+}
+
+.component-dialog-overlay.active .component-dialog-box {
+    transform: translateY(0) scale(1);
+}
+
+.component-dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.component-dialog-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.component-dialog-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 50%;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.component-dialog-close:hover {
+    background-color: #f5f5fa;
+    color: #000;
+}
+
+.component-dialog-body {
+    font-size: 14px;
+    color: #666;
+    line-height: 1.5;
+}
+
+.component-dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 8px;
 }
