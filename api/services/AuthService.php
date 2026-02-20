@@ -175,6 +175,9 @@ class AuthService {
                 ':lang'  => $lang,
                 ':links' => $openLinks
             ]);
+            
+            // NUEVO: Fijamos la cookie
+            setcookie('aurora_lang', $lang, time() + 31536000, '/');
             // =================================================================================
 
             $delQuery = "DELETE FROM verification_codes WHERE id = :id";
@@ -225,6 +228,12 @@ class AuthService {
                 $_SESSION['user_email'] = $row['correo'];
                 $_SESSION['user_avatar'] = $row['avatar_path'];
                 $_SESSION['user_role'] = $row['role'];
+
+                // NUEVO: Extraemos pref de idioma y fijamos cookie
+                $prefStmt = $this->conn->prepare("SELECT language FROM user_preferences WHERE user_id = :uid");
+                $prefStmt->execute([':uid' => $row['id']]);
+                $userLang = $prefStmt->fetchColumn() ?: 'es-latam';
+                setcookie('aurora_lang', $userLang, time() + 31536000, '/');
 
                 return [
                     'success' => true,

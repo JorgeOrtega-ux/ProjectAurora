@@ -118,7 +118,7 @@ export class AuthController {
                 return; 
             }
             stage2.style.display = 'flex';
-            if (title) { title.textContent = 'Casi listo'; subtitle.textContent = '¿Cómo deberíamos llamarte?'; }
+            if (title) { title.textContent = window.t('js.auth.stage2.title'); subtitle.textContent = window.t('js.auth.stage2.sub'); }
             setTimeout(() => document.getElementById('reg-username').focus(), 50);
 
         } else if (url.endsWith('/register/verification-account')) {
@@ -127,14 +127,14 @@ export class AuthController {
                 return; 
             }
             stage3.style.display = 'flex';
-            if (title) { title.textContent = 'Verificar cuenta'; subtitle.textContent = 'Confirma tu identidad'; }
+            if (title) { title.textContent = window.t('js.auth.stage3.title'); subtitle.textContent = window.t('js.auth.stage3.sub'); }
             const display = document.getElementById('simulated-code-display');
             if (display && devCode) display.textContent = devCode;
             setTimeout(() => document.getElementById('reg-code').focus(), 50);
 
         } else {
             stage1.style.display = 'flex';
-            if (title) { title.textContent = 'Crear Cuenta'; subtitle.textContent = 'Regístrate para comenzar'; }
+            if (title) { title.textContent = window.t('js.auth.stage1.title'); subtitle.textContent = window.t('js.auth.stage1.sub'); }
         }
     }
 
@@ -162,8 +162,8 @@ export class AuthController {
         const btn = document.getElementById('btn-next-1');
         const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
 
-        if (!emailInput.value || !passwordInput.value) { this.showError(errorDiv, 'Por favor, ingresa tu correo y contraseña.'); return; }
-        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value)){ this.showError(errorDiv, 'Ingresa un correo válido.'); return; }
+        if (!emailInput.value || !passwordInput.value) { this.showError(errorDiv, window.t('js.auth.err_fields')); return; }
+        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value)){ this.showError(errorDiv, window.t('js.auth.err_email')); return; }
 
         this.setLoading(btn, true);
         this.hideError(errorDiv);
@@ -175,9 +175,9 @@ export class AuthController {
                 sessionStorage.setItem('reg_password', passwordInput.value);
                 this.router.navigate('/ProjectAurora/register/aditional-data'); 
             } else {
-                this.showError(errorDiv, res.message);
+                this.showError(errorDiv, window.t(res.message));
             }
-        } catch (error) { this.showError(errorDiv, 'Error de conexión.'); } 
+        } catch (error) { this.showError(errorDiv, window.t('Error de conexión.')); } 
         finally { this.setLoading(btn, false); }
     }
 
@@ -190,7 +190,7 @@ export class AuthController {
         const email = sessionStorage.getItem('reg_email');
         const password = sessionStorage.getItem('reg_password');
 
-        if (!usernameInput.value) { this.showError(errorDiv, 'El nombre de usuario es obligatorio.'); return; }
+        if (!usernameInput.value) { this.showError(errorDiv, window.t('js.auth.err_user')); return; }
 
         this.setLoading(btn, true);
         this.hideError(errorDiv);
@@ -201,8 +201,8 @@ export class AuthController {
                 sessionStorage.setItem('reg_username', usernameInput.value);
                 sessionStorage.setItem('reg_dev_code', res.dev_code);
                 this.router.navigate('/ProjectAurora/register/verification-account'); 
-            } else { this.showError(errorDiv, res.message); }
-        } catch (error) { this.showError(errorDiv, 'Error al generar el código.'); } 
+            } else { this.showError(errorDiv, window.t(res.message)); }
+        } catch (error) { this.showError(errorDiv, window.t('Error al generar el código.')); } 
         finally { this.setLoading(btn, false); }
     }
 
@@ -213,7 +213,7 @@ export class AuthController {
         const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
         const email = sessionStorage.getItem('reg_email');
 
-        if (!code || code.length !== 6) { this.showError(errorDiv, 'Ingresa el código de 6 dígitos enviado.'); return; }
+        if (!code || code.length !== 6) { this.showError(errorDiv, window.t('js.auth.err_code')); return; }
 
         this.setLoading(btn, true);
         this.hideError(errorDiv);
@@ -239,8 +239,8 @@ export class AuthController {
             if (res.success) {
                 sessionStorage.clear(); 
                 window.location.href = '/ProjectAurora/';
-            } else { this.showError(errorDiv, res.message); this.setLoading(btn, false); }
-        } catch (error) { this.showError(errorDiv, 'Error de conexión.'); this.setLoading(btn, false); }
+            } else { this.showError(errorDiv, window.t(res.message)); this.setLoading(btn, false); }
+        } catch (error) { this.showError(errorDiv, window.t('Error de conexión.')); this.setLoading(btn, false); }
     }
 
     async handleLogin() {
@@ -251,7 +251,7 @@ export class AuthController {
         const errorDiv = document.getElementById('login-error');
 
         if (!email || !password) {
-            this.showError(errorDiv, 'Por favor, completa todos los campos.');
+            this.showError(errorDiv, window.t('js.auth.err_fields'));
             return;
         }
 
@@ -261,8 +261,8 @@ export class AuthController {
         try {
             const res = await ApiService.post(API_ROUTES.AUTH.LOGIN, { email, password, csrf_token: csrfToken });
             if (res.success) window.location.href = '/ProjectAurora/'; 
-            else { this.showError(errorDiv, res.message); this.setLoading(btn, false); }
-        } catch (error) { this.showError(errorDiv, 'Error de conexión.'); this.setLoading(btn, false); }
+            else { this.showError(errorDiv, window.t(res.message)); this.setLoading(btn, false); }
+        } catch (error) { this.showError(errorDiv, window.t('Error de conexión.')); this.setLoading(btn, false); }
     }
 
     async handleLogout(btn) {
@@ -296,7 +296,7 @@ export class AuthController {
         const linkDisplay = document.getElementById('simulated-link-display');
 
         if (!email) {
-            this.showError(errorDiv, 'Por favor, ingresa tu correo electrónico.');
+            this.showError(errorDiv, window.t('js.auth.err_fields'));
             return;
         }
 
@@ -309,8 +309,8 @@ export class AuthController {
             if (res.success) {
                 linkDisplay.href = res.dev_link; linkDisplay.textContent = window.location.origin + res.dev_link;
                 linkDisplay.dataset.nav = res.dev_link; linkContainer.style.display = 'block';
-            } else { this.showError(errorDiv, res.message); }
-        } catch (error) { this.showError(errorDiv, 'Error al procesar.'); } finally { this.setLoading(btn, false); }
+            } else { this.showError(errorDiv, window.t(res.message)); }
+        } catch (error) { this.showError(errorDiv, window.t('Error al procesar.')); } finally { this.setLoading(btn, false); }
     }
 
     async handleResetPassword() {
@@ -329,8 +329,8 @@ export class AuthController {
             return; 
         }
 
-        if (!pass1 || !pass2) { this.showError(errorDiv, 'Por favor, completa ambos campos.'); return; }
-        if (pass1 !== pass2) { this.showError(errorDiv, 'Las contraseñas no coinciden.'); return; }
+        if (!pass1 || !pass2) { this.showError(errorDiv, window.t('js.auth.err_fields')); return; }
+        if (pass1 !== pass2) { this.showError(errorDiv, window.t('js.auth.err_pass_match')); return; }
 
         this.setLoading(btn, true);
         try {
@@ -339,10 +339,10 @@ export class AuthController {
                 successDiv.style.display = 'block'; btn.style.display = 'none';
                 setTimeout(() => window.location.href = '/ProjectAurora/login', 2000);
             } else { 
-                this.showFatalJsonError('reset-fatal-error', 'reset-fatal-error-code', 409, res.message, 'invalid_request_error', 'token_expired_or_used', [form]);
+                this.showFatalJsonError('reset-fatal-error', 'reset-fatal-error-code', 409, window.t(res.message), 'invalid_request_error', 'token_expired_or_used', [form]);
                 this.setLoading(btn, false); 
             }
-        } catch (error) { this.showError(errorDiv, 'Error al actualizar.'); this.setLoading(btn, false); }
+        } catch (error) { this.showError(errorDiv, window.t('Error al actualizar.')); this.setLoading(btn, false); }
     }
 
     setLoading(btn, isLoading) {

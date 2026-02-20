@@ -179,6 +179,8 @@ class SettingsService {
             if (!in_array($value, $allowedLangs)) {
                 $value = 'en-us'; // fallback forzado
             }
+            // NUEVO: Actualizamos cookie al instante
+            setcookie('aurora_lang', $value, time() + 31536000, '/');
         }
 
         // Validación booleana
