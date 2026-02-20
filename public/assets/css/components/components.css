@@ -1049,7 +1049,9 @@ input:checked + .component-toggle-slider:before {
 
 .aurora-tooltip[data-popper-placement^='right'] > .aurora-tooltip-arrow {
     left: -4px;
-}/* =========================================
+}
+
+/* =========================================
    ACCORDION & 2FA STYLES
    ========================================= */
 .component-accordion-item {
@@ -1070,6 +1072,13 @@ input:checked + .component-toggle-slider:before {
 .component-accordion-content {
     display: none;
     padding: 0 24px 24px 24px;
+}
+/* Hacer que el hr ocupe el 100% ignorando el padding padre */
+.component-accordion-content .component-divider {
+    margin-left: -24px;
+    margin-right: -24px;
+    width: calc(100% + 48px);
+    max-width: none;
 }
 .component-accordion-item.active .component-accordion-content {
     display: block;
@@ -1124,8 +1133,9 @@ input:checked + .component-toggle-slider:before {
     width: 28px;
     height: 28px;
     border-radius: 50%;
-    background: #000;
-    color: #fff;
+    background: transparent;
+    color: #1a1a1a;
+    border: 1px solid #00000020;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1161,7 +1171,7 @@ input:checked + .component-toggle-slider:before {
 }
 .component-card__icon-container--bordered {
     border: 1px solid #e0e0e0;
-    background-color: #fcfcfc;
+    background-color: transparent;
 }
 .component-card__icon-container span {
     color: #666;

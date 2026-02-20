@@ -101,9 +101,9 @@ if (isset($_SESSION['user_id'])) {
             </div>
         <?php else: ?>
 
-            <div class="component-card component-card--grouped" id="step-qr-container">
+            <div id="step-qr-container" class="w-100" style="display: flex; flex-direction: column; gap: 16px;">
                 
-                <div class="component-accordion-item active" data-accordion-id="1">
+                <div class="component-card component-card--grouped component-accordion-item" data-accordion-id="1" style="margin-bottom: 0; border-radius: 12px; border: 1px solid #e0e0e0;">
                     <div class="component-group-item component-accordion-header">
                         <div class="component-card__content">
                             <div class="component-card__icon-container component-card__icon-container--bordered">
@@ -143,7 +143,7 @@ if (isset($_SESSION['user_id'])) {
                     </div>
                 </div>
 
-                <div class="component-accordion-item" data-accordion-id="2">
+                <div class="component-card component-card--grouped component-accordion-item" data-accordion-id="2" style="margin-bottom: 0; border-radius: 12px; border: 1px solid #e0e0e0;">
                     <div class="component-group-item component-accordion-header">
                         <div class="component-card__content">
                             <div class="component-card__icon-container component-card__icon-container--bordered">
@@ -179,7 +179,7 @@ if (isset($_SESSION['user_id'])) {
                     </div>
                 </div>
 
-                <div class="component-accordion-item active" data-accordion-id="3">
+                <div class="component-card component-card--grouped component-accordion-item" data-accordion-id="3" style="margin-bottom: 0; border-radius: 12px; border: 1px solid #e0e0e0;">
                     <div class="component-group-item component-accordion-header" style="cursor: default;">
                         <div class="component-card__content">
                             <div class="component-card__icon-container component-card__icon-container--bordered">
@@ -212,7 +212,7 @@ if (isset($_SESSION['user_id'])) {
 
             </div>
 
-            <div class="component-card component-card--grouped disabled" id="step-success">
+            <div class="component-card component-card--grouped disabled" id="step-success" style="margin-top: 16px;">
                 <div class="component-group-item component-group-item--stacked">
                     
                     <div class="component-card__content">
