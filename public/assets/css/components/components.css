@@ -418,7 +418,21 @@
 .user-avatar-btn[data-role="user"]::before { border-color: #eeeeee; }
 .user-avatar-btn[data-role="moderator"]::before { border-color: #2196f3; }
 .user-avatar-btn[data-role="administrator"]::before { border-color: #f44336; }
-.user-avatar-btn[data-role="founder"]::before { border-color: #9c27b0; }
+
+/* BORDE MULTICOLOR PARA FOUNDER (Google/Microsoft Style) */
+.user-avatar-btn[data-role="founder"]::before,
+.component-card__profile-picture[data-role="founder"]::before {
+    border: none;
+    background-image: conic-gradient(
+        from 300deg, 
+        #D32029 0deg 90deg,   
+        #206BD3 90deg 210deg, 
+        #28A745 210deg 300deg,
+        #FFC107 300deg 360deg 
+    );
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #fff 0);
+}
 
 /* FIX: Autocomplete de Navegadores */
 .component-text-input:-webkit-autofill,
@@ -602,10 +616,6 @@
 
 .component-card__profile-picture[data-role="administrator"]::before {
     border-color: #f44336;
-}
-
-.component-card__profile-picture[data-role="founder"]::before {
-    border-color: #9c27b0;
 }
 
 .component-card__avatar-image {
@@ -883,7 +893,7 @@ input:checked + .component-toggle-slider:before {
 }
 
 /* =========================================
-   COMPONENT: DIALOG OVERLAY (NUEVO)
+   COMPONENT: DIALOG OVERLAY
    ========================================= */
 .component-dialog-overlay {
     position: fixed;
@@ -967,4 +977,69 @@ input:checked + .component-toggle-slider:before {
     justify-content: flex-end;
     gap: 8px;
     margin-top: 8px;
+}
+
+/* =========================================
+   TOOLTIPS (Adaptado a Popper.js)
+   ========================================= */
+
+[data-tooltip] {
+    cursor: pointer;
+}
+
+.aurora-tooltip {
+    /* Absolute garantiza que no altere el DOM ni parpadee antes de que Popper cargue */
+    position: absolute; 
+    background-color: #1a1a1a; 
+    color: #ffffff; 
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: opacity 0.2s ease, visibility 0.2s;
+    z-index: 9999;
+}
+
+.aurora-tooltip.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.aurora-tooltip-arrow,
+.aurora-tooltip-arrow::before {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: inherit;
+}
+
+.aurora-tooltip-arrow {
+    visibility: hidden;
+}
+
+.aurora-tooltip-arrow::before {
+    visibility: visible;
+    content: '';
+    transform: rotate(45deg);
+}
+
+.aurora-tooltip[data-popper-placement^='top'] > .aurora-tooltip-arrow {
+    bottom: -4px;
+}
+
+.aurora-tooltip[data-popper-placement^='bottom'] > .aurora-tooltip-arrow {
+    top: -4px;
+}
+
+.aurora-tooltip[data-popper-placement^='left'] > .aurora-tooltip-arrow {
+    right: -4px;
+}
+
+.aurora-tooltip[data-popper-placement^='right'] > .aurora-tooltip-arrow {
+    left: -4px;
 }

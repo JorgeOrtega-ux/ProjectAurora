@@ -25,7 +25,9 @@ if ($appEnv === 'production' && !$isSecure) {
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
 header('Referrer-Policy: strict-origin-when-cross-origin');
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://ui-avatars.com; connect-src 'self'; frame-ancestors 'self';");
+
+// AQUI ESTÁ LA SOLUCIÓN: Se agregó https://unpkg.com a connect-src
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://ui-avatars.com; connect-src 'self' https://unpkg.com; frame-ancestors 'self';");
 
 if ($isSecure) {
     header('Strict-Transport-Security: max-age=31536000; includeSubDomains; preload');
