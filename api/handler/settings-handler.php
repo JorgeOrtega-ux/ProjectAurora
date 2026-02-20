@@ -10,7 +10,6 @@ return function($dbConnection, $action) {
         session_start();
     }
 
-    // Verificar que el usuario esté logueado
     if (!isset($_SESSION['user_id'])) {
         Utils::sendResponse(['success' => false, 'message' => 'No autorizado. Por favor inicia sesión.'], 401);
     }
@@ -20,7 +19,6 @@ return function($dbConnection, $action) {
 
     switch ($action) {
         case 'upload_avatar':
-            // En subida de archivos (FormData), usamos $_POST en lugar de JSON raw
             $token = $_POST['csrf_token'] ?? '';
             if (!Utils::validateCSRF($token)) {
                 Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido).']);
@@ -32,12 +30,23 @@ return function($dbConnection, $action) {
             break;
 
         case 'delete_avatar':
-            // Aquí sí recibimos JSON normal
             $data = Utils::getJsonInput();
             if (!Utils::validateCSRF($data->csrf_token ?? '')) {
                 Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido).']);
             }
             Utils::sendResponse($settings->deleteAvatar($userId));
+            break;
+
+        // NUEVO: Handler para actualizar campos de texto
+        case 'update_field':
+            $data = Utils::getJsonInput();
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) {
+                Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido).']);
+            }
+            if (empty($data->field) || !isset($data->value)) {
+                Utils::sendResponse(['success' => false, 'message' => 'Datos incompletos.']);
+            }
+            Utils::sendResponse($settings->updateField($userId, $data->field, $data->value));
             break;
 
         default:

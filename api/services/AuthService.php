@@ -35,16 +35,14 @@ class AuthService {
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($result) {
-            // Si el tiempo actual es menor al blocked_until, sigue bloqueado
             if ($result['is_blocked']) {
                 return false; 
             }
-            // Si el bloqueo ya expiró, reseteamos el contador para permitir intentos nuevamente
             if (!$result['is_blocked'] && $result['blocked_until'] !== null) {
                 $this->resetAttempts($action);
             }
         }
-        return true; // Permitido
+        return true;
     }
 
     private function recordFailedAttempt($action) {
@@ -56,7 +54,6 @@ class AuthService {
 
         if ($result) {
             $attempts = $result['attempts'] + 1;
-            // Si llega a 5 intentos, calculamos 15 minutos de bloqueo desde PHP
             $blocked_until = ($attempts >= 5) ? date('Y-m-d H:i:s', strtotime('+15 minutes')) : null;
             
             $update = "UPDATE rate_limits SET attempts = :attempts, last_attempt = NOW(), blocked_until = :blocked_until WHERE ip_address = :ip AND action = :action";
@@ -181,6 +178,7 @@ class AuthService {
             $_SESSION['user_id'] = $newUserId;
             $_SESSION['user_uuid'] = $uuid;
             $_SESSION['user_name'] = $username;
+            $_SESSION['user_email'] = $email;
             $_SESSION['user_role'] = 'user';
             $_SESSION['user_avatar'] = $webPath;
 
@@ -199,12 +197,11 @@ class AuthService {
     }
 
     public function login($email, $password) {
-        // 1. Validar límite de intentos antes de tocar la base de datos de usuarios
         if (!$this->checkRateLimit('login')) {
             return ['success' => false, 'message' => 'Por seguridad, tu cuenta está bloqueada temporalmente. Intenta de nuevo en 15 minutos.'];
         }
 
-        $query = "SELECT id, uuid, nombre, contrasena, avatar_path, role FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1";
+        $query = "SELECT id, uuid, nombre, correo, contrasena, avatar_path, role FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':correo', $email);
         $stmt->execute();
@@ -213,12 +210,12 @@ class AuthService {
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             if (password_verify($password, $row['contrasena'])) {
                 
-                // Si el inicio de sesión es exitoso, reiniciamos los intentos fallidos
                 $this->resetAttempts('login');
 
                 $_SESSION['user_id'] = $row['id'];
                 $_SESSION['user_uuid'] = $row['uuid'];
                 $_SESSION['user_name'] = $row['nombre'];
+                $_SESSION['user_email'] = $row['correo'];
                 $_SESSION['user_avatar'] = $row['avatar_path'];
                 $_SESSION['user_role'] = $row['role'];
 
@@ -234,7 +231,6 @@ class AuthService {
             }
         }
         
-        // 2. Si falla la contraseña o el correo no existe, registramos un intento fallido
         $this->recordFailedAttempt('login');
         return ['success' => false, 'message' => 'Correo o contraseña incorrectos.'];
     }
@@ -245,18 +241,15 @@ class AuthService {
     }
 
     public function requestPasswordReset($email) {
-        // 1. Validar límite de intentos para prevenir enumeración de correos
         if (!$this->checkRateLimit('forgot_password')) {
             return ['success' => false, 'message' => 'Demasiadas solicitudes. Por favor, intenta de nuevo en 15 minutos.'];
         }
 
         if (!$this->checkEmail($email)) {
-            // Si el correo NO existe, cuenta como un intento para prevenir barridos de diccionarios de correos
             $this->recordFailedAttempt('forgot_password');
             return ['success' => false, 'message' => 'El correo proporcionado no está registrado en el sistema.'];
         }
 
-        // Si el correo SÍ existe, limpiamos los intentos para que el usuario legítimo no se bloquee a sí mismo
         $this->resetAttempts('forgot_password');
 
         $token = bin2hex(random_bytes(32)); 
@@ -302,6 +295,13 @@ class AuthService {
         $email = $row['identifier'];
         $codeId = $row['id'];
 
+        // Obtener la contraseña anterior para guardarla en el log de auditoría
+        $userStmt = $this->conn->prepare("SELECT id, contrasena FROM " . $this->table_name . " WHERE correo = :correo");
+        $userStmt->execute([':correo' => $email]);
+        $userData = $userStmt->fetch(PDO::FETCH_ASSOC);
+        $userId = $userData['id'];
+        $oldPasswordHash = $userData['contrasena'];
+
         $password_hash = password_hash($newPassword, PASSWORD_BCRYPT);
 
         $updateQuery = "UPDATE " . $this->table_name . " SET contrasena = :contrasena WHERE correo = :correo";
@@ -310,6 +310,15 @@ class AuthService {
         $updStmt->bindParam(':correo', $email);
 
         if ($updStmt->execute()) {
+            
+            // GUARDAR EL LOG DEL CAMBIO DE CONTRASEÑA CON COLUMNAS EN INGLÉS
+            $logStmt = $this->conn->prepare("INSERT INTO user_changes_log (user_id, modified_field, old_value, new_value) VALUES (:user_id, 'contrasena', :old_val, :new_val)");
+            $logStmt->execute([
+                ':user_id' => $userId, 
+                ':old_val' => $oldPasswordHash, 
+                ':new_val' => $password_hash
+            ]);
+
             $delStmt = $this->conn->prepare("DELETE FROM verification_codes WHERE id = :id");
             $delStmt->bindParam(':id', $codeId);
             $delStmt->execute();

@@ -5,6 +5,7 @@ CREATE DATABASE IF NOT EXISTS project_aurora_db CHARACTER SET utf8mb4 COLLATE ut
 USE project_aurora_db;
 
 -- 3. ELIMINAR LAS TABLAS (Para reiniciar de cero)
+DROP TABLE IF EXISTS user_changes_log;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS verification_codes;
 DROP TABLE IF EXISTS rate_limits;
@@ -43,4 +44,15 @@ CREATE TABLE IF NOT EXISTS rate_limits (
     last_attempt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     blocked_until DATETIME DEFAULT NULL,
     UNIQUE KEY ip_action (ip_address, action)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 7. Crear la tabla 'user_changes_log' (SISTEMA DE AUDITORÍA)
+CREATE TABLE IF NOT EXISTS user_changes_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    modified_field VARCHAR(50) NOT NULL COMMENT 'e.g., avatar, nombre, correo, contrasena',
+    old_value TEXT DEFAULT NULL,
+    new_value TEXT DEFAULT NULL,
+    changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

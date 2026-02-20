@@ -13,8 +13,6 @@ export class ProfileController {
             // ===============================================
             // GESTIÓN DEL AVATAR
             // ===============================================
-            
-            // Disparar input de archivo
             if (e.target.closest('#btn-upload-init') || e.target.closest('[data-action="profile-picture-change"]') || e.target.closest('#btn-trigger-upload')) {
                 e.preventDefault();
                 const fileInput = document.getElementById('upload-avatar');
@@ -22,14 +20,12 @@ export class ProfileController {
                 return;
             }
 
-            // Cancelar selección de avatar
             if (e.target.closest('[data-action="profile-picture-cancel"]')) {
                 e.preventDefault();
                 this.cancelAvatarChange();
                 return;
             }
 
-            // Guardar el avatar nuevo
             const btnSaveAvatar = e.target.closest('[data-action="profile-picture-save"]');
             if (btnSaveAvatar) {
                 e.preventDefault();
@@ -37,7 +33,6 @@ export class ProfileController {
                 return;
             }
 
-            // Eliminar Avatar Customizado
             const btnDeleteAvatar = e.target.closest('[data-action="profile-picture-delete"]');
             if (btnDeleteAvatar) {
                 e.preventDefault();
@@ -56,6 +51,7 @@ export class ProfileController {
             const btnCancelEdit = e.target.closest('[data-action="cancel-edit"]');
             if (btnCancelEdit) { e.preventDefault(); this.handleCancelEdit(btnCancelEdit.dataset.target); return; }
 
+            // NUEVO: Envío a la base de datos
             const btnSaveField = e.target.closest('[data-action="save-field"]');
             if (btnSaveField) { e.preventDefault(); this.handleSaveField(btnSaveField.dataset.target); return; }
 
@@ -66,7 +62,6 @@ export class ProfileController {
             if (optionSelect) { e.preventDefault(); this.handleOptionSelect(optionSelect); return; }
         });
 
-        // Escuchador exclusivo para cuando el usuario escoge un archivo
         document.body.addEventListener('change', (e) => {
             if (e.target.id === 'upload-avatar') {
                 this.handleFileSelection(e.target);
@@ -87,10 +82,9 @@ export class ProfileController {
         const file = input.files[0];
         if (!file) return;
 
-        // Limite de 2MB
         if (file.size > 2 * 1024 * 1024) {
             alert('La imagen no puede pesar más de 2MB.');
-            input.value = ''; // Limpiar el input
+            input.value = ''; 
             return;
         }
 
@@ -111,7 +105,6 @@ export class ProfileController {
             const originalSrc = preview.getAttribute('data-original-src');
             preview.src = originalSrc;
             
-            // Decidir a qué estado volver
             if (originalSrc.includes('/default/')) {
                 this.switchAvatarControlsState('default');
             } else {
@@ -127,7 +120,6 @@ export class ProfileController {
 
         if (!file) return;
 
-        // Estado Loading
         const originalText = btn.textContent;
         btn.disabled = true;
         btn.innerHTML = '<div class="component-spinner-button"></div>';
@@ -140,12 +132,11 @@ export class ProfileController {
             const res = await ApiService.postFormData(API_ROUTES.SETTINGS.UPLOAD_AVATAR, formData);
             
             if (res.success) {
-                // Actualizar imagen principal y Header
                 this.updateAvatarVisuals(res.avatar);
-                this.switchAvatarControlsState('custom'); // Ya que es subida, se va a estado custom
+                this.switchAvatarControlsState('custom'); 
             } else {
                 alert(res.message);
-                this.cancelAvatarChange(); // Revertir a anterior si falla
+                this.cancelAvatarChange(); 
             }
         } catch (error) {
             alert('Error de red al subir la imagen.');
@@ -184,10 +175,8 @@ export class ProfileController {
         const preview = document.getElementById('preview-avatar');
         const headerAvatar = document.getElementById('user-avatar-img');
 
-        // Forzar que la ruta final SIEMPRE contenga /ProjectAurora/
         let finalPath = newPath;
         if (!finalPath.startsWith('/ProjectAurora/')) {
-            // Remueve cualquier barra inicial y le agrega el base path
             finalPath = '/ProjectAurora/' + finalPath.replace(/^\//, '');
         }
 
@@ -212,7 +201,7 @@ export class ProfileController {
     }
 
     /* ========================================================================
-       LÓGICA EXISTENTE DE EDICIÓN DE CAMPOS
+       LÓGICA ACTUALIZADA DE EDICIÓN DE CAMPOS
        ======================================================================== */
 
     toggleFieldState(target, mode) {
@@ -239,6 +228,7 @@ export class ProfileController {
     }
 
     handleStartEdit(target) { this.toggleFieldState(target, 'edit'); }
+    
     handleCancelEdit(target) {
         const originalValue = document.getElementById(`display-${target}`).textContent;
         const inputEl = document.getElementById(`input-${target}`);
@@ -246,17 +236,50 @@ export class ProfileController {
         this.toggleFieldState(target, 'view');
     }
 
-    handleSaveField(target) {
+    // NUEVO: API Request para guardar cambios
+    async handleSaveField(target) {
         const inputEl = document.getElementById(`input-${target}`);
         const displayEl = document.getElementById(`display-${target}`);
-        if (!inputEl || !displayEl) return;
+        const btnSave = document.querySelector(`[data-action="save-field"][data-target="${target}"]`);
+        
+        if (!inputEl || !displayEl || !btnSave) return;
 
         const newValue = inputEl.value.trim();
-        if (newValue !== "") {
-            displayEl.textContent = newValue;
-            this.toggleFieldState(target, 'view');
-        } else {
+        if (newValue === "") {
             alert("El campo no puede estar vacío"); 
+            return;
+        }
+
+        const csrfToken = document.getElementById('csrf_token_settings') ? document.getElementById('csrf_token_settings').value : '';
+        
+        // Mapear los identificadores del Frontend a las columnas SQL
+        const fieldMap = { 'username': 'nombre', 'email': 'correo' };
+        const apiField = fieldMap[target];
+
+        // Spinner Loading Effect
+        const originalText = btnSave.textContent;
+        btnSave.disabled = true;
+        btnSave.innerHTML = '<div class="component-spinner-button"></div>';
+
+        try {
+            const res = await ApiService.post(API_ROUTES.SETTINGS.UPDATE_FIELD, { 
+                field: apiField, 
+                value: newValue, 
+                csrf_token: csrfToken 
+            });
+            
+            if (res.success) {
+                // Actualiza el span de solo lectura con lo validado por el backend
+                displayEl.textContent = res.newValue;
+                this.toggleFieldState(target, 'view');
+            } else {
+                alert(res.message);
+            }
+        } catch (error) {
+            alert('Error al actualizar el campo en la base de datos.');
+        } finally {
+            btnSave.disabled = false;
+            btnSave.textContent = originalText;
         }
     }
 

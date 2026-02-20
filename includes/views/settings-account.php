@@ -1,4 +1,5 @@
 <?php
+// includes/views/settings-account.php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -6,12 +7,11 @@ if (session_status() === PHP_SESSION_NONE) {
 $userName = $_SESSION['user_name'] ?? 'Usuario';
 $userAvatar = $_SESSION['user_avatar'] ?? '';
 $userRole = $_SESSION['user_role'] ?? 'user';
-$userEmail = 'jorge@uat.edu.mx'; 
 
-// Formateamos el path para que siempre incluya el nombre de tu proyecto
+// AHORA TOMA EL CORREO DINÁMICO DE LA SESIÓN
+$userEmail = $_SESSION['user_email'] ?? ''; 
+
 $formattedAvatar = '/ProjectAurora/' . ltrim($userAvatar, '/');
-
-// Saber si el avatar actual es el de por defecto o uno subido
 $isDefaultAvatar = (strpos($userAvatar, '/default/') !== false);
 
 $stateDefaultClass = $isDefaultAvatar ? 'active' : 'disabled';

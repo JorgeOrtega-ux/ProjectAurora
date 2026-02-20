@@ -10,8 +10,11 @@ return [
     'auth.forgot_password' => ['file' => 'handler/auth-handler.php', 'action' => 'forgot_password'],
     'auth.reset_password'  => ['file' => 'handler/auth-handler.php', 'action' => 'reset_password'],
     
-    // --- NUEVAS RUTAS DE SETTINGS ---
+    // --- RUTAS DE SETTINGS ---
     'settings.upload_avatar' => ['file' => 'handler/settings-handler.php', 'action' => 'upload_avatar'],
-    'settings.delete_avatar' => ['file' => 'handler/settings-handler.php', 'action' => 'delete_avatar']
+    'settings.delete_avatar' => ['file' => 'handler/settings-handler.php', 'action' => 'delete_avatar'],
+    
+    // NUEVO: Ruta genérica para modificar textos
+    'settings.update_field'  => ['file' => 'handler/settings-handler.php', 'action' => 'update_field']
 ];
 ?>
