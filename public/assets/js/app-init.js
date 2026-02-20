@@ -3,7 +3,8 @@ import { MainController } from './main-controller.js';
 import { SpaRouter } from './spa-router.js';
 import { AuthController } from './auth-controller.js';
 import { ProfileController } from './profile-controller.js';
-import { PreferencesController } from './preferences-controller.js'; // <-- Importamos
+import { PreferencesController } from './preferences-controller.js'; 
+import { DialogController } from './dialog-controller.js'; // <-- Importamos dialogos
 
 document.addEventListener('DOMContentLoaded', () => {
     const app = new MainController();
@@ -15,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const auth = new AuthController(router); 
     const profile = new ProfileController(); 
     
-    // Inicializar el controlador de preferencias y hacerlo global
+    // Controladores globales
     window.preferencesController = new PreferencesController(); 
+    window.dialogController = new DialogController(); // <-- Inicializamos sistema de diálogos global
 });
