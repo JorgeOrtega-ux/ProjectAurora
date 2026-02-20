@@ -147,6 +147,26 @@ $stateCustomClass = $isDefaultAvatar ? 'disabled' : 'active';
                                 </div>
                                 <div class="component-module-panel-body component-module-panel-body--padded">
                                     <div class="component-menu-list overflow-y component-menu-list--dropdown">
+                                        <div class="component-menu-link" data-action="select-option" data-value="en-us" data-label="English (United States)">
+                                            <div class="component-menu-link-icon"><span class="material-symbols-rounded">language</span></div>
+                                            <div class="component-menu-link-text"><span>English (United States)</span></div>
+                                        </div>
+                                        <div class="component-menu-link" data-action="select-option" data-value="en-gb" data-label="English (United Kingdom)">
+                                            <div class="component-menu-link-icon"><span class="material-symbols-rounded">language</span></div>
+                                            <div class="component-menu-link-text"><span>English (United Kingdom)</span></div>
+                                        </div>
+                                        <div class="component-menu-link" data-action="select-option" data-value="fr-fr" data-label="Français (France)">
+                                            <div class="component-menu-link-icon"><span class="material-symbols-rounded">language</span></div>
+                                            <div class="component-menu-link-text"><span>Français (France)</span></div>
+                                        </div>
+                                        <div class="component-menu-link" data-action="select-option" data-value="de-de" data-label="Deutsch (Deutschland)">
+                                            <div class="component-menu-link-icon"><span class="material-symbols-rounded">language</span></div>
+                                            <div class="component-menu-link-text"><span>Deutsch (Deutschland)</span></div>
+                                        </div>
+                                        <div class="component-menu-link" data-action="select-option" data-value="it-it" data-label="Italiano (Italia)">
+                                            <div class="component-menu-link-icon"><span class="material-symbols-rounded">language</span></div>
+                                            <div class="component-menu-link-text"><span>Italiano (Italia)</span></div>
+                                        </div>
                                         <div class="component-menu-link active" data-action="select-option" data-value="es-latam" data-label="Español (Latinoamérica)">
                                             <div class="component-menu-link-icon"><span class="material-symbols-rounded">language</span></div>
                                             <div class="component-menu-link-text"><span>Español (Latinoamérica)</span></div>
@@ -154,6 +174,18 @@ $stateCustomClass = $isDefaultAvatar ? 'disabled' : 'active';
                                         <div class="component-menu-link" data-action="select-option" data-value="es-mx" data-label="Español (México)">
                                             <div class="component-menu-link-icon"><span class="material-symbols-rounded">language</span></div>
                                             <div class="component-menu-link-text"><span>Español (México)</span></div>
+                                        </div>
+                                        <div class="component-menu-link" data-action="select-option" data-value="es-es" data-label="Español (España)">
+                                            <div class="component-menu-link-icon"><span class="material-symbols-rounded">language</span></div>
+                                            <div class="component-menu-link-text"><span>Español (España)</span></div>
+                                        </div>
+                                        <div class="component-menu-link" data-action="select-option" data-value="pt-br" data-label="Português (Brasil)">
+                                            <div class="component-menu-link-icon"><span class="material-symbols-rounded">language</span></div>
+                                            <div class="component-menu-link-text"><span>Português (Brasil)</span></div>
+                                        </div>
+                                        <div class="component-menu-link" data-action="select-option" data-value="pt-pt" data-label="Português (Portugal)">
+                                            <div class="component-menu-link-icon"><span class="material-symbols-rounded">language</span></div>
+                                            <div class="component-menu-link-text"><span>Português (Portugal)</span></div>
                                         </div>
                                     </div>
                                 </div>
