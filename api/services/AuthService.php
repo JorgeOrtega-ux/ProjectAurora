@@ -4,6 +4,8 @@ namespace App\Api\Services;
 
 use PDO;
 use App\Core\Utils;
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
 class AuthService {
     private $conn;
@@ -74,6 +76,33 @@ class AuthService {
         $stmt->execute([':ip' => $ip, ':action' => $action]);
     }
 
+    private function sendEmail($to, $subject, $bodyHtml) {
+        $mail = new PHPMailer(true);
+        try {
+            $mail->isSMTP();
+            $mail->Host       = getenv('SMTP_HOST') ?: 'smtp.gmail.com';
+            $mail->SMTPAuth   = true;
+            $mail->Username   = getenv('SMTP_USER');
+            $mail->Password   = getenv('SMTP_PASS');
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+            $mail->Port       = getenv('SMTP_PORT') ?: 465;
+
+            $mail->setFrom(getenv('SMTP_USER'), 'Project Aurora');
+            $mail->addAddress($to);
+
+            $mail->isHTML(true);
+            $mail->Subject = mb_encode_mimeheader($subject, "UTF-8");
+            $mail->Body    = $bodyHtml;
+            $mail->CharSet = 'UTF-8';
+
+            $mail->send();
+            return true;
+        } catch (Exception $e) {
+            error_log("Error al enviar correo SMTP: {$mail->ErrorInfo}");
+            return false;
+        }
+    }
+
     public function checkEmail($email) {
         $query = "SELECT id FROM " . $this->table_name . " WHERE correo = :correo LIMIT 0,1";
         $stmt = $this->conn->prepare($query);
@@ -113,11 +142,18 @@ class AuthService {
         $stmt->bindParam(':expires_at', $expires_at);
 
         if ($stmt->execute()) {
-            return [
-                'success' => true, 
-                'message' => 'Código enviado.', 
-                'dev_code' => $code 
-            ];
+            $html = "<div style='font-family: sans-serif; max-width: 600px; margin: 0 auto;'>
+                        <h2>Bienvenido a Project Aurora</h2>
+                        <p>Hola {$data->username},</p>
+                        <p>Tu código de activación es:</p>
+                        <h1 style='letter-spacing: 4px; background: #f5f5fa; padding: 12px; text-align: center; border-radius: 8px;'>{$code}</h1>
+                        <p>Este código expirará en 15 minutos.</p>
+                     </div>";
+
+            if ($this->sendEmail($data->email, 'Código de Activación - Project Aurora', $html)) {
+                return ['success' => true, 'message' => 'Código enviado a tu correo.'];
+            }
+            return ['success' => false, 'message' => 'Error al intentar enviar el correo. Revisa la configuración SMTP.'];
         }
 
         return ['success' => false, 'message' => 'Error al procesar la solicitud.'];
@@ -162,11 +198,7 @@ class AuthService {
         if ($stmt->execute()) {
             $newUserId = $this->conn->lastInsertId();
 
-            // =================================================================================
-            // NUEVO: GUARDAR EN BASE DE DATOS LAS PREFERENCIAS DE CUANDO ERA INVITADO
-            // =================================================================================
             $lang = $data->language ?? 'en-us';
-            // Validar que sea 1 o 0 (si viene boolean desde JS true/false)
             $openLinks = isset($data->open_links_new_tab) && $data->open_links_new_tab ? 1 : 0;
 
             $prefStmt = $this->conn->prepare("INSERT INTO user_preferences (user_id, language, open_links_new_tab) VALUES (:uid, :lang, :links)");
@@ -176,9 +208,7 @@ class AuthService {
                 ':links' => $openLinks
             ]);
             
-            // NUEVO: Fijamos la cookie
             setcookie('aurora_lang', $lang, time() + 31536000, '/');
-            // =================================================================================
 
             $delQuery = "DELETE FROM verification_codes WHERE id = :id";
             $delStmt = $this->conn->prepare($delQuery);
@@ -229,7 +259,6 @@ class AuthService {
                 $_SESSION['user_avatar'] = $row['avatar_path'];
                 $_SESSION['user_role'] = $row['role'];
 
-                // NUEVO: Extraemos pref de idioma y fijamos cookie
                 $prefStmt = $this->conn->prepare("SELECT language FROM user_preferences WHERE user_id = :uid");
                 $prefStmt->execute([':uid' => $row['id']]);
                 $userLang = $prefStmt->fetchColumn() ?: 'es-latam';
@@ -286,12 +315,22 @@ class AuthService {
         $stmt->bindParam(':expires_at', $expires_at);
 
         if ($stmt->execute()) {
-            $resetLink = "/ProjectAurora/reset-password?token=" . $token;
-            return [
-                'success' => true, 
-                'message' => 'Enlace de recuperación generado.',
-                'dev_link' => $resetLink 
-            ];
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
+            $host = $_SERVER['HTTP_HOST'];
+            $resetLink = $protocol . $host . "/ProjectAurora/reset-password?token=" . $token;
+
+            $html = "<div style='font-family: sans-serif; max-width: 600px; margin: 0 auto;'>
+                        <h2>Recuperación de Contraseña</h2>
+                        <p>Has solicitado restablecer tu contraseña para Project Aurora.</p>
+                        <p>Haz clic en el siguiente enlace para continuar:</p>
+                        <p><a href='{$resetLink}' style='display: inline-block; padding: 12px 24px; background: #000; color: #fff; text-decoration: none; border-radius: 8px;'>Restablecer Contraseña</a></p>
+                        <p style='font-size: 12px; color: #666; margin-top: 24px;'>Si no solicitaste este cambio, ignora este correo. El enlace expirará en 1 hora.</p>
+                     </div>";
+
+            if ($this->sendEmail($email, 'Recuperación de Contraseña - Project Aurora', $html)) {
+                return ['success' => true, 'message' => 'Enlace de recuperación enviado.'];
+            }
+            return ['success' => false, 'message' => 'Error al intentar enviar el correo.'];
         }
 
         return ['success' => false, 'message' => 'Error al procesar la solicitud.'];

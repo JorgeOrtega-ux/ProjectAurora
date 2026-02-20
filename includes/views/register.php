@@ -54,7 +54,6 @@ $headerStyle = $isSubStep ? 'display: none;' : '';
                 </button>
                 <div style="text-align: center; margin-bottom: 16px; color: #666; font-size: 14px;">
                     <p><?= t('register.code_msg') ?></p>
-                    <div id="simulated-code-display" style="margin-top: 8px; font-size: 20px; font-weight: bold; color: #000; letter-spacing: 4px; background: #f5f5fa; padding: 8px; border-radius: 8px;"></div>
                 </div>
                 <div class="component-form-group">
                     <div class="component-input-wrapper">

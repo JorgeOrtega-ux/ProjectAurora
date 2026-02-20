@@ -17,11 +17,6 @@
                     </div>
                 </div>
 
-                <div id="simulated-link-container" style="display: none; text-align: center; margin: 16px 0; color: #666; font-size: 14px;">
-                    <p><?= t('forgot.simulated_msg') ?></p>
-                    <a id="simulated-link-display" href="#" style="word-break: break-all; font-weight: bold; color: #000; margin-top: 8px; display: block;"></a>
-                </div>
-
                 <button type="button" id="btn-forgot-password" class="component-button component-button--large primary" style="margin-top: 16px;">
                     <?= t('forgot.btn') ?>
                 </button>

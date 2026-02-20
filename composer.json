@@ -1,6 +1,9 @@
 {
     "name": "jorgeortega/projectaurora",
     "description": "Project Aurora SPA",
+    "require": {
+        "phpmailer/phpmailer": "^6.8"
+    },
     "autoload": {
         "psr-4": {
             "App\\Config\\": "config/",

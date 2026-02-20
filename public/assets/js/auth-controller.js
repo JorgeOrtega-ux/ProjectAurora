@@ -1,5 +1,6 @@
 import { ApiService } from './api-services.js';
 import { API_ROUTES } from './api-routes.js';
+import { Toast } from './toast-controller.js';
 
 export class AuthController {
     constructor(router) {
@@ -89,7 +90,6 @@ export class AuthController {
         const email = sessionStorage.getItem('reg_email') || '';
         const pass = sessionStorage.getItem('reg_password') || '';
         const user = sessionStorage.getItem('reg_username') || '';
-        const devCode = sessionStorage.getItem('reg_dev_code') || '';
 
         if (document.getElementById('reg-email')) document.getElementById('reg-email').value = email;
         if (document.getElementById('reg-password')) document.getElementById('reg-password').value = pass;
@@ -118,8 +118,6 @@ export class AuthController {
             }
             stage3.style.display = 'flex';
             if (title) { title.textContent = window.t('js.auth.stage3.title'); subtitle.textContent = window.t('js.auth.stage3.sub'); }
-            const display = document.getElementById('simulated-code-display');
-            if (display && devCode) display.textContent = devCode;
             setTimeout(() => document.getElementById('reg-code').focus(), 50);
 
         } else {
@@ -166,13 +164,11 @@ export class AuthController {
         const localPart = emailParts[0];
         const domainPart = emailParts[1].toLowerCase();
         
-        // Obtener configuraciones de BD expuestas desde PHP
         const minLocal = parseInt(window.APP_CONFIG?.min_email_local_length || 4);
         const maxLocal = parseInt(window.APP_CONFIG?.max_email_local_length || 64);
         const domainsStr = window.APP_CONFIG?.allowed_email_domains || 'gmail.com,outlook.com,icloud.com,hotmail.com,yahoo.com';
         const allowedDomains = domainsStr.split(',').map(d => d.trim().toLowerCase());
 
-        // Validar reglas específicas del correo dinámicamente
         if (localPart.length < minLocal || localPart.length > maxLocal || !allowedDomains.includes(domainPart)) {
             this.showError(errorDiv, window.t('js.auth.err_email_invalid')); 
             return;
@@ -181,7 +177,6 @@ export class AuthController {
         const minPass = parseInt(window.APP_CONFIG?.min_password_length || 12);
         const maxPass = parseInt(window.APP_CONFIG?.max_password_length || 64);
 
-        // Validar longitud de la contraseña dinámicamente
         if (pass.length < minPass || pass.length > maxPass) {
             this.showError(errorDiv, window.t('js.auth.err_pass_length')); 
             return;
@@ -218,7 +213,6 @@ export class AuthController {
         const minUser = parseInt(window.APP_CONFIG?.min_username_length || 3);
         const maxUser = parseInt(window.APP_CONFIG?.max_username_length || 32);
 
-        // Validar longitud del nombre de usuario dinámicamente
         if (user.length < minUser || user.length > maxUser) {
             this.showError(errorDiv, window.t('js.auth.err_user_length')); 
             return;
@@ -231,7 +225,6 @@ export class AuthController {
             const res = await ApiService.post(API_ROUTES.AUTH.SEND_CODE, { email, password, username: user, csrf_token: csrfToken });
             if (res.success) {
                 sessionStorage.setItem('reg_username', user);
-                sessionStorage.setItem('reg_dev_code', res.dev_code);
                 this.router.navigate('/ProjectAurora/register/verification-account'); 
             } else { this.showError(errorDiv, window.t(res.message)); }
         } catch (error) { this.showError(errorDiv, window.t('js.auth.err_gen_code')); } 
@@ -321,8 +314,6 @@ export class AuthController {
         const csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
         const btn = document.getElementById('btn-forgot-password');
         const errorDiv = document.getElementById('forgot-error');
-        const linkContainer = document.getElementById('simulated-link-container');
-        const linkDisplay = document.getElementById('simulated-link-display');
 
         if (!email) {
             this.showError(errorDiv, window.t('js.auth.err_fields'));
@@ -331,13 +322,12 @@ export class AuthController {
 
         this.setLoading(btn, true);
         this.hideError(errorDiv);
-        linkContainer.style.display = 'none';
 
         try {
             const res = await ApiService.post(API_ROUTES.AUTH.FORGOT_PASSWORD, { email, csrf_token: csrfToken });
             if (res.success) {
-                linkDisplay.href = res.dev_link; linkDisplay.textContent = window.location.origin + res.dev_link;
-                linkDisplay.dataset.nav = res.dev_link; linkContainer.style.display = 'block';
+                Toast.show(window.t('js.auth.success_forgot') || 'Enlace de recuperación enviado', 'success');
+                document.getElementById('forgot-email').value = '';
             } else { this.showError(errorDiv, window.t(res.message)); }
         } catch (error) { this.showError(errorDiv, window.t('js.auth.err_process')); } finally { this.setLoading(btn, false); }
     }
