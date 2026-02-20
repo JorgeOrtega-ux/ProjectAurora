@@ -22,8 +22,13 @@ export const API_ROUTES = {
         GET_PREFERENCES: `${BASE_PATH}/api/settings.get_preferences`,
         UPDATE_PREFERENCE: `${BASE_PATH}/api/settings.update_preference`,
 
-        // RUTAS DE SEGURIDAD Y CONTRASEÑA
         VERIFY_PASSWORD: `${BASE_PATH}/api/settings.verify_password`,
-        UPDATE_PASSWORD: `${BASE_PATH}/api/settings.update_password`
+        UPDATE_PASSWORD: `${BASE_PATH}/api/settings.update_password`,
+
+        // RUTAS 2FA
+        INIT_2FA: `${BASE_PATH}/api/settings.2fa_init`,
+        ENABLE_2FA: `${BASE_PATH}/api/settings.2fa_enable`,
+        DISABLE_2FA: `${BASE_PATH}/api/settings.2fa_disable`,
+        REGEN_2FA: `${BASE_PATH}/api/settings.2fa_regen`
     }
 };

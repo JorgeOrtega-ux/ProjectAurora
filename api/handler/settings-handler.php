@@ -20,53 +20,35 @@ return function($dbConnection, $action) {
     switch ($action) {
         case 'upload_avatar':
             $token = $_POST['csrf_token'] ?? '';
-            if (!Utils::validateCSRF($token)) {
-                Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido).']);
-            }
-            if (!isset($_FILES['avatar'])) {
-                Utils::sendResponse(['success' => false, 'message' => 'No se recibió ninguna imagen.']);
-            }
+            if (!Utils::validateCSRF($token)) { Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad.']); }
+            if (!isset($_FILES['avatar'])) { Utils::sendResponse(['success' => false, 'message' => 'No se recibió ninguna imagen.']); }
             Utils::sendResponse($settings->uploadAvatar($userId, $_FILES['avatar']));
             break;
 
         case 'delete_avatar':
             $data = Utils::getJsonInput();
-            if (!Utils::validateCSRF($data->csrf_token ?? '')) {
-                Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido).']);
-            }
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) { Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad.']); }
             Utils::sendResponse($settings->deleteAvatar($userId));
             break;
 
         case 'update_field':
             $data = Utils::getJsonInput();
-            if (!Utils::validateCSRF($data->csrf_token ?? '')) {
-                Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido).']);
-            }
-            if (empty($data->field) || !isset($data->value)) {
-                Utils::sendResponse(['success' => false, 'message' => 'Datos incompletos.']);
-            }
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) { Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad.']); }
+            if (empty($data->field) || !isset($data->value)) { Utils::sendResponse(['success' => false, 'message' => 'Datos incompletos.']); }
             Utils::sendResponse($settings->updateField($userId, $data->field, $data->value));
             break;
             
         case 'request_email_change':
             $data = Utils::getJsonInput();
-            if (!Utils::validateCSRF($data->csrf_token ?? '')) {
-                Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido).']);
-            }
-            if (empty($data->new_email)) {
-                Utils::sendResponse(['success' => false, 'message' => 'El nuevo correo es requerido.']);
-            }
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) { Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad.']); }
+            if (empty($data->new_email)) { Utils::sendResponse(['success' => false, 'message' => 'El nuevo correo es requerido.']); }
             Utils::sendResponse($settings->requestEmailChange($userId, $data->new_email));
             break;
 
         case 'confirm_email_change':
             $data = Utils::getJsonInput();
-            if (!Utils::validateCSRF($data->csrf_token ?? '')) {
-                Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido).']);
-            }
-            if (empty($data->code)) {
-                Utils::sendResponse(['success' => false, 'message' => 'El código es requerido.']);
-            }
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) { Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad.']); }
+            if (empty($data->code)) { Utils::sendResponse(['success' => false, 'message' => 'El código es requerido.']); }
             Utils::sendResponse($settings->confirmEmailChange($userId, $data->code));
             break;
 
@@ -76,35 +58,49 @@ return function($dbConnection, $action) {
 
         case 'update_preference':
             $data = Utils::getJsonInput();
-            if (!Utils::validateCSRF($data->csrf_token ?? '')) {
-                Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido).']);
-            }
-            if (empty($data->field) || !isset($data->value)) {
-                Utils::sendResponse(['success' => false, 'message' => 'Datos incompletos.']);
-            }
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) { Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad.']); }
+            if (empty($data->field) || !isset($data->value)) { Utils::sendResponse(['success' => false, 'message' => 'Datos incompletos.']); }
             Utils::sendResponse($settings->updatePreference($userId, $data->field, $data->value));
             break;
 
         case 'verify_password':
             $data = Utils::getJsonInput();
-            if (!Utils::validateCSRF($data->csrf_token ?? '')) {
-                Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido).']);
-            }
-            if (empty($data->password)) {
-                Utils::sendResponse(['success' => false, 'message' => 'Datos incompletos.']);
-            }
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) { Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad.']); }
+            if (empty($data->password)) { Utils::sendResponse(['success' => false, 'message' => 'Datos incompletos.']); }
             Utils::sendResponse($settings->verifyPassword($userId, $data->password));
             break;
 
         case 'update_password':
             $data = Utils::getJsonInput();
-            if (!Utils::validateCSRF($data->csrf_token ?? '')) {
-                Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad (Token inválido).']);
-            }
-            if (empty($data->current_password) || empty($data->new_password)) {
-                Utils::sendResponse(['success' => false, 'message' => 'Datos incompletos.']);
-            }
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) { Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad.']); }
+            if (empty($data->current_password) || empty($data->new_password)) { Utils::sendResponse(['success' => false, 'message' => 'Datos incompletos.']); }
             Utils::sendResponse($settings->updatePassword($userId, $data->current_password, $data->new_password));
+            break;
+
+        // --- MANEJADORES DE 2FA ---
+        case '2fa_init':
+            Utils::sendResponse($settings->init2FA($userId));
+            break;
+
+        case '2fa_enable':
+            $data = Utils::getJsonInput();
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) { Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad.']); }
+            if (empty($data->code)) { Utils::sendResponse(['success' => false, 'message' => 'Código requerido.']); }
+            Utils::sendResponse($settings->enable2FA($userId, $data->code));
+            break;
+
+        case '2fa_disable':
+            $data = Utils::getJsonInput();
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) { Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad.']); }
+            if (empty($data->password)) { Utils::sendResponse(['success' => false, 'message' => 'Contraseña requerida.']); }
+            Utils::sendResponse($settings->disable2FA($userId, $data->password));
+            break;
+
+        case '2fa_regen':
+            $data = Utils::getJsonInput();
+            if (!Utils::validateCSRF($data->csrf_token ?? '')) { Utils::sendResponse(['success' => false, 'message' => 'Error de seguridad.']); }
+            if (empty($data->password)) { Utils::sendResponse(['success' => false, 'message' => 'Contraseña requerida.']); }
+            Utils::sendResponse($settings->regenerate2FACodes($userId, $data->password));
             break;
 
         default:

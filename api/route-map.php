@@ -23,6 +23,12 @@ return [
 
     // --- RUTAS DE SEGURIDAD ---
     'settings.verify_password'    => ['file' => 'handler/settings-handler.php', 'action' => 'verify_password'],
-    'settings.update_password'    => ['file' => 'handler/settings-handler.php', 'action' => 'update_password']
+    'settings.update_password'    => ['file' => 'handler/settings-handler.php', 'action' => 'update_password'],
+
+    // --- RUTAS 2FA ---
+    'settings.2fa_init'           => ['file' => 'handler/settings-handler.php', 'action' => '2fa_init'],
+    'settings.2fa_enable'         => ['file' => 'handler/settings-handler.php', 'action' => '2fa_enable'],
+    'settings.2fa_disable'        => ['file' => 'handler/settings-handler.php', 'action' => '2fa_disable'],
+    'settings.2fa_regen'          => ['file' => 'handler/settings-handler.php', 'action' => '2fa_regen']
 ];
 ?>

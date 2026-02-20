@@ -6,6 +6,7 @@ use PDO;
 use App\Core\Utils;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
+use RobThree\Auth\TwoFactorAuth;
 
 class SettingsService {
     private $conn;
@@ -498,6 +499,92 @@ class SettingsService {
         }
 
         return ['success' => false, 'message' => 'Error de base de datos al guardar preferencia.'];
+    }
+
+       // ==========================================
+    // MÉTODOS DE 2FA (AUTENTICACIÓN DE DOS FACTORES)
+    // ==========================================
+
+    public function init2FA($userId) {
+        $stmt = $this->conn->prepare("SELECT correo, two_factor_enabled, two_factor_secret, two_factor_recovery_codes FROM users WHERE id = :id");
+        $stmt->execute([':id' => $userId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($user['two_factor_enabled']) {
+            $codes = json_decode($user['two_factor_recovery_codes'], true) ?? [];
+            return ['success' => true, 'enabled' => true, 'codes_count' => count($codes)];
+        }
+
+        $tfa = new TwoFactorAuth('Project Aurora');
+        $secret = $user['two_factor_secret'];
+        if (!$secret) {
+            $secret = $tfa->createSecret();
+            $upd = $this->conn->prepare("UPDATE users SET two_factor_secret = :sec WHERE id = :id");
+            $upd->execute([':sec' => $secret, ':id' => $userId]);
+        }
+
+        // Genera la URI de imagen DataBase64 automáticamente
+        $qrUrl = $tfa->getQRCodeImageAsDataUri('Project Aurora (' . $user['correo'] . ')', $secret);
+
+        return [
+            'success' => true,
+            'enabled' => false,
+            'secret' => $secret,
+            'qr' => $qrUrl
+        ];
+    }
+    
+    public function enable2FA($userId, $code) {
+        $stmt = $this->conn->prepare("SELECT two_factor_secret FROM users WHERE id = :id");
+        $stmt->execute([':id' => $userId]);
+        $secret = $stmt->fetchColumn();
+
+        $tfa = new TwoFactorAuth('Project Aurora');
+        if ($tfa->verifyCode($secret, $code)) {
+            $recoveryCodes = [];
+            for ($i = 0; $i < 10; $i++) {
+                $recoveryCodes[] = bin2hex(random_bytes(4)) . '-' . bin2hex(random_bytes(4));
+            }
+            
+            $upd = $this->conn->prepare("UPDATE users SET two_factor_enabled = 1, two_factor_recovery_codes = :codes WHERE id = :id");
+            $upd->execute([':codes' => json_encode($recoveryCodes), ':id' => $userId]);
+            
+            return ['success' => true, 'message' => '2FA activado correctamente', 'recovery_codes' => $recoveryCodes];
+        }
+        return ['success' => false, 'message' => 'Código de verificación incorrecto.'];
+    }
+
+    public function disable2FA($userId, $password) {
+        $stmt = $this->conn->prepare("SELECT contrasena FROM users WHERE id = :id");
+        $stmt->execute([':id' => $userId]);
+        $hash = $stmt->fetchColumn();
+
+        if (!password_verify($password, $hash)) {
+            return ['success' => false, 'message' => 'Contraseña incorrecta.'];
+        }
+        
+        $upd = $this->conn->prepare("UPDATE users SET two_factor_enabled = 0, two_factor_secret = NULL, two_factor_recovery_codes = NULL WHERE id = :id");
+        $upd->execute([':id' => $userId]);
+        return ['success' => true, 'message' => '2FA desactivado.'];
+    }
+
+    public function regenerate2FACodes($userId, $password) {
+        $stmt = $this->conn->prepare("SELECT contrasena FROM users WHERE id = :id");
+        $stmt->execute([':id' => $userId]);
+        $hash = $stmt->fetchColumn();
+
+        if (!password_verify($password, $hash)) {
+            return ['success' => false, 'message' => 'Contraseña incorrecta.'];
+        }
+
+        $recoveryCodes = [];
+        for ($i = 0; $i < 10; $i++) {
+            $recoveryCodes[] = bin2hex(random_bytes(4)) . '-' . bin2hex(random_bytes(4));
+        }
+        
+        $upd = $this->conn->prepare("UPDATE users SET two_factor_recovery_codes = :codes WHERE id = :id");
+        $upd->execute([':codes' => json_encode($recoveryCodes), ':id' => $userId]);
+        return ['success' => true, 'message' => 'Códigos generados correctamente.', 'recovery_codes' => $recoveryCodes];
     }
 }
 ?>

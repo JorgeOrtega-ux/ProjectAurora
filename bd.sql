@@ -21,6 +21,9 @@ CREATE TABLE users (
     contrasena VARCHAR(255) NOT NULL,
     role ENUM('user', 'moderator', 'administrator', 'founder') DEFAULT 'user' COMMENT 'Rol del usuario para permisos y UI',
     avatar_path VARCHAR(255) DEFAULT NULL COMMENT 'Ruta de la imagen guardada en storage',
+    two_factor_secret VARCHAR(255) DEFAULT NULL COMMENT 'Clave secreta para 2FA',
+    two_factor_enabled BOOLEAN DEFAULT FALSE COMMENT 'Estado de 2FA',
+    two_factor_recovery_codes TEXT DEFAULT NULL COMMENT 'Códigos de recuperación en JSON',
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -37,7 +40,7 @@ CREATE TABLE IF NOT EXISTS verification_codes (
     INDEX (code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 6. Crear la tabla 'rate_limits' (NUEVO SISTEMA DE SEGURIDAD)
+-- 6. Crear la tabla 'rate_limits'
 CREATE TABLE IF NOT EXISTS rate_limits (
     id INT AUTO_INCREMENT PRIMARY KEY,
     ip_address VARCHAR(45) NOT NULL,
@@ -48,7 +51,7 @@ CREATE TABLE IF NOT EXISTS rate_limits (
     UNIQUE KEY ip_action (ip_address, action)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 7. Crear la tabla 'user_changes_log' (SISTEMA DE AUDITORÍA)
+-- 7. Crear la tabla 'user_changes_log'
 CREATE TABLE IF NOT EXISTS user_changes_log (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -59,7 +62,7 @@ CREATE TABLE IF NOT EXISTS user_changes_log (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 8. Crear la tabla 'user_preferences' (SISTEMA DE PREFERENCIAS ACTUALIZADO)
+-- 8. Crear la tabla 'user_preferences'
 CREATE TABLE IF NOT EXISTS user_preferences (
     user_id INT PRIMARY KEY,
     language VARCHAR(10) DEFAULT 'en-us',
@@ -70,7 +73,7 @@ CREATE TABLE IF NOT EXISTS user_preferences (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 9. Crear la tabla 'server_config' (CONFIGURACIÓN DINÁMICA DEL SERVIDOR)
+-- 9. Crear la tabla 'server_config'
 CREATE TABLE IF NOT EXISTS server_config (
     setting_key VARCHAR(50) PRIMARY KEY,
     setting_value TEXT NOT NULL,
@@ -86,4 +89,4 @@ INSERT IGNORE INTO server_config (setting_key, setting_value, description) VALUE
 ('max_username_length', '32', 'Longitud máxima del nombre de usuario'),
 ('min_email_local_length', '4', 'Longitud mínima del correo antes del @'),
 ('max_email_local_length', '64', 'Longitud máxima del correo antes del @'),
-('allowed_email_domains', 'gmail.com,outlook.com,icloud.com,hotmail.com,yahoo.com', 'Dominios de correo permitidos separados por coma');
+('allowed_email_domains', 'gmail.com,outlook.com,icloud.com,hotmail.com,yahoo.com', 'Dominios permitidos');

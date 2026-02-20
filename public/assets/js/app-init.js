@@ -5,7 +5,8 @@ import { AuthController } from './auth-controller.js';
 import { ProfileController } from './profile-controller.js';
 import { PreferencesController } from './preferences-controller.js'; 
 import { DialogController } from './dialog-controller.js';
-import { TooltipController } from './tooltip-controller.js'; // <-- Importamos Tooltips
+import { TooltipController } from './tooltip-controller.js';
+import { TwoFactorController } from './2fa-controller.js'; // <-- Importado
 
 document.addEventListener('DOMContentLoaded', () => {
     const app = new MainController();
@@ -20,5 +21,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Controladores globales
     window.preferencesController = new PreferencesController(); 
     window.dialogController = new DialogController();
-    window.tooltipController = new TooltipController(); // <-- Inicializamos sistema de Tooltips
+    window.tooltipController = new TooltipController(); 
+    window.twoFactorController = new TwoFactorController(); // <-- Inicializado
 });

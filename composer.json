@@ -2,7 +2,8 @@
     "name": "jorgeortega/projectaurora",
     "description": "Project Aurora SPA",
     "require": {
-        "phpmailer/phpmailer": "^6.8"
+        "phpmailer/phpmailer": "^6.8",
+        "robthree/twofactorauth": "^2.1"
     },
     "autoload": {
         "psr-4": {

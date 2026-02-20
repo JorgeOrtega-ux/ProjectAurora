@@ -1,5 +1,4 @@
 // public/assets/js/dialog-config.js
-
 export const DIALOG_CONFIG = {
     'dialog-delete-avatar': {
         title: 'Eliminar foto de perfil',
@@ -19,6 +18,18 @@ export const DIALOG_CONFIG = {
         buttons: [
             { id: 'btn-cancel-email', text: 'Cancelar', action: 'close', class: 'component-button' },
             { id: 'btn-confirm-email-code', text: 'Verificar y Guardar', action: 'confirm', class: 'component-button primary' }
+        ]
+    },
+    'dialog-confirm-password-2fa': {
+        title: 'Confirmar Contraseña',
+        body: `Para desactivar la autenticación de dos factores, por favor ingresa tu contraseña actual.
+               <div class="component-input-wrapper" style="margin-top: 16px;">
+                   <input type="password" id="input-confirm-password-2fa" class="component-text-input" placeholder=" ">
+                   <label for="input-confirm-password-2fa" class="component-label-floating">Contraseña</label>
+               </div>`,
+        buttons: [
+            { id: 'btn-cancel-pass-2fa', text: 'Cancelar', action: 'close', class: 'component-button' },
+            { id: 'btn-confirm-pass-action-2fa', text: 'Desactivar 2FA', action: 'confirm', class: 'component-button primary', style: 'background-color: #d32f2f; border-color: #d32f2f;' }
         ]
     }
 };
