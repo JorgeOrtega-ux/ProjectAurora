@@ -34,8 +34,8 @@ export class ProfileController {
                 return;
             }
 
-            // 4. Toggle Dropdown de idioma
-            const triggerSelector = e.target.closest('.trigger-selector');
+            // 4. Toggle Dropdown de idioma (Nuevo Componente Nativo)
+            const triggerSelector = e.target.closest('[data-action="toggle-dropdown"]');
             if (triggerSelector) {
                 e.preventDefault();
                 this.handleDropdownToggle(triggerSelector, e);
@@ -48,11 +48,6 @@ export class ProfileController {
                 e.preventDefault();
                 this.handleOptionSelect(optionSelect);
                 return;
-            }
-
-            // 6. Cerrar popovers al hacer click fuera de ellos
-            if (!e.target.closest('.trigger-select-wrapper')) {
-                this.closeAllPopovers();
             }
         });
 
@@ -75,7 +70,6 @@ export class ProfileController {
         const viewActions = document.querySelector(`[data-state="${target}-actions-view"]`);
         const editActions = document.querySelector(`[data-state="${target}-actions-edit"]`);
 
-        // Si no existen los elementos en el DOM actual, no hacemos nada
         if (!viewState || !editState || !viewActions || !editActions) return;
 
         if (mode === 'edit') {
@@ -117,11 +111,8 @@ export class ProfileController {
         if (newValue !== "") {
             displayEl.textContent = newValue;
             this.toggleFieldState(target, 'view');
-            
-            // Aquí en el futuro harás la llamada a ApiService.post(...)
             console.log(`[API Simulación] ${target} guardado como: ${newValue}`);
         } else {
-            // Podrías usar tu componente de error en lugar de alert más adelante
             alert("El campo no puede estar vacío"); 
         }
     }
@@ -131,38 +122,38 @@ export class ProfileController {
        ======================================================================== */
 
     handleDropdownToggle(selector, event) {
-        event.stopPropagation();
-        const wrapper = selector.closest('.trigger-select-wrapper');
-        const popover = wrapper.querySelector('.popover-module');
+        event.stopPropagation(); // Previene que el main-controller lo cierre automáticamente
+        const wrapper = selector.closest('.component-dropdown');
+        const module = wrapper.querySelector('.component-module');
         
-        this.closeAllPopovers(popover); // Cierra otros si los hay
+        this.closeAllDropdowns(module);
         
-        if (popover) popover.classList.toggle('active');
+        if (module) module.classList.toggle('disabled');
     }
 
     handleOptionSelect(option) {
-        const wrapper = option.closest('.trigger-select-wrapper');
-        const popover = wrapper.querySelector('.popover-module');
-        const textDisplay = wrapper.querySelector('.trigger-select-text');
+        const wrapper = option.closest('.component-dropdown');
+        const module = wrapper.querySelector('.component-module');
+        const textDisplay = wrapper.querySelector('.component-dropdown-text');
         
         const selectedValue = option.dataset.value;
         const selectedLabel = option.dataset.label;
         
         textDisplay.textContent = selectedLabel;
         
-        popover.querySelectorAll('.menu-link').forEach(link => link.classList.remove('active'));
+        module.querySelectorAll('.component-menu-link').forEach(link => link.classList.remove('active'));
         option.classList.add('active');
         
-        popover.classList.remove('active');
+        module.classList.add('disabled');
         
         console.log(`[API Simulación] Idioma cambiado a: ${selectedValue}`);
     }
 
     handleFilter(searchInput) {
-        const popover = searchInput.closest('.popover-module');
+        const module = searchInput.closest('.component-module');
         const term = searchInput.value.toLowerCase().trim();
         
-        popover.querySelectorAll('.menu-link').forEach(link => {
+        module.querySelectorAll('.component-menu-link').forEach(link => {
             const label = link.dataset.label.toLowerCase();
             if (label.includes(term)) {
                 link.style.display = 'flex';
@@ -172,9 +163,9 @@ export class ProfileController {
         });
     }
 
-    closeAllPopovers(exceptThisOne = null) {
-        document.querySelectorAll('.popover-module.active').forEach(p => {
-            if (p !== exceptThisOne) p.classList.remove('active');
+    closeAllDropdowns(exceptThisOne = null) {
+        document.querySelectorAll('.component-dropdown .component-module:not(.disabled)').forEach(m => {
+            if (m !== exceptThisOne) m.classList.add('disabled');
         });
     }
 }

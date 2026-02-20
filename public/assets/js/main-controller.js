@@ -29,12 +29,20 @@ export class MainController {
         this.handleResize();
         this.handleScrollShadow();
         this.handleModules();
+
+        // Parche: Vuelve a vincular los eventos táctiles cuando el Router SPA cambia la vista
+        window.addEventListener('viewLoaded', () => {
+            this.initBottomSheets();
+        });
     }
 
     handleModules() {
         const triggers = document.querySelectorAll('[data-action^="toggle"]');
 
         triggers.forEach(trigger => {
+            // Ignoramos triggers personalizados como "toggle-dropdown" para que profile-controller los gestione
+            if (trigger.dataset.action === 'toggle-dropdown') return; 
+
             trigger.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const action = trigger.dataset.action;
@@ -55,10 +63,8 @@ export class MainController {
             openModules.forEach(module => {
                 const panel = module.querySelector('.component-module-panel');
                 
-                // Si estamos arrastrando, no hacemos nada
                 if (this.dragState.isDragging) return;
 
-                // Si existe el panel y el clic NO fue dentro del panel, cerramos.
                 if (panel && !panel.contains(e.target)) {
                     this.closeModule(module);
                 }
@@ -111,7 +117,6 @@ export class MainController {
         window.addEventListener('resize', () => {
             document.body.classList.add('resize-animation-stopper');
             
-            // CORRECCIÓN AQUÍ: Agregamos "this.header &&" para evitar el error de null en vistas auth
             if (window.innerWidth > 768 && this.header && this.header.classList.contains('is-search-active')) {
                 this.header.classList.remove('is-search-active');
             }
@@ -133,9 +138,11 @@ export class MainController {
     }
 
     initBottomSheets() {
-        const modules = document.querySelectorAll('.component-module--display-overlay');
+        // Seleccionamos módulos que aún no han sido inicializados para evitar duplicidad en el DOM estático
+        const modules = document.querySelectorAll('.component-module--display-overlay:not(.bottom-sheet-initialized)');
 
         modules.forEach(module => {
+            module.classList.add('bottom-sheet-initialized');
             const panel = module.querySelector('.component-module-panel');
             if (!panel) return;
 

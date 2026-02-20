@@ -69,7 +69,7 @@ $userEmail = 'jorge@uat.edu.mx';
                         </div>
                         <div class="disabled w-100 input-group-responsive" data-state="username-edit-state">
                             <div class="component-input-wrapper flex-1" style="height: 36px;">
-                                <input type="text" class="component-text-input" id="input-username" value="<?php echo htmlspecialchars($userName); ?>" style="padding-top: 0;">
+                                <input type="text" class="component-text-input component-text-input--simple" id="input-username" value="<?php echo htmlspecialchars($userName); ?>">
                             </div>
                             <div class="component-card__actions disabled m-0" data-state="username-actions-edit">
                                 <button type="button" class="component-button" data-action="cancel-edit" data-target="username">Cancelar</button>
@@ -94,7 +94,7 @@ $userEmail = 'jorge@uat.edu.mx';
                         </div>
                         <div class="disabled w-100 input-group-responsive" data-state="email-edit-state">
                             <div class="component-input-wrapper flex-1" style="height: 36px;">
-                                <input type="email" class="component-text-input" id="input-email" value="<?php echo htmlspecialchars($userEmail); ?>" style="padding-top: 0;">
+                                <input type="email" class="component-text-input component-text-input--simple" id="input-email" value="<?php echo htmlspecialchars($userEmail); ?>">
                             </div>
                             <div class="component-card__actions disabled m-0" data-state="email-actions-edit">
                                 <button type="button" class="component-button" data-action="cancel-edit" data-target="email">Cancelar</button>
@@ -117,64 +117,70 @@ $userEmail = 'jorge@uat.edu.mx';
                         <p class="component-card__description">Selecciona tu idioma preferido para la plataforma.</p>
                     </div>
                 </div>
-                <div class="component-card__actions" style="width: 100%;">
-                    <div class="trigger-select-wrapper" data-trigger="dropdown">
-                        <div class="trigger-selector">
-                            <span class="material-symbols-rounded trigger-select-icon">
-                                language
-                            </span>
-                            <span class="trigger-select-text">Español (Latinoamérica)</span>
+                <div class="component-card__actions w-100">
+                    
+                    <div class="component-dropdown">
+                        <div class="component-dropdown-trigger" data-action="toggle-dropdown">
+                            <span class="material-symbols-rounded trigger-select-icon">language</span>
+                            <span class="component-dropdown-text">Español (Latinoamérica)</span>
                             <span class="material-symbols-rounded">expand_more</span>
                         </div>
                         
-                        <div class="popover-module popover-module--searchable">
-                            <div class="menu-content menu-content--flush">
+                        <div class="component-module component-module--display-overlay component-module--dropdown-selector disabled">
+                            <div class="component-module-panel">
                                 
-                                <div class="menu-search-header">
-                                    <div class="component-input-wrapper" style="height: 36px;">
+                                <div class="pill-container">
+                                    <div class="drag-handle"></div>
+                                </div>
+
+                                <div class="component-module-panel-header--search">
+                                    <div class="component-input-wrapper component-input-wrapper--search">
                                         <input type="text" 
-                                               class="component-text-input" 
+                                               class="component-text-input component-text-input--simple" 
                                                placeholder="Buscar idioma..." 
-                                               data-action="filter-options" style="padding-top: 0;"> 
+                                               data-action="filter-options"> 
                                     </div>
                                 </div>
 
-                                <div class="menu-list menu-list--scrollable overflow-y">
-                                    <div class="menu-link active" data-action="select-option" data-value="es-latam" data-label="Español (Latinoamérica)">
-                                        <div class="menu-link-icon">
-                                            <span class="material-symbols-rounded">language</span>
+                                <div class="component-module-panel-body component-module-panel-body--padded">
+                                    <div class="component-menu-list overflow-y component-menu-list--dropdown">
+                                        <div class="component-menu-link active" data-action="select-option" data-value="es-latam" data-label="Español (Latinoamérica)">
+                                            <div class="component-menu-link-icon">
+                                                <span class="material-symbols-rounded">language</span>
+                                            </div>
+                                            <div class="component-menu-link-text"><span>Español (Latinoamérica)</span></div>
                                         </div>
-                                        <div class="menu-link-text">Español (Latinoamérica)</div>
-                                    </div>
-                                    <div class="menu-link" data-action="select-option" data-value="es-mx" data-label="Español (México)">
-                                        <div class="menu-link-icon">
-                                            <span class="material-symbols-rounded">language</span>
+                                        <div class="component-menu-link" data-action="select-option" data-value="es-mx" data-label="Español (México)">
+                                            <div class="component-menu-link-icon">
+                                                <span class="material-symbols-rounded">language</span>
+                                            </div>
+                                            <div class="component-menu-link-text"><span>Español (México)</span></div>
                                         </div>
-                                        <div class="menu-link-text">Español (México)</div>
-                                    </div>
-                                    <div class="menu-link" data-action="select-option" data-value="en-us" data-label="English (United States)">
-                                        <div class="menu-link-icon">
-                                            <span class="material-symbols-rounded">translate</span>
+                                        <div class="component-menu-link" data-action="select-option" data-value="en-us" data-label="English (United States)">
+                                            <div class="component-menu-link-icon">
+                                                <span class="material-symbols-rounded">translate</span>
+                                            </div>
+                                            <div class="component-menu-link-text"><span>English (United States)</span></div>
                                         </div>
-                                        <div class="menu-link-text">English (United States)</div>
-                                    </div>
-                                    <div class="menu-link" data-action="select-option" data-value="en-gb" data-label="English (United Kingdom)">
-                                        <div class="menu-link-icon">
-                                            <span class="material-symbols-rounded">translate</span>
+                                        <div class="component-menu-link" data-action="select-option" data-value="en-gb" data-label="English (United Kingdom)">
+                                            <div class="component-menu-link-icon">
+                                                <span class="material-symbols-rounded">translate</span>
+                                            </div>
+                                            <div class="component-menu-link-text"><span>English (United Kingdom)</span></div>
                                         </div>
-                                        <div class="menu-link-text">English (United Kingdom)</div>
-                                    </div>
-                                    <div class="menu-link" data-action="select-option" data-value="fr-fr" data-label="Français (France)">
-                                        <div class="menu-link-icon">
-                                            <span class="material-symbols-rounded">translate</span>
+                                        <div class="component-menu-link" data-action="select-option" data-value="fr-fr" data-label="Français (France)">
+                                            <div class="component-menu-link-icon">
+                                                <span class="material-symbols-rounded">translate</span>
+                                            </div>
+                                            <div class="component-menu-link-text"><span>Français (France)</span></div>
                                         </div>
-                                        <div class="menu-link-text">Français (France)</div>
                                     </div>
                                 </div>
 
                             </div>
                         </div>
-                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>

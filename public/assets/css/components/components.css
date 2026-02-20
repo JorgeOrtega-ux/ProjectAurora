@@ -125,24 +125,23 @@
 .component-module-panel { width: 100%; height: 100%; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px #00000020; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #00000008; }
 .component-module-panel--padded { padding: 8px; height: auto; }
 
-/* RESTRICCIÓN DESKTOP PARA OVERLAYS (Ej. Menú Opciones) */
+/* RESTRICCIÓN DESKTOP PARA OVERLAYS */
 .component-module--display-overlay .component-module-panel {
     height: auto;
-    max-height: calc(100vh - 80px); /* Previene que crezca fuera de la pantalla */
+    max-height: calc(100vh - 80px);
 }
 
-/* --- NUEVO: BODY SCROLLEABLE INTERNO --- */
+/* BODY SCROLLEABLE INTERNO */
 .component-module-panel-body {
     flex: 1 1 auto;
     overflow-y: auto;
     overflow-x: hidden;
-    min-height: 0; /* Crucial para activar el scroll interno en flexbox */
+    min-height: 0; 
     display: flex;
     flex-direction: column;
     width: 100%;
 }
 
-/* Variante del body con padding (Reemplaza al panel--padded) */
 .component-module-panel-body--padded {
     padding: 8px;
 }
@@ -161,10 +160,9 @@
 .component-menu-link--bordered { border: 1px solid #00000020; } 
 
 /* =========================================
-   NUEVO DISEÑO AUTH (MODULAR 8PX)
+   DISEÑO AUTH (MODULAR 8PX)
    ========================================= */
 
-/* Layout Centrado */
 .component-layout-centered {
     display: flex;
     justify-content: center;
@@ -174,7 +172,6 @@
     padding: 20px;
 }
 
-/* Tarjeta Auth */
 .component-card {
     background-color: #ffffff;
     border-radius: 16px;
@@ -187,7 +184,6 @@
     max-width: 355px; 
 }
 
-/* Header Centrado */
 .component-header-centered {
     text-align: center;
     margin-bottom: 32px;
@@ -205,7 +201,6 @@
     color: #666;
 }
 
-/* --- MODULARIDAD: El Stage Form controla el ritmo vertical --- */
 .component-stage-form {
     display: flex;
     flex-direction: column;
@@ -213,7 +208,6 @@
     gap: 8px; 
 }
 
-/* Grupo de Formulario (Inputs) */
 .component-form-group {
     display: flex;
     flex-direction: column;
@@ -221,7 +215,6 @@
     width: 100%;
 }
 
-/* Input Wrapper (Floating) */
 .component-input-wrapper {
     position: relative;
     width: 100%;
@@ -236,7 +229,6 @@
     border-color: #000;
 }
 
-/* Input Transparente */
 .component-text-input {
     width: 100%;
     height: 100%;
@@ -255,7 +247,6 @@
     padding-right: 48px; 
 }
 
-/* Label Flotante */
 .component-label-floating {
     position: absolute;
     left: 12px;
@@ -276,7 +267,6 @@
     color: #000;
 }
 
-/* Botón de acción (Toggle Password) */
 .component-input-action {
     position: absolute;
     right: 8px; 
@@ -301,7 +291,6 @@
     color: #000;
 }
 
-/* Links */
 .component-link-simple {
     font-size: 13px;
     color: #666;
@@ -317,7 +306,6 @@
     text-decoration: underline;
 }
 
-/* Footer de Texto */
 .component-text-footer {
     text-align: center;
     font-size: 14px;
@@ -334,13 +322,12 @@
     text-decoration: underline;
 }
 
-/* --- COMPONENT: MESSAGE (ERROR) --- */
 .component-message-error {
     width: 100%;
     padding: 12px;
     margin-top: 8px;
     background-color: transparent;
-    border: 1px solid #dc2626; /* Rojo */
+    border: 1px solid #dc2626;
     color: #dc2626;
     border-radius: 8px;
     font-size: 14px;
@@ -350,7 +337,6 @@
     animation: fadeIn 0.3s ease;
 }
 
-/* --- COMPONENT: BUTTON SPINNER --- */
 .component-spinner-button {
     width: 20px;
     height: 20px;
@@ -411,10 +397,10 @@
         align-items: center;
         width: 100%;
         flex-shrink: 0;
-        padding: 12px 0; /* Padding superior e inferior para equilibrar */
+        padding: 12px 0; 
         cursor: grab;
         touch-action: none; 
-        background-color: #ffffff; /* Evita que el scroll transparente el handle */
+        background-color: #ffffff; 
         z-index: 10;
     }
 }
@@ -457,7 +443,6 @@
     }
 }
 
-/* --- COMPONENT: FATAL JSON ERROR --- */
 .component-fatal-error-container {
     display: none;
     flex-direction: column;
@@ -475,16 +460,8 @@
     text-align: center;
 }
 
-
-
-
-
-
-
-
-
 /* ========================================================================
-   ESTILOS DEL PERFIL (Adaptados al ecosistema ProjectAurora)
+   ESTILOS DEL PERFIL
    ======================================================================== */
 .component-wrapper {
     width: 100%;
@@ -669,7 +646,6 @@
     align-items: center;
 }
 
-/* Modificador ligero para los botones dentro de esta vista */
 .view-content .component-button {
     height: 36px;
     padding: 0 14px;
@@ -723,12 +699,16 @@ input:checked + .component-toggle-slider:before {
     background-color: #ffffff;
 }
 
-.trigger-select-wrapper {
+/* =========================================
+   COMPONENT: DROPDOWN & SELECTORS
+   ========================================= */
+.component-dropdown {
     position: relative;
-    width: 260px;
+    width: 100%;
+    max-width: 260px;
 }
 
-.trigger-selector {
+.component-dropdown-trigger {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -741,77 +721,52 @@ input:checked + .component-toggle-slider:before {
     cursor: pointer;
     user-select: none;
     gap: 8px;
-    transition: border-color 0.2s ease;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
     color: #1a1a1a;
 }
 
-.trigger-selector:hover {
+.component-dropdown-trigger:hover {
     border-color: #000000;
+    background-color: #f5f5fa;
 }
 
-.trigger-select-text {
+.component-dropdown-text {
     flex: 1;
     font-size: 14px;
     font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.popover-module {
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
+/* Modificador para el contenedor flotante */
+.component-module--dropdown-selector {
     width: 100%;
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    border: 1px solid #e0e0e0;
-    z-index: 1000;
-    display: none;
-    flex-direction: column;
-    animation: fadeInPopover 0.15s ease-out;
+    min-width: 260px;
+    margin-top: 4px;
 }
 
-@keyframes fadeInPopover {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.menu-search-header {
-    padding: 8px;
-    border-bottom: 1px solid #00000020;
-}
-
-.menu-list {
-    padding: 4px;
-    max-height: 200px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.menu-link {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+/* Cabecera de búsqueda con border-bottom independiente del padding del listado */
+.component-module-panel-header--search {
     padding: 8px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    color: #666666;
-    transition: background 0.2s, color 0.2s;
+    border-bottom: 1px solid #e0e0e0;
+    flex-shrink: 0;
+    background-color: #ffffff;
 }
 
-.menu-link:hover, .menu-link.active {
-    background: #f5f5fa;
-    color: #1a1a1a;
+/* Altura máxima para que el dropdown haga scroll */
+.component-menu-list--dropdown {
+    max-height: 200px;
 }
 
-.popover-module.active {
-    display: flex;
+/* Modificadores para el Input de texto dentro de cabeceras de búsqueda o vistas simples */
+.component-input-wrapper--search {
+    height: 36px;
 }
 
-.menu-link-icon .material-symbols-rounded {
-    font-size: 18px;
+.component-text-input--simple {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
 }
 
 /* Clases de Utilidad */
