@@ -11,10 +11,12 @@ $userRoleOption = $isLoggedInOption && isset($_SESSION['user_role']) ? $_SESSION
             <div class="component-menu-list">
                 
                 <?php if ($isLoggedInOption && in_array($userRoleOption, ['administrator', 'founder'])): ?>
-                <a href="#" class="component-menu-link component-menu-link--bordered" onclick="event.preventDefault();" style="margin-bottom: 4px;">
+                <a href="#" class="component-menu-link component-menu-link--bordered" onclick="event.preventDefault();">
                     <div class="component-menu-link-icon"><span class="material-symbols-rounded">admin_panel_settings</span></div>
                     <div class="component-menu-link-text"><span style="font-weight: 600;"><?= t('module.admin') ?></span></div>
                 </a>
+                
+                <div style="height: 1px; background-color: #00000020; margin: 4px 0; flex-shrink: 0;"></div>
                 <?php endif; ?>
 
                 <a href="<?= $settingsRoute; ?>" class="component-menu-link nav-item" data-nav="<?= $settingsRoute; ?>">
@@ -28,7 +30,6 @@ $userRoleOption = $isLoggedInOption && isset($_SESSION['user_role']) ? $_SESSION
                 </a>
                 
                 <?php if ($isLoggedInOption): ?>
-                    <div style="height: 1px; background-color: #eee; margin: 4px 0; flex-shrink: 0;"></div>
                     <a href="#" class="component-menu-link" data-action="logout">
                         <div class="component-menu-link-icon"><span class="material-symbols-rounded">logout</span></div>
                         <div class="component-menu-link-text"><span><?= t('module.logout') ?></span></div>

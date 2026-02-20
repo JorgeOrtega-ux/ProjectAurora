@@ -59,25 +59,25 @@ if ($isSpaRequest) {
     </div>
     
     <script>
+        // Entregamos tanto el lenguaje como las configuraciones globales del servidor al JS
         window.i18n = <?= json_encode(empty($translations) ? new stdClass() : $translations) ?>;
         window.APP_CONFIG = <?= json_encode($APP_CONFIG ?? new stdClass()) ?>;
         
         window.t = function(key, replacements = null) { 
             let text = window.i18n[key] || key; 
             
+            // Si no se proveen reemplazos explícitos, usamos los que vengan del APP_CONFIG del servidor
             let data = replacements || window.APP_CONFIG;
             
             if (data && typeof data === 'object') {
                 for (const prop in data) {
+                    // split/join previene errores que pueden ocurrir con RegEx al encontrar strings con caracteres raros
                     text = text.split('{' + prop + '}').join(data[prop]);
                 }
             }
             return text;
         };
     </script>
-    
-    <script src="https://unpkg.com/@popperjs/core@2"></script>
-    
     <script type="module" src="assets/js/app-init.js"></script>
 </body>
 </html>

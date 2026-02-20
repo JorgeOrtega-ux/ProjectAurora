@@ -238,8 +238,15 @@ export class ProfileController {
             viewActions.classList.replace('active', 'disabled');
             editState.classList.replace('disabled', 'active');
             editActions.classList.replace('disabled', 'active');
+            
             const input = document.getElementById(`input-${target}`);
-            if (input) input.focus();
+            if (input) {
+                input.focus();
+                // MAGIA UNIVERSAL: Este truco funciona en type="email", "number", "text", etc.
+                const val = input.value;
+                input.value = '';
+                input.value = val;
+            }
         } else {
             editState.classList.replace('active', 'disabled');
             editActions.classList.replace('active', 'disabled');
